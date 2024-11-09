@@ -10,208 +10,236 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import test, { expect, Page } from '@playwright/test';
-import { SidebarItem } from '../../constant/sidebar';
-import { descriptionBox, redirectToHomePage, uuid } from '../../utils/common';
-import { sidebarClick } from '../../utils/sidebar';
-import { submitForm, validateForm } from '../../utils/tag';
+import { expect, test } from '@playwright/test';
+import { ClassificationClass } from '../../support/tag/ClassificationClass';
+import { TagClass } from '../../support/tag/TagClass';
+import {
+  createNewPage,
+  getApiContext,
+  redirectToHomePage,
+} from '../../utils/common';
 
-// use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
-test.describe('Tag Page', async () => {
-  const NEW_CLASSIFICATION = {
-    name: `TestClassification-${uuid()}`,
-    displayName: `TestClassification-${uuid()}`,
-    description: 'This is a test Classification',
-  };
-  const NEW_TAG = {
-    name: `TestTag-${uuid()}`,
-    displayName: `TestTag-${uuid()}`,
-    renamedName: `Tag-${uuid()}`,
-    description: 'This is a test Tag',
-    color: '#FF5733',
-    id: `TestId-${uuid()}`,
-  };
+test.describe('Tag page', () => {
+  const classification = new ClassificationClass({
+    provider: 'system',
+    mutuallyExclusive: true,
+  });
 
-  const getTagPage = async (page: Page) => {
-    await sidebarClick(page, SidebarItem.TAGS);
-    await page.click('[data-testid="add-classification"]');
-    await page.waitForSelector('.ant-modal-content', {
-      state: 'visible',
-    });
+  test.beforeAll(async ({ browser }) => {
+    const { apiContext, afterAction } = await createNewPage(browser);
+    await classification.create(apiContext);
+    await afterAction();
+  });
 
-    await expect(page.locator('.ant-modal-content')).toBeVisible();
+  test.afterAll(async ({ browser }) => {
+    const { apiContext, afterAction } = await createNewPage(browser);
+    await classification.delete(apiContext);
+    await afterAction();
+  });
 
-    await validateForm(page);
-
-    await page.fill('[data-testid="name"]', NEW_CLASSIFICATION.name);
-    await page.fill(
-      '[data-testid="displayName"]',
-      NEW_CLASSIFICATION.displayName
-    );
-    await page.fill(descriptionBox, NEW_CLASSIFICATION.description);
-    await page.click('[data-testid="mutually-exclusive-button"]');
-
-    const createTagCategoryResponse = page.waitForResponse(
-      'api/v1/classifications'
-    );
-    await submitForm(page);
-    await createTagCategoryResponse;
-
-    await page.click(`text=${NEW_CLASSIFICATION.displayName}`);
-
-    await expect(page.locator('.activeCategory')).toContainText(
-      NEW_CLASSIFICATION.displayName
-    );
-
-    await page.getByTestId('add-new-tag-button').click();
-
-    await page.waitForSelector('.ant-modal-content', {
-      state: 'visible',
-    });
-
-    await expect(page.locator('.ant-modal-content')).toBeVisible();
-
-    await validateForm(page);
-
-    await page.fill('[data-testid="name"]', NEW_TAG.name);
-    await page.fill('[data-testid="displayName"]', NEW_TAG.displayName);
-    await page.fill(descriptionBox, NEW_TAG.description);
-    await page.fill('[data-testid="tags_color-color-input"]', NEW_TAG.color);
-
-    const createTagResponse = page.waitForResponse('api/v1/tags');
-    await submitForm(page);
-    await createTagResponse;
-
-    await expect(page.locator('[data-testid="table"]')).toContainText(
-      NEW_TAG.name
-    );
-
-    await expect(page.locator('[data-testid="table"]')).toContainText(
-      NEW_TAG.name
-    );
-
-    await page.getByRole('link', { name: NEW_TAG.name }).click();
-    await page.goto(`/tag/${NEW_CLASSIFICATION.name}.${NEW_TAG.name}`);
-  };
-
-  test.beforeEach(async ({ page }) => {
+  test('Verify Tag UI', async ({ page }) => {
     await redirectToHomePage(page);
-    await getTagPage(page);
+    const { apiContext, afterAction } = await getApiContext(page);
+    const tag = new TagClass({
+      classification: classification.data.name,
+    });
+    try {
+      await tag.create(apiContext);
+      const res = page.waitForResponse(`/api/v1/tags/name/*`);
+      await tag.visitPage(page);
+      await res;
+
+      await expect(page.getByText(tag.data.name)).toBeVisible();
+      await expect(page.getByText(tag.data.description)).toBeVisible();
+
+      const classificationTable = page.waitForResponse(
+        `/api/v1/classifications/name/*`
+      );
+      await page.getByRole('link', { name: classification.data.name }).click();
+      classificationTable;
+
+      await page.getByTestId(tag.data.name).click();
+      await res;
+
+      const classificationPage = page.waitForResponse(
+        `/api/v1/classifications*`
+      );
+      await page.getByRole('link', { name: 'Classifications' }).click();
+      await classificationPage;
+    } finally {
+      await tag.delete(apiContext);
+      await afterAction();
+    }
   });
 
-  test('Name should be there when we move to the tag page', async ({
-    page,
-  }) => {
-    await expect(page.getByText(NEW_TAG.name)).toBeVisible();
-    await expect(page.getByText(NEW_TAG.description)).toBeVisible();
+  test('Rename Tag name', async ({ page }) => {
+    await redirectToHomePage(page);
+    const { apiContext, afterAction } = await getApiContext(page);
+    const tag = new TagClass({
+      classification: classification.data.name,
+    });
+    try {
+      await tag.create(apiContext);
+      const res = page.waitForResponse(`/api/v1/tags/name/*`);
+      await tag.visitPage(page);
+      await res;
+      await page.getByTestId('manage-button').click();
+
+      await expect(
+        page.locator('.ant-dropdown-placement-bottomRight')
+      ).toBeVisible();
+
+      await page.getByRole('menuitem', { name: 'Rename' }).click();
+
+      await expect(page.getByRole('dialog')).toBeVisible();
+
+      await page.getByPlaceholder('Enter display name').fill('TestDisplayName');
+
+      const updateName = page.waitForResponse(`/api/v1/tags/*`);
+      await page.getByTestId('save-button').click();
+      updateName;
+
+      await expect(page.getByText('TestDisplayName')).toBeVisible();
+    } finally {
+      await tag.delete(apiContext);
+      await afterAction();
+    }
   });
 
-  test('The breadcrumbs links should navigate to respective pages', async ({
-    page,
-  }) => {
-    await page.getByRole('link', { name: 'Classifications' }).click();
-    await page.goto('/tags');
+  test('Restyle Tag', async ({ page }) => {
+    await redirectToHomePage(page);
+    const { apiContext, afterAction } = await getApiContext(page);
+    const tag = new TagClass({
+      classification: classification.data.name,
+    });
+    try {
+      await tag.create(apiContext);
+      const res = page.waitForResponse(`/api/v1/tags/name/*`);
+      await tag.visitPage(page);
+      await res;
+      await page.getByTestId('manage-button').click();
 
-    await page.getByText(NEW_CLASSIFICATION.displayName).click();
-    await page.goto(`/tag/${NEW_CLASSIFICATION.name}.${NEW_TAG.name}`);
+      await expect(
+        page.locator('.ant-dropdown-placement-bottomRight')
+      ).toBeVisible();
 
-    await page.getByRole('link', { name: NEW_CLASSIFICATION.name }).click();
-    await page.goto(`/tags/${NEW_CLASSIFICATION.name}`);
-  });
+      await page.getByRole('menuitem', { name: 'Style' }).click();
 
-  test('Rename should work', async ({ page }) => {
-    await page.locator('[data-testid="manage-button"]').click();
+      await expect(page.getByRole('dialog')).toBeVisible();
 
-    await expect(
-      page.locator('.ant-dropdown-placement-bottomRight')
-    ).toBeVisible();
+      await page.getByTestId('color-color-input').fill('#6366f1');
 
-    await page.getByRole('menuitem', { name: 'Rename' }).click();
+      const updateColor = page.waitForResponse(`/api/v1/tags/*`);
+      await page.locator('button[type="submit"]').click();
+      updateColor;
 
-    await expect(page.getByRole('dialog')).toBeVisible();
-
-    await page.getByPlaceholder('Enter display name').fill('TestDisplayName');
-
-    await page.getByTestId('save-button').scrollIntoViewIfNeeded();
-    await page.getByTestId('save-button').click();
-
-    await expect(page.getByText('TestDisplayName')).toBeVisible();
-  });
-
-  test('Style Update should work', async ({ page }) => {
-    await page.locator('[data-testid="manage-button"]').click();
-
-    await expect(
-      page.locator('.ant-dropdown-placement-bottomRight')
-    ).toBeVisible();
-
-    await page.getByRole('menuitem', { name: 'Style' }).click();
-
-    await expect(page.getByRole('dialog')).toBeVisible();
-
-    await page.getByTestId('color-color-input').fill('#6366f1');
-
-    await page.locator('button[type="submit"]').scrollIntoViewIfNeeded();
-    await page.locator('button[type="submit"]').click();
-
-    await expect(page.getByText(NEW_TAG.displayName)).toBeVisible();
-  });
-
-  test('Delete a Tag', async ({ page }) => {
-    await page.locator('[data-testid="manage-button"]').click();
-
-    await expect(
-      page.locator('.ant-dropdown-placement-bottomRight')
-    ).toBeVisible();
-
-    await page.getByRole('menuitem', { name: 'Delete' }).click();
-
-    await expect(page.getByRole('dialog')).toBeVisible();
-
-    await page.getByTestId('confirmation-text-input').fill('DELETE');
-    await page.getByTestId('confirm-button').scrollIntoViewIfNeeded();
-    await page.getByTestId('confirm-button').click();
-    await page.goto(`/tags/${NEW_CLASSIFICATION.name}`);
-
-    await expect(page.locator('[data-testid="table"]')).not.toContainText(
-      NEW_TAG.name
-    );
+      await expect(page.getByText(tag.data.name)).toBeVisible();
+    } finally {
+      await tag.delete(apiContext);
+      await afterAction();
+    }
   });
 
   test('Edit Tag Description', async ({ page }) => {
-    await page.getByTestId('edit-description').click();
+    await redirectToHomePage(page);
+    const { apiContext, afterAction } = await getApiContext(page);
+    const tag = new TagClass({
+      classification: classification.data.name,
+    });
+    try {
+      await tag.create(apiContext);
+      const res = page.waitForResponse(`/api/v1/tags/name/*`);
+      await tag.visitPage(page);
+      await res;
+      await page.getByTestId('edit-description').click();
 
-    await expect(page.getByRole('dialog')).toBeVisible();
+      await expect(page.getByRole('dialog')).toBeVisible();
 
-    await page.locator('.toastui-editor-pseudo-clipboard').clear();
-    await page
-      .locator('.toastui-editor-pseudo-clipboard')
-      .fill(`This is updated test description for tag ${NEW_TAG.name}.`);
-    await page.getByTestId('save').scrollIntoViewIfNeeded();
-    await page.getByTestId('save').click();
+      await page.locator('.toastui-editor-pseudo-clipboard').clear();
+      await page
+        .locator('.toastui-editor-pseudo-clipboard')
+        .fill(`This is updated test description for tag ${tag.data.name}.`);
 
-    await expect(page.getByTestId('viewer-container')).toContainText(
-      `This is updated test description for tag ${NEW_TAG.name}.`
-    );
+      const editDescription = page.waitForResponse(`/api/v1/tags/*`);
+      await page.getByTestId('save').click();
+      await editDescription;
+
+      await expect(page.getByTestId('viewer-container')).toContainText(
+        `This is updated test description for tag ${tag.data.name}.`
+      );
+    } finally {
+      await tag.delete(apiContext);
+      await afterAction();
+    }
   });
 
-  test('Add assets to tag', async ({ page }) => {
-    await page.getByTestId('data-classification-add-button').click();
+  test('Delete a Tag', async ({ page }) => {
+    await redirectToHomePage(page);
+    const { apiContext, afterAction } = await getApiContext(page);
+    const tag = new TagClass({
+      classification: classification.data.name,
+    });
+    try {
+      await tag.create(apiContext);
+      const res = page.waitForResponse(`/api/v1/tags/name/*`);
+      await tag.visitPage(page);
+      await res;
+      await page.getByTestId('manage-button').click();
 
-    await expect(page.getByRole('dialog')).toBeVisible();
+      await expect(
+        page.locator('.ant-dropdown-placement-bottomRight')
+      ).toBeVisible();
 
-    await page
-      .locator('#tabledatacard-aa1d01d8-42e6-4170-8a68-dbcf03905cea')
-      .getByLabel('')
-      .click();
-    await page.getByTestId('save-btn').scrollIntoViewIfNeeded();
-    await page.getByTestId('save-btn').click();
-    await page.goto(`/tag/${NEW_CLASSIFICATION.name}.${NEW_TAG.name}`);
-    await page.getByRole('tab', { name: 'Assets' }).click();
-    await page.goto(`/tag/${NEW_CLASSIFICATION.name}.${NEW_TAG.name}/assets`);
+      await page.getByRole('menuitem', { name: 'Delete' }).click();
 
-    await expect(page.getByTestId('entity-link')).toContainText('shopify');
+      await expect(page.getByRole('dialog')).toBeVisible();
+
+      await page.getByTestId('confirmation-text-input').fill('DELETE');
+
+      const deleteTag = page.waitForResponse(`/api/v1/tags/*`);
+      await page.getByTestId('confirm-button').click();
+      deleteTag;
+
+      await expect(
+        page.getByText(classification.data.description)
+      ).toBeVisible();
+    } finally {
+      await afterAction();
+    }
+  });
+
+  test('Add Asset to a Tag', async ({ page }) => {
+    await redirectToHomePage(page);
+    const { apiContext, afterAction } = await getApiContext(page);
+    const tag = new TagClass({
+      classification: classification.data.name,
+    });
+    try {
+      await tag.create(apiContext);
+      const res = page.waitForResponse(`/api/v1/tags/name/*`);
+      await tag.visitPage(page);
+      await res;
+      await page.getByTestId('data-classification-add-button').click();
+
+      await expect(page.getByRole('dialog')).toBeVisible();
+
+      await page
+        .locator('#tabledatacard-aa1d01d8-42e6-4170-8a68-dbcf03905cea')
+        .getByLabel('')
+        .click();
+
+      const deleteTag = page.waitForResponse(`/api/v1/tags/*/assets/add`);
+      await page.getByTestId('save-btn').click();
+      deleteTag;
+
+      await page.getByRole('tab', { name: 'Assets' }).click();
+
+      await expect(page.getByTestId('entity-link')).toContainText('shopify');
+    } finally {
+      await tag.delete(apiContext);
+      await afterAction();
+    }
   });
 });

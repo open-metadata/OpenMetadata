@@ -63,6 +63,7 @@ export const getCommonColumns = (): ColumnsType<Tag> => [
         )}
         <Link
           className="m-b-0"
+          data-testid={record.name}
           style={{ color: record.style?.color }}
           to={getClassificationTagPath(record.fullyQualifiedName ?? '')}>
           {record.name}

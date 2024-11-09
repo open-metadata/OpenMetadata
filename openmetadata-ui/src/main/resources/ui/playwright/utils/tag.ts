@@ -36,7 +36,14 @@ export const visitClassificationPage = async (
   );
   await sidebarClick(page, SidebarItem.TAGS);
   await classificationResponse;
-  await page.getByRole('menuitem', { name: classificationName }).click();
+  await page
+    .locator(`[data-testid="side-panel-classification"]`)
+    .filter({ hasText: classificationName })
+    .click();
+
+  await expect(page.locator('.activeCategory')).toContainText(
+    classificationName
+  );
 };
 
 export async function submitForm(page: Page) {
