@@ -33,7 +33,7 @@ public class NoopAuthenticator implements AuthenticatorHandler {
   }
 
   @Override
-  public void recordFailedLoginAttempt(String providedIdentity, User user) {
+  public void recordFailedLoginAttempt(String providedIdentity, String userName) {
     throw new CustomExceptionMessage(
         Response.Status.FORBIDDEN,
         AUTHENTICATOR_OPERATION_NOT_SUPPORTED,
@@ -41,7 +41,7 @@ public class NoopAuthenticator implements AuthenticatorHandler {
   }
 
   @Override
-  public void validatePassword(String providedIdentity, User storedUser, String reqPassword) {
+  public void validatePassword(String providedIdentity, String reqPassword, User storedUser) {
     throw new CustomExceptionMessage(
         Response.Status.FORBIDDEN,
         AUTHENTICATOR_OPERATION_NOT_SUPPORTED,
@@ -49,7 +49,7 @@ public class NoopAuthenticator implements AuthenticatorHandler {
   }
 
   @Override
-  public User lookUserInProvider(String userName) {
+  public User lookUserInProvider(String email, String pwd) {
     throw new CustomExceptionMessage(
         Response.Status.FORBIDDEN,
         AUTHENTICATOR_OPERATION_NOT_SUPPORTED,

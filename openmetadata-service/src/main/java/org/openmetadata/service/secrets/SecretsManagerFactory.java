@@ -36,7 +36,7 @@ public class SecretsManagerFactory {
         config.getSecretsManager() != null ? config.getSecretsManager() : SecretsManagerProvider.DB;
 
     switch (secretsManagerProvider) {
-      case DB, AWS_SSM, AWS ->
+      case DB, AWS_SSM, AWS, AZURE_KV ->
       /*
       We handle AWS and AWS_SSM as a NoopSecretsManager since we don't
       need to WRITE any secrets. We will be just reading them out of the
@@ -52,6 +52,8 @@ public class SecretsManagerFactory {
       case MANAGED_AWS -> secretsManager = AWSSecretsManager.getInstance(secretsConfig);
       case MANAGED_AWS_SSM -> secretsManager = AWSSSMSecretsManager.getInstance(secretsConfig);
       case IN_MEMORY -> secretsManager = InMemorySecretsManager.getInstance(secretsConfig);
+      case MANAGED_AZURE_KV -> secretsManager = AzureKVSecretsManager.getInstance(secretsConfig);
+      case GCP -> secretsManager = GCPSecretsManager.getInstance(secretsConfig);
     }
     return secretsManager;
   }

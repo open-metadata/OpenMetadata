@@ -84,14 +84,7 @@ export const createClassification = async (data: CreateClassification) => {
 
   return response.data;
 };
-export const updateClassification = async (data: Classification) => {
-  const response = await APIClient.put<
-    Classification,
-    AxiosResponse<Classification>
-  >(`/classifications`, data);
 
-  return response.data;
-};
 export const patchClassification = async (id: string, data: Operation[]) => {
   const response = await APIClient.patch<
     Operation[],

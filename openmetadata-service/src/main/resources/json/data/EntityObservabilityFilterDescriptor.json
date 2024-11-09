@@ -211,9 +211,64 @@
         "displayName": "Get Pipeline Status Updates",
         "description" : "Get Updates for Pipeline Status Changes",
         "effect" : "include",
-        "condition": "matchIngestionPipelineState(${pipelineStateList})",
+        "condition": "matchPipelineState(${pipelineStateList})",
         "arguments": [
           "pipelineStateList"
+        ],
+        "inputType": "runtime"
+      }
+    ]
+  },
+  {
+    "name" : "ingestionPipeline",
+    "supportedFilters" : [
+      {
+        "name": "filterByFqn",
+        "fullyQualifiedName": "eventSubscription.filterByFqn",
+        "displayName": "Ingestion Pipeline Name",
+        "description" : "Event Filtering By Ingestion Pipeline Name",
+        "effect" : "include",
+        "condition": "matchAnyEntityFqn(${fqnList})",
+        "arguments": [
+          "fqnList"
+        ],
+        "inputType": "runtime"
+      },
+      {
+        "name": "filterByDomain",
+        "fullyQualifiedName": "eventSubscription.filterByDomain",
+        "displayName": "Domain",
+        "description" : "Event Filtering By Domain a Entity Belongs To",
+        "effect" : "include",
+        "condition": "matchAnyDomain(${domainList})",
+        "arguments": [
+          "domainList"
+        ],
+        "inputType": "runtime"
+      },
+      {
+        "name": "filterByOwner",
+        "fullyQualifiedName": "eventSubscription.filterByOwner",
+        "displayName": "Owner Name",
+        "description" : "Event Filtering By Owner Name of Asset",
+        "effect" : "include",
+        "condition": "matchAnyOwnerName(${ownerNameList})",
+        "arguments": [
+          "ownerNameList"
+        ],
+        "inputType": "runtime"
+      }
+    ],
+    "supportedActions" : [
+      {
+        "name": "GetIngestionPipelineStatusUpdates",
+        "fullyQualifiedName": "eventSubscription.GetIngestionPipelineStatusUpdates",
+        "displayName": "Get Ingestion Pipeline Status Updates",
+        "description" : "Get Updates for Ingestion Pipeline Status Changes",
+        "effect" : "include",
+        "condition": "matchIngestionPipelineState(${ingestionPipelineStateList})",
+        "arguments": [
+          "ingestionPipelineStateList"
         ],
         "inputType": "runtime"
       }
@@ -273,15 +328,6 @@
     ],
     "supportedActions" : [
       {
-        "name": "GetTestCaseSchemaChanges",
-        "fullyQualifiedName": "eventSubscription.filterBySchemaChange",
-        "displayName": "Get Schema Changes",
-        "description" : "Get Updates for Schema Changes",
-        "effect" : "include",
-        "condition": "matchAnyFieldChange({'testDefinition','parameterValues','description'})",
-        "inputType": "none"
-      },
-      {
         "name": "GetTestCaseStatusUpdates",
         "fullyQualifiedName": "eventSubscription.GetTestCaseStatusUpdates",
         "displayName": "Get Test Case Status Updates",
@@ -290,6 +336,19 @@
         "condition": "matchTestResult(${testResultList})",
         "arguments": [
           "testResultList"
+        ],
+        "inputType": "runtime"
+      },
+      {
+        "name": "GetTestCaseStatusUpdatesUnderSuite",
+        "fullyQualifiedName": "eventSubscription.GetTestCaseStatusUpdatesUnderSuite",
+        "displayName": "Get Test Case Status Updates belonging to a Test Suite",
+        "description" : "Get Status Updates Test Cases belonging to a Test Suite",
+        "effect" : "include",
+        "condition": "getTestCaseStatusIfInTestSuite(${testStatusList}, ${testSuiteList})",
+        "arguments": [
+          "testStatusList",
+          "testSuiteList"
         ],
         "inputType": "runtime"
       }
@@ -336,28 +395,6 @@
       }
     ],
     "supportedActions" : [
-      {
-        "name": "GetTestSuiteSchemaChanges",
-        "fullyQualifiedName": "eventSubscription.filterBySchemaChange",
-        "displayName": "Get Schema Changes",
-        "description" : "Get Updates for Schema Changes",
-        "effect" : "include",
-        "condition": "matchAnyFieldChange({'connection','pipelines','description'})",
-        "inputType": "none"
-      },
-      {
-        "name": "GetTestCaseStatusUpdatesUnderSuite",
-        "fullyQualifiedName": "eventSubscription.GetTestCaseStatusUpdatesUnderSuite",
-        "displayName": "Get Test Case Status Updates belonging to a Test Suite",
-        "description" : "Get Status Updates Test Cases belonging to a Test Suite",
-        "effect" : "include",
-        "condition": "getTestCaseStatusIfInTestSuite(${testSuiteList}, ${testStatusList})",
-        "arguments": [
-          "testSuiteList",
-          "testStatusList"
-        ],
-        "inputType": "runtime"
-      }
     ]
   }
 ]

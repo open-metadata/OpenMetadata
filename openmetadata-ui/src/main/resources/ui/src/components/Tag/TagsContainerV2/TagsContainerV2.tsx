@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Col, Form, Row, Space, Tooltip, Typography } from 'antd';
+import { Button, Col, Form, Row, Space, Tooltip, Typography } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import { isEmpty, isEqual } from 'lodash';
 import { EntityTags } from 'Models';
@@ -21,15 +21,14 @@ import { useHistory } from 'react-router-dom';
 import { ReactComponent as IconComments } from '../../../assets/svg/comment.svg';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as IconRequest } from '../../../assets/svg/request-icon.svg';
-import { TableTagsProps } from '../../../components/TableTags/TableTags.interface';
-import { DE_ACTIVE_COLOR } from '../../../constants/constants';
+import { DE_ACTIVE_COLOR, ICON_DIMENSION } from '../../../constants/constants';
 import {
   GLOSSARY_CONSTANT,
   TAG_CONSTANT,
   TAG_START_WITH,
 } from '../../../constants/Tag.constants';
 import { LabelType } from '../../../generated/entity/data/table';
-import { TagSource } from '../../../generated/type/tagLabel';
+import { State, TagSource } from '../../../generated/type/tagLabel';
 import { getEntityFeedLink } from '../../../utils/EntityUtils';
 import { getFilterTags } from '../../../utils/TableTags/TableTags.utils';
 import tagClassBase from '../../../utils/TagClassBase';
@@ -38,7 +37,8 @@ import {
   getRequestTagsPath,
   getUpdateTagsPath,
 } from '../../../utils/TasksUtils';
-import { SelectOption } from '../../AsyncSelectList/AsyncSelectList.interface';
+import { SelectOption } from '../../common/AsyncSelectList/AsyncSelectList.interface';
+import { TableTagsProps } from '../../Database/TableTags/TableTags.interface';
 import TagSelectForm from '../TagsSelectForm/TagsSelectForm.component';
 import TagsV1 from '../TagsV1/TagsV1.component';
 import TagsViewer from '../TagsViewer/TagsViewer';
@@ -61,6 +61,8 @@ const TagsContainerV2 = ({
   onSelectionChange,
   onThreadLinkSelect,
   children,
+  defaultLabelType,
+  defaultState,
 }: TagsContainerV2Props) => {
   const history = useHistory();
   const [form] = Form.useForm();
@@ -121,7 +123,9 @@ const TagsContainerV2 = ({
           displayName: tag.data?.displayName,
           description: tag.data?.description,
           style: tag.data?.style ?? {},
-          labelType: tag.data?.labelType ?? LabelType.Manual,
+          labelType:
+            tag.data?.labelType ?? defaultLabelType ?? LabelType.Manual,
+          state: tag.data?.state ?? defaultState ?? State.Confirmed,
         };
       }
 
@@ -273,13 +277,21 @@ const TagsContainerV2 = ({
             <Row gutter={12}>
               {!isEmpty(tags?.[tagType]) && !isEditTags && (
                 <Col>
-                  <EditIcon
-                    className="cursor-pointer align-middle"
-                    color={DE_ACTIVE_COLOR}
-                    data-testid="edit-button"
-                    width="14px"
-                    onClick={handleAddClick}
-                  />
+                  <Tooltip
+                    title={t('label.edit-entity', {
+                      entity:
+                        tagType === TagSource.Classification
+                          ? t('label.tag-plural')
+                          : t('label.glossary-term'),
+                    })}>
+                    <EditIcon
+                      className="cursor-pointer align-middle"
+                      color={DE_ACTIVE_COLOR}
+                      data-testid="edit-button"
+                      width="14px"
+                      onClick={handleAddClick}
+                    />
+                  </Tooltip>
                 </Col>
               )}
               {showTaskHandler && (
@@ -308,15 +320,24 @@ const TagsContainerV2 = ({
   const editTagButton = useMemo(
     () =>
       permission && !isEmpty(tags?.[tagType]) ? (
-        <EditIcon
-          className="hover-cell-icon cursor-pointer align-middle"
-          data-testid="edit-button"
-          height={14}
-          name={t('label.edit')}
-          style={{ color: DE_ACTIVE_COLOR }}
-          width={14}
-          onClick={handleAddClick}
-        />
+        <Tooltip
+          title={t('label.edit-entity', {
+            entity:
+              tagType === TagSource.Classification
+                ? t('label.tag-plural')
+                : t('label.glossary-term'),
+          })}>
+          <Button
+            className="hover-cell-icon cursor-pointer align-middle p-0"
+            data-testid="edit-button"
+            style={{
+              color: DE_ACTIVE_COLOR,
+            }}
+            type="text"
+            onClick={handleAddClick}>
+            <EditIcon {...ICON_DIMENSION} />
+          </Button>
+        </Tooltip>
       ) : null,
     [permission, tags, tagType, handleAddClick]
   );

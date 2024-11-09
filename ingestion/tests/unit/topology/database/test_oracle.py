@@ -111,12 +111,12 @@ MOCK_STORED_PROCEDURE = OracleStoredProcedure(
 
 EXPECTED_DATABASE = [
     CreateDatabaseRequest(
-        name=EntityName(__root__="sample_database"),
+        name=EntityName("sample_database"),
         displayName=None,
         description=None,
         tags=None,
-        owner=None,
-        service=FullyQualifiedEntityName(__root__="oracle_source_test"),
+        owners=None,
+        service=FullyQualifiedEntityName("oracle_source_test"),
         dataProducts=None,
         default=False,
         retentionPeriod=None,
@@ -130,13 +130,11 @@ EXPECTED_DATABASE = [
 
 EXPECTED_DATABASE_SCHEMA = [
     CreateDatabaseSchemaRequest(
-        name=EntityName(__root__="sample_schema"),
+        name=EntityName("sample_schema"),
         displayName=None,
         description=None,
-        owner=None,
-        database=FullyQualifiedEntityName(
-            __root__="oracle_source_test.sample_database"
-        ),
+        owners=None,
+        database=FullyQualifiedEntityName("oracle_source_test.sample_database"),
         dataProducts=None,
         tags=None,
         retentionPeriod=None,
@@ -150,14 +148,14 @@ EXPECTED_DATABASE_SCHEMA = [
 
 EXPECTED_STORED_PROCEDURE = [
     CreateStoredProcedureRequest(
-        name=EntityName(__root__="sample_procedure"),
+        name=EntityName("sample_procedure"),
         displayName=None,
         description=None,
-        owner=None,
+        owners=None,
         tags=None,
         storedProcedureCode=StoredProcedureCode(language="SQL", code="SAMPLE_SQL_TEXT"),
         databaseSchema=FullyQualifiedEntityName(
-            __root__="oracle_source_test.sample_database.sample_schema"
+            "oracle_source_test.sample_database.sample_schema"
         ),
         extension=None,
         dataProducts=None,
@@ -185,9 +183,9 @@ class OracleUnitTest(TestCase):
     ) -> None:
         super().__init__(methodName)
         test_connection.return_value = False
-        self.config = OpenMetadataWorkflowConfig.parse_obj(mock_oracle_config)
+        self.config = OpenMetadataWorkflowConfig.model_validate(mock_oracle_config)
         self.metadata = OpenMetadata(
-            OpenMetadataConnection.parse_obj(
+            OpenMetadataConnection.model_validate(
                 mock_oracle_config["workflowConfig"]["openMetadataServerConfig"]
             )
         )
@@ -195,28 +193,28 @@ class OracleUnitTest(TestCase):
             mock_oracle_config["source"],
             self.metadata,
         )
-        self.oracle.context.__dict__[
+        self.oracle.context.get().__dict__[
             "database_service"
-        ] = MOCK_DATABASE_SERVICE.name.__root__
+        ] = MOCK_DATABASE_SERVICE.name.root
 
     def test_yield_database(self):
         assert EXPECTED_DATABASE == [
             either.right
-            for either in self.oracle.yield_database(MOCK_DATABASE.name.__root__)
+            for either in self.oracle.yield_database(MOCK_DATABASE.name.root)
         ]
 
-        self.oracle.context.__dict__["database"] = MOCK_DATABASE.name.__root__
+        self.oracle.context.get().__dict__["database"] = MOCK_DATABASE.name.root
 
     def test_yield_schema(self):
         assert EXPECTED_DATABASE_SCHEMA == [
             either.right
             for either in self.oracle.yield_database_schema(
-                MOCK_DATABASE_SCHEMA.name.__root__
+                MOCK_DATABASE_SCHEMA.name.root
             )
         ]
-        self.oracle.context.__dict__[
+        self.oracle.context.get().__dict__[
             "database_schema"
-        ] = MOCK_DATABASE_SCHEMA.name.__root__
+        ] = MOCK_DATABASE_SCHEMA.name.root
 
     def test_yield_stored_procedure(self):
         assert EXPECTED_STORED_PROCEDURE == [

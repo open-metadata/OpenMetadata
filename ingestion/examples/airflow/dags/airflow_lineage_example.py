@@ -71,8 +71,28 @@ def openmetadata_airflow_lineage_example():
     def generate_data2():
         pass
 
+    @task(
+        inlets=[
+            {
+                "entity": "container",
+                "fqn": "s3_storage_sample.departments",
+                "key": "test",
+            },
+        ],
+        outlets=[
+            {
+                "entity": "table",
+                "fqn": "sample_data.ecommerce_db.shopify.raw_order",
+                "key": "test",
+            },
+        ],
+    )
+    def generate_data3():
+        pass
+
     generate_data()
     generate_data2()
+    generate_data3()
 
 
 openmetadata_airflow_lineage_example_dag = openmetadata_airflow_lineage_example()

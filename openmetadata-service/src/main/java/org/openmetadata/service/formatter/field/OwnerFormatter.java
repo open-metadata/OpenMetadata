@@ -13,19 +13,30 @@
 
 package org.openmetadata.service.formatter.field;
 
-import org.apache.commons.lang.StringUtils;
+import static org.openmetadata.service.Entity.FIELD_OWNERS;
+
 import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.schema.entity.feed.FeedInfo;
+import org.openmetadata.schema.entity.feed.OwnerFeedInfo;
+import org.openmetadata.schema.entity.feed.Thread;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.service.formatter.decorators.MessageDecorator;
-import org.openmetadata.service.resources.feeds.MessageParser;
+import org.openmetadata.service.util.JsonUtils;
 
 public class OwnerFormatter extends DefaultFieldFormatter {
+  private static final String HEADER_MESSAGE = "%s %s the owner for %s %s";
+
   public OwnerFormatter(
-      MessageDecorator<?> messageDecorator,
-      String fieldOldValue,
-      String fieldNewValue,
-      String fieldChangeName,
-      MessageParser.EntityLink entityLink) {
-    super(messageDecorator, fieldOldValue, fieldNewValue, fieldChangeName, entityLink);
+      MessageDecorator<?> messageDecorator, Thread thread, FieldChange fieldChange) {
+    super(messageDecorator, thread, fieldChange);
+  }
+
+  @Override
+  public String formatAddedField() {
+    String message = super.formatAddedField();
+    populateOwnerFeedInfo(Thread.FieldOperation.ADDED, message);
+    return message;
   }
 
   @Override
@@ -38,23 +49,56 @@ public class OwnerFormatter extends DefaultFieldFormatter {
             + this.getMessageDecorator().httpAddMarker()
             + this.getFieldNewValue()
             + this.getMessageDecorator().httpAddMarker();
-    String spanAdd = this.getMessageDecorator().getAddMarker();
-    String spanAddClose = this.getMessageDecorator().getAddMarkerClose();
-    String spanRemove = this.getMessageDecorator().getRemoveMarker();
-    String spanRemoveClose = this.getMessageDecorator().getRemoveMarkerClose();
     diff =
         this.getMessageDecorator()
             .replaceMarkers(
-                diff, this.getMessageDecorator().httpAddMarker(), spanAdd, spanAddClose);
+                diff,
+                this.getMessageDecorator().httpAddMarker(),
+                this.getMessageDecorator().getAddMarker(),
+                this.getMessageDecorator().getAddMarkerClose());
     diff =
         this.getMessageDecorator()
             .replaceMarkers(
-                diff, this.getMessageDecorator().httpRemoveMarker(), spanRemove, spanRemoveClose);
-    if (CommonUtil.nullOrEmpty(diff)) {
-      return StringUtils.EMPTY;
-    } else {
+                diff,
+                this.getMessageDecorator().httpRemoveMarker(),
+                this.getMessageDecorator().getRemoveMarker(),
+                this.getMessageDecorator().getRemoveMarkerClose());
+    if (!CommonUtil.nullOrEmpty(diff)) {
       String field = String.format("Updated %s: %s", this.getMessageDecorator().getBold(), diff);
-      return String.format(field, this.getFieldChangeName());
+      diff = String.format(field, this.getFieldChangeName());
     }
+    populateOwnerFeedInfo(Thread.FieldOperation.UPDATED, diff);
+    return diff;
+  }
+
+  @Override
+  public String formatDeletedField() {
+    String message = super.formatDeletedField();
+    populateOwnerFeedInfo(Thread.FieldOperation.DELETED, message);
+    return message;
+  }
+
+  private void populateOwnerFeedInfo(Thread.FieldOperation operation, String threadMessage) {
+    OwnerFeedInfo ownerFeedInfo =
+        new OwnerFeedInfo()
+            .withPreviousOwner(
+                JsonUtils.readOrConvertValues(fieldChange.getOldValue(), EntityReference.class))
+            .withUpdatedOwner(
+                JsonUtils.readOrConvertValues(fieldChange.getNewValue(), EntityReference.class));
+    FeedInfo feedInfo =
+        new FeedInfo()
+            .withHeaderMessage(getHeaderForOwnerUpdate(operation.value()))
+            .withFieldName(FIELD_OWNERS)
+            .withEntitySpecificInfo(ownerFeedInfo);
+    populateThreadFeedInfo(thread, threadMessage, Thread.CardStyle.OWNER, operation, feedInfo);
+  }
+
+  private String getHeaderForOwnerUpdate(String eventTypeMessage) {
+    return String.format(
+        HEADER_MESSAGE,
+        thread.getUpdatedBy(),
+        eventTypeMessage,
+        thread.getEntityRef().getType(),
+        thread.getEntityUrlLink());
   }
 }

@@ -16,13 +16,17 @@ backend:
     - "openmetadata-service/**/*"
     - "openmetadata-spec/**/*"
 
-#Label for ingestion, when source file is in ingestion or airflow
+# Label for ingestion, when source file is in ingestion or airflow
 ingestion:
   - "openmetadata-airflow-apis/**/*"
   - "ingestion/**/*"
   - "ingestion-core/**/*"
 
-#Label for documentation , when source file is in docs
-documentation :
+# Label for documentation , when source file is in docs
+documentation:
   - "openmetadata-docs/**/*"
   - "openmetadata-docs-v1/**/*"
+
+# Label to help us track spec changes
+spec:
+  - "openmetadata-spec/**/*"

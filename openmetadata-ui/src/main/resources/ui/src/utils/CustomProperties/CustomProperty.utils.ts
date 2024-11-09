@@ -83,6 +83,9 @@ export const EntitiesSupportedCustomProperties: string[] = [
   SearchIndex.TOPIC,
   SearchIndex.CONTAINER,
   SearchIndex.MLMODEL,
+  SearchIndex.API_ENDPOINT_INDEX,
+  SearchIndex.API_COLLECTION_INDEX,
   SearchIndex.SEARCH_INDEX,
-  SearchIndex.GLOSSARY,
+  SearchIndex.GLOSSARY_TERM,
+  SearchIndex.METRIC_SEARCH_INDEX,
 ];

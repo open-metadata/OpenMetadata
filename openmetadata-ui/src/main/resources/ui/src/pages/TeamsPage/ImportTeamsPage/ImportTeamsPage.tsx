@@ -16,22 +16,24 @@ import { isUndefined } from 'lodash';
 import QueryString from 'qs';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useLocation } from 'react-router-dom';
+import { useHistory } from 'react-router-dom';
 import { EntityImport } from '../../../components/common/EntityImport/EntityImport.component';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import Loader from '../../../components/common/Loader/Loader';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
-import Loader from '../../../components/Loader/Loader';
-import { usePermissionProvider } from '../../../components/PermissionProvider/PermissionProvider';
+import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
+import { TeamImportResult } from '../../../components/Settings/Team/TeamImportResult/TeamImportResult.component';
+import { UserImportResult } from '../../../components/Settings/Team/UserImportResult/UserImportResult.component';
+import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
   ResourceEntity,
-} from '../../../components/PermissionProvider/PermissionProvider.interface';
-import { TeamImportResult } from '../../../components/Team/TeamImportResult/TeamImportResult.component';
-import { UserImportResult } from '../../../components/Team/UserImportResult/UserImportResult.component';
+} from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { Team, TeamType } from '../../../generated/entity/teams/team';
 import { CSVImportResult } from '../../../generated/type/csvImportResult';
+import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../hooks/useFqn';
 import {
   getTeamByName,
@@ -46,7 +48,7 @@ import { ImportType } from './ImportTeamsPage.interface';
 const ImportTeamsPage = () => {
   const { fqn } = useFqn();
   const history = useHistory();
-  const location = useLocation();
+  const location = useCustomLocation();
   const { t } = useTranslation();
   const { getEntityPermissionByFqn } = usePermissionProvider();
 
@@ -178,33 +180,41 @@ const ImportTeamsPage = () => {
   }
 
   return (
-    <Row
-      className="import-teams w-full"
-      data-testid="import-teams"
-      gutter={[16, 8]}>
-      <Col span={24}>
-        <TitleBreadcrumb titleLinks={breadcrumb} />
-      </Col>
-      <Col span={24}>
-        <Typography.Title data-testid="title" level={5}>
-          {t('label.import-entity', {
-            entity:
-              type === ImportType.USERS
-                ? t('label.user-plural')
-                : t('label.team-plural'),
-          })}
-        </Typography.Title>
-      </Col>
-      <Col span={24}>
-        <EntityImport
-          entityName={team.name}
-          onCancel={handleViewClick}
-          onImport={handleImportCsv}
-          onSuccess={handleViewClick}>
-          {importResult}
-        </EntityImport>
-      </Col>
-    </Row>
+    <PageLayoutV1
+      pageTitle={t('label.import-entity', {
+        entity:
+          type === ImportType.USERS
+            ? t('label.user-plural')
+            : t('label.team-plural'),
+      })}>
+      <Row
+        className="import-teams w-full page-container"
+        data-testid="import-teams"
+        gutter={[16, 8]}>
+        <Col span={24}>
+          <TitleBreadcrumb titleLinks={breadcrumb} />
+        </Col>
+        <Col span={24}>
+          <Typography.Title data-testid="title" level={5}>
+            {t('label.import-entity', {
+              entity:
+                type === ImportType.USERS
+                  ? t('label.user-plural')
+                  : t('label.team-plural'),
+            })}
+          </Typography.Title>
+        </Col>
+        <Col span={24}>
+          <EntityImport
+            entityName={team.name}
+            onCancel={handleViewClick}
+            onImport={handleImportCsv}
+            onSuccess={handleViewClick}>
+            {importResult}
+          </EntityImport>
+        </Col>
+      </Row>
+    </PageLayoutV1>
   );
 };
 

@@ -1,0 +1,43 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/database/icebergConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "IcebergConnection",
+  "description": "Iceberg Catalog Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.database.IcebergConnection",
+  "definitions": {
+    "icebergType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": [
+        "Iceberg"
+      ],
+      "default": "Iceberg"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "$ref": "#/definitions/icebergType",
+      "default": "Iceberg"
+    },
+    "catalog": {
+      "$ref": "./iceberg/icebergCatalog.json"
+    },
+    "ownershipProperty": {
+      "title": "Ownership Property",
+      "description": "Table property to look for the Owner.",
+      "type": "string",
+      "default": "owner"
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "catalog"
+  ]
+}

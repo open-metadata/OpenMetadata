@@ -1,0 +1,16 @@
+{
+  "$id": "https://open-metadata.org/schema/system/entityError.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "EntityError",
+  "description": "Entity And Message Scehma in case of failures.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.system.EntityError",
+  "properties": {
+    "message": {
+      "type": "string"
+    },
+    "entity": {
+    }
+  },
+  "additionalProperties": false
+}

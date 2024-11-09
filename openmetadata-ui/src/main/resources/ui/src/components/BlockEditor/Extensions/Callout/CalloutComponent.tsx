@@ -26,6 +26,7 @@ const PopoverContent = ({
       {Object.entries(CALLOUT_CONTENT).map(([key, CalloutIcon]) => {
         return (
           <Button
+            data-testid={`callout-${key}`}
             icon={
               <CalloutIcon style={{ verticalAlign: 'middle' }} width={20} />
             }
@@ -44,16 +45,23 @@ const CalloutComponent: FC<NodeViewProps> = ({
   node,
   extension,
   updateAttributes,
+  editor,
 }) => {
   const { calloutType } = node.attrs;
   const [isPopupVisible, setIsPopupVisible] = useState<boolean>(false);
   const CallOutIcon =
     CALLOUT_CONTENT[calloutType as keyof typeof CALLOUT_CONTENT];
 
+  const handlePopoverVisibleChange = (visible: boolean) => {
+    // Only show the popover when the editor is in editable mode
+    setIsPopupVisible(visible && editor.isEditable);
+  };
+
   return (
     <NodeViewWrapper as="div" className="om-react-node">
       <div
         className={`om-callout-node om-callout-node-${calloutType}`}
+        data-testid="callout-node"
         data-type={extension.name}>
         <Popover
           align={{ targetOffset: [0, 16] }}
@@ -71,12 +79,18 @@ const CalloutComponent: FC<NodeViewProps> = ({
           placement="bottomRight"
           showArrow={false}
           trigger="click"
-          onOpenChange={setIsPopupVisible}>
-          <Button className="callout-type-btn" type="text">
+          onOpenChange={handlePopoverVisibleChange}>
+          <Button
+            className="callout-type-btn"
+            data-testid={`callout-${calloutType}-btn`}
+            type="text">
             <CallOutIcon width={28} />
           </Button>
         </Popover>
-        <NodeViewContent className="om-callout-node-content" />
+        <NodeViewContent
+          className="om-callout-node-content"
+          data-testid="callout-content"
+        />
       </div>
     </NodeViewWrapper>
   );

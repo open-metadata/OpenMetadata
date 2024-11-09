@@ -13,11 +13,12 @@
 import { ReactComponent as AppAnalyticsIcon } from '../../assets/svg/app-analytics.svg';
 import { ReactComponent as DataAssetsIcon } from '../../assets/svg/data-asset.svg';
 import { ReactComponent as KPIIcon } from '../../assets/svg/kpi.svg';
-import AppAnalyticsTab from '../../components/DataInsightDetail/AppAnalyticsTab/AppAnalyticsTab.component';
-import DataAssetsTab from '../../components/DataInsightDetail/DataAssetsTab/DataAssetsTab.component';
+import AppAnalyticsTab from '../../components/DataInsight/AppAnalyticsTab/AppAnalyticsTab.component';
+import DataAssetsTab from '../../components/DataInsight/DataAssetsTab/DataAssetsTab.component';
 import { DataInsightTabs } from '../../interface/data-insight.interface';
 import { getDataInsightPathWithFqn } from '../../utils/DataInsightUtils';
 import i18n from '../../utils/i18next/LocalUtil';
+import DataInsightLeftPanel from './DataInsightLeftPanel/DataInsightLeftPanel';
 import KPIList from './KPIList';
 
 type LeftSideBarType = {
@@ -28,6 +29,10 @@ type LeftSideBarType = {
 };
 
 class DataInsightClassBase {
+  public getLeftPanel() {
+    return DataInsightLeftPanel;
+  }
+
   public getLeftSideBar(): LeftSideBarType[] {
     return [
       {

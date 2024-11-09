@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+import { CardStyle } from '../generated/entity/feed/thread';
+
 export const EntityRegExPattern = /<#E::([^<>]+?)::([^<>]+?)(?:::([^<>]+?))?>/;
 
 export const EntityRegEx = new RegExp(EntityRegExPattern);
@@ -36,7 +38,7 @@ export const confirmStateInitialValue = {
   isThread: false,
 };
 
-export const MENTION_ALLOWED_CHARS = /^[A-Za-z0-9_.]*$/;
+export const MENTION_ALLOWED_CHARS = /^[A-Za-z0-9_.-]*$/;
 export const MENTION_DENOTATION_CHARS = ['@', '#'];
 
 export const TOOLBAR_ITEMS = [
@@ -90,3 +92,9 @@ export const ANNOUNCEMENT_BG = '#FFFDF8';
 export const ANNOUNCEMENT_BORDER = '#FFC143';
 export const TASK_BORDER = '#C6B5F6';
 export const GLOBAL_BORDER = '#dde3ea';
+
+export const ASSET_CARD_STYLES = [
+  CardStyle.EntityCreated,
+  CardStyle.EntitySoftDeleted,
+  CardStyle.EntityDeleted,
+];

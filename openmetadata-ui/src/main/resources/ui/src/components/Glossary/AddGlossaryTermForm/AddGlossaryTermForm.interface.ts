@@ -22,13 +22,9 @@ import { EntityReference } from '../../../generated/type/entityLineage';
 
 export interface AddGlossaryTermFormProps {
   editMode: boolean;
-  isLoading: boolean;
-  onSave: (value: GlossaryTermForm) => void;
+  onSave: (value: GlossaryTermForm) => void | Promise<void>;
   onCancel: () => void;
   glossaryTerm?: GlossaryTerm;
-  glossaryName: string;
-  glossaryReviewers?: EntityReference[];
-  isFormInModal?: boolean;
   formRef: FormInstance<CreateGlossaryTerm>;
 }
 
@@ -42,6 +38,6 @@ export interface GlossaryTermForm {
   synonyms: string[];
   mutuallyExclusive: boolean;
   tags: TagLabel[];
-  owner: EntityReference;
+  owners: EntityReference[];
   style: GlossaryTerm['style'];
 }

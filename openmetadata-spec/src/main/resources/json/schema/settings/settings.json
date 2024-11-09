@@ -23,11 +23,16 @@
         "sandboxModeEnabled",
         "slackChat",
         "emailConfiguration",
-        "customLogoConfiguration",
+        "customUiThemePreference",
         "loginConfiguration",
         "slackAppConfiguration",
         "slackBot",
-        "slackInstaller"
+        "slackInstaller",
+        "slackState",
+        "profilerConfiguration",
+        "searchSettings",
+        "assetCertificationSettings",
+        "lineageSettings"
       ]
     }
   },
@@ -67,8 +72,19 @@
         },
         {
           "$ref": "../configuration/slackAppConfiguration.json"
+        },
+        {
+          "$ref": "../configuration/profilerConfiguration.json"
+        },
+        {
+          "$ref": "../configuration/searchSettings.json"
+        },
+        {
+          "$ref": "../configuration/assetCertificationSettings.json"
+        },
+        {
+          "$ref": "../configuration/lineageSettings.json"
         }
-        
       ]
     }
   },

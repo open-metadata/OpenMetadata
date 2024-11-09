@@ -19,21 +19,22 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import Loader from '../../components/common/Loader/Loader';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
+import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import DataAssetsVersionHeader from '../../components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
 import EntityVersionTimeLine from '../../components/Entity/EntityVersionTimeLine/EntityVersionTimeLine';
-import Loader from '../../components/Loader/Loader';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
-import { OperationPermission } from '../../components/PermissionProvider/PermissionProvider.interface';
-import TabsLabel from '../../components/TabsLabel/TabsLabel.component';
 import {
   getServiceDetailsPath,
   INITIAL_PAGING_VALUE,
   pagingObject,
 } from '../../constants/constants';
 import { EntityField } from '../../constants/Feeds.constants';
+import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
+import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
+import { TabSpecificField } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { ChangeDescription } from '../../generated/entity/type';
 import { EntityHistory } from '../../generated/type/entityHistory';
@@ -42,6 +43,7 @@ import { Paging } from '../../generated/type/paging';
 import { useFqn } from '../../hooks/useFqn';
 import { ServicesType } from '../../interface/service.interface';
 import { ServicePageData } from '../../pages/ServiceDetailsPage/ServiceDetailsPage';
+import { getApiCollections } from '../../rest/apiCollectionsAPI';
 import { getDashboards } from '../../rest/dashboardAPI';
 import { getDatabases } from '../../rest/databaseAPI';
 import { getMlModels } from '../../rest/mlModelAPI';
@@ -104,7 +106,7 @@ function ServiceVersionPage() {
     [serviceCategory]
   );
 
-  const { tier, owner, breadcrumbLinks, changeDescription, deleted, domain } =
+  const { tier, owners, breadcrumbLinks, changeDescription, deleted, domain } =
     useMemo(
       () => getBasicEntityInfoFromVersionData(currentVersionData, entityType),
       [currentVersionData, entityType]
@@ -120,11 +122,11 @@ function ServiceVersionPage() {
       () =>
         getCommonExtraInfoForVersionDetails(
           currentVersionData.changeDescription as ChangeDescription,
-          owner,
+          owners,
           tier,
           domain
         ),
-      [currentVersionData.changeDescription, owner, tier, domain]
+      [currentVersionData.changeDescription, owners, tier, domain]
     );
 
   const fetchResourcePermission = useCallback(async () => {
@@ -167,7 +169,7 @@ function ServiceVersionPage() {
     async (paging?: PagingWithoutTotal) => {
       const { data, paging: resPaging } = await getDatabases(
         decodedServiceFQN,
-        'owner,tags,usageSummary',
+        `${TabSpecificField.OWNERS},${TabSpecificField.TAGS}, ${TabSpecificField.USAGE_SUMMARY}`,
         paging
       );
 
@@ -181,7 +183,7 @@ function ServiceVersionPage() {
     async (paging?: PagingWithoutTotal) => {
       const { data, paging: resPaging } = await getTopics(
         decodedServiceFQN,
-        'owner,tags',
+        `${TabSpecificField.OWNERS},${TabSpecificField.TAGS}`,
         paging
       );
       setData(data);
@@ -194,7 +196,7 @@ function ServiceVersionPage() {
     async (paging?: PagingWithoutTotal) => {
       const { data, paging: resPaging } = await getDashboards(
         decodedServiceFQN,
-        'owner,usageSummary,tags',
+        `${TabSpecificField.OWNERS},${TabSpecificField.USAGE_SUMMARY},${TabSpecificField.TAGS}`,
         paging
       );
       setData(data);
@@ -207,7 +209,7 @@ function ServiceVersionPage() {
     async (paging?: PagingWithoutTotal) => {
       const { data, paging: resPaging } = await getPipelines(
         decodedServiceFQN,
-        'owner,tags',
+        `${TabSpecificField.OWNERS},${TabSpecificField.TAGS}`,
         paging
       );
       setData(data);
@@ -220,7 +222,7 @@ function ServiceVersionPage() {
     async (paging?: PagingWithoutTotal) => {
       const { data, paging: resPaging } = await getMlModels(
         decodedServiceFQN,
-        'owner,tags',
+        `${TabSpecificField.OWNERS},${TabSpecificField.TAGS}`,
         paging
       );
       setData(data);
@@ -233,7 +235,7 @@ function ServiceVersionPage() {
     async (paging?: PagingWithoutTotal) => {
       const response = await getContainers({
         service: decodedServiceFQN,
-        fields: 'owner,tags',
+        fields: [TabSpecificField.OWNERS, TabSpecificField.TAGS].join(','),
         paging,
         root: true,
         include: Include.NonDeleted,
@@ -249,10 +251,24 @@ function ServiceVersionPage() {
     async (paging?: PagingWithoutTotal) => {
       const response = await getSearchIndexes({
         service: decodedServiceFQN,
-        fields: 'owner,tags',
+        fields: [TabSpecificField.OWNERS, TabSpecificField.TAGS].join(','),
         paging,
         root: true,
         include: Include.NonDeleted,
+      });
+
+      setData(response.data);
+      setPaging(response.paging);
+    },
+    [decodedServiceFQN]
+  );
+
+  const fetchCollections = useCallback(
+    async (paging?: PagingWithoutTotal) => {
+      const response = await getApiCollections({
+        service: decodedServiceFQN,
+        fields: `${TabSpecificField.OWNERS},${TabSpecificField.TAGS}`,
+        paging,
       });
 
       setData(response.data);
@@ -301,6 +317,11 @@ function ServiceVersionPage() {
 
             break;
           }
+          case ServiceCategory.API_SERVICES: {
+            await fetchCollections(paging);
+
+            break;
+          }
           default:
             break;
         }
@@ -319,6 +340,7 @@ function ServiceVersionPage() {
       fetchPipeLines,
       fetchMlModal,
       fetchContainers,
+      fetchCollections,
     ]
   );
 
@@ -468,6 +490,7 @@ function ServiceVersionPage() {
 
         <EntityVersionTimeLine
           currentVersion={toString(version)}
+          entityType={entityType}
           versionHandler={versionHandler}
           versionList={versionList}
           onBack={backHandler}

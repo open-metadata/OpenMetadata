@@ -19,8 +19,8 @@ from pydantic import BaseModel, Field
 class SupersetDashboard(BaseModel):
     """Superset dashboard Model"""
 
-    description: Optional[str]
-    id: Optional[int]
+    description: Optional[str] = None
+    id: Optional[int] = None
 
 
 class SupersetDashboardList(BaseModel):
@@ -28,131 +28,133 @@ class SupersetDashboardList(BaseModel):
 
 
 class DashOwner(BaseModel):
-    first_name: Optional[str]
-    id: Optional[int]
-    last_name: Optional[str]
-    username: Optional[str]
-    email: Optional[str]
+    first_name: Optional[str] = None
+    id: Optional[int] = None
+    last_name: Optional[str] = None
+    username: Optional[str] = None
+    email: Optional[str] = None
 
 
 class DashboardResult(BaseModel):
-    dashboard_title: Optional[str]
-    url: Optional[str]
+    dashboard_title: Optional[str] = None
+    url: Optional[str] = None
     owners: Optional[List[DashOwner]] = []
-    position_json: Optional[str]
-    id: Optional[int]
-    email: Optional[str]
+    position_json: Optional[str] = None
+    id: Optional[int] = None
+    email: Optional[str] = None
+    published: Optional[bool] = None
 
 
 class SupersetDashboardCount(BaseModel):
-    count: Optional[int]
+    count: Optional[int] = None
     ids: Optional[List[int]] = []
-    dashboard_title: Optional[str]
+    dashboard_title: Optional[str] = None
     result: Optional[List[DashboardResult]] = []
 
 
 # Chart
 class ChartTable(BaseModel):
-    default_endpoint: Optional[str]
-    table_name: Optional[str]
+    default_endpoint: Optional[str] = None
+    table_name: Optional[str] = None
 
 
 class ChartResult(BaseModel):
-    datasource_id: Optional[int]
-    datasource_url: Optional[str]
-    description: Optional[str]
-    id: Optional[int]
+    datasource_id: Optional[int] = None
+    datasource_url: Optional[str] = None
+    description: Optional[str] = None
+    id: Optional[int] = None
     table: Optional[ChartTable] = ChartTable()
-    url: Optional[str]
-    slice_name: Optional[str]
-    viz_type: Optional[str]
+    url: Optional[str] = None
+    slice_name: Optional[str] = None
+    viz_type: Optional[str] = None
 
 
 class SupersetChart(BaseModel):
-    count: Optional[int]
+    count: Optional[int] = None
     ids: Optional[List[int]] = []
     result: Optional[List[ChartResult]] = []
 
 
 # DataSource
 class DSColumns(BaseModel):
-    column_name: Optional[str]
-    id: Optional[int]
-    type: Optional[str]
-    description: Optional[str]
+    column_name: Optional[str] = None
+    id: Optional[int] = None
+    type: Optional[str] = None
+    description: Optional[str] = None
 
 
 class DSDatabase(BaseModel):
-    database_name: Optional[str]
-    id: Optional[int]
+    database_name: Optional[str] = None
+    id: Optional[int] = None
 
 
 class DataSourceResult(BaseModel):
     database: Optional[DSDatabase] = DSDatabase()
-    datasource_type: Optional[str]
-    description: Optional[str]
-    extra: Optional[str]
-    id: Optional[int]
+    datasource_type: Optional[str] = None
+    description: Optional[str] = None
+    extra: Optional[str] = None
+    id: Optional[int] = None
     owners: Optional[list] = []
     table_schema: Optional[str] = Field(None, alias="schema")
-    sql: Optional[str]
-    table_name: Optional[str]
-    template_params: Optional[str]
-    url: Optional[str]
+    sql: Optional[str] = None
+    table_name: Optional[str] = None
+    template_params: Optional[str] = None
+    url: Optional[str] = None
     columns: Optional[List[DSColumns]] = []
 
 
 class SupersetDatasource(BaseModel):
-    id: Optional[int]
+    id: Optional[int] = None
     result: Optional[DataSourceResult] = DataSourceResult()
-    show_title: Optional[str]
+    show_title: Optional[str] = None
 
 
 # Database
 
 
 class DbParameter(BaseModel):
-    database: Optional[str]
-    host: Optional[str]
-    password: Optional[str]
-    port: Optional[int]
-    username: Optional[str]
+    database: Optional[str] = None
+    host: Optional[str] = None
+    password: Optional[str] = None
+    port: Optional[int] = None
+    username: Optional[str] = None
 
 
 class DatabaseResult(BaseModel):
-    database_name: Optional[str]
-    id: Optional[int]
+    database_name: Optional[str] = None
+    id: Optional[int] = None
     parameters: Optional[DbParameter] = DbParameter()
 
 
 class ListDatabaseResult(BaseModel):
-    count: Optional[int]
-    id: Optional[int]
+    count: Optional[int] = None
+    id: Optional[int] = None
     result: Optional[DatabaseResult] = DatabaseResult()
 
 
 class FetchDashboard(BaseModel):
-    id: Optional[int]
-    dashboard_title: Optional[str]
-    position_json: Optional[str]
-    email: Optional[str]
+    id: Optional[int] = None
+    dashboard_title: Optional[str] = None
+    position_json: Optional[str] = None
+    published: Optional[bool] = None
+    email: Optional[str] = None
 
 
 class FetchChart(BaseModel):
-    id: Optional[int]
-    slice_name: Optional[str]
-    description: Optional[str]
-    table_name: Optional[str]
+    id: Optional[int] = None
+    slice_name: Optional[str] = None
+    description: Optional[str] = None
+    table_name: Optional[str] = None
     table_schema: Optional[str] = Field(None, alias="schema")
-    database_name: Optional[str]
-    sqlalchemy_uri: Optional[str]
-    viz_type: Optional[str]
-    datasource_id: Optional[int]
+    database_name: Optional[str] = None
+    sqlalchemy_uri: Optional[str] = None
+    viz_type: Optional[str] = None
+    datasource_id: Optional[int] = None
 
 
 class FetchColumn(BaseModel):
-    id: Optional[int]
-    type: Optional[str]
-    column_name: Optional[str]
-    table_name: Optional[str]
-    description: Optional[str]
+    id: Optional[int] = None
+    type: Optional[str] = None
+    column_name: Optional[str] = None
+    table_name: Optional[str] = None
+    description: Optional[str] = None

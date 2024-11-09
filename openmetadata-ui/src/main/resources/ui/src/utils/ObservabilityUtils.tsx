@@ -15,10 +15,16 @@ import { includes, isNil } from 'lodash';
 import React from 'react';
 import { ReactComponent as AdminIcon } from '../assets/svg/admin-colored-icon.svg';
 import { ReactComponent as GChatIcon } from '../assets/svg/gchat.svg';
+import { ReactComponent as MentionIcon } from '../assets/svg/ic-mentions.svg';
+import { ReactComponent as FollowingIcon } from '../assets/svg/ic-star.svg';
 import { ReactComponent as MSTeamsIcon } from '../assets/svg/ms-teams.svg';
 import { ReactComponent as SlackIcon } from '../assets/svg/slack.svg';
 import { ReactComponent as TeamIcon } from '../assets/svg/team-colored-icon.svg';
 import { ReactComponent as UserIcon } from '../assets/svg/user-colored-icon.svg';
+import {
+  ReactComponent as AssigneeIcon,
+  ReactComponent as OwnerIcon,
+} from '../assets/svg/user.svg';
 import { ReactComponent as GenericIcon } from '../assets/svg/webhook.svg';
 import { SubscriptionCategory } from '../generated/events/eventSubscription';
 
@@ -38,6 +44,14 @@ export const getAlertDestinationCategoryIcons = (type: string) => {
       Icon = AdminIcon;
 
       break;
+    case 'Assignees':
+      Icon = AssigneeIcon;
+
+      break;
+    case 'Mentions':
+      Icon = MentionIcon;
+
+      break;
     case 'GChat':
       Icon = GChatIcon;
 
@@ -50,14 +64,24 @@ export const getAlertDestinationCategoryIcons = (type: string) => {
       Icon = MailOutlined;
 
       break;
+
     case 'MsTeams':
-    case 'Followers':
       Icon = MSTeamsIcon;
 
       break;
-    case 'Generic':
-    case 'Owners':
+
+    case 'Followers':
+      Icon = FollowingIcon;
+
+      break;
+
+    case 'Webhook':
       Icon = GenericIcon;
+
+      break;
+
+    case 'Owners':
+      Icon = OwnerIcon;
 
       break;
   }

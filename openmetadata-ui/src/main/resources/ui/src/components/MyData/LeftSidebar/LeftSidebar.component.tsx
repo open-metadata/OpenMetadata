@@ -13,8 +13,8 @@
 import { Button, Col, Menu, MenuProps, Row, Typography } from 'antd';
 import Modal from 'antd/lib/modal/Modal';
 import classNames from 'classnames';
-import { noop } from 'lodash';
-import React, { useCallback, useMemo, useState } from 'react';
+import { isEmpty, noop } from 'lodash';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import {
@@ -22,19 +22,44 @@ import {
   SETTING_ITEM,
   SIDEBAR_NESTED_KEYS,
 } from '../../../constants/LeftSidebar.constants';
+import { SidebarItem } from '../../../enums/sidebar.enum';
 import leftSidebarClassBase from '../../../utils/LeftSidebarClassBase';
-import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
+
+import { EntityType } from '../../../enums/entity.enum';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
+import { useCustomizeStore } from '../../../pages/CustomizablePage/CustomizeStore';
+import { getDocumentByFQN } from '../../../rest/DocStoreAPI';
+import {
+  filterAndArrangeTreeByKeys,
+  getNestedKeysFromNavigationItems,
+} from '../../../utils/CustomizaNavigation/CustomizeNavigation';
 import BrandImage from '../../common/BrandImage/BrandImage';
 import './left-sidebar.less';
+import { LeftSidebarItem as LeftSidebarItemType } from './LeftSidebar.interface';
 import LeftSidebarItem from './LeftSidebarItem.component';
 
 const LeftSidebar = () => {
+  const location = useCustomLocation();
   const { t } = useTranslation();
-  const { onLogoutHandler } = useAuthContext();
+  const { onLogoutHandler } = useApplicationStore();
   const [showConfirmLogoutModal, setShowConfirmLogoutModal] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(true);
+  const { selectedPersona } = useApplicationStore();
 
-  const sideBarItems = leftSidebarClassBase.getSidebarItems();
+  const { currentPersonaDocStore, setCurrentPersonaDocStore } =
+    useCustomizeStore();
+
+  const navigationItems = useMemo(() => {
+    return currentPersonaDocStore?.data?.navigation;
+  }, [currentPersonaDocStore]);
+
+  const sideBarItems = isEmpty(navigationItems)
+    ? leftSidebarClassBase.getSidebarItems()
+    : filterAndArrangeTreeByKeys(
+        leftSidebarClassBase.getSidebarItems(),
+        getNestedKeysFromNavigationItems(navigationItems)
+      );
 
   const selectedKeys = useMemo(() => {
     const pathArray = location.pathname.split('/');
@@ -53,23 +78,6 @@ const LeftSidebar = () => {
     setShowConfirmLogoutModal(false);
   };
 
-  const TOP_SIDEBAR_MENU_ITEMS: MenuProps['items'] = useMemo(() => {
-    return [
-      ...sideBarItems.map((item) => {
-        return {
-          key: item.key,
-          label: <LeftSidebarItem data={item} />,
-          children: item.children?.map((item) => {
-            return {
-              key: item.key,
-              label: <LeftSidebarItem data={item} />,
-            };
-          }),
-        };
-      }),
-    ];
-  }, []);
-
   const LOWER_SIDEBAR_TOP_SIDEBAR_MENU_ITEMS: MenuProps['items'] = useMemo(
     () =>
       [SETTING_ITEM, LOGOUT_ITEM].map((item) => ({
@@ -78,7 +86,8 @@ const LeftSidebar = () => {
           <LeftSidebarItem
             data={{
               ...item,
-              onClick: item.key === 'logout' ? handleLogoutClick : noop,
+              onClick:
+                item.key === SidebarItem.LOGOUT ? handleLogoutClick : noop,
             }}
           />
         ),
@@ -97,6 +106,23 @@ const LeftSidebar = () => {
     setIsSidebarCollapsed(true);
   }, []);
 
+  const fetchCustomizedDocStore = useCallback(async (personaFqn: string) => {
+    try {
+      const pageLayoutFQN = `${EntityType.PERSONA}.${personaFqn}`;
+
+      const document = await getDocumentByFQN(pageLayoutFQN);
+      setCurrentPersonaDocStore(document);
+    } catch (error) {
+      // silent error
+    }
+  }, []);
+
+  useEffect(() => {
+    if (selectedPersona.fullyQualifiedName) {
+      fetchCustomizedDocStore(selectedPersona.fullyQualifiedName);
+    }
+  }, [selectedPersona]);
+
   return (
     <div
       className={classNames(
@@ -113,16 +139,27 @@ const LeftSidebar = () => {
               alt="OpenMetadata Logo"
               className="vertical-middle"
               dataTestId="image"
-              height={isSidebarCollapsed ? 30 : 34}
+              height={30}
               isMonoGram={isSidebarCollapsed}
-              width={isSidebarCollapsed ? 30 : 'auto'}
+              width="auto"
             />
           </Link>
         </Col>
 
         <Col className="w-full">
           <Menu
-            items={TOP_SIDEBAR_MENU_ITEMS}
+            items={sideBarItems.map((item) => {
+              return {
+                key: item.key,
+                label: <LeftSidebarItem data={item} />,
+                children: item.children?.map((item: LeftSidebarItemType) => {
+                  return {
+                    key: item.key,
+                    label: <LeftSidebarItem data={item} />,
+                  };
+                }),
+              };
+            })}
             mode="inline"
             rootClassName="left-sidebar-menu"
             selectedKeys={selectedKeys}

@@ -69,14 +69,18 @@
       "description" : "Children domains or sub-domains.",
       "$ref": "../../type/entityReferenceList.json"
     },
-    "owner": {
-      "description": "Owner of this Domain.",
-      "$ref": "../../type/entityReference.json"
+    "owners": {
+      "description": "Owners of this Domain.",
+      "$ref": "../../type/entityReferenceList.json"
     },
     "experts": {
       "description": "List of users who are experts in this Domain.",
       "$ref": "../../type/entityReferenceList.json",
       "default" : null
+    },
+    "assets": {
+      "description": "Data assets collection that is part of this domain.",
+      "$ref" : "../../type/entityReferenceList.json"
     },
     "changeDescription": {
       "description": "Change that lead to this version of the entity.",

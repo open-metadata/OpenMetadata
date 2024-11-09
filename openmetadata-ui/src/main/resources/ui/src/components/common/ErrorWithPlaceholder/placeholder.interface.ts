@@ -67,4 +67,9 @@ export interface FilterPlaceholderProps {
   size?: SIZE;
   className?: string;
   doc?: string;
+  placeholderText?: string | JSX.Element;
+}
+
+export interface FilterTablePlaceHolderProps {
+  placeholderText?: string | JSX.Element;
 }

@@ -15,9 +15,26 @@ JSON workflows to the profiler
 """
 from typing import List, Optional
 
-from pydantic import BaseModel, validator
+from pydantic import BaseModel, BeforeValidator
+from typing_extensions import Annotated
 
 from metadata.profiler.metrics.registry import Metrics
+
+
+def valid_metric(value: str):
+    """
+    Validate that the input metrics are correctly named
+    and can be found in the Registry
+    """
+    if not Metrics.get(value.upper()):
+        raise ValueError(
+            f"Metric name {value} is not a proper metric name from the Registry"
+        )
+
+    return value.upper()
+
+
+ValidMetric = Annotated[str, BeforeValidator(valid_metric)]
 
 
 class ProfilerDef(BaseModel):
@@ -30,26 +47,4 @@ class ProfilerDef(BaseModel):
     timeout_seconds: Optional[
         int
     ] = None  # Stop running a query after X seconds and continue
-    metrics: Optional[
-        List[str]
-    ] = None  # names of currently supported Static and Composed metrics
-    # TBD:
-    # time_metrics: List[TimeMetricDef] = None
-    # custom_metrics: List[CustomMetricDef] = None
-    # rule_metrics: ...
-
-    # pylint: disable=no-self-argument
-    @validator("metrics", each_item=True)
-    def valid_metric(cls, value):
-        """
-        We are using cls as per pydantic docs
-
-        Validate that the input metrics are correctly named
-        and can be found in the Registry
-        """
-        if not Metrics.get(value.upper()):
-            raise ValueError(
-                f"Metric name {value} is not a proper metric name from the Registry"
-            )
-
-        return value.upper()
+    metrics: Optional[List[ValidMetric]] = None

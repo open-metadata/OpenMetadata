@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
+import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityDetailsObjectInterface } from '../../../Explore/ExplorePage.interface';
-import { OperationPermission } from '../../../PermissionProvider/PermissionProvider.interface';
 
 export enum AssetsOfEntity {
   GLOSSARY = 'GLOSSARY',
@@ -36,7 +36,7 @@ export interface AssetsTabsProps {
   isEntityDeleted?: boolean;
   type?: AssetsOfEntity;
   queryFilter?: string;
-  noDataPlaceholder?: boolean | AssetNoDataPlaceholderProps;
+  noDataPlaceholder?: string | AssetNoDataPlaceholderProps;
 }
 
 export interface AssetNoDataPlaceholderProps {

@@ -25,4 +25,5 @@ export enum SidebarItem {
   INSIGHTS = 'insights',
   SETTINGS = 'settings',
   LOGOUT = 'logout',
+  METRICS = 'metrics',
 }

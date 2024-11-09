@@ -57,10 +57,10 @@ export const GlossaryUpdateConfirmationModal = ({
       );
 
       if (res.status === Status.Success) {
-        setUpdateState(UpdateState.UPDATATING);
+        setUpdateState(UpdateState.UPDATING);
         try {
           await onValidationSuccess();
-          setUpdateState(UpdateState.SUCESS);
+          setUpdateState(UpdateState.SUCCESS);
         } catch (err) {
           // Error
         } finally {
@@ -108,7 +108,7 @@ export const GlossaryUpdateConfirmationModal = ({
   const progress =
     updateState === UpdateState.VALIDATING
       ? 10
-      : updateState === UpdateState.UPDATATING
+      : updateState === UpdateState.UPDATING
       ? 60
       : 100;
 
@@ -205,18 +205,31 @@ export const GlossaryUpdateConfirmationModal = ({
             </div>
           ),
         };
-      case UpdateState.UPDATATING:
+      case UpdateState.UPDATING:
         return {
           content: progressBar,
           footer: <Button onClick={onCancel}>{t('label.cancel')}</Button>,
         };
-      case UpdateState.SUCESS:
+      case UpdateState.SUCCESS:
         return {
           content: progressBar,
           footer: <Button onClick={onCancel}>{t('label.cancel')}</Button>,
         };
     }
   }, [updateState, failedStatus]);
+
+  const modalTitle = useMemo(() => {
+    switch (updateState) {
+      case UpdateState.VALIDATING:
+      case UpdateState.UPDATING:
+      case UpdateState.SUCCESS:
+        return t('message.glossary-tag-update-modal-title-validating');
+      case UpdateState.FAILED:
+        return t('message.glossary-tag-update-modal-title-failed');
+      default:
+        return undefined;
+    }
+  }, [updateState]);
 
   return (
     <Modal
@@ -225,16 +238,7 @@ export const GlossaryUpdateConfirmationModal = ({
       closable={false}
       closeIcon={null}
       footer={data.footer}
-      title={
-        [
-          UpdateState.VALIDATING,
-          UpdateState.FAILED,
-          UpdateState.UPDATATING,
-          UpdateState.SUCESS,
-        ].includes(updateState)
-          ? t('message.glossary-tag-update-modal-title')
-          : undefined
-      }
+      title={modalTitle}
       width={updateState === UpdateState.FAILED ? 750 : undefined}
       onCancel={onCancel}>
       {data.content}

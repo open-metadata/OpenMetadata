@@ -124,13 +124,8 @@ EXPECTED_TABLE = Table(
     updatedAt=1703105517347,
     updatedBy="admin",
     href=Href(
-        __root__=AnyUrl(
+        root=AnyUrl(
             "http://localhost:8585/api/v1/tables/124d078d-dcf2-43a8-b59e-33bc7953f680",
-            scheme="http",
-            host="localhost",
-            host_type="int_domain",
-            port="8585",
-            path="/api/v1/tables/0063116c-577c-0f44-8116-3924506c8f4a",
         )
     ),
     tableType="Regular",
@@ -176,7 +171,7 @@ EXPECTED_TABLE = Table(
     ],
     tableConstraints=None,
     tablePartition=None,
-    owner=None,
+    owners=None,
     databaseSchema=EntityReference(
         id="4cf6ee7e-9d24-4153-9318-82aa1167259b",
         type="databaseSchema",
@@ -186,13 +181,8 @@ EXPECTED_TABLE = Table(
         displayName=None,
         deleted=False,
         href=Href(
-            __root__=AnyUrl(
+            AnyUrl(
                 "http://localhost:8585/api/v1/databaseSchemas/4cf6ee7e-9d24-4153-9318-82aa1167259b",
-                scheme="http",
-                host="localhost",
-                host_type="int_domain",
-                port="8585",
-                path="/api/v1/databaseSchemas/4cf6ee7e-9d24-4153-9318-82aa1167259b",
             )
         ),
     ),
@@ -205,13 +195,8 @@ EXPECTED_TABLE = Table(
         displayName=None,
         deleted=False,
         href=Href(
-            __root__=AnyUrl(
+            AnyUrl(
                 "http://localhost:8585/api/v1/databases/367f53b5-d6c2-44be-bf5d-a0a1dc98a9dd",
-                scheme="http",
-                host="localhost",
-                host_type="int_domain",
-                port="8585",
-                path="/api/v1/databases/367f53b5-d6c2-44be-bf5d-a0a1dc98a9dd",
             )
         ),
     ),
@@ -224,19 +209,14 @@ EXPECTED_TABLE = Table(
         displayName=None,
         deleted=False,
         href=Href(
-            __root__=AnyUrl(
+            AnyUrl(
                 "http://localhost:8585/api/v1/services/databaseServices/f2ab0e7a-5224-4acb-a189-74158851733f",
-                scheme="http",
-                host="localhost",
-                host_type="int_domain",
-                port="8585",
-                path="/api/v1/services/databaseServices/f2ab0e7a-5224-4acb-a189-74158851733f",
             )
         ),
     ),
     serviceType="SAS",
     location=None,
-    viewDefinition=None,
+    schemaDefinition=None,
     usageSummary=None,
     followers=None,
     joins=None,
@@ -247,7 +227,7 @@ EXPECTED_TABLE = Table(
     changeDescription=None,
     deleted=False,
     extension=EntityExtension(
-        __root__={
+        root={
             "analysisTimeStamp": "2023-12-20T20:52:01.453Z",
             "columnCount": 21,
             "completenessPercent": 95,
@@ -272,13 +252,13 @@ class SASUnitTest(TestCase):
     def __init__(self, method_name, test_connection) -> None:
         super().__init__(method_name)
         test_connection.return_value = False
-        self.config = OpenMetadataWorkflowConfig.parse_obj(mock_sas_config)
+        self.config = OpenMetadataWorkflowConfig.model_validate(mock_sas_config)
         self.sas_source = SasSource.create(
             mock_sas_config["source"],
             OpenMetadata(self.config.workflowConfig.openMetadataServerConfig),
         )
         self.metadata = OpenMetadata(
-            OpenMetadataConnection.parse_obj(
+            OpenMetadataConnection.model_validate(
                 mock_sas_config["workflowConfig"]["openMetadataServerConfig"]
             )
         )
@@ -313,7 +293,7 @@ class SASUnitTest(TestCase):
                 displayName=None,
                 description=None,
                 tags=None,
-                owner=None,
+                owners=None,
                 service=mock_database_service_object.fullyQualifiedName,
             )
         )
@@ -386,14 +366,14 @@ class SASUnitTest(TestCase):
         )
 
         assert loaded_database
-        assert loaded_database.name.__root__ == "cas.cas-shared-default"
+        assert loaded_database.name.root == "cas.cas-shared-default"
 
         loaded_database_schema = self.metadata.get_by_name(
             entity=DatabaseSchema, fqn='local_sas."cas.cas-shared-default".Samples'
         )
 
         assert loaded_database_schema
-        assert loaded_database_schema.name.__root__ == "Samples"
+        assert loaded_database_schema.name.root == "Samples"
 
         loaded_table = self.metadata.get_by_name(
             entity=Table,

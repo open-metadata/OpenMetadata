@@ -10,14 +10,25 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { LeftSidebarItem } from '../components/MyData/LeftSidebar/LeftSidebar.interface';
 import { SIDEBAR_LIST } from '../constants/LeftSidebar.constants';
 
 class LeftSidebarClassBase {
+  sidebarItems: Array<LeftSidebarItem>;
+
+  constructor() {
+    this.sidebarItems = SIDEBAR_LIST;
+  }
+
   /**
    * getSidebarItems
    */
-  public getSidebarItems(): typeof SIDEBAR_LIST {
-    return SIDEBAR_LIST;
+  public getSidebarItems(): Array<LeftSidebarItem> {
+    return this.sidebarItems;
+  }
+
+  public setSidebarItems(items: Array<LeftSidebarItem>): void {
+    this.sidebarItems = items;
   }
 }
 

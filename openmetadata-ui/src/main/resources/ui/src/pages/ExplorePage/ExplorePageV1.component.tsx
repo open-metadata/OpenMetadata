@@ -21,7 +21,7 @@ import React, {
   useMemo,
   useState,
 } from 'react';
-import { useHistory, useLocation, useParams } from 'react-router-dom';
+import { useHistory, useParams } from 'react-router-dom';
 import { withAdvanceSearch } from '../../components/AppRouter/withAdvanceSearch';
 import { useAdvanceSearch } from '../../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
 import {
@@ -31,11 +31,10 @@ import {
   UrlParams,
 } from '../../components/Explore/ExplorePage.interface';
 import ExploreV1 from '../../components/ExploreV1/ExploreV1.component';
-import { useGlobalSearchProvider } from '../../components/GlobalSearchProvider/GlobalSearchProvider';
-import { useTourProvider } from '../../components/TourProvider/TourProvider';
 import { getExplorePath, PAGE_SIZE } from '../../constants/constants';
 import {
   COMMON_FILTERS_FOR_DIFFERENT_TABS,
+  ES_EXCEPTION_SHARDS_FAILED,
   FAILED_TO_FIND_INDEX_ERROR,
   INITIAL_SORT_FIELD,
 } from '../../constants/explore.constants';
@@ -43,20 +42,25 @@ import {
   mockSearchData,
   MOCK_EXPLORE_PAGE_COUNT,
 } from '../../constants/mockTourData.constants';
+import { useTourProvider } from '../../context/TourProvider/TourProvider';
 import { SORT_ORDER } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
+import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { Aggregations, SearchResponse } from '../../interface/search.interface';
 import { searchQuery } from '../../rest/searchAPI';
 import { getCountBadge } from '../../utils/CommonUtils';
-import { findActiveSearchIndex } from '../../utils/Explore.utils';
 import { getCombinedQueryFilterObject } from '../../utils/ExplorePage/ExplorePageUtils';
+import {
+  extractTermKeys,
+  findActiveSearchIndex,
+} from '../../utils/ExploreUtils';
 import searchClassBase from '../../utils/SearchClassBase';
 import { escapeESReservedCharacters } from '../../utils/StringsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import {
   QueryFieldInterface,
-  QueryFieldValueInterface,
   QueryFilterInterface,
 } from './ExplorePage.interface';
 
@@ -64,14 +68,14 @@ const ExplorePageV1: FunctionComponent = () => {
   const tabsInfo = searchClassBase.getTabsInfo();
   const EntityTypeSearchIndexMapping =
     searchClassBase.getEntityTypeSearchIndexMapping();
-  const location = useLocation();
+  const location = useCustomLocation();
   const history = useHistory();
   const { isTourOpen } = useTourProvider();
   const TABS_SEARCH_INDEXES = Object.keys(tabsInfo) as ExploreSearchIndex[];
 
   const { tab } = useParams<UrlParams>();
 
-  const { searchCriteria } = useGlobalSearchProvider();
+  const { searchCriteria } = useApplicationStore();
 
   const [searchResults, setSearchResults] =
     useState<SearchResponse<ExploreSearchIndex>>();
@@ -90,15 +94,13 @@ const ExplorePageV1: FunctionComponent = () => {
   const [advancesSearchQuickFilters, setAdvancedSearchQuickFilters] =
     useState<QueryFilterInterface>();
 
-  const [sortOrder, setSortOrder] = useState<SORT_ORDER>(SORT_ORDER.DESC);
-
   const [searchHitCounts, setSearchHitCounts] = useState<SearchHitCounts>();
 
   const [isLoading, setIsLoading] = useState(true);
 
   const { queryFilter } = useAdvanceSearch();
 
-  const [parsedSearch, searchQueryParam, sortValue] = useMemo(() => {
+  const [parsedSearch, searchQueryParam, sortValue, sortOrder] = useMemo(() => {
     const parsedSearch = Qs.parse(
       location.search.startsWith('?')
         ? location.search.substring(1)
@@ -113,7 +115,11 @@ const ExplorePageV1: FunctionComponent = () => {
       ? parsedSearch.sort
       : INITIAL_SORT_FIELD;
 
-    return [parsedSearch, searchQueryParam, sortValue];
+    const sortOrder = isString(parsedSearch.sortOrder)
+      ? parsedSearch.sortOrder
+      : SORT_ORDER.DESC;
+
+    return [parsedSearch, searchQueryParam, sortValue, sortOrder];
   }, [location.search]);
 
   const handlePageChange: ExploreProps['onChangePage'] = (page, size) => {
@@ -133,6 +139,17 @@ const ExplorePageV1: FunctionComponent = () => {
     });
   };
 
+  const handleSortOrderChange = (page: number, sortOrderVal: string) => {
+    history.push({
+      search: Qs.stringify({
+        ...parsedSearch,
+        page,
+        size: size ?? PAGE_SIZE,
+        sortOrder: sortOrderVal,
+      }),
+    });
+  };
+
   // Filters that can be common for all the Entities Ex. Tables, Topics, etc.
   const commonQuickFilters = useMemo(() => {
     const mustField: QueryFieldInterface[] = get(
@@ -143,17 +160,19 @@ const ExplorePageV1: FunctionComponent = () => {
 
     // Getting the filters that can be common for all the Entities
     const must = mustField.filter((filterCategory: QueryFieldInterface) => {
-      const shouldField: QueryFieldValueInterface[] = get(
+      const shouldField: QueryFieldInterface[] = get(
         filterCategory,
         'bool.should',
         []
       );
 
+      const terms = extractTermKeys(shouldField);
+
       // check if the filter category is present in the common filters array
       const isCommonFieldPresent =
         !isEmpty(shouldField) &&
-        COMMON_FILTERS_FOR_DIFFERENT_TABS.find(
-          (value) => value === Object.keys(shouldField[0].term)[0]
+        COMMON_FILTERS_FOR_DIFFERENT_TABS.find((value) =>
+          terms.includes(value)
         );
 
       return isCommonFieldPresent;
@@ -177,13 +196,16 @@ const ExplorePageV1: FunctionComponent = () => {
           getExplorePath({
             tab: tabsInfo[nSearchIndex].path,
             extraParameters: {
-              sort: searchQueryParam ? '_score' : INITIAL_SORT_FIELD,
+              sort: searchQueryParam
+                ? '_score'
+                : tabsInfo[nSearchIndex].sortField,
               page: '1',
               quickFilter: commonQuickFilters
                 ? JSON.stringify(commonQuickFilters)
                 : undefined,
+              sortOrder: tabsInfo[nSearchIndex]?.sortOrder ?? SORT_ORDER.DESC,
             },
-            isPersistFilters: false,
+            isPersistFilters: true,
           })
         );
       },
@@ -212,11 +234,15 @@ const ExplorePageV1: FunctionComponent = () => {
   };
 
   const searchIndex = useMemo(() => {
+    if (!searchQueryParam) {
+      return SearchIndex.DATA_ASSET;
+    }
+
     const tabInfo = Object.entries(tabsInfo).find(
       ([, tabInfo]) => tabInfo.path === tab
     );
     if (searchHitCounts && isNil(tabInfo)) {
-      const activeKey = findActiveSearchIndex(searchHitCounts);
+      const activeKey = findActiveSearchIndex(searchHitCounts, tabsInfo);
 
       return activeKey ?? SearchIndex.TABLE;
     }
@@ -224,12 +250,12 @@ const ExplorePageV1: FunctionComponent = () => {
     return !isNil(tabInfo)
       ? (tabInfo[0] as ExploreSearchIndex)
       : SearchIndex.TABLE;
-  }, [tab, searchHitCounts]);
+  }, [tab, searchHitCounts, searchQueryParam]);
 
   const tabItems = useMemo(() => {
     const items = Object.entries(tabsInfo).map(
       ([tabSearchIndex, tabDetail]) => {
-        const Icon = tabDetail.icon;
+        const Icon = tabDetail.icon as React.FC;
 
         return {
           key: tabSearchIndex,
@@ -331,26 +357,28 @@ const ExplorePageV1: FunctionComponent = () => {
     );
 
     setIsLoading(true);
-    Promise.all([
-      searchQuery({
-        query: !isEmpty(searchQueryParam)
-          ? `*${escapeESReservedCharacters(searchQueryParam)}*`
-          : '',
-        searchIndex,
-        queryFilter: combinedQueryFilter,
-        sortField: sortValue,
-        sortOrder,
-        pageNumber: page,
-        pageSize: size,
-        includeDeleted: showDeleted,
-      })
-        .then((res) => res)
-        .then((res) => {
-          setSearchResults(res);
-          setUpdatedAggregations(res.aggregations);
-        }),
-      searchQuery({
-        query: `*${escapeESReservedCharacters(searchQueryParam)}*`,
+
+    const searchAPICall = searchQuery({
+      query: !isEmpty(searchQueryParam)
+        ? escapeESReservedCharacters(searchQueryParam)
+        : '',
+      searchIndex,
+      queryFilter: combinedQueryFilter,
+      sortField: sortValue,
+      sortOrder: sortOrder,
+      pageNumber: page,
+      pageSize: size,
+      includeDeleted: showDeleted,
+    }).then((res) => {
+      setSearchResults(res as SearchResponse<ExploreSearchIndex>);
+      setUpdatedAggregations(res.aggregations);
+    });
+
+    const apiCalls = [searchAPICall];
+
+    if (searchQueryParam) {
+      const countAPICall = searchQuery({
+        query: escapeESReservedCharacters(searchQueryParam),
         pageNumber: 0,
         pageSize: 0,
         queryFilter: combinedQueryFilter,
@@ -374,16 +402,21 @@ const ExplorePageV1: FunctionComponent = () => {
           }
         });
         setSearchHitCounts(counts as SearchHitCounts);
-      }),
-    ])
+      });
+      apiCalls.push(countAPICall);
+    }
+
+    Promise.all(apiCalls)
       .catch((error) => {
-        if (error.response?.data.message.includes(FAILED_TO_FIND_INDEX_ERROR)) {
+        if (
+          error.response?.data.message.includes(FAILED_TO_FIND_INDEX_ERROR) ||
+          error.response?.data.message.includes(ES_EXCEPTION_SHARDS_FAILED)
+        ) {
           setShowIndexNotFoundAlert(true);
         } else {
           showErrorToast(error);
         }
       })
-
       .finally(() => setIsLoading(false));
   };
 
@@ -430,15 +463,13 @@ const ExplorePageV1: FunctionComponent = () => {
       showDeleted={showDeleted}
       sortOrder={sortOrder}
       sortValue={sortValue}
-      tabCounts={isTourOpen ? MOCK_EXPLORE_PAGE_COUNT : searchHitCounts}
       tabItems={tabItems}
       onChangeAdvancedSearchQuickFilters={handleAdvanceSearchQuickFiltersChange}
       onChangePage={handlePageChange}
       onChangeSearchIndex={handleSearchIndexChange}
       onChangeShowDeleted={handleShowDeletedChange}
-      onChangeSortOder={(sort) => {
-        handlePageChange(1);
-        setSortOrder(sort);
+      onChangeSortOder={(sortOrderVal) => {
+        handleSortOrderChange(1, sortOrderVal);
       }}
       onChangeSortValue={(sortVal) => {
         handleSortValueChange(1, sortVal);

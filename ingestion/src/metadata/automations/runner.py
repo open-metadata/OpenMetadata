@@ -22,6 +22,7 @@ from metadata.generated.schema.entity.automations.workflow import (
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection, get_test_connection_fn
+from metadata.utils.ssl_manager import SSLManager, check_ssl_and_init
 
 
 def execute(encrypted_automation_workflow: AutomationWorkflow) -> Any:
@@ -36,7 +37,7 @@ def execute(encrypted_automation_workflow: AutomationWorkflow) -> Any:
     )
 
     automation_workflow = metadata.get_by_name(
-        entity=AutomationWorkflow, fqn=encrypted_automation_workflow.name.__root__
+        entity=AutomationWorkflow, fqn=encrypted_automation_workflow.name.root
     )
 
     return run_workflow(automation_workflow.request, automation_workflow, metadata)
@@ -60,6 +61,11 @@ def _(
     Run the test connection
     """
 
+    ssl_manager = None
+    ssl_manager: SSLManager = check_ssl_and_init(request.connection.config)
+    if ssl_manager:
+        request.connection.config = ssl_manager.setup_ssl(request.connection.config)
+
     connection = get_connection(request.connection.config)
 
     # Find the test_connection function in each <source>/connection.py file
@@ -67,3 +73,6 @@ def _(
     test_connection_fn(
         metadata, connection, request.connection.config, automation_workflow
     )
+
+    if ssl_manager:
+        ssl_manager.cleanup_temp_files()

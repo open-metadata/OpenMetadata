@@ -30,14 +30,31 @@ workflowConfig:
       jwtToken: "token"
 """
 
+import traceback
+from typing import Dict, Iterator, List
+
+from metadata.generated.schema.type.tableQuery import TableQuery
 from metadata.ingestion.source.database.lineage_source import LineageSource
-from metadata.ingestion.source.database.redshift.queries import REDSHIFT_SQL_STATEMENT
+from metadata.ingestion.source.database.redshift.queries import (
+    REDSHIFT_GET_STORED_PROCEDURE_QUERIES,
+    REDSHIFT_SQL_STATEMENT,
+)
 from metadata.ingestion.source.database.redshift.query_parser import (
     RedshiftQueryParserSource,
 )
+from metadata.ingestion.source.database.stored_procedures_mixin import (
+    QueryByProcedure,
+    StoredProcedureLineageMixin,
+)
+from metadata.utils.helpers import get_start_and_end
+from metadata.utils.logger import ingestion_logger
+
+logger = ingestion_logger()
 
 
-class RedshiftLineageSource(RedshiftQueryParserSource, LineageSource):
+class RedshiftLineageSource(
+    RedshiftQueryParserSource, StoredProcedureLineageMixin, LineageSource
+):
     filters = """
         AND (
           querytxt ILIKE '%%create%%table%%as%%select%%'
@@ -48,3 +65,47 @@ class RedshiftLineageSource(RedshiftQueryParserSource, LineageSource):
     """
 
     sql_stmt = REDSHIFT_SQL_STATEMENT
+
+    def yield_table_query(self) -> Iterator[TableQuery]:
+        """
+        Given an engine, iterate over the query results to
+        yield a TableQuery with query parsing info
+        """
+        for engine in self.get_engine():
+            with engine.connect() as conn:
+                rows = conn.execute(
+                    self.get_sql_statement(
+                        start_time=self.start,
+                        end_time=self.end,
+                    )
+                )
+                for row in rows:
+                    query_dict = dict(row)
+                    try:
+                        yield TableQuery(
+                            query=query_dict["query_text"]
+                            .replace("\\n", "\n")
+                            .replace("\\r", ""),
+                            databaseName=self.get_database_name(query_dict),
+                            serviceName=self.config.serviceName,
+                            databaseSchema=self.get_schema_name(query_dict),
+                        )
+                    except Exception as exc:
+                        logger.debug(traceback.format_exc())
+                        logger.warning(
+                            f"Error processing query_dict {query_dict}: {exc}"
+                        )
+
+    def get_stored_procedure_queries_dict(self) -> Dict[str, List[QueryByProcedure]]:
+        """
+        Return the dictionary associating stored procedures to the
+        queries they triggered
+        """
+        start, _ = get_start_and_end(self.source_config.queryLogDuration)
+        query = REDSHIFT_GET_STORED_PROCEDURE_QUERIES.format(start_date=start)
+
+        queries_dict = self.procedure_queries_dict(
+            query=query,
+        )
+
+        return queries_dict

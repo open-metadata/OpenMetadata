@@ -14,8 +14,10 @@
 import { AxiosResponse } from 'axios';
 import axiosClient from '.';
 import { APPLICATION_JSON_CONTENT_TYPE_HEADER } from '../constants/constants';
+import { LineageSettings } from '../generated/configuration/lineageSettings';
 import { LoginConfiguration } from '../generated/configuration/loginConfiguration';
-import { LogoConfiguration } from '../generated/configuration/logoConfiguration';
+import { SearchSettings } from '../generated/configuration/searchSettings';
+import { UIThemePreference } from '../generated/configuration/uiThemePreference';
 import { Settings, SettingType } from '../generated/settings/settings';
 
 export const getSettingsConfigFromConfigType = async (
@@ -34,9 +36,9 @@ export const updateSettingsConfig = async (payload: Settings) => {
   return response;
 };
 
-export const getCustomLogoConfig = async () => {
-  const response = await axiosClient.get<LogoConfiguration>(
-    `system/config/customLogoConfiguration`
+export const getCustomUiThemePreference = async () => {
+  const response = await axiosClient.get<UIThemePreference>(
+    `system/config/customUiThemePreference`
   );
 
   return response.data;
@@ -50,12 +52,22 @@ export const getLoginConfig = async () => {
   return response.data;
 };
 
-export const testEmailConnection = async (email: string) => {
+export const testEmailConnection = async (data: { email: string }) => {
   const response = await axiosClient.put<string>(
     '/system/email/test',
-    email,
+    data,
     APPLICATION_JSON_CONTENT_TYPE_HEADER
   );
 
   return response;
+};
+
+export const getSettingsByType = async (
+  settingType: SettingType
+): Promise<SearchSettings | LineageSettings> => {
+  const response = await axiosClient.get<Settings>(
+    `/system/settings/${settingType}`
+  );
+
+  return response.data.config_value as SearchSettings | LineageSettings;
 };

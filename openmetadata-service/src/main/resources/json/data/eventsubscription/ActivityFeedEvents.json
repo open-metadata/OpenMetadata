@@ -8,19 +8,34 @@
     "resources": ["all"],
     "rules": [
       {
+        "name": "matchAnyEventType",
+        "effect": "include",
+        "condition": "matchAnyEventType({'entityCreated', 'entityDeleted', 'entitySoftDeleted'}) && !matchUpdatedBy({'ingestion-bot'}) && !matchAnySource({'user', 'ingestionPipeline', 'workflow'})",
+        "prefixCondition": "AND"
+      },
+      {
+        "name": "matchAnyFieldChange",
+        "effect": "include",
+        "condition": "matchAnyFieldChange({'testCaseResult'})",
+        "prefixCondition": "OR"
+      },
+      {
+        "name": "matchAnyFieldChange",
+        "effect": "include",
+        "condition": "matchAnyFieldChange({'description', 'domain', 'owners', 'tags', 'followers', 'extension','parameterValues', 'assets'})",
+        "prefixCondition": "OR"
+      },
+      {
         "name": "matchAnySource",
         "effect": "include",
-        "condition": "matchAnySource({'chart','container','dashboard','dashboardDataModel','database','databaseSchema','glossary','glossaryTerm','mlmodel','pipeline','query','report','searchIndex','storedProcedure','table','topic','testSuite','testCase'})"
+        "prefixCondition": "AND",
+        "condition": "matchAnySource({'chart','container','dashboard','dashboardDataModel','database','databaseSchema','glossary','glossaryTerm','mlmodel','pipeline','query','report','searchIndex','storedProcedure','table','topic','testSuite','testCase', 'domain', 'dataProduct'})"
       },
       {
         "name": "matchUpdatedBy",
         "effect": "exclude",
-        "condition": "matchUpdatedBy({'ingestion-bot'})"
-      },
-      {
-        "name": "matchAnyFieldChange",
-        "effect": "exclude",
-        "condition": "matchAnyFieldChange({'usageSummary'})"
+        "condition": "matchUpdatedBy({'ingestion-bot'})",
+        "prefixCondition": "AND"
       }
     ]
   },
@@ -34,8 +49,45 @@
   "input": {
     "filters": [
       {
+        "name": "filterByEventType",
+        "effect" : "include",
+        "prefixCondition": "OR",
+        "arguments": [
+          {
+            "name": "eventTypeList",
+            "input": [
+              "entityCreated",
+              "entityDeleted",
+              "entitySoftDeleted"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "filterByFieldChange",
+        "effect" : "include",
+        "prefixCondition": "AND",
+        "arguments": [
+          {
+            "name": "fieldChangeList",
+            "input": [
+              "description",
+              "domain",
+              "owners",
+              "tags",
+              "followers",
+              "extension",
+              "parameterValues",
+              "testCaseResult",
+              "pipelineStatus"
+            ]
+          }
+        ]
+      },
+      {
         "name": "filterBySource",
         "effect" : "include",
+        "prefixCondition": "AND",
         "arguments": [
           {
             "name": "sourceList",
@@ -57,7 +109,9 @@
               "table",
               "topic",
               "testSuite",
-              "testCase"
+              "testCase",
+              "domain",
+              "dataProduct"
             ]
           }
         ]
@@ -65,6 +119,7 @@
       {
         "name": "filterByUpdaterName",
         "effect" : "exclude",
+        "prefixCondition": "AND",
         "arguments": [
           {
             "name": "updateByUserList",
@@ -73,21 +128,10 @@
             ]
           }
         ]
-      },
-      {
-        "name": "filterByFieldChange",
-        "effect" : "exclude",
-        "arguments": [
-          {
-            "name": "fieldChangeList",
-            "input": [
-              "usageSummary"
-            ]
-          }
-        ]
       }
     ]
   },
   "provider" : "system",
+  "pollInterval" : 30,
   "enabled" : true
 }

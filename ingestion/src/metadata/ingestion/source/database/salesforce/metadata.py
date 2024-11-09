@@ -45,8 +45,12 @@ from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.type.basic import EntityName, FullyQualifiedEntityName
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
+from metadata.ingestion.connections.test_connections import (
+    raise_test_connection_exception,
+)
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection, get_test_connection_fn
@@ -56,6 +60,7 @@ from metadata.utils import fqn
 from metadata.utils.constants import DEFAULT_DATABASE
 from metadata.utils.filters import filter_by_table
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.ssl_manager import SSLManager, check_ssl_and_init
 
 logger = ingestion_logger()
 
@@ -75,15 +80,22 @@ class SalesforceSource(DatabaseServiceSource):
             self.config.sourceConfig.config
         )
         self.metadata = metadata
-        self.service_connection = self.config.serviceConnection.__root__.config
+        self.service_connection = self.config.serviceConnection.root.config
+        self.ssl_manager: SSLManager = check_ssl_and_init(self.service_connection)
+        if self.ssl_manager:
+            self.service_connection = self.ssl_manager.setup_ssl(
+                self.service_connection
+            )
         self.client = get_connection(self.service_connection)
         self.table_constraints = None
         self.database_source_state = set()
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata):
-        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: SalesforceConnection = config.serviceConnection.__root__.config
+    def create(
+        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
+    ):
+        config: WorkflowSource = WorkflowSource.model_validate(config_dict)
+        connection: SalesforceConnection = config.serviceConnection.root.config
         if not isinstance(connection, SalesforceConnection):
             raise InvalidSourceException(
                 f"Expected SalesforceConnection, but got {connection}"
@@ -112,7 +124,7 @@ class SalesforceSource(DatabaseServiceSource):
         yield Either(
             right=CreateDatabaseRequest(
                 name=database_name,
-                service=self.context.database_service,
+                service=self.context.get().database_service,
             )
         )
 
@@ -131,12 +143,14 @@ class SalesforceSource(DatabaseServiceSource):
         """
         yield Either(
             right=CreateDatabaseSchemaRequest(
-                name=schema_name,
-                database=fqn.build(
-                    metadata=self.metadata,
-                    entity_type=Database,
-                    service_name=self.context.database_service,
-                    database_name=self.context.database,
+                name=EntityName(schema_name),
+                database=FullyQualifiedEntityName(
+                    fqn.build(
+                        metadata=self.metadata,
+                        entity_type=Database,
+                        service_name=self.context.get().database_service,
+                        database_name=self.context.get().database,
+                    )
                 ),
             )
         )
@@ -150,7 +164,7 @@ class SalesforceSource(DatabaseServiceSource):
 
         :return: tables or views, depending on config
         """
-        schema_name = self.context.database_schema
+        schema_name = self.context.get().database_schema
 
         try:
             if self.service_connection.sobjectName:
@@ -165,9 +179,9 @@ class SalesforceSource(DatabaseServiceSource):
                     table_fqn = fqn.build(
                         self.metadata,
                         entity_type=Table,
-                        service_name=self.context.database_service,
-                        database_name=self.context.database,
-                        schema_name=self.context.database_schema,
+                        service_name=self.context.get().database_service,
+                        database_name=self.context.get().database,
+                        schema_name=self.context.get().database_schema,
                         table_name=table_name,
                     )
                     if filter_by_table(
@@ -192,15 +206,18 @@ class SalesforceSource(DatabaseServiceSource):
                 )
             )
 
-    def get_table_description(self, table_name: str) -> Optional[str]:
+    def get_table_description(
+        self, table_name: str, object_label: Optional[str]
+    ) -> Optional[str]:
         """
         Method to get the table description for salesforce with Tooling API
         """
+        table_description = None
         try:
             result = self.client.toolingexecute(
                 f"query/?q=SELECT+Description+FROM+EntityDefinition+WHERE+QualifiedApiName='{table_name}'"
             )
-            return result["records"][0]["Description"]
+            table_description = result["records"][0]["Description"]
         except KeyError as err:
             logger.warning(
                 f"Unable to get required key from Tooling API response for table [{table_name}]: {err}"
@@ -214,10 +231,10 @@ class SalesforceSource(DatabaseServiceSource):
             logger.warning(
                 f"Unable to get description with Tooling API for table [{table_name}]: {exc}"
             )
-        return None
+        return table_description if table_description else object_label
 
     def yield_table(
-        self, table_name_and_type: Tuple[str, str]
+        self, table_name_and_type: Tuple[str, TableType]
     ) -> Iterable[Either[CreateTableRequest]]:
         """
         From topology.
@@ -230,19 +247,23 @@ class SalesforceSource(DatabaseServiceSource):
                 f"sobjects/{table_name}/describe/",
                 params=None,
             )
-            columns = self.get_columns(salesforce_objects["fields"])
+            columns = self.get_columns(salesforce_objects.get("fields", []))
             table_request = CreateTableRequest(
-                name=table_name,
+                name=EntityName(table_name),
                 tableType=table_type,
-                description=self.get_table_description(table_name),
+                description=self.get_table_description(
+                    table_name, salesforce_objects.get("label")
+                ),
                 columns=columns,
                 tableConstraints=table_constraints,
-                databaseSchema=fqn.build(
-                    metadata=self.metadata,
-                    entity_type=DatabaseSchema,
-                    service_name=self.context.database_service,
-                    database_name=self.context.database,
-                    schema_name=self.context.database_schema,
+                databaseSchema=FullyQualifiedEntityName(
+                    fqn.build(
+                        metadata=self.metadata,
+                        entity_type=DatabaseSchema,
+                        service_name=self.context.get().database_service,
+                        database_name=self.context.get().database,
+                        schema_name=self.context.get().database_schema,
+                    )
                 ),
                 sourceUrl=self.get_source_url(
                     table_name=table_name,
@@ -357,4 +378,5 @@ class SalesforceSource(DatabaseServiceSource):
 
     def test_connection(self) -> None:
         test_connection_fn = get_test_connection_fn(self.service_connection)
-        test_connection_fn(self.client, self.service_connection)
+        result = test_connection_fn(self.client, self.service_connection)
+        raise_test_connection_exception(result)

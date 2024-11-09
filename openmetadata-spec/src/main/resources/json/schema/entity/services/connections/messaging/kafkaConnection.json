@@ -9,7 +9,9 @@
     "kafkaType": {
       "description": "Kafka service type",
       "type": "string",
-      "enum": ["Kafka"],
+      "enum": [
+        "Kafka"
+      ],
       "default": "Kafka"
     }
   },
@@ -42,6 +44,18 @@
       "type": "string",
       "format": "password"
     },
+    "securityProtocol": {
+      "title": "Security Protocol",
+      "description": "security.protocol consumer config property",
+      "type": "string",
+      "enum": [
+        "PLAINTEXT",
+        "SASL_PLAINTEXT",
+        "SASL_SSL",
+        "SSL"
+      ],
+      "default": "PLAINTEXT"
+    },
     "saslMechanism": {
       "title": "SASL Mechanism",
       "description": "sasl.mechanism Consumer Config property",
@@ -49,7 +63,7 @@
       "default": "PLAIN"
     },
     "basicAuthUserInfo": {
-      "title": "Basic Auth User Info",
+      "title": "Schema Registry Basic Auth User Info",
       "description": "basic.auth.user.info schema registry config property, Client HTTP credentials in the form of username:password.",
       "type": "string",
       "format": "password"
@@ -68,11 +82,24 @@
       "default": {},
       "additionalProperties": true
     },
+    "schemaRegistryTopicSuffixName": {
+      "title": "Schema Registry Topic Suffix Name",
+      "description": "Schema Registry Topic Suffix Name. The suffix to be appended to the topic name to get topic schema from registry.",
+      "type": "string",
+      "default": "-value"
+    },
+    "schemaRegistrySSL": {
+      "title": "Schema Registry SSL",
+      "description": "Schema Registry SSL Config. Configuration for enabling SSL for the Schema Registry connection.",
+      "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/sslConfig"
+    },
     "supportsMetadataExtraction": {
       "title": "Supports Metadata Extraction",
       "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
     }
   },
   "additionalProperties": false,
-  "required": ["bootstrapServers"]
+  "required": [
+    "bootstrapServers"
+  ]
 }

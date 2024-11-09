@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Button, Popover, Tooltip, Typography } from 'antd';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as DomainIcon } from '../../../assets/svg/ic-domain.svg';
@@ -23,6 +23,7 @@ import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
 import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { EntityReference } from '../../../generated/entity/type';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { getDomainList } from '../../../rest/domainAPI';
 import { searchData } from '../../../rest/miscAPI';
 import { formatDomainsResponse } from '../../../utils/APIUtils';
@@ -56,15 +57,25 @@ const DomainSelectableList = ({
   hasPermission,
   popoverProps,
   selectedDomain,
+  multiple = false,
 }: DomainSelectableListProps) => {
   const { t } = useTranslation();
+  const { theme } = useApplicationStore();
   const [popupVisible, setPopupVisible] = useState(false);
+
+  const selectedDomainsList = useMemo(() => {
+    if (selectedDomain) {
+      return Array.isArray(selectedDomain) ? selectedDomain : [selectedDomain];
+    }
+
+    return [];
+  }, [selectedDomain]);
 
   const fetchOptions = async (searchText: string) => {
     if (searchText) {
       try {
         const res = await searchData(
-          encodeURIComponent(searchText),
+          searchText,
           1,
           PAGE_SIZE_MEDIUM,
           '',
@@ -100,70 +111,86 @@ const DomainSelectableList = ({
   };
 
   const handleUpdate = useCallback(
-    (domains: EntityReference[]) => {
-      (onUpdate as (users: EntityReference) => void)(domains[0]);
+    async (domains: EntityReference[]) => {
+      if (multiple) {
+        await onUpdate(domains);
+      } else {
+        await onUpdate(domains[0]);
+      }
       setPopupVisible(false);
     },
-    [onUpdate]
+    [onUpdate, multiple]
   );
 
   return (
-    <Popover
-      destroyTooltipOnHide
-      content={
-        <SelectableList
-          customTagRenderer={DomainListItemRenderer}
-          emptyPlaceholderText={
-            <Transi18next
-              i18nKey="message.no-domain-available"
-              renderElement={
-                <a
-                  href={getDomainPath()}
-                  rel="noreferrer"
-                  style={{ color: '#1890ff' }}
-                  target="_blank"
-                />
-              }
-              values={{
-                link: t('label.domain-plural'),
-              }}
-            />
-          }
-          fetchOptions={fetchOptions}
-          multiSelect={false}
-          removeIconTooltipLabel={t('label.remove-entity', {
-            entity: t('label.domain-lowercase'),
-          })}
-          searchPlaceholder={t('label.search-for-type', {
-            type: t('label.domain'),
-          })}
-          selectedItems={selectedDomain ? [selectedDomain] : []}
-          onCancel={() => setPopupVisible(false)}
-          onUpdate={handleUpdate}
-        />
-      }
-      open={popupVisible}
-      overlayClassName="domain-select-popover"
-      placement="bottomRight"
-      showArrow={false}
-      trigger="click"
-      onOpenChange={setPopupVisible}
-      {...popoverProps}>
-      {children ?? (
-        <Tooltip
-          placement="topRight"
-          title={hasPermission ? '' : NO_PERMISSION_FOR_ACTION}>
-          <Button
-            className="p-0 flex-center"
-            data-testid="add-domain"
-            disabled={!hasPermission}
-            icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
-            size="small"
-            type="text"
+    // Used Button to stop click propagation event anywhere in the component to parent
+    // TeamDetailV1 collapsible panel
+    <Button
+      className="remove-button-default-styling"
+      onClick={(e) => e.stopPropagation()}>
+      <Popover
+        destroyTooltipOnHide
+        content={
+          <SelectableList
+            customTagRenderer={DomainListItemRenderer}
+            emptyPlaceholderText={
+              <Transi18next
+                i18nKey="message.no-domain-available"
+                renderElement={
+                  <a
+                    href={getDomainPath()}
+                    rel="noreferrer"
+                    style={{ color: theme.primaryColor }}
+                    target="_blank"
+                  />
+                }
+                values={{
+                  link: t('label.domain-plural'),
+                }}
+              />
+            }
+            fetchOptions={fetchOptions}
+            multiSelect={multiple}
+            removeIconTooltipLabel={t('label.remove-entity', {
+              entity: t('label.domain-lowercase'),
+            })}
+            searchPlaceholder={t('label.search-for-type', {
+              type: t('label.domain'),
+            })}
+            selectedItems={selectedDomainsList}
+            onCancel={() => setPopupVisible(false)}
+            onUpdate={handleUpdate}
           />
-        </Tooltip>
-      )}
-    </Popover>
+        }
+        open={popupVisible}
+        overlayClassName="domain-select-popover"
+        placement="bottomRight"
+        showArrow={false}
+        trigger="click"
+        onOpenChange={setPopupVisible}
+        {...popoverProps}>
+        {children ?? (
+          <Tooltip
+            placement="topRight"
+            title={
+              hasPermission
+                ? t('label.edit-entity', {
+                    entity: t('label.domain'),
+                  })
+                : NO_PERMISSION_FOR_ACTION
+            }>
+            <Button
+              className="p-0 flex-center"
+              data-testid="add-domain"
+              disabled={!hasPermission}
+              icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
+              size="small"
+              type="text"
+            />
+          </Tooltip>
+        )}
+      </Popover>
+    </Button>
   );
 };
 

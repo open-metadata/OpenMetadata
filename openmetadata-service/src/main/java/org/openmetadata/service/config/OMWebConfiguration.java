@@ -11,6 +11,12 @@ public class OMWebConfiguration extends WebConfiguration {
   @JsonProperty("permission-policy")
   private PermissionPolicyHeaderFactory permissionPolicyHeaderFactory;
 
+  @JsonProperty("cache-control")
+  private String cacheControl;
+
+  @JsonProperty("pragma")
+  private String pragma;
+
   public OMWebConfiguration() {}
 
   public ReferrerPolicyHeaderFactory getReferrerPolicyHeaderFactory() {
@@ -24,6 +30,22 @@ public class OMWebConfiguration extends WebConfiguration {
 
   public PermissionPolicyHeaderFactory getPermissionPolicyHeaderFactory() {
     return this.permissionPolicyHeaderFactory;
+  }
+
+  public String getCacheControl() {
+    return this.cacheControl;
+  }
+
+  public String getPragma() {
+    return this.pragma;
+  }
+
+  public void setCacheControl(String cacheControl) {
+    this.cacheControl = cacheControl;
+  }
+
+  public void setPragma(String pragma) {
+    this.pragma = pragma;
   }
 
   public void setPermissionPolicyHeaderFactory(

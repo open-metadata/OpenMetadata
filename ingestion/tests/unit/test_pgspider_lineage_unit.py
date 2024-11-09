@@ -586,7 +586,7 @@ class PGSpiderLineageUnitTests(TestCase):
 
     def __init__(self, methodName) -> None:
         super().__init__(methodName)
-        config = OpenMetadataWorkflowConfig.parse_obj(mock_pgspider_config)
+        config = OpenMetadataWorkflowConfig.model_validate(mock_pgspider_config)
         self.postgres = PostgresLineageSource.create(
             mock_pgspider_config["source"],
             config.workflowConfig.openMetadataServerConfig,
@@ -622,7 +622,6 @@ class PGSpiderLineageUnitTests(TestCase):
                 connection=self.postgres.service_connection,
                 service_name=self.postgres.config.serviceName,
             ):
-
                 if isinstance(record, AddLineageRequest):
                     requests.append(record)
 
@@ -661,7 +660,6 @@ class PGSpiderLineageUnitTests(TestCase):
                 connection=self.postgres.service_connection,
                 service_name=self.postgres.config.serviceName,
             ):
-
                 if isinstance(record, AddLineageRequest):
                     requests.append(record)
 
@@ -700,7 +698,6 @@ class PGSpiderLineageUnitTests(TestCase):
                 connection=self.postgres.service_connection,
                 service_name=self.postgres.config.serviceName,
             ):
-
                 if isinstance(record, AddLineageRequest):
                     requests.append(record)
 
@@ -738,7 +735,6 @@ class PGSpiderLineageUnitTests(TestCase):
                 connection=self.postgres.service_connection,
                 service_name=self.postgres.config.serviceName,
             ):
-
                 if isinstance(record, AddLineageRequest):
                     requests.append(record)
 
@@ -773,7 +769,6 @@ class PGSpiderLineageUnitTests(TestCase):
                 connection=self.postgres.service_connection,
                 service_name=self.postgres.config.serviceName,
             ):
-
                 if isinstance(record, AddLineageRequest):
                     requests.append(record)
 
@@ -809,7 +804,6 @@ class PGSpiderLineageUnitTests(TestCase):
                 connection=self.postgres.service_connection,
                 service_name=self.postgres.config.serviceName,
             ):
-
                 if isinstance(record, AddLineageRequest):
                     requests.append(record)
 

@@ -47,7 +47,7 @@ jest.mock('../../../components/common/NextPrevious/NextPrevious', () =>
   jest.fn().mockReturnValue(<div>NextPrevious</div>)
 );
 
-jest.mock('../../../components/Loader/Loader', () =>
+jest.mock('../../../components/common/Loader/Loader', () =>
   jest.fn().mockReturnValue(<div>Loader</div>)
 );
 
@@ -55,7 +55,7 @@ jest.mock('../../../utils/PermissionsUtils', () => ({
   checkPermission: jest.fn().mockReturnValue(true),
 }));
 
-jest.mock('../../../components/PermissionProvider/PermissionProvider', () => ({
+jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockReturnValue({
     permissions: {
       policy: {

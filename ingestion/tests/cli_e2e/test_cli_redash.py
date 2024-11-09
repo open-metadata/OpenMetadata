@@ -23,16 +23,16 @@ class RedashCliTest(CliCommonDashboard.TestSuite):
         return "redash"
 
     def get_includes_dashboards(self) -> List[str]:
-        return [".*Mil.*"]
+        return [".*Orders.*"]
 
     def get_excludes_dashboards(self) -> List[str]:
-        return ["Test"]
+        return [".*World.*"]
 
     def get_includes_charts(self) -> List[str]:
-        return ["4"]
+        return [".*Orders.*"]
 
     def get_excludes_charts(self) -> List[str]:
-        return [".*Query.*"]
+        return ["World Query Data"]
 
     # Redash do not ingest datamodels
     def get_includes_datamodels(self) -> List[str]:
@@ -43,13 +43,13 @@ class RedashCliTest(CliCommonDashboard.TestSuite):
         return []
 
     def expected_dashboards_and_charts(self) -> int:
-        return 12
+        return 9
 
     def expected_lineage(self) -> int:
         return 0
 
     def expected_tags(self) -> int:
-        return 2
+        return 1
 
     def expected_datamodels(self) -> int:
         return 0
@@ -58,10 +58,10 @@ class RedashCliTest(CliCommonDashboard.TestSuite):
         return 0
 
     def expected_filtered_mix(self) -> int:
-        return 6
+        return 3
 
     def expected_filtered_sink_mix(self) -> int:
-        return 9
+        return 4
 
     def expected_dashboards_and_charts_after_patch(self) -> int:
-        return 2
+        return 1

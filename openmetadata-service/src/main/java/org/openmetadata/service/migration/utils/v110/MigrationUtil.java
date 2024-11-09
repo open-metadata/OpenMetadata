@@ -12,6 +12,7 @@ import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.Pair;
 import org.jdbi.v3.core.Handle;
+import org.jdbi.v3.core.statement.UnableToExecuteStatementException;
 import org.openmetadata.schema.CreateEntity;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.analytics.WebAnalyticEvent;
@@ -31,7 +32,7 @@ import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
-import org.openmetadata.schema.entity.data.Metrics;
+import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.entity.data.MlModel;
 import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.entity.data.Query;
@@ -79,6 +80,8 @@ public class MigrationUtil {
     /* Cannot create object  util class*/
   }
 
+  private static final String COLUMN_CHECK = "SELECT * FROM %s WHERE 1=0;";
+
   private static final String MYSQL_ENTITY_UPDATE =
       "UPDATE %s SET %s = :nameHashColumnValue WHERE id = :id";
   private static final String POSTGRES_ENTITY_UPDATE =
@@ -104,6 +107,7 @@ public class MigrationUtil {
   public static <T extends EntityInterface> void updateFQNHashForEntity(
       Handle handle, Class<T> clazz, EntityDAO<T> dao, int limitParam, String nameHashColumn) {
     if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
+      handle.execute(String.format(COLUMN_CHECK, dao.getTableName()));
       readAndProcessEntity(
           handle,
           String.format(MYSQL_ENTITY_UPDATE, dao.getTableName(), nameHashColumn),
@@ -164,7 +168,7 @@ public class MigrationUtil {
       int limitParam,
       String nameHashColumn) {
     LOG.debug("Starting Migration for table : {}", dao.getTableName());
-    if (dao instanceof CollectionDAO.TestSuiteDAO) {
+    if (dao instanceof CollectionDAO.TestSuiteDAO || dao instanceof CollectionDAO.QueryDAO) {
       // We have to do this since this column in changed in the dao in the latest version after this
       // , and this will fail the migrations here
       nameHashColumn = "nameHash";
@@ -219,6 +223,12 @@ public class MigrationUtil {
                 ex);
           }
         }
+      } catch (UnableToExecuteStatementException ex) {
+        LOG.warn(
+            "Migration already done for table : {}, Failure Reason : {}",
+            dao.getTableName(),
+            ex.getMessage());
+        break;
       } catch (Exception ex) {
         LOG.warn("Failed to list the entities, they might already migrated ", ex);
         break;
@@ -278,7 +288,7 @@ public class MigrationUtil {
     updateFQNHashForEntity(handle, Container.class, collectionDAO.containerDAO(), limitParam);
     updateFQNHashForEntity(handle, MlModel.class, collectionDAO.mlModelDAO(), limitParam);
     updateFQNHashForEntity(handle, Pipeline.class, collectionDAO.pipelineDAO(), limitParam);
-    updateFQNHashForEntity(handle, Metrics.class, collectionDAO.metricsDAO(), limitParam);
+    updateFQNHashForEntity(handle, Metric.class, collectionDAO.metricDAO(), limitParam);
     updateFQNHashForEntity(handle, Report.class, collectionDAO.reportDAO(), limitParam);
 
     // Update Glossaries & Classifications
@@ -444,25 +454,6 @@ public class MigrationUtil {
     LOG.debug("Ended Migration for Tag Usage");
   }
 
-  public static void performSqlExecutionAndUpdate(
-      Handle handle, MigrationDAO migrationDAO, List<String> queryList, String version) {
-    // These are DDL Statements and will cause an Implicit commit even if part of transaction still
-    // committed inplace
-    if (!nullOrEmpty(queryList)) {
-      for (String sql : queryList) {
-        try {
-          String previouslyRanSql = migrationDAO.getSqlQuery(hash(sql), version);
-          if ((previouslyRanSql == null || previouslyRanSql.isEmpty())) {
-            handle.execute(sql);
-            migrationDAO.upsertServerMigrationSQL(version, sql, hash(sql));
-          }
-        } catch (Exception e) {
-          LOG.error(String.format("Failed to run sql %s due to %s", sql, e));
-        }
-      }
-    }
-  }
-
   public static TestSuite getTestSuite(CollectionDAO dao, CreateTestSuite create, String user) {
     TestSuite testSuite =
         copy(new TestSuite(), create, user)
@@ -491,7 +482,7 @@ public class MigrationUtil {
     entity.setDescription(request.getDescription());
     entity.setExtension(request.getExtension());
     entity.setUpdatedBy(updatedBy);
-    entity.setOwner(null);
+    entity.setOwners(new ArrayList<>());
     entity.setUpdatedAt(System.currentTimeMillis());
     return entity;
   }
@@ -504,61 +495,65 @@ public class MigrationUtil {
    */
   @SneakyThrows
   public static void testSuitesMigration(CollectionDAO collectionDAO) {
-    // Update existing test suites as logical test suites and delete any ingestion pipeline
-    // associated with the existing test suite
-    migrateExistingTestSuitesToLogical(collectionDAO);
+    try {
+      // Update existing test suites as logical test suites and delete any ingestion pipeline
+      // associated with the existing test suite
+      migrateExistingTestSuitesToLogical(collectionDAO);
 
-    // create native test suites
-    TestSuiteRepository testSuiteRepository =
-        (TestSuiteRepository) Entity.getEntityRepository(TEST_SUITE);
-    Map<String, ArrayList<TestCase>> testCasesByTable = groupTestCasesByTable();
-    for (Entry<String, ArrayList<TestCase>> entry : testCasesByTable.entrySet()) {
-      String tableFQN = entry.getKey();
-      String nativeTestSuiteFqn = tableFQN + ".testSuite";
-      List<TestCase> testCases = entry.getValue();
-      if (testCases != null && !testCases.isEmpty()) {
-        MessageParser.EntityLink entityLink =
-            MessageParser.EntityLink.parse(testCases.stream().findFirst().get().getEntityLink());
-        TestSuite newExecutableTestSuite =
-            getTestSuite(
-                    collectionDAO,
-                    new CreateTestSuite()
-                        .withName(FullyQualifiedName.buildHash(nativeTestSuiteFqn))
-                        .withDisplayName(nativeTestSuiteFqn)
-                        .withExecutableEntityReference(entityLink.getEntityFQN()),
-                    "ingestion-bot")
-                .withExecutable(true)
-                .withFullyQualifiedName(nativeTestSuiteFqn);
-        testSuiteRepository.prepareInternal(newExecutableTestSuite, false);
-        try {
-          testSuiteRepository
-              .getDao()
-              .insert(
-                  "nameHash",
-                  newExecutableTestSuite,
-                  newExecutableTestSuite.getFullyQualifiedName());
-        } catch (Exception ex) {
-          LOG.warn(String.format("TestSuite %s exists", nativeTestSuiteFqn));
-        }
-        // add relationship between executable TestSuite with Table
-        testSuiteRepository.addRelationship(
-            newExecutableTestSuite.getExecutableEntityReference().getId(),
-            newExecutableTestSuite.getId(),
-            Entity.TABLE,
-            TEST_SUITE,
-            Relationship.CONTAINS);
-
-        // add relationship between all the testCases that are created against a table with native
-        // test suite.
-        for (TestCase testCase : testCases) {
+      // create native test suites
+      TestSuiteRepository testSuiteRepository =
+          (TestSuiteRepository) Entity.getEntityRepository(TEST_SUITE);
+      Map<String, ArrayList<TestCase>> testCasesByTable = groupTestCasesByTable();
+      for (Entry<String, ArrayList<TestCase>> entry : testCasesByTable.entrySet()) {
+        String tableFQN = entry.getKey();
+        String nativeTestSuiteFqn = tableFQN + ".testSuite";
+        List<TestCase> testCases = entry.getValue();
+        if (testCases != null && !testCases.isEmpty()) {
+          MessageParser.EntityLink entityLink =
+              MessageParser.EntityLink.parse(testCases.stream().findFirst().get().getEntityLink());
+          TestSuite newExecutableTestSuite =
+              getTestSuite(
+                      collectionDAO,
+                      new CreateTestSuite()
+                          .withName(FullyQualifiedName.buildHash(nativeTestSuiteFqn))
+                          .withDisplayName(nativeTestSuiteFqn)
+                          .withExecutableEntityReference(entityLink.getEntityFQN()),
+                      "ingestion-bot")
+                  .withExecutable(true)
+                  .withFullyQualifiedName(nativeTestSuiteFqn);
+          testSuiteRepository.prepareInternal(newExecutableTestSuite, false);
+          try {
+            testSuiteRepository
+                .getDao()
+                .insert(
+                    "nameHash",
+                    newExecutableTestSuite,
+                    newExecutableTestSuite.getFullyQualifiedName());
+          } catch (Exception ex) {
+            LOG.warn(String.format("TestSuite %s exists", nativeTestSuiteFqn));
+          }
+          // add relationship between executable TestSuite with Table
           testSuiteRepository.addRelationship(
+              newExecutableTestSuite.getExecutableEntityReference().getId(),
               newExecutableTestSuite.getId(),
-              testCase.getId(),
+              Entity.TABLE,
               TEST_SUITE,
-              TEST_CASE,
               Relationship.CONTAINS);
+
+          // add relationship between all the testCases that are created against a table with native
+          // test suite.
+          for (TestCase testCase : testCases) {
+            testSuiteRepository.addRelationship(
+                newExecutableTestSuite.getId(),
+                testCase.getId(),
+                TEST_SUITE,
+                TEST_CASE,
+                Relationship.CONTAINS);
+          }
         }
       }
+    } catch (Exception ex) {
+      LOG.error("Failed to migrate test suites", ex);
     }
   }
 

@@ -12,6 +12,8 @@
 MSSQL SQLAlchemy Helper Methods
 """
 
+from typing import Optional
+
 from sqlalchemy import Column, Integer, MetaData, String, Table, alias, sql, text
 from sqlalchemy import types as sqltypes
 from sqlalchemy import util
@@ -29,12 +31,13 @@ from sqlalchemy.dialects.mssql.base import (
     _switch_db,
     update_wrapper,
 )
-from sqlalchemy.engine import reflection
+from sqlalchemy.engine import Engine, reflection
 from sqlalchemy.sql import func
 from sqlalchemy.types import NVARCHAR
 from sqlalchemy.util import compat
 
 from metadata.ingestion.source.database.mssql.queries import (
+    GET_DB_CONFIGS,
     MSSQL_ALL_VIEW_DEFINITIONS,
     MSSQL_GET_FOREIGN_KEY,
     MSSQL_GET_TABLE_COMMENTS,
@@ -124,6 +127,7 @@ def get_columns(
         Column("minor_id", Integer, primary_key=True),
         Column("name", String, primary_key=True),
         Column("value", String),
+        Column("class_desc", String),
         schema="sys",
     )
     sys_columns = alias(
@@ -181,6 +185,8 @@ def get_columns(
             onclause=sql.and_(
                 extended_properties.c.major_id == sys_columns.c.object_id,
                 extended_properties.c.minor_id == sys_columns.c.column_id,
+                extended_properties.c.class_desc == "OBJECT_OR_COLUMN",
+                extended_properties.c.name == "MS_Description",
             ),
             isouter=True,
         )
@@ -485,3 +491,15 @@ def get_view_names(
     )
     view_names = [r[0] for r in connection.execute(query_)]
     return view_names
+
+
+def get_sqlalchemy_engine_dateformat(engine: Engine) -> Optional[str]:
+    """
+    returns sqlaclhemdy engine date format by running config query
+    """
+    result = engine.execute(GET_DB_CONFIGS)
+    for row in result:
+        row_dict = dict(row)
+        if row_dict.get("Set Option") == "dateformat":
+            return row_dict.get("Value")
+    return

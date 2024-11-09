@@ -16,7 +16,7 @@ import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import TopicDetailsPageComponent from './TopicDetailsPage.component';
 
-jest.mock('../../components/TopicDetails/TopicDetails.component', () => {
+jest.mock('../../components/Topic/TopicDetails/TopicDetails.component', () => {
   return jest.fn().mockReturnValue(<div>TopicDetails.component</div>);
 });
 
@@ -34,7 +34,7 @@ jest.mock('react-router-dom', () => ({
   useHistory: jest.fn(),
 }));
 
-jest.mock('../../components/PermissionProvider/PermissionProvider', () => ({
+jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockImplementation(() => ({
     permissions: {},
     getEntityPermission: jest.fn().mockResolvedValue({
@@ -46,7 +46,7 @@ jest.mock('../../components/PermissionProvider/PermissionProvider', () => ({
       EditDescription: true,
       EditDisplayName: true,
       EditLineage: true,
-      EditOwner: true,
+      EditOwners: true,
       EditQueries: true,
       EditSampleData: true,
       EditTags: true,
@@ -72,7 +72,7 @@ jest.mock('../../utils/PermissionsUtils', () => ({
     EditDescription: true,
     EditDisplayName: true,
     EditLineage: true,
-    EditOwner: true,
+    EditOwners: true,
     EditQueries: true,
     EditSampleData: true,
     EditTags: true,

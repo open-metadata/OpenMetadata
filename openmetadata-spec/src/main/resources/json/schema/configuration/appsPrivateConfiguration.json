@@ -1,0 +1,48 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/configuration/appsPrivateConfiguration.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AppsPrivateConfiguration",
+  "description": "This schema defines a list of configurations for the Application Framework",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.configuration.apps.AppsPrivateConfiguration",
+  "definitions": {
+    "appPrivateConfig": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.api.configuration.apps.AppPrivateConfig",
+      "title": "AppPrivateConfig",
+      "description": "Single Application Configuration Definition",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Application Name"
+        },
+        "preview": {
+          "type": "boolean",
+          "description": "Flag to enable/disable preview for the application. If the app is in preview mode, it can't be installed.",
+          "default": false
+        },
+        "parameters": {
+          "javaType": "org.openmetadata.schema.api.configuration.apps.Parameters",
+          "description": "Parameters to initialize the Applications.",
+          "type": "object",
+          "additionalProperties": {
+            ".{1,}": { "type": "string" }
+          }
+        }
+      },
+      "required": ["name", "parameters"],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "appsPrivateConfiguration": {
+      "description": "List of configuration for apps",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/appPrivateConfig"
+      }
+    }
+  },
+  "required": ["appsPrivateConfiguration"],
+  "additionalProperties": false
+}

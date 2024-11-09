@@ -6,6 +6,10 @@ include ingestion/Makefile
 help:
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":"}; {printf "\033[35m%-35s\033[0m %s\n", $$2, $$3}'
 
+.PHONY: prerequisites
+prerequisites:
+	./scripts/check_prerequisites.sh
+
 .PHONY: install_e2e_tests
 install_e2e_tests:  ## Install the ingestion module with e2e test dependencies (playwright)
 	python -m pip install "ingestion[e2e_test]/"
@@ -24,6 +28,18 @@ yarn_install_cache:  ## Use Yarn to install UI dependencies
 yarn_start_dev_ui:  ## Run the UI locally with Yarn
 	cd openmetadata-ui/src/main/resources/ui && yarn start
 
+.PHONY: yarn_start_e2e
+yarn_start_e2e:  ## Run the e2e tests locally with Yarn
+	cd openmetadata-ui/src/main/resources/ui && yarn playwright:run
+
+.PHONY: yarn_start_e2e_ui
+yarn_start_e2e_ui:  ## Run the e2e tests locally in UI mode with Yarn
+	cd openmetadata-ui/src/main/resources/ui && yarn playwright:open
+
+.PHONY: yarn_start_e2e_codegen
+yarn_start_e2e_codegen:  ## generate playwright code
+	cd openmetadata-ui/src/main/resources/ui && yarn playwright:codegen
+	
 .PHONY: py_antlr
 py_antlr:  ## Generate the Python code for parsing FQNs
 	antlr4 -Dlanguage=Python3 -o ingestion/src/metadata/generated/antlr ${PWD}/openmetadata-spec/src/main/antlr4/org/openmetadata/schema/*.g4
@@ -144,22 +160,19 @@ build-ingestion-base-local:  ## Builds the ingestion DEV docker operator with th
 generate-schema-docs:  ## Generates markdown files for documenting the JSON Schemas
 	@echo "Generating Schema docs"
 # Installing "0.4.0" version for simpler formatting
-	python3 -m pip install "jsonschema2md==0.4.0" 
+	python3 -m pip install "jsonschema2md==0.4.0"
 	python3 scripts/generate_docs_schemas.py
 
-#Upgrade release automation scripts below	
+#Upgrade release automation scripts below
 .PHONY: update_all
-update_all:  ## To update all the release related files run make update_all RELEASE_VERSION=2.2.2 PY_RELEASE_VERSION=2.2.2.2
+update_all:  ## To update all the release related files run make update_all RELEASE_VERSION=2.2.2
 	@echo "The release version is: $(RELEASE_VERSION)" ; \
-	echo "The python metadata release version: $(PY_RELEASE_VERSION)" ; \
 	$(MAKE) update_maven ; \
-	$(MAKE) update_github_action_paths ; \
-	$(MAKE) update_python_release_paths ; \
+	$(MAKE) update_pyproject_version ; \
 	$(MAKE) update_dockerfile_version ; \
-	$(MAKE) update_ingestion_dockerfile_version ; \
-
+	$(MAKE) update_dockerfile_ri_version ; \
 #remove comment and use the below section when want to use this sub module "update_all" independently to update github actions
-#make update_all RELEASE_VERSION=2.2.2 PY_RELEASE_VERSION=2.2.2.2
+#make update_all RELEASE_VERSION=2.2.2
 
 .PHONY: update_maven
 update_maven:  ## To update the common and pom.xml maven version
@@ -169,36 +182,16 @@ update_maven:  ## To update the common and pom.xml maven version
 #make update_maven RELEASE_VERSION=2.2.2
 
 
-.PHONY: update_github_action_paths
-update_github_action_paths:  ## To update the github action ci docker files
-	@echo "Updating docker github action release version to $(RELEASE_VERSION)... "; \
-	file_paths="docker/docker-compose-quickstart/Dockerfile \
-	            .github/workflows/docker-openmetadata-db.yml \
-	            .github/workflows/docker-openmetadata-ingestion-base.yml \
-	            .github/workflows/docker-openmetadata-ingestion.yml \
-	            .github/workflows/docker-openmetadata-postgres.yml \
-	            .github/workflows/docker-openmetadata-server.yml"; \
+.PHONY: update_pyproject_version
+update_pyproject_version:  ## To update the pyproject.toml files
+	file_paths="ingestion/pyproject.toml \
+				openmetadata-airflow-apis/pyproject.toml"; \
+	echo "Updating pyproject.toml versions to $(RELEASE_VERSION)... "; \
 	for file_path in $$file_paths; do \
-	    python3 scripts/update_version.py 1 $$file_path -s $(RELEASE_VERSION) ; \
-	done; \
-	file_paths1="docker/docker-compose-quickstart/Dockerfile"; \
-	for file_path in $$file_paths1; do \
-	    python3 scripts/update_version.py 4 $$file_path -s $(RELEASE_VERSION) ; \
+	    python3 scripts/update_version.py update_pyproject_version -f $$file_path -v $(RELEASE_VERSION) ; \
 	done
-
-#remove comment and use the below section when want to use this sub module "update_github_action_paths" independently to update github actions
-#make update_github_action_paths RELEASE_VERSION=2.2.2
-
-.PHONY: update_python_release_paths
-update_python_release_paths:  ## To update the setup.py files
-	file_paths="ingestion/setup.py \
-				openmetadata-airflow-apis/setup.py"; \
-	echo "Updating Python setup file versions to $(PY_RELEASE_VERSION)... "; \
-	for file_path in $$file_paths; do \
-	    python3 scripts/update_version.py 2 $$file_path -s $(PY_RELEASE_VERSION) ; \
-	done
-# Commented section for independent usage of the module update_python_release_paths independently to update github actions
-#make update_python_release_paths PY_RELEASE_VERSION=2.2.2.2
+# Commented section for independent usage of the module update_pyproject_version independently to update github actions
+#make update_pyproject_version RELEASE_VERSION=2.2.2
 
 .PHONY: update_dockerfile_version
 update_dockerfile_version:  ## To update the dockerfiles version
@@ -208,20 +201,21 @@ update_dockerfile_version:  ## To update the dockerfiles version
 		     docker/docker-compose-quickstart/docker-compose.yml"; \
 	echo "Updating docker github action release version to $(RELEASE_VERSION)... "; \
 	for file_path in $$file_paths; do \
-	    python3 scripts/update_version.py 3 $$file_path -s $(RELEASE_VERSION) ; \
+	    python3 scripts/update_version.py update_docker_tag -f $$file_path -t $(RELEASE_VERSION) ; \
 	done
 #remove comment and use the below section when want to use this sub module "update_dockerfile_version" independently to update github actions
 #make update_dockerfile_version RELEASE_VERSION=2.2.2
 
-.PHONY: update_ingestion_dockerfile_version
-update_ingestion_dockerfile_version:  ## To update the ingestion dockerfiles version
+.PHONY: update_dockerfile_ri_version
+update_dockerfile_ri_version:  ## To update the dockerfile RI_VERSION argument
 	@file_paths="ingestion/Dockerfile \
 	             ingestion/operators/docker/Dockerfile"; \
 	echo "Updating ingestion dockerfile release version to $(PY_RELEASE_VERSION)... "; \
 	for file_path in $$file_paths; do \
-	    python3 scripts/update_version.py 4 $$file_path -s $(PY_RELEASE_VERSION) ; \
+	    python3 scripts/update_version.py update_ri_version -f $$file_path -v $(RELEASE_VERSION) --with-python-version ; \
 	done
-#remove comment and use the below section when want to use this sub module "update_ingestion_dockerfile_version" independently to update github actions
-#make update_ingestion_dockerfile_version PY_RELEASE_VERSION=2.2.2.2
+	python3 scripts/update_version.py update_ri_version -f docker/docker-compose-quickstart/Dockerfile -v $(RELEASE_VERSION)
+#remove comment and use the below section when want to use this sub module "update_dockerfile_ri_version" independently to update github actions
+#make update_dockerfile_ri_version RELEASE_VERSION=2.2.2
 
 #Upgrade release automation scripts above

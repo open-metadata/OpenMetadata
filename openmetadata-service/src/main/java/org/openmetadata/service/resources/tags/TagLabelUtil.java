@@ -101,8 +101,12 @@ public class TagLabelUtil {
       return tagLabels;
     }
 
+    // Filter out all the derived tags
+    List<TagLabel> filteredTags =
+        tagLabels.stream().filter(tag -> tag.getLabelType() != TagLabel.LabelType.DERIVED).toList();
+
     List<TagLabel> updatedTagLabels = new ArrayList<>();
-    EntityUtil.mergeTags(updatedTagLabels, tagLabels);
+    EntityUtil.mergeTags(updatedTagLabels, filteredTags);
     for (TagLabel tagLabel : tagLabels) {
       EntityUtil.mergeTags(updatedTagLabels, getDerivedTags(tagLabel));
     }
@@ -136,6 +140,17 @@ public class TagLabelUtil {
       if (stored != null && TagLabelUtil.mutuallyExclusive(tagLabel)) {
         throw new IllegalArgumentException(
             CatalogExceptionMessage.mutuallyExclusiveLabels(tagLabel, stored));
+      }
+    }
+  }
+
+  public static void checkDisabledTags(List<TagLabel> tagLabels) {
+    for (TagLabel tagLabel : listOrEmpty(tagLabels)) {
+      if (tagLabel.getSource().equals(TagSource.CLASSIFICATION)) {
+        Tag tag = Entity.getCollectionDAO().tagDAO().findEntityByName(tagLabel.getTagFQN());
+        if (tag.getDisabled()) {
+          throw new IllegalArgumentException(CatalogExceptionMessage.disabledTag(tagLabel));
+        }
       }
     }
   }

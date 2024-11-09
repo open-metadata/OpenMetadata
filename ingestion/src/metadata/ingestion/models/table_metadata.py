@@ -26,8 +26,8 @@ class OMetaTableConstraints(BaseModel):
     """
 
     table: Table
-    foreign_constraints: Optional[List[Dict]]
-    constraints: Optional[List[TableConstraint]]
+    foreign_constraints: Optional[List[Dict]] = None
+    constraints: Optional[List[TableConstraint]] = None
 
 
 class ColumnTag(BaseModel):

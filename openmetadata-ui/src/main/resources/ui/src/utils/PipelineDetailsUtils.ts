@@ -12,17 +12,20 @@
  */
 
 import { isUndefined } from 'lodash';
-import { TabSpecificField } from '../enums/entity.enum';
+import { ReactComponent as IconFailBadge } from '../assets/svg/fail-badge.svg';
+import { ReactComponent as IconSkippedBadge } from '../assets/svg/skipped-badge.svg';
+import { ReactComponent as IconSuccessBadge } from '../assets/svg/success-badge.svg';
+import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
+import { EntityTabs, TabSpecificField } from '../enums/entity.enum';
 import {
   Pipeline,
   StatusType,
   TaskStatus,
 } from '../generated/entity/data/pipeline';
 import { sortTagsCaseInsensitive } from './CommonUtils';
-import { Icons } from './SvgUtils';
 
 // eslint-disable-next-line max-len
-export const defaultFields = `${TabSpecificField.FOLLOWERS}, ${TabSpecificField.TAGS}, ${TabSpecificField.OWNER},${TabSpecificField.TASKS}, ${TabSpecificField.PIPELINE_STATUS}, ${TabSpecificField.DOMAIN},${TabSpecificField.DATA_PRODUCTS},${TabSpecificField.VOTES},${TabSpecificField.EXTENSION}`;
+export const defaultFields = `${TabSpecificField.FOLLOWERS}, ${TabSpecificField.TAGS}, ${TabSpecificField.OWNERS},${TabSpecificField.TASKS}, ${TabSpecificField.PIPELINE_STATUS}, ${TabSpecificField.DOMAIN},${TabSpecificField.DATA_PRODUCTS},${TabSpecificField.VOTES},${TabSpecificField.EXTENSION}`;
 
 export const getTaskExecStatus = (taskName: string, tasks: TaskStatus[]) => {
   return tasks.find((task) => task.name === taskName)?.executionStatus || '';
@@ -31,19 +34,13 @@ export const getTaskExecStatus = (taskName: string, tasks: TaskStatus[]) => {
 export const getStatusBadgeIcon = (status?: StatusType) => {
   switch (status) {
     case StatusType.Successful:
-      return Icons.SUCCESS_BADGE;
+      return IconSuccessBadge;
 
     case StatusType.Failed:
-      return Icons.FAIL_BADGE;
-
-    case StatusType.Pending:
-      return Icons.SKIPPED_BADGE;
-
-    case StatusType.Skipped:
-      return Icons.SKIPPED_BADGE;
+      return IconFailBadge;
 
     default:
-      return '';
+      return IconSkippedBadge;
   }
 };
 
@@ -64,5 +61,72 @@ export const getFormattedPipelineDetails = (
     return { ...pipelineDetails, tasks: updatedTasks };
   } else {
     return pipelineDetails;
+  }
+};
+
+export const getPipelineDetailsPageDefaultLayout = (tab: EntityTabs) => {
+  switch (tab) {
+    case EntityTabs.SCHEMA:
+      return [
+        {
+          h: 2,
+          i: DetailPageWidgetKeys.DESCRIPTION,
+          w: 6,
+          x: 0,
+          y: 0,
+          static: false,
+        },
+        {
+          h: 8,
+          i: DetailPageWidgetKeys.TABLE_SCHEMA,
+          w: 6,
+          x: 0,
+          y: 0,
+          static: false,
+        },
+        {
+          h: 1,
+          i: DetailPageWidgetKeys.FREQUENTLY_JOINED_TABLES,
+          w: 2,
+          x: 6,
+          y: 0,
+          static: false,
+        },
+        {
+          h: 1,
+          i: DetailPageWidgetKeys.DATA_PRODUCTS,
+          w: 2,
+          x: 6,
+          y: 1,
+          static: false,
+        },
+        {
+          h: 1,
+          i: DetailPageWidgetKeys.TAGS,
+          w: 2,
+          x: 6,
+          y: 2,
+          static: false,
+        },
+        {
+          h: 1,
+          i: DetailPageWidgetKeys.GLOSSARY_TERMS,
+          w: 2,
+          x: 6,
+          y: 3,
+          static: false,
+        },
+        {
+          h: 3,
+          i: DetailPageWidgetKeys.CUSTOM_PROPERTIES,
+          w: 2,
+          x: 6,
+          y: 4,
+          static: false,
+        },
+      ];
+
+    default:
+      return [];
   }
 };

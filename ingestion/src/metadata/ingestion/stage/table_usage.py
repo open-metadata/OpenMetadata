@@ -70,8 +70,13 @@ class TableUsageStage(Stage):
         return "Table Usage"
 
     @classmethod
-    def create(cls, config_dict: dict, metadata: OpenMetadata):
-        config = TableStageConfig.parse_obj(config_dict)
+    def create(
+        cls,
+        config_dict: dict,
+        metadata: OpenMetadata,
+        pipeline_name: Optional[str] = None,
+    ):
+        config = TableStageConfig.model_validate(config_dict)
         return cls(config, metadata)
 
     def init_location(self) -> None:
@@ -95,7 +100,7 @@ class TableUsageStage(Stage):
         if username:
             user = self.metadata.get_by_name(entity=User, fqn=username)
             if user:
-                return [user.fullyQualifiedName.__root__], [username]
+                return [user.fullyQualifiedName.root], [username]
             return None, [username]
         return None, None
 
@@ -186,7 +191,7 @@ class TableUsageStage(Stage):
         for key, value in self.table_usage.items():
             if value:
                 value.sqlQueries = self.table_queries.get(key, [])
-                data = value.json()
+                data = value.model_dump_json()
                 with open(
                     os.path.join(self.config.filename, f"{value.serviceName}_{key[1]}"),
                     "a+",

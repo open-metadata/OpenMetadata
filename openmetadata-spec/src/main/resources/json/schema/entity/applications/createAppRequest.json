@@ -1,7 +1,7 @@
 {
   "$id": "https://open-metadata.org/schema/entity/applications/createAppRequest.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "CreateApp",
+  "title": "CreateAppRequest",
   "javaType": "org.openmetadata.schema.entity.app.CreateApp",
   "javaInterfaces": ["org.openmetadata.schema.CreateEntity"],
   "description": "This schema defines the create applications request for Open-Metadata.",
@@ -19,9 +19,9 @@
       "description": "Description of the Application.",
       "$ref": "../../type/basic.json#/definitions/markdown"
     },
-    "owner": {
-      "description": "Owner of this workflow.",
-      "$ref": "../../type/entityReference.json",
+    "owners": {
+      "description": "Owners of this workflow.",
+      "$ref": "../../type/entityReferenceList.json",
       "default": null
     },
     "bot": {
@@ -34,6 +34,15 @@
     },
     "appSchedule": {
       "$ref": "./app.json#/definitions/appSchedule"
+    },
+    "domain" : {
+      "description": "Fully qualified name of the domain the Table belongs to.",
+      "type": "string"
+    },
+    "supportsInterrupt": {
+      "description": "If the app run can be interrupted as part of the execution.",
+      "type": "boolean",
+      "default": false
     }
   },
   "additionalProperties": false

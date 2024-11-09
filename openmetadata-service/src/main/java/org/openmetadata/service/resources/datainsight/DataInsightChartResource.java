@@ -11,7 +11,6 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
-import java.text.ParseException;
 import java.util.List;
 import java.util.UUID;
 import javax.json.JsonPatch;
@@ -48,6 +47,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.DataInsightChartRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.search.SearchRepository;
@@ -66,11 +66,11 @@ public class DataInsightChartResource
     extends EntityResource<DataInsightChart, DataInsightChartRepository> {
 
   public static final String COLLECTION_PATH = DataInsightChartRepository.COLLECTION_PATH;
-  public static final String FIELDS = "owner";
+  public static final String FIELDS = "owners";
   private final SearchRepository searchRepository;
 
-  public DataInsightChartResource(Authorizer authorizer) {
-    super(Entity.DATA_INSIGHT_CHART, authorizer);
+  public DataInsightChartResource(Authorizer authorizer, Limits limits) {
+    super(Entity.DATA_INSIGHT_CHART, authorizer, limits);
     searchRepository = Entity.getSearchRepository();
   }
 
@@ -332,6 +332,35 @@ public class DataInsightChartResource
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
+  @PATCH
+  @Path("/name/{fqn}")
+  @Operation(
+      operationId = "patchDataInsightChart",
+      summary = "Update a data insight chart by name.",
+      description = "Update an existing data insight chart using JsonPatch.",
+      externalDocs =
+          @ExternalDocumentation(
+              description = "JsonPatch RFC",
+              url = "https://tools.ietf.org/html/rfc6902"))
+  @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
+  public Response updateDescription(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the data insight chart", schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn,
+      @RequestBody(
+              description = "JsonPatch with array of operations",
+              content =
+                  @Content(
+                      mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
+                      examples = {
+                        @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
+                      }))
+          JsonPatch patch) {
+    return patchInternal(uriInfo, securityContext, fqn, patch);
+  }
+
   @PUT
   @Operation(
       operationId = "createOrUpdateDataInsightChart",
@@ -500,7 +529,7 @@ public class DataInsightChartResource
               schema = @Schema(type = "number"))
           @QueryParam("endTs")
           Long endTs)
-      throws IOException, ParseException {
+      throws IOException {
     OperationContext operationContext =
         new OperationContext(Entity.DATA_INSIGHT_CHART, MetadataOperation.VIEW_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContext());

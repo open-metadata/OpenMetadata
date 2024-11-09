@@ -17,7 +17,7 @@ from typing import Iterable, List, Optional, Union
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.dashboardDataModel import DashboardDataModel
-from metadata.generated.schema.entity.data.table import Column, Table
+from metadata.generated.schema.entity.data.table import Column, DataType, Table
 from metadata.generated.schema.entity.services.connections.dashboard.supersetConnection import (
     SupersetConnection,
 )
@@ -34,7 +34,7 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -70,9 +70,14 @@ class SupersetSourceMixin(DashboardServiceSource):
         self.all_charts = {}
 
     @classmethod
-    def create(cls, config_dict: dict, metadata: OpenMetadata):
-        config = WorkflowSource.parse_obj(config_dict)
-        connection: SupersetConnection = config.serviceConnection.__root__.config
+    def create(
+        cls,
+        config_dict: dict,
+        metadata: OpenMetadata,
+        pipeline_name: Optional[str] = None,
+    ):
+        config = WorkflowSource.model_validate(config_dict)
+        connection: SupersetConnection = config.serviceConnection.root.config
         if not isinstance(connection, SupersetConnection):
             raise InvalidSourceException(
                 f"Expected SupersetConnection, but got {connection}"
@@ -95,14 +100,14 @@ class SupersetSourceMixin(DashboardServiceSource):
         """
         return dashboard
 
-    def _get_user_by_email(self, email: Optional[str]) -> Optional[EntityReference]:
+    def _get_user_by_email(self, email: Optional[str]) -> Optional[EntityReferenceList]:
         if email:
             return self.metadata.get_reference_by_email(email)
         return None
 
     def get_owner_ref(
         self, dashboard_details: Union[DashboardResult, FetchDashboard]
-    ) -> EntityReference:
+    ) -> Optional[EntityReferenceList]:
         try:
             if hasattr(dashboard_details, "owners"):
                 for owner in dashboard_details.owners or []:
@@ -177,9 +182,15 @@ class SupersetSourceMixin(DashboardServiceSource):
                             fqn=datamodel_fqn,
                         )
 
+                        columns_list = self._get_columns_list_for_lineage(chart_json)
+                        column_lineage = self._get_column_lineage(
+                            from_entity, to_entity, columns_list
+                        )
                         if from_entity and to_entity:
                             yield self._get_add_lineage_request(
-                                to_entity=to_entity, from_entity=from_entity
+                                to_entity=to_entity,
+                                from_entity=from_entity,
+                                column_lineage=column_lineage,
                             )
                     except Exception as exc:
                         yield Either(
@@ -202,7 +213,7 @@ class SupersetSourceMixin(DashboardServiceSource):
         datamodel_fqn = fqn.build(
             self.metadata,
             entity_type=DashboardDataModel,
-            service_name=self.context.dashboard_service,
+            service_name=self.context.get().dashboard_service,
             data_model_name=datamodel.id,
         )
         if datamodel_fqn:
@@ -211,6 +222,10 @@ class SupersetSourceMixin(DashboardServiceSource):
                 fqn=datamodel_fqn,
             )
         return None
+
+    def _clearn_column_datatype(self, datatype: str) -> str:
+        """clean datatype of column fetched from superset"""
+        return datatype.replace("()", "")
 
     def get_column_info(
         self, data_source: List[Union[DataSourceResult, FetchColumn]]
@@ -225,13 +240,20 @@ class SupersetSourceMixin(DashboardServiceSource):
         for field in data_source or []:
             try:
                 if field.type:
+                    field.type = self._clearn_column_datatype(field.type)
                     col_parse = ColumnTypeParser._parse_datatype_string(  # pylint: disable=protected-access
                         field.type
                     )
                     parsed_fields = Column(
                         dataTypeDisplay=field.type,
                         dataType=col_parse["dataType"],
-                        name=field.id,
+                        arrayDataType=DataType(col_parse["arrayDataType"])
+                        if col_parse.get("arrayDataType")
+                        else None,
+                        children=list(col_parse["children"])
+                        if col_parse.get("children")
+                        else None,
+                        name=str(field.id),
                         displayName=field.column_name,
                         description=field.description,
                         dataLength=int(col_parse.get("dataLength", 0)),

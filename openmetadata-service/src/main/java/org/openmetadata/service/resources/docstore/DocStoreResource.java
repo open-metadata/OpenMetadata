@@ -48,6 +48,8 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.email.EmailTemplate;
+import org.openmetadata.schema.email.TemplateValidationResponse;
 import org.openmetadata.schema.entities.docStore.CreateDocument;
 import org.openmetadata.schema.entities.docStore.Document;
 import org.openmetadata.schema.type.EntityHistory;
@@ -55,12 +57,16 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.exception.CustomExceptionMessage;
 import org.openmetadata.service.jdbi3.DocumentRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
+import org.openmetadata.service.util.email.DefaultTemplateProvider;
 
 @Slf4j
 @Path("/v1/docStore")
@@ -83,8 +89,8 @@ public class DocStoreResource extends EntityResource<Document, DocumentRepositor
     return listOf(MetadataOperation.EDIT_ALL);
   }
 
-  public DocStoreResource(Authorizer authorizer) {
-    super(Entity.DOCUMENT, authorizer);
+  public DocStoreResource(Authorizer authorizer, Limits limits) {
+    super(Entity.DOCUMENT, authorizer, limits);
   }
 
   public static class DocumentList extends ResultList<Document> {
@@ -295,7 +301,7 @@ public class DocStoreResource extends EntityResource<Document, DocumentRepositor
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateDocument cd) {
-    Document doc = getDocument(cd, securityContext.getUserPrincipal().getName());
+    Document doc = getDocument(cd, securityContext);
     return create(uriInfo, securityContext, doc);
   }
 
@@ -318,8 +324,37 @@ public class DocStoreResource extends EntityResource<Document, DocumentRepositor
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateDocument cd) {
-    Document doc = getDocument(cd, securityContext.getUserPrincipal().getName());
+    Document doc = getDocument(cd, securityContext);
     return createOrUpdate(uriInfo, securityContext, doc);
+  }
+
+  @PUT
+  @Path("/validateTemplate/{templateName}")
+  @Operation(
+      operationId = "validateEmailTemplate",
+      summary = "Validate Email Template",
+      description = "Validates is the give content is a valid Email Template.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The Template Validation Response.",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = TemplateValidationResponse.class))),
+        @ApiResponse(responseCode = "400", description = "Bad request")
+      })
+  public TemplateValidationResponse validateEmailTemplate(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Template name for the email template to be validated",
+              schema = @Schema(type = "string"))
+          @PathParam("templateName")
+          String templateName,
+      @Valid EmailTemplate emailTemplate) {
+    authorizer.authorizeAdmin(securityContext);
+    return repository.validateEmailTemplate(templateName, emailTemplate.getTemplate());
   }
 
   @PATCH
@@ -349,6 +384,35 @@ public class DocStoreResource extends EntityResource<Document, DocumentRepositor
                       }))
           JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
+  }
+
+  @PATCH
+  @Path("/name/{fqn}")
+  @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
+  @Operation(
+      operationId = "patchDocument",
+      summary = "Update a Document by name.",
+      description = "Update an existing Document with JsonPatch.",
+      externalDocs =
+          @ExternalDocumentation(
+              description = "JsonPatch RFC",
+              url = "https://tools.ietf.org/html/rfc6902"))
+  public Response patch(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the Document", schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn,
+      @RequestBody(
+              description = "JsonPatch with array of operations",
+              content =
+                  @Content(
+                      mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
+                      examples = {
+                        @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
+                      }))
+          JsonPatch patch) {
+    return patchInternal(uriInfo, securityContext, fqn, patch);
   }
 
   @DELETE
@@ -391,9 +455,56 @@ public class DocStoreResource extends EntityResource<Document, DocumentRepositor
     return deleteByName(uriInfo, securityContext, name, false, true);
   }
 
-  private Document getDocument(CreateDocument cd, String user) {
+  @POST
+  @Path("/resetEmailTemplate")
+  @Produces(MediaType.APPLICATION_JSON)
+  @Operation(
+      summary = "Reset seed data of EmailTemplate type",
+      description =
+          "Deletes seed data of the EmailTemplate type from the document store and reinitializes it from resources.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Seed Data init successfully",
+            content =
+                @Content(
+                    mediaType = MediaType.APPLICATION_JSON,
+                    schema = @Schema(type = "string"))),
+        @ApiResponse(
+            responseCode = "400",
+            description = "Seed Data init failed",
+            content =
+                @Content(mediaType = MediaType.APPLICATION_JSON, schema = @Schema(type = "string")))
+      })
+  public Response resetEmailTemplate(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
+    try {
+      repository.deleteEmailTemplates();
+      repository.initSeedDataFromResources();
+      return Response.ok("Seed Data init successfully").build();
+    } catch (Exception e) {
+      LOG.error(e.getMessage());
+      return Response.status(Response.Status.BAD_REQUEST)
+          .entity("Seed Data init failed: " + e.getMessage())
+          .build();
+    }
+  }
+
+  private Document getDocument(CreateDocument cd, SecurityContext securityContext) {
+    // Validate email template
+    if (cd.getEntityType().equals(DefaultTemplateProvider.ENTITY_TYPE_EMAIL_TEMPLATE)) {
+      // Only Admins Can do these operations
+      authorizer.authorizeAdmin(securityContext);
+      String content = JsonUtils.convertValue(cd.getData(), EmailTemplate.class).getTemplate();
+      TemplateValidationResponse validationResp =
+          repository.validateEmailTemplate(cd.getName(), content);
+      if (Boolean.FALSE.equals(validationResp.getIsValid())) {
+        throw new CustomExceptionMessage(
+            Response.status(400).entity(validationResp).build(), validationResp.getMessage());
+      }
+    }
     return repository
-        .copy(new Document(), cd, user)
+        .copy(new Document(), cd, securityContext.getUserPrincipal().getName())
         .withFullyQualifiedName(cd.getFullyQualifiedName())
         .withData(cd.getData())
         .withEntityType(cd.getEntityType());

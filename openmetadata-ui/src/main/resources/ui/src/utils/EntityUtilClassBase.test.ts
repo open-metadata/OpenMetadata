@@ -10,34 +10,22 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
 import {
-  getDashboardDetailsPath,
-  getDatabaseDetailsPath,
-  getDatabaseSchemaDetailsPath,
-  getPipelineDetailsPath,
-  getTableDetailsPath,
-  getTopicDetailsPath,
+  getEntityDetailsPath,
+  getGlossaryTermDetailsPath,
 } from '../constants/constants';
 import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { EntityUtilClassBase } from './EntityUtilClassBase';
-import { getGlossaryPath } from './RouterUtils';
+import { getTestSuiteDetailsPath } from './TestSuiteUtils';
 
 jest.mock('../constants/constants', () => ({
-  getContainerDetailPath: jest.fn(),
-  getDashboardDetailsPath: jest.fn(),
-  getDatabaseDetailsPath: jest.fn(),
-  getDatabaseSchemaDetailsPath: jest.fn(),
-  getDataModelDetailsPath: jest.fn(),
+  getEntityDetailsPath: jest.fn(),
   getEditWebhookPath: jest.fn(),
-  getMlModelPath: jest.fn(),
-  getPipelineDetailsPath: jest.fn(),
   getServiceDetailsPath: jest.fn(),
-  getStoredProcedureDetailPath: jest.fn(),
-  getTableDetailsPath: jest.fn(),
-  getTableTabPath: jest.fn(),
   getTagsDetailsPath: jest.fn(),
-  getTopicDetailsPath: jest.fn(),
+  getGlossaryTermDetailsPath: jest.fn(),
   getUserPath: jest.fn(),
 }));
 
@@ -46,15 +34,14 @@ jest.mock('./CommonUtils', () => ({
 }));
 
 jest.mock('./RouterUtils', () => ({
-  getDataProductsDetailsPath: jest.fn(),
+  getEntityDetailsPath: jest.fn(),
   getDomainDetailsPath: jest.fn(),
-  getGlossaryPath: jest.fn(),
   getSettingPath: jest.fn(),
   getTeamsWithFqnPath: jest.fn(),
 }));
 
-jest.mock('./SearchIndexUtils', () => ({
-  getSearchIndexDetailsPath: jest.fn(),
+jest.mock('./TestSuiteUtils', () => ({
+  getTestSuiteDetailsPath: jest.fn(),
 }));
 
 describe('EntityUtilClassBase', () => {
@@ -68,55 +55,104 @@ describe('EntityUtilClassBase', () => {
     const fqn = 'test.topic';
     entityUtil.getEntityLink(SearchIndex.TOPIC, fqn);
 
-    expect(getTopicDetailsPath).toHaveBeenCalledWith(fqn);
+    expect(getEntityDetailsPath).toHaveBeenCalledWith(
+      EntityType.TOPIC,
+      fqn,
+      undefined,
+      undefined
+    );
   });
 
   it('should return dashboard details path for dashboard index type', () => {
     const fqn = 'test.dashboard';
     entityUtil.getEntityLink(SearchIndex.DASHBOARD, fqn);
 
-    expect(getDashboardDetailsPath).toHaveBeenCalledWith(fqn);
+    expect(getEntityDetailsPath).toHaveBeenCalledWith(
+      EntityType.DASHBOARD,
+      fqn,
+      undefined,
+      undefined
+    );
   });
 
   it('should return pipeline details path for pipeline index type', () => {
     const fqn = 'test.pipeline';
     entityUtil.getEntityLink(SearchIndex.PIPELINE, fqn);
 
-    expect(getPipelineDetailsPath).toHaveBeenCalledWith(fqn);
+    expect(getEntityDetailsPath).toHaveBeenCalledWith(
+      EntityType.PIPELINE,
+      fqn,
+      undefined,
+      undefined
+    );
   });
 
   it('Should return database details path for database EntityType', () => {
     const fqn = 'test.database';
     entityUtil.getEntityLink(EntityType.DATABASE, fqn);
 
-    expect(getDatabaseDetailsPath).toHaveBeenCalledWith(fqn);
+    expect(getEntityDetailsPath).toHaveBeenCalledWith(
+      EntityType.DATABASE,
+      fqn,
+      undefined,
+      undefined
+    );
   });
 
   it('Should return database schema details path for database EntityType', () => {
     const fqn = 'test.database.schema';
     entityUtil.getEntityLink(EntityType.DATABASE_SCHEMA, fqn);
 
-    expect(getDatabaseSchemaDetailsPath).toHaveBeenCalledWith(fqn);
+    expect(getEntityDetailsPath).toHaveBeenCalledWith(
+      EntityType.DATABASE_SCHEMA,
+      fqn,
+      undefined,
+      undefined
+    );
   });
 
   it('Should return glossary details path for database EntityType', () => {
     const fqn = 'testingGlossary';
     entityUtil.getEntityLink(EntityType.GLOSSARY, fqn);
 
-    expect(getGlossaryPath).toHaveBeenCalledWith(fqn);
+    expect(getGlossaryTermDetailsPath).toHaveBeenCalledWith(
+      fqn,
+      undefined,
+      undefined
+    );
+  });
+
+  it('should return testSuite details path for testSuite EntityType', () => {
+    const fqn = 'test.default';
+    entityUtil.getEntityLink(EntityType.TEST_SUITE, fqn);
+
+    expect(getTestSuiteDetailsPath).toHaveBeenCalledWith({
+      fullyQualifiedName: 'test.default',
+      isExecutableTestSuite: undefined,
+    });
   });
 
   it('should return table details path for table index type', () => {
     const fqn = 'test.table';
     entityUtil.getEntityLink(SearchIndex.TABLE, fqn);
 
-    expect(getTableDetailsPath).toHaveBeenCalledWith(fqn);
+    expect(getEntityDetailsPath).toHaveBeenCalledWith(
+      EntityType.TABLE,
+      fqn,
+      undefined,
+      undefined
+    );
   });
 
   it('should return table details path for default case', () => {
     const fqn = 'test.default';
     entityUtil.getEntityLink('default', fqn);
 
-    expect(getTableDetailsPath).toHaveBeenCalledWith(fqn);
+    expect(getEntityDetailsPath).toHaveBeenCalledWith(
+      EntityType.TABLE,
+      fqn,
+      undefined,
+      undefined
+    );
   });
 });

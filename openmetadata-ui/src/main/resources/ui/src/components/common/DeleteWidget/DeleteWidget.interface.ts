@@ -11,11 +11,12 @@
  *  limitations under the License.
  */
 
+import { ReactNode } from 'react';
 import { EntityType } from '../../../enums/entity.enum';
 
 export interface DeleteOption {
   title: string;
-  description: string;
+  description: ReactNode;
   type: DeleteType;
   isAllowed: boolean;
 }

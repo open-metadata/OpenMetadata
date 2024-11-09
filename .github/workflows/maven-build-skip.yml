@@ -19,7 +19,6 @@ on:
     types: [labeled, opened, synchronize, reopened]
     paths-ignore:
       - "openmetadata-service/**"
-      - "openmetadata-ui/**"
       - "openmetadata-spec/src/main/resources/json/schema/**"
       - "openmetadata-dist/**"
       - "openmetadata-clients/**"

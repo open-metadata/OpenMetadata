@@ -6,11 +6,13 @@ import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.jdbi.v3.core.mapper.RowMapper;
 import org.jdbi.v3.core.statement.StatementContext;
 import org.jdbi.v3.sqlobject.config.RegisterRowMapper;
 import org.jdbi.v3.sqlobject.customizer.Bind;
+import org.jdbi.v3.sqlobject.customizer.BindMap;
 import org.jdbi.v3.sqlobject.customizer.Define;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
@@ -116,11 +118,21 @@ public interface EntityTimeSeriesDAO {
   }
 
   @SqlQuery(
+      "SELECT json FROM <table> <cond> " + "ORDER BY timestamp DESC LIMIT :limit OFFSET :offset")
+  List<String> listWithOffset(
+      @Define("table") String table,
+      @BindMap Map<String, ?> params,
+      @Define("cond") String cond,
+      @Bind("limit") int limit,
+      @Bind("offset") int offset);
+
+  @SqlQuery(
       "SELECT json FROM <table> <cond> "
           + "AND timestamp BETWEEN :startTs AND :endTs "
           + "ORDER BY timestamp DESC LIMIT :limit OFFSET :offset")
   List<String> listWithOffset(
       @Define("table") String table,
+      @BindMap Map<String, ?> params,
       @Define("cond") String cond,
       @Bind("limit") int limit,
       @Bind("offset") int offset,
@@ -155,7 +167,18 @@ public interface EntityTimeSeriesDAO {
             startTs,
             endTs)
         : listWithOffset(
-            getTimeSeriesTableName(), filter.getCondition(), limit, offset, startTs, endTs);
+            getTimeSeriesTableName(),
+            filter.getQueryParams(),
+            filter.getCondition(),
+            limit,
+            offset,
+            startTs,
+            endTs);
+  }
+
+  default List<String> listWithOffset(ListFilter filter, int limit, int offset) {
+    return listWithOffset(
+        getTimeSeriesTableName(), filter.getQueryParams(), filter.getCondition(), limit, offset);
   }
 
   @ConnectionAwareSqlUpdate(
@@ -192,15 +215,21 @@ public interface EntityTimeSeriesDAO {
   }
 
   @SqlQuery("SELECT count(*) FROM <table> <cond>")
-  int listCount(@Define("table") String table, @Define("cond") String cond);
+  int listCount(
+      @Define("table") String table, @BindMap Map<String, ?> params, @Define("cond") String cond);
 
   default int listCount(ListFilter filter) {
-    return listCount(getTimeSeriesTableName(), filter.getCondition());
+    return listCount(getTimeSeriesTableName(), filter.getQueryParams(), filter.getCondition());
+  }
+
+  default int listCount() {
+    return listCount(new ListFilter(null));
   }
 
   @SqlQuery("SELECT count(*) FROM <table> <cond> AND timestamp BETWEEN :startTs AND :endTs")
   int listCount(
       @Define("table") String table,
+      @BindMap Map<String, ?> params,
       @Define("cond") String cond,
       @Bind("startTs") Long startTs,
       @Bind("endTs") Long endTs);
@@ -213,6 +242,7 @@ public interface EntityTimeSeriesDAO {
   int listCount(
       @Define("table") String table,
       @Define("partition") String partition,
+      @BindMap Map<String, ?> params,
       @Define("cond") String cond,
       @Bind("startTs") Long startTs,
       @Bind("endTs") Long endTs);
@@ -222,10 +252,16 @@ public interface EntityTimeSeriesDAO {
         ? listCount(
             getTimeSeriesTableName(),
             getPartitionFieldName(),
+            filter.getQueryParams(),
             filter.getCondition(),
             startTs,
             endTs)
-        : listCount(getTimeSeriesTableName(), filter.getCondition(), startTs, endTs);
+        : listCount(
+            getTimeSeriesTableName(),
+            filter.getQueryParams(),
+            filter.getCondition(),
+            startTs,
+            endTs);
   }
 
   @SqlQuery("SELECT json FROM <table> WHERE id = :id")
@@ -233,6 +269,13 @@ public interface EntityTimeSeriesDAO {
 
   default String getById(UUID id) {
     return getById(getTimeSeriesTableName(), id.toString());
+  }
+
+  @SqlUpdate(value = "DELETE from <table> WHERE id = :id")
+  void deleteById(@Define("table") String table, @Bind("id") String id);
+
+  default void deleteById(UUID id) {
+    deleteById(getTimeSeriesTableName(), id.toString());
   }
 
   /** @deprecated */

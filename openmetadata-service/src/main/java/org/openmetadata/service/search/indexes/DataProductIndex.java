@@ -5,28 +5,26 @@ import java.util.List;
 import java.util.Map;
 import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.models.SearchSuggest;
-import org.openmetadata.service.util.JsonUtils;
 
 public record DataProductIndex(DataProduct dataProduct) implements SearchIndex {
-  private static final List<String> excludeFields = List.of("changeDescription");
-
-  public Map<String, Object> buildESDoc() {
-    Map<String, Object> doc = JsonUtils.getMap(dataProduct);
-    SearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
+  @Override
+  public List<SearchSuggest> getSuggest() {
     List<SearchSuggest> suggest = new ArrayList<>();
     suggest.add(SearchSuggest.builder().input(dataProduct.getName()).weight(5).build());
     suggest.add(
         SearchSuggest.builder().input(dataProduct.getFullyQualifiedName()).weight(5).build());
-    doc.put(
-        "fqnParts",
-        getFQNParts(
-            dataProduct.getFullyQualifiedName(),
-            suggest.stream().map(SearchSuggest::getInput).toList()));
-    doc.put("entityType", Entity.DATA_PRODUCT);
-    doc.put("owner", getEntityWithDisplayName(dataProduct.getOwner()));
-    doc.put("domain", getEntityWithDisplayName(dataProduct.getDomain()));
+    return suggest;
+  }
+
+  @Override
+  public Object getEntity() {
+    return dataProduct;
+  }
+
+  public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
+    Map<String, Object> commonAttributes = getCommonAttributesMap(dataProduct, Entity.DATA_PRODUCT);
+    doc.putAll(commonAttributes);
     return doc;
   }
 

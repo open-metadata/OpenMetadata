@@ -14,8 +14,8 @@
 package org.openmetadata.service.workflows.interfaces;
 
 import java.util.Map;
-import org.openmetadata.service.exception.ProcessorException;
+import org.openmetadata.service.exception.SearchIndexException;
 
 public interface Processor<T, I> extends Stats {
-  T process(I input, Map<String, Object> contextData) throws ProcessorException;
+  T process(I input, Map<String, Object> contextData) throws SearchIndexException;
 }

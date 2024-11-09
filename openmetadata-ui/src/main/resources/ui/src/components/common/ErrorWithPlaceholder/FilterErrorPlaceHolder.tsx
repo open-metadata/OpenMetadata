@@ -15,9 +15,8 @@ import { Space, Typography } from 'antd';
 import classNames from 'classnames';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
 import { ReactComponent as FilterPlaceHolderIcon } from '../../../assets/svg/no-search-placeholder.svg';
-import { DATA_QUALITY_PROFILER_DOCS } from '../../../constants/docs.constants';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { Transi18next } from '../../../utils/CommonUtils';
 import { FilterPlaceholderProps } from './placeholder.interface';
 
@@ -25,8 +24,10 @@ const FilterErrorPlaceHolder = ({
   className,
   size,
   doc,
+  placeholderText,
 }: FilterPlaceholderProps) => {
   const { t } = useTranslation();
+  const { theme } = useApplicationStore();
 
   return (
     <div
@@ -39,21 +40,18 @@ const FilterErrorPlaceHolder = ({
           width={size}
         />
         <div className="m-t-xss text-center text-sm font-normal">
-          <Typography.Paragraph style={{ marginBottom: '0' }}>
-            <Transi18next
-              i18nKey="message.no-data-quality-test-case"
-              renderElement={
-                <Link
-                  rel="noreferrer"
-                  target="_blank"
-                  to={{ pathname: DATA_QUALITY_PROFILER_DOCS }}
-                />
-              }
-              values={{
-                explore: t('message.explore-our-guide-here'),
-              }}
-            />
-          </Typography.Paragraph>
+          {placeholderText ? (
+            <Typography.Paragraph>{placeholderText}</Typography.Paragraph>
+          ) : (
+            <>
+              <Typography.Paragraph style={{ marginBottom: '0' }}>
+                {t('label.no-result-found')}
+              </Typography.Paragraph>
+              <Typography.Paragraph style={{ marginBottom: '0' }}>
+                {t('message.try-adjusting-filter')}
+              </Typography.Paragraph>
+            </>
+          )}
           {doc ? (
             <Typography.Paragraph>
               <Transi18next
@@ -62,7 +60,7 @@ const FilterErrorPlaceHolder = ({
                   <a
                     href={doc}
                     rel="noreferrer"
-                    style={{ color: '#1890ff' }}
+                    style={{ color: theme.primaryColor }}
                     target="_blank"
                   />
                 }

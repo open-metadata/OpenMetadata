@@ -23,37 +23,17 @@
   }
 }
 
-.domain-page-layout {
-  .page-layout-v1-vertical-scroll {
-    height: @domain-page-height;
-  }
-  .page-layout-rightpanel {
-    padding-right: 0;
-    background-color: @white;
-    border: 1px solid @border-color;
-    border-radius: 0;
-    padding-left: 0;
-    border-top: 0;
+.domain-form-container,
+.add-subdomain-modal,
+.add-data-product-modal {
+  .toastui-editor {
+    min-height: 150px !important; // overriding inline style
 
-    .summary-panel-container {
-      height: @domain-page-height;
+    .ProseMirror {
+      min-height: 150px;
     }
   }
-}
-
-.domain-asset-page-layout {
-  .page-layout-v1-vertical-scroll {
-    height: @domain-page-height;
-    .assets-tab-container {
-      padding-top: 4px;
-    }
-  }
-}
-
-.domain-form-container .toastui-editor,
-.add-data-product-modal .toastui-editor {
-  min-height: 150px !important; // overriding inline style
-  .ProseMirror {
+  .toastui-editor-md-preview {
     min-height: 150px;
   }
 }
@@ -67,4 +47,9 @@
     background: @white;
     padding: 20px;
   }
+}
+
+.add-data-product-modal .form-item-horizontal,
+.add-subdomain-modal .form-item-horizontal {
+  margin-bottom: 8px;
 }

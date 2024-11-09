@@ -47,18 +47,18 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.metabase import metadata as MetabaseMetadata
 from metadata.ingestion.source.dashboard.metabase.metadata import MetabaseSource
 from metadata.ingestion.source.dashboard.metabase.models import (
+    DashCard,
     DatasetQuery,
     MetabaseChart,
     MetabaseDashboardDetails,
     MetabaseTable,
     Native,
-    OrderedCard,
 )
 from metadata.utils import fqn
 
 MOCK_DASHBOARD_SERVICE = DashboardService(
     id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb",
-    fullyQualifiedName=FullyQualifiedEntityName(__root__="mock_metabase"),
+    fullyQualifiedName=FullyQualifiedEntityName("mock_metabase"),
     name="mock_metabase",
     connection=DashboardConnection(),
     serviceType=DashboardServiceType.Metabase,
@@ -66,7 +66,7 @@ MOCK_DASHBOARD_SERVICE = DashboardService(
 
 MOCK_DATABASE_SERVICE = DatabaseService(
     id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb",
-    fullyQualifiedName=FullyQualifiedEntityName(__root__="mock_mysql"),
+    fullyQualifiedName=FullyQualifiedEntityName("mock_mysql"),
     name="mock_mysql",
     connection=DatabaseConnection(),
     serviceType=DatabaseServiceType.Mysql,
@@ -127,10 +127,10 @@ mock_config = {
 
 
 MOCK_CHARTS = [
-    OrderedCard(
+    DashCard(
         card=MetabaseChart(
             description="Test Chart",
-            table_id=1,
+            table_id="1",
             database_id=1,
             name="chart1",
             id="1",
@@ -138,10 +138,10 @@ MOCK_CHARTS = [
             display="chart1",
         )
     ),
-    OrderedCard(
+    DashCard(
         card=MetabaseChart(
             description="Test Chart",
-            table_id=1,
+            table_id="1",
             database_id=1,
             name="chart2",
             id="2",
@@ -151,7 +151,7 @@ MOCK_CHARTS = [
             display="chart2",
         )
     ),
-    OrderedCard(card=MetabaseChart(name="chart3", id="3")),
+    DashCard(card=MetabaseChart(name="chart3", id="3")),
 ]
 
 
@@ -170,7 +170,7 @@ EXPECTED_LINEAGE = AddLineageRequest(
 )
 
 MOCK_DASHBOARD_DETAILS = MetabaseDashboardDetails(
-    description="SAMPLE DESCRIPTION", name="test_db", id="1", ordered_cards=MOCK_CHARTS
+    description="SAMPLE DESCRIPTION", name="test_db", id="1", dashcards=MOCK_CHARTS
 )
 
 
@@ -181,7 +181,7 @@ EXPECTED_DASHBOARD = [
         description="SAMPLE DESCRIPTION",
         sourceUrl="http://metabase.com/dashboard/1-test-db",
         charts=[],
-        service=FullyQualifiedEntityName(__root__="mock_metabase"),
+        service=FullyQualifiedEntityName("mock_metabase"),
         project="Test Collection",
     )
 ]
@@ -194,8 +194,8 @@ EXPECTED_CHARTS = [
         chartType="Other",
         sourceUrl="http://metabase.com/question/1-chart1",
         tags=None,
-        owner=None,
-        service=FullyQualifiedEntityName(__root__="mock_metabase"),
+        owners=None,
+        service=FullyQualifiedEntityName("mock_metabase"),
     ),
     CreateChartRequest(
         name="2",
@@ -204,8 +204,8 @@ EXPECTED_CHARTS = [
         chartType="Other",
         sourceUrl="http://metabase.com/question/2-chart2",
         tags=None,
-        owner=None,
-        service=FullyQualifiedEntityName(__root__="mock_metabase"),
+        owners=None,
+        service=FullyQualifiedEntityName("mock_metabase"),
     ),
     CreateChartRequest(
         name="3",
@@ -214,8 +214,8 @@ EXPECTED_CHARTS = [
         chartType="Other",
         sourceUrl="http://metabase.com/question/3-chart3",
         tags=None,
-        owner=None,
-        service=FullyQualifiedEntityName(__root__="mock_metabase"),
+        owners=None,
+        service=FullyQualifiedEntityName("mock_metabase"),
     ),
 ]
 
@@ -234,16 +234,16 @@ class MetabaseUnitTest(TestCase):
         super().__init__(methodName)
         get_connection.return_value = False
         test_connection.return_value = False
-        self.config = OpenMetadataWorkflowConfig.parse_obj(mock_config)
-        self.metabase = MetabaseSource.create(
+        self.config = OpenMetadataWorkflowConfig.model_validate(mock_config)
+        self.metabase: MetabaseSource = MetabaseSource.create(
             mock_config["source"],
             OpenMetadata(self.config.workflowConfig.openMetadataServerConfig),
         )
         self.metabase.client = SimpleNamespace()
-        self.metabase.context.__dict__[
+        self.metabase.context.get().__dict__[
             "dashboard_service"
-        ] = MOCK_DASHBOARD_SERVICE.fullyQualifiedName.__root__
-        self.metabase.context.__dict__["project_name"] = "Test Collection"
+        ] = MOCK_DASHBOARD_SERVICE.fullyQualifiedName.root
+        self.metabase.context.get().__dict__["project_name"] = "Test Collection"
 
     def test_dashboard_name(self):
         assert (
@@ -302,21 +302,21 @@ class MetabaseUnitTest(TestCase):
 
         # test out _yield_lineage_from_api
         mock_dashboard = deepcopy(MOCK_DASHBOARD_DETAILS)
-        mock_dashboard.ordered_cards = [MOCK_DASHBOARD_DETAILS.ordered_cards[0]]
+        mock_dashboard.dashcards = [MOCK_DASHBOARD_DETAILS.dashcards[0]]
         result = self.metabase.yield_dashboard_lineage_details(
             dashboard_details=mock_dashboard, db_service_name="db.service.name"
         )
         self.assertEqual(next(result).right, EXPECTED_LINEAGE)
 
         # test out _yield_lineage_from_query
-        mock_dashboard.ordered_cards = [MOCK_DASHBOARD_DETAILS.ordered_cards[1]]
+        mock_dashboard.dashcards = [MOCK_DASHBOARD_DETAILS.dashcards[1]]
         result = self.metabase.yield_dashboard_lineage_details(
             dashboard_details=mock_dashboard, db_service_name="db.service.name"
         )
         self.assertEqual(next(result).right, EXPECTED_LINEAGE)
 
         # test out if no query type
-        mock_dashboard.ordered_cards = [MOCK_DASHBOARD_DETAILS.ordered_cards[2]]
+        mock_dashboard.dashcards = [MOCK_DASHBOARD_DETAILS.dashcards[2]]
         result = self.metabase.yield_dashboard_lineage_details(
             dashboard_details=mock_dashboard, db_service_name="db.service.name"
         )

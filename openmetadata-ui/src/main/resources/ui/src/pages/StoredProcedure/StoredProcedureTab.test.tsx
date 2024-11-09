@@ -39,7 +39,7 @@ jest.mock(
   }
 );
 
-jest.mock('../../components/Loader/Loader', () => {
+jest.mock('../../components/common/Loader/Loader', () => {
   return jest.fn().mockImplementation(() => <p>testLoader</p>);
 });
 

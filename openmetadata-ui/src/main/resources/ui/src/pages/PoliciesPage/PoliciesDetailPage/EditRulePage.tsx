@@ -17,12 +17,13 @@ import { compare } from 'fast-json-patch';
 import { trim } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useHistory } from 'react-router-dom';
+import Loader from '../../../components/common/Loader/Loader';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
-import Loader from '../../../components/Loader/Loader';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
 import { HTTP_STATUS_CODE } from '../../../constants/Auth.constants';
 import { GlobalSettingOptions } from '../../../constants/GlobalSettings.constants';
+import { TabSpecificField } from '../../../enums/entity.enum';
 import { Effect, Rule } from '../../../generated/api/policies/createPolicy';
 import { Policy } from '../../../generated/entity/policies/policy';
 import { useFqn } from '../../../hooks/useFqn';
@@ -50,8 +51,7 @@ const InitialData: Rule = {
 const EditRulePage = () => {
   const { t } = useTranslation();
   const history = useHistory();
-  const { ruleName } = useParams<{ ruleName: string }>();
-  const { fqn } = useFqn();
+  const { fqn, ruleName } = useFqn();
   const [isLoading, setLoading] = useState<boolean>(false);
   const [policy, setPolicy] = useState<Policy>({} as Policy);
   const [ruleData, setRuleData] = useState<Rule>(InitialData);
@@ -82,7 +82,10 @@ const EditRulePage = () => {
   const fetchPolicy = async () => {
     setLoading(true);
     try {
-      const data = await getPolicyByName(fqn, 'owner,location,teams,roles');
+      const data = await getPolicyByName(
+        fqn,
+        `${TabSpecificField.OWNERS},${TabSpecificField.LOCATION},${TabSpecificField.TEAMS},${TabSpecificField.ROLES}`
+      );
       if (data) {
         setPolicy(data);
         const selectedRule = data.rules.find((rule) => rule.name === ruleName);

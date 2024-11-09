@@ -28,12 +28,9 @@ jest.mock('../../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
 
-jest.mock(
-  '../../../ActivityFeed/ActivityThreadPanel/ActivityThreadPanelBody',
-  () => {
-    return jest.fn().mockReturnValue(<div>ActivityThreadPanelBody</div>);
-  }
-);
+jest.mock('../../../Announcement/AnnouncementThreadBody.component', () => {
+  return jest.fn().mockReturnValue(<div>AnnouncementThreadBody</div>);
+});
 
 jest.mock('../../../Modals/AnnouncementModal/AddAnnouncementModal', () => {
   return jest.fn().mockReturnValue(<div>AddAnnouncementModal</div>);
@@ -43,7 +40,6 @@ const mockProps = {
   open: true,
   entityType: 'string',
   entityFQN: 'string',
-  entityName: 'string',
   onClose: jest.fn(),
   createPermission: true,
 };
@@ -52,21 +48,31 @@ describe('Test Announcement drawer component', () => {
   it('Should render the component', async () => {
     render(<AnnouncementDrawer {...mockProps} />);
 
-    const drawer = await screen.findByTestId('announcement-drawer');
+    const announcementHeader = screen.getByText('label.announcement-plural');
+    const addAnnouncementButton = screen.getByTestId('add-announcement');
 
-    const addButton = await screen.findByTestId('add-announcement');
+    const addButton = screen.getByTestId('add-announcement');
 
-    const announcements = await screen.findByText('ActivityThreadPanelBody');
+    const announcements = screen.getByText('AnnouncementThreadBody');
 
-    expect(drawer).toBeInTheDocument();
+    expect(announcementHeader).toBeInTheDocument();
+    expect(addAnnouncementButton).toBeInTheDocument();
     expect(addButton).toBeInTheDocument();
     expect(announcements).toBeInTheDocument();
+  });
+
+  it('Should be disabled if not having permission to create', async () => {
+    render(<AnnouncementDrawer {...mockProps} createPermission={false} />);
+
+    const addButton = screen.getByTestId('add-announcement');
+
+    expect(addButton).toBeDisabled();
   });
 
   it('Should open modal on click of add button', async () => {
     render(<AnnouncementDrawer {...mockProps} />);
 
-    const addButton = await screen.findByTestId('add-announcement');
+    const addButton = screen.getByTestId('add-announcement');
 
     fireEvent.click(addButton);
 

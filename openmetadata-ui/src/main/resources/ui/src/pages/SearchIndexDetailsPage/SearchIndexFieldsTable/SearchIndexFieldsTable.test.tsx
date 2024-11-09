@@ -50,11 +50,11 @@ jest.mock(
 );
 
 jest.mock(
-  '../../../components/TableDescription/TableDescription.component',
+  '../../../components/Database/TableDescription/TableDescription.component',
   () => jest.fn().mockImplementation(() => <div>testTableDescription</div>)
 );
 
-jest.mock('../../../components/TableTags/TableTags.component', () =>
+jest.mock('../../../components/Database/TableTags/TableTags.component', () =>
   jest.fn().mockImplementation(() => <div>testTableTags</div>)
 );
 

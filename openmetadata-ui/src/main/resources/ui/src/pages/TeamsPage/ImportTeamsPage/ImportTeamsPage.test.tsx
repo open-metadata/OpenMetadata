@@ -18,7 +18,7 @@ import {
   waitForElementToBeRemoved,
 } from '@testing-library/react';
 import React from 'react';
-import { usePermissionProvider } from '../../../components/PermissionProvider/PermissionProvider';
+import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
   MOCK_CURRENT_TEAM,
   MOCK_MARKETING_TEAM,
@@ -72,13 +72,13 @@ jest.mock(
     });
   }
 );
-jest.mock('../../../components/Loader/Loader', () => {
+jest.mock('../../../components/common/Loader/Loader', () => {
   return jest.fn().mockImplementation(() => {
     return <div>Loader</div>;
   });
 });
 jest.mock(
-  '../../../components/Team/TeamImportResult/TeamImportResult.component',
+  '../../../components/Settings/Team/TeamImportResult/TeamImportResult.component',
   () => ({
     TeamImportResult: jest.fn().mockImplementation(() => {
       return <div>TeamImportResult</div>;
@@ -86,13 +86,20 @@ jest.mock(
   })
 );
 jest.mock(
-  '../../../components/Team/UserImportResult/UserImportResult.component',
+  '../../../components/Settings/Team/UserImportResult/UserImportResult.component',
   () => ({
     UserImportResult: jest.fn().mockImplementation(() => {
       return <div>UserImportResult</div>;
     }),
   })
 );
+
+jest.mock('../../../components/PageLayoutV1/PageLayoutV1', () => {
+  return jest.fn().mockImplementation(({ children }) => {
+    return <div>{children}</div>;
+  });
+});
+
 const mockParams = {
   fqn: 'Organization',
 };
@@ -102,10 +109,15 @@ const mockLocation = {
 const mockHistory = {
   push: jest.fn(),
 };
+
+jest.mock('../../../hooks/useCustomLocation/useCustomLocation', () => {
+  return jest.fn().mockImplementation(() => ({
+    ...mockLocation,
+  }));
+});
 jest.mock('react-router-dom', () => ({
   useHistory: jest.fn().mockImplementation(() => mockHistory),
   useParams: jest.fn().mockImplementation(() => mockParams),
-  useLocation: jest.fn().mockImplementation(() => mockLocation),
 }));
 jest.mock('../../../rest/teamsAPI', () => ({
   getTeamByName: jest
@@ -114,7 +126,7 @@ jest.mock('../../../rest/teamsAPI', () => ({
   importTeam: jest.fn(),
   importUserInTeam: jest.fn(),
 }));
-jest.mock('../../../components/PermissionProvider/PermissionProvider', () => ({
+jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockReturnValue({
     getEntityPermissionByFqn: jest.fn().mockReturnValue({
       Create: true,

@@ -13,20 +13,21 @@
 
 import { Col, Row } from 'antd';
 import { isEmpty, isUndefined } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import PageHeader from '../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
-import SettingItemCard from '../../components/Setting/SettingItemCard/SettingItemCard.component';
+import { useApplicationsProvider } from '../../components/Settings/Applications/ApplicationsProvider/ApplicationsProvider';
+import SettingItemCard from '../../components/Settings/SettingItemCard/SettingItemCard.component';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
+import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { useAuth } from '../../hooks/authHooks';
+import globalSettingsClassBase from '../../utils/GlobalSettingsClassBase';
 import {
   getGlobalSettingMenuItem,
-  getGlobalSettingsMenuWithPermission,
   SettingMenuItem,
 } from '../../utils/GlobalSettingsUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
@@ -38,13 +39,13 @@ const GlobalSettingPage = () => {
 
   const { permissions } = usePermissionProvider();
   const { isAdminUser } = useAuth();
-
-  const [settings, setSettings] = useState<SettingMenuItem[]>([]);
+  const { loading } = useApplicationsProvider();
 
   const settingItems = useMemo(
     () =>
-      getGlobalSettingsMenuWithPermission(permissions, isAdminUser).filter(
-        (curr: SettingMenuItem) => {
+      globalSettingsClassBase
+        .getGlobalSettingsMenuWithPermission(permissions, isAdminUser)
+        .filter((curr: SettingMenuItem) => {
           const menuItem = getGlobalSettingMenuItem(curr);
 
           if (!isUndefined(menuItem.isProtected)) {
@@ -56,17 +57,12 @@ const GlobalSettingPage = () => {
           }
 
           return false;
-        }
-      ),
-    [permissions, isAdminUser]
+        }),
+    [permissions, isAdminUser, loading]
   );
 
   const handleSettingItemClick = useCallback((category: string) => {
     history.push(getSettingPath(category));
-  }, []);
-
-  useEffect(() => {
-    setSettings(settingItems);
   }, []);
 
   if (isEmpty(settingItems)) {
@@ -82,7 +78,7 @@ const GlobalSettingPage = () => {
 
         <Col span={24}>
           <Row gutter={[20, 20]}>
-            {settings.map((setting) => (
+            {settingItems.map((setting) => (
               <Col key={setting?.key} span={6}>
                 <SettingItemCard
                   data={setting}

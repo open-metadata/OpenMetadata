@@ -18,9 +18,9 @@ import { isEmpty, uniqueId } from 'lodash';
 import React, { FC, HTMLAttributes } from 'react';
 import { Node } from 'reactflow';
 import { ReactComponent as DragIconDotted } from '../../../assets/svg/dots-six-bold.svg';
-import { PRIMERY_COLOR } from '../../../constants/constants';
 import { entityData } from '../../../constants/Lineage.constants';
-import { getEntityIcon } from '../../../utils/TableUtils';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import searchClassBase from '../../../utils/SearchClassBase';
 import './entity-lineage-sidebar.less';
 
 interface SidebarProps extends HTMLAttributes<HTMLDivElement> {
@@ -34,6 +34,7 @@ interface EntityNodeProps extends HTMLAttributes<HTMLDivElement> {
 }
 
 const EntityNode: FC<EntityNodeProps> = ({ type, label, draggable }) => {
+  const { theme } = useApplicationStore();
   const onDragStart = (event: React.DragEvent, nodeType: string) => {
     event.dataTransfer.setData('application/reactflow', nodeType);
     event.dataTransfer.effectAllowed = 'move';
@@ -55,7 +56,7 @@ const EntityNode: FC<EntityNodeProps> = ({ type, label, draggable }) => {
             e.preventDefault();
             e.stopPropagation();
           }}>
-          {getEntityIcon(type || '')}
+          {searchClassBase.getEntityIcon(type ?? '')}
         </span>
         <span className="d-flex m-l-xs">
           <Icon
@@ -63,7 +64,7 @@ const EntityNode: FC<EntityNodeProps> = ({ type, label, draggable }) => {
             component={DragIconDotted}
             rotate={90}
             style={{
-              color: PRIMERY_COLOR,
+              color: theme.primaryColor,
             }}
           />
         </span>

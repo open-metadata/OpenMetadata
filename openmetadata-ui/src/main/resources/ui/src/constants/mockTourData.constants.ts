@@ -432,49 +432,1464 @@ export const mockDatasetData = {
     ],
   },
   entityLineage: {
-    entity: {
-      id: '644405ad-60fe-4329-884f-fc3e3ab6c6a5',
-      type: 'table',
-      name: 'dim_address',
-      fullyQualifiedName: 'sample_data.ecommerce_db.shopify.dim_address',
-      description:
-        'This dimension table contains the billing and shipping addresses of customers. You can join this table with the sales table to generate lists of the billing and shipping addresses. Customers can enter their addresses more than once, so the same address can appear in more than one row in this table. This table contains one row per customer address.',
-      deleted: false,
-      href: 'http://localhost:8585/api/v1/tables/644405ad-60fe-4329-884f-fc3e3ab6c6a5',
-    },
     nodes: [
       {
-        id: 'fc1d9698-5e10-4442-af5c-a7ac05c078e9',
-        type: 'pipeline',
-        name: 'dim_address_etl',
-        fullyQualifiedName: 'sample_airflow.dim_address_etl',
-        description: 'dim_address ETL pipeline',
-        displayName: 'dim_address etl',
-        deleted: false,
-        href: 'http://localhost:8585/api/v1/pipelines/fc1d9698-5e10-4442-af5c-a7ac05c078e9',
-      },
-      {
-        id: '1e7f78c0-ebb5-4565-a09f-63c1cdc72389',
-        type: 'table',
-        name: 'raw_customer',
-        fullyQualifiedName: 'sample_data.ecommerce_db.shopify.raw_customer',
+        databaseSchema: {
+          deleted: false,
+          displayName: 'shopify',
+          name: 'shopify',
+          description:
+            'This **mock** database contains schema related to shopify sales and orders with related dimension tables.',
+          id: '5cd86fad-873c-4e59-b9ff-a38967aac79d',
+          type: 'databaseSchema',
+          fullyQualifiedName: 'sample_data.ecommerce_db.shopify',
+        },
+        serviceType: 'BigQuery',
+        lineage: [
+          {
+            toEntity: {
+              fqn: 'sample_data.ecommerce_db.shopify."dim.product"',
+              id: 'f65a4402-3e82-4238-b864-bc7c89bb2e2e',
+              type: 'table',
+            },
+            pipeline: {
+              deleted: false,
+              displayName: 'dim_product etl',
+              name: 'dim_product_etl',
+              description: 'diim_product ETL pipeline',
+              id: '7b42caac-154c-4d1e-9da2-2a560979a8d7',
+              type: 'pipeline',
+              fullyQualifiedName: 'sample_airflow.dim_product_etl',
+            },
+            fromEntity: {
+              fqn: 'sample_data.ecommerce_db.shopify.raw_customer',
+              id: '1983c7f1-52fd-4dc7-89b9-29a8fffcfd6f',
+              type: 'table',
+            },
+            sqlQuery:
+              'insert into sample_data.ecommerce_db.shopify."dim.product" as select * from sample_data.ecommerce_db.shopify.raw_customer',
+            description: null,
+            source: 'Manual',
+            doc_id:
+              '1983c7f1-52fd-4dc7-89b9-29a8fffcfd6f-f65a4402-3e82-4238-b864-bc7c89bb2e2e',
+          },
+          {
+            toEntity: {
+              fqn: 'sample_data.ecommerce_db.shopify."dim.product"',
+              id: 'f65a4402-3e82-4238-b864-bc7c89bb2e2e',
+              type: 'table',
+            },
+            pipeline: {
+              deleted: false,
+              displayName: 'dim_product etl',
+              name: 'dim_product_etl',
+              description: 'diim_product ETL pipeline',
+              id: '7b42caac-154c-4d1e-9da2-2a560979a8d7',
+              type: 'pipeline',
+              fullyQualifiedName: 'sample_airflow.dim_product_etl',
+            },
+            fromEntity: {
+              fqn: 'sample_data.ecommerce_db.shopify.raw_order',
+              id: 'd26498fa-05cd-4e36-b7ba-f38a7a5fd372',
+              type: 'table',
+            },
+            sqlQuery:
+              'select * from sample_data.ecommerce_db.shopify.raw_order',
+            description: null,
+            source: 'Manual',
+            doc_id:
+              'd26498fa-05cd-4e36-b7ba-f38a7a5fd372-f65a4402-3e82-4238-b864-bc7c89bb2e2e',
+          },
+        ],
+        columns: [
+          {
+            dataType: 'NUMERIC',
+            name: 'product_id',
+            description:
+              'Unique identifier for the product. This column is the primary key for this table.',
+            constraint: 'PRIMARY_KEY',
+            fullyQualifiedName:
+              'sample_data.ecommerce_db.shopify."dim.product".product_id',
+            ordinalPosition: 1,
+            dataTypeDisplay: 'numeric',
+            tags: [],
+          },
+          {
+            dataType: 'NUMERIC',
+            name: 'shop_id',
+            description:
+              'ID of the store. This column is a foreign key reference to the shop_id column in the dim_shop table.',
+            fullyQualifiedName:
+              'sample_data.ecommerce_db.shopify."dim.product".shop_id',
+            ordinalPosition: 2,
+            dataTypeDisplay: 'numeric',
+            tags: [],
+          },
+          {
+            dataLength: 100,
+            dataType: 'VARCHAR',
+            name: 'title',
+            description: 'Name of the product.',
+            fullyQualifiedName:
+              'sample_data.ecommerce_db.shopify."dim.product".title',
+            ordinalPosition: 3,
+            dataTypeDisplay: 'varchar',
+            tags: [],
+          },
+          {
+            dataLength: 100,
+            dataType: 'VARCHAR',
+            name: 'vendor',
+            description:
+              'Name of the manufacturer, wholesaler, or other vendor of the product.',
+            fullyQualifiedName:
+              'sample_data.ecommerce_db.shopify."dim.product".vendor',
+            ordinalPosition: 4,
+            dataTypeDisplay: 'varchar',
+            tags: [],
+          },
+          {
+            dataType: 'TIMESTAMP',
+            name: 'created_at',
+            description:
+              'Date (ISO 8601) and time (UTC) when the product was added to the store. The format is YYYY-MM-DD HH:mm:ss (for example, 2016-02-05 17:04:01).',
+            fullyQualifiedName:
+              'sample_data.ecommerce_db.shopify."dim.product".created_at',
+            ordinalPosition: 5,
+            dataTypeDisplay: 'timestamp',
+            tags: [],
+          },
+          {
+            dataType: 'TIMESTAMP',
+            name: 'deleted_at',
+            description:
+              'Date (ISO 8601) and time (UTC) when the product was deleted. The format is YYYY-MM-DD HH:mm:ss (for example, 2016-02-05 17:04:01).',
+            fullyQualifiedName:
+              'sample_data.ecommerce_db.shopify."dim.product".deleted_at',
+            ordinalPosition: 6,
+            dataTypeDisplay: 'timestamp',
+            tags: [],
+          },
+        ],
+        displayName: 'dim.product',
         description:
-          'This is a raw customers table as represented in our online DB. This contains personal, shipping and billing addresses and details of the customer store and customer profile. This table is used to build our dimensional and fact tables',
+          'This dimension table contains information about each of the products in your store. This table contains one row per product. This table reflects the current state of products in your Shopify admin.',
+        customMetrics: [],
+        tableType: 'Regular',
+        database: {
+          deleted: false,
+          displayName: 'ecommerce_db',
+          name: 'ecommerce_db',
+          description:
+            'This **mock** database contains schemas related to shopify sales and orders with related dimension tables.',
+          id: '722b65a4-9205-4f11-a62d-6a8902cdab39',
+          type: 'database',
+          fullyQualifiedName: 'sample_data.ecommerce_db',
+        },
+        columnNames: [
+          'product_id',
+          'shop_id',
+          'title',
+          'vendor',
+          'created_at',
+          'deleted_at',
+        ],
+        tier: null,
+        totalVotes: 0,
+        usageSummary: {
+          date: '2024-02-02',
+          weeklyStats: {
+            percentileRank: 0,
+            count: 0,
+          },
+          monthlyStats: {
+            percentileRank: 0,
+            count: 0,
+          },
+          dailyStats: {
+            percentileRank: 0,
+            count: 0,
+          },
+        },
+        id: 'f65a4402-3e82-4238-b864-bc7c89bb2e2e',
+        updatedAt: 1706855211762,
+        owner: null,
+        updatedBy: 'admin',
+        entityType: 'table',
+        dataProducts: [],
+        fullyQualifiedName: 'sample_data.ecommerce_db.shopify."dim.product"',
+        version: 0.2,
+        tags: [],
+        followers: [],
         deleted: false,
-        href: 'http://localhost:8585/api/v1/tables/1e7f78c0-ebb5-4565-a09f-63c1cdc72389',
+        service: {
+          deleted: false,
+          displayName: 'sample_data',
+          name: 'sample_data',
+          id: '1e7f57b6-a165-410d-9962-1ccf54599cc7',
+          type: 'databaseService',
+          fullyQualifiedName: 'sample_data',
+        },
+        domain: null,
+        name: 'dim.product',
+        votes: {
+          upVoters: [],
+          downVoters: [],
+          upVotes: 0,
+          downVotes: 0,
+        },
+      },
+      {
+        databaseSchema: {
+          deleted: false,
+          displayName: 'shopify',
+          name: 'shopify',
+          description:
+            'This **mock** database contains schema related to shopify sales and orders with related dimension tables.',
+          id: '5cd86fad-873c-4e59-b9ff-a38967aac79d',
+          type: 'databaseSchema',
+          fullyQualifiedName: 'sample_data.ecommerce_db.shopify',
+        },
+        serviceType: 'BigQuery',
+        lineage: [
+          {
+            toEntity: {
+              fqn: 'sample_data.ecommerce_db.shopify."dim.product.variant"',
+              id: 'd3e43ac3-8d05-45ed-9a30-94765dbfa7a3',
+              type: 'table',
+            },
+            pipeline: {
+              deleted: false,
+              displayName: 'dim_product etl',
+              name: 'dim_product_etl',
+              description: 'diim_product ETL pipeline',
+              id: '7b42caac-154c-4d1e-9da2-2a560979a8d7',
+              type: 'pipeline',
+              fullyQualifiedName: 'sample_airflow.dim_product_etl',
+            },
+            fromEntity: {
+              fqn: 'sample_data.ecommerce_db.shopify.raw_customer',
+              id: '1983c7f1-52fd-4dc7-89b9-29a8fffcfd6f',
+              type: 'table',
+            },
+            sqlQuery:
+              'create ecommerce_db.shopify."dim.product.variant" as select * from sample_data.ecommerce_db.shopify.raw_customer',
+            description: null,
+            source: 'Manual',
+            doc_id:
+              '1983c7f1-52fd-4dc7-89b9-29a8fffcfd6f-d3e43ac3-8d05-45ed-9a30-94765dbfa7a3',
+          },
+          {
+            toEntity: {
+              fqn: 'sample_data.ecommerce_db.shopify."dim.product.variant"',
+              id: 'd3e43ac3-8d05-45ed-9a30-94765dbfa7a3',
+              type: 'table',
+            },
+            pipeline: {
+              deleted: false,
+              displayName: 'dim_product etl',
+              name: 'dim_product_etl',
+              description: 'diim_product ETL pipeline',
+              id: '7b42caac-154c-4d1e-9da2-2a560979a8d7',
+              type: 'pipeline',
+              fullyQualifiedName: 'sample_airflow.dim_product_etl',
+            },
+            fromEntity: {
+              fqn: 'sample_data.ecommerce_db.shopify.raw_order',
+              id: 'd26498fa-05cd-4e36-b7ba-f38a7a5fd372',
+              type: 'table',
+            },
+            sqlQuery:
+              'select * from sample_data.ecommerce_db.shopify.raw_order',
+            description: null,
+            source: 'Manual',
+            doc_id:
+              'd26498fa-05cd-4e36-b7ba-f38a7a5fd372-d3e43ac3-8d05-45ed-9a30-94765dbfa7a3',
+          },
+        ],
+        columns: [
+          {
+            dataType: 'NUMERIC',
+            name: 'product_variant_id',
+            description:
+              'The ID of the product variant. This column is the primary key for this table.',
+            constraint: 'PRIMARY_KEY',
+            fullyQualifiedName:
+              'sample_data.ecommerce_db.shopify."dim.product.variant".product_variant_id',
+            ordinalPosition: 1,
+            dataTypeDisplay: 'numeric',
+            tags: [],
+          },
+          {
+            dataType: 'NUMERIC',
+            name: 'product_id',
+            description:
+              'The ID of the product. This column is a foreign key reference to the product_id column in dim.product table.',
+            fullyQualifiedName:
+              'sample_data.ecommerce_db.shopify."dim.product.variant".product_id',
+            ordinalPosition: 2,
+            dataTypeDisplay: 'numeric',
+            tags: [],
+          },
+          {
+            dataType: 'NUMERIC',
+            name: 'shop_id',
+            description:
+              'The ID of the store. This column is a foreign key reference to the shop_id column in the dim_shop table.',
+            fullyQualifiedName:
+              'sample_data.ecommerce_db.shopify."dim.product.variant".shop_id',
+            ordinalPosition: 3,
+            dataTypeDisplay: 'numeric',
+            tags: [],
+          },
+          {
+            dataLength: 100,
+            dataType: 'VARCHAR',
+            name: 'title',
+            description: 'The title of the product variant.',
+            fullyQualifiedName:
+              'sample_data.ecommerce_db.shopify."dim.product.variant".title',
+            ordinalPosition: 4,
+            dataTypeDisplay: 'varchar',
+            tags: [],
+          },
+          {
+            dataLength: 100,
+            dataType: 'VARCHAR',
+            name: 'barcode',
+            description:
+              'The Barcode, UPC, or ISBN number of the product variant.',
+            fullyQualifiedName:
+              'sample_data.ecommerce_db.shopify."dim.product.variant".barcode',
+            ordinalPosition: 5,
+            dataTypeDisplay: 'varchar',
+            tags: [],
+          },
+          {
+            dataLength: 100,
+            dataType: 'VARCHAR',
+            name: 'sku',
+            description: 'The SKU of the product variant.',
+            fullyQualifiedName:
+              'sample_data.ecommerce_db.shopify."dim.product.variant".sku',
+            ordinalPosition: 6,
+            dataTypeDisplay: 'varchar',
+            tags: [],
+          },
+          {
+            dataType: 'NUMERIC',
+            name: 'price',
+            description:
+              "The price of the product variant, in your store's currency.",
+            fullyQualifiedName:
+              'sample_data.ecommerce_db.shopify."dim.product.variant".price',
+            ordinalPosition: 7,
+            dataTypeDisplay: 'numeric',
+            tags: [],
+          },
+          {
+            dataType: 'NUMERIC',
+            name: 'grams',
+            description: 'Number of grams that the product variant weighs.',
+            fullyQualifiedName:
+              'sample_data.ecommerce_db.shopify."dim.product.variant".grams',
+            ordinalPosition: 8,
+            dataTypeDisplay: 'numeric',
+            tags: [],
+          },
+          {
+            dataType: 'TIMESTAMP',
+            name: 'created_at',
+            description:
+              'The date (ISO 8601) and time (UTC) when the product variant was added to the store. The format is YYYY-MM-DD HH:mm:ss (for example, 2016-02-05 17:04:01).',
+            fullyQualifiedName:
+              'sample_data.ecommerce_db.shopify."dim.product.variant".created_at',
+            ordinalPosition: 9,
+            dataTypeDisplay: 'timestamp',
+            tags: [],
+          },
+          {
+            dataType: 'TIMESTAMP',
+            name: 'deleted_at',
+            description:
+              'The date (ISO 8601) and time (UTC) when the product variant was deleted. The format is YYYY-MM-DD HH:mm:ss (for example, 2016-02-05 17:04:01).',
+            fullyQualifiedName:
+              'sample_data.ecommerce_db.shopify."dim.product.variant".deleted_at',
+            ordinalPosition: 10,
+            dataTypeDisplay: 'timestamp',
+            tags: [],
+          },
+        ],
+        displayName: 'dim.product.variant',
+        description:
+          'This dimension table contains current information about each of the product variants in your store. This table contains one row per product variant.',
+        customMetrics: [],
+        tableType: 'Regular',
+        database: {
+          deleted: false,
+          displayName: 'ecommerce_db',
+          name: 'ecommerce_db',
+          description:
+            'This **mock** database contains schemas related to shopify sales and orders with related dimension tables.',
+          id: '722b65a4-9205-4f11-a62d-6a8902cdab39',
+          type: 'database',
+          fullyQualifiedName: 'sample_data.ecommerce_db',
+        },
+        columnNames: [
+          'product_variant_id',
+          'product_id',
+          'shop_id',
+          'title',
+          'barcode',
+          'sku',
+          'price',
+          'grams',
+          'created_at',
+          'deleted_at',
+        ],
+        tier: null,
+        totalVotes: 0,
+        usageSummary: {
+          date: '2024-02-02',
+          weeklyStats: {
+            percentileRank: 0,
+            count: 0,
+          },
+          monthlyStats: {
+            percentileRank: 0,
+            count: 0,
+          },
+          dailyStats: {
+            percentileRank: 0,
+            count: 0,
+          },
+        },
+        id: 'd3e43ac3-8d05-45ed-9a30-94765dbfa7a3',
+        updatedAt: 1706855210105,
+        owner: null,
+        updatedBy: 'admin',
+        entityType: 'table',
+        dataProducts: [],
+        fullyQualifiedName:
+          'sample_data.ecommerce_db.shopify."dim.product.variant"',
+        version: 0.2,
+        tags: [],
+        followers: [],
+        deleted: false,
+        service: {
+          deleted: false,
+          displayName: 'sample_data',
+          name: 'sample_data',
+          id: '1e7f57b6-a165-410d-9962-1ccf54599cc7',
+          type: 'databaseService',
+          fullyQualifiedName: 'sample_data',
+        },
+        domain: null,
+        name: 'dim.product.variant',
+        votes: {
+          upVoters: [],
+          downVoters: [],
+          upVotes: 0,
+          downVotes: 0,
+        },
+      },
+      {
+        databaseSchema: {
+          deleted: false,
+          displayName: 'shopify',
+          name: 'shopify',
+          description:
+            'This **mock** database contains schema related to shopify sales and orders with related dimension tables.',
+          id: '5cd86fad-873c-4e59-b9ff-a38967aac79d',
+          type: 'databaseSchema',
+          fullyQualifiedName: 'sample_data.ecommerce_db.shopify',
+        },
+        serviceType: 'BigQuery',
+        lineage: [
+          {
+            toEntity: {
+              fqn: 'sample_data.ecommerce_db.shopify.fact_order',
+              id: '6364831b-6860-4b8a-b4a1-5de1840cf4f9',
+              type: 'table',
+            },
+            pipeline: {
+              deleted: false,
+              name: 'update_fact_order_from_raw_order',
+              description:
+                'Procedure to update fact order from raw order table',
+              id: 'a9a403bd-b74d-47cc-893d-b1de99658748',
+              type: 'storedProcedure',
+              fullyQualifiedName:
+                'sample_data.ecommerce_db.shopify.update_fact_order_from_raw_order',
+            },
+            fromEntity: {
+              fqn: 'sample_data.ecommerce_db.shopify.raw_order',
+              id: 'd26498fa-05cd-4e36-b7ba-f38a7a5fd372',
+              type: 'table',
+            },
+            sqlQuery: null,
+            description: null,
+            source: 'Manual',
+            doc_id:
+              'd26498fa-05cd-4e36-b7ba-f38a7a5fd372-6364831b-6860-4b8a-b4a1-5de1840cf4f9',
+          },
+          {
+            toEntity: {
+              fqn: 'sample_data.ecommerce_db.shopify."dim.product.variant"',
+              id: 'd3e43ac3-8d05-45ed-9a30-94765dbfa7a3',
+              type: 'table',
+            },
+            pipeline: {
+              deleted: false,
+              displayName: 'dim_product etl',
+              name: 'dim_product_etl',
+              description: 'diim_product ETL pipeline',
+              id: '7b42caac-154c-4d1e-9da2-2a560979a8d7',
+              type: 'pipeline',
+              fullyQualifiedName: 'sample_airflow.dim_product_etl',
+            },
+            fromEntity: {
+              fqn: 'sample_data.ecommerce_db.shopify.raw_order',
+              id: 'd26498fa-05cd-4e36-b7ba-f38a7a5fd372',
+              type: 'table',
+            },
+            sqlQuery:
+              'select * from sample_data.ecommerce_db.shopify.raw_order',
+            description: null,
+            source: 'Manual',
+            doc_id:
+              'd26498fa-05cd-4e36-b7ba-f38a7a5fd372-d3e43ac3-8d05-45ed-9a30-94765dbfa7a3',
+          },
+          {
+            toEntity: {
+              fqn: 'sample_data.ecommerce_db.shopify."dim.product"',
+              id: 'f65a4402-3e82-4238-b864-bc7c89bb2e2e',
+              type: 'table',
+            },
+            pipeline: {
+              deleted: false,
+              displayName: 'dim_product etl',
+              name: 'dim_product_etl',
+              description: 'diim_product ETL pipeline',
+              id: '7b42caac-154c-4d1e-9da2-2a560979a8d7',
+              type: 'pipeline',
+              fullyQualifiedName: 'sample_airflow.dim_product_etl',
+            },
+            fromEntity: {
+              fqn: 'sample_data.ecommerce_db.shopify.raw_order',
+              id: 'd26498fa-05cd-4e36-b7ba-f38a7a5fd372',
+              type: 'table',
+            },
+            sqlQuery:
+              'select * from sample_data.ecommerce_db.shopify.raw_order',
+            description: null,
+            source: 'Manual',
+            doc_id:
+              'd26498fa-05cd-4e36-b7ba-f38a7a5fd372-f65a4402-3e82-4238-b864-bc7c89bb2e2e',
+          },
+        ],
+        columns: [
+          {
+            dataLength: 1,
+            dataType: 'STRING',
+            name: 'comments',
+            constraint: 'NULL',
+            fullyQualifiedName:
+              'sample_data.ecommerce_db.shopify.raw_order.comments',
+            ordinalPosition: 1,
+            dataTypeDisplay: 'string',
+            tags: [],
+          },
+          {
+            dataLength: 1,
+            dataType: 'STRING',
+            name: 'creditcard',
+            constraint: 'NULL',
+            fullyQualifiedName:
+              'sample_data.ecommerce_db.shopify.raw_order.creditcard',
+            ordinalPosition: 2,
+            dataTypeDisplay: 'string',
+            tags: [],
+          },
+          {
+            dataLength: 1,
+            dataType: 'STRING',
+            name: 'membership',
+            constraint: 'NULL',
+            fullyQualifiedName:
+              'sample_data.ecommerce_db.shopify.raw_order.membership',
+            ordinalPosition: 4,
+            dataTypeDisplay: 'string',
+            tags: [],
+          },
+          {
+            dataLength: 1,
+            dataType: 'ARRAY',
+            name: 'orders',
+            constraint: 'NULL',
+            fullyQualifiedName:
+              'sample_data.ecommerce_db.shopify.raw_order.orders',
+            ordinalPosition: 5,
+            dataTypeDisplay:
+              'array<struct<product_id:character varying(24),price:int,onsale:boolean,tax:int,weight:int,others:int,vendor:character varying(64)>>',
+            arrayDataType: 'STRUCT',
+            tags: [],
+          },
+          {
+            dataLength: 1,
+            dataType: 'STRING',
+            name: 'platform',
+            constraint: 'NULL',
+            fullyQualifiedName:
+              'sample_data.ecommerce_db.shopify.raw_order.platform',
+            ordinalPosition: 6,
+            dataTypeDisplay: 'string',
+            tags: [],
+          },
+          {
+            dataLength: 1,
+            dataType: 'MAP',
+            name: 'preference',
+            constraint: 'NULL',
+            fullyQualifiedName:
+              'sample_data.ecommerce_db.shopify.raw_order.preference',
+            ordinalPosition: 7,
+            dataTypeDisplay: 'map<character varying(32),boolean>',
+            tags: [],
+          },
+          {
+            dataLength: 1,
+            dataType: 'ARRAY',
+            name: 'shipping_address',
+            constraint: 'NULL',
+            fullyQualifiedName:
+              'sample_data.ecommerce_db.shopify.raw_order.shipping_address',
+            ordinalPosition: 8,
+            dataTypeDisplay:
+              'array<struct<name:character varying(32),street_address:character varying(128),city:character varying(32),postcode:character varying(8)>>',
+            arrayDataType: 'STRUCT',
+            tags: [],
+          },
+          {
+            dataLength: 1,
+            dataType: 'STRING',
+            name: 'shipping_date',
+            constraint: 'NULL',
+            fullyQualifiedName:
+              'sample_data.ecommerce_db.shopify.raw_order.shipping_date',
+            ordinalPosition: 9,
+            dataTypeDisplay: 'string',
+            tags: [],
+          },
+          {
+            dataLength: 1,
+            dataType: 'STRING',
+            name: 'transaction_date',
+            constraint: 'NULL',
+            fullyQualifiedName:
+              'sample_data.ecommerce_db.shopify.raw_order.transaction_date',
+            ordinalPosition: 10,
+            dataTypeDisplay: 'string',
+            tags: [],
+          },
+          {
+            dataType: 'NUMERIC',
+            name: 'total_order_count',
+            description:
+              'The total number of orders that the customer has made from this store across their lifetime.',
+            fullyQualifiedName:
+              'sample_data.ecommerce_db.shopify.raw_order.total_order_count',
+            ordinalPosition: 11,
+            dataTypeDisplay: 'numeric',
+            tags: [],
+          },
+          {
+            dataType: 'NUMERIC',
+            name: 'total_order_value',
+            description:
+              "The total amount of money that the customer has spent on orders from the store across their lifetime. The value is formatted in the store's currency.",
+            fullyQualifiedName:
+              'sample_data.ecommerce_db.shopify.raw_order.total_order_value',
+            ordinalPosition: 12,
+            dataTypeDisplay: 'numeric',
+            tags: [],
+          },
+          {
+            dataType: 'TIMESTAMP',
+            name: 'first_order_date',
+            description:
+              'The date (ISO 8601) and time (UTC) when the customer placed their first order. The format is YYYY-MM-DD HH:mm:ss (for example, 2016-02-05 17:04:01).',
+            fullyQualifiedName:
+              'sample_data.ecommerce_db.shopify.raw_order.first_order_date',
+            ordinalPosition: 13,
+            dataTypeDisplay: 'timestamp',
+            tags: [],
+          },
+          {
+            dataType: 'TIMESTAMP',
+            name: 'last_order_date',
+            description:
+              'The date (ISO 8601) and time (UTC) when the customer placed their most recent order. The format is YYYY-MM-DD HH:mm:ss (for example, 2016-02-05 17:04:01).',
+            fullyQualifiedName:
+              'sample_data.ecommerce_db.shopify.raw_order.last_order_date',
+            ordinalPosition: 14,
+            dataTypeDisplay: 'timestamp',
+            tags: [],
+          },
+        ],
+        displayName: 'raw_order',
+        description:
+          'This is a raw orders table as represented in our online DB. This table contains all the orders by the customers and can be used to buid our dim and fact tables',
+        customMetrics: [],
+        tableType: 'Regular',
+        database: {
+          deleted: false,
+          displayName: 'ecommerce_db',
+          name: 'ecommerce_db',
+          description:
+            'This **mock** database contains schemas related to shopify sales and orders with related dimension tables.',
+          id: '722b65a4-9205-4f11-a62d-6a8902cdab39',
+          type: 'database',
+          fullyQualifiedName: 'sample_data.ecommerce_db',
+        },
+        columnNames: [
+          'comments',
+          'creditcard',
+          'membership',
+          'orders',
+          'platform',
+          'preference',
+          'shipping_address',
+          'shipping_date',
+          'transaction_date',
+          'total_order_count',
+          'total_order_value',
+          'first_order_date',
+          'last_order_date',
+        ],
+        tier: null,
+        totalVotes: 0,
+        usageSummary: {
+          date: '2024-02-02',
+          weeklyStats: {
+            percentileRank: 0,
+            count: 0,
+          },
+          monthlyStats: {
+            percentileRank: 0,
+            count: 0,
+          },
+          dailyStats: {
+            percentileRank: 0,
+            count: 0,
+          },
+        },
+        id: 'd26498fa-05cd-4e36-b7ba-f38a7a5fd372',
+        updatedAt: 1706855211252,
+        owner: null,
+        updatedBy: 'admin',
+        entityType: 'table',
+        dataProducts: [],
+        fullyQualifiedName: 'sample_data.ecommerce_db.shopify.raw_order',
+        version: 0.2,
+        tags: [],
+        followers: [],
+        deleted: false,
+        service: {
+          deleted: false,
+          displayName: 'sample_data',
+          name: 'sample_data',
+          id: '1e7f57b6-a165-410d-9962-1ccf54599cc7',
+          type: 'databaseService',
+          fullyQualifiedName: 'sample_data',
+        },
+        domain: null,
+        name: 'raw_order',
+        votes: {
+          upVoters: [],
+          downVoters: [],
+          upVotes: 0,
+          downVotes: 0,
+        },
+      },
+      {
+        databaseSchema: {
+          deleted: false,
+          displayName: 'shopify',
+          name: 'shopify',
+          description:
+            'This **mock** database contains schema related to shopify sales and orders with related dimension tables.',
+          id: '5cd86fad-873c-4e59-b9ff-a38967aac79d',
+          type: 'databaseSchema',
+          fullyQualifiedName: 'sample_data.ecommerce_db.shopify',
+        },
+        serviceType: 'BigQuery',
+        lineage: [
+          {
+            toEntity: {
+              fqn: 'sample_data.ecommerce_db.shopify.fact_order',
+              id: '6364831b-6860-4b8a-b4a1-5de1840cf4f9',
+              type: 'table',
+            },
+            pipeline: {
+              deleted: false,
+              name: 'update_fact_order_from_raw_order',
+              description:
+                'Procedure to update fact order from raw order table',
+              id: 'a9a403bd-b74d-47cc-893d-b1de99658748',
+              type: 'storedProcedure',
+              fullyQualifiedName:
+                'sample_data.ecommerce_db.shopify.update_fact_order_from_raw_order',
+            },
+            fromEntity: {
+              fqn: 'sample_data.ecommerce_db.shopify.raw_order',
+              id: 'd26498fa-05cd-4e36-b7ba-f38a7a5fd372',
+              type: 'table',
+            },
+            sqlQuery: null,
+            description: null,
+            source: 'Manual',
+            doc_id:
+              'd26498fa-05cd-4e36-b7ba-f38a7a5fd372-6364831b-6860-4b8a-b4a1-5de1840cf4f9',
+          },
+        ],
+        columns: [
+          {
+            dataType: 'NUMERIC',
+            name: 'order_id',
+            description:
+              'Unique numeric identifier for the order across Shopify stores. In your Shopify admin, this ID is used internally. Most merchants are familiar with the other ID that appears on orders in the Shopify admin. This ID can be found in the Name column.',
+            constraint: 'PRIMARY_KEY',
+            fullyQualifiedName:
+              'sample_data.ecommerce_db.shopify.fact_order.order_id',
+            ordinalPosition: 1,
+            dataTypeDisplay: 'numeric',
+            tags: [],
+          },
+          {
+            dataType: 'NUMERIC',
+            name: 'api_client_id',
+            description:
+              'The ID of the API client that called the Shopify API. This column is a foreign key reference to the api_client_id column in the dim_api_client table.',
+            fullyQualifiedName:
+              'sample_data.ecommerce_db.shopify.fact_order.api_client_id',
+            ordinalPosition: 2,
+            dataTypeDisplay: 'numeric',
+            tags: [],
+          },
+          {
+            dataType: 'NUMERIC',
+            name: 'billing_address_id',
+            fullyQualifiedName:
+              'sample_data.ecommerce_db.shopify.fact_order.billing_address_id',
+            ordinalPosition: 3,
+            dataTypeDisplay: 'numeric',
+            tags: [],
+          },
+          {
+            dataType: 'NUMERIC',
+            name: 'customer_id',
+            description:
+              'The ID of the customer. This column is a foreign key reference to the customer_id column in the dim_customer table.',
+            fullyQualifiedName:
+              'sample_data.ecommerce_db.shopify.fact_order.customer_id',
+            ordinalPosition: 4,
+            dataTypeDisplay: 'numeric',
+            tags: [],
+          },
+          {
+            dataType: 'NUMERIC',
+            name: 'location_id',
+            fullyQualifiedName:
+              'sample_data.ecommerce_db.shopify.fact_order.location_id',
+            ordinalPosition: 5,
+            dataTypeDisplay: 'numeric',
+            tags: [],
+          },
+          {
+            dataType: 'NUMERIC',
+            name: 'shipping_address_id',
+            fullyQualifiedName:
+              'sample_data.ecommerce_db.shopify.fact_order.shipping_address_id',
+            ordinalPosition: 6,
+            dataTypeDisplay: 'numeric',
+            tags: [],
+          },
+          {
+            dataType: 'NUMERIC',
+            name: 'shop_id',
+            description:
+              'The ID of the store. This column is a foreign key reference to the shop_id column in the dim.shop table.',
+            fullyQualifiedName:
+              'sample_data.ecommerce_db.shopify.fact_order.shop_id',
+            ordinalPosition: 7,
+            dataTypeDisplay: 'numeric',
+            tags: [],
+          },
+          {
+            dataType: 'NUMERIC',
+            name: 'user_id',
+            description:
+              'The ID of the staff member who created the order. This column is a foreign key reference to the ID in the dim_staff table. This column applies to Shopify POS orders and to orders that were converted from draft orders.',
+            fullyQualifiedName:
+              'sample_data.ecommerce_db.shopify.fact_order.user_id',
+            ordinalPosition: 8,
+            dataTypeDisplay: 'numeric',
+            tags: [],
+          },
+          {
+            dataLength: 100,
+            dataType: 'VARCHAR',
+            name: 'name',
+            description:
+              'The identifier of the order that the merchant and customer sees. This is the ID that appears on the order in the Shopify admin. For example, #1001. By default, this identifier is unique to one store. If you have multiple stores, then use the order_id column to guarantee uniqueness across multiple stores.',
+            fullyQualifiedName:
+              'sample_data.ecommerce_db.shopify.fact_order.name',
+            ordinalPosition: 9,
+            dataTypeDisplay: 'varchar',
+            tags: [],
+          },
+          {
+            dataType: 'NUMERIC',
+            name: 'total_price',
+            description:
+              'The total price of the order, including shipping and taxes. This column includes gift card sales, but does not include returns. This value may not be accurate for API-imported orders. Do not use this column for financial calculations. Instead, use the total_price column in the sales table.',
+            fullyQualifiedName:
+              'sample_data.ecommerce_db.shopify.fact_order.total_price',
+            ordinalPosition: 10,
+            dataTypeDisplay: 'numeric',
+            tags: [],
+          },
+          {
+            dataLength: 100,
+            dataType: 'VARCHAR',
+            name: 'discount_code',
+            description: 'The discount code that was applied to the order.',
+            fullyQualifiedName:
+              'sample_data.ecommerce_db.shopify.fact_order.discount_code',
+            ordinalPosition: 11,
+            dataTypeDisplay: 'varchar',
+            tags: [],
+          },
+          {
+            dataType: 'TIMESTAMP',
+            name: 'processed_at',
+            description:
+              'The date (ISO 8601) and time (UTC) when the order was created. The format is YYYY-MM-DD HH:mm:ss (for example, 2016-02-05 17:04:01).',
+            fullyQualifiedName:
+              'sample_data.ecommerce_db.shopify.fact_order.processed_at',
+            ordinalPosition: 12,
+            dataTypeDisplay: 'timestamp',
+            tags: [],
+          },
+          {
+            dataType: 'TIMESTAMP',
+            name: 'canceled_at',
+            description:
+              'If the order was canceled, then this column contains the date (ISO 8601) and time (UTC) when the order was canceled. The format is YYYY-MM-DD HH:mm:ss (for example, 2016-02-05 17:04:01).',
+            fullyQualifiedName:
+              'sample_data.ecommerce_db.shopify.fact_order.canceled_at',
+            ordinalPosition: 13,
+            dataTypeDisplay: 'timestamp',
+            tags: [],
+          },
+          {
+            dataType: 'TIMESTAMP',
+            name: 'deleted_at',
+            description:
+              'If the order was deleted, then this column contains the date (ISO 8601) and time (UTC) when the order was deleted. The format is YYYY-MM-DD HH:mm:ss (for example, 2016-02-05 17:04:01).',
+            fullyQualifiedName:
+              'sample_data.ecommerce_db.shopify.fact_order.deleted_at',
+            ordinalPosition: 14,
+            dataTypeDisplay: 'timestamp',
+            tags: [],
+          },
+          {
+            dataType: 'BOOLEAN',
+            name: 'test',
+            description:
+              'True when the order is a test order, False otherwise.',
+            fullyQualifiedName:
+              'sample_data.ecommerce_db.shopify.fact_order.test',
+            ordinalPosition: 15,
+            dataTypeDisplay: 'boolean',
+            tags: [],
+          },
+        ],
+        displayName: 'fact_order',
+        description:
+          'The orders table contains information about each order in your store. Although this table is good for generating order lists and joining with the dim_customer, use the sales table instead for computing financial or other metrics.',
+        customMetrics: [],
+        tableType: 'Regular',
+        database: {
+          deleted: false,
+          displayName: 'ecommerce_db',
+          name: 'ecommerce_db',
+          description:
+            'This **mock** database contains schemas related to shopify sales and orders with related dimension tables.',
+          id: '722b65a4-9205-4f11-a62d-6a8902cdab39',
+          type: 'database',
+          fullyQualifiedName: 'sample_data.ecommerce_db',
+        },
+        columnNames: [
+          'order_id',
+          'api_client_id',
+          'billing_address_id',
+          'customer_id',
+          'location_id',
+          'shipping_address_id',
+          'shop_id',
+          'user_id',
+          'name',
+          'total_price',
+          'discount_code',
+          'processed_at',
+          'canceled_at',
+          'deleted_at',
+          'test',
+        ],
+        tier: null,
+        totalVotes: 0,
+        usageSummary: {
+          date: '2024-02-02',
+          weeklyStats: {
+            percentileRank: 0,
+            count: 0,
+          },
+          monthlyStats: {
+            percentileRank: 0,
+            count: 0,
+          },
+          dailyStats: {
+            percentileRank: 0,
+            count: 0,
+          },
+        },
+        id: '6364831b-6860-4b8a-b4a1-5de1840cf4f9',
+        updatedAt: 1706855210286,
+        owner: null,
+        updatedBy: 'admin',
+        entityType: 'table',
+        dataProducts: [],
+        fullyQualifiedName: 'sample_data.ecommerce_db.shopify.fact_order',
+        version: 0.2,
+        tags: [],
+        followers: [],
+        deleted: false,
+        service: {
+          deleted: false,
+          displayName: 'sample_data',
+          name: 'sample_data',
+          id: '1e7f57b6-a165-410d-9962-1ccf54599cc7',
+          type: 'databaseService',
+          fullyQualifiedName: 'sample_data',
+        },
+        domain: null,
+        name: 'fact_order',
+        votes: {
+          upVoters: [],
+          downVoters: [],
+          upVotes: 0,
+          downVotes: 0,
+        },
       },
     ],
-    upstreamEdges: [
+    edges: [
       {
-        fromEntity: 'fc1d9698-5e10-4442-af5c-a7ac05c078e9',
-        toEntity: '644405ad-60fe-4329-884f-fc3e3ab6c6a5',
+        toEntity: {
+          fqn: 'sample_data.ecommerce_db.shopify.fact_order',
+          id: '6364831b-6860-4b8a-b4a1-5de1840cf4f9',
+          type: 'table',
+        },
+        pipeline: {
+          deleted: false,
+          name: 'update_fact_order_from_raw_order',
+          description: 'Procedure to update fact order from raw order table',
+          id: 'a9a403bd-b74d-47cc-893d-b1de99658748',
+          type: 'storedProcedure',
+          fullyQualifiedName:
+            'sample_data.ecommerce_db.shopify.update_fact_order_from_raw_order',
+        },
+        fromEntity: {
+          fqn: 'sample_data.ecommerce_db.shopify.raw_order',
+          id: 'd26498fa-05cd-4e36-b7ba-f38a7a5fd372',
+          type: 'table',
+        },
+        sqlQuery: null,
+        description: null,
+        source: 'Manual',
+        doc_id:
+          'd26498fa-05cd-4e36-b7ba-f38a7a5fd372-6364831b-6860-4b8a-b4a1-5de1840cf4f9',
       },
       {
-        fromEntity: '1e7f78c0-ebb5-4565-a09f-63c1cdc72389',
-        toEntity: 'fc1d9698-5e10-4442-af5c-a7ac05c078e9',
+        toEntity: {
+          fqn: 'sample_data.ecommerce_db.shopify."dim.product.variant"',
+          id: 'd3e43ac3-8d05-45ed-9a30-94765dbfa7a3',
+          type: 'table',
+        },
+        pipeline: {
+          deleted: false,
+          displayName: 'dim_product etl',
+          name: 'dim_product_etl',
+          description: 'diim_product ETL pipeline',
+          id: '7b42caac-154c-4d1e-9da2-2a560979a8d7',
+          type: 'pipeline',
+          fullyQualifiedName: 'sample_airflow.dim_product_etl',
+        },
+        fromEntity: {
+          fqn: 'sample_data.ecommerce_db.shopify.raw_order',
+          id: 'd26498fa-05cd-4e36-b7ba-f38a7a5fd372',
+          type: 'table',
+        },
+        sqlQuery: 'select * from sample_data.ecommerce_db.shopify.raw_order',
+        description: null,
+        source: 'Manual',
+        doc_id:
+          'd26498fa-05cd-4e36-b7ba-f38a7a5fd372-d3e43ac3-8d05-45ed-9a30-94765dbfa7a3',
+      },
+      {
+        toEntity: {
+          fqn: 'sample_data.ecommerce_db.shopify."dim.product"',
+          id: 'f65a4402-3e82-4238-b864-bc7c89bb2e2e',
+          type: 'table',
+        },
+        pipeline: {
+          deleted: false,
+          displayName: 'dim_product etl',
+          name: 'dim_product_etl',
+          description: 'diim_product ETL pipeline',
+          id: '7b42caac-154c-4d1e-9da2-2a560979a8d7',
+          type: 'pipeline',
+          fullyQualifiedName: 'sample_airflow.dim_product_etl',
+        },
+        fromEntity: {
+          fqn: 'sample_data.ecommerce_db.shopify.raw_order',
+          id: 'd26498fa-05cd-4e36-b7ba-f38a7a5fd372',
+          type: 'table',
+        },
+        sqlQuery: 'select * from sample_data.ecommerce_db.shopify.raw_order',
+        description: null,
+        source: 'Manual',
+        doc_id:
+          'd26498fa-05cd-4e36-b7ba-f38a7a5fd372-f65a4402-3e82-4238-b864-bc7c89bb2e2e',
       },
     ],
-    downstreamEdges: [],
+    entity: {
+      databaseSchema: {
+        deleted: false,
+        displayName: 'shopify',
+        name: 'shopify',
+        description:
+          'This **mock** database contains schema related to shopify sales and orders with related dimension tables.',
+        id: '5cd86fad-873c-4e59-b9ff-a38967aac79d',
+        type: 'databaseSchema',
+        fullyQualifiedName: 'sample_data.ecommerce_db.shopify',
+      },
+      serviceType: 'BigQuery',
+      lineage: [
+        {
+          toEntity: {
+            fqn: 'sample_data.ecommerce_db.shopify.fact_order',
+            id: '6364831b-6860-4b8a-b4a1-5de1840cf4f9',
+            type: 'table',
+          },
+          pipeline: {
+            deleted: false,
+            name: 'update_fact_order_from_raw_order',
+            description: 'Procedure to update fact order from raw order table',
+            id: 'a9a403bd-b74d-47cc-893d-b1de99658748',
+            type: 'storedProcedure',
+            fullyQualifiedName:
+              'sample_data.ecommerce_db.shopify.update_fact_order_from_raw_order',
+          },
+          fromEntity: {
+            fqn: 'sample_data.ecommerce_db.shopify.raw_order',
+            id: 'd26498fa-05cd-4e36-b7ba-f38a7a5fd372',
+            type: 'table',
+          },
+          sqlQuery: null,
+          description: null,
+          source: 'Manual',
+          doc_id:
+            'd26498fa-05cd-4e36-b7ba-f38a7a5fd372-6364831b-6860-4b8a-b4a1-5de1840cf4f9',
+        },
+        {
+          toEntity: {
+            fqn: 'sample_data.ecommerce_db.shopify."dim.product.variant"',
+            id: 'd3e43ac3-8d05-45ed-9a30-94765dbfa7a3',
+            type: 'table',
+          },
+          pipeline: {
+            deleted: false,
+            displayName: 'dim_product etl',
+            name: 'dim_product_etl',
+            description: 'diim_product ETL pipeline',
+            id: '7b42caac-154c-4d1e-9da2-2a560979a8d7',
+            type: 'pipeline',
+            fullyQualifiedName: 'sample_airflow.dim_product_etl',
+          },
+          fromEntity: {
+            fqn: 'sample_data.ecommerce_db.shopify.raw_order',
+            id: 'd26498fa-05cd-4e36-b7ba-f38a7a5fd372',
+            type: 'table',
+          },
+          sqlQuery: 'select * from sample_data.ecommerce_db.shopify.raw_order',
+          description: null,
+          source: 'Manual',
+          doc_id:
+            'd26498fa-05cd-4e36-b7ba-f38a7a5fd372-d3e43ac3-8d05-45ed-9a30-94765dbfa7a3',
+        },
+        {
+          toEntity: {
+            fqn: 'sample_data.ecommerce_db.shopify."dim.product"',
+            id: 'f65a4402-3e82-4238-b864-bc7c89bb2e2e',
+            type: 'table',
+          },
+          pipeline: {
+            deleted: false,
+            displayName: 'dim_product etl',
+            name: 'dim_product_etl',
+            description: 'diim_product ETL pipeline',
+            id: '7b42caac-154c-4d1e-9da2-2a560979a8d7',
+            type: 'pipeline',
+            fullyQualifiedName: 'sample_airflow.dim_product_etl',
+          },
+          fromEntity: {
+            fqn: 'sample_data.ecommerce_db.shopify.raw_order',
+            id: 'd26498fa-05cd-4e36-b7ba-f38a7a5fd372',
+            type: 'table',
+          },
+          sqlQuery: 'select * from sample_data.ecommerce_db.shopify.raw_order',
+          description: null,
+          source: 'Manual',
+          doc_id:
+            'd26498fa-05cd-4e36-b7ba-f38a7a5fd372-f65a4402-3e82-4238-b864-bc7c89bb2e2e',
+        },
+      ],
+      columns: [
+        {
+          dataLength: 1,
+          dataType: 'STRING',
+          name: 'comments',
+          constraint: 'NULL',
+          fullyQualifiedName:
+            'sample_data.ecommerce_db.shopify.raw_order.comments',
+          ordinalPosition: 1,
+          dataTypeDisplay: 'string',
+          tags: [],
+        },
+        {
+          dataLength: 1,
+          dataType: 'STRING',
+          name: 'creditcard',
+          constraint: 'NULL',
+          fullyQualifiedName:
+            'sample_data.ecommerce_db.shopify.raw_order.creditcard',
+          ordinalPosition: 2,
+          dataTypeDisplay: 'string',
+          tags: [],
+        },
+        {
+          dataLength: 1,
+          dataType: 'STRING',
+          name: 'membership',
+          constraint: 'NULL',
+          fullyQualifiedName:
+            'sample_data.ecommerce_db.shopify.raw_order.membership',
+          ordinalPosition: 4,
+          dataTypeDisplay: 'string',
+          tags: [],
+        },
+        {
+          dataLength: 1,
+          dataType: 'ARRAY',
+          name: 'orders',
+          constraint: 'NULL',
+          fullyQualifiedName:
+            'sample_data.ecommerce_db.shopify.raw_order.orders',
+          ordinalPosition: 5,
+          dataTypeDisplay:
+            'array<struct<product_id:character varying(24),price:int,onsale:boolean,tax:int,weight:int,others:int,vendor:character varying(64)>>',
+          arrayDataType: 'STRUCT',
+          tags: [],
+        },
+        {
+          dataLength: 1,
+          dataType: 'STRING',
+          name: 'platform',
+          constraint: 'NULL',
+          fullyQualifiedName:
+            'sample_data.ecommerce_db.shopify.raw_order.platform',
+          ordinalPosition: 6,
+          dataTypeDisplay: 'string',
+          tags: [],
+        },
+        {
+          dataLength: 1,
+          dataType: 'MAP',
+          name: 'preference',
+          constraint: 'NULL',
+          fullyQualifiedName:
+            'sample_data.ecommerce_db.shopify.raw_order.preference',
+          ordinalPosition: 7,
+          dataTypeDisplay: 'map<character varying(32),boolean>',
+          tags: [],
+        },
+        {
+          dataLength: 1,
+          dataType: 'ARRAY',
+          name: 'shipping_address',
+          constraint: 'NULL',
+          fullyQualifiedName:
+            'sample_data.ecommerce_db.shopify.raw_order.shipping_address',
+          ordinalPosition: 8,
+          dataTypeDisplay:
+            'array<struct<name:character varying(32),street_address:character varying(128),city:character varying(32),postcode:character varying(8)>>',
+          arrayDataType: 'STRUCT',
+          tags: [],
+        },
+        {
+          dataLength: 1,
+          dataType: 'STRING',
+          name: 'shipping_date',
+          constraint: 'NULL',
+          fullyQualifiedName:
+            'sample_data.ecommerce_db.shopify.raw_order.shipping_date',
+          ordinalPosition: 9,
+          dataTypeDisplay: 'string',
+          tags: [],
+        },
+        {
+          dataLength: 1,
+          dataType: 'STRING',
+          name: 'transaction_date',
+          constraint: 'NULL',
+          fullyQualifiedName:
+            'sample_data.ecommerce_db.shopify.raw_order.transaction_date',
+          ordinalPosition: 10,
+          dataTypeDisplay: 'string',
+          tags: [],
+        },
+        {
+          dataType: 'NUMERIC',
+          name: 'total_order_count',
+          description:
+            'The total number of orders that the customer has made from this store across their lifetime.',
+          fullyQualifiedName:
+            'sample_data.ecommerce_db.shopify.raw_order.total_order_count',
+          ordinalPosition: 11,
+          dataTypeDisplay: 'numeric',
+          tags: [],
+        },
+        {
+          dataType: 'NUMERIC',
+          name: 'total_order_value',
+          description:
+            "The total amount of money that the customer has spent on orders from the store across their lifetime. The value is formatted in the store's currency.",
+          fullyQualifiedName:
+            'sample_data.ecommerce_db.shopify.raw_order.total_order_value',
+          ordinalPosition: 12,
+          dataTypeDisplay: 'numeric',
+          tags: [],
+        },
+        {
+          dataType: 'TIMESTAMP',
+          name: 'first_order_date',
+          description:
+            'The date (ISO 8601) and time (UTC) when the customer placed their first order. The format is YYYY-MM-DD HH:mm:ss (for example, 2016-02-05 17:04:01).',
+          fullyQualifiedName:
+            'sample_data.ecommerce_db.shopify.raw_order.first_order_date',
+          ordinalPosition: 13,
+          dataTypeDisplay: 'timestamp',
+          tags: [],
+        },
+        {
+          dataType: 'TIMESTAMP',
+          name: 'last_order_date',
+          description:
+            'The date (ISO 8601) and time (UTC) when the customer placed their most recent order. The format is YYYY-MM-DD HH:mm:ss (for example, 2016-02-05 17:04:01).',
+          fullyQualifiedName:
+            'sample_data.ecommerce_db.shopify.raw_order.last_order_date',
+          ordinalPosition: 14,
+          dataTypeDisplay: 'timestamp',
+          tags: [],
+        },
+      ],
+      displayName: 'raw_order',
+      description:
+        'This is a raw orders table as represented in our online DB. This table contains all the orders by the customers and can be used to buid our dim and fact tables',
+      customMetrics: [],
+      tableType: 'Regular',
+      database: {
+        deleted: false,
+        displayName: 'ecommerce_db',
+        name: 'ecommerce_db',
+        description:
+          'This **mock** database contains schemas related to shopify sales and orders with related dimension tables.',
+        id: '722b65a4-9205-4f11-a62d-6a8902cdab39',
+        type: 'database',
+        fullyQualifiedName: 'sample_data.ecommerce_db',
+      },
+      columnNames: [
+        'comments',
+        'creditcard',
+        'membership',
+        'orders',
+        'platform',
+        'preference',
+        'shipping_address',
+        'shipping_date',
+        'transaction_date',
+        'total_order_count',
+        'total_order_value',
+        'first_order_date',
+        'last_order_date',
+      ],
+      tier: null,
+      totalVotes: 0,
+      usageSummary: {
+        date: '2024-02-02',
+        weeklyStats: {
+          percentileRank: 0,
+          count: 0,
+        },
+        monthlyStats: {
+          percentileRank: 0,
+          count: 0,
+        },
+        dailyStats: {
+          percentileRank: 0,
+          count: 0,
+        },
+      },
+      id: 'd26498fa-05cd-4e36-b7ba-f38a7a5fd372',
+      updatedAt: 1706855211252,
+      owner: null,
+      updatedBy: 'admin',
+      entityType: 'table',
+      dataProducts: [],
+      fullyQualifiedName: 'sample_data.ecommerce_db.shopify.raw_order',
+      version: 0.2,
+      tags: [],
+      followers: [],
+      deleted: false,
+      service: {
+        deleted: false,
+        displayName: 'sample_data',
+        name: 'sample_data',
+        id: '1e7f57b6-a165-410d-9962-1ccf54599cc7',
+        type: 'databaseService',
+        fullyQualifiedName: 'sample_data',
+      },
+      domain: null,
+      name: 'raw_order',
+      votes: {
+        upVoters: [],
+        downVoters: [],
+        upVotes: 0,
+        downVotes: 0,
+      },
+    },
   },
   slashedTableName: [
     {
@@ -1928,7 +3343,10 @@ export const MOCK_EXPLORE_PAGE_COUNT = {
   [SearchIndex.CONTAINER]: 0,
   [SearchIndex.STORED_PROCEDURE]: 0,
   [SearchIndex.DASHBOARD_DATA_MODEL]: 0,
-  [SearchIndex.GLOSSARY]: 0,
+  [SearchIndex.GLOSSARY_TERM]: 0,
   [SearchIndex.TAG]: 0,
   [SearchIndex.SEARCH_INDEX]: 0,
+  [SearchIndex.API_COLLECTION_INDEX]: 0,
+  [SearchIndex.API_ENDPOINT_INDEX]: 0,
+  [SearchIndex.METRIC_SEARCH_INDEX]: 0,
 };

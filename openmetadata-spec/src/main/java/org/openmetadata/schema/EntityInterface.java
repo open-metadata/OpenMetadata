@@ -20,6 +20,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.type.Style;
 import org.openmetadata.schema.type.*;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
@@ -53,7 +54,7 @@ public interface EntityInterface {
 
   ChangeDescription getChangeDescription();
 
-  default EntityReference getOwner() {
+  default List<EntityReference> getOwners() {
     return null;
   }
 
@@ -107,6 +108,10 @@ public interface EntityInterface {
     return null;
   }
 
+  default AssetCertification getCertification() {
+    return null;
+  }
+
   void setId(UUID id);
 
   void setDescription(String description);
@@ -133,7 +138,7 @@ public interface EntityInterface {
     /* no-op implementation to be overridden */
   }
 
-  default void setOwner(EntityReference owner) {
+  default void setOwners(List<EntityReference> owners) {
     /* no-op implementation to be overridden */
   }
 
@@ -177,6 +182,10 @@ public interface EntityInterface {
     /* no-op implementation to be overridden */
   }
 
+  default void setCertification(AssetCertification certification) {
+    /* no-op implementation to be overridden */
+  }
+
   <T extends EntityInterface> T withHref(URI href);
 
   @JsonIgnore
@@ -189,7 +198,7 @@ public interface EntityInterface {
                 ? EntityInterfaceUtil.quoteName(getName())
                 : getFullyQualifiedName())
         .withDescription(getDescription())
-        .withDisplayName(getDisplayName())
+        .withDisplayName(CommonUtil.nullOrEmpty(getDisplayName()) ? getName() : getDisplayName())
         .withType(
             CANONICAL_ENTITY_NAME_MAP.get(this.getClass().getSimpleName().toLowerCase(Locale.ROOT)))
         .withDeleted(getDeleted())

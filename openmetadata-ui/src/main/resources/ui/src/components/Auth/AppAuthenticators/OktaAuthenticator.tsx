@@ -18,10 +18,8 @@ import React, {
   ReactNode,
   useImperativeHandle,
 } from 'react';
-import { useHistory } from 'react-router-dom';
-import { ROUTES } from '../../../constants/constants';
-import localState from '../../../utils/LocalStorageUtils';
-import { useAuthContext } from '../AuthProviders/AuthProvider';
+
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { AuthenticatorRef } from '../AuthProviders/AuthProvider.interface';
 
 interface Props {
@@ -32,46 +30,32 @@ interface Props {
 const OktaAuthenticator = forwardRef<AuthenticatorRef, Props>(
   ({ children, onLogoutSuccess }: Props, ref) => {
     const { oktaAuth } = useOktaAuth();
-    const { setIsAuthenticated } = useAuthContext();
-    const history = useHistory();
+    const { setIsAuthenticated, setOidcToken } = useApplicationStore();
 
     const login = async () => {
       oktaAuth.signInWithRedirect();
     };
 
     const logout = async () => {
-      const basename =
-        window.location.origin +
-        history.createHref({ pathname: ROUTES.SIGNIN });
       setIsAuthenticated(false);
-      try {
-        if (localStorage.getItem('okta-token-storage')) {
-          await oktaAuth.signOut({ postLogoutRedirectUri: basename });
-        }
-        localStorage.removeItem('okta-token-storage');
-        onLogoutSuccess();
-      } catch (err) {
-        // eslint-disable-next-line no-console
-        console.log(err);
-      }
+      oktaAuth.tokenManager.clear();
+      onLogoutSuccess();
+    };
+
+    const renewToken = async () => {
+      const renewToken = await oktaAuth.token.renewTokens();
+      oktaAuth.tokenManager.setTokens(renewToken);
+      const newToken =
+        renewToken?.idToken?.idToken ?? oktaAuth.getIdToken() ?? '';
+      setOidcToken(newToken);
+
+      return Promise.resolve(newToken);
     };
 
     useImperativeHandle(ref, () => ({
-      invokeLogin() {
-        login();
-      },
-      invokeLogout() {
-        logout();
-      },
-      async renewIdToken() {
-        const renewToken = await oktaAuth.token.renewTokens();
-        oktaAuth.tokenManager.setTokens(renewToken);
-        const newToken =
-          renewToken?.idToken?.idToken ?? oktaAuth.getIdToken() ?? '';
-        localState.setOidcToken(newToken);
-
-        return Promise.resolve(newToken);
-      },
+      invokeLogin: login,
+      invokeLogout: logout,
+      renewIdToken: renewToken,
     }));
 
     return <Fragment>{children}</Fragment>;

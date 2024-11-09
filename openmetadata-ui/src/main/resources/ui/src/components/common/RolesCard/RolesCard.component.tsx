@@ -12,7 +12,7 @@
  */
 
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import { Button, Card, Select, Space } from 'antd';
+import { Button, Card, Select, Space, Tooltip } from 'antd';
 import { isArray, isNil, toLower } from 'lodash';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -85,13 +85,19 @@ const RolesCard = ({
         className="ant-card-feed relative page-layout-v1-left-panel"
         extra={
           !isRolesEdit && (
-            <Button
-              className="m-l-xs"
-              data-testid="edit-roles"
-              icon={<EditIcon width={16} />}
-              type="text"
-              onClick={() => setIsRolesEdit(true)}
-            />
+            <Tooltip
+              title={t('label.edit-entity', {
+                entity: t('label.role-plural'),
+              })}>
+              {' '}
+              <Button
+                className="m-l-xs"
+                data-testid="edit-roles"
+                icon={<EditIcon width={16} />}
+                type="text"
+                onClick={() => setIsRolesEdit(true)}
+              />
+            </Tooltip>
           )
         }
         key="roles-card"

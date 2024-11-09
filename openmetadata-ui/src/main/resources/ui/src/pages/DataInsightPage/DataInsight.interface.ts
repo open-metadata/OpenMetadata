@@ -20,6 +20,10 @@ import {
 import { Kpi } from '../../generated/dataInsight/kpi/kpi';
 import { Tag } from '../../generated/entity/classification/tag';
 import { ChartFilter } from '../../interface/data-insight.interface';
+import {
+  DataInsightCustomChartResult,
+  SystemChartType,
+} from '../../rest/DataInsightAPI';
 
 export type TeamStateType = {
   defaultOptions: SearchDropdownOption[];
@@ -37,6 +41,10 @@ export interface DataInsightContextType {
   tierFilter: Omit<SearchDropdownProps, 'label' | 'searchKey'>;
   selectedDaysFilter: number;
   chartFilter: ChartFilter;
+  entitiesSummary: Record<SystemChartType, DataInsightCustomChartResult>;
+  updateEntitySummary: (
+    data: Record<SystemChartType, DataInsightCustomChartResult>
+  ) => void;
   onChartFilterChange: (value: DateRangeObject, days?: number) => void;
   kpi: {
     isLoading: boolean;

@@ -71,7 +71,7 @@ public class AWSSecretsManager extends AWSBasedSecretsManager {
         UpdateSecretRequest.builder()
             .secretId(secretName)
             .description("This secret was created by OpenMetadata")
-            .secretString(Objects.isNull(secretValue) ? NULL_SECRET_STRING : secretValue)
+            .secretString(cleanNullOrEmpty(secretValue))
             .build();
     this.secretsClient.updateSecret(updateSecretRequest);
   }
@@ -86,7 +86,7 @@ public class AWSSecretsManager extends AWSBasedSecretsManager {
   @Override
   protected void deleteSecretInternal(String secretName) {
     DeleteSecretRequest deleteSecretRequest =
-        DeleteSecretRequest.builder().secretId(secretName).build();
+        DeleteSecretRequest.builder().secretId(secretName).forceDeleteWithoutRecovery(true).build();
     this.secretsClient.deleteSecret(deleteSecretRequest);
   }
 

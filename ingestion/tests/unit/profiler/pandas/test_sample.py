@@ -22,6 +22,10 @@ from sqlalchemy.orm import declarative_base
 
 from metadata.generated.schema.entity.data.table import Column as EntityColumn
 from metadata.generated.schema.entity.data.table import ColumnName, DataType, Table
+from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
+    DatalakeConnection,
+)
+from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.profiler.api.models import ProfileSampleConfig
 from metadata.profiler.interface.pandas.profiler_interface import (
     PandasProfilerInterface,
@@ -43,9 +47,14 @@ class User(Base):
     age = Column(Integer)
 
 
+class FakeClient:
+    def __init__(self):
+        self._client = None
+
+
 class FakeConnection:
-    def client(self):
-        return None
+    def __init__(self):
+        self.client = FakeClient()
 
 
 class DatalakeSampleTest(TestCase):
@@ -79,42 +88,59 @@ class DatalakeSampleTest(TestCase):
     table_entity = Table(
         id=uuid4(),
         name="user",
+        databaseSchema=EntityReference(id=uuid4(), type="databaseSchema", name="name"),
+        fileFormat="csv",
         columns=[
             EntityColumn(
-                name=ColumnName(__root__="id"),
+                name=ColumnName("name"),
+                dataType=DataType.STRING,
+            ),
+            EntityColumn(
+                name=ColumnName("fullname"),
+                dataType=DataType.STRING,
+            ),
+            EntityColumn(
+                name=ColumnName("nickname"),
+                dataType=DataType.STRING,
+            ),
+            EntityColumn(
+                name=ColumnName("comments"),
+                dataType=DataType.STRING,
+            ),
+            EntityColumn(
+                name=ColumnName("age"),
                 dataType=DataType.INT,
             ),
             EntityColumn(
-                name=ColumnName(__root__="name"),
-                dataType=DataType.STRING,
+                name=ColumnName("dob"),
+                dataType=DataType.DATETIME,
             ),
             EntityColumn(
-                name=ColumnName(__root__="fullname"),
-                dataType=DataType.STRING,
+                name=ColumnName("tob"),
+                dataType=DataType.DATE,
             ),
             EntityColumn(
-                name=ColumnName(__root__="nickname"),
-                dataType=DataType.STRING,
+                name=ColumnName("doe"),
+                dataType=DataType.DATE,
             ),
             EntityColumn(
-                name=ColumnName(__root__="comments"),
-                dataType=DataType.STRING,
+                name=ColumnName("json"),
+                dataType=DataType.JSON,
             ),
             EntityColumn(
-                name=ColumnName(__root__="age"),
-                dataType=DataType.INT,
+                name=ColumnName("array"),
+                dataType=DataType.ARRAY,
             ),
         ],
     )
 
     @classmethod
     @mock.patch(
-        "metadata.profiler.interface.profiler_interface.get_connection",
-        return_value=FakeConnection,
+        "metadata.profiler.interface.profiler_interface.get_ssl_connection",
+        return_value=FakeConnection(),
     )
-    @mock.patch.object(
-        PandasProfilerInterface,
-        "_convert_table_to_list_of_dataframe_objects",
+    @mock.patch(
+        "metadata.mixins.pandas.pandas_mixin.fetch_dataframe",
         return_value=[df1, pd.concat([df2, pd.DataFrame(index=df1.index)])],
     )
     def setUpClass(cls, mock_get_connection, mocked_dfs) -> None:
@@ -123,7 +149,7 @@ class DatalakeSampleTest(TestCase):
         """
         cls.datalake_profiler_interface = PandasProfilerInterface(
             entity=cls.table_entity,
-            service_connection_config=None,
+            service_connection_config=DatalakeConnection(configSource={}),
             storage_config=None,
             ometa_client=None,
             thread_count=None,
@@ -139,7 +165,7 @@ class DatalakeSampleTest(TestCase):
         generate a random subset of data
         """
         sampler = DatalakeSampler(
-            client=FakeConnection().client(),
+            client=FakeConnection().client,
             table=[self.df1, self.df2],
             profile_sample_config=ProfileSampleConfig(profile_sample=50.0),
         )
@@ -148,12 +174,11 @@ class DatalakeSampleTest(TestCase):
         assert res < 5
 
     @mock.patch(
-        "metadata.profiler.interface.profiler_interface.get_connection",
-        return_value=FakeConnection,
+        "metadata.profiler.interface.profiler_interface.get_ssl_connection",
+        return_value=FakeConnection(),
     )
-    @mock.patch.object(
-        PandasProfilerInterface,
-        "_convert_table_to_list_of_dataframe_objects",
+    @mock.patch(
+        "metadata.mixins.pandas.pandas_mixin.fetch_dataframe",
         return_value=[df1, pd.concat([df2, pd.DataFrame(index=df1.index)])],
     )
     def test_sample_property(self, mock_get_connection, mocked_dfs):
@@ -162,7 +187,7 @@ class DatalakeSampleTest(TestCase):
         """
         datalake_profiler_interface = PandasProfilerInterface(
             entity=self.table_entity,
-            service_connection_config=None,
+            service_connection_config=DatalakeConnection(configSource={}),
             storage_config=None,
             ometa_client=None,
             thread_count=None,
@@ -222,7 +247,7 @@ class DatalakeSampleTest(TestCase):
         We should be able to pick up sample data from the sampler
         """
         sampler = DatalakeSampler(
-            client=FakeConnection().client(),
+            client=FakeConnection().client,
             table=[self.df1, self.df2],
         )
         sample_data = sampler.fetch_sample_data()
@@ -237,7 +262,7 @@ class DatalakeSampleTest(TestCase):
         """
         stmt = "`age` > 30"
         sampler = DatalakeSampler(
-            client=FakeConnection().client(),
+            client=FakeConnection().client,
             table=[self.df1, self.df2],
             profile_sample_query=stmt,
         )

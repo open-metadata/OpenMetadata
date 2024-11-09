@@ -21,12 +21,9 @@ To be extended by any other workflow:
 """
 import traceback
 from abc import ABC, abstractmethod
-from typing import List, Tuple, cast
+from typing import List, Tuple, Type, cast
 
 from metadata.config.common import WorkflowExecutionError
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
 from metadata.generated.schema.entity.services.connections.serviceConnection import (
     ServiceConnection,
 )
@@ -38,23 +35,32 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.ingestion.api.parser import parse_workflow_config_gracefully
-from metadata.ingestion.api.step import Step, Summary
+from metadata.ingestion.api.step import Step
 from metadata.ingestion.api.steps import BulkSink, Processor, Sink, Source, Stage
 from metadata.ingestion.models.custom_types import ServiceWithConnectionType
+from metadata.profiler.api.models import ProfilerProcessorConfig
 from metadata.utils.class_helper import (
     get_service_class_from_service_type,
     get_service_type_from_source_type,
 )
+from metadata.utils.constants import CUSTOM_CONNECTOR_PREFIX
+from metadata.utils.importer import (
+    DynamicImportException,
+    MissingPluginException,
+    import_from_module,
+)
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.service_spec.service_spec import import_source_class
 from metadata.workflow.base import BaseWorkflow, InvalidWorkflowJSONException
-from metadata.workflow.workflow_status_mixin import SUCCESS_THRESHOLD_VALUE
 
 logger = ingestion_logger()
 
 
 class IngestionWorkflow(BaseWorkflow, ABC):
     """
-    Base Ingestion Workflow implementation
+    Base Ingestion Workflow implementation. This is used for all
+    workflows minus the application one, which directly inherits the
+    BaseWorkflow.
     """
 
     config: OpenMetadataWorkflowConfig
@@ -71,14 +77,9 @@ class IngestionWorkflow(BaseWorkflow, ABC):
             self.config.source.type
         )
 
-        metadata_config: OpenMetadataConnection = (
-            self.config.workflowConfig.openMetadataServerConfig
-        )
-
         super().__init__(
             config=config,
-            log_level=config.workflowConfig.loggerLevel,
-            metadata_config=metadata_config,
+            workflow_config=config.workflowConfig,
             service_type=self.service_type,
         )
 
@@ -129,36 +130,11 @@ class IngestionWorkflow(BaseWorkflow, ABC):
         if bulk_sink:
             bulk_sink.run()
 
-    def calculate_success(self) -> float:
-        return self.source.get_status().calculate_success()
-
     def get_failures(self) -> List[StackTraceError]:
         return self.source.get_status().failures
 
     def workflow_steps(self) -> List[Step]:
         return [self.source] + list(self.steps)
-
-    def raise_from_status_internal(self, raise_warnings=False):
-        """
-        Check the status of all steps
-        """
-        if (
-            self.source.get_status().failures
-            and self.calculate_success() < SUCCESS_THRESHOLD_VALUE
-        ):
-            raise WorkflowExecutionError(
-                f"{self.source.name} reported errors: {Summary.from_step(self.source)}"
-            )
-
-        for step in self.steps:
-            if step.status.failures:
-                raise WorkflowExecutionError(
-                    f"{step.name} reported errors: {Summary.from_step(step)}"
-                )
-            if raise_warnings and step.status.warnings:
-                raise WorkflowExecutionError(
-                    f"{step.name} reported warnings: {Summary.from_step(step)}"
-                )
 
     def _retrieve_service_connection_if_needed(self, service_type: ServiceType) -> None:
         """
@@ -184,7 +160,7 @@ class IngestionWorkflow(BaseWorkflow, ABC):
                 )
                 if service:
                     self.config.source.serviceConnection = ServiceConnection(
-                        __root__=service.connection
+                        service.connection
                     )
                 else:
                     raise InvalidWorkflowJSONException(
@@ -201,3 +177,38 @@ class IngestionWorkflow(BaseWorkflow, ABC):
                     f"Unknown error getting service connection for service name [{service_name}]"
                     f" using the secrets manager provider [{self.metadata.config.secretsManagerProvider}]: {exc}"
                 )
+
+    def validate(self):
+        try:
+            if not self.config.source.serviceConnection.root.config.supportsProfiler:
+                raise AttributeError()
+        except AttributeError:
+            if ProfilerProcessorConfig.model_validate(
+                self.config.processor.model_dump().get("config")
+            ).ignoreValidation:
+                logger.debug(
+                    f"Profiler is not supported for the service connection: {self.config.source.serviceConnection}"
+                )
+                return
+            raise WorkflowExecutionError(
+                f"Profiler is not supported for the service connection: {self.config.source.serviceConnection}"
+            )
+
+    def import_source_class(self) -> Type[Source]:
+        source_type = self.config.source.type.lower()
+        try:
+            return (
+                import_from_module(
+                    self.config.source.serviceConnection.root.config.sourcePythonClass
+                )
+                if source_type.startswith(CUSTOM_CONNECTOR_PREFIX)
+                else import_source_class(
+                    service_type=self.service_type, source_type=source_type
+                )
+            )
+        except DynamicImportException as e:
+            if source_type.startswith(CUSTOM_CONNECTOR_PREFIX):
+                raise e
+            logger.debug(traceback.format_exc())
+            logger.error(f"Failed to import source of type '{source_type}'")
+            raise MissingPluginException(source_type)

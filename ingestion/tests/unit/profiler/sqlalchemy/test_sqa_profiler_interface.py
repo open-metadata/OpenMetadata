@@ -14,7 +14,7 @@ Test SQA Interface
 """
 
 import os
-from datetime import datetime, timezone
+from datetime import datetime
 from unittest import TestCase
 from unittest.mock import patch
 from uuid import uuid4
@@ -38,6 +38,7 @@ from metadata.generated.schema.entity.services.connections.database.sqliteConnec
     SQLiteConnection,
     SQLiteScheme,
 )
+from metadata.generated.schema.type.basic import Timestamp
 from metadata.profiler.api.models import ThreadPoolMetrics
 from metadata.profiler.interface.sqlalchemy.profiler_interface import (
     SQAProfilerInterface,
@@ -69,7 +70,7 @@ class SQAInterfaceTest(TestCase):
             name="user",
             columns=[
                 EntityColumn(
-                    name=ColumnName(__root__="id"),
+                    name=ColumnName("id"),
                     dataType=DataType.INT,
                 )
             ],
@@ -107,7 +108,7 @@ class SQAInterfaceTestMultiThread(TestCase):
         name="user",
         columns=[
             EntityColumn(
-                name=ColumnName(__root__="id"),
+                name=ColumnName("id"),
                 dataType=DataType.INT,
             )
         ],
@@ -227,7 +228,7 @@ class SQAInterfaceTestMultiThread(TestCase):
         table_profile = TableProfile(
             columnCount=profile_results["table"].get("columnCount"),
             rowCount=profile_results["table"].get(RowCount.name()),
-            timestamp=datetime.now(tz=timezone.utc).timestamp(),
+            timestamp=Timestamp(int(datetime.now().timestamp())),
         )
 
         profile_request = CreateTableProfileRequest(

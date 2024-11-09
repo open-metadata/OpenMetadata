@@ -21,7 +21,7 @@ from metadata.data_quality.validations.table.pandas.tableRowInsertedCountToBeBet
     TableRowInsertedCountToBeBetweenValidator,
 )
 from metadata.generated.schema.entity.data.table import (
-    PartitionIntervalType,
+    PartitionIntervalTypes,
     PartitionProfilerConfig,
     ProfileSampleType,
 )
@@ -47,7 +47,7 @@ class PandasInterfaceMixin:
         partition_field = self.table_partition_config.partitionColumnName
         if (
             self.table_partition_config.partitionIntervalType
-            == PartitionIntervalType.COLUMN_VALUE
+            == PartitionIntervalTypes.COLUMN_VALUE
         ):
             return [
                 df[
@@ -59,7 +59,7 @@ class PandasInterfaceMixin:
             ]
         if (
             self.table_partition_config.partitionIntervalType
-            == PartitionIntervalType.INTEGER_RANGE
+            == PartitionIntervalTypes.INTEGER_RANGE
         ):
             return [
                 df[
@@ -91,7 +91,7 @@ class PandasInterfaceMixin:
             config_source=service_connection_config.configSource,
             client=client,
             file_fqn=DatalakeTableSchemaWrapper(
-                key=table.name.__root__,
+                key=table.name.root,
                 bucket_name=table.databaseSchema.name,
                 file_extension=table.fileFormat,
             ),
@@ -125,4 +125,4 @@ class PandasInterfaceMixin:
                         for df in data
                     ]
             return data
-        raise TypeError(f"Couldn't fetch {table.name.__root__}")
+        raise TypeError(f"Couldn't fetch {table.name.root}")

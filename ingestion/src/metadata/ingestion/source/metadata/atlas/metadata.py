@@ -41,6 +41,9 @@ from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.models import Either, Entity, StackTraceError
 from metadata.ingestion.api.steps import InvalidSourceException, Source
+from metadata.ingestion.connections.test_connections import (
+    raise_test_connection_exception,
+)
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection, get_test_connection_fn
@@ -75,7 +78,7 @@ class AtlasSource(Source):
         super().__init__()
         self.config = config
         self.metadata = metadata
-        self.service_connection = self.config.serviceConnection.__root__.config
+        self.service_connection = self.config.serviceConnection.root.config
 
         self.atlas_client = get_connection(self.service_connection)
         self.connection_obj = self.atlas_client
@@ -93,9 +96,11 @@ class AtlasSource(Source):
         self.test_connection()
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata):
-        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: AtlasConnection = config.serviceConnection.__root__.config
+    def create(
+        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
+    ):
+        config: WorkflowSource = WorkflowSource.model_validate(config_dict)
+        connection: AtlasConnection = config.serviceConnection.root.config
         if not isinstance(connection, AtlasConnection):
             raise InvalidSourceException(
                 f"Expected AtlasConnection, but got {connection}"
@@ -207,7 +212,7 @@ class AtlasSource(Source):
                     database_fqn = fqn.build(
                         self.metadata,
                         entity_type=Database,
-                        service_name=self.service.name.__root__,
+                        service_name=self.service.name.root,
                         database_name=database_name,
                     )
                     database_object = self.metadata.get_by_name(
@@ -224,7 +229,7 @@ class AtlasSource(Source):
                     database_schema_fqn = fqn.build(
                         self.metadata,
                         entity_type=DatabaseSchema,
-                        service_name=self.service.name.__root__,
+                        service_name=self.service.name.root,
                         database_name=database_name,
                         schema_name=db_entity["displayText"],
                     )
@@ -250,7 +255,7 @@ class AtlasSource(Source):
                     table_fqn = fqn.build(
                         metadata=self.metadata,
                         entity_type=Table,
-                        service_name=self.service.name.__root__,
+                        service_name=self.service.name.root,
                         database_name=database_name,
                         schema_name=db_entity["displayText"],
                         table_name=tbl_attrs["name"],
@@ -333,7 +338,6 @@ class AtlasSource(Source):
                 col_guid = col["guid"]
                 col_ref_entity = referred_entities[col_guid]
                 column = col_ref_entity["attributes"]
-                col_data_length = "1"
                 om_column = Column(
                     name=column["name"],
                     description=column.get("comment", None),
@@ -341,7 +345,7 @@ class AtlasSource(Source):
                         column["dataType"].upper()
                     ),
                     dataTypeDisplay=column["dataType"],
-                    dataLength=col_data_length,
+                    dataLength=1,
                     ordinalPosition=ordinal_pos,
                 )
                 om_cols.append(om_column)
@@ -375,7 +379,7 @@ class AtlasSource(Source):
                 from_fqn = fqn.build(
                     self.metadata,
                     entity_type=Table,
-                    service_name=self.service.name.__root__,
+                    service_name=self.service.name.root,
                     database_name=get_database_name_for_lineage(
                         self.service, db_entity["displayText"]
                     ),
@@ -404,7 +408,7 @@ class AtlasSource(Source):
                         to_fqn = fqn.build(
                             self.metadata,
                             entity_type=Table,
-                            service_name=self.service.name.__root__,
+                            service_name=self.service.name.root,
                             database_name=get_database_name_for_lineage(
                                 self.service, db_entity["displayText"]
                             ),
@@ -467,13 +471,16 @@ class AtlasSource(Source):
         if entity_type == "table":
             table: Table = self.metadata.get_by_name(entity=Table, fqn=to_fqn)
             if table:
-                return EntityReference(id=table.id.__root__, type="table")
+                return EntityReference(id=table.id.root, type="table")
         if entity_type == "pipeline":
             pipeline: Pipeline = self.metadata.get_by_name(entity=Pipeline, fqn=to_fqn)
             if pipeline:
-                return EntityReference(id=pipeline.id.__root__, type="pipeline")
+                return EntityReference(id=pipeline.id.root, type="pipeline")
         return None
 
     def test_connection(self) -> None:
         test_connection_fn = get_test_connection_fn(self.service_connection)
-        test_connection_fn(self.metadata, self.connection_obj, self.service_connection)
+        result = test_connection_fn(
+            self.metadata, self.connection_obj, self.service_connection
+        )
+        raise_test_connection_exception(result)

@@ -13,10 +13,11 @@
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { PagingResponse, RestoreRequestType } from 'Models';
-import { DataInsightLatestRun } from '../components/Applications/AppDetails/AppDetails.interface';
+import { DataInsightLatestRun } from '../components/Settings/Applications/AppDetails/AppDetails.interface';
 import { App } from '../generated/entity/applications/app';
 import { AppRunRecord } from '../generated/entity/applications/appRunRecord';
 import { CreateAppRequest } from '../generated/entity/applications/createAppRequest';
+import { PipelineStatus } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { ListParams } from '../interface/API.interface';
 import { getEncodedFqn } from '../utils/StringsUtils';
 import APIClient from './index';
@@ -62,6 +63,20 @@ export const getApplicationRuns = async (
   params?: AppListParams
 ) => {
   const response = await APIClient.get<PagingResponse<AppRunRecord[]>>(
+    `${BASE_URL}/name/${getEncodedFqn(appName)}/status`,
+    {
+      params,
+    }
+  );
+
+  return response.data;
+};
+
+export const getExternalApplicationRuns = async (
+  appName: string,
+  params?: AppListParams
+) => {
+  const response = await APIClient.get<PagingResponse<PipelineStatus[]>>(
     `${BASE_URL}/name/${getEncodedFqn(appName)}/status`,
     {
       params,

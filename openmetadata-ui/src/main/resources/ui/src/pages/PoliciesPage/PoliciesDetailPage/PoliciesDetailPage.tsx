@@ -12,6 +12,7 @@
  */
 
 import { EllipsisOutlined } from '@ant-design/icons';
+import Icon from '@ant-design/icons/lib/components/Icon';
 import {
   Button,
   Card,
@@ -22,6 +23,7 @@ import {
   Row,
   Space,
   Tabs,
+  Tooltip,
   Typography,
 } from 'antd';
 import { AxiosError } from 'axios';
@@ -31,17 +33,18 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
-import Description from '../../../components/common/EntityDescription/Description';
+import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
+import DescriptionV1 from '../../../components/common/EntityDescription/DescriptionV1';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import Loader from '../../../components/common/Loader/Loader';
 import RichTextEditorPreviewer from '../../../components/common/RichTextEditor/RichTextEditorPreviewer';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
-import Loader from '../../../components/Loader/Loader';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../../../constants/GlobalSettings.constants';
-import { EntityType } from '../../../enums/entity.enum';
+import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
 import { Rule } from '../../../generated/api/policies/createPolicy';
 import { Policy } from '../../../generated/entity/policies/policy';
 import { EntityReference } from '../../../generated/type/entityReference';
@@ -59,7 +62,6 @@ import {
   getEditPolicyRulePath,
   getSettingPath,
 } from '../../../utils/RouterUtils';
-import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import './policies-detail.less';
 import PoliciesDetailsList from './PoliciesDetailsList.component';
@@ -104,7 +106,10 @@ const PoliciesDetailPage = () => {
   const fetchPolicy = async () => {
     setLoading(true);
     try {
-      const data = await getPolicyByName(fqn, 'owner,location,teams,roles');
+      const data = await getPolicyByName(
+        fqn,
+        `${TabSpecificField.OWNERS},${TabSpecificField.LOCATION},${TabSpecificField.TEAMS},${TabSpecificField.ROLES}`
+      );
       setPolicy(data ?? ({} as Policy));
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -158,7 +163,7 @@ const PoliciesDetailPage = () => {
   const handleTeamsUpdate = async (data: EntityReference) => {
     try {
       const team = await getTeamByName(data.fullyQualifiedName || '', {
-        fields: 'policies',
+        fields: TabSpecificField.POLICIES,
       });
       const updatedAttributeData = (team.policies ?? []).filter(
         (attrData) => attrData.id !== policy.id
@@ -265,11 +270,12 @@ const PoliciesDetailPage = () => {
                         handleRuleDelete(rule);
                       }}>
                       <Space align="center">
-                        <SVGIcons
-                          alt={t('label.delete')}
-                          icon={Icons.DELETE}
-                          width="16px"
+                        <Icon
+                          className="align-middle"
+                          component={IconDelete}
+                          style={{ fontSize: '16px' }}
                         />
+
                         {t('label.delete')}
                       </Space>
                     </Button>
@@ -281,15 +287,21 @@ const PoliciesDetailPage = () => {
           }
           placement="bottomRight"
           trigger={['click']}>
-          <Button
-            data-testid={`manage-button-${rule.name}`}
-            icon={<EllipsisOutlined className="text-grey-body" rotate={90} />}
-            size="small"
-            type="text"
-            onClick={(e) => {
-              e.stopPropagation();
-            }}
-          />
+          <Tooltip
+            placement="topRight"
+            title={t('label.manage-entity', {
+              entity: t('label.rule'),
+            })}>
+            <Button
+              data-testid={`manage-button-${rule.name}`}
+              icon={<EllipsisOutlined className="text-grey-body" rotate={90} />}
+              size="small"
+              type="text"
+              onClick={(e) => {
+                e.stopPropagation();
+              }}
+            />
+          </Tooltip>
         </Dropdown>
       );
     },
@@ -335,14 +347,15 @@ const PoliciesDetailPage = () => {
                 level={5}>
                 {policyName}
               </Typography.Title>
-              <Description
+              <DescriptionV1
                 hasEditAccess
-                className="m-b-md"
+                className="m-y-md"
                 description={policy.description || ''}
                 entityFqn={policy.fullyQualifiedName}
                 entityName={policyName}
                 entityType={EntityType.POLICY}
                 isEdit={editDescription}
+                showCommentsIcon={false}
                 onCancel={() => setEditDescription(false)}
                 onDescriptionEdit={() => setEditDescription(true)}
                 onDescriptionUpdate={handleDescriptionUpdate}

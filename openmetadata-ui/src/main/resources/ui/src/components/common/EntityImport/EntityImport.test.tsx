@@ -23,6 +23,7 @@ import {
   Status,
 } from '../../../generated/type/csvImportResult';
 import { EntityImport } from './EntityImport.component';
+
 let mockCsvImportResult = {
   dryRun: true,
   status: 'success',
@@ -33,6 +34,7 @@ let mockCsvImportResult = {
   success,Entity created,,Glossary2 Term,Glossary2 Term displayName,Description for Glossary2 Term,,,,\r
   success,Entity created,,Glossary2 term2,Glossary2 term2,Description data.,,,,\r`,
 } as CSVImportResult;
+
 const mockProps = {
   entityName: 'Business Glossary',
   onImport: jest
@@ -41,6 +43,7 @@ const mockProps = {
   onSuccess: jest.fn(),
   onCancel: jest.fn(),
 };
+
 const mockCsvContent = `parent,name*,displayName,description*,synonyms,relatedTerms,references,tags
 ,Glossary2 Term,Glossary2 Term,Description for Glossary2 Term,,,,
 ,Glossary2 term2,Glossary2 term2,Description data.,,,,`;
@@ -50,12 +53,12 @@ const mockIncorrectCsvContent = `parent,name*,displayName,description*,synonyms,
 `;
 
 jest.mock(
-  '../../../components/IngestionStepper/IngestionStepper.component',
+  '../../Settings/Services/Ingestion/IngestionStepper/IngestionStepper.component',
   () => {
     return jest.fn().mockImplementation(() => <div>Stepper</div>);
   }
 );
-jest.mock('../../../components/Loader/Loader', () => {
+jest.mock('../../common/Loader/Loader', () => {
   return jest.fn().mockImplementation(() => <div>Loader</div>);
 });
 jest.mock('./ImportStatus/ImportStatus.component', () => ({

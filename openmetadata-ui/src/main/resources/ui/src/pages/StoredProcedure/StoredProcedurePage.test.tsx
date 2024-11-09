@@ -13,7 +13,7 @@
 
 import { act, render, screen } from '@testing-library/react';
 import React from 'react';
-import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
+import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { getStoredProceduresByFqn } from '../../rest/storedProceduresAPI';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { STORED_PROCEDURE_DEFAULT_FIELDS } from '../../utils/StoredProceduresUtils';
@@ -23,7 +23,7 @@ const mockEntityPermissionByFqn = jest
   .fn()
   .mockImplementation(() => DEFAULT_ENTITY_PERMISSION);
 
-jest.mock('../../components/PermissionProvider/PermissionProvider', () => ({
+jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockImplementation(() => ({
     getEntityPermissionByFqn: mockEntityPermissionByFqn,
   })),
@@ -95,11 +95,11 @@ jest.mock('../../components/Lineage/Lineage.component', () => {
   return jest.fn().mockImplementation(() => <p>testEntityLineage</p>);
 });
 
-jest.mock('../../components/SchemaEditor/SchemaEditor', () => {
+jest.mock('../../components/Database/SchemaEditor/SchemaEditor', () => {
   return jest.fn().mockImplementation(() => <p>testSchemaEditor</p>);
 });
 
-jest.mock('../../components/TabsLabel/TabsLabel.component', () => {
+jest.mock('../../components/common/TabsLabel/TabsLabel.component', () => {
   return jest.fn().mockImplementation(({ name }) => <p>{name}</p>);
 });
 
@@ -125,8 +125,12 @@ jest.mock('react-router-dom', () => ({
   useHistory: jest.fn().mockImplementation(() => ({})),
 }));
 
-jest.mock('../../components/Loader/Loader', () => {
+jest.mock('../../components/common/Loader/Loader', () => {
   return jest.fn().mockImplementation(() => <>testLoader</>);
+});
+
+jest.mock('../../hoc/LimitWrapper', () => {
+  return jest.fn().mockImplementation(({ children }) => <p>{children}</p>);
 });
 
 jest.useFakeTimers();

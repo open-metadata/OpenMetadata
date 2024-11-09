@@ -69,9 +69,9 @@ class ParquetDataFrameReader(DataFrameReader):
 
         client_kwargs = {}
         if self.config_source.securityConfig.endPointURL:
-            client_kwargs[
-                "endpoint_url"
-            ] = self.config_source.securityConfig.endPointURL
+            client_kwargs["endpoint_url"] = str(
+                self.config_source.securityConfig.endPointURL
+            )
 
         if self.config_source.securityConfig.awsRegion:
             client_kwargs["region_name"] = self.config_source.securityConfig.awsRegion

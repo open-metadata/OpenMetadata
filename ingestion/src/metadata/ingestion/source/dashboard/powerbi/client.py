@@ -18,9 +18,14 @@ from time import sleep
 from typing import List, Optional, Tuple
 
 import msal
+from pydantic import BaseModel, ConfigDict
 
+from metadata.generated.schema.entity.services.connections.dashboard.powerBIConnection import (
+    PowerBIConnection,
+)
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.client import REST, ClientConfig
+from metadata.ingestion.source.dashboard.powerbi.file_client import PowerBiFileClient
 from metadata.ingestion.source.dashboard.powerbi.models import (
     DashboardsResponse,
     Dataset,
@@ -52,7 +57,7 @@ class PowerBiApiClient:
 
     client: REST
 
-    def __init__(self, config):
+    def __init__(self, config: PowerBIConnection):
         self.config = config
         self.msal_client = msal.ConfidentialClientApplication(
             client_id=self.config.clientId,
@@ -192,8 +197,9 @@ class PowerBiApiClient:
             response_data = self.client.get(
                 f"/myorg/groups/{group_id}/datasets/{dataset_id}/tables"
             )
-            response = TablesResponse(**response_data)
-            return response.value
+            if response_data:
+                response = TablesResponse(**response_data)
+                return response.value
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
             logger.warning(f"Error fetching dataset tables: {exc}")
@@ -318,3 +324,10 @@ class PowerBiApiClient:
             poll += 1
 
         return False
+
+
+class PowerBiClient(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    api_client: PowerBiApiClient
+    file_client: Optional[PowerBiFileClient]

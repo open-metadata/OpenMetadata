@@ -56,9 +56,11 @@ class SplineSource(PipelineServiceSource):
     """
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata):
-        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: SplineConnection = config.serviceConnection.__root__.config
+    def create(
+        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
+    ):
+        config: WorkflowSource = WorkflowSource.model_validate(config_dict)
+        connection: SplineConnection = config.serviceConnection.root.config
         if not isinstance(connection, SplineConnection):
             raise InvalidSourceException(
                 f"Expected SplineConnection, but got {connection}"
@@ -98,7 +100,7 @@ class SplineSource(PipelineServiceSource):
             displayName=pipeline_details.applicationName,
             sourceUrl=connection_url,
             tasks=self.get_connections_jobs(pipeline_details, connection_url),
-            service=self.context.pipeline_service,
+            service=self.context.get().pipeline_service,
         )
         yield Either(right=pipeline_request)
         self.register_record(pipeline_request=pipeline_request)
@@ -113,7 +115,7 @@ class SplineSource(PipelineServiceSource):
     ) -> Optional[Table]:
         if not table_name:
             return None
-        for service_name in self.source_config.dbServiceNames:
+        for service_name in self.get_db_service_names():
             table_fqn = fqn.build(
                 metadata=self.metadata,
                 entity_type=Table,
@@ -131,7 +133,6 @@ class SplineSource(PipelineServiceSource):
         return None
 
     def _get_table_from_datasource_name(self, datasource: str) -> Optional[Table]:
-
         if (
             not datasource
             and not datasource.startswith("dbfs")
@@ -164,7 +165,7 @@ class SplineSource(PipelineServiceSource):
         """
         Parse all the executions available and create lineage
         """
-        if not self.source_config.dbServiceNames:
+        if not self.get_db_service_names():
             return
         lineage_details = self.client.get_lineage_details(
             pipeline_details.executionPlanId
@@ -223,8 +224,8 @@ class SplineSource(PipelineServiceSource):
                     pipeline_fqn = fqn.build(
                         metadata=self.metadata,
                         entity_type=Pipeline,
-                        service_name=self.context.pipeline_service,
-                        pipeline_name=self.context.pipeline,
+                        service_name=self.context.get().pipeline_service,
+                        pipeline_name=self.context.get().pipeline,
                     )
                     pipeline_entity = self.metadata.get_by_name(
                         entity=Pipeline, fqn=pipeline_fqn
@@ -234,7 +235,7 @@ class SplineSource(PipelineServiceSource):
                             edge=EntitiesEdge(
                                 lineageDetails=LineageDetails(
                                     pipeline=EntityReference(
-                                        id=pipeline_entity.id.__root__,
+                                        id=pipeline_entity.id.root,
                                         type="pipeline",
                                     ),
                                     columnsLineage=[

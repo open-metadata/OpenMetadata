@@ -18,8 +18,8 @@ from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
-from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.generated.schema.type.basic import FullyQualifiedEntityName
+from metadata.ingestion.ometa.ometa_api import C, OpenMetadata, T
 from metadata.utils import fqn
 from metadata.utils.logger import ometa_logger
 
@@ -28,7 +28,7 @@ logger = ometa_logger()
 
 def create_ometa_client(
     metadata_config: OpenMetadataConnection,
-) -> OpenMetadata:
+) -> OpenMetadata[T, C]:  # pyright: ignore[reportInvalidTypeVarUse]
     """Create an OpenMetadata client
 
     Args:
@@ -38,7 +38,7 @@ def create_ometa_client(
         OpenMetadata: an OM client
     """
     try:
-        metadata = OpenMetadata(metadata_config)
+        metadata = OpenMetadata[T, C](metadata_config)
         metadata.health_check()
         return metadata
     except Exception as exc:
@@ -49,7 +49,7 @@ def create_ometa_client(
 
 def get_chart_entities_from_id(
     chart_ids: List[str], metadata: OpenMetadata, service_name: str
-) -> List[EntityReference]:
+) -> List[FullyQualifiedEntityName]:
     """
     Method to get the chart entity using get_by_name api
     """
@@ -63,6 +63,5 @@ def get_chart_entities_from_id(
             ),
         )
         if chart:
-            entity = EntityReference(id=chart.id, type="chart")
-            entities.append(entity)
+            entities.append(chart.fullyQualifiedName)
     return entities

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { ContainerVersionProp } from '../components/ContainerVersion/ContainerVersion.interface';
+import { ContainerVersionProp } from '../components/Container/ContainerVersion/ContainerVersion.interface';
 import {
   Constraint,
   DataType,
@@ -85,7 +85,7 @@ export const containerVersionMockProps: ContainerVersionProp = {
   version: '0.3',
   currentVersionData: mockContainerData,
   isVersionLoading: false,
-  owner: mockOwner,
+  owners: mockOwner,
   domain: mockDomain,
   dataProducts: [],
   tier: mockTier,

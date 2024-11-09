@@ -11,7 +11,7 @@
 """
 Test Column Name Scanner
 """
-from unittest import TestCase
+import pytest
 
 from metadata.pii.models import TagAndConfidence
 from metadata.pii.scanners.column_name_scanner import ColumnNameScanner
@@ -22,45 +22,41 @@ EXPECTED_SENSITIVE = TagAndConfidence(
 )
 
 
-class ColumnNameScannerTest(TestCase):
-    """
-    Validate various typical column names
-    """
+@pytest.fixture
+def scanner() -> ColumnNameScanner:
+    """Return the scanner"""
+    return ColumnNameScanner()
 
-    def test_column_names_none(self):
-        self.assertIsNone(ColumnNameScanner.scan("access_channel"))
-        self.assertIsNone(ColumnNameScanner.scan("status_reason"))
 
-        # Credit Card
-        self.assertIsNone(ColumnNameScanner.scan("credit"))
-        self.assertIsNone(ColumnNameScanner.scan("user_credits"))
+def test_column_names_none(scanner):
+    assert scanner.scan("access_channel") is None
+    assert scanner.scan("status_reason") is None
 
-        # Users
-        self.assertIsNone(ColumnNameScanner.scan("id"))
-        self.assertIsNone(ColumnNameScanner.scan("user_id"))
+    # Credit Card
+    assert scanner.scan("credit") is None
+    assert scanner.scan("user_credits") is None
 
-    def test_column_names_sensitive(self):
+    # Users
+    assert scanner.scan("id") is None
+    assert scanner.scan("user_id") is None
 
-        # Bank
-        self.assertEqual(ColumnNameScanner.scan("bank_account"), EXPECTED_SENSITIVE)
 
-        # Credit Card
-        self.assertEqual(ColumnNameScanner.scan("credit_card"), EXPECTED_SENSITIVE)
-        self.assertEqual(
-            ColumnNameScanner.scan("credit_card_number"), EXPECTED_SENSITIVE
-        )
-        self.assertEqual(
-            ColumnNameScanner.scan("personal_credit_card"), EXPECTED_SENSITIVE
-        )
+def test_column_names_sensitive(scanner):
+    # Bank
+    assert scanner.scan("bank_account") == EXPECTED_SENSITIVE
 
-        # Users
-        self.assertEqual(ColumnNameScanner.scan("user_name"), EXPECTED_SENSITIVE)
-        self.assertEqual(ColumnNameScanner.scan("user_first_name"), EXPECTED_SENSITIVE)
-        self.assertEqual(ColumnNameScanner.scan("user_last_name"), EXPECTED_SENSITIVE)
-        self.assertEqual(ColumnNameScanner.scan("client_name"), EXPECTED_SENSITIVE)
-        self.assertEqual(
-            ColumnNameScanner.scan("person_first_name"), EXPECTED_SENSITIVE
-        )
-        self.assertEqual(ColumnNameScanner.scan("client_last_name"), EXPECTED_SENSITIVE)
+    # Credit Card
+    assert scanner.scan("credit_card") == EXPECTED_SENSITIVE
+    assert scanner.scan("credit_card_number") == EXPECTED_SENSITIVE
+    assert scanner.scan("personal_credit_card") == EXPECTED_SENSITIVE
 
-        self.assertEqual(ColumnNameScanner.scan("email"), EXPECTED_SENSITIVE)
+    # Users
+    assert scanner.scan("user_name") == EXPECTED_SENSITIVE
+    assert scanner.scan("user_first_name") == EXPECTED_SENSITIVE
+    assert scanner.scan("user_last_name") == EXPECTED_SENSITIVE
+    assert scanner.scan("client_name") == EXPECTED_SENSITIVE
+    assert scanner.scan("person_first_name") == EXPECTED_SENSITIVE
+    assert scanner.scan("client_last_name") == EXPECTED_SENSITIVE
+
+    assert scanner.scan("email") == EXPECTED_SENSITIVE
+    assert scanner.scan("ssn") == EXPECTED_SENSITIVE

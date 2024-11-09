@@ -34,9 +34,10 @@ from metadata.ingestion.source.database.snowflake.queries import (
     SNOWFLAKE_SESSION_TAG_QUERY,
 )
 from metadata.profiler.orm.converter.base import ometa_to_sqa_orm
+from metadata.utils.collaborative_super import Root
 
 
-class SQAInterfaceMixin:
+class SQAInterfaceMixin(Root):
     """SQLAlchemy inteface mixin grouping shared methods between sequential and threaded executor"""
 
     def _get_engine(self):
@@ -112,5 +113,5 @@ class SQAInterfaceMixin:
         return [
             column.name
             for column in self.table.__table__.columns
-            if column.name in {col.name.__root__ for col in self.table_entity.columns}
+            if column.name in {col.name.root for col in self.table_entity.columns}
         ]

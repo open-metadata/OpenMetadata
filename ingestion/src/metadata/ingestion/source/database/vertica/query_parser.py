@@ -12,7 +12,7 @@
 Vertica usage module
 """
 from abc import ABC
-from typing import Iterable
+from typing import Iterable, Optional
 
 from metadata.generated.schema.entity.services.connections.database.verticaConnection import (
     VerticaConnection,
@@ -43,10 +43,12 @@ class VerticaQueryParserSource(QueryParserSource, ABC):
     filters: str
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata):
+    def create(
+        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
+    ):
         """Create class instance"""
-        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: VerticaConnection = config.serviceConnection.__root__.config
+        config: WorkflowSource = WorkflowSource.model_validate(config_dict)
+        connection: VerticaConnection = config.serviceConnection.root.config
         if not isinstance(connection, VerticaConnection):
             raise InvalidSourceException(
                 f"Expected VerticaConnection, but got {connection}"
@@ -54,7 +56,7 @@ class VerticaQueryParserSource(QueryParserSource, ABC):
         return cls(config, metadata)
 
     def get_table_query(self) -> Iterable[TableQuery]:
-        database = self.config.serviceConnection.__root__.config.database
+        database = self.config.serviceConnection.root.config.database
         if database:
             yield from super().get_table_query()
         else:
@@ -62,6 +64,6 @@ class VerticaQueryParserSource(QueryParserSource, ABC):
             for res in results:
                 row = list(res)
                 logger.info(f"Ingesting from database: {row[0]}")
-                self.config.serviceConnection.__root__.config.database = row[0]
+                self.config.serviceConnection.root.config.database = row[0]
                 self.engine = get_connection(self.service_connection)
                 yield from super().get_table_query()

@@ -13,6 +13,7 @@
 
 import { render, screen } from '@testing-library/react';
 import React from 'react';
+import { MemoryRouter } from 'react-router-dom';
 import { EntityType } from '../../enums/entity.enum';
 import {
   Database,
@@ -32,7 +33,7 @@ const mockParams = {
 };
 
 jest.mock('react-router-dom', () => ({
-  Link: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
+  ...jest.requireActual('react-router-dom'),
   useParams: jest.fn().mockImplementation(() => mockParams),
 }));
 
@@ -82,15 +83,17 @@ const mockData: Database[] = [
     updatedAt: 1692852095047,
     updatedBy: 'admin',
     href: 'http://localhost:8585/api/v1/databases/79627fa0-a4c1-4a8a-a00f-12a5c70cd2db',
-    owner: {
-      id: '4d9d9c11-7947-41a9-93fa-3afcec298765',
-      type: 'user',
-      name: 'adam_rodriguez9',
-      fullyQualifiedName: 'adam_rodriguez9',
-      displayName: 'Adam Rodriguez',
-      deleted: false,
-      href: 'http://localhost:8585/api/v1/users/4d9d9c11-7947-41a9-93fa-3afcec298765',
-    },
+    owners: [
+      {
+        id: '4d9d9c11-7947-41a9-93fa-3afcec298765',
+        type: 'user',
+        name: 'adam_rodriguez9',
+        fullyQualifiedName: 'adam_rodriguez9',
+        displayName: 'Adam Rodriguez',
+        deleted: false,
+        href: 'http://localhost:8585/api/v1/users/4d9d9c11-7947-41a9-93fa-3afcec298765',
+      },
+    ],
     service: {
       id: '958a73c6-55d0-490f-8024-2a78a446d1db',
       type: 'databaseService',
@@ -147,7 +150,9 @@ const props: ServiceVersionMainTabContentProps = {
 
 describe('ServiceVersionMainTabContent tests', () => {
   it('Component should render properly provided proper data', () => {
-    render(<ServiceVersionMainTabContent {...props} />);
+    render(<ServiceVersionMainTabContent {...props} />, {
+      wrapper: MemoryRouter,
+    });
 
     const entityTable = screen.getByTestId('service-children-table');
     const entityName = screen.getByText('ecommerce_db');
@@ -168,9 +173,11 @@ describe('ServiceVersionMainTabContent tests', () => {
   });
 
   it('Loader should be displayed if isServiceLoading is true', async () => {
-    render(<ServiceVersionMainTabContent {...props} isServiceLoading />);
+    render(<ServiceVersionMainTabContent {...props} isServiceLoading />, {
+      wrapper: MemoryRouter,
+    });
 
-    const loader = await screen.findByTestId('skeleton-table');
+    const loader = await screen.findByTestId('loader');
 
     expect(loader).toBeInTheDocument();
   });

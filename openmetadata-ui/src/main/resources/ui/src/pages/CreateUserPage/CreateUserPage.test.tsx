@@ -39,6 +39,16 @@ const mockUserRole = {
   },
 };
 
+jest.mock('react-router-dom', () => ({
+  useLocation: jest.fn().mockReturnValue({
+    state: { isAdminPage: false },
+  }),
+  useHistory: jest.fn(),
+  useParams: jest.fn().mockReturnValue({
+    bot: undefined,
+  }),
+}));
+
 jest.mock('../../rest/rolesAPIV1', () => ({
   getRoles: jest.fn().mockImplementation(() => Promise.resolve(mockUserRole)),
 }));
@@ -47,13 +57,16 @@ jest.mock('../../hooks/authHooks', () => ({
   useAuth: jest.fn().mockReturnValue({ isAdminUser: true }),
 }));
 
-jest.mock('../../components/CreateUser/CreateUser.component', () => {
-  return jest
-    .fn()
-    .mockImplementation(({ onSave }) => (
-      <div onClick={onSave}>CreateUser component</div>
-    ));
-});
+jest.mock(
+  '../../components/Settings/Users/CreateUser/CreateUser.component',
+  () => {
+    return jest
+      .fn()
+      .mockImplementation(({ onSave }) => (
+        <div onClick={onSave}>CreateUser component</div>
+      ));
+  }
+);
 
 jest.mock('../../rest/userAPI', () => ({
   createUser: jest.fn().mockImplementation(() => Promise.resolve()),
@@ -62,6 +75,13 @@ jest.mock('../../rest/userAPI', () => ({
 jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => {
   return jest.fn().mockImplementation(({ children }) => <>{children}</>);
 });
+
+jest.mock(
+  '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component',
+  () => {
+    return jest.fn().mockImplementation(() => <p>TitleBreadcrumb</p>);
+  }
+);
 
 const mockCreateUser = jest.fn(() => Promise.resolve({}));
 

@@ -28,33 +28,42 @@ jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockImplementation(() => mockParams),
 }));
 
-jest.mock('../../components/TableVersion/TableVersion.component', () => {
-  return jest.fn().mockReturnValue(<div>TableVersion component</div>);
-});
 jest.mock(
-  '../../components/DashboardVersion/DashboardVersion.component',
+  '../../components/Database/TableVersion/TableVersion.component',
+  () => {
+    return jest.fn().mockReturnValue(<div>TableVersion component</div>);
+  }
+);
+jest.mock(
+  '../../components/Dashboard/DashboardVersion/DashboardVersion.component',
   () => {
     return jest.fn().mockReturnValue(<div>DashboardVersion component</div>);
   }
 );
-jest.mock('../../components/PipelineVersion/PipelineVersion.component', () => {
-  return jest.fn().mockReturnValue(<div>PipelineVersion component</div>);
-});
-jest.mock('../../components/TopicVersion/TopicVersion.component', () => {
+jest.mock(
+  '../../components/Pipeline/PipelineVersion/PipelineVersion.component',
+  () => {
+    return jest.fn().mockReturnValue(<div>PipelineVersion component</div>);
+  }
+);
+jest.mock('../../components/Topic/TopicVersion/TopicVersion.component', () => {
   return jest.fn().mockReturnValue(<div>TopicVersion component</div>);
 });
-jest.mock('../../components/MlModelVersion/MlModelVersion.component', () => {
-  return jest.fn().mockReturnValue(<div>MlModelVersion component</div>);
-});
 jest.mock(
-  '../../components/ContainerVersion/ContainerVersion.component',
+  '../../components/MlModel/MlModelVersion/MlModelVersion.component',
+  () => {
+    return jest.fn().mockReturnValue(<div>MlModelVersion component</div>);
+  }
+);
+jest.mock(
+  '../../components/Container/ContainerVersion/ContainerVersion.component',
   () => {
     return jest.fn().mockReturnValue(<div>ContainerVersion component</div>);
   }
 );
 
 jest.mock(
-  '../../components/DataModelVersion/DataModelVersion.component',
+  '../../components/Dashboard/DataModel/DataModelVersion/DataModelVersion.component',
   () => {
     return jest.fn().mockReturnValue(<div>DataModelVersion component</div>);
   }
@@ -105,7 +114,7 @@ jest.mock('../../rest/dataModelsAPI', () => ({
     .mockImplementation(() => Promise.resolve({})),
 }));
 
-jest.mock('../../components/PermissionProvider/PermissionProvider', () => ({
+jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockImplementation(() => ({
     getEntityPermissionByFqn: jest
       .fn()

@@ -168,3 +168,18 @@ where serviceType = 'Mssql';
 DELETE FROM event_subscription_entity;
 DELETE FROM change_event_consumers;
 DELETE FROM consumers_dlq;
+
+CREATE TABLE IF NOT EXISTS suggestions (
+    id VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') STORED NOT NULL,
+    fqnHash VARCHAR(256) NOT NULL COLLATE ascii_bin,
+    entityLink VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.entityLink') NOT NULL,
+    suggestionType VARCHAR(36) GENERATED ALWAYS AS (json_unquote(json ->> '$.type')) NOT NULL,
+    json JSON NOT NULL,
+    updatedAt BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.updatedAt') NOT NULL,
+    updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.updatedBy') NOT NULL,
+    status VARCHAR(256) GENERATED ALWAYS AS (json_unquote(json -> '$.status')) NOT NULL,
+    PRIMARY KEY (id)
+);
+
+UPDATE ingestion_pipeline_entity SET json = JSON_SET(json, '$.provider', 'user')
+WHERE JSON_EXTRACT(json, '$.name') = 'OpenMetadata_dataInsight';

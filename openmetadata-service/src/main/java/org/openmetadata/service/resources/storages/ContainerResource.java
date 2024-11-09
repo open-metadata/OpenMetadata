@@ -42,6 +42,7 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ContainerRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
@@ -60,7 +61,7 @@ import org.openmetadata.service.util.ResultList;
 public class ContainerResource extends EntityResource<Container, ContainerRepository> {
   public static final String COLLECTION_PATH = "v1/containers/";
   static final String FIELDS =
-      "parent,children,dataModel,owner,tags,followers,extension,domain,sourceHash";
+      "parent,children,dataModel,owners,tags,followers,extension,domain,sourceHash";
 
   @Override
   public Container addHref(UriInfo uriInfo, Container container) {
@@ -70,8 +71,8 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
     return container;
   }
 
-  public ContainerResource(Authorizer authorizer) {
-    super(Entity.CONTAINER, authorizer);
+  public ContainerResource(Authorizer authorizer, Limits limits) {
+    super(Entity.CONTAINER, authorizer, limits);
   }
 
   @Override
@@ -269,6 +270,35 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
                       }))
           JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
+  }
+
+  @PATCH
+  @Path("/name/{fqn}")
+  @Operation(
+      operationId = "patchContainer",
+      summary = "Update a Container using name.",
+      description = "Update an existing Container using JsonPatch.",
+      externalDocs =
+          @ExternalDocumentation(
+              description = "JsonPatch RFC",
+              url = "https://tools.ietf.org/html/rfc6902"))
+  @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
+  public Response patch(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the Container", schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn,
+      @RequestBody(
+              description = "JsonPatch with array of operations",
+              content =
+                  @Content(
+                      mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
+                      examples = {
+                        @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
+                      }))
+          JsonPatch patch) {
+    return patchInternal(uriInfo, securityContext, fqn, patch);
   }
 
   @PUT
@@ -523,6 +553,7 @@ public class ContainerResource extends EntityResource<Container, ContainerReposi
         .withPrefix(create.getPrefix())
         .withNumberOfObjects(create.getNumberOfObjects())
         .withSize(create.getSize())
+        .withFullPath(create.getFullPath())
         .withFileFormats(create.getFileFormats())
         .withSourceUrl(create.getSourceUrl())
         .withSourceHash(create.getSourceHash());

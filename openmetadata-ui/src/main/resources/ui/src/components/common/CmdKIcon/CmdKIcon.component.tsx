@@ -19,21 +19,24 @@ import { NavigatorHelper } from '../../../utils/NavigatorUtils';
 
 const CmdKIcon = () => {
   return (
-    <div className="d-flex items-center">
+    <div className="d-flex items-center" data-testid="cmdicon-container">
       {NavigatorHelper.isMacOs() ? (
         <CmdButton
+          data-testid="cmd-button"
           style={{
             backgroundColor: 'white',
           }}
         />
       ) : (
         <CtrlButton
+          data-testid="ctrl-button"
           style={{
             backgroundColor: 'white',
           }}
         />
       )}
       <KButton
+        data-testid="k-button"
         style={{
           marginLeft: '4px',
           backgroundColor: 'white',

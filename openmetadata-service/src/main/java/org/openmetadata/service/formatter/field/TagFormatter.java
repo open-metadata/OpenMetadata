@@ -13,18 +13,23 @@
 
 package org.openmetadata.service.formatter.field;
 
+import static org.openmetadata.service.Entity.FIELD_TAGS;
+
+import java.util.List;
+import org.openmetadata.schema.entity.feed.FeedInfo;
+import org.openmetadata.schema.entity.feed.TagFeedInfo;
+import org.openmetadata.schema.entity.feed.Thread;
+import org.openmetadata.schema.type.FieldChange;
+import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.formatter.decorators.MessageDecorator;
-import org.openmetadata.service.resources.feeds.MessageParser;
+import org.openmetadata.service.util.JsonUtils;
 
 public class TagFormatter extends DefaultFieldFormatter {
+  private static final String HEADER_MESSAGE = "%s %s the tags for %s %s";
 
   public TagFormatter(
-      MessageDecorator<?> messageDecorator,
-      String fieldOldValue,
-      String fieldNewValue,
-      String fieldChangeName,
-      MessageParser.EntityLink entityLink) {
-    super(messageDecorator, fieldOldValue, fieldNewValue, fieldChangeName, entityLink);
+      MessageDecorator<?> messageDecorator, Thread thread, FieldChange fieldChange) {
+    super(messageDecorator, thread, fieldChange);
   }
 
   @Override
@@ -63,6 +68,7 @@ public class TagFormatter extends DefaultFieldFormatter {
               .replaceMarkers(
                   message, this.getMessageDecorator().httpAddMarker(), spanAdd, spanAddClose);
     }
+    populateTagFeedInfo(Thread.FieldOperation.ADDED, message);
     return message;
   }
 
@@ -112,6 +118,7 @@ public class TagFormatter extends DefaultFieldFormatter {
               this.getFieldChangeName(),
               diff);
     }
+    populateTagFeedInfo(Thread.FieldOperation.UPDATED, message);
     return String.format(message, this.getFieldChangeName());
   }
 
@@ -151,6 +158,7 @@ public class TagFormatter extends DefaultFieldFormatter {
               .replaceMarkers(
                   message, this.getMessageDecorator().httpRemoveMarker(), spanAdd, spanAddClose);
     }
+    populateTagFeedInfo(Thread.FieldOperation.DELETED, message);
     return message;
   }
 
@@ -159,5 +167,28 @@ public class TagFormatter extends DefaultFieldFormatter {
       return "column";
     }
     return fieldName;
+  }
+
+  private void populateTagFeedInfo(Thread.FieldOperation operation, String threadMessage) {
+    List<TagLabel> oldTags =
+        JsonUtils.readOrConvertValues(fieldChange.getOldValue(), TagLabel.class);
+    List<TagLabel> newTags =
+        JsonUtils.readOrConvertValues(fieldChange.getNewValue(), TagLabel.class);
+    TagFeedInfo tagFeedInfo = new TagFeedInfo().withPreviousTags(oldTags).withUpdatedTags(newTags);
+    FeedInfo feedInfo =
+        new FeedInfo()
+            .withHeaderMessage(getHeaderForTagsUpdate(operation.value()))
+            .withFieldName(FIELD_TAGS)
+            .withEntitySpecificInfo(tagFeedInfo);
+    populateThreadFeedInfo(thread, threadMessage, Thread.CardStyle.TAGS, operation, feedInfo);
+  }
+
+  private String getHeaderForTagsUpdate(String eventTypeMessage) {
+    return String.format(
+        HEADER_MESSAGE,
+        thread.getUpdatedBy(),
+        eventTypeMessage,
+        thread.getEntityRef().getType(),
+        thread.getEntityUrlLink());
   }
 }

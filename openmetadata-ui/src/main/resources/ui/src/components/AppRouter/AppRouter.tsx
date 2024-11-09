@@ -11,69 +11,30 @@
  *  limitations under the License.
  */
 
-import { isNil } from 'lodash';
+import { isEmpty, isNil } from 'lodash';
 import React, { useCallback, useEffect } from 'react';
-import { Redirect, Route, Switch, useLocation } from 'react-router-dom';
+import { Redirect, Route, Switch } from 'react-router-dom';
 import { useAnalytics } from 'use-analytics';
-import AppContainer from '../../components/AppContainer/AppContainer';
 import { ROUTES } from '../../constants/constants';
 import { CustomEventTypes } from '../../generated/analytics/webAnalyticEventData';
-import { AuthProvider } from '../../generated/settings/settings';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
+import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
+import AccessNotAllowedPage from '../../pages/AccessNotAllowedPage/AccessNotAllowedPage';
+import PageNotFound from '../../pages/PageNotFound/PageNotFound';
+import SignUpPage from '../../pages/SignUp/SignUpPage';
+import AppContainer from '../AppContainer/AppContainer';
+import Loader from '../common/Loader/Loader';
+import { UnAuthenticatedAppRouter } from './UnAuthenticatedAppRouter';
+
 import SamlCallback from '../../pages/SamlCallback';
-import AccountActivationConfirmation from '../../pages/SignUp/account-activation-confirmation.component';
-import { isProtectedRoute } from '../../utils/AuthProvider.util';
-import { useAuthContext } from '../Auth/AuthProviders/AuthProvider';
-import Loader from '../Loader/Loader';
-import withSuspenseFallback from './withSuspenseFallback';
-
-const SigninPage = withSuspenseFallback(
-  React.lazy(() => import('../../pages/LoginPage'))
-);
-const PageNotFound = withSuspenseFallback(
-  React.lazy(() => import('../../pages/PageNotFound/PageNotFound'))
-);
-
-const ForgotPassword = withSuspenseFallback(
-  React.lazy(
-    () => import('../../pages/ForgotPassword/forgot-password.component')
-  )
-);
-
-const ResetPassword = withSuspenseFallback(
-  React.lazy(() => import('../../pages/ResetPassword/ResetPassword.component'))
-);
-
-const BasicSignupPage = withSuspenseFallback(
-  React.lazy(() => import('../../pages/SignUp/BasicSignup.component'))
-);
 
 const AppRouter = () => {
-  const location = useLocation();
+  const location = useCustomLocation();
 
   // web analytics instance
   const analytics = useAnalytics();
-
-  const {
-    authConfig,
-    isAuthenticated,
-    loading,
-    isSigningIn,
-    getCallBackComponent,
-  } = useAuthContext();
-
-  const callbackComponent = getCallBackComponent();
-  const oidcProviders = [
-    AuthProvider.Google,
-    AuthProvider.AwsCognito,
-    AuthProvider.CustomOidc,
-  ];
-  const isOidcProvider =
-    authConfig?.provider && oidcProviders.includes(authConfig.provider);
-
-  const isBasicAuthProvider =
-    authConfig &&
-    (authConfig.provider === AuthProvider.Basic ||
-      authConfig.provider === AuthProvider.LDAP);
+  const { currentUser, isAuthenticated, isApplicationLoading } =
+    useApplicationStore();
 
   useEffect(() => {
     const { pathname } = location;
@@ -111,60 +72,38 @@ const AppRouter = () => {
     return () => targetNode.removeEventListener('click', handleClickEvent);
   }, [handleClickEvent]);
 
-  if (loading) {
-    return <Loader />;
-  }
-
-  if (!isAuthenticated && isProtectedRoute(location.pathname)) {
-    return <Redirect to={ROUTES.SIGNIN} />;
-  }
-
-  if (isOidcProvider || isAuthenticated) {
-    return <AppContainer />;
+  /**
+   * isApplicationLoading is true when the application is loading in AuthProvider
+   * and is false when the application is loaded.
+   * If the application is loading, show the loader.
+   * If the user is authenticated, show the AppContainer.
+   * If the user is not authenticated, show the UnAuthenticatedAppRouter.
+   * */
+  if (isApplicationLoading) {
+    return <Loader fullScreen />;
   }
 
   return (
-    <>
-      <Switch>
-        <Route exact component={SigninPage} path={ROUTES.SIGNIN} />
-        {callbackComponent ? (
-          <Route component={callbackComponent} path={ROUTES.CALLBACK} />
-        ) : null}
-        <Route component={SamlCallback} path={ROUTES.SAML_CALLBACK} />
-        <Route exact path={ROUTES.HOME}>
-          {!isAuthenticated && !isSigningIn ? (
-            <>
-              <Redirect to={ROUTES.SIGNIN} />
-            </>
-          ) : (
-            <Redirect to={ROUTES.MY_DATA} />
-          )}
-        </Route>
+    <Switch>
+      <Route exact component={PageNotFound} path={ROUTES.NOT_FOUND} />
+      <Route
+        exact
+        component={AccessNotAllowedPage}
+        path={ROUTES.UNAUTHORISED}
+      />
+      <Route exact component={SignUpPage} path={ROUTES.SIGNUP}>
+        {!isEmpty(currentUser) && <Redirect to={ROUTES.HOME} />}
+      </Route>
 
-        {isBasicAuthProvider && (
-          <>
-            <Route exact component={BasicSignupPage} path={ROUTES.REGISTER} />
-            <Route
-              exact
-              component={ForgotPassword}
-              path={ROUTES.FORGOT_PASSWORD}
-            />
-            <Route
-              exact
-              component={ResetPassword}
-              path={ROUTES.RESET_PASSWORD}
-            />
-            <Route
-              exact
-              component={AccountActivationConfirmation}
-              path={ROUTES.ACCOUNT_ACTIVATION}
-            />
-          </>
-        )}
-        {isAuthenticated && <AppContainer />}
-        <Route exact component={PageNotFound} path={ROUTES.NOT_FOUND} />
-      </Switch>
-    </>
+      {/* When authenticating from an SSO provider page (e.g., SAML Apps), if the user is already logged in, 
+          the callbacks should be available. This ensures consistent behavior across different authentication scenarios. */}
+      <Route
+        component={SamlCallback}
+        path={[ROUTES.SAML_CALLBACK, ROUTES.AUTH_CALLBACK]}
+      />
+
+      {isAuthenticated ? <AppContainer /> : <UnAuthenticatedAppRouter />}
+    </Switch>
   );
 };
 

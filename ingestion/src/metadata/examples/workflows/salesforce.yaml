@@ -7,7 +7,13 @@ source:
       username: username
       password: password
       securityToken: securityToken
+      organizationId: organizationId
       sobjectName: sobjectName
+      # sslConfig:
+      #   caCertificate: |
+      #     -----BEGIN CERTIFICATE-----
+      #     sample caCertificateData  
+      #     -----END CERTIFICATE-----
       # salesforceApiVersion: 42.0
       # salesforceDomain: login
   sourceConfig:
@@ -17,6 +23,7 @@ sink:
   type: metadata-rest
   config: {}
 workflowConfig:
+#  loggerLevel: INFO # DEBUG, INFO, WARN or ERROR
   openMetadataServerConfig:
     hostPort: http://localhost:8585/api
     authProvider: openmetadata

@@ -147,12 +147,12 @@ MOCK_COLUMN_VALUE = [
 
 EXPECTED_DATABASE = [
     CreateDatabaseRequest(
-        name=EntityName(__root__="sample_database"),
+        name=EntityName("sample_database"),
         displayName=None,
         description=None,
         tags=None,
-        owner=None,
-        service=FullyQualifiedEntityName(__root__="mssql_source_test"),
+        owners=None,
+        service=FullyQualifiedEntityName("mssql_source_test"),
         dataProducts=None,
         default=False,
         retentionPeriod=None,
@@ -166,11 +166,11 @@ EXPECTED_DATABASE = [
 
 EXPECTED_DATABASE_SCHEMA = [
     CreateDatabaseSchemaRequest(
-        name=EntityName(__root__="sample.schema"),
+        name=EntityName("sample.schema"),
         displayName=None,
         description=None,
-        owner=None,
-        database=FullyQualifiedEntityName(__root__="mssql_source_test.sample_database"),
+        owners=None,
+        database=FullyQualifiedEntityName("mssql_source_test.sample_database"),
         dataProducts=None,
         tags=None,
         retentionPeriod=None,
@@ -184,13 +184,13 @@ EXPECTED_DATABASE_SCHEMA = [
 
 EXPECTED_TABLE = [
     CreateTableRequest(
-        name=EntityName(__root__="sample_table"),
+        name=EntityName("sample_table"),
         displayName=None,
         description=None,
         tableType=TableType.Regular.name,
         columns=[
             Column(
-                name=ColumnName(__root__="sample_col_1"),
+                name=ColumnName("sample_col_1"),
                 displayName=None,
                 dataType=DataType.VARCHAR.name,
                 arrayDataType=None,
@@ -209,7 +209,7 @@ EXPECTED_TABLE = [
                 customMetrics=None,
             ),
             Column(
-                name=ColumnName(__root__="sample_col_2"),
+                name=ColumnName("sample_col_2"),
                 displayName=None,
                 dataType=DataType.INT.name,
                 arrayDataType=None,
@@ -228,7 +228,7 @@ EXPECTED_TABLE = [
                 customMetrics=None,
             ),
             Column(
-                name=ColumnName(__root__="sample_col_3"),
+                name=ColumnName("sample_col_3"),
                 displayName=None,
                 dataType=DataType.VARCHAR.name,
                 arrayDataType=None,
@@ -247,7 +247,7 @@ EXPECTED_TABLE = [
                 customMetrics=None,
             ),
             Column(
-                name=ColumnName(__root__="sample_col_4"),
+                name=ColumnName("sample_col_4"),
                 displayName=None,
                 dataType=DataType.VARCHAR.name,
                 arrayDataType=None,
@@ -269,12 +269,12 @@ EXPECTED_TABLE = [
         tableConstraints=[],
         tablePartition=None,
         tableProfilerConfig=None,
-        owner=None,
+        owners=None,
         databaseSchema=FullyQualifiedEntityName(
-            __root__='mssql_source_test.sample_database."sample.schema"'
+            'mssql_source_test.sample_database."sample.schema"'
         ),
         tags=None,
-        viewDefinition=None,
+        schemaDefinition=None,
         retentionPeriod=None,
         extension=None,
         sourceUrl=None,
@@ -303,32 +303,39 @@ class MssqlUnitTest(TestCase):
     ) -> None:
         super().__init__(methodName)
         test_connection.return_value = False
-        self.config = OpenMetadataWorkflowConfig.parse_obj(mock_mssql_config)
+        self.config = OpenMetadataWorkflowConfig.model_validate(mock_mssql_config)
         self.mssql = MssqlSource.create(
             mock_mssql_config["source"],
             self.config.workflowConfig.openMetadataServerConfig,
         )
-        self.mssql.context.__dict__[
+        self.mssql.context.get().__dict__[
             "database_service"
-        ] = MOCK_DATABASE_SERVICE.name.__root__
-        self.mssql.inspector = types.SimpleNamespace()
-        self.mssql.inspector.get_columns = (
-            lambda table_name, schema_name, db_name: MOCK_COLUMN_VALUE
-        )
-        self.mssql.inspector.get_pk_constraint = lambda table_name, schema_name: []
-        self.mssql.inspector.get_unique_constraints = lambda table_name, schema_name: []
-        self.mssql.inspector.get_foreign_keys = lambda table_name, schema_name: []
+        ] = MOCK_DATABASE_SERVICE.name.root
+        self.thread_id = self.mssql.context.get_current_thread_id()
+        self.mssql._inspector_map[self.thread_id] = types.SimpleNamespace()
+        self.mssql._inspector_map[
+            self.thread_id
+        ].get_columns = lambda table_name, schema_name, db_name: MOCK_COLUMN_VALUE
+        self.mssql._inspector_map[
+            self.thread_id
+        ].get_pk_constraint = lambda table_name, schema_name: []
+        self.mssql._inspector_map[
+            self.thread_id
+        ].get_unique_constraints = lambda table_name, schema_name: []
+        self.mssql._inspector_map[
+            self.thread_id
+        ].get_foreign_keys = lambda table_name, schema_name: []
 
     def test_yield_database(self):
         assert EXPECTED_DATABASE == [
             either.right
-            for either in self.mssql.yield_database(MOCK_DATABASE.name.__root__)
+            for either in self.mssql.yield_database(MOCK_DATABASE.name.root)
         ]
 
-        self.mssql.context.__dict__[
+        self.mssql.context.get().__dict__[
             "database_service"
-        ] = MOCK_DATABASE_SERVICE.name.__root__
-        self.mssql.context.__dict__["database"] = MOCK_DATABASE.name.__root__
+        ] = MOCK_DATABASE_SERVICE.name.root
+        self.mssql.context.get().__dict__["database"] = MOCK_DATABASE.name.root
 
     @mssql_dialet.db_plus_owner
     def mock_function(
@@ -354,9 +361,9 @@ class MssqlUnitTest(TestCase):
             )
         ]
 
-        self.mssql.context.__dict__[
+        self.mssql.context.get().__dict__[
             "database_schema"
-        ] = MOCK_DATABASE_SCHEMA.name.__root__
+        ] = MOCK_DATABASE_SCHEMA.name.root
 
     def test_yield_table(self):
         assert EXPECTED_TABLE == [

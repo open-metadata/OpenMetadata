@@ -24,6 +24,9 @@ from metadata.generated.schema.entity.automations.workflow import (
 from metadata.generated.schema.entity.services.connections.database.impalaConnection import (
     ImpalaConnection,
 )
+from metadata.generated.schema.entity.services.connections.testConnectionResult import (
+    TestConnectionResult,
+)
 from metadata.ingestion.connections.builders import (
     create_generic_db_connection,
     get_connection_args_common,
@@ -34,6 +37,7 @@ from metadata.ingestion.connections.test_connections import (
     test_connection_db_schema_sources,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.utils.constants import THREE_MIN
 
 
 def get_connection_url(connection: ImpalaConnection) -> str:
@@ -80,21 +84,21 @@ def get_connection(connection: ImpalaConnection) -> Engine:
     if connection.authMechanism:
         if not connection.connectionArguments:
             connection.connectionArguments = init_empty_connection_arguments()
-        connection.connectionArguments.__root__[
+        connection.connectionArguments.root[
             "auth_mechanism"
         ] = connection.authMechanism.value
 
     if connection.kerberosServiceName:
         if not connection.connectionArguments:
             connection.connectionArguments = init_empty_connection_arguments()
-        connection.connectionArguments.__root__[
+        connection.connectionArguments.root[
             "kerberos_service_name"
         ] = connection.kerberosServiceName
 
     if connection.useSSL:
         if not connection.connectionArguments:
             connection.connectionArguments = init_empty_connection_arguments()
-        connection.connectionArguments.__root__["use_ssl"] = connection.useSSL
+        connection.connectionArguments.root["use_ssl"] = connection.useSSL
 
     return create_generic_db_connection(
         connection=connection,
@@ -108,14 +112,16 @@ def test_connection(
     engine: Engine,
     service_connection: ImpalaConnection,
     automation_workflow: Optional[AutomationWorkflow] = None,
-) -> None:
+    timeout_seconds: Optional[int] = THREE_MIN,
+) -> TestConnectionResult:
     """
     Test connection. This can be executed either as part
     of a metadata workflow or during an Automation Workflow
     """
-    test_connection_db_schema_sources(
+    return test_connection_db_schema_sources(
         metadata=metadata,
         engine=engine,
         service_connection=service_connection,
         automation_workflow=automation_workflow,
+        timeout_seconds=timeout_seconds,
     )

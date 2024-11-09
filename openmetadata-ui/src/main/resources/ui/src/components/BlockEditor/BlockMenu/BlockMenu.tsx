@@ -33,7 +33,7 @@ interface BlockMenuProps {
 export const BlockMenu = (props: BlockMenuProps) => {
   const { t } = useTranslation();
   const { editor } = props;
-  const { view } = editor;
+  const { view, isEditable } = editor;
   const menuRef = useRef<HTMLDivElement>(null);
   const popup = useRef<Instance | null>(null);
 
@@ -127,7 +127,10 @@ export const BlockMenu = (props: BlockMenuProps) => {
   }, [editor]);
 
   useEffect(() => {
-    if (menuRef.current) {
+    /**
+     * Create a new tippy instance for the block menu if the editor is editable
+     */
+    if (menuRef.current && isEditable) {
       menuRef.current.remove();
       menuRef.current.style.visibility = 'visible';
 
@@ -150,7 +153,7 @@ export const BlockMenu = (props: BlockMenuProps) => {
       popup.current?.destroy();
       popup.current = null;
     };
-  }, []);
+  }, [isEditable]);
 
   useEffect(() => {
     document.addEventListener('click', handleClickDragHandle);
@@ -158,20 +161,26 @@ export const BlockMenu = (props: BlockMenuProps) => {
 
     return () => {
       document.removeEventListener('click', handleClickDragHandle);
-      document.addEventListener('keydown', handleKeyDown);
+      document.removeEventListener('keydown', handleKeyDown);
     };
   }, [handleClickDragHandle, handleKeyDown]);
 
   return (
-    <div className="block-menu" ref={menuRef}>
-      <button className="action" onClick={handleDelete}>
+    <div className="block-menu" data-testid="menu-container" ref={menuRef}>
+      <button
+        className="action"
+        data-testid="delete-btn"
+        onClick={handleDelete}>
         <div className="action-icon-container">
           <DeleteIcon width={16} />
         </div>
         <div className="action-name">{t('label.delete')}</div>
       </button>
 
-      <button className="action" onClick={handleDuplicate}>
+      <button
+        className="action"
+        data-testid="duplicate-btn"
+        onClick={handleDuplicate}>
         <div className="action-icon-container">
           <DuplicateIcon width={16} />
         </div>

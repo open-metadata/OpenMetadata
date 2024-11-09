@@ -34,9 +34,9 @@ jest.mock('../ActivityFeedProvider/ActivityFeedProvider', () => ({
   default: 'ActivityFeedProvider',
 }));
 
-jest.mock('../../../components/common/AssigneeList/AssigneeList', () => {
-  return jest.fn().mockImplementation(() => <p>AssigneeList</p>);
-});
+jest.mock('../../common/OwnerLabel/OwnerLabel.component', () => ({
+  OwnerLabel: jest.fn().mockReturnValue(<p>OwnerLabel</p>),
+}));
 
 jest.mock('../../../components/common/PopOverCard/EntityPopOverCard', () => {
   return jest.fn().mockImplementation(({ children }) => children);
@@ -72,6 +72,15 @@ jest.mock('../../../utils/CommonUtils', () => ({
   getNameFromFQN: jest.fn().mockReturnValue('formatDateTime'),
 }));
 
+jest.mock('../../../utils/EntityLink', () => {
+  return {
+    __esModule: true,
+    default: {
+      getTableColumnName: jest.fn().mockReturnValue('getTableColumnName'),
+    },
+  };
+});
+
 const mockProps = {
   post: TASK_POST,
   feed: TASK_FEED,
@@ -92,5 +101,16 @@ describe('Test TaskFeedCard Component', () => {
     expect(screen.getByTestId('task-feed-card')).toBeInTheDocument();
     expect(screen.getByTestId('task-status-icon-open')).toBeInTheDocument();
     expect(screen.getByTestId('redirect-task-button-link')).toBeInTheDocument();
+  });
+
+  it('Should render OwnerLabel when show thread is true', async () => {
+    await act(async () => {
+      render(<TaskFeedCard {...mockProps} />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    expect(screen.getByText('label.assignee-plural:')).toBeInTheDocument();
+    expect(screen.getByText('OwnerLabel')).toBeInTheDocument();
   });
 });

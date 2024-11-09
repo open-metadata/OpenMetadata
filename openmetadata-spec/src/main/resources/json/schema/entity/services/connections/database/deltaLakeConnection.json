@@ -11,63 +11,6 @@
       "type": "string",
       "enum": ["DeltaLake"],
       "default": "DeltaLake"
-    },
-    "metastoreHostPortConnection": {
-      "title": "Hive Metastore Service",
-      "type":"object",
-      "properties": {
-        "metastoreHostPort": {
-          "title": "Hive Metastore Service",
-          "description": "Thrift connection to the metastore service. E.g., localhost:9083",
-          "type": "string"
-        }
-      },
-      "additionalProperties": false
-    },
-    "metastoreDbConnection": {
-      "title": "Hive Metastore Database",
-      "type":"object",
-      "properties": {
-        "metastoreDb": {
-          "title": "Hive Metastore Database",
-          "description": "JDBC connection to the metastore database. E.g., jdbc:mysql://localhost:3306/demo_hive",
-          "type": "string"
-        },
-        "username": {
-          "title": "Connection UserName",
-          "description": "Username to use against metastore database. The value will be mapped as spark.hadoop.javax.jdo.option.ConnectionUserName sparks property.",
-          "type": "string"
-        },
-        "password": {
-          "title": "Connection Password",
-          "description": "Password to use against metastore database. The value will be mapped as spark.hadoop.javax.jdo.option.ConnectionPassword sparks property.",
-          "type": "string",
-          "format": "password"
-        },
-        "driverName": {
-          "title": "Connection Driver Name",
-          "description": "Driver class name for JDBC metastore. The value will be mapped as spark.hadoop.javax.jdo.option.ConnectionDriverName sparks property. E.g., org.mariadb.jdbc.Driver",
-          "type": "string"
-        },
-        "jdbcDriverClassPath": {
-          "title": "JDBC Driver Class Path",
-          "description": "Class path to JDBC driver required for JDBC connection. The value will be mapped as sparks.driver.extraClassPath sparks property.",
-          "type": "string"
-        }
-      },
-      "additionalProperties": false
-    },
-    "metastoreFilePathConnection": {
-      "title": "Hive Metastore File Path",
-      "type":"object",
-      "properties": {
-        "metastoreFilePath": {
-          "title": "Hive Metastore File Path",
-          "description": "Local path for the local file with metastore data. E.g., /tmp/metastore.db",
-          "type": "string"
-        }
-      },
-      "additionalProperties": false
     }
   },
   "properties": {
@@ -77,26 +20,17 @@
       "$ref": "#/definitions/deltaLakeType",
       "default": "DeltaLake"
     },
-    "metastoreConnection": {
-      "title": "Hive Metastore Connection",
-      "description": "Hive metastore service, local file path or metastore db.",
+    "configSource": {
+      "title": "DeltaLake Configuration Source",
+      "description": "Available sources to fetch the metadata.",
       "oneOf": [
         {
-          "$ref": "#/definitions/metastoreHostPortConnection"
+          "$ref": "./deltalake/metastoreConfig.json"
         },
         {
-          "$ref": "#/definitions/metastoreDbConnection"
-        },
-        {
-          "$ref": "#/definitions/metastoreFilePathConnection"
+          "$ref": "./deltalake/storageConfig.json"
         }
       ]
-    },
-    "appName": {
-      "title": "Application Name",
-      "description": "pySpark App Name.",
-      "type": "string",
-      "default": "OpenMetadata"
     },
     "databaseName": {
       "title": "Database Name",
@@ -105,7 +39,7 @@
     },
     "connectionArguments": {
       "title": "Connection Arguments",
-      "description": "Key-Value pairs that will be used to add configs to the SparkSession.",
+      "description": "If using Metastore, Key-Value pairs that will be used to add configs to the SparkSession.",
       "$ref": "../connectionBasicType.json#/definitions/connectionArguments"
     },
     "supportsMetadataExtraction": {
@@ -117,5 +51,7 @@
     }
   },
   "additionalProperties": false,
-  "required": ["metastoreConnection"]
+  "required": [
+    "configSource"
+  ]
 }

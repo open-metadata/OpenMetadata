@@ -12,7 +12,8 @@
  */
 import { Table, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
-import { isString, map } from 'lodash';
+import classNames from 'classnames';
+import { isObject, isString, map } from 'lodash';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import RichTextEditorPreviewer from '../RichTextEditor/RichTextEditorPreviewer';
@@ -28,8 +29,10 @@ interface ExtensionDataSource {
 
 export const ExtensionTable = ({
   extension,
+  tableClassName,
 }: {
   extension: ExtentionEntities[ExtentionEntitiesKeys]['extension'];
+  tableClassName?: string;
 }) => {
   const { t } = useTranslation();
   const dataSource: ExtensionDataSource[] = useMemo(() => {
@@ -58,7 +61,7 @@ export const ExtensionTable = ({
 
           return (
             <Typography.Text className="break-all" data-testid="value">
-              {value}
+              {isObject(value) ? JSON.stringify(value ?? '{}', null, 2) : value}
             </Typography.Text>
           );
         },
@@ -69,7 +72,7 @@ export const ExtensionTable = ({
   return (
     <Table
       bordered
-      className="m-md"
+      className={classNames('m-md', tableClassName)}
       columns={tableColumn}
       data-testid="custom-properties-table"
       dataSource={dataSource}

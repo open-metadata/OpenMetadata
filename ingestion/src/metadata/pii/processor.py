@@ -66,6 +66,7 @@ class PIIProcessor(Processor):
         )  # Used to satisfy type checked
 
         self._ner_scanner = None
+        self.name_scanner = ColumnNameScanner()
         self.confidence_threshold = self.source_config.confidence
 
     @property
@@ -81,7 +82,12 @@ class PIIProcessor(Processor):
         return self._ner_scanner
 
     @classmethod
-    def create(cls, config_dict: dict, metadata: OpenMetadata) -> "Step":
+    def create(
+        cls,
+        config_dict: dict,
+        metadata: OpenMetadata,
+        pipeline_name: Optional[str] = None,
+    ) -> "Step":
         config = parse_workflow_config_gracefully(config_dict)
         return cls(config=config, metadata=metadata)
 
@@ -115,9 +121,7 @@ class PIIProcessor(Processor):
 
         # First, check if the column we are about to process
         # already has PII tags or not
-        column_has_pii_tag = any(
-            (PII in tag.tagFQN.__root__ for tag in column.tags or [])
-        )
+        column_has_pii_tag = any((PII in tag.tagFQN.root for tag in column.tags or []))
 
         # If it has PII tags, we skip the processing
         # for the column
@@ -125,7 +129,7 @@ class PIIProcessor(Processor):
             return None
 
         # Scan by column name. If no results there, check the sample data, if any
-        tag_and_confidence = ColumnNameScanner.scan(column.name.__root__) or (
+        tag_and_confidence = self.name_scanner.scan(column.name.root) or (
             self.ner_scanner.scan([row[idx] for row in table_data.rows])
             if table_data
             else None
@@ -140,7 +144,7 @@ class PIIProcessor(Processor):
             return [
                 self.build_column_tag(
                     tag_fqn=tag_and_confidence.tag_fqn,
-                    column_fqn=column.fullyQualifiedName.__root__,
+                    column_fqn=column.fullyQualifiedName.root,
                 )
             ]
 
@@ -167,7 +171,7 @@ class PIIProcessor(Processor):
                 col_tags = self.process_column(
                     idx=idx,
                     column=column,
-                    table_data=record.sample_data,
+                    table_data=record.sample_data.data,
                     confidence_threshold=self.confidence_threshold,
                 )
                 if col_tags:
@@ -175,7 +179,7 @@ class PIIProcessor(Processor):
             except Exception as err:
                 self.status.failed(
                     StackTraceError(
-                        name=record.table.fullyQualifiedName.__root__,
+                        name=record.table.fullyQualifiedName.root,
                         error=f"Error computing PII tags for [{column}] - [{err}]",
                         stackTrace=traceback.format_exc(),
                     )

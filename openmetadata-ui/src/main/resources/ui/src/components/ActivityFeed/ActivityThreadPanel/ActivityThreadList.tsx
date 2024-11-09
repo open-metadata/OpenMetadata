@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Card, Space } from 'antd';
+import { Card, Typography } from 'antd';
 import { isEqual } from 'lodash';
 import React, { FC, Fragment } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -29,7 +29,7 @@ import {
 } from '../../../generated/entity/feed/thread';
 import { getFeedListWithRelativeDays } from '../../../utils/FeedUtils';
 import { getTaskDetailPath } from '../../../utils/TasksUtils';
-import AssigneeList from '../../common/AssigneeList/AssigneeList';
+import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import ActivityFeedCard from '../ActivityFeedCard/ActivityFeedCard';
 import FeedCardFooter from '../ActivityFeedCard/FeedCardFooter/FeedCardFooter';
 import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditor';
@@ -166,14 +166,12 @@ const ActivityThreadList: FC<ActivityThreadListProp> = ({
                         </div>
                       ) : null}
                       {thread.task && (
-                        <Space wrap className="m-y-xs" size={4}>
-                          <span className="text-grey-muted">
+                        <div className="d-flex m-y-xs gap-2">
+                          <Typography.Text className="text-grey-muted">
                             {t('label.assignee-plural')}:{' '}
-                          </span>
-                          <AssigneeList
-                            assignees={thread.task.assignees || []}
-                          />
-                        </Space>
+                          </Typography.Text>
+                          <OwnerLabel owners={thread.task.assignees} />
+                        </div>
                       )}
                     </Card>
                   </Fragment>

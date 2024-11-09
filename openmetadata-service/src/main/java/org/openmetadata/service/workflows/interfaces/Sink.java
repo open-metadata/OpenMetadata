@@ -14,8 +14,8 @@
 package org.openmetadata.service.workflows.interfaces;
 
 import java.util.Map;
-import org.openmetadata.service.exception.SinkException;
+import org.openmetadata.service.exception.SearchIndexException;
 
 public interface Sink<I, O> extends Stats {
-  O write(I data, Map<String, Object> contextData) throws SinkException;
+  O write(I data, Map<String, Object> contextData) throws SearchIndexException;
 }

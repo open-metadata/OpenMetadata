@@ -13,11 +13,19 @@
 
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.events.subscription.AlertUtil.validateAndBuildFilteringConditions;
+import static org.openmetadata.service.fernet.Fernet.encryptWebhookSecretKey;
+import static org.openmetadata.service.util.EntityUtil.objectMatch;
+
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.events.CreateEventSubscription;
+import org.openmetadata.schema.entity.events.Argument;
+import org.openmetadata.schema.entity.events.ArgumentsInput;
 import org.openmetadata.schema.entity.events.EventFilterRule;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
@@ -44,9 +52,7 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
 
   @Override
   public void setFields(EventSubscription entity, Fields fields) {
-    if (fields.contains("statusDetails")
-        && !entity.getAlertType().equals(CreateEventSubscription.AlertType.ACTIVITY_FEED)
-        && !entity.getDestinations().isEmpty()) {
+    if (fields.contains("statusDetails") && !entity.getDestinations().isEmpty()) {
       List<SubscriptionDestination> destinations = new ArrayList<>();
       entity
           .getDestinations()
@@ -66,6 +72,30 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
 
   @Override
   public void prepare(EventSubscription entity, boolean update) {
+    // Sort Filters and Actions
+    if (entity.getInput() != null) {
+      listOrEmpty(entity.getInput().getFilters())
+          .sort(Comparator.comparing(ArgumentsInput::getName));
+      listOrEmpty(entity.getInput().getActions())
+          .sort(Comparator.comparing(ArgumentsInput::getName));
+
+      // Sort Input Args
+      listOrEmpty(entity.getInput().getFilters())
+          .forEach(
+              filter ->
+                  listOrEmpty(filter.getArguments()).sort(Comparator.comparing(Argument::getName)));
+      listOrEmpty(entity.getInput().getActions())
+          .forEach(
+              filter ->
+                  listOrEmpty(filter.getArguments()).sort(Comparator.comparing(Argument::getName)));
+    }
+
+    if (update && !nullOrEmpty(entity.getFilteringRules())) {
+      entity.setFilteringRules(
+          validateAndBuildFilteringConditions(
+              entity.getFilteringRules().getResources(), entity.getAlertType(), entity.getInput()));
+    }
+
     validateFilterRules(entity);
   }
 
@@ -105,13 +135,21 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
 
     @Override
     public void entitySpecificUpdate() {
-      recordChange("enabled", original.getEnabled(), updated.getEnabled());
-      recordChange("batchSize", original.getBatchSize(), updated.getBatchSize());
       recordChange("input", original.getInput(), updated.getInput(), true);
-      recordChange(
-          "filteringRules", original.getFilteringRules(), updated.getFilteringRules(), true);
-      recordChange("destinations", original.getDestinations(), updated.getDestinations(), true);
-      recordChange("trigger", original.getTrigger(), updated.getTrigger(), true);
+      recordChange("batchSize", original.getBatchSize(), updated.getBatchSize());
+      if (!original.getAlertType().equals(CreateEventSubscription.AlertType.ACTIVITY_FEED)) {
+        recordChange(
+            "filteringRules", original.getFilteringRules(), updated.getFilteringRules(), true);
+        recordChange("enabled", original.getEnabled(), updated.getEnabled());
+        recordChange(
+            "destinations",
+            original.getDestinations(),
+            encryptWebhookSecretKey(updated.getDestinations()),
+            true,
+            objectMatch,
+            false);
+        recordChange("trigger", original.getTrigger(), updated.getTrigger(), true);
+      }
     }
   }
 }

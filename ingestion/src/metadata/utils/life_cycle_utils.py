@@ -58,11 +58,11 @@ def _get_query_type_from_regex(create_query) -> Optional[Any]:
     """
     Method to get the query type from regex
     """
-    if re.match(create_pattern, create_query.query.__root__):
+    if re.match(create_pattern, create_query.query.root):
         return "created"
-    if re.match(update_pattern, create_query.query.__root__):
+    if re.match(update_pattern, create_query.query.root):
         return "updated"
-    if re.match(select_pattern, create_query.query.__root__):
+    if re.match(select_pattern, create_query.query.root):
         return "accessed"
     return None
 

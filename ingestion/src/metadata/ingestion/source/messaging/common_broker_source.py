@@ -33,6 +33,7 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.type.basic import EntityName, FullyQualifiedEntityName
 from metadata.generated.schema.type.schema import SchemaType, Topic
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.models.ometa_topic_data import OMetaTopicSampleData
@@ -47,6 +48,7 @@ from metadata.parsers.schema_parsers import (
 )
 from metadata.utils import fqn
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.messaging_utils import merge_and_clean_protobuf_schema
 
 logger = ingestion_logger()
 
@@ -73,8 +75,10 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
     ):
         super().__init__(config, metadata)
         self.generate_sample_data = self.config.sourceConfig.config.generateSampleData
+        self.service_connection = self.config.serviceConnection.root.config
         self.admin_client = self.connection.admin_client
         self.schema_registry_client = self.connection.schema_registry_client
+        self.context.processed_schemas = {}
         if self.generate_sample_data:
             self.consumer_client = self.connection.consumer_client
 
@@ -103,8 +107,8 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
             topic_schema = self._parse_topic_metadata(topic_details.topic_name)
             logger.info(f"Fetching topic config {topic_details.topic_name}")
             topic = CreateTopicRequest(
-                name=topic_details.topic_name,
-                service=self.context.messaging_service,
+                name=EntityName(topic_details.topic_name),
+                service=FullyQualifiedEntityName(self.context.get().messaging_service),
                 partitions=len(topic_details.topic_metadata.partitions),
                 replicationFactor=len(
                     topic_details.topic_metadata.partitions.get(0).replicas
@@ -125,9 +129,14 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
                     raise InvalidSchemaTypeException(
                         f"Cannot find {schema_type} in parser providers registry."
                     )
-                schema_fields = load_parser_fn(
-                    topic_details.topic_name, topic_schema.schema_str
-                )
+                schema_text = topic_schema.schema_str
+
+                # In protobuf schema, we need to merge all the schema text with references
+                if schema_type == SchemaType.Protobuf.value.lower():
+                    schema_text = merge_and_clean_protobuf_schema(
+                        self._get_schema_text_with_references(schema=topic_schema)
+                    )
+                schema_fields = load_parser_fn(topic_details.topic_name, schema_text)
 
                 topic.messageSchema = Topic(
                     schemaText=topic_schema.schema_str,
@@ -195,16 +204,60 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
                 f"Exception adding properties to topic [{topic.name}]: {exc}"
             )
 
+    def _get_schema_text_with_references(self, schema) -> Optional[str]:
+        """
+        Returns the schema text with references resolved using recursive calls
+        """
+        try:
+            if schema:
+                schema_text = schema.schema_str
+                for reference in schema.references or []:
+                    if not self.context.processed_schemas.get(reference.name):
+                        self.context.processed_schemas[reference.name] = True
+                        reference_schema = (
+                            self.schema_registry_client.get_latest_version(
+                                reference.name
+                            )
+                        )
+                        if reference_schema.schema.references:
+                            schema_text = (
+                                schema_text
+                                + self._get_schema_text_with_references(
+                                    reference_schema.schema
+                                )
+                            )
+                        else:
+                            schema_text = (
+                                schema_text + reference_schema.schema.schema_str
+                            )
+                return schema_text
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Failed to get schema with references: {exc}")
+        return None
+
     def _parse_topic_metadata(self, topic_name: str) -> Optional[Schema]:
+
+        # To find topic in artifact registry, dafault is "<topic_name>-value"
+        # But suffix can be overridden using schemaRegistryTopicSuffixName
+        topic_schema_registry_name = (
+            topic_name + self.service_connection.schemaRegistryTopicSuffixName
+        )
+
         try:
             if self.schema_registry_client:
                 registered_schema = self.schema_registry_client.get_latest_version(
-                    topic_name + "-value"
+                    topic_schema_registry_name
                 )
                 return registered_schema.schema
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Failed to get schema for topic [{topic_name}]: {exc}")
+            logger.warning(
+                (
+                    f"Failed to get schema for topic [{topic_name}] "
+                    f"(looking for {topic_schema_registry_name}) in registry: {exc}"
+                )
+            )
             self.status.warning(
                 topic_name, f"failed to get schema: {exc} for topic {topic_name}"
             )
@@ -219,21 +272,23 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
         topic_fqn = fqn.build(
             metadata=self.metadata,
             entity_type=Topic,
-            service_name=self.context.messaging_service,
-            topic_name=self.context.topic,
+            service_name=self.context.get().messaging_service,
+            topic_name=self.context.get().topic,
         )
         topic_entity = self.metadata.get_by_name(entity=TopicEntity, fqn=topic_fqn)
         if topic_entity and self.generate_sample_data:
             topic_name = topic_details.topic_name
             sample_data = []
+            messages = None
             try:
-                self.consumer_client.subscribe(
-                    [topic_name], on_assign=on_partitions_assignment_to_consumer
-                )
-                logger.info(
-                    f"Broker consumer polling for sample messages in topic {topic_name}"
-                )
-                messages = self.consumer_client.consume(num_messages=10, timeout=10)
+                if self.consumer_client:
+                    self.consumer_client.subscribe(
+                        [topic_name], on_assign=on_partitions_assignment_to_consumer
+                    )
+                    logger.info(
+                        f"Broker consumer polling for sample messages in topic {topic_name}"
+                    )
+                    messages = self.consumer_client.consume(num_messages=10, timeout=10)
             except Exception as exc:
                 yield Either(
                     left=StackTraceError(
@@ -246,7 +301,6 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
                 if messages:
                     for message in messages:
                         try:
-
                             value = message.value()
                             sample_data.append(
                                 self.decode_message(

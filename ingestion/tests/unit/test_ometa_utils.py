@@ -45,16 +45,12 @@ class OMetaUtilsTest(TestCase):
 
         self.assertEqual(model_str("random"), "random")
         self.assertEqual(
-            model_str(basic.Uuid(__root__="9fc58e81-7412-4023-a298-59f2494aab9d")),
+            model_str(basic.Uuid("9fc58e81-7412-4023-a298-59f2494aab9d")),
             "9fc58e81-7412-4023-a298-59f2494aab9d",
         )
 
-        self.assertEqual(
-            model_str(basic.EntityName(__root__="EntityName")), "EntityName"
-        )
-        self.assertEqual(
-            model_str(basic.FullyQualifiedEntityName(__root__="FQDN")), "FQDN"
-        )
+        self.assertEqual(model_str(basic.EntityName("EntityName")), "EntityName")
+        self.assertEqual(model_str(basic.FullyQualifiedEntityName("FQDN")), "FQDN")
 
     def test_render_query_headers_builds_the_right_string(self) -> None:
         assert (

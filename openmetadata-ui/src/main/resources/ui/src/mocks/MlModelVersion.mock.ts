@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { MlModelVersionProp } from '../components/MlModelVersion/MlModelVersion.interface';
+import { MlModelVersionProp } from '../components/MlModel/MlModelVersion/MlModelVersion.interface';
 import {
   FeatureSourceDataType,
   FeatureType,
@@ -186,7 +186,7 @@ export const mlModelVersionMockProps: MlModelVersionProp = {
   version: '0.3',
   currentVersionData: mockMlModelDetails,
   isVersionLoading: false,
-  owner: mockOwner,
+  owners: mockOwner,
   domain: mockDomain,
   dataProducts: [],
   tier: mockTier,

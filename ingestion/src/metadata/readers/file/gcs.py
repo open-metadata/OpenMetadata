@@ -48,3 +48,21 @@ class GCSReader(Reader):
         to traverse any directories.
         """
         raise NotImplementedError("Not implemented")
+
+    def download(
+        self,
+        path: str,
+        local_file_path: str,
+        *,
+        bucket_name: str = None,
+        verbose: bool = True,
+        **__,
+    ) -> bytes:
+        try:
+            self.client.get_bucket(bucket_name).get_blob(path).download_to_filename(
+                local_file_path
+            )
+        except Exception as err:
+            if verbose:
+                logger.debug(traceback.format_exc())
+            raise ReadException(f"Error downloading file [{path}] from GCS: {err}")

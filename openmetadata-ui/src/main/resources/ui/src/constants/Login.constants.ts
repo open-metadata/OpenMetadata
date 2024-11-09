@@ -12,36 +12,40 @@
  */
 
 import { CarouselProps } from 'antd';
-import collaborationImg from '../assets/img/data-collaboration.png';
-import discoveryImg from '../assets/img/data-discovery.png';
-import governanceImg from '../assets/img/data-governance.png';
-import insightImg from '../assets/img/data-insights.png';
-import dataQualityImg from '../assets/img/data-qauality.png';
+import loginClassBase from './LoginClassBase';
+
+const {
+  dataDiscovery,
+  dataQuality,
+  governance,
+  dataInsightPlural,
+  dataCollaboration,
+} = loginClassBase.carouselImages();
 
 export const LOGIN_SLIDE = [
   {
     title: 'data-discovery',
-    image: discoveryImg,
+    image: dataDiscovery,
     descriptionKey: 'enables-end-to-end-metadata-management',
   },
   {
     title: 'data-quality',
-    image: dataQualityImg,
+    image: dataQuality,
     descriptionKey: 'discover-your-data-and-unlock-the-value-of-data-assets',
   },
   {
     title: 'governance',
-    image: governanceImg,
+    image: governance,
     descriptionKey: 'assess-data-reliability-with-data-profiler-lineage',
   },
   {
     title: 'data-insight-plural',
-    image: insightImg,
+    image: dataInsightPlural,
     descriptionKey: 'fosters-collaboration-among-producers-and-consumers',
   },
   {
     title: 'data-collaboration',
-    image: collaborationImg,
+    image: dataCollaboration,
     descriptionKey: 'deeply-understand-table-relations-message',
   },
 ];

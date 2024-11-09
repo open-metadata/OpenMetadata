@@ -11,6 +11,35 @@
       "type": "string",
       "enum": ["DatabaseMetadata"],
       "default": "DatabaseMetadata"
+    },
+    "incremental": {
+      "description": "Use incremental Metadata extraction after the first execution. This is commonly done by getting the changes from Audit tables on the supporting databases.",
+      "type": "object",
+      "title": "Incremental Metadata Extraction Configuration",
+      "properties": {
+        "enabled": {
+          "description": "If True, enables Metadata Extraction to be incremental",
+          "type": "boolean",
+          "default": false,
+          "title": "Enabled"
+        },
+        "lookbackDays": {
+          "description": "Number os days to search back for a successful pipeline run. The timestamp of the last found successful pipeline run will be used as a base to search for updated entities.",
+          "type": "integer",
+          "default": 7,
+          "title": "Successful Pipeline Run Lookback Days"
+        },
+        "safetyMarginDays": {
+          "description": "Number of days to add to the last successful pipeline run timestamp to search for updated entities.",
+          "type": "integer",
+          "default": 1,
+          "title": "Safety Margin Days"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "enabled"
+      ]
     }
   },
   "properties": {
@@ -61,6 +90,24 @@
       "default": true,
       "title": "Include Stored Procedures"
     },
+    "includeDDL": {
+      "description": "Optional configuration to toggle the DDL Statements ingestion.",
+      "type": "boolean",
+      "default": false,
+      "title": "Include DDL Statements"
+    },
+    "overrideMetadata":{
+      "title": "Override Metadata",
+      "description": "Set the 'Override Metadata' toggle to control whether to override the existing metadata in the OpenMetadata server with the metadata fetched from the source. If the toggle is set to true, the metadata fetched from the source will override the existing metadata in the OpenMetadata server. If the toggle is set to false, the metadata fetched from the source will not override the existing metadata in the OpenMetadata server. This is applicable for fields like description, tags, owner and displayName",
+      "type": "boolean",
+      "default": false
+    },
+    "overrideViewLineage":{
+      "title": "Override View Lineage",
+      "description": "Set the 'Override View Lineage' toggle to control whether to override the existing view lineage.",
+      "type": "boolean",
+      "default": false
+    },
     "queryLogDuration": {
       "description": "Configuration to tune how far we want to look back in query logs to process Stored Procedures results.",
       "type": "integer",
@@ -93,6 +140,17 @@
       "description": "Regex to only fetch databases that matches the pattern.",
       "$ref": "../type/filterPattern.json#/definitions/filterPattern",
       "title": "Database Filter Pattern"
+    },
+    "threads": {
+      "description": "Number of Threads to use in order to parallelize Table ingestion.",
+      "type": "integer",
+      "default": 1,
+      "title": "Number of Threads"
+    },
+    "incremental": {
+      "title": "Incremental Metadata Extraction Configuration",
+      "description": "Use incremental Metadata extraction after the first execution. This is commonly done by getting the changes from Audit tables on the supporting databases.",
+      "$ref": "#/definitions/incremental"
     }
   },
   "additionalProperties": false

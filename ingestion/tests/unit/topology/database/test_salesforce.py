@@ -107,7 +107,7 @@ MOCK_DATABASE_SCHEMA = DatabaseSchema(
 
 EXPECTED_COLUMN_VALUE = [
     Column(
-        name=ColumnName(__root__="Description"),
+        name=ColumnName("Description"),
         displayName=None,
         dataType=DataType.VARCHAR,
         arrayDataType=None,
@@ -126,7 +126,7 @@ EXPECTED_COLUMN_VALUE = [
         profile=None,
     ),
     Column(
-        name=ColumnName(__root__="OwnerId"),
+        name=ColumnName("OwnerId"),
         displayName=None,
         dataType=DataType.VARCHAR,
         arrayDataType=None,
@@ -145,7 +145,7 @@ EXPECTED_COLUMN_VALUE = [
         profile=None,
     ),
     Column(
-        name=ColumnName(__root__="Phone"),
+        name=ColumnName("Phone"),
         displayName=None,
         dataType=DataType.VARCHAR,
         arrayDataType=None,
@@ -164,7 +164,7 @@ EXPECTED_COLUMN_VALUE = [
         profile=None,
     ),
     Column(
-        name=ColumnName(__root__="CreatedById"),
+        name=ColumnName("CreatedById"),
         displayName=None,
         dataType=DataType.UNKNOWN,
         arrayDataType=None,
@@ -433,21 +433,21 @@ class SalesforceUnitTest(TestCase):
     @patch(
         "metadata.ingestion.source.database.salesforce.metadata.SalesforceSource.test_connection"
     )
-    @patch("simple_salesforce.Salesforce")
+    @patch("simple_salesforce.api.Salesforce")
     def __init__(self, methodName, salesforce, test_connection) -> None:
         super().__init__(methodName)
         test_connection.return_value = False
-        self.config = OpenMetadataWorkflowConfig.parse_obj(mock_salesforce_config)
+        self.config = OpenMetadataWorkflowConfig.model_validate(mock_salesforce_config)
         self.salesforce_source = SalesforceSource.create(
             mock_salesforce_config["source"],
             self.config.workflowConfig.openMetadataServerConfig,
         )
 
-        self.salesforce_source.context.__dict__[
+        self.salesforce_source.context.get().__dict__[
             "database_service"
         ] = MOCK_DATABASE_SERVICE
-        self.salesforce_source.context.__dict__["database"] = MOCK_DATABASE
-        self.salesforce_source.context.__dict__[
+        self.salesforce_source.context.get().__dict__["database"] = MOCK_DATABASE
+        self.salesforce_source.context.get().__dict__[
             "database_schema"
         ] = MOCK_DATABASE_SCHEMA
 
@@ -461,3 +461,41 @@ class SalesforceUnitTest(TestCase):
                 SALESFORCE_FIELDS[i]["type"].upper()
             )
             assert result == EXPECTED_COLUMN_TYPE[i]
+
+    @patch(
+        "metadata.ingestion.source.database.salesforce.metadata.SalesforceSource.test_connection"
+    )
+    @patch("simple_salesforce.api.Salesforce")
+    def test_check_ssl(self, salesforce, test_connection) -> None:
+        mock_salesforce_config["source"]["serviceConnection"]["config"]["sslConfig"] = {
+            "caCertificate": """
+        -----BEGIN CERTIFICATE-----
+        sample caCertificateData  
+        -----END CERTIFICATE-----
+        """
+        }
+
+        mock_salesforce_config["source"]["serviceConnection"]["config"]["sslConfig"][
+            "sslKey"
+        ] = """
+        -----BEGIN CERTIFICATE-----
+        sample caCertificateData  
+        -----END CERTIFICATE-----
+        """
+        mock_salesforce_config["source"]["serviceConnection"]["config"]["sslConfig"][
+            "sslCertificate"
+        ] = """
+        -----BEGIN CERTIFICATE-----
+        sample sslCertificateData
+        -----END CERTIFICATE-----
+        """
+
+        test_connection.return_value = False
+        self.config = OpenMetadataWorkflowConfig.model_validate(mock_salesforce_config)
+        self.salesforce_source = SalesforceSource.create(
+            mock_salesforce_config["source"],
+            self.config.workflowConfig.openMetadataServerConfig,
+        )
+        self.assertTrue(self.salesforce_source.ssl_manager.ca_file_path)
+        self.assertTrue(self.salesforce_source.ssl_manager.cert_file_path)
+        self.assertTrue(self.salesforce_source.ssl_manager.key_file_path)

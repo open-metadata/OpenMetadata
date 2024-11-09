@@ -33,12 +33,3 @@ export type SearchIndexCellRendered<T, K extends keyof T> = (
   record: T,
   index: number
 ) => ReactNode;
-
-export interface DataTypeDisplayCellProps {
-  dataTypeDisplay: SearchIndexField['dataTypeDisplay'];
-}
-
-export interface EditFieldTag {
-  field: SearchIndexField;
-  index: number;
-}

@@ -17,6 +17,7 @@ from functools import singledispatch
 
 import requests
 
+from metadata.clients.azure_client import AzureClient
 from metadata.generated.schema.entity.services.connections.database.datalake.azureConfig import (
     AzureConfig,
 )
@@ -78,7 +79,8 @@ def _(config: StorageMetadataLocalConfig) -> ManifestMetadataConfig:
             logger.debug(f"Reading [manifestFilePath] from: {config.manifestFilePath}")
             with open(config.manifestFilePath, "r", encoding="utf-8") as manifest:
                 metadata_manifest = manifest.read()
-        return ManifestMetadataConfig.parse_obj(json.loads(metadata_manifest))
+            return ManifestMetadataConfig.model_validate(json.loads(metadata_manifest))
+        raise StorageMetadataConfigException("Manifest file path not provided")
     except Exception as exc:
         logger.debug(traceback.format_exc())
         raise StorageMetadataConfigException(
@@ -97,7 +99,7 @@ def _(config: StorageMetadataHttpConfig) -> ManifestMetadataConfig:
             raise StorageMetadataConfigException(
                 "Manifest file not found in file server"
             )
-        return ManifestMetadataConfig.parse_obj(http_manifest.json())
+        return ManifestMetadataConfig.model_validate(http_manifest.json())
     except Exception as exc:
         logger.debug(traceback.format_exc())
         raise StorageMetadataConfigException(
@@ -130,7 +132,7 @@ def _(config: StorageMetadataS3Config) -> ManifestMetadataConfig:
         )
 
         manifest = reader.read(path=path, bucket_name=bucket_name)
-        return ManifestMetadataConfig.parse_obj(json.loads(manifest))
+        return ManifestMetadataConfig.model_validate(json.loads(manifest))
     except Exception as exc:
         logger.debug(traceback.format_exc())
         raise StorageMetadataConfigException(
@@ -153,21 +155,7 @@ def _(config: StorageMetadataAdlsConfig) -> ManifestMetadataConfig:
             else STORAGE_METADATA_MANIFEST_FILE_NAME
         )
 
-        from azure.identity import (  # pylint: disable=import-outside-toplevel
-            ClientSecretCredential,
-        )
-        from azure.storage.blob import (  # pylint: disable=import-outside-toplevel
-            BlobServiceClient,
-        )
-
-        blob_client = BlobServiceClient(
-            account_url=f"https://{config.securityConfig.accountName}.blob.core.windows.net/",
-            credential=ClientSecretCredential(
-                config.securityConfig.tenantId,
-                config.securityConfig.clientId,
-                config.securityConfig.clientSecret.get_secret_value(),
-            ),
-        )
+        blob_client = AzureClient(config.securityConfig).create_blob_client()
 
         reader = get_reader(
             config_source=AzureConfig(securityConfig=config.securityConfig),
@@ -175,7 +163,7 @@ def _(config: StorageMetadataAdlsConfig) -> ManifestMetadataConfig:
         )
 
         manifest = reader.read(path=path, bucket_name=bucket_name)
-        return ManifestMetadataConfig.parse_obj(json.loads(manifest))
+        return ManifestMetadataConfig.model_validate(json.loads(manifest))
     except Exception as exc:
         logger.debug(traceback.format_exc())
         raise StorageMetadataConfigException(
@@ -209,7 +197,7 @@ def _(config: StorageMetadataGcsConfig) -> ManifestMetadataConfig:
         )
 
         manifest = reader.read(path=path, bucket_name=bucket_name)
-        return ManifestMetadataConfig.parse_obj(json.loads(manifest))
+        return ManifestMetadataConfig.model_validate(json.loads(manifest))
     except Exception as exc:
         logger.debug(traceback.format_exc())
         raise StorageMetadataConfigException(
