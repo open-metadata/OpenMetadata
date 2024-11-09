@@ -91,21 +91,45 @@ export interface DataProductSource extends CommonSource {
   data_product_name: string;
 }
 
+export interface ChartSource extends CommonSource {
+  chart_id: string;
+  chart_name: string;
+}
+
+export interface APIEndpointSource extends CommonSource {
+  api_endpoint_id: string;
+  api_endpoint_name: string;
+}
+export interface MetricSource extends CommonSource {
+  metric_id: string;
+  metric_name: string;
+}
+
+export interface APICollectionSource extends CommonSource {
+  api_collection_id: string;
+  api_collection_name: string;
+}
+
 export interface Option {
   _index: string;
   _id: string;
-  _source: TableSource &
-    DashboardSource &
-    TopicSource &
-    PipelineSource &
-    MlModelSource &
-    ContainerSearchSource &
-    StoredProcedureSearchSource &
-    DashboardDataModelSearchSource &
-    GlossarySource &
-    TagSource &
-    SearchIndexSource &
-    DataProductSource;
+  _source:
+    | TableSource &
+        DashboardSource &
+        TopicSource &
+        PipelineSource &
+        MlModelSource &
+        ContainerSearchSource &
+        StoredProcedureSearchSource &
+        DashboardDataModelSearchSource &
+        GlossarySource &
+        TagSource &
+        SearchIndexSource &
+        DataProductSource &
+        ChartSource &
+        APIEndpointSource &
+        APICollectionSource &
+        MetricSource;
 }
 
 export type SearchSuggestions =
@@ -120,4 +144,8 @@ export type SearchSuggestions =
   | SearchIndexSource[]
   | StoredProcedureSearchSource[]
   | DashboardDataModelSearchSource[]
-  | DataProductSource[];
+  | DataProductSource[]
+  | ChartSource[]
+  | APIEndpointSource[]
+  | APICollectionSource[]
+  | MetricSource[];

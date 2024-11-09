@@ -64,7 +64,7 @@ from metadata.generated.schema.type.tagLabel import TagFQN, TagLabel
 from metadata.ingestion.models.table_metadata import ColumnTag
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.pii.processor import PIIProcessor
-from metadata.profiler.api.models import ProfilerResponse
+from metadata.profiler.api.models import ProfilerResponse, SampleData
 
 table_data = TableData(
     columns=[
@@ -314,7 +314,7 @@ class PiiProcessorTest(TestCase):
                     )
                 )
             ),
-            sample_data=table_data,
+            sample_data=SampleData(data=table_data),
         )
 
         updated_record: ProfilerResponse = self.pii_processor.run(record)

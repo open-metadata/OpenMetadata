@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { expect, Page } from '@playwright/test';
-import { lowerCase } from 'lodash';
+import { isEmpty, lowerCase } from 'lodash';
 import {
   customFormatDateTime,
   getCurrentMillis,
@@ -22,8 +22,9 @@ import {
   LIST_OF_FIELDS_TO_EDIT_NOT_TO_BE_PRESENT,
   LIST_OF_FIELDS_TO_EDIT_TO_BE_DISABLED,
 } from '../constant/delete';
+import { ES_RESERVED_CHARACTERS } from '../constant/entity';
 import { EntityTypeEndpoint } from '../support/entity/Entity.interface';
-import { redirectToHomePage } from './common';
+import { clickOutside, redirectToHomePage } from './common';
 
 export const visitEntityPage = async (data: {
   page: Page;
@@ -31,20 +32,31 @@ export const visitEntityPage = async (data: {
   dataTestId: string;
 }) => {
   const { page, searchTerm, dataTestId } = data;
-
+  const waitForSearchResponse = page.waitForResponse(
+    '/api/v1/search/query?q=*index=dataAsset*'
+  );
   await page.getByTestId('searchBox').fill(searchTerm);
-  await page.waitForResponse('/api/v1/search/query?q=*index=dataAsset*');
+  await waitForSearchResponse;
   await page.getByTestId(dataTestId).getByTestId('data-name').click();
   await page.getByTestId('searchBox').clear();
 };
 
-export const addOwner = async (
-  page: Page,
-  owner: string,
-  type: 'Teams' | 'Users' = 'Users',
-  dataTestId?: string
-) => {
-  await page.getByTestId('edit-owner').click();
+export const addOwner = async ({
+  page,
+  owner,
+  endpoint,
+  type = 'Users',
+  dataTestId,
+  initiatorId = 'edit-owner',
+}: {
+  page: Page;
+  owner: string;
+  endpoint: EntityTypeEndpoint;
+  type?: 'Teams' | 'Users';
+  dataTestId?: string;
+  initiatorId?: string;
+}) => {
+  await page.getByTestId(initiatorId).click();
   if (type === 'Users') {
     const userListResponse = page.waitForResponse(
       '/api/v1/users?limit=*&isBot=false*'
@@ -62,59 +74,237 @@ export const addOwner = async (
     await page.getByRole('tab', { name: type }).click();
   }
 
+  const searchUser = page.waitForResponse(
+    `/api/v1/search/query?q=*${encodeURIComponent(owner)}*`
+  );
   await page
     .getByTestId(`owner-select-${lowerCase(type)}-search-bar`)
     .fill(owner);
-  await page.waitForResponse(
-    `/api/v1/search/query?q=*${encodeURIComponent(owner)}*`
-  );
-  await page.getByRole('listitem', { name: owner }).click();
+  await searchUser;
+
+  if (type === 'Teams') {
+    const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
+    await page.getByRole('listitem', { name: owner, exact: true }).click();
+    await patchRequest;
+  } else {
+    await page.getByRole('listitem', { name: owner, exact: true }).click();
+
+    const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
+    await page.getByTestId('selectable-list-update-btn').click();
+    await patchRequest;
+  }
 
   await expect(page.getByTestId(dataTestId ?? 'owner-link')).toContainText(
     owner
   );
 };
 
-export const updateOwner = async (
-  page: Page,
-  owner: string,
-  type: 'Teams' | 'Users' = 'Users',
-  dataTestId?: string
-) => {
+export const updateOwner = async ({
+  page,
+  owner,
+  endpoint,
+  type = 'Users',
+  dataTestId,
+}: {
+  page: Page;
+  owner: string;
+  endpoint: EntityTypeEndpoint;
+  type?: 'Teams' | 'Users';
+  dataTestId?: string;
+}) => {
   await page.getByTestId('edit-owner').click();
   await page.getByRole('tab', { name: type }).click();
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
+  const searchUser = page.waitForResponse(
+    `/api/v1/search/query?q=*${encodeURIComponent(owner)}*`
+  );
   await page
     .getByTestId(`owner-select-${lowerCase(type)}-search-bar`)
     .fill(owner);
-  await page.waitForResponse(
-    `/api/v1/search/query?q=*${encodeURIComponent(owner)}*`
-  );
-  await page.getByRole('listitem', { name: owner }).click();
+  await searchUser;
+
+  if (type === 'Teams') {
+    const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
+    await page.getByRole('listitem', { name: owner, exact: true }).click();
+    await patchRequest;
+  } else {
+    await page.getByRole('listitem', { name: owner, exact: true }).click();
+
+    const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
+    await page.getByTestId('selectable-list-update-btn').click();
+    await patchRequest;
+  }
 
   await expect(page.getByTestId(dataTestId ?? 'owner-link')).toContainText(
     owner
   );
 };
 
-export const removeOwner = async (page: Page, dataTestId?: string) => {
+export const removeOwnersFromList = async ({
+  page,
+  endpoint,
+  ownerNames,
+  dataTestId,
+}: {
+  page: Page;
+  endpoint: EntityTypeEndpoint;
+  ownerNames: string[];
+  dataTestId?: string;
+}) => {
   await page.getByTestId('edit-owner').click();
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
-  await expect(page.getByTestId('remove-owner').locator('svg')).toBeVisible();
+  for (const ownerName of ownerNames) {
+    const ownerItem = page.getByRole('listitem', {
+      name: ownerName,
+      exact: true,
+    });
 
-  await page.getByTestId('remove-owner').locator('svg').click();
+    await ownerItem.click();
+  }
+  const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
+  await page.click('[data-testid="selectable-list-update-btn"]');
+  await patchRequest;
 
-  await expect(page.getByTestId(dataTestId ?? 'owner-link')).toContainText(
-    'No Owner'
+  for (const ownerName of ownerNames) {
+    await expect(
+      page.getByTestId(dataTestId ?? 'owner-link')
+    ).not.toContainText(ownerName);
+  }
+};
+
+// Removes All Owners
+export const removeOwner = async ({
+  page,
+  endpoint,
+  ownerName,
+  type = 'Users',
+  dataTestId,
+}: {
+  page: Page;
+  endpoint: EntityTypeEndpoint;
+  ownerName: string;
+  type?: 'Teams' | 'Users';
+  dataTestId?: string;
+}) => {
+  await page.getByTestId('edit-owner').click();
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
+  const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
+  if (type === 'Teams') {
+    await expect(page.getByTestId('remove-owner').locator('svg')).toBeVisible();
+
+    await page.getByTestId('remove-owner').locator('svg').click();
+  } else {
+    await page.click('[data-testid="clear-all-button"]');
+    await page.click('[data-testid="selectable-list-update-btn"]');
+  }
+
+  await patchRequest;
+
+  await expect(page.getByTestId(dataTestId ?? 'owner-link')).not.toContainText(
+    ownerName
   );
 };
 
-export const assignTier = async (page: Page, tier: string) => {
+export const addMultiOwner = async (data: {
+  page: Page;
+  ownerNames: string | string[];
+  activatorBtnDataTestId: string;
+  endpoint: EntityTypeEndpoint;
+  resultTestId?: string;
+  isSelectableInsideForm?: boolean;
+  type: 'Teams' | 'Users';
+  clearAll?: boolean;
+}) => {
+  const {
+    page,
+    ownerNames,
+    activatorBtnDataTestId,
+    resultTestId = 'owner-link',
+    isSelectableInsideForm = false,
+    endpoint,
+    type,
+    clearAll = true,
+  } = data;
+  const isMultipleOwners = Array.isArray(ownerNames);
+  const owners = isMultipleOwners ? ownerNames : [ownerNames];
+
+  await page.click(`[data-testid="${activatorBtnDataTestId}"]`);
+
+  await expect(page.locator("[data-testid='select-owner-tabs']")).toBeVisible();
+
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
+  await page
+    .locator("[data-testid='select-owner-tabs']")
+    .getByRole('tab', { name: 'Users' })
+    .click();
+
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
+  if (clearAll && isMultipleOwners) {
+    await page.click('[data-testid="clear-all-button"]');
+  }
+
+  for (const ownerName of owners) {
+    const searchOwner = page.waitForResponse(
+      'api/v1/search/query?q=*&index=user_search_index*'
+    );
+    await page.locator('[data-testid="owner-select-users-search-bar"]').clear();
+    await page.fill('[data-testid="owner-select-users-search-bar"]', ownerName);
+    await searchOwner;
+    await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
+    const ownerItem = page.getByRole('listitem', {
+      name: ownerName,
+      exact: true,
+    });
+
+    if (type === 'Teams') {
+      if (isSelectableInsideForm) {
+        await ownerItem.click();
+      } else {
+        const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
+        await ownerItem.click();
+        await patchRequest;
+      }
+    } else {
+      await ownerItem.click();
+    }
+  }
+
+  if (isMultipleOwners) {
+    const updateButton = page.getByTestId('selectable-list-update-btn');
+
+    if (isSelectableInsideForm) {
+      await updateButton.click();
+    } else {
+      const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
+      await updateButton.click();
+      await patchRequest;
+    }
+  }
+
+  for (const name of owners) {
+    await expect(page.locator(`[data-testid="${resultTestId}"]`)).toContainText(
+      name
+    );
+  }
+};
+
+export const assignTier = async (
+  page: Page,
+  tier: string,
+  endpoint: string
+) => {
   await page.getByTestId('edit-tier').click();
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+  const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
   await page.getByTestId(`radio-btn-${tier}`).click();
-  await page.getByTestId('Tier').click();
+  await patchRequest;
+  await clickOutside(page);
 
   await expect(page.getByTestId('Tier')).toContainText(tier);
 };
@@ -123,7 +313,7 @@ export const removeTier = async (page: Page) => {
   await page.getByTestId('edit-tier').click();
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
   await page.getByTestId('clear-tier').click();
-  await page.getByTestId('Tier').click();
+  await clickOutside(page);
 
   await expect(page.getByTestId('Tier')).toContainText('No Tier');
 };
@@ -135,32 +325,98 @@ export const updateDescription = async (page: Page, description: string) => {
   await page.locator('.ProseMirror').first().fill(description);
   await page.getByTestId('save').click();
 
-  await expect(
-    page.getByTestId('asset-description-container').getByRole('paragraph')
-  ).toContainText(description);
+  isEmpty(description)
+    ? await expect(
+        page.getByTestId('asset-description-container')
+      ).toContainText('No description')
+    : await expect(
+        page.getByTestId('asset-description-container').getByRole('paragraph')
+      ).toContainText(description);
 };
 
 export const assignTag = async (
   page: Page,
   tag: string,
-  action: 'Add' | 'Edit' = 'Add'
+  action: 'Add' | 'Edit' = 'Add',
+  parentId = 'entity-right-panel'
 ) => {
   await page
-    .getByTestId('entity-right-panel')
+    .getByTestId(parentId)
     .getByTestId('tags-container')
     .getByTestId(action === 'Add' ? 'add-tag' : 'edit-button')
     .click();
 
-  await page.locator('#tagsForm_tags').fill(tag);
-  await page.waitForResponse(
+  const searchTags = page.waitForResponse(
     `/api/v1/search/query?q=*${encodeURIComponent(tag)}*`
   );
+  await page.locator('#tagsForm_tags').fill(tag);
+  await searchTags;
   await page.getByTestId(`tag-${tag}`).click();
+
+  await page.waitForSelector(
+    '.ant-select-dropdown [data-testid="saveAssociatedTag"]',
+    { state: 'visible' }
+  );
+
+  await expect(page.getByTestId('saveAssociatedTag')).toBeEnabled();
+
   await page.getByTestId('saveAssociatedTag').click();
 
   await expect(
     page
-      .getByTestId('entity-right-panel')
+      .getByTestId(parentId)
+      .getByTestId('tags-container')
+      .getByTestId(`tag-${tag}`)
+  ).toBeVisible();
+};
+
+export const assignTagToChildren = async ({
+  page,
+  tag,
+  rowId,
+  action = 'Add',
+  rowSelector = 'data-row-key',
+}: {
+  page: Page;
+  tag: string;
+  rowId: string;
+  action?: 'Add' | 'Edit';
+  rowSelector?: string;
+}) => {
+  await page
+    .locator(`[${rowSelector}="${rowId}"]`)
+    .getByTestId('tags-container')
+    .getByTestId(action === 'Add' ? 'add-tag' : 'edit-button')
+    .click();
+
+  const searchTags = page.waitForResponse(
+    `/api/v1/search/query?q=*${encodeURIComponent(tag)}*`
+  );
+
+  await page.locator('#tagsForm_tags').fill(tag);
+
+  await searchTags;
+
+  await page.getByTestId(`tag-${tag}`).click();
+
+  const patchRequest = page.waitForResponse(
+    (response) => response.request().method() === 'PATCH'
+  );
+
+  await page.waitForSelector(
+    '.ant-select-dropdown [data-testid="saveAssociatedTag"]',
+    { state: 'visible' }
+  );
+
+  await expect(page.getByTestId('saveAssociatedTag')).toBeEnabled();
+
+  await page.getByTestId('saveAssociatedTag').click();
+
+  await patchRequest;
+
+  await expect(
+    page
+      .locator(`[${rowSelector}="${rowId}"]`)
       .getByTestId('tags-container')
       .getByTestId(`tag-${tag}`)
   ).toBeVisible();
@@ -180,15 +436,71 @@ export const removeTag = async (page: Page, tags: string[]) => {
       .locator('svg')
       .click();
 
-    const patchRequest = page.waitForRequest(
-      (request) => request.method() === 'PATCH'
+    const patchRequest = page.waitForResponse(
+      (response) => response.request().method() === 'PATCH'
     );
+
+    await page.waitForSelector(
+      '.ant-select-dropdown [data-testid="saveAssociatedTag"]',
+      { state: 'visible' }
+    );
+
+    await expect(page.getByTestId('saveAssociatedTag')).toBeEnabled();
+
     await page.getByTestId('saveAssociatedTag').click();
     await patchRequest;
 
     expect(
       page
         .getByTestId('entity-right-panel')
+        .getByTestId('tags-container')
+        .getByTestId(`tag-${tag}`)
+    ).not.toBeVisible();
+  }
+};
+
+export const removeTagsFromChildren = async ({
+  page,
+  rowId,
+  tags,
+  rowSelector = 'data-row-key',
+}: {
+  page: Page;
+  tags: string[];
+  rowId: string;
+  rowSelector?: string;
+}) => {
+  for (const tag of tags) {
+    await page
+      .locator(`[${rowSelector}="${rowId}"]`)
+      .getByTestId('tags-container')
+      .getByTestId('edit-button')
+      .click();
+
+    await page
+      .getByTestId('tag-selector')
+      .getByTestId(`selected-tag-${tag}`)
+      .getByTestId('remove-tags')
+      .click();
+
+    const patchTagRequest = page.waitForResponse(
+      (response) => response.request().method() === 'PATCH'
+    );
+
+    await page.waitForSelector(
+      '.ant-select-dropdown [data-testid="saveAssociatedTag"]',
+      { state: 'visible' }
+    );
+
+    await expect(page.getByTestId('saveAssociatedTag')).toBeEnabled();
+
+    await page.getByTestId('saveAssociatedTag').click();
+
+    await patchTagRequest;
+
+    await expect(
+      page
+        .locator(`[${rowSelector}="${rowId}"]`)
         .getByTestId('tags-container')
         .getByTestId(`tag-${tag}`)
     ).not.toBeVisible();
@@ -212,16 +524,75 @@ export const assignGlossaryTerm = async (
     .getByTestId(action === 'Add' ? 'add-tag' : 'edit-button')
     .click();
 
-  await page.locator('#tagsForm_tags').fill(glossaryTerm.displayName);
-  await page.waitForResponse(
+  const searchGlossaryTerm = page.waitForResponse(
     `/api/v1/search/query?q=*${encodeURIComponent(glossaryTerm.displayName)}*`
   );
+
+  await page.locator('#tagsForm_tags').fill(glossaryTerm.displayName);
+  await searchGlossaryTerm;
   await page.getByTestId(`tag-${glossaryTerm.fullyQualifiedName}`).click();
+
+  await page.waitForSelector(
+    '.ant-select-dropdown [data-testid="saveAssociatedTag"]',
+    { state: 'visible' }
+  );
+
+  await expect(page.getByTestId('saveAssociatedTag')).toBeEnabled();
+
   await page.getByTestId('saveAssociatedTag').click();
 
   await expect(
     page
       .getByTestId('entity-right-panel')
+      .getByTestId('glossary-container')
+      .getByTestId(`tag-${glossaryTerm.fullyQualifiedName}`)
+  ).toBeVisible();
+};
+
+export const assignGlossaryTermToChildren = async ({
+  page,
+  glossaryTerm,
+  action = 'Add',
+  rowId,
+  rowSelector = 'data-row-key',
+}: {
+  page: Page;
+  glossaryTerm: GlossaryTermOption;
+  rowId: string;
+  action?: 'Add' | 'Edit';
+  rowSelector?: string;
+}) => {
+  await page
+    .locator(`[${rowSelector}="${rowId}"]`)
+    .getByTestId('glossary-container')
+    .getByTestId(action === 'Add' ? 'add-tag' : 'edit-button')
+    .click();
+
+  const searchGlossaryTerm = page.waitForResponse(
+    `/api/v1/search/query?q=*${encodeURIComponent(glossaryTerm.displayName)}*`
+  );
+  await page.locator('#tagsForm_tags').fill(glossaryTerm.displayName);
+  await searchGlossaryTerm;
+  await page.getByTestId(`tag-${glossaryTerm.fullyQualifiedName}`).click();
+
+  const patchRequest = page.waitForResponse(
+    (response) => response.request().method() === 'PATCH'
+  );
+
+  await page.waitForSelector(
+    '.ant-select-dropdown [data-testid="saveAssociatedTag"]',
+    { state: 'visible' }
+  );
+
+  await expect(page.getByTestId('saveAssociatedTag')).toBeEnabled();
+
+  await page.getByTestId('saveAssociatedTag').click();
+
+  await patchRequest;
+
+  await expect(
+    page
+      .locator(`[${rowSelector}="${rowId}"]`)
       .getByTestId('glossary-container')
       .getByTestId(`tag-${glossaryTerm.fullyQualifiedName}`)
   ).toBeVisible();
@@ -245,9 +616,17 @@ export const removeGlossaryTerm = async (
       .locator('svg')
       .click();
 
-    const patchRequest = page.waitForRequest(
-      (request) => request.method() === 'PATCH'
+    const patchRequest = page.waitForResponse(
+      (response) => response.request().method() === 'PATCH'
     );
+
+    await page.waitForSelector(
+      '.ant-select-dropdown [data-testid="saveAssociatedTag"]',
+      { state: 'visible' }
+    );
+
+    await expect(page.getByTestId('saveAssociatedTag')).toBeEnabled();
+
     await page.getByTestId('saveAssociatedTag').click();
     await patchRequest;
 
@@ -260,16 +639,68 @@ export const removeGlossaryTerm = async (
   }
 };
 
+export const removeGlossaryTermFromChildren = async ({
+  page,
+  glossaryTerms,
+  rowId,
+  rowSelector = 'data-row-key',
+}: {
+  page: Page;
+  glossaryTerms: GlossaryTermOption[];
+  rowId: string;
+  rowSelector?: string;
+}) => {
+  for (const tag of glossaryTerms) {
+    await page
+      .locator(`[${rowSelector}="${rowId}"]`)
+      .getByTestId('glossary-container')
+      .getByTestId('edit-button')
+      .click();
+
+    await page
+      .getByTestId('glossary-container')
+      .getByTestId(new RegExp(tag.name))
+      .getByTestId('remove-tags')
+      .locator('svg')
+      .click();
+
+    const patchRequest = page.waitForResponse(
+      (response) => response.request().method() === 'PATCH'
+    );
+
+    await page.waitForSelector(
+      '.ant-select-dropdown [data-testid="saveAssociatedTag"]',
+      { state: 'visible' }
+    );
+
+    await expect(page.getByTestId('saveAssociatedTag')).toBeEnabled();
+
+    await page.getByTestId('saveAssociatedTag').click();
+
+    await patchRequest;
+
+    expect(
+      page
+        .locator(`[${rowSelector}="${rowId}"]`)
+        .getByTestId('glossary-container')
+        .getByTestId(`tag-${tag.fullyQualifiedName}`)
+    ).not.toBeVisible();
+  }
+};
+
 export const upVote = async (page: Page, endPoint: string) => {
+  const patchRequest = page.waitForResponse(`/api/v1/${endPoint}/*/vote`);
+
   await page.getByTestId('up-vote-btn').click();
-  await page.waitForResponse(`/api/v1/${endPoint}/*/vote`);
+  await patchRequest;
 
   await expect(page.getByTestId('up-vote-count')).toContainText('1');
 };
 
 export const downVote = async (page: Page, endPoint: string) => {
+  const patchRequest = page.waitForResponse(`/api/v1/${endPoint}/*/vote`);
   await page.getByTestId('down-vote-btn').click();
-  await page.waitForResponse(`/api/v1/${endPoint}/*/vote`);
+  await patchRequest;
 
   await expect(page.getByTestId('down-vote-count')).toContainText('1');
 };
@@ -343,8 +774,11 @@ const announcementForm = async (
   );
 
   await page.locator('#announcement-submit').scrollIntoViewIfNeeded();
+  const announcementSubmit = page.waitForResponse(
+    '/api/v1/feed?entityLink=*type=Announcement*'
+  );
   await page.click('#announcement-submit');
-  await page.waitForResponse('/api/v1/feed?entityLink=*type=Announcement*');
+  await announcementSubmit;
   await page.click('.Toastify__close-button');
 };
 
@@ -524,7 +958,15 @@ export const updateDisplayNameForEntity = async (
   ).toHaveText(displayName);
 };
 
-export const checkForEditActions = async ({ entityType, deleted, page }) => {
+export const checkForEditActions = async ({
+  page,
+  entityType,
+  deleted = false,
+}: {
+  page: Page;
+  entityType: string;
+  deleted?: boolean;
+}) => {
   for (const {
     containerSelector,
     elementSelector,
@@ -763,11 +1205,12 @@ export const softDeleteEntity = async (
   await expect(page.locator('.ant-modal-title')).toContainText(displayName);
 
   await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
-  await page.click('[data-testid="confirm-button"]');
-
-  await page.waitForResponse(
+  const deleteResponse = page.waitForResponse(
     `/api/v1/${endPoint}/*?hardDelete=false&recursive=true`
   );
+  await page.click('[data-testid="confirm-button"]');
+
+  await deleteResponse;
 
   await expect(page.locator('.Toastify__toast-body')).toHaveText(
     /deleted successfully!/
@@ -802,7 +1245,7 @@ export const softDeleteEntity = async (
 
     await expect(tableCount).toContainText('1');
 
-    await page.click(`[data-testid=${entityName}]`);
+    await page.click(`[data-testid="${entityName}"]`);
   }
 
   await restoreEntity(page);
@@ -832,14 +1275,74 @@ export const hardDeleteEntity = async (
   await page.click('[data-testid="hard-delete-option"]');
   await page.check('[data-testid="hard-delete"]');
   await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
-  await page.click('[data-testid="confirm-button"]');
-  await page.waitForResponse(
-    `**/api/v1/${endPoint}/*?hardDelete=true&recursive=true`
+  const deleteResponse = page.waitForResponse(
+    `/api/v1/${endPoint}/*?hardDelete=true&recursive=true`
   );
+  await page.click('[data-testid="confirm-button"]');
+  await deleteResponse;
 
   await expect(page.locator('.Toastify__toast-body')).toHaveText(
     /deleted successfully!/
   );
 
   await page.click('.Toastify__close-button');
+};
+
+export const checkDataAssetWidget = async (
+  page: Page,
+  type: string,
+  index: string,
+  serviceType: string
+) => {
+  const quickFilterResponse = page.waitForResponse(
+    `/api/v1/search/query?q=&index=dataAsset*${serviceType}*`
+  );
+
+  await page
+    .locator(`[data-testid="data-asset-service-${serviceType}"]`)
+    .click();
+
+  await quickFilterResponse;
+
+  await expect(
+    page.locator('[data-testid="search-dropdown-Service Type"]')
+  ).toContainText(serviceType);
+
+  await expect(
+    page
+      .getByTestId('explore-tree')
+      .locator('span')
+      .filter({ hasText: serviceType })
+      .first()
+  ).toHaveClass(/ant-tree-node-selected/);
+};
+
+export const escapeESReservedCharacters = (text?: string) => {
+  const reUnescapedHtml = /[\\[\]#+=&|><!(){}^"~*?:/-]/g;
+  const reHasUnescapedHtml = RegExp(reUnescapedHtml.source);
+
+  const getReplacedChar = (char: string) => {
+    return ES_RESERVED_CHARACTERS[char] ?? char;
+  };
+
+  return text && reHasUnescapedHtml.test(text)
+    ? text.replace(reUnescapedHtml, getReplacedChar)
+    : text ?? '';
+};
+
+export const getEncodedFqn = (fqn: string, spaceAsPlus = false) => {
+  let uri = encodeURIComponent(fqn);
+
+  if (spaceAsPlus) {
+    uri = uri.replaceAll('%20', '+');
+  }
+
+  return uri;
+};
+
+export const getEntityDisplayName = (entity?: {
+  name?: string;
+  displayName?: string;
+}) => {
+  return entity?.displayName || entity?.name || '';
 };

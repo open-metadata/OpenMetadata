@@ -46,7 +46,7 @@ class BaseModel(PydanticBaseModel):
         context: Optional[Dict[str, Any]] = None,
         by_alias: bool = False,
         exclude_unset: bool = True,
-        exclude_defaults: bool = True,
+        exclude_defaults: bool = False,
         exclude_none: bool = True,
         round_trip: bool = False,
         warnings: Union[bool, Literal["none", "warn", "error"]] = True,

@@ -13,7 +13,7 @@ REST Auth & Client for QlikCloud
 """
 import json
 import traceback
-from typing import Dict, List, Optional
+from typing import Dict, Iterable, List, Optional
 
 from metadata.generated.schema.entity.services.connections.dashboard.qlikCloudConnection import (
     QlikCloudConnection,
@@ -26,7 +26,10 @@ from metadata.ingestion.source.dashboard.qlikcloud.constants import (
     GET_SHEET_LAYOUT,
     OPEN_DOC_REQ,
 )
-from metadata.ingestion.source.dashboard.qlikcloud.models import QlikApp, QlikAppList
+from metadata.ingestion.source.dashboard.qlikcloud.models import (
+    QlikApp,
+    QlikAppResponse,
+)
 from metadata.ingestion.source.dashboard.qliksense.models import (
     QlikDataModelResult,
     QlikSheet,
@@ -40,6 +43,7 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 API_VERSION = "api"
+API_LIMIT = 100
 
 
 class QlikCloudClient:
@@ -53,13 +57,12 @@ class QlikCloudClient:
     ):
         self.config = config
         self.socket_connection = None
-        self.config.token = self.config.token.get_secret_value()
 
         client_config: ClientConfig = ClientConfig(
             base_url=str(self.config.hostPort),
             api_version=API_VERSION,
             auth_header=AUTHORIZATION_HEADER,
-            auth_token=lambda: (self.config.token, 0),
+            auth_token=lambda: (self.config.token.get_secret_value(), 0),
         )
         self.client = REST(client_config)
 
@@ -77,7 +80,7 @@ class QlikCloudClient:
         self.socket_connection = create_connection(
             f"wss://{clean_uri(self.config.hostPort.host)}/app/{dashboard_id or ''}",
             sslopt={"cert_reqs": ssl.CERT_NONE},
-            header={"Authorization": f"Bearer {self.config.token}"},
+            header={"Authorization": f"Bearer {self.config.token.get_secret_value()}"},
         )
         self.socket_connection.recv()
 
@@ -117,19 +120,32 @@ class QlikCloudClient:
             logger.warning("Failed to fetch the dashboard charts")
         return []
 
-    def get_dashboards_list(self) -> List[QlikAppList]:
+    def get_dashboards_list(self) -> Iterable[QlikApp]:
         """
         Get List of all apps
         """
         try:
-            resp_apps = self.client.get("/v1/items?resourceType=app")
-            if resp_apps:
-                app_list = QlikAppList(apps=resp_apps.get("data", []))
-                return app_list.apps
+            link = f"/v1/items?resourceType=app&limit={API_LIMIT}"
+            while True:
+                resp_apps = self.client.get(link)
+                if resp_apps:
+                    resp = QlikAppResponse(**resp_apps)
+                    yield from resp.apps
+                    if resp.links and resp.links.next and resp.links.next.href:
+                        link = resp.links.next.href.replace(
+                            f"{self.config.hostPort}{API_VERSION}", ""
+                        )
+                    else:
+                        break
         except Exception:
             logger.debug(traceback.format_exc())
             logger.warning("Failed to fetch the app list")
-        return []
+
+    def get_dashboards_list_test_conn(self) -> Iterable[QlikApp]:
+        resp_apps = self.client.get("/v1/items?resourceType=app")
+        if resp_apps:
+            resp = QlikAppResponse(**resp_apps)
+            return list(resp.apps)
 
     def get_dashboard_details(self, dashboard_id: str) -> Optional[QlikApp]:
         """

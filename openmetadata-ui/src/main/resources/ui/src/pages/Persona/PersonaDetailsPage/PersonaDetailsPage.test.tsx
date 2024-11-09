@@ -10,16 +10,19 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitForElementToBeRemoved,
+} from '@testing-library/react';
 import React from 'react';
+import { MemoryRouter } from 'react-router-dom';
 import { getPersonaByName, updatePersona } from '../../../rest/PersonaAPI';
 import { PersonaDetailsPage } from './PersonaDetailsPage';
 
 jest.mock('../../../components/PageLayoutV1/PageLayoutV1', () => {
   return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
-});
-jest.mock('../../../components/PageHeader/PageHeader.component', () => {
-  return jest.fn().mockImplementation(() => <div>PageHeader.component</div>);
 });
 jest.mock('../../../components/common/EntityDescription/DescriptionV1', () => {
   return jest.fn().mockImplementation(() => <div>DescriptionV1.component</div>);
@@ -101,6 +104,12 @@ jest.mock(
       .mockImplementation(() => <div>NoDataPlaceholder.component</div>);
   }
 );
+
+jest.mock(
+  '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component',
+  () => jest.fn().mockImplementation(() => <p>TitleBreadcrumb.component</p>)
+);
+
 jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockReturnValue({
     getEntityPermissionByFqn: jest.fn().mockResolvedValue({
@@ -115,11 +124,44 @@ jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
   }),
 }));
 
+jest.mock(
+  '../../../components/Settings/Users/UsersTab/UsersTabs.component',
+  () => ({
+    UsersTab: jest
+      .fn()
+      .mockImplementation(() => <div>UsersTabs.component</div>),
+  })
+);
+
+jest.mock('../../../utils/EntityUtils', () => ({
+  getEntityName: jest.fn().mockReturnValue('Persona'),
+}));
+
+jest.mock('../../../utils/PermissionsUtils', () => ({
+  DEFAULT_ENTITY_PERMISSION: jest.fn(),
+}));
+
+jest.mock('../../../utils/ToastUtils', () => ({
+  showErrorToast: jest.fn(),
+}));
+
+jest.mock(
+  '../../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component',
+  () => jest.fn().mockImplementation(() => <div>EntityHeaderTitle</div>)
+);
+
+jest.mock('../../../hooks/useCustomLocation/useCustomLocation', () => {
+  return jest.fn().mockImplementation(() => ({ pathname: '', hash: '' }));
+});
+
 describe('PersonaDetailsPage', () => {
   it('Component should render', async () => {
-    render(<PersonaDetailsPage />);
+    render(<PersonaDetailsPage />), { wrapper: MemoryRouter };
 
-    expect(await screen.findByText('PageHeader.component')).toBeInTheDocument();
+    await waitForElementToBeRemoved(() => screen.getByTestId('loader'));
+
+    expect(screen.getByText('EntityHeaderTitle')).toBeInTheDocument();
+    expect(screen.getByText('TitleBreadcrumb.component')).toBeInTheDocument();
     expect(
       await screen.findByText('ManageButton.component')
     ).toBeInTheDocument();
@@ -133,7 +175,7 @@ describe('PersonaDetailsPage', () => {
     (getPersonaByName as jest.Mock).mockImplementationOnce(() =>
       Promise.reject()
     );
-    render(<PersonaDetailsPage />);
+    render(<PersonaDetailsPage />, { wrapper: MemoryRouter });
 
     expect(
       await screen.findByText('NoDataPlaceholder.component')
@@ -141,20 +183,18 @@ describe('PersonaDetailsPage', () => {
   });
 
   it('handleAfterDeleteAction should call after delete', async () => {
-    render(<PersonaDetailsPage />);
+    render(<PersonaDetailsPage />, { wrapper: MemoryRouter });
 
     const deleteBtn = await screen.findByTestId('delete-btn');
 
     fireEvent.click(deleteBtn);
 
-    expect(mockUseHistory.push).toHaveBeenCalledWith(
-      '/settings/members/persona'
-    );
+    expect(mockUseHistory.push).toHaveBeenCalledWith('/settings/persona');
   });
 
   it('handleDisplayNameUpdate should call after updating displayName', async () => {
     const mockUpdatePersona = updatePersona as jest.Mock;
-    render(<PersonaDetailsPage />);
+    render(<PersonaDetailsPage />, { wrapper: MemoryRouter });
 
     const updateName = await screen.findByTestId('display-name-btn');
 
@@ -167,7 +207,7 @@ describe('PersonaDetailsPage', () => {
 
   it('add user should work', async () => {
     const mockUpdatePersona = updatePersona as jest.Mock;
-    render(<PersonaDetailsPage />);
+    render(<PersonaDetailsPage />, { wrapper: MemoryRouter });
 
     const addUser = await screen.findByTestId('user-selectable-list');
 

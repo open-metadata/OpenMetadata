@@ -23,6 +23,24 @@ workbooks(filter:{{luid: "{workbook_id}"}}){{
     nodes {{
       id
       name
+      upstreamDatasources{{
+        id
+        name
+        description
+        tags {{
+          name
+        }}
+        fields {{
+          id
+          name
+          upstreamColumns{{
+            id
+            name
+            remoteType
+          }}
+          description
+        }}
+      }}
       fields {{
         id
         name

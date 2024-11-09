@@ -15,7 +15,7 @@ import { AxiosError } from 'axios';
 import QueryString from 'qs';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useLocation, useParams } from 'react-router-dom';
+import { useHistory, useParams } from 'react-router-dom';
 import Loader from '../../components/common/Loader/Loader';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
@@ -27,9 +27,14 @@ import RightPanel from '../../components/DataQuality/AddDataQualityTest/componen
 import CustomMetricForm from '../../components/DataQuality/CustomMetricForm/CustomMetricForm.component';
 import { getEntityDetailsPath } from '../../constants/constants';
 import { DEFAULT_RANGE_DATA } from '../../constants/profiler.constant';
-import { EntityTabs, EntityType } from '../../enums/entity.enum';
+import {
+  EntityTabs,
+  EntityType,
+  TabSpecificField,
+} from '../../enums/entity.enum';
 import { ProfilerDashboardType } from '../../enums/table.enum';
 import { CustomMetric, Table } from '../../generated/entity/data/table';
+import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../hooks/useFqn';
 import { putCustomMetric } from '../../rest/customMetricAPI';
 import { getTableDetailsByFQN } from '../../rest/tableAPI';
@@ -43,7 +48,7 @@ const AddCustomMetricPage = () => {
   const { fqn } = useFqn();
 
   const history = useHistory();
-  const location = useLocation();
+  const location = useCustomLocation();
   const isColumnMetric = dashboardType === ProfilerDashboardType.COLUMN;
   const { t } = useTranslation();
   const [form] = Form.useForm<CustomMetric>();
@@ -96,23 +101,19 @@ const AddCustomMetricPage = () => {
   );
 
   const handleBackClick = () => {
-    if (isColumnMetric) {
-      history.push({
-        pathname: getEntityDetailsPath(
-          EntityType.TABLE,
-          entityFqn,
-          EntityTabs.PROFILER
-        ),
-        search: QueryString.stringify({
-          activeTab: TableProfilerTab.COLUMN_PROFILE,
-          activeColumnFqn,
-        }),
-      });
-    } else {
-      history.push(
-        getEntityDetailsPath(EntityType.TABLE, entityFqn, EntityTabs.PROFILER)
-      );
-    }
+    history.push({
+      pathname: getEntityDetailsPath(
+        EntityType.TABLE,
+        entityFqn,
+        EntityTabs.PROFILER
+      ),
+      search: QueryString.stringify({
+        activeTab: isColumnMetric
+          ? TableProfilerTab.COLUMN_PROFILE
+          : TableProfilerTab.TABLE_PROFILE,
+        activeColumnFqn,
+      }),
+    });
   };
 
   const handleFormSubmit = async (values: CustomMetric) => {
@@ -137,7 +138,11 @@ const AddCustomMetricPage = () => {
     setIsLoading(true);
     try {
       const table = await getTableDetailsByFQN(fqn, {
-        fields: 'testSuite,customMetrics,columns',
+        fields: [
+          TabSpecificField.TESTSUITE,
+          TabSpecificField.CUSTOM_METRICS,
+          TabSpecificField.COLUMNS,
+        ],
       });
       setTable(table);
     } catch (error) {
@@ -196,7 +201,9 @@ const AddCustomMetricPage = () => {
 
   return (
     <ResizablePanels
+      className="content-height-with-resizable-panel"
       firstPanel={{
+        className: 'content-resizable-panel-container',
         children: (
           <div
             className="max-width-md w-9/10 service-form-container"
@@ -253,14 +260,9 @@ const AddCustomMetricPage = () => {
       })}
       secondPanel={{
         children: secondPanel,
-        className: 'p-md service-doc-panel',
-        minWidth: 60,
+        className: 'p-md p-t-xl content-resizable-panel-container',
         flex: 0.5,
-        overlay: {
-          displayThreshold: 200,
-          header: t('label.data-profiler-metrics'),
-          rotation: 'counter-clockwise',
-        },
+        minWidth: 400,
       }}
     />
   );

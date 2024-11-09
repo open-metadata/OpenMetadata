@@ -30,11 +30,14 @@ import {
 } from '../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
+import APICollectionPage from '../pages/APICollectionPage/APICollectionPage';
+import APIEndpointPage from '../pages/APIEndpointPage/APIEndpointPage';
 import ContainerPage from '../pages/ContainerPage/ContainerPage';
 import DashboardDetailsPage from '../pages/DashboardDetailsPage/DashboardDetailsPage.component';
 import DatabaseDetailsPage from '../pages/DatabaseDetailsPage/DatabaseDetailsPage';
 import DatabaseSchemaPageComponent from '../pages/DatabaseSchemaPage/DatabaseSchemaPage.component';
 import DataModelsPage from '../pages/DataModelPage/DataModelPage.component';
+import MetricDetailsPage from '../pages/MetricsPage/MetricDetailsPage/MetricDetailsPage';
 import MlModelPage from '../pages/MlModelPage/MlModelPage.component';
 import PipelineDetailsPage from '../pages/PipelineDetails/PipelineDetailsPage.component';
 import SearchIndexDetailsPage from '../pages/SearchIndexDetailsPage/SearchIndexDetailsPage';
@@ -122,6 +125,7 @@ class EntityUtilClassBase {
       case EntityType.METADATA_SERVICE:
       case EntityType.STORAGE_SERVICE:
       case EntityType.SEARCH_SERVICE:
+      case EntityType.API_SERVICE:
         return getServiceDetailsPath(fullyQualifiedName, `${indexType}s`);
 
       case EntityType.WEBHOOK:
@@ -228,6 +232,32 @@ class EntityUtilClassBase {
       case EntityType.PERSONA:
         return getPersonaDetailsPath(fullyQualifiedName);
 
+      case SearchIndex.API_COLLECTION_INDEX:
+      case EntityType.API_COLLECTION:
+        return getEntityDetailsPath(
+          EntityType.API_COLLECTION,
+          fullyQualifiedName,
+          tab,
+          subTab
+        );
+
+      case SearchIndex.API_ENDPOINT_INDEX:
+      case EntityType.API_ENDPOINT:
+        return getEntityDetailsPath(
+          EntityType.API_ENDPOINT,
+          fullyQualifiedName,
+          tab,
+          subTab
+        );
+      case SearchIndex.METRIC_SEARCH_INDEX:
+      case EntityType.METRIC:
+        return getEntityDetailsPath(
+          EntityType.METRIC,
+          fullyQualifiedName,
+          tab,
+          subTab
+        );
+
       case SearchIndex.TABLE:
       case EntityType.TABLE:
       default:
@@ -266,6 +296,13 @@ class EntityUtilClassBase {
         return DataProductsPage;
       case EntityType.TABLE:
         return TableDetailsPageV1;
+      case EntityType.API_COLLECTION:
+        return APICollectionPage;
+      case EntityType.API_ENDPOINT:
+        return APIEndpointPage;
+      case EntityType.METRIC:
+        return MetricDetailsPage;
+
       default:
         return null;
     }
@@ -312,6 +349,16 @@ class EntityUtilClassBase {
       case EntityType.DATA_PRODUCT: {
         return ResourceEntity.DATA_PRODUCT;
       }
+      case EntityType.API_COLLECTION: {
+        return ResourceEntity.API_COLLECTION;
+      }
+      case EntityType.API_ENDPOINT: {
+        return ResourceEntity.API_ENDPOINT;
+      }
+      case EntityType.METRIC: {
+        return ResourceEntity.METRIC;
+      }
+
       default: {
         return ResourceEntity.TABLE;
       }

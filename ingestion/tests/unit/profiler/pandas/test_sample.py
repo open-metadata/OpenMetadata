@@ -47,9 +47,14 @@ class User(Base):
     age = Column(Integer)
 
 
+class FakeClient:
+    def __init__(self):
+        self._client = None
+
+
 class FakeConnection:
-    def client(self):
-        return None
+    def __init__(self):
+        self.client = FakeClient()
 
 
 class DatalakeSampleTest(TestCase):
@@ -131,8 +136,8 @@ class DatalakeSampleTest(TestCase):
 
     @classmethod
     @mock.patch(
-        "metadata.profiler.interface.profiler_interface.get_connection",
-        return_value=FakeConnection,
+        "metadata.profiler.interface.profiler_interface.get_ssl_connection",
+        return_value=FakeConnection(),
     )
     @mock.patch(
         "metadata.mixins.pandas.pandas_mixin.fetch_dataframe",
@@ -160,7 +165,7 @@ class DatalakeSampleTest(TestCase):
         generate a random subset of data
         """
         sampler = DatalakeSampler(
-            client=FakeConnection().client(),
+            client=FakeConnection().client,
             table=[self.df1, self.df2],
             profile_sample_config=ProfileSampleConfig(profile_sample=50.0),
         )
@@ -169,8 +174,8 @@ class DatalakeSampleTest(TestCase):
         assert res < 5
 
     @mock.patch(
-        "metadata.profiler.interface.profiler_interface.get_connection",
-        return_value=FakeConnection,
+        "metadata.profiler.interface.profiler_interface.get_ssl_connection",
+        return_value=FakeConnection(),
     )
     @mock.patch(
         "metadata.mixins.pandas.pandas_mixin.fetch_dataframe",
@@ -242,7 +247,7 @@ class DatalakeSampleTest(TestCase):
         We should be able to pick up sample data from the sampler
         """
         sampler = DatalakeSampler(
-            client=FakeConnection().client(),
+            client=FakeConnection().client,
             table=[self.df1, self.df2],
         )
         sample_data = sampler.fetch_sample_data()
@@ -257,7 +262,7 @@ class DatalakeSampleTest(TestCase):
         """
         stmt = "`age` > 30"
         sampler = DatalakeSampler(
-            client=FakeConnection().client(),
+            client=FakeConnection().client,
             table=[self.df1, self.df2],
             profile_sample_query=stmt,
         )

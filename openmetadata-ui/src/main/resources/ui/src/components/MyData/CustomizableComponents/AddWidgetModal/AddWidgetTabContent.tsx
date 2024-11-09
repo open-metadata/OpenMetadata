@@ -25,7 +25,7 @@ import {
 } from 'antd';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import customizePageClassBase from '../../../../utils/CustomizePageClassBase';
+import customizePageClassBase from '../../../../utils/CustomizeMyDataPageClassBase';
 import { AddWidgetTabContentProps } from './AddWidgetModal.interface';
 
 function AddWidgetTabContent({
@@ -90,7 +90,6 @@ function AddWidgetTabContent({
                 placement="bottom"
                 title={widgetAddable ? '' : t('message.can-not-add-widget')}>
                 <Button
-                  ghost
                   className="p-x-lg m-t-md"
                   data-testid="add-widget-button"
                   disabled={!widgetAddable}

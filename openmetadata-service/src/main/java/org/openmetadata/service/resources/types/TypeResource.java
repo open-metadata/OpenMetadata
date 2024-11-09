@@ -26,6 +26,8 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
@@ -59,6 +61,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TypeRepository;
+import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
@@ -67,6 +70,7 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil.PutResponse;
 import org.openmetadata.service.util.ResultList;
+import org.openmetadata.service.util.SchemaFieldExtractor;
 
 @Path("/v1/metadata/types")
 @Tag(
@@ -80,6 +84,7 @@ import org.openmetadata.service.util.ResultList;
 @Slf4j
 public class TypeResource extends EntityResource<Type, TypeRepository> {
   public static final String COLLECTION_PATH = "v1/metadata/types/";
+  public SchemaFieldExtractor extractor;
 
   @Override
   public Type addHref(UriInfo uriInfo, Type type) {
@@ -88,8 +93,9 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
     return type;
   }
 
-  public TypeResource(Authorizer authorizer) {
-    super(Entity.TYPE, authorizer);
+  public TypeResource(Authorizer authorizer, Limits limits) {
+    super(Entity.TYPE, authorizer, limits);
+    extractor = new SchemaFieldExtractor();
   }
 
   @Override
@@ -463,6 +469,56 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
             uriInfo, securityContext.getUserPrincipal().getName(), id, property);
     addHref(uriInfo, response.getEntity());
     return response.toResponse();
+  }
+
+  @GET
+  @Path("/fields/{entityType}")
+  @Produces(MediaType.APPLICATION_JSON)
+  public Response getEntityTypeFields(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @PathParam("entityType") String entityType,
+      @QueryParam("include") @DefaultValue("non-deleted") Include include) {
+
+    try {
+      Fields fieldsParam = new Fields(Set.of("customProperties"));
+      Type typeEntity = repository.getByName(uriInfo, entityType, fieldsParam, include, false);
+      List<SchemaFieldExtractor.FieldDefinition> fieldsList =
+          extractor.extractFields(typeEntity, entityType);
+      return Response.ok(fieldsList).type(MediaType.APPLICATION_JSON).build();
+
+    } catch (Exception e) {
+      LOG.error("Error processing schema for entity type: " + entityType, e);
+      return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+          .entity(
+              "Error processing schema for entity type: "
+                  + entityType
+                  + ". Exception: "
+                  + e.getMessage())
+          .build();
+    }
+  }
+
+  @GET
+  @Path("/customProperties")
+  @Produces(MediaType.APPLICATION_JSON)
+  public Response getAllCustomPropertiesByEntityType(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
+    try {
+      SchemaFieldExtractor extractor = new SchemaFieldExtractor();
+      Map<String, List<SchemaFieldExtractor.FieldDefinition>> customPropertiesMap =
+          extractor.extractAllCustomProperties(uriInfo, repository);
+      return Response.ok(customPropertiesMap).build();
+    } catch (Exception e) {
+      LOG.error("Error fetching custom properties: {}", e.getMessage(), e);
+      return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+          .entity(
+              "Error processing schema for entity type: "
+                  + entityType
+                  + ". Exception: "
+                  + e.getMessage())
+          .build();
+    }
   }
 
   private Type getType(CreateType create, String user) {

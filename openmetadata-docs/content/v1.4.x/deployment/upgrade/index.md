@@ -5,7 +5,7 @@ slug: /deployment/upgrade
 
 # Upgrade OpenMetadata
 
-In this guide, you will find all the necessary information to safely upgrade your OpenMetadata instance to 1.3.x.
+In this guide, you will find all the necessary information to safely upgrade your OpenMetadata instance to 1.4.x.
 
 {% partial file="/v1.4/deployment/upgrade/upgrade-prerequisites.md" /%}
 

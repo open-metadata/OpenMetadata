@@ -250,7 +250,7 @@ class OpenMetadataValidationAction(ValidationAction):
 
         if table_entity.testSuite:
             test_suite = self.ometa_conn.get_by_name(
-                TestSuite, table_entity.testSuite.fullyQualifiedName.root
+                TestSuite, table_entity.testSuite.fullyQualifiedName
             )
             test_suite = cast(TestSuite, test_suite)
             return test_suite

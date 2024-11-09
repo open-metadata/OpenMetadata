@@ -15,6 +15,7 @@ package org.openmetadata.service;
 
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.service.resources.CollectionRegistry.PACKAGES;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTags;
 import static org.openmetadata.service.util.EntityUtil.getFlattenedEntityField;
 
@@ -98,7 +99,7 @@ public final class Entity {
   private static final Set<String> ENTITY_LIST = new TreeSet<>();
 
   // Common field names
-  public static final String FIELD_OWNER = "owner";
+  public static final String FIELD_OWNERS = "owners";
   public static final String FIELD_NAME = "name";
   public static final String FIELD_DESCRIPTION = "description";
   public static final String FIELD_FOLLOWERS = "followers";
@@ -114,14 +115,20 @@ public final class Entity {
   public static final String FIELD_REVIEWERS = "reviewers";
   public static final String FIELD_EXPERTS = "experts";
   public static final String FIELD_DOMAIN = "domain";
+  public static final String FIELD_DOMAINS = "domains";
   public static final String FIELD_DATA_PRODUCTS = "dataProducts";
   public static final String FIELD_ASSETS = "assets";
 
   public static final String FIELD_STYLE = "style";
 
   public static final String FIELD_LIFE_CYCLE = "lifeCycle";
+  public static final String FIELD_CERTIFICATION = "certification";
 
   public static final String FIELD_DISABLED = "disabled";
+
+  public static final String FIELD_TEST_SUITES = "testSuites";
+
+  public static final String FIELD_RELATED_TERMS = "relatedTerms";
 
   //
   // Service entities
@@ -134,6 +141,8 @@ public final class Entity {
   public static final String MLMODEL_SERVICE = "mlmodelService";
   public static final String METADATA_SERVICE = "metadataService";
   public static final String SEARCH_SERVICE = "searchService";
+
+  public static final String API_SERVICE = "apiService";
   //
   // Data asset entities
   //
@@ -141,7 +150,7 @@ public final class Entity {
   public static final String STORED_PROCEDURE = "storedProcedure";
   public static final String DATABASE = "database";
   public static final String DATABASE_SCHEMA = "databaseSchema";
-  public static final String METRICS = "metrics";
+  public static final String METRIC = "metric";
   public static final String DASHBOARD = "dashboard";
   public static final String DASHBOARD_DATA_MODEL = "dashboardDataModel";
   public static final String PIPELINE = "pipeline";
@@ -152,6 +161,11 @@ public final class Entity {
   public static final String REPORT = "report";
   public static final String TOPIC = "topic";
   public static final String SEARCH_INDEX = "searchIndex";
+
+  public static final String API_COLLCECTION = "apiCollection";
+  public static final String API_ENDPOINT = "apiEndpoint";
+
+  public static final String API = "api";
   public static final String MLMODEL = "mlmodel";
   public static final String CONTAINER = "container";
   public static final String QUERY = "query";
@@ -167,6 +181,7 @@ public final class Entity {
   public static final String KPI = "kpi";
   public static final String TEST_CASE = "testCase";
   public static final String WEB_ANALYTIC_EVENT = "webAnalyticEvent";
+  public static final String DATA_INSIGHT_CUSTOM_CHART = "dataInsightCustomChart";
   public static final String DATA_INSIGHT_CHART = "dataInsightChart";
 
   //
@@ -206,6 +221,7 @@ public final class Entity {
   // Time series entities
   public static final String ENTITY_REPORT_DATA = "entityReportData";
   public static final String TEST_CASE_RESOLUTION_STATUS = "testCaseResolutionStatus";
+  public static final String TEST_CASE_RESULT = "testCaseResult";
   public static final String WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA =
       "webAnalyticEntityViewReportData";
   public static final String WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA =
@@ -222,16 +238,12 @@ public final class Entity {
   public static final String ORGANIZATION_NAME = "Organization";
   public static final String ORGANIZATION_POLICY_NAME = "OrganizationPolicy";
   public static final String INGESTION_BOT_NAME = "ingestion-bot";
-  public static final String INGESTION_BOT_ROLE = "IngestionBotRole";
-  public static final String PROFILER_BOT_NAME = "profiler-bot";
-  public static final String PROFILER_BOT_ROLE = "ProfilerBotRole";
-  public static final String QUALITY_BOT_NAME = "quality-bot";
-  public static final String QUALITY_BOT_ROLE = "QualityBotRole";
   public static final String ALL_RESOURCES = "All";
 
   public static final String DOCUMENT = "document";
   // ServiceType - Service Entity name map
   static final Map<ServiceType, String> SERVICE_TYPE_ENTITY_MAP = new EnumMap<>(ServiceType.class);
+  public static final List<String> PARENT_ENTITY_TYPES = new ArrayList<>();
 
   static {
     SERVICE_TYPE_ENTITY_MAP.put(ServiceType.DATABASE, DATABASE_SERVICE);
@@ -242,6 +254,26 @@ public final class Entity {
     SERVICE_TYPE_ENTITY_MAP.put(ServiceType.METADATA, METADATA_SERVICE);
     SERVICE_TYPE_ENTITY_MAP.put(ServiceType.STORAGE, STORAGE_SERVICE);
     SERVICE_TYPE_ENTITY_MAP.put(ServiceType.SEARCH, SEARCH_SERVICE);
+    SERVICE_TYPE_ENTITY_MAP.put(ServiceType.API, API_SERVICE);
+    PARENT_ENTITY_TYPES.addAll(
+        listOf(
+            DATABASE_SERVICE,
+            DASHBOARD_SERVICE,
+            MESSAGING_SERVICE,
+            MLMODEL_SERVICE,
+            PIPELINE_SERVICE,
+            API_SERVICE,
+            API_COLLCECTION,
+            STORAGE_SERVICE,
+            METADATA_SERVICE,
+            SEARCH_SERVICE,
+            DATABASE,
+            DATABASE_SCHEMA,
+            CLASSIFICATION,
+            GLOSSARY,
+            DOMAIN,
+            TEST_SUITE,
+            TEAM));
   }
 
   private Entity() {}
@@ -344,9 +376,10 @@ public final class Entity {
     return repository.getReferenceByName(fqn, include);
   }
 
-  public static EntityReference getOwner(@NonNull EntityReference reference) {
-    EntityRepository<?> repository = getEntityRepository(reference.getType());
-    return repository.getOwner(reference);
+  public static List<EntityReference> getOwners(@NonNull EntityReference reference) {
+    EntityRepository<? extends EntityInterface> repository =
+        getEntityRepository(reference.getType());
+    return repository.getOwners(reference);
   }
 
   public static void withHref(UriInfo uriInfo, List<EntityReference> list) {
@@ -505,7 +538,7 @@ public final class Entity {
             TABLE,
             DATABASE,
             DATABASE_SCHEMA,
-            METRICS,
+            METRIC,
             DASHBOARD,
             DASHBOARD_DATA_MODEL,
             PIPELINE,
@@ -551,7 +584,11 @@ public final class Entity {
 
   /** Compile a list of REST collections based on Resource classes marked with {@code Repository} annotation */
   private static List<Class<?>> getRepositories() {
-    try (ScanResult scanResult = new ClassGraph().enableAnnotationInfo().scan()) {
+    try (ScanResult scanResult =
+        new ClassGraph()
+            .enableAnnotationInfo()
+            .acceptPackages(PACKAGES.toArray(new String[0]))
+            .scan()) {
       ClassInfoList classList = scanResult.getClassesWithAnnotation(Repository.class);
       return classList.loadClasses();
     }
@@ -589,5 +626,9 @@ public final class Entity {
 
   public static <T> T getDao() {
     return (T) collectionDAO;
+  }
+
+  public static <T> T getSearchRepo() {
+    return (T) searchRepository;
   }
 }

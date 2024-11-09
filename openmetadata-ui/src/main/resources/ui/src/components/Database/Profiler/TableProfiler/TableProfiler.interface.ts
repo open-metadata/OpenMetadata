@@ -26,7 +26,7 @@ import {
 } from '../../../../generated/entity/data/table';
 import { TestCase, TestSummary } from '../../../../generated/tests/testCase';
 import { UsePagingInterface } from '../../../../hooks/paging/usePaging';
-import { ListTestCaseParams } from '../../../../rest/testAPI';
+import { ListTestCaseParamsBySearch } from '../../../../rest/testAPI';
 
 export interface TableProfilerProps {
   permissions: OperationPermission;
@@ -50,7 +50,7 @@ export interface TableProfilerContextInterface {
   overallSummary: OverallTableSummaryType[];
   onTestCaseUpdate: (testCase?: TestCase) => void;
   onSettingButtonClick: () => void;
-  fetchAllTests: (params?: ListTestCaseParams) => Promise<void>;
+  fetchAllTests: (params?: ListTestCaseParamsBySearch) => Promise<void>;
   onCustomMetricUpdate: (table: Table) => void;
   isProfilingEnabled: boolean;
   dateRangeObject: DateRangeObject;

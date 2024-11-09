@@ -81,6 +81,12 @@ public final class CatalogExceptionMessage {
 
   public static final String SELF_SIGNUP_NOT_ENABLED = "SELF_SIGNUP_NOT_ENABLED";
   public static final String SELF_SIGNUP_ERROR = "Signup is not supported.";
+  public static final String OTHER_USER_SIGN_UP_ERROR = "OTHER_USER_SIGN_UP_ERROR";
+  public static final String OTHER_USER_SIGN_UP =
+      "Self Signup can only create user for self. Only Admin can create other users.";
+  public static final String SELF_SIGNUP_DISABLED_MESSAGE =
+      "Self Signup is not enabled. Please contact your Administrator for assistance with account creation";
+
   public static final String NOT_IMPLEMENTED_METHOD = "Method not implemented.";
 
   public static final String AUTHENTICATOR_OPERATION_NOT_SUPPORTED =
@@ -93,7 +99,7 @@ public final class CatalogExceptionMessage {
   public static final String TOKEN_EXPIRY_ERROR =
       "Email Verification Token %s is expired. Please issue a new request for email verification.";
   public static final String INVALID_BOT_USER = "Revoke Token can only be applied to Bot Users.";
-  public static final String LIVE_APP_SCHEDULE_ERR = "Live Application cannot scheduled.";
+  public static final String NO_MANUAL_TRIGGER_ERR = "App does not support manual trigger.";
   public static final String INVALID_APP_TYPE = "Application Type is not valid.";
 
   private CatalogExceptionMessage() {}
@@ -213,6 +219,13 @@ public final class CatalogExceptionMessage {
         "Principal: CatalogPrincipal{name='%s'} operations %s not allowed", user, operations);
   }
 
+  public static String domainPermissionNotAllowed(
+      String user, String domainName, List<MetadataOperation> operations) {
+    return String.format(
+        "Principal: CatalogPrincipal{name='%s'} does not belong to domain %s. to perform the %s ",
+        user, domainName, operations);
+  }
+
   public static String taskOperationNotAllowed(String user, String operations) {
     return String.format(
         "Principal: CatalogPrincipal{name='%s'} operations %s not allowed", user, operations);
@@ -231,8 +244,17 @@ public final class CatalogExceptionMessage {
     return String.format("Unknown custom field %s", fieldName);
   }
 
+  public static String dateTimeValidationError(String fieldName, String format) {
+    return String.format(
+        "Custom field %s value is not as per defined format %s", fieldName, format);
+  }
+
   public static String jsonValidationError(String fieldName, String validationMessages) {
     return String.format("Custom field %s has invalid JSON %s", fieldName, validationMessages);
+  }
+
+  public static String customPropertyConfigError(String fieldName, String validationMessages) {
+    return String.format("Custom Property %s has invalid value %s", fieldName, validationMessages);
   }
 
   public static String invalidParent(Team parent, String child, TeamType childType) {
@@ -262,6 +284,14 @@ public final class CatalogExceptionMessage {
         entityType);
   }
 
+  public static String onlyOneTeamAllowed() {
+    return "Only One Team is allowed to own Data Assets.";
+  }
+
+  public static String noTeamAndUserComboAllowed() {
+    return "Data Assets can have up to 5 users or a Team but not both as owners.";
+  }
+
   public static String failedToParse(String message) {
     return String.format("Failed to parse - %s", message);
   }
@@ -288,6 +318,11 @@ public final class CatalogExceptionMessage {
         tag1.getTagFQN(), tag2.getTagFQN());
   }
 
+  public static String disabledTag(TagLabel tag) {
+    return String.format(
+        "Tag label %s is disabled and can't be assigned to a data asset.", tag.getTagFQN());
+  }
+
   public static String csvNotSupported(String entityType) {
     return String.format(
         "Upload/download CSV for bulk operations is not supported for entity [%s]", entityType);
@@ -307,6 +342,12 @@ public final class CatalogExceptionMessage {
     return String.format(
         "Failed to publish event %s to %s due to %s ",
         JsonUtils.pojoToJson(event), type.value(), message);
+  }
+
+  public static String eventPublisherFailedToPublish(
+      SubscriptionDestination.SubscriptionType type, String message) {
+    return String.format(
+        "Failed to publish event of destination type %s due to %s ", type.value(), message);
   }
 
   public static String invalidTaskField(EntityLink entityLink, TaskType taskType) {

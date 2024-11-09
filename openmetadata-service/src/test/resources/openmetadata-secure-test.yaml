@@ -168,6 +168,7 @@ authenticationConfiguration:
       callback: ""
     security:
       strictMode: false
+      validateXml: false
       tokenValidity: 3600
       sendEncryptedNameId: false
       sendSignedAuthRequest: false
@@ -175,10 +176,6 @@ authenticationConfiguration:
       wantMessagesSigned: false
       wantAssertionsSigned: false
       wantAssertionEncrypted: false
-      wantNameIdEncrypted: false
-      keyStoreFilePath: ""
-      keyStoreAlias: ""
-      keyStorePassword: ""
 
 jwtTokenConfiguration:
   rsapublicKeyFilePath: "src/test/resources/public_key.der"

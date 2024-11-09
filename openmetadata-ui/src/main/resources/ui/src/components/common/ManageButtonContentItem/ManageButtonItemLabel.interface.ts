@@ -18,4 +18,5 @@ export interface MangeButtonItemLabelProps {
   icon: SvgComponent;
   description: string;
   id: string;
+  disabled?: boolean;
 }

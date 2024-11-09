@@ -530,6 +530,55 @@ RECORD_INSIDE_RECORD = """
 }
 """
 
+RECURSION_ISSUE_SAMPLE = """
+{
+  "type": "record",
+  "name": "RecursionIssue",
+  "namespace": "com.issue.recursion",
+  "doc": "Schema with recursion issue",
+  "fields": [
+    {
+      "name": "issue",
+      "type": {
+        "type": "record",
+        "name": "Issue",
+        "doc": "Global Schema Name",
+        "fields": [
+          {
+            "name": "itemList",
+            "default": null,
+            "type": [
+              "null",
+              {
+                "type": "array",
+                "items": {
+                  "type": "record",
+                  "name": "Item",
+                  "doc": "Item List  - Array of Sub Schema",
+                  "fields": [
+                    {
+                      "name": "itemList",
+                      "type": [
+                        "null",
+                        {
+                          "type": "array",
+                          "items": "Item"
+                        }
+                      ],
+                      "default": null
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}
+"""
+
 
 class AvroParserTests(TestCase):
     """
@@ -744,6 +793,33 @@ class AvroParserTests(TestCase):
             .children[0]
             .children[0]
             .children[2]
+            .children[0]
+            .children
+        )
+
+    def test_recursive_issue_parsing(self):
+        recur_parsed_schema = parse_avro_schema(RECURSION_ISSUE_SAMPLE)
+
+        self.assertEqual(
+            recur_parsed_schema[0]
+            .children[0]
+            .children[0]
+            .children[0]
+            .children[0]
+            .name.root,
+            "Item",
+        )
+        self.assertEqual(
+            recur_parsed_schema[0].children[0].children[0].children[0].name.root,
+            "itemList",
+        )
+        self.assertIsNone(
+            recur_parsed_schema[0]
+            .children[0]
+            .children[0]
+            .children[0]
+            .children[0]
+            .children[0]
             .children[0]
             .children
         )

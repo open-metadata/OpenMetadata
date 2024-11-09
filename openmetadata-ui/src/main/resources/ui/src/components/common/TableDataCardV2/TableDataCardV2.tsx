@@ -19,22 +19,17 @@ import React, { forwardRef, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
 import { EntityType } from '../../../enums/entity.enum';
-import { OwnerType } from '../../../enums/user.enum';
 import { EntityReference } from '../../../generated/entity/type';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import {
-  getEntityPlaceHolder,
-  getOwnerValue,
-} from '../../../utils/CommonUtils';
-import {
   getEntityBreadcrumbs,
-  getEntityId,
   getEntityName,
 } from '../../../utils/EntityUtils';
 import { getServiceIcon, getUsagePercentile } from '../../../utils/TableUtils';
 import TableDataCardBody from '../../Database/TableDataCardBody/TableDataCardBody';
 import { EntityHeader } from '../../Entity/EntityHeader/EntityHeader.component';
 import { SearchedDataProps } from '../../SearchedData/SearchedData.interface';
+import { OwnerLabel } from '../OwnerLabel/OwnerLabel.component';
 import './TableDataCardV2.less';
 
 export interface TableDataCardPropsV2 {
@@ -86,19 +81,9 @@ const TableDataCardV2: React.FC<TableDataCardPropsV2> = forwardRef<
       const _otherDetails: ExtraInfo[] = [
         {
           key: 'Owner',
-          value: getOwnerValue(source.owner as EntityReference),
-          placeholderText: getEntityPlaceHolder(
-            getEntityName(source.owner as EntityReference),
-            source.owner?.deleted
+          value: (
+            <OwnerLabel owners={(source.owners as EntityReference[]) ?? []} />
           ),
-          id: getEntityId(source.owner as EntityReference),
-          isEntityDetails: true,
-          isLink: true,
-          openInNewTab: false,
-          profileName:
-            source.owner?.type === OwnerType.USER
-              ? source.owner?.name
-              : undefined,
         },
       ];
 

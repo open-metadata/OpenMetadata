@@ -100,7 +100,7 @@ class ProtobufParserTests(TestCase):
         We'll read the files under ./ingestion/tests/unit/resources/protobuf_parser and parse them
         This will be similar in way to how we get the data from kafka source
         """
-        resource_path = "./ingestion/tests/unit/resources/protobuf_parser/"
+        resource_path = f"{os.path.dirname(__file__)}/resources/protobuf_parser/"
         schema_name = "employee"
         file_list = os.listdir(resource_path)
         schema_text = ""

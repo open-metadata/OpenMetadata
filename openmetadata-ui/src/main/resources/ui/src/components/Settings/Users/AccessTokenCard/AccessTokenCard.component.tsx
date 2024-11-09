@@ -11,10 +11,11 @@
  *  limitations under the License.
  */
 
-import { Card } from 'antd';
+import { Card, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { t } from 'i18next';
+import { noop } from 'lodash';
 import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { USER_DEFAULT_AUTHENTICATION_MECHANISM } from '../../../../constants/User.constants';
 import { PersonalAccessToken } from '../../../../generated/auth/personalAccessToken';
@@ -34,6 +35,7 @@ import Loader from '../../../common/Loader/Loader';
 import ConfirmationModal from '../../../Modals/ConfirmationModal/ConfirmationModal';
 import AuthMechanism from '../../Bot/BotDetails/AuthMechanism';
 import AuthMechanismForm from '../../Bot/BotDetails/AuthMechanismForm';
+import './access-token-card.less';
 import { MockProps } from './AccessTokenCard.interfaces';
 
 const AccessTokenCard: FC<MockProps> = ({
@@ -41,6 +43,7 @@ const AccessTokenCard: FC<MockProps> = ({
   botData,
   botUserData,
   revokeTokenHandlerBot,
+  disabled = false,
 }: MockProps) => {
   const [isUpdating, setIsUpdating] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -175,10 +178,10 @@ const AccessTokenCard: FC<MockProps> = ({
   }, []);
 
   useEffect(() => {
-    if (botUserData && botUserData.id) {
+    if (botUserData && botUserData.id && !disabled) {
       fetchAuthMechanismForBot();
     }
-  }, [botUserData]);
+  }, [botUserData, disabled]);
 
   const authenticationMechanismData = useMemo(() => {
     return isBot ? authenticationMechanismBot : authenticationMechanism;
@@ -206,34 +209,31 @@ const AccessTokenCard: FC<MockProps> = ({
     setIsModalOpen(false);
   };
 
-  return isLoading ? (
-    <Loader />
-  ) : (
+  const tokenCard = (
     <Card
       className={classNames(
-        'm-t-md',
-        isBot ? 'page-layout-v1-left-panel mt-2 ' : 'p-md m-l-md m-r-lg w-auto'
+        'm-t-md access-token-card',
+        isBot ? 'page-layout-v1-left-panel mt-2 ' : 'p-md m-l-md m-r-lg w-auto',
+        { disabled }
       )}
       data-testid="center-panel">
-      <>
-        {isAuthMechanismEdit ? (
-          <AuthMechanismForm
-            authenticationMechanism={authenticationMechanismData}
-            isBot={isBot}
-            isUpdating={isUpdating}
-            onCancel={() => setIsAuthMechanismEdit(false)}
-            onSave={onSave}
-          />
-        ) : (
-          <AuthMechanism
-            hasPermission
-            authenticationMechanism={authenticationMechanismData}
-            isBot={isBot}
-            onEdit={handleAuthMechanismEdit}
-            onTokenRevoke={() => setIsModalOpen(true)}
-          />
-        )}
-      </>
+      {isAuthMechanismEdit ? (
+        <AuthMechanismForm
+          authenticationMechanism={authenticationMechanismData}
+          isBot={isBot}
+          isUpdating={isUpdating}
+          onCancel={() => setIsAuthMechanismEdit(false)}
+          onSave={onSave}
+        />
+      ) : (
+        <AuthMechanism
+          hasPermission
+          authenticationMechanism={authenticationMechanismData}
+          isBot={isBot}
+          onEdit={handleAuthMechanismEdit}
+          onTokenRevoke={disabled ? noop : () => setIsModalOpen(true)}
+        />
+      )}
       <ConfirmationModal
         bodyText={confirmMessage}
         cancelText={t('label.cancel')}
@@ -242,9 +242,17 @@ const AccessTokenCard: FC<MockProps> = ({
         isLoading={isTokenRemoving}
         visible={isModalOpen}
         onCancel={() => setIsModalOpen(false)}
-        onConfirm={handleTokenRevoke}
+        onConfirm={disabled ? noop : handleTokenRevoke}
       />
     </Card>
+  );
+
+  return isLoading ? (
+    <Loader />
+  ) : disabled ? (
+    <Tooltip title="Upgrade to use this feature">{tokenCard}</Tooltip>
+  ) : (
+    tokenCard
   );
 };
 

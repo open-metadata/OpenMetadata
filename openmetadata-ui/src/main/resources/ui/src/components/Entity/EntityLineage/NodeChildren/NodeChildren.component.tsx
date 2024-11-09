@@ -21,12 +21,12 @@ import {
   LINEAGE_COLUMN_NODE_SUPPORTED,
 } from '../../../../constants/Lineage.constants';
 import { useLineageProvider } from '../../../../context/LineageProvider/LineageProvider';
-import { LineageLayerView } from '../../../../context/LineageProvider/LineageProvider.interface';
 import { EntityType } from '../../../../enums/entity.enum';
 import { Column, Table } from '../../../../generated/entity/data/table';
+import { LineageLayer } from '../../../../generated/settings/settings';
 import { getEntityChildrenAndLabel } from '../../../../utils/EntityLineageUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
-import { getEntityIcon } from '../../../../utils/TableUtils';
+import searchClassBase from '../../../../utils/SearchClassBase';
 import { getColumnContent } from '../CustomNode.utils';
 import TestSuiteSummaryWidget from '../TestSuiteSummaryWidget/TestSuiteSummaryWidget.component';
 import { EntityChildren, NodeChildrenProps } from './NodeChildren.interface';
@@ -34,17 +34,25 @@ import { EntityChildren, NodeChildrenProps } from './NodeChildren.interface';
 const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
   const { t } = useTranslation();
   const { Panel } = Collapse;
-  const { tracedColumns, activeLayer, onColumnClick } = useLineageProvider();
+  const {
+    tracedColumns,
+    activeLayer,
+    onColumnClick,
+    columnsHavingLineage,
+    isEditMode,
+    expandAllColumns,
+  } = useLineageProvider();
   const { entityType } = node;
   const [searchValue, setSearchValue] = useState('');
   const [filteredColumns, setFilteredColumns] = useState<EntityChildren>([]);
+  const [showAllColumns, setShowAllColumns] = useState(false);
   const [isExpanded, setIsExpanded] = useState<boolean>(true);
 
   const { showColumns, showDataObservability } = useMemo(() => {
     return {
-      showColumns: activeLayer.includes(LineageLayerView.COLUMN),
+      showColumns: activeLayer.includes(LineageLayer.ColumnLevelLineage),
       showDataObservability: activeLayer.includes(
-        LineageLayerView.DATA_OBSERVARABILITY
+        LineageLayer.DataObservability
       ),
     };
   }, [activeLayer]);
@@ -82,6 +90,22 @@ const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
     [children]
   );
 
+  const handleShowMoreClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation();
+    setShowAllColumns(true);
+  };
+
+  const isColumnVisible = useCallback(
+    (record: Column) => {
+      if (expandAllColumns || isEditMode || showAllColumns) {
+        return true;
+      }
+
+      return columnsHavingLineage.includes(record.fullyQualifiedName ?? '');
+    },
+    [isEditMode, columnsHavingLineage, expandAllColumns, showAllColumns]
+  );
+
   useEffect(() => {
     if (!isEmpty(children)) {
       setFilteredColumns(children);
@@ -101,7 +125,39 @@ const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
       );
 
       if (!record.children || record.children.length === 0) {
+        if (!isColumnVisible(record)) {
+          return null;
+        }
+
         return headerContent;
+      }
+
+      const childRecords = record?.children?.map((child) => {
+        const { fullyQualifiedName, dataType } = child;
+        if (DATATYPES_HAVING_SUBFIELDS.includes(dataType)) {
+          return renderRecord(child);
+        } else {
+          const isColumnTraced = tracedColumns.includes(
+            fullyQualifiedName ?? ''
+          );
+
+          if (!isColumnVisible(child)) {
+            return null;
+          }
+
+          return getColumnContent(
+            child,
+            isColumnTraced,
+            isConnectable,
+            onColumnClick
+          );
+        }
+      });
+
+      const result = childRecords.filter((child) => child !== null);
+
+      if (result.length === 0) {
+        return null;
       }
 
       return (
@@ -112,28 +168,12 @@ const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
           expandIcon={() => null}
           key={record.fullyQualifiedName}>
           <Panel header={headerContent} key={record.fullyQualifiedName ?? ''}>
-            {record?.children?.map((child) => {
-              const { fullyQualifiedName, dataType } = child;
-              if (DATATYPES_HAVING_SUBFIELDS.includes(dataType)) {
-                return renderRecord(child);
-              } else {
-                const isColumnTraced = tracedColumns.includes(
-                  fullyQualifiedName ?? ''
-                );
-
-                return getColumnContent(
-                  child,
-                  isColumnTraced,
-                  isConnectable,
-                  onColumnClick
-                );
-              }
-            })}
+            {result}
           </Panel>
         </Collapse>
       );
     },
-    [isConnectable, tracedColumns, onColumnClick]
+    [isConnectable, tracedColumns, onColumnClick, isColumnVisible]
   );
 
   const renderColumnsData = useCallback(
@@ -143,6 +183,9 @@ const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
         return renderRecord(column);
       } else {
         const isColumnTraced = tracedColumns.includes(fullyQualifiedName ?? '');
+        if (!isColumnVisible(column)) {
+          return null;
+        }
 
         return getColumnContent(
           column,
@@ -152,7 +195,7 @@ const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
         );
       }
     },
-    [isConnectable, tracedColumns]
+    [isConnectable, tracedColumns, isColumnVisible]
   );
 
   if (supportsColumns && (showColumns || showDataObservability)) {
@@ -171,7 +214,7 @@ const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
                 }}>
                 <Space>
                   <div className=" w-5 h-5 text-base-color">
-                    {getEntityIcon(node.entityType ?? '')}
+                    {searchClassBase.getEntityIcon(node.entityType ?? '')}
                   </div>
                   {childrenHeading}
                   {isExpanded ? (
@@ -210,6 +253,17 @@ const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
                 )}
               </div>
             </section>
+
+            {!showAllColumns && (
+              <Button
+                className="m-t-xs text-primary"
+                type="text"
+                onClick={handleShowMoreClick}>
+                {t('label.show-more-entity', {
+                  entity: t('label.column-plural'),
+                })}
+              </Button>
+            )}
           </div>
         )}
       </div>

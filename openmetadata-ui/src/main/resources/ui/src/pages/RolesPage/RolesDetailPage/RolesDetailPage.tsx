@@ -28,7 +28,7 @@ import {
   GlobalSettingsMenuCategory,
 } from '../../../constants/GlobalSettings.constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
-import { EntityType } from '../../../enums/entity.enum';
+import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
 import { Role } from '../../../generated/entity/teams/role';
 import { EntityReference } from '../../../generated/type/entityReference';
 import { useFqn } from '../../../hooks/useFqn';
@@ -113,7 +113,7 @@ const RolesDetailPage = () => {
   const handleTeamsUpdate = async (data: EntityReference) => {
     try {
       const team = await getTeamByName(data.fullyQualifiedName || '', {
-        fields: 'defaultRoles',
+        fields: TabSpecificField.DEFAULT_ROLES,
       });
       const updatedAttributeData = (team.defaultRoles ?? []).filter(
         (attrData) => attrData.id !== role.id
@@ -142,7 +142,7 @@ const RolesDetailPage = () => {
   const handleUsersUpdate = async (data: EntityReference) => {
     try {
       const user = await getUserByName(data.fullyQualifiedName || '', {
-        fields: 'roles',
+        fields: TabSpecificField.ROLES,
       });
       const updatedAttributeData = (user.roles ?? []).filter(
         (attrData) => attrData.id !== role.id

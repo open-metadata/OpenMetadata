@@ -23,6 +23,7 @@ import { Operation } from '../../generated/entity/policies/policy';
 import AddCustomMetricPage from '../../pages/AddCustomMetricPage/AddCustomMetricPage';
 import { CustomizablePage } from '../../pages/CustomizablePage/CustomizablePage';
 import DataQualityPage from '../../pages/DataQuality/DataQualityPage';
+import ForbiddenPage from '../../pages/ForbiddenPage/ForbiddenPage';
 import { checkPermission, userPermissions } from '../../utils/PermissionsUtils';
 import AdminProtectedRoute from './AdminProtectedRoute';
 import withSuspenseFallback from './withSuspenseFallback';
@@ -253,6 +254,18 @@ const AddObservabilityPage = withSuspenseFallback(
   )
 );
 
+const MetricListPage = withSuspenseFallback(
+  React.lazy(
+    () => import('../../pages/MetricsPage/MetricListPage/MetricListPage')
+  )
+);
+
+const AddMetricPage = withSuspenseFallback(
+  React.lazy(
+    () => import('../../pages/MetricsPage/AddMetricPage/AddMetricPage')
+  )
+);
+
 const AuthenticatedAppRouter: FunctionComponent = () => {
   const { permissions } = usePermissionProvider();
 
@@ -265,6 +278,8 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
 
   return (
     <Switch>
+      <Route exact component={ForbiddenPage} path={ROUTES.FORBIDDEN} />
+
       <Route exact component={MyDataPage} path={ROUTES.MY_DATA} />
       <Route exact component={TourPageComponent} path={ROUTES.TOUR} />
       <Route exact component={ExplorePageV1} path={ROUTES.EXPLORE} />
@@ -486,8 +501,12 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         component={GlossaryRouter}
         path={['/glossary', '/glossary-term']}
       />
+
       <Route component={SettingsRouter} path="/settings" />
       <Route component={DomainRouter} path="/domain" />
+
+      <Route exact component={MetricListPage} path={ROUTES.METRICS} />
+      <Route exact component={AddMetricPage} path={ROUTES.ADD_METRIC} />
 
       <Route
         component={EntityRouter}

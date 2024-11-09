@@ -15,12 +15,8 @@ import { Button, Form, FormProps, Space } from 'antd';
 import { omit } from 'lodash';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { UserTag } from '../../../components/common/UserTag/UserTag.component';
-import { UserTagSize } from '../../../components/common/UserTag/UserTag.interface';
-import {
-  ENTITY_NAME_REGEX,
-  HEX_COLOR_CODE_REGEX,
-} from '../../../constants/regex.constants';
+import { NAME_FIELD_RULES } from '../../../constants/Form.constants';
+import { HEX_COLOR_CODE_REGEX } from '../../../constants/regex.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { CreateDataProduct } from '../../../generated/api/domains/createDataProduct';
@@ -36,10 +32,9 @@ import {
   FormItemLayout,
 } from '../../../interface/FormUtils.interface';
 import { domainTypeTooltipDataRender } from '../../../utils/DomainUtils';
-import { getEntityName } from '../../../utils/EntityUtils';
 import { generateFormFields, getField } from '../../../utils/formUtils';
 import { checkPermission } from '../../../utils/PermissionsUtils';
-import { UserTeam } from '../../common/AssigneeList/AssigneeList.interface';
+import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import '../domain.less';
 import { DomainFormType } from '../DomainPage.interface';
 import { AddDomainFormProps } from './AddDomainForm.interface';
@@ -72,20 +67,7 @@ const AddDomainForm = ({
       props: {
         'data-testid': 'name',
       },
-      rules: [
-        {
-          pattern: ENTITY_NAME_REGEX,
-          message: t('message.entity-name-validation'),
-        },
-        {
-          min: 1,
-          max: 128,
-          message: `${t('message.entity-maximum-size', {
-            entity: `${t('label.name')}`,
-            max: '128',
-          })}`,
-        },
-      ],
+      rules: NAME_FIELD_RULES,
     },
     {
       name: 'displayName',
@@ -137,7 +119,7 @@ const AddDomainForm = ({
     },
   ];
 
-  if (type === DomainFormType.DOMAIN) {
+  if (type === DomainFormType.DOMAIN || type === DomainFormType.SUBDOMAIN) {
     const domainTypeField: FieldProp = {
       name: 'domainType',
       required: true,
@@ -158,10 +140,10 @@ const AddDomainForm = ({
   }
 
   const ownerField: FieldProp = {
-    name: 'owner',
+    name: 'owners',
     id: 'root/owner',
     required: false,
-    label: t('label.owner'),
+    label: t('label.owner-plural'),
     type: FieldTypes.USER_TEAM_SELECT,
     props: {
       hasPermission: true,
@@ -173,10 +155,11 @@ const AddDomainForm = ({
           type="primary"
         />
       ),
+      multiple: { user: true, team: false },
     },
     formItemLayout: FormItemLayout.HORIZONTAL,
     formItemProps: {
-      valuePropName: 'owner',
+      valuePropName: 'owners',
       trigger: 'onUpdate',
     },
   };
@@ -213,10 +196,12 @@ const AddDomainForm = ({
     [permissions]
   );
 
-  const selectedOwner = Form.useWatch<EntityReference | undefined>(
-    'owner',
-    form
-  );
+  const selectedOwners =
+    Form.useWatch<EntityReference | EntityReference[]>('owners', form) ?? [];
+
+  const ownersList = Array.isArray(selectedOwners)
+    ? selectedOwners
+    : [selectedOwners];
 
   const expertsList = Form.useWatch<EntityReference[]>('experts', form) ?? [];
 
@@ -230,6 +215,7 @@ const AddDomainForm = ({
       ...updatedData,
       style,
       experts: expertsList.map((item) => item.name ?? ''),
+      owners: ownersList ?? [],
     } as CreateDomain | CreateDataProduct;
 
     onSubmit(data);
@@ -244,15 +230,10 @@ const AddDomainForm = ({
       {generateFormFields(formFields)}
       <div className="m-t-xss">
         {getField(ownerField)}
-        {selectedOwner && (
-          <div className="m-b-sm" data-testid="owner-container">
-            <UserTag
-              id={selectedOwner.name ?? selectedOwner.id}
-              isTeam={selectedOwner.type === UserTeam.Team}
-              name={getEntityName(selectedOwner)}
-              size={UserTagSize.small}
-            />
-          </div>
+        {Boolean(ownersList.length) && (
+          <Space wrap data-testid="owner-container" size={[8, 8]}>
+            <OwnerLabel owners={ownersList} />
+          </Space>
         )}
       </div>
       <div className="m-t-xss">
@@ -263,14 +244,7 @@ const AddDomainForm = ({
             className="m-b-xs"
             data-testid="experts-container"
             size={[8, 8]}>
-            {expertsList.map((d) => (
-              <UserTag
-                id={d.name ?? d.id}
-                key={'expert' + d.id}
-                name={getEntityName(d)}
-                size={UserTagSize.small}
-              />
-            ))}
+            <OwnerLabel owners={expertsList} />
           </Space>
         )}
       </div>

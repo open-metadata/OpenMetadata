@@ -27,4 +27,5 @@ export const PIPELINE_INGESTION_RUN_STATUS = {
   failed: '#e54937',
   running: '#276ef1',
   partialSuccess: '#439897',
+  paused: '#FFBE0E',
 };

@@ -17,6 +17,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.SearchIndexException;
 import org.openmetadata.service.jdbi3.EntityTimeSeriesRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.workflows.interfaces.Source;
@@ -32,6 +33,8 @@ public class PaginatedEntityTimeSeriesSource
   @Getter private String lastFailedCursor = null;
   @Setter private String cursor = RestUtil.encodeCursor("0");
   @Getter private boolean isDone = false;
+  @Getter private Long startTs;
+  @Getter private Long endTs;
 
   public PaginatedEntityTimeSeriesSource(String entityType, int batchSize, List<String> fields) {
     this.entityType = entityType;
@@ -41,6 +44,19 @@ public class PaginatedEntityTimeSeriesSource
         .withTotalRecords(getEntityTimeSeriesRepository().getTimeSeriesDao().listCount(getFilter()))
         .withSuccessRecords(0)
         .withFailedRecords(0);
+  }
+
+  public PaginatedEntityTimeSeriesSource(
+      String entityType, int batchSize, List<String> fields, Long startTs, Long endTs) {
+    this.entityType = entityType;
+    this.batchSize = batchSize;
+    this.fields = fields;
+    this.stats
+        .withTotalRecords(getEntityTimeSeriesRepository().getTimeSeriesDao().listCount(getFilter()))
+        .withSuccessRecords(0)
+        .withFailedRecords(0);
+    this.startTs = startTs;
+    this.endTs = endTs;
   }
 
   @Override
@@ -65,7 +81,12 @@ public class PaginatedEntityTimeSeriesSource
     ResultList<? extends EntityTimeSeriesInterface> result;
     ListFilter filter = getFilter();
     try {
-      result = repository.listWithOffset(cursor, filter, batchSize, true);
+      if (startTs != null && endTs != null) {
+        result = repository.listWithOffset(cursor, filter, batchSize, startTs, endTs, false, true);
+      } else {
+        result = repository.listWithOffset(cursor, filter, batchSize, true);
+      }
+
       if (!result.getErrors().isEmpty()) {
         lastFailedCursor = this.cursor;
         if (result.getPaging().getAfter() == null) {
@@ -125,7 +146,7 @@ public class PaginatedEntityTimeSeriesSource
   private ListFilter getFilter() {
     ListFilter filter = new ListFilter(null);
     if (ReindexingUtil.isDataInsightIndex(entityType)) {
-      filter.addQueryParam("entityFQNHash", entityType);
+      filter.addQueryParam("entityFQNHash", FullyQualifiedName.buildHash(entityType));
     }
     return filter;
   }

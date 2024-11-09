@@ -119,9 +119,9 @@
       "description": "Link to the resource corresponding to this search service.",
       "$ref": "../../type/basic.json#/definitions/href"
     },
-    "owner": {
-      "description": "Owner of this search service.",
-      "$ref": "../../type/entityReference.json"
+    "owners": {
+      "description": "Owners of this search service.",
+      "$ref": "../../type/entityReferenceList.json"
     },
     "changeDescription": {
       "description": "Change that lead to this version of the entity.",

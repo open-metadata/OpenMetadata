@@ -29,11 +29,12 @@ import { DateRangeObject } from 'Models';
 import Qs from 'qs';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useHistory, useLocation } from 'react-router-dom';
+import { Link, useHistory } from 'react-router-dom';
 import { ReactComponent as DropDownIcon } from '../../../../../assets/svg/drop-down.svg';
 import { ReactComponent as SettingIcon } from '../../../../../assets/svg/ic-settings-primery.svg';
 import { PAGE_SIZE_LARGE } from '../../../../../constants/constants';
 import { PAGE_HEADERS } from '../../../../../constants/PageHeaders.constant';
+import { TabSpecificField } from '../../../../../enums/entity.enum';
 import { ProfilerDashboardType } from '../../../../../enums/table.enum';
 import {
   Column,
@@ -43,8 +44,10 @@ import {
   TestCase,
   TestCaseStatus,
 } from '../../../../../generated/tests/testCase';
+import LimitWrapper from '../../../../../hoc/LimitWrapper';
+import useCustomLocation from '../../../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../../../hooks/useFqn';
-import { getListTestCase } from '../../../../../rest/testAPI';
+import { getListTestCaseBySearch } from '../../../../../rest/testAPI';
 import { formatNumberWithComma } from '../../../../../utils/CommonUtils';
 import {
   getEntityName,
@@ -78,7 +81,7 @@ import { ModifiedColumn } from '../TableProfiler.interface';
 import { useTableProfiler } from '../TableProfilerProvider';
 
 const ColumnProfileTable = () => {
-  const location = useLocation();
+  const location = useCustomLocation();
   const { t } = useTranslation();
   const history = useHistory();
   const { fqn } = useFqn();
@@ -356,8 +359,8 @@ const ColumnProfileTable = () => {
   const fetchColumnTestCase = async (activeColumnFqn: string) => {
     setIsTestCaseLoading(true);
     try {
-      const { data } = await getListTestCase({
-        fields: 'testCaseResult',
+      const { data } = await getListTestCaseBySearch({
+        fields: TabSpecificField.TEST_CASE_RESULT,
         entityLink: generateEntityLink(activeColumnFqn),
         limit: PAGE_SIZE_LARGE,
       });
@@ -410,21 +413,23 @@ const ColumnProfileTable = () => {
                   )}
 
                   {editTest && (
-                    <Dropdown
-                      menu={{
-                        items: addButtonContent,
-                      }}
-                      placement="bottomRight"
-                      trigger={['click']}>
-                      <Button
-                        data-testid="profiler-add-table-test-btn"
-                        type="primary">
-                        <Space>
-                          {t('label.add')}
-                          <DownOutlined />
-                        </Space>
-                      </Button>
-                    </Dropdown>
+                    <LimitWrapper resource="dataQuality">
+                      <Dropdown
+                        menu={{
+                          items: addButtonContent,
+                        }}
+                        placement="bottomRight"
+                        trigger={['click']}>
+                        <Button
+                          data-testid="profiler-add-table-test-btn"
+                          type="primary">
+                          <Space>
+                            {t('label.add')}
+                            <DownOutlined />
+                          </Space>
+                        </Button>
+                      </Dropdown>
+                    </LimitWrapper>
                   )}
                   {editDataProfile && (
                     <Tooltip

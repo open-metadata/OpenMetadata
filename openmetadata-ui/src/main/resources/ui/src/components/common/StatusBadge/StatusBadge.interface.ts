@@ -14,6 +14,10 @@ export enum StatusType {
   Success = 'success',
   Warning = 'warning',
   Failure = 'failure',
+  ActiveError = 'activeError',
+  Running = 'running',
+  Started = 'started',
+  Stopped = 'stopped',
 }
 
 export interface StatusBadgeProps {

@@ -11,12 +11,15 @@
  *  limitations under the License.
  */
 import { APIRequestContext, Page } from '@playwright/test';
+import { Operation } from 'fast-json-patch';
+import { SERVICE_TYPE } from '../../constant/service';
 import { uuid } from '../../utils/common';
 import { visitEntityPage } from '../../utils/entity';
 import { EntityTypeEndpoint } from './Entity.interface';
 import { EntityClass } from './EntityClass';
 
 export class ContainerClass extends EntityClass {
+  private containerName = `pw-container-${uuid()}`;
   service = {
     name: `pw-storage-service-${uuid()}`,
     serviceType: 'S3',
@@ -34,8 +37,8 @@ export class ContainerClass extends EntityClass {
     },
   };
   entity = {
-    name: `pw.container%${uuid()}`,
-    displayName: `pw-container-${uuid()}`,
+    name: this.containerName,
+    displayName: this.containerName,
     service: this.service.name,
   };
 
@@ -46,6 +49,7 @@ export class ContainerClass extends EntityClass {
     super(EntityTypeEndpoint.Container);
     this.service.name = name ?? this.service.name;
     this.type = 'Container';
+    this.serviceCategory = SERVICE_TYPE.Storage;
   }
 
   async create(apiContext: APIRequestContext) {
@@ -65,6 +69,30 @@ export class ContainerClass extends EntityClass {
     return {
       service: serviceResponse.body,
       entity: entityResponse.body,
+    };
+  }
+
+  async patch({
+    apiContext,
+    patchData,
+  }: {
+    apiContext: APIRequestContext;
+    patchData: Operation[];
+  }) {
+    const response = await apiContext.patch(
+      `/api/v1/containers/name/${this.entityResponseData?.['fullyQualifiedName']}`,
+      {
+        data: patchData,
+        headers: {
+          'Content-Type': 'application/json-patch+json',
+        },
+      }
+    );
+
+    this.entityResponseData = await response.json();
+
+    return {
+      entity: this.entityResponseData,
     };
   }
 

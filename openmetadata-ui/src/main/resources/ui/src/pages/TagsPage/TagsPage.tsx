@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Badge, Button, Space, Tooltip, Typography } from 'antd';
+import { Badge, Button, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
@@ -31,9 +31,9 @@ import { ClassificationDetailsRef } from '../../components/Classifications/Class
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import LeftPanelCard from '../../components/common/LeftPanelCard/LeftPanelCard';
 import Loader from '../../components/common/Loader/Loader';
+import ResizableLeftPanels from '../../components/common/ResizablePanels/ResizableLeftPanels';
 import TagsLeftPanelSkeleton from '../../components/common/Skeleton/Tags/TagsLeftPanelSkeleton.component';
 import EntityDeleteModal from '../../components/Modals/EntityDeleteModal/EntityDeleteModal';
-import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { HTTP_STATUS_CODE } from '../../constants/Auth.constants';
 import { TIER_CATEGORY } from '../../constants/constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
@@ -41,6 +41,7 @@ import {
   OperationPermission,
   ResourceEntity,
 } from '../../context/PermissionProvider/PermissionProvider.interface';
+import { TabSpecificField } from '../../enums/entity.enum';
 import { CreateClassification } from '../../generated/api/classification/createClassification';
 import {
   CreateTag,
@@ -141,7 +142,7 @@ const TagsPage = () => {
 
     try {
       const response = await getAllClassifications({
-        fields: 'termCount',
+        fields: TabSpecificField.TERM_COUNT,
         limit: 1000,
       });
       setClassifications(response.data);
@@ -169,7 +170,7 @@ const TagsPage = () => {
       setIsLoading(true);
       try {
         const currentClassification = await getClassificationByName(fqn, {
-          fields: 'usageCount,termCount',
+          fields: [TabSpecificField.USAGE_COUNT, TabSpecificField.TERM_COUNT],
         });
         if (currentClassification) {
           setClassifications((prevClassifications) =>
@@ -539,35 +540,28 @@ const TagsPage = () => {
             <Space
               className="w-full p-x-sm m-b-sm"
               direction="vertical"
-              size={12}>
+              size="middle">
               <Typography.Text className="text-sm font-semibold">
                 {t('label.classification-plural')}
               </Typography.Text>
-              <Tooltip
-                title={
-                  !createClassificationPermission &&
-                  t('message.no-permission-for-action')
-                }>
+              {createClassificationPermission && (
                 <Button
                   block
                   className=" text-primary"
                   data-testid="add-classification"
-                  disabled={!createClassificationPermission}
+                  icon={<PlusIcon className="align-middle" />}
                   onClick={() => {
                     setIsAddingClassification((prevState) => !prevState);
                   }}>
-                  <div className="d-flex items-center justify-center">
-                    <PlusIcon className="anticon" />
-                    <Typography.Text
-                      className="p-l-xss"
-                      ellipsis={{ tooltip: true }}>
-                      {t('label.add-entity', {
-                        entity: t('label.classification'),
-                      })}
-                    </Typography.Text>
-                  </div>
+                  <Typography.Text
+                    className="p-l-xss"
+                    ellipsis={{ tooltip: true }}>
+                    {t('label.add-entity', {
+                      entity: t('label.classification'),
+                    })}
+                  </Typography.Text>
                 </Button>
-              </Tooltip>
+              )}
             </Space>
 
             {classifications.map((category: Classification) => (
@@ -708,69 +702,86 @@ const TagsPage = () => {
   }
 
   return (
-    <PageLayoutV1 leftPanel={leftPanelLayout} pageTitle={t('label.tag-plural')}>
-      {isUpdateLoading ? (
-        <Loader />
-      ) : (
-        <ClassificationDetails
-          classificationPermissions={classificationPermissions}
-          currentClassification={currentClassification}
-          deleteTags={deleteTags}
-          disableEditButton={disableEditButton}
-          handleActionDeleteTag={handleActionDeleteTag}
-          handleAddNewTagClick={handleAddNewTagClick}
-          handleAfterDeleteAction={handleAfterDeleteAction}
-          handleCancelEditDescription={handleCancelEditDescription}
-          handleEditDescriptionClick={handleEditDescriptionClick}
-          handleEditTagClick={handleEditTagClick}
-          handleUpdateClassification={handleUpdateClassification}
-          isAddingTag={isAddingTag}
-          isEditClassification={isEditClassification}
-          ref={classificationDetailsRef}
-        />
-      )}
+    <ResizableLeftPanels
+      className="content-height-with-resizable-panel"
+      firstPanel={{
+        className: 'content-resizable-panel-container',
+        minWidth: 280,
+        flex: 0.13,
+        children: leftPanelLayout,
+      }}
+      pageTitle={t('label.tag-plural')}
+      secondPanel={{
+        children: (
+          <>
+            {isUpdateLoading ? (
+              <Loader />
+            ) : (
+              <ClassificationDetails
+                classificationPermissions={classificationPermissions}
+                currentClassification={currentClassification}
+                deleteTags={deleteTags}
+                disableEditButton={disableEditButton}
+                handleActionDeleteTag={handleActionDeleteTag}
+                handleAddNewTagClick={handleAddNewTagClick}
+                handleAfterDeleteAction={handleAfterDeleteAction}
+                handleCancelEditDescription={handleCancelEditDescription}
+                handleEditDescriptionClick={handleEditDescriptionClick}
+                handleEditTagClick={handleEditTagClick}
+                handleUpdateClassification={handleUpdateClassification}
+                isAddingTag={isAddingTag}
+                isEditClassification={isEditClassification}
+                ref={classificationDetailsRef}
+              />
+            )}
 
-      {/* Classification Form */}
-      {isAddingClassification && (
-        <TagsForm
-          isClassification
-          showMutuallyExclusive
-          data={classifications}
-          header={t('label.adding-new-classification')}
-          isEditing={false}
-          isLoading={isButtonLoading}
-          isTier={isTier}
-          visible={isAddingClassification}
-          onCancel={handleCancel}
-          onSubmit={handleCreateClassification}
-        />
-      )}
+            {/* Classification Form */}
+            {isAddingClassification && (
+              <TagsForm
+                isClassification
+                showMutuallyExclusive
+                data={classifications}
+                header={t('label.adding-new-classification')}
+                isEditing={false}
+                isLoading={isButtonLoading}
+                isTier={isTier}
+                visible={isAddingClassification}
+                onCancel={handleCancel}
+                onSubmit={handleCreateClassification}
+              />
+            )}
 
-      {/* Tags Form */}
-      {isAddingTag && (
-        <TagsForm
-          header={tagsFormHeader}
-          initialValues={editTag}
-          isEditing={!isUndefined(editTag)}
-          isLoading={isButtonLoading}
-          isSystemTag={editTag?.provider === ProviderType.System}
-          isTier={isTier}
-          permissions={tagsFormPermissions}
-          visible={isAddingTag}
-          onCancel={handleCancel}
-          onSubmit={handleAddTagSubmit}
-        />
-      )}
+            {/* Tags Form */}
+            {isAddingTag && (
+              <TagsForm
+                header={tagsFormHeader}
+                initialValues={editTag}
+                isEditing={!isUndefined(editTag)}
+                isLoading={isButtonLoading}
+                isSystemTag={editTag?.provider === ProviderType.System}
+                isTier={isTier}
+                permissions={tagsFormPermissions}
+                visible={isAddingTag}
+                onCancel={handleCancel}
+                onSubmit={handleAddTagSubmit}
+              />
+            )}
 
-      <EntityDeleteModal
-        bodyText={getEntityDeleteMessage(deleteTags.data?.name ?? '', '')}
-        entityName={deleteTags.data?.name ?? ''}
-        entityType={t('label.classification')}
-        visible={deleteTags.state}
-        onCancel={handleCancelClassificationDelete}
-        onConfirm={handleConfirmClick}
-      />
-    </PageLayoutV1>
+            <EntityDeleteModal
+              bodyText={getEntityDeleteMessage(deleteTags.data?.name ?? '', '')}
+              entityName={deleteTags.data?.name ?? ''}
+              entityType={t('label.classification')}
+              visible={deleteTags.state}
+              onCancel={handleCancelClassificationDelete}
+              onConfirm={handleConfirmClick}
+            />
+          </>
+        ),
+        className: 'content-resizable-panel-container',
+        minWidth: 800,
+        flex: 0.87,
+      }}
+    />
   );
 };
 

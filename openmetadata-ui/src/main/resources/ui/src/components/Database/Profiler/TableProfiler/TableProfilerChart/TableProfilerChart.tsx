@@ -38,6 +38,7 @@ import {
 } from '../../../../../constants/profiler.constant';
 import { ProfilerDashboardType } from '../../../../../enums/table.enum';
 import { TableProfile } from '../../../../../generated/entity/data/table';
+import LimitWrapper from '../../../../../hoc/LimitWrapper';
 import { useFqn } from '../../../../../hooks/useFqn';
 import {
   getSystemProfileList,
@@ -206,21 +207,23 @@ const TableProfilerChart = ({
 
                   {editDataProfile && !isTableDeleted && (
                     <>
-                      <Dropdown
-                        menu={{
-                          items: addButtonContent,
-                        }}
-                        placement="bottomRight"
-                        trigger={['click']}>
-                        <Button
-                          data-testid="profiler-add-table-test-btn"
-                          type="primary">
-                          <Space>
-                            {t('label.add')}
-                            <DownOutlined />
-                          </Space>
-                        </Button>
-                      </Dropdown>
+                      <LimitWrapper resource="dataQuality">
+                        <Dropdown
+                          menu={{
+                            items: addButtonContent,
+                          }}
+                          placement="bottomRight"
+                          trigger={['click']}>
+                          <Button
+                            data-testid="profiler-add-table-test-btn"
+                            type="primary">
+                            <Space>
+                              {t('label.add')}
+                              <DownOutlined />
+                            </Space>
+                          </Button>
+                        </Dropdown>
+                      </LimitWrapper>
                       <Tooltip
                         placement="topRight"
                         title={t('label.setting-plural')}>

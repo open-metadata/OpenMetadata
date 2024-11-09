@@ -27,12 +27,13 @@ import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/Error
 import Loader from '../../components/common/Loader/Loader';
 import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
 import TopicDetails from '../../components/Topic/TopicDetails/TopicDetails.component';
-import { getVersionPath } from '../../constants/constants';
+import { getVersionPath, ROUTES } from '../../constants/constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
   ResourceEntity,
 } from '../../context/PermissionProvider/PermissionProvider.interface';
+import { ClientErrors } from '../../enums/Axios.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
@@ -128,7 +129,7 @@ const TopicDetailsPage: FunctionComponent = () => {
     try {
       const res = await getTopicByFqn(topicFQN, {
         fields: [
-          TabSpecificField.OWNER,
+          TabSpecificField.OWNERS,
           TabSpecificField.FOLLOWERS,
           TabSpecificField.TAGS,
           TabSpecificField.DOMAIN,
@@ -152,6 +153,10 @@ const TopicDetailsPage: FunctionComponent = () => {
     } catch (error) {
       if ((error as AxiosError).response?.status === 404) {
         setIsError(true);
+      } else if (
+        (error as AxiosError)?.response?.status === ClientErrors.FORBIDDEN
+      ) {
+        history.replace(ROUTES.FORBIDDEN);
       } else {
         showErrorToast(
           error as AxiosError,
@@ -243,7 +248,7 @@ const TopicDetailsPage: FunctionComponent = () => {
       await updateTopicVotes(id, data);
       const details = await getTopicByFqn(topicFQN, {
         fields: [
-          TabSpecificField.OWNER,
+          TabSpecificField.OWNERS,
           TabSpecificField.FOLLOWERS,
           TabSpecificField.TAGS,
           TabSpecificField.VOTES,

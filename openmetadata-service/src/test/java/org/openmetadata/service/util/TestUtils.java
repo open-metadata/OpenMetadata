@@ -24,6 +24,12 @@ import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 import static org.openmetadata.service.Entity.SEPARATOR;
 import static org.openmetadata.service.security.SecurityUtil.authHeaders;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.flipkart.zjsonpatch.JsonDiff;
+import com.jayway.jsonpath.DocumentContext;
+import com.jayway.jsonpath.PathNotFoundException;
 import io.github.resilience4j.core.functions.CheckedRunnable;
 import io.github.resilience4j.retry.Retry;
 import io.github.resilience4j.retry.RetryConfig;
@@ -42,7 +48,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import javax.json.JsonObject;
-import javax.json.JsonPatch;
 import javax.validation.constraints.Size;
 import javax.ws.rs.client.Entity;
 import javax.ws.rs.client.WebTarget;
@@ -62,6 +67,7 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.entity.type.CustomProperty;
 import org.openmetadata.schema.entity.type.Style;
 import org.openmetadata.schema.security.credentials.AWSCredentials;
+import org.openmetadata.schema.services.connections.api.RestConnection;
 import org.openmetadata.schema.services.connections.database.BigQueryConnection;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.database.RedshiftConnection;
@@ -77,6 +83,7 @@ import org.openmetadata.schema.services.connections.pipeline.GluePipelineConnect
 import org.openmetadata.schema.services.connections.search.ElasticSearchConnection;
 import org.openmetadata.schema.services.connections.search.OpenSearchConnection;
 import org.openmetadata.schema.services.connections.storage.S3Connection;
+import org.openmetadata.schema.type.ApiConnection;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.MessagingConnection;
 import org.openmetadata.schema.type.MlModelConnection;
@@ -176,6 +183,12 @@ public final class TestUtils {
       new SearchConnection()
           .withConfig(new OpenSearchConnection().withHostPort("http://localhost:9200"));
 
+  public static final ApiConnection API_SERVICE_CONNECTION =
+      new ApiConnection()
+          .withConfig(
+              new RestConnection()
+                  .withOpenAPISchemaURL(getUri("http://localhost:8585/swagger.json")));
+
   public static final MetadataConnection AMUNDSEN_CONNECTION =
       new MetadataConnection()
           .withConfig(
@@ -191,7 +204,7 @@ public final class TestUtils {
                   .withUsername("admin")
                   .withPassword("admin"));
 
-  public static RetryRegistry elasticSearchRetryRegistry =
+  public static final RetryRegistry ELASTIC_SEARCH_RETRY_REGISTRY =
       RetryRegistry.of(
           RetryConfig.custom()
               .maxAttempts(30) // about 3 seconds
@@ -217,10 +230,6 @@ public final class TestUtils {
             expected.get(i).getPropertyType().getType(), actual.get(i).getPropertyType().getType());
       }
     }
-  }
-
-  public static boolean isCI() {
-    return System.getenv("CI") != null;
   }
 
   public enum UpdateType {
@@ -327,14 +336,13 @@ public final class TestUtils {
   }
 
   public static <T> T patch(
-      WebTarget target, JsonPatch patch, Class<T> clz, Map<String, String> headers)
+      WebTarget target, JsonNode patch, Class<T> clz, Map<String, String> headers)
       throws HttpResponseException {
     Response response =
         SecurityUtil.addHeaders(target, headers)
             .method(
                 "PATCH",
-                Entity.entity(
-                    patch.toJsonArray().toString(), MediaType.APPLICATION_JSON_PATCH_JSON_TYPE));
+                Entity.entity(patch.toString(), MediaType.APPLICATION_JSON_PATCH_JSON_TYPE));
     return readResponse(response, clz, Status.OK.getStatusCode());
   }
 
@@ -661,9 +669,14 @@ public final class TestUtils {
   }
 
   public static void assertEventually(String name, CheckedRunnable runnable) {
+    assertEventually(name, runnable, ELASTIC_SEARCH_RETRY_REGISTRY);
+  }
+
+  public static void assertEventually(
+      String name, CheckedRunnable runnable, RetryRegistry retryRegistry) {
     try {
       Retry.decorateCheckedRunnable(
-              elasticSearchRetryRegistry.retry(name),
+              retryRegistry.retry(name),
               () -> {
                 try {
                   runnable.run();
@@ -682,6 +695,32 @@ public final class TestUtils {
           "Max retries exceeded polling for eventual assert", e.getCause());
     } catch (Throwable e) {
       throw new AssertionFailedError("Unexpected error while running retry: " + e.getMessage(), e);
+    }
+  }
+
+  public static JsonNode getJsonPatch(String originalJson, String updatedJson) {
+    try {
+      ObjectMapper mapper = new ObjectMapper();
+      return JsonDiff.asJson(mapper.readTree(originalJson), mapper.readTree(updatedJson));
+    } catch (JsonProcessingException ignored) {
+    }
+    return null;
+  }
+
+  public static void assertFieldExists(
+      DocumentContext jsonContext, String jsonPath, String fieldName) {
+    List<Map<String, Object>> result = jsonContext.read(jsonPath, List.class);
+    assertTrue(result.size() > 0, "The query should contain '" + fieldName + "' term.");
+  }
+
+  public static void assertFieldDoesNotExist(
+      DocumentContext jsonContext, String jsonPath, String fieldName) {
+    try {
+      List<Map<String, Object>> result = jsonContext.read(jsonPath, List.class);
+      assertTrue(result.isEmpty(), "The query should not contain '" + fieldName + "' term.");
+    } catch (PathNotFoundException e) {
+      // If the path doesn't exist, this is expected behavior, so the test should pass.
+      assertTrue(true, "The path does not exist as expected: " + jsonPath);
     }
   }
 }

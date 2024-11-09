@@ -16,6 +16,12 @@ import { SearchIndex } from '../../../enums/search.enum';
 
 export interface AdvanceSearchProviderProps {
   children: ReactNode;
+  isExplorePage?: boolean;
+  modalProps?: {
+    title?: string;
+    subTitle?: string;
+  };
+  updateURL?: boolean;
 }
 
 export interface AdvanceSearchContext {
@@ -31,6 +37,10 @@ export interface AdvanceSearchContext {
   onChangeSearchIndex: (index: SearchIndex | Array<SearchIndex>) => void;
   searchIndex: string | Array<string>;
   onSubmit: () => void;
+  modalProps?: {
+    title?: string;
+    subTitle?: string;
+  };
 }
 
 export type FilterObject = Record<string, string[]>;

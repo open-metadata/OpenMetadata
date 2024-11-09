@@ -9,6 +9,12 @@ The name must start with a lowercase letter, as preferred in the camelCase forma
 $$
 
 $$section
+### Display Name $(id="displayName")
+
+Display Name that identifies this custom property.
+$$
+
+$$section
 ### Type $(id="propertyType")
 
 Select the preferred property Type from among the options provided.
@@ -35,8 +41,34 @@ $$
 $$section
 ### Format $(id="formatConfig")
 
-To specify a format for the `date` or `dateTime` type, example you can use the following pattern: `dd-mm-yyyy` or `dd-mm-yyyy HH:mm:ss`.
+To specify a format for the `date` or `dateTime` type, example you can use the following pattern: `dd-MM-yyyy` or `dd-MM-yyyy HH:mm:ss`.
 $$
+
+**Supported Date formats**
+
+- `yyyy-MM-dd`
+- `dd MMM yyyy`
+- `MM/dd/yyyy`
+- `dd/MM/yyyy`
+- `dd-MM-yyyy`
+- `yyyyDDD`
+- `d MMMM yyyy`
+
+**Supported DateTime formats**
+
+- `MMM dd HH:mm:ss yyyy`
+- `yyyy-MM-dd HH:mm:ss`
+- `MM/dd/yyyy HH:mm:ss`
+- `dd/MM/yyyy HH:mm:ss`
+- `dd-MM-yyyy HH:mm:ss`
+- `yyyy-MM-dd HH:mm:ss.SSS`
+- `yyyy-MM-dd HH:mm:ss.SSSSSS`
+- `dd MMMM yyyy HH:mm:ss`
+
+**Supported Time formats**
+
+- `HH:mm:ss`
+
 
 $$section
 ### Entity Reference type $(id="entityReferenceConfig")

@@ -79,6 +79,8 @@ $$section
 ### dbt Cloud Config $(id="dbtCloudConfig")
 
 In this configuration we will be fetching the dbt `manifest.json`, `catalog.json` and `run_results.json` files from dbt cloud APIs.
+
+The `Account Viewer` permission is the minimum requirement for the dbt cloud token.
 $$
 
 $$section
@@ -101,6 +103,10 @@ $$section
 In case of multiple projects in a dbt cloud account, specify the project's ID from which you want to extract the dbt run artifacts.
 
 If left empty, the dbt artifacts will be fetched from the most recent run on dbt cloud.
+
+To find your project ID, sign in to your dbt cloud account and choose a specific project. Take note of the url which will be similar to `https://cloud.getdbt.com/#/accounts/1234/settings/projects/6789/`, the project ID is `6789`.
+
+The value entered should be a `numeric` value.
 $$
 
 $$section
@@ -109,6 +115,10 @@ $$section
 In case of multiple jobs in a dbt cloud account, specify the job's ID from which you want to extract the dbt run artifacts.
 
 If left empty, the dbt artifacts will be fetched from the most recent run on dbt cloud.
+
+After creating a dbt job, take note of the url which will be similar to `https://cloud.getdbt.com/#/accounts/1234/projects/6789/jobs/553344/`. The job ID is `553344`.
+
+The value entered should be a `numeric` value.
 $$
 
 $$section

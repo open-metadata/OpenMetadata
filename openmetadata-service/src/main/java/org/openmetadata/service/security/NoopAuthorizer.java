@@ -14,9 +14,9 @@
 package org.openmetadata.service.security;
 
 import java.util.List;
-import java.util.UUID;
 import javax.ws.rs.core.SecurityContext;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
@@ -30,6 +30,7 @@ import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.PolicyEvaluator;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.service.util.RestUtil.PutResponse;
+import org.openmetadata.service.util.UserUtil;
 
 @Slf4j
 public class NoopAuthorizer implements Authorizer {
@@ -70,12 +71,8 @@ public class NoopAuthorizer implements Authorizer {
       Entity.getEntityByName(Entity.USER, username, "", Include.NON_DELETED);
     } catch (EntityNotFoundException ex) {
       User user =
-          new User()
-              .withId(UUID.randomUUID())
-              .withName(username)
-              .withEmail(username + "@domain.com")
-              .withUpdatedBy(username)
-              .withUpdatedAt(System.currentTimeMillis());
+          UserUtil.getUser(
+              username, new CreateUser().withName(username).withEmail(username + "@domain.com"));
       addOrUpdateUser(user);
     } catch (Exception e) {
       LOG.error("Failed to create anonymous user {}", username, e);
@@ -110,7 +107,7 @@ public class NoopAuthorizer implements Authorizer {
   }
 
   @Override
-  public boolean authorizePII(SecurityContext securityContext, EntityReference owner) {
+  public boolean authorizePII(SecurityContext securityContext, List<EntityReference> owners) {
     return true; // Always show PII Sensitive data
   }
 }

@@ -12,6 +12,8 @@
  */
 
 import { FC } from 'react';
+import { App, AppType } from '../../../../generated/entity/applications/app';
+import { getScheduleOptionsFromSchedules } from '../../../../utils/SchedularUtils';
 
 class ApplicationsClassBase {
   public importSchema(fqn: string) {
@@ -32,8 +34,34 @@ class ApplicationsClassBase {
     return null;
   }
 
+  public getFloatingApplicationEntityList(): string[] {
+    return [];
+  }
+
+  public isFloatingButtonPresent(applications: App[]) {
+    return applications.some((app) =>
+      this.getFloatingApplicationEntityList().includes(app.name)
+    );
+  }
+
   public importAppScreenshot(screenshotName: string) {
     return import(`../../../../assets/img/appScreenshots/${screenshotName}`);
+  }
+
+  public getScheduleOptionsForApp(
+    app: string,
+    appType: AppType,
+    pipelineSchedules?: string[]
+  ) {
+    if (app === 'DataInsightsReportApplication') {
+      return ['week'];
+    } else if (appType === AppType.External) {
+      return ['day'];
+    }
+
+    return pipelineSchedules
+      ? getScheduleOptionsFromSchedules(pipelineSchedules)
+      : undefined;
   }
 }
 

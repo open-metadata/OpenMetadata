@@ -53,7 +53,7 @@ class MinioContainerConfigs:
     access_key: str = "minio"
     secret_key: str = "password"
     port: int = 9000
-    container_name: str = "test-minio"
+    container_name: Optional[str] = None
     exposed_port: Optional[int] = None
 
     def with_exposed_port(self, container):
@@ -70,7 +70,6 @@ def get_docker_network(name: str):
 
 
 def get_mysql_container(mysql_config: MySqlContainerConfigs):
-
     container = MySqlContainer(
         **{
             k: v

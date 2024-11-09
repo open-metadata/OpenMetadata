@@ -1,6 +1,7 @@
 ---
 title: Cost Analysis
 slug: /how-to-guides/data-insights/cost-analysis
+collate: true
 ---
 
 # Cost Analysis (Collate Only)
@@ -13,6 +14,8 @@ Gain valuable insights into your resource allocation and utilization with `Cost 
 | Connector          | Status                       |
 | :----------------- | :--------------------------- |
 | Snowflake          | {% icon iconName="check" /%} |
+| Redshift           | {% icon iconName="check" /%} |
+| BiqQuery           | {% icon iconName="check" /%} |
 
 {% /multiTablesWrapper %}
 
@@ -28,7 +31,7 @@ To have cost analysis data available you will need to execute the below workflow
 2. **Profiler Workflow**:
 - Purpose: Gather size information (in bytes) for data assets.
 - Description: The Profiler Workflow is responsible for obtaining the size of data assets in bytes. This information is vital for generating the size-related data used in the Cost Analysis charts. It helps in assessing the resource consumption and cost implications of each asset.
-- Click [here](/connectors/ingestion/workflows/profiler) for documentation on the profiler workflow.
+- Click [here](/how-to-guides/data-quality-observability/profiler/workflow) for documentation on the profiler workflow.
 
 3. **Data Insights Workflow**:
 - Purpose: Aggregate information from Usage Workflow and Profiler Workflow.

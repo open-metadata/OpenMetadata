@@ -14,12 +14,12 @@
 package org.openmetadata.service.secrets;
 
 import java.util.Locale;
+import java.util.Objects;
 import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
 import org.openmetadata.service.exception.UnhandledServerException;
 
 public abstract class ExternalSecretsManager extends SecretsManager {
   public static final String NULL_SECRET_STRING = "null";
-  public static final String SECRET_FIELD_PREFIX = "secret:";
   private final long waitTimeBetweenStoreCalls;
 
   protected ExternalSecretsManager(
@@ -34,7 +34,7 @@ public abstract class ExternalSecretsManager extends SecretsManager {
   protected String storeValue(String fieldName, String value, String secretId, boolean store) {
     String fieldSecretId = buildSecretId(false, secretId, fieldName.toLowerCase(Locale.ROOT));
     // check if value does not start with 'config:' only String can have password annotation
-    if (!value.startsWith(SECRET_FIELD_PREFIX)) {
+    if (Boolean.FALSE.equals(isSecret(value))) {
       if (store) {
         upsertSecret(fieldSecretId, value);
       }
@@ -68,8 +68,6 @@ public abstract class ExternalSecretsManager extends SecretsManager {
 
   abstract void updateSecret(String secretName, String secretValue);
 
-  abstract String getSecret(String secretName);
-
   private void sleep() {
     // delay reaching secrets manager quotas
     if (waitTimeBetweenStoreCalls > 0) {
@@ -80,5 +78,9 @@ public abstract class ExternalSecretsManager extends SecretsManager {
         throw new UnhandledServerException("Exception encountered", e);
       }
     }
+  }
+
+  public String cleanNullOrEmpty(String secretValue) {
+    return Objects.isNull(secretValue) || secretValue.isEmpty() ? NULL_SECRET_STRING : secretValue;
   }
 }

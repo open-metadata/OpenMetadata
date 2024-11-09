@@ -119,7 +119,7 @@ MOCK_TABLE = Table(
     id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb",
     name=EntityName("customers"),
     displayName=None,
-    description=None,
+    description="description\nwith new line",
     tableType="Regular",
     columns=[
         Column(
@@ -183,7 +183,7 @@ MOCK_TABLE = Table(
     tableConstraints=[],
     tablePartition=None,
     tableProfilerConfig=None,
-    owner=None,
+    owners=None,
     databaseSchema=EntityReference(
         id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb", type="databaseSchema"
     ),
@@ -207,7 +207,7 @@ EXPECTED_DATABASE = [
         displayName=None,
         description=None,
         tags=[],
-        owner=None,
+        owners=None,
         service=FullyQualifiedEntityName("bigquery_source_test"),
         dataProducts=None,
         default=False,
@@ -225,8 +225,8 @@ EXPTECTED_DATABASE_SCHEMA = [
     CreateDatabaseSchemaRequest(
         name=EntityName("sample_schema"),
         displayName=None,
-        description="",
-        owner=None,
+        description="Some description with it's own\nnew line",
+        owners=None,
         database=FullyQualifiedEntityName("bigquery_source_test.random-project-id"),
         dataProducts=None,
         tags=None,
@@ -241,7 +241,10 @@ EXPTECTED_DATABASE_SCHEMA = [
     )
 ]
 
-MOCK_TABLE_NAMES = [tuple(("customers", "Regular")), tuple(("orders", "Regular"))]
+MOCK_TABLE_NAMES = [
+    ("customers", "Regular", None),
+    ("orders", "Regular", "description\nwith new line"),
+]
 
 MOCK_COLUMN_DATA = [
     [
@@ -351,7 +354,6 @@ EXPECTED_TABLE = [
         CreateTableRequest(
             name=EntityName("customers"),
             displayName=None,
-            description=None,
             tableType="Regular",
             columns=[
                 Column(
@@ -415,7 +417,7 @@ EXPECTED_TABLE = [
             tableConstraints=[],
             tablePartition=None,
             tableProfilerConfig=None,
-            owner=None,
+            owners=None,
             databaseSchema=FullyQualifiedEntityName(
                 root="bigquery_source_test.random-project-id.sample_schema"
             ),
@@ -437,7 +439,7 @@ EXPECTED_TABLE = [
         CreateTableRequest(
             name=EntityName("orders"),
             displayName=None,
-            description=None,
+            description="description\nwith new line",
             tableType="Regular",
             columns=[
                 Column(
@@ -511,7 +513,7 @@ EXPECTED_TABLE = [
             ],
             tablePartition=None,
             tableProfilerConfig=None,
-            owner=None,
+            owners=None,
             databaseSchema=FullyQualifiedEntityName(
                 root="bigquery_source_test.random-project-id.sample_schema"
             ),
@@ -592,6 +594,7 @@ class BigqueryUnitTest(TestCase):
         self.bq_source._inspector_map[
             self.thread_id
         ].get_columns = lambda table_name, schema, db_name: []
+        self.bq_source.client = Mock()
 
     def test_source_url(self):
         self.assertEqual(
@@ -614,6 +617,22 @@ class BigqueryUnitTest(TestCase):
         ]
 
     def test_yield_database_schema(self):
+        def schema_comment_query(query: str):
+            if query.strip().startswith(
+                "SELECT option_value as schema_description FROM"
+            ):
+                result = Mock()
+                mock_result = Mock()
+                mock_result.schema_description = (
+                    '"Some description with it\'s own\\nnew line"'
+                )
+                result.result.return_value = [mock_result]
+                return result
+            else:
+                raise NotImplementedError
+
+        self.bq_source.client.query = schema_comment_query
+
         assert EXPTECTED_DATABASE_SCHEMA == [
             either.right
             for either in self.bq_source.yield_database_schema(
@@ -664,11 +683,12 @@ class BigqueryUnitTest(TestCase):
             self.bq_source.inspector.get_table_ddl = (
                 lambda table_name, schema, db_name: None  # pylint: disable=cell-var-from-loop
             )
-            self.bq_source.inspector.get_table_comment = (
-                lambda table_name, schema, db_name: None  # pylint: disable=cell-var-from-loop
-            )
+            self.bq_source.inspector.get_table_comment = lambda table_name, schema: {
+                "text": table[2]
+            }  # pylint: disable=cell-var-from-loop
             assert EXPECTED_TABLE[i] == [
-                either.right for either in self.bq_source.yield_table(table)
+                either.right
+                for either in self.bq_source.yield_table((table[0], table[1]))
             ]
 
 
@@ -695,8 +715,7 @@ class BigqueryLineageSourceTest(TestCase):
         mock_credentials_path_bq_config = deepcopy(mock_bq_config)
         mock_credentials_path_bq_config["source"]["serviceConnection"]["config"][
             "credentials"
-        ]["gcpConfig"] = "credentials.json"
-
+        ]["gcpConfig"] = {"path": "credentials.json", "projectId": "my-gcp-project"}
         self.config = OpenMetadataWorkflowConfig.model_validate(
             mock_credentials_path_bq_config
         )

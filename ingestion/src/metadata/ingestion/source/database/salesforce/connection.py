@@ -14,8 +14,7 @@ Source connection handler
 """
 from typing import Optional
 
-from simple_salesforce import Salesforce
-from sqlalchemy.engine import Engine
+from simple_salesforce.api import Salesforce
 
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
@@ -23,20 +22,28 @@ from metadata.generated.schema.entity.automations.workflow import (
 from metadata.generated.schema.entity.services.connections.database.salesforceConnection import (
     SalesforceConnection,
 )
+from metadata.generated.schema.entity.services.connections.testConnectionResult import (
+    TestConnectionResult,
+)
 from metadata.ingestion.connections.test_connections import test_connection_steps
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.utils.constants import THREE_MIN
 
 
-def get_connection(connection: SalesforceConnection) -> Engine:
+def get_connection(connection: SalesforceConnection) -> Salesforce:
     """
     Create connection
     """
     return Salesforce(
-        connection.username,
+        username=connection.username,
         password=connection.password.get_secret_value(),
-        security_token=connection.securityToken.get_secret_value(),
+        security_token=connection.securityToken.get_secret_value()
+        if connection.securityToken
+        else "",
+        organizationId=connection.organizationId if connection.organizationId else "",
         domain=connection.salesforceDomain,
         version=connection.salesforceApiVersion,
+        **connection.connectionArguments.root if connection.connectionArguments else {},
     )
 
 
@@ -45,16 +52,18 @@ def test_connection(
     client: Salesforce,
     service_connection: SalesforceConnection,
     automation_workflow: Optional[AutomationWorkflow] = None,
-) -> None:
+    timeout_seconds: Optional[int] = THREE_MIN,
+) -> TestConnectionResult:
     """
     Test connection. This can be executed either as part
     of a metadata workflow or during an Automation Workflow
     """
     test_fn = {"CheckAccess": client.describe}
 
-    test_connection_steps(
+    return test_connection_steps(
         metadata=metadata,
         test_fn=test_fn,
         service_type=service_connection.type.value,
         automation_workflow=automation_workflow,
+        timeout_seconds=timeout_seconds,
     )

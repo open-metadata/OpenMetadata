@@ -49,7 +49,6 @@ import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.services.CreateMlModelService;
-import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.MlModelService;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.entity.services.connections.TestConnectionResult;
@@ -59,6 +58,7 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.MlModelConnection;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.MlModelServiceRepository;
+import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.services.ServiceEntityResource;
 import org.openmetadata.service.security.Authorizer;
@@ -74,7 +74,7 @@ import org.openmetadata.service.util.ResultList;
 public class MlModelServiceResource
     extends ServiceEntityResource<MlModelService, MlModelServiceRepository, MlModelConnection> {
   public static final String COLLECTION_PATH = "v1/services/mlmodelServices/";
-  public static final String FIELDS = "pipelines,owner,tags,domain";
+  public static final String FIELDS = "pipelines,owners,tags,domain";
 
   @Override
   public MlModelService addHref(UriInfo uriInfo, MlModelService service) {
@@ -83,8 +83,8 @@ public class MlModelServiceResource
     return service;
   }
 
-  public MlModelServiceResource(Authorizer authorizer) {
-    super(Entity.MLMODEL_SERVICE, authorizer, ServiceType.ML_MODEL);
+  public MlModelServiceResource(Authorizer authorizer, Limits limits) {
+    super(Entity.MLMODEL_SERVICE, authorizer, limits, ServiceType.ML_MODEL);
   }
 
   @Override
@@ -244,7 +244,7 @@ public class MlModelServiceResource
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = DatabaseService.class)))
+                    schema = @Schema(implementation = MlModelService.class)))
       })
   public MlModelService addTestConnectionResult(
       @Context UriInfo uriInfo,

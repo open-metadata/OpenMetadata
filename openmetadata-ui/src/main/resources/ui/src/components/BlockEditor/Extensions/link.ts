@@ -10,8 +10,45 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { markInputRule, markPasteRule } from '@tiptap/core';
+import {
+  InputRule,
+  markInputRule,
+  markPasteRule,
+  PasteRule,
+} from '@tiptap/core';
 import TipTapLinkExtension from '@tiptap/extension-link';
+import {
+  LINK_INPUT_REGEX,
+  LINK_PASTE_REGEX,
+} from '../../../constants/BlockEditor.constants';
+
+const linkInputRule = (config: Parameters<typeof markInputRule>[0]) => {
+  const defaultMarkInputRule = markInputRule(config);
+
+  return new InputRule({
+    find: config.find,
+    handler(props) {
+      const { tr } = props.state;
+
+      defaultMarkInputRule.handler(props);
+      tr.setMeta('preventAutolink', true);
+    },
+  });
+};
+
+const linkPasteRule = (config: Parameters<typeof markPasteRule>[0]) => {
+  const defaultMarkPasteRule = markPasteRule(config);
+
+  return new PasteRule({
+    find: config.find,
+    handler(props) {
+      const { tr } = props.state;
+
+      defaultMarkPasteRule.handler(props);
+      tr.setMeta('preventAutolink', true);
+    },
+  });
+};
 
 export const LinkExtension = TipTapLinkExtension.extend({
   addAttributes() {
@@ -100,13 +137,15 @@ export const LinkExtension = TipTapLinkExtension.extend({
   },
   addInputRules() {
     return [
-      markInputRule({
-        find: /\[(.*?)\]\((https?:\/\/[^\s)]+)\)/,
+      ...(this.parent?.() ?? []),
+      linkInputRule({
+        find: LINK_INPUT_REGEX,
         type: this.type,
-        getAttributes: (match) => {
-          const [, text, href] = match;
-
-          return { 'data-textcontent': text, href };
+        getAttributes(match) {
+          return {
+            title: match.pop()?.trim(),
+            href: match.pop()?.trim(),
+          };
         },
       }),
     ];
@@ -114,13 +153,14 @@ export const LinkExtension = TipTapLinkExtension.extend({
   addPasteRules() {
     return [
       ...(this.parent?.() ?? []),
-      markPasteRule({
-        find: /\[(.*?)\]\((https?:\/\/[^\s)]+)\)/,
+      linkPasteRule({
+        find: LINK_PASTE_REGEX,
         type: this.type,
-        getAttributes: (match) => {
-          const [, text, href] = match;
-
-          return { 'data-textcontent': text, href };
+        getAttributes(match) {
+          return {
+            title: match.pop()?.trim(),
+            href: match.pop()?.trim(),
+          };
         },
       }),
     ];

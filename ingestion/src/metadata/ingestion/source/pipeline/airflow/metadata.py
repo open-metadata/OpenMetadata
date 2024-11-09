@@ -15,7 +15,7 @@ import traceback
 from collections import Counter
 from datetime import datetime
 from enum import Enum
-from typing import Iterable, List, Optional, cast
+from typing import Dict, Iterable, List, Optional, cast
 
 from airflow.models import BaseOperator, DagRun, TaskInstance
 from airflow.models.dag import DagModel
@@ -53,6 +53,7 @@ from metadata.generated.schema.type.basic import (
 from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDetails
 from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.connections.session import create_and_bind_session
@@ -140,6 +141,16 @@ class AirflowSource(PipelineServiceSource):
             self._session = create_and_bind_session(self.connection)
 
         return self._session
+
+    @staticmethod
+    def _extract_serialized_task(task: Dict) -> Dict:
+        """
+        Given the serialization changes introduced in Airflow 2.10,
+        ensure compatibility with all versions.
+        """
+        if task.keys() == {"__var", "__type"}:
+            return task["__var"]
+        return task
 
     def get_pipeline_status(self, dag_id: str) -> List[DagRun]:
         """
@@ -327,7 +338,9 @@ class AirflowSource(PipelineServiceSource):
                     max_active_runs=data.get("max_active_runs", None),
                     description=data.get("_description", None),
                     start_date=data.get("start_date", None),
-                    tasks=data.get("tasks", []),
+                    tasks=list(
+                        map(self._extract_serialized_task, data.get("tasks", []))
+                    ),
                     schedule_interval=get_schedule_interval(data),
                     owner=self.fetch_dag_owners(data),
                 )
@@ -394,12 +407,12 @@ class AirflowSource(PipelineServiceSource):
                 startDate=task.start_date.isoformat() if task.start_date else None,
                 endDate=task.end_date.isoformat() if task.end_date else None,
                 taskType=task.task_type,
-                owner=self.get_owner(task.owner),
+                owners=self.get_owner(task.owner),
             )
             for task in cast(Iterable[BaseOperator], dag.tasks)
         ]
 
-    def get_owner(self, owner) -> Optional[EntityReference]:
+    def get_owner(self, owner) -> Optional[EntityReferenceList]:
         """
         Fetching users by name via ES to keep things as fast as possible.
 
@@ -411,7 +424,7 @@ class AirflowSource(PipelineServiceSource):
         until the next run.
         """
         try:
-            return self.metadata.get_reference_by_name(name=owner)
+            return self.metadata.get_reference_by_name(name=owner, is_owner=True)
         except Exception as exc:
             logger.warning(f"Error while getting details of user {owner} - {exc}")
         return None
@@ -444,7 +457,7 @@ class AirflowSource(PipelineServiceSource):
                     pipeline_details, self.service_connection.hostPort
                 ),
                 service=FullyQualifiedEntityName(self.context.get().pipeline_service),
-                owner=self.get_owner(pipeline_details.owner),
+                owners=self.get_owner(pipeline_details.owner),
                 scheduleInterval=pipeline_details.schedule_interval,
             )
             yield Either(right=pipeline_request)

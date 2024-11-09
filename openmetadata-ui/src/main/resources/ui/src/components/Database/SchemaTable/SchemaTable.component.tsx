@@ -12,7 +12,7 @@
  */
 
 import { FilterOutlined } from '@ant-design/icons';
-import { Button, Tooltip, Typography } from 'antd';
+import { Button, Form, Select, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { ExpandableConfig } from 'antd/lib/table/interface';
 import {
@@ -30,12 +30,16 @@ import { EntityTags, TagFilterOptions } from 'Models';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
+import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import {
   DE_ACTIVE_COLOR,
   ICON_DIMENSION,
   NO_DATA_PLACEHOLDER,
 } from '../../../constants/constants';
-import { TABLE_SCROLL_VALUE } from '../../../constants/Table.constants';
+import {
+  COLUMN_CONSTRAINT_TYPE_OPTIONS,
+  TABLE_SCROLL_VALUE,
+} from '../../../constants/Table.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
@@ -49,6 +53,7 @@ import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useFqn } from '../../../hooks/useFqn';
 import { getPartialNameFromTableFQN } from '../../../utils/CommonUtils';
 import {
+  getColumnSorter,
   getEntityName,
   getFrequentlyJoinedColumns,
   searchInColumns,
@@ -70,22 +75,29 @@ import FilterTablePlaceHolder from '../../common/ErrorWithPlaceholder/FilterTabl
 import Table from '../../common/Table/Table';
 import TestCaseStatusSummaryIndicator from '../../common/TestCaseStatusSummaryIndicator/TestCaseStatusSummaryIndicator.component';
 import EntityNameModal from '../../Modals/EntityNameModal/EntityNameModal.component';
-import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
+import {
+  EntityName,
+  EntityNameWithAdditionFields,
+} from '../../Modals/EntityNameModal/EntityNameModal.interface';
 import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import { ColumnFilter } from '../ColumnFilter/ColumnFilter.component';
 import TableDescription from '../TableDescription/TableDescription.component';
 import TableTags from '../TableTags/TableTags.component';
-import { SchemaTableProps, TableCellRendered } from './SchemaTable.interface';
+import {
+  SchemaTableProps,
+  TableCellRendered,
+  UpdatedColumnFieldData,
+} from './SchemaTable.interface';
 
 const SchemaTable = ({
   searchText,
-  onUpdate,
   hasDescriptionEditAccess,
   hasTagEditAccess,
   isReadOnly = false,
-  onThreadLinkSelect,
   table,
   testCaseSummary,
+  onUpdate,
+  onThreadLinkSelect,
 }: SchemaTableProps) => {
   const { theme } = useApplicationStore();
   const { t } = useTranslation();
@@ -109,6 +121,16 @@ const SchemaTable = ({
 
   const [editColumnDisplayName, setEditColumnDisplayName] = useState<Column>();
   const { getEntityPermissionByFqn } = usePermissionProvider();
+
+  const tableFqn = useMemo(
+    () =>
+      getPartialNameFromTableFQN(
+        decodedEntityFqn,
+        [FqnPart.Service, FqnPart.Database, FqnPart.Schema, FqnPart.Table],
+        FQN_SEPARATOR_CHAR
+      ),
+    [decodedEntityFqn]
+  );
 
   const sortByOrdinalPosition = useMemo(
     () => sortBy(tableColumns, 'ordinalPosition'),
@@ -143,10 +165,10 @@ const SchemaTable = ({
   );
 
   useEffect(() => {
-    if (!isEmpty(decodedEntityFqn)) {
-      fetchResourcePermission(decodedEntityFqn);
+    if (!isEmpty(tableFqn)) {
+      fetchResourcePermission(tableFqn);
     }
-  }, [decodedEntityFqn]);
+  }, [tableFqn]);
 
   const handleEditColumn = (column: Column): void => {
     setEditColumn(column);
@@ -160,12 +182,7 @@ const SchemaTable = ({
     field,
     value,
     columns,
-  }: {
-    fqn: string;
-    field: keyof Column;
-    value?: string;
-    columns: Column[];
-  }) => {
+  }: UpdatedColumnFieldData) => {
     columns?.forEach((col) => {
       if (col.fullyQualifiedName === fqn) {
         set(col, field, value);
@@ -253,7 +270,7 @@ const SchemaTable = ({
             field: record.description,
             record,
           }}
-          entityFqn={decodedEntityFqn}
+          entityFqn={tableFqn}
           entityType={EntityType.TABLE}
           hasEditPermission={hasDescriptionEditAccess}
           index={index}
@@ -299,16 +316,25 @@ const SchemaTable = ({
     setEditColumnDisplayName(record);
   };
 
-  const handleEditDisplayName = async ({ displayName }: EntityName) => {
+  const handleEditColumnData = async (data: EntityName) => {
+    const { displayName, constraint } = data as EntityNameWithAdditionFields;
     if (
       !isUndefined(editColumnDisplayName) &&
       editColumnDisplayName.fullyQualifiedName
     ) {
       const tableCols = cloneDeep(tableColumns);
+
       updateColumnFields({
         fqn: editColumnDisplayName.fullyQualifiedName,
         value: isEmpty(displayName) ? undefined : displayName,
         field: 'displayName',
+        columns: tableCols,
+      });
+
+      updateColumnFields({
+        fqn: editColumnDisplayName.fullyQualifiedName,
+        value: isEmpty(constraint) ? undefined : constraint,
+        field: 'constraint',
         columns: tableCols,
       });
       await onUpdate(tableCols);
@@ -336,6 +362,7 @@ const SchemaTable = ({
         accessor: 'name',
         width: 200,
         fixed: 'left',
+        sorter: getColumnSorter<Column, 'name'>('name'),
         render: (name: Column['name'], record: Column) => {
           const { displayName } = record;
 
@@ -361,14 +388,11 @@ const SchemaTable = ({
                   {getEntityName(record)}
                 </Typography.Text>
               ) : null}
+
               {(tablePermissions?.EditAll ||
                 tablePermissions?.EditDisplayName) &&
                 !isReadOnly && (
-                  <Tooltip
-                    placement="right"
-                    title={t('label.edit-entity', {
-                      entity: t('label.display-name'),
-                    })}>
+                  <Tooltip placement="right" title={t('label.edit')}>
                     <Button
                       className="cursor-pointer hover-cell-icon w-fit-content"
                       data-testid="edit-displayName-button"
@@ -422,7 +446,7 @@ const SchemaTable = ({
         ),
         render: (tags: TagLabel[], record: Column, index: number) => (
           <TableTags<Column>
-            entityFqn={decodedEntityFqn}
+            entityFqn={tableFqn}
             entityType={EntityType.TABLE}
             handleTagSelection={handleTagSelection}
             hasTagEditAccess={hasTagEditAccess}
@@ -454,7 +478,7 @@ const SchemaTable = ({
         ),
         render: (tags: TagLabel[], record: Column, index: number) => (
           <TableTags<Column>
-            entityFqn={decodedEntityFqn}
+            entityFqn={tableFqn}
             entityType={EntityType.TABLE}
             handleTagSelection={handleTagSelection}
             hasTagEditAccess={hasTagEditAccess}
@@ -490,7 +514,7 @@ const SchemaTable = ({
       },
     ],
     [
-      decodedEntityFqn,
+      tableFqn,
       isReadOnly,
       tableConstraints,
       hasTagEditAccess,
@@ -503,6 +527,24 @@ const SchemaTable = ({
       tagFilter,
       testCaseCounts,
     ]
+  );
+
+  const additionalFieldsInEntityNameModal = (
+    <Form.Item
+      label={t('label.entity-type-plural', {
+        entity: t('label.constraint'),
+      })}
+      name="constraint">
+      <Select
+        data-testid="constraint-type-select"
+        options={COLUMN_CONSTRAINT_TYPE_OPTIONS}
+        placeholder={t('label.select-entity', {
+          entity: t('label.entity-type-plural', {
+            entity: t('label.constraint'),
+          }),
+        })}
+      />
+    </Form.Item>
   );
 
   useEffect(() => {
@@ -557,13 +599,14 @@ const SchemaTable = ({
       )}
       {editColumnDisplayName && (
         <EntityNameModal
+          additionalFields={additionalFieldsInEntityNameModal}
           entity={editColumnDisplayName}
           title={`${t('label.edit-entity', {
             entity: t('label.column'),
           })}: "${editColumnDisplayName?.name}"`}
           visible={Boolean(editColumnDisplayName)}
           onCancel={() => setEditColumnDisplayName(undefined)}
-          onSave={handleEditDisplayName}
+          onSave={handleEditColumnData}
         />
       )}
     </>

@@ -44,7 +44,7 @@ from metadata.generated.schema.type.basic import (
     Markdown,
     SourceUrl,
 )
-from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -103,7 +103,7 @@ class DomodashboardSource(DashboardServiceSource):
 
     def get_owner_ref(
         self, dashboard_details: DomoDashboardDetails
-    ) -> Optional[EntityReference]:
+    ) -> Optional[EntityReferenceList]:
         for owner in dashboard_details.owners or []:
             try:
                 owner_details = self.client.domo.users_get(owner.id)
@@ -142,7 +142,7 @@ class DomodashboardSource(DashboardServiceSource):
                     for chart in self.context.get().charts or []
                 ],
                 service=self.context.get().dashboard_service,
-                owner=self.get_owner_ref(dashboard_details=dashboard_details),
+                owners=self.get_owner_ref(dashboard_details=dashboard_details),
             )
             yield Either(right=dashboard_request)
             self.register_record(dashboard_request=dashboard_request)
@@ -185,7 +185,7 @@ class DomodashboardSource(DashboardServiceSource):
             pages = self.client.domo.page_get(page_id)
             return DomoDashboardDetails(
                 name=pages["name"],
-                id=pages["id"],
+                id=str(pages["id"]),
                 cardIds=pages.get("cardIds", []),
                 description=pages.get("description", ""),
                 collectionIds=pages.get("collectionIds", []),
@@ -217,7 +217,7 @@ class DomodashboardSource(DashboardServiceSource):
             try:
                 chart = self.client.custom.get_chart_details(page_id=chart_id)
                 chart_url = (
-                    f"{self.service_connection.instanceDomain}/page/"
+                    f"{self.service_connection.instanceDomain}page/"
                     f"{dashboard_details.id}/kpis/details/{chart_id}"
                 )
 
@@ -227,7 +227,7 @@ class DomodashboardSource(DashboardServiceSource):
                 if chart.name:
                     yield Either(
                         right=CreateChartRequest(
-                            name=EntityName(chart_id),
+                            name=EntityName(str(chart_id)),
                             description=Markdown(chart.description)
                             if chart.description
                             else None,

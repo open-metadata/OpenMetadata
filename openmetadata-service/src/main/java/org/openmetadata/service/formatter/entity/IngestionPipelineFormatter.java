@@ -13,13 +13,17 @@
 
 package org.openmetadata.service.formatter.entity;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.formatter.util.FormatterUtil.transformMessage;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.feed.Thread;
+import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
@@ -45,7 +49,8 @@ public class IngestionPipelineFormatter implements EntityFormatter {
   private String transformIngestionPipelineStatus(
       MessageDecorator<?> messageFormatter, Thread thread, FieldChange fieldChange) {
     EntityInterface entity =
-        Entity.getEntity(thread.getEntityType(), thread.getEntityId(), "id", Include.ALL);
+        Entity.getEntity(
+            thread.getEntityRef().getType(), thread.getEntityRef().getId(), "id", Include.ALL);
     String ingestionPipelineName = entity.getName();
     PipelineStatus status =
         JsonUtils.readOrConvertValue(fieldChange.getNewValue(), PipelineStatus.class);
@@ -61,5 +66,46 @@ public class IngestionPipelineFormatter implements EntityFormatter {
     }
     String format = String.format("Ingestion Pipeline %s is updated", messageFormatter.getBold());
     return String.format(format, ingestionPipelineName);
+  }
+
+  public static String getIngestionPipelineUrl(
+      MessageDecorator<?> formatter, String entityType, EntityInterface entityInterface) {
+    if (entityType.equals(Entity.INGESTION_PIPELINE)) {
+      // Tags need to be redirected to Classification Page
+      IngestionPipeline ingestionPipeline = (IngestionPipeline) entityInterface;
+      EntityReference serviceRef = ingestionPipeline.getService();
+      if (nullOrEmpty(serviceRef)) {
+        serviceRef =
+            ((IngestionPipeline)
+                    Entity.getEntity(
+                        ingestionPipeline.getEntityReference(), "service", Include.ALL))
+                .getService();
+      }
+      // Specific Pipeline
+      if (ingestionPipeline.getPipelineType().equals(PipelineType.TEST_SUITE)) {
+        String suffix = ".testSuite";
+        return !nullOrEmpty(serviceRef)
+            ? formatter.getEntityUrl(
+                "table",
+                serviceRef
+                    .getFullyQualifiedName()
+                    .substring(0, serviceRef.getFullyQualifiedName().length() - suffix.length()),
+                "profiler?activeTab=Data%20Quality")
+            : "";
+      } else if (ingestionPipeline.getPipelineType().equals(PipelineType.APPLICATION)) {
+        return !nullOrEmpty(serviceRef)
+            ? formatter.getEntityUrl(
+                "automations", serviceRef.getFullyQualifiedName(), "automator-details")
+            : "";
+      } else {
+        return !nullOrEmpty(serviceRef)
+            ? formatter.getEntityUrl(
+                String.format("service/%ss", serviceRef.getType()),
+                serviceRef.getFullyQualifiedName(),
+                "ingestions")
+            : "";
+      }
+    }
+    return "";
   }
 }

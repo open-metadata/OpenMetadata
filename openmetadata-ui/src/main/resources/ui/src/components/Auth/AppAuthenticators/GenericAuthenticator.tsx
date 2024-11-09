@@ -34,7 +34,8 @@ export const GenericAuthenticator = forwardRef(
     const handleLogin = () => {
       setIsAuthenticated(false);
       setIsSigningUp(true);
-      window.location.assign('api/v1/auth/login');
+      const redirectUri = `${window.location.origin}${ROUTES.AUTH_CALLBACK}`;
+      window.location.assign(`api/v1/auth/login?redirectUri=${redirectUri}`);
     };
 
     const handleLogout = async () => {
@@ -49,7 +50,7 @@ export const GenericAuthenticator = forwardRef(
       const resp = await renewToken();
       setOidcToken(resp.accessToken);
 
-      return Promise.resolve(resp);
+      return resp;
     };
 
     useImperativeHandle(ref, () => ({

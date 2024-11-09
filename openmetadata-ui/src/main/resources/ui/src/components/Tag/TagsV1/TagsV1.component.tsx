@@ -83,7 +83,7 @@ const TagsV1 = ({
               .join(FQN_SEPARATOR_CHAR)
           : tag.tagFQN
       ),
-    [showOnlyName, tag.tagFQN]
+    [showOnlyName, tag]
   );
 
   const redirectLink = useMemo(
@@ -153,7 +153,7 @@ const TagsV1 = ({
         {...tagProps}>
         {/* Wrap only content to avoid redirect on closeable icons  */}
         <Link
-          className="no-underline h-full"
+          className="no-underline h-full w-max-stretch"
           data-testid="tag-redirect-link"
           to={redirectLink}>
           {tagContent}

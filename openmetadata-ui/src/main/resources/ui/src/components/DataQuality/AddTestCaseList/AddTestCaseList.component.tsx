@@ -22,15 +22,15 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { getEntityDetailsPath, PAGE_SIZE } from '../../../constants/constants';
+import { WILD_CARD_CHAR } from '../../../constants/char.constants';
+import {
+  getEntityDetailsPath,
+  PAGE_SIZE_MEDIUM,
+} from '../../../constants/constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { TestCase } from '../../../generated/tests/testCase';
-import {
-  SearchHitBody,
-  TestCaseSearchSource,
-} from '../../../interface/search.interface';
 import { searchQuery } from '../../../rest/searchAPI';
 import { getNameFromFQN } from '../../../utils/CommonUtils';
 import {
@@ -44,31 +44,19 @@ import Loader from '../../common/Loader/Loader';
 import Searchbar from '../../common/SearchBarComponent/SearchBar.component';
 import { AddTestCaseModalProps } from './AddTestCaseList.interface';
 
-// Todo: need to help from backend guys for ES query
-// export const getQueryFilterToExcludeTest = (testCase: EntityReference[]) => ({
-//   query: {
-//     bool: {
-//       must_not: testCase.map((test) => ({
-//         term: {
-//           name: test.name,
-//         },
-//       })),
-//     },
-//   },
-// });
-
 export const AddTestCaseList = ({
   onCancel,
-  existingTest,
   onSubmit,
   cancelText,
   submitText,
+  filters,
+  selectedTest,
+  onChange,
+  showButton = true,
 }: AddTestCaseModalProps) => {
   const { t } = useTranslation();
-  const [searchTerm, setSearchTerm] = useState<string>('');
-  const [items, setItems] = useState<
-    SearchHitBody<SearchIndex.TEST_CASE, TestCase>[]
-  >([]);
+  const [searchTerm, setSearchTerm] = useState<string>();
+  const [items, setItems] = useState<TestCase[]>([]);
   const [selectedItems, setSelectedItems] = useState<Map<string, TestCase>>();
   const [pageNumber, setPageNumber] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
@@ -79,21 +67,31 @@ export const AddTestCaseList = ({
   };
 
   const fetchTestCases = useCallback(
-    async ({ searchText = '', page = 1 }) => {
+    async ({ searchText = WILD_CARD_CHAR, page = 1 }) => {
       try {
         setIsLoading(true);
         const res = await searchQuery({
           pageNumber: page,
-          pageSize: PAGE_SIZE,
+          pageSize: PAGE_SIZE_MEDIUM,
           searchIndex: SearchIndex.TEST_CASE,
           query: searchText,
-          // queryFilter: getQueryFilterToExcludeTest(existingTest),
+          filters,
         });
-        const hits = res.hits.hits as SearchHitBody<
-          SearchIndex.TEST_CASE,
-          TestCaseSearchSource
-        >[];
+        const hits = res.hits.hits.map((hit) => hit._source as TestCase);
         setTotalCount(res.hits.total.value ?? 0);
+        if (selectedTest) {
+          setSelectedItems((pre) => {
+            const selectedItemsMap = new Map();
+            pre?.forEach((item) => selectedItemsMap.set(item.id, item));
+            hits.forEach((hit) => {
+              if (selectedTest.find((test) => hit.name === test)) {
+                selectedItemsMap.set(hit.id ?? '', hit);
+              }
+            });
+
+            return selectedItemsMap;
+          });
+        }
         setItems(page === 1 ? hits : (prevItems) => [...prevItems, ...hits]);
         setPageNumber(page);
       } catch (_) {
@@ -102,15 +100,13 @@ export const AddTestCaseList = ({
         setIsLoading(false);
       }
     },
-    [existingTest]
+    [selectedTest]
   );
 
   const handleSubmit = async () => {
     setIsLoading(true);
-    const testCaseIds = [...(selectedItems?.values() ?? [])].map(
-      (test) => test.id ?? ''
-    );
-    onSubmit(testCaseIds);
+    const testCaseIds = [...(selectedItems?.values() ?? [])];
+    onSubmit?.(testCaseIds);
     setIsLoading(false);
   };
 
@@ -143,6 +139,9 @@ export const AddTestCaseList = ({
           (item) => item.id !== id && selectedItemMap.set(item.id, item)
         );
 
+        const testCases = [...(selectedItemMap?.values() ?? [])];
+        onChange?.(testCases);
+
         return selectedItemMap;
       });
     } else {
@@ -153,8 +152,10 @@ export const AddTestCaseList = ({
 
         selectedItemMap.set(
           id,
-          items.find(({ _source }) => _source.id === id)?._source
+          items.find((test) => test.id === id)
         );
+        const testCases = [...(selectedItemMap?.values() ?? [])];
+        onChange?.(testCases);
 
         return selectedItemMap;
       });
@@ -189,14 +190,14 @@ export const AddTestCaseList = ({
               height={500}
               itemKey="id"
               onScroll={onScroll}>
-              {({ _source: test }) => {
+              {(test) => {
                 const tableFqn = getEntityFQN(test.entityLink);
                 const tableName = getNameFromFQN(tableFqn);
                 const isColumn = test.entityLink.includes('::columns::');
 
                 return (
                   <Space
-                    className="m-b-md border rounded-4 p-sm cursor-pointer"
+                    className="m-b-md border rounded-4 p-sm cursor-pointer bg-white"
                     direction="vertical"
                     onClick={() => handleCardClick(test)}>
                     <Space className="justify-between w-full">
@@ -207,7 +208,10 @@ export const AddTestCaseList = ({
                         {getEntityName(test)}
                       </Typography.Paragraph>
 
-                      <Checkbox checked={selectedItems?.has(test.id ?? '')} />
+                      <Checkbox
+                        checked={selectedItems?.has(test.id ?? '')}
+                        data-testid={`checkbox-${test.name}`}
+                      />
                     </Space>
                     <Typography.Paragraph
                       className="m-0 w-max-500"
@@ -263,18 +267,22 @@ export const AddTestCaseList = ({
         />
       </Col>
       {renderList}
-      <Col className="d-flex justify-end items-center p-y-xss" span={24}>
-        <Button data-testid="cancel" type="link" onClick={onCancel}>
-          {cancelText ?? t('label.cancel')}
-        </Button>
-        <Button
-          data-testid="submit"
-          loading={isLoading}
-          type="primary"
-          onClick={handleSubmit}>
-          {submitText ?? t('label.submit')}
-        </Button>
-      </Col>
+      {showButton && (
+        <Col
+          className="d-flex justify-end items-center p-y-xss gap-4"
+          span={24}>
+          <Button data-testid="cancel" type="link" onClick={onCancel}>
+            {cancelText ?? t('label.cancel')}
+          </Button>
+          <Button
+            data-testid="submit"
+            loading={isLoading}
+            type="primary"
+            onClick={handleSubmit}>
+            {submitText ?? t('label.submit')}
+          </Button>
+        </Col>
+      )}
     </Row>
   );
 };

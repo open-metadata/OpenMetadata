@@ -11,9 +11,12 @@
  *  limitations under the License.
  */
 import { test } from '@playwright/test';
+import { CustomPropertySupportedEntityList } from '../../constant/customProperty';
+import { ApiCollectionClass } from '../../support/entity/ApiCollectionClass';
 import { DatabaseClass } from '../../support/entity/DatabaseClass';
 import { DatabaseSchemaClass } from '../../support/entity/DatabaseSchemaClass';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
+import { ApiServiceClass } from '../../support/entity/service/ApiServiceClass';
 import { DashboardServiceClass } from '../../support/entity/service/DashboardServiceClass';
 import { DatabaseServiceClass } from '../../support/entity/service/DatabaseServiceClass';
 import { MessagingServiceClass } from '../../support/entity/service/MessagingServiceClass';
@@ -23,12 +26,16 @@ import { SearchIndexServiceClass } from '../../support/entity/service/SearchInde
 import { StorageServiceClass } from '../../support/entity/service/StorageServiceClass';
 import {
   createNewPage,
+  getApiContext,
   getAuthContext,
   getToken,
   redirectToHomePage,
 } from '../../utils/common';
+import { CustomPropertyTypeByName } from '../../utils/customProperty';
 
 const entities = [
+  ApiServiceClass,
+  ApiCollectionClass,
   DatabaseServiceClass,
   DashboardServiceClass,
   MessagingServiceClass,
@@ -70,15 +77,18 @@ entities.forEach((EntityClass) => {
     });
 
     test('User as Owner Add, Update and Remove', async ({ page }) => {
+      test.slow(true);
+
       const OWNER1 = EntityDataClass.user1.getUserName();
       const OWNER2 = EntityDataClass.user2.getUserName();
-      await entity.owner(page, OWNER1, OWNER2);
+      const OWNER3 = EntityDataClass.user3.getUserName();
+      await entity.owner(page, [OWNER1, OWNER3], [OWNER2]);
     });
 
     test('Team as Owner Add, Update and Remove', async ({ page }) => {
       const OWNER1 = EntityDataClass.team1.data.displayName;
       const OWNER2 = EntityDataClass.team2.data.displayName;
-      await entity.owner(page, OWNER1, OWNER2, 'Teams');
+      await entity.owner(page, [OWNER1], [OWNER2], 'Teams');
     });
 
     test('Tier Add, Update and Remove', async ({ page }) => {
@@ -111,6 +121,43 @@ entities.forEach((EntityClass) => {
     test(`Inactive Announcement create & delete`, async ({ page }) => {
       await entity.inactiveAnnouncement(page);
     });
+
+    // Create custom property only for supported entities
+    if (CustomPropertySupportedEntityList.includes(entity.endpoint)) {
+      const properties = Object.values(CustomPropertyTypeByName);
+      const titleText = properties.join(', ');
+
+      test(`Set & Update ${titleText} Custom Property `, async ({ page }) => {
+        // increase timeout as it using single test for multiple steps
+        test.slow(true);
+
+        const { apiContext, afterAction } = await getApiContext(page);
+        await entity.prepareCustomProperty(apiContext);
+
+        await test.step(`Set ${titleText} Custom Property`, async () => {
+          for (const type of properties) {
+            await entity.updateCustomProperty(
+              page,
+              entity.customPropertyValue[type].property,
+              entity.customPropertyValue[type].value
+            );
+          }
+        });
+
+        await test.step(`Update ${titleText} Custom Property`, async () => {
+          for (const type of properties) {
+            await entity.updateCustomProperty(
+              page,
+              entity.customPropertyValue[type].property,
+              entity.customPropertyValue[type].newValue
+            );
+          }
+        });
+
+        await entity.cleanupCustomProperty(apiContext);
+        await afterAction();
+      });
+    }
 
     test(`Update displayName`, async ({ page }) => {
       await entity.renameEntity(page, entity.entity.name);

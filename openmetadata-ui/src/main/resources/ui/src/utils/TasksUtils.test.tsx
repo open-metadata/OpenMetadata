@@ -16,16 +16,17 @@ import { EntityType } from '../enums/entity.enum';
 import { Glossary } from '../generated/entity/data/glossary';
 import { mockTableData } from '../mocks/TableVersion.mock';
 import { MOCK_ASSIGNEE_DATA } from '../mocks/Task.mock';
-import { getUserSuggestions } from '../rest/miscAPI';
+import { getUserAndTeamSearch } from '../rest/miscAPI';
 import {
   fetchOptions,
   getEntityTableName,
   getTaskAssignee,
+  getTaskEntityFQN,
   getTaskMessage,
 } from './TasksUtils';
 
 jest.mock('../rest/miscAPI', () => ({
-  getUserSuggestions: jest
+  getUserAndTeamSearch: jest
     .fn()
     .mockImplementation(() => Promise.resolve(MOCK_ASSIGNEE_DATA)),
 }));
@@ -177,8 +178,8 @@ describe('Tests for fetchOptions', () => {
   it('function fetchOptions should trigger setOptions without filtered options', async () => {
     const mockSetOptions = jest.fn();
 
-    (getUserSuggestions as jest.Mock).mockImplementationOnce(() =>
-      Promise.resolve({ data: MOCK_ASSIGNEE_DATA })
+    (getUserAndTeamSearch as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve(MOCK_ASSIGNEE_DATA)
     );
 
     await act(async () => {
@@ -206,8 +207,8 @@ describe('Tests for fetchOptions', () => {
   it('function fetchOptions should trigger setOptions with filtered options', async () => {
     const mockSetOptions = jest.fn();
 
-    (getUserSuggestions as jest.Mock).mockImplementationOnce(() =>
-      Promise.resolve({ data: MOCK_ASSIGNEE_DATA })
+    (getUserAndTeamSearch as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve(MOCK_ASSIGNEE_DATA)
     );
 
     await act(async () => {
@@ -239,15 +240,17 @@ describe('Tests for getTaskAssignee', () => {
 
   it('should return owner data if no reviewer present', async () => {
     const response = getTaskAssignee({
-      owner: {
-        deleted: false,
-        displayName: 'David',
-        fullyQualifiedName: 'david',
-        href: 'http://localhost:8585/api/v1/users/5e08061e-4cf2-46d0-93e3-2f0cc38844db',
-        id: '5e08061e-4cf2-46d0-93e3-2f0cc38844db',
-        name: 'david',
-        type: 'user',
-      },
+      owners: [
+        {
+          deleted: false,
+          displayName: 'David',
+          fullyQualifiedName: 'david',
+          href: 'http://localhost:8585/api/v1/users/5e08061e-4cf2-46d0-93e3-2f0cc38844db',
+          id: '5e08061e-4cf2-46d0-93e3-2f0cc38844db',
+          name: 'david',
+          type: 'user',
+        },
+      ],
     } as Glossary);
 
     expect(response).toEqual([
@@ -273,15 +276,17 @@ describe('Tests for getTaskAssignee', () => {
           type: 'user',
         },
       ],
-      owner: {
-        deleted: false,
-        displayName: 'David',
-        fullyQualifiedName: 'david',
-        href: 'http://localhost:8585/api/v1/users/5e08061e-4cf2-46d0-93e3-2f0cc38844db',
-        id: '5e08061e-4cf2-46d0-93e3-2f0cc38844db',
-        name: 'david',
-        type: 'user',
-      },
+      owners: [
+        {
+          deleted: false,
+          displayName: 'David',
+          fullyQualifiedName: 'david',
+          href: 'http://localhost:8585/api/v1/users/5e08061e-4cf2-46d0-93e3-2f0cc38844db',
+          id: '5e08061e-4cf2-46d0-93e3-2f0cc38844db',
+          name: 'david',
+          type: 'user',
+        },
+      ],
     } as Glossary);
 
     expect(response).toEqual([
@@ -292,5 +297,30 @@ describe('Tests for getTaskAssignee', () => {
         value: 'aa1eee18-5468-40f8-9ddc-e73f6fb9917f',
       },
     ]);
+  });
+});
+
+describe('Tests for getTaskEntityFQN', () => {
+  it('should return fqn for table entity', async () => {
+    const fqn = 'sample_data.ecommerce_db.shopify."dim.product"';
+    const response = getTaskEntityFQN(EntityType.TABLE, fqn);
+
+    expect(response).toEqual(fqn);
+  });
+
+  it('should return table fqn only when column name present in fqn', async () => {
+    const response = getTaskEntityFQN(
+      EntityType.TABLE,
+      'sample_data.ecommerce_db.shopify."dim.product".address_id'
+    );
+
+    expect(response).toEqual('sample_data.ecommerce_db.shopify."dim.product"');
+  });
+
+  it('should return fqn as it is if entity type is not table', async () => {
+    const fqn = 'sample_looker.customers';
+    const response = getTaskEntityFQN(EntityType.DASHBOARD, fqn);
+
+    expect(response).toEqual(fqn);
   });
 });

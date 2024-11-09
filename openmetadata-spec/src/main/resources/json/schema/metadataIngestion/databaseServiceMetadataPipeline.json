@@ -93,8 +93,20 @@
     "includeDDL": {
       "description": "Optional configuration to toggle the DDL Statements ingestion.",
       "type": "boolean",
-      "default": true,
+      "default": false,
       "title": "Include DDL Statements"
+    },
+    "overrideMetadata":{
+      "title": "Override Metadata",
+      "description": "Set the 'Override Metadata' toggle to control whether to override the existing metadata in the OpenMetadata server with the metadata fetched from the source. If the toggle is set to true, the metadata fetched from the source will override the existing metadata in the OpenMetadata server. If the toggle is set to false, the metadata fetched from the source will not override the existing metadata in the OpenMetadata server. This is applicable for fields like description, tags, owner and displayName",
+      "type": "boolean",
+      "default": false
+    },
+    "overrideViewLineage":{
+      "title": "Override View Lineage",
+      "description": "Set the 'Override View Lineage' toggle to control whether to override the existing view lineage.",
+      "type": "boolean",
+      "default": false
     },
     "queryLogDuration": {
       "description": "Configuration to tune how far we want to look back in query logs to process Stored Procedures results.",
@@ -130,7 +142,7 @@
       "title": "Database Filter Pattern"
     },
     "threads": {
-      "description": "Number of Threads to use in order to paralellize Table ingestion.",
+      "description": "Number of Threads to use in order to parallelize Table ingestion.",
       "type": "integer",
       "default": 1,
       "title": "Number of Threads"
