@@ -25,9 +25,11 @@ import metabaseConnection from '../jsons/connectionSchemas/connections/dashboard
 import modeConnection from '../jsons/connectionSchemas/connections/dashboard/modeConnection.json';
 import mstrConnection from '../jsons/connectionSchemas/connections/dashboard/mstrConnection.json';
 import powerBIConnection from '../jsons/connectionSchemas/connections/dashboard/powerBIConnection.json';
+import qlikcloudConnection from '../jsons/connectionSchemas/connections/dashboard/qlikCloudConnection.json';
 import qliksenseConnection from '../jsons/connectionSchemas/connections/dashboard/qlikSenseConnection.json';
 import quicksightConnection from '../jsons/connectionSchemas/connections/dashboard/quickSightConnection.json';
 import redashConnection from '../jsons/connectionSchemas/connections/dashboard/redashConnection.json';
+import sigmaConnection from '../jsons/connectionSchemas/connections/dashboard/sigmaConnection.json';
 import tableauConnection from '../jsons/connectionSchemas/connections/dashboard/tableauConnection.json';
 import supersetConnection from './ConnectionSchemas/SupersetConnection.json';
 
@@ -71,6 +73,11 @@ export const getDashboardConfig = (type: DashboardServiceType) => {
 
       break;
     }
+    case DashboardServiceType.Sigma: {
+      schema = sigmaConnection;
+
+      break;
+    }
     case DashboardServiceType.Tableau: {
       schema = tableauConnection;
 
@@ -95,6 +102,12 @@ export const getDashboardConfig = (type: DashboardServiceType) => {
 
     case DashboardServiceType.QlikSense: {
       schema = qliksenseConnection;
+
+      break;
+    }
+
+    case DashboardServiceType.QlikCloud: {
+      schema = qlikcloudConnection;
 
       break;
     }

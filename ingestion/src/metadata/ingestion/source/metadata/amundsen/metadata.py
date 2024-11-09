@@ -51,9 +51,14 @@ from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.type.basic import FullyQualifiedEntityName
+from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException, Source
+from metadata.ingestion.connections.test_connections import (
+    raise_test_connection_exception,
+)
 from metadata.ingestion.models.user import OMetaUserProfile
 from metadata.ingestion.ometa.client_utils import get_chart_entities_from_id
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -117,7 +122,7 @@ class AmundsenSource(Source):
         self.database_schema_object = None
         self.database_object = None
         self.metadata = metadata
-        self.service_connection = self.config.serviceConnection.__root__.config
+        self.service_connection = self.config.serviceConnection.root.config
         self.client = get_connection(self.service_connection)
         self.connection_obj = self.client
         self.database_service_map = {
@@ -130,8 +135,8 @@ class AmundsenSource(Source):
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
     ):
         """Create class instance"""
-        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: AmundsenConnection = config.serviceConnection.__root__.config
+        config: WorkflowSource = WorkflowSource.model_validate(config_dict)
+        connection: AmundsenConnection = config.serviceConnection.root.config
         if not isinstance(connection, AmundsenConnection):
             raise InvalidSourceException(
                 f"Expected AmundsenConnection, but got {connection}"
@@ -214,10 +219,12 @@ class AmundsenSource(Source):
                         name=table_entity.name,
                         tableType=table_entity.tableType,
                         description=table_entity.description,
-                        databaseSchema=table_entity.databaseSchema.fullyQualifiedName,
+                        databaseSchema=FullyQualifiedEntityName(
+                            table_entity.databaseSchema.fullyQualifiedName
+                        ),
                         tags=table_entity.tags,
                         columns=table_entity.columns,
-                        owner=user_entity_ref,
+                        owners=EntityReferenceList(root=[user_entity_ref]),
                     )
                     yield Either(right=table)
             except Exception as exc:
@@ -244,7 +251,7 @@ class AmundsenSource(Source):
                 name=table_name
                 if hasattr(service_entity.connection.config, "supportsDatabase")
                 else "default",
-                service=service_entity.fullyQualifiedName.__root__,
+                service=service_entity.fullyQualifiedName,
             )
             yield Either(right=database_request)
             database_fqn = fqn.build(
@@ -277,8 +284,8 @@ class AmundsenSource(Source):
                 self.metadata,
                 entity_type=DatabaseSchema,
                 service_name=table["database"],
-                database_name=self.database_object.name.__root__,
-                schema_name=database_schema_request.name.__root__,
+                database_name=self.database_object.name.root,
+                schema_name=database_schema_request.name.root,
             )
 
             self.database_schema_object = self.metadata.get_by_name(
@@ -368,7 +375,7 @@ class AmundsenSource(Source):
     ) -> Iterable[Either[CreateDashboardRequest]]:
         service_name = dashboard["cluster"]
         SUPERSET_DEFAULT_CONFIG["serviceName"] = service_name
-        config = WorkflowSource.parse_obj(SUPERSET_DEFAULT_CONFIG)
+        config = WorkflowSource.model_validate(SUPERSET_DEFAULT_CONFIG)
         create_service_entity = self.metadata.get_create_service_from_source(
             entity=DashboardService, config=config
         )
@@ -392,7 +399,7 @@ class AmundsenSource(Source):
                 charts=get_chart_entities_from_id(
                     chart_ids=dashboard["chart_ids"],
                     metadata=self.metadata,
-                    service_name=self.dashboard_service.name.__root__,
+                    service_name=self.dashboard_service.name.root,
                 ),
                 service=self.dashboard_service.fullyQualifiedName,
             )
@@ -456,4 +463,7 @@ class AmundsenSource(Source):
 
     def test_connection(self) -> None:
         test_connection_fn = get_test_connection_fn(self.service_connection)
-        test_connection_fn(self.metadata, self.connection_obj, self.service_connection)
+        result = test_connection_fn(
+            self.metadata, self.connection_obj, self.service_connection
+        )
+        raise_test_connection_exception(result)

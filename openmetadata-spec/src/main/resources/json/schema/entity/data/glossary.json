@@ -51,9 +51,9 @@
         "$ref": "../../type/entityReference.json"
       }
     },
-    "owner": {
-      "description": "Owner of this glossary.",
-      "$ref": "../../type/entityReference.json"
+    "owners": {
+      "description": "Owners of this glossary.",
+      "$ref": "../../type/entityReferenceList.json"
     },
     "usageCount": {
       "description": "Count of how many times terms from this glossary are used.",
@@ -93,11 +93,16 @@
       "type" : "boolean",
       "default" : "false"
     },
-    "domain" : {
+    "domain": {
       "description": "Domain the Glossary belongs to.",
       "$ref": "../../type/entityReference.json"
     },
-    "votes" : {
+    "dataProducts": {
+      "description": "List of data products this entity is part of.",
+      "$ref" : "../../type/entityReferenceList.json"
+    },
+    "votes": {
+      "description": "Votes on the entity.",
       "$ref": "../../type/votes.json"
     },
     "extension": {

@@ -8,7 +8,7 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-"""Mysql source module"""
+"""Doris source module"""
 import re
 import traceback
 from typing import Dict, Iterable, List, Optional, Tuple, cast
@@ -50,6 +50,7 @@ from metadata.ingestion.source.database.doris.utils import (
 )
 from metadata.ingestion.source.database.mysql.utils import parse_column
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.ssl_manager import SSLManager, check_ssl_and_init
 
 MySQLTableDefinitionParser._parse_column = (  # pylint: disable=protected-access
     parse_column
@@ -144,14 +145,22 @@ class DorisSource(CommonDbSourceService):
     Database metadata from Mysql Source
     """
 
+    def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
+        self.ssl_manager = None
+        service_connection = config.serviceConnection.root.config
+        self.ssl_manager: SSLManager = check_ssl_and_init(service_connection)
+        if self.ssl_manager:
+            service_connection = self.ssl_manager.setup_ssl(service_connection)
+        super().__init__(config, metadata)
+
     @classmethod
     def create(
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
     ):
-        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
+        config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         if config.serviceConnection is None:
             raise InvalidSourceException("Missing service connection")
-        connection = cast(DorisConnection, config.serviceConnection.__root__.config)
+        connection = cast(DorisConnection, config.serviceConnection.root.config)
         if not isinstance(connection, DorisConnection):
             raise InvalidSourceException(
                 f"Expected DorisConnection, but got {connection}"

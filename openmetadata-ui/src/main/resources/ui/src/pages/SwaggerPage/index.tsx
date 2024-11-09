@@ -14,7 +14,6 @@
 import React from 'react';
 import {
   GRAPH_BACKGROUND_COLOR,
-  PRIMERY_COLOR,
   TEXT_BODY_COLOR,
 } from '../../constants/constants';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
@@ -22,7 +21,7 @@ import RapiDocReact from './RapiDocReact';
 import './swagger.less';
 
 const SwaggerPage = () => {
-  const { getOidcToken } = useApplicationStore();
+  const { getOidcToken, theme } = useApplicationStore();
   const idToken = getOidcToken();
 
   return (
@@ -39,7 +38,7 @@ const SwaggerPage = () => {
         nav-bg-color={GRAPH_BACKGROUND_COLOR}
         nav-item-spacing="compact"
         nav-text-color={TEXT_BODY_COLOR}
-        primary-color={PRIMERY_COLOR}
+        primary-color={theme.primaryColor}
         regular-font="Open Sans"
         render-style="focused"
         show-header={false}

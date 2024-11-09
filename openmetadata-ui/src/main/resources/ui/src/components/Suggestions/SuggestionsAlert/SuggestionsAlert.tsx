@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import { Button, Card, Space, Typography } from 'antd';
+import { Button, Card, Typography } from 'antd';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as StarIcon } from '../../../assets/svg/ic-suggestions.svg';
@@ -27,6 +27,7 @@ const SuggestionsAlert = ({
   suggestion,
   hasEditAccess = false,
   maxLength,
+  showSuggestedBy = true,
 }: SuggestionsAlertProps) => {
   const { t } = useTranslation();
   const { acceptRejectSuggestion } = useSuggestionsContext();
@@ -37,60 +38,59 @@ const SuggestionsAlert = ({
   }
 
   return (
-    <Space
-      className="schema-description d-flex"
-      data-testid="asset-description-container"
-      direction="vertical"
-      size={12}>
-      <Card className="suggested-description-card card-padding-0">
-        <div className="suggested-alert-content">
-          <RichTextEditorPreviewer
-            markdown={suggestion.description ?? ''}
-            maxLength={maxLength}
-          />
-        </div>
-        <div className="suggested-alert-footer d-flex justify-between">
-          <div className="d-flex items-center gap-2 ">
-            <StarIcon width={14} />
-            <Typography.Text className="text-grey-muted font-italic">
-              {t('label.suggested-by')}
-            </Typography.Text>
-            <UserPopOverCard userName={userName}>
-              <span>
-                <ProfilePicture
-                  className="suggested-alert-footer-profile-pic"
-                  name={userName}
-                  width="20"
-                />
-              </span>
-            </UserPopOverCard>
-          </div>
-          {hasEditAccess && (
-            <div className="d-flex justify-end gap-2">
-              <Button
-                ghost
-                data-testid="reject-suggestion"
-                icon={<CloseOutlined />}
-                size="small"
-                type="primary"
-                onClick={() =>
-                  acceptRejectSuggestion(suggestion, SuggestionAction.Reject)
-                }
-              />
-              <Button
-                data-testid="accept-suggestion"
-                icon={<CheckOutlined />}
-                size="small"
-                type="primary"
-                onClick={() =>
-                  acceptRejectSuggestion(suggestion, SuggestionAction.Accept)
-                }
-              />
-            </div>
+    <Card className="suggested-description-card card-padding-0">
+      <div className="suggested-alert-content">
+        <RichTextEditorPreviewer
+          markdown={suggestion.description ?? ''}
+          maxLength={maxLength}
+        />
+      </div>
+      <div className="suggested-alert-footer d-flex justify-between">
+        <div className="d-flex items-center gap-2 ">
+          {showSuggestedBy && (
+            <>
+              <StarIcon width={14} />
+              <Typography.Text className="text-grey-muted font-italic">
+                {t('label.suggested-by')}
+              </Typography.Text>
+              <UserPopOverCard userName={userName}>
+                <span>
+                  <ProfilePicture
+                    className="suggested-alert-footer-profile-pic"
+                    name={userName}
+                    width="20"
+                  />
+                </span>
+              </UserPopOverCard>
+            </>
           )}
         </div>
-      </Card>
-    </Space>
+
+        {hasEditAccess && (
+          <div className="d-flex justify-end gap-2">
+            <Button
+              ghost
+              data-testid="reject-suggestion"
+              icon={<CloseOutlined />}
+              size="small"
+              type="primary"
+              onClick={() =>
+                acceptRejectSuggestion(suggestion, SuggestionAction.Reject)
+              }
+            />
+            <Button
+              data-testid="accept-suggestion"
+              icon={<CheckOutlined />}
+              size="small"
+              type="primary"
+              onClick={() =>
+                acceptRejectSuggestion(suggestion, SuggestionAction.Accept)
+              }
+            />
+          </div>
+        )}
+      </div>
+    </Card>
   );
 };
 

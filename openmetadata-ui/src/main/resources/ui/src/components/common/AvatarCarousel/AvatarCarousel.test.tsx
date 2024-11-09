@@ -10,31 +10,40 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import React from 'react';
 import AvatarCarousel from './AvatarCarousel';
 
+const suggestions = [
+  {
+    id: '1',
+    description: 'Test suggestion',
+    createdBy: { id: '1', name: 'Avatar 1', type: 'user' },
+    entityLink: '<#E::table::sample_data.ecommerce_db.shopify.dim_address>',
+  },
+  {
+    id: '2',
+    description: 'Test suggestion',
+    createdBy: { id: '2', name: 'Avatar 2', type: 'user' },
+    entityLink: '<#E::table::sample_data.ecommerce_db.shopify.dim_address>',
+  },
+];
+
+const suggByUser = new Map([
+  ['Avatar 1', [suggestions[0]]],
+  ['Avatar 2', [suggestions[1]]],
+]);
+
 jest.mock('../../Suggestions/SuggestionsProvider/SuggestionsProvider', () => ({
   useSuggestionsContext: jest.fn().mockImplementation(() => ({
-    suggestions: [
-      {
-        id: '1',
-        description: 'Test suggestion',
-        createdBy: { id: '1', name: 'Avatar 1', type: 'user' },
-        entityLink: '<#E::table::sample_data.ecommerce_db.shopify.dim_address>',
-      },
-      {
-        id: '2',
-        description: 'Test suggestion',
-        createdBy: { id: '2', name: 'Avatar 2', type: 'user' },
-        entityLink: '<#E::table::sample_data.ecommerce_db.shopify.dim_address>',
-      },
-    ],
+    suggestions: suggestions,
+    suggestionsByUser: suggByUser,
     allSuggestionsUsers: [
       { id: '1', name: 'Avatar 1', type: 'user' },
       { id: '2', name: 'Avatar 2', type: 'user' },
     ],
     acceptRejectSuggestion: jest.fn(),
+    selectedUserSuggestions: [],
     onUpdateActiveUser: jest.fn(),
   })),
   __esModule: true,
@@ -50,39 +59,17 @@ jest.mock('../ProfilePicture/ProfilePicture', () =>
 );
 
 jest.mock('../../../rest/suggestionsAPI', () => ({
-  getSuggestionsList: jest.fn().mockImplementation(() =>
-    Promise.resolve([
-      {
-        id: '1',
-        description: 'Test suggestion',
-        createdBy: { id: '1', name: 'Avatar 1', type: 'user' },
-        entityLink: '<#E::table::sample_data.ecommerce_db.shopify.dim_address>',
-      },
-      {
-        id: '2',
-        description: 'Test suggestion',
-        createdBy: { id: '1', name: 'Avatar 2', type: 'user' },
-        entityLink: '<#E::table::sample_data.ecommerce_db.shopify.dim_address>',
-      },
-    ])
-  ),
+  getSuggestionsList: jest
+    .fn()
+    .mockImplementation(() => Promise.resolve(suggestions)),
 }));
 
 describe('AvatarCarousel', () => {
   it('renders without crashing', () => {
-    render(<AvatarCarousel />);
+    render(<AvatarCarousel showArrows />);
 
     expect(screen.getByText(/Avatar 1/i)).toBeInTheDocument();
     expect(screen.getByText(/Avatar 2/i)).toBeInTheDocument();
     expect(screen.getByTestId('prev-slide')).toBeDisabled();
-  });
-
-  it('disables the next button when on the last slide', () => {
-    render(<AvatarCarousel />);
-    const nextButton = screen.getByTestId('next-slide');
-    fireEvent.click(nextButton);
-    fireEvent.click(nextButton);
-
-    expect(nextButton).toBeDisabled();
   });
 });

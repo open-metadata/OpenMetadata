@@ -15,14 +15,14 @@ import json
 import uuid
 from datetime import datetime, timedelta
 from functools import partial
-from typing import Callable, Union
+from typing import Callable, Optional, Union
 
-import airflow
 from airflow import DAG
 from openmetadata_managed_apis.api.utils import clean_dag_id
 from pydantic import ValidationError
 from requests.utils import quote
 
+from metadata.generated.schema.entity.services.apiService import ApiService
 from metadata.generated.schema.entity.services.dashboardService import DashboardService
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.messagingService import MessagingService
@@ -34,9 +34,9 @@ from metadata.generated.schema.entity.services.storageService import StorageServ
 from metadata.generated.schema.metadataIngestion.application import (
     OpenMetadataApplicationConfig,
 )
-from metadata.ingestion.models.encoders import show_secrets_encoder
+from metadata.generated.schema.type.basic import Timestamp, Uuid
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.workflow.workflow_output_handler import print_status
+from metadata.utils import fqn
 
 # pylint: disable=ungrouped-imports
 try:
@@ -72,6 +72,7 @@ from metadata.workflow.metadata import MetadataWorkflow
 logger = workflow_logger()
 
 ENTITY_CLASS_MAP = {
+    "apiService": ApiService,
     "databaseService": DatabaseService,
     "pipelineService": PipelineService,
     "dashboardService": DashboardService,
@@ -184,7 +185,7 @@ def build_source(ingestion_pipeline: IngestionPipeline) -> WorkflowSource:
 
     return WorkflowSource(
         type=service.serviceType.value.lower(),
-        serviceName=service.name.__root__,
+        serviceName=service.name.root,
         serviceConnection=service.connection,
         sourceConfig=ingestion_pipeline.sourceConfig,
     )
@@ -202,12 +203,12 @@ def metadata_ingestion_workflow(workflow_config: OpenMetadataWorkflowConfig):
 
     set_operator_logger(workflow_config)
 
-    config = json.loads(workflow_config.json(encoder=show_secrets_encoder))
+    config = json.loads(workflow_config.model_dump_json(exclude_defaults=False))
     workflow = MetadataWorkflow.create(config)
 
     workflow.execute()
     workflow.raise_from_status()
-    print_status(workflow)
+    workflow.print_status()
     workflow.stop()
 
 
@@ -225,21 +226,40 @@ def build_workflow_config_property(
     )
 
 
+def clean_name_tag(tag: str) -> Optional[str]:
+    """
+    Clean the tag to be used in Airflow.
+    Airflow supports 100 characters. We'll keep just 90
+    since we add prefixes on the tags
+    """
+    if not tag:
+        return None
+    try:
+        return fqn.split(tag)[-1][:90]
+    except Exception as exc:
+        logger.warning("Error cleaning tag: %s", exc)
+        return tag[:90]
+
+
 def build_dag_configs(ingestion_pipeline: IngestionPipeline) -> dict:
     """
     Prepare kwargs to send to DAG
     :param ingestion_pipeline: pipeline configs
     :return: dict to use as kwargs
     """
+
+    if ingestion_pipeline.airflowConfig.startDate:
+        start_date = ingestion_pipeline.airflowConfig.startDate.root
+    else:
+        start_date = datetime.now() - timedelta(days=1)
+
     return {
-        "dag_id": clean_dag_id(ingestion_pipeline.name.__root__),
-        "description": ingestion_pipeline.description.__root__
+        "dag_id": clean_dag_id(ingestion_pipeline.name.root),
+        "description": ingestion_pipeline.description.root
         if ingestion_pipeline.description is not None
         else None,
-        "start_date": ingestion_pipeline.airflowConfig.startDate.__root__
-        if ingestion_pipeline.airflowConfig.startDate
-        else airflow.utils.dates.days_ago(1),
-        "end_date": ingestion_pipeline.airflowConfig.endDate.__root__
+        "start_date": start_date,
+        "end_date": ingestion_pipeline.airflowConfig.endDate.root
         if ingestion_pipeline.airflowConfig.endDate
         else None,
         "concurrency": ingestion_pipeline.airflowConfig.concurrency,
@@ -255,7 +275,10 @@ def build_dag_configs(ingestion_pipeline: IngestionPipeline) -> dict:
         "schedule_interval": ingestion_pipeline.airflowConfig.scheduleInterval,
         "tags": [
             "OpenMetadata",
-            ingestion_pipeline.pipelineType.value,
+            clean_name_tag(ingestion_pipeline.displayName)
+            or clean_name_tag(ingestion_pipeline.name.root),
+            f"type:{ingestion_pipeline.pipelineType.value}",
+            f"service:{clean_name_tag(ingestion_pipeline.service.name)}",
         ],
     }
 
@@ -291,9 +314,10 @@ def send_failed_status_callback(workflow_config: OpenMetadataWorkflowConfig, *_,
         )
 
         pipeline_status = metadata.get_pipeline_status(
-            workflow_config.ingestionPipelineFQN, str(workflow_config.pipelineRunId)
+            workflow_config.ingestionPipelineFQN,
+            str(workflow_config.pipelineRunId.root),
         )
-        pipeline_status.endDate = datetime.now().timestamp() * 1000
+        pipeline_status.endDate = Timestamp(int(datetime.now().timestamp() * 1000))
         pipeline_status.pipelineState = PipelineState.failed
 
         metadata.create_or_update_pipeline_status(
@@ -331,7 +355,7 @@ def build_dag(
     with DAG(**build_dag_configs(ingestion_pipeline)) as dag:
         # Initialize with random UUID4. Will be used by the callback instead of
         # generating it inside the Workflow itself.
-        workflow_config.pipelineRunId = str(uuid.uuid4())
+        workflow_config.pipelineRunId = Uuid(uuid.uuid4())
 
         CustomPythonOperator(
             task_id=task_name,
@@ -342,8 +366,8 @@ def build_dag(
             # each DAG will call its own OpenMetadataWorkflowConfig
             on_failure_callback=partial(send_failed_status_callback, workflow_config),
             # Add tag and ownership to easily identify DAGs generated by OM
-            owner=ingestion_pipeline.owner.name
-            if ingestion_pipeline.owner
+            owner=ingestion_pipeline.owners.root[0].name
+            if (ingestion_pipeline.owners and ingestion_pipeline.owners.root)
             else "openmetadata",
         )
 

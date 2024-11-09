@@ -24,7 +24,6 @@ import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.PartitionColumnDetails;
 import org.openmetadata.schema.type.TableConstraint;
 import org.openmetadata.schema.type.TablePartition;
-import org.openmetadata.schema.type.TableType;
 
 public final class DatabaseUtil {
   private DatabaseUtil() {}
@@ -82,17 +81,6 @@ public final class DatabaseUtil {
       if (!columnNames.contains(partitionColumnDetails.getColumnName())) {
         throw new IllegalArgumentException("Invalid column name found in table partition");
       }
-    }
-  }
-
-  public static void validateViewDefinition(TableType tableType, String viewDefinition) {
-    if ((tableType == null
-            || tableType.equals(TableType.Regular)
-            || tableType.equals(TableType.External))
-        && viewDefinition != null
-        && !viewDefinition.isEmpty()) {
-      throw new IllegalArgumentException(
-          "ViewDefinition can only be set on TableType View, SecureView or MaterializedView");
     }
   }
 

@@ -28,6 +28,7 @@ import java.util.Base64;
 import java.util.Date;
 import java.util.TimeZone;
 import java.util.UUID;
+import javax.ws.rs.BadRequestException;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.ResponseBuilder;
 import javax.ws.rs.core.Response.Status;
@@ -166,6 +167,21 @@ public final class RestUtil {
       ResponseBuilder responseBuilder =
           Response.status(Status.OK).header(CHANGE_CUSTOM_HEADER, changeType.value());
       return responseBuilder.entity(entity).build();
+    }
+  }
+
+  public static void validateTimestampMilliseconds(Long timestamp) {
+    if (timestamp == null) {
+      throw new IllegalArgumentException("Timestamp is required");
+    }
+    // check if timestamp has 12 or more digits
+    // timestamp ms between 2001-09-09 and 2286-11-20 will have 13 digits
+    // timestamp ms between 1973-03-03 and 2001-09-09 will have 12 digits
+    boolean isMilliseconds = String.valueOf(timestamp).length() >= 12;
+    if (!isMilliseconds) {
+      throw new BadRequestException(
+          String.format(
+              "Timestamp %s is not valid, it should be in milliseconds since epoch", timestamp));
     }
   }
 }

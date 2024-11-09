@@ -32,8 +32,8 @@ public class CreateResourceContext<T extends EntityInterface> implements Resourc
   }
 
   @Override
-  public EntityReference getOwner() {
-    return parentEntity == null ? null : parentEntity.getOwner();
+  public List<EntityReference> getOwners() {
+    return parentEntity == null ? null : parentEntity.getOwners();
   }
 
   @Override
@@ -48,10 +48,15 @@ public class CreateResourceContext<T extends EntityInterface> implements Resourc
     return entity;
   }
 
+  @Override
+  public EntityReference getDomain() {
+    return parentEntity == null ? null : parentEntity.getDomain();
+  }
+
   private void setParent(T entity) {
     String fields = "";
-    if (entityRepository.isSupportsOwner()) {
-      fields = EntityUtil.addField(fields, Entity.FIELD_OWNER);
+    if (entityRepository.isSupportsOwners()) {
+      fields = EntityUtil.addField(fields, Entity.FIELD_OWNERS);
     }
     if (entityRepository.isSupportsTags()) {
       fields = EntityUtil.addField(fields, Entity.FIELD_TAGS);
@@ -61,6 +66,9 @@ public class CreateResourceContext<T extends EntityInterface> implements Resourc
     }
     if (entityRepository.isSupportsReviewers()) {
       fields = EntityUtil.addField(fields, Entity.FIELD_REVIEWERS);
+    }
+    if (entityRepository.isSupportsDomain()) {
+      fields = EntityUtil.addField(fields, Entity.FIELD_DOMAIN);
     }
     try {
       parentEntity = entityRepository.getParentEntity(entity, fields);

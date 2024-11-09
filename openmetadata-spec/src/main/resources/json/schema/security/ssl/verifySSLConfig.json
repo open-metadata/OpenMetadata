@@ -16,10 +16,25 @@
       ],
       "default": "no-ssl"
     },
+    "sslMode": {
+      "title": "SSL Mode",
+      "description": "SSL Mode to connect to database.",
+      "javaType": "org.openmetadata.schema.security.ssl.SSLMode",
+      "enum": [
+        "disable",
+        "allow",
+        "prefer",
+        "require",
+        "verify-ca",
+        "verify-full"
+      ],
+      "default": "disable"
+    },
     "sslConfig": {
       "title": "SSL Config",
       "description": "Client SSL configuration",
       "javaType": "org.openmetadata.schema.security.ssl.SSLConfig",
+      "mask": true,
       "oneOf": [
         {
           "$ref": "validateSSLClientConfig.json"

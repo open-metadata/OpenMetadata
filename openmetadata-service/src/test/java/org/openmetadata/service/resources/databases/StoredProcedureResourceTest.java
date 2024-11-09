@@ -110,13 +110,44 @@ public class StoredProcedureResourceTest
     // Create a database schema with owner data consumer
     DatabaseSchemaResourceTest schemaTest = new DatabaseSchemaResourceTest();
     CreateDatabaseSchema createDatabaseSchema =
-        schemaTest.createRequest(getEntityName(test)).withOwner(DATA_CONSUMER.getEntityReference());
+        schemaTest
+            .createRequest(getEntityName(test))
+            .withOwners(List.of(DATA_CONSUMER.getEntityReference()));
     DatabaseSchema schema = schemaTest.createEntity(createDatabaseSchema, ADMIN_AUTH_HEADERS);
 
     // Data consumer as an owner of the database schema can create stored procedure under it
     createEntity(
         createRequest("storedProcedure").withDatabaseSchema(schema.getFullyQualifiedName()),
         authHeaders(DATA_CONSUMER.getName()));
+  }
+
+  @Test
+  void patch_usingFqn_storedProcedureCode_200(TestInfo test) throws IOException {
+    CreateStoredProcedure createStoredProcedure = createRequest(test);
+    String query =
+        """
+                        sales_vw
+                        create view sales_vw as
+                        select * from public.sales
+                        union all
+                        select * from spectrum.sales
+                        with no schema binding;
+                        """;
+    createStoredProcedure.setStoredProcedureCode(
+        new StoredProcedureCode().withLanguage(StoredProcedureLanguage.SQL));
+    StoredProcedure storedProcedure =
+        createAndCheckEntity(createStoredProcedure, ADMIN_AUTH_HEADERS);
+    String storedProcedureJson = JsonUtils.pojoToJson(storedProcedure);
+    storedProcedure.setStoredProcedureCode(
+        new StoredProcedureCode().withLanguage(StoredProcedureLanguage.SQL).withCode(query));
+    StoredProcedure storedProcedure1 =
+        patchEntityUsingFqn(
+            storedProcedure.getFullyQualifiedName(),
+            storedProcedureJson,
+            storedProcedure,
+            ADMIN_AUTH_HEADERS);
+    compareEntities(storedProcedure, storedProcedure1, ADMIN_AUTH_HEADERS);
+    getEntity(storedProcedure.getId(), "", ADMIN_AUTH_HEADERS);
   }
 
   @Override
@@ -133,9 +164,9 @@ public class StoredProcedureResourceTest
         storedProcedure.getDatabaseSchema(),
         storedProcedure.getStoredProcedureCode());
     assertListNull(
-        storedProcedure.getOwner(), storedProcedure.getTags(), storedProcedure.getFollowers());
+        storedProcedure.getOwners(), storedProcedure.getTags(), storedProcedure.getFollowers());
 
-    String fields = "owner,tags,followers";
+    String fields = "owners,tags,followers";
     storedProcedure =
         byName
             ? getEntityByName(storedProcedure.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)

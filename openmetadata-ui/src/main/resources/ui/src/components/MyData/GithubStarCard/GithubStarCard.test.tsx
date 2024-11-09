@@ -13,14 +13,17 @@
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
-import { useLocation } from 'react-router-dom';
 import { TWO_MINUTE_IN_MILLISECOND } from '../../../constants/constants';
+import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import GithubStarCard from './GithubStarCard.component';
 
 const mockLinkButton = jest.fn();
 
+jest.mock('../../../hooks/useCustomLocation/useCustomLocation', () => {
+  return jest.fn().mockImplementation(() => ({ pathname: '/my-data' }));
+});
+
 jest.mock('react-router-dom', () => ({
-  useLocation: jest.fn().mockImplementation(() => ({ pathname: '/my-data' })),
   Link: jest.fn().mockImplementation(({ children, ...rest }) => (
     <a {...rest} onClick={mockLinkButton}>
       {children}
@@ -114,7 +117,7 @@ describe('GithubStarCard', () => {
   });
 
   it('should not render card if not my-data page', async () => {
-    (useLocation as jest.Mock).mockImplementation(() => ({
+    (useCustomLocation as jest.Mock).mockImplementation(() => ({
       pathname: '/',
     }));
 

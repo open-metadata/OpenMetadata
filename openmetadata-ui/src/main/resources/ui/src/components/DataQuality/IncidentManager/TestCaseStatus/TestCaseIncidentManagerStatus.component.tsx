@@ -11,12 +11,14 @@
  *  limitations under the License.
  */
 
-import { Button, Space, Tooltip, Typography } from 'antd';
+import Icon from '@ant-design/icons/lib/components/Icon';
+import { Space, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
 import React, { useCallback, useMemo, useState } from 'react';
 import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
 import {
   DE_ACTIVE_COLOR,
+  ICON_DIMENSION,
   NO_DATA_PLACEHOLDER,
 } from '../../../../constants/constants';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
@@ -70,12 +72,11 @@ const TestCaseIncidentManagerStatus = ({
             label={statusType}
           />
           {hasEditPermission && (
-            <Button
-              className="flex-center p-0"
+            <Icon
+              {...ICON_DIMENSION}
+              component={EditIcon}
               data-testid="edit-resolution-icon"
-              icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
-              size="small"
-              type="text"
+              style={{ color: DE_ACTIVE_COLOR }}
               onClick={onEditStatus}
             />
           )}

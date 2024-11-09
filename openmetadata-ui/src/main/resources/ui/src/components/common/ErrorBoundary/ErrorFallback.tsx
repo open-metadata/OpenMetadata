@@ -15,25 +15,48 @@ import { Button, Result } from 'antd';
 import { t } from 'i18next';
 import React from 'react';
 import { FallbackProps } from 'react-error-boundary';
+import { useHistory } from 'react-router-dom';
+import { ReactComponent as OmUpgradeIcon } from '../../../assets/svg/om-upgrade.svg';
 import { ERROR500 } from '../../../constants/constants';
 
 const ErrorFallback: React.FC<FallbackProps> = ({
   error,
   resetErrorBoundary,
 }) => {
+  const history = useHistory();
+
+  const isChunkLoadError = error.message?.startsWith('Loading chunk');
+
+  const message = isChunkLoadError
+    ? t('message.please-refresh-the-page')
+    : error.message;
+
+  const title = isChunkLoadError
+    ? t('message.look-like-upgraded-om')
+    : ERROR500;
+
+  const handleReset = () => {
+    if (isChunkLoadError) {
+      history.go(0);
+    } else {
+      resetErrorBoundary();
+    }
+  };
+
   return (
     <Result
+      className="error-boundary-result"
       extra={
         <Button
           className="ant-btn-primary-custom"
           type="primary"
-          onClick={resetErrorBoundary}>
-          {t('label.home')}
+          onClick={handleReset}>
+          {isChunkLoadError ? t('label.refresh') : t('label.home')}
         </Button>
       }
-      status="404"
-      subTitle={error.message}
-      title={ERROR500}
+      icon={<OmUpgradeIcon />}
+      subTitle={message}
+      title={title}
     />
   );
 };

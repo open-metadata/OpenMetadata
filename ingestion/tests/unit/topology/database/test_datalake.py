@@ -53,7 +53,7 @@ mock_datalake_config = {
                         "endPointURL": "https://endpoint.com/",
                     }
                 },
-                "bucketName": "bucket name",
+                "bucketName": "my_bucket",
             }
         },
         "sourceConfig": {
@@ -97,7 +97,7 @@ MOCK_GCS_SCHEMA = [
 ]
 
 EXPECTED_SCHEMA = ["my_bucket"]
-EXPECTED_GCS_SCHEMA = ["test_datalake", "test_gcs", "s3_test", "my_bucket"]
+EXPECTED_GCS_SCHEMA = ["my_bucket"]
 
 
 MOCK_DATABASE_SERVICE = DatabaseService(
@@ -471,21 +471,21 @@ class DatalakeUnitTest(TestCase):
     def __init__(self, methodName, test_connection) -> None:
         super().__init__(methodName)
         test_connection.return_value = False
-        self.config = OpenMetadataWorkflowConfig.parse_obj(mock_datalake_config)
+        self.config = OpenMetadataWorkflowConfig.model_validate(mock_datalake_config)
         self.datalake_source = DatalakeSource.create(
             mock_datalake_config["source"],
             self.config.workflowConfig.openMetadataServerConfig,
         )
         self.datalake_source.context.get().__dict__[
             "database"
-        ] = MOCK_DATABASE.name.__root__
+        ] = MOCK_DATABASE.name.root
         self.datalake_source.context.get().__dict__[
             "database_service"
-        ] = MOCK_DATABASE_SERVICE.name.__root__
+        ] = MOCK_DATABASE_SERVICE.name.root
 
     def test_s3_schema_filer(self):
-        self.datalake_source.client.list_buckets = lambda: MOCK_S3_SCHEMA
-        assert list(self.datalake_source.fetch_s3_bucket_names()) == EXPECTED_SCHEMA
+        self.datalake_source.client._client.list_buckets = lambda: MOCK_S3_SCHEMA
+        assert list(self.datalake_source.get_database_schema_names()) == EXPECTED_SCHEMA
 
     def test_json_file_parse(self):
         """
@@ -563,7 +563,7 @@ mock_datalake_gcs_config = {
                             "privateKeyId": "private_key_id",
                             "privateKey": "private_key",
                             "clientEmail": "gcpuser@project_id.iam.gserviceaccount.com",
-                            "clientId": "client_id",
+                            "clientId": "1234",
                             "authUri": "https://accounts.google.com/o/oauth2/auth",
                             "tokenUri": "https://oauth2.googleapis.com/token",
                             "authProviderX509CertUrl": "https://www.googleapis.com/oauth2/v1/certs",
@@ -571,7 +571,7 @@ mock_datalake_gcs_config = {
                         }
                     }
                 },
-                "bucketName": "bucket name",
+                "bucketName": "my_bucket",
                 "prefix": "prefix",
             }
         },
@@ -610,17 +610,19 @@ class DatalakeGCSUnitTest(TestCase):
     def __init__(self, methodName, _, __, test_connection) -> None:
         super().__init__(methodName)
         test_connection.return_value = False
-        self.config = OpenMetadataWorkflowConfig.parse_obj(mock_datalake_gcs_config)
+        self.config = OpenMetadataWorkflowConfig.model_validate(
+            mock_datalake_gcs_config
+        )
         self.datalake_source = DatalakeSource.create(
             mock_datalake_gcs_config["source"],
             self.config.workflowConfig.openMetadataServerConfig,
         )
         self.datalake_source.context.get().__dict__[
             "database"
-        ] = MOCK_DATABASE.name.__root__
+        ] = MOCK_DATABASE.name.root
         self.datalake_source.context.get().__dict__[
             "database_service"
-        ] = MOCK_DATABASE_SERVICE.name.__root__
+        ] = MOCK_DATABASE_SERVICE.name.root
 
     @patch(
         "metadata.ingestion.source.database.datalake.metadata.DatalakeSource.test_connection"
@@ -630,15 +632,17 @@ class DatalakeGCSUnitTest(TestCase):
     def test_multiple_project_id_implementation(
         self, validate_private_key, storage_client, test_connection
     ):
+        print(mock_multiple_project_id)
         self.datalake_source_multiple_project_id = DatalakeSource.create(
             mock_multiple_project_id["source"],
-            OpenMetadataWorkflowConfig.parse_obj(
+            OpenMetadataWorkflowConfig.model_validate(
                 mock_multiple_project_id
             ).workflowConfig.openMetadataServerConfig,
         )
 
     def test_gcs_schema_filer(self):
-        self.datalake_source.client.list_buckets = lambda: MOCK_GCS_SCHEMA
+        self.datalake_source.client._client.list_buckets = lambda: MOCK_GCS_SCHEMA
         assert (
-            list(self.datalake_source.fetch_gcs_bucket_names()) == EXPECTED_GCS_SCHEMA
+            list(self.datalake_source.get_database_schema_names())
+            == EXPECTED_GCS_SCHEMA
         )

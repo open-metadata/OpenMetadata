@@ -46,36 +46,12 @@
             "title": "Qlik Certificates By Values",
             "type": "object",
             "properties": {
-                "clientCertificateData": {
-                    "title": "Client Certificate Value",
-                    "description": "Client Certificate",
-                    "type": "string",
-                    "format": "password"
-                },
-                "clientKeyCertificateData": {
-                    "title": "Client Key Certificate Value",
-                    "description": "Client Key Certificate.",
-                    "type": "string",
-                    "format": "password"
-                },
-                "rootCertificateData": {
-                    "title": "Root Certificate Value",
-                    "description": "Root Certificate.",
-                    "type": "string",
-                    "format": "password"
-                },
-                "stagingDir": {
-                    "title": "Staging Directory Path",
-                    "description": "Staging Directory Path",
-                    "type": "string",
-                    "default": "/tmp/openmetadata-qlik"
+                "sslConfig": {
+                    "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/sslConfig"
                 }
             },
             "required": [
-                "clientCertificateData",
-                "clientKeyCertificateData",
-                "rootCertificateData",
-                "stagingDir"
+                "sslConfig"
             ]
         }
     },
@@ -109,6 +85,12 @@
                     "$ref": "#/definitions/qlikCertificatePath"
                 }
             ]
+        },
+        "validateHostName": {
+            "title": "Validate Host Name",
+            "description": "Validate Host Name",
+            "type": "boolean",
+            "default": false
         },
         "userDirectory": {
             "title": "User Directory",

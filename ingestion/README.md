@@ -2,12 +2,12 @@
 This guide will help you setup the Ingestion framework and connectors
 ---
 
-![Python version 3.7+](https://img.shields.io/badge/python-3.7%2B-blue)
+![Python version 3.8+](https://img.shields.io/badge/python-3.8%2B-blue)
 
 OpenMetadata Ingestion is a simple framework to build connectors and ingest metadata of various systems through OpenMetadata APIs. It could be used in an orchestration framework(e.g. Apache Airflow) to ingest metadata.
 **Prerequisites**
 
-- Python &gt;= 3.7.x
+- Python &gt;= 3.8.x
 
 ### Docs
 
@@ -23,8 +23,8 @@ The flow is depicted in the images below.
 
 **TopologyRunner Standard Flow**
 
-![image](https://github.com/IceS2/OpenMetadata/assets/4912399/c253af53-c11a-4b91-b101-892fa8169c81)
+![image](../openmetadata-docs/images/v1.4/features/ingestion/workflows/metadata/multithreading/single-thread-flow.png)
 
 **TopologyRunner Multithread Flow**
 
-![image](https://github.com/IceS2/OpenMetadata/assets/4912399/3fcef845-10da-4aee-82cc-28d5f5ff9532)
+![image](../openmetadata-docs/images/v1.4/features/ingestion/workflows/metadata/multithreading/multi-thread-flow.png)

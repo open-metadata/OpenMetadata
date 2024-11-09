@@ -1,6 +1,5 @@
 package org.openmetadata.service.dataInsight;
 
-import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
 import org.openmetadata.schema.analytics.DataAssetValues;
@@ -15,12 +14,11 @@ public abstract class AggregatedUnusedAssetsSizeAggregator<A, H, B, S>
   }
 
   @Override
-  public List<Object> aggregate() throws ParseException {
+  public List<Object> aggregate() {
     H histogramBucket = getHistogramBucket(this.aggregations);
     List<Object> data = new ArrayList<>();
     for (B bucket : getBuckets(histogramBucket)) {
-      String dateTimeString = getKeyAsString(bucket);
-      Long timestamp = convertDatTimeStringToTimestamp(dateTimeString);
+      Long timestamp = getKeyAsEpochTimestamp(bucket);
       S unusedThreeDays = getAggregations(bucket, "unusedDataAssetsThreeDays");
       S unusedSevenDays = getAggregations(bucket, "unusedDataAssetsSevenDays");
       S unusedFourteenDays = getAggregations(bucket, "unusedDataAssetsFourteenDays");
@@ -58,7 +56,7 @@ public abstract class AggregatedUnusedAssetsSizeAggregator<A, H, B, S>
 
   protected abstract List<? extends B> getBuckets(H histogramBucket);
 
-  protected abstract String getKeyAsString(B bucket);
+  protected abstract long getKeyAsEpochTimestamp(B bucket);
 
   protected abstract S getAggregations(B bucket, String key);
 

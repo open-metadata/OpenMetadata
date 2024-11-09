@@ -34,6 +34,7 @@ import { CustomPropertyTable } from '../../components/common/CustomPropertyTable
 import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
+import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import { DatabaseSchemaTable } from '../../components/Database/DatabaseSchema/DatabaseSchemaTable/DatabaseSchemaTable';
@@ -47,15 +48,22 @@ import {
   getEntityDetailsPath,
   getExplorePath,
   getVersionPath,
+  ROUTES,
 } from '../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
+import { COMMON_RESIZABLE_PANEL_CONFIG } from '../../constants/ResizablePanel.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
   ResourceEntity,
 } from '../../context/PermissionProvider/PermissionProvider.interface';
+import { ClientErrors } from '../../enums/Axios.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
-import { EntityTabs, EntityType } from '../../enums/entity.enum';
+import {
+  EntityTabs,
+  EntityType,
+  TabSpecificField,
+} from '../../enums/entity.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { Tag } from '../../generated/entity/classification/tag';
 import { Database } from '../../generated/entity/data/database';
@@ -119,11 +127,6 @@ const DatabaseDetails: FunctionComponent = () => {
   const [updateProfilerSetting, setUpdateProfilerSetting] =
     useState<boolean>(false);
 
-  const extraDropdownContent = entityUtilClassBase.getManageExtraOptions(
-    EntityType.DATABASE,
-    decodedDatabaseFQN
-  );
-
   const history = useHistory();
   const isMounting = useRef(true);
 
@@ -138,6 +141,15 @@ const DatabaseDetails: FunctionComponent = () => {
   const [databasePermission, setDatabasePermission] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
 
+  const extraDropdownContent = useMemo(
+    () =>
+      entityUtilClassBase.getManageExtraOptions(
+        EntityType.DATABASE,
+        decodedDatabaseFQN,
+        databasePermission
+      ),
+    [decodedDatabaseFQN, databasePermission]
+  );
   const fetchDatabasePermission = async () => {
     setIsLoading(true);
     try {
@@ -192,7 +204,7 @@ const DatabaseDetails: FunctionComponent = () => {
   const getDetailsByFQN = () => {
     setIsDatabaseDetailsLoading(true);
     getDatabaseDetailsByFQN(decodedDatabaseFQN, {
-      fields: 'owner,tags,domain,votes,extension',
+      fields: `${TabSpecificField.OWNERS},${TabSpecificField.TAGS},${TabSpecificField.DOMAIN},${TabSpecificField.VOTES},${TabSpecificField.EXTENSION},${TabSpecificField.DATA_PRODUCTS}`,
       include: Include.All,
     })
       .then((res) => {
@@ -205,8 +217,13 @@ const DatabaseDetails: FunctionComponent = () => {
           setServiceType(serviceType);
         }
       })
-      .catch(() => {
+      .catch((error) => {
         // Error
+        if (
+          (error as AxiosError)?.response?.status === ClientErrors.FORBIDDEN
+        ) {
+          history.replace(ROUTES.FORBIDDEN);
+        }
       })
       .finally(() => {
         setIsLoading(false);
@@ -292,15 +309,15 @@ const DatabaseDetails: FunctionComponent = () => {
   };
 
   const handleUpdateOwner = useCallback(
-    async (owner: Database['owner']) => {
+    async (owners: Database['owners']) => {
       const updatedData = {
         ...database,
-        owner: owner ? { ...database?.owner, ...owner } : undefined,
+        owners,
       };
 
       await settingsUpdateHandler(updatedData as Database);
     },
-    [database, database?.owner, settingsUpdateHandler]
+    [database, database?.owners, settingsUpdateHandler]
   );
 
   const createThread = async (data: CreateThread) => {
@@ -503,44 +520,63 @@ const DatabaseDetails: FunctionComponent = () => {
         key: EntityTabs.SCHEMA,
         children: (
           <Row gutter={[0, 16]} wrap={false}>
-            <Col className="p-t-sm m-x-lg" flex="auto">
-              <Row gutter={[16, 16]}>
-                <Col data-testid="description-container" span={24}>
-                  <DescriptionV1
-                    description={description}
-                    entityFqn={decodedDatabaseFQN}
-                    entityName={getEntityName(database)}
-                    entityType={EntityType.DATABASE}
-                    hasEditAccess={editDescriptionPermission}
-                    isEdit={isEdit}
-                    showActions={!database.deleted}
-                    onCancel={onCancel}
-                    onDescriptionEdit={onDescriptionEdit}
-                    onDescriptionUpdate={onDescriptionUpdate}
-                    onThreadLinkSelect={onThreadLinkSelect}
-                  />
-                </Col>
-                <Col span={24}>
-                  <DatabaseSchemaTable isDatabaseDeleted={deleted} />
-                </Col>
-              </Row>
-            </Col>
-            <Col
-              className="entity-tag-right-panel-container"
-              data-testid="entity-right-panel"
-              flex="320px">
-              <EntityRightPanel
-                customProperties={database}
-                dataProducts={database?.dataProducts ?? []}
-                domain={database?.domain}
-                editTagPermission={editTagsPermission}
-                entityFQN={decodedDatabaseFQN}
-                entityId={database?.id ?? ''}
-                entityType={EntityType.DATABASE}
-                selectedTags={tags}
-                viewAllPermission={viewAllPermission}
-                onTagSelectionChange={handleTagSelection}
-                onThreadLinkSelect={onThreadLinkSelect}
+            <Col className="tab-content-height-with-resizable-panel" span={24}>
+              <ResizablePanels
+                firstPanel={{
+                  className: 'entity-resizable-panel-container',
+                  children: (
+                    <div className="p-t-sm m-x-lg">
+                      <Row gutter={[16, 16]}>
+                        <Col data-testid="description-container" span={24}>
+                          <DescriptionV1
+                            description={description}
+                            entityFqn={decodedDatabaseFQN}
+                            entityName={getEntityName(database)}
+                            entityType={EntityType.DATABASE}
+                            hasEditAccess={editDescriptionPermission}
+                            isDescriptionExpanded={isEmpty(database)}
+                            isEdit={isEdit}
+                            showActions={!database.deleted}
+                            onCancel={onCancel}
+                            onDescriptionEdit={onDescriptionEdit}
+                            onDescriptionUpdate={onDescriptionUpdate}
+                            onThreadLinkSelect={onThreadLinkSelect}
+                          />
+                        </Col>
+                        <Col span={24}>
+                          <DatabaseSchemaTable isDatabaseDeleted={deleted} />
+                        </Col>
+                      </Row>
+                    </div>
+                  ),
+                  ...COMMON_RESIZABLE_PANEL_CONFIG.LEFT_PANEL,
+                }}
+                secondPanel={{
+                  children: (
+                    <div data-testid="entity-right-panel">
+                      <EntityRightPanel<EntityType.DATABASE>
+                        customProperties={database}
+                        dataProducts={database?.dataProducts ?? []}
+                        domain={database?.domain}
+                        editCustomAttributePermission={
+                          editCustomAttributePermission
+                        }
+                        editTagPermission={editTagsPermission}
+                        entityFQN={decodedDatabaseFQN}
+                        entityId={database?.id ?? ''}
+                        entityType={EntityType.DATABASE}
+                        selectedTags={tags}
+                        viewAllPermission={viewAllPermission}
+                        onExtensionUpdate={settingsUpdateHandler}
+                        onTagSelectionChange={handleTagSelection}
+                        onThreadLinkSelect={onThreadLinkSelect}
+                      />
+                    </div>
+                  ),
+                  ...COMMON_RESIZABLE_PANEL_CONFIG.RIGHT_PANEL,
+                  className:
+                    'entity-resizable-right-panel-container entity-resizable-panel-container',
+                }}
               />
             </Col>
           </Row>
@@ -615,7 +651,11 @@ const DatabaseDetails: FunctionComponent = () => {
     try {
       await updateDatabaseVotes(id, data);
       const details = await getDatabaseDetailsByFQN(decodedDatabaseFQN, {
-        fields: 'owner,tags,votes',
+        fields: [
+          TabSpecificField.OWNERS,
+          TabSpecificField.TAGS,
+          TabSpecificField.VOTES,
+        ],
         include: Include.All,
       });
       setDatabase(details);

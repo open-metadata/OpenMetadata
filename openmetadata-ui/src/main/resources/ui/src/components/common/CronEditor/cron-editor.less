@@ -11,55 +11,24 @@
  *  limitations under the License.
  */
 
-.form-field.cron-field select {
-  background: white;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  padding: 5px;
+@import (reference) url('../../../styles/variables.less');
+
+.cron-row {
+  .ant-form-item {
+    margin: 0px;
+  }
 }
-.cron-field-row {
-  margin: 0 0 10px 0;
-}
-.cron-string {
-  margin-top: 15px;
-  background: #7147e840;
-  color: #37352f;
-  padding: 7px 10px;
-  border-left: 3px solid #0968da;
-}
-.cron-badge-option-container {
-  display: inline-block;
-  margin: 10px 0 10px 0;
-}
-.cron-badge-option {
-  height: 30px;
-  width: 30px;
-  background: #f5f5f5;
-  margin: 2px 5px;
-  padding: 5px;
-  display: inline-table;
-  text-align: center;
-  border-radius: 15px;
-  cursor: pointer;
-}
-.cron-badge-option.disabled {
-  cursor: not-allowed;
-  color: #6b7280;
-}
-.cron-badge-option:hover {
-  background: #d6d6d6;
-}
-.cron-badge-option.disabled:hover {
-  background: #f5f5f5;
-}
-.cron-badge-option.active {
-  background: #0968da;
-  color: white;
-}
-.month-opt-container .cron-badge-option {
-  width: 35px;
+.ant-radio-button-wrapper.week-selector-buttons,
+.ant-radio-button-wrapper.week-selector-buttons:first-child,
+.ant-radio-button-wrapper.week-selector-buttons:last-child {
   height: 32px;
-  border-radius: 18px;
-  font-size: 12px;
-  padding: 8px 5px;
+  width: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 16px;
+  border-width: 1px;
+}
+.ant-radio-button-wrapper.week-selector-buttons:not(:first-child)::before {
+  position: relative;
 }

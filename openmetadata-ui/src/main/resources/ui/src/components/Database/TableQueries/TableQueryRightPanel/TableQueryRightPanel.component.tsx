@@ -38,16 +38,16 @@ const TableQueryRightPanel = ({
   permission,
 }: TableQueryRightPanelProps) => {
   const { t } = useTranslation();
-  const { EditAll, EditDescription, EditOwner, EditTags } = permission;
+  const { EditAll, EditDescription, EditOwners, EditTags } = permission;
 
   const [isEditDescription, setIsEditDescription] = useState(false);
 
-  const handleUpdateOwner = async (owner: Query['owner']) => {
+  const handleUpdateOwner = async (owners: Query['owners']) => {
     const updatedData = {
       ...query,
-      owner,
+      owners,
     };
-    await onQueryUpdate(updatedData, 'owner');
+    await onQueryUpdate(updatedData, 'owners');
   };
 
   const onDescriptionUpdate = async (description: string) => {
@@ -81,22 +81,25 @@ const TableQueryRightPanel = ({
       {isLoading ? (
         <Loader />
       ) : (
-        <Row className="m-y-md p-x-md" gutter={[16, 40]}>
+        <Row className="m-y-md p-x-md w-full" gutter={[16, 40]}>
           <Col span={24}>
             <Space className="relative" direction="vertical" size={4}>
               <Space align="center" className="w-full" size={0}>
                 <Typography.Text className="right-panel-label">
-                  {t('label.owner')}
+                  {t('label.owner-plural')}
                 </Typography.Text>
 
-                {(EditAll || EditOwner) && (
+                {(EditAll || EditOwners) && (
                   <UserTeamSelectableList
-                    hasPermission={EditAll || EditOwner}
-                    owner={query.owner}
-                    onUpdate={handleUpdateOwner}>
+                    hasPermission={EditAll || EditOwners}
+                    multiple={{ user: true, team: false }}
+                    owner={query.owners}
+                    onUpdate={(updatedUsers) =>
+                      handleUpdateOwner(updatedUsers)
+                    }>
                     <Tooltip
                       title={t('label.edit-entity', {
-                        entity: t('label.owner-lowercase'),
+                        entity: t('label.owner-lowercase-plural'),
                       })}>
                       <Button
                         className="cursor-pointer flex-center"
@@ -109,7 +112,7 @@ const TableQueryRightPanel = ({
                   </UserTeamSelectableList>
                 )}
               </Space>
-              <OwnerLabel hasPermission={false} owner={query.owner} />
+              <OwnerLabel hasPermission={false} owners={query.owners} />
             </Space>
           </Col>
           <Col span={24}>
@@ -147,7 +150,6 @@ const TableQueryRightPanel = ({
                       <ProfilePicture
                         displayName={getEntityName(user)}
                         name={user.name || ''}
-                        textClass="text-xs"
                         width="20"
                       />
                       <Link to={getUserPath(user.name ?? '')}>

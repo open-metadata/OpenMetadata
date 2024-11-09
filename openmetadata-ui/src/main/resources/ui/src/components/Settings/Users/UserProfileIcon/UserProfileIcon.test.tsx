@@ -40,8 +40,8 @@ jest.mock('../../../../utils/ProfilerUtils', () => ({
   ImageQuality: jest.fn().mockReturnValue('6x'),
 }));
 
-jest.mock('../../../common/AvatarComponent/Avatar', () =>
-  jest.fn().mockReturnValue(<div>Avatar</div>)
+jest.mock('../../../common/ProfilePicture/ProfilePicture', () =>
+  jest.fn().mockReturnValue(<div>ProfilePicture</div>)
 );
 
 jest.mock('react-router-dom', () => ({
@@ -84,7 +84,7 @@ describe('UserProfileIcon', () => {
     const { queryByTestId, getByText } = render(<UserProfileIcon />);
 
     expect(queryByTestId('app-bar-user-profile-pic')).not.toBeInTheDocument();
-    expect(getByText('Avatar')).toBeInTheDocument();
+    expect(getByText('ProfilePicture')).toBeInTheDocument();
   });
 
   it('should display the user team', () => {

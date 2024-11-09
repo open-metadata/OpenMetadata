@@ -39,8 +39,10 @@ class TestSuiteWorkflow(IngestionWorkflow):
     this workflow. No need to do anything here if this does not pass
     """
 
+    __test__ = False
+
     def set_steps(self):
-        self.source = TestSuiteSource.create(self.config.dict(), self.metadata)
+        self.source = TestSuiteSource.create(self.config.model_dump(), self.metadata)
 
         test_runner_processor = self._get_test_runner_processor()
         sink = self._get_sink()
@@ -50,14 +52,14 @@ class TestSuiteWorkflow(IngestionWorkflow):
     def _get_sink(self) -> Sink:
         sink_type = self.config.sink.type
         sink_class = import_sink_class(sink_type=sink_type)
-        sink_config = self.config.sink.dict().get("config", {})
+        sink_config = self.config.sink.model_dump().get("config", {})
         sink: Sink = sink_class.create(sink_config, self.metadata)
         logger.debug(f"Sink type:{self.config.sink.type}, {sink_class} configured")
 
         return sink
 
     def _get_test_runner_processor(self) -> Processor:
-        return TestCaseRunner.create(self.config.dict(), self.metadata)
+        return TestCaseRunner.create(self.config.model_dump(), self.metadata)
 
     def _retrieve_service_connection_if_needed(self, service_type: ServiceType) -> None:
         """Get service object from source config `entityFullyQualifiedName`"""
@@ -66,7 +68,7 @@ class TestSuiteWorkflow(IngestionWorkflow):
             and not self.metadata.config.forceEntityOverwriting
         ):
             fully_qualified_name = (
-                self.config.source.sourceConfig.config.entityFullyQualifiedName.__root__
+                self.config.source.sourceConfig.config.entityFullyQualifiedName.root
             )
             try:
                 service_name = fqn.split(fully_qualified_name)[0]
@@ -87,7 +89,7 @@ class TestSuiteWorkflow(IngestionWorkflow):
                     )
 
                 self.config.source.serviceConnection = ServiceConnection(
-                    __root__=service.connection
+                    service.connection
                 )
 
             except Exception as exc:

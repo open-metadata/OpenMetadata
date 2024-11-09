@@ -12,6 +12,24 @@ public record AsciiTable(
   private static final String DEFAULT_COLUMN_NAME = "(No column name)";
   private static final String DEFAULT_NO_VALUE = "-";
 
+  private static final String logo =
+      """
+    |||||||
+  ||||   ||||      ____
+ ||||     ||||    / __ \\
+ ||||     ||||   | |  | | _ __    ___  _ __
+ |||||   |||||   | |  | || '_ \\  / _ \\| '_ \\
+ |||||||||||||   | |__| || |_) ||  __/| | | |
+ |||||||||||||    \\____/ | .__/  \\___||_| |_|
+ ||| ||||| |||    __  __ | |    _              _         _
+ |||  |||  |||   |  \\/  ||_|   | |            | |       | |
+ |||   |   |||   | \\  / |  ___ | |_  __ _   __| |  __ _ | |_  __ _
+ |||       |||   | |\\/| | / _ \\| __|/ _` | / _` | / _` || __|/ _` |
+ ||| || || |||   | |  | ||  __/| |_| (_| || (_| || (_| || |_| (_| |
+ ||| ||||| |||   |_|  |_| \\___| \\__|\\__,_| \\__,_| \\__,_| \\__|\\__,_|
+  |||||||||||
+    |||||||""";
+
   public AsciiTable(
       List<String> columns,
       List<List<String>> rows,
@@ -121,5 +139,9 @@ public record AsciiTable(
 
   private String trimOrPad(String str, int length) {
     return trimOrPad(str, length, ' ');
+  }
+
+  public static String printOpenMetadataText() {
+    return logo;
   }
 }

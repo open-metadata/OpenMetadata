@@ -137,19 +137,23 @@ jest.mock(
   }
 );
 
+jest.mock('../../hooks/useCustomLocation/useCustomLocation', () => {
+  return jest.fn().mockImplementation(() => ({ search: '?schema=sales' }));
+});
+
 jest.mock('react-router-dom', () => ({
   Link: jest
     .fn()
     .mockImplementation(({ children }: { children: React.ReactNode }) => (
       <p data-testid="link">{children}</p>
     )),
-  useHistory: jest.fn(),
+  useHistory: () => ({
+    push: jest.fn(),
+    replace: jest.fn(),
+  }),
   useParams: jest.fn().mockReturnValue({
     fqn: 'bigquery.shopify',
   }),
-  useLocation: jest
-    .fn()
-    .mockImplementation(() => ({ search: '?schema=sales' })),
 }));
 
 jest.mock(
@@ -287,6 +291,10 @@ describe('Test DatabaseDetails page', () => {
       'testDatabaseSchemaTable'
     );
 
+    expect(getDatabaseDetailsByFQN).toHaveBeenCalledWith('bigquery.shopify', {
+      fields: 'owners,tags,domain,votes,extension,dataProducts',
+      include: 'all',
+    });
     expect(entityHeader).toBeInTheDocument();
     expect(descriptionContainer).toBeInTheDocument();
     expect(databaseTable).toBeInTheDocument();

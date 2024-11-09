@@ -95,19 +95,40 @@ public final class AlertUtil {
   public static String buildCompleteCondition(List<EventFilterRule> alertFilterRules) {
     StringBuilder builder = new StringBuilder();
     for (int i = 0; i < alertFilterRules.size(); i++) {
-      EventFilterRule rule = alertFilterRules.get(i);
-      builder.append("(");
-      if (rule.getEffect() == ArgumentsInput.Effect.INCLUDE) {
-        builder.append(rule.getCondition());
-      } else {
-        builder.append("!");
-        builder.append(rule.getCondition());
-      }
-      builder.append(")");
-      if (i != (alertFilterRules.size() - 1)) builder.append(" && ");
+      builder.append(getWrappedCondition(alertFilterRules.get(i), i));
+    }
+    return builder.toString();
+  }
+
+  private static String getWrappedCondition(EventFilterRule rule, int index) {
+    String prefixCondition = "";
+
+    // First Condition, no need to add prefix
+    if (index != 0) {
+      String rawCondition = getRawCondition(rule.getPrefixCondition());
+      prefixCondition = nullOrEmpty(rawCondition) ? " && " : rawCondition;
     }
 
-    return builder.toString();
+    StringBuilder builder = new StringBuilder();
+    builder.append("(");
+    if (rule.getEffect() == ArgumentsInput.Effect.INCLUDE) {
+      builder.append(rule.getCondition());
+    } else {
+      builder.append("!");
+      builder.append(rule.getCondition());
+    }
+    builder.append(")");
+    return String.format("%s%s", prefixCondition, builder);
+  }
+
+  private static String getRawCondition(ArgumentsInput.PrefixCondition prefixCondition) {
+    if (prefixCondition.equals(ArgumentsInput.PrefixCondition.AND)) {
+      return " && ";
+    } else if (prefixCondition.equals(ArgumentsInput.PrefixCondition.OR)) {
+      return " || ";
+    } else {
+      return "";
+    }
   }
 
   public static boolean shouldTriggerAlert(ChangeEvent event, FilteringRules config) {
@@ -137,14 +158,6 @@ public final class AlertUtil {
     return config.getResources().contains(event.getEntityType()); // Use Trigger Specific Settings
   }
 
-  public static boolean shouldProcessActivityFeedRequest(ChangeEvent event) {
-    // Check Trigger Conditions
-    FilteringRules filteringRules =
-        ActivityFeedAlertCache.getActivityFeedAlert().getFilteringRules();
-    return AlertUtil.shouldTriggerAlert(event, filteringRules)
-        && AlertUtil.evaluateAlertConditions(event, filteringRules.getRules());
-  }
-
   public static SubscriptionStatus buildSubscriptionStatus(
       SubscriptionStatus.Status status,
       Long lastSuccessful,
@@ -172,7 +185,7 @@ public final class AlertUtil {
         .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
   }
 
-  private static boolean checkIfChangeEventIsAllowed(
+  public static boolean checkIfChangeEventIsAllowed(
       ChangeEvent event, FilteringRules filteringRules) {
     boolean triggerChangeEvent = AlertUtil.shouldTriggerAlert(event, filteringRules);
 
@@ -190,7 +203,8 @@ public final class AlertUtil {
   }
 
   public static EventSubscriptionOffset getStartingOffset(UUID eventSubscriptionId) {
-    long eventSubscriptionOffset;
+    long startingOffset;
+    long currentOffset;
     String json =
         Entity.getCollectionDAO()
             .eventSubscriptionDAO()
@@ -198,11 +212,15 @@ public final class AlertUtil {
     if (json != null) {
       EventSubscriptionOffset offsetFromDb =
           JsonUtils.readValue(json, EventSubscriptionOffset.class);
-      eventSubscriptionOffset = offsetFromDb.getOffset();
+      startingOffset = offsetFromDb.getStartingOffset();
+      currentOffset = offsetFromDb.getCurrentOffset();
     } else {
-      eventSubscriptionOffset = Entity.getCollectionDAO().changeEventDAO().getLatestOffset();
+      currentOffset = Entity.getCollectionDAO().changeEventDAO().getLatestOffset();
+      startingOffset = currentOffset;
     }
-    return new EventSubscriptionOffset().withOffset(eventSubscriptionOffset);
+    return new EventSubscriptionOffset()
+        .withCurrentOffset(currentOffset)
+        .withStartingOffset(startingOffset);
   }
 
   public static FilteringRules validateAndBuildFilteringConditions(

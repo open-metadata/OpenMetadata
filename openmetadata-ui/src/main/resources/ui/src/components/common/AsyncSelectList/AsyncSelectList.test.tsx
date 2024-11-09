@@ -227,4 +227,29 @@ describe('Test AsyncSelect List Component', () => {
 
     expect(mockFetchOptions).toHaveBeenCalledTimes(1);
   });
+
+  it('should pass optionClassName to options render by Select', async () => {
+    mockFetchOptions.mockResolvedValueOnce(ASYNC_SELECT_MOCK);
+    render(
+      <AsyncSelectList
+        {...mockProps}
+        mode="multiple"
+        optionClassName="option-class"
+        onChange={mockOnChange}
+      />
+    );
+
+    const selectInput = await findByRole(
+      screen.getByTestId('tag-selector'),
+      'combobox'
+    );
+
+    await act(async () => {
+      userEvent.click(selectInput);
+    });
+
+    await waitForElement(() => screen.getByTestId('tag-tags-0'));
+
+    expect(screen.getByTestId('tag-tags-0')).toHaveClass('option-class');
+  });
 });

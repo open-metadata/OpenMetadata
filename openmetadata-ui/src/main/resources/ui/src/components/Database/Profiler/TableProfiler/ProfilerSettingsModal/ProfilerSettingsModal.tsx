@@ -526,9 +526,6 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
               className="custom-query-editor query-editor-h-200 custom-code-mirror-theme"
               data-testid="profiler-setting-sql-editor"
               mode={{ name: CSMode.SQL }}
-              options={{
-                readOnly: false,
-              }}
               value={state?.sqlQuery ?? ''}
               onChange={handleCodeMirrorChange}
             />
@@ -542,7 +539,8 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
               allowClear
               className="w-full"
               data-testid="exclude-column-select"
-              mode="tags"
+              dropdownStyle={{ maxHeight: 200 }}
+              mode="multiple"
               options={selectOptions}
               placeholder={t('label.select-column-plural-to-exclude')}
               size="middle"
@@ -594,6 +592,8 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                               {...restField}
                               name={[name, 'columnName']}>
                               <Select
+                                allowClear
+                                showSearch
                                 className="w-full"
                                 data-testid="include-column-select"
                                 options={selectOptions}
@@ -702,6 +702,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
                     ]}>
                     <Select
                       allowClear
+                      showSearch
                       className="w-full"
                       data-testid="column-name"
                       disabled={!state?.enablePartition}

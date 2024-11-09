@@ -12,17 +12,25 @@
  */
 import { Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
-import { cloneDeep, isUndefined } from 'lodash';
-import { EntityTags } from 'Models';
+import { cloneDeep, groupBy, isUndefined, uniqBy } from 'lodash';
+import { EntityTags, TagFilterOptions } from 'Models';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EntityType } from '../../../../../enums/entity.enum';
 import { Column } from '../../../../../generated/entity/data/dashboardDataModel';
 import { TagLabel, TagSource } from '../../../../../generated/type/tagLabel';
 import { updateDataModelColumnDescription } from '../../../../../utils/DataModelsUtils';
-import { getEntityName } from '../../../../../utils/EntityUtils';
+import {
+  getColumnSorter,
+  getEntityName,
+} from '../../../../../utils/EntityUtils';
+import {
+  getAllTags,
+  searchTagInData,
+} from '../../../../../utils/TableTags/TableTags.utils';
 import { updateFieldTags } from '../../../../../utils/TableUtils';
 import Table from '../../../../common/Table/Table';
+import { ColumnFilter } from '../../../../Database/ColumnFilter/ColumnFilter.component';
 import TableDescription from '../../../../Database/TableDescription/TableDescription.component';
 import TableTags from '../../../../Database/TableTags/TableTags.component';
 import { ModalWithMarkdownEditor } from '../../../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
@@ -39,6 +47,15 @@ const ModelTab = ({
 }: ModelTabProps) => {
   const { t } = useTranslation();
   const [editColumnDescription, setEditColumnDescription] = useState<Column>();
+
+  const tagFilter = useMemo(() => {
+    const tags = getAllTags(data ?? []);
+
+    return groupBy(uniqBy(tags, 'value'), (tag) => tag.source) as Record<
+      TagSource,
+      TagFilterOptions[]
+    >;
+  }, [data]);
 
   const handleFieldTagsChange = useCallback(
     async (selectedTags: EntityTags[], editColumnTag: Column) => {
@@ -79,6 +96,7 @@ const ModelTab = ({
         key: 'name',
         width: 250,
         fixed: 'left',
+        sorter: getColumnSorter<Column, 'name'>('name'),
         render: (_, record) => (
           <Typography.Text>{getEntityName(record)}</Typography.Text>
         ),
@@ -121,7 +139,10 @@ const ModelTab = ({
         dataIndex: 'tags',
         key: 'tags',
         accessor: 'tags',
-        width: 300,
+        width: 250,
+        filters: tagFilter.Classification,
+        filterDropdown: ColumnFilter,
+        onFilter: searchTagInData,
         render: (tags: TagLabel[], record: Column, index: number) => (
           <TableTags<Column>
             entityFqn={entityFqn}
@@ -140,9 +161,12 @@ const ModelTab = ({
       {
         title: t('label.glossary-term-plural'),
         dataIndex: 'tags',
-        key: 'tags',
+        key: 'glossary',
         accessor: 'tags',
-        width: 300,
+        width: 250,
+        filters: tagFilter.Glossary,
+        filterDropdown: ColumnFilter,
+        onFilter: searchTagInData,
         render: (tags: TagLabel[], record: Column, index: number) => (
           <TableTags<Column>
             entityFqn={entityFqn}
@@ -162,6 +186,7 @@ const ModelTab = ({
     [
       entityFqn,
       isReadOnly,
+      tagFilter,
       hasEditTagsPermission,
       editColumnDescription,
       hasEditDescriptionPermission,
@@ -174,7 +199,7 @@ const ModelTab = ({
     <>
       <Table
         bordered
-        className="p-t-xs"
+        className="p-t-xs align-table-filter-left"
         columns={tableColumn}
         data-testid="data-model-column-table"
         dataSource={data}

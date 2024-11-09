@@ -20,7 +20,7 @@ import { JoinedWith } from '../../../generated/entity/data/table';
 import { getCountBadge } from '../../../utils/CommonUtils';
 import './frequently-joined-tables.style.less';
 
-type Joined = JoinedWith & {
+export type Joined = JoinedWith & {
   name: string;
 };
 

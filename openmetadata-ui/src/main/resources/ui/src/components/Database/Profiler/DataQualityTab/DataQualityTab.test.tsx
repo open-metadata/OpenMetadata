@@ -27,6 +27,7 @@ import DataQualityTab from './DataQualityTab';
 const mockProps: DataQualityTabProps = {
   testCases: MOCK_TEST_CASE,
   onTestUpdate: jest.fn(),
+  fetchTestCases: jest.fn(),
 };
 const mockPermissionsData = {
   permissions: {
@@ -114,6 +115,76 @@ describe('DataQualityTab test', () => {
     expect(await findByText(header, 'label.action-plural')).toBeInTheDocument();
   });
 
+  it('Should send API request with sort params on click of last-run', async () => {
+    await act(async () => {
+      render(<DataQualityTab {...mockProps} />);
+    });
+    const tableRows = await screen.findAllByRole('row');
+    const header = tableRows[0];
+    const lastRunHeader = await findByText(header, 'label.last-run');
+
+    expect(lastRunHeader).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(lastRunHeader);
+    });
+
+    expect(mockProps.fetchTestCases).toHaveBeenCalledWith({
+      sortField: 'testCaseResult.timestamp',
+      sortType: 'asc',
+    });
+
+    await act(async () => {
+      fireEvent.click(lastRunHeader);
+    });
+
+    expect(mockProps.fetchTestCases).toHaveBeenCalledWith({
+      sortField: 'testCaseResult.timestamp',
+      sortType: 'desc',
+    });
+
+    await act(async () => {
+      fireEvent.click(lastRunHeader);
+    });
+
+    expect(mockProps.fetchTestCases).toHaveBeenCalledWith(undefined);
+  });
+
+  it('Should send API request with sort params on click of name', async () => {
+    await act(async () => {
+      render(<DataQualityTab {...mockProps} />);
+    });
+    const tableRows = await screen.findAllByRole('row');
+    const header = tableRows[0];
+    const lastRunHeader = await findByText(header, 'label.name');
+
+    expect(lastRunHeader).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(lastRunHeader);
+    });
+
+    expect(mockProps.fetchTestCases).toHaveBeenCalledWith({
+      sortField: 'name.keyword',
+      sortType: 'asc',
+    });
+
+    await act(async () => {
+      fireEvent.click(lastRunHeader);
+    });
+
+    expect(mockProps.fetchTestCases).toHaveBeenCalledWith({
+      sortField: 'name.keyword',
+      sortType: 'desc',
+    });
+
+    await act(async () => {
+      fireEvent.click(lastRunHeader);
+    });
+
+    expect(mockProps.fetchTestCases).toHaveBeenCalledWith(undefined);
+  });
+
   it('Table data should be render as per data props', async () => {
     const firstRowData = MOCK_TEST_CASE[0];
     await act(async () => {
@@ -137,7 +208,9 @@ describe('DataQualityTab test', () => {
 
     expect(testName).toBeInTheDocument();
     expect(tableLink).toBeInTheDocument();
-    expect(tableLink.textContent).toEqual('dim_address');
+    expect(tableLink.textContent).toEqual(
+      'sample_data.ecommerce_db.shopify.dim_address'
+    );
     expect(columnName).toBeInTheDocument();
     expect(editButton).toBeInTheDocument();
     expect(deleteButton).toBeInTheDocument();

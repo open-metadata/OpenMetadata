@@ -10,9 +10,7 @@ import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
-import static org.openmetadata.service.util.TestUtils.UpdateType.CHANGE_CONSOLIDATED;
 import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
-import static org.openmetadata.service.util.TestUtils.UpdateType.REVERT;
 import static org.openmetadata.service.util.TestUtils.assertEntityReferenceNames;
 import static org.openmetadata.service.util.TestUtils.assertListNotNull;
 import static org.openmetadata.service.util.TestUtils.assertListNull;
@@ -71,21 +69,17 @@ public class DomainResourceTest extends EntityResourceTest<Domain, CreateDomain>
     fieldDeleted(change, "experts", listOf(USER2.getEntityReference()));
     domain = updateAndCheckEntity(create, Status.OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
-    // Add User2 back as expert using PATCH
-    // Version 0. 2 - Changes from this PATCH is consolidated with the previous change resulting in
-    // no change
     String json = JsonUtils.pojoToJson(domain);
     domain.withExperts(List.of(USER1.getEntityReference(), USER2.getEntityReference()));
-    change = getChangeDescription(domain, REVERT);
-    domain = patchEntityAndCheck(domain, json, ADMIN_AUTH_HEADERS, REVERT, change);
+    change = getChangeDescription(domain, MINOR_UPDATE);
+    fieldAdded(change, "experts", listOf(USER2.getEntityReference()));
+    domain = patchEntityAndCheck(domain, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
-    // Remove User2 as expert using PATCH
-    // Version 0.1 - Changes from this PATCH is consolidated with the previous two changes resulting
-    // in deletion of USER2
     json = JsonUtils.pojoToJson(domain);
-    change = getChangeDescription(domain, REVERT);
+    change = getChangeDescription(domain, MINOR_UPDATE);
+    fieldDeleted(change, "experts", listOf(USER2.getEntityReference()));
     domain.withExperts(List.of(USER1.getEntityReference()));
-    patchEntityAndCheck(domain, json, ADMIN_AUTH_HEADERS, REVERT, change);
+    patchEntityAndCheck(domain, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }
 
   @Test
@@ -104,16 +98,16 @@ public class DomainResourceTest extends EntityResourceTest<Domain, CreateDomain>
     // Changes from this PATCH is consolidated with the previous changes
     String json = JsonUtils.pojoToJson(domain);
     domain.withDomainType(DomainType.CONSUMER_ALIGNED);
-    change = getChangeDescription(domain, CHANGE_CONSOLIDATED);
-    fieldUpdated(change, "domainType", DomainType.AGGREGATE, DomainType.CONSUMER_ALIGNED);
-    patchEntityAndCheck(domain, json, ADMIN_AUTH_HEADERS, CHANGE_CONSOLIDATED, change);
+    change = getChangeDescription(domain, MINOR_UPDATE);
+    fieldUpdated(change, "domainType", DomainType.SOURCE_ALIGNED, DomainType.CONSUMER_ALIGNED);
+    patchEntityAndCheck(domain, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }
 
   @Test
   void testInheritedPermissionFromParent(TestInfo test) throws IOException {
     // Create a domain with owner data consumer
     CreateDomain create =
-        createRequest(getEntityName(test)).withOwner(DATA_CONSUMER.getEntityReference());
+        createRequest(getEntityName(test)).withOwners(List.of(DATA_CONSUMER.getEntityReference()));
     Domain d = createEntity(create, ADMIN_AUTH_HEADERS);
 
     // Data consumer as an owner of domain can create subdomain under it
@@ -127,10 +121,7 @@ public class DomainResourceTest extends EntityResourceTest<Domain, CreateDomain>
     EntityReference entityReference = new EntityReference().withId(rdnUUID);
     TableRepository entityRepository = (TableRepository) Entity.getEntityRepository(TABLE);
 
-    assertThatThrownBy(
-            () -> {
-              entityRepository.validateDomain(entityReference);
-            })
+    assertThatThrownBy(() -> entityRepository.validateDomain(entityReference))
         .isInstanceOf(EntityNotFoundException.class)
         .hasMessage(String.format("domain instance for %s not found", rdnUUID));
   }
@@ -190,9 +181,9 @@ public class DomainResourceTest extends EntityResourceTest<Domain, CreateDomain>
     assertListNull(
         getDomain.getParent(),
         getDomain.getChildren(),
-        getDomain.getOwner(),
+        getDomain.getOwners(),
         getDomain.getExperts());
-    String fields = "children,owner,parent,experts";
+    String fields = "children,owners,parent,experts";
     getDomain =
         byName
             ? getEntityByName(getDomain.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)

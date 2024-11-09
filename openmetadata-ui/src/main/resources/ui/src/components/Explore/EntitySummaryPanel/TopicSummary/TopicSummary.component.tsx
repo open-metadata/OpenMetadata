@@ -15,8 +15,7 @@ import { Col, Divider, Row, Typography } from 'antd';
 import { get, isArray, isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
-import { getTeamAndUserDetailsPath } from '../../../../constants/constants';
+import { TabSpecificField } from '../../../../enums/entity.enum';
 import { SummaryEntityType } from '../../../../enums/EntitySummary.enum';
 import { TagLabel, Topic } from '../../../../generated/entity/data/topic';
 import { getTopicByFqn } from '../../../../rest/topicsAPI';
@@ -70,19 +69,17 @@ function TopicSummary({
   }, [entityDetails, topicDetails]);
 
   const ownerDetails = useMemo(() => {
-    const owner = entityDetails.owner;
+    const owners = entityDetails.owners;
 
     return {
-      value: <OwnerLabel hasPermission={false} owner={owner} />,
-      url: getTeamAndUserDetailsPath(owner?.name ?? ''),
-      isLink: !isEmpty(owner?.name),
+      value: <OwnerLabel hasPermission={false} owners={owners} />,
     };
   }, [entityDetails, topicDetails]);
 
   const fetchExtraTopicInfo = useCallback(async () => {
     try {
       const res = await getTopicByFqn(entityDetails.fullyQualifiedName ?? '', {
-        fields: 'tags,owner',
+        fields: [TabSpecificField.OWNERS, TabSpecificField.TAGS],
       });
 
       const { partitions, messageSchema } = res;
@@ -115,17 +112,7 @@ function TopicSummary({
         <Row className="m-md m-t-0" gutter={[0, 4]}>
           {!isExplore ? (
             <Col className="p-b-md" span={24}>
-              {ownerDetails.isLink ? (
-                <Link
-                  component={Typography.Link}
-                  to={{ pathname: ownerDetails.url }}>
-                  {ownerDetails.value}
-                </Link>
-              ) : (
-                <Typography.Text className="text-grey-muted">
-                  {ownerDetails.value}
-                </Typography.Text>
-              )}
+              {ownerDetails.value}
             </Col>
           ) : null}
           <Col span={24}>

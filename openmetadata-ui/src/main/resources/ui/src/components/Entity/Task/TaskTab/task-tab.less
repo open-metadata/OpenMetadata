@@ -19,15 +19,39 @@
   }
 }
 
-.task-feed-message {
-  height: 100%;
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
+.task-action-button {
+  button {
+    border: 1px solid @primary-color;
+    color: @primary-color;
 
-  &:hover {
-    .ant-typography {
-      color: @primary-color;
+    &:first-child {
+      border-right: none;
+      padding-right: 0;
     }
+    &:last-child {
+      border-left: none;
+    }
+  }
+}
+
+.task-action-dropdown {
+  ul {
+    padding: 4px 8px;
+
+    li {
+      padding: 8px;
+      border-bottom: @global-border;
+
+      &:last-child {
+        border-bottom: none;
+      }
+    }
+  }
+}
+
+.reserve-right-sidebar {
+  .task-cta-buttons {
+    // Right side padding 20 + 64 width of sidebar
+    padding-right: 84px;
   }
 }

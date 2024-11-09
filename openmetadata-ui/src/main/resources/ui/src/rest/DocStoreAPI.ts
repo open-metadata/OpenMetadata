@@ -20,7 +20,10 @@ import { getEncodedFqn } from '../utils/StringsUtils';
 
 const BASE_URL = 'docStore';
 
-export const getAllKnowledgePanels = async (params: { fqnPrefix: string }) => {
+export const getAllKnowledgePanels = async (params: {
+  fqnPrefix: string;
+  limit: number;
+}) => {
   const response = await axiosClient.get<PagingResponse<Document[]>>(
     `${BASE_URL}`,
     {

@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Calculation:scenario xmlns:Calculation="http://www.sap.com/ndb/BiModelCalculation.ecore" schemaVersion="2.3" id="CV_TAB" applyPrivilegeType="SQL_ANALYTIC_PRIVILEGE" defaultClient="$$client$$" defaultLanguage="$$language$$" hierarchiesSQLEnabled="false" translationRelevant="true" visibility="reportingEnabled" calculationScenarioType="TREE_BASED" dataCategory="CUBE" enforceSqlExecution="false" executionSemantic="UNDEFINED" outputViewType="Projection">
+  <origin/>
+  <descriptions defaultDescription="CV_TAB"/>
+  <metadata changedAt="2024-08-28 10:51:46.367"/>
+  <localVariables/>
+  <variableMappings/>
+  <informationModelLayout relativeWidthScenario="27"/>
+  <dataSources>
+    <DataSource id="SFLIGHT" type="DATA_BASE_TABLE">
+      <viewAttributes allViewAttributes="true"/>
+      <columnObject schemaName="SFLIGHT" columnObjectName="SFLIGHT"/>
+    </DataSource>
+  </dataSources>
+  <calculationViews/>
+  <logicalModel id="SFLIGHT">
+    <descriptions/>
+    <attributes>
+      <attribute id="MANDT" order="1" attributeHierarchyActive="false" displayAttribute="false">
+        <descriptions defaultDescription="MANDT"/>
+        <keyMapping schemaName="SFLIGHT" columnObjectName="SFLIGHT" columnName="MANDT"/>
+      </attribute>
+      <attribute id="CARRID" order="2" attributeHierarchyActive="false" displayAttribute="false">
+        <descriptions defaultDescription="CARRID"/>
+        <keyMapping schemaName="SFLIGHT" columnObjectName="SFLIGHT" columnName="CARRID"/>
+      </attribute>
+      <attribute id="CONNID" order="3" attributeHierarchyActive="false" displayAttribute="false">
+        <descriptions defaultDescription="CONNID"/>
+        <keyMapping schemaName="SFLIGHT" columnObjectName="SFLIGHT" columnName="CONNID"/>
+      </attribute>
+      <attribute id="FLDATE" order="4" attributeHierarchyActive="false" displayAttribute="false">
+        <descriptions defaultDescription="FLDATE"/>
+        <keyMapping schemaName="SFLIGHT" columnObjectName="SFLIGHT" columnName="FLDATE"/>
+      </attribute>
+    </attributes>
+    <calculatedAttributes/>
+    <privateDataFoundation>
+      <tableProxies/>
+      <joins/>
+      <layout>
+        <shapes/>
+      </layout>
+    </privateDataFoundation>
+    <baseMeasures>
+      <measure id="PRICE" order="5" aggregationType="sum" measureType="simple">
+        <descriptions defaultDescription="PRICE"/>
+        <measureMapping schemaName="SFLIGHT" columnObjectName="SFLIGHT" columnName="PRICE"/>
+      </measure>
+      <measure id="SEATSMAX_B" order="6" aggregationType="sum" measureType="simple">
+        <descriptions defaultDescription="SEATSMAX_B"/>
+        <measureMapping schemaName="SFLIGHT" columnObjectName="SFLIGHT" columnName="SEATSMAX_B"/>
+      </measure>
+      <measure id="PAYMENTSUM" order="7" aggregationType="sum" measureType="simple">
+        <descriptions defaultDescription="PAYMENTSUM"/>
+        <measureMapping schemaName="SFLIGHT" columnObjectName="SFLIGHT" columnName="PAYMENTSUM"/>
+      </measure>
+    </baseMeasures>
+    <calculatedMeasures/>
+    <restrictedMeasures/>
+    <localDimensions/>
+  </logicalModel>
+  <layout>
+    <shapes>
+      <shape expanded="true" modelObjectName="Output" modelObjectNameSpace="MeasureGroup">
+        <upperLeftCorner x="40" y="85"/>
+        <rectangleSize/>
+      </shape>
+    </shapes>
+  </layout>
+</Calculation:scenario>

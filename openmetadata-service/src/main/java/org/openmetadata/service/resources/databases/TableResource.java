@@ -15,6 +15,7 @@ package org.openmetadata.service.resources.databases;
 
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 
+import es.org.elasticsearch.action.search.SearchResponse;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -70,11 +71,13 @@ import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TableRepository;
+import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
+import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 
@@ -89,8 +92,8 @@ import org.openmetadata.service.util.ResultList;
 public class TableResource extends EntityResource<Table, TableRepository> {
   public static final String COLLECTION_PATH = "v1/tables/";
   static final String FIELDS =
-      "tableConstraints,tablePartition,usageSummary,owner,customMetrics,columns,"
-          + "tags,followers,joins,viewDefinition,dataModel,extension,testSuite,domain,dataProducts,lifeCycle,sourceHash";
+      "tableConstraints,tablePartition,usageSummary,owners,customMetrics,columns,"
+          + "tags,followers,joins,schemaDefinition,dataModel,extension,testSuite,domain,dataProducts,lifeCycle,sourceHash";
 
   @Override
   public Table addHref(UriInfo uriInfo, Table table) {
@@ -101,15 +104,15 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     return table;
   }
 
-  public TableResource(Authorizer authorizer) {
-    super(Entity.TABLE, authorizer);
+  public TableResource(Authorizer authorizer, Limits limits) {
+    super(Entity.TABLE, authorizer, limits);
   }
 
   @Override
   protected List<MetadataOperation> getEntitySpecificOperations() {
     allowedFields.add("customMetrics");
     addViewOperation(
-        "columns,tableConstraints,tablePartition,joins,viewDefinition,dataModel",
+        "columns,tableConstraints,tablePartition,joins,schemaDefinition,dataModel",
         MetadataOperation.VIEW_BASIC);
     addViewOperation("usageSummary", MetadataOperation.VIEW_USAGE);
     addViewOperation("customMetrics", MetadataOperation.VIEW_TESTS);
@@ -120,11 +123,13 @@ public class TableResource extends EntityResource<Table, TableRepository> {
         MetadataOperation.VIEW_DATA_PROFILE,
         MetadataOperation.VIEW_SAMPLE_DATA,
         MetadataOperation.VIEW_USAGE,
+        MetadataOperation.VIEW_PROFILER_GLOBAL_CONFIGURATION,
         MetadataOperation.EDIT_TESTS,
         MetadataOperation.EDIT_QUERIES,
         MetadataOperation.EDIT_DATA_PROFILE,
         MetadataOperation.EDIT_SAMPLE_DATA,
-        MetadataOperation.EDIT_LINEAGE);
+        MetadataOperation.EDIT_LINEAGE,
+        MetadataOperation.EDIT_ENTITY_RELATIONSHIP);
   }
 
   public static class TableList extends ResultList<Table> {
@@ -418,6 +423,59 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
+  @PATCH
+  @Path("/name/{fqn}")
+  @Operation(
+      operationId = "patchTable",
+      summary = "Update a table by name.",
+      description = "Update an existing table using JsonPatch.",
+      externalDocs =
+          @ExternalDocumentation(
+              description = "JsonPatch RFC",
+              url = "https://tools.ietf.org/html/rfc6902"))
+  @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
+  public Response patch(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the table", schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn,
+      @RequestBody(
+              description = "JsonPatch with array of operations",
+              content =
+                  @Content(
+                      mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
+                      examples = {
+                        @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
+                      }))
+          JsonPatch patch) {
+    return patchInternal(uriInfo, securityContext, fqn, patch);
+  }
+
+  @GET
+  @Path("/name/{name}/exportAsync")
+  @Produces(MediaType.TEXT_PLAIN)
+  @Valid
+  @Operation(
+      operationId = "exportTable",
+      summary = "Export table in CSV format",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Exported csv with columns from the table",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = String.class)))
+      })
+  public Response exportCsvAsync(
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the table", schema = @Schema(type = "string"))
+          @PathParam("name")
+          String name) {
+    return exportCsvInternalAsync(securityContext, name);
+  }
+
   @GET
   @Path("/name/{name}/export")
   @Produces(MediaType.TEXT_PLAIN)
@@ -670,7 +728,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
         new OperationContext(entityType, MetadataOperation.VIEW_SAMPLE_DATA);
     ResourceContext<?> resourceContext = getResourceContextById(id);
     authorizer.authorize(securityContext, operationContext, resourceContext);
-    boolean authorizePII = authorizer.authorizePII(securityContext, resourceContext.getOwner());
+    boolean authorizePII = authorizer.authorizePII(securityContext, resourceContext.getOwners());
 
     Table table = repository.getSampleData(id, authorizePII);
     return addHref(uriInfo, table);
@@ -811,7 +869,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
         new OperationContext(entityType, MetadataOperation.VIEW_DATA_PROFILE);
     ResourceContext<?> resourceContext = getResourceContextByName(fqn);
     authorizer.authorize(securityContext, operationContext, resourceContext);
-    boolean authorizePII = authorizer.authorizePII(securityContext, resourceContext.getOwner());
+    boolean authorizePII = authorizer.authorizePII(securityContext, resourceContext.getOwners());
 
     return Response.status(Response.Status.OK)
         .entity(JsonUtils.pojoToJson(repository.getLatestTableProfile(fqn, authorizePII)))
@@ -897,8 +955,13 @@ public class TableResource extends EntityResource<Table, TableRepository> {
           Long endTs) {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_DATA_PROFILE);
-    authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
-    return repository.getColumnProfiles(fqn, startTs, endTs);
+    String tableFqn =
+        FullyQualifiedName.getTableFQN(
+            fqn); // get table fqn for the resource context (vs column fqn)
+    ResourceContext<?> resourceContext = getResourceContextByName(tableFqn);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
+    boolean authorizePII = authorizer.authorizePII(securityContext, resourceContext.getOwners());
+    return repository.getColumnProfiles(fqn, startTs, endTs, authorizePII);
   }
 
   @GET
@@ -1182,11 +1245,46 @@ public class TableResource extends EntityResource<Table, TableRepository> {
         .toResponse();
   }
 
+  @GET
+  @Path("/entityRelationship")
+  @Operation(
+      operationId = "searchEntityRelationship",
+      summary = "Search Entity Relationship",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "search response",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = SearchResponse.class)))
+      })
+  public Response searchEntityRelationship(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "fqn") @QueryParam("fqn") String fqn,
+      @Parameter(description = "upstreamDepth") @QueryParam("upstreamDepth") int upstreamDepth,
+      @Parameter(description = "downstreamDepth") @QueryParam("downstreamDepth")
+          int downstreamDepth,
+      @Parameter(
+              description =
+                  "Elasticsearch query that will be combined with the query_string query generator from the `query` argument")
+          @QueryParam("query_filter")
+          String queryFilter,
+      @Parameter(description = "Filter documents by deleted param. By default deleted is false")
+          @QueryParam("includeDeleted")
+          @DefaultValue("false")
+          boolean deleted)
+      throws IOException {
+
+    return Entity.getSearchRepository()
+        .searchEntityRelationship(fqn, upstreamDepth, downstreamDepth, queryFilter, deleted);
+  }
+
   public static Table validateNewTable(Table table) {
     table.setId(UUID.randomUUID());
     DatabaseUtil.validateConstraints(table.getColumns(), table.getTableConstraints());
     DatabaseUtil.validateTablePartition(table.getColumns(), table.getTablePartition());
-    DatabaseUtil.validateViewDefinition(table.getTableType(), table.getViewDefinition());
     DatabaseUtil.validateColumns(table.getColumns());
     return table;
   }
@@ -1197,11 +1295,12 @@ public class TableResource extends EntityResource<Table, TableRepository> {
                 .copy(new Table(), create, user)
                 .withColumns(create.getColumns())
                 .withSourceUrl(create.getSourceUrl())
+                .withLocationPath(create.getLocationPath())
                 .withTableConstraints(create.getTableConstraints())
                 .withTablePartition(create.getTablePartition())
                 .withTableType(create.getTableType())
                 .withFileFormat(create.getFileFormat())
-                .withViewDefinition(create.getViewDefinition())
+                .withSchemaDefinition(create.getSchemaDefinition())
                 .withTableProfilerConfig(create.getTableProfilerConfig())
                 .withDatabaseSchema(
                     getEntityReference(Entity.DATABASE_SCHEMA, create.getDatabaseSchema())))
@@ -1216,7 +1315,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
         .withDescription(create.getDescription())
         .withName(create.getName())
         .withColumnName(create.getColumnName())
-        .withOwner(create.getOwner())
+        .withOwners(create.getOwners())
         .withExpression(create.getExpression())
         .withUpdatedBy(securityContext.getUserPrincipal().getName())
         .withUpdatedAt(System.currentTimeMillis());

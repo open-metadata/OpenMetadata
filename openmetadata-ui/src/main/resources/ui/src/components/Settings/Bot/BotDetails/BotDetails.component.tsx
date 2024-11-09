@@ -26,25 +26,25 @@ import { AxiosError } from 'axios';
 import { toLower } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as IconBotProfile } from '../../../../assets/svg/bot-profile.svg';
 import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
-import { TERM_ADMIN } from '../../../../constants/constants';
+import { PAGE_SIZE_LARGE, TERM_ADMIN } from '../../../../constants/constants';
 import { GlobalSettingOptions } from '../../../../constants/GlobalSettings.constants';
+import { useLimitStore } from '../../../../context/LimitsProvider/useLimitsStore';
+import { EntityType } from '../../../../enums/entity.enum';
 import { Role } from '../../../../generated/entity/teams/role';
-import { getRoles } from '../../../../rest/userAPI';
+import { getRoles } from '../../../../rest/rolesAPIV1';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { getSettingPath } from '../../../../utils/RouterUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
+import DescriptionV1 from '../../../common/EntityDescription/DescriptionV1';
 import InheritedRolesCard from '../../../common/InheritedRolesCard/InheritedRolesCard.component';
 import RolesCard from '../../../common/RolesCard/RolesCard.component';
 import TitleBreadcrumb from '../../../common/TitleBreadcrumb/TitleBreadcrumb.component';
 import PageLayoutV1 from '../../../PageLayoutV1/PageLayoutV1';
+import AccessTokenCard from '../../Users/AccessTokenCard/AccessTokenCard.component';
 import './bot-details.less';
 import { BotsDetailProps } from './BotDetails.interfaces';
-
-import { ReactComponent as IconBotProfile } from '../../../../assets/svg/bot-profile.svg';
-import { EntityType } from '../../../../enums/entity.enum';
-import DescriptionV1 from '../../../common/EntityDescription/DescriptionV1';
-import AccessTokenCard from '../../Users/AccessTokenCard/AccessTokenCard.component';
 
 const BotDetails: FC<BotsDetailProps> = ({
   botData,
@@ -59,26 +59,41 @@ const BotDetails: FC<BotsDetailProps> = ({
   const [isDescriptionEdit, setIsDescriptionEdit] = useState(false);
   const [selectedRoles, setSelectedRoles] = useState<Array<string>>([]);
   const [roles, setRoles] = useState<Array<Role>>([]);
+  const { getResourceLimit, config } = useLimitStore();
+
+  const [disableFields, setDisableFields] = useState<string[]>(['token']);
 
   const { t } = useTranslation();
 
-  const editAllPermission = useMemo(
-    () => botPermission.EditAll,
-    [botPermission]
-  );
-  const displayNamePermission = useMemo(
-    () => botPermission.EditDisplayName,
-    [botPermission]
-  );
+  const { editAllPermission, displayNamePermission, descriptionPermission } =
+    useMemo(
+      () => ({
+        editAllPermission: botPermission.EditAll,
+        displayNamePermission: botPermission.EditDisplayName,
+        descriptionPermission: botPermission.EditDescription,
+      }),
+      [botPermission]
+    );
 
-  const descriptionPermission = useMemo(
-    () => botPermission.EditDescription,
-    [botPermission]
-  );
+  const initLimits = async () => {
+    if (!config?.enable) {
+      setDisableFields([]);
+    } else {
+      const limits = await getResourceLimit('bot', false);
+
+      setDisableFields(limits.configuredLimit.disabledFields ?? []);
+    }
+  };
 
   const fetchRoles = async () => {
     try {
-      const { data } = await getRoles();
+      const { data } = await getRoles(
+        '',
+        undefined,
+        undefined,
+        false,
+        PAGE_SIZE_LARGE
+      );
       setRoles(data);
     } catch (err) {
       setRoles([]);
@@ -219,6 +234,7 @@ const BotDetails: FC<BotsDetailProps> = ({
 
   useEffect(() => {
     fetchRoles();
+    initLimits();
   }, []);
 
   useEffect(() => {
@@ -257,6 +273,7 @@ const BotDetails: FC<BotsDetailProps> = ({
           isBot
           botData={botData}
           botUserData={botUserData}
+          disabled={disableFields.includes('token')}
           revokeTokenHandlerBot={revokeTokenHandler}
         />
       </div>

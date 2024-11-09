@@ -13,7 +13,9 @@
 
 import Icon from '@ant-design/icons';
 import {
+  Alert,
   Badge,
+  Button,
   Col,
   Dropdown,
   Input,
@@ -23,6 +25,7 @@ import {
   Select,
   Space,
   Tooltip,
+  Typography,
 } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -44,16 +47,20 @@ import { ReactComponent as DropDownIcon } from '../../assets/svg/drop-down.svg';
 import { ReactComponent as IconBell } from '../../assets/svg/ic-alert-bell.svg';
 import { ReactComponent as DomainIcon } from '../../assets/svg/ic-domain.svg';
 import { ReactComponent as Help } from '../../assets/svg/ic-help.svg';
+import { ReactComponent as RefreshIcon } from '../../assets/svg/ic-refresh.svg';
 import { ReactComponent as IconSearch } from '../../assets/svg/search.svg';
 import {
   NOTIFICATION_READ_TIMER,
   SOCKET_EVENTS,
 } from '../../constants/constants';
 import { HELP_ITEMS_ENUM } from '../../constants/Navbar.constants';
-import { useGlobalSearchProvider } from '../../context/GlobalSearchProvider/GlobalSearchProvider';
 import { useWebSocketConnector } from '../../context/WebSocketProvider/WebSocketProvider';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
+import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
+import { useDomainStore } from '../../hooks/useDomainStore';
 import { getVersion } from '../../rest/miscAPI';
+import { isProtectedRoute } from '../../utils/AuthProvider.util';
 import brandImageClassBase from '../../utils/BrandImage/BrandImageClassBase';
 import {
   hasNotificationPermission,
@@ -61,6 +68,7 @@ import {
 } from '../../utils/BrowserNotificationUtils';
 import { refreshPage } from '../../utils/CommonUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
+import { getEntityName } from '../../utils/EntityUtils';
 import {
   getEntityFQN,
   getEntityType,
@@ -82,7 +90,8 @@ import { ActivityFeedTabs } from '../ActivityFeed/ActivityFeedTab/ActivityFeedTa
 import SearchOptions from '../AppBar/SearchOptions';
 import Suggestions from '../AppBar/Suggestions';
 import CmdKIcon from '../common/CmdKIcon/CmdKIcon.component';
-import { useDomainProvider } from '../Domain/DomainProvider/DomainProvider';
+import { useEntityExportModalProvider } from '../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
+import { CSVExportWebsocketResponse } from '../Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
 import WhatsNewModal from '../Modals/WhatsNewModal/WhatsNewModal';
 import NotificationBox from '../NotificationBox/NotificationBox.component';
 import { UserProfileIcon } from '../Settings/Users/UserProfileIcon/UserProfileIcon.component';
@@ -103,13 +112,20 @@ const NavBar = ({
   handleOnClick,
   handleClear,
 }: NavBarProps) => {
-  const { searchCriteria, updateSearchCriteria } = useGlobalSearchProvider();
+  const { onUpdateCSVExportJob } = useEntityExportModalProvider();
+  const { searchCriteria, updateSearchCriteria } = useApplicationStore();
   const searchContainerRef = useRef<HTMLDivElement>(null);
   const Logo = useMemo(() => brandImageClassBase.getMonogram().src, []);
-
+  const [showVersionMissMatchAlert, setShowVersionMissMatchAlert] =
+    useState(false);
+  const location = useCustomLocation();
   const history = useHistory();
-  const { domainOptions, activeDomain, updateActiveDomain } =
-    useDomainProvider();
+  const {
+    domainOptions,
+    activeDomain,
+    activeDomainEntityRef,
+    updateActiveDomain,
+  } = useDomainStore();
   const { t } = useTranslation();
   const { Option } = Select;
   const searchRef = useRef<InputRef>(null);
@@ -292,7 +308,24 @@ const NavBar = ({
     if (shouldRequestPermission()) {
       Notification.requestPermission();
     }
-  }, []);
+
+    const handleDocumentVisibilityChange = async () => {
+      if (isProtectedRoute(location.pathname) && isTourRoute) {
+        return;
+      }
+      const newVersion = await getVersion();
+      // Compare version only if version is set previously to have fair comparison
+      if (version && version !== newVersion.version) {
+        setShowVersionMissMatchAlert(true);
+      }
+    };
+
+    addEventListener('focus', handleDocumentVisibilityChange);
+
+    return () => {
+      removeEventListener('focus', handleDocumentVisibilityChange);
+    };
+  }, [isTourRoute, version]);
 
   useEffect(() => {
     if (socket) {
@@ -319,11 +352,22 @@ const NavBar = ({
           );
         }
       });
+
+      socket.on(SOCKET_EVENTS.CSV_EXPORT_CHANNEL, (exportResponse) => {
+        if (exportResponse) {
+          const exportResponseData = JSON.parse(
+            exportResponse
+          ) as CSVExportWebsocketResponse;
+
+          onUpdateCSVExportJob(exportResponseData);
+        }
+      });
     }
 
     return () => {
       socket && socket.off(SOCKET_EVENTS.TASK_CHANNEL);
       socket && socket.off(SOCKET_EVENTS.MENTION_CHANNEL);
+      socket && socket.off(SOCKET_EVENTS.CSV_EXPORT_CHANNEL);
     };
   }, [socket]);
 
@@ -420,6 +464,7 @@ const NavBar = ({
                           'text-primary': !isSearchBlur,
                         })}
                         component={IconCloseCircleOutlined}
+                        data-testid="cancel-icon"
                         style={{ fontSize: '16px' }}
                         onClick={handleClear}
                       />
@@ -467,6 +512,8 @@ const NavBar = ({
             menu={{
               items: domainOptions,
               onClick: handleDomainChange,
+              className: 'domain-dropdown-menu',
+              defaultSelectedKeys: [activeDomain],
             }}
             placement="bottomRight"
             trigger={['click']}>
@@ -479,7 +526,13 @@ const NavBar = ({
                   width={24}
                 />
               </Col>
-              <Col className="flex-center">{activeDomain}</Col>
+              <Col className="flex-center">
+                <Typography.Text>
+                  {activeDomainEntityRef
+                    ? getEntityName(activeDomainEntityRef)
+                    : activeDomain}
+                </Typography.Text>
+              </Col>
               <Col className="flex-center">
                 <DropDownIcon height={14} width={14} />
               </Col>
@@ -549,6 +602,7 @@ const NavBar = ({
               <Icon
                 className="align-middle"
                 component={Help}
+                data-testid="help-icon"
                 style={{ fontSize: '24px' }}
               />
             </Tooltip>
@@ -563,6 +617,26 @@ const NavBar = ({
         onCancel={handleModalCancel}
       />
 
+      {showVersionMissMatchAlert && (
+        <Alert
+          showIcon
+          action={
+            <Button
+              size="small"
+              type="link"
+              onClick={() => {
+                history.go(0);
+              }}>
+              {t('label.refresh')}
+            </Button>
+          }
+          className="refresh-alert slide-in-top"
+          description="For a seamless experience recommend you to refresh the page"
+          icon={<RefreshIcon />}
+          message="A new version is available"
+          type="info"
+        />
+      )}
       {renderAlertCards}
     </>
   );

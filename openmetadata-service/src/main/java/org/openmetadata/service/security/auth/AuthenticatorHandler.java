@@ -1,6 +1,8 @@
 package org.openmetadata.service.security.auth;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.NOT_IMPLEMENTED_METHOD;
+import static org.openmetadata.service.util.UserUtil.getRoleListFromUser;
 
 import freemarker.template.TemplateException;
 import java.io.IOException;
@@ -31,13 +33,13 @@ public interface AuthenticatorHandler {
 
   void checkIfLoginBlocked(String userName);
 
-  void recordFailedLoginAttempt(String providedIdentity, User user)
+  void recordFailedLoginAttempt(String email, String userName)
       throws TemplateException, IOException;
 
-  void validatePassword(String providedIdentity, User storedUser, String reqPassword)
+  void validatePassword(String providedIdentity, String reqPassword, User omUser)
       throws TemplateException, IOException;
 
-  User lookUserInProvider(String userName);
+  User lookUserInProvider(String email, String pwd) throws TemplateException, IOException;
 
   default User registerUser(RegistrationRequest registrationRequest) {
     throw new CustomExceptionMessage(
@@ -104,6 +106,8 @@ public interface AuthenticatorHandler {
         JWTTokenGenerator.getInstance()
             .generateJWTToken(
                 storedUser.getName(),
+                getRoleListFromUser(storedUser),
+                !nullOrEmpty(storedUser.getIsAdmin()) && storedUser.getIsAdmin(),
                 storedUser.getEmail(),
                 expireInSeconds,
                 false,

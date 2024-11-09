@@ -118,4 +118,12 @@ describe('Test TierCard Component', () => {
 
     expect(mockOnUpdate).toHaveBeenCalled();
   });
+
+  it('should call getTags for popoverProps.open = true', async () => {
+    await act(async () => {
+      render(<TierCard {...mockProps} popoverProps={{ open: true }} />);
+    });
+
+    expect(mockGetTags).toHaveBeenCalled();
+  });
 });

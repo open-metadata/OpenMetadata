@@ -81,6 +81,7 @@ export const ModalWithMarkdownEditor: FunctionComponent<ModalWithMarkdownEditorP
         width="90%"
         onCancel={onCancel}>
         <RichTextEditor
+          autofocus
           initialValue={value}
           placeHolder={placeholder}
           ref={markdownRef}

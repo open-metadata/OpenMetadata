@@ -93,7 +93,7 @@ class OMetaDatabaseServiceTest(TestCase):
         service_db_id = str(
             cls.metadata.get_by_name(
                 entity=DatabaseService, fqn="test-db-service"
-            ).id.__root__
+            ).id.root
         )
 
         cls.metadata.delete(
@@ -199,12 +199,12 @@ class OMetaDatabaseServiceTest(TestCase):
         )
         # Then fetch by ID
         res_id = self.metadata.get_by_id(
-            entity=DatabaseService, entity_id=str(res_name.id.__root__)
+            entity=DatabaseService, entity_id=str(res_name.id.root)
         )
 
         # Delete
         self.metadata.delete(
-            entity=DatabaseService, entity_id=str(res_id.id.__root__), recursive=True
+            entity=DatabaseService, entity_id=str(res_id.id.root), recursive=True
         )
 
         # Then we should not find it
@@ -224,6 +224,6 @@ class OMetaDatabaseServiceTest(TestCase):
         )
 
         res = self.metadata.get_list_entity_versions(
-            entity=DatabaseService, entity_id=res_name.id.__root__
+            entity=DatabaseService, entity_id=res_name.id.root
         )
         assert res

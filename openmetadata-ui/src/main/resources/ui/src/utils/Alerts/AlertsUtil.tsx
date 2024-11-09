@@ -11,7 +11,16 @@
  *  limitations under the License.
  */
 
-import { Col, Input, Select, Switch, Tooltip } from 'antd';
+import {
+  Checkbox,
+  Col,
+  Divider,
+  Input,
+  Row,
+  Select,
+  Switch,
+  Tooltip,
+} from 'antd';
 import Form, { RuleObject } from 'antd/lib/form';
 import { AxiosError } from 'axios';
 import i18next, { t } from 'i18next';
@@ -23,13 +32,13 @@ import { ReactComponent as MSTeamsIcon } from '../../assets/svg/ms-teams.svg';
 import { ReactComponent as SlackIcon } from '../../assets/svg/slack.svg';
 import { ReactComponent as WebhookIcon } from '../../assets/svg/webhook.svg';
 import { AsyncSelect } from '../../components/common/AsyncSelect/AsyncSelect';
+import { InlineAlertProps } from '../../components/common/InlineAlert/InlineAlert.interface';
 import {
   DESTINATION_DROPDOWN_TABS,
   DESTINATION_SOURCE_ITEMS,
   DESTINATION_TYPE_BASED_PLACEHOLDERS,
   EXTERNAL_CATEGORY_OPTIONS,
 } from '../../constants/Alerts.constants';
-import { HTTP_STATUS_CODE } from '../../constants/Auth.constants';
 import { PAGE_SIZE_LARGE } from '../../constants/constants';
 import { SearchIndex } from '../../enums/search.enum';
 import { StatusType } from '../../generated/entity/data/pipeline';
@@ -44,12 +53,14 @@ import {
 } from '../../generated/events/eventSubscription';
 import { TestCaseStatus } from '../../generated/tests/testCase';
 import { EventType } from '../../generated/type/changeEvent';
+import { ModifiedCreateEventSubscription } from '../../pages/AddObservabilityPage/AddObservabilityPage.interface';
 import TeamAndUserSelectItem from '../../pages/AddObservabilityPage/DestinationFormItem/TeamAndUserSelectItem/TeamAndUserSelectItem';
 import { searchData } from '../../rest/miscAPI';
-import { getEntityName } from '../EntityUtils';
+import { getEntityName, getEntityNameLabel } from '../EntityUtils';
+import { handleEntityCreationError } from '../formUtils';
 import { getConfigFieldFromDestinationType } from '../ObservabilityUtils';
 import searchClassBase from '../SearchClassBase';
-import { showErrorToast, showSuccessToast } from '../ToastUtils';
+import { showSuccessToast } from '../ToastUtils';
 
 export const getAlertsActionTypeIcon = (type?: SubscriptionType) => {
   switch (type) {
@@ -61,7 +72,7 @@ export const getAlertsActionTypeIcon = (type?: SubscriptionType) => {
       return <MailIcon height={16} width={16} />;
     case SubscriptionType.ActivityFeed:
       return <AllActivityIcon height={16} width={16} />;
-    case SubscriptionType.Generic:
+    case SubscriptionType.Webhook:
     default:
       return <WebhookIcon height={16} width={16} />;
   }
@@ -72,7 +83,7 @@ export const getFunctionDisplayName = (func: string): string => {
     case 'matchAnyEntityFqn':
       return i18next.t('label.fqn-uppercase');
     case 'matchAnyOwnerName':
-      return i18next.t('label.owner');
+      return i18next.t('label.owner-plural');
     case 'matchAnyEventType':
       return i18next.t('label.event-type');
     case 'matchTestResult':
@@ -127,7 +138,7 @@ export const getAlertActionTypeDisplayName = (
       return i18next.t('label.activity-feed-plural');
     case SubscriptionType.Email:
       return i18next.t('label.email');
-    case SubscriptionType.Generic:
+    case SubscriptionType.Webhook:
       return i18next.t('label.webhook');
     case SubscriptionType.Slack:
       return i18next.t('label.slack');
@@ -154,16 +165,18 @@ export const getDisplayNameForEntities = (entity: string) => {
 export const EDIT_LINK_PATH = `/settings/notifications/edit-alert`;
 export const EDIT_DATA_INSIGHT_REPORT_PATH = `/settings/notifications/edit-data-insight-report`;
 
-const searchEntity = async ({
+export const searchEntity = async ({
   searchText,
   searchIndex,
   filters,
   showDisplayNameAsLabel = true,
+  setSourceAsValue = false,
 }: {
   searchText: string;
   searchIndex: SearchIndex | SearchIndex[];
   filters?: string;
   showDisplayNameAsLabel?: boolean;
+  setSourceAsValue?: boolean;
 }) => {
   try {
     const response = await searchData(
@@ -175,6 +188,8 @@ const searchEntity = async ({
       '',
       searchIndex
     );
+    const searchIndexEntityTypeMapping =
+      searchClassBase.getSearchIndexEntityTypeMapping();
 
     return uniqBy(
       response.data.hits.hits.map((d) => {
@@ -186,9 +201,16 @@ const searchEntity = async ({
           ? getEntityName(d._source)
           : d._source.fullyQualifiedName ?? '';
 
+        const value = setSourceAsValue
+          ? JSON.stringify({
+              ...d._source,
+              type: searchIndexEntityTypeMapping[d._index],
+            })
+          : d._source.fullyQualifiedName ?? '';
+
         return {
           label: displayName,
-          value: d._source.fullyQualifiedName ?? '',
+          value,
         };
       }),
       'label'
@@ -280,6 +302,30 @@ export const getSupportedFilterOptions = (
     disabled: selectedFilters?.some((d) => d.name === func.name),
   }));
 
+export const getConnectionTimeoutField = () => (
+  <>
+    <Row align="middle">
+      <Col span={7}>{`${t('label.connection-timeout')} (${t(
+        'label.second-plural'
+      )})`}</Col>
+      <Col span={1}>:</Col>
+      <Col data-testid="connection-timeout" span={16}>
+        <Form.Item name="timeout">
+          <Input
+            data-testid="connection-timeout-input"
+            defaultValue={10}
+            placeholder={`${t('label.connection-timeout')} (${t(
+              'label.second-plural'
+            )})`}
+            type="number"
+          />
+        </Form.Item>
+      </Col>
+    </Row>
+    <Divider className="p-x-xs" />
+  </>
+);
+
 export const getDestinationConfigField = (
   type: SubscriptionType | SubscriptionCategory,
   fieldName: number
@@ -288,25 +334,45 @@ export const getDestinationConfigField = (
     case SubscriptionType.Slack:
     case SubscriptionType.MSTeams:
     case SubscriptionType.GChat:
-    case SubscriptionType.Generic:
+    case SubscriptionType.Webhook:
       return (
-        <Col span={12}>
-          <Form.Item
-            name={[fieldName, 'config', 'endpoint']}
-            rules={[
-              {
-                required: true,
-                message: t('message.field-text-is-required', {
-                  fieldText: t('label.endpoint-url'),
-                }),
-              },
-            ]}>
-            <Input
-              data-testid={`endpoint-input-${fieldName}`}
-              placeholder={DESTINATION_TYPE_BASED_PLACEHOLDERS[type] ?? ''}
-            />
-          </Form.Item>
-        </Col>
+        <>
+          <Col span={12}>
+            <Form.Item
+              name={[fieldName, 'config', 'endpoint']}
+              rules={[
+                {
+                  required: true,
+                  message: t('message.field-text-is-required', {
+                    fieldText: t('label.endpoint-url'),
+                  }),
+                },
+              ]}>
+              <Input
+                data-testid={`endpoint-input-${fieldName}`}
+                placeholder={DESTINATION_TYPE_BASED_PLACEHOLDERS[type] ?? ''}
+              />
+            </Form.Item>
+          </Col>
+          {type === SubscriptionType.Webhook && (
+            <Col span={24}>
+              <Row align="middle">
+                <Col span={7}>{t('label.secret-key')}</Col>
+                <Col span={1}>:</Col>
+                <Col data-testid="secret-key" span={16}>
+                  <Form.Item name={[fieldName, 'config', 'secretKey']}>
+                    <Input.Password
+                      data-testid={`secret-key-input-${fieldName}`}
+                      placeholder={`${t('label.secret-key')} (${t(
+                        'label.optional'
+                      )})`}
+                    />
+                  </Form.Item>
+                </Col>
+              </Row>
+            </Col>
+          )}
+        </>
       );
     case SubscriptionType.Email:
       return (
@@ -411,7 +477,7 @@ export const getMessageFromArgumentName = (argumentName: string) => {
       return t('message.field-text-is-required', {
         fieldText: t('label.entity-list', {
           entity: t('label.entity-name', {
-            entity: t('label.owner'),
+            entity: t('label.owner-plural'),
           }),
         }),
       });
@@ -548,7 +614,7 @@ export const getFieldByArgumentType = (
           data-testid="owner-name-select"
           mode="multiple"
           placeholder={t('label.search-by-type', {
-            type: t('label.owner-lowercase'),
+            type: t('label.owner-lowercase-plural'),
           })}
         />
       );
@@ -741,15 +807,17 @@ export const handleAlertSave = async ({
   createAlertAPI,
   updateAlertAPI,
   afterSaveAction,
+  setInlineAlertDetails,
 }: {
-  data: CreateEventSubscription;
+  data: ModifiedCreateEventSubscription;
   createAlertAPI: (
     alert: CreateEventSubscription
   ) => Promise<EventSubscription>;
   updateAlertAPI: (
     alert: CreateEventSubscription
   ) => Promise<EventSubscription>;
-  afterSaveAction: () => void;
+  afterSaveAction: () => Promise<void>;
+  setInlineAlertDetails: (alertDetails?: InlineAlertProps | undefined) => void;
   fqn?: string;
 }) => {
   try {
@@ -757,6 +825,7 @@ export const handleAlertSave = async ({
       type: d.type,
       config: d.config,
       category: d.category,
+      timeout: data.timeout,
     }));
 
     if (fqn && !isUndefined(alert)) {
@@ -767,7 +836,7 @@ export const handleAlertSave = async ({
         enabled,
         input,
         name,
-        owner,
+        owners,
         provider,
         resources,
         trigger,
@@ -781,7 +850,7 @@ export const handleAlertSave = async ({
         enabled,
         input,
         name,
-        owner,
+        owners,
         provider,
         resources,
         trigger,
@@ -789,8 +858,10 @@ export const handleAlertSave = async ({
 
       await updateAlertAPI(newData);
     } else {
+      // Remove timeout from alert object since it's only for UI
+      const { timeout, ...finalData } = data;
       await createAlertAPI({
-        ...data,
+        ...finalData,
         destinations,
       });
     }
@@ -802,22 +873,15 @@ export const handleAlertSave = async ({
     );
     afterSaveAction();
   } catch (error) {
-    if ((error as AxiosError).response?.status === HTTP_STATUS_CODE.CONFLICT) {
-      showErrorToast(
-        t('server.entity-already-exist', {
-          entity: t('label.alert'),
-          entityPlural: t('label.alert-lowercase-plural'),
-          name: data.name,
-        })
-      );
-    } else {
-      showErrorToast(
-        error as AxiosError,
-        t(`server.${'entity-creation-error'}`, {
-          entity: t('label.alert-lowercase'),
-        })
-      );
-    }
+    handleEntityCreationError({
+      error: error as AxiosError,
+      entity: t('label.alert'),
+      entityLowercase: t('label.alert-lowercase'),
+      entityLowercasePlural: t('label.alert-lowercase-plural'),
+      setInlineAlertDetails,
+      name: data.name,
+      defaultErrorType: 'create',
+    });
   }
 };
 
@@ -865,3 +929,27 @@ export const getFilteredDestinationOptions = (
 
   return filteredOptions;
 };
+
+export const getSourceOptionsFromResourceList = (
+  resources: Array<string>,
+  showCheckbox?: boolean,
+  selectedResource?: string[]
+) =>
+  resources.map((resource) => {
+    const sourceIcon = searchClassBase.getEntityIcon(resource ?? '');
+
+    return {
+      label: (
+        <div
+          className="d-flex items-center gap-2"
+          data-testid={`${resource}-option`}>
+          {showCheckbox && (
+            <Checkbox checked={selectedResource?.includes(resource)} />
+          )}
+          {sourceIcon && <div className="d-flex h-4 w-4">{sourceIcon}</div>}
+          <span>{getEntityNameLabel(resource ?? '')}</span>
+        </div>
+      ),
+      value: resource ?? '',
+    };
+  });

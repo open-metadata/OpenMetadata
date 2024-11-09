@@ -1,0 +1,69 @@
+{
+    "$id": "https://open-metadata.org/schema/entity/services/connections/pipeline/kafkaConnectConnection.json",
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "KafkaConnectConnection",
+    "description": "KafkaConnect Connection Config",
+    "type": "object",
+    "javaType": "org.openmetadata.schema.services.connections.pipeline.KafkaConnectConnection",
+    "definitions": {
+      "KafkaConnectType": {
+        "description": "Service type.",
+        "type": "string",
+        "enum": ["KafkaConnect"],
+        "default": "KafkaConnect"
+      },
+      "basicAuthentication": {
+        "title": "Username/Password Authentication",
+        "description": "username/password auth",
+        "type":"object",
+        "properties": {
+          "username": {
+            "title": "Username",
+            "description": "KafkaConnect user to authenticate to the API.",
+            "type": "string"
+          },
+          "password": {
+            "title": "Password",
+            "description": "KafkaConnect password to authenticate to the API.",
+            "type": "string",
+            "format": "password"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "properties": {
+      "type": {
+        "title": "Service Type",
+        "description": "Service Type",
+        "$ref": "#/definitions/KafkaConnectType",
+        "default": "KafkaConnect"
+      },
+      "hostPort": {
+        "expose": true,
+        "title": "Host And Port",
+        "description": "KafkaConnect Service Management/UI URI.",
+        "type": "string",
+        "format": "uri"
+      },
+      "KafkaConnectConfig": {
+        "title": "KafkaConnect Credentials Configuration",
+        "description": "We support username/password or No Authentication",
+        "$ref": "#/definitions/basicAuthentication"
+      },
+      "verifySSL": {
+        "title": "Verify SSL",
+        "description": "Boolean marking if we need to verify the SSL certs for KafkaConnect REST API. True by default.",
+        "type": "boolean",
+        "default": true
+      },
+      "messagingServiceName": {
+        "title": "Kafka Service Name",
+        "description": "Name of the Kafka Messaging Service associated with this KafkaConnect Pipeline Service. e.g. local_kafka",
+        "type": "string"
+      }
+    },
+    "additionalProperties": false,
+    "required": ["hostPort"]
+  }
+  

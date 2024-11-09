@@ -67,6 +67,8 @@ class LineageParser:
         timeout_seconds: int = LINEAGE_PARSING_TIMEOUT,
     ):
         self.query = query
+        self.query_parsing_success = True
+        self.query_parsing_failure_reason = None
         self._clean_query = self.clean_raw_query(query)
         self.parser = self._evaluate_best_parser(
             self._clean_query, dialect=dialect, timeout_seconds=timeout_seconds
@@ -400,9 +402,8 @@ class LineageParser:
 
         return clean_query.strip()
 
-    @staticmethod
     def _evaluate_best_parser(
-        query: str, dialect: Dialect, timeout_seconds: int
+        self, query: str, dialect: Dialect, timeout_seconds: int
     ) -> Optional[LineageRunner]:
         if query is None:
             return None
@@ -424,15 +425,19 @@ class LineageParser:
                 )
             )
         except TimeoutError:
-            logger.debug(
-                f"Lineage with SqlFluff failed for the [{dialect.value}] query: [{query}]: "
+            self.query_parsing_success = False
+            self.query_parsing_failure_reason = (
+                f"Lineage with SqlFluff failed for the [{dialect.value}]. "
                 f"Parser has been running for more than {timeout_seconds} seconds."
             )
+            logger.debug(f"{self.query_parsing_failure_reason}] query: [{query}]")
             lr_sqlfluff = None
         except Exception:
-            logger.debug(
-                f"Lineage with SqlFluff failed for the [{dialect.value}] query: [{query}]"
+            self.query_parsing_success = False
+            self.query_parsing_failure_reason = (
+                f"Lineage with SqlFluff failed for the [{dialect.value}]"
             )
+            logger.debug(f"{self.query_parsing_failure_reason} query: [{query}]")
             lr_sqlfluff = None
 
         lr_sqlparser = LineageRunner(query)
@@ -451,10 +456,12 @@ class LineageParser:
         if lr_sqlfluff:
             # if sqlparser retrieve more lineage info that sqlfluff
             if sqlparser_count > sqlfluff_count:
-                logger.debug(
+                self.query_parsing_success = False
+                self.query_parsing_failure_reason = (
                     "Lineage computed with SqlFluff did not perform as expected "
-                    f"for the [{dialect.value}] query: [{query}]"
+                    f"for the [{dialect.value}]"
                 )
+                logger.debug(f"{self.query_parsing_failure_reason} query: [{query}]")
                 return lr_sqlparser
             return lr_sqlfluff
         return lr_sqlparser

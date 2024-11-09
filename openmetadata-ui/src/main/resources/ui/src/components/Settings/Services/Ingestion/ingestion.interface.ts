@@ -11,12 +11,14 @@
  *  limitations under the License.
  */
 
-import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { ServiceCategory } from '../../../../enums/service.enum';
 import { PipelineType } from '../../../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { IngestionPipeline } from '../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { Paging } from '../../../../generated/type/paging';
+import { UsePagingInterface } from '../../../../hooks/paging/usePaging';
+import { UseAirflowStatusProps } from '../../../../hooks/useAirflowStatus';
 import { ServicesType } from '../../../../interface/service.interface';
+import { PagingHandlerParams } from '../../../common/NextPrevious/NextPrevious.interface';
 
 export interface ConnectorConfig {
   username: string;
@@ -31,33 +33,29 @@ export interface ConnectorConfig {
 }
 
 export interface IngestionProps {
-  airflowEndpoint: string;
+  ingestionPagingInfo: UsePagingInterface;
   serviceDetails: ServicesType;
   serviceName: string;
   serviceCategory: ServiceCategory;
-  isRequiredDetailsAvailable: boolean;
-  paging: Paging;
-  ingestionList: Array<IngestionPipeline>;
-  permissions: OperationPermission;
-  pipelineNameColWidth?: number;
+  ingestionPipelineList: Array<IngestionPipeline>;
   pipelineType?: PipelineType;
-  displayAddIngestionButton?: boolean;
-  containerClassName?: string;
   isLoading?: boolean;
-  isAirflowAvailable?: boolean;
-  deleteIngestion: (id: string, displayName: string) => Promise<void>;
-  deployIngestion: (id: string) => Promise<void>;
-  handleEnableDisableIngestion: (id: string) => Promise<void>;
-  triggerIngestion: (id: string, displayName: string) => Promise<void>;
+  searchText: string;
+  airflowInformation: UseAirflowStatusProps;
   onIngestionWorkflowsUpdate: (
     paging?: Omit<Paging, 'total'>,
     limit?: number
   ) => void;
-  handleIngestionDataChange?: (data: Array<IngestionPipeline>) => void;
+  handleIngestionListUpdate: (
+    ingestionList: React.SetStateAction<IngestionPipeline[]>
+  ) => void;
+  handleSearchChange: (searchValue: string) => void;
+  onPageChange: ({ cursorType, currentPage }: PagingHandlerParams) => void;
 }
 
 export interface SelectedRowDetails {
   id: string;
   name: string;
+  displayName?: string;
   state: string;
 }

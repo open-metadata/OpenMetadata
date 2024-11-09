@@ -47,7 +47,7 @@ class BigQueryProfilerSource(ProfilerSource):
             DatabaseConnection
         """
         config_copy: BigQueryConnection = deepcopy(
-            config.source.serviceConnection.__root__.config  # type: ignore
+            config.source.serviceConnection.root.config  # type: ignore
         )
 
         if isinstance(config_copy.credentials.gcpConfig, GcpCredentialsValues):
@@ -55,7 +55,7 @@ class BigQueryProfilerSource(ProfilerSource):
                 config_copy.credentials.gcpConfig.projectId, MultipleProjectId
             ):
                 config_copy.credentials.gcpConfig.projectId = SingleProjectId(
-                    __root__=database.name.__root__
+                    database.name.root
                 )
 
         return config_copy

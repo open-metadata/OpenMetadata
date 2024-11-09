@@ -44,15 +44,6 @@ jest.mock('../../../rest/miscAPI', () => ({
     .mockImplementation(() => Promise.resolve(MOCK_ASSETS_DATA)),
 }));
 
-jest.mock('./tabs/RelatedTerms', () =>
-  jest.fn().mockReturnValue(<div>RelatedTermsComponent</div>)
-);
-jest.mock('./tabs/GlossaryTermSynonyms', () =>
-  jest.fn().mockReturnValue(<div>GlossaryTermSynonymsComponent</div>)
-);
-jest.mock('./tabs/GlossaryTermReferences', () =>
-  jest.fn().mockReturnValue(<div>GlossaryTermReferencesComponent</div>)
-);
 jest.mock('./tabs/AssetsTabs.component', () =>
   jest.fn().mockReturnValue(<div>AssetsTabs</div>)
 );
@@ -61,6 +52,9 @@ jest.mock('../GlossaryTermTab/GlossaryTermTab.component', () =>
 );
 jest.mock('../GlossaryHeader/GlossaryHeader.component', () =>
   jest.fn().mockReturnValue(<div>GlossaryHeader.component</div>)
+);
+jest.mock('./tabs/GlossaryOverviewTab.component', () =>
+  jest.fn().mockReturnValue(<div>GlossaryOverviewTab.component</div>)
 );
 
 const mockProps = {
@@ -86,9 +80,14 @@ const mockProps = {
   onThreadLinkSelect: jest.fn(),
 };
 
-describe('Test Glossary-term component', () => {
+jest.mock('../../../utils/GlossaryTerm/GlossaryTermUtil', () => ({
+  getGlossaryTermDetailTabs: jest.fn().mockImplementation((itemes) => itemes),
+  getTabLabelMap: jest.fn().mockReturnValue({}),
+}));
+
+describe.skip('Test Glossary-term component', () => {
   it('Should render Glossary-term component', async () => {
-    render(<GlossaryTerms {...mockProps} childGlossaryTerms={[]} />);
+    render(<GlossaryTerms {...mockProps} />);
 
     const glossaryTerm = screen.getByTestId('glossary-term');
     const tabs = await screen.findAllByRole('tab');

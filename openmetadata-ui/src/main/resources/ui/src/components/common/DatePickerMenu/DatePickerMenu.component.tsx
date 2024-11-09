@@ -16,7 +16,6 @@ import { Button, DatePicker, Dropdown, MenuProps, Space } from 'antd';
 import { RangePickerProps } from 'antd/lib/date-picker';
 import { isUndefined, pick } from 'lodash';
 import { DateFilterType, DateRangeObject } from 'Models';
-import moment from 'moment';
 import { MenuInfo } from 'rc-menu/lib/interface';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -38,7 +37,7 @@ import './date-picker-menu.less';
 interface DatePickerMenuProps {
   defaultDateRange?: Partial<DateRangeObject>;
   showSelectedCustomRange?: boolean;
-  handleDateRangeChange: (value: DateRangeObject, days?: number) => void;
+  handleDateRangeChange?: (value: DateRangeObject, days?: number) => void;
   options?: DateFilterType;
   allowCustomRange?: boolean;
   handleSelectedTimeRange?: (value: string) => void;
@@ -55,7 +54,7 @@ const DatePickerMenu = ({
   const { menuOptions, defaultOptions } = useMemo(() => {
     const defaultOptions = pick(DEFAULT_SELECTED_RANGE, ['title', 'key']);
 
-    if (defaultDateRange && defaultDateRange.key) {
+    if (defaultDateRange?.key) {
       defaultOptions.key = defaultDateRange.key;
       if (defaultDateRange.key === 'customRange' && defaultDateRange.title) {
         defaultOptions.title = defaultDateRange.title;
@@ -110,7 +109,7 @@ const DatePickerMenu = ({
       setSelectedTimeRange(selectedRangeLabel);
       setSelectedTimeRangeKey('customRange');
       setIsMenuOpen(false);
-      handleDateRangeChange(
+      handleDateRangeChange?.(
         {
           startTs,
           endTs,
@@ -138,7 +137,7 @@ const DatePickerMenu = ({
     setSelectedTimeRangeKey(key);
     setIsMenuOpen(false);
 
-    handleDateRangeChange(
+    handleDateRangeChange?.(
       { startTs, endTs, key, title: filterRange.title },
       selectedNumberOfDays
     );
@@ -163,10 +162,6 @@ const DatePickerMenu = ({
               <DatePicker.RangePicker
                 bordered={false}
                 clearIcon={<CloseCircleOutlined />}
-                defaultValue={[
-                  moment(defaultDateRange?.startTs),
-                  moment(defaultDateRange?.endTs),
-                ]}
                 format={(value) => value.utc().format('YYYY-MM-DD')}
                 open={isMenuOpen}
                 placement="bottomRight"
@@ -197,7 +192,7 @@ const DatePickerMenu = ({
       open={isMenuOpen}
       trigger={['click']}
       onOpenChange={(value) => setIsMenuOpen(value)}>
-      <Button>
+      <Button data-testid="date-picker-menu">
         <Space align="center" size={8}>
           {selectedTimeRange}
           <DropdownIcon className="align-middle" height={14} width={14} />

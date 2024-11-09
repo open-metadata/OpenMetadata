@@ -1,7 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/type/customProperties/complexTypes.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Basic",
   "description": "This schema defines custom properties complex types.",
   "definitions": {
     "entityReference": {
@@ -10,7 +9,8 @@
       "properties": {
         "id": {
           "description": "Unique identifier that identifies an entity instance.",
-          "$ref": "../basic.json#/definitions/uuid"
+          "type": "string",
+          "format": "uuid"
         },
         "type": {
           "description": "Entity type/class name - Examples: `database`, `table`, `metrics`, `databaseService`, `dashboardService`...",
@@ -25,8 +25,9 @@
           "type": "string"
         },
         "description": {
+          "$comment": "@om-field-type",
           "description": "Optional description of entity.",
-          "$ref": "../basic.json#/definitions/markdown"
+          "type": "string"
         },
         "displayName": {
           "description": "Display Name that identifies this entity.",
@@ -42,7 +43,8 @@
         },
         "href": {
           "description": "Link to the entity resource.",
-          "$ref": "../basic.json#/definitions/href"
+          "type": "string",
+          "format": "uri"
         }
       }
     },
@@ -56,7 +58,8 @@
           "properties": {
             "id": {
               "description": "Unique identifier that identifies an entity instance.",
-              "$ref": "../basic.json#/definitions/uuid"
+              "type": "string",
+              "format": "uuid"
             },
             "type": {
               "description": "Entity type/class name - Examples: `database`, `table`, `metrics`, `databaseService`, `dashboardService`...",
@@ -71,8 +74,9 @@
               "type": "string"
             },
             "description": {
+              "$comment": "@om-field-type",
               "description": "Optional description of entity.",
-              "$ref": "../basic.json#/definitions/markdown"
+              "type": "string"
             },
             "displayName": {
               "description": "Display Name that identifies this entity.",
@@ -88,11 +92,51 @@
             },
             "href": {
               "description": "Link to the entity resource.",
-              "$ref": "../basic.json#/definitions/href"
+              "type": "string",
+              "format": "uri"
             }
           }
         }
       }
+    },
+    "table-cp": {
+      "$comment": "@om-field-type",
+      "title": "Table",
+      "description": "A table-type custom property having rows and columns where all column data types are strings.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.type.customProperties.Table",
+      "properties": {
+        "columns": {
+          "type": "array",
+          "description": "List of column names defined at the entity type level.",
+          "items": {
+            "type": "string",
+            "description": "The name of the column."
+          },
+          "minItems": 1,
+          "maxItems": 3,
+          "uniqueItems": true
+        },
+        "rows": {
+          "type": "array",
+          "description": "List of rows added at the entity instance level. Each row contains dynamic fields based on the defined columns.",
+          "items": {
+            "type": "object",
+            "description": "A row in the table, with dynamic key-value pairs corresponding to columns.",
+            "additionalProperties": {
+              "type": "string",
+              "description": "The cell value of each column in the row."
+            }
+          }
+        }
+      },
+      "required": ["columns"],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "table-cp": {
+      "$ref": "#/definitions/table-cp"
     }
   }
 }

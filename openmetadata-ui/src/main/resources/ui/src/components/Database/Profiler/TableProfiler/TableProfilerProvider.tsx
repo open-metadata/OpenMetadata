@@ -24,21 +24,28 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useLocation } from 'react-router-dom';
 import { PAGE_SIZE } from '../../../../constants/constants';
 import { mockDatasetData } from '../../../../constants/mockTourData.constants';
-import { DEFAULT_RANGE_DATA } from '../../../../constants/profiler.constant';
+import {
+  DEFAULT_RANGE_DATA,
+  DEFAULT_SORT_ORDER,
+} from '../../../../constants/profiler.constant';
 import { useTourProvider } from '../../../../context/TourProvider/TourProvider';
+import { TabSpecificField } from '../../../../enums/entity.enum';
 import { Table } from '../../../../generated/entity/data/table';
 import { ProfileSampleType } from '../../../../generated/metadataIngestion/databaseServiceProfilerPipeline';
 import { TestCase } from '../../../../generated/tests/testCase';
 import { usePaging } from '../../../../hooks/paging/usePaging';
+import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../../hooks/useFqn';
 import {
   getLatestTableProfileByFqn,
   getTableDetailsByFQN,
 } from '../../../../rest/tableAPI';
-import { getListTestCase, ListTestCaseParams } from '../../../../rest/testAPI';
+import {
+  getListTestCaseBySearch,
+  ListTestCaseParamsBySearch,
+} from '../../../../rest/testAPI';
 import { bytesToSize } from '../../../../utils/StringsUtils';
 import { generateEntityLink } from '../../../../utils/TableUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
@@ -58,13 +65,14 @@ export const TableProfilerContext =
 export const TableProfilerProvider = ({
   children,
   permissions,
-  isTableDeleted,
+  table,
+  testCaseSummary,
 }: TableProfilerProviderProps) => {
   const { t } = useTranslation();
   const { fqn: datasetFQN } = useFqn();
   const { isTourOpen } = useTourProvider();
   const testCasePaging = usePaging(PAGE_SIZE);
-  const location = useLocation();
+  const location = useCustomLocation();
   // profiler has its own api but sent's the data in Table type
   const [tableProfiler, setTableProfiler] = useState<Table>();
   // customMetric is fetch from table api and has response type of Table
@@ -75,6 +83,8 @@ export const TableProfilerProvider = ({
   const [settingModalVisible, setSettingModalVisible] = useState(false);
   const [dateRangeObject, setDateRangeObject] =
     useState<DateRangeObject>(DEFAULT_RANGE_DATA);
+
+  const isTableDeleted = useMemo(() => table?.deleted, [table]);
 
   const {
     activeTab = isTourOpen
@@ -186,7 +196,7 @@ export const TableProfilerProvider = ({
     try {
       const profiler = await getLatestTableProfileByFqn(datasetFQN);
       const customMetricResponse = await getTableDetailsByFQN(datasetFQN, {
-        fields: 'customMetrics,columns',
+        fields: [TabSpecificField.CUSTOM_METRICS, TabSpecificField.COLUMNS],
       });
 
       setTableProfiler(profiler);
@@ -198,12 +208,17 @@ export const TableProfilerProvider = ({
     }
   };
 
-  const fetchAllTests = async (params?: ListTestCaseParams) => {
+  const fetchAllTests = async (params?: ListTestCaseParamsBySearch) => {
     setIsTestsLoading(true);
     try {
-      const { data, paging } = await getListTestCase({
+      const { data, paging } = await getListTestCaseBySearch({
+        ...DEFAULT_SORT_ORDER,
         ...params,
-        fields: 'testCaseResult, incidentId',
+        fields: [
+          TabSpecificField.TEST_CASE_RESULT,
+          TabSpecificField.INCIDENT_ID,
+        ],
+
         entityLink: generateEntityLink(datasetFQN ?? ''),
         includeAllTests: true,
         limit: testCasePaging.pageSize,
@@ -269,6 +284,8 @@ export const TableProfilerProvider = ({
       onDateRangeChange: handleDateRangeChange,
       dateRangeObject,
       testCasePaging,
+      table,
+      testCaseSummary,
     };
   }, [
     isTestsLoading,
@@ -282,6 +299,8 @@ export const TableProfilerProvider = ({
     customMetric,
     dateRangeObject,
     testCasePaging,
+    table,
+    testCaseSummary,
   ]);
 
   return (

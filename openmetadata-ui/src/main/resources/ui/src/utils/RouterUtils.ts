@@ -13,6 +13,7 @@
 
 import { isUndefined } from 'lodash';
 import { ServiceTypes } from 'Models';
+import process from 'process';
 import {
   getServiceDetailsPath,
   IN_PAGE_SEARCH_ROUTES,
@@ -121,7 +122,7 @@ export const getEditIngestionPath = (
   path = path
     .replace(PLACEHOLDER_ROUTE_SERVICE_CAT, serviceCategory)
     .replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(serviceFQN))
-    .replace(PLACEHOLDER_ROUTE_INGESTION_FQN, ingestionFQN)
+    .replace(PLACEHOLDER_ROUTE_INGESTION_FQN, getEncodedFqn(ingestionFQN))
     .replace(PLACEHOLDER_ROUTE_INGESTION_TYPE, ingestionType);
 
   return path;
@@ -323,7 +324,8 @@ export const getEditPolicyRulePath = (fqn: string, ruleName: string) => {
 
   path = path
     .replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(fqn))
-    .replace(PLACEHOLDER_RULE_NAME, ruleName);
+    // rule name is same as entity fqn so we need to encode it to pass it as a param
+    .replace(PLACEHOLDER_RULE_NAME, getEncodedFqn(ruleName));
 
   return path;
 };
@@ -567,11 +569,10 @@ export const getClassificationVersionsPath = (
 };
 
 export const getPersonaDetailsPath = (fqn: string) => {
-  let path = ROUTES.SETTINGS_WITH_TAB_FQN;
+  let path = ROUTES.SETTINGS_WITH_CATEGORY_FQN;
 
   path = path
-    .replace(PLACEHOLDER_SETTING_CATEGORY, GlobalSettingsMenuCategory.MEMBERS)
-    .replace(PLACEHOLDER_ROUTE_TAB, GlobalSettingOptions.PERSONA)
+    .replace(PLACEHOLDER_SETTING_CATEGORY, GlobalSettingOptions.PERSONA)
     .replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(fqn));
 
   return path;
@@ -607,4 +608,8 @@ export const getNotificationAlertDetailsPath = (fqn: string) => {
   path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(fqn));
 
   return path;
+};
+
+export const getPathNameFromWindowLocation = () => {
+  return window.location.pathname.replace(process.env.APP_SUB_PATH ?? '', '');
 };

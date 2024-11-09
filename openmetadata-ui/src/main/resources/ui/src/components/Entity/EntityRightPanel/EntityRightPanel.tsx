@@ -46,6 +46,8 @@ interface EntityRightPanelProps<T extends ExtentionEntitiesKeys> {
   viewAllPermission?: boolean;
   customProperties?: ExtentionEntities[T];
   tablePartition?: TablePartition;
+  editCustomAttributePermission?: boolean;
+  onExtensionUpdate?: (updatedTable: ExtentionEntities[T]) => Promise<void>;
 }
 
 const EntityRightPanel = <T extends ExtentionEntitiesKeys>({
@@ -65,6 +67,8 @@ const EntityRightPanel = <T extends ExtentionEntitiesKeys>({
   viewAllPermission,
   customProperties,
   tablePartition,
+  editCustomAttributePermission,
+  onExtensionUpdate,
 }: EntityRightPanelProps<T>) => {
   const KnowledgeArticles =
     entityRightPanelClassBase.getKnowLedgeArticlesWidget();
@@ -108,11 +112,12 @@ const EntityRightPanel = <T extends ExtentionEntitiesKeys>({
           <KnowledgeArticles entityId={entityId} entityType={entityType} />
         )}
         {customProperties && (
-          <CustomPropertyTable
+          <CustomPropertyTable<T>
             isRenderedInRightPanel
             entityDetails={customProperties}
-            entityType={entityType as ExtentionEntitiesKeys}
-            hasEditAccess={false}
+            entityType={entityType as T}
+            handleExtensionUpdate={onExtensionUpdate}
+            hasEditAccess={Boolean(editCustomAttributePermission)}
             hasPermission={Boolean(viewAllPermission)}
             maxDataCap={5}
           />

@@ -35,9 +35,12 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.Enumeration;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.TimeZone;
+import java.util.UUID;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -59,10 +62,10 @@ public final class CommonUtil {
   public static List<String> getResources(Pattern pattern) throws IOException {
     ArrayList<String> resources = new ArrayList<>();
     String classPath = System.getProperty("java.class.path", ".");
-    List<String> classPathElements =
+    Set<String> classPathElements =
         Arrays.stream(classPath.split(File.pathSeparator))
             .filter(jarName -> JAR_NAME_FILTER.stream().anyMatch(jarName.toLowerCase()::contains))
-            .toList();
+            .collect(Collectors.toSet());
 
     for (String element : classPathElements) {
       File file = new File(element);
@@ -83,6 +86,7 @@ public final class CommonUtil {
   }
 
   private static Collection<String> getResourcesFromJarFile(File file, Pattern pattern) {
+    LOG.debug("Adding from file {}", file);
     ArrayList<String> retval = new ArrayList<>();
     try (ZipFile zf = new ZipFile(file)) {
       Enumeration<? extends ZipEntry> e = zf.entries();
@@ -175,6 +179,10 @@ public final class CommonUtil {
     return Optional.ofNullable(list).orElse(Collections.emptyList());
   }
 
+  public static <T> List<T> listOrEmptyMutable(List<T> list) {
+    return nullOrEmpty(list) ? new ArrayList<>() : new ArrayList<>(list);
+  }
+
   public static boolean nullOrEmpty(String string) {
     return string == null || string.isEmpty();
   }
@@ -183,8 +191,24 @@ public final class CommonUtil {
     return list == null || list.isEmpty();
   }
 
+  public static boolean nullOrEmpty(Map<?, ?> m) {
+    return m == null || m.isEmpty();
+  }
+
   public static boolean nullOrEmpty(Object object) {
     return object == null || nullOrEmpty(object.toString());
+  }
+
+  public static List<String> uuidListToStrings(List<UUID> list) {
+    return list.stream().map(UUID::toString).toList();
+  }
+
+  public static <T> T nullOrDefault(T object, T defaultValue) {
+    if (object == null || (nullOrEmpty(object.toString()))) {
+      return defaultValue;
+    } else {
+      return object;
+    }
   }
 
   public static String getResourceAsStream(ClassLoader loader, String file) throws IOException {

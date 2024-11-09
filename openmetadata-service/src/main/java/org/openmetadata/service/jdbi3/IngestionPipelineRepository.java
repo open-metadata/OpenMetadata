@@ -17,16 +17,21 @@ import static org.openmetadata.schema.type.EventType.ENTITY_FIELDS_CHANGED;
 import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriInfo;
 import lombok.Getter;
+import lombok.Setter;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.json.JSONObject;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.entity.applications.configuration.ApplicationConfig;
 import org.openmetadata.schema.entity.services.ingestionPipelines.AirflowConfig;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
+import org.openmetadata.schema.metadataIngestion.ApplicationPipeline;
 import org.openmetadata.schema.metadataIngestion.LogLevels;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.schema.type.ChangeDescription;
@@ -34,7 +39,7 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.sdk.PipelineServiceClient;
+import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineResource;
@@ -56,7 +61,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   private static final String PIPELINE_STATUS_JSON_SCHEMA = "ingestionPipelineStatus";
   private static final String PIPELINE_STATUS_EXTENSION = "ingestionPipeline.pipelineStatus";
   private static final String RUN_ID_EXTENSION_KEY = "runId";
-  private PipelineServiceClient pipelineServiceClient;
+  @Setter private PipelineServiceClientInterface pipelineServiceClient;
 
   @Getter private final OpenMetadataApplicationConfig openMetadataApplicationConfig;
 
@@ -68,7 +73,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
         Entity.getCollectionDAO().ingestionPipelineDAO(),
         PATCH_FIELDS,
         UPDATE_FIELDS);
-
+    this.supportsSearch = true;
     this.openMetadataApplicationConfig = config;
   }
 
@@ -84,6 +89,16 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     if (ingestionPipeline.getService() == null) {
       ingestionPipeline.withService(getContainer(ingestionPipeline.getId()));
     }
+    ingestionPipeline.setPipelineStatuses(
+        fields.contains("pipelineStatuses")
+            ? getLatestPipelineStatus(ingestionPipeline)
+            : ingestionPipeline.getPipelineStatuses());
+
+    JSONObject sourceConfigJson =
+        new JSONObject(JsonUtils.pojoToJson(ingestionPipeline.getSourceConfig().getConfig()));
+    Optional.ofNullable(sourceConfigJson.optJSONObject("appConfig"))
+        .map(appConfig -> appConfig.optString("type", null))
+        .ifPresent(ingestionPipeline::setApplicationType);
   }
 
   @Override
@@ -153,11 +168,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
 
   @Override
   public EntityInterface getParentEntity(IngestionPipeline entity, String fields) {
-    return Entity.getEntity(entity.getService(), fields, Include.NON_DELETED);
-  }
-
-  public void setPipelineServiceClient(PipelineServiceClient client) {
-    pipelineServiceClient = client;
+    return Entity.getEntity(entity.getService(), fields, Include.ALL);
   }
 
   private ChangeEvent getChangeEvent(
@@ -188,7 +199,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   public RestUtil.PutResponse<?> addPipelineStatus(
       UriInfo uriInfo, String fqn, PipelineStatus pipelineStatus) {
     // Validate the request content
-    IngestionPipeline ingestionPipeline = findByName(fqn, Include.NON_DELETED);
+    IngestionPipeline ingestionPipeline = getByName(uriInfo, fqn, getFields("service"));
     PipelineStatus storedPipelineStatus =
         JsonUtils.readValue(
             daoCollection
@@ -220,6 +231,11 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     ChangeDescription change =
         addPipelineStatusChangeDescription(
             ingestionPipeline.getVersion(), pipelineStatus, storedPipelineStatus);
+    ingestionPipeline.setPipelineStatuses(pipelineStatus);
+
+    // Update ES Indexes
+    searchRepository.updateEntity(ingestionPipeline);
+
     ChangeEvent changeEvent =
         getChangeEvent(
             withHref(uriInfo, ingestionPipeline),
@@ -341,5 +357,21 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     double profileSample = sourceConfigJson.optDouble("profileSample");
 
     EntityUtil.validateProfileSample(profileSampleType, profileSample);
+  }
+
+  /**
+   * Get either the pipelineType or the application Type.
+   */
+  public static String getPipelineWorkflowType(IngestionPipeline ingestionPipeline) {
+    if (PipelineType.APPLICATION.equals(ingestionPipeline.getPipelineType())) {
+      ApplicationPipeline applicationPipeline =
+          JsonUtils.convertValue(
+              ingestionPipeline.getSourceConfig().getConfig(), ApplicationPipeline.class);
+      ApplicationConfig appConfig =
+          JsonUtils.convertValue(applicationPipeline.getAppConfig(), ApplicationConfig.class);
+      return (String) appConfig.getAdditionalProperties().get("type");
+    } else {
+      return ingestionPipeline.getPipelineType().value();
+    }
   }
 }

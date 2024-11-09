@@ -179,8 +179,10 @@ class GenericDataFrameColumnParser:
         **dict.fromkeys(["float64", "float32", "float"], DataType.FLOAT),
         "bool": DataType.BOOLEAN,
         **dict.fromkeys(
-            ["datetime64", "timedelta[ns]", "datetime64[ns]"], DataType.DATETIME
+            ["datetime64[ns]", "datetime"],
+            DataType.DATETIME,
         ),
+        "timedelta[ns]": DataType.TIME,
         "str": DataType.STRING,
         "bytes": DataType.BYTES,
     }
@@ -253,10 +255,44 @@ class GenericDataFrameColumnParser:
             ):
                 try:
                     # Safely evaluate the input string
-                    df_row_val = data_frame[column_name].dropna().values[0]
-                    parsed_object = ast.literal_eval(str(df_row_val))
+                    df_row_val_list = data_frame[column_name].dropna().values[:1000]
+                    parsed_object_datatype_list = []
+                    for df_row_val in df_row_val_list:
+                        try:
+                            parsed_object_datatype_list.append(
+                                type(ast.literal_eval(str(df_row_val))).__name__.lower()
+                            )
+                        except (ValueError, SyntaxError):
+                            # we try to parse the value as a datetime, if it fails, we fallback to string
+                            # as literal_eval will fail for string
+                            from datetime import datetime
+
+                            from dateutil.parser import ParserError, parse
+
+                            try:
+                                dtype_ = "int64"
+                                if not str(df_row_val).isnumeric():
+                                    # check if the row value is time
+                                    try:
+                                        datetime.strptime(df_row_val, "%H:%M:%S").time()
+                                        dtype_ = "timedelta[ns]"
+                                    except (ValueError, TypeError):
+                                        # check if the row value is date / time / datetime
+                                        type(parse(df_row_val)).__name__.lower()
+                                        dtype_ = "datetime64[ns]"
+                                parsed_object_datatype_list.append(dtype_)
+                            except (ParserError, TypeError):
+                                parsed_object_datatype_list.append("str")
+                        except Exception as err:
+                            logger.debug(
+                                f"Failed to parse datatype for column {column_name}, exc: {err},"
+                                "Falling back to string."
+                            )
+                            parsed_object_datatype_list.append("str")
+
+                    data_type = max(parsed_object_datatype_list)
                     # Determine the data type of the parsed object
-                    data_type = type(parsed_object).__name__.lower()
+
                 except (ValueError, SyntaxError):
                     # Handle any exceptions that may occur
                     data_type = "string"
@@ -416,11 +452,13 @@ class ParquetDataFrameColumnParser:
 
             if parsed_column["dataType"] == DataType.BINARY:
                 try:
-                    data_length = type(column.type).byte_width
-                except AttributeError:
+                    # Either we an int number or -1
+                    data_length = int(type(column.type).byte_width)
+                except Exception as exc:
                     # if the byte width is not specified, we will set it to -1
                     # following pyarrow convention
                     data_length = -1
+                    logger.debug("Could not extract binary field length due to %s", exc)
                 parsed_column["dataLength"] = data_length
 
             if parsed_column["dataType"] == DataType.STRUCT:

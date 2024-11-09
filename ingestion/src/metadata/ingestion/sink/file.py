@@ -53,14 +53,14 @@ class FileSink(Sink):
     def create(
         cls, config_dict: dict, _: OpenMetadata, pipeline_name: Optional[str] = None
     ):
-        config = FileSinkConfig.parse_obj(config_dict)
+        config = FileSinkConfig.model_validate(config_dict)
         return cls(config)
 
     def _run(self, record: Entity, *_, **__) -> Either[str]:
         if self.wrote_something:
             self.file.write(",\n")
 
-        self.file.write(record.json())
+        self.file.write(record.model_dump_json())
         self.wrote_something = True
         return Either(right=get_log_name(record))
 

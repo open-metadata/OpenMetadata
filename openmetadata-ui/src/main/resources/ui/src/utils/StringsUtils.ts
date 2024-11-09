@@ -191,6 +191,7 @@ export const ES_RESERVED_CHARACTERS: Record<string, string> = {
   '+': '\\+',
   '-': '\\-',
   '=': '\\=',
+  '&': '\\&',
   '&&': '\\&&',
   '||': '\\||',
   '>': '\\>',
@@ -213,7 +214,7 @@ export const ES_RESERVED_CHARACTERS: Record<string, string> = {
 };
 
 export const escapeESReservedCharacters = (text?: string) => {
-  const reUnescapedHtml = /[+-=&&||><!(){}^"~*?:/]/g;
+  const reUnescapedHtml = /[\\[\]#+=&|><!(){}^"~*?:/-]/g;
   const reHasUnescapedHtml = RegExp(reUnescapedHtml.source);
 
   const getReplacedChar = (char: string) => {
@@ -253,4 +254,75 @@ export const formatJsonString = (jsonString: string, indent = '') => {
     // Return the original JSON string if parsing fails
     return jsonString;
   }
+};
+
+export const replaceCallback = (character: string) => {
+  // Generate a random number between 0 and 15
+  const randomNumber = (Math.random() * 16) | 0;
+
+  // If the character in the UUID template is 'x', use the random number.
+  // Otherwise, use the random number ANDed with 0x3 (which gives a number between 0 and 3) ORed with 0x8
+  // (which sets the high bit, ensuring a number between 8 and 11).
+  const uuidCharacter =
+    character === 'x' ? randomNumber : (randomNumber & 0x3) | 0x8;
+
+  // Convert the number to a hexadecimal string and return it
+  return uuidCharacter.toString(16);
+};
+
+/**
+ * @description Generate a UUID (Universally Unique Identifier)
+ * @returns A UUID string
+ */
+export const generateUUID = () => {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(
+    /[xy]/g,
+    replaceCallback
+  );
+};
+
+type JSONRecord = Record<string, string | number | boolean>;
+type HeaderMap = {
+  field: string;
+  title: string;
+};
+
+export const jsonToCSV = <T extends JSONRecord>(
+  jsonArray: T[],
+  headers: HeaderMap[]
+): string => {
+  if (!Array.isArray(jsonArray) || jsonArray.length === 0) {
+    return '';
+  }
+
+  // Check if headers array is empty
+  if (headers.length === 0) {
+    return '';
+  }
+
+  // Create the header row from headers mapping
+  const headerRow = headers.map((h) => h.title);
+  const csvRows: string[] = [headerRow.join(',')];
+
+  // Convert each JSON object to a CSV row
+  jsonArray.forEach((obj) => {
+    const row = headers
+      .map((header) => {
+        const value = obj[header.field];
+        if (!value) {
+          return '""';
+        }
+        const escaped =
+          typeof value === 'string'
+            ? value.replace(/"/g, '\\"')
+            : value.toString(); // handle quotes in content
+
+        return `"${escaped}"`; // wrap each field in quotes
+      })
+      .join(',');
+    csvRows.push(row);
+  });
+
+  // Combine all CSV rows and add newline character to form final CSV string
+  return csvRows.join('\n');
 };

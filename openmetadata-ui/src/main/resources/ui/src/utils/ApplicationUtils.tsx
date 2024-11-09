@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { upperFirst } from 'lodash';
 import { StatusType } from '../components/common/StatusBadge/StatusBadge.interface';
 import {
   EntityStats,
@@ -28,11 +29,15 @@ export const getStatusTypeForApplication = (status: Status) => {
     case Status.Completed:
       return StatusType.Success;
 
+    case Status.Active:
     case Status.Running:
       return StatusType.Warning;
 
+    case Status.Started:
+      return StatusType.Started;
+
     default:
-      return StatusType.Failure;
+      return StatusType.Stopped;
   }
 };
 
@@ -54,7 +59,7 @@ export const getStatusFromPipelineState = (status: PipelineState) => {
 
 export const getEntityStatsData = (data: EntityStats): EntityStatsData[] => {
   return Object.keys(data).map((key) => ({
-    name: key,
+    name: upperFirst(key),
     ...data[key as EntityTypeSearchIndex],
   }));
 };

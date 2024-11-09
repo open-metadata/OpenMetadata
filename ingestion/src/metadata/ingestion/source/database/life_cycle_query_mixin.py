@@ -17,7 +17,7 @@ from datetime import datetime
 from functools import lru_cache
 from typing import Dict, Iterable, List, Optional, Type
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.engine import Engine
 
 from metadata.generated.schema.entity.data.table import Table
@@ -27,6 +27,7 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
 from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
     DatabaseServiceMetadataPipeline,
 )
+from metadata.generated.schema.type.basic import Timestamp
 from metadata.generated.schema.type.lifeCycle import AccessDetails, LifeCycle
 from metadata.ingestion.api.models import Either, Entity
 from metadata.ingestion.api.status import Status
@@ -35,7 +36,7 @@ from metadata.ingestion.models.topology import TopologyContextManager
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils import fqn
 from metadata.utils.logger import ingestion_logger
-from metadata.utils.time_utils import convert_timestamp_to_milliseconds
+from metadata.utils.time_utils import datetime_to_timestamp
 
 logger = ingestion_logger()
 
@@ -45,11 +46,10 @@ class LifeCycleQueryByTable(BaseModel):
     Query executed get life cycle
     """
 
-    table_name: str = Field(..., alias="TABLE_NAME")
-    created_at: Optional[datetime] = Field(..., alias="CREATED_AT")
+    model_config = ConfigDict(populate_by_name=True)
 
-    class Config:
-        allow_population_by_field_name = True
+    table_name: str = Field(..., alias="TABLE_NAME")
+    created_at: Optional[datetime] = Field(None, alias="CREATED_AT")
 
 
 class LifeCycleQueryMixin:
@@ -79,7 +79,7 @@ class LifeCycleQueryMixin:
 
         for row in results:
             try:
-                life_cycle_by_table = LifeCycleQueryByTable.parse_obj(dict(row))
+                life_cycle_by_table = LifeCycleQueryByTable.model_validate(dict(row))
                 queries_dict[life_cycle_by_table.table_name] = life_cycle_by_table
             except Exception as exc:
                 self.status.failed(
@@ -103,8 +103,10 @@ class LifeCycleQueryMixin:
             if life_cycle_data:
                 life_cycle = LifeCycle(
                     created=AccessDetails(
-                        timestamp=convert_timestamp_to_milliseconds(
-                            life_cycle_data.created_at.timestamp()
+                        timestamp=Timestamp(
+                            datetime_to_timestamp(
+                                life_cycle_data.created_at, milliseconds=True
+                            )
                         )
                     )
                 )

@@ -49,9 +49,14 @@ from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.type.basic import (
+    EntityName,
+    FullyQualifiedEntityName,
+    Markdown,
+)
+from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
-from metadata.ingestion.lineage.sql_lineage import get_column_fqn
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
@@ -61,6 +66,7 @@ from metadata.ingestion.source.database.external_table_lineage_mixin import (
 )
 from metadata.ingestion.source.database.multi_db_source import MultiDBSource
 from metadata.ingestion.source.database.stored_procedures_mixin import QueryByProcedure
+from metadata.ingestion.source.database.unitycatalog.client import UnityCatalogClient
 from metadata.ingestion.source.database.unitycatalog.connection import get_connection
 from metadata.ingestion.source.database.unitycatalog.models import (
     ColumnJson,
@@ -95,10 +101,11 @@ class UnitycatalogSource(
         self.context.get_global().table_views = []
         self.metadata = metadata
         self.service_connection: UnityCatalogConnection = (
-            self.config.serviceConnection.__root__.config
+            self.config.serviceConnection.root.config
         )
         self.external_location_map = {}
         self.client = get_connection(self.service_connection)
+        self.api_client = UnityCatalogClient(self.service_connection)
         self.connection_obj = self.client
         self.table_constraints = []
         self.context.storage_location = None
@@ -115,8 +122,8 @@ class UnitycatalogSource(
     def create(
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
     ):
-        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: UnityCatalogConnection = config.serviceConnection.__root__.config
+        config: WorkflowSource = WorkflowSource.model_validate(config_dict)
+        connection: UnityCatalogConnection = config.serviceConnection.root.config
         if not isinstance(connection, UnityCatalogConnection):
             raise InvalidSourceException(
                 f"Expected UnityCatalogConnection, but got {connection}"
@@ -147,9 +154,11 @@ class UnitycatalogSource(
                     )
                     if filter_by_database(
                         self.config.sourceConfig.config.databaseFilterPattern,
-                        database_fqn
-                        if self.config.sourceConfig.config.useFqnForFiltering
-                        else catalog_name,
+                        (
+                            database_fqn
+                            if self.config.sourceConfig.config.useFqnForFiltering
+                            else catalog_name
+                        ),
                     ):
                         self.status.filter(
                             database_fqn,
@@ -196,9 +205,11 @@ class UnitycatalogSource(
                 )
                 if filter_by_schema(
                     self.config.sourceConfig.config.schemaFilterPattern,
-                    schema_fqn
-                    if self.config.sourceConfig.config.useFqnForFiltering
-                    else schema.name,
+                    (
+                        schema_fqn
+                        if self.config.sourceConfig.config.useFqnForFiltering
+                        else schema.name
+                    ),
                 ):
                     self.status.filter(schema_fqn, "Schema Filtered Out")
                     continue
@@ -221,12 +232,14 @@ class UnitycatalogSource(
         """
         yield Either(
             right=CreateDatabaseSchemaRequest(
-                name=schema_name,
-                database=fqn.build(
-                    metadata=self.metadata,
-                    entity_type=Database,
-                    service_name=self.context.get().database_service,
-                    database_name=self.context.get().database,
+                name=EntityName(schema_name),
+                database=FullyQualifiedEntityName(
+                    fqn.build(
+                        metadata=self.metadata,
+                        entity_type=Database,
+                        service_name=self.context.get().database_service,
+                        database_name=self.context.get().database,
+                    )
                 ),
             )
         )
@@ -258,9 +271,11 @@ class UnitycatalogSource(
                 )
                 if filter_by_table(
                     self.config.sourceConfig.config.tableFilterPattern,
-                    table_fqn
-                    if self.config.sourceConfig.config.useFqnForFiltering
-                    else table_name,
+                    (
+                        table_fqn
+                        if self.config.sourceConfig.config.useFqnForFiltering
+                        else table_name
+                    ),
                 ):
                     self.status.filter(
                         table_fqn,
@@ -268,23 +283,27 @@ class UnitycatalogSource(
                     )
                     continue
                 table_type: TableType = TableType.Regular
-                if table.table_type.value.lower() == TableType.View.value.lower():
-                    table_type: TableType = TableType.View
-                if table.table_type.value.lower() == TableType.External.value.lower():
-                    table_type: TableType = TableType.External
+                if table.table_type:
+                    if table.table_type.value.lower() == TableType.View.value.lower():
+                        table_type: TableType = TableType.View
+                    elif (
+                        table.table_type.value.lower()
+                        == TableType.External.value.lower()
+                    ):
+                        table_type: TableType = TableType.External
                 self.context.get().table_data = table
                 yield table_name, table_type
             except Exception as exc:
                 self.status.failed(
                     StackTraceError(
-                        name=table.Name,
-                        error=f"Unexpected exception to get table [{table.Name}]: {exc}",
+                        name=table.name,
+                        error=f"Unexpected exception to get table [{table.name}]: {exc}",
                         stackTrace=traceback.format_exc(),
                     )
                 )
 
     def yield_table(
-        self, table_name_and_type: Tuple[str, str]
+        self, table_name_and_type: Tuple[str, TableType]
     ) -> Iterable[Either[CreateTableRequest]]:
         """
         From topology.
@@ -298,31 +317,33 @@ class UnitycatalogSource(
             self.external_location_map[
                 (db_name, schema_name, table_name)
             ] = table.storage_location
-        table_constraints = None
         try:
-            columns = self.get_columns(table.columns)
+            columns = list(self.get_columns(table.columns))
             (
                 primary_constraints,
                 foreign_constraints,
             ) = self.get_table_constraints(table.table_constraints)
 
             table_constraints = self.update_table_constraints(
-                primary_constraints, foreign_constraints
+                primary_constraints, foreign_constraints, columns
             )
 
             table_request = CreateTableRequest(
-                name=table_name,
+                name=EntityName(table_name),
                 tableType=table_type,
                 description=table.comment,
                 columns=columns,
                 tableConstraints=table_constraints,
-                databaseSchema=fqn.build(
-                    metadata=self.metadata,
-                    entity_type=DatabaseSchema,
-                    service_name=self.context.get().database_service,
-                    database_name=self.context.get().database,
-                    schema_name=schema_name,
+                databaseSchema=FullyQualifiedEntityName(
+                    fqn.build(
+                        metadata=self.metadata,
+                        entity_type=DatabaseSchema,
+                        service_name=self.context.get().database_service,
+                        database_name=self.context.get().database,
+                        schema_name=schema_name,
+                    )
                 ),
+                owners=self.get_owner_ref(table_name),
             )
             yield Either(right=table_request)
 
@@ -388,20 +409,19 @@ class UnitycatalogSource(
             ref_table_fqn = column.parent_table
             table_fqn_list = fqn.split(ref_table_fqn)
 
-            referred_table = fqn.search_table_from_es(
-                metadata=self.metadata,
+            referred_table_fqn = fqn.build(
+                self.metadata,
+                entity_type=Table,
                 table_name=table_fqn_list[2],
                 schema_name=table_fqn_list[1],
                 database_name=table_fqn_list[0],
                 service_name=self.context.get().database_service,
             )
-            if referred_table:
+            if referred_table_fqn:
                 for parent_column in column.parent_columns:
-                    col_fqn = get_column_fqn(
-                        table_entity=referred_table, column=parent_column
-                    )
+                    col_fqn = fqn._build(referred_table_fqn, parent_column, quote=False)
                     if col_fqn:
-                        referred_column_fqns.append(col_fqn)
+                        referred_column_fqns.append(FullyQualifiedEntityName(col_fqn))
             else:
                 continue
 
@@ -416,7 +436,7 @@ class UnitycatalogSource(
         return table_constraints
 
     def update_table_constraints(
-        self, table_constraints, foreign_columns
+        self, table_constraints, foreign_columns, columns
     ) -> List[TableConstraint]:
         """
         From topology.
@@ -441,12 +461,12 @@ class UnitycatalogSource(
         """
         try:
             if column.children is None:
-                if column_json.metadata:
-                    column.description = column_json.metadata.comment
+                if column_json.metadata and column_json.metadata.comment:
+                    column.description = Markdown(column_json.metadata.comment)
             else:
                 for i, child in enumerate(column.children):
-                    if column_json.metadata:
-                        column.description = column_json.metadata.comment
+                    if column_json.metadata and column_json.metadata.comment:
+                        column.description = Markdown(column_json.metadata.comment)
                     if (
                         column_json.type
                         and isinstance(column_json.type, Type)
@@ -477,21 +497,27 @@ class UnitycatalogSource(
         """
 
         for column in column_data:
-            if column.type_text.lower().startswith("union"):
-                column.type_text = column.Type.replace(" ", "")
-            if column.type_text.lower() == "struct":
-                column.type_text = "struct<>"
+            parsed_string = {}
+            if column.type_text:
+                if column.type_text.lower().startswith("union"):
+                    column.type_text = column.type_text.replace(" ", "")
+                if (
+                    column.type_text.lower() == "struct"
+                    or column.type_text.lower() == "array"
+                ):
+                    column.type_text = column.type_text.lower() + "<>"
 
-            parsed_string = ColumnTypeParser._parse_datatype_string(  # pylint: disable=protected-access
-                column.type_text.lower()
-            )
+                parsed_string = ColumnTypeParser._parse_datatype_string(  # pylint: disable=protected-access
+                    column.type_text.lower()
+                )
             parsed_string["name"] = column.name[:256]
             parsed_string["dataLength"] = parsed_string.get("dataLength", 1)
-            parsed_string["description"] = column.comment
+            if column.comment:
+                parsed_string["description"] = Markdown(column.comment)
             parsed_column = Column(**parsed_string)
             self.add_complex_datatype_descriptions(
                 column=parsed_column,
-                column_json=ColumnJson.parse_obj(json.loads(column.type_json)),
+                column_json=ColumnJson.model_validate(json.loads(column.type_json)),
             )
             yield parsed_column
 
@@ -531,3 +557,19 @@ class UnitycatalogSource(
 
     def close(self):
         """Nothing to close"""
+
+    def get_owner_ref(self, table_name: str) -> Optional[EntityReferenceList]:
+        """
+        Method to process the table owners
+        """
+        try:
+            full_table_name = f"{self.context.get().database}.{self.context.get().database_schema}.{table_name}"
+            owner = self.api_client.get_owner_info(full_table_name)
+            if not owner:
+                return
+            owner_ref = self.metadata.get_reference_by_email(email=owner)
+            return owner_ref
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Error processing owner for table {table_name}: {exc}")
+        return

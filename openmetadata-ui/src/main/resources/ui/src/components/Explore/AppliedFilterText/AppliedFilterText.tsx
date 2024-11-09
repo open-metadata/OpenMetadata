@@ -31,7 +31,10 @@ const AppliedFilterText: FC<AppliedFilterTextProps> = ({
   const { t } = useTranslation();
 
   return (
-    <Space className="p-x-xs w-full" direction="vertical">
+    <Space
+      className="p-x-xs w-full"
+      data-testid="advance-search-filter-container"
+      direction="vertical">
       <Typography.Text className="text-grey-muted">
         {t('label.applied-advanced-search')}
       </Typography.Text>
@@ -45,10 +48,13 @@ const AppliedFilterText: FC<AppliedFilterTextProps> = ({
             component={IconSuccessBadge}
             style={{ fontSize: '16px' }}
           />
-          <Typography>{filterText}</Typography>
+          <Typography data-testid="advance-search-filter-text">
+            {filterText}
+          </Typography>
         </Space>
         <Button
           className="flex-center"
+          data-testid="advance-search-filter-btn"
           icon={<EditIcon width={16} />}
           type="text"
           onClick={onEdit}

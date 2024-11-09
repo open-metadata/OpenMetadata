@@ -13,8 +13,9 @@ Test Credentials helper module
 """
 from unittest import TestCase
 
-from pydantic import SecretStr
+from pydantic import AnyUrl, SecretStr
 
+from metadata.generated.schema.security.credentials.gcpCredentials import GCPCredentials
 from metadata.generated.schema.security.credentials.gcpExternalAccount import (
     GcpExternalAccount,
 )
@@ -24,7 +25,9 @@ from metadata.generated.schema.security.credentials.gcpValues import (
 from metadata.utils.credentials import (
     InvalidPrivateKeyException,
     build_google_credentials_dict,
+    set_google_credentials,
 )
+from metadata.utils.logger import Loggers
 
 
 class TestCredentials(TestCase):
@@ -61,7 +64,7 @@ VEhPQF0i0tUU7Fl071hcYaiQoZx4nIjN+NG6p5QKbl6k
             privateKey=private_key,
             clientEmail="email@mail.com",
             clientId="client_id",
-            clientX509CertUrl="http://localhost:1234",
+            clientX509CertUrl=AnyUrl("http://localhost:1234"),
         )
 
         expected_dict = {
@@ -74,10 +77,8 @@ VEhPQF0i0tUU7Fl071hcYaiQoZx4nIjN+NG6p5QKbl6k
             "auth_uri": "https://accounts.google.com/o/oauth2/auth",
             "token_uri": "https://oauth2.googleapis.com/token",
             "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-            "client_x509_cert_url": "http://localhost:1234",
+            "client_x509_cert_url": "http://localhost:1234/",
         }
-
-        build_google_credentials_dict(gcp_values)
 
         self.assertEqual(expected_dict, build_google_credentials_dict(gcp_values))
 
@@ -107,3 +108,11 @@ VEhPQF0i0tUU7Fl071hcYaiQoZx4nIjN+NG6p5QKbl6k
         }
 
         self.assertEqual(expected_dict, build_google_credentials_dict(gcp_values))
+        with self.assertLogs(Loggers.UTILS.value, level="INFO") as log:
+            set_google_credentials(
+                GCPCredentials(gcpConfig=gcp_values, gcpImpersonateServiceAccount=None)
+            )
+            self.assertIn(
+                "Using External account credentials to authenticate with GCP services.",
+                log.output[0],
+            )

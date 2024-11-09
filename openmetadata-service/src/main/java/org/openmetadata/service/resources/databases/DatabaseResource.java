@@ -51,7 +51,6 @@ import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.api.data.CreateDatabase;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.data.Database;
-import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.DatabaseProfilerConfig;
 import org.openmetadata.schema.type.EntityHistory;
@@ -61,10 +60,12 @@ import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.DatabaseRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.util.CSVExportResponse;
 import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/databases")
@@ -77,7 +78,7 @@ import org.openmetadata.service.util.ResultList;
 public class DatabaseResource extends EntityResource<Database, DatabaseRepository> {
   public static final String COLLECTION_PATH = "v1/databases/";
   static final String FIELDS =
-      "owner,databaseSchemas,usageSummary,location,tags,extension,domain,sourceHash,sourceHash";
+      "owners,databaseSchemas,usageSummary,location,tags,extension,domain,sourceHash";
 
   @Override
   public Database addHref(UriInfo uriInfo, Database db) {
@@ -95,8 +96,8 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
     return listOf(MetadataOperation.VIEW_USAGE, MetadataOperation.EDIT_USAGE);
   }
 
-  public DatabaseResource(Authorizer authorizer) {
-    super(Entity.DATABASE, authorizer);
+  public DatabaseResource(Authorizer authorizer, Limits limits) {
+    super(Entity.DATABASE, authorizer, limits);
   }
 
   public static class DatabaseList extends ResultList<Database> {
@@ -342,6 +343,35 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
+  @PATCH
+  @Path("/name/{fqn}")
+  @Operation(
+      operationId = "patchDatabase",
+      summary = "Update a database by name.",
+      description = "Update an existing database using JsonPatch.",
+      externalDocs =
+          @ExternalDocumentation(
+              description = "JsonPatch RFC",
+              url = "https://tools.ietf.org/html/rfc6902"))
+  @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
+  public Response patch(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the database", schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn,
+      @RequestBody(
+              description = "JsonPatch with array of operations",
+              content =
+                  @Content(
+                      mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
+                      examples = {
+                        @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
+                      }))
+          JsonPatch patch) {
+    return patchInternal(uriInfo, securityContext, fqn, patch);
+  }
+
   @PUT
   @Operation(
       operationId = "createOrUpdateDatabase",
@@ -390,6 +420,30 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
           @PathParam("id")
           UUID id) {
     return delete(uriInfo, securityContext, id, recursive, hardDelete);
+  }
+
+  @GET
+  @Path("/name/{name}/exportAsync")
+  @Produces(MediaType.APPLICATION_JSON)
+  @Valid
+  @Operation(
+      operationId = "exportDatabase",
+      summary = "Export database in CSV format",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Exported csv with database schemas",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = CSVExportResponse.class)))
+      })
+  public Response exportCsvAsync(
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the Database", schema = @Schema(type = "string"))
+          @PathParam("name")
+          String name) {
+    return exportCsvInternalAsync(securityContext, name);
   }
 
   @GET
@@ -536,7 +590,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
   @Operation(
       operationId = "addDataProfilerConfig",
       summary = "Add database profile config",
-      description = "Add database profile config to the table.",
+      description = "Add database profile config to the database.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -544,7 +598,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = Table.class)))
+                    schema = @Schema(implementation = Database.class)))
       })
   public Database addDataProfilerConfig(
       @Context UriInfo uriInfo,
@@ -565,7 +619,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
   @Operation(
       operationId = "getDataProfilerConfig",
       summary = "Get database profile config",
-      description = "Get database profile config to the table.",
+      description = "Get database profile config to the database.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -573,7 +627,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = Table.class)))
+                    schema = @Schema(implementation = Database.class)))
       })
   public Database getDataProfilerConfig(
       @Context UriInfo uriInfo,
@@ -603,7 +657,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = Table.class)))
+                    schema = @Schema(implementation = Database.class)))
       })
   public Database deleteDataProfilerConfig(
       @Context UriInfo uriInfo,

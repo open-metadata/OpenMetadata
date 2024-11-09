@@ -10,47 +10,70 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import {
   AuthenticationConfigurationWithScope,
   IAuthContext,
   OidcUser,
 } from '../components/Auth/AuthProviders/AuthProvider.interface';
-import { EntityUnion } from '../components/Explore/ExplorePage.interface';
+import { InlineAlertProps } from '../components/common/InlineAlert/InlineAlert.interface';
+import {
+  EntityUnion,
+  ExploreSearchIndex,
+} from '../components/Explore/ExplorePage.interface';
 import { AuthenticationConfiguration } from '../generated/configuration/authenticationConfiguration';
 import { AuthorizerConfiguration } from '../generated/configuration/authorizerConfiguration';
+import { LineageSettings } from '../generated/configuration/lineageSettings';
 import { LoginConfiguration } from '../generated/configuration/loginConfiguration';
 import { LogoConfiguration } from '../generated/configuration/logoConfiguration';
+import { UIThemePreference } from '../generated/configuration/uiThemePreference';
+import { Domain } from '../generated/entity/domains/domain';
 import { User } from '../generated/entity/teams/user';
 import { EntityReference } from '../generated/entity/type';
 
 export interface HelperFunctions {
   onLoginHandler: () => void;
   onLogoutHandler: () => void;
-  handleSuccessfulLogin: (user: OidcUser) => void;
+  handleSuccessfulLogin: (user: OidcUser) => Promise<void>;
   handleFailedLogin: () => void;
   updateAxiosInterceptors: () => void;
+  trySilentSignIn: (forceLogout?: boolean) => Promise<void>;
+}
+
+export interface AppPreferences {
+  lineageConfig?: LineageSettings;
 }
 
 export interface ApplicationStore
   extends IAuthContext,
     LogoConfiguration,
     LoginConfiguration {
+  isApplicationLoading: boolean;
+  setApplicationLoading: (loading: boolean) => void;
   userProfilePics: Record<string, User>;
   cachedEntityData: Record<string, EntityUnion>;
-  urlPathName: string;
   selectedPersona: EntityReference;
   oidcIdToken: string;
   refreshTokenKey: string;
   authConfig?: AuthenticationConfigurationWithScope;
-  applicationConfig?: LogoConfiguration;
+  applicationConfig?: UIThemePreference;
+  searchCriteria: ExploreSearchIndex | '';
+  theme: UIThemePreference['customTheme'];
+  inlineAlertDetails?: InlineAlertProps;
+  applications: string[];
+  appPreferences: AppPreferences;
+  setInlineAlertDetails: (alertDetails?: InlineAlertProps) => void;
   setSelectedPersona: (persona: EntityReference) => void;
-  setApplicationConfig: (config: LogoConfiguration) => void;
-  setUrlPathName: (urlPathName: string) => void;
+  setApplicationConfig: (config: UIThemePreference) => void;
+  setAppPreferences: (preferences: AppPreferences) => void;
   setCurrentUser: (user: User) => void;
   setAuthConfig: (authConfig: AuthenticationConfigurationWithScope) => void;
   setAuthorizerConfig: (authorizerConfig: AuthorizerConfiguration) => void;
   setJwtPrincipalClaims: (
     claims: AuthenticationConfiguration['jwtPrincipalClaims']
+  ) => void;
+  setJwtPrincipalClaimsMapping: (
+    claimsMapping: AuthenticationConfiguration['jwtPrincipalClaimsMapping']
   ) => void;
   setHelperFunctionsRef: (helperFunctions: HelperFunctions) => void;
   updateUserProfilePics: (data: { id: string; user: User }) => void;
@@ -65,4 +88,21 @@ export interface ApplicationStore
   setOidcToken: (oidcToken: string) => void;
   removeOidcToken: () => void;
   removeRefreshToken: () => void;
+  updateSearchCriteria: (criteria: ExploreSearchIndex | '') => void;
+  trySilentSignIn: (forceLogout?: boolean) => void;
+  setApplicationsName: (applications: string[]) => void;
+}
+
+export interface DomainStore {
+  domains: Domain[];
+  userDomains: EntityReference[];
+  domainLoading: boolean;
+  activeDomain: string;
+  activeDomainEntityRef?: EntityReference;
+  domainOptions: ItemType[];
+  updateDomains: (domainsArr: Domain[], selectDefault?: boolean) => void;
+  updateActiveDomain: (activeDomainKey: string) => void;
+  setDomains: (domains: Domain[]) => void;
+  setUserDomains: (userDomainsArr: EntityReference[]) => void;
+  updateDomainLoading: (loading: boolean) => void;
 }

@@ -11,9 +11,11 @@
  *  limitations under the License.
  */
 
+import { ExclamationCircleFilled } from '@ant-design/icons';
 import { Button, Divider, Input, Space, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import React, { useCallback, useMemo, useState } from 'react';
+import { isEmpty } from 'lodash';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../../../assets/svg/edit-new.svg';
 import {
@@ -32,13 +34,16 @@ import { useAuth } from '../../../../../hooks/authHooks';
 import { useApplicationStore } from '../../../../../hooks/useApplicationStore';
 import { useFqn } from '../../../../../hooks/useFqn';
 import { changePassword } from '../../../../../rest/auth-API';
+import { restoreUser } from '../../../../../rest/userAPI';
 import { getEntityName } from '../../../../../utils/EntityUtils';
 import {
   showErrorToast,
   showSuccessToast,
 } from '../../../../../utils/ToastUtils';
+import { isMaskedEmail } from '../../../../../utils/Users.util';
 import Chip from '../../../../common/Chip/Chip.component';
 import { DomainLabel } from '../../../../common/DomainLabel/DomainLabel.component';
+import ManageButton from '../../../../common/EntityPageInfos/ManageButton/ManageButton';
 import InlineEdit from '../../../../common/InlineEdit/InlineEdit.component';
 import { PersonaSelectableList } from '../../../../MyData/Persona/PersonaSelectableList/PersonaSelectableList.component';
 import ChangePasswordForm from '../../ChangePasswordForm';
@@ -47,6 +52,7 @@ import { UserProfileDetailsProps } from './UserProfileDetails.interface';
 
 const UserProfileDetails = ({
   userData,
+  afterDeleteAction,
   updateUserDetails,
 }: UserProfileDetailsProps) => {
   const { t } = useTranslation();
@@ -58,11 +64,6 @@ const UserProfileDetails = ({
   const [isChangePassword, setIsChangePassword] = useState<boolean>(false);
   const [displayName, setDisplayName] = useState(userData.displayName);
   const [isDisplayNameEdit, setIsDisplayNameEdit] = useState(false);
-
-  const isSelfProfileView = useMemo(
-    () => userData?.id === currentUser?.id,
-    [userData, currentUser]
-  );
 
   const isAuthProviderBasic = useMemo(
     () =>
@@ -77,13 +78,8 @@ const UserProfileDetails = ({
   );
 
   const hasEditPermission = useMemo(
-    () => isAdminUser || isLoggedInUser,
-    [isAdminUser, isLoggedInUser]
-  );
-
-  const hasPersonaEditPermission = useMemo(
-    () => isAdminUser || isSelfProfileView,
-    [isAdminUser, isSelfProfileView]
+    () => (isAdminUser || isLoggedInUser) && !userData.deleted,
+    [isAdminUser, isLoggedInUser, userData.deleted]
   );
 
   const showChangePasswordComponent = useMemo(
@@ -99,78 +95,27 @@ const UserProfileDetails = ({
     [userData]
   );
 
-  const onDisplayNameChange = (e: React.ChangeEvent<HTMLInputElement>) =>
-    setDisplayName(e.target.value);
+  const onDisplayNameChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => setDisplayName(e.target.value),
+    []
+  );
 
   const handleDisplayNameSave = useCallback(async () => {
     if (displayName !== userData.displayName) {
       setIsLoading(true);
-      await updateUserDetails({ displayName: displayName ?? '' });
+      await updateUserDetails(
+        { displayName: isEmpty(displayName) ? undefined : displayName },
+        'displayName'
+      );
       setIsLoading(false);
     }
     setIsDisplayNameEdit(false);
   }, [userData.displayName, displayName, updateUserDetails]);
 
-  const displayNameRenderComponent = useMemo(
-    () =>
-      isDisplayNameEdit && hasEditPermission ? (
-        <InlineEdit
-          isLoading={isLoading}
-          onCancel={() => setIsDisplayNameEdit(false)}
-          onSave={handleDisplayNameSave}>
-          <Input
-            className="w-full"
-            data-testid="displayName"
-            id="displayName"
-            name="displayName"
-            placeholder={t('label.display-name')}
-            type="text"
-            value={displayName}
-            onChange={onDisplayNameChange}
-          />
-        </InlineEdit>
-      ) : (
-        <Space align="center">
-          <Typography.Text
-            className="font-medium text-md"
-            data-testid="user-name"
-            ellipsis={{ tooltip: true }}
-            style={{ maxWidth: '400px' }}>
-            {hasEditPermission
-              ? userData.displayName ||
-                t('label.add-entity', { entity: t('label.display-name') })
-              : getEntityName(userData)}
-          </Typography.Text>
-          {hasEditPermission && (
-            <Tooltip
-              title={t('label.edit-entity', {
-                entity: t('label.display-name'),
-              })}>
-              <EditIcon
-                className="cursor-pointer align-middle"
-                color={DE_ACTIVE_COLOR}
-                data-testid="edit-displayName"
-                {...ICON_DIMENSION}
-                onClick={(e) => {
-                  // Used to stop click propagation event to parent User.component collapsible panel
-                  e.stopPropagation();
-                  setIsDisplayNameEdit(true);
-                }}
-              />
-            </Tooltip>
-          )}
-        </Space>
-      ),
-    [
-      userData,
-      displayName,
-      isDisplayNameEdit,
-      hasEditPermission,
-      getEntityName,
-      onDisplayNameChange,
-      handleDisplayNameSave,
-    ]
-  );
+  const handleCloseEditDisplayName = useCallback(() => {
+    setDisplayName(userData.displayName);
+    setIsDisplayNameEdit(false);
+  }, [userData.displayName]);
 
   const changePasswordRenderComponent = useMemo(
     () =>
@@ -220,49 +165,55 @@ const UserProfileDetails = ({
   };
 
   const userEmailRender = useMemo(
-    () => (
-      <Space align="center">
-        <Typography.Text
-          className="text-grey-muted"
-          data-testid="user-email-label">{`${t(
-          'label.email'
-        )} :`}</Typography.Text>
+    () =>
+      !isMaskedEmail(userData.email) && (
+        <>
+          <Space align="center">
+            <Typography.Text
+              className="text-grey-muted"
+              data-testid="user-email-label">{`${t(
+              'label.email'
+            )} :`}</Typography.Text>
 
-        <Typography.Paragraph className="m-b-0" data-testid="user-email-value">
-          {userData.email}
-        </Typography.Paragraph>
-      </Space>
-    ),
+            <Typography.Paragraph
+              className="m-b-0"
+              data-testid="user-email-value">
+              {userData.email}
+            </Typography.Paragraph>
+          </Space>
+          <Divider type="vertical" />
+        </>
+      ),
     [userData.email]
   );
 
   const userDomainRender = useMemo(
     () => (
-      <Space align="center">
+      <div className="d-flex items-center gap-2">
         <Typography.Text
           className="text-grey-muted"
           data-testid="user-domain-label">{`${t(
           'label.domain'
         )} :`}</Typography.Text>
-        <Space align="center">
-          <DomainLabel
-            domain={userData?.domain}
-            entityFqn={userData.fullyQualifiedName ?? ''}
-            entityId={userData.id ?? ''}
-            entityType={EntityType.USER}
-            hasPermission={false}
-          />
-        </Space>
-      </Space>
+        <DomainLabel
+          multiple
+          domain={userData?.domains}
+          entityFqn={userData.fullyQualifiedName ?? ''}
+          entityId={userData.id ?? ''}
+          entityType={EntityType.USER}
+          hasPermission={Boolean(isAdminUser) && !userData.deleted}
+          textClassName="text-sm text-grey-muted"
+        />
+      </div>
     ),
-    [userData.domain]
+    [userData.domains, isAdminUser]
   );
 
   const handleDefaultPersonaUpdate = useCallback(
     async (defaultPersona?: EntityReference) => {
-      await updateUserDetails({ ...userData, defaultPersona });
+      await updateUserDetails({ defaultPersona }, 'defaultPersona');
     },
-    [updateUserDetails, userData]
+    [updateUserDetails]
   );
 
   const defaultPersonaRender = useMemo(
@@ -277,11 +228,12 @@ const UserProfileDetails = ({
         <Chip
           showNoDataPlaceholder
           data={defaultPersona ? [defaultPersona] : []}
+          entityType={EntityType.PERSONA}
           noDataPlaceholder={NO_DATA_PLACEHOLDER}
         />
 
         <PersonaSelectableList
-          hasPermission={hasPersonaEditPermission}
+          hasPermission={hasEditPermission}
           multiSelect={false}
           personaList={userData.personas}
           selectedPersonas={defaultPersona ? [defaultPersona] : []}
@@ -290,12 +242,37 @@ const UserProfileDetails = ({
       </Space>
     ),
     [
-      userData.personas,
-      hasPersonaEditPermission,
       defaultPersona,
+      userData.personas,
+      hasEditPermission,
       handleDefaultPersonaUpdate,
     ]
   );
+
+  const handleRestoreUser = useCallback(async () => {
+    setIsLoading(true);
+
+    try {
+      await restoreUser(userData.id);
+      afterDeleteAction(true); // this will reset the user state with deleted to false value.
+
+      showSuccessToast(
+        t('message.entity-restored-success', { entity: t('label.user') })
+      );
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.entity-updating-error', { entity: t('label.user') })
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  }, [userData.id]);
+
+  useEffect(() => {
+    // Reset display name when user data changes
+    setDisplayName(userData.displayName);
+  }, [userData.displayName]);
 
   return (
     <>
@@ -306,11 +283,67 @@ const UserProfileDetails = ({
         size="middle">
         <Space className="w-full">
           <UserProfileImage userData={userData} />
-          {displayNameRenderComponent}
+          {isDisplayNameEdit ? (
+            <InlineEdit
+              isLoading={isLoading}
+              onCancel={handleCloseEditDisplayName}
+              onSave={handleDisplayNameSave}>
+              <Input
+                className="w-full"
+                data-testid="displayName"
+                id="displayName"
+                name="displayName"
+                placeholder={t('label.display-name')}
+                type="text"
+                value={displayName}
+                onChange={onDisplayNameChange}
+              />
+            </InlineEdit>
+          ) : (
+            <Space align="center">
+              {userData.displayName && (
+                <Typography.Text
+                  className="font-medium text-md"
+                  data-testid="user-name"
+                  ellipsis={{ tooltip: true }}
+                  style={{ maxWidth: '400px' }}>
+                  {userData.displayName}
+                </Typography.Text>
+              )}
+              {isLoggedInUser && !userData.deleted && (
+                <Tooltip
+                  title={t(
+                    `label.${
+                      isEmpty(userData.displayName) ? 'add' : 'edit'
+                    }-entity`,
+                    {
+                      entity: t('label.display-name'),
+                    }
+                  )}>
+                  <EditIcon
+                    className="cursor-pointer align-middle"
+                    color={DE_ACTIVE_COLOR}
+                    data-testid="edit-displayName"
+                    {...ICON_DIMENSION}
+                    onClick={(e) => {
+                      /* Used to stop click propagation event to parent User.component collapsible panel*/
+                      e.stopPropagation();
+                      setIsDisplayNameEdit(true);
+                    }}
+                  />
+                </Tooltip>
+              )}
+            </Space>
+          )}
+          {userData.deleted && (
+            <span className="deleted-badge-button" data-testid="deleted-badge">
+              <ExclamationCircleFilled className="m-r-xss font-medium text-xs" />
+              {t('label.deleted')}
+            </span>
+          )}
           <Divider type="vertical" />
 
           {userEmailRender}
-          <Divider type="vertical" />
 
           {defaultPersonaRender}
           <Divider type="vertical" />
@@ -318,7 +351,22 @@ const UserProfileDetails = ({
           {userDomainRender}
         </Space>
 
-        {changePasswordRenderComponent}
+        <div className="d-flex items-center gap-2">
+          {changePasswordRenderComponent}
+
+          <ManageButton
+            isRecursiveDelete
+            afterDeleteAction={afterDeleteAction}
+            allowSoftDelete={!userData.deleted}
+            canDelete={isAdminUser}
+            deleted={userData.deleted}
+            displayName={getEntityName(userData)}
+            entityId={userData.id}
+            entityName={userData.fullyQualifiedName ?? userData.name}
+            entityType={EntityType.USER}
+            onRestoreEntity={handleRestoreUser}
+          />
+        </div>
       </Space>
 
       {showChangePasswordComponent && (

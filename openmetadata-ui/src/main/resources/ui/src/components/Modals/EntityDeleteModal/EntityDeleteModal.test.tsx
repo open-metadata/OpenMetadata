@@ -110,4 +110,25 @@ describe('Test EntityDelete Modal Component', () => {
 
     expect(await screen.findByText('label.soft-delete')).toBeInTheDocument();
   });
+
+  it('should focus the input box on open', async () => {
+    // since the focus is set using setTimeout, we need to use fake timers
+    jest.useFakeTimers();
+    await act(async () => {
+      render(<EntityDeleteModal {...mockProp} visible />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    await act(async () => {
+      jest.runAllTimers();
+    });
+
+    const inputBox = await screen.findByTestId('confirmation-text-input');
+
+    // Check if element is focused
+    expect(inputBox).toHaveFocus();
+
+    jest.useRealTimers();
+  });
 });

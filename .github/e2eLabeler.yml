@@ -17,6 +17,7 @@
   - "openmetadata-ui/**/*[sS]earch*"
   - "openmetadata-ui/**/*[mM]y[dD]ata*"
   - "openmetadata-ui/**/*[eE]xplore*"
+  - "openmetadata-ui/**/*[eE]ntity*"
 
 "e2e:Governance":
   - "openmetadata-ui/**/*[gG]lossary*"

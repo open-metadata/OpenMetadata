@@ -97,7 +97,7 @@ class IncrementalConfigCreator:
         """Filter the pipeline statuses to get the last time the pipeline was run succesfully."""
         return max(  # pylint: disable=R1728
             [
-                pipeline.startDate.__root__
+                pipeline.startDate.root
                 for pipeline in pipeline_statuses
                 if pipeline.pipelineState == PipelineState.success
                 and pipeline.startDate

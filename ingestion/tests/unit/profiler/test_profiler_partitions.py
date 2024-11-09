@@ -90,7 +90,7 @@ MOCK_DATABASE = Database(
 class MockTable(BaseModel):
     tablePartition: Optional[TablePartition]
     tableProfilerConfig: Optional[TableProfilerConfig]
-    serviceType = DatabaseServiceType.BigQuery
+    serviceType: DatabaseServiceType = DatabaseServiceType.BigQuery
 
     class Config:
         arbitrary_types_allowed = True
@@ -99,7 +99,7 @@ class MockTable(BaseModel):
 class MockRedshiftTable(BaseModel):
     tablePartition: Optional[TablePartition]
     tableProfilerConfig: Optional[TableProfilerConfig]
-    serviceType = DatabaseServiceType.Redshift
+    serviceType: DatabaseServiceType = DatabaseServiceType.Redshift
 
     class Config:
         arbitrary_types_allowed = True

@@ -60,6 +60,7 @@ const TableDescription = ({
         <SuggestionsAlert
           hasEditAccess={hasEditPermission}
           maxLength={40}
+          showSuggestedBy={false}
           suggestion={activeSuggestion}
         />
       );
@@ -86,7 +87,7 @@ const TableDescription = ({
 
   return (
     <Space
-      className="hover-icon-group w-full"
+      className="hover-icon-group w-full d-flex"
       data-testid="description"
       direction="vertical"
       id={`field-description-${index}`}>

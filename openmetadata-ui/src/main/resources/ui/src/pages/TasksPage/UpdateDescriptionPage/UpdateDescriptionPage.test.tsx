@@ -12,6 +12,7 @@
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import React, { forwardRef } from 'react';
+import { MOCK_TASK_ASSIGNEE } from '../../../mocks/Task.mock';
 import { postThread } from '../../../rest/feedsAPI';
 import UpdateDescription from './UpdateDescriptionPage';
 
@@ -19,12 +20,15 @@ const mockUseHistory = {
   push: jest.fn(),
   goBack: jest.fn(),
 };
+jest.mock('../../../hooks/useCustomLocation/useCustomLocation', () => {
+  return jest
+    .fn()
+    .mockImplementation(() => ({ search: '?field=columns&value=shop_id' }));
+});
+
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
   useParams: jest.fn().mockReturnValue({ entityType: 'table' }),
-  useLocation: jest
-    .fn()
-    .mockReturnValue({ search: '?field=columns&value=shop_id' }),
   useHistory: jest.fn().mockImplementation(() => mockUseHistory),
 }));
 jest.mock('../../../components/common/ResizablePanels/ResizablePanels', () =>
@@ -42,11 +46,13 @@ const mockTableData = {
   description:
     'This dimension table contains online shop information. This table contains one shop per row.',
   tableType: 'Regular',
-  owner: {
-    id: 'id1',
-    name: 'sample_data',
-    type: 'User',
-  },
+  owners: [
+    {
+      id: 'id1',
+      name: 'sample_data',
+      type: 'User',
+    },
+  ],
   columns: [
     {
       name: 'shop_id',
@@ -76,6 +82,10 @@ jest.mock('../../../utils/TasksUtils', () => ({
   getColumnObject: jest.fn().mockImplementation(() => ({
     description: mockTableData.columns[0].description,
   })),
+  getTaskAssignee: jest.fn().mockReturnValue(MOCK_TASK_ASSIGNEE),
+  getTaskEntityFQN: jest
+    .fn()
+    .mockReturnValue('sample_data.ecommerce_db.shopify.dim_location'),
 }));
 jest.mock('../shared/Assignees', () =>
   jest.fn().mockImplementation(() => <div>Assignees.component</div>)

@@ -10,8 +10,8 @@
 #  limitations under the License.
 
 # Build stage
-FROM alpine:3.19 AS build
-ARG RI_VERSION="1.3.0-SNAPSHOT"
+FROM alpine:3 AS build
+ARG RI_VERSION="1.6.0-SNAPSHOT"
 ENV RELEASE_URL="https://github.com/open-metadata/OpenMetadata/releases/download/${RI_VERSION}-release/openmetadata-${RI_VERSION}.tar.gz"
 
 RUN mkdir -p /opt/openmetadata && \
@@ -20,8 +20,8 @@ RUN mkdir -p /opt/openmetadata && \
     rm openmetadata-*.tar.gz
 
 # Final stage
-FROM alpine:3.19
-ARG RI_VERSION="1.3.0-SNAPSHOT"
+FROM alpine:3
+ARG RI_VERSION="1.6.0-SNAPSHOT"
 ARG BUILD_DATE
 ARG COMMIT_ID
 LABEL maintainer="OpenMetadata"

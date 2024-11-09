@@ -20,10 +20,8 @@ import React, { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   INGESTION_ELASTIC_SEARCH_WORKFLOW_UI_SCHEMA,
-  INGESTION_WORKFLOW_NAME_UI_SCHEMA,
   INGESTION_WORKFLOW_UI_SCHEMA,
 } from '../../../../../constants/Services.constant';
-import { FormSubmitType } from '../../../../../enums/form.enum';
 import {
   DbtConfigType,
   PipelineType,
@@ -80,10 +78,6 @@ const IngestionWorkflowForm: FC<IngestionWorkflowFormProps> = ({
         ...commonSchema,
         ...INGESTION_ELASTIC_SEARCH_WORKFLOW_UI_SCHEMA,
       };
-    }
-
-    if (operationType === FormSubmitType.EDIT) {
-      commonSchema = { ...commonSchema, ...INGESTION_WORKFLOW_NAME_UI_SCHEMA };
     }
 
     return commonSchema;

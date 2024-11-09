@@ -21,30 +21,30 @@ import 'react-toastify/dist/ReactToastify.min.css';
 import AppRouter from './components/AppRouter/AppRouter';
 import { AuthProvider } from './components/Auth/AuthProviders/AuthProvider';
 import ErrorBoundary from './components/common/ErrorBoundary/ErrorBoundary';
-import DomainProvider from './components/Domain/DomainProvider/DomainProvider';
 import { EntityExportModalProvider } from './components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import ApplicationsProvider from './components/Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import WebAnalyticsProvider from './components/WebAnalytics/WebAnalyticsProvider';
 import { TOAST_OPTIONS } from './constants/Toasts.constants';
-import DirectionProvider from './context/DirectionProvider/DirectionProvider';
-import GlobalSearchProvider from './context/GlobalSearchProvider/GlobalSearchProvider';
+import AntDConfigProvider from './context/AntDConfigProvider/AntDConfigProvider';
 import PermissionProvider from './context/PermissionProvider/PermissionProvider';
 import TourProvider from './context/TourProvider/TourProvider';
 import WebSocketProvider from './context/WebSocketProvider/WebSocketProvider';
 import { useApplicationStore } from './hooks/useApplicationStore';
-import { getCustomLogoConfig } from './rest/settingConfigAPI';
+import { getCustomUiThemePreference } from './rest/settingConfigAPI';
 import { history } from './utils/HistoryUtils';
 import i18n from './utils/i18next/LocalUtil';
+import { getThemeConfig } from './utils/ThemeUtils';
 
 const App: FC = () => {
   const { applicationConfig, setApplicationConfig } = useApplicationStore();
 
   const fetchApplicationConfig = async () => {
     try {
-      const data = await getCustomLogoConfig();
+      const data = await getCustomUiThemePreference();
 
       setApplicationConfig({
         ...data,
+        customTheme: getThemeConfig(data.customTheme),
       });
     } catch (error) {
       // eslint-disable-next-line no-console
@@ -57,9 +57,12 @@ const App: FC = () => {
   }, []);
 
   useEffect(() => {
-    const faviconHref = isEmpty(applicationConfig?.customFaviconUrlPath)
+    const faviconHref = isEmpty(
+      applicationConfig?.customLogoConfig?.customFaviconUrlPath
+    )
       ? '/favicon.png'
-      : applicationConfig?.customFaviconUrlPath ?? '/favicon.png';
+      : applicationConfig?.customLogoConfig?.customFaviconUrlPath ??
+        '/favicon.png';
     const link = document.querySelector('link[rel~="icon"]');
 
     if (link) {
@@ -73,29 +76,25 @@ const App: FC = () => {
         <Router history={history}>
           <I18nextProvider i18n={i18n}>
             <ErrorBoundary>
-              <DirectionProvider>
+              <AntDConfigProvider>
                 <AuthProvider childComponentType={AppRouter}>
                   <TourProvider>
                     <HelmetProvider>
                       <WebAnalyticsProvider>
                         <PermissionProvider>
                           <WebSocketProvider>
-                            <GlobalSearchProvider>
-                              <ApplicationsProvider>
-                                <DomainProvider>
-                                  <EntityExportModalProvider>
-                                    <AppRouter />
-                                  </EntityExportModalProvider>
-                                </DomainProvider>
-                              </ApplicationsProvider>
-                            </GlobalSearchProvider>
+                            <ApplicationsProvider>
+                              <EntityExportModalProvider>
+                                <AppRouter />
+                              </EntityExportModalProvider>
+                            </ApplicationsProvider>
                           </WebSocketProvider>
                         </PermissionProvider>
                       </WebAnalyticsProvider>
                     </HelmetProvider>
                   </TourProvider>
                 </AuthProvider>
-              </DirectionProvider>
+              </AntDConfigProvider>
             </ErrorBoundary>
           </I18nextProvider>
         </Router>

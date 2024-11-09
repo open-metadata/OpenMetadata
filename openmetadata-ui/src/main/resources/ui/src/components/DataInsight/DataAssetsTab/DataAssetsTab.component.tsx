@@ -11,38 +11,16 @@
  *  limitations under the License.
  */
 import { Col, Row } from 'antd';
-import React, { useMemo } from 'react';
+import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { DataInsightChartType } from '../../../generated/dataInsight/dataInsightChartResult';
 import { useDataInsightProvider } from '../../../pages/DataInsightPage/DataInsightProvider';
+import { SystemChartType } from '../../../rest/DataInsightAPI';
 import Loader from '../../common/Loader/Loader';
-import DescriptionInsight from '../DescriptionInsight';
-import OwnerInsight from '../OwnerInsight';
-import TierInsight from '../TierInsight';
-import TotalEntityInsight from '../TotalEntityInsight';
+import { DataInsightChartCard } from '../DataInsightChartCard';
 
 const DataAssetsTab = () => {
-  const {
-    chartFilter,
-    selectedDaysFilter,
-    kpi,
-    tierTag: tier,
-  } = useDataInsightProvider();
+  const { kpi } = useDataInsightProvider();
   const { t } = useTranslation();
-  const { descriptionKpi, ownerKpi } = useMemo(() => {
-    return {
-      descriptionKpi: kpi.data.find(
-        (value) =>
-          value.dataInsightChart.name ===
-          DataInsightChartType.PercentageOfEntitiesWithDescriptionByType
-      ),
-      ownerKpi: kpi.data.find(
-        (value) =>
-          value.dataInsightChart.name ===
-          DataInsightChartType.PercentageOfEntitiesWithOwnerByType
-      ),
-    };
-  }, [kpi]);
 
   if (kpi.isLoading) {
     return <Loader />;
@@ -51,68 +29,65 @@ const DataAssetsTab = () => {
   return (
     <Row gutter={[16, 16]}>
       <Col span={24}>
-        <TotalEntityInsight
-          chartFilter={chartFilter}
-          selectedDays={selectedDaysFilter}
+        <DataInsightChartCard
+          header={t('label.data-insight-total-entity-summary')}
+          subHeader={t('message.total-entity-insight')}
+          type={SystemChartType.TotalDataAssets}
         />
       </Col>
       <Col span={24}>
-        <DescriptionInsight
-          chartFilter={chartFilter}
-          dataInsightChartName={
-            DataInsightChartType.PercentageOfEntitiesWithDescriptionByType
-          }
+        <DataInsightChartCard
+          listAssets
           header={t('label.data-insight-description-summary-type', {
             type: t('label.data-asset'),
           })}
-          kpi={descriptionKpi}
-          selectedDays={selectedDaysFilter}
+          subHeader={t('message.field-insight', {
+            field: t('label.description-lowercase'),
+          })}
+          type={SystemChartType.PercentageOfDataAssetWithDescription}
         />
       </Col>
       <Col span={24}>
-        <OwnerInsight
-          chartFilter={chartFilter}
-          dataInsightChartName={
-            DataInsightChartType.PercentageOfEntitiesWithOwnerByType
-          }
+        <DataInsightChartCard
+          listAssets
           header={t('label.data-insight-owner-summary-type', {
             type: t('label.data-asset'),
           })}
-          kpi={ownerKpi}
-          selectedDays={selectedDaysFilter}
+          subHeader={t('message.field-insight', {
+            field: t('label.owner'),
+          })}
+          type={SystemChartType.PercentageOfDataAssetWithOwner}
         />
       </Col>
       <Col span={24}>
-        <DescriptionInsight
-          chartFilter={chartFilter}
-          dataInsightChartName={
-            DataInsightChartType.PercentageOfServicesWithDescription
-          }
+        <DataInsightChartCard
           header={t('label.data-insight-description-summary-type', {
             type: t('label.service'),
           })}
-          kpi={descriptionKpi}
-          selectedDays={selectedDaysFilter}
+          subHeader={t('message.field-insight', {
+            field: t('label.description-lowercase'),
+          })}
+          type={SystemChartType.PercentageOfServiceWithDescription}
         />
       </Col>
       <Col span={24}>
-        <OwnerInsight
-          chartFilter={chartFilter}
-          dataInsightChartName={
-            DataInsightChartType.PercentageOfServicesWithOwner
-          }
+        <DataInsightChartCard
           header={t('label.data-insight-owner-summary-type', {
             type: t('label.service'),
           })}
-          kpi={ownerKpi}
-          selectedDays={selectedDaysFilter}
+          subHeader={t('message.field-insight', {
+            field: t('label.owner'),
+          })}
+          type={SystemChartType.PercentageOfServiceWithOwner}
         />
       </Col>
       <Col span={24}>
-        <TierInsight
-          chartFilter={chartFilter}
-          selectedDays={selectedDaysFilter}
-          tierTags={tier}
+        <DataInsightChartCard
+          header={t('label.data-insight-tier-summary')}
+          subHeader={t('message.field-insight', {
+            field: t('label.tier'),
+          })}
+          type={SystemChartType.TotalDataAssetsByTier}
         />
       </Col>
     </Row>

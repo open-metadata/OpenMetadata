@@ -16,6 +16,7 @@ import classNames from 'classnames';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as FilterPlaceHolderIcon } from '../../../assets/svg/no-search-placeholder.svg';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { Transi18next } from '../../../utils/CommonUtils';
 import { FilterPlaceholderProps } from './placeholder.interface';
 
@@ -26,6 +27,7 @@ const FilterErrorPlaceHolder = ({
   placeholderText,
 }: FilterPlaceholderProps) => {
   const { t } = useTranslation();
+  const { theme } = useApplicationStore();
 
   return (
     <div
@@ -58,7 +60,7 @@ const FilterErrorPlaceHolder = ({
                   <a
                     href={doc}
                     rel="noreferrer"
-                    style={{ color: '#1890ff' }}
+                    style={{ color: theme.primaryColor }}
                     target="_blank"
                   />
                 }

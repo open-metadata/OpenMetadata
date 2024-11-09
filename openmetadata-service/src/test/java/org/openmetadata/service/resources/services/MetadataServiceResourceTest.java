@@ -135,7 +135,10 @@ public class MetadataServiceResourceTest
                     .withPassword(secretPassword));
     // Update metadata description
     CreateMetadataService update =
-        createRequest(test).withDescription("description1").withConnection(metadataConnection);
+        createRequest(test)
+            .withDescription("description1")
+            .withConnection(metadataConnection)
+            .withName(service.getName());
     ChangeDescription change = getChangeDescription(service, MINOR_UPDATE);
     fieldAdded(change, "description", "description1");
     service = updateAndCheckEntity(update, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
@@ -229,14 +232,14 @@ public class MetadataServiceResourceTest
         byName
             ? getEntityByName(service.getFullyQualifiedName(), null, fields, ADMIN_AUTH_HEADERS)
             : getEntity(service.getId(), fields, ADMIN_AUTH_HEADERS);
-    TestUtils.assertListNull(service.getOwner());
+    TestUtils.assertListNull(service.getOwners());
 
-    fields = "owner,tags";
+    fields = "owners,tags";
     service =
         byName
             ? getEntityByName(service.getFullyQualifiedName(), null, fields, ADMIN_AUTH_HEADERS)
             : getEntity(service.getId(), fields, ADMIN_AUTH_HEADERS);
-    // Checks for other owner, tags, and followers is done in the base class
+    // Checks for other owners, tags, and followers is done in the base class
     return service;
   }
 

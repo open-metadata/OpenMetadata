@@ -10,6 +10,9 @@
       "description": "Connection object.",
       "oneOf": [
         {
+          "$ref": "../services/apiService.json#/definitions/apiConnection"
+        },
+        {
           "$ref": "../services/databaseService.json#/definitions/databaseConnection"
         },
         {
@@ -49,6 +52,7 @@
       "default": null
     },
     "secretsManagerProvider": {
+      "description": "Secrets Manager Provider to use for fetching secrets.",
       "$ref": "../../security/secrets/secretsManagerProvider.json",
       "default": "db"
     }

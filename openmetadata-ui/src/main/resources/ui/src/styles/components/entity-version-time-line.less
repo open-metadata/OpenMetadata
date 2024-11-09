@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 
-@import url('../variables.less');
+@import (reference) url('../variables.less');
 
 .versions-list-container {
   position: fixed;
-  top: 64px;
+  top: @om-navbar-height;
 
   .ant-drawer-content-wrapper {
     box-shadow: none;
@@ -55,6 +55,12 @@
 
 .timeline-content {
   display: flex;
+
+  &.limit-reached {
+    opacity: 0.5;
+
+    cursor: not-allowed;
+  }
 }
 .timeline-wrapper {
   padding-right: 1rem;
@@ -64,7 +70,7 @@
   display: block;
   width: 18px;
   height: 18px;
-  border: 3px solid @primary-color-hover;
+  border: 3px solid @primary-1;
   background: transparent;
   border-radius: 50%;
   margin-top: 0.15rem;
@@ -96,7 +102,7 @@
   display: block;
   width: 2px;
   height: 100%;
-  background-color: @primary-color-hover;
+  background-color: @primary-1;
   transform: translate(8px, 0);
 }
 .timeline-line.major {
@@ -106,6 +112,12 @@
   display: block;
   width: 2px;
   height: 15px;
-  background-color: @primary-color-hover;
+  background-color: @primary-1;
   transform: translate(8px, 0);
+}
+
+.version-timestamp::before {
+  content: '\2022';
+  margin-right: 6px;
+  margin-left: 4px;
 }

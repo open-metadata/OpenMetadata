@@ -11,10 +11,11 @@
  *  limitations under the License.
  */
 
-import { act, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
 import { EntityType } from '../../../enums/entity.enum';
+import { mockUserData } from '../../../mocks/MyDataPage.mock';
 import { DeleteWidgetModalProps } from './DeleteWidget.interface';
 import DeleteWidgetModal from './DeleteWidgetModal';
 
@@ -26,6 +27,16 @@ const mockProps: DeleteWidgetModalProps = {
   entityId: 'entityId',
 };
 
+const mockPropsUser: DeleteWidgetModalProps = {
+  visible: true,
+  onCancel: jest.fn(),
+  entityName: 'entityName',
+  entityType: EntityType.USER,
+  entityId: mockUserData.id,
+};
+
+const mockOnLogoutHandler = jest.fn();
+
 jest.mock('lodash', () => ({
   ...jest.requireActual('lodash'),
   startCase: jest.fn(),
@@ -36,7 +47,22 @@ jest.mock('react-router-dom', () => ({
 }));
 
 jest.mock('../../../rest/miscAPI', () => ({
-  deleteEntity: jest.fn().mockImplementation(() => Promise.resolve({})),
+  deleteEntity: jest.fn().mockImplementation(() =>
+    Promise.resolve({
+      status: 200,
+    })
+  ),
+}));
+
+jest.mock('../../../hooks/useApplicationStore', () => ({
+  useApplicationStore: jest.fn(() => ({
+    currentUser: mockUserData,
+    onLogoutHandler: mockOnLogoutHandler,
+  })),
+}));
+
+jest.mock('../../../utils/ToastUtils', () => ({
+  showSuccessToast: jest.fn(),
 }));
 
 describe('Test DeleteWidgetV1 Component', () => {
@@ -107,5 +133,49 @@ describe('Test DeleteWidgetV1 Component', () => {
 
       expect(mockProps.onCancel).toHaveBeenCalled();
     });
+  });
+
+  it('onLogoutHandler should not be called if entityType is user and EntityId and CurrentUser id is different', async () => {
+    await act(async () => {
+      render(<DeleteWidgetModal {...mockPropsUser} entityId="456" />);
+    });
+
+    const confirmButton = screen.getByTestId('confirm-button');
+
+    fireEvent.click(screen.getByTestId('hard-delete'));
+
+    fireEvent.change(screen.getByTestId('confirmation-text-input'), {
+      target: { value: 'DELETE' },
+    });
+
+    expect(confirmButton).not.toBeDisabled();
+
+    await act(async () => {
+      fireEvent.click(confirmButton);
+    });
+
+    expect(mockOnLogoutHandler).not.toHaveBeenCalled();
+  });
+
+  it('onLogoutHandler should be called if entityType is user and EntityId and CurrentUser id is same', async () => {
+    await act(async () => {
+      render(<DeleteWidgetModal {...mockPropsUser} />);
+    });
+
+    const confirmButton = screen.getByTestId('confirm-button');
+
+    fireEvent.click(screen.getByTestId('hard-delete'));
+
+    fireEvent.change(screen.getByTestId('confirmation-text-input'), {
+      target: { value: 'DELETE' },
+    });
+
+    expect(confirmButton).not.toBeDisabled();
+
+    await act(async () => {
+      fireEvent.click(confirmButton);
+    });
+
+    expect(mockOnLogoutHandler).toHaveBeenCalled();
   });
 });

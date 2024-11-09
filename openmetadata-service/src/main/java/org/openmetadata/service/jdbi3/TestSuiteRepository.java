@@ -6,39 +6,93 @@ import static org.openmetadata.schema.type.EventType.ENTITY_SOFT_DELETED;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.TABLE;
 import static org.openmetadata.service.Entity.TEST_CASE;
+import static org.openmetadata.service.Entity.TEST_CASE_RESULT;
 import static org.openmetadata.service.Entity.TEST_SUITE;
+import static org.openmetadata.service.Entity.getEntity;
+import static org.openmetadata.service.Entity.getEntityTimeSeriesRepository;
 import static org.openmetadata.service.util.FullyQualifiedName.quoteName;
 
 import java.io.IOException;
-import java.util.HashMap;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import javax.json.JsonArray;
 import javax.json.JsonObject;
 import javax.json.JsonValue;
 import javax.ws.rs.core.SecurityContext;
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.tests.DataQualityReport;
 import org.openmetadata.schema.tests.ResultSummary;
 import org.openmetadata.schema.tests.TestSuite;
-import org.openmetadata.schema.tests.type.TestCaseStatus;
+import org.openmetadata.schema.tests.type.ColumnTestSummaryDefinition;
+import org.openmetadata.schema.tests.type.TestCaseResult;
 import org.openmetadata.schema.tests.type.TestSummary;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.dqtests.TestSuiteResource;
+import org.openmetadata.service.resources.feeds.MessageParser;
+import org.openmetadata.service.search.SearchAggregation;
+import org.openmetadata.service.search.SearchClient;
+import org.openmetadata.service.search.SearchIndexUtils;
+import org.openmetadata.service.search.SearchListFilter;
+import org.openmetadata.service.search.indexes.SearchIndex;
+import org.openmetadata.service.search.models.IndexMapping;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
+import org.openmetadata.service.util.ResultList;
 
 @Slf4j
 public class TestSuiteRepository extends EntityRepository<TestSuite> {
   private static final String UPDATE_FIELDS = "tests";
   private static final String PATCH_FIELDS = "tests";
+
+  private static final String ENTITY_EXECUTION_SUMMARY_FILTER =
+      """
+  {
+      "query": {
+          "bool": {
+              "must": [
+                  {
+                      "bool": {
+                          "should": [
+                              {
+                                  "nested": {
+                                      "path": "testSuites",
+                                      "query": {
+                                          "term": {
+                                              "testSuites.id": "%1$s"
+                                          }
+                                      }
+                                  }
+                              },
+                              {
+                                  "term": {
+                                      "testSuite.id": "%1$s"
+                                  }
+                              }
+                          ]
+                      }
+                  },
+                  {
+                      "term": {
+                          "deleted": false
+                      }
+                  }
+              ]
+          }
+      }
+  }
+  """;
 
   public TestSuiteRepository() {
     super(
@@ -50,6 +104,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
         UPDATE_FIELDS);
     quoteFqn = false;
     supportsSearch = true;
+    parent = true;
   }
 
   @Override
@@ -57,16 +112,19 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
     entity.setPipelines(
         fields.contains("pipelines") ? getIngestionPipelines(entity) : entity.getPipelines());
     entity.setSummary(
-        fields.contains("summary") ? getTestCasesExecutionSummary(entity) : entity.getSummary());
+        fields.contains("summary") ? getTestSummary(entity.getId()) : entity.getSummary());
     entity.withTests(fields.contains(UPDATE_FIELDS) ? getTestCases(entity) : entity.getTests());
+    entity.withTestCaseResultSummary(getResultSummary(entity.getId()));
   }
 
   @Override
   public void setInheritedFields(TestSuite testSuite, EntityUtil.Fields fields) {
     if (Boolean.TRUE.equals(testSuite.getExecutable())) {
       Table table =
-          Entity.getEntity(TABLE, testSuite.getExecutableEntityReference().getId(), "owner", ALL);
-      inheritOwner(testSuite, fields, table);
+          Entity.getEntity(
+              TABLE, testSuite.getExecutableEntityReference().getId(), "owners,domain", ALL);
+      inheritOwners(testSuite, fields, table);
+      inheritDomain(testSuite, fields, table);
     }
   }
 
@@ -75,15 +133,6 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
     entity.setPipelines(fields.contains("pipelines") ? entity.getPipelines() : null);
     entity.setSummary(fields.contains("summary") ? entity.getSummary() : null);
     entity.withTests(fields.contains(UPDATE_FIELDS) ? entity.getTests() : null);
-  }
-
-  private TestSummary buildTestSummary(Map<String, Integer> testCaseSummary) {
-    return new TestSummary()
-        .withAborted(testCaseSummary.getOrDefault(TestCaseStatus.Aborted.toString(), 0))
-        .withFailed(testCaseSummary.getOrDefault(TestCaseStatus.Failed.toString(), 0))
-        .withSuccess(testCaseSummary.getOrDefault(TestCaseStatus.Success.toString(), 0))
-        .withQueued(testCaseSummary.getOrDefault(TestCaseStatus.Queued.toString(), 0))
-        .withTotal(testCaseSummary.values().stream().mapToInt(Integer::valueOf).sum());
   }
 
   @Override
@@ -97,106 +146,165 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
     }
   }
 
-  private Map<String, Integer> getResultSummary(TestSuite testSuite) {
-    Map<String, Integer> testCaseSummary = new HashMap<>();
-    List<EntityReference> testCases = getTestCases(testSuite);
-    for (ResultSummary resultSummary : testSuite.getTestCaseResultSummary()) {
-      String status = resultSummary.getStatus().toString();
-      testCaseSummary.put(status, testCaseSummary.getOrDefault(status, 0) + 1);
-    }
-    List<EntityReference> testCasesWithNoResults =
-        testCases.stream()
-            .filter(
-                tc ->
-                    testSuite.getTestCaseResultSummary().stream()
-                        .noneMatch(tcr -> tc.getFullyQualifiedName().equals(tcr.getTestCaseName())))
-            .toList();
-    testCaseSummary.put(TestCaseStatus.Queued.toString(), testCasesWithNoResults.size());
-    return testCaseSummary;
-  }
-
-  private TestSummary getTestCasesExecutionSummary(TestSuite entity) {
-    Map<String, Integer> testCaseSummary = getResultSummary(entity);
-    return buildTestSummary(testCaseSummary);
-  }
-
   private TestSummary getTestCasesExecutionSummary(JsonObject aggregation) {
     // Initialize the test summary with 0 values
     TestSummary testSummary =
         new TestSummary().withAborted(0).withFailed(0).withSuccess(0).withQueued(0).withTotal(0);
-    JsonObject summary = aggregation.getJsonObject("nested#testCaseResultSummary");
-    testSummary.setTotal(summary.getJsonNumber("doc_count").intValue());
-
-    JsonObject statusCount = summary.getJsonObject("sterms#status_counts");
-    JsonArray buckets = statusCount.getJsonArray("buckets");
-
-    for (JsonValue bucket : buckets) {
-      String key = ((JsonObject) bucket).getString("key");
-      Integer count = ((JsonObject) bucket).getJsonNumber("doc_count").intValue();
-      switch (key) {
-        case "Success":
-          testSummary.setSuccess(count);
-          break;
-        case "Failed":
-          testSummary.setFailed(count);
-          break;
-        case "Aborted":
-          testSummary.setAborted(count);
-          break;
-        case "Queued":
-          testSummary.setQueued(count);
-          break;
-      }
-    }
-    return testSummary;
+    Optional<JsonObject> summary =
+        Optional.ofNullable(aggregation.getJsonObject("sterms#status_counts"));
+    return summary
+        .map(
+            s -> {
+              JsonArray buckets = s.getJsonArray("buckets");
+              for (JsonValue bucket : buckets) {
+                updateTestSummaryFromBucket(((JsonObject) bucket), testSummary);
+              }
+              return testSummary;
+            })
+        .orElse(testSummary);
   }
 
-  public TestSummary getTestSummary(UUID testSuiteId) throws IOException {
-    String aggregationQuery =
-        """
-            {
-              "aggregations": {
-                "test_case_results": {
-                  "nested": {
-                    "path": "testCaseResultSummary"
-                  },
-                  "aggs": {
-                    "status_counts": {
-                      "terms": {
-                        "field": "testCaseResultSummary.status"
-                      }
-                    }
+  private TestSummary getEntityTestCasesExecutionSummary(JsonObject aggregation) {
+    TestSummary testSummary =
+        new TestSummary().withAborted(0).withFailed(0).withSuccess(0).withQueued(0).withTotal(0);
+    List<ColumnTestSummaryDefinition> columnTestSummaries = new ArrayList<>();
+    Optional<JsonObject> entityLinkAgg =
+        Optional.ofNullable(SearchClient.getAggregationObject(aggregation, "sterms#entityLinks"));
+
+    return entityLinkAgg
+        .map(
+            entityLinkAggJson -> {
+              JsonArray entityLinkBuckets = SearchClient.getAggregationBuckets(entityLinkAggJson);
+              for (JsonValue entityLinkBucket : entityLinkBuckets) {
+                JsonObject statusAgg =
+                    SearchClient.getAggregationObject(
+                        (JsonObject) entityLinkBucket, "sterms#status_counts");
+                JsonArray statusBuckets = SearchClient.getAggregationBuckets(statusAgg);
+                String entityLinkString =
+                    SearchClient.getAggregationKeyValue((JsonObject) entityLinkBucket);
+
+                MessageParser.EntityLink entityLink =
+                    entityLinkString != null
+                        ? MessageParser.EntityLink.parse(entityLinkString)
+                        : null;
+                ColumnTestSummaryDefinition columnTestSummary =
+                    new ColumnTestSummaryDefinition()
+                        .withAborted(0)
+                        .withFailed(0)
+                        .withSuccess(0)
+                        .withQueued(0)
+                        .withTotal(0)
+                        .withEntityLink(entityLinkString);
+                for (JsonValue statusBucket : statusBuckets) {
+                  updateColumnTestSummaryFromBucket(((JsonObject) statusBucket), columnTestSummary);
+                  updateTestSummaryFromBucket(((JsonObject) statusBucket), testSummary);
+                  if (entityLink != null
+                      && entityLink.getFieldName() != null
+                      && entityLink.getFieldName().equals("columns")) {
+                    // Set the column summary if we have entity link column aggregation
+                    columnTestSummaries.add(columnTestSummary);
                   }
                 }
               }
-            }
-            """;
-    JsonObject aggregationJson = JsonUtils.readJson(aggregationQuery).asJsonObject();
-    TestSummary testSummary;
-    if (testSuiteId == null) {
-      JsonObject testCaseResultSummary =
-          searchRepository.aggregate(null, TEST_SUITE, aggregationJson);
-      testSummary = getTestCasesExecutionSummary(testCaseResultSummary);
-    } else {
-      String query =
-          """
-            {
-              "query": {
-                "bool": {
-                    "must": {
-                        "term": {"id": "%s"}
-                    }
-                }
-              }
-            }
-        """
-              .formatted(testSuiteId);
-      // don't want to get it from the cache as test results summary may be stale
-      JsonObject testCaseResultSummary =
-          searchRepository.aggregate(query, TEST_SUITE, aggregationJson);
-      testSummary = getTestCasesExecutionSummary(testCaseResultSummary);
+              testSummary.setColumnTestSummary(columnTestSummaries);
+              return testSummary;
+            })
+        .orElse(testSummary);
+  }
+
+  public DataQualityReport getDataQualityReport(String q, String aggQuery, String index)
+      throws IOException {
+    SearchAggregation searchAggregation = SearchIndexUtils.buildAggregationTree(aggQuery);
+    return searchRepository.genericAggregation(q, index, searchAggregation);
+  }
+
+  public TestSummary getTestSummary(UUID testSuiteId) {
+    try {
+      TestSummary testSummary;
+      if (testSuiteId == null) {
+        String aggregationStr =
+            "bucketName=status_counts:aggType=terms:field=testCaseResult.testCaseStatus";
+        SearchAggregation searchAggregation = SearchIndexUtils.buildAggregationTree(aggregationStr);
+        JsonObject testCaseResultSummary =
+            searchRepository.aggregate(null, TEST_CASE, searchAggregation, new SearchListFilter());
+        testSummary = getTestCasesExecutionSummary(testCaseResultSummary);
+      } else {
+        String aggregationStr =
+            "bucketName=entityLinks:aggType=terms:field=entityLink.nonNormalized,"
+                + "bucketName=status_counts:aggType=terms:field=testCaseResult.testCaseStatus";
+        SearchAggregation searchAggregation = SearchIndexUtils.buildAggregationTree(aggregationStr);
+        String query = ENTITY_EXECUTION_SUMMARY_FILTER.formatted(testSuiteId);
+        // don't want to get it from the cache as test results summary may be stale
+        JsonObject testCaseResultSummary =
+            searchRepository.aggregate(query, TEST_CASE, searchAggregation, new SearchListFilter());
+        testSummary = getEntityTestCasesExecutionSummary(testCaseResultSummary);
+      }
+      return testSummary;
+    } catch (Exception e) {
+      LOG.error("Error reading aggregation query", e);
     }
-    return testSummary;
+    return null;
+  }
+
+  @Override
+  protected void postCreate(TestSuite entity) {
+    super.postCreate(entity);
+    if (Boolean.TRUE.equals(entity.getExecutable())
+        && entity.getExecutableEntityReference() != null) {
+      // Update table index with test suite field
+      EntityInterface entityInterface =
+          getEntity(entity.getExecutableEntityReference(), "testSuite", ALL);
+      IndexMapping indexMapping =
+          searchRepository.getIndexMapping(entity.getExecutableEntityReference().getType());
+      SearchClient searchClient = searchRepository.getSearchClient();
+      SearchIndex index =
+          searchRepository
+              .getSearchIndexFactory()
+              .buildIndex(entity.getExecutableEntityReference().getType(), entityInterface);
+      Map<String, Object> doc = index.buildSearchIndexDoc();
+      searchClient.updateEntity(
+          indexMapping.getIndexName(searchRepository.getClusterAlias()),
+          entity.getExecutableEntityReference().getId().toString(),
+          doc,
+          "ctx._source.testSuite = params.testSuite;");
+    }
+  }
+
+  @SneakyThrows
+  private List<ResultSummary> getResultSummary(UUID testSuiteId) {
+    List<ResultSummary> resultSummaries = new ArrayList<>();
+    ResultList<TestCaseResult> latestTestCaseResultResults;
+    String groupBy = "testCaseFQN.keyword";
+    SearchListFilter searchListFilter = new SearchListFilter();
+    searchListFilter.addQueryParam("testSuiteId", testSuiteId.toString());
+    TestCaseResultRepository entityTimeSeriesRepository =
+        (TestCaseResultRepository) getEntityTimeSeriesRepository(TEST_CASE_RESULT);
+    try {
+      latestTestCaseResultResults =
+          entityTimeSeriesRepository.listLatestFromSearch(
+              EntityUtil.Fields.EMPTY_FIELDS, searchListFilter, groupBy, null);
+    } catch (Exception e) {
+      // Index may not exist in the search index (e.g. reindexing with recreate index on). Fall back
+      // to database
+      LOG.debug(
+          "Error fetching test case result from search. Fetching from test case results from database",
+          e);
+      latestTestCaseResultResults =
+          entityTimeSeriesRepository.listLastTestCaseResultsForTestSuite(testSuiteId);
+    }
+
+    latestTestCaseResultResults
+        .getData()
+        .forEach(
+            testCaseResult -> {
+              ResultSummary resultSummary =
+                  new ResultSummary()
+                      .withTestCaseName(testCaseResult.getTestCaseFQN())
+                      .withStatus(testCaseResult.getTestCaseStatus())
+                      .withTimestamp(testCaseResult.getTimestamp());
+              resultSummaries.add(resultSummary);
+            });
+    return resultSummaries;
   }
 
   @Override
@@ -216,7 +324,11 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
 
   @Override
   public void storeEntity(TestSuite entity, boolean update) {
+    // we don't want to store the tests in the test suite entity
+    List<EntityReference> tests = entity.getTests();
+    entity.setTests(null);
     store(entity, update);
+    entity.setTests(tests);
   }
 
   @Override
@@ -264,6 +376,31 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
     return new RestUtil.DeleteResponse<>(updated, changeType);
   }
 
+  private void updateTestSummaryFromBucket(JsonObject bucket, TestSummary testSummary) {
+    String key = bucket.getString("key");
+    Integer count = bucket.getJsonNumber("doc_count").intValue();
+    switch (key) {
+      case "success" -> testSummary.setSuccess(testSummary.getSuccess() + count);
+      case "failed" -> testSummary.setFailed(testSummary.getFailed() + count);
+      case "aborted" -> testSummary.setAborted(testSummary.getAborted() + count);
+      case "queued" -> testSummary.setQueued(testSummary.getQueued() + count);
+    }
+    testSummary.setTotal(testSummary.getTotal() + count);
+  }
+
+  private void updateColumnTestSummaryFromBucket(
+      JsonObject bucket, ColumnTestSummaryDefinition columnTestSummary) {
+    String key = bucket.getString("key");
+    Integer count = bucket.getJsonNumber("doc_count").intValue();
+    switch (key) {
+      case "success" -> columnTestSummary.setSuccess(columnTestSummary.getSuccess() + count);
+      case "failed" -> columnTestSummary.setFailed(columnTestSummary.getFailed() + count);
+      case "aborted" -> columnTestSummary.setAborted(columnTestSummary.getAborted() + count);
+      case "queued" -> columnTestSummary.setQueued(columnTestSummary.getQueued() + count);
+    }
+    columnTestSummary.setTotal(columnTestSummary.getTotal() + count);
+  }
+
   public static TestSuite copyTestSuite(TestSuite testSuite) {
     return new TestSuite()
         .withConnection(testSuite.getConnection())
@@ -278,7 +415,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
         .withExecutable(testSuite.getExecutable())
         .withExecutableEntityReference(testSuite.getExecutableEntityReference())
         .withServiceType(testSuite.getServiceType())
-        .withOwner(testSuite.getOwner())
+        .withOwners(testSuite.getOwners())
         .withUpdatedBy(testSuite.getUpdatedBy())
         .withUpdatedAt(testSuite.getUpdatedAt())
         .withVersion(testSuite.getVersion());

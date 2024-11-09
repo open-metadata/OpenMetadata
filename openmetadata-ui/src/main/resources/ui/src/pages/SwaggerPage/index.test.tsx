@@ -26,6 +26,9 @@ jest.mock('./RapiDocReact', () => {
 jest.mock('../../hooks/useApplicationStore', () => ({
   useApplicationStore: jest.fn().mockImplementation(() => ({
     getOidcToken: () => 'fakeToken',
+    theme: {
+      primaryColor: '#9c27b0',
+    },
   })),
 }));
 

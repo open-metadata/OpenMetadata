@@ -157,6 +157,7 @@ const StoredProcedureTab = () => {
         {showPagination && (
           <NextPrevious
             currentPage={currentPage}
+            isLoading={isLoading}
             pageSize={pageSize}
             paging={paging}
             pagingHandler={storedProcedurePagingHandler}

@@ -32,7 +32,13 @@
                     "model_tag_two"
                 ],
                 "meta": {
-                    "owner": "aaron_johnson0"
+                    "owner": "aaron_johnson0",
+                    "openmetadata": {
+                        "glossary": [
+                            "Test_Glossary.term_one",
+                            "Test_Glossary.term_two.nested_term.more_nested_term"
+                        ]
+                    }
                 },
                 "materialized": "table",
                 "incremental_strategy": null,
@@ -71,7 +77,8 @@
             },
             "tags": [
                 "model_tag_one",
-                "model_tag_two"
+                "model_tag_two",
+                "22.8.5.1"
             ],
             "refs": [
                 [
@@ -114,7 +121,13 @@
                 }
             },
             "meta": {
-                "owner": "aaron_johnson0"
+                "owner": "aaron_johnson0",
+                "openmetadata": {
+                    "glossary": [
+                        "Test_Glossary.term_one",
+                        "Test_Glossary.term_two.nested_term.more_nested_term"
+                    ]
+                }
             },
             "docs": {
                 "show": true,
@@ -131,7 +144,13 @@
                     "model_tag_two"
                 ],
                 "meta": {
-                    "owner": "aaron_johnson0"
+                    "owner": "aaron_johnson0",
+                    "openmetadata": {
+                        "glossary": [
+                            "Test_Glossary.term_one",
+                            "Test_Glossary.term_two.nested_term.more_nested_term"
+                        ]
+                    }
                 }
             },
             "created_at": 1673981809.96386,

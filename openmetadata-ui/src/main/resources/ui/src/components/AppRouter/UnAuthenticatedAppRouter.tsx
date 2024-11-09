@@ -16,7 +16,8 @@ import { Redirect, Route, Switch } from 'react-router-dom';
 import { ROUTES } from '../../constants/constants';
 import { AuthProvider } from '../../generated/configuration/authenticationConfiguration';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
-import SamlCallback from '../../pages/SamlCallback';
+import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
+import PageNotFound from '../../pages/PageNotFound/PageNotFound';
 import AccountActivationConfirmation from '../../pages/SignUp/account-activation-confirmation.component';
 import { isProtectedRoute } from '../../utils/AuthProvider.util';
 import Auth0Callback from '../Auth/AppCallbacks/Auth0Callback/Auth0Callback';
@@ -41,7 +42,8 @@ const BasicSignupPage = withSuspenseFallback(
 );
 
 export const UnAuthenticatedAppRouter = () => {
-  const { authConfig, isSigningIn } = useApplicationStore();
+  const location = useCustomLocation();
+  const { authConfig, isSigningUp } = useApplicationStore();
 
   const isBasicAuthProvider =
     authConfig &&
@@ -73,15 +75,15 @@ export const UnAuthenticatedAppRouter = () => {
       {callbackComponent && (
         <Route component={callbackComponent} path={ROUTES.CALLBACK} />
       )}
-      <Route
-        component={SamlCallback}
-        path={[ROUTES.SAML_CALLBACK, ROUTES.AUTH_CALLBACK]}
-      />
-      {!isSigningIn && (
+
+      {!isSigningUp && (
         <Route exact path={ROUTES.HOME}>
           <Redirect to={ROUTES.SIGNIN} />
         </Route>
       )}
+
+      {/* keep this route before any conditional JSX.Element rendering */}
+      <Route exact component={PageNotFound} path={ROUTES.NOT_FOUND} />
 
       {isBasicAuthProvider && (
         <>

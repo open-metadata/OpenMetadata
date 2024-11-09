@@ -14,19 +14,19 @@ SQL Queries used during ingestion
 
 import textwrap
 
-ORACLE_DBA_TABLE_COMMENTS = textwrap.dedent(
+ORACLE_ALL_TABLE_COMMENTS = textwrap.dedent(
     """
 SELECT
 	comments table_comment,
 	LOWER(table_name) "table_name",
 	LOWER(owner) "schema" 	
-FROM dba_tab_comments
+FROM DBA_TAB_COMMENTS
 where comments is not null and owner not in ('SYSTEM', 'SYS')
 """
 )
 
 
-ORACLE_DBA_VIEW_DEFINITIONS = textwrap.dedent(
+ORACLE_ALL_VIEW_DEFINITIONS = textwrap.dedent(
     """
 SELECT
 LOWER(view_name) AS "view_name",
@@ -41,6 +41,12 @@ LOWER(owner) AS "schema",
 DBMS_METADATA.GET_DDL('MATERIALIZED_VIEW', mview_name, owner) AS view_def
 FROM DBA_MVIEWS
 WHERE owner NOT IN ('SYSTEM', 'SYS')
+"""
+)
+
+GET_VIEW_NAMES = textwrap.dedent(
+    """
+SELECT view_name FROM DBA_VIEWS WHERE owner = :owner
 """
 )
 
@@ -88,7 +94,7 @@ WHERE
     type = 'PROCEDURE' and owner = '{schema}'
 """
 )
-
+CHECK_ACCESS_TO_ALL = "SELECT table_name FROM DBA_TABLES where ROWNUM < 2"
 ORACLE_GET_STORED_PROCEDURE_QUERIES = textwrap.dedent(
     """
 WITH SP_HISTORY AS (SELECT
@@ -97,7 +103,7 @@ WITH SP_HISTORY AS (SELECT
     TO_TIMESTAMP(LAST_LOAD_TIME, 'YYYY-MM-DD HH24:MI:SS') + NUMTODSINTERVAL(ELAPSED_TIME / 1000, 'SECOND') AS end_time,
     PARSING_SCHEMA_NAME as user_name
   FROM gv$sql
-  WHERE UPPER(sql_text) LIKE 'CALL%%'
+  WHERE UPPER(sql_text) LIKE '%%CALL%%' or UPPER(sql_text) LIKE '%%BEGIN%%'
   AND TO_TIMESTAMP(FIRST_LOAD_TIME, 'YYYY-MM-DD HH24:MI:SS') >= TO_TIMESTAMP('{start_date}', 'YYYY-MM-DD HH24:MI:SS')
  ),
  Q_HISTORY AS (SELECT
@@ -114,7 +120,7 @@ WITH SP_HISTORY AS (SELECT
       PARSING_SCHEMA_NAME AS SCHEMA_NAME,
       NULL AS DATABASE_NAME
     FROM gv$sql
-    WHERE UPPER(sql_text) NOT LIKE '%CALL%'
+    WHERE UPPER(sql_text) NOT LIKE '%%CALL%%' AND UPPER(sql_text) NOT LIKE '%%BEGIN%%'
       AND SQL_FULLTEXT NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
       AND SQL_FULLTEXT NOT LIKE '/* {{"app": "dbt", %%}} */%%'
       AND TO_TIMESTAMP(FIRST_LOAD_TIME, 'YYYY-MM-DD HH24:MI:SS') 
@@ -135,6 +141,7 @@ JOIN Q_HISTORY Q
   ON Q.start_time between SP.start_time and SP.end_time
   AND Q.end_time between SP.start_time and SP.end_time
   AND Q.user_name = SP.user_name
+  AND Q.QUERY_TYPE <> 'SELECT'
 ORDER BY PROCEDURE_START_TIME DESC
 """
 )
@@ -153,12 +160,40 @@ ORACLE_GET_COLUMNS = textwrap.dedent(
             col.virtual_column,
             {identity_cols}
         FROM DBA_TAB_COLS{dblink} col
-        LEFT JOIN dba_col_comments{dblink} com
+        LEFT JOIN DBA_COL_COMMENTS{dblink} com
         ON col.table_name = com.table_name
         AND col.column_name = com.column_name
         AND col.owner = com.owner
         WHERE col.table_name = CAST(:table_name AS VARCHAR2(128))
         AND col.hidden_column = 'NO'
+    """
+)
+
+ORACLE_ALL_CONSTRAINTS = textwrap.dedent(
+    """
+        SELECT
+            ac.constraint_name,
+            ac.constraint_type,
+            loc.column_name AS local_column,
+            rem.table_name AS remote_table,
+            rem.column_name AS remote_column,
+            rem.owner AS remote_owner,
+            loc.position as loc_pos,
+            rem.position as rem_pos,
+            ac.search_condition,
+            ac.delete_rule
+        FROM DBA_CONSTRAINTS{dblink} ac,
+            DBA_CONS_COLUMNS{dblink} loc,
+            DBA_CONS_COLUMNS{dblink} rem
+        WHERE ac.table_name = CAST(:table_name AS VARCHAR2(128))
+            AND ac.constraint_type IN ('R','P', 'U', 'C')
+            AND ac.owner = CAST(:owner AS VARCHAR2(128))
+            AND ac.owner = loc.owner
+            AND ac.constraint_name = loc.constraint_name
+            AND ac.r_owner = rem.owner(+)
+            AND ac.r_constraint_name = rem.constraint_name(+)
+            AND (rem.position IS NULL or loc.position=rem.position)
+        ORDER BY ac.constraint_name, loc.position
     """
 )
 

@@ -57,6 +57,7 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ChartRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
@@ -73,7 +74,7 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "charts")
 public class ChartResource extends EntityResource<Chart, ChartRepository> {
   public static final String COLLECTION_PATH = "v1/charts/";
-  static final String FIELDS = "owner,followers,tags,domain,dataProducts,sourceHash";
+  static final String FIELDS = "owners,followers,tags,domain,dataProducts,sourceHash,dashboards";
 
   @Override
   public Chart addHref(UriInfo uriInfo, Chart chart) {
@@ -82,8 +83,8 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
     return chart;
   }
 
-  public ChartResource(Authorizer authorizer) {
-    super(Entity.CHART, authorizer);
+  public ChartResource(Authorizer authorizer, Limits limits) {
+    super(Entity.CHART, authorizer, limits);
   }
 
   @Override
@@ -331,6 +332,35 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
+  @PATCH
+  @Path("/name/{fqn}")
+  @Operation(
+      operationId = "patchChart",
+      summary = "Update a chart by name.",
+      description = "Update an existing chart using JsonPatch.",
+      externalDocs =
+          @ExternalDocumentation(
+              description = "JsonPatch RFC",
+              url = "https://tools.ietf.org/html/rfc6902"))
+  @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
+  public Response patch(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the chart", schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn,
+      @RequestBody(
+              description = "JsonPatch with array of operations",
+              content =
+                  @Content(
+                      mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
+                      examples = {
+                        @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
+                      }))
+          JsonPatch patch) {
+    return patchInternal(uriInfo, securityContext, fqn, patch);
+  }
+
   @PUT
   @Operation(
       operationId = "createOrUpdateChart",
@@ -500,6 +530,7 @@ public class ChartResource extends EntityResource<Chart, ChartRepository> {
         .withService(EntityUtil.getEntityReference(Entity.DASHBOARD_SERVICE, create.getService()))
         .withChartType(create.getChartType())
         .withSourceUrl(create.getSourceUrl())
-        .withSourceHash(create.getSourceHash());
+        .withSourceHash(create.getSourceHash())
+        .withDashboards(getEntityReferences(Entity.DASHBOARD, create.getDashboards()));
   }
 }

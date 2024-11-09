@@ -14,6 +14,9 @@ Base class for ingesting mlmodel services
 from abc import ABC, abstractmethod
 from typing import Any, Iterable, List, Optional, Set
 
+from pydantic import Field
+from typing_extensions import Annotated
+
 from metadata.generated.schema.api.data.createMlModel import CreateMlModelRequest
 from metadata.generated.schema.entity.data.mlmodel import (
     MlFeature,
@@ -35,6 +38,9 @@ from metadata.ingestion.api.delete import delete_entity_from_source
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import Source
 from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
+from metadata.ingestion.connections.test_connections import (
+    raise_test_connection_exception,
+)
 from metadata.ingestion.models.delete_entity import DeleteEntity
 from metadata.ingestion.models.topology import (
     NodeStage,
@@ -59,7 +65,9 @@ class MlModelServiceTopology(ServiceTopology):
     data that has been produced by any parent node.
     """
 
-    root = TopologyNode(
+    root: Annotated[
+        TopologyNode, Field(description="Root node for the topology")
+    ] = TopologyNode(
         producer="get_services",
         stages=[
             NodeStage(
@@ -74,7 +82,9 @@ class MlModelServiceTopology(ServiceTopology):
         children=["mlmodel"],
         post_process=["mark_mlmodels_as_deleted"],
     )
-    mlmodel = TopologyNode(
+    mlmodel: Annotated[
+        TopologyNode, Field(description="ML Model Processing Node")
+    ] = TopologyNode(
         producer="get_mlmodels",
         stages=[
             NodeStage(
@@ -97,7 +107,7 @@ class MlModelServiceSource(TopologyRunnerMixin, Source, ABC):
     source_config: MlModelServiceMetadataPipeline
     config: WorkflowSource
     # Big union of types we want to fetch dynamically
-    service_connection: MlModelConnection.__fields__["config"].type_
+    service_connection: MlModelConnection.model_fields["config"].annotation
 
     topology = MlModelServiceTopology()
     context = TopologyContextManager(topology)
@@ -111,7 +121,7 @@ class MlModelServiceSource(TopologyRunnerMixin, Source, ABC):
         super().__init__()
         self.config = config
         self.metadata = metadata
-        self.service_connection = self.config.serviceConnection.__root__.config
+        self.service_connection = self.config.serviceConnection.root.config
         self.source_config: MlModelServiceMetadataPipeline = (
             self.config.sourceConfig.config
         )
@@ -169,7 +179,10 @@ class MlModelServiceSource(TopologyRunnerMixin, Source, ABC):
 
     def test_connection(self) -> None:
         test_connection_fn = get_test_connection_fn(self.service_connection)
-        test_connection_fn(self.metadata, self.connection_obj, self.service_connection)
+        result = test_connection_fn(
+            self.metadata, self.connection_obj, self.service_connection
+        )
+        raise_test_connection_exception(result)
 
     def mark_mlmodels_as_deleted(self) -> Iterable[Either[DeleteEntity]]:
         """Method to mark the mlmodels as deleted"""
@@ -190,8 +203,8 @@ class MlModelServiceSource(TopologyRunnerMixin, Source, ABC):
         mlmodel_fqn = fqn.build(
             self.metadata,
             entity_type=MlModel,
-            service_name=mlmodel_request.service.__root__,
-            mlmodel_name=mlmodel_request.name.__root__,
+            service_name=mlmodel_request.service.root,
+            mlmodel_name=mlmodel_request.name.root,
         )
 
         self.mlmodel_source_state.add(mlmodel_fqn)

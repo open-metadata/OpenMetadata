@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+import { Button, Tooltip } from 'antd';
+import classNames from 'classnames';
 import { Editor, EditorChange } from 'codemirror';
 import 'codemirror/addon/edit/closebrackets.js';
 import 'codemirror/addon/edit/matchbrackets.js';
@@ -24,14 +26,14 @@ import 'codemirror/mode/sql/sql';
 import { isUndefined } from 'lodash';
 import React, { useEffect, useState } from 'react';
 import { Controlled as CodeMirror } from 'react-codemirror2';
+import { useTranslation } from 'react-i18next';
+import { ReactComponent as CopyIcon } from '../../../assets/svg/icon-copy.svg';
 import { JSON_TAB_SIZE } from '../../../constants/constants';
 import { CSMode } from '../../../enums/codemirror.enum';
+import { useClipboard } from '../../../hooks/useClipBoard';
 import { getSchemaEditorValue } from '../../../utils/SchemaEditor.utils';
-
-type Mode = {
-  name: CSMode;
-  json?: boolean;
-};
+import './schema-editor.less';
+import { SchemaEditorProps } from './SchemaEditor.interface';
 
 const SchemaEditor = ({
   value = '',
@@ -42,18 +44,10 @@ const SchemaEditor = ({
   },
   options,
   editorClass,
+  showCopyButton = true,
   onChange,
-}: {
-  value?: string;
-  className?: string;
-  mode?: Mode;
-  readOnly?: boolean;
-  options?: {
-    [key: string]: string | boolean | Array<string>;
-  };
-  editorClass?: string;
-  onChange?: (value: string) => void;
-}) => {
+}: SchemaEditorProps) => {
+  const { t } = useTranslation();
   const defaultOptions = {
     tabSize: JSON_TAB_SIZE,
     indentUnit: JSON_TAB_SIZE,
@@ -72,6 +66,8 @@ const SchemaEditor = ({
   const [internalValue, setInternalValue] = useState<string>(
     getSchemaEditorValue(value)
   );
+  const { onCopyToClipBoard, hasCopied } = useClipboard(internalValue);
+
   const handleEditorInputBeforeChange = (
     _editor: Editor,
     _data: EditorChange,
@@ -94,7 +90,25 @@ const SchemaEditor = ({
   }, [value]);
 
   return (
-    <div className={className} data-testid="code-mirror-container">
+    <div
+      className={classNames('relative', className)}
+      data-testid="code-mirror-container">
+      {showCopyButton && (
+        <div className="query-editor-button">
+          <Tooltip
+            title={
+              hasCopied ? t('label.copied') : t('message.copy-to-clipboard')
+            }>
+            <Button
+              className="flex-center bg-white"
+              data-testid="query-copy-button"
+              icon={<CopyIcon height={16} width={16} />}
+              onClick={onCopyToClipBoard}
+            />
+          </Tooltip>
+        </div>
+      )}
+
       <CodeMirror
         className={editorClass}
         options={defaultOptions}

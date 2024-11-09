@@ -13,7 +13,9 @@ Mixin class containing Custom Property specific methods
 
 To be used by OpenMetadata class
 """
-from typing import Dict
+from typing import Dict, List, Optional, Type, TypeVar
+
+from pydantic import BaseModel
 
 from metadata.generated.schema.type.customProperty import PropertyType
 from metadata.generated.schema.type.entityReference import EntityReference
@@ -27,6 +29,8 @@ from metadata.utils.constants import ENTITY_REFERENCE_TYPE_MAP
 from metadata.utils.logger import ometa_logger
 
 logger = ometa_logger()
+
+T = TypeVar("T", bound=BaseModel)
 
 
 class OMetaCustomPropertyMixin:
@@ -57,7 +61,7 @@ class OMetaCustomPropertyMixin:
 
         resp = self.client.put(
             f"/metadata/types/{entity_schema.get('id')}",
-            data=ometa_custom_property.createCustomPropertyRequest.json(),
+            data=ometa_custom_property.createCustomPropertyRequest.model_dump_json(),
         )
         return resp
 
@@ -75,6 +79,13 @@ class OMetaCustomPropertyMixin:
         Get the PropertyType for custom properties
         """
         custom_property_type = self.get_custom_property_type(data_type=data_type)
-        return PropertyType(
-            __root__=EntityReference(id=custom_property_type.id, type="type")
+        return PropertyType(EntityReference(id=custom_property_type.id, type="type"))
+
+    def get_entity_custom_properties(self, entity_type: Type[T]) -> Optional[List]:
+        """
+        Get all the custom properties of an entity
+        """
+        resp = self.client.get(
+            f"/metadata/types/name/{ENTITY_REFERENCE_TYPE_MAP.get(entity_type.__name__)}?fields=customProperties"
         )
+        return resp.get("customProperties")

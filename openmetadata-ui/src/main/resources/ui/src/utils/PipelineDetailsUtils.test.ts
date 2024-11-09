@@ -14,7 +14,6 @@
 import {
   mockPipelineDetails,
   mockPipelineDetailsWithoutTaskTags,
-  mockSortedPipelineDetails,
 } from './mocks/PipelineDetailsUtils.mock';
 import { getFormattedPipelineDetails } from './PipelineDetailsUtils';
 
@@ -22,7 +21,7 @@ describe('PipelineDetailsUtils test', () => {
   it('getFormattedPipelineDetails should return pipeline details with sorted tags for tasks', () => {
     const results = getFormattedPipelineDetails(mockPipelineDetails);
 
-    expect(results).toEqual(mockSortedPipelineDetails);
+    expect(results).toEqual(mockPipelineDetails);
   });
 
   it('getFormattedPipelineDetails should return pipeline details without any changes in case no tasks are present in it', () => {

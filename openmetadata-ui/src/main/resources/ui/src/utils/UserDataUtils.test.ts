@@ -10,8 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { OidcUser } from '../components/Auth/AuthProviders/AuthProvider.interface';
 import { User } from '../generated/entity/teams/user';
-import { getUserWithImage } from './UserDataUtils';
+import { checkIfUpdateRequired, getUserWithImage } from './UserDataUtils';
 
 describe('getUserWithImage', () => {
   it('should return the correct user based on profile and isBot status', () => {
@@ -86,5 +87,66 @@ describe('getUserWithImage', () => {
     result = getUserWithImage(userWithoutProfile);
 
     expect(result).toEqual(userWithoutProfile);
+  });
+});
+
+describe('checkIfUpdateRequired', () => {
+  it('should return the updated user details if update is required', async () => {
+    const existingUserDetails: User = {
+      email: 'a@a.com',
+      id: '1',
+      name: 'user',
+      isBot: false,
+    };
+
+    const newUser: OidcUser = {
+      id_token: 'idToken',
+      scope: 'scope',
+      profile: {
+        email: 'a@a.com',
+        name: 'updatedUser',
+        picture: '',
+        preferred_username: 'preferred_username',
+        sub: 'sub',
+      },
+    };
+
+    const updatedUserDetails = await checkIfUpdateRequired(
+      existingUserDetails,
+      newUser
+    );
+
+    expect(updatedUserDetails).toEqual({
+      ...existingUserDetails,
+      name: 'user',
+    });
+  });
+
+  it('should return the existing user details if update is not required', async () => {
+    const existingUserDetails: User = {
+      email: 'a@a.com',
+      id: '1',
+      name: 'user',
+      isBot: false,
+    };
+
+    const newUser: OidcUser = {
+      id_token: 'idToken',
+      scope: 'scope',
+      profile: {
+        email: 'a@a.com',
+        name: 'user',
+        picture: '',
+        preferred_username: 'preferred_username',
+        sub: 'sub',
+      },
+    };
+
+    const updatedUserDetails = await checkIfUpdateRequired(
+      existingUserDetails,
+      newUser
+    );
+
+    expect(updatedUserDetails).toEqual(existingUserDetails);
   });
 });

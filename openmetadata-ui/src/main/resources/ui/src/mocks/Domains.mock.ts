@@ -24,15 +24,17 @@ export const MOCK_DOMAIN = {
   updatedAt: 1693984853388,
   updatedBy: 'admin',
   href: 'http://localhost:8585/api/v1/domains/5f4326d3-9dfc-4e43-8f0c-d88d4a293ede',
-  owner: {
-    id: 'b4b299c1-992a-4a28-a153-7bca6d62de1d',
-    type: 'user',
-    name: 'aaron.singh2',
-    fullyQualifiedName: '"aaron.singh2"',
-    displayName: 'Aaron Singh',
-    deleted: false,
-    href: 'http://localhost:8585/api/v1/users/b4b299c1-992a-4a28-a153-7bca6d62de1d',
-  },
+  owners: [
+    {
+      id: 'b4b299c1-992a-4a28-a153-7bca6d62de1d',
+      type: 'user',
+      name: 'aaron.singh2',
+      fullyQualifiedName: '"aaron.singh2"',
+      displayName: 'Aaron Singh',
+      deleted: false,
+      href: 'http://localhost:8585/api/v1/users/b4b299c1-992a-4a28-a153-7bca6d62de1d',
+    },
+  ],
   experts: [],
 };
 

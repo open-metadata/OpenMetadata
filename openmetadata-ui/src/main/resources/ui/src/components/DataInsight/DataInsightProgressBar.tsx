@@ -30,6 +30,7 @@ interface DataInsightProgressBarProps {
   suffix?: string;
   changeInValue?: number;
   duration?: number;
+  showProgress?: boolean;
 }
 
 const DataInsightProgressBar = ({
@@ -42,6 +43,7 @@ const DataInsightProgressBar = ({
   showSuccessInfo = false,
   changeInValue,
   duration,
+  showProgress = true,
 }: DataInsightProgressBarProps) => {
   return (
     <div
@@ -55,34 +57,36 @@ const DataInsightProgressBar = ({
         value={`${progress}${suffix}`}
       />
 
-      <div className={classNames('flex', { 'm-t-sm': Boolean(target) })}>
-        <Progress
-          className="data-insight-progress-bar"
-          format={() => (
-            <>
-              {target && (
-                <span
-                  className="data-insight-kpi-target"
-                  style={{ width: `${target}%` }}>
-                  <span className="target-text">
-                    {round(target, 2)}
-                    {suffix}
+      {showProgress && (
+        <div className={classNames('flex', { 'm-t-sm': Boolean(target) })}>
+          <Progress
+            className="data-insight-progress-bar"
+            format={() => (
+              <>
+                {target ? (
+                  <span
+                    className="data-insight-kpi-target"
+                    style={{ width: `${target}%` }}>
+                    <span className="target-text">
+                      {round(target, 2)}
+                      {suffix}
+                    </span>
                   </span>
-                </span>
-              )}
-            </>
-          )}
-          percent={progress}
-          strokeColor="#B3D4F4"
-        />
-        {showSuccessInfo && progress >= 100 && (
-          <Icon
-            className="align-middle m-l-xs"
-            component={IconSuccessBadge}
-            style={{ fontSize: '16px' }}
+                ) : null}
+              </>
+            )}
+            percent={progress}
+            strokeColor="#B3D4F4"
           />
-        )}
-      </div>
+          {showSuccessInfo && progress >= 100 && (
+            <Icon
+              className="align-middle m-l-xs"
+              component={IconSuccessBadge}
+              style={{ fontSize: '16px' }}
+            />
+          )}
+        </div>
+      )}
     </div>
   );
 };

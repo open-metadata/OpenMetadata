@@ -14,9 +14,9 @@ Mixin class containing Tests specific methods
 To be used by OpenMetadata class
 """
 
-from datetime import datetime, timezone
+import traceback
+from datetime import datetime
 from typing import List, Optional, Type, Union
-from urllib.parse import quote
 from uuid import UUID
 
 from metadata.generated.schema.api.tests.createLogicalTestCases import (
@@ -30,7 +30,7 @@ from metadata.generated.schema.api.tests.createTestDefinition import (
     CreateTestDefinitionRequest,
 )
 from metadata.generated.schema.api.tests.createTestSuite import CreateTestSuiteRequest
-from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.data.table import Table, TableData
 from metadata.generated.schema.tests.basic import TestCaseResult
 from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
 from metadata.generated.schema.tests.testCaseResolutionStatus import (
@@ -44,9 +44,8 @@ from metadata.generated.schema.tests.testDefinition import (
 )
 from metadata.generated.schema.tests.testSuite import TestSuite
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.models.encoders import show_secrets_encoder
 from metadata.ingestion.ometa.client import REST
-from metadata.ingestion.ometa.utils import model_str
+from metadata.ingestion.ometa.utils import model_str, quote
 from metadata.utils.logger import ometa_logger
 
 logger = ometa_logger()
@@ -76,8 +75,8 @@ class OMetaTestsMixin:
             _type_: _description_
         """
         resp = self.client.put(
-            f"{self.get_suffix(TestCase)}/{quote(test_case_fqn,safe='')}/testCaseResult",
-            test_results.json(),
+            f"{self.get_suffix(TestCase)}/{quote(test_case_fqn)}/testCaseResult",
+            test_results.model_dump_json(),
         )
 
         return resp
@@ -87,7 +86,7 @@ class OMetaTestsMixin:
         test_suite_name: str,
         test_suite_description: Optional[
             str
-        ] = f"Test Suite created on {datetime.now(timezone.utc).strftime('%Y-%m-%d')}",
+        ] = f"Test Suite created on {datetime.now().strftime('%Y-%m-%d')}",
     ) -> TestSuite:
         """Get or create a TestSuite
 
@@ -228,8 +227,8 @@ class OMetaTestsMixin:
             return table_entity.testSuite
 
         create_test_suite = CreateTestSuiteRequest(
-            name=f"{table_entity.fullyQualifiedName.__root__}.TestSuite",
-            executableEntityReference=table_entity.fullyQualifiedName.__root__,
+            name=f"{table_entity.fullyQualifiedName.root}.TestSuite",
+            executableEntityReference=table_entity.fullyQualifiedName.root,
         )  # type: ignore
         test_suite = self.create_or_update_executable_test_suite(create_test_suite)
         return test_suite
@@ -259,7 +258,7 @@ class OMetaTestsMixin:
         )
 
         if resp:
-            return [TestCaseResult.parse_obj(entity) for entity in resp["data"]]
+            return [TestCaseResult.model_validate(entity) for entity in resp["data"]]
         return None
 
     def create_or_update_executable_test_suite(
@@ -276,9 +275,9 @@ class OMetaTestsMixin:
         entity = data.__class__
         entity_class = self.get_entity_from_create(entity)
         path = self.get_suffix(entity) + "/executable"
-        resp = self.client.put(path, data=data.json(encoder=show_secrets_encoder))
+        resp = self.client.put(path, data=data.model_dump_json())
 
-        return entity_class.parse_obj(resp)
+        return entity_class.model_validate(resp)
 
     def delete_executable_test_suite(
         self,
@@ -306,7 +305,7 @@ class OMetaTestsMixin:
             data (CreateLogicalTestCases): logical test cases
         """
         path = self.get_suffix(TestCase) + "/logicalTestCases"
-        self.client.put(path, data=data.json(encoder=show_secrets_encoder))
+        self.client.put(path, data=data.model_dump_json())
 
     def create_test_case_resolution(
         self, data: CreateTestCaseResolutionStatus
@@ -320,6 +319,63 @@ class OMetaTestsMixin:
             TestCaseResolutionStatus
         """
         path = self.get_suffix(TestCase) + "/testCaseIncidentStatus"
-        response = self.client.post(path, data=data.json(encoder=show_secrets_encoder))
+        response = self.client.post(path, data=data.model_dump_json())
 
         return TestCaseResolutionStatus(**response)
+
+    def ingest_failed_rows_sample(
+        self,
+        test_case: TestCase,
+        failed_rows: TableData,
+        validate=True,
+    ) -> Optional[TableData]:
+        """
+        PUT sample failed data for a test case.
+
+        :param test_case: The test case that failed
+        :param failed_rows: Data to add
+        """
+        resp = None
+        try:
+            params = "" if validate else "validate=false"
+            resp = self.client.put(
+                f"{self.get_suffix(TestCase)}/{test_case.id.root}/failedRowsSample?{params}",
+                data=failed_rows.model_dump_json(),
+            )
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Error trying to PUT sample data for {test_case.fullyQualifiedName.root}: {exc}"
+            )
+
+        if resp:
+            try:
+                return TableData(**resp["failedRowsSample"])
+            except UnicodeError as err:
+                logger.debug(traceback.format_exc())
+                logger.warning(
+                    f"Unicode Error parsing the sample data response from {test_case.fullyQualifiedName.root}: "
+                    f"{err}"
+                )
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.warning(
+                    f"Error trying to parse sample data results from {test_case.fullyQualifiedName.root}: {exc}"
+                )
+
+        return None
+
+    def ingest_inspection_query(
+        self, test_case: TestCase, inspection_query: str
+    ) -> Optional[TestCase]:
+        """
+        PUT inspection query for a test case.
+
+        :param test_case: The test case that failed
+        :param inspection_query: SQL query to inspect the failed rows
+        """
+        resp = self.client.put(
+            f"{self.get_suffix(TestCase)}/{test_case.id.root}/inspectionQuery",
+            data=inspection_query,
+        )
+        return TestCase(**resp)

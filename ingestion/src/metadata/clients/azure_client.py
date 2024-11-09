@@ -28,7 +28,7 @@ class AzureClient:
     def __init__(self, credentials: "AzureCredentials"):
         self.credentials = credentials
         if not isinstance(credentials, AzureCredentials):
-            self.credentials = AzureCredentials.parse_obj(credentials)
+            self.credentials = AzureCredentials.model_validate(credentials)
 
     def create_client(
         self,

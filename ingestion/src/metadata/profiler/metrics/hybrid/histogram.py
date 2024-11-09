@@ -18,13 +18,18 @@ from typing import Any, Dict, List, Optional, Union, cast
 from sqlalchemy import and_, case, column, func
 from sqlalchemy.orm import DeclarativeMeta, Session
 
+from metadata.generated.schema.configuration.profilerConfiguration import MetricType
 from metadata.profiler.metrics.composed.iqr import InterQuartileRange
 from metadata.profiler.metrics.core import HybridMetric
 from metadata.profiler.metrics.static.count import Count
 from metadata.profiler.metrics.static.max import Max
 from metadata.profiler.metrics.static.min import Min
 from metadata.profiler.orm.functions.length import LenFn
-from metadata.profiler.orm.registry import is_concatenable, is_quantifiable
+from metadata.profiler.orm.registry import (
+    is_concatenable,
+    is_quantifiable,
+    is_value_non_numeric,
+)
 from metadata.utils.helpers import format_large_string_numbers
 from metadata.utils.logger import profiler_logger
 
@@ -44,7 +49,7 @@ class Histogram(HybridMetric):
 
     @classmethod
     def name(cls):
-        return "histogram"
+        return MetricType.histogram.value
 
     @property
     def metric_type(self):
@@ -119,7 +124,6 @@ class Histogram(HybridMetric):
             # freedman-diaconis rule
             bin_width = self._get_bin_width(float(res_iqr), res_row_count)  # type: ignore
             num_bins = math.ceil((res_max - res_min) / bin_width)  # type: ignore
-
         # sturge's rule
         if res_iqr is None or num_bins > max_bin_count:
             num_bins = int(math.ceil(math.log2(res_row_count) + 1))
@@ -147,7 +151,10 @@ class Histogram(HybridMetric):
                 "We are missing the session attribute to compute the Histogram."
             )
 
-        if not (is_quantifiable(self.col.type) or is_concatenable(self.col.type)):
+        if not (is_quantifiable(self.col.type) or is_concatenable(self.col.type)) or (
+            is_value_non_numeric(res.get(Min.name()))
+            or is_value_non_numeric(res.get(Max.name()))
+        ):
             return None
 
         # get the metric need for the freedman-diaconis rule

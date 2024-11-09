@@ -63,6 +63,34 @@ In case of Docker or Kubernetes deployments, this driver comes out of the box wi
 
 $$
 
+**Authentication Mode**:
+
+$$section
+### Authentication $(id="authentication")
+   - The `authentication` parameter determines the method of authentication when connecting to AzureSQL using ODBC (Open Database Connectivity).
+   - If you select **"Active Directory Password"**, you'll need to provide the password associated with your Azure Active Directory account.
+   - Alternatively, if you choose **"Active Directory Integrated"**, the connection will use the credentials of the currently logged-in user. This mode ensures secure and seamless connections with AzureSQL.
+$$
+
+$$section
+### Encrypt $(id="encrypt")
+   - The `encrypt` setting in the connection string pertains to data encryption during communication with AzureSQL.
+   - When enabled, it ensures that data exchanged between your application and the database is encrypted, enhancing security.
+$$
+
+$$section
+
+### Trust Server Certificate $(id="trustServerCertificate"):
+   - The `trustServerCertificate` option also relates to security.
+   - When set to true, your application will trust the server's SSL certificate without validation. Use this cautiously, as it bypasses certificate validation checks.
+$$
+
+$$section
+### Connection Timeout $(id="connectionTimeout"):
+   - The `connectionTimeout` parameter specifies the maximum time (in seconds) that your application will wait while attempting to establish a connection to AzureSQL.
+   - If the connection cannot be established within this timeframe, an error will be raised.
+$$
+
 $$section
 ### Ingest All Databases $(id="ingestAllDatabases")
 If ticked, the workflow will be able to ingest all database in the cluster. If not ticked, the workflow will only ingest tables from the database set above.

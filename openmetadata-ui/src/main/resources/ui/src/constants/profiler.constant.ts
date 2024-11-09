@@ -12,9 +12,12 @@
  */
 
 import { t } from 'i18next';
-import { capitalize, map, values } from 'lodash';
+import { capitalize, map, startCase, values } from 'lodash';
 import { DateFilterType, StepperStepType } from 'Models';
+import { StatusData } from '../components/DataQuality/ChartWidgets/StatusCardWidget/StatusCardWidget.interface';
+import { TestCaseSearchParams } from '../components/DataQuality/DataQuality.interface';
 import { CSMode } from '../enums/codemirror.enum';
+import { SORT_ORDER } from '../enums/common.enum';
 import { DMLOperationType } from '../generated/api/data/createTableProfile';
 import {
   ColumnProfilerConfig,
@@ -23,7 +26,12 @@ import {
   PartitionIntervalUnit,
   ProfileSampleType,
 } from '../generated/entity/data/table';
+import { MetricType } from '../generated/settings/settings';
 import { TestCaseStatus } from '../generated/tests/testCase';
+import {
+  DataQualityDimensions,
+  TestPlatform,
+} from '../generated/tests/testDefinition';
 import { TestCaseType } from '../rest/testAPI';
 import {
   getCurrentMillis,
@@ -73,6 +81,8 @@ export const PROFILER_METRIC = [
   'customMetricsProfile',
 ];
 
+export const INCIDENT = 'Incident';
+
 export const PROFILER_FILTER_RANGE: DateFilterType = {
   yesterday: {
     days: 1,
@@ -111,11 +121,11 @@ export const PROFILER_FILTER_RANGE: DateFilterType = {
 };
 
 export const DEFAULT_SELECTED_RANGE = {
-  key: 'last3days',
+  key: 'last7Days',
   title: t('label.last-number-of-days', {
-    numberOfDays: 3,
+    numberOfDays: 7,
   }),
-  days: 3,
+  days: 7,
 };
 
 export const DEFAULT_RANGE_DATA = {
@@ -297,6 +307,18 @@ export const INITIAL_TEST_RESULT_SUMMARY = {
   failed: 0,
 };
 
+export const INITIAL_ENTITY_HEALTH_MATRIX = {
+  healthy: 0,
+  unhealthy: 0,
+  total: 0,
+};
+
+export const INITIAL_DATA_ASSETS_COVERAGE_STATES = {
+  covered: 0,
+  notCovered: 0,
+  total: 0,
+};
+
 export const DEFAULT_TEST_VALUE = [
   {
     value: 0,
@@ -311,6 +333,21 @@ export const DEFAULT_TEST_VALUE = [
     type: TestCaseStatus.Failed,
   },
 ];
+
+export const DEFAULT_DIMENSIONS_DATA = Object.values(
+  DataQualityDimensions
+).reduce((acc, item) => {
+  return {
+    ...acc,
+    [item]: {
+      title: item,
+      success: 0,
+      failed: 0,
+      aborted: 0,
+      total: 0,
+    },
+  };
+}, {} as { [key: string]: StatusData });
 
 export const codeMirrorOption = {
   tabSize: JSON_TAB_SIZE,
@@ -415,10 +452,54 @@ export const TEST_CASE_STATUS_OPTION = [
   })),
 ];
 
+export const TEST_CASE_FILTERS: Record<string, keyof TestCaseSearchParams> = {
+  table: 'tableFqn',
+  platform: 'testPlatforms',
+  type: 'testCaseType',
+  status: 'testCaseStatus',
+  lastRun: 'lastRunRange',
+  tier: 'tier',
+  tags: 'tags',
+  service: 'serviceName',
+};
+
+export const TEST_CASE_PLATFORM_OPTION = values(TestPlatform).map((value) => ({
+  label: value,
+  value: value,
+}));
+
 export const INITIAL_COLUMN_METRICS_VALUE = {
   countMetrics: INITIAL_COUNT_METRIC_VALUE,
   proportionMetrics: INITIAL_PROPORTION_METRIC_VALUE,
   mathMetrics: INITIAL_MATH_METRIC_VALUE,
   sumMetrics: INITIAL_SUM_METRIC_VALUE,
   quartileMetrics: INITIAL_QUARTILE_METRIC_VALUE,
+};
+
+export const PROFILER_METRICS_TYPE_OPTIONS = [
+  {
+    label: 'All',
+    key: 'all',
+    value: 'all',
+    children: values(MetricType).map((value) => ({
+      label: startCase(value),
+      key: value,
+      value,
+    })),
+  },
+];
+
+export const DEFAULT_PROFILER_CONFIG_VALUE = {
+  metricConfiguration: [
+    {
+      dataType: undefined,
+      metrics: undefined,
+      disabled: false,
+    },
+  ],
+};
+
+export const DEFAULT_SORT_ORDER = {
+  sortType: SORT_ORDER.DESC,
+  sortField: 'testCaseResult.timestamp',
 };

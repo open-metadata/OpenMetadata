@@ -11,6 +11,7 @@ source:
         dbtCloudAuthToken: token
         dbtCloudAccountId: ID
         dbtCloudJobId: JOB ID
+        dbtCloudProjectId: PROJECT ID
         dbtCloudUrl: https://cloud.getdbt.com
       # # For Local
       # dbtConfigSource:

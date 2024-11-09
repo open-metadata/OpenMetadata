@@ -12,12 +12,10 @@
  */
 
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
-import { Glossary } from '../../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
+import { TagLabel } from '../../../generated/type/tagLabel';
 
 export interface GlossaryTermTabProps {
-  selectedData: Glossary | GlossaryTerm;
-  childGlossaryTerms: GlossaryTerm[];
   isGlossary: boolean;
   termsLoading: boolean;
   refreshGlossaryTerms: () => void;
@@ -29,6 +27,8 @@ export interface GlossaryTermTabProps {
 
 export type ModifiedGlossaryTerm = Omit<GlossaryTerm, 'children'> & {
   children?: GlossaryTerm[];
+  value?: string;
+  data?: TagLabel;
 };
 
 export type MoveGlossaryTermType = {

@@ -18,7 +18,6 @@ import { startCase } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconCheckboxPrimary } from '../../../../../assets/svg/checkbox-primary.svg';
-import { PRIMERY_COLOR } from '../../../../../constants/constants';
 import {
   BETA_SERVICES,
   excludedService,
@@ -145,11 +144,7 @@ const SelectServiceType = ({
                 {BETA_SERVICES.includes(
                   type as DatabaseServiceType | PipelineServiceType
                 ) ? (
-                  <Badge
-                    className="service-beta-tag"
-                    color={PRIMERY_COLOR}
-                    count={t('label.beta')}
-                  />
+                  <Badge className="service-beta-tag" count={t('label.beta')} />
                 ) : null}
               </p>
             </Button>

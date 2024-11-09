@@ -14,6 +14,11 @@
             <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
         </encoder>
     </appender>
+    <logger name="org.apache" level="ERROR" />
+    <logger name="httpclient" level="ERROR" />
+    <logger name="es.org.elasticsearch.client" level="ERROR" />
+    <logger name="os.org.elasticsearch.client" level="ERROR" />
+    <logger name="org.openmetadata.service.Entity" level="ERROR" />
     <root level="${LOG_LEVEL:-INFO}">
         <appender-ref ref="STDOUT" />
         <appender-ref ref="file"/>

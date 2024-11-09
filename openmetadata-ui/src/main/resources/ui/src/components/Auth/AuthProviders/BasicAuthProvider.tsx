@@ -39,6 +39,7 @@ import {
 } from '../../../utils/ToastUtils';
 import { resetWebAnalyticSession } from '../../../utils/WebAnalyticsUtils';
 
+import { toLower } from 'lodash';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { OidcUser } from './AuthProvider.interface';
 
@@ -90,7 +91,6 @@ const BasicAuthProvider = ({
 }: BasicAuthProps) => {
   const { t } = useTranslation();
   const {
-    setLoadingIndicator,
     setRefreshToken,
     setOidcToken,
     getOidcToken,
@@ -116,7 +116,7 @@ const BasicAuthProvider = ({
           onLoginSuccess({
             id_token: response.accessToken,
             profile: {
-              email,
+              email: toLower(email),
               name: '',
               picture: '',
               sub: '',
@@ -142,7 +142,6 @@ const BasicAuthProvider = ({
     try {
       const isEmailAlreadyExists = await checkEmailInUse(request.email);
       if (!isEmailAlreadyExists) {
-        setLoadingIndicator(true);
         await basicAuthRegister(request);
 
         showSuccessToast(
@@ -166,8 +165,6 @@ const BasicAuthProvider = ({
       } else {
         showErrorToast(err as AxiosError, t('server.unexpected-response'));
       }
-    } finally {
-      setLoadingIndicator(false);
     }
   };
 
@@ -187,14 +184,10 @@ const BasicAuthProvider = ({
   };
 
   const handleResetPassword = async (payload: PasswordResetRequest) => {
-    setLoadingIndicator(true);
-
     const response = await resetPassword(payload);
     if (response) {
       showSuccessToast(t('server.reset-password-success'));
     }
-
-    setLoadingIndicator(false);
   };
 
   const handleLogout = async () => {

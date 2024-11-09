@@ -18,6 +18,7 @@ import {
 import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { EntityUtilClassBase } from './EntityUtilClassBase';
+import { getTestSuiteDetailsPath } from './TestSuiteUtils';
 
 jest.mock('../constants/constants', () => ({
   getEntityDetailsPath: jest.fn(),
@@ -37,6 +38,10 @@ jest.mock('./RouterUtils', () => ({
   getDomainDetailsPath: jest.fn(),
   getSettingPath: jest.fn(),
   getTeamsWithFqnPath: jest.fn(),
+}));
+
+jest.mock('./TestSuiteUtils', () => ({
+  getTestSuiteDetailsPath: jest.fn(),
 }));
 
 describe('EntityUtilClassBase', () => {
@@ -115,6 +120,16 @@ describe('EntityUtilClassBase', () => {
       undefined,
       undefined
     );
+  });
+
+  it('should return testSuite details path for testSuite EntityType', () => {
+    const fqn = 'test.default';
+    entityUtil.getEntityLink(EntityType.TEST_SUITE, fqn);
+
+    expect(getTestSuiteDetailsPath).toHaveBeenCalledWith({
+      fullyQualifiedName: 'test.default',
+      isExecutableTestSuite: undefined,
+    });
   });
 
   it('should return table details path for table index type', () => {

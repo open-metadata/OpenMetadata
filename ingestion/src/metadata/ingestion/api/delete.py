@@ -43,7 +43,7 @@ def delete_entity_from_source(
     try:
         entity_state = metadata.list_all_entities(entity=entity_type, params=params)
         for entity in entity_state:
-            if str(entity.fullyQualifiedName.__root__) not in entity_source_state:
+            if str(entity.fullyQualifiedName.root) not in entity_source_state:
                 yield Either(
                     right=DeleteEntity(
                         entity=entity,

@@ -24,9 +24,8 @@ DATABRICKS_VIEW_DEFINITIONS = textwrap.dedent(
     """
 )
 
-
 DATABRICKS_GET_TABLE_COMMENTS = (
-    "DESCRIBE TABLE EXTENDED {catalog_name}.{schema_name}.{table_name}"
+    "DESCRIBE TABLE EXTENDED {database_name}.{schema_name}.{table_name}"
 )
 
 DATABRICKS_GET_CATALOGS = "SHOW CATALOGS"
@@ -57,3 +56,5 @@ DATABRICKS_GET_COLUMN_TAGS = textwrap.dedent(
     FROM {database_name}.information_schema.column_tags 
     """
 )
+
+DATABRICKS_DDL = "SHOW CREATE TABLE {table_name}"

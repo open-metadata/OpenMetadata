@@ -177,12 +177,13 @@ const mockParams = {
 };
 
 const API_FIELDS = [
-  'owner',
+  'owners',
   'usageSummary',
   'tags',
   'domain',
   'votes',
   'extension',
+  'dataProducts',
 ];
 
 jest.mock('react-router-dom', () => ({

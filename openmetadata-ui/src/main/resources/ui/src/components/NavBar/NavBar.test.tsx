@@ -33,12 +33,14 @@ const mockProps = {
   handleClear: mockHandleClear,
   handleKeyDown: mockHandleKeyDown,
 };
-jest.mock('../../context/GlobalSearchProvider/GlobalSearchProvider', () => ({
-  useGlobalSearchProvider: jest.fn().mockImplementation(() => ({
+
+jest.mock('../../hooks/useApplicationStore', () => ({
+  useApplicationStore: jest.fn().mockImplementation(() => ({
     searchCriteria: '',
     updateSearchCriteria: jest.fn(),
   })),
 }));
+
 jest.mock('../../context/WebSocketProvider/WebSocketProvider', () => ({
   useWebSocketConnector: jest.fn().mockImplementation(() => ({
     socket: {
@@ -54,19 +56,22 @@ jest.mock('../../utils/BrowserNotificationUtils', () => ({
 jest.mock('../../utils/CommonUtils', () => ({
   refreshPage: jest.fn(),
   getEntityDetailLink: jest.fn(),
+  getNameFromFQN: jest.fn().mockImplementation((value) => value),
 }));
 jest.mock('../../utils/FeedUtils', () => ({
   getEntityFQN: jest.fn().mockReturnValue('entityFQN'),
   getEntityType: jest.fn().mockReturnValue('entityType'),
   prepareFeedLink: jest.fn().mockReturnValue('entity-link'),
 }));
-jest.mock('../Domain/DomainProvider/DomainProvider', () => ({
-  useDomainProvider: jest.fn().mockImplementation(() => ({
+
+jest.mock('../../hooks/useDomainStore', () => ({
+  useDomainStore: jest.fn().mockImplementation(() => ({
     domainOptions: jest.fn().mockReturnValue('domainOptions'),
     activeDomain: jest.fn().mockReturnValue('activeDomain'),
     updateActiveDomain: jest.fn(),
   })),
 }));
+
 jest.mock('../Modals/WhatsNewModal/WhatsNewModal', () => {
   return jest
     .fn()
@@ -93,10 +98,12 @@ jest.mock(
       ),
   })
 );
-jest.mock('react-router-dom', () => ({
-  useLocation: jest
+jest.mock('../../hooks/useCustomLocation/useCustomLocation', () => {
+  return jest
     .fn()
-    .mockReturnValue({ search: 'search', pathname: '/my-data' }),
+    .mockImplementation(() => ({ search: 'search', pathname: '/my-data' }));
+});
+jest.mock('react-router-dom', () => ({
   useHistory: jest.fn(),
 }));
 

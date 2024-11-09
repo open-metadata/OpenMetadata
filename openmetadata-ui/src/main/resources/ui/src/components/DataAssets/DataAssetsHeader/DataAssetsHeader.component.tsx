@@ -14,7 +14,7 @@ import Icon from '@ant-design/icons';
 import { Button, Col, Divider, Row, Space, Tooltip, Typography } from 'antd';
 import ButtonGroup from 'antd/lib/button/button-group';
 import { AxiosError } from 'axios';
-import { capitalize, isEmpty } from 'lodash';
+import { capitalize, get, isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
@@ -36,7 +36,11 @@ import {
 } from '../../../constants/constants';
 import { SERVICE_TYPES } from '../../../constants/Services.constant';
 import { useTourProvider } from '../../../context/TourProvider/TourProvider';
-import { EntityTabs, EntityType } from '../../../enums/entity.enum';
+import {
+  EntityTabs,
+  EntityType,
+  TabSpecificField,
+} from '../../../enums/entity.enum';
 import { Container } from '../../../generated/entity/data/container';
 import { Table } from '../../../generated/entity/data/table';
 import { Thread } from '../../../generated/entity/feed/thread';
@@ -55,6 +59,8 @@ import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import { getTierTags } from '../../../utils/TableUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 
+import { TAG_START_WITH } from '../../../constants/Tag.constants';
+import { Metric } from '../../../generated/entity/data/metric';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import AnnouncementCard from '../../common/EntityPageInfos/AnnouncementCard/AnnouncementCard';
 import AnnouncementDrawer from '../../common/EntityPageInfos/AnnouncementDrawer/AnnouncementDrawer';
@@ -63,6 +69,9 @@ import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.compon
 import RetentionPeriod from '../../Database/RetentionPeriod/RetentionPeriod.component';
 import Voting from '../../Entity/Voting/Voting.component';
 import { VotingDataProps } from '../../Entity/Voting/voting.interface';
+import MetricHeaderInfo from '../../Metric/MetricHeaderInfo/MetricHeaderInfo';
+import TagsV1 from '../../Tag/TagsV1/TagsV1.component';
+import './data-asset-header.less';
 import {
   DataAssetHeaderInfo,
   DataAssetsHeaderProps,
@@ -75,13 +84,17 @@ import {
 export const ExtraInfoLabel = ({
   label,
   value,
+  dataTestId,
 }: {
   label: string;
   value: string | number;
+  dataTestId?: string;
 }) => (
   <>
     <Divider className="self-center" type="vertical" />
-    <Typography.Text className="self-center text-xs whitespace-nowrap">
+    <Typography.Text
+      className="self-center text-xs whitespace-nowrap"
+      data-testid={dataTestId}>
       {!isEmpty(label) && (
         <span className="text-grey-muted">{`${label}: `}</span>
       )}
@@ -94,10 +107,12 @@ export const ExtraInfoLink = ({
   label,
   value,
   href,
+  newTab = false,
 }: {
   label: string;
   value: string | number;
   href: string;
+  newTab?: boolean;
 }) => (
   <>
     <Divider className="self-center" type="vertical" />
@@ -105,7 +120,11 @@ export const ExtraInfoLink = ({
       {!isEmpty(label) && (
         <span className="text-grey-muted m-r-xss">{`${label}: `}</span>
       )}
-      <Typography.Link href={href} style={{ fontSize: '12px' }}>
+      <Typography.Link
+        href={href}
+        rel={newTab ? 'noopener noreferrer' : undefined}
+        style={{ fontSize: '12px' }}
+        target={newTab ? '_blank' : undefined}>
         {value}{' '}
       </Typography.Link>
       <Icon
@@ -137,6 +156,8 @@ export const DataAssetsHeader = ({
   onProfilerSettingUpdate,
   onUpdateRetentionPeriod,
   extraDropdownContent,
+  onMetricUpdate,
+  badge,
 }: DataAssetsHeaderProps) => {
   const { currentUser } = useApplicationStore();
   const USER_ID = currentUser?.id ?? '';
@@ -147,18 +168,18 @@ export const DataAssetsHeader = ({
   const [isBreadcrumbLoading, setIsBreadcrumbLoading] = useState(false);
   const [isFollowingLoading, setIsFollowingLoading] = useState(false);
   const history = useHistory();
-  const icon = useMemo(
-    () =>
-      dataAsset?.serviceType ? (
-        <img
-          className="h-9"
-          src={serviceUtilClassBase.getServiceTypeLogo(
-            dataAsset as SearchSourceAlias
-          )}
-        />
-      ) : null,
-    [dataAsset]
-  );
+  const icon = useMemo(() => {
+    const serviceType = get(dataAsset, 'serviceType', '');
+
+    return serviceType ? (
+      <img
+        className="h-9"
+        src={serviceUtilClassBase.getServiceTypeLogo(
+          dataAsset as SearchSourceAlias
+        )}
+      />
+    ) : null;
+  }, [dataAsset]);
   const [copyTooltip, setCopyTooltip] = useState<string>();
 
   const excludeEntityService = useMemo(
@@ -166,6 +187,7 @@ export const DataAssetsHeader = ({
       [
         EntityType.DATABASE,
         EntityType.DATABASE_SCHEMA,
+        EntityType.API_COLLECTION,
         ...SERVICE_TYPES,
       ].includes(entityType),
     [entityType]
@@ -227,7 +249,7 @@ export const DataAssetsHeader = ({
     setIsBreadcrumbLoading(true);
     try {
       const response = await getContainerByName(parentName, {
-        fields: 'parent',
+        fields: TabSpecificField.PARENT,
       });
       const updatedParent = [response, ...parents];
       if (response?.parent?.fullyQualifiedName) {
@@ -326,7 +348,7 @@ export const DataAssetsHeader = ({
       () => ({
         editDomainPermission: permissions.EditAll && !dataAsset.deleted,
         editOwnerPermission:
-          (permissions.EditAll || permissions.EditOwner) && !dataAsset.deleted,
+          (permissions.EditAll || permissions.EditOwners) && !dataAsset.deleted,
         editTierPermission:
           (permissions.EditAll || permissions.EditTags) && !dataAsset.deleted,
       }),
@@ -335,7 +357,7 @@ export const DataAssetsHeader = ({
 
   return (
     <>
-      <Row gutter={[8, 12]}>
+      <Row data-testid="data-assets-header" gutter={[8, 12]}>
         {/* Heading Left side */}
         <Col className="self-center" span={17}>
           <Row gutter={[16, 12]}>
@@ -347,6 +369,7 @@ export const DataAssetsHeader = ({
             </Col>
             <Col span={24}>
               <EntityHeaderTitle
+                badge={badge}
                 deleted={dataAsset?.deleted}
                 displayName={dataAsset.displayName}
                 icon={icon}
@@ -371,16 +394,20 @@ export const DataAssetsHeader = ({
                 )}
                 <OwnerLabel
                   hasPermission={editOwnerPermission}
-                  owner={dataAsset?.owner}
+                  owners={dataAsset?.owners}
                   onUpdate={onOwnerUpdate}
                 />
                 <Divider className="self-center" type="vertical" />
                 <TierCard currentTier={tier?.tagFQN} updateTier={onTierUpdate}>
                   <Space data-testid="header-tier-container">
                     {tier ? (
-                      <span className="font-medium text-xs" data-testid="Tier">
-                        {getEntityName(tier)}
-                      </span>
+                      <TagsV1
+                        startWith={TAG_START_WITH.SOURCE_ICON}
+                        tag={tier}
+                        tagProps={{
+                          'data-testid': 'Tier',
+                        }}
+                      />
                     ) : (
                       <span className="font-medium text-xs" data-testid="Tier">
                         {t('label.no-entity', {
@@ -416,6 +443,14 @@ export const DataAssetsHeader = ({
                   />
                 )}
 
+                {entityType === EntityType.METRIC && onMetricUpdate && (
+                  <MetricHeaderInfo
+                    metricDetails={dataAsset as Metric}
+                    metricPermissions={permissions}
+                    onUpdateMetricDetails={onMetricUpdate}
+                  />
+                )}
+
                 {extraInfo}
               </div>
             </Col>
@@ -425,7 +460,10 @@ export const DataAssetsHeader = ({
         <Col span={7}>
           <Space className="items-end w-full" direction="vertical" size={16}>
             <Space>
-              <ButtonGroup data-testid="asset-header-btn-group" size="small">
+              <ButtonGroup
+                className="data-asset-button-group"
+                data-testid="asset-header-btn-group"
+                size="small">
                 {onUpdateVote && (
                   <Voting
                     disabled={deleted}

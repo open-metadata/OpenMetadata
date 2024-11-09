@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Button, Popover, Tooltip, Typography } from 'antd';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as DomainIcon } from '../../../assets/svg/ic-domain.svg';
@@ -23,6 +23,7 @@ import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
 import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { EntityReference } from '../../../generated/entity/type';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { getDomainList } from '../../../rest/domainAPI';
 import { searchData } from '../../../rest/miscAPI';
 import { formatDomainsResponse } from '../../../utils/APIUtils';
@@ -56,15 +57,25 @@ const DomainSelectableList = ({
   hasPermission,
   popoverProps,
   selectedDomain,
+  multiple = false,
 }: DomainSelectableListProps) => {
   const { t } = useTranslation();
+  const { theme } = useApplicationStore();
   const [popupVisible, setPopupVisible] = useState(false);
+
+  const selectedDomainsList = useMemo(() => {
+    if (selectedDomain) {
+      return Array.isArray(selectedDomain) ? selectedDomain : [selectedDomain];
+    }
+
+    return [];
+  }, [selectedDomain]);
 
   const fetchOptions = async (searchText: string) => {
     if (searchText) {
       try {
         const res = await searchData(
-          encodeURIComponent(searchText),
+          searchText,
           1,
           PAGE_SIZE_MEDIUM,
           '',
@@ -101,10 +112,14 @@ const DomainSelectableList = ({
 
   const handleUpdate = useCallback(
     async (domains: EntityReference[]) => {
-      await onUpdate(domains[0]);
+      if (multiple) {
+        await onUpdate(domains);
+      } else {
+        await onUpdate(domains[0]);
+      }
       setPopupVisible(false);
     },
-    [onUpdate]
+    [onUpdate, multiple]
   );
 
   return (
@@ -125,7 +140,7 @@ const DomainSelectableList = ({
                   <a
                     href={getDomainPath()}
                     rel="noreferrer"
-                    style={{ color: '#1890ff' }}
+                    style={{ color: theme.primaryColor }}
                     target="_blank"
                   />
                 }
@@ -135,14 +150,14 @@ const DomainSelectableList = ({
               />
             }
             fetchOptions={fetchOptions}
-            multiSelect={false}
+            multiSelect={multiple}
             removeIconTooltipLabel={t('label.remove-entity', {
               entity: t('label.domain-lowercase'),
             })}
             searchPlaceholder={t('label.search-for-type', {
               type: t('label.domain'),
             })}
-            selectedItems={selectedDomain ? [selectedDomain] : []}
+            selectedItems={selectedDomainsList}
             onCancel={() => setPopupVisible(false)}
             onUpdate={handleUpdate}
           />

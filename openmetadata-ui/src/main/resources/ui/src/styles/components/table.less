@@ -59,6 +59,12 @@
       border-radius: 6px;
       overflow: hidden;
 
+      .ant-table-content {
+        .react-resizable {
+          display: contents;
+        }
+      }
+
       .ant-table-content > table {
         border-top: none;
         tbody > tr {
@@ -121,5 +127,12 @@
         }
       }
     }
+  }
+}
+
+.align-table-filter-left {
+  .ant-table-filter-column {
+    flex-direction: row-reverse;
+    gap: 8px;
   }
 }

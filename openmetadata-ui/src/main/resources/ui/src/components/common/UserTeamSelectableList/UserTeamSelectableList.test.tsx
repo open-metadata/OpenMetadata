@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
+import { Popover } from 'antd';
 import React from 'react';
 import { UserTeamSelectableList } from './UserTeamSelectableList.component';
 
@@ -33,6 +34,13 @@ jest.mock('../../../utils/EntityUtils', () => ({
   getEntityReferenceListFromEntities: jest.fn().mockReturnValue([]),
 }));
 
+jest.mock('antd', () => ({
+  ...jest.requireActual('antd'),
+  Popover: jest
+    .fn()
+    .mockImplementation(({ children }) => <div>{children}</div>),
+}));
+
 jest.mock('../../../constants/constants', () => ({
   DE_ACTIVE_COLOR: '#fff',
   PAGE_SIZE_MEDIUM: 15,
@@ -49,5 +57,23 @@ describe('UserTeamSelectableList Component Test', () => {
     const children = screen.getByText('CustomRenderer');
 
     expect(children).toBeInTheDocument();
+  });
+
+  it('should pass popover props to popover component', () => {
+    render(
+      <UserTeamSelectableList
+        hasPermission
+        popoverProps={{ open: true }}
+        onUpdate={mockOnUpdate}>
+        <p>CustomRenderer</p>
+      </UserTeamSelectableList>
+    );
+
+    expect(Popover).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        open: true,
+      }),
+      {}
+    );
   });
 });

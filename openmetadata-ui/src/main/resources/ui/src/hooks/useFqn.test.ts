@@ -27,6 +27,7 @@ describe('useFqn', () => {
     (useParams as jest.Mock).mockReturnValue({
       fqn: 'sample_data.db_sample.schema_sample.dim%2Fclient.',
       ingestionFQN: 'sample_data.db_sample.schema_sample.dim%2Fclient.',
+      ruleName: 'testing%20%2F%20policy%20rule%20do%20not%20use',
     });
 
     const { result } = renderHook(() => useFqn());
@@ -34,6 +35,7 @@ describe('useFqn', () => {
     expect(result.current).toEqual({
       fqn: 'sample_data.db_sample.schema_sample.dim/client.',
       ingestionFQN: 'sample_data.db_sample.schema_sample.dim/client.',
+      ruleName: 'testing / policy rule do not use',
     });
   });
 
@@ -45,6 +47,7 @@ describe('useFqn', () => {
     expect(result.current).toEqual({
       fqn: '',
       ingestionFQN: '',
+      ruleName: '',
     });
   });
 });

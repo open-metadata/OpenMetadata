@@ -12,37 +12,39 @@
  */
 import { DownOutlined } from '@ant-design/icons';
 import { Button, Col, Dropdown, Form, Row, Select, Space, Tabs } from 'antd';
-import { AxiosError } from 'axios';
-import { isEmpty, isUndefined } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import { isEmpty } from 'lodash';
+import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
-import { getEntityDetailsPath } from '../../../../../constants/constants';
+import {
+  getEntityDetailsPath,
+  INITIAL_PAGING_VALUE,
+} from '../../../../../constants/constants';
 import { PAGE_HEADERS } from '../../../../../constants/PageHeaders.constant';
 import {
+  DEFAULT_SORT_ORDER,
   TEST_CASE_STATUS_OPTION,
   TEST_CASE_TYPE_OPTION,
 } from '../../../../../constants/profiler.constant';
 import { INITIAL_TEST_SUMMARY } from '../../../../../constants/TestSuite.constant';
-import {
-  EntityTabs,
-  EntityType,
-  TabSpecificField,
-} from '../../../../../enums/entity.enum';
+import { useLimitStore } from '../../../../../context/LimitsProvider/useLimitsStore';
+import { EntityTabs, EntityType } from '../../../../../enums/entity.enum';
 import { ProfilerDashboardType } from '../../../../../enums/table.enum';
-import { Table } from '../../../../../generated/entity/data/table';
 import { TestCaseStatus } from '../../../../../generated/tests/testCase';
+import LimitWrapper from '../../../../../hoc/LimitWrapper';
 import { useFqn } from '../../../../../hooks/useFqn';
-import { getTableDetailsByFQN } from '../../../../../rest/tableAPI';
-import { TestCaseType } from '../../../../../rest/testAPI';
+import {
+  ListTestCaseParamsBySearch,
+  TestCaseType,
+} from '../../../../../rest/testAPI';
 import {
   getBreadcrumbForTable,
   getEntityName,
 } from '../../../../../utils/EntityUtils';
 import { getAddDataQualityTableTestPath } from '../../../../../utils/RouterUtils';
-import { showErrorToast } from '../../../../../utils/ToastUtils';
 import NextPrevious from '../../../../common/NextPrevious/NextPrevious';
 import { NextPreviousProps } from '../../../../common/NextPrevious/NextPrevious.interface';
+import Searchbar from '../../../../common/SearchBarComponent/SearchBar.component';
 import TabsLabel from '../../../../common/TabsLabel/TabsLabel.component';
 import { SummaryPanel } from '../../../../DataQuality/SummaryPannel/SummaryPanel.component';
 import TestSuitePipelineTab from '../../../../DataQuality/TestSuite/TestSuitePipelineTab/TestSuitePipelineTab.component';
@@ -60,7 +62,10 @@ export const QualityTab = () => {
     isTestsLoading,
     isTableDeleted,
     testCasePaging,
+    table,
+    testCaseSummary,
   } = useTableProfiler();
+  const { getResourceLimit } = useLimitStore();
 
   const {
     currentPage,
@@ -79,24 +84,42 @@ export const QualityTab = () => {
   const [selectedTestCaseStatus, setSelectedTestCaseStatus] =
     useState<TestCaseStatus>('' as TestCaseStatus);
   const [selectedTestType, setSelectedTestType] = useState(TestCaseType.all);
-  const [table, setTable] = useState<Table>();
-  const [isTestSuiteLoading, setIsTestSuiteLoading] = useState(true);
+  const [searchValue, setSearchValue] = useState<string>();
+  const [sortOptions, setSortOptions] =
+    useState<ListTestCaseParamsBySearch>(DEFAULT_SORT_ORDER);
   const testSuite = useMemo(() => table?.testSuite, [table]);
 
   const handleTestCasePageChange: NextPreviousProps['pagingHandler'] = ({
-    cursorType,
     currentPage,
   }) => {
-    if (cursorType) {
+    if (currentPage) {
       fetchAllTests({
-        [cursorType]: paging[cursorType],
+        ...sortOptions,
         testCaseType: selectedTestType,
         testCaseStatus: isEmpty(selectedTestCaseStatus)
           ? undefined
           : selectedTestCaseStatus,
+        offset: (currentPage - 1) * pageSize,
       });
     }
     handlePageChange(currentPage);
+  };
+
+  const handleSearchTestCase = (value?: string) => {
+    setSearchValue(value);
+    fetchAllTests({
+      testCaseType: selectedTestType,
+      testCaseStatus: isEmpty(selectedTestCaseStatus)
+        ? undefined
+        : selectedTestCaseStatus,
+      q: value,
+    });
+  };
+
+  const handleSortTestCase = async (apiParams?: ListTestCaseParamsBySearch) => {
+    setSortOptions(apiParams ?? DEFAULT_SORT_ORDER);
+    await fetchAllTests({ ...(apiParams ?? DEFAULT_SORT_ORDER), offset: 0 });
+    handlePageChange(INITIAL_PAGING_VALUE);
   };
 
   const tableBreadcrumb = useMemo(() => {
@@ -123,10 +146,24 @@ export const QualityTab = () => {
         key: EntityTabs.TEST_CASES,
         children: (
           <Row className="p-t-md">
+            <Col span={12}>
+              <Searchbar
+                placeholder={t('label.search-entity', {
+                  entity: t('label.test-case-lowercase'),
+                })}
+                searchValue={searchValue}
+                onSearch={handleSearchTestCase}
+              />
+            </Col>
             <Col span={24}>
               <DataQualityTab
-                afterDeleteAction={fetchAllTests}
+                afterDeleteAction={async (...params) => {
+                  await fetchAllTests(...params); // Update current count when Create / Delete operation performed
+                  params?.length &&
+                    (await getResourceLimit('dataQuality', true, true));
+                }}
                 breadcrumbData={tableBreadcrumb}
+                fetchTestCases={handleSortTestCase}
                 isLoading={isTestsLoading}
                 showTableColumn={false}
                 testCases={allTestCases}
@@ -137,7 +174,9 @@ export const QualityTab = () => {
             <Col span={24}>
               {showPagination && (
                 <NextPrevious
+                  isNumberBased
                   currentPage={currentPage}
+                  isLoading={isTestsLoading}
                   pageSize={pageSize}
                   paging={paging}
                   pagingHandler={handleTestCasePageChange}
@@ -160,6 +199,7 @@ export const QualityTab = () => {
       onTestCaseUpdate,
       testSuite,
       fetchAllTests,
+      getResourceLimit,
       tableBreadcrumb,
       testCasePaging,
     ]
@@ -207,28 +247,6 @@ export const QualityTab = () => {
     []
   );
 
-  const fetchTestSuiteDetails = async () => {
-    setIsTestSuiteLoading(true);
-    try {
-      const details = await getTableDetailsByFQN(datasetFQN, {
-        fields: TabSpecificField.TESTSUITE,
-      });
-      setTable(details);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setIsTestSuiteLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (isUndefined(testSuite)) {
-      fetchTestSuiteDetails();
-    } else {
-      setIsTestSuiteLoading(false);
-    }
-  }, [testSuite]);
-
   return (
     <Row gutter={[0, 16]}>
       <Col span={24}>
@@ -256,21 +274,23 @@ export const QualityTab = () => {
 
                 {editTest && !isTableDeleted && (
                   <Form.Item noStyle>
-                    <Dropdown
-                      menu={{
-                        items: addButtonContent,
-                      }}
-                      placement="bottomRight"
-                      trigger={['click']}>
-                      <Button
-                        data-testid="profiler-add-table-test-btn"
-                        type="primary">
-                        <Space>
-                          {t('label.add-entity', { entity: t('label.test') })}
-                          <DownOutlined />
-                        </Space>
-                      </Button>
-                    </Dropdown>
+                    <LimitWrapper resource="dataQuality">
+                      <Dropdown
+                        menu={{
+                          items: addButtonContent,
+                        }}
+                        placement="bottomRight"
+                        trigger={['click']}>
+                        <Button
+                          data-testid="profiler-add-table-test-btn"
+                          type="primary">
+                          <Space>
+                            {t('label.add-entity', { entity: t('label.test') })}
+                            <DownOutlined />
+                          </Space>
+                        </Button>
+                      </Dropdown>
+                    </LimitWrapper>
                   </Form.Item>
                 )}
               </Space>
@@ -279,10 +299,7 @@ export const QualityTab = () => {
         </Row>
       </Col>
       <Col span={24}>
-        <SummaryPanel
-          isLoading={isTestSuiteLoading}
-          testSummary={testSuite?.summary ?? INITIAL_TEST_SUMMARY}
-        />
+        <SummaryPanel testSummary={testCaseSummary ?? INITIAL_TEST_SUMMARY} />
       </Col>
       <Col span={24}>
         <Tabs items={tabs} />

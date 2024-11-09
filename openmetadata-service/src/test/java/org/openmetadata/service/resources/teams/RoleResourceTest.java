@@ -74,6 +74,13 @@ public class RoleResourceTest extends EntityResourceTest<Role, CreateRole> {
 
     ROLE1 = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
     ROLE1_REF = ROLE1.getEntityReference();
+
+    CREATE_ACCESS_ROLE =
+        createEntity(
+            new CreateRole()
+                .withName("CreateAccessRole")
+                .withPolicies(List.of(CREATE_ACCESS_PERMISSION_POLICY.getFullyQualifiedName())),
+            ADMIN_AUTH_HEADERS);
   }
 
   /** Creates the given number of roles */

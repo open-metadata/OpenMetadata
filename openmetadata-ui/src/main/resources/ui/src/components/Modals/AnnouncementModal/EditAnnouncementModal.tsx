@@ -86,8 +86,8 @@ const EditAnnouncementModal: FC<Props> = ({
         initialValues={{
           title: announcementTitle,
           description: announcement.description,
-          startTime: moment.unix(announcement.startTime),
-          endTime: moment.unix(announcement.endTime),
+          startTime: moment(announcement.startTime),
+          endTime: moment(announcement.endTime),
         }}
         layout="vertical"
         validateMessages={VALIDATION_MESSAGES}

@@ -53,7 +53,7 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
     super(
         Entity.QUERY, Query.class, QueryResource.QueryList.class, "queries", QueryResource.FIELDS);
     supportsSearchIndex = true;
-    runWebhookTests = false;
+    EVENT_SUBSCRIPTION_TEST_CONTROL_FLAG = false;
   }
 
   @BeforeAll
@@ -67,7 +67,7 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
             .createRequest(test)
             .withName(getEntityName(test))
             .withColumns(columns)
-            .withOwner(EntityResourceTest.USER1_REF);
+            .withOwners(List.of(EntityResourceTest.USER1_REF));
     Table createdTable = tableResourceTest.createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
     TABLE_REF = createdTable.getEntityReference();
     QUERY = "select * from %s";
@@ -78,7 +78,7 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
   public CreateQuery createRequest(String type) {
     return new CreateQuery()
         .withName(type)
-        .withOwner(USER1_REF)
+        .withOwners(List.of(USER1_REF))
         .withUsers(List.of(USER2.getName()))
         .withQueryUsedIn(List.of(TABLE_REF))
         .withQuery(String.format(QUERY, RandomStringUtils.random(10, true, false)))
@@ -106,13 +106,13 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
         byName
             ? getEntityByName(entity.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(entity.getId(), null, ADMIN_AUTH_HEADERS);
-    assertListNull(entity.getOwner(), entity.getUsers(), entity.getQueryUsedIn());
-    fields = "owner,tags,followers,users,queryUsedIn"; // Not testing for kpiResult field
+    assertListNull(entity.getOwners(), entity.getUsers(), entity.getQueryUsedIn());
+    fields = "owners,tags,followers,users,queryUsedIn"; // Not testing for kpiResult field
     entity =
         byName
             ? getEntityByName(entity.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(entity.getId(), fields, ADMIN_AUTH_HEADERS);
-    assertListNotNull(entity.getOwner(), entity.getUsers(), entity.getQueryUsedIn());
+    assertListNotNull(entity.getOwners(), entity.getUsers(), entity.getQueryUsedIn());
     return entity;
   }
 
@@ -151,9 +151,9 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
   @Test
   void post_same_query_forSameEntityType_409(TestInfo test) throws HttpResponseException {
     CreateQuery create = createRequest(getEntityName(test));
-    createEntity(create, ADMIN_AUTH_HEADERS);
+    Query query = createEntity(create, ADMIN_AUTH_HEADERS);
 
-    CreateQuery create1 = createRequest(getEntityName(test));
+    CreateQuery create1 = createRequest(query.getName());
 
     assertResponse(
         () -> createEntity(create1, ADMIN_AUTH_HEADERS),
@@ -253,6 +253,43 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
                 assertEquals(query.getQuery(), QUERY);
               }
             });
+  }
+
+  @Test
+  void patch_usingFqn_queryAttributes_200_ok(TestInfo test) throws IOException {
+    CreateQuery create = createRequest(getEntityName(test));
+    Query query = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+
+    // Add queryUsedIn as TEST_TABLE2
+    String origJson = JsonUtils.pojoToJson(query);
+    query.setQueryUsedIn(List.of(TEST_TABLE2.getEntityReference()));
+    ChangeDescription change = getChangeDescription(query, MINOR_UPDATE);
+    fieldAdded(change, "queryUsedIn", List.of(TEST_TABLE2.getEntityReference()));
+    fieldDeleted(change, "queryUsedIn", List.of(TABLE_REF));
+    patchEntityUsingFqnAndCheck(query, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    Query updatedQuery = getEntity(query.getId(), ADMIN_AUTH_HEADERS);
+    assertEquals(List.of(TEST_TABLE2.getEntityReference()), updatedQuery.getQueryUsedIn());
+    updatedQuery.setQuery("select * from table1");
+    updatedQuery.setQueryUsedIn(List.of(TABLE_REF, TEST_TABLE2.getEntityReference()));
+  }
+
+  @Test
+  void test_usingFqn_patchQueryMustUpdateChecksum(TestInfo test) throws IOException {
+    CreateQuery create = createRequest(getEntityName(test));
+    Query query = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+
+    // Add queryUsedIn as TEST_TABLE2
+    String origJson = JsonUtils.pojoToJson(query);
+    String queryText = String.format(QUERY, "test3");
+    query.setQuery(queryText);
+    ChangeDescription change = getChangeDescription(query, MINOR_UPDATE);
+    fieldUpdated(change, "query", create.getQuery(), queryText);
+    fieldUpdated(
+        change, "checksum", EntityUtil.hash(create.getQuery()), EntityUtil.hash(queryText));
+    patchEntityUsingFqnAndCheck(query, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    Query updatedQuery = getEntity(query.getId(), ADMIN_AUTH_HEADERS);
+    assertEquals(updatedQuery.getQuery(), queryText);
+    assertEquals(updatedQuery.getChecksum(), EntityUtil.hash(updatedQuery.getQuery()));
   }
 
   @Test

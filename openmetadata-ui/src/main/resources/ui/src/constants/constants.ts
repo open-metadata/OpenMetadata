@@ -15,8 +15,12 @@ import { t } from 'i18next';
 import { isUndefined } from 'lodash';
 import Qs from 'qs';
 import { CSSProperties } from 'react';
+import { ReactComponent as IconCompleteBadge } from '../assets/svg/complete.svg';
+import { ReactComponent as IconFailedBadge } from '../assets/svg/fail-badge.svg';
+import { ReactComponent as IconSuccessBadge } from '../assets/svg/success-badge.svg';
 import { COOKIE_VERSION } from '../components/Modals/WhatsNewModal/whatsNewData';
 import { EntityTabs, EntityType } from '../enums/entity.enum';
+import { Status } from '../generated/entity/applications/appRunRecord';
 import { getPartialNameFromFQN } from '../utils/CommonUtils';
 import i18n from '../utils/i18next/LocalUtil';
 import { getSettingPath } from '../utils/RouterUtils';
@@ -26,10 +30,6 @@ import {
   GlobalSettingsMenuCategory,
 } from './GlobalSettings.constants';
 
-export const PRIMERY_COLOR = '#0968da';
-export const SECONDARY_COLOR = '#B02AAC';
-export const INFO_COLOR = '#2196f3';
-export const ERROR_COLOR = '#ff4c3b';
 export const LITE_GRAY_COLOR = '#DBE0EB';
 export const TEXT_BODY_COLOR = '#37352F';
 export const TEXT_GREY_MUTED = '#757575';
@@ -48,16 +48,19 @@ export const DEFAULT_CHART_OPACITY = 1;
 export const HOVER_CHART_OPACITY = 0.3;
 
 export const LOGGED_IN_USER_STORAGE_KEY = 'loggedInUsers';
-export const ACTIVE_DOMAIN_STORAGE_KEY = 'activeDomain';
+export const DOMAIN_STORAGE_KEY = 'om_domains';
 export const DEFAULT_DOMAIN_VALUE = 'All Domains';
+export const REFRESH_TOKEN_KEY = 'refreshToken';
 
 export const USER_DATA_SIZE = 5;
 export const INITIAL_PAGING_VALUE = 1;
 export const JSON_TAB_SIZE = 2;
+export const KNOWLEDGE_LIST_LENGTH = 8;
 export const PAGE_SIZE = 10;
 export const PAGE_SIZE_BASE = 15;
 export const PAGE_SIZE_MEDIUM = 25;
 export const PAGE_SIZE_LARGE = 50;
+export const ES_MAX_PAGE_SIZE = 10000;
 export const API_RES_MAX_SIZE = 100000;
 export const LIST_SIZE = 5;
 export const ADD_USER_CONTAINER_HEIGHT = 250;
@@ -67,6 +70,7 @@ export const DEPLOYED_PROGRESS_VAL = 100;
 export const DESCRIPTION_MAX_PREVIEW_CHARACTERS = 350;
 export const MAX_CHAR_LIMIT_ENTITY_SUMMARY = 130;
 export const SMALL_TABLE_LOADER_SIZE = 3;
+export const TEST_CASE_FEED_GRAPH_HEIGHT = 250;
 export const ONE_MINUTE_IN_MILLISECOND = 60000;
 export const TWO_MINUTE_IN_MILLISECOND = 120000;
 export const LOCALSTORAGE_RECENTLY_VIEWED = `recentlyViewedData_${COOKIE_VERSION}`;
@@ -133,6 +137,8 @@ export const ROUTES = {
   SAML_CALLBACK: '/saml/callback',
   SILENT_CALLBACK: '/silent-callback',
   NOT_FOUND: '/404',
+  FORBIDDEN: '/403',
+  UNAUTHORISED: '/unauthorised',
   MY_DATA: '/my-data',
   TOUR: '/tour',
   REPORTS: '/reports',
@@ -261,10 +267,9 @@ export const ROUTES = {
   ADD_KPI: `/data-insights/kpi/add-kpi`,
   EDIT_KPI: `/data-insights/kpi/edit-kpi/${PLACEHOLDER_ROUTE_FQN}`,
 
-  SETTINGS_EDIT_CUSTOM_LOGO_CONFIG: `/settings/OpenMetadata/customLogo/edit-custom-logo-configuration`,
   SETTINGS_EDIT_CUSTOM_LOGIN_CONFIG: `/settings/OpenMetadata/loginConfiguration/edit-custom-login-configuration`,
 
-  CUSTOMIZE_PAGE: `/customize-page/:fqn/:pageFqn`,
+  CUSTOMIZE_PAGE: `/customize-page/${PLACEHOLDER_ROUTE_FQN}/:pageFqn`,
 
   ADD_CUSTOM_METRIC: `/add-custom-metric/${PLACEHOLDER_DASHBOARD_TYPE}/${PLACEHOLDER_ROUTE_FQN}`,
 
@@ -279,6 +284,10 @@ export const ROUTES = {
   NOTIFICATION_ALERTS: `/settings/${GlobalSettingsMenuCategory.NOTIFICATIONS}`,
   NOTIFICATION_ALERT_DETAILS: `/settings/${GlobalSettingsMenuCategory.NOTIFICATIONS}/alert/${PLACEHOLDER_ROUTE_FQN}`,
   EDIT_NOTIFICATION_ALERTS: `/settings/${GlobalSettingsMenuCategory.NOTIFICATIONS}/${GlobalSettingOptions.EDIT_NOTIFICATION}/${PLACEHOLDER_ROUTE_FQN}`,
+
+  // Metric Entity
+  METRICS: '/metrics',
+  ADD_METRIC: '/metrics/add-metric',
 };
 
 export const SOCKET_EVENTS = {
@@ -286,6 +295,7 @@ export const SOCKET_EVENTS = {
   TASK_CHANNEL: 'taskChannel',
   MENTION_CHANNEL: 'mentionChannel',
   JOB_STATUS: 'jobStatus',
+  CSV_EXPORT_CHANNEL: 'csvExportChannel',
 };
 
 export const IN_PAGE_SEARCH_ROUTES: Record<string, Array<string>> = {
@@ -492,8 +502,10 @@ export const getCreateUserPath = (bot: boolean) => {
   return path;
 };
 
-export const getUsersPagePath = () => {
-  return `${ROUTES.SETTINGS}/${GlobalSettingsMenuCategory.MEMBERS}/users`;
+export const getUsersPagePath = (isAdmin?: boolean) => {
+  return `${ROUTES.SETTINGS}/${GlobalSettingsMenuCategory.MEMBERS}/${
+    isAdmin ? 'admins' : 'users'
+  }`;
 };
 
 export const getBotsPagePath = () => {
@@ -525,6 +537,11 @@ export const ENTITY_PATH = {
   glossaryTerm: 'glossaryTerm',
   databases: 'database',
   databaseSchemas: 'databaseSchema',
+  dashboardDataModels: 'dashboardDataModel',
+  apiCollections: 'apiCollection',
+  apiEndpoints: 'apiEndpoint',
+  dataProducts: 'dataProduct',
+  metrics: 'metric',
 };
 
 export const VALIDATION_MESSAGES = {
@@ -577,4 +594,21 @@ export const COMMON_ICON_STYLES: CSSProperties = {
 
 export const APPLICATION_JSON_CONTENT_TYPE_HEADER = {
   headers: { 'Content-type': 'application/json' },
+};
+
+export const STATUS_ICON = {
+  success: IconSuccessBadge,
+  failed: IconFailedBadge,
+  completed: IconCompleteBadge,
+};
+
+export const STATUS_LABEL = {
+  [Status.Active]: 'Active',
+  [Status.ActiveError]: 'Active With Error',
+  [Status.Completed]: 'Completed',
+  [Status.Failed]: 'Failed',
+  [Status.Running]: 'Running',
+  [Status.Started]: 'Started',
+  [Status.Stopped]: 'Stopped',
+  [Status.Success]: 'Success',
 };

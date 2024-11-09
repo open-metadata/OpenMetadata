@@ -24,18 +24,18 @@ import { TeamType } from '../../generated/entity/teams/team';
 import AddNotificationPage from '../../pages/AddNotificationPage/AddNotificationPage';
 import AlertDetailsPage from '../../pages/AlertDetailsPage/AlertDetailsPage';
 import AlertsActivityFeedPage from '../../pages/AlertsActivityFeedPage/AlertsActivityFeedPage';
+import AppearanceConfigSettingsPage from '../../pages/AppearanceConfigSettingsPage/AppearanceConfigSettingsPage';
 import ApplicationPage from '../../pages/Application/ApplicationPage';
 import BotsPageV1 from '../../pages/BotsPageV1/BotsPageV1.component';
 import EditLoginConfiguration from '../../pages/Configuration/EditLoginConfiguration/EditLoginConfigurationPage';
 import LoginConfigurationPage from '../../pages/Configuration/LoginConfigurationDetails/LoginConfigurationPage';
-import CustomLogoConfigSettingsPage from '../../pages/CustomLogoConfigSettingsPage/CustomLogoConfigSettingsPage';
 import { CustomPageSettings } from '../../pages/CustomPageSettings/CustomPageSettings';
 import CustomPropertiesPageV1 from '../../pages/CustomPropertiesPageV1/CustomPropertiesPageV1';
-import EditCustomLogoConfig from '../../pages/EditCustomLogoConfig/EditCustomLogoConfig';
 import EditEmailConfigPage from '../../pages/EditEmailConfigPage/EditEmailConfigPage.component';
 import EmailConfigSettingsPage from '../../pages/EmailConfigSettingsPage/EmailConfigSettingsPage.component';
 import GlobalSettingCategoryPage from '../../pages/GlobalSettingPage/GlobalSettingCategory/GlobalSettingCategoryPage';
 import GlobalSettingPage from '../../pages/GlobalSettingPage/GlobalSettingPage';
+import LineageConfigPage from '../../pages/LineageConfigPage/LineageConfigPage';
 import NotificationListPage from '../../pages/NotificationListPage/NotificationListPage';
 import OmHealthPage from '../../pages/OmHealth/OmHealthPage';
 import { PersonaDetailsPage } from '../../pages/Persona/PersonaDetailsPage/PersonaDetailsPage';
@@ -45,9 +45,11 @@ import AddRulePage from '../../pages/PoliciesPage/PoliciesDetailPage/AddRulePage
 import EditRulePage from '../../pages/PoliciesPage/PoliciesDetailPage/EditRulePage';
 import PoliciesDetailPage from '../../pages/PoliciesPage/PoliciesDetailPage/PoliciesDetailPage';
 import PoliciesListPage from '../../pages/PoliciesPage/PoliciesListPage/PoliciesListPage';
+import ProfilerConfigurationPage from '../../pages/ProfilerConfigurationPage/ProfilerConfigurationPage';
 import AddRolePage from '../../pages/RolesPage/AddRolePage/AddRolePage';
 import RolesDetailPage from '../../pages/RolesPage/RolesDetailPage/RolesDetailPage';
 import RolesListPage from '../../pages/RolesPage/RolesListPage/RolesListPage';
+import SearchRBACSettingsPage from '../../pages/SearchRBACSettingsPage/SearchRBACSettingsPage';
 import ServicesPage from '../../pages/ServicesPage/ServicesPage';
 import ImportTeamsPage from '../../pages/TeamsPage/ImportTeamsPage/ImportTeamsPage';
 import TeamsPage from '../../pages/TeamsPage/TeamsPage';
@@ -96,12 +98,7 @@ const SettingsRouter = () => {
         hasPermission={false}
         path={ROUTES.SETTINGS_EDIT_EMAIL_CONFIG}
       />
-      <AdminProtectedRoute
-        exact
-        component={EditCustomLogoConfig}
-        hasPermission={false}
-        path={ROUTES.SETTINGS_EDIT_CUSTOM_LOGO_CONFIG}
-      />
+
       <AdminProtectedRoute
         exact
         component={EditLoginConfiguration}
@@ -165,6 +162,12 @@ const SettingsRouter = () => {
 
       {/* Setting Page Routes with categories */}
 
+      <AdminProtectedRoute
+        exact
+        component={PersonaPage}
+        path={getSettingPath(GlobalSettingOptions.PERSONA)}
+      />
+
       <Route
         exact
         component={GlobalSettingCategoryPage}
@@ -210,20 +213,8 @@ const SettingsRouter = () => {
       </Route>
       <AdminProtectedRoute
         exact
-        component={PersonaPage}
-        path={getSettingPath(
-          GlobalSettingsMenuCategory.MEMBERS,
-          GlobalSettingOptions.PERSONA
-        )}
-      />
-      <AdminProtectedRoute
-        exact
         component={PersonaDetailsPage}
-        path={getSettingPath(
-          GlobalSettingsMenuCategory.MEMBERS,
-          GlobalSettingOptions.PERSONA,
-          true
-        )}
+        path={getSettingPath(GlobalSettingOptions.PERSONA, '', true)}
       />
       {/* Roles route start
        * Do not change the order of these route
@@ -249,6 +240,24 @@ const SettingsRouter = () => {
       {/* Roles route end
        * Do not change the order of these route
        */}
+
+      <AdminProtectedRoute
+        exact
+        component={SearchRBACSettingsPage}
+        path={getSettingPath(
+          GlobalSettingsMenuCategory.PREFERENCES,
+          GlobalSettingOptions.SEARCH_RBAC
+        )}
+      />
+
+      <AdminProtectedRoute
+        exact
+        component={LineageConfigPage}
+        path={getSettingPath(
+          GlobalSettingsMenuCategory.PREFERENCES,
+          GlobalSettingOptions.LINEAGE_CONFIG
+        )}
+      />
 
       <AdminProtectedRoute
         exact
@@ -287,11 +296,20 @@ const SettingsRouter = () => {
       />
       <AdminProtectedRoute
         exact
-        component={CustomLogoConfigSettingsPage}
+        component={AppearanceConfigSettingsPage}
         hasPermission={false}
         path={getSettingPath(
           GlobalSettingsMenuCategory.PREFERENCES,
-          GlobalSettingOptions.CUSTOM_LOGO
+          GlobalSettingOptions.APPEARANCE
+        )}
+      />
+      <AdminProtectedRoute
+        exact
+        component={ProfilerConfigurationPage}
+        hasPermission={false}
+        path={getSettingPath(
+          GlobalSettingsMenuCategory.PREFERENCES,
+          GlobalSettingOptions.PROFILER_CONFIGURATION
         )}
       />
       <AdminProtectedRoute

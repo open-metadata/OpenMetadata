@@ -115,16 +115,21 @@ pre {
   color: @grey-3;
 }
 .text-grey-body {
-  color: @text-color-secondary;
+  color: @text-color;
 }
 .text-link-color {
-  color: @link-color;
+  color: @primary-color;
 }
 .text-gray-400 {
   color: @grey-7;
 }
 .text-body {
-  color: @text-color-secondary;
+  color: @text-color;
+}
+.text-hover-body {
+  &:hover {
+    color: @text-color;
+  }
 }
 
 .text-success {
@@ -149,4 +154,9 @@ a.ant-typography,
 // font style
 .font-italic {
   font-style: italic;
+}
+
+// line height
+.line-height-16 {
+  line-height: 16px;
 }

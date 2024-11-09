@@ -17,7 +17,7 @@ import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useLocation, useParams } from 'react-router-dom';
+import { useHistory, useParams } from 'react-router-dom';
 import { ActivityFeedTabs } from '../../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import Loader from '../../../components/common/Loader/Loader';
 import ResizablePanels from '../../../components/common/ResizablePanels/ResizablePanels';
@@ -32,20 +32,23 @@ import {
   CreateThread,
   TaskType,
 } from '../../../generated/api/feed/createThread';
+import { Glossary } from '../../../generated/entity/data/glossary';
 import { ThreadType } from '../../../generated/entity/feed/thread';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../hooks/useFqn';
 import { postThread } from '../../../rest/feedsAPI';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import {
   ENTITY_LINK_SEPARATOR,
   getEntityFeedLink,
-  getEntityName,
 } from '../../../utils/EntityUtils';
 import {
   fetchEntityDetail,
   fetchOptions,
   getBreadCrumbList,
+  getTaskAssignee,
+  getTaskEntityFQN,
   getTaskMessage,
 } from '../../../utils/TasksUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
@@ -56,14 +59,14 @@ import { EntityData, Option } from '../TasksPage.interface';
 const RequestDescription = () => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
-  const location = useLocation();
+  const location = useCustomLocation();
   const history = useHistory();
   const [form] = useForm();
   const markdownRef = useRef<EditorContentRef>();
 
   const { entityType } = useParams<{ entityType: EntityType }>();
 
-  const { fqn: decodedEntityFQN } = useFqn();
+  const { fqn } = useFqn();
   const queryParams = new URLSearchParams(location.search);
 
   const field = queryParams.get('field');
@@ -74,6 +77,11 @@ const RequestDescription = () => {
   const [assignees, setAssignees] = useState<Array<Option>>([]);
   const [suggestion, setSuggestion] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
+
+  const entityFQN = useMemo(
+    () => getTaskEntityFQN(entityType, fqn),
+    [fqn, entityType]
+  );
 
   const taskMessage = useMemo(
     () =>
@@ -115,7 +123,7 @@ const RequestDescription = () => {
       const data: CreateThread = {
         from: currentUser?.name as string,
         message: value.title || taskMessage,
-        about: getEntityFeedLink(entityType, decodedEntityFQN, getTaskAbout()),
+        about: getEntityFeedLink(entityType, entityFQN, getTaskAbout()),
         taskDetails: {
           assignees: assignees.map((assignee) => ({
             id: assignee.value,
@@ -137,7 +145,7 @@ const RequestDescription = () => {
           history.push(
             entityUtilClassBase.getEntityLink(
               entityType,
-              decodedEntityFQN,
+              entityFQN,
               EntityTabs.ACTIVITY_FEED,
               ActivityFeedTabs.TASKS
             )
@@ -151,21 +159,13 @@ const RequestDescription = () => {
   };
 
   useEffect(() => {
-    fetchEntityDetail(entityType, decodedEntityFQN, setEntityData);
-  }, [decodedEntityFQN, entityType]);
+    fetchEntityDetail(entityType, entityFQN, setEntityData);
+  }, [entityFQN, entityType]);
 
   useEffect(() => {
-    const owner = entityData.owner;
-    let defaultAssignee: Option[] = [];
-    if (owner) {
-      defaultAssignee = [
-        {
-          label: getEntityName(owner),
-          value: owner.id || '',
-          type: owner.type,
-          name: owner.name,
-        },
-      ];
+    const defaultAssignee = getTaskAssignee(entityData as Glossary);
+
+    if (defaultAssignee) {
       setAssignees(defaultAssignee);
       setOptions(defaultAssignee);
     }
@@ -181,7 +181,9 @@ const RequestDescription = () => {
 
   return (
     <ResizablePanels
+      className="content-height-with-resizable-panel"
       firstPanel={{
+        className: 'content-resizable-panel-container',
         minWidth: 700,
         flex: 0.6,
         children: (
@@ -287,6 +289,7 @@ const RequestDescription = () => {
       }}
       pageTitle={t('label.task')}
       secondPanel={{
+        className: 'content-resizable-panel-container',
         minWidth: 60,
         flex: 0.4,
         children: (

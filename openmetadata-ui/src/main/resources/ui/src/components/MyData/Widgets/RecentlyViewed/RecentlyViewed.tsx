@@ -28,7 +28,7 @@ import {
 } from '../../../../utils/CommonUtils';
 import entityUtilClassBase from '../../../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../../../utils/EntityUtils';
-import { getEntityIcon } from '../../../../utils/TableUtils';
+import searchClassBase from '../../../../utils/SearchClassBase';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import EntityListSkeleton from '../../../common/Skeleton/MyData/EntityListSkeleton/EntityListSkeleton.component';
 import './recently-viewed.less';
@@ -115,13 +115,13 @@ const RecentlyViewed = ({
                 <Typography.Paragraph>
                   {t('message.no-recently-viewed-date')}
                 </Typography.Paragraph>
-                <Link
+                <a
                   className="link-title"
+                  href={RECENTLY_VIEWED}
                   rel="noreferrer"
-                  target="_blank"
-                  to={RECENTLY_VIEWED}>
+                  target="_blank">
                   {t('label.learn-more')}
-                </Link>
+                </a>
               </ErrorPlaceHolder>
             </div>
           ) : (
@@ -143,7 +143,7 @@ const RecentlyViewed = ({
                           className="entity-button flex-center p-0 m--ml-1"
                           icon={
                             <div className="entity-button-icon m-r-xs">
-                              {getEntityIcon(item.type || '')}
+                              {searchClassBase.getEntityIcon(item.type ?? '')}
                             </div>
                           }
                           title={getEntityName(

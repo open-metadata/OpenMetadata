@@ -58,23 +58,27 @@ import {
 const SampleDataTable = ({
   isTableDeleted,
   tableId,
-  ownerId,
+  owners,
   permissions,
 }: SampleDataProps) => {
   const { isTourPage } = useTourProvider();
-  const { currentUser } = useApplicationStore();
+  const { currentUser, theme } = useApplicationStore();
 
   const [sampleData, setSampleData] = useState<SampleData>();
   const [isLoading, setIsLoading] = useState(true);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState<boolean>(false);
   const [showActions, setShowActions] = useState(false);
 
+  const isCurrentUserTableOwner = useMemo(() => {
+    return owners?.some((owner) => owner.id === currentUser?.id);
+  }, [owners, currentUser]);
+
   const hasPermission = useMemo(
     () =>
       permissions.EditAll ||
       permissions.EditSampleData ||
-      currentUser?.id === ownerId,
-    [ownerId, permissions, currentUser]
+      isCurrentUserTableOwner,
+    [isCurrentUserTableOwner, permissions]
   );
 
   const handleDeleteModal = useCallback(
@@ -201,7 +205,7 @@ const SampleDataTable = ({
               <a
                 href={WORKFLOWS_PROFILER_DOCS}
                 rel="noreferrer"
-                style={{ color: '#1890ff' }}
+                style={{ color: theme.primaryColor }}
                 target="_blank"
               />
             }

@@ -14,15 +14,17 @@
 import { render, screen } from '@testing-library/react';
 import React from 'react';
 import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
-import { getListTestCase } from '../../../../rest/testAPI';
+import { MOCK_TABLE } from '../../../../mocks/TableData.mock';
+import { getListTestCaseBySearch } from '../../../../rest/testAPI';
 import { TableProfilerProvider } from './TableProfilerProvider';
 
 // Mock dependencies
-jest.mock('react-router-dom', () => ({
-  useLocation: jest
+jest.mock('../../../../hooks/useCustomLocation/useCustomLocation', () => {
+  return jest
     .fn()
-    .mockReturnValue({ search: '?activeTab=Data%20Quality' }),
-}));
+    .mockImplementation(() => ({ search: '?activeTab=Data%20Quality' }));
+});
+
 jest.mock('../../../../context/TourProvider/TourProvider', () => ({
   useTourProvider: jest.fn().mockReturnValue({ isTourOpen: false }),
 }));
@@ -36,7 +38,9 @@ jest.mock('../../../../rest/tableAPI', () => ({
   getTableDetailsByFQN: jest.fn().mockResolvedValue({}),
 }));
 jest.mock('../../../../rest/testAPI', () => ({
-  getListTestCase: jest.fn().mockResolvedValue({ data: [], paging: {} }),
+  getListTestCaseBySearch: jest
+    .fn()
+    .mockResolvedValue({ data: [], paging: {} }),
 }));
 jest.mock('../../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
@@ -69,32 +73,25 @@ const mockPermissions = {
 } as OperationPermission;
 
 describe('TableProfilerProvider', () => {
-  it('renders children without crashing', async () => {
+  beforeEach(() => {
     render(
-      <TableProfilerProvider
-        isTableDeleted={false}
-        permissions={mockPermissions}>
+      <TableProfilerProvider permissions={mockPermissions} table={MOCK_TABLE}>
         <div>Test Children</div>
       </TableProfilerProvider>
     );
+  });
 
+  it('renders children without crashing', async () => {
     expect(await screen.findByText('Test Children')).toBeInTheDocument();
   });
 
   it('test cases should be fetch on data quality tab', async () => {
-    const mockGetListTestCase = getListTestCase as jest.Mock;
-    render(
-      <TableProfilerProvider
-        isTableDeleted={false}
-        permissions={mockPermissions}>
-        <div>Test Children</div>
-      </TableProfilerProvider>
-    );
+    const mockGetListTestCase = getListTestCaseBySearch as jest.Mock;
 
     expect(mockGetListTestCase).toHaveBeenCalledTimes(1);
     expect(mockGetListTestCase).toHaveBeenCalledWith({
       entityLink: 'entityLink',
-      fields: 'testCaseResult, incidentId',
+      fields: ['testCaseResult', 'incidentId'],
       includeAllTests: true,
       limit: 10,
     });

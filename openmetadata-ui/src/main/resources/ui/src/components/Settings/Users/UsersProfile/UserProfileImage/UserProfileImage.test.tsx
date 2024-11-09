@@ -28,7 +28,9 @@ jest.mock('../../../../../utils/ProfilerUtils', () => ({
 }));
 
 jest.mock('../../../../common/ProfilePicture/ProfilePicture', () => {
-  return jest.fn().mockReturnValue(<p>ProfilePicture</p>);
+  return jest
+    .fn()
+    .mockImplementation(({ displayName }) => <p>{displayName}</p>);
 });
 
 describe('Test User User Profile Image Component', () => {
@@ -45,7 +47,20 @@ describe('Test User User Profile Image Component', () => {
 
     expect(screen.getByTestId('profile-image-container')).toBeInTheDocument();
 
-    expect(screen.getByText('ProfilePicture')).toBeInTheDocument();
+    expect(screen.queryByText(mockUserData.name)).toBeNull();
+    expect(screen.getByText(mockUserData.displayName)).toBeInTheDocument();
+  });
+
+  it('should fallback to name for the displayName prop of ProfilePicture', async () => {
+    await act(async () => {
+      render(
+        <UserProfileImage userData={{ ...mockUserData, displayName: '' }} />
+      );
+    });
+
+    expect(screen.getByTestId('profile-image-container')).toBeInTheDocument();
+
+    expect(screen.getByText(mockUserData.name)).toBeInTheDocument();
   });
 
   it('should render user profile picture component with image', async () => {

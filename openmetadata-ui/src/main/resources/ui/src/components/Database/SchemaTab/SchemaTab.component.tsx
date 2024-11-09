@@ -11,42 +11,27 @@
  *  limitations under the License.
  */
 
-import { Button } from 'antd';
 import { t } from 'i18next';
 import { lowerCase } from 'lodash';
-import React, { Fragment, FunctionComponent, useMemo, useState } from 'react';
-import EntityLink from '../../../utils/EntityLink';
+import React, { Fragment, FunctionComponent, useState } from 'react';
 import Searchbar from '../../common/SearchBarComponent/SearchBar.component';
-import { useSuggestionsContext } from '../../Suggestions/SuggestionsProvider/SuggestionsProvider';
 import SchemaTable from '../SchemaTable/SchemaTable.component';
 import { Props } from './SchemaTab.interfaces';
 
 const SchemaTab: FunctionComponent<Props> = ({
-  columns,
-  joins,
+  table,
   onUpdate,
-  columnName,
   hasDescriptionEditAccess,
   hasTagEditAccess,
   onThreadLinkSelect,
   isReadOnly = false,
-  entityFqn,
-  tableConstraints,
+  testCaseSummary,
 }: Props) => {
   const [searchText, setSearchText] = useState('');
-  const { selectedUserSuggestions } = useSuggestionsContext();
 
   const handleSearchAction = (searchValue: string) => {
     setSearchText(searchValue);
   };
-
-  const columnSuggestions = useMemo(
-    () =>
-      selectedUserSuggestions?.filter(
-        (item) => EntityLink.getTableColumnName(item.entityLink) !== undefined
-      ) ?? [],
-    [selectedUserSuggestions]
-  );
 
   return (
     <Fragment>
@@ -54,28 +39,20 @@ const SchemaTab: FunctionComponent<Props> = ({
         <div className="w-1/2">
           <Searchbar
             removeMargin
-            placeholder={`${t('message.find-in-table')}`}
+            placeholder={t('message.find-in-table')}
             searchValue={searchText}
             typingInterval={500}
             onSearch={handleSearchAction}
           />
         </div>
-        {columnSuggestions.length > 0 && (
-          <Button className="suggestion-pending-btn">
-            {columnSuggestions.length} {t('label.suggestion-pending')}
-          </Button>
-        )}
       </div>
       <SchemaTable
-        columnName={columnName}
-        entityFqn={entityFqn}
         hasDescriptionEditAccess={hasDescriptionEditAccess}
         hasTagEditAccess={hasTagEditAccess}
         isReadOnly={isReadOnly}
-        joins={joins}
         searchText={lowerCase(searchText)}
-        tableColumns={columns}
-        tableConstraints={tableConstraints}
+        table={table}
+        testCaseSummary={testCaseSummary}
         onThreadLinkSelect={onThreadLinkSelect}
         onUpdate={onUpdate}
       />

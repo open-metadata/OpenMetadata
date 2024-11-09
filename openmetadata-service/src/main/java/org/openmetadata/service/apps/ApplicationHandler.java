@@ -1,15 +1,17 @@
 package org.openmetadata.service.apps;
 
-import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.apps.scheduler.AppScheduler.APPS_JOB_GROUP;
 import static org.openmetadata.service.apps.scheduler.AppScheduler.APP_INFO_KEY;
+import static org.openmetadata.service.apps.scheduler.AppScheduler.APP_NAME;
 
+import io.dropwizard.configuration.ConfigurationException;
+import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.Collection;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.configuration.apps.AppPrivateConfig;
-import org.openmetadata.schema.api.configuration.apps.AppsPrivateConfiguration;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
@@ -24,18 +26,18 @@ import org.quartz.JobDataMap;
 import org.quartz.JobDetail;
 import org.quartz.JobKey;
 import org.quartz.SchedulerException;
+import org.quartz.impl.matchers.GroupMatcher;
 
 @Slf4j
 public class ApplicationHandler {
 
   @Getter private static ApplicationHandler instance;
   private final OpenMetadataApplicationConfig config;
-  private final AppsPrivateConfiguration privateConfiguration;
   private final AppRepository appRepository;
+  private final ConfigurationReader configReader = new ConfigurationReader();
 
   private ApplicationHandler(OpenMetadataApplicationConfig config) {
     this.config = config;
-    this.privateConfiguration = config.getAppsPrivateConfiguration();
     this.appRepository = new AppRepository();
   }
 
@@ -52,15 +54,27 @@ public class ApplicationHandler {
   public void setAppRuntimeProperties(App app) {
     app.setOpenMetadataServerConnection(
         new OpenMetadataConnectionBuilder(config, app.getBot().getName()).build());
+    try {
+      AppPrivateConfig appPrivateConfig = configReader.readConfigFromResource(app.getName());
+      app.setPreview(appPrivateConfig.getPreview());
+      app.setPrivateConfiguration(appPrivateConfig.getParameters());
+    } catch (IOException e) {
+      LOG.debug("Config file for app {} not found: ", app.getName(), e);
+    } catch (ConfigurationException e) {
+      LOG.error("Error reading config file for app {}", app.getName(), e);
+    }
+  }
 
-    if (privateConfiguration != null
-        && !nullOrEmpty(privateConfiguration.getAppsPrivateConfiguration())) {
-      for (AppPrivateConfig appPrivateConfig : privateConfiguration.getAppsPrivateConfiguration()) {
-        if (app.getName().equals(appPrivateConfig.getName())) {
-          app.setPreview(appPrivateConfig.getPreview());
-          app.setPrivateConfiguration(appPrivateConfig.getParameters());
-        }
-      }
+  public Boolean isPreview(String appName) {
+    try {
+      AppPrivateConfig appPrivateConfig = configReader.readConfigFromResource(appName);
+      return appPrivateConfig.getPreview();
+    } catch (IOException e) {
+      LOG.debug("Config file for app {} not found: ", appName, e);
+      return false;
+    } catch (ConfigurationException e) {
+      LOG.error("Error reading config file for app {}", appName, e);
+      return false;
     }
   }
 
@@ -77,6 +91,11 @@ public class ApplicationHandler {
   public void configureApplication(
       App app, CollectionDAO daoCollection, SearchRepository searchRepository) {
     runMethodFromApplication(app, daoCollection, searchRepository, "configure");
+  }
+
+  public void performCleanup(
+      App app, CollectionDAO daoCollection, SearchRepository searchRepository) {
+    runMethodFromApplication(app, daoCollection, searchRepository, "cleanup");
   }
 
   public Object runAppInit(App app, CollectionDAO daoCollection, SearchRepository searchRepository)
@@ -111,6 +130,7 @@ public class ApplicationHandler {
   public void runMethodFromApplication(
       App app, CollectionDAO daoCollection, SearchRepository searchRepository, String methodName) {
     // Native Application
+    setAppRuntimeProperties(app);
     try {
       Object resource = runAppInit(app, daoCollection, searchRepository);
       // Call method on demand
@@ -123,7 +143,7 @@ public class ApplicationHandler {
     } catch (ClassNotFoundException e) {
       throw new UnhandledServerException(e.getMessage());
     } catch (InvocationTargetException e) {
-      throw new AppException(e.getTargetException().getMessage());
+      throw AppException.byMessage(app.getName(), methodName, e.getTargetException().getMessage());
     }
   }
 
@@ -145,14 +165,60 @@ public class ApplicationHandler {
     }
     LOG.info("migrating app quartz configuration for {}", application.getName());
     App updatedApp = JsonUtils.readOrConvertValue(appInfo, App.class);
+    App currentApp = appRepository.getDao().findEntityById(application.getId());
     updatedApp.setOpenMetadataServerConnection(null);
     updatedApp.setPrivateConfiguration(null);
-    App currentApp = appRepository.getDao().findEntityById(application.getId());
+    updatedApp.setScheduleType(currentApp.getScheduleType());
+    updatedApp.setAppSchedule(currentApp.getAppSchedule());
+    updatedApp.setUpdatedBy(currentApp.getUpdatedBy());
+    updatedApp.setFullyQualifiedName(currentApp.getFullyQualifiedName());
     EntityRepository<App>.EntityUpdater updater =
         appRepository.getUpdater(currentApp, updatedApp, EntityRepository.Operation.PATCH);
     updater.update();
     AppScheduler.getInstance().deleteScheduledApplication(updatedApp);
     AppScheduler.getInstance().addApplicationSchedule(updatedApp);
     LOG.info("migrated app configuration for {}", application.getName());
+  }
+
+  public void fixCorruptedInstallation(App application) throws SchedulerException {
+    JobDetail jobDetails =
+        AppScheduler.getInstance()
+            .getScheduler()
+            .getJobDetail(new JobKey(application.getName(), APPS_JOB_GROUP));
+    if (jobDetails == null) {
+      return;
+    }
+    JobDataMap jobDataMap = jobDetails.getJobDataMap();
+    if (jobDataMap == null) {
+      return;
+    }
+    String appName = jobDataMap.getString(APP_NAME);
+    if (appName == null) {
+      LOG.info("corrupt entry for app {}, reinstalling", application.getName());
+      App app = appRepository.getDao().findEntityByName(application.getName());
+      AppScheduler.getInstance().deleteScheduledApplication(app);
+      AppScheduler.getInstance().addApplicationSchedule(app);
+    }
+  }
+
+  public void removeOldJobs(App app) throws SchedulerException {
+    Collection<JobKey> jobKeys =
+        AppScheduler.getInstance()
+            .getScheduler()
+            .getJobKeys(GroupMatcher.groupContains(APPS_JOB_GROUP));
+    jobKeys.forEach(
+        jobKey -> {
+          try {
+            Class<?> clz =
+                AppScheduler.getInstance().getScheduler().getJobDetail(jobKey).getJobClass();
+            if (!jobKey.getName().equals(app.getName())
+                && clz.getName().equals(app.getClassName())) {
+              LOG.info("deleting old job {}", jobKey.getName());
+              AppScheduler.getInstance().getScheduler().deleteJob(jobKey);
+            }
+          } catch (SchedulerException e) {
+            LOG.error("Error deleting job {}", jobKey.getName(), e);
+          }
+        });
   }
 }

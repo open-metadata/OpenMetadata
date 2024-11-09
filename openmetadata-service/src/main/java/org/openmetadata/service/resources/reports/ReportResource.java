@@ -46,6 +46,7 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.ReportRepository;
+import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
@@ -63,10 +64,10 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "reports")
 public class ReportResource extends EntityResource<Report, ReportRepository> {
   public static final String COLLECTION_PATH = "/v1/reports/";
-  static final String FIELDS = "owner,usageSummary";
+  static final String FIELDS = "owners,usageSummary";
 
-  public ReportResource(Authorizer authorizer) {
-    super(Entity.REPORT, authorizer);
+  public ReportResource(Authorizer authorizer, Limits limits) {
+    super(Entity.REPORT, authorizer, limits);
   }
 
   @Override

@@ -14,34 +14,61 @@
 import Icon from '@ant-design/icons';
 import {
   Button,
+  Card,
+  Col,
   DatePicker,
   Form,
   Input,
+  Row,
   Select,
+  Tag,
   TimePicker,
   Tooltip,
   Typography,
 } from 'antd';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import { t } from 'i18next';
-import { isArray, isUndefined, noop, toNumber, toUpper } from 'lodash';
+import {
+  isArray,
+  isEmpty,
+  isNil,
+  isUndefined,
+  noop,
+  omitBy,
+  toNumber,
+  toUpper,
+} from 'lodash';
 import moment, { Moment } from 'moment';
-import React, { CSSProperties, FC, Fragment, useState } from 'react';
+import React, {
+  CSSProperties,
+  FC,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { Link } from 'react-router-dom';
+import { ReactComponent as ArrowIconComponent } from '../../../assets/svg/drop-down.svg';
 import { ReactComponent as EditIconComponent } from '../../../assets/svg/edit-new.svg';
+import { ReactComponent as EndTimeArrowIcon } from '../../../assets/svg/end-time-arrow.svg';
+import { ReactComponent as EndTimeIcon } from '../../../assets/svg/end-time.svg';
+import { ReactComponent as StartTimeIcon } from '../../../assets/svg/start-time.svg';
 import {
   DE_ACTIVE_COLOR,
   ICON_DIMENSION,
   VALIDATION_MESSAGES,
 } from '../../../constants/constants';
+import { TABLE_TYPE_CUSTOM_PROPERTY } from '../../../constants/CustomProperty.constants';
 import { TIMESTAMP_UNIX_IN_MILLISECONDS_REGEX } from '../../../constants/regex.constants';
 import { CSMode } from '../../../enums/codemirror.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { EntityReference } from '../../../generated/entity/type';
-import { EnumConfig } from '../../../generated/type/customProperty';
+import { Config } from '../../../generated/type/customProperty';
+import { calculateInterval } from '../../../utils/date-time/DateTimeUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../../utils/EntityUtils';
-import { getEntityIcon } from '../../../utils/TableUtils';
+import searchClassBase from '../../../utils/SearchClassBase';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import DataAssetAsyncSelectList from '../../DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList';
 import { DataAssetOption } from '../../DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
@@ -57,6 +84,8 @@ import {
 } from './CustomPropertyTable.interface';
 import './property-value.less';
 import { PropertyInput } from './PropertyInput';
+import EditTableTypePropertyModal from './TableTypeProperty/EditTableTypePropertyModal';
+import TableTypePropertyView from './TableTypeProperty/TableTypePropertyView';
 
 export const PropertyValue: FC<PropertyValueProps> = ({
   isVersionView,
@@ -65,18 +94,47 @@ export const PropertyValue: FC<PropertyValueProps> = ({
   onExtensionUpdate,
   hasEditPermissions,
   property,
+  isRenderedInRightPanel = false,
 }) => {
-  const propertyName = property.name;
-  const propertyType = property.propertyType;
+  const { propertyName, propertyType, value, isTableType } = useMemo(() => {
+    const propertyName = property.name;
+    const propertyType = property.propertyType;
+    const isTableType = propertyType.name === TABLE_TYPE_CUSTOM_PROPERTY;
 
-  const value = extension?.[propertyName];
+    const value = extension?.[propertyName];
+
+    return {
+      propertyName,
+      propertyType,
+      value,
+      isTableType,
+    };
+  }, [property, extension]);
 
   const [showInput, setShowInput] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
+  // expand the property value by default if it is a "table-type" custom property
+  const [isExpanded, setIsExpanded] = useState(isTableType);
+  const [isOverflowing, setIsOverflowing] = useState(false);
+  const contentRef = useRef<HTMLDivElement>(null);
+
   const onShowInput = () => setShowInput(true);
 
   const onHideInput = () => setShowInput(false);
+
+  const findOptionReference = (
+    item: DataAssetOption | string,
+    options: DataAssetOption[]
+  ) => {
+    if (typeof item === 'string') {
+      const option = options.find((option) => option.value === item);
+
+      return option?.reference;
+    }
+
+    return item?.reference;
+  };
 
   const onInputSave = async (updatedValue: PropertyValueType) => {
     const isEnum = propertyType.name === 'enum';
@@ -85,19 +143,39 @@ export const PropertyValue: FC<PropertyValueProps> = ({
 
     const enumValue = isArrayType ? updatedValue : [updatedValue];
 
-    const propertyValue = isEnum ? enumValue : updatedValue;
+    const propertyValue = isEnum
+      ? (enumValue as string[]).filter(Boolean)
+      : updatedValue;
 
     try {
-      const updatedExtension = {
-        ...(extension || {}),
-        [propertyName]: ['integer', 'number'].includes(propertyType.name ?? '')
-          ? toNumber(updatedValue || 0)
-          : propertyValue,
-      };
+      // Omit undefined and empty values
+      const updatedExtension = omitBy(
+        omitBy(
+          {
+            ...(extension ?? {}),
+            [propertyName]: ['integer', 'number'].includes(
+              propertyType.name ?? ''
+            )
+              ? updatedValue
+                ? toNumber(updatedValue)
+                : updatedValue // If number is cleared and set undefined
+              : propertyValue,
+          },
+          isUndefined
+        ),
+        (value) =>
+          // Check if value is empty array, empty string, null or empty object
+          value === '' ||
+          isNil(value) ||
+          (typeof value === 'object' && isEmpty(value))
+      );
 
       setIsLoading(true);
 
-      await onExtensionUpdate(updatedExtension);
+      await onExtensionUpdate(
+        // If updatedExtension is empty, set it to undefined
+        isEmpty(updatedExtension) ? undefined : updatedExtension
+      );
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -134,7 +212,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
       case 'markdown': {
         const header = t('label.edit-entity-name', {
           entityType: t('label.property'),
-          entityName: propertyName,
+          entityName: getEntityName(property),
         });
 
         return (
@@ -150,7 +228,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
       }
 
       case 'enum': {
-        const enumConfig = property.customPropertyConfig?.config as EnumConfig;
+        const enumConfig = property.customPropertyConfig?.config as Config;
 
         const isMultiSelect = Boolean(enumConfig?.multiSelect);
 
@@ -165,6 +243,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
 
         return (
           <InlineEdit
+            className="custom-property-inline-edit-container"
             isLoading={isLoading}
             saveButtonProps={{
               disabled: isLoading,
@@ -180,18 +259,9 @@ export const PropertyValue: FC<PropertyValueProps> = ({
               onFinish={(values: { enumValues: string | string[] }) =>
                 onInputSave(values.enumValues)
               }>
-              <Form.Item
-                name="enumValues"
-                rules={[
-                  {
-                    required: true,
-                    message: t('label.field-required', {
-                      field: t('label.enum-value-plural'),
-                    }),
-                  },
-                ]}
-                style={commonStyle}>
+              <Form.Item name="enumValues" style={commonStyle}>
                 <Select
+                  allowClear
                   data-testid="enum-select"
                   disabled={isLoading}
                   mode={isMultiSelect ? 'multiple' : undefined}
@@ -204,9 +274,12 @@ export const PropertyValue: FC<PropertyValueProps> = ({
         );
       }
 
-      case 'date':
-      case 'dateTime': {
-        const format = toUpper(property.customPropertyConfig?.config as string);
+      case 'date-cp':
+      case 'dateTime-cp': {
+        // Default format is 'yyyy-mm-dd'
+        const format = toUpper(
+          (property.customPropertyConfig?.config as string) ?? 'yyyy-mm-dd'
+        );
 
         const initialValues = {
           dateTimeValue: value ? moment(value, format) : undefined,
@@ -214,6 +287,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
 
         return (
           <InlineEdit
+            className="custom-property-inline-edit-container"
             isLoading={isLoading}
             saveButtonProps={{
               disabled: isLoading,
@@ -227,24 +301,19 @@ export const PropertyValue: FC<PropertyValueProps> = ({
               initialValues={initialValues}
               layout="vertical"
               onFinish={(values: { dateTimeValue: Moment }) => {
-                onInputSave(values.dateTimeValue.format(format));
+                onInputSave(
+                  values.dateTimeValue
+                    ? values.dateTimeValue.format(format)
+                    : values.dateTimeValue // If date is cleared and set undefined
+                );
               }}>
-              <Form.Item
-                name="dateTimeValue"
-                rules={[
-                  {
-                    required: true,
-                    message: t('label.field-required', {
-                      field: propertyType.name,
-                    }),
-                  },
-                ]}
-                style={commonStyle}>
+              <Form.Item name="dateTimeValue" style={commonStyle}>
                 <DatePicker
+                  allowClear
                   data-testid="date-time-picker"
                   disabled={isLoading}
                   format={format}
-                  showTime={propertyType.name === 'dateTime'}
+                  showTime={propertyType.name === 'dateTime-cp'}
                   style={{ width: '250px' }}
                 />
               </Form.Item>
@@ -253,14 +322,16 @@ export const PropertyValue: FC<PropertyValueProps> = ({
         );
       }
 
-      case 'time': {
-        const format = 'HH:mm:ss';
+      case 'time-cp': {
+        const format =
+          (property.customPropertyConfig?.config as string) ?? 'HH:mm:ss';
         const initialValues = {
           time: value ? moment(value, format) : undefined,
         };
 
         return (
           <InlineEdit
+            className="custom-property-inline-edit-container"
             isLoading={isLoading}
             saveButtonProps={{
               disabled: isLoading,
@@ -275,19 +346,16 @@ export const PropertyValue: FC<PropertyValueProps> = ({
               layout="vertical"
               validateMessages={VALIDATION_MESSAGES}
               onFinish={(values: { time: Moment }) => {
-                onInputSave(values.time.format(format));
+                onInputSave(
+                  values.time ? values.time.format(format) : values.time // If time is cleared and set undefined
+                );
               }}>
-              <Form.Item
-                name="time"
-                rules={[
-                  {
-                    required: true,
-                  },
-                ]}
-                style={commonStyle}>
+              <Form.Item name="time" style={commonStyle}>
                 <TimePicker
+                  allowClear
                   data-testid="time-picker"
                   disabled={isLoading}
+                  format={format}
                   style={{ width: '250px' }}
                 />
               </Form.Item>
@@ -303,6 +371,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
 
         return (
           <InlineEdit
+            className="custom-property-inline-edit-container"
             isLoading={isLoading}
             saveButtonProps={{
               disabled: isLoading,
@@ -323,7 +392,6 @@ export const PropertyValue: FC<PropertyValueProps> = ({
                 name="email"
                 rules={[
                   {
-                    required: true,
                     min: 6,
                     max: 127,
                     type: 'email',
@@ -331,6 +399,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
                 ]}
                 style={commonStyle}>
                 <Input
+                  allowClear
                   data-testid="email-input"
                   disabled={isLoading}
                   placeholder="john@doe.com"
@@ -348,6 +417,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
 
         return (
           <InlineEdit
+            className="custom-property-inline-edit-container"
             isLoading={isLoading}
             saveButtonProps={{
               disabled: isLoading,
@@ -361,18 +431,23 @@ export const PropertyValue: FC<PropertyValueProps> = ({
               initialValues={initialValues}
               layout="vertical"
               onFinish={(values: { timestamp: string }) => {
-                onInputSave(toNumber(values.timestamp));
+                onInputSave(
+                  values.timestamp
+                    ? toNumber(values.timestamp)
+                    : values.timestamp // If timestamp is cleared and set undefined
+                );
               }}>
               <Form.Item
                 name="timestamp"
                 rules={[
                   {
-                    required: true,
                     pattern: TIMESTAMP_UNIX_IN_MILLISECONDS_REGEX,
+                    message: t('message.invalid-unix-epoch-time-milliseconds'),
                   },
                 ]}
                 style={commonStyle}>
                 <Input
+                  allowClear
                   data-testid="timestamp-input"
                   disabled={isLoading}
                   placeholder={t('message.unix-epoch-time-in-ms', {
@@ -393,6 +468,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
 
         return (
           <InlineEdit
+            className="custom-property-inline-edit-container"
             isLoading={isLoading}
             saveButtonProps={{
               disabled: isLoading,
@@ -406,21 +482,29 @@ export const PropertyValue: FC<PropertyValueProps> = ({
               initialValues={initialValues}
               layout="vertical"
               onFinish={(values: { start: string; end: string }) => {
-                onInputSave({
-                  start: toNumber(values.start),
-                  end: toNumber(values.end),
-                });
+                onInputSave(
+                  omitBy(
+                    {
+                      start: values.start
+                        ? toNumber(values.start)
+                        : values.start,
+                      end: values.end ? toNumber(values.end) : values.end,
+                    },
+                    isUndefined
+                  ) as TimeIntervalType
+                );
               }}>
               <Form.Item
                 name="start"
                 rules={[
                   {
-                    required: true,
                     pattern: TIMESTAMP_UNIX_IN_MILLISECONDS_REGEX,
+                    message: t('message.invalid-unix-epoch-time-milliseconds'),
                   },
                 ]}
                 style={{ ...commonStyle, marginBottom: '16px' }}>
                 <Input
+                  allowClear
                   data-testid="start-input"
                   disabled={isLoading}
                   placeholder={t('message.unix-epoch-time-in-ms', {
@@ -432,12 +516,13 @@ export const PropertyValue: FC<PropertyValueProps> = ({
                 name="end"
                 rules={[
                   {
-                    required: true,
                     pattern: TIMESTAMP_UNIX_IN_MILLISECONDS_REGEX,
+                    message: t('message.invalid-unix-epoch-time-milliseconds'),
                   },
                 ]}
                 style={commonStyle}>
                 <Input
+                  allowClear
                   data-testid="end-input"
                   disabled={isLoading}
                   placeholder={t('message.unix-epoch-time-in-ms', {
@@ -457,6 +542,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
 
         return (
           <InlineEdit
+            className="custom-property-inline-edit-container"
             isLoading={isLoading}
             saveButtonProps={{
               disabled: isLoading,
@@ -473,15 +559,9 @@ export const PropertyValue: FC<PropertyValueProps> = ({
               onFinish={(values: { duration: string }) => {
                 onInputSave(values.duration);
               }}>
-              <Form.Item
-                name="duration"
-                rules={[
-                  {
-                    required: true,
-                  },
-                ]}
-                style={commonStyle}>
+              <Form.Item name="duration" style={commonStyle}>
                 <Input
+                  allowClear
                   data-testid="duration-input"
                   disabled={isLoading}
                   placeholder={t('message.duration-in-iso-format')}
@@ -499,6 +579,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
 
         return (
           <InlineEdit
+            className="custom-property-inline-edit-container sql-query-custom-property"
             isLoading={isLoading}
             saveButtonProps={{
               disabled: isLoading,
@@ -515,24 +596,11 @@ export const PropertyValue: FC<PropertyValueProps> = ({
               onFinish={(values: { sqlQuery: string }) => {
                 onInputSave(values.sqlQuery);
               }}>
-              <Form.Item
-                name="sqlQuery"
-                rules={[
-                  {
-                    required: true,
-                    message: t('label.field-required', {
-                      field: t('label.sql-uppercase-query'),
-                    }),
-                  },
-                ]}
-                style={commonStyle}
-                trigger="onChange">
+              <Form.Item name="sqlQuery" style={commonStyle} trigger="onChange">
                 <SchemaEditor
                   className="custom-query-editor query-editor-h-200 custom-code-mirror-theme"
                   mode={{ name: CSMode.SQL }}
-                  options={{
-                    readOnly: false,
-                  }}
+                  showCopyButton={false}
                 />
               </Form.Item>
             </Form>
@@ -584,6 +652,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
 
         return (
           <InlineEdit
+            className="custom-property-inline-edit-container"
             isLoading={isLoading}
             saveButtonProps={{
               disabled: isLoading,
@@ -600,22 +669,24 @@ export const PropertyValue: FC<PropertyValueProps> = ({
               onFinish={(values: {
                 entityReference: DataAssetOption | DataAssetOption[];
               }) => {
-                if (isArray(values.entityReference)) {
-                  onInputSave(
-                    values.entityReference.map((item) => item.reference)
-                  );
-                } else {
-                  onInputSave(values.entityReference.reference);
+                const { entityReference } = values;
+
+                if (Array.isArray(entityReference)) {
+                  const references = entityReference
+                    .map((item) => findOptionReference(item, initialOptions))
+                    .filter(Boolean) as EntityReference[];
+                  onInputSave(references);
+
+                  return;
                 }
+
+                const reference = findOptionReference(
+                  entityReference,
+                  initialOptions
+                );
+                onInputSave(reference as EntityReference);
               }}>
-              <Form.Item
-                name="entityReference"
-                rules={[
-                  {
-                    required: true,
-                  },
-                ]}
-                style={commonStyle}>
+              <Form.Item name="entityReference" style={commonStyle}>
                 <DataAssetAsyncSelectList
                   initialOptions={initialOptions}
                   mode={mode}
@@ -629,6 +700,30 @@ export const PropertyValue: FC<PropertyValueProps> = ({
               </Form.Item>
             </Form>
           </InlineEdit>
+        );
+      }
+
+      case TABLE_TYPE_CUSTOM_PROPERTY: {
+        const config = property.customPropertyConfig?.config as Config;
+
+        const columns = config?.columns ?? [];
+        const rows = value?.rows ?? [];
+
+        return (
+          <>
+            {showInput && (
+              <TableTypePropertyView columns={columns} rows={rows} />
+            )}
+            <EditTableTypePropertyModal
+              columns={columns}
+              isUpdating={isLoading}
+              isVisible={showInput}
+              property={property}
+              rows={value?.rows ?? []}
+              onCancel={onHideInput}
+              onSave={onInputSave}
+            />
+          </>
         );
       }
 
@@ -654,9 +749,25 @@ export const PropertyValue: FC<PropertyValueProps> = ({
 
       case 'enum':
         return (
-          <Typography.Text className="break-all" data-testid="enum-value">
-            {isArray(value) ? value.join(', ') : value}
-          </Typography.Text>
+          <>
+            {isArray(value) ? (
+              <div
+                className="w-full d-flex gap-2 flex-wrap"
+                data-testid="enum-value">
+                {value.map((val) => (
+                  <Tooltip key={val} title={val} trigger="hover">
+                    <Tag className="enum-key-tag">{val}</Tag>
+                  </Tooltip>
+                ))}
+              </div>
+            ) : (
+              <Tooltip key={value} title={value} trigger="hover">
+                <Tag className="enum-key-tag" data-testid="enum-value">
+                  {value}
+                </Tag>
+              </Tooltip>
+            )}
+          </>
         );
 
       case 'sqlQuery':
@@ -688,7 +799,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
                         item.fullyQualifiedName as string
                       )}>
                       <Button
-                        className="entity-button flex-center p-0 m--ml-1"
+                        className="entity-button flex-center p-0"
                         icon={
                           <div className="entity-button-icon m-r-xs">
                             {['user', 'team'].includes(item.type) ? (
@@ -700,13 +811,13 @@ export const PropertyValue: FC<PropertyValueProps> = ({
                                 width="18"
                               />
                             ) : (
-                              getEntityIcon(item.type)
+                              searchClassBase.getEntityIcon(item.type)
                             )}
                           </div>
                         }
                         type="text">
                         <Typography.Text
-                          className="text-left text-xs"
+                          className="text-left text-primary truncate w-68"
                           ellipsis={{ tooltip: true }}>
                           {getEntityName(item)}
                         </Typography.Text>
@@ -737,9 +848,11 @@ export const PropertyValue: FC<PropertyValueProps> = ({
                 item.fullyQualifiedName as string
               )}>
               <Button
-                className="entity-button flex-center p-0 m--ml-1"
+                className="entity-button flex-center p-0"
                 icon={
-                  <div className="entity-button-icon m-r-xs">
+                  <div
+                    className="entity-button-icon m-r-xs"
+                    style={{ width: '20px', display: 'flex' }}>
                     {['user', 'team'].includes(item.type) ? (
                       <ProfilePicture
                         className="d-flex"
@@ -749,13 +862,13 @@ export const PropertyValue: FC<PropertyValueProps> = ({
                         width="18"
                       />
                     ) : (
-                      getEntityIcon(item.type)
+                      searchClassBase.getEntityIcon(item.type)
                     )}
                   </div>
                 }
                 type="text">
                 <Typography.Text
-                  className="text-left text-xs"
+                  className="text-left text-primary truncate w-68 "
                   data-testid="entityReference-value-name"
                   ellipsis={{ tooltip: true }}>
                   {getEntityName(item)}
@@ -773,28 +886,66 @@ export const PropertyValue: FC<PropertyValueProps> = ({
         }
 
         return (
-          <Typography.Text
-            className="break-all"
+          <div
+            className="d-flex justify-between"
             data-testid="time-interval-value">
-            {`StartTime: ${timeInterval.start}`}
-            <br />
-            {`EndTime: ${timeInterval.end}`}
-          </Typography.Text>
+            <div className="d-flex flex-column gap-2 items-center">
+              <StartTimeIcon height={30} width={30} />
+              <Typography.Text className="property-value">{`${t(
+                'label.start-entity',
+                {
+                  entity: t('label.time'),
+                }
+              )}`}</Typography.Text>
+              <Typography.Text className="text-sm text-grey-body property-value">
+                {timeInterval.start}
+              </Typography.Text>
+            </div>
+            <div className="d-flex items-center">
+              <EndTimeArrowIcon />
+              <Tag className="time-interval-separator">
+                {calculateInterval(timeInterval.start, timeInterval.end)}
+              </Tag>
+              <EndTimeArrowIcon />
+            </div>
+            <div className="d-flex flex-column gap-2 items-center">
+              <EndTimeIcon height={30} width={30} />
+              <Typography.Text className="property-value">{`${t(
+                'label.end-entity',
+                {
+                  entity: t('label.time'),
+                }
+              )}`}</Typography.Text>
+              <Typography.Text className="text-sm text-grey-body property-value">
+                {timeInterval.end}
+              </Typography.Text>
+            </div>
+          </div>
         );
+      }
+
+      case TABLE_TYPE_CUSTOM_PROPERTY: {
+        const columns =
+          (property.customPropertyConfig?.config as Config)?.columns ?? [];
+        const rows = value?.rows ?? [];
+
+        return <TableTypePropertyView columns={columns} rows={rows} />;
       }
 
       case 'string':
       case 'integer':
       case 'number':
-      case 'date':
-      case 'dateTime':
-      case 'time':
+      case 'date-cp':
+      case 'time-cp':
       case 'email':
       case 'timestamp':
       case 'duration':
+      case 'dateTime-cp':
       default:
         return (
-          <Typography.Text className="break-all" data-testid="value">
+          <Typography.Text
+            className="break-all text-grey-body property-value"
+            data-testid="value">
             {value}
           </Typography.Text>
         );
@@ -804,7 +955,8 @@ export const PropertyValue: FC<PropertyValueProps> = ({
   const getValueElement = () => {
     const propertyValue = getPropertyValue();
 
-    return !isUndefined(value) ? (
+    // if value is not undefined or property is a table type(at least show the columns), return the property value
+    return !isUndefined(value) || isTableType ? (
       propertyValue
     ) : (
       <span className="text-grey-muted" data-testid="no-data">
@@ -813,29 +965,119 @@ export const PropertyValue: FC<PropertyValueProps> = ({
     );
   };
 
-  return (
-    <div>
-      {showInput ? (
-        getPropertyInput()
-      ) : (
-        <Fragment>
-          <div className="d-flex gap-2 items-center">
-            {getValueElement()}
-            {hasEditPermissions && (
+  const toggleExpand = () => {
+    setIsExpanded(!isExpanded);
+  };
+
+  useEffect(() => {
+    if (!contentRef.current || !property) {
+      return;
+    }
+
+    const isMarkdownWithValue = propertyType.name === 'markdown' && value;
+    const isOverflowing =
+      (contentRef.current.scrollHeight > 30 || isMarkdownWithValue) &&
+      propertyType.name !== 'entityReference' &&
+      !isRenderedInRightPanel;
+
+    setIsOverflowing(isOverflowing);
+  }, [property, extension, contentRef, value]);
+
+  const containerStyleFlag = useMemo(() => {
+    return isExpanded || showInput || isRenderedInRightPanel;
+  }, [isExpanded, showInput, isRenderedInRightPanel]);
+
+  const customPropertyElement = (
+    <Row data-testid={propertyName} gutter={[0, 8]}>
+      <Col span={24}>
+        <Row gutter={[0, 2]}>
+          <Col className="d-flex justify-between items-center w-full" span={24}>
+            <Typography.Text
+              className="text-grey-body property-name"
+              data-testid="property-name">
+              {getEntityName(property)}
+            </Typography.Text>
+            {hasEditPermissions && !showInput && (
               <Tooltip
                 placement="left"
-                title={t('label.edit-entity', { entity: propertyName })}>
+                title={t('label.edit-entity', {
+                  entity: getEntityName(property),
+                })}>
                 <Icon
                   component={EditIconComponent}
-                  data-testid="edit-icon"
+                  data-testid={`edit-icon${
+                    isRenderedInRightPanel ? '-right-panel' : ''
+                  }`}
                   style={{ color: DE_ACTIVE_COLOR, ...ICON_DIMENSION }}
                   onClick={onShowInput}
                 />
               </Tooltip>
             )}
+          </Col>
+          {!isRenderedInRightPanel && (
+            <Col span={24}>
+              <RichTextEditorPreviewer
+                className="text-grey-muted property-description"
+                markdown={property.description || ''}
+                maxLength={70}
+                reducePreviewLineClass="max-one-line"
+              />
+            </Col>
+          )}
+        </Row>
+      </Col>
+
+      <Col span={24}>
+        <div
+          className={classNames(
+            'd-flex justify-between w-full gap-2',
+            {
+              'items-end': isExpanded,
+            },
+            {
+              'items-center': !isExpanded,
+            }
+          )}>
+          <div
+            className="w-full"
+            ref={contentRef}
+            style={{
+              height: containerStyleFlag ? 'auto' : '30px',
+              overflow: 'hidden',
+            }}>
+            {showInput ? getPropertyInput() : getValueElement()}
           </div>
-        </Fragment>
-      )}
-    </div>
+          {isOverflowing && !showInput && (
+            <Icon
+              className={classNames('custom-property-value-toggle-btn', {
+                active: isExpanded,
+              })}
+              component={ArrowIconComponent}
+              data-testid={`toggle-${propertyName}`}
+              style={{ color: DE_ACTIVE_COLOR, ...ICON_DIMENSION }}
+              onClick={toggleExpand}
+            />
+          )}
+        </div>
+      </Col>
+    </Row>
+  );
+
+  if (isRenderedInRightPanel) {
+    return (
+      <div
+        className="custom-property-card custom-property-card-right-panel"
+        data-testid="custom-property-right-panel-card">
+        {customPropertyElement}
+      </div>
+    );
+  }
+
+  return (
+    <Card
+      className="w-full custom-property-card"
+      data-testid={`custom-property-${propertyName}-card`}>
+      {customPropertyElement}
+    </Card>
   );
 };

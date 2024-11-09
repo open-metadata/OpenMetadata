@@ -39,6 +39,7 @@ import {
   getClassificationByName,
   getTags,
 } from '../rest/tagAPI';
+import { getQueryFilterToIncludeApprovedTerm } from './GlossaryUtils';
 import { getTagsWithoutTier } from './TableUtils';
 
 export const getClassifications = async (
@@ -140,8 +141,8 @@ export const getTableTags = (
 };
 
 //  Will return tag with ellipses if it exceeds the limit
-export const getTagDisplay = (tag: string) => {
-  const tagLevelsArray = tag.split(FQN_SEPARATOR_CHAR);
+export const getTagDisplay = (tag?: string) => {
+  const tagLevelsArray = tag?.split(FQN_SEPARATOR_CHAR) ?? [];
 
   if (tagLevelsArray.length > 3) {
     return `${tagLevelsArray[0]}...${tagLevelsArray
@@ -269,7 +270,7 @@ export const fetchGlossaryList = async (
     query: searchQueryParam ? `*${searchQueryParam}*` : '*',
     pageNumber: page,
     pageSize: 10,
-    queryFilter: {},
+    queryFilter: getQueryFilterToIncludeApprovedTerm(),
     searchIndex: SearchIndex.GLOSSARY_TERM,
   });
 

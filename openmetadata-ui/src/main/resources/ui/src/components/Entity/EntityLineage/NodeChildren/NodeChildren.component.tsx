@@ -11,34 +11,51 @@
  *  limitations under the License.
  */
 import { DownOutlined, SearchOutlined, UpOutlined } from '@ant-design/icons';
-import { Button, Collapse, Input } from 'antd';
+import { Button, Collapse, Input, Space } from 'antd';
 import { isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { BORDER_COLOR } from '../../../../constants/constants';
-import { LINEAGE_COLUMN_NODE_SUPPORTED } from '../../../../constants/Lineage.constants';
+import {
+  DATATYPES_HAVING_SUBFIELDS,
+  LINEAGE_COLUMN_NODE_SUPPORTED,
+} from '../../../../constants/Lineage.constants';
 import { useLineageProvider } from '../../../../context/LineageProvider/LineageProvider';
 import { EntityType } from '../../../../enums/entity.enum';
-import { Container } from '../../../../generated/entity/data/container';
-import { Dashboard } from '../../../../generated/entity/data/dashboard';
-import { Mlmodel } from '../../../../generated/entity/data/mlmodel';
 import { Column, Table } from '../../../../generated/entity/data/table';
-import { Topic } from '../../../../generated/entity/data/topic';
+import { LineageLayer } from '../../../../generated/settings/settings';
+import { getEntityChildrenAndLabel } from '../../../../utils/EntityLineageUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
-import { getEntityIcon } from '../../../../utils/TableUtils';
-import { getColumnContent, getTestSuiteSummary } from '../CustomNode.utils';
+import searchClassBase from '../../../../utils/SearchClassBase';
+import { getColumnContent } from '../CustomNode.utils';
+import TestSuiteSummaryWidget from '../TestSuiteSummaryWidget/TestSuiteSummaryWidget.component';
 import { EntityChildren, NodeChildrenProps } from './NodeChildren.interface';
 
 const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
   const { t } = useTranslation();
   const { Panel } = Collapse;
-  const { isEditMode, tracedColumns, expandedNodes, onColumnClick } =
-    useLineageProvider();
-  const { entityType, id } = node;
+  const {
+    tracedColumns,
+    activeLayer,
+    onColumnClick,
+    columnsHavingLineage,
+    isEditMode,
+    expandAllColumns,
+  } = useLineageProvider();
+  const { entityType } = node;
   const [searchValue, setSearchValue] = useState('');
   const [filteredColumns, setFilteredColumns] = useState<EntityChildren>([]);
   const [showAllColumns, setShowAllColumns] = useState(false);
-  const [isExpanded, setIsExpanded] = useState<boolean>(false);
+  const [isExpanded, setIsExpanded] = useState<boolean>(true);
+
+  const { showColumns, showDataObservability } = useMemo(() => {
+    return {
+      showColumns: activeLayer.includes(LineageLayer.ColumnLevelLineage),
+      showDataObservability: activeLayer.includes(
+        LineageLayer.DataObservability
+      ),
+    };
+  }, [activeLayer]);
 
   const supportsColumns = useMemo(() => {
     return (
@@ -47,47 +64,10 @@ const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
     );
   }, [node.id]);
 
-  const { children, childrenHeading } = useMemo(() => {
-    const entityMappings: Record<
-      string,
-      { data: EntityChildren; label: string }
-    > = {
-      [EntityType.TABLE]: {
-        data: (node as Table).columns ?? [],
-        label: t('label.column-plural'),
-      },
-      [EntityType.DASHBOARD]: {
-        data: (node as Dashboard).charts ?? [],
-        label: t('label.chart-plural'),
-      },
-      [EntityType.MLMODEL]: {
-        data: (node as Mlmodel).mlFeatures ?? [],
-        label: t('label.feature-plural'),
-      },
-      [EntityType.DASHBOARD_DATA_MODEL]: {
-        data: (node as Table).columns ?? [],
-        label: t('label.column-plural'),
-      },
-      [EntityType.CONTAINER]: {
-        data: (node as Container).dataModel?.columns ?? [],
-        label: t('label.column-plural'),
-      },
-      [EntityType.TOPIC]: {
-        data: (node as Topic).messageSchema?.schemaFields ?? [],
-        label: t('label.field-plural'),
-      },
-    };
-
-    const { data, label } = entityMappings[node.entityType as EntityType] || {
-      data: [],
-      label: '',
-    };
-
-    return {
-      children: data,
-      childrenHeading: label,
-    };
-  }, [node.id]);
+  const { children, childrenHeading } = useMemo(
+    () => getEntityChildrenAndLabel(node),
+    [node.id]
+  );
 
   const handleSearchChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -96,11 +76,9 @@ const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
       setSearchValue(value);
 
       if (value.trim() === '') {
-        // If search value is empty, show all columns or the default number of columns
+        // If search value is empty, show all columns
         const filterColumns = Object.values(children ?? {});
-        setFilteredColumns(
-          showAllColumns ? filterColumns : filterColumns.slice(0, 5)
-        );
+        setFilteredColumns(filterColumns);
       } else {
         // Filter columns based on search value
         const filtered = Object.values(children ?? {}).filter((column) =>
@@ -112,73 +90,102 @@ const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
     [children]
   );
 
-  useEffect(() => {
-    setIsExpanded(expandedNodes.includes(id ?? ''));
-  }, [expandedNodes, id]);
+  const handleShowMoreClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation();
+    setShowAllColumns(true);
+  };
+
+  const isColumnVisible = useCallback(
+    (record: Column) => {
+      if (expandAllColumns || isEditMode || showAllColumns) {
+        return true;
+      }
+
+      return columnsHavingLineage.includes(record.fullyQualifiedName ?? '');
+    },
+    [isEditMode, columnsHavingLineage, expandAllColumns, showAllColumns]
+  );
 
   useEffect(() => {
     if (!isEmpty(children)) {
-      setFilteredColumns(children.slice(0, 5));
+      setFilteredColumns(children);
     }
   }, [children]);
 
-  useEffect(() => {
-    if (!isExpanded) {
-      setShowAllColumns(false);
-    } else if (!isEmpty(children) && Object.values(children).length < 5) {
-      setShowAllColumns(true);
-    }
-  }, [isEditMode, isExpanded, children]);
-
-  const handleShowMoreClick = useCallback(
-    (e: React.MouseEvent<HTMLButtonElement>) => {
-      e.stopPropagation();
-      setShowAllColumns(true);
-      setFilteredColumns(children ?? []);
-    },
-    [children]
-  );
-
   const renderRecord = useCallback(
     (record: Column) => {
+      const isColumnTraced = tracedColumns.includes(
+        record.fullyQualifiedName ?? ''
+      );
+      const headerContent = getColumnContent(
+        record,
+        isColumnTraced,
+        isConnectable,
+        onColumnClick
+      );
+
+      if (!record.children || record.children.length === 0) {
+        if (!isColumnVisible(record)) {
+          return null;
+        }
+
+        return headerContent;
+      }
+
+      const childRecords = record?.children?.map((child) => {
+        const { fullyQualifiedName, dataType } = child;
+        if (DATATYPES_HAVING_SUBFIELDS.includes(dataType)) {
+          return renderRecord(child);
+        } else {
+          const isColumnTraced = tracedColumns.includes(
+            fullyQualifiedName ?? ''
+          );
+
+          if (!isColumnVisible(child)) {
+            return null;
+          }
+
+          return getColumnContent(
+            child,
+            isColumnTraced,
+            isConnectable,
+            onColumnClick
+          );
+        }
+      });
+
+      const result = childRecords.filter((child) => child !== null);
+
+      if (result.length === 0) {
+        return null;
+      }
+
       return (
         <Collapse
           destroyInactivePanel
-          defaultActiveKey={record.fullyQualifiedName}>
-          <Panel
-            header={getEntityName(record)}
-            key={record.fullyQualifiedName ?? ''}>
-            {record?.children?.map((child) => {
-              const { fullyQualifiedName, dataType } = child;
-              if (['RECORD', 'STRUCT'].includes(dataType)) {
-                return renderRecord(child);
-              } else {
-                const isColumnTraced = tracedColumns.includes(
-                  fullyQualifiedName ?? ''
-                );
-
-                return getColumnContent(
-                  child,
-                  isColumnTraced,
-                  isConnectable,
-                  onColumnClick
-                );
-              }
-            })}
+          className="lineage-collapse-column"
+          defaultActiveKey={record.fullyQualifiedName}
+          expandIcon={() => null}
+          key={record.fullyQualifiedName}>
+          <Panel header={headerContent} key={record.fullyQualifiedName ?? ''}>
+            {result}
           </Panel>
         </Collapse>
       );
     },
-    [isConnectable, tracedColumns]
+    [isConnectable, tracedColumns, onColumnClick, isColumnVisible]
   );
 
   const renderColumnsData = useCallback(
     (column: Column) => {
       const { fullyQualifiedName, dataType } = column;
-      if (['RECORD', 'STRUCT'].includes(dataType)) {
+      if (DATATYPES_HAVING_SUBFIELDS.includes(dataType)) {
         return renderRecord(column);
       } else {
         const isColumnTraced = tracedColumns.includes(fullyQualifiedName ?? '');
+        if (!isColumnVisible(column)) {
+          return null;
+        }
 
         return getColumnContent(
           column,
@@ -188,38 +195,45 @@ const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
         );
       }
     },
-    [isConnectable, tracedColumns]
+    [isConnectable, tracedColumns, isColumnVisible]
   );
 
-  if (supportsColumns) {
+  if (supportsColumns && (showColumns || showDataObservability)) {
     return (
       <div className="column-container bg-grey-1 p-sm p-y-xs">
         <div className="d-flex justify-between items-center">
-          <Button
-            className="flex-center text-primary rounded-4 p-xss"
-            data-testid="expand-cols-btn"
-            icon={
-              <div className="d-flex w-5 h-5 m-r-xs text-base-color">
-                {getEntityIcon(node.entityType ?? '')}
-              </div>
-            }
-            type="text"
-            onClick={(e) => {
-              e.stopPropagation();
-              setIsExpanded((prevIsExpanded: boolean) => !prevIsExpanded);
-            }}>
-            {childrenHeading}
-            {isExpanded ? (
-              <UpOutlined style={{ fontSize: '12px' }} />
-            ) : (
-              <DownOutlined style={{ fontSize: '12px' }} />
+          <div>
+            {showColumns && (
+              <Button
+                className="flex-center text-primary rounded-4 p-xss h-9"
+                data-testid="expand-cols-btn"
+                type="text"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsExpanded((prevIsExpanded: boolean) => !prevIsExpanded);
+                }}>
+                <Space>
+                  <div className=" w-5 h-5 text-base-color">
+                    {searchClassBase.getEntityIcon(node.entityType ?? '')}
+                  </div>
+                  {childrenHeading}
+                  {isExpanded ? (
+                    <UpOutlined style={{ fontSize: '12px' }} />
+                  ) : (
+                    <DownOutlined style={{ fontSize: '12px' }} />
+                  )}
+                </Space>
+              </Button>
             )}
-          </Button>
-          {entityType === EntityType.TABLE &&
-            getTestSuiteSummary((node as Table).testSuite)}
+          </div>
+          {showDataObservability &&
+            entityType === EntityType.TABLE &&
+            (node as Table).testSuite && (
+              <TestSuiteSummaryWidget testSuite={(node as Table).testSuite} />
+            )}
         </div>
 
-        {isExpanded && (
+        {showColumns && isExpanded && (
           <div className="m-t-md">
             <div className="search-box">
               <Input
@@ -243,11 +257,10 @@ const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
             {!showAllColumns && (
               <Button
                 className="m-t-xs text-primary"
-                data-testid="show-more-cols-btn"
                 type="text"
                 onClick={handleShowMoreClick}>
                 {t('label.show-more-entity', {
-                  entity: childrenHeading,
+                  entity: t('label.column-plural'),
                 })}
               </Button>
             )}

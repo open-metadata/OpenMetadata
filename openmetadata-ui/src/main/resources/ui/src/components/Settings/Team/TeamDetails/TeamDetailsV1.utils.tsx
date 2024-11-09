@@ -18,7 +18,6 @@ import { TeamsPageTab } from './team.interface';
 export const getTabs = (
   currentTeam: Team,
   isGroupType: boolean,
-  isOrganization: boolean,
   teamsCount: number,
   assetsCount: number
 ) => {
@@ -52,13 +51,9 @@ export const getTabs = (
 
   const commonTabs = [tabs.roles, tabs.policies];
 
-  if (isOrganization) {
-    return [tabs.teams, ...commonTabs];
-  }
-
   if (isGroupType) {
     return [tabs.users, tabs.assets, ...commonTabs];
   }
 
-  return [tabs.teams, tabs.users, ...commonTabs];
+  return [tabs.teams, ...commonTabs];
 };

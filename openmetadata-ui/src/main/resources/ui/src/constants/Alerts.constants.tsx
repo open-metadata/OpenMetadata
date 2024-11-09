@@ -66,6 +66,6 @@ export const DESTINATION_TYPE_BASED_PLACEHOLDERS = {
     'https://outlook.office.com/webhook/XXXXX/XXXXX/XXXXX',
   [SubscriptionType.GChat]:
     'https://chat.googleapis.com/v1/spaces/XXXXX/messages?key=XXXXX',
-  [SubscriptionType.Generic]: 'https://example.com',
-  [SubscriptionType.Email]: 'Add ↵ seprated Email addresses',
+  [SubscriptionType.Webhook]: 'https://example.com',
+  [SubscriptionType.Email]: 'Add ↵ separated Email addresses',
 };

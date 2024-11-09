@@ -11,6 +11,7 @@
 """
 Bigquery source module
 """
+import ast
 import os
 import traceback
 from typing import Dict, Iterable, List, Optional, Tuple
@@ -51,7 +52,11 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.generated.schema.security.credentials.gcpValues import (
     GcpCredentialsValues,
 )
-from metadata.generated.schema.type.basic import EntityName, SourceUrl
+from metadata.generated.schema.type.basic import (
+    EntityName,
+    FullyQualifiedEntityName,
+    SourceUrl,
+)
 from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.api.delete import delete_entity_by_name
 from metadata.ingestion.api.models import Either
@@ -72,7 +77,6 @@ from metadata.ingestion.source.database.bigquery.models import (
     BigQueryStoredProcedure,
 )
 from metadata.ingestion.source.database.bigquery.queries import (
-    BIGQUERY_GET_STORED_PROCEDURE_QUERIES,
     BIGQUERY_GET_STORED_PROCEDURES,
     BIGQUERY_LIFE_CYCLE_QUERY,
     BIGQUERY_SCHEMA_DESCRIPTION,
@@ -90,16 +94,15 @@ from metadata.ingestion.source.database.life_cycle_query_mixin import (
     LifeCycleQueryMixin,
 )
 from metadata.ingestion.source.database.multi_db_source import MultiDBSource
-from metadata.ingestion.source.database.stored_procedures_mixin import (
-    QueryByProcedure,
-    StoredProcedureMixin,
-)
 from metadata.utils import fqn
 from metadata.utils.credentials import GOOGLE_CREDENTIALS
 from metadata.utils.filters import filter_by_database, filter_by_schema
-from metadata.utils.helpers import get_start_and_end
 from metadata.utils.logger import ingestion_logger
-from metadata.utils.sqlalchemy_utils import is_complex_type
+from metadata.utils.sqlalchemy_utils import (
+    get_all_table_ddls,
+    get_table_ddl,
+    is_complex_type,
+)
 from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_label
 from metadata.utils.tag_utils import get_tag_labels as fetch_tag_labels_om
 
@@ -210,10 +213,11 @@ BigQueryDialect._build_formatted_table_id = (  # pylint: disable=protected-acces
 BigQueryDialect.get_pk_constraint = get_pk_constraint
 BigQueryDialect.get_foreign_keys = get_foreign_keys
 
+Inspector.get_all_table_ddls = get_all_table_ddls
+Inspector.get_table_ddl = get_table_ddl
 
-class BigquerySource(
-    LifeCycleQueryMixin, StoredProcedureMixin, CommonDbSourceService, MultiDBSource
-):
+
+class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
     """
     Implements the necessary methods to extract
     Database metadata from Bigquery Source
@@ -252,8 +256,8 @@ class BigquerySource(
     def create(
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
     ):
-        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: BigQueryConnection = config.serviceConnection.__root__.config
+        config: WorkflowSource = WorkflowSource.model_validate(config_dict)
+        connection: BigQueryConnection = config.serviceConnection.root.config
         if not isinstance(connection, BigQueryConnection):
             raise InvalidSourceException(
                 f"Expected BigQueryConnection, but got {connection}"
@@ -348,11 +352,7 @@ class BigquerySource(
     def yield_tag(
         self, schema_name: str
     ) -> Iterable[Either[OMetaTagAndClassification]]:
-        """
-        Build tag context
-        :param _:
-        :return:
-        """
+        """Build tag context"""
         try:
             # Fetching labels on the databaseSchema ( dataset ) level
             dataset_obj = self.client.get_dataset(schema_name)
@@ -362,7 +362,7 @@ class BigquerySource(
                         tags=[value],
                         classification_name=key,
                         tag_description="Bigquery Dataset Label",
-                        classification_description="",
+                        classification_description="BigQuery Dataset Classification",
                         include_tags=self.source_config.includeTags,
                     )
             # Fetching policy tags on the column level
@@ -382,7 +382,7 @@ class BigquerySource(
                         tags=[tag.display_name for tag in policy_tags],
                         classification_name=taxonomy.display_name,
                         tag_description="Bigquery Policy Tag",
-                        classification_description="",
+                        classification_description="BigQuery Policy Classification",
                         include_tags=self.source_config.includeTags,
                     )
         except Exception as exc:
@@ -405,7 +405,10 @@ class BigquerySource(
             )
 
             query_result = [result.schema_description for result in query_resp.result()]
-            return fqn.unquote_name(query_result[0])
+
+            return str(
+                ast.literal_eval(query_result[0])
+            )  # To safely evaluate the string, unquote and interpret escaped characters
         except IndexError:
             logger.debug(f"No dataset description found for {schema_name}")
         except Exception as err:
@@ -477,12 +480,14 @@ class BigquerySource(
         """
 
         database_schema_request_obj = CreateDatabaseSchemaRequest(
-            name=schema_name,
-            database=fqn.build(
-                metadata=self.metadata,
-                entity_type=Database,
-                service_name=self.context.get().database_service,
-                database_name=self.context.get().database,
+            name=EntityName(schema_name),
+            database=FullyQualifiedEntityName(
+                fqn.build(
+                    metadata=self.metadata,
+                    entity_type=Database,
+                    service_name=self.context.get().database_service,
+                    database_name=self.context.get().database,
+                )
             ),
             description=self.get_schema_description(schema_name),
             sourceUrl=self.get_source_url(
@@ -519,7 +524,7 @@ class BigquerySource(
                     tags=[value],
                     classification_name=key,
                     tag_description="Bigquery Table Label",
-                    classification_description="",
+                    classification_description="BigQuery Table Classification",
                     include_tags=self.source_config.includeTags,
                 )
 
@@ -601,21 +606,55 @@ class BigquerySource(
                         f"Error trying to connect to database {project_id}: {exc}"
                     )
 
-    def get_view_definition(
+    def get_schema_definition(
         self, table_type: str, table_name: str, schema_name: str, inspector: Inspector
     ) -> Optional[str]:
-        if table_type == TableType.View:
-            try:
+        """
+        Get the DDL statement or View Definition for a table
+        """
+        try:
+            if table_type == TableType.View:
                 view_definition = inspector.get_view_definition(
                     fqn._build(self.context.get().database, schema_name, table_name)
                 )
                 view_definition = (
-                    "" if view_definition is None else str(view_definition)
+                    f"CREATE VIEW {schema_name}.{table_name} AS {str(view_definition)}"
+                    if view_definition is not None
+                    else None
                 )
-            except NotImplementedError:
-                logger.warning("View definition not implemented")
-                view_definition = ""
-            return f"CREATE VIEW {schema_name}.{table_name} AS {view_definition}"
+                return view_definition
+
+            schema_definition = inspector.get_table_ddl(
+                self.connection, table_name, schema_name
+            )
+            schema_definition = (
+                str(schema_definition).strip()
+                if schema_definition is not None
+                else None
+            )
+            return schema_definition
+        except NotImplementedError:
+            logger.warning("Schema definition not implemented")
+        return None
+
+    def _get_partition_column_name(
+        self, columns: List[Dict], partition_field_name: str
+    ):
+        """
+        Method to get the correct partition column name
+        """
+        try:
+            for column in columns or []:
+                column_name = column.get("name")
+                if column_name and (
+                    column_name.lower() == partition_field_name.lower()
+                ):
+                    return column_name
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Error getting partition column name for {partition_field_name}: {exc}"
+            )
         return None
 
     def get_table_partition_details(
@@ -624,43 +663,56 @@ class BigquerySource(
         """
         check if the table is partitioned table and return the partition details
         """
-        database = self.context.get().database
-        table = self.client.get_table(fqn._build(database, schema_name, table_name))
-        if table.time_partitioning is not None:
-            if table.time_partitioning.field:
-                table_partition = TablePartition(
+        try:
+            database = self.context.get().database
+            table = self.client.get_table(fqn._build(database, schema_name, table_name))
+            columns = inspector.get_columns(table_name, schema_name, db_name=database)
+            if table.time_partitioning is not None:
+                if table.time_partitioning.field:
+                    table_partition = TablePartition(
+                        columns=[
+                            PartitionColumnDetails(
+                                columnName=self._get_partition_column_name(
+                                    columns=columns,
+                                    partition_field_name=table.time_partitioning.field,
+                                ),
+                                interval=str(table.time_partitioning.type_),
+                                intervalType=PartitionIntervalTypes.TIME_UNIT,
+                            )
+                        ]
+                    )
+                    return True, table_partition
+                return True, TablePartition(
                     columns=[
                         PartitionColumnDetails(
-                            columnName=table.time_partitioning.field,
+                            columnName="_PARTITIONTIME"
+                            if table.time_partitioning.type_ == "HOUR"
+                            else "_PARTITIONDATE",
                             interval=str(table.time_partitioning.type_),
-                            intervalType=PartitionIntervalTypes.TIME_UNIT,
+                            intervalType=PartitionIntervalTypes.INGESTION_TIME,
                         )
                     ]
                 )
-                return True, table_partition
-            return True, TablePartition(
-                columns=[
-                    PartitionColumnDetails(
-                        columnName="_PARTITIONTIME"
-                        if table.time_partitioning.type_ == "HOUR"
-                        else "_PARTITIONDATE",
-                        interval=str(table.time_partitioning.type_),
-                        intervalType=PartitionIntervalTypes.INGESTION_TIME,
-                    )
-                ]
+            if table.range_partitioning:
+                table_partition = PartitionColumnDetails(
+                    columnName=self._get_partition_column_name(
+                        columns=columns,
+                        partition_field_name=table.range_partitioning.field,
+                    ),
+                    intervalType=PartitionIntervalTypes.INTEGER_RANGE,
+                    interval=None,
+                )
+                if hasattr(table.range_partitioning, "range_") and hasattr(
+                    table.range_partitioning.range_, "interval"
+                ):
+                    table_partition.interval = table.range_partitioning.range_.interval
+                table_partition.columnName = table.range_partitioning.field
+                return True, TablePartition(columns=[table_partition])
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Error getting table partition details for {table_name}: {exc}"
             )
-        if table.range_partitioning:
-            table_partition = PartitionColumnDetails(
-                columnName=table.range_partitioning.field,
-                intervalType=PartitionIntervalTypes.INTEGER_RANGE,
-                interval=None,
-            )
-            if hasattr(table.range_partitioning, "range_") and hasattr(
-                table.range_partitioning.range_, "interval"
-            ):
-                table_partition.interval = table.range_partitioning.range_.interval
-            table_partition.columnName = table.range_partitioning.field
-            return True, TablePartition(columns=[table_partition])
         return False, None
 
     def clean_raw_data_type(self, raw_data_type):
@@ -746,7 +798,7 @@ class BigquerySource(
                 )
             ).all()
             for row in results:
-                stored_procedure = BigQueryStoredProcedure.parse_obj(dict(row))
+                stored_procedure = BigQueryStoredProcedure.model_validate(dict(row))
                 yield stored_procedure
 
     def yield_stored_procedure(
@@ -756,7 +808,7 @@ class BigquerySource(
 
         try:
             stored_procedure_request = CreateStoredProcedureRequest(
-                name=EntityName(__root__=stored_procedure.name),
+                name=EntityName(stored_procedure.name),
                 storedProcedureCode=StoredProcedureCode(
                     language=STORED_PROC_LANGUAGE_MAP.get(
                         stored_procedure.language or "SQL",
@@ -771,7 +823,7 @@ class BigquerySource(
                     schema_name=self.context.get().database_schema,
                 ),
                 sourceUrl=SourceUrl(
-                    __root__=self.get_stored_procedure_url(
+                    self.get_stored_procedure_url(
                         database_name=self.context.get().database,
                         schema_name=self.context.get().database_schema,
                         # Follow the same building strategy as tables
@@ -789,22 +841,6 @@ class BigquerySource(
                     stackTrace=traceback.format_exc(),
                 )
             )
-
-    def get_stored_procedure_queries_dict(self) -> Dict[str, List[QueryByProcedure]]:
-        """
-        Pick the stored procedure name from the context
-        and return the list of associated queries
-        """
-        start, _ = get_start_and_end(self.source_config.queryLogDuration)
-        query = BIGQUERY_GET_STORED_PROCEDURE_QUERIES.format(
-            start_date=start,
-            region=self.service_connection.usageLocation,
-        )
-        queries_dict = self.procedure_queries_dict(
-            query=query,
-        )
-
-        return queries_dict
 
     def mark_tables_as_deleted(self):
         """

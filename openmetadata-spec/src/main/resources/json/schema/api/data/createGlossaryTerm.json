@@ -53,15 +53,13 @@
       }
     },
     "reviewers": {
-      "description": "User names of the reviewers for this glossary.",
-      "type" : "array",
-      "items" : {
-        "$ref" : "../../type/basic.json#/definitions/entityName"
-      }
+      "description": "User or Team references of the reviewers for this glossary.",
+      "$ref": "../../type/entityReferenceList.json"
     },
-    "owner": {
-      "description": "Owner of this glossary term.",
-      "$ref": "../../type/entityReference.json"
+    "owners": {
+      "description": "Owners of this glossary term.",
+      "$ref": "../../type/entityReferenceList.json",
+      "default": null
     },
     "tags": {
       "description": "Tags for this glossary term.",

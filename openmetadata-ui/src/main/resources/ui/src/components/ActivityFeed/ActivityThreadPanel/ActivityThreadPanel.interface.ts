@@ -44,7 +44,6 @@ export interface ActivityThreadPanelBodyProp
       | 'createThread'
       | 'deletePostHandler'
     > {
-  editAnnouncementPermission?: boolean;
   threadType: ThreadType;
   showHeader?: boolean;
 }

@@ -23,6 +23,7 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
+import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 import javax.json.JsonPatch;
@@ -58,9 +59,11 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.GlossaryRepository;
 import org.openmetadata.service.jdbi3.GlossaryRepository.GlossaryCsv;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.util.CSVExportResponse;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 
@@ -75,16 +78,16 @@ import org.openmetadata.service.util.ResultList;
     order = 6) // Initialize before GlossaryTerm and after Classification and Tags
 public class GlossaryResource extends EntityResource<Glossary, GlossaryRepository> {
   public static final String COLLECTION_PATH = "v1/glossaries/";
-  static final String FIELDS = "owner,tags,reviewers,usageCount,termCount,domain,extension";
+  static final String FIELDS = "owners,tags,reviewers,usageCount,termCount,domain,extension";
 
-  public GlossaryResource(Authorizer authorizer) {
-    super(Entity.GLOSSARY, authorizer);
+  public GlossaryResource(Authorizer authorizer, Limits limits) {
+    super(Entity.GLOSSARY, authorizer, limits);
   }
 
   @Override
   protected List<MetadataOperation> getEntitySpecificOperations() {
     addViewOperation("reviewers,usageCount,termCount", MetadataOperation.VIEW_BASIC);
-    return null;
+    return Collections.emptyList();
   }
 
   public static class GlossaryList extends ResultList<Glossary> {
@@ -326,6 +329,35 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
+  @PATCH
+  @Path("/name/{fqn}")
+  @Operation(
+      operationId = "patchGlossary",
+      summary = "Update a glossary using name.",
+      description = "Update an existing glossary using JsonPatch.",
+      externalDocs =
+          @ExternalDocumentation(
+              description = "JsonPatch RFC",
+              url = "https://tools.ietf.org/html/rfc6902"))
+  @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
+  public Response patch(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the glossary", schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn,
+      @RequestBody(
+              description = "JsonPatch with array of operations",
+              content =
+                  @Content(
+                      mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
+                      examples = {
+                        @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
+                      }))
+          JsonPatch patch) {
+    return patchInternal(uriInfo, securityContext, fqn, patch);
+  }
+
   @PUT
   @Operation(
       operationId = "createOrUpdateGlossary",
@@ -460,12 +492,32 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
   @Path("/documentation/csv")
   @Valid
   @Operation(operationId = "getCsvDocumentation", summary = "Get CSV documentation")
-  public String getCsvDocumentation(
+  public String getCsvDocumentation(@Context SecurityContext securityContext) {
+    return JsonUtils.pojoToJson(GlossaryCsv.DOCUMENTATION);
+  }
+
+  @GET
+  @Path("/name/{name}/exportAsync")
+  @Produces(MediaType.TEXT_PLAIN)
+  @Valid
+  @Operation(
+      operationId = "exportGlossary",
+      summary = "Export glossary in CSV format",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Exported csv with glossary terms",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = CSVExportResponse.class)))
+      })
+  public Response exportCsvAsync(
       @Context SecurityContext securityContext,
       @Parameter(description = "Name of the glossary", schema = @Schema(type = "string"))
           @PathParam("name")
           String name) {
-    return JsonUtils.pojoToJson(GlossaryCsv.DOCUMENTATION);
+    return exportCsvInternalAsync(securityContext, name);
   }
 
   @GET
@@ -534,7 +586,6 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
       GlossaryRepository repository, CreateGlossary create, String updatedBy) {
     return repository
         .copy(new Glossary(), create, updatedBy)
-        .withReviewers(getEntityReferences(Entity.USER, create.getReviewers()))
         .withProvider(create.getProvider())
         .withMutuallyExclusive(create.getMutuallyExclusive());
   }

@@ -9,7 +9,6 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-import types
 import unittest
 from typing import Optional
 from unittest import TestCase
@@ -18,6 +17,7 @@ from unittest.mock import Mock, patch
 from google.cloud.bigquery import PartitionRange, RangePartitioning, TimePartitioning
 from google.cloud.bigquery.table import Table
 from pydantic import BaseModel
+from sqlalchemy import Integer, String
 
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import (
@@ -75,8 +75,8 @@ MOCK_DATABASE = Database(
 
 
 class MockTable(BaseModel):
-    time_partitioning: Optional[TimePartitioning]
-    range_partitioning: Optional[RangePartitioning]
+    time_partitioning: Optional[TimePartitioning] = None
+    range_partitioning: Optional[RangePartitioning] = None
 
     class Config:
         arbitrary_types_allowed = True
@@ -91,6 +91,61 @@ MOCK_INGESTION_TIME_PARTITIONING = TimePartitioning(expiration_ms=None, type_="H
 MOCK_RANGE_PARTITIONING = RangePartitioning(
     field="test_column", range_=PartitionRange(end=100, interval=10, start=0)
 )
+
+MOCK_COLUMN_DATA = [
+    {
+        "name": "customer_id",
+        "type": Integer(),
+        "nullable": True,
+        "comment": None,
+        "default": None,
+        "precision": None,
+        "scale": None,
+        "max_length": None,
+        "system_data_type": "INTEGER",
+        "is_complex": False,
+        "policy_tags": None,
+    },
+    {
+        "name": "first_name",
+        "type": String(),
+        "nullable": True,
+        "comment": None,
+        "default": None,
+        "precision": None,
+        "scale": None,
+        "max_length": None,
+        "system_data_type": "VARCHAR",
+        "is_complex": False,
+        "policy_tags": None,
+    },
+    {
+        "name": "last_name",
+        "type": String(),
+        "nullable": True,
+        "comment": None,
+        "default": None,
+        "precision": None,
+        "scale": None,
+        "max_length": None,
+        "system_data_type": "VARCHAR",
+        "is_complex": False,
+        "policy_tags": None,
+    },
+    {
+        "name": "test_column",
+        "type": String(),
+        "nullable": True,
+        "comment": None,
+        "default": None,
+        "precision": None,
+        "scale": None,
+        "max_length": None,
+        "system_data_type": "VARCHAR",
+        "is_complex": False,
+        "policy_tags": None,
+    },
+]
 
 
 class BigqueryUnitTest(TestCase):
@@ -118,16 +173,18 @@ class BigqueryUnitTest(TestCase):
         create_generic_connection.return_value = Mock()
         set_project_id.return_value = Mock()
         test_connection.return_value = False
-        self.config = OpenMetadataWorkflowConfig.parse_obj(mock_bigquery_config)
+        self.config = OpenMetadataWorkflowConfig.model_validate(mock_bigquery_config)
         self.bigquery_source = BigquerySource.create(
             mock_bigquery_config["source"],
             self.config.workflowConfig.openMetadataServerConfig,
         )
         self.bigquery_source.context.get().__dict__[
             "database"
-        ] = MOCK_DATABASE.fullyQualifiedName.__root__
+        ] = MOCK_DATABASE.fullyQualifiedName.root
         self.bigquery_source.client = client
-        self.inspector = types.SimpleNamespace()
+        self.bigquery_source.inspector.get_columns = (
+            lambda table_name, schema, db_name: MOCK_COLUMN_DATA
+        )
 
         unittest.mock.patch.object(Table, "object")
 
@@ -138,7 +195,7 @@ class BigqueryUnitTest(TestCase):
         bool_resp, partition = self.bigquery_source.get_table_partition_details(
             schema_name=TEST_PARTITION.get("schema_name"),
             table_name=TEST_PARTITION.get("table_name"),
-            inspector=self.inspector,
+            inspector=self.bigquery_source.inspector,
         )
 
         assert partition.columns == [
@@ -162,7 +219,7 @@ class BigqueryUnitTest(TestCase):
         bool_resp, partition = self.bigquery_source.get_table_partition_details(
             schema_name=TEST_PARTITION.get("schema_name"),
             table_name=TEST_PARTITION.get("table_name"),
-            inspector=self.inspector,
+            inspector=self.bigquery_source.inspector,
         )
 
         self.assertIsInstance(partition.columns, list)
@@ -177,11 +234,10 @@ class BigqueryUnitTest(TestCase):
         self.bigquery_source.client.get_table = lambda fqn: MockTable(
             time_partitioning=None, range_partitioning=MOCK_RANGE_PARTITIONING
         )
-
         bool_resp, partition = self.bigquery_source.get_table_partition_details(
             schema_name=TEST_PARTITION.get("schema_name"),
             table_name=TEST_PARTITION.get("table_name"),
-            inspector=self.inspector,
+            inspector=self.bigquery_source.inspector,
         )
 
         self.assertIsInstance(partition.columns, list)
@@ -200,7 +256,7 @@ class BigqueryUnitTest(TestCase):
         bool_resp, partition = self.bigquery_source.get_table_partition_details(
             schema_name=TEST_PARTITION.get("schema_name"),
             table_name=TEST_PARTITION.get("table_name"),
-            inspector=self.inspector,
+            inspector=self.bigquery_source.inspector,
         )
 
         assert not bool_resp

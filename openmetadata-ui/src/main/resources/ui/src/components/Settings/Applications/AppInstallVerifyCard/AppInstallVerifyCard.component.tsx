@@ -44,7 +44,7 @@ const AppInstallVerifyCard = ({
   onSave,
 }: AppInstallVerifyCardProps) => {
   const { t } = useTranslation();
-  const { currentUser } = useApplicationStore();
+  const { currentUser, theme } = useApplicationStore();
 
   return (
     <div className="flex-center flex-col">
@@ -87,7 +87,7 @@ const AppInstallVerifyCard = ({
                   <a
                     href={appData?.developerUrl}
                     rel="noreferrer"
-                    style={{ color: '#1890ff' }}
+                    style={{ color: theme.primaryColor }}
                     target="_blank"
                   />
                 }

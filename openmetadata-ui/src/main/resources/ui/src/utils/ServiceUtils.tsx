@@ -77,6 +77,8 @@ export const getIngestionName = (
       IngestionPipelineType.Metadata,
       IngestionPipelineType.Lineage,
       IngestionPipelineType.Dbt,
+      IngestionPipelineType.Application,
+      IngestionPipelineType.TestSuite,
     ].includes(type)
   ) {
     return `${replaceAllSpacialCharWith_(
@@ -310,6 +312,12 @@ export const getDeleteEntityMessage = (
         pluralize(instanceCount, t('label.container'))
       );
 
+    case ServiceCategory.API_SERVICES:
+      return getEntityDeleteMessage(
+        service || t('label.service'),
+        pluralize(instanceCount, t('label.collection'))
+      );
+
     default:
       return;
   }
@@ -336,6 +344,10 @@ export const getServiceRouteFromServiceType = (type: ServiceTypes) => {
   }
   if (type === 'searchServices') {
     return GlobalSettingOptions.SEARCH;
+  }
+
+  if (type === ServiceCategory.API_SERVICES) {
+    return GlobalSettingOptions.APIS;
   }
 
   return GlobalSettingOptions.DATABASES;
@@ -372,6 +384,9 @@ export const getResourceEntityFromServiceCategory = (
     case 'storageServices':
     case ServiceCategory.STORAGE_SERVICES:
       return ResourceEntity.STORAGE_SERVICE;
+
+    case ServiceCategory.API_SERVICES:
+      return ResourceEntity.API_SERVICE;
   }
 
   return ResourceEntity.DATABASE_SERVICE;
@@ -391,6 +406,8 @@ export const getCountLabel = (serviceName: ServiceTypes) => {
       return t('label.container-plural');
     case ServiceCategory.SEARCH_SERVICES:
       return t('label.search-index-plural');
+    case ServiceCategory.API_SERVICES:
+      return t('label.collection-plural');
     case ServiceCategory.DATABASE_SERVICES:
     default:
       return t('label.database-plural');
@@ -422,6 +439,8 @@ export const getServiceCategoryFromEntityType = (
       return ServiceCategory.METADATA_SERVICES;
     case EntityType.SEARCH_SERVICE:
       return ServiceCategory.SEARCH_SERVICES;
+    case EntityType.API_SERVICE:
+      return ServiceCategory.API_SERVICES;
     case EntityType.DATABASE_SERVICE:
     default:
       return ServiceCategory.DATABASE_SERVICES;
@@ -446,6 +465,8 @@ export const getEntityTypeFromServiceCategory = (
       return EntityType.STORAGE_SERVICE;
     case ServiceCategory.SEARCH_SERVICES:
       return EntityType.SEARCH_SERVICE;
+    case ServiceCategory.API_SERVICES:
+      return EntityType.API_SERVICE;
     case ServiceCategory.DATABASE_SERVICES:
     default:
       return EntityType.DATABASE_SERVICE;
@@ -472,8 +493,39 @@ export const getLinkForFqn = (serviceCategory: ServiceTypes, fqn: string) => {
     case ServiceCategory.SEARCH_SERVICES:
       return entityUtilClassBase.getEntityLink(EntityType.SEARCH_INDEX, fqn);
 
+    case ServiceCategory.API_SERVICES:
+      return entityUtilClassBase.getEntityLink(EntityType.API_COLLECTION, fqn);
+
     case ServiceCategory.DATABASE_SERVICES:
     default:
       return entityUtilClassBase.getEntityLink(EntityType.DATABASE, fqn);
   }
 };
+
+export const getServiceDisplayNameQueryFilter = (displayName: string) => ({
+  query: {
+    bool: {
+      must: [
+        {
+          bool: {
+            should: [
+              {
+                term: {
+                  'service.displayName.keyword': displayName,
+                },
+              },
+            ],
+          },
+        },
+      ],
+    },
+  },
+});
+
+export const getServiceNameQueryFilter = (serviceName: string) => ({
+  query: {
+    match: {
+      'service.name.keyword': serviceName,
+    },
+  },
+});

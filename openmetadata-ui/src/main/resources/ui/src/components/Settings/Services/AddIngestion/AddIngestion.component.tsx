@@ -16,6 +16,8 @@ import { isEmpty, isUndefined, omit, trim } from 'lodash';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { STEPS_FOR_ADD_INGESTION } from '../../../../constants/Ingestions.constant';
+import { DEFAULT_SCHEDULE_CRON_DAILY } from '../../../../constants/Schedular.constants';
+import { useLimitStore } from '../../../../context/LimitsProvider/useLimitsStore';
 import { LOADING_STATE } from '../../../../enums/common.enum';
 import { FormSubmitType } from '../../../../enums/form.enum';
 import {
@@ -25,19 +27,23 @@ import {
 } from '../../../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { IngestionPipeline } from '../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
+import { useFqn } from '../../../../hooks/useFqn';
 import { IngestionWorkflowData } from '../../../../interface/service.interface';
-import { getIngestionFrequency } from '../../../../utils/CommonUtils';
+import { getSuccessMessage } from '../../../../utils/IngestionUtils';
 import { cleanWorkFlowData } from '../../../../utils/IngestionWorkflowUtils';
+import { getScheduleOptionsFromSchedules } from '../../../../utils/SchedularUtils';
 import { getIngestionName } from '../../../../utils/ServiceUtils';
+import { generateUUID } from '../../../../utils/StringsUtils';
 import SuccessScreen from '../../../common/SuccessScreen/SuccessScreen';
 import DeployIngestionLoaderModal from '../../../Modals/DeployIngestionLoaderModal/DeployIngestionLoaderModal';
 import IngestionStepper from '../Ingestion/IngestionStepper/IngestionStepper.component';
 import IngestionWorkflowForm from '../Ingestion/IngestionWorkflowForm/IngestionWorkflowForm';
-import {
-  AddIngestionProps,
-  WorkflowExtraConfig,
-} from './IngestionWorkflow.interface';
+import { AddIngestionProps } from './IngestionWorkflow.interface';
 import ScheduleInterval from './Steps/ScheduleInterval';
+import {
+  IngestionExtraConfig,
+  WorkflowExtraConfig,
+} from './Steps/ScheduleInterval.interface';
 
 const AddIngestion = ({
   activeIngestionStep,
@@ -63,30 +69,40 @@ const AddIngestion = ({
   onFocus,
 }: AddIngestionProps) => {
   const { t } = useTranslation();
+  const { ingestionFQN } = useFqn();
   const { currentUser } = useApplicationStore();
+  const { config: limitConfig } = useLimitStore();
+
+  const isEditMode = !isEmpty(ingestionFQN);
+
+  const { pipelineSchedules } =
+    limitConfig?.limits?.config.featureLimits.find(
+      (limit) => limit.name === 'ingestionPipeline'
+    ) ?? {};
+
+  const periodOptions = pipelineSchedules
+    ? getScheduleOptionsFromSchedules(pipelineSchedules)
+    : undefined;
 
   // lazy initialization to initialize the data only once
   const [workflowData, setWorkflowData] = useState<IngestionWorkflowData>(
     () => ({
       ...(data?.sourceConfig.config ?? {}),
-      name: data?.name ?? getIngestionName(serviceData.name, pipelineType),
+      name: data?.name ?? generateUUID(),
+      displayName:
+        data?.displayName ?? getIngestionName(serviceData.name, pipelineType),
       enableDebugLog: data?.loggerLevel === LogLevels.Debug,
     })
-  );
-
-  const [scheduleInterval, setScheduleInterval] = useState(
-    () =>
-      data?.airflowConfig.scheduleInterval ??
-      getIngestionFrequency(pipelineType)
   );
 
   const { ingestionName, retries } = useMemo(
     () => ({
       ingestionName:
-        data?.name ?? getIngestionName(serviceData.name, pipelineType),
+        workflowData?.displayName ??
+        getIngestionName(serviceData.name, pipelineType),
       retries: data?.airflowConfig.retries ?? 0,
     }),
-    [data, pipelineType, serviceData]
+    [data, pipelineType, serviceData, workflowData]
   );
 
   const isSettingsPipeline = useMemo(
@@ -128,7 +144,9 @@ const AddIngestion = ({
     handleNext(2);
   };
 
-  const createNewIngestion = (extraData: WorkflowExtraConfig) => {
+  const createNewIngestion = (
+    extraData: WorkflowExtraConfig & IngestionExtraConfig
+  ) => {
     const {
       name = '',
       enableDebugLog,
@@ -145,19 +163,19 @@ const AddIngestion = ({
 
     const ingestionDetails: CreateIngestionPipeline = {
       airflowConfig: {
-        scheduleInterval: isEmpty(scheduleInterval)
-          ? undefined
-          : scheduleInterval,
+        scheduleInterval: extraData.cron,
         startDate: date,
         retries: extraData.retries,
       },
       loggerLevel: enableDebugLog ? LogLevels.Debug : LogLevels.Info,
       name: ingestionName,
       displayName: displayName,
-      owner: {
-        id: currentUser?.id ?? '',
-        type: 'user',
-      },
+      owners: [
+        {
+          id: currentUser?.id ?? '',
+          type: 'user',
+        },
+      ],
       pipelineType: pipelineType,
       service: {
         id: serviceData.id as string,
@@ -189,15 +207,15 @@ const AddIngestion = ({
     }
   };
 
-  const updateIngestion = (extraData: WorkflowExtraConfig) => {
+  const updateIngestion = (
+    extraData: WorkflowExtraConfig & IngestionExtraConfig
+  ) => {
     if (data) {
       const updatedData: IngestionPipeline = {
         ...data,
         airflowConfig: {
           ...data.airflowConfig,
-          scheduleInterval: isEmpty(scheduleInterval)
-            ? undefined
-            : scheduleInterval,
+          scheduleInterval: extraData.cron,
           retries: extraData.retries,
         },
         displayName: workflowData?.displayName,
@@ -243,39 +261,13 @@ const AddIngestion = ({
   };
 
   const handleScheduleIntervalDeployClick = (
-    extraData: WorkflowExtraConfig
+    extraData: WorkflowExtraConfig & IngestionExtraConfig
   ) => {
     if (status === FormSubmitType.ADD) {
       createNewIngestion(extraData);
     } else {
       updateIngestion(extraData);
     }
-  };
-
-  const getSuccessMessage = () => {
-    const updateMessage = showDeployButton
-      ? t('message.action-has-been-done-but-failed-to-deploy', {
-          action: t('label.updated-lowercase'),
-        })
-      : t('message.action-has-been-done-but-deploy-successfully', {
-          action: t('label.updated-lowercase'),
-        });
-    const createMessage = showDeployButton
-      ? t('message.action-has-been-done-but-failed-to-deploy', {
-          action: t('label.created-lowercase'),
-        })
-      : t('message.action-has-been-done-but-deploy-successfully', {
-          action: t('label.created-lowercase'),
-        });
-
-    return (
-      <span>
-        <span className="font-medium">{`"${ingestionName}"`}</span>
-        <span>
-          {status === FormSubmitType.ADD ? createMessage : updateMessage}
-        </span>
-      </span>
-    );
   };
 
   return (
@@ -306,21 +298,21 @@ const AddIngestion = ({
         )}
 
         {activeIngestionStep === 2 && (
-          <ScheduleInterval
-            disabledCronChange={pipelineType === PipelineType.DataInsight}
-            includePeriodOptions={
-              pipelineType === PipelineType.DataInsight ? ['day'] : undefined
-            }
-            scheduleInterval={scheduleInterval}
+          <ScheduleInterval<IngestionExtraConfig>
+            buttonProps={{
+              okText: isUndefined(data)
+                ? t('label.add-deploy')
+                : t('label.submit'),
+            }}
+            defaultSchedule={DEFAULT_SCHEDULE_CRON_DAILY}
+            disabled={pipelineType === PipelineType.DataInsight}
+            includePeriodOptions={periodOptions}
+            initialData={{ cron: data?.airflowConfig.scheduleInterval }}
+            isEditMode={isEditMode}
             status={saveState}
-            submitButtonLabel={
-              isUndefined(data) ? t('label.add-deploy') : t('label.submit')
-            }
             onBack={() => handlePrev(1)}
-            onChange={(data) => setScheduleInterval(data)}
             onDeploy={handleScheduleIntervalDeployClick}>
             <Form.Item
-              className="m-t-xs"
               colon={false}
               initialValue={retries}
               label={t('label.number-of-retries')}
@@ -342,7 +334,11 @@ const AddIngestion = ({
             showDeployButton={showDeployButton}
             showIngestionButton={false}
             state={status}
-            successMessage={getSuccessMessage()}
+            successMessage={getSuccessMessage(
+              ingestionName,
+              status,
+              showDeployButton
+            )}
             viewServiceText={viewServiceText}
           />
         )}

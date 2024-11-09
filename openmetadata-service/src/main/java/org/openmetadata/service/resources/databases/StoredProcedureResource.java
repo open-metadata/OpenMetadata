@@ -19,7 +19,6 @@ import javax.ws.rs.core.*;
 import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.api.data.CreateStoredProcedure;
 import org.openmetadata.schema.api.data.RestoreEntity;
-import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.StoredProcedure;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
@@ -27,6 +26,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.StoredProcedureRepository;
+import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
@@ -43,7 +43,7 @@ import org.openmetadata.service.util.ResultList;
 public class StoredProcedureResource
     extends EntityResource<StoredProcedure, StoredProcedureRepository> {
   public static final String COLLECTION_PATH = "v1/storedProcedures/";
-  static final String FIELDS = "owner,tags,followers,extension,domain,sourceHash";
+  static final String FIELDS = "owners,tags,followers,extension,domain,sourceHash";
 
   @Override
   public StoredProcedure addHref(UriInfo uriInfo, StoredProcedure storedProcedure) {
@@ -54,8 +54,8 @@ public class StoredProcedureResource
     return storedProcedure;
   }
 
-  public StoredProcedureResource(Authorizer authorizer) {
-    super(Entity.STORED_PROCEDURE, authorizer);
+  public StoredProcedureResource(Authorizer authorizer, Limits limits) {
+    super(Entity.STORED_PROCEDURE, authorizer, limits);
   }
 
   public static class StoredProcedureList extends ResultList<StoredProcedure> {
@@ -304,6 +304,35 @@ public class StoredProcedureResource
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
+  @PATCH
+  @Path("/name/{fqn}")
+  @Operation(
+      operationId = "patchStoredProcedure",
+      summary = "Update a Stored Procedure by name.",
+      description = "Update an existing StoredProcedure using JsonPatch.",
+      externalDocs =
+          @ExternalDocumentation(
+              description = "JsonPatch RFC",
+              url = "https://tools.ietf.org/html/rfc6902"))
+  @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
+  public Response patch(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Stored Procedure name", schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn,
+      @RequestBody(
+              description = "JsonPatch with array of operations",
+              content =
+                  @Content(
+                      mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
+                      examples = {
+                        @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
+                      }))
+          JsonPatch patch) {
+    return patchInternal(uriInfo, securityContext, fqn, patch);
+  }
+
   @PUT
   @Operation(
       operationId = "createOrUpdateStoredProcedure",
@@ -481,18 +510,18 @@ public class StoredProcedureResource
   @Path("/restore")
   @Operation(
       operationId = "restore",
-      summary = "Restore a soft deleted database schema.",
-      description = "Restore a soft deleted database schema.",
+      summary = "Restore a soft deleted stored procedure.",
+      description = "Restore a soft deleted stored procedure.",
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "Successfully restored the DatabaseSchema ",
+            description = "Successfully restored the StoredProcedure ",
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = DatabaseSchema.class)))
+                    schema = @Schema(implementation = StoredProcedure.class)))
       })
-  public Response restoreDatabaseSchema(
+  public Response restoreStoredProcedure(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {

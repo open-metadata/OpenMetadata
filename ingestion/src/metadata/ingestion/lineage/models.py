@@ -12,7 +12,9 @@
 Models related to lineage parsing
 """
 from enum import Enum
-from typing import Dict
+from typing import Dict, List, Optional
+
+from pydantic import BaseModel, ConfigDict, Field
 
 from metadata.generated.schema.entity.services.connections.database.athenaConnection import (
     AthenaType,
@@ -62,6 +64,13 @@ from metadata.generated.schema.entity.services.connections.database.snowflakeCon
 from metadata.generated.schema.entity.services.connections.database.sqliteConnection import (
     SQLiteType,
 )
+from metadata.generated.schema.entity.services.connections.database.teradataConnection import (
+    TeradataType,
+)
+from metadata.generated.schema.entity.services.connections.database.unityCatalogConnection import (
+    DatabricksType as UnityCatalogType,
+)
+from metadata.utils.singleton import Singleton
 
 
 class Dialect(Enum):
@@ -97,6 +106,7 @@ MAP_CONNECTION_TYPE_DIALECT: Dict[str, Dialect] = {
     str(BigqueryType.BigQuery.value): Dialect.BIGQUERY,
     str(ClickhouseType.Clickhouse.value): Dialect.CLICKHOUSE,
     str(DatabricksType.Databricks.value): Dialect.DATABRICKS,
+    str(UnityCatalogType.UnityCatalog.value): Dialect.DATABRICKS,
     str(Db2Type.Db2.value): Dialect.DB2,
     str(HiveType.Hive.value): Dialect.HIVE,
     str(ImpalaType.Impala.value): Dialect.IMPALA,
@@ -109,6 +119,7 @@ MAP_CONNECTION_TYPE_DIALECT: Dict[str, Dialect] = {
     str(SQLiteType.SQLite.value): Dialect.SQLITE,
     str(MssqlType.Mssql.value): Dialect.TSQL,
     str(AzureSQLType.AzureSQL.value): Dialect.TSQL,
+    str(TeradataType.Teradata.value): Dialect.TERADATA,
 }
 
 
@@ -126,3 +137,34 @@ class ConnectionTypeDialectMapper:
         Returns: a dialect
         """
         return MAP_CONNECTION_TYPE_DIALECT.get(connection_type, Dialect.ANSI)
+
+
+class QueryParsingError(BaseModel):
+    """
+    Represents an error that occurs during query parsing.
+
+    Attributes:
+        query (str): The query text of the failed query.
+        error (str): The error message of the failed query.
+    """
+
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+
+    query: str = Field(..., description="query text of the failed query")
+    error: Optional[str] = Field(None, description="error message of the failed query")
+
+
+class QueryParsingFailures(metaclass=Singleton):
+    """Tracks the Queries that failed to parse."""
+
+    def __init__(self):
+        """Initializes the list of parsing failures."""
+        self._query_list: List[QueryParsingError] = []
+
+    def add(self, parsing_error: QueryParsingError):
+        self._query_list.append(parsing_error)
+
+    def __iter__(self):
+        return iter(self._query_list)

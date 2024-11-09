@@ -47,7 +47,6 @@ ENTITY_TYPE
     | 'searchService'
     | 'webhook'
     | 'mlmodel'
-    | 'type'
     | 'team'
     | 'user'
     | 'bot'
@@ -78,6 +77,10 @@ ENTITY_TYPE
     | 'all'
     | 'customMetric'
     | 'eventsubscription'
+    | 'ingestionPipeline'
+    | 'apiCollection'
+    | 'apiEndpoint'
+    | 'apiService'
     ;
 
 ENTITY_FIELD
@@ -124,13 +127,10 @@ ENTITY_FIELD
     | 'parameterValues'
     | 'retentionPeriod'
     | 'parent'
-    | 'teams'
-    | 'personas'
-    | 'ingestionPipeline'
     ;
 
     
 
 NAME_OR_FQN
-    : ~(':')+ ('>')*? ~(':'|'>')+
+    : ~(':')* ~(':'|'>')+
     ;

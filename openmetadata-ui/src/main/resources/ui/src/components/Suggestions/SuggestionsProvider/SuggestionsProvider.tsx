@@ -119,7 +119,7 @@ const SuggestionsProvider = ({ children }: { children?: ReactNode }) => {
   );
 
   const onUpdateActiveUser = useCallback(
-    (user: EntityReference) => {
+    (user?: EntityReference) => {
       setActiveUser(user);
     },
     [suggestionsByUser]

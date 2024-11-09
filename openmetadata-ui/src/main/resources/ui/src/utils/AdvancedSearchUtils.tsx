@@ -30,7 +30,9 @@ import {
   GLOSSARY_ASSETS_DROPDOWN_ITEMS,
   LINEAGE_DROPDOWN_ITEMS,
 } from '../constants/AdvancedSearch.constants';
+import { NOT_INCLUDE_AGGREGATION_QUICK_FILTER } from '../constants/explore.constants';
 import { AdvancedFields } from '../enums/AdvancedSearch.enum';
+import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import {
   Bucket,
@@ -113,6 +115,7 @@ export const renderAdvanceSearchButtons: RenderSettings['renderButton'] = (
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           CloseCircleOutlined as React.ForwardRefExoticComponent<any>
         }
+        data-testid="advanced-search-delete-rule"
         onClick={props?.onClick}
       />
     );
@@ -121,6 +124,7 @@ export const renderAdvanceSearchButtons: RenderSettings['renderButton'] = (
       <Button
         ghost
         className="action action--ADD-RULE"
+        data-testid="advanced-search-add-rule"
         icon={<PlusOutlined />}
         type="primary"
         onClick={props?.onClick}>
@@ -131,6 +135,7 @@ export const renderAdvanceSearchButtons: RenderSettings['renderButton'] = (
     return (
       <Button
         className="action action--ADD-GROUP"
+        data-testid="advanced-search-add-group"
         icon={<PlusOutlined />}
         type="primary"
         onClick={props?.onClick}>
@@ -145,6 +150,7 @@ export const renderAdvanceSearchButtons: RenderSettings['renderButton'] = (
         })}
         className="action action--DELETE cursor-pointer align-middle"
         component={IconDeleteColored}
+        data-testid="advanced-search-delete-group"
         style={{ fontSize: '16px' }}
         onClick={props?.onClick as () => void}
       />
@@ -184,7 +190,6 @@ export const generateSearchDropdownLabel = (
           <ProfilePicture
             displayName={option.label}
             name={option.label || ''}
-            textClass="text-xs"
             width="18"
           />
         )}
@@ -396,17 +401,23 @@ export const getOptionsFromAggregationBucket = (buckets: Bucket[]) => {
     return [];
   }
 
-  return buckets.map((option) => ({
-    key: option.key,
-    label: option.key,
-    count: option.doc_count ?? 0,
-  }));
+  return buckets
+    .filter(
+      (item) =>
+        !NOT_INCLUDE_AGGREGATION_QUICK_FILTER.includes(item.key as EntityType)
+    )
+    .map((option) => ({
+      key: option.key,
+      label: option.key,
+      count: option.doc_count ?? 0,
+    }));
 };
 
 export const getTierOptions: () => Promise<AsyncFetchListValues> = async () => {
   try {
     const { data: tiers } = await getTags({
       parent: 'Tier',
+      limit: 50,
     });
 
     const tierFields = tiers.map((tier) => ({

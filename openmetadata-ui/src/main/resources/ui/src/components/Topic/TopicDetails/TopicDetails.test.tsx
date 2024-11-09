@@ -67,9 +67,12 @@ const mockParams = {
   tab: EntityTabs.SCHEMA,
 };
 
+jest.mock('../../../hooks/useCustomLocation/useCustomLocation', () => {
+  return jest.fn().mockImplementation(() => ({ pathname: 'topic' }));
+});
+
 jest.mock('react-router-dom', () => ({
   useHistory: jest.fn(),
-  useLocation: jest.fn().mockReturnValue({ pathname: 'topic' }),
   useParams: jest.fn().mockImplementation(() => mockParams),
 }));
 

@@ -10,9 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { AxiosError } from 'axios';
 import { isUndefined } from 'lodash';
 import { useCallback, useEffect, useState } from 'react';
 import IconTeams from '../../assets/svg/teams-grey.svg';
+import { ClientErrors } from '../../enums/Axios.enum';
+import { TabSpecificField } from '../../enums/entity.enum';
 import { User } from '../../generated/entity/teams/user';
 import { getUserByName } from '../../rest/userAPI';
 import {
@@ -44,13 +47,14 @@ export const useUserProfile = ({
   );
 
   useEffect(() => {
-    if (user && !profilePic) {
-      setProfilePic(
-        getImageWithResolutionAndFallback(
-          ImageQuality['6x'],
-          user?.profile?.images
-        ) ?? ''
-      );
+    const profileImagePic =
+      getImageWithResolutionAndFallback(
+        ImageQuality['6x'],
+        user?.profile?.images
+      ) ?? '';
+
+    if (user && profilePic !== profileImagePic) {
+      setProfilePic(profileImagePic);
     }
   }, [user, profilePic]);
 
@@ -68,7 +72,9 @@ export const useUserProfile = ({
     userProfilePicsLoading = [...userProfilePicsLoading, name];
 
     try {
-      let user = await getUserByName(name, { fields: 'profile' });
+      let user = await getUserByName(name, {
+        fields: TabSpecificField.PROFILE,
+      });
       user = getUserWithImage(user);
 
       updateUserProfilePics({
@@ -78,7 +84,18 @@ export const useUserProfile = ({
 
       userProfilePicsLoading = userProfilePicsLoading.filter((p) => p !== name);
     } catch (error) {
-      // Error
+      if ((error as AxiosError)?.response?.status === ClientErrors.NOT_FOUND) {
+        // If user not found, add empty user to prevent further requests and infinite loading
+        updateUserProfilePics({
+          id: name,
+          user: {
+            name,
+            id: name,
+            email: '',
+          },
+        });
+      }
+
       userProfilePicsLoading = userProfilePicsLoading.filter((p) => p !== name);
     }
   }, [

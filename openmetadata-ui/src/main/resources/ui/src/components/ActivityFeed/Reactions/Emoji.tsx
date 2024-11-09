@@ -107,7 +107,7 @@ const Emoji: FC<EmojiProps> = ({
   return (
     <Popover
       content={popoverContent}
-      key="reaction-detail-popover"
+      key={reaction}
       open={visible}
       trigger="hover"
       zIndex={9999}
@@ -117,13 +117,16 @@ const Emoji: FC<EmojiProps> = ({
           'ant-btn-isReacted': isReacted,
         })}
         data-testid="emoji-button"
+        key={reaction}
         shape="round"
         size="small"
         onClick={handleEmojiOnClick}
         onMouseOver={() => setVisible(true)}>
         {element}
-        <span className="text-xs m-l-xss self-center" data-testid="emoji-count">
-          {reactionList.length}
+        <span className="text-xs m-l-xs self-center" data-testid="emoji-count">
+          {reactionList.length.toLocaleString('en-US', {
+            useGrouping: false,
+          })}
         </span>
       </Button>
     </Popover>

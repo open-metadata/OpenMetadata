@@ -46,7 +46,7 @@ class IcebergFileSystemFactory:
 
         if not file_system_type:
             raise NotImplementedError(
-                f"Iceberg File System otype ['{fs_config.__class__.__name__}'] Not Implemented."
+                f"Iceberg File System type ['{fs_config.__class__.__name__}'] Not Implemented."
             )
 
         return file_system_type.get_fs_params(fs_config)

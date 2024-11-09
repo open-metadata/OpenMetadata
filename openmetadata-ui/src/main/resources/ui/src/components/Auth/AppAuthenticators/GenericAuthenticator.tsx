@@ -25,7 +25,7 @@ export const GenericAuthenticator = forwardRef(
   ({ children }: { children: ReactNode }, ref) => {
     const {
       setIsAuthenticated,
-      setIsSigningIn,
+      setIsSigningUp,
       removeOidcToken,
       setOidcToken,
     } = useApplicationStore();
@@ -33,8 +33,9 @@ export const GenericAuthenticator = forwardRef(
 
     const handleLogin = () => {
       setIsAuthenticated(false);
-      setIsSigningIn(true);
-      window.location.assign('api/v1/auth/login');
+      setIsSigningUp(true);
+      const redirectUri = `${window.location.origin}${ROUTES.AUTH_CALLBACK}`;
+      window.location.assign(`api/v1/auth/login?redirectUri=${redirectUri}`);
     };
 
     const handleLogout = async () => {
@@ -49,7 +50,7 @@ export const GenericAuthenticator = forwardRef(
       const resp = await renewToken();
       setOidcToken(resp.accessToken);
 
-      return Promise.resolve(resp);
+      return resp;
     };
 
     useImperativeHandle(ref, () => ({

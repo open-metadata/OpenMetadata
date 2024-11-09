@@ -13,7 +13,6 @@
 
 /* eslint-disable @typescript-eslint/ban-types */
 
-import { CheckOutlined } from '@ant-design/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { t } from 'i18next';
@@ -21,12 +20,14 @@ import {
   capitalize,
   get,
   isEmpty,
+  isNil,
   isNull,
   isString,
   isUndefined,
   toLower,
   toNumber,
 } from 'lodash';
+import { Duration } from 'luxon';
 import {
   CurrentState,
   ExtraInfo,
@@ -35,13 +36,9 @@ import {
   RecentlyViewed,
   RecentlyViewedData,
 } from 'Models';
-import React from 'react';
+import React, { ReactNode } from 'react';
 import { Trans } from 'react-i18next';
 import { reactLocalStorage } from 'reactjs-localstorage';
-import {
-  getDayCron,
-  getHourCron,
-} from '../components/common/CronEditor/CronEditor.constant';
 import ErrorPlaceHolder from '../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../components/common/Loader/Loader';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
@@ -53,10 +50,12 @@ import {
   LOCALSTORAGE_RECENTLY_VIEWED,
 } from '../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../constants/entity.constants';
-import { UrlEntityCharRegEx } from '../constants/regex.constants';
+import {
+  UrlEntityCharRegEx,
+  VALIDATE_ESCAPE_START_END_REGEX,
+} from '../constants/regex.constants';
 import { SIZE } from '../enums/common.enum';
 import { EntityType, FqnPart } from '../enums/entity.enum';
-import { PipelineType } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { EntityReference, User } from '../generated/entity/teams/user';
 import { TagLabel } from '../generated/type/tagLabel';
 import { FeedCounts } from '../interface/feed.interface';
@@ -140,9 +139,19 @@ export const getPartialNameFromTableFQN = (
     return splitFqn.slice(2).join(FQN_SEPARATOR_CHAR);
   }
 
+  if (fqnParts.includes(FqnPart.ApiEndpoint)) {
+    // Remove the first 3 parts ( service, database, schema)
+    return splitFqn.slice(3).join(FQN_SEPARATOR_CHAR);
+  }
+
   if (fqnParts.includes(FqnPart.SearchIndexField)) {
     // Remove the first 2 parts ( service, searchIndex)
     return splitFqn.slice(2).join(FQN_SEPARATOR_CHAR);
+  }
+
+  if (fqnParts.includes(FqnPart.TestCase)) {
+    // Get the last Part of the Fqn
+    return splitFqn.splice(-1).join(FQN_SEPARATOR_CHAR);
   }
 
   const arrPartialName = [];
@@ -190,15 +199,17 @@ export const pluralize = (count: number, noun: string, suffix = 's') => {
   }
 };
 
-export const hasEditAccess = (type: string, id: string, currentUser: User) => {
-  if (type === 'user') {
-    return id === currentUser.id;
-  } else {
-    return Boolean(
-      currentUser.teams?.length &&
-        currentUser.teams.some((team) => team.id === id)
-    );
-  }
+export const hasEditAccess = (owners: EntityReference[], currentUser: User) => {
+  return owners.some((owner) => {
+    if (owner.type === 'user') {
+      return owner.id === currentUser.id;
+    } else {
+      return Boolean(
+        currentUser.teams?.length &&
+          currentUser.teams.some((team) => team.id === owner.id)
+      );
+    }
+  });
 };
 
 export const getCountBadge = (
@@ -421,17 +432,18 @@ export const getNameFromFQN = (fqn: string): string => {
 
 export const getRandomColor = (name: string) => {
   const firstAlphabet = name.charAt(0).toLowerCase();
-  const asciiCode = firstAlphabet.charCodeAt(0);
-  const colorNum =
-    asciiCode.toString() + asciiCode.toString() + asciiCode.toString();
+  // Convert the user's name to a numeric value
+  let nameValue = 0;
+  for (let i = 0; i < name.length; i++) {
+    nameValue += name.charCodeAt(i) * 8;
+  }
 
-  const num = Math.round(0xffffff * parseInt(colorNum));
-  const r = (num >> 16) & 255;
-  const g = (num >> 8) & 255;
-  const b = num & 255;
+  // Generate a random hue based on the name value
+  const hue = nameValue % 360;
 
   return {
-    color: 'rgb(' + r + ', ' + g + ', ' + b + ', 0.6)',
+    color: `hsl(${hue}, 70%, 40%)`,
+    backgroundColor: `hsl(${hue}, 100%, 92%)`,
     character: firstAlphabet.toUpperCase(),
   };
 };
@@ -500,52 +512,51 @@ export const replaceAllSpacialCharWith_ = (text: string) => {
  * @param onDataFetched - callback function which return FeedCounts object
  */
 
-export const getFeedCounts = (
+export const getFeedCounts = async (
   entityType: string,
   entityFQN: string,
   feedCountCallback: (countValue: FeedCounts) => void
 ) => {
-  getFeedCount(getEntityFeedLink(entityType, entityFQN))
-    .then((res) => {
-      if (res) {
-        const {
-          conversationCount,
-          openTaskCount,
-          closedTaskCount,
-          totalTasksCount,
-          totalCount,
-          mentionCount,
-        } = res.reduce((acc, item) => {
-          const conversationCount =
-            acc.conversationCount + (item.conversationCount || 0);
-          const totalTasksCount =
-            acc.totalTasksCount + (item.totalTaskCount || 0);
+  try {
+    const res = await getFeedCount(getEntityFeedLink(entityType, entityFQN));
+    if (res) {
+      const {
+        conversationCount,
+        openTaskCount,
+        closedTaskCount,
+        totalTasksCount,
+        totalCount,
+        mentionCount,
+      } = res.reduce((acc, item) => {
+        const conversationCount =
+          acc.conversationCount + (item.conversationCount || 0);
+        const totalTasksCount =
+          acc.totalTasksCount + (item.totalTaskCount || 0);
 
-          return {
-            conversationCount,
-            totalTasksCount,
-            openTaskCount: acc.openTaskCount + (item.openTaskCount || 0),
-            closedTaskCount: acc.closedTaskCount + (item.closedTaskCount || 0),
-            totalCount: conversationCount + totalTasksCount,
-            mentionCount: acc.mentionCount + (item.mentionCount || 0),
-          };
-        }, FEED_COUNT_INITIAL_DATA);
-
-        feedCountCallback({
+        return {
           conversationCount,
           totalTasksCount,
-          openTaskCount,
-          closedTaskCount,
-          totalCount,
-          mentionCount,
-        });
-      } else {
-        throw t('server.entity-feed-fetch-error');
-      }
-    })
-    .catch((err: AxiosError) => {
-      showErrorToast(err, t('server.entity-feed-fetch-error'));
-    });
+          openTaskCount: acc.openTaskCount + (item.openTaskCount || 0),
+          closedTaskCount: acc.closedTaskCount + (item.closedTaskCount || 0),
+          totalCount: conversationCount + totalTasksCount,
+          mentionCount: acc.mentionCount + (item.mentionCount || 0),
+        };
+      }, FEED_COUNT_INITIAL_DATA);
+
+      feedCountCallback({
+        conversationCount,
+        totalTasksCount,
+        openTaskCount,
+        closedTaskCount,
+        totalCount,
+        mentionCount,
+      });
+    } else {
+      throw t('server.entity-feed-fetch-error');
+    }
+  } catch (err) {
+    showErrorToast(err as AxiosError, t('server.entity-feed-fetch-error'));
+  }
 };
 
 /**
@@ -577,19 +588,51 @@ export const getStatisticsDisplayValue = (
   return formatNumberWithComma(displayValue);
 };
 
-export const formTwoDigitNumber = (number: number) => {
-  return number.toLocaleString('en-US', {
-    minimumIntegerDigits: 2,
-    useGrouping: false,
-  });
-};
-
 export const digitFormatter = (value: number) => {
   // convert 1000 to 1k
   return Intl.NumberFormat('en', {
     notation: 'compact',
-    maximumFractionDigits: 1,
+    maximumFractionDigits: 2,
   }).format(value);
+};
+
+/**
+ * Converts a duration in seconds to a human-readable format.
+ * The function returns the largest time unit (years, months, days, hours, minutes, or seconds)
+ * that is greater than or equal to one, rounded to the nearest whole number.
+ *
+ * @param {number} seconds - The duration in seconds to be converted.
+ * @returns {string} A string representing the duration in a human-readable format,
+ *                  e.g., "1 hour", "2 days", "3 months", etc.
+ *
+ * @example
+ * formatTimeFromSeconds(1); // returns "1 second"
+ * formatTimeFromSeconds(60); // returns "1 minute"
+ * formatTimeFromSeconds(3600); // returns "1 hour"
+ * formatTimeFromSeconds(86400); // returns "1 day"
+ */
+export const formatTimeFromSeconds = (seconds: number): string => {
+  const duration = Duration.fromObject({ seconds });
+  let unit: keyof Duration;
+
+  if (duration.as('years') >= 1) {
+    unit = 'years';
+  } else if (duration.as('months') >= 1) {
+    unit = 'months';
+  } else if (duration.as('days') >= 1) {
+    unit = 'days';
+  } else if (duration.as('hours') >= 1) {
+    unit = 'hours';
+  } else if (duration.as('minutes') >= 1) {
+    unit = 'minutes';
+  } else {
+    unit = 'seconds';
+  }
+
+  const value = Math.round(duration.as(unit));
+  const unitSingular = unit.slice(0, -1);
+
+  return `${value} ${value === 1 ? unitSingular : unit}`;
 };
 
 export const getTeamsUser = (
@@ -635,23 +678,6 @@ export const getOwnerValue = (owner?: EntityReference) => {
   }
 };
 
-export const getIngestionFrequency = (pipelineType: PipelineType) => {
-  const value = {
-    min: 0,
-    hour: 0,
-  };
-
-  switch (pipelineType) {
-    case PipelineType.TestSuite:
-    case PipelineType.Metadata:
-    case PipelineType.Application:
-      return getHourCron(value);
-
-    default:
-      return getDayCron(value);
-  }
-};
-
 export const getEmptyPlaceholder = () => {
   return <ErrorPlaceHolder size={SIZE.MEDIUM} />;
 };
@@ -660,17 +686,18 @@ export const getEmptyPlaceholder = () => {
 export const getLoadingStatus = (
   current: CurrentState,
   id: string | undefined,
-  displayText: string
+  children: ReactNode
 ) => {
-  return current.id === id ? (
-    current.state === 'success' ? (
-      <CheckOutlined />
-    ) : (
-      <Loader size="small" type="default" />
-    )
-  ) : (
-    displayText
-  );
+  if (current.id === id) {
+    return (
+      <div>
+        {/* Wrapping with div to apply spacing  */}
+        <Loader size="x-small" type="default" />
+      </div>
+    );
+  }
+
+  return children;
 };
 
 export const refreshPage = () => {
@@ -682,13 +709,13 @@ export const getEntityIdArray = (entities: EntityReference[]): string[] =>
 
 export const getTagValue = (tag: string | TagLabel): string | TagLabel => {
   if (isString(tag)) {
-    return tag.startsWith(`Tier${FQN_SEPARATOR_CHAR}Tier`)
+    return tag.startsWith(`Tier${FQN_SEPARATOR_CHAR}`)
       ? tag.split(FQN_SEPARATOR_CHAR)[1]
       : tag;
   } else {
     return {
       ...tag,
-      tagFQN: tag.tagFQN.startsWith(`Tier${FQN_SEPARATOR_CHAR}Tier`)
+      tagFQN: tag.tagFQN.startsWith(`Tier${FQN_SEPARATOR_CHAR}`)
         ? tag.tagFQN.split(FQN_SEPARATOR_CHAR)[1]
         : tag.tagFQN,
     };
@@ -720,9 +747,7 @@ export const getTrimmedContent = (content: string, limit: number) => {
 };
 
 export const sortTagsCaseInsensitive = (tags: TagLabel[]) => {
-  return tags.sort((tag1, tag2) =>
-    tag1.tagFQN.toLowerCase() < tag2.tagFQN.toLowerCase() ? -1 : 1
-  );
+  return tags;
 };
 
 export const Transi18next = ({
@@ -830,3 +855,61 @@ export const handleSearchFilterOption = (
   }
 ) => toLower(option?.label).includes(toLower(searchValue));
 // Check label while searching anything and filter that options out if found matching
+
+/**
+ * @param serviceType key for quick filter
+ * @returns json filter query string
+ */
+
+export const getServiceTypeExploreQueryFilter = (serviceType: string) => {
+  return JSON.stringify({
+    query: {
+      bool: {
+        must: [
+          {
+            bool: {
+              should: [
+                {
+                  term: {
+                    serviceType,
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      },
+    },
+  });
+};
+
+export const filterSelectOptions = (
+  input: string,
+  option?: { label: string; value: string }
+) => {
+  return (
+    toLower(option?.label).includes(toLower(input)) ||
+    toLower(option?.value).includes(toLower(input))
+  );
+};
+
+/**
+ * helper method to check to determine the deleted flag is true or false
+ * some times deleted flag is string or boolean or undefined from the API
+ * for Example "false" or false or true in Lineage API
+ * @param deleted
+ * @returns
+ */
+export const isDeleted = (deleted: unknown): boolean => {
+  return (deleted as string) === 'false' || deleted === false || isNil(deleted)
+    ? false
+    : true;
+};
+
+export const removeOuterEscapes = (input: string) => {
+  // Use regex to check if the string starts and ends with escape characters
+  const match = input.match(VALIDATE_ESCAPE_START_END_REGEX);
+
+  // Return the middle part without the outer escape characters or the original input if no match
+  return match && match.length > 3 ? match[2] : input;
+};

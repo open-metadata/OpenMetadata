@@ -15,6 +15,7 @@ import React, {
   forwardRef,
   Fragment,
   ReactNode,
+  useCallback,
   useImperativeHandle,
 } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -25,6 +26,7 @@ import {
 } from '../../../rest/auth-API';
 
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import Loader from '../../common/Loader/Loader';
 import { useBasicAuth } from '../AuthProviders/BasicAuthProvider';
 
 interface BasicAuthenticatorInterface {
@@ -41,37 +43,48 @@ const BasicAuthenticator = forwardRef(
       getRefreshToken,
       setRefreshToken,
       setOidcToken,
+      isApplicationLoading,
     } = useApplicationStore();
 
-    const handleSilentSignIn = async (): Promise<AccessTokenResponse> => {
-      const refreshToken = getRefreshToken();
+    const handleSilentSignIn =
+      useCallback(async (): Promise<AccessTokenResponse> => {
+        const refreshToken = getRefreshToken();
 
-      if (
-        authConfig?.provider !== AuthProvider.Basic &&
-        authConfig?.provider !== AuthProvider.LDAP
-      ) {
-        Promise.reject(t('message.authProvider-is-not-basic'));
-      }
+        if (
+          authConfig?.provider !== AuthProvider.Basic &&
+          authConfig?.provider !== AuthProvider.LDAP
+        ) {
+          Promise.reject(t('message.authProvider-is-not-basic'));
+        }
 
-      const response = await getAccessTokenOnExpiry({
-        refreshToken: refreshToken as string,
-      });
+        const response = await getAccessTokenOnExpiry({
+          refreshToken: refreshToken as string,
+        });
 
-      setRefreshToken(response.refreshToken);
-      setOidcToken(response.accessToken);
+        setRefreshToken(response.refreshToken);
+        setOidcToken(response.accessToken);
 
-      return Promise.resolve(response);
-    };
+        return Promise.resolve(response);
+      }, [authConfig, getRefreshToken, setOidcToken, setRefreshToken, t]);
 
     useImperativeHandle(ref, () => ({
       invokeLogout() {
         handleLogout();
         setIsAuthenticated(false);
       },
-      renewIdToken() {
-        return handleSilentSignIn();
-      },
+      renewIdToken: handleSilentSignIn,
     }));
+
+    /**
+     * isApplicationLoading is true when the application is loading in AuthProvider
+     * and is false when the application is loaded.
+     * If the application is loading, show the loader.
+     * If the user is authenticated, show the AppContainer.
+     * If the user is not authenticated, show the UnAuthenticatedAppRouter.
+     * */
+    if (isApplicationLoading) {
+      return <Loader fullScreen />;
+    }
 
     return <Fragment>{children}</Fragment>;
   }

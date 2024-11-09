@@ -17,6 +17,7 @@ from typing import Callable, Optional
 
 from sqlalchemy import column
 
+from metadata.generated.schema.configuration.profilerConfiguration import MetricType
 from metadata.generated.schema.entity.data.table import Table
 from metadata.profiler.adaptors.nosql_adaptor import NoSQLAdaptor
 from metadata.profiler.metrics.core import StaticMetric, T, _label
@@ -38,7 +39,7 @@ class Sum(StaticMetric):
 
     @classmethod
     def name(cls):
-        return "sum"
+        return MetricType.sum.value
 
     @_label
     def fn(self):
@@ -55,7 +56,13 @@ class Sum(StaticMetric):
         """pandas function"""
 
         if is_quantifiable(self.col.type):
-            return sum(df[self.col.name].sum() for df in dfs)
+            try:
+                return sum(df[self.col.name].sum() for df in dfs)
+            except (TypeError, ValueError):
+                try:
+                    return sum(df[self.col.name].astype(float).sum() for df in dfs)
+                except Exception:
+                    return None
         return None
 
     def nosql_fn(self, adaptor: NoSQLAdaptor) -> Callable[[Table], Optional[T]]:

@@ -21,7 +21,7 @@ from unittest.mock import patch
 
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
-from metadata.generated.schema.entity.data.table import TableType
+from metadata.generated.schema.entity.data.table import FileFormat, TableType
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseConnection,
     DatabaseService,
@@ -68,6 +68,11 @@ mock_glue_config = {
         }
     },
 }
+
+
+def mock_fqn_build(*args, **kwargs) -> str:
+    return ".".join((kwargs[key] for key in kwargs if key.endswith("_name")))
+
 
 MOCK_CUSTOM_DB_NAME = "NEW_DB"
 
@@ -124,6 +129,14 @@ EXPECTED_TABLE_NAMES = ["cloudfront_logs", "cloudfront_logs2", "map_table"]
 
 EXPECTED_TABLE_TYPES = [TableType.External, TableType.Iceberg, TableType.View]
 
+EXPECTED_FILE_FORMATS = [None, FileFormat.tsv, FileFormat.parquet]
+
+EXPECTED_LOCATION_PATHS = [
+    "s3://athena-examples-MyRegion/cloudfront/plaintext",
+    "s3://athena-postgres/",
+    "s3://athena-postgres/map-test",
+]
+
 
 class GlueUnitTest(TestCase):
     @patch(
@@ -132,26 +145,29 @@ class GlueUnitTest(TestCase):
     def __init__(self, methodName, test_connection) -> None:
         super().__init__(methodName)
         test_connection.return_value = False
-        self.config = OpenMetadataWorkflowConfig.parse_obj(mock_glue_config)
+        self.config = OpenMetadataWorkflowConfig.model_validate(mock_glue_config)
         self.glue_source = GlueSource.create(
             mock_glue_config["source"],
             self.config.workflowConfig.openMetadataServerConfig,
         )
         self.glue_source.context.get().__dict__[
             "database_service"
-        ] = MOCK_DATABASE_SERVICE.name.__root__
-        self.glue_source.context.get().__dict__[
-            "database"
-        ] = MOCK_DATABASE.name.__root__
+        ] = MOCK_DATABASE_SERVICE.name.root
+        self.glue_source.context.get().__dict__["database"] = MOCK_DATABASE.name.root
         self.glue_source.context.get().__dict__[
             "database_schema"
-        ] = MOCK_DATABASE_SCHEMA.name.__root__
+        ] = MOCK_DATABASE_SCHEMA.name.root
         self.glue_source._get_glue_database_and_schemas = lambda: [
             DatabasePage(**mock_data.get("mock_database_paginator"))
         ]
         self.glue_source._get_glue_tables = lambda: [
             TablePage(**mock_data.get("mock_table_paginator"))
         ]
+
+    def get_table_requests(self):
+        tables = self.glue_source.get_tables_name_and_type()
+        for table in tables:
+            yield next(self.glue_source.yield_table(table)).right
 
     def test_database_names(self):
         assert EXPECTED_DATABASE_NAMES == list(self.glue_source.get_database_names())
@@ -174,8 +190,26 @@ class GlueUnitTest(TestCase):
             self.glue_source.get_database_schema_names()
         )
 
-    def test_table_names(self):
+    @patch("metadata.ingestion.source.database.glue.metadata.fqn")
+    def test_table_names(self, fqn):
+        fqn.build = mock_fqn_build
         for table_and_table_type in list(self.glue_source.get_tables_name_and_type()):
             table_and_table_type[0]
             assert table_and_table_type[0] in EXPECTED_TABLE_NAMES
             assert table_and_table_type[1] in EXPECTED_TABLE_TYPES
+
+    @patch("metadata.ingestion.source.database.glue.metadata.fqn")
+    def test_file_formats(self, fqn):
+        fqn.build = mock_fqn_build
+        assert (
+            list(map(lambda x: x.fileFormat, self.get_table_requests()))
+            == EXPECTED_FILE_FORMATS
+        )
+
+    @patch("metadata.ingestion.source.database.glue.metadata.fqn")
+    def test_location_paths(self, fqn):
+        fqn.build = mock_fqn_build
+        assert (
+            list(map(lambda x: x.locationPath, self.get_table_requests()))
+            == EXPECTED_LOCATION_PATHS
+        )

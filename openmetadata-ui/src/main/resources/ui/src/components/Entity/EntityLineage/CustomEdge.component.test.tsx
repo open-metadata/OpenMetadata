@@ -16,6 +16,7 @@ import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { EdgeProps, Position } from 'reactflow';
 import { EntityType } from '../../../enums/entity.enum';
+import { LineageLayer } from '../../../generated/settings/settings';
 import { CustomEdge } from './CustomEdge.component';
 
 jest.mock('../../../constants/Lineage.constants', () => ({
@@ -70,6 +71,7 @@ jest.mock('../../../context/LineageProvider/LineageProvider', () => ({
     tracedNodes: [],
     tracedColumns: [],
     pipelineStatus: {},
+    activeLayer: [LineageLayer.ColumnLevelLineage],
     fetchPipelineStatus: jest.fn(),
   })),
 }));

@@ -17,8 +17,10 @@ import BrandImage from './BrandImage';
 jest.mock('../../../hooks/useApplicationStore', () => ({
   useApplicationStore: jest.fn().mockImplementation(() => ({
     applicationConfig: {
-      customLogoUrlPath: 'https://custom-logo.png',
-      customMonogramUrlPath: 'https://custom-monogram.png',
+      customLogoConfig: {
+        customLogoUrlPath: 'https://custom-logo.png',
+        customMonogramUrlPath: 'https://custom-monogram.png',
+      },
     },
   })),
 }));

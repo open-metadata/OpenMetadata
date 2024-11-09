@@ -1,0 +1,3 @@
+query_text,database_name,schema_name
+"select * from product_data",default,information_schema
+"select * from students where marks>=80",default,information_schema

@@ -1,0 +1,95 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/applications/configuration/external/automatorAppConfig.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AutomatorAppConfig",
+  "description": "Configuration for the Automator External Application.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.entity.app.external.AutomatorAppConfig",
+  "definitions": {
+    "automatorAppType": {
+      "description": "Application type.",
+      "type": "string",
+      "enum": ["Automator"],
+      "default": "Automator"
+    },
+    "resource": {
+      "description": "Entities selected to run the automation.",
+      "type": "object",
+      "properties": {
+        "type": {
+          "description": "Type of the entity. E.g., 'table', 'chart',...",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "queryFilter": {
+          "description": "Query filter to be passed to ES. E.g., `{\"query\":{\"bool\":{\"must\":[{\"bool\":{\"should\":[{\"term\":{\"domain.displayName.keyword\":\"DG Anim\"}}]}}]}}}`. This is the same payload as in the Explore page.",
+          "type": "string"
+        }
+      }
+    },
+    "action": {
+      "description": "Action to take on those entities. E.g., propagate description through lineage, auto tagging, etc.",
+      "oneOf": [
+        {
+          "$ref": "automator/addTagsAction.json"
+        },
+        {
+          "$ref": "automator/removeTagsAction.json"
+        },
+        {
+          "$ref": "automator/addDomainAction.json"
+        },
+        {
+          "$ref": "automator/removeDomainAction.json"
+        },
+        {
+          "$ref": "automator/addDescriptionAction.json"
+        },
+        {
+          "$ref": "automator/removeDescriptionAction.json"
+        },
+        {
+          "$ref": "automator/addTierAction.json"
+        },
+        {
+          "$ref": "automator/removeTierAction.json"
+        },
+        {
+          "$ref": "automator/addOwnerAction.json"
+        },
+        {
+          "$ref": "automator/removeOwnerAction.json"
+        },
+        {
+          "$ref": "automator/lineagePropagationAction.json"
+        },
+        {
+          "$ref": "automator/mlTaggingAction.json"
+        }
+      ]
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Application Type",
+      "description": "Application Type",
+      "$ref": "#/definitions/automatorAppType",
+      "default": "Automator"
+    },
+    "resources": {
+      "description": "Entities selected to run the automation.",
+      "$ref": "#/definitions/resource"
+    },
+    "actions": {
+      "description": "Action to take on those entities. E.g., propagate description through lineage, auto tagging, etc.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/action"
+      }
+    }
+  },
+  "required": ["type", "resources", "actions"],
+  "additionalProperties": false
+}

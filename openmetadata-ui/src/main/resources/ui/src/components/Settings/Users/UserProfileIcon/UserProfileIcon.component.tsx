@@ -13,7 +13,7 @@
 import { CheckOutlined } from '@ant-design/icons';
 import { Dropdown, Space, Tooltip, Typography } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
-import { isEmpty } from 'lodash';
+import { isEmpty, some } from 'lodash';
 import React, {
   ReactNode,
   useCallback,
@@ -40,14 +40,14 @@ import {
   getImageWithResolutionAndFallback,
   ImageQuality,
 } from '../../../../utils/ProfilerUtils';
-import Avatar from '../../../common/AvatarComponent/Avatar';
+import ProfilePicture from '../../../common/ProfilePicture/ProfilePicture';
 import './user-profile-icon.less';
 
 type ListMenuItemProps = {
   listItems: EntityReference[];
   labelRenderer: (item: EntityReference) => ReactNode;
   readMoreLabelRenderer: (count: number) => ReactNode;
-  readMoreKey?: string;
+  readMoreKey: string;
   sizeLimit?: number;
 };
 
@@ -66,7 +66,7 @@ const renderLimitedListMenuItem = ({
   const items = listItems.slice(0, sizeLimit);
 
   return isEmpty(items)
-    ? [{ label: NO_DATA_PLACEHOLDER, key: 'no-teams' }]
+    ? [{ label: NO_DATA_PLACEHOLDER, key: readMoreKey.replace('more', 'no') }]
     : [
         ...(items?.map((item) => ({
           label: labelRenderer(item),
@@ -312,10 +312,17 @@ export const UserProfileIcon = () => {
   );
 
   useEffect(() => {
-    updateSelectedPersona(
-      currentUser?.defaultPersona ?? ({} as EntityReference)
-    );
-  }, [currentUser?.defaultPersona]);
+    let defaultPersona = currentUser?.defaultPersona ?? ({} as EntityReference);
+    if (currentUser?.defaultPersona?.id) {
+      defaultPersona = some(
+        currentUser?.personas,
+        (persona) => persona.id === currentUser?.defaultPersona?.id
+      )
+        ? currentUser?.defaultPersona
+        : ({} as EntityReference);
+    }
+    updateSelectedPersona(defaultPersona);
+  }, [currentUser?.defaultPersona, currentUser?.personas]);
 
   return (
     <Dropdown
@@ -337,7 +344,7 @@ export const UserProfileIcon = () => {
               onError={handleOnImageError}
             />
           ) : (
-            <Avatar name={userName} type="circle" width="36" />
+            <ProfilePicture name={currentUser?.name ?? ''} width="36" />
           )}
           <div className="d-flex flex-col">
             <Tooltip title={getEntityName(currentUser)}>

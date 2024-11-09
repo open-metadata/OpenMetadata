@@ -18,6 +18,7 @@ import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.awaitility.Awaitility.with;
+import static org.awaitility.Durations.ONE_MINUTE;
 import static org.awaitility.Durations.ONE_SECOND;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -46,6 +47,10 @@ import static org.openmetadata.service.util.TestUtils.assertListNotNull;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 import static org.openmetadata.service.util.TestUtils.assertResponseContains;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.flipkart.zjsonpatch.JsonDiff;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.time.LocalDateTime;
@@ -59,7 +64,6 @@ import java.util.UUID;
 import java.util.function.BiPredicate;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
-import javax.json.JsonPatch;
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Response.Status;
 import lombok.extern.slf4j.Slf4j;
@@ -85,6 +89,7 @@ import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.api.feed.ThreadCount;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
@@ -110,6 +115,7 @@ import org.openmetadata.service.formatter.decorators.MessageDecorator;
 import org.openmetadata.service.formatter.util.FeedMessage;
 import org.openmetadata.service.jdbi3.FeedRepository.FilterType;
 import org.openmetadata.service.resources.databases.TableResourceTest;
+import org.openmetadata.service.resources.events.EventSubscriptionResourceTest;
 import org.openmetadata.service.resources.feeds.FeedResource.PostList;
 import org.openmetadata.service.resources.feeds.FeedResource.ThreadList;
 import org.openmetadata.service.resources.teams.TeamResourceTest;
@@ -162,7 +168,7 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     BOT_USER = userResourceTest.createUser("bot_user", true);
 
     CreateTable createTable =
-        TABLE_RESOURCE_TEST.createRequest(test).withOwner(TableResourceTest.USER1_REF);
+        TABLE_RESOURCE_TEST.createRequest(test).withOwners(List.of(TableResourceTest.USER1_REF));
     TABLE = TABLE_RESOURCE_TEST.createAndCheckEntity(createTable, ADMIN_AUTH_HEADERS);
 
     TeamResourceTest teamResourceTest = new TeamResourceTest();
@@ -176,7 +182,7 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     EntityReference TEAM2_REF = TEAM2.getEntityReference();
 
     CreateTable createTable2 = TABLE_RESOURCE_TEST.createRequest(test);
-    createTable2.withName("table2").withOwner(TEAM2_REF);
+    createTable2.withName("table2").withOwners(List.of(TEAM2_REF));
     TABLE2 = TABLE_RESOURCE_TEST.createAndCheckEntity(createTable2, ADMIN_AUTH_HEADERS);
 
     COLUMNS =
@@ -213,7 +219,8 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     // Create thread without addressed to entity in the request
     CreateThread create = create().withFrom(USER.getName()).withAbout("<>"); // Invalid EntityLink
 
-    String failureReason = "[about must match \"(?U)^<#E::\\w+::[\\w'\\- .&/:+\"\\\\()$#%]+>$\"]";
+    String failureReason =
+        "[about must match \"(?U)^<#E::\\w+::(?:[^:<>|]|:[^:<>|])+(?:::(?:[^:<>|]|:[^:<>|])+)*>$\"]";
     assertResponseContains(
         () -> createThread(create, USER_AUTH_HEADERS), BAD_REQUEST, failureReason);
 
@@ -265,6 +272,11 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
   @Test
   @Order(1)
   void post_validThreadAndList_200(TestInfo test) throws IOException {
+    EventSubscriptionResourceTest eventSubscriptionResourceTest =
+        new EventSubscriptionResourceTest();
+    EventSubscription subscription =
+        eventSubscriptionResourceTest.getEntityByName("ActivityFeedAlert", ADMIN_AUTH_HEADERS);
+    eventSubscriptionResourceTest.waitForAllEventToComplete(subscription.getId());
     int totalThreadCount = listThreads(null, null, ADMIN_AUTH_HEADERS).getPaging().getTotal();
     int userThreadCount = listThreads(USER_LINK, null, ADMIN_AUTH_HEADERS).getPaging().getTotal();
     int tableThreadCount = listThreads(TABLE_LINK, null, ADMIN_AUTH_HEADERS).getPaging().getTotal();
@@ -577,7 +589,8 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
   @Test
   void put_resolveTaskByUser_description_200(TestInfo testInfo) throws IOException {
     TableResourceTest tableResourceTest = new TableResourceTest();
-    CreateTable createTable = tableResourceTest.createRequest(testInfo).withOwner(USER2_REF);
+    CreateTable createTable =
+        tableResourceTest.createRequest(testInfo).withOwners(List.of(USER2_REF));
     Table table = tableResourceTest.createAndCheckEntity(createTable, ADMIN_AUTH_HEADERS);
     // Create a task from User to User2
     String about =
@@ -753,6 +766,11 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
   @NullSource
   @MethodSource("provideStringsForListThreads")
   void get_listThreadsWithPagination(String entityLink) throws HttpResponseException {
+    EventSubscriptionResourceTest eventSubscriptionResourceTest =
+        new EventSubscriptionResourceTest();
+    EventSubscription subscription =
+        eventSubscriptionResourceTest.getEntityByName("ActivityFeedAlert", ADMIN_AUTH_HEADERS);
+    eventSubscriptionResourceTest.waitForAllEventToComplete(subscription.getId());
     // Create 10 threads
     int totalThreadCount = listThreads(entityLink, null, ADMIN_AUTH_HEADERS).getPaging().getTotal();
     for (int i = 1; i <= 10; i++) {
@@ -978,8 +996,9 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
             USER.getName(), about, "Announcement One", announcementDetails, USER_AUTH_HEADERS);
     String originalJson = JsonUtils.pojoToJson(thread);
 
-    long startTs = now.plusDays(6L).toEpochSecond(ZoneOffset.UTC);
-    long endTs = now.plusDays(7L).toEpochSecond(ZoneOffset.UTC);
+    long startTs = now.plusDays(6L).toInstant(ZoneOffset.UTC).toEpochMilli();
+    long endTs = now.plusDays(7L).toInstant(ZoneOffset.UTC).toEpochMilli();
+
     announcementDetails.withStartTime(startTs).withEndTime(endTs);
     Thread updated = thread.withAnnouncement(announcementDetails);
 
@@ -1032,8 +1051,8 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
 
     // create announcement with start time > end time
     announcementDetails
-        .withStartTime(now.plusDays(58L).toEpochSecond(ZoneOffset.UTC))
-        .withEndTime(now.plusDays(57L).toEpochSecond(ZoneOffset.UTC));
+        .withStartTime(now.plusDays(58L).toInstant(ZoneOffset.UTC).toEpochMilli())
+        .withEndTime(now.plusDays(57L).toInstant(ZoneOffset.UTC).toEpochMilli());
     Thread updated2 = thread2.withAnnouncement(announcementDetails);
     assertResponse(
         () -> patchThread(thread2.getId(), originalJson, updated2, USER_AUTH_HEADERS),
@@ -1042,8 +1061,8 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
 
     // create announcement with overlaps
     announcementDetails
-        .withStartTime(now.plusDays(52L).toEpochSecond(ZoneOffset.UTC))
-        .withEndTime(now.plusDays(56L).toEpochSecond(ZoneOffset.UTC));
+        .withStartTime(now.plusDays(52L).toInstant(ZoneOffset.UTC).toEpochMilli())
+        .withEndTime(now.plusDays(56L).toInstant(ZoneOffset.UTC).toEpochMilli());
     Thread updated3 = thread2.withAnnouncement(announcementDetails);
     assertResponse(
         () -> patchThread(thread2.getId(), originalJson, updated3, USER_AUTH_HEADERS),
@@ -1051,8 +1070,8 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
         ANNOUNCEMENT_OVERLAP);
 
     announcementDetails
-        .withStartTime(now.plusDays(53L).plusHours(2L).toEpochSecond(ZoneOffset.UTC))
-        .withEndTime(now.plusDays(54L).toEpochSecond(ZoneOffset.UTC));
+        .withStartTime(now.plusDays(53L).plusHours(2L).toInstant(ZoneOffset.UTC).toEpochMilli())
+        .withEndTime(now.plusDays(54L).toInstant(ZoneOffset.UTC).toEpochMilli());
     Thread updated4 = thread2.withAnnouncement(announcementDetails);
     assertResponse(
         () -> patchThread(thread2.getId(), originalJson, updated4, USER_AUTH_HEADERS),
@@ -1060,8 +1079,8 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
         ANNOUNCEMENT_OVERLAP);
 
     announcementDetails
-        .withStartTime(now.plusDays(52L).plusHours(12L).toEpochSecond(ZoneOffset.UTC))
-        .withEndTime(now.plusDays(54L).toEpochSecond(ZoneOffset.UTC));
+        .withStartTime(now.plusDays(52L).plusHours(12L).toInstant(ZoneOffset.UTC).toEpochMilli())
+        .withEndTime(now.plusDays(54L).toInstant(ZoneOffset.UTC).toEpochMilli());
     Thread updated5 = thread2.withAnnouncement(announcementDetails);
     assertResponse(
         () -> patchThread(thread2.getId(), originalJson, updated5, USER_AUTH_HEADERS),
@@ -1069,8 +1088,8 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
         ANNOUNCEMENT_OVERLAP);
 
     announcementDetails
-        .withStartTime(now.plusDays(54L).plusHours(12L).toEpochSecond(ZoneOffset.UTC))
-        .withEndTime(now.plusDays(56L).toEpochSecond(ZoneOffset.UTC));
+        .withStartTime(now.plusDays(54L).plusHours(12L).toInstant(ZoneOffset.UTC).toEpochMilli())
+        .withEndTime(now.plusDays(56L).toInstant(ZoneOffset.UTC).toEpochMilli());
     Thread updated6 = thread2.withAnnouncement(announcementDetails);
     assertResponse(
         () -> patchThread(thread2.getId(), originalJson, updated6, USER_AUTH_HEADERS),
@@ -1147,7 +1166,7 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
         listThreadsWithFilter(user2, FilterType.OWNER, USER_AUTH_HEADERS).getPaging().getTotal();
 
     // create another thread on an entity with team2 as owner
-    String team2 = TABLE2.getOwner().getId().toString();
+    String team2 = TABLE2.getOwners().get(0).getId().toString();
     assertNotEquals(user1, team2);
     createAndCheck(
         create()
@@ -1178,6 +1197,11 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
 
   @Test
   void list_threadsWithOwnerOrFollowerFilter() throws HttpResponseException {
+    EventSubscriptionResourceTest eventSubscriptionResourceTest =
+        new EventSubscriptionResourceTest();
+    EventSubscription subscription =
+        eventSubscriptionResourceTest.getEntityByName("ActivityFeedAlert", ADMIN_AUTH_HEADERS);
+    eventSubscriptionResourceTest.waitForAllEventToComplete(subscription.getId());
     int totalThreadCount = listThreads(null, null, ADMIN_AUTH_HEADERS).getPaging().getTotal();
     String user1 = USER1.getId().toString(); // user1 is the owner of TABLE
     // Get thread counts for user1 and user2
@@ -1185,7 +1209,7 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
         listThreadsWithFilter(user1, FilterType.OWNER, USER_AUTH_HEADERS).getPaging().getTotal();
 
     // create another thread on an entity with team2 as owner
-    String team2 = TABLE2.getOwner().getId().toString();
+    String team2 = TABLE2.getOwners().get(0).getId().toString();
     assertNotEquals(user1, team2);
     createAndCheck(
         create()
@@ -1211,6 +1235,7 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     followTable(TABLE2.getId(), USER1.getId(), USER_AUTH_HEADERS);
     with()
         .pollInterval(ONE_SECOND)
+        .timeout(ONE_MINUTE)
         .await("Threads With Follows")
         .until(
             () -> {
@@ -1230,6 +1255,11 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
   @Test
   @Order(2)
   void list_threadsWithMentionsFilter() throws HttpResponseException {
+    EventSubscriptionResourceTest eventSubscriptionResourceTest =
+        new EventSubscriptionResourceTest();
+    EventSubscription subscription =
+        eventSubscriptionResourceTest.getEntityByName("ActivityFeedAlert", ADMIN_AUTH_HEADERS);
+    eventSubscriptionResourceTest.waitForAllEventToComplete(subscription.getId());
     // Create a thread with user mention
     createAndCheck(
         create()
@@ -1254,6 +1284,11 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
 
   @Test
   void list_threadsWithFollowsFilter() throws HttpResponseException {
+    EventSubscriptionResourceTest eventSubscriptionResourceTest =
+        new EventSubscriptionResourceTest();
+    EventSubscription subscription =
+        eventSubscriptionResourceTest.getEntityByName("ActivityFeedAlert", ADMIN_AUTH_HEADERS);
+    eventSubscriptionResourceTest.waitForAllEventToComplete(subscription.getId());
     // Get the initial thread count of TABLE2
     String entityLink = String.format("<#E::table::%s>", TABLE2.getFullyQualifiedName());
     int initialThreadCount =
@@ -1271,6 +1306,7 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     // User started following this table
     with()
         .pollInterval(ONE_SECOND)
+        .timeout(ONE_MINUTE)
         .await("Threads With Follows")
         .until(
             () -> {
@@ -1793,10 +1829,16 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
   public final Thread patchThread(
       UUID id, String originalJson, Thread updated, Map<String, String> authHeaders)
       throws HttpResponseException {
-    String updatedThreadJson = JsonUtils.pojoToJson(updated);
-    JsonPatch patch = JsonUtils.getJsonPatch(originalJson, updatedThreadJson);
-    return TestUtils.patch(
-        getResource(String.format("feed/%s", id)), patch, Thread.class, authHeaders);
+    try {
+      String updatedThreadJson = JsonUtils.pojoToJson(updated);
+      ObjectMapper mapper = new ObjectMapper();
+      JsonNode patch =
+          JsonDiff.asJson(mapper.readTree(originalJson), mapper.readTree(updatedThreadJson));
+      return TestUtils.patch(
+          getResource(String.format("feed/%s", id)), patch, Thread.class, authHeaders);
+    } catch (JsonProcessingException e) {
+    }
+    return null;
   }
 
   protected final Post patchPostAndCheck(
@@ -1817,13 +1859,19 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
   public final Post patchPost(
       UUID threadId, UUID id, String originalJson, Post updated, Map<String, String> authHeaders)
       throws HttpResponseException {
-    String updatedPostJson = JsonUtils.pojoToJson(updated);
-    JsonPatch patch = JsonUtils.getJsonPatch(originalJson, updatedPostJson);
-    return TestUtils.patch(
-        getResource(String.format("feed/%s/posts/%s", threadId, id)),
-        patch,
-        Post.class,
-        authHeaders);
+    try {
+      String updatedPostJson = JsonUtils.pojoToJson(updated);
+      ObjectMapper mapper = new ObjectMapper();
+      JsonNode patch =
+          JsonDiff.asJson(mapper.readTree(originalJson), mapper.readTree(updatedPostJson));
+      return TestUtils.patch(
+          getResource(String.format("feed/%s/posts/%s", threadId, id)),
+          patch,
+          Post.class,
+          authHeaders);
+    } catch (JsonProcessingException ignored) {
+    }
+    return null;
   }
 
   public void compareEntities(Thread expected, Thread patched, Map<String, String> authHeaders) {
@@ -1950,7 +1998,7 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     LocalDateTime now = LocalDateTime.now();
     return new AnnouncementDetails()
         .withDescription(description)
-        .withStartTime(now.plusDays(start).toEpochSecond(ZoneOffset.UTC))
-        .withEndTime(now.plusDays(end).toEpochSecond(ZoneOffset.UTC));
+        .withStartTime(now.plusDays(start).toInstant(ZoneOffset.UTC).toEpochMilli())
+        .withEndTime(now.plusDays(end).toInstant(ZoneOffset.UTC).toEpochMilli());
   }
 }

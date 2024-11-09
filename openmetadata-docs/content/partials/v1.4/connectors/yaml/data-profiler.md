@@ -90,14 +90,14 @@ To send the metadata to OpenMetadata, it needs to be specified as `type: metadat
 {% /codeInfo %}
 
 
-{% partial file="/v1.2/connectors/yaml/workflow-config-def.md" /%}
+{% partial file="/v1.4/connectors/yaml/workflow-config-def.md" /%}
 
 {% /codeInfoContainer %}
 
 {% codeBlock fileName="filename.yaml" %}
 
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: {% $connector %}
   serviceName: local_athena
@@ -195,13 +195,13 @@ sink:
   config: {}
 ```
 
-{% partial file="/v1.2/connectors/yaml/workflow-config.md" /%}
+{% partial file="/v1.4/connectors/yaml/workflow-config.md" /%}
 
 {% /codeBlock %}
 
 {% /codePreview %}
 
-- You can learn more about how to configure and run the Profiler Workflow to extract Profiler data and execute the Data Quality from [here](/connectors/ingestion/workflows/profiler)
+- You can learn more about how to configure and run the Profiler Workflow to extract Profiler data and execute the Data Quality from [here](/how-to-guides/data-quality-observability/profiler/workflow)
 
 ### 2. Run with the CLI
 
@@ -218,7 +218,7 @@ Note now instead of running `ingest`, we are using the `profile` command to sele
 {% tile
 title="Data Profiler"
 description="Find more information about the Data Profiler here"
-link="/connectors/ingestion/workflows/profiler"
+link="/how-to-guides/data-quality-observability/profiler/workflow"
 / %}
 
 {% /tilesContainer %}

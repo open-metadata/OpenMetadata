@@ -14,24 +14,17 @@
 @import (reference) url('../../../styles/variables.less');
 
 .task-feed-card-v1 {
+  padding: 18px 12px;
+
+  &.active {
+    border-left: 4px solid @info-color;
+  }
+
   .task-feed-body {
     padding-left: 1.5rem;
   }
   .assignee-item {
     margin: 0;
     margin-right: 4px;
-  }
-}
-
-.task-feed-message {
-  height: 100%;
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-
-  &:hover {
-    .ant-typography {
-      color: @primary-color;
-    }
   }
 }

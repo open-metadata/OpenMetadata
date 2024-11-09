@@ -43,6 +43,8 @@ import { ReactComponent as IconRestore } from '../../../../assets/svg/ic-restore
 import { ReactComponent as IconDropdown } from '../../../../assets/svg/menu.svg';
 import { ICON_DIMENSION } from '../../../../constants/constants';
 import { GlobalSettingOptions } from '../../../../constants/GlobalSettings.constants';
+import { useLimitStore } from '../../../../context/LimitsProvider/useLimitsStore';
+import { TabSpecificField } from '../../../../enums/entity.enum';
 import { ServiceCategory } from '../../../../enums/service.enum';
 import {
   App,
@@ -76,7 +78,7 @@ import AppSchedule from '../AppSchedule/AppSchedule.component';
 import { ApplicationTabs } from '../MarketPlaceAppDetails/MarketPlaceAppDetails.interface';
 import './app-details.less';
 import { AppAction } from './AppDetails.interface';
-import applicationSchemaClassBase from './ApplicationSchemaClassBase';
+import applicationsClassBase from './ApplicationsClassBase';
 
 const AppDetails = () => {
   const { t } = useTranslation();
@@ -93,18 +95,19 @@ const AppDetails = () => {
     isRunLoading: false,
     isSaveLoading: false,
   });
-  const UiSchema = applicationSchemaClassBase.getJSONUISchema();
+  const { getResourceLimit } = useLimitStore();
+  const UiSchema = applicationsClassBase.getJSONUISchema();
 
   const fetchAppDetails = useCallback(async () => {
     setLoadingState((prev) => ({ ...prev, isFetchLoading: true }));
     try {
       const data = await getApplicationByName(fqn, {
-        fields: 'owner,pipelines',
+        fields: [TabSpecificField.OWNERS, TabSpecificField.PIPELINES],
         include: Include.All,
       });
       setAppData(data);
 
-      const schema = await applicationSchemaClassBase.importSchema(fqn);
+      const schema = await applicationsClassBase.importSchema(fqn);
 
       setJsonSchema(schema.default);
     } catch (error) {
@@ -152,6 +155,9 @@ const AppDetails = () => {
             ? t('message.app-disabled-successfully')
             : t('message.app-uninstalled-successfully')
         );
+
+        // Update current count when Create / Delete operation performed
+        await getResourceLimit('app', true, true);
 
         onBrowseAppsClick();
       }
@@ -205,24 +211,28 @@ const AppDetails = () => {
             },
           },
         ]),
-    {
-      label: (
-        <ManageButtonItemLabel
-          description={t('message.uninstall-app', {
-            app: getEntityName(appData),
-          })}
-          icon={DeleteIcon}
-          id="uninstall-button"
-          name={t('label.uninstall')}
-        />
-      ),
-      key: 'uninstall-button',
-      onClick: () => {
-        setShowDeleteModel(true);
-        setShowActions(false);
-        setAction(AppAction.UNINSTALL);
-      },
-    },
+    ...(appData?.system
+      ? []
+      : [
+          {
+            label: (
+              <ManageButtonItemLabel
+                description={t('message.uninstall-app', {
+                  app: getEntityName(appData),
+                })}
+                icon={DeleteIcon}
+                id="uninstall-button"
+                name={t('label.uninstall')}
+              />
+            ),
+            key: 'uninstall-button',
+            onClick: () => {
+              setShowDeleteModel(true);
+              setShowActions(false);
+              setAction(AppAction.UNINSTALL);
+            },
+          },
+        ]),
   ];
 
   const onConfigSave = async (data: IChangeEvent) => {
@@ -328,7 +338,7 @@ const AppDetails = () => {
               ),
               key: ApplicationTabs.CONFIGURATION,
               children: (
-                <div className="p-lg">
+                <div className="m-auto max-width-md w-9/10 p-lg p-y-0">
                   <FormBuilder
                     hideCancelButton
                     useSelectWidget
@@ -378,11 +388,11 @@ const AppDetails = () => {
             {
               label: (
                 <TabsLabel
-                  id={ApplicationTabs.HISTORY}
-                  name={t('label.history')}
+                  id={ApplicationTabs.RECENT_RUNS}
+                  name={t('label.recent-run-plural')}
                 />
               ),
-              key: ApplicationTabs.HISTORY,
+              key: ApplicationTabs.RECENT_RUNS,
               children: (
                 <div className="p-lg">
                   <AppRunsHistory appData={appData} />

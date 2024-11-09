@@ -49,6 +49,48 @@ class StoredProceduresTests(TestCase):
             "procedure_name",
         )
 
+        self.assertEqual(
+            get_procedure_name_from_call(
+                query_text="BEGIN DB.SCHEMA.PROCEDURE_NAME; END;",
+            ),
+            "procedure_name",
+        )
+
+        self.assertEqual(
+            get_procedure_name_from_call(
+                query_text="BEGIN schema.procedure_name; END;",
+            ),
+            "procedure_name",
+        )
+
+        self.assertEqual(
+            get_procedure_name_from_call(
+                query_text="BEGIN procedure_name; END;",
+            ),
+            "procedure_name",
+        )
+
+        self.assertEqual(
+            get_procedure_name_from_call(
+                query_text="BEGIN DB.SCHEMA.PROCEDURE_NAME(...); END;",
+            ),
+            "procedure_name",
+        )
+
+        self.assertEqual(
+            get_procedure_name_from_call(
+                query_text="BEGIN schema.procedure_name(...); END;",
+            ),
+            "procedure_name",
+        )
+
+        self.assertEqual(
+            get_procedure_name_from_call(
+                query_text="BEGIN procedure_name(...); END;",
+            ),
+            "procedure_name",
+        )
+
         self.assertIsNone(
             get_procedure_name_from_call(
                 query_text="something very random",

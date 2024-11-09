@@ -73,6 +73,7 @@ select TABLE_NAME, NULL from information_schema.tables
 where TABLE_SCHEMA = '{schema}'
 AND TABLE_TYPE = 'BASE TABLE'
 AND IS_TRANSIENT != 'YES'
+AND IS_DYNAMIC != 'YES'
 """
 
 SNOWFLAKE_INCREMENTAL_GET_WITHOUT_TRANSIENT_TABLE_NAMES = """
@@ -89,6 +90,7 @@ from (
     and TABLE_SCHEMA = '{schema}'
     and TABLE_TYPE = 'BASE TABLE'
     and IS_TRANSIENT != 'YES'
+    AND IS_DYNAMIC != 'YES'
     and DATE_PART(epoch_millisecond, LAST_DDL) >= '{date}'
 )
 where ROW_NUMBER = 1
@@ -166,6 +168,32 @@ from (
 where ROW_NUMBER = 1
 """
 
+SNOWFLAKE_GET_DYNAMIC_TABLE_NAMES = """
+select TABLE_NAME, NULL from information_schema.tables
+where TABLE_SCHEMA = '{schema}'
+AND TABLE_TYPE = 'BASE TABLE'
+AND IS_DYNAMIC = 'YES'
+"""
+
+SNOWFLAKE_INCREMENTAL_GET_DYNAMIC_TABLE_NAMES = """
+select TABLE_NAME, DELETED
+from (
+    select
+        TABLE_NAME,
+        DELETED,
+        ROW_NUMBER() over (
+            partition by TABLE_NAME order by LAST_DDL desc
+        ) as ROW_NUMBER
+    from snowflake.account_usage.tables
+    where TABLE_CATALOG = '{database}'
+    and TABLE_SCHEMA = '{schema}'
+    and TABLE_TYPE = 'BASE TABLE'
+    and IS_DYNAMIC = 'YES'
+    and DATE_PART(epoch_millisecond, LAST_DDL) >= '{date}'
+)
+where ROW_NUMBER = 1
+"""
+
 SNOWFLAKE_GET_COMMENTS = textwrap.dedent(
     """
   select
@@ -215,6 +243,10 @@ SELECT query_text from snowflake.account_usage.query_history limit 1
 
 SNOWFLAKE_TEST_GET_TABLES = """
 SELECT TABLE_NAME FROM "{database_name}".information_schema.tables LIMIT 1
+"""
+
+SNOWFLAKE_TEST_GET_VIEWS = """
+SELECT TABLE_NAME FROM "{database_name}".information_schema.views LIMIT 1
 """
 
 SNOWFLAKE_GET_DATABASES = "SHOW DATABASES"
@@ -323,3 +355,30 @@ JOIN Q_HISTORY Q
 ORDER BY PROCEDURE_START_TIME DESC
     """
 )
+
+SNOWFLAKE_GET_TABLE_DDL = """
+SELECT GET_DDL('TABLE','{table_name}') AS \"text\"
+"""
+SNOWFLAKE_QUERY_LOG_QUERY = """
+    SELECT
+        QUERY_ID,
+        QUERY_TEXT,
+        QUERY_TYPE,
+        START_TIME,
+        DATABASE_NAME,
+        SCHEMA_NAME,
+        ROWS_INSERTED,
+        ROWS_UPDATED,
+        ROWS_DELETED
+    FROM "SNOWFLAKE"."ACCOUNT_USAGE"."QUERY_HISTORY"
+    WHERE
+    start_time>= DATEADD('DAY', -1, CURRENT_TIMESTAMP)
+    AND QUERY_TEXT ILIKE '%{tablename}%'
+    AND QUERY_TYPE IN (
+        '{insert}',
+        '{update}',
+        '{delete}',
+        '{merge}'
+    )
+    AND EXECUTION_STATUS = 'SUCCESS';
+"""

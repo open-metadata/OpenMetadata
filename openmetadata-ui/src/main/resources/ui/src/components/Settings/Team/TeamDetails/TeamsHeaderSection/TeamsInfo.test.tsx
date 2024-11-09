@@ -93,8 +93,10 @@ describe('TeamsInfo', () => {
       render(<TeamsInfo {...teamProps} />);
     });
     const domainLabel = screen.getByText('DomainLabel');
+    const userCount = screen.getByTestId('team-user-count');
 
     expect(domainLabel).toBeInTheDocument();
+    expect(userCount).toContainHTML('1');
   });
 
   it('should handle edit team email', () => {
@@ -128,6 +130,35 @@ describe('TeamsInfo', () => {
     });
 
     expect(screen.queryByTestId('email-input')).not.toBeInTheDocument();
+  });
+
+  it('should not render edit button if team type is organization', () => {
+    const { queryByTestId } = render(<TeamsInfo {...teamProps} />);
+
+    expect(queryByTestId('edit-team-type-icon')).not.toBeInTheDocument();
+  });
+
+  it('should not render edit button if team type is group & isGroupType is true', () => {
+    const { queryByTestId } = render(
+      <TeamsInfo
+        {...teamProps}
+        isGroupType
+        currentTeam={{ ...mockTeam, teamType: TeamType.Group }}
+      />
+    );
+
+    expect(queryByTestId('edit-team-type-icon')).not.toBeInTheDocument();
+  });
+
+  it('should render edit button if team type is not group and organization', () => {
+    const { queryByTestId } = render(
+      <TeamsInfo
+        {...teamProps}
+        currentTeam={{ ...mockTeam, teamType: TeamType.BusinessUnit }}
+      />
+    );
+
+    expect(queryByTestId('edit-team-type-icon')).toBeInTheDocument();
   });
 
   it('should not show edit button if user does not have permission', () => {

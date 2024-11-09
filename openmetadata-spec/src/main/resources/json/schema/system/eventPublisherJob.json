@@ -101,6 +101,12 @@
       "description": "Maximum number of events sent in a batch (Default 10).",
       "type": "integer"
     },
+    "payLoadSize": {
+      "description": "Payload size in bytes depending on config.",
+      "type": "integer",
+      "existingJavaType": "java.lang.Long",
+      "default": 104857600
+    },
     "searchIndexMappingLanguage": {
       "description": "Recreate Indexes with updated Language",
       "$ref": "../configuration/elasticSearchConfiguration.json#/definitions/searchIndexMappingLanguage"

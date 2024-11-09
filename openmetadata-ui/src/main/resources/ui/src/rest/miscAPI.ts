@@ -14,18 +14,16 @@
 import { AxiosResponse } from 'axios';
 import { Edge } from '../components/Entity/EntityLineage/EntityLineage.interface';
 import { ExploreSearchIndex } from '../components/Explore/ExplorePage.interface';
-import { WILD_CARD_CHAR } from '../constants/char.constants';
+import { PAGE_SIZE } from '../constants/constants';
 import { SearchIndex } from '../enums/search.enum';
 import { AuthenticationConfiguration } from '../generated/configuration/authenticationConfiguration';
 import { AuthorizerConfiguration } from '../generated/configuration/authorizerConfiguration';
 import { PipelineServiceClientConfiguration } from '../generated/configuration/pipelineServiceClientConfiguration';
 import { ValidationResponse } from '../generated/system/validationResponse';
 import { Paging } from '../generated/type/paging';
-import {
-  RawSuggestResponse,
-  SearchResponse,
-} from '../interface/search.interface';
+import { SearchResponse } from '../interface/search.interface';
 import { getSearchAPIQueryParams } from '../utils/SearchUtils';
+import { escapeESReservedCharacters } from '../utils/StringsUtils';
 import APIClient from './index';
 
 export const searchData = <SI extends SearchIndex>(
@@ -90,49 +88,14 @@ export const fetchAirflowConfig = async () => {
   return response.data;
 };
 
-export const getSuggestions = <T extends SearchIndex>(
-  queryString: string,
-  searchIndex?: T
-) => {
-  const params = {
-    q: queryString,
-    index: searchIndex ?? [
-      SearchIndex.DASHBOARD,
-      SearchIndex.TABLE,
-      SearchIndex.TOPIC,
-      SearchIndex.PIPELINE,
-      SearchIndex.MLMODEL,
-      SearchIndex.CONTAINER,
-      SearchIndex.STORED_PROCEDURE,
-      SearchIndex.DASHBOARD_DATA_MODEL,
-      SearchIndex.GLOSSARY_TERM,
-      SearchIndex.TAG,
-      SearchIndex.SEARCH_INDEX,
-    ],
-  };
-
-  if (searchIndex) {
-    return APIClient.get<RawSuggestResponse<T>>(`/search/suggest`, {
-      params,
-    });
-  }
-
-  return APIClient.get<RawSuggestResponse<ExploreSearchIndex>>(
-    `/search/suggest`,
-    {
-      params,
-    }
-  );
-};
-
 export const getVersion = async () => {
   const response = await APIClient.get<{ version: string }>('/system/version');
 
   return response.data;
 };
 
-export const postSamlLogout = async (data: { token: string }) => {
-  const response = await APIClient.post(`/users/logout`, { ...data });
+export const postSamlLogout = async () => {
+  const response = await APIClient.get(`/saml/logout`);
 
   return response.data;
 };
@@ -149,32 +112,6 @@ export const deleteLineageEdge = (
 ): Promise<AxiosResponse> => {
   return APIClient.delete(
     `/lineage/${fromEntity}/${fromId}/${toEntity}/${toId}`
-  );
-};
-
-export const getSuggestedUsers = (term: string) => {
-  return APIClient.get<RawSuggestResponse<SearchIndex.USER>>(
-    `/search/suggest?q=${term}&index=${SearchIndex.USER}`
-  );
-};
-
-export const getSuggestedTeams = (term: string) => {
-  return APIClient.get<RawSuggestResponse<SearchIndex.TEAM>>(
-    `/search/suggest?q=${term}&index=${SearchIndex.TEAM}`
-  );
-};
-
-export const getUserSuggestions = (term: string, userOnly = false) => {
-  const params = {
-    q: term || WILD_CARD_CHAR,
-    index: userOnly
-      ? SearchIndex.USER
-      : `${SearchIndex.USER},${SearchIndex.TEAM}`,
-  };
-
-  return APIClient.get<RawSuggestResponse<SearchIndex.USER>>(
-    `/search/suggest`,
-    { params }
   );
 };
 
@@ -195,42 +132,20 @@ export const getTeamsByQuery = async (params: {
   return response.data;
 };
 
-export const getSearchedUsers = (
-  queryString: string,
-  from: number,
-  size = 10
-) => {
-  return searchData(queryString, from, size, '', '', '', SearchIndex.USER);
-};
-
-export const getSearchedTeams = (
-  queryString: string,
-  from: number,
-  filter?: string,
-  size = 10
+export const getUserAndTeamSearch = (
+  term: string,
+  userOnly = false,
+  size = PAGE_SIZE
 ) => {
   return searchData(
-    queryString,
-    from,
+    term ?? '',
+    1,
     size,
-    filter ?? '',
     '',
     '',
-    SearchIndex.TEAM
+    '',
+    userOnly ? SearchIndex.USER : [SearchIndex.USER, SearchIndex.TEAM]
   );
-};
-
-export const getSearchedUsersAndTeams = async (
-  queryString: string,
-  from: number,
-  size = 10
-) => {
-  const response = await searchData(queryString, from, size, '', '', '', [
-    SearchIndex.USER,
-    SearchIndex.TEAM,
-  ]);
-
-  return response.data;
 };
 
 export const deleteEntity = async (
@@ -245,18 +160,6 @@ export const deleteEntity = async (
   };
 
   return APIClient.delete<{ version?: number }>(`/${entityType}/${entityId}`, {
-    params,
-  });
-};
-
-export const getAdvancedFieldOptions = (
-  q: string,
-  index: SearchIndex,
-  field: string | undefined
-) => {
-  const params = { index, field, q };
-
-  return APIClient.get<RawSuggestResponse<typeof index>>(`/search/suggest`, {
     params,
   });
 };
@@ -277,8 +180,15 @@ export const getAggregateFieldOptions = (
   value: string,
   q: string
 ) => {
-  const withWildCardValue = value ? `.*${value}.*` : '.*';
-  const params = { index, field, value: withWildCardValue, q };
+  const withWildCardValue = value
+    ? `.*${escapeESReservedCharacters(value)}.*`
+    : '.*';
+  const params = {
+    index,
+    field,
+    value: withWildCardValue,
+    q,
+  };
 
   return APIClient.get<SearchResponse<ExploreSearchIndex>>(
     `/search/aggregate`,
