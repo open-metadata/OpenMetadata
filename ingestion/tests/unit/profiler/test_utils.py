@@ -12,19 +12,21 @@
 """
 Tests utils function for the profiler
 """
-
 from datetime import datetime
 from unittest import TestCase
+from unittest.mock import Mock
 
 import pytest
 from sqlalchemy import Column
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.sql.sqltypes import Integer, String
 
-from metadata.profiler.metrics.hybrid.histogram import Histogram
-from metadata.profiler.metrics.system.queries.snowflake import (
+from metadata.ingestion.source.database.snowflake.models import SnowflakeQueryLogEntry
+from metadata.ingestion.source.database.snowflake.profiler.system import (
+    SnowflakeTableResovler,
     get_snowflake_system_queries,
 )
+from metadata.profiler.metrics.hybrid.histogram import Histogram
 from metadata.profiler.metrics.system.system import recursive_dic
 from metadata.utils.profiler_utils import (
     get_identifiers_from_string,
@@ -32,8 +34,6 @@ from metadata.utils.profiler_utils import (
     set_cache,
 )
 from metadata.utils.sqa_utils import is_array
-
-from .conftest import LowerRow, Row
 
 Base = declarative_base()
 
@@ -54,18 +54,18 @@ class TestHistogramUtils(TestCase):
     def test_histogram_label_formatter_positive(self):
         """test label formatter for histogram"""
         formatted_label = self.histogram._format_bin_labels(18927, 23456)
-        assert formatted_label == "18.93K to 23.46K"
+        assert formatted_label == "18.927K to 23.456K"
 
         formatted_label = self.histogram._format_bin_labels(18927)
-        assert formatted_label == "18.93K and up"
+        assert formatted_label == "18.927K and up"
 
     def test_histogram_label_formatter_negative(self):
         """test label formatter for histogram for negative numbers"""
         formatted_label = self.histogram._format_bin_labels(-18927, -23456)
-        assert formatted_label == "-18.93K to -23.46K"
+        assert formatted_label == "-18.927K to -23.456K"
 
         formatted_label = self.histogram._format_bin_labels(-18927)
-        assert formatted_label == "-18.93K and up"
+        assert formatted_label == "-18.927K and up"
 
     def test_histogram_label_formatter_none(self):
         """test label formatter for histogram for None"""
@@ -80,12 +80,12 @@ class TestHistogramUtils(TestCase):
     def test_histogram_label_formatter_nines(self):
         """test label formatter for histogram for nines"""
         formatted_label = self.histogram._format_bin_labels(99999999)
-        assert formatted_label == "100.00M and up"
+        assert formatted_label == "100.000M and up"
 
     def test_histogram_label_formatter_floats(self):
         """test label formatter for histogram for floats"""
         formatted_label = self.histogram._format_bin_labels(167893.98542, 194993.98542)
-        assert formatted_label == "167.89K to 194.99K"
+        assert formatted_label == "167.894K to 194.994K"
 
 
 def test_is_array():
@@ -108,14 +108,19 @@ def test_is_array():
 
 def test_get_snowflake_system_queries():
     """Test get snowflake system queries"""
-    row = Row(
+    row = SnowflakeQueryLogEntry(
         query_id="1",
         query_type="INSERT",
         start_time=datetime.now(),
         query_text="INSERT INTO DATABASE.SCHEMA.TABLE1 (col1, col2) VALUES (1, 'a'), (2, 'b')",
     )
 
-    query_result = get_snowflake_system_queries(row, "DATABASE", "SCHEMA")  # type: ignore
+    # We don't need the ometa_client nor the db_service if we have all the db.schema.table in the query
+    resolver = SnowflakeTableResovler(Mock())
+    query_result = get_snowflake_system_queries(
+        query_log_entry=row,
+        resolver=resolver,
+    )  # type: ignore
     assert query_result
     assert query_result.query_id == "1"
     assert query_result.query_type == "INSERT"
@@ -123,14 +128,17 @@ def test_get_snowflake_system_queries():
     assert query_result.schema_name == "schema"
     assert query_result.table_name == "table1"
 
-    row = Row(
-        query_id=1,
+    row = SnowflakeQueryLogEntry(
+        query_id="1",
         query_type="INSERT",
         start_time=datetime.now(),
         query_text="INSERT INTO SCHEMA.TABLE1 (col1, col2) VALUES (1, 'a'), (2, 'b')",
     )
 
-    query_result = get_snowflake_system_queries(row, "DATABASE", "SCHEMA")  # type: ignore
+    query_result = get_snowflake_system_queries(
+        query_log_entry=row,
+        resolver=resolver,
+    )  # type: ignore
 
     assert not query_result
 
@@ -138,6 +146,10 @@ def test_get_snowflake_system_queries():
 @pytest.mark.parametrize(
     "query, expected",
     [
+        (
+            "INSERT INTO IDENTIFIER('DATABASE.SCHEMA.TABLE1') (col1, col2) VALUES (1, 'a'), (2, 'b')",
+            "INSERT",
+        ),
         (
             "INSERT INTO DATABASE.SCHEMA.TABLE1 (col1, col2) VALUES (1, 'a'), (2, 'b')",
             "INSERT",
@@ -158,21 +170,18 @@ def test_get_snowflake_system_queries_all_dll(query, expected):
     """test we ca get all ddl queries
     reference https://docs.snowflake.com/en/sql-reference/sql-dml
     """
-    row = Row(
-        query_id=1,
+    row = SnowflakeQueryLogEntry(
+        query_id="1",
         query_type=expected,
         start_time=datetime.now(),
         query_text=query,
     )
-
-    lower_row = LowerRow(
-        query_id=1,
-        query_type=expected,
-        start_time=datetime.now(),
-        query_text=query,
-    )
-
-    query_result = get_snowflake_system_queries(row, "DATABASE", "SCHEMA")  # type: ignore
+    resolver = Mock()
+    resolver.resolve_snowflake_fqn = Mock(return_value=("database", "schema", "table1"))
+    query_result = get_snowflake_system_queries(
+        query_log_entry=row,
+        resolver=resolver,
+    )  # type: ignore
 
     assert query_result
     assert query_result.query_type == expected
@@ -180,7 +189,10 @@ def test_get_snowflake_system_queries_all_dll(query, expected):
     assert query_result.schema_name == "schema"
     assert query_result.table_name == "table1"
 
-    query_result = get_snowflake_system_queries(lower_row, "DATABASE", "SCHEMA")  # type: ignore
+    query_result = get_snowflake_system_queries(
+        query_log_entry=SnowflakeQueryLogEntry.model_validate(row),
+        resolver=resolver,
+    )  # type: ignore
 
     assert query_result
     assert query_result.query_type == expected
@@ -202,6 +214,9 @@ def test_get_snowflake_system_queries_all_dll(query, expected):
             '"DATABASE.DOT"."SCHEMA.DOT"."TABLE.DOT"',
             ("DATABASE.DOT", "SCHEMA.DOT", "TABLE.DOT"),
         ),
+        ("SCHEMA.TABLE", (None, "SCHEMA", "TABLE")),
+        ("TABLE", (None, None, "TABLE")),
+        ('"SCHEMA.DOT"."TABLE.DOT"', (None, "SCHEMA.DOT", "TABLE.DOT")),
     ],
 )
 def test_get_identifiers_from_string(identifier, expected):

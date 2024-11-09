@@ -13,6 +13,8 @@
 import { render, screen } from '@testing-library/react';
 import React from 'react';
 import { ReactFlowProvider } from 'reactflow';
+import { ModelType } from '../../../generated/entity/data/table';
+import { LineageLayer } from '../../../generated/settings/settings';
 import CustomNodeV1Component from './CustomNodeV1.component';
 
 const mockNodeDataProps = {
@@ -39,9 +41,36 @@ const mockNodeDataProps = {
   zIndex: 0,
 };
 
+const mockNodeDataProps2 = {
+  id: 'node1',
+  type: 'table',
+  data: {
+    node: {
+      fullyQualifiedName: 'dim_customer',
+      type: 'table',
+      entityType: 'table',
+      id: 'khjahjfja',
+      columns: [
+        { fullyQualifiedName: 'col1', name: 'col1' },
+        { fullyQualifiedName: 'col2', name: 'col2' },
+        { fullyQualifiedName: 'col3', name: 'col3' },
+      ],
+      dataModel: {
+        modelType: ModelType.Dbt,
+      },
+    },
+  },
+  selected: false,
+  isConnectable: false,
+  xPos: 0,
+  yPos: 0,
+  dragging: true,
+  zIndex: 0,
+};
+
 const onMockColumnClick = jest.fn();
 
-jest.mock('../../LineageProvider/LineageProvider', () => ({
+jest.mock('../../../context/LineageProvider/LineageProvider', () => ({
   useLineageProvider: jest.fn().mockImplementation(() => ({
     tracedNodes: [],
     tracedColumns: [],
@@ -57,7 +86,8 @@ jest.mock('../../LineageProvider/LineageProvider', () => ({
       upstreamEdges: [],
       downstreamEdges: [],
     },
-    expandedNodes: [],
+    columnsHavingLineage: [],
+    activeLayer: [LineageLayer.ColumnLevelLineage],
     fetchPipelineStatus: jest.fn(),
     onColumnClick: onMockColumnClick,
   })),
@@ -73,5 +103,17 @@ describe('CustomNodeV1', () => {
 
     expect(screen.getByTestId('lineage-node-dim_customer')).toBeInTheDocument();
     expect(screen.getByTestId('expand-cols-btn')).toBeInTheDocument();
+  });
+
+  it('renders node with dbt icon correctly', () => {
+    render(
+      <ReactFlowProvider>
+        <CustomNodeV1Component {...mockNodeDataProps2} />
+      </ReactFlowProvider>
+    );
+
+    expect(screen.getByTestId('lineage-node-dim_customer')).toBeInTheDocument();
+    expect(screen.getByTestId('expand-cols-btn')).toBeInTheDocument();
+    expect(screen.getByTestId('dbt-icon')).toBeInTheDocument();
   });
 });

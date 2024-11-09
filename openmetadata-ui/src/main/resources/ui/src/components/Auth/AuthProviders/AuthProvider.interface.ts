@@ -12,10 +12,11 @@
  */
 
 import { Profile } from 'oidc-client';
-import { ComponentType, FC, ReactNode } from 'react';
+import { ComponentType, ReactNode } from 'react';
 import { AuthenticationConfiguration } from '../../../generated/configuration/authenticationConfiguration';
 import { AuthorizerConfiguration } from '../../../generated/configuration/authorizerConfiguration';
 import { User } from '../../../generated/entity/teams/user';
+import { AccessTokenResponse } from '../../../rest/auth-API';
 
 export interface AuthProviderProps {
   childComponentType: ComponentType;
@@ -38,7 +39,7 @@ export type OidcUser = {
 export interface AuthenticatorRef {
   invokeLogin: () => void;
   invokeLogout: () => void;
-  renewIdToken: () => Promise<string>;
+  renewIdToken: () => Promise<string> | Promise<AccessTokenResponse>;
 }
 
 export enum JWT_PRINCIPAL_CLAIMS {
@@ -52,20 +53,19 @@ export interface IAuthContext {
   setIsAuthenticated: (authenticated: boolean) => void;
   authConfig?: AuthenticationConfiguration;
   authorizerConfig?: AuthorizerConfiguration;
-  isSigningIn: boolean;
-  setIsSigningIn: (authenticated: boolean) => void;
+  isSigningUp: boolean;
+  setIsSigningUp: (isSigningUp: boolean) => void;
   onLoginHandler: () => void;
   onLogoutHandler: () => void;
-  getCallBackComponent: () => FC | null;
-  loading: boolean;
   currentUser?: User;
   newUser?: UserProfile;
   updateNewUser: (user: UserProfile) => void;
-  setLoadingIndicator: (authenticated: boolean) => void;
   handleSuccessfulLogin: (user: OidcUser) => void;
+  handleFailedLogin: () => void;
   updateAxiosInterceptors: () => void;
   updateCurrentUser: (user: User) => void;
   jwtPrincipalClaims: string[];
+  jwtPrincipalClaimsMapping: string[];
 }
 
 export type AuthenticationConfigurationWithScope =

@@ -12,7 +12,7 @@
  */
 
 /* eslint-disable max-len */
-import { OperationPermission } from '../components/PermissionProvider/PermissionProvider.interface';
+import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
 import { ProviderType, Status } from '../generated/entity/data/glossaryTerm';
 
 export const mockedAssetData = {
@@ -394,7 +394,7 @@ export const VERSION_VIEW_GLOSSARY_PERMISSION = {
   EditDescription: false,
   EditDisplayName: false,
   EditLineage: false,
-  EditOwner: false,
+  EditOwners: false,
   EditQueries: false,
   EditSampleData: false,
   EditTags: false,
@@ -417,7 +417,7 @@ export const MOCK_PERMISSIONS = {
   EditDescription: true,
   EditDisplayName: true,
   EditLineage: true,
-  EditOwner: true,
+  EditOwners: true,
   EditQueries: true,
   EditSampleData: true,
   EditTags: true,

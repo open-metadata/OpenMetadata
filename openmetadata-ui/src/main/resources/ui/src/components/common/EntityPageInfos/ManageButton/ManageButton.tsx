@@ -11,11 +11,12 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Dropdown, Modal, Row, Tooltip, Typography } from 'antd';
+import { Button, Dropdown, Modal, Tooltip, Typography } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
+import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { isUndefined } from 'lodash';
-import React, { FC, ReactNode, useCallback, useMemo, useState } from 'react';
+import { capitalize, isUndefined } from 'lodash';
+import React, { FC, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconAnnouncementsBlack } from '../../../../assets/svg/announcements-black.svg';
 import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
@@ -24,45 +25,17 @@ import { ReactComponent as IconRestore } from '../../../../assets/svg/ic-restore
 import { ReactComponent as IconSetting } from '../../../../assets/svg/ic-settings-gray.svg';
 import { ReactComponent as IconDropdown } from '../../../../assets/svg/menu.svg';
 import { NO_PERMISSION_FOR_ACTION } from '../../../../constants/HelperTextUtil';
-import { DROPDOWN_ICON_SIZE_PROPS } from '../../../../constants/ManageButton.constants';
 import { EntityType } from '../../../../enums/entity.enum';
 import { ANNOUNCEMENT_ENTITIES } from '../../../../utils/AnnouncementsUtils';
+import { showErrorToast } from '../../../../utils/ToastUtils';
 import EntityNameModal from '../../../Modals/EntityNameModal/EntityNameModal.component';
 import { EntityName } from '../../../Modals/EntityNameModal/EntityNameModal.interface';
-import { DeleteOption } from '../../DeleteWidget/DeleteWidget.interface';
 import DeleteWidgetModal from '../../DeleteWidget/DeleteWidgetModal';
 import { ManageButtonItemLabel } from '../../ManageButtonContentItem/ManageButtonContentItem.component';
+import { ManageButtonProps } from './ManageButton.interface';
 import './ManageButton.less';
 
-interface Props {
-  allowSoftDelete?: boolean;
-  afterDeleteAction?: (isSoftDelete?: boolean, version?: number) => void;
-  buttonClassName?: string;
-  entityName: string;
-  entityId?: string;
-  entityType: EntityType;
-  displayName?: string;
-  entityFQN?: string;
-  isRecursiveDelete?: boolean;
-  deleteMessage?: string;
-  softDeleteMessagePostFix?: string;
-  hardDeleteMessagePostFix?: string;
-  canDelete?: boolean;
-  extraDropdownContent?: ItemType[];
-  onAnnouncementClick?: () => void;
-  onRestoreEntity?: () => Promise<void>;
-  deleted?: boolean;
-  editDisplayNamePermission?: boolean;
-  onEditDisplayName?: (data: EntityName) => Promise<void>;
-  allowRename?: boolean;
-  prepareType?: boolean;
-  successMessage?: string;
-  deleteButtonDescription?: string;
-  deleteOptions?: DeleteOption[];
-  onProfilerSettingUpdate?: () => void;
-}
-
-const ManageButton: FC<Props> = ({
+const ManageButton: FC<ManageButtonProps> = ({
   allowSoftDelete,
   afterDeleteAction,
   buttonClassName,
@@ -112,15 +85,17 @@ const ManageButton: FC<Props> = ({
     }
   };
 
-  const handleDisplayNameUpdate = (data: EntityName) => {
-    if (onEditDisplayName) {
-      onEditDisplayName(data)
-        .then(() => {
-          setIsDisplayNameEditing(false);
-        })
-        .catch(() => {
-          // do nothing
-        });
+  const handleDisplayNameUpdate = async (data: EntityName) => {
+    if (!onEditDisplayName) {
+      return;
+    }
+    setIsDisplayNameEditing(true);
+    try {
+      await onEditDisplayName(data);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsDisplayNameEditing(false);
     }
   };
 
@@ -151,13 +126,7 @@ const ManageButton: FC<Props> = ({
                   description={t('message.restore-action-description', {
                     entityType,
                   })}
-                  icon={
-                    <IconRestore
-                      className="m-t-xss"
-                      name="Restore"
-                      {...DROPDOWN_ICON_SIZE_PROPS}
-                    />
-                  }
+                  icon={IconRestore}
                   id="restore-button"
                   name={t('label.restore')}
                 />
@@ -180,13 +149,7 @@ const ManageButton: FC<Props> = ({
             label: (
               <ManageButtonItemLabel
                 description={t('message.announcement-action-description')}
-                icon={
-                  <IconAnnouncementsBlack
-                    className="m-t-xss"
-                    name="announcement"
-                    {...DROPDOWN_ICON_SIZE_PROPS}
-                  />
-                }
+                icon={IconAnnouncementsBlack}
                 id="announcement-button"
                 name={t('label.announcement-plural')}
               />
@@ -208,7 +171,7 @@ const ManageButton: FC<Props> = ({
                 description={t('message.update-displayName-entity', {
                   entity: entityName,
                 })}
-                icon={<EditIcon width="18px" />}
+                icon={EditIcon}
                 id="rename-button"
                 name={t('label.rename')}
               />
@@ -231,13 +194,7 @@ const ManageButton: FC<Props> = ({
                   deleteButtonDescription ??
                   t('message.update-profiler-settings')
                 }
-                icon={
-                  <IconSetting
-                    className="m-t-xss"
-                    {...DROPDOWN_ICON_SIZE_PROPS}
-                    name="Profiler Settings"
-                  />
-                }
+                icon={IconSetting}
                 id="profiler-setting-button"
                 name={t('label.profiler-setting-plural')}
               />
@@ -261,13 +218,7 @@ const ManageButton: FC<Props> = ({
                     entityType,
                   })
                 }
-                icon={
-                  <IconDelete
-                    className="m-t-xss"
-                    {...DROPDOWN_ICON_SIZE_PROPS}
-                    name="Delete"
-                  />
-                }
+                icon={IconDelete}
                 id="delete-button"
                 name={t('label.delete')}
               />
@@ -287,22 +238,33 @@ const ManageButton: FC<Props> = ({
   return (
     <>
       {items.length ? (
-        <Dropdown
-          align={{ targetOffset: [-12, 0] }}
-          dropdownRender={renderDropdownContainer}
-          menu={{ items }}
-          overlayClassName="manage-dropdown-list-container"
-          overlayStyle={{ width: '350px' }}
-          placement="bottomRight"
-          trigger={['click']}>
-          <Button
-            className={classNames('flex-center px-1.5', buttonClassName)}
-            data-testid="manage-button"
-            title="Manage"
-            type="default">
-            <IconDropdown className="anticon self-center manage-dropdown-icon" />
-          </Button>
-        </Dropdown>
+        // Used Button to stop click propagation event in the
+        // TeamDetailsV1 and User.component collapsible panel.
+        <Button
+          className="remove-button-default-styling"
+          onClick={(e) => e.stopPropagation()}>
+          <Dropdown
+            align={{ targetOffset: [-12, 0] }}
+            dropdownRender={renderDropdownContainer}
+            menu={{ items }}
+            overlayClassName="manage-dropdown-list-container"
+            overlayStyle={{ width: '350px' }}
+            placement="bottomRight"
+            trigger={['click']}>
+            <Tooltip
+              placement="topRight"
+              title={t('label.manage-entity', {
+                entity: capitalize(entityType),
+              })}>
+              <Button
+                className={classNames('flex-center px-1.5', buttonClassName)}
+                data-testid="manage-button"
+                type="default">
+                <IconDropdown className="anticon self-center manage-dropdown-icon" />
+              </Button>
+            </Tooltip>
+          </Dropdown>
+        </Button>
       ) : (
         <></>
       )}
@@ -313,7 +275,7 @@ const ManageButton: FC<Props> = ({
           deleteMessage={deleteMessage}
           deleteOptions={deleteOptions}
           entityId={entityId ?? ''}
-          entityName={entityName ?? ''}
+          entityName={displayName ?? entityName}
           entityType={entityType}
           hardDeleteMessagePostFix={hardDeleteMessagePostFix}
           isRecursiveDelete={isRecursiveDelete}
@@ -340,79 +302,41 @@ const ManageButton: FC<Props> = ({
         />
       )}
 
-      <Modal
-        centered
-        cancelButtonProps={{
-          type: 'link',
-        }}
-        className="reactive-modal"
-        closable={false}
-        confirmLoading={isEntityRestoring}
-        data-testid="restore-asset-modal"
-        maskClosable={false}
-        okText={t('label.restore')}
-        open={showReactiveModal}
-        title={t('label.restore-entity', {
-          entity: entityType,
-        })}
-        onCancel={() => {
-          setShowReactiveModal(false);
-        }}
-        onOk={handleRestore}>
-        <Typography.Text data-testid="restore-modal-body">
-          {t('message.are-you-want-to-restore', {
-            entity: entityName,
-          })}
-        </Typography.Text>
-      </Modal>
+      {showReactiveModal && (
+        // Used Button to stop click propagation event in the
+        // TeamDetailsV1 and User.component collapsible panel.
+        <Button
+          className="remove-button-default-styling"
+          onClick={(e) => e.stopPropagation()}>
+          <Modal
+            centered
+            cancelButtonProps={{
+              type: 'link',
+            }}
+            className="reactive-modal"
+            closable={false}
+            confirmLoading={isEntityRestoring}
+            data-testid="restore-asset-modal"
+            maskClosable={false}
+            okText={t('label.restore')}
+            open={showReactiveModal}
+            title={t('label.restore-entity', {
+              entity: entityType,
+            })}
+            onCancel={() => {
+              setShowReactiveModal(false);
+            }}
+            onOk={handleRestore}>
+            <Typography.Text data-testid="restore-modal-body">
+              {t('message.are-you-want-to-restore', {
+                entity: entityName,
+              })}
+            </Typography.Text>
+          </Modal>
+        </Button>
+      )}
     </>
   );
 };
 
 export default ManageButton;
-
-interface ManageButtonItemProps {
-  label: ReactNode;
-  icon: ReactNode;
-  description: string;
-  disabled: boolean;
-  onClick: () => void;
-}
-
-export const ManageButtonItem = ({
-  label,
-  icon,
-  description,
-  disabled,
-  onClick,
-}: ManageButtonItemProps) => {
-  return (
-    <Tooltip title={disabled && NO_PERMISSION_FOR_ACTION}>
-      <Row
-        className={classNames('cursor-pointer manage-button', {
-          'cursor-not-allowed opacity-50': disabled,
-        })}
-        onClick={onClick}>
-        <Col className="m-t-xss" span={3}>
-          {icon}
-        </Col>
-        <Col span={21}>
-          <Row data-testid="restore-button">
-            <Col span={21}>
-              <Typography.Text
-                className="font-medium"
-                data-testid="delete-button-title">
-                {label}
-              </Typography.Text>
-            </Col>
-            <Col className="p-t-xss">
-              <Typography.Paragraph className="text-grey-muted text-xs m-b-0 line-height-16">
-                {description}
-              </Typography.Paragraph>
-            </Col>
-          </Row>
-        </Col>
-      </Row>
-    </Tooltip>
-  );
-};

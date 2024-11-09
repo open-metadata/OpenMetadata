@@ -12,7 +12,7 @@
  */
 import { act, render, screen } from '@testing-library/react';
 import React from 'react';
-import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
+import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { mockEntityPermissions } from '../../pages/DatabaseSchemaPage/mocks/DatabaseSchemaPage.mock';
 import { getTestSuiteByName } from '../../rest/testAPI';
 import TestSuiteDetailsPage from './TestSuiteDetailsPage.component';
@@ -20,7 +20,7 @@ import TestSuiteDetailsPage from './TestSuiteDetailsPage.component';
 jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => {
   return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
 });
-jest.mock('../../components/Loader/Loader', () => {
+jest.mock('../../components/common/Loader/Loader', () => {
   return jest.fn().mockImplementation(() => <div>Loader.component</div>);
 });
 jest.mock(
@@ -55,26 +55,25 @@ jest.mock(
       .mockImplementation(() => <div>ManageButton.component</div>);
   }
 );
-jest.mock('../../components/common/EntityDescription/Description', () => {
+jest.mock('../../components/common/EntityDescription/DescriptionV1', () => {
   return jest.fn().mockImplementation(() => <div>Description.component</div>);
 });
-jest.mock('../../components/ProfilerDashboard/component/DataQualityTab', () => {
-  return jest
-    .fn()
-    .mockImplementation(() => <div>DataQualityTab.component</div>);
-});
-jest.mock('../../components/Auth/AuthProviders/AuthProvider', () => {
+jest.mock(
+  '../../components/Database/Profiler/DataQualityTab/DataQualityTab',
+  () => {
+    return jest
+      .fn()
+      .mockImplementation(() => <div>DataQualityTab.component</div>);
+  }
+);
+jest.mock('../../hooks/useApplicationStore', () => {
   return {
-    useAuthContext: jest
+    useApplicationStore: jest
       .fn()
       .mockImplementation(() => ({ isAuthDisabled: true })),
   };
 });
-jest.mock('../../hooks/authHooks', () => {
-  return {
-    useAuth: jest.fn().mockImplementation(() => ({ isAdminUser: true })),
-  };
-});
+
 jest.mock('react-router-dom', () => {
   return {
     useHistory: jest.fn().mockImplementation(() => ({ push: jest.fn() })),
@@ -96,7 +95,7 @@ jest.mock('../../rest/testAPI', () => {
       .mockImplementation(() => Promise.resolve({ data: [] })),
   };
 });
-jest.mock('../../components/PermissionProvider/PermissionProvider', () => ({
+jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockImplementation(() => ({
     getEntityPermissionByFqn: jest
       .fn()
@@ -130,7 +129,7 @@ describe('TestSuiteDetailsPage component', () => {
     });
 
     expect(mockGetTestSuiteByName).toHaveBeenCalledWith('testSuiteFQN', {
-      fields: 'owner',
+      fields: 'owners',
       include: 'all',
     });
   });

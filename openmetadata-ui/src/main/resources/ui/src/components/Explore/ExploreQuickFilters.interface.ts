@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { EntityFields } from '../../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { Aggregations } from '../../interface/search.interface';
 import { ExploreQuickFilterField } from './ExplorePage.interface';
@@ -23,6 +24,8 @@ export interface ExploreQuickFiltersProps {
   onAdvanceSearch?: () => void;
   showDeleted?: boolean;
   onChangeShowDeleted?: (showDeleted: boolean) => void;
+  independent?: boolean; // flag to indicate if the filters are independent of aggregations
+  fieldsWithNullValues?: EntityFields[];
 }
 
 export interface FilterFieldsMenuItem {

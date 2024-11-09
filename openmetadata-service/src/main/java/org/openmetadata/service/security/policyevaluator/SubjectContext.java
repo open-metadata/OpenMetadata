@@ -14,6 +14,7 @@
 package org.openmetadata.service.security.policyevaluator;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 
 import java.util.ArrayDeque;
@@ -38,8 +39,8 @@ import org.openmetadata.service.Entity;
 /** Subject context used for Access Control Policies */
 @Slf4j
 public record SubjectContext(User user) {
-  private static final String USER_FIELDS = "roles,teams,isAdmin,profile";
-  public static final String TEAM_FIELDS = "defaultRoles, policies, parents, profile";
+  private static final String USER_FIELDS = "roles,teams,isAdmin,profile,domains";
+  public static final String TEAM_FIELDS = "defaultRoles, policies, parents, profile,domains";
 
   public static SubjectContext getSubjectContext(String userName) {
     User user = Entity.getEntityByName(Entity.USER, userName, USER_FIELDS, NON_DELETED);
@@ -54,21 +55,28 @@ public record SubjectContext(User user) {
     return Boolean.TRUE.equals(user.getIsBot());
   }
 
-  public boolean isOwner(EntityReference owner) {
-    if (owner == null) {
+  public boolean isOwner(List<EntityReference> owners) {
+    if (nullOrEmpty(owners)) {
       return false;
     }
-    if (owner.getType().equals(Entity.USER) && owner.getName().equals(user.getName())) {
-      return true; // Owner is same as user.
-    }
-    if (owner.getType().equals(Entity.TEAM)) {
-      for (EntityReference userTeam : listOrEmpty(user.getTeams())) {
-        if (userTeam.getName().equals(owner.getName())) {
-          return true; // Owner is a team, and the user is part of this team.
+    for (EntityReference owner : owners) {
+      if (owner.getType().equals(Entity.USER) && owner.getName().equals(user.getName())) {
+        return true; // Owner is same as user.
+      }
+      if (owner.getType().equals(Entity.TEAM)) {
+        for (EntityReference userTeam : listOrEmpty(user.getTeams())) {
+          if (userTeam.getName().equals(owner.getName())) {
+            return true; // Owner is a team, and the user is part of this team.
+          }
         }
       }
     }
     return false;
+  }
+
+  public boolean hasDomain(EntityReference domain) {
+    return listOrEmpty(user.getDomains()).stream()
+        .anyMatch(userDomain -> userDomain.getId().equals(domain.getId()));
   }
 
   /** Returns true if the user of this SubjectContext is under the team hierarchy of parentTeam */
@@ -82,16 +90,19 @@ public record SubjectContext(User user) {
   }
 
   /** Returns true if the given resource owner is under the team hierarchy of parentTeam */
-  public boolean isTeamAsset(String parentTeam, EntityReference owner) {
-    if (owner.getType().equals(Entity.USER)) {
-      SubjectContext subjectContext = getSubjectContext(owner.getName());
-      return subjectContext.isUserUnderTeam(parentTeam);
-    } else if (owner.getType().equals(Entity.TEAM)) {
-      try {
-        Team team = Entity.getEntity(Entity.TEAM, owner.getId(), TEAM_FIELDS, Include.NON_DELETED);
-        return isInTeam(parentTeam, team.getEntityReference());
-      } catch (Exception ex) {
-        // Ignore and return false
+  public boolean isTeamAsset(String parentTeam, List<EntityReference> owners) {
+    for (EntityReference owner : owners) {
+      if (owner.getType().equals(Entity.USER)) {
+        SubjectContext subjectContext = getSubjectContext(owner.getName());
+        return subjectContext.isUserUnderTeam(parentTeam);
+      } else if (owner.getType().equals(Entity.TEAM)) {
+        try {
+          Team team =
+              Entity.getEntity(Entity.TEAM, owner.getId(), TEAM_FIELDS, Include.NON_DELETED);
+          return isInTeam(parentTeam, team.getEntityReference());
+        } catch (Exception ex) {
+          // Ignore and return false
+        }
       }
     }
     return false;
@@ -130,9 +141,13 @@ public record SubjectContext(User user) {
     return roles.stream().distinct().collect(Collectors.toList());
   }
 
+  public List<EntityReference> getUserDomains() {
+    return listOrEmpty(user.getDomains());
+  }
+
   // Iterate over all the policies of the team hierarchy the user belongs to
-  public Iterator<PolicyContext> getPolicies(EntityReference resourceOwner) {
-    return new UserPolicyIterator(user, resourceOwner, new ArrayList<>());
+  public Iterator<PolicyContext> getPolicies(List<EntityReference> resourceOwners) {
+    return new UserPolicyIterator(user, resourceOwners, new ArrayList<>());
   }
 
   public List<EntityReference> getTeams() {
@@ -173,7 +188,7 @@ public record SubjectContext(User user) {
   }
 
   @Getter
-  static class PolicyContext {
+  public static class PolicyContext {
     private final String entityType;
     private final String entityName;
     private final String roleName;
@@ -308,7 +323,7 @@ public record SubjectContext(User user) {
     private final List<Iterator<PolicyContext>> iterators = new ArrayList<>();
 
     /** Policy iterator for a user */
-    UserPolicyIterator(User user, EntityReference resourceOwner, List<UUID> teamsVisited) {
+    UserPolicyIterator(User user, List<EntityReference> resourceOwners, List<UUID> teamsVisited) {
       this.user = user;
 
       // Iterate over policies in user role
@@ -325,14 +340,18 @@ public record SubjectContext(User user) {
       }
 
       // Finally, iterate over policies of teams that own the resource
-      if (resourceOwner != null && resourceOwner.getType().equals(Entity.TEAM)) {
-        try {
-          Team team =
-              Entity.getEntity(
-                  Entity.TEAM, resourceOwner.getId(), TEAM_FIELDS, Include.NON_DELETED);
-          iterators.add(new TeamPolicyIterator(team.getId(), teamsVisited, true));
-        } catch (Exception ex) {
-          // Ignore
+      if (!nullOrEmpty(resourceOwners)) {
+        for (EntityReference resourceOwner : resourceOwners) {
+          if (resourceOwner.getType().equals(Entity.TEAM)) {
+            try {
+              Team team =
+                  Entity.getEntity(
+                      Entity.TEAM, resourceOwner.getId(), TEAM_FIELDS, Include.NON_DELETED);
+              iterators.add(new TeamPolicyIterator(team.getId(), teamsVisited, true));
+            } catch (Exception ex) {
+              // Ignore
+            }
+          }
         }
       }
     }

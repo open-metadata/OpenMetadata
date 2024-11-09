@@ -11,9 +11,11 @@
       "type": "string"
     },
     "publisherType": {
+      "description": "Publisher Type",
       "$ref": "../system/eventPublisherJob.json#/definitions/publisherType"
     },
     "runMode": {
+      "description": "This schema publisher run modes.",
       "$ref": "../system/eventPublisherJob.json#/definitions/runMode"
     },
     "entities": {
@@ -31,7 +33,7 @@
       "default": false
     },
     "batchSize": {
-      "description": "Maximum number of events sent in a batch (Default 10).",
+      "description": "Maximum number of events sent in a batch (Default 100).",
       "type": "integer",
       "default": 100
     },

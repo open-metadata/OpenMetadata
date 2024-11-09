@@ -29,6 +29,9 @@ from metadata.generated.schema.entity.services.connections.database.mysqlConnect
 from metadata.generated.schema.entity.services.connections.database.postgresConnection import (
     PostgresConnection,
 )
+from metadata.generated.schema.entity.services.connections.testConnectionResult import (
+    TestConnectionResult,
+)
 from metadata.generated.schema.entity.utils.supersetApiConnection import (
     SupersetApiConnection,
 )
@@ -49,6 +52,7 @@ from metadata.ingestion.source.database.mysql.connection import (
 from metadata.ingestion.source.database.postgres.connection import (
     get_connection as pg_get_connection,
 )
+from metadata.utils.constants import THREE_MIN
 
 
 def get_connection(connection: SupersetConnection) -> SupersetAPIClient:
@@ -69,7 +73,8 @@ def test_connection(
     client: Union[SupersetAPIClient, Engine],
     service_connection: SupersetConnection,
     automation_workflow: Optional[AutomationWorkflow] = None,
-) -> None:
+    timeout_seconds: Optional[int] = THREE_MIN,
+) -> TestConnectionResult:
     """
     Test connection. This can be executed either as part
     of a metadata workflow or during an Automation Workflow
@@ -84,11 +89,17 @@ def test_connection(
     else:
         test_fn["CheckAccess"] = partial(test_connection_engine_step, client)
         test_fn["GetDashboards"] = partial(test_query, client, FETCH_DASHBOARDS_TEST)
-        test_fn["GetCharts"] = partial(test_query, client, FETCH_ALL_CHARTS_TEST)
+        if isinstance(service_connection.connection, MysqlConnection):
+            test_fn["GetCharts"] = partial(
+                test_query, client, FETCH_ALL_CHARTS_TEST.replace('"', "`")
+            )
+        else:
+            test_fn["GetCharts"] = partial(test_query, client, FETCH_ALL_CHARTS_TEST)
 
-    test_connection_steps(
+    return test_connection_steps(
         metadata=metadata,
         test_fn=test_fn,
         service_type=service_connection.type.value,
         automation_workflow=automation_workflow,
+        timeout_seconds=timeout_seconds,
     )

@@ -16,7 +16,7 @@ import ast
 import traceback
 from abc import ABC
 from datetime import datetime
-from typing import List
+from typing import List, Optional
 
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.services.connections.database.clickhouseConnection import (
@@ -39,9 +39,11 @@ class ClickhouseQueryParserSource(QueryParserSource, ABC):
     """
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata):
-        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: ClickhouseConnection = config.serviceConnection.__root__.config
+    def create(
+        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
+    ):
+        config: WorkflowSource = WorkflowSource.model_validate(config_dict)
+        connection: ClickhouseConnection = config.serviceConnection.root.config
         if not isinstance(connection, ClickhouseConnection):
             raise InvalidSourceException(
                 f"Expected ClickhouseConnection, but got {connection}"
@@ -89,9 +91,9 @@ class ClickhouseQueryParserSource(QueryParserSource, ABC):
         schema_name_list = []
 
         for database in databases:
-            database_name_list.append(database.name.__root__)
+            database_name_list.append(database.name.root)
             if self.schema_field and database.databaseSchemas:
-                for schema in database.databaseSchemas.__root__:
+                for schema in database.databaseSchemas.root:
                     schema_name_list.append(schema.name)
 
         if self.schema_field and schema_name_list:

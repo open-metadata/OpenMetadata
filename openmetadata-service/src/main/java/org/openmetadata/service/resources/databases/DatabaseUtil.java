@@ -21,9 +21,9 @@ import java.util.Locale;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnConstraint;
 import org.openmetadata.schema.type.ColumnDataType;
+import org.openmetadata.schema.type.PartitionColumnDetails;
 import org.openmetadata.schema.type.TableConstraint;
 import org.openmetadata.schema.type.TablePartition;
-import org.openmetadata.schema.type.TableType;
 
 public final class DatabaseUtil {
   private DatabaseUtil() {}
@@ -74,21 +74,13 @@ public final class DatabaseUtil {
     }
     List<String> columnNames = new ArrayList<>();
     columns.forEach(c -> columnNames.add(c.getName()));
-    for (String columnName : tablePartition.getColumns()) {
-      if (!columnNames.contains(columnName)) {
+    // Add BigQuery partition pseudo columns
+    columnNames.add("_PARTITIONDATE");
+    columnNames.add("_PARTITIONTIME");
+    for (PartitionColumnDetails partitionColumnDetails : tablePartition.getColumns()) {
+      if (!columnNames.contains(partitionColumnDetails.getColumnName())) {
         throw new IllegalArgumentException("Invalid column name found in table partition");
       }
-    }
-  }
-
-  public static void validateViewDefinition(TableType tableType, String viewDefinition) {
-    if ((tableType == null
-            || tableType.equals(TableType.Regular)
-            || tableType.equals(TableType.External))
-        && viewDefinition != null
-        && !viewDefinition.isEmpty()) {
-      throw new IllegalArgumentException(
-          "ViewDefinition can only be set on TableType View, SecureView or MaterializedView");
     }
   }
 

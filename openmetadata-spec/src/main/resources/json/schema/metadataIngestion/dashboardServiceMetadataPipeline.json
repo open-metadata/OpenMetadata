@@ -18,6 +18,21 @@
       "$ref": "#/definitions/dashboardMetadataConfigType",
       "default": "DashboardMetadata"
     },
+    "lineageInformation": {
+      "description": "Details required to generate Lineage",
+      "type": "object",
+      "title": "Lineage Information",
+      "properties": {
+        "dbServiceNames": {
+          "title": "Database Service Names List",
+          "description": "List of Database Service Names for creation of lineage",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
     "dashboardFilterPattern": {
       "description": "Regex to exclude or include dashboards that matches the pattern.",
       "$ref": "../type/filterPattern.json#/definitions/filterPattern",
@@ -37,14 +52,6 @@
       "description": "Regex to exclude or include projects that matches the pattern.",
       "$ref": "../type/filterPattern.json#/definitions/filterPattern",
       "title": "Project Filter Pattern"
-    },
-    "dbServiceNames": {
-      "title": "Database Service Names List",
-      "description": "List of Database Service Names for creation of lineage",
-      "type": "array",
-      "items": {
-        "type": "string"
-      }
     },
     "includeOwners": {
       "title": "Include Current Owners",
@@ -75,6 +82,24 @@
       "type": "boolean",
       "default": true,
       "title": "Include Data Models"
+    },
+    "includeDraftDashboard": {
+      "title": "Include Draft Dashboards",
+      "description": "Optional Configuration to include/exclude draft dashboards. By default it will include draft dashboards",
+      "type":"boolean",
+      "default": true
+    },
+    "overrideMetadata":{
+      "title": "Override Metadata",
+      "description": "Set the 'Override Metadata' toggle to control whether to override the existing metadata in the OpenMetadata server with the metadata fetched from the source. If the toggle is set to true, the metadata fetched from the source will override the existing metadata in the OpenMetadata server. If the toggle is set to false, the metadata fetched from the source will not override the existing metadata in the OpenMetadata server. This is applicable for fields like description, tags, owner and displayName",
+      "type": "boolean",
+      "default": false
+    },
+    "overrideLineage":{
+      "title": "Override Lineage",
+      "description": "Set the 'Override Lineage' toggle to control whether to override the existing lineage.",
+      "type": "boolean",
+      "default": false
     }
   },
   "additionalProperties": false

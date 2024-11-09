@@ -12,14 +12,17 @@
 """
 Max Metric definition
 """
-# pylint: disable=duplicate-code
-
+from functools import partial
+from typing import Callable, Optional
 
 from sqlalchemy import TIME, column
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.functions import GenericFunction
 
-from metadata.profiler.metrics.core import CACHE, StaticMetric, _label
+from metadata.generated.schema.configuration.profilerConfiguration import MetricType
+from metadata.generated.schema.entity.data.table import DataType, Table
+from metadata.profiler.adaptors.nosql_adaptor import NoSQLAdaptor
+from metadata.profiler.metrics.core import CACHE, StaticMetric, T, _label
 from metadata.profiler.orm.functions.length import LenFn
 from metadata.profiler.orm.registry import (
     FLOAT_SET,
@@ -28,6 +31,8 @@ from metadata.profiler.orm.registry import (
     is_date_time,
     is_quantifiable,
 )
+
+# pylint: disable=duplicate-code
 
 
 class MaxFn(GenericFunction):
@@ -77,7 +82,7 @@ class Max(StaticMetric):
 
     @classmethod
     def name(cls):
-        return "max"
+        return MetricType.max.value
 
     @_label
     def fn(self):
@@ -90,9 +95,23 @@ class Max(StaticMetric):
 
     def df_fn(self, dfs=None):
         """pandas function"""
+        import pandas as pd
+
         if is_quantifiable(self.col.type):
             return max((df[self.col.name].max() for df in dfs))
+
         if is_date_time(self.col.type):
-            max_ = max((df[self.col.name].max() for df in dfs))
-            return int(max_.timestamp() * 1000)
-        return 0
+            max_ = None
+            if self.col.type in {DataType.DATETIME, DataType.DATE}:
+                max_ = max((pd.to_datetime(df[self.col.name]).max() for df in dfs))
+                return None if pd.isnull(max_) else int(max_.timestamp() * 1000)
+            elif self.col.type == DataType.TIME:
+                max_ = max((pd.to_timedelta(df[self.col.name]).max() for df in dfs))
+                return None if pd.isnull(max_) else max_.seconds
+        return None
+
+    def nosql_fn(self, adaptor: NoSQLAdaptor) -> Callable[[Table], Optional[T]]:
+        """nosql function"""
+        if is_quantifiable(self.col.type):
+            return partial(adaptor.max, column=self.col)
+        return lambda table: None

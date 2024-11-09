@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { findByText, render } from '@testing-library/react';
+import { findByTestId, render } from '@testing-library/react';
 import React from 'react';
 import ProfilePicture from './ProfilePicture';
 
@@ -40,7 +40,7 @@ describe('Test ProfilePicture component', () => {
   it('ProfilePicture component should render with Avatar', async () => {
     const { container } = render(<ProfilePicture {...mockData} width="36" />);
 
-    const avatar = await findByText(container, 'Avatar');
+    const avatar = await findByTestId(container, 'profile-avatar');
 
     expect(avatar).toBeInTheDocument();
   });

@@ -13,8 +13,9 @@
 
 import { AxiosError } from 'axios';
 import React, { useEffect, useState } from 'react';
-import AddDataQualityTestV1 from '../../components/AddDataQualityTest/AddDataQualityTestV1';
-import Loader from '../../components/Loader/Loader';
+import Loader from '../../components/common/Loader/Loader';
+import AddDataQualityTestV1 from '../../components/DataQuality/AddDataQualityTest/AddDataQualityTestV1';
+import { TabSpecificField } from '../../enums/entity.enum';
 import { Table } from '../../generated/entity/data/table';
 import { useFqn } from '../../hooks/useFqn';
 import { getTableDetailsByFQN } from '../../rest/tableAPI';
@@ -29,7 +30,11 @@ const AddDataQualityTestPage = () => {
     setIsLoading(true);
     try {
       const table = await getTableDetailsByFQN(fqn, {
-        fields: 'testSuite,customMetrics,columns',
+        fields: [
+          TabSpecificField.TESTSUITE,
+          TabSpecificField.CUSTOM_METRICS,
+          TabSpecificField.COLUMNS,
+        ],
       });
       setTable(table);
     } catch (error) {
@@ -48,7 +53,7 @@ const AddDataQualityTestPage = () => {
   }
 
   return (
-    <div className="self-center">
+    <div className="self-center" data-testid="add-data-quality-test-page">
       <AddDataQualityTestV1 table={table} />
     </div>
   );

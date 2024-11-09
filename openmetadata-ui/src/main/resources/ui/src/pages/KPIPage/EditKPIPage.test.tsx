@@ -42,7 +42,7 @@ jest.mock(
     jest.fn().mockReturnValue(<div data-testid="breadcrumb">BreadCrumb</div>)
 );
 
-jest.mock('../../components/Loader/Loader', () =>
+jest.mock('../../components/common/Loader/Loader', () =>
   jest.fn().mockReturnValue(<div data-testid="loader">Loader</div>)
 );
 
@@ -69,6 +69,10 @@ jest.mock('../../components/common/ResizablePanels/ResizablePanels', () =>
     </>
   ))
 );
+
+jest.mock('../../constants/DataInsight.constants', () => ({
+  KPI_DATE_PICKER_FORMAT: 'YYY-MM-DD',
+}));
 
 describe('Edit KPI page', () => {
   it('Should render all the components', async () => {
@@ -99,7 +103,7 @@ describe('Edit KPI page', () => {
 
     const formContainer = await screen.findByTestId('kpi-form');
 
-    const chart = await screen.findByTestId('dataInsightChart');
+    const chart = await screen.findByTestId('chartType');
     const displayName = await screen.findByTestId('displayName');
     const metricType = await screen.findByTestId('metricType');
     const startDate = await screen.findByTestId('start-date');
@@ -122,12 +126,12 @@ describe('Edit KPI page', () => {
   it('Chart input and Metric type input should be disable for edit form', async () => {
     render(<EditKPIPage />, { wrapper: MemoryRouter });
 
-    const chart = await screen.findByTestId('dataInsightChart');
+    const chart = await screen.findByTestId('chartType');
 
     const metricType = await screen.findByTestId('metricType');
 
-    expect(chart).toHaveClass('ant-input-disabled');
+    expect(chart).toHaveClass('ant-select-disabled');
 
-    expect(metricType).toHaveClass('ant-input-disabled');
+    expect(metricType).toHaveClass('ant-select-disabled');
   });
 });

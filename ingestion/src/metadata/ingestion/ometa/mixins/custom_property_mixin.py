@@ -13,9 +13,12 @@ Mixin class containing Custom Property specific methods
 
 To be used by OpenMetadata class
 """
-from typing import Dict
+from typing import Dict, List, Optional, Type, TypeVar
 
-from metadata.generated.schema.api.data.createCustomProperty import PropertyType
+from pydantic import BaseModel
+
+from metadata.generated.schema.type.customProperty import PropertyType
+from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.models.custom_properties import (
     CustomPropertyDataTypes,
     CustomPropertyType,
@@ -26,6 +29,8 @@ from metadata.utils.constants import ENTITY_REFERENCE_TYPE_MAP
 from metadata.utils.logger import ometa_logger
 
 logger = ometa_logger()
+
+T = TypeVar("T", bound=BaseModel)
 
 
 class OMetaCustomPropertyMixin:
@@ -54,19 +59,9 @@ class OMetaCustomPropertyMixin:
             f"/metadata/types/name/{entity_type}?category=field"
         )
 
-        # Get the data type of the custom property
-        if not ometa_custom_property.createCustomPropertyRequest.propertyType:
-            custom_property_type = self.get_custom_property_type(
-                data_type=ometa_custom_property.custom_property_type
-            )
-            property_type = PropertyType(id=custom_property_type.id, type="type")
-            ometa_custom_property.createCustomPropertyRequest.propertyType = (
-                property_type
-            )
-
         resp = self.client.put(
             f"/metadata/types/{entity_schema.get('id')}",
-            data=ometa_custom_property.createCustomPropertyRequest.json(),
+            data=ometa_custom_property.createCustomPropertyRequest.model_dump_json(),
         )
         return resp
 
@@ -78,3 +73,19 @@ class OMetaCustomPropertyMixin:
         """
         resp = self.client.get(f"/metadata/types/name/{data_type.value}?category=field")
         return CustomPropertyType(**resp)
+
+    def get_property_type_ref(self, data_type: CustomPropertyDataTypes) -> PropertyType:
+        """
+        Get the PropertyType for custom properties
+        """
+        custom_property_type = self.get_custom_property_type(data_type=data_type)
+        return PropertyType(EntityReference(id=custom_property_type.id, type="type"))
+
+    def get_entity_custom_properties(self, entity_type: Type[T]) -> Optional[List]:
+        """
+        Get all the custom properties of an entity
+        """
+        resp = self.client.get(
+            f"/metadata/types/name/{ENTITY_REFERENCE_TYPE_MAP.get(entity_type.__name__)}?fields=customProperties"
+        )
+        return resp.get("customProperties")

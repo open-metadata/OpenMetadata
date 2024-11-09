@@ -12,65 +12,78 @@
  */
 
 import { Col, Row, Space, Typography } from 'antd';
-import { get } from 'lodash';
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { EntityLineageNodeType } from '../../../enums/entity.enum';
-import { EntityReference } from '../../../generated/entity/type';
-import { getBreadcrumbsFromFqn } from '../../../utils/EntityUtils';
+import { ReactComponent as IconDBTModel } from '../../../assets/svg/dbt-model.svg';
+import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
+import { EntityType } from '../../../enums/entity.enum';
+import { ModelType, Table } from '../../../generated/entity/data/table';
+import {
+  getBreadcrumbsFromFqn,
+  getEntityName,
+} from '../../../utils/EntityUtils';
 import { getServiceIcon } from '../../../utils/TableUtils';
 import { SourceType } from '../../SearchedData/SearchedData.interface';
 import './lineage-node-label.less';
 
 interface LineageNodeLabelProps {
-  node: EntityReference;
+  node: SourceType;
 }
 
 const EntityLabel = ({ node }: Pick<LineageNodeLabelProps, 'node'>) => {
-  const { t } = useTranslation();
-  if (node.type === EntityLineageNodeType.LOAD_MORE) {
-    return (
-      <div>
-        <span>{t('label.load-more')}</span>
-        <span className="load-more-node-sizes p-x-xs">{`(${get(
-          node,
-          'pagination_data.childrenLength'
-        )})`}</span>
-      </div>
-    );
-  }
+  const { showDeletedIcon, showDbtIcon } = useMemo(() => {
+    return {
+      showDbtIcon:
+        node.entityType === EntityType.TABLE &&
+        (node as Table)?.dataModel?.modelType === ModelType.Dbt &&
+        (node as Table)?.dataModel?.resourceType?.toLowerCase() !== 'seed',
+      showDeletedIcon: node.deleted ?? false,
+    };
+  }, [node]);
 
   return (
     <Row className="items-center" wrap={false}>
       <Col className="d-flex items-center" flex="auto">
         <div className="d-flex entity-button-icon m-r-xs">
-          {getServiceIcon(node as SourceType)}
+          {getServiceIcon(node)}
         </div>
         <Space align="start" direction="vertical" size={0}>
           <Typography.Text
-            className="m-b-0 d-block text-left text-grey-muted w-56"
+            className="m-b-0 d-block text-left text-grey-muted w-54"
             data-testid="entity-header-name"
             ellipsis={{ tooltip: true }}>
             {node.name}
           </Typography.Text>
           <Typography.Text
-            className="m-b-0 d-block text-left entity-header-display-name text-md font-medium w-56"
+            className="m-b-0 d-block text-left entity-header-display-name text-md font-medium w-54"
             data-testid="entity-header-display-name"
             ellipsis={{ tooltip: true }}>
-            {node.displayName || node.name}
+            {getEntityName(node)}
           </Typography.Text>
         </Space>
+        {!showDeletedIcon && showDbtIcon && (
+          <div className="m-r-xs" data-testid="dbt-icon">
+            <IconDBTModel />
+          </div>
+        )}
+        {showDeletedIcon && (
+          <div className="flex-center p-xss custom-node-deleted-icon">
+            <div className="d-flex text-danger" data-testid="node-deleted-icon">
+              <DeleteIcon height={16} width={16} />
+            </div>
+          </div>
+        )}
       </Col>
     </Row>
   );
 };
 
-const LineageNodeLabelV1 = ({ node }: { node: EntityReference }) => {
+const LineageNodeLabelV1 = ({ node }: Pick<LineageNodeLabelProps, 'node'>) => {
   const { t } = useTranslation();
   const breadcrumbs = getBreadcrumbsFromFqn(node.fullyQualifiedName ?? '');
 
   return (
-    <div className="w-72">
+    <div className="w-76">
       <div className="m-0 p-x-md p-y-xs">
         <div className="d-flex gap-2 items-center m-b-xs">
           <Space
@@ -79,7 +92,7 @@ const LineageNodeLabelV1 = ({ node }: { node: EntityReference }) => {
             className="lineage-breadcrumb w-full"
             size={4}>
             {breadcrumbs.map((breadcrumb, index) => (
-              <React.Fragment key={index}>
+              <React.Fragment key={breadcrumb.name}>
                 <Typography.Text
                   className="text-grey-muted lineage-breadcrumb-item"
                   ellipsis={{ tooltip: true }}>

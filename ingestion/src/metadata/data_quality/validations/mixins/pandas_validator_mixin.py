@@ -17,7 +17,7 @@ from typing import Optional
 
 from metadata.profiler.metrics.core import add_props
 from metadata.profiler.metrics.registry import Metrics
-from metadata.utils.datalake.datalake_utils import fetch_col_types
+from metadata.utils.datalake.datalake_utils import GenericDataFrameColumnParser
 from metadata.utils.entity_link import get_decoded_column
 from metadata.utils.sqa_like_column import SQALikeColumn
 
@@ -28,7 +28,9 @@ class PandasValidatorMixin:
     def get_column_name(self, entity_link: str, dfs) -> SQALikeColumn:
         # we'll use the first dataframe chunk to get the column name.
         column = dfs[0][get_decoded_column(entity_link)]
-        _type = fetch_col_types(dfs[0], get_decoded_column(entity_link))
+        _type = GenericDataFrameColumnParser.fetch_col_types(
+            dfs[0], get_decoded_column(entity_link)
+        )
         sqa_like_column = SQALikeColumn(
             name=column.name,
             type=_type,

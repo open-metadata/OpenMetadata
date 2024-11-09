@@ -67,9 +67,11 @@ import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TeamRepository;
 import org.openmetadata.service.jdbi3.TeamRepository.TeamCsv;
+import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.util.CSVExportResponse;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
@@ -83,11 +85,14 @@ import org.openmetadata.service.util.ResultList;
             + " more data assets. Hierarchical teams are supported `Organization` -> `BusinessUnit` -> `Division` -> `Department`.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "teams", order = 2) // Load after roles, and policy resources
+@Collection(
+    name = "teams",
+    order = 2,
+    requiredForOps = true) // Load after roles, and policy resources
 public class TeamResource extends EntityResource<Team, TeamRepository> {
   public static final String COLLECTION_PATH = "/v1/teams/";
   static final String FIELDS =
-      "owner,profile,users,owns,defaultRoles,parents,children,policies,userCount,childrenCount,domain";
+      "owners,profile,users,owns,defaultRoles,parents,children,policies,userCount,childrenCount,domains";
 
   @Override
   public Team addHref(UriInfo uriInfo, Team team) {
@@ -100,8 +105,8 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
     return team;
   }
 
-  public TeamResource(Authorizer authorizer) {
-    super(Entity.TEAM, authorizer);
+  public TeamResource(Authorizer authorizer, Limits limits) {
+    super(Entity.TEAM, authorizer, limits);
   }
 
   @Override
@@ -477,6 +482,35 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
+  @PATCH
+  @Path("/name/{fqn}")
+  @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
+  @Operation(
+      operationId = "patchTeam",
+      summary = "Update a team using name.",
+      description = "Update an existing team with JsonPatch.",
+      externalDocs =
+          @ExternalDocumentation(
+              description = "JsonPatch RFC",
+              url = "https://tools.ietf.org/html/rfc6902"))
+  public Response patch(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the team", schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn,
+      @RequestBody(
+              description = "JsonPatch with array of operations",
+              content =
+                  @Content(
+                      mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
+                      examples = {
+                        @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
+                      }))
+          JsonPatch patch) {
+    return patchInternal(uriInfo, securityContext, fqn, patch);
+  }
+
   @DELETE
   @Path("/{id}")
   @Operation(
@@ -560,6 +594,27 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
   }
 
   @GET
+  @Path("/name/{name}/exportAsync")
+  @Produces(MediaType.TEXT_PLAIN)
+  @Valid
+  @Operation(
+      operationId = "exportTeams",
+      summary = "Export teams in CSV format",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Exported csv with teams information",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = CSVExportResponse.class)))
+      })
+  public Response exportCsvAsync(
+      @Context SecurityContext securityContext, @PathParam("name") String name) throws IOException {
+    return exportCsvInternalAsync(securityContext, name);
+  }
+
+  @GET
   @Path("/name/{name}/export")
   @Produces(MediaType.TEXT_PLAIN)
   @Valid
@@ -628,6 +683,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
         .withParents(EntityUtil.toEntityReferences(ct.getParents(), Entity.TEAM))
         .withChildren(EntityUtil.toEntityReferences(ct.getChildren(), Entity.TEAM))
         .withPolicies(EntityUtil.toEntityReferences(ct.getPolicies(), Entity.POLICY))
-        .withEmail(ct.getEmail());
+        .withEmail(ct.getEmail())
+        .withDomains(EntityUtil.getEntityReferences(Entity.DOMAIN, ct.getDomains()));
   }
 }

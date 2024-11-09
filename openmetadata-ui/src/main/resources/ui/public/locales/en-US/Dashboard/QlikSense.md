@@ -108,6 +108,20 @@ You will have to replace new lines with `\n` and the final private key that you 
 ```
 $$
 
+$$section
+### SSL CA $(id="caCertificate")
+The CA certificate used for SSL validation.
+$$
+
+$$section
+### SSL Certificate $(id="sslCertificate")
+The SSL certificate used for client authentication.
+$$
+
+$$section
+### SSL Key $(id="sslKey")
+The private key associated with the SSL certificate.
+$$
 
 $$section
 ### Staging Directory Path $(id="stagingDir")
@@ -153,4 +167,11 @@ $$section
 ### User ID $(id="userId")
 
 This field specifies the user id of the user.
+$$
+
+
+$$section
+### Validate Host Name $(id="validateHostName")
+
+Enable/Disable this field to validate the host name against the provided certificates.
 $$

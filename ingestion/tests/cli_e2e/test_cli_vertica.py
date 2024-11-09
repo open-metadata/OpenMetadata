@@ -24,9 +24,9 @@ from .common_e2e_sqa_mixins import SQACommonMethods
 
 class VerticaCliTest(CliCommonDB.TestSuite, SQACommonMethods):
     create_table_query: str = """
-        CREATE TABLE vendor_dimension_new AS 
-            SELECT * 
-            FROM vendor_dimension 
+        CREATE TABLE vendor_dimension_new AS
+            SELECT *
+            FROM vendor_dimension
             WHERE 1=0;
     """
 
@@ -99,7 +99,7 @@ class VerticaCliTest(CliCommonDB.TestSuite, SQACommonMethods):
 
     @staticmethod
     def expected_filtered_table_includes() -> int:
-        return 6
+        return 5
 
     @staticmethod
     def expected_filtered_table_excludes() -> int:
@@ -107,4 +107,4 @@ class VerticaCliTest(CliCommonDB.TestSuite, SQACommonMethods):
 
     @staticmethod
     def expected_filtered_mix() -> int:
-        return 5
+        return 4

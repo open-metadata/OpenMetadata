@@ -1,59 +1,63 @@
 package org.openmetadata.service.apps.bundles.searchIndex;
 
+import static org.openmetadata.schema.system.IndexingError.ErrorSource.READER;
+import static org.openmetadata.service.Entity.TEST_CASE_RESOLUTION_STATUS;
+import static org.openmetadata.service.Entity.TEST_CASE_RESULT;
 import static org.openmetadata.service.apps.scheduler.AbstractOmAppJobListener.APP_RUN_STATS;
+import static org.openmetadata.service.apps.scheduler.AppScheduler.ON_DEMAND_JOB;
+import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.ENTITY_NAME_LIST_KEY;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.ENTITY_TYPE_KEY;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getTotalRequestToProcess;
-import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getUpdatedStats;
-import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.isDataInsightIndex;
 
-import es.org.elasticsearch.action.bulk.BulkItemResponse;
-import es.org.elasticsearch.action.bulk.BulkRequest;
-import es.org.elasticsearch.action.bulk.BulkResponse;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import lombok.Getter;
-import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang.exception.ExceptionUtils;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.EntityTimeSeriesInterface;
 import org.openmetadata.schema.analytics.ReportData;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppRunRecord;
-import org.openmetadata.schema.entity.app.AppRunType;
 import org.openmetadata.schema.entity.app.FailureContext;
 import org.openmetadata.schema.entity.app.SuccessContext;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.system.EventPublisherJob;
-import org.openmetadata.schema.system.Failure;
+import org.openmetadata.schema.system.IndexingError;
 import org.openmetadata.schema.system.Stats;
 import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.service.apps.AbstractNativeApplication;
-import org.openmetadata.service.exception.ProcessorException;
-import org.openmetadata.service.exception.SinkException;
-import org.openmetadata.service.exception.SourceException;
+import org.openmetadata.service.exception.SearchIndexException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.search.SearchRepository;
-import org.openmetadata.service.search.elasticsearch.ElasticSearchDataInsightProcessor;
 import org.openmetadata.service.search.elasticsearch.ElasticSearchEntitiesProcessor;
+import org.openmetadata.service.search.elasticsearch.ElasticSearchEntityTimeSeriesProcessor;
 import org.openmetadata.service.search.elasticsearch.ElasticSearchIndexSink;
 import org.openmetadata.service.search.models.IndexMapping;
-import org.openmetadata.service.search.opensearch.OpenSearchDataInsightProcessor;
 import org.openmetadata.service.search.opensearch.OpenSearchEntitiesProcessor;
+import org.openmetadata.service.search.opensearch.OpenSearchEntityTimeSeriesProcessor;
 import org.openmetadata.service.search.opensearch.OpenSearchIndexSink;
 import org.openmetadata.service.socket.WebSocketManager;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.workflows.interfaces.Processor;
 import org.openmetadata.service.workflows.interfaces.Sink;
-import org.openmetadata.service.workflows.searchIndex.PaginatedDataInsightSource;
+import org.openmetadata.service.workflows.interfaces.Source;
 import org.openmetadata.service.workflows.searchIndex.PaginatedEntitiesSource;
+import org.openmetadata.service.workflows.searchIndex.PaginatedEntityTimeSeriesSource;
 import org.quartz.JobExecutionContext;
 
 @Slf4j
+@SuppressWarnings("unused")
 public class SearchIndexApp extends AbstractNativeApplication {
 
   private static final String ALL = "all";
@@ -63,6 +67,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
           "dashboard",
           "topic",
           "pipeline",
+          "ingestionPipeline",
           "searchIndex",
           "user",
           "team",
@@ -89,30 +94,93 @@ public class SearchIndexApp extends AbstractNativeApplication {
           "webAnalyticEntityViewReportData",
           "webAnalyticUserActivityReportData",
           "domain",
-          "storedProcedure");
-  private static final String ENTITY_TYPE_ERROR_MSG = "EntityType: %s %n Cause: %s %n Stack: %s";
-  private final List<PaginatedEntitiesSource> paginatedEntitiesSources = new ArrayList<>();
-  private final List<PaginatedDataInsightSource> paginatedDataInsightSources = new ArrayList<>();
+          "storedProcedure",
+          "storageService",
+          "testCaseResolutionStatus",
+          "testCaseResult",
+          "apiService",
+          "apiEndpoint",
+          "apiCollection",
+          "metric");
+  public static final Set<String> TIME_SERIES_ENTITIES =
+      Set.of(
+          ReportData.ReportDataType.ENTITY_REPORT_DATA.value(),
+          ReportData.ReportDataType.RAW_COST_ANALYSIS_REPORT_DATA.value(),
+          ReportData.ReportDataType.WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA.value(),
+          ReportData.ReportDataType.WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA.value(),
+          ReportData.ReportDataType.AGGREGATED_COST_ANALYSIS_REPORT_DATA.value(),
+          TEST_CASE_RESOLUTION_STATUS,
+          TEST_CASE_RESULT);
+  private final List<Source> paginatedSources = new ArrayList<>();
   private Processor entityProcessor;
-  private Processor dataInsightProcessor;
+  private Processor entityTimeSeriesProcessor;
   private Sink searchIndexSink;
 
   @Getter EventPublisherJob jobData;
+  private final Object jobDataLock = new Object(); // Dedicated final lock object
   private volatile boolean stopped = false;
+  @Getter private volatile ExecutorService executorService;
+
+  public SearchIndexApp(CollectionDAO collectionDAO, SearchRepository searchRepository) {
+    super(collectionDAO, searchRepository);
+  }
 
   @Override
-  public void init(App app, CollectionDAO dao, SearchRepository searchRepository) {
-    super.init(app, dao, searchRepository);
+  public void init(App app) {
+    super.init(app);
     // request for reindexing
     EventPublisherJob request =
         JsonUtils.convertValue(app.getAppConfiguration(), EventPublisherJob.class)
-            .withStats(new Stats())
-            .withFailure(new Failure());
+            .withStats(new Stats());
     if (request.getEntities().contains(ALL)) {
       request.setEntities(ALL_ENTITIES);
     }
-    int totalRecords = getTotalRequestToProcess(request.getEntities(), collectionDAO);
-    this.jobData = request;
+    jobData = request;
+  }
+
+  @Override
+  public void startApp(JobExecutionContext jobExecutionContext) {
+    try {
+      initializeJob();
+      LOG.info("Executing Reindexing Job with JobData : {}", jobData);
+      jobData.setStatus(EventPublisherJob.Status.RUNNING);
+      String runType =
+          (String) jobExecutionContext.getJobDetail().getJobDataMap().get("triggerType");
+      if (!runType.equals(ON_DEMAND_JOB)) {
+        jobData.setRecreateIndex(false);
+      }
+      performReindex(jobExecutionContext);
+    } catch (Exception ex) {
+      IndexingError indexingError =
+          new IndexingError()
+              .withErrorSource(IndexingError.ErrorSource.JOB)
+              .withMessage(
+                  String.format(
+                      "Reindexing Job Has Encountered an Exception. %n Job Data: %s, %n  Stack : %s ",
+                      jobData.toString(), ExceptionUtils.getStackTrace(ex)));
+      LOG.error(indexingError.getMessage());
+      jobData.setStatus(EventPublisherJob.Status.RUNNING);
+      jobData.setFailure(indexingError);
+    } finally {
+      sendUpdates(jobExecutionContext);
+    }
+  }
+
+  private void cleanUpStaleJobsFromRuns() {
+    try {
+      collectionDAO
+          .appExtensionTimeSeriesDao()
+          .markStaleEntriesStopped(getApp().getId().toString());
+    } catch (Exception ex) {
+      LOG.error("Failed in Marking Stale Entries Stopped.");
+    }
+  }
+
+  private void initializeJob() {
+    List<Source> paginatedEntityTimeSeriesSources = new ArrayList<>();
+    cleanUpStaleJobsFromRuns();
+
+    int totalRecords = getTotalRequestToProcess(jobData.getEntities(), collectionDAO);
     this.jobData.setStats(
         new Stats()
             .withJobStats(
@@ -120,88 +188,51 @@ public class SearchIndexApp extends AbstractNativeApplication {
                     .withTotalRecords(totalRecords)
                     .withFailedRecords(0)
                     .withSuccessRecords(0)));
-    request
+    jobData
         .getEntities()
         .forEach(
             entityType -> {
-              if (!isDataInsightIndex(entityType)) {
+              if (!TIME_SERIES_ENTITIES.contains(entityType)) {
                 List<String> fields = List.of("*");
                 PaginatedEntitiesSource source =
                     new PaginatedEntitiesSource(entityType, jobData.getBatchSize(), fields);
-                if (!CommonUtil.nullOrEmpty(request.getAfterCursor())) {
-                  source.setCursor(request.getAfterCursor());
+                if (!CommonUtil.nullOrEmpty(jobData.getAfterCursor())) {
+                  source.setCursor(jobData.getAfterCursor());
                 }
-                paginatedEntitiesSources.add(source);
+                paginatedSources.add(source);
               } else {
-                paginatedDataInsightSources.add(
-                    new PaginatedDataInsightSource(dao, entityType, jobData.getBatchSize()));
+                PaginatedEntityTimeSeriesSource source =
+                    new PaginatedEntityTimeSeriesSource(
+                        entityType, jobData.getBatchSize(), List.of("*"));
+                if (!CommonUtil.nullOrEmpty(jobData.getAfterCursor())) {
+                  source.setCursor(jobData.getAfterCursor());
+                }
+                paginatedEntityTimeSeriesSources.add(source);
               }
             });
+
+    paginatedSources.addAll(paginatedEntityTimeSeriesSources);
     if (searchRepository.getSearchType().equals(ElasticSearchConfiguration.SearchType.OPENSEARCH)) {
       this.entityProcessor = new OpenSearchEntitiesProcessor(totalRecords);
-      this.dataInsightProcessor = new OpenSearchDataInsightProcessor(totalRecords);
-      this.searchIndexSink = new OpenSearchIndexSink(searchRepository, totalRecords);
+      this.entityTimeSeriesProcessor = new OpenSearchEntityTimeSeriesProcessor(totalRecords);
+      this.searchIndexSink =
+          new OpenSearchIndexSink(searchRepository, totalRecords, jobData.getPayLoadSize());
     } else {
       this.entityProcessor = new ElasticSearchEntitiesProcessor(totalRecords);
-      this.dataInsightProcessor = new ElasticSearchDataInsightProcessor(totalRecords);
-      this.searchIndexSink = new ElasticSearchIndexSink(searchRepository, totalRecords);
-    }
-  }
-
-  @Override
-  public void startApp(JobExecutionContext jobExecutionContext) {
-    try {
-      LOG.info("Executing Reindexing Job with JobData : {}", jobData);
-      // Update Job Status
-      jobData.setStatus(EventPublisherJob.Status.RUNNING);
-
-      // Make recreate as false for onDemand
-      AppRunType runType =
-          AppRunType.fromValue(
-              (String) jobExecutionContext.getJobDetail().getJobDataMap().get("triggerType"));
-
-      // Schedule Run has recreate as false always
-      if (runType.equals(AppRunType.Scheduled)) {
-        jobData.setRecreateIndex(false);
-      }
-
-      // Run ReIndexing
-      entitiesReIndex();
-      dataInsightReindex();
-      // Mark Job as Completed
-      updateJobStatus();
-    } catch (Exception ex) {
-      String error =
-          String.format(
-              "Reindexing Job Has Encountered an Exception. %n Job Data: %s, %n  Stack : %s ",
-              jobData.toString(), ExceptionUtils.getStackTrace(ex));
-      LOG.error(error);
-      jobData.setStatus(EventPublisherJob.Status.FAILED);
-      handleJobError(error, System.currentTimeMillis());
-    } finally {
-      // store job details in Database
-      jobExecutionContext.getJobDetail().getJobDataMap().put(APP_RUN_STATS, jobData.getStats());
-      // Update Record to db
-      updateRecordToDb(jobExecutionContext);
-      // Send update
-      sendUpdates();
+      this.entityTimeSeriesProcessor = new ElasticSearchEntityTimeSeriesProcessor(totalRecords);
+      this.searchIndexSink =
+          new ElasticSearchIndexSink(searchRepository, totalRecords, jobData.getPayLoadSize());
     }
   }
 
   public void updateRecordToDb(JobExecutionContext jobExecutionContext) {
     AppRunRecord appRecord = getJobRecord(jobExecutionContext);
 
-    // Update Run Record with Status
     appRecord.setStatus(AppRunRecord.Status.fromValue(jobData.getStatus().value()));
-
-    // Update Error
     if (jobData.getFailure() != null) {
       appRecord.setFailureContext(
-          new FailureContext()
-              .withAdditionalProperty("failure", JsonUtils.pojoToJson(jobData.getFailure())));
+          new FailureContext().withAdditionalProperty("failure", jobData.getFailure()));
     }
-
-    // Update Stats
     if (jobData.getStats() != null) {
       appRecord.setSuccessContext(
           new SuccessContext().withAdditionalProperty("stats", jobData.getStats()));
@@ -210,168 +241,217 @@ public class SearchIndexApp extends AbstractNativeApplication {
     pushAppStatusUpdates(jobExecutionContext, appRecord, true);
   }
 
-  private void entitiesReIndex() {
-    Map<String, Object> contextData = new HashMap<>();
-    for (PaginatedEntitiesSource paginatedEntitiesSource : paginatedEntitiesSources) {
-      reCreateIndexes(paginatedEntitiesSource.getEntityType());
-      contextData.put(ENTITY_TYPE_KEY, paginatedEntitiesSource.getEntityType());
-      ResultList<? extends EntityInterface> resultList;
-      while (!stopped && !paginatedEntitiesSource.isDone()) {
-        long currentTime = System.currentTimeMillis();
-        try {
-          resultList = paginatedEntitiesSource.readNext(null);
-          if (!resultList.getData().isEmpty()) {
-            if (searchRepository
-                .getSearchType()
-                .equals(ElasticSearchConfiguration.SearchType.OPENSEARCH)) {
-              // process data to build Reindex Request
-              os.org.opensearch.action.bulk.BulkRequest requests =
-                  (os.org.opensearch.action.bulk.BulkRequest)
-                      entityProcessor.process(resultList, contextData);
-              // process data to build Reindex Request
-              os.org.opensearch.action.bulk.BulkResponse response =
-                  (os.org.opensearch.action.bulk.BulkResponse)
-                      searchIndexSink.write(requests, contextData);
-              // update Status
-              handleErrorsOs(
-                  resultList, paginatedEntitiesSource.getLastFailedCursor(), response, currentTime);
-            } else {
-              // process data to build Reindex Request
-              BulkRequest requests = (BulkRequest) entityProcessor.process(resultList, contextData);
-              // process data to build Reindex Request
-              BulkResponse response = (BulkResponse) searchIndexSink.write(requests, contextData);
-              // update Status
-              handleErrorsEs(
-                  resultList, paginatedEntitiesSource.getLastFailedCursor(), response, currentTime);
-            }
-          }
-        } catch (SourceException rx) {
-          handleSourceError(
-              String.format(
-                  ENTITY_TYPE_ERROR_MSG,
-                  paginatedEntitiesSource.getEntityType(),
-                  rx.getCause(),
-                  ""),
-              currentTime);
-        } catch (ProcessorException px) {
-          handleProcessorError(
-              String.format(
-                  ENTITY_TYPE_ERROR_MSG,
-                  paginatedEntitiesSource.getEntityType(),
-                  px.getCause(),
-                  ""),
-              currentTime);
-        } catch (SinkException wx) {
-          handleEsSinkError(
-              String.format(
-                  ENTITY_TYPE_ERROR_MSG,
-                  paginatedEntitiesSource.getEntityType(),
-                  wx.getCause(),
-                  ""),
-              currentTime);
-        }
-      }
-      updateStats(paginatedEntitiesSource.getEntityType(), paginatedEntitiesSource.getStats());
-      sendUpdates();
+  private void performReindex(JobExecutionContext jobExecutionContext) {
+    if (jobData.getStats() == null) {
+      jobData.setStats(new Stats());
     }
-  }
 
-  private void dataInsightReindex() {
-    Map<String, Object> contextData = new HashMap<>();
-    for (PaginatedDataInsightSource paginatedDataInsightSource : paginatedDataInsightSources) {
-      reCreateIndexes(paginatedDataInsightSource.getEntityType());
-      contextData.put(ENTITY_TYPE_KEY, paginatedDataInsightSource.getEntityType());
-      ResultList<ReportData> resultList;
-      while (!stopped && !paginatedDataInsightSource.isDone()) {
-        long currentTime = System.currentTimeMillis();
-        try {
-          resultList = paginatedDataInsightSource.readNext(null);
-          if (!resultList.getData().isEmpty()) {
-            if (searchRepository
-                .getSearchType()
-                .equals(ElasticSearchConfiguration.SearchType.OPENSEARCH)) {
-              // process data to build Reindex Request
-              os.org.opensearch.action.bulk.BulkRequest requests =
-                  (os.org.opensearch.action.bulk.BulkRequest)
-                      dataInsightProcessor.process(resultList, contextData);
-              // process data to build Reindex Request
-              os.org.opensearch.action.bulk.BulkResponse response =
-                  (os.org.opensearch.action.bulk.BulkResponse)
-                      searchIndexSink.write(requests, contextData);
-              handleErrorsOs(resultList, "", response, currentTime);
-            } else {
-              // process data to build Reindex Request
-              BulkRequest requests =
-                  (BulkRequest) dataInsightProcessor.process(resultList, contextData);
-              // process data to build Reindex Request
-              BulkResponse response = (BulkResponse) searchIndexSink.write(requests, contextData);
-              handleErrorsEs(resultList, "", response, currentTime);
-            }
-          }
-        } catch (SourceException rx) {
-          handleSourceError(
-              String.format(
-                  ENTITY_TYPE_ERROR_MSG,
-                  paginatedDataInsightSource.getEntityType(),
-                  rx.getCause(),
-                  ""),
-              currentTime);
-        } catch (ProcessorException px) {
-          handleProcessorError(
-              String.format(
-                  ENTITY_TYPE_ERROR_MSG,
-                  paginatedDataInsightSource.getEntityType(),
-                  px.getCause(),
-                  ""),
-              currentTime);
-        } catch (SinkException wx) {
-          handleEsSinkError(
-              String.format(
-                  ENTITY_TYPE_ERROR_MSG,
-                  paginatedDataInsightSource.getEntityType(),
-                  wx.getCause(),
-                  ""),
-              currentTime);
-        }
-      }
-      updateStats(
-          paginatedDataInsightSource.getEntityType(), paginatedDataInsightSource.getStats());
-      sendUpdates();
+    if (executorService == null || executorService.isShutdown() || executorService.isTerminated()) {
+      int numThreads =
+          Math.min(paginatedSources.size(), Runtime.getRuntime().availableProcessors());
+      this.executorService = Executors.newFixedThreadPool(numThreads);
+      LOG.debug("Initialized new ExecutorService with {} threads.", numThreads);
     }
-  }
+    List<Future<?>> futures = new ArrayList<>();
 
-  private void sendUpdates() {
+    for (Source paginatedSource : paginatedSources) {
+      Future<?> future =
+          executorService.submit(
+              () -> {
+                String entityType = paginatedSource.getEntityType();
+                Map<String, Object> contextData = new HashMap<>();
+                contextData.put(ENTITY_TYPE_KEY, entityType);
+                try {
+                  reCreateIndexes(entityType);
+                  contextData.put(ENTITY_TYPE_KEY, entityType);
+
+                  while (!paginatedSource.isDone()) {
+                    Object resultList = paginatedSource.readNext(null);
+                    if (resultList == null) {
+                      break;
+                    }
+
+                    if (!TIME_SERIES_ENTITIES.contains(entityType)) {
+                      List<String> entityNames =
+                          getEntityNameFromEntity(
+                              (ResultList<? extends EntityInterface>) resultList, entityType);
+                      contextData.put(ENTITY_NAME_LIST_KEY, entityNames);
+                      processEntity(
+                          (ResultList<? extends EntityInterface>) resultList,
+                          contextData,
+                          paginatedSource);
+                    } else {
+                      List<String> entityNames =
+                          getEntityNameFromEntityTimeSeries(
+                              (ResultList<? extends EntityTimeSeriesInterface>) resultList,
+                              entityType);
+                      contextData.put(ENTITY_NAME_LIST_KEY, entityNames);
+                      processEntityTimeSeries(
+                          (ResultList<? extends EntityTimeSeriesInterface>) resultList,
+                          contextData,
+                          paginatedSource);
+                    }
+                    synchronized (jobDataLock) {
+                      updateStats(entityType, paginatedSource.getStats());
+                    }
+                    sendUpdates(jobExecutionContext);
+                  }
+
+                } catch (SearchIndexException e) {
+                  synchronized (jobDataLock) {
+                    jobData.setStatus(EventPublisherJob.Status.RUNNING);
+                    jobData.setFailure(e.getIndexingError());
+                    paginatedSource.updateStats(
+                        e.getIndexingError().getSuccessCount(),
+                        e.getIndexingError().getFailedCount());
+                    updateStats(entityType, paginatedSource.getStats());
+                  }
+                  sendUpdates(jobExecutionContext);
+                } catch (Exception e) {
+                  synchronized (jobDataLock) {
+                    jobData.setStatus(EventPublisherJob.Status.FAILED);
+                    jobData.setFailure(
+                        new IndexingError()
+                            .withErrorSource(IndexingError.ErrorSource.JOB)
+                            .withMessage(e.getMessage()));
+                  }
+                  sendUpdates(jobExecutionContext);
+                  LOG.error("Unexpected error during reindexing for entity {}", entityType, e);
+                }
+              });
+
+      futures.add(future);
+    }
+
+    executorService.shutdown();
+
     try {
-      WebSocketManager.getInstance()
-          .broadCastMessageToAll(
-              WebSocketManager.JOB_STATUS_BROADCAST_CHANNEL, JsonUtils.pojoToJson(jobData));
+      boolean allTasksCompleted = executorService.awaitTermination(1, TimeUnit.HOURS);
+      if (!allTasksCompleted) {
+        LOG.warn("Reindexing tasks did not complete within the expected time.");
+        executorService.shutdownNow();
+      }
+    } catch (InterruptedException e) {
+      LOG.error("Reindexing was interrupted", e);
+      executorService.shutdownNow();
+      Thread.currentThread().interrupt();
+    }
+
+    for (Future<?> future : futures) {
+      try {
+        future.get();
+      } catch (InterruptedException e) {
+        LOG.error("Task was interrupted", e);
+        Thread.currentThread().interrupt();
+      } catch (ExecutionException e) {
+        LOG.error("Exception in reindexing task", e.getCause());
+      }
+    }
+  }
+
+  private List<String> getEntityNameFromEntity(
+      ResultList<? extends EntityInterface> resultList, String entityType) {
+    return resultList.getData().stream()
+        .map(entity -> String.format("%s %s", entityType, entity.getId()))
+        .toList();
+  }
+
+  private List<String> getEntityNameFromEntityTimeSeries(
+      ResultList<? extends EntityTimeSeriesInterface> resultList, String entityType) {
+    return resultList.getData().stream()
+        .map(entity -> String.format("%s %s", entityType, entity.getId()))
+        .toList();
+  }
+
+  private void processEntity(
+      ResultList<? extends EntityInterface> resultList,
+      Map<String, Object> contextData,
+      Source paginatedSource)
+      throws SearchIndexException {
+    if (!resultList.getData().isEmpty()) {
+      searchIndexSink.write(entityProcessor.process(resultList, contextData), contextData);
+      if (!resultList.getErrors().isEmpty()) {
+        throw new SearchIndexException(
+            new IndexingError()
+                .withErrorSource(READER)
+                .withLastFailedCursor(paginatedSource.getLastFailedCursor())
+                .withSubmittedCount(paginatedSource.getBatchSize())
+                .withSuccessCount(resultList.getData().size())
+                .withFailedCount(resultList.getErrors().size())
+                .withMessage(
+                    "Issues in Reading A Batch For Entities. Check Errors Corresponding to Entities.")
+                .withFailedEntities(resultList.getErrors()));
+      }
+      paginatedSource.updateStats(resultList.getData().size(), 0);
+    }
+  }
+
+  private void processEntityTimeSeries(
+      ResultList<? extends EntityTimeSeriesInterface> resultList,
+      Map<String, Object> contextData,
+      Source paginatedSource)
+      throws SearchIndexException {
+    if (!resultList.getData().isEmpty()) {
+      searchIndexSink.write(
+          entityTimeSeriesProcessor.process(resultList, contextData), contextData);
+      if (!resultList.getErrors().isEmpty()) {
+        throw new SearchIndexException(
+            new IndexingError()
+                .withErrorSource(READER)
+                .withLastFailedCursor(paginatedSource.getLastFailedCursor())
+                .withSubmittedCount(paginatedSource.getBatchSize())
+                .withSuccessCount(resultList.getData().size())
+                .withFailedCount(resultList.getErrors().size())
+                .withMessage(
+                    "Issues in Reading A Batch For Entities. Check Errors Corresponding to Entities.")
+                .withFailedEntities(resultList.getErrors()));
+      }
+      paginatedSource.updateStats(resultList.getData().size(), 0);
+    }
+  }
+
+  private void sendUpdates(JobExecutionContext jobExecutionContext) {
+    try {
+      jobExecutionContext.getJobDetail().getJobDataMap().put(APP_RUN_STATS, jobData.getStats());
+      updateRecordToDb(jobExecutionContext);
+      if (WebSocketManager.getInstance() != null) {
+        WebSocketManager.getInstance()
+            .broadCastMessageToAll(
+                WebSocketManager.JOB_STATUS_BROADCAST_CHANNEL, JsonUtils.pojoToJson(jobData));
+      }
     } catch (Exception ex) {
       LOG.error("Failed to send updated stats with WebSocket", ex);
     }
   }
 
   public void updateStats(String entityType, StepStats currentEntityStats) {
-    // Job Level Stats
     Stats jobDataStats = jobData.getStats();
 
-    // Update Entity Level Stats
     StepStats entityLevelStats = jobDataStats.getEntityStats();
     if (entityLevelStats == null) {
-      entityLevelStats = new StepStats();
+      entityLevelStats =
+          new StepStats().withTotalRecords(null).withFailedRecords(null).withSuccessRecords(null);
     }
     entityLevelStats.withAdditionalProperty(entityType, currentEntityStats);
 
-    // Total Stats
     StepStats stats = jobData.getStats().getJobStats();
     if (stats == null) {
       stats =
           new StepStats()
               .withTotalRecords(getTotalRequestToProcess(jobData.getEntities(), collectionDAO));
     }
-    getUpdatedStats(
-        stats, currentEntityStats.getSuccessRecords(), currentEntityStats.getFailedRecords());
 
-    // Update for the Job
+    stats.setSuccessRecords(
+        entityLevelStats.getAdditionalProperties().values().stream()
+            .map(s -> (StepStats) s)
+            .mapToInt(StepStats::getSuccessRecords)
+            .sum());
+    stats.setFailedRecords(
+        entityLevelStats.getAdditionalProperties().values().stream()
+            .map(s -> (StepStats) s)
+            .mapToInt(StepStats::getFailedRecords)
+            .sum());
+
     jobDataStats.setJobStats(stats);
     jobDataStats.setEntityStats(entityLevelStats);
 
@@ -384,146 +464,31 @@ public class SearchIndexApp extends AbstractNativeApplication {
     }
 
     IndexMapping indexType = searchRepository.getIndexMapping(entityType);
-    // Delete index
     searchRepository.deleteIndex(indexType);
-    // Create index
     searchRepository.createIndex(indexType);
   }
 
-  private void handleErrorsOs(
-      ResultList<?> data,
-      String lastCursor,
-      os.org.opensearch.action.bulk.BulkResponse response,
-      long time) {
-    handleSourceError(data, lastCursor, time);
-    handleOsSinkErrors(response, time);
-  }
-
-  private void handleErrorsEs(
-      ResultList<?> data, String lastCursor, BulkResponse response, long time) {
-    handleSourceError(data, lastCursor, time);
-    handleEsSinkErrors(response, time);
-  }
-
-  private void handleSourceError(String reason, long time) {
-    handleError("source", reason, time);
-  }
-
-  private void handleProcessorError(String reason, long time) {
-    handleError("processor", reason, time);
-  }
-
-  private void handleError(String errType, String reason, long time) {
-    Failure failures = jobData.getFailure() != null ? jobData.getFailure() : new Failure();
-    failures.withAdditionalProperty("errorFrom", errType);
-    failures.withAdditionalProperty("lastFailedReason", reason);
-    failures.withAdditionalProperty("lastFailedAt", time);
-    jobData.setFailure(failures);
-  }
-
-  private void handleEsSinkError(String reason, long time) {
-    handleError("sink", reason, time);
-  }
-
-  private void handleJobError(String reason, long time) {
-    handleError("job", reason, time);
-  }
-
-  @SneakyThrows
-  private void handleSourceError(ResultList<?> data, String lastCursor, long time) {
-    if (!data.getErrors().isEmpty()) {
-      StringBuilder builder = new StringBuilder();
-      for (String str : data.getErrors()) {
-        builder.append(str);
-        builder.append("%n");
-      }
-      handleSourceError(
-          String.format(
-              "SourceContext: After Cursor : %s, Encountered Error While Reading Data. Following Entities were not fetched Successfully : %s",
-              lastCursor, builder),
-          time);
-    }
-  }
-
-  @SneakyThrows
-  private void handleOsSinkErrors(os.org.opensearch.action.bulk.BulkResponse response, long time) {
-    List<Map<String, Object>> details = new ArrayList<>();
-    for (os.org.opensearch.action.bulk.BulkItemResponse bulkItemResponse : response) {
-      if (bulkItemResponse.isFailed()) {
-        Map<String, Object> detailsMap = new HashMap<>();
-        os.org.opensearch.action.bulk.BulkItemResponse.Failure failure =
-            bulkItemResponse.getFailure();
-        detailsMap.put(
-            "context",
-            String.format(
-                "EsWriterContext: Encountered Error While Writing Data %n Entity %n ID : [%s] ",
-                failure.getId()));
-        detailsMap.put(
-            "lastFailedReason",
-            String.format(
-                "Index Type: [%s], Reason: [%s] %n Trace : [%s]",
-                failure.getIndex(),
-                failure.getMessage(),
-                ExceptionUtils.getStackTrace(failure.getCause())));
-        detailsMap.put("lastFailedAt", System.currentTimeMillis());
-        details.add(detailsMap);
-      }
-    }
-    if (!details.isEmpty()) {
-      handleEsSinkError(
-          String.format(
-              "[EsWriter][BulkItemResponse] Got Following Error Responses: %n %s ",
-              JsonUtils.pojoToJson(details, true)),
-          time);
-    }
-  }
-
-  @SneakyThrows
-  private void handleEsSinkErrors(BulkResponse response, long time) {
-    List<Map<String, Object>> details = new ArrayList<>();
-    for (BulkItemResponse bulkItemResponse : response) {
-      if (bulkItemResponse.isFailed()) {
-        Map<String, Object> detailsMap = new HashMap<>();
-        BulkItemResponse.Failure failure = bulkItemResponse.getFailure();
-        detailsMap.put(
-            "context",
-            String.format(
-                "EsWriterContext: Encountered Error While Writing Data %n Entity %n ID : [%s] ",
-                failure.getId()));
-        detailsMap.put(
-            "lastFailedReason",
-            String.format(
-                "Index Type: [%s], Reason: [%s] %n Trace : [%s]",
-                failure.getIndex(),
-                failure.getMessage(),
-                ExceptionUtils.getStackTrace(failure.getCause())));
-        detailsMap.put("lastFailedAt", System.currentTimeMillis());
-        details.add(detailsMap);
-      }
-    }
-    if (!details.isEmpty()) {
-      handleEsSinkError(
-          String.format(
-              "[EsWriter][BulkItemResponse] Got Following Error Responses: %s ",
-              JsonUtils.pojoToJson(details, true)),
-          time);
-    }
-  }
-
-  private void updateJobStatus() {
-    if (stopped) {
-      jobData.setStatus(EventPublisherJob.Status.STOPPED);
-    } else {
-      if (jobData.getFailure() != null
-          && !jobData.getFailure().getAdditionalProperties().isEmpty()) {
-        jobData.setStatus(EventPublisherJob.Status.FAILED);
-      } else {
-        jobData.setStatus(EventPublisherJob.Status.COMPLETED);
-      }
-    }
-  }
-
   public void stopJob() {
+    LOG.info("Stopping reindexing job.");
     stopped = true;
+    if (executorService != null && !executorService.isShutdown()) {
+      List<Runnable> awaitingTasks = executorService.shutdownNow();
+      LOG.info(
+          "ExecutorService has been shutdown. Awaiting termination. {} tasks were awaiting execution.",
+          awaitingTasks.size());
+
+      try {
+        if (!executorService.awaitTermination(60, TimeUnit.SECONDS)) {
+          LOG.warn("ExecutorService did not terminate within the specified timeout.");
+        }
+      } catch (InterruptedException e) {
+        LOG.error("Interrupted while waiting for ExecutorService to terminate.", e);
+        List<Runnable> stillAwaitingTasks = executorService.shutdownNow(); // Force shutdown
+        LOG.info(
+            "Forced shutdown initiated due to interruption. {} tasks were awaiting execution.",
+            stillAwaitingTasks.size());
+        Thread.currentThread().interrupt(); // Restore interrupt status
+      }
+    }
   }
 }

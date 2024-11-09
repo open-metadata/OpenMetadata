@@ -16,7 +16,7 @@ import traceback
 from copy import deepcopy
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
-from sqlalchemy import exc, inspect, sql, util
+from sqlalchemy import exc, sql, util
 from sqlalchemy.engine.base import Connection
 from sqlalchemy.sql import sqltypes
 from trino.sqlalchemy import datatype, error
@@ -183,9 +183,11 @@ class TrinoSource(CommonDbSourceService):
     ] = "JSON"
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata):
-        config = WorkflowSource.parse_obj(config_dict)
-        connection: TrinoConnection = config.serviceConnection.__root__.config
+    def create(
+        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
+    ):
+        config = WorkflowSource.model_validate(config_dict)
+        connection: TrinoConnection = config.serviceConnection.root.config
         if not isinstance(connection, TrinoConnection):
             raise InvalidSourceException(
                 f"Expected TrinoConnection, but got {connection}"
@@ -203,7 +205,8 @@ class TrinoSource(CommonDbSourceService):
         new_service_connection = deepcopy(self.service_connection)
         new_service_connection.catalog = database_name
         self.engine = get_connection(new_service_connection)
-        self.inspector = inspect(self.engine)
+        self._connection_map = {}  # Lazy init as well
+        self._inspector_map = {}
 
     def get_database_names(self) -> Iterable[str]:
         configured_catalog = self.service_connection.catalog
@@ -218,7 +221,7 @@ class TrinoSource(CommonDbSourceService):
                     database_fqn = fqn.build(
                         self.metadata,
                         entity_type=Database,
-                        service_name=self.context.database_service,
+                        service_name=self.context.get().database_service,
                         database_name=new_catalog,
                     )
                     if filter_by_database(

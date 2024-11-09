@@ -44,7 +44,7 @@ const mockProps = {
   isTestingDisabled: false,
   connectionType: 'Mysql',
   serviceCategory: ServiceCategory.DATABASE_SERVICES,
-  formData: FORM_DATA as ConfigData,
+  getData: () => FORM_DATA as ConfigData,
   onValidateFormRequiredFields: mockonValidateFormRequiredFields,
   shouldValidateForm: false,
 };

@@ -13,6 +13,7 @@
 import { EntityType } from '../../../enums/entity.enum';
 import { Column } from '../../../generated/entity/data/table';
 import { EntityReference } from '../../../generated/entity/type';
+import { FeedCounts } from '../../../interface/feed.interface';
 
 export type FeedKeys = 'all' | 'mentions' | 'tasks';
 export type TaskFilter = 'open' | 'close';
@@ -26,9 +27,13 @@ export enum ActivityFeedTabs {
 export interface ActivityFeedTabBasicProps {
   fqn: string;
   isForFeedTab?: boolean;
+  refetchFeed?: boolean;
+  entityFeedTotalCount?: number;
+  hasGlossaryReviewer?: boolean;
+  onUpdateFeedCount?: (feedCount: FeedCounts) => void;
   onFeedUpdate: () => void;
   onUpdateEntityDetails?: () => void;
-  owner?: EntityReference;
+  owners?: EntityReference[];
 }
 
 export type ActivityFeedTabProps = ActivityFeedTabBasicProps &

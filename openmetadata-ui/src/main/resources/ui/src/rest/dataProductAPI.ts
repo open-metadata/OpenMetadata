@@ -51,14 +51,10 @@ export const addDataProducts = async (data: CreateDataProduct) => {
 };
 
 export const patchDataProduct = async (id: string, patch: Operation[]) => {
-  const configOptions = {
-    headers: { 'Content-type': 'application/json-patch+json' },
-  };
-
   const response = await APIClient.patch<
     Operation[],
     AxiosResponse<DataProduct>
-  >(`${BASE_URL}/${id}`, patch, configOptions);
+  >(`${BASE_URL}/${id}`, patch);
 
   return response.data;
 };

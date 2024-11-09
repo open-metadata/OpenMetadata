@@ -19,8 +19,8 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 
 /**
- * Custom {@link JacksonAnnotationIntrospector} to serialize/deserialize only fields containing {@link ExposedField}
- * annotation.
+ * Custom {@link JacksonAnnotationIntrospector} to serialize/deserialize only fields containing
+ * {@link ExposedField} annotation.
  */
 public class OnlyExposedFieldAnnotationIntrospector extends JacksonAnnotationIntrospector {
 

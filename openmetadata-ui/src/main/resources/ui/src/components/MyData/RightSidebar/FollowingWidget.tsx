@@ -18,10 +18,12 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as FollowingEmptyIcon } from '../../../assets/svg/following-no-data-placeholder.svg';
 import { getUserPath } from '../../../constants/constants';
+import { FOLLOW_DATA_ASSET } from '../../../constants/docs.constants';
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
 import { EntityReference } from '../../../generated/entity/type';
 import { WidgetCommonProps } from '../../../pages/CustomizablePage/CustomizablePage.interface';
-import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
+
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { EntityListWithV1 } from '../../Entity/EntityList/EntityList';
 import './following-widget.less';
@@ -41,7 +43,7 @@ function FollowingWidget({
   widgetKey,
 }: Readonly<FollowingWidgetProps>) {
   const { t } = useTranslation();
-  const { currentUser } = useAuthContext();
+  const { currentUser } = useApplicationStore();
 
   const handleCloseClick = useCallback(() => {
     !isUndefined(handleRemoveWidget) && handleRemoveWidget(widgetKey);
@@ -99,6 +101,13 @@ function FollowingWidget({
               <Typography.Paragraph>
                 {t('message.not-followed-anything')}
               </Typography.Paragraph>
+              <a
+                className="link-title"
+                href={FOLLOW_DATA_ASSET}
+                rel="noreferrer"
+                target="_blank">
+                {t('label.learn-more')}
+              </a>
             </ErrorPlaceHolder>
           </div>
         }

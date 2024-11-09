@@ -18,7 +18,7 @@ import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 public class StoredProcedureRepository extends EntityRepository<StoredProcedure> {
-  static final String PATCH_FIELDS = "storedProcedureCode,sourceUrl,sourceHash";
+  static final String PATCH_FIELDS = "storedProcedureCode,sourceUrl";
   static final String UPDATE_FIELDS = "storedProcedureCode,sourceUrl";
 
   public StoredProcedureRepository() {
@@ -73,16 +73,14 @@ public class StoredProcedureRepository extends EntityRepository<StoredProcedure>
   public void setInheritedFields(StoredProcedure storedProcedure, EntityUtil.Fields fields) {
     DatabaseSchema schema =
         Entity.getEntity(
-            DATABASE_SCHEMA, storedProcedure.getDatabaseSchema().getId(), "owner,domain", ALL);
-    inheritOwner(storedProcedure, fields, schema);
+            DATABASE_SCHEMA, storedProcedure.getDatabaseSchema().getId(), "owners,domain", ALL);
+    inheritOwners(storedProcedure, fields, schema);
     inheritDomain(storedProcedure, fields, schema);
   }
 
   @Override
   public void setFields(StoredProcedure storedProcedure, EntityUtil.Fields fields) {
     setDefaultFields(storedProcedure);
-    storedProcedure.setSourceHash(
-        fields.contains("sourceHash") ? storedProcedure.getSourceHash() : null);
     storedProcedure.setFollowers(
         fields.contains(FIELD_FOLLOWERS) ? getFollowers(storedProcedure) : null);
   }

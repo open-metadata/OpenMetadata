@@ -145,8 +145,19 @@
   margin-bottom: 12px;
 }
 
+.edit-glossary-modal {
+  .ant-form-item {
+    margin-bottom: 12px;
+  }
+  .form-item-horizontal {
+    margin-bottom: 8px;
+  }
+}
+
 .edit-glossary-modal .ant-form-item {
-  margin-bottom: 12px;
+  &.m-b-xss {
+    margin-bottom: 4px;
+  }
 }
 
 .glossary-overview-tab .schema-heading,
@@ -176,10 +187,17 @@
   overflow-y: auto;
 }
 
-.glossary-richtext-editor .toastui-editor,
-.edit-glossary-modal .toastui-editor {
-  min-height: 150px !important; // overriding inline style
-  .ProseMirror {
+.glossary-richtext-editor,
+.edit-glossary-modal {
+  .toastui-editor {
+    min-height: 150px !important; // overriding inline style
+
+    .ProseMirror {
+      min-height: 150px;
+    }
+  }
+
+  .toastui-editor-md-preview {
     min-height: 150px;
   }
 }

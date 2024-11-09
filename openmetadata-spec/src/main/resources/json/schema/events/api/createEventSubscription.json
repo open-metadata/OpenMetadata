@@ -19,9 +19,9 @@
       "description": "A short description of the Alert, comprehensible to regular users.",
       "$ref": "../../type/basic.json#/definitions/markdown"
     },
-    "owner": {
-      "description": "Owner of this Alert.",
-      "$ref": "../../type/entityReference.json",
+    "owners": {
+      "description": "Owners of this Alert.",
+      "$ref": "../../type/entityReferenceList.json",
       "default": null
     },
     "enabled": {
@@ -71,7 +71,10 @@
     "input": {
       "description": "Input for the Filters.",
       "$ref": "../eventSubscription.json#/definitions/alertFilteringInput"
-
+    },
+    "domain" : {
+      "description": "Fully qualified name of the domain the Table belongs to.",
+      "type": "string"
     }
   },
   "required": ["name", "alertType"],

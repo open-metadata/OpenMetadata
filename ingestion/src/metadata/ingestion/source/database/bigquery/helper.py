@@ -12,7 +12,7 @@
 """
 Source connection helper
 """
-
+import traceback
 from typing import Any
 
 from pydantic import BaseModel
@@ -26,7 +26,17 @@ from metadata.generated.schema.security.credentials.gcpValues import (
     SingleProjectId,
 )
 from metadata.ingestion.source.connections import get_connection
+from metadata.ingestion.source.database.bigquery.queries import (
+    BIGQUERY_FOREIGN_CONSTRAINTS,
+    BIGQUERY_TABLE_CONSTRAINTS,
+)
 from metadata.utils.bigquery_utils import get_bigquery_client
+from metadata.utils.logger import ingestion_logger
+
+logger = ingestion_logger()
+
+FK_CACHE = {}
+PK_CACHE = {}
 
 
 class InspectorWrapper(BaseModel):
@@ -46,7 +56,7 @@ def get_inspector_details(
     kwargs = {}
     if isinstance(service_connection.credentials.gcpConfig, GcpCredentialsValues):
         service_connection.credentials.gcpConfig.projectId = SingleProjectId(
-            __root__=database_name
+            database_name
         )
         if service_connection.credentials.gcpImpersonateServiceAccount:
             kwargs[
@@ -64,3 +74,71 @@ def get_inspector_details(
     inspector = inspect(engine)
 
     return InspectorWrapper(client=client, engine=engine, inspector=inspector)
+
+
+def get_pk_constraint(
+    self, connection, table_name, schema=None, **kw
+):  # pylint: disable=unused-argument
+    """
+    This function overrides to get primary key constraint
+    """
+    try:
+        constraints = PK_CACHE.get(f"{connection.engine.url.host}.{schema}")
+        if constraints is None:
+            constraints = connection.engine.execute(
+                BIGQUERY_TABLE_CONSTRAINTS.format(
+                    project_id=connection.engine.url.host,
+                    schema_name=schema,
+                )
+            )
+            PK_CACHE[f"{connection.engine.url.host}.{schema}"] = constraints.fetchall()
+
+        col_name = []
+        table_constraints = [row for row in constraints if row.table_name == table_name]
+        for table_constraint in table_constraints:
+            col_name.append(table_constraint.column_name)
+        return {"constrained_columns": tuple(col_name)}
+    except Exception as exc:
+        logger.debug(traceback.format_exc())
+        logger.warning(
+            f"Error while fetching primary key constraint error for table [{schema}.{table_name}]: {exc}"
+        )
+        return {"constrained_columns": []}
+
+
+def get_foreign_keys(
+    self, connection, table_name, schema=None, **kw
+):  # pylint: disable=unused-argument
+    """
+    This function overrides to get foreign key constraint
+    """
+    try:
+        constraints = FK_CACHE.get(f"{connection.engine.url.host}.{schema}")
+        if constraints is None:
+            constraints = connection.engine.execute(
+                BIGQUERY_FOREIGN_CONSTRAINTS.format(
+                    project_id=connection.engine.url.host,
+                    schema_name=schema,
+                )
+            )
+            FK_CACHE[f"{connection.engine.url.host}.{schema}"] = constraints.fetchall()
+
+        col_name = []
+        table_constraints = [row for row in constraints if row.table_name == table_name]
+        for table_constraint in table_constraints:
+            col_name.append(
+                {
+                    "name": table_constraint.name,
+                    "referred_schema": table_constraint.referred_schema,
+                    "referred_table": table_constraint.referred_table,
+                    "constrained_columns": [table_constraint.constrained_columns],
+                    "referred_columns": [table_constraint.referred_columns],
+                }
+            )
+        return col_name
+    except Exception as exc:
+        logger.debug(traceback.format_exc())
+        logger.warning(
+            f"Error while fetching foreign key constraint error for table [{schema}.{table_name}]: {exc}"
+        )
+        return []

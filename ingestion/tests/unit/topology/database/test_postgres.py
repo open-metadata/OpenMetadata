@@ -53,6 +53,10 @@ mock_postgres_config = {
                 },
                 "hostPort": "localhost:5432",
                 "database": "postgres",
+                "sslMode": "verify-ca",
+                "sslConfig": {
+                    "caCertificate": "CA certificate content",
+                },
             }
         },
         "sourceConfig": {
@@ -276,21 +280,23 @@ class PostgresUnitTest(TestCase):
     def __init__(self, methodName, test_connection) -> None:
         super().__init__(methodName)
         test_connection.return_value = False
-        self.config = OpenMetadataWorkflowConfig.parse_obj(mock_postgres_config)
+        self.config = OpenMetadataWorkflowConfig.model_validate(mock_postgres_config)
         self.postgres_source = PostgresSource.create(
             mock_postgres_config["source"],
             self.config.workflowConfig.openMetadataServerConfig,
         )
 
-        self.postgres_source.context.__dict__[
+        self.postgres_source.context.get().__dict__[
             "database_service"
-        ] = MOCK_DATABASE_SERVICE.name.__root__
-        self.postgres_source.context.__dict__["database"] = MOCK_DATABASE.name.__root__
-        self.postgres_source.context.__dict__[
+        ] = MOCK_DATABASE_SERVICE.name.root
+        self.postgres_source.context.get().__dict__[
+            "database"
+        ] = MOCK_DATABASE.name.root
+        self.postgres_source.context.get().__dict__[
             "database_schema"
-        ] = MOCK_DATABASE_SCHEMA.name.__root__
+        ] = MOCK_DATABASE_SCHEMA.name.root
 
-        self.usage_config = OpenMetadataWorkflowConfig.parse_obj(
+        self.usage_config = OpenMetadataWorkflowConfig.model_validate(
             mock_postgres_usage_config
         )
         self.postgres_usage_source = PostgresUsageSource.create(
@@ -325,3 +331,11 @@ class PostgresUnitTest(TestCase):
 
         engine.execute.return_value = [[]]
         self.assertIsNone(get_postgres_version(engine))
+
+    @patch("sqlalchemy.engine.base.Engine")
+    @patch(
+        "metadata.ingestion.source.database.common_db_source.CommonDbSourceService.connection"
+    )
+    def test_close_connection(self, engine, connection):
+        connection.return_value = True
+        self.postgres_source.close()

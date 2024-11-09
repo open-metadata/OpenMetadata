@@ -14,6 +14,7 @@
 import React from 'react';
 jest.mock('recharts', () => ({
   Bar: jest.fn().mockImplementation(() => <div>Bar</div>),
+  Area: jest.fn().mockImplementation(() => <div>Area</div>),
   Scatter: jest.fn().mockImplementation(() => <div>Scatter</div>),
   CartesianGrid: jest.fn().mockImplementation(() => <div>CartesianGrid</div>),
   Legend: jest.fn().mockImplementation(() => <div>Legend</div>),
@@ -23,9 +24,17 @@ jest.mock('recharts', () => ({
   BarChart: jest
     .fn()
     .mockImplementation(({ children }) => <div>{children}</div>),
+  AreaChart: jest
+    .fn()
+    .mockImplementation(({ children }) => <div>{children}</div>),
   ComposedChart: jest
     .fn()
     .mockImplementation(({ children }) => <div>{children}</div>),
+  linearGradient: jest
+    .fn()
+    .mockImplementation(({ children, ...rest }) => (
+      <div {...rest}>{children}</div>
+    )),
   ResponsiveContainer: jest
     .fn()
     .mockImplementation(({ children }) => (

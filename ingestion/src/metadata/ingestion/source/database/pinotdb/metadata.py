@@ -9,6 +9,10 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """PinotDb source module"""
+from typing import Iterable, Optional
+
+from pinotdb import sqlalchemy as pinot_sqlalchemy
+from sqlalchemy import types
 
 from metadata.generated.schema.entity.services.connections.database.pinotDBConnection import (
     PinotDBConnection,
@@ -21,6 +25,31 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
 
 
+def get_type_custom(data_type, field_size):
+    type_map = {
+        "int": types.BigInteger,
+        "long": types.BigInteger,
+        "float": types.Float,
+        "double": types.Numeric,
+        # BOOLEAN, is added after release 0.7.1.
+        # In release 0.7.1 and older releases, BOOLEAN is equivalent to STRING.
+        "boolean": types.Boolean,
+        "timestamp": types.TIMESTAMP,
+        "string": types.String,
+        "json": types.JSON,
+        "bytes": types.LargeBinary,
+        "big_decimal": types.DECIMAL,
+        # Complex types
+        "struct": types.BLOB,
+        "map": types.BLOB,
+        "array": types.ARRAY,
+    }
+    return type_map.get(data_type.lower())
+
+
+pinot_sqlalchemy.get_type = get_type_custom
+
+
 class PinotdbSource(CommonDbSourceService):
     """
     Implements the necessary methods to extract
@@ -28,11 +57,25 @@ class PinotdbSource(CommonDbSourceService):
     """
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata):
-        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: PinotDBConnection = config.serviceConnection.__root__.config
+    def create(
+        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
+    ):
+        config: WorkflowSource = WorkflowSource.model_validate(config_dict)
+        connection: PinotDBConnection = config.serviceConnection.root.config
         if not isinstance(connection, PinotDBConnection):
             raise InvalidSourceException(
                 f"Expected PinotdbConnection, but got {connection}"
             )
         return cls(config, metadata)
+
+    def get_database_names(self) -> Iterable[str]:
+        """
+        Default case with a single database.
+
+        It might come informed - or not - from the source.
+
+        Sources with multiple databases should overwrite this and
+        apply the necessary filters.
+        """
+        # TODO: Add databaseDisplayName field in PinotDBConnection
+        yield "default"

@@ -47,7 +47,6 @@ ENTITY_TYPE
     | 'searchService'
     | 'webhook'
     | 'mlmodel'
-    | 'type'
     | 'team'
     | 'user'
     | 'bot'
@@ -72,11 +71,16 @@ ENTITY_TYPE
     | 'app'
     | 'persona'
     | 'docStore'
-    | 'Page'
+    | 'page'
     | 'KnowLedgePanels'
     | 'govern'
     | 'all'
     | 'customMetric'
+    | 'eventsubscription'
+    | 'ingestionPipeline'
+    | 'apiCollection'
+    | 'apiEndpoint'
+    | 'apiService'
     ;
 
 ENTITY_FIELD
@@ -108,10 +112,25 @@ ENTITY_FIELD
     | 'fields'
     | 'followers'
     | 'appConfiguration'
+    | 'appSchedule'
+    | 'votes'
+    | 'profile'
+    | 'roles'
+    | 'deleted'
+    | 'lifeCycle'
+    | 'api_client_id'
+    | 'sourceHash'
+    | 'testCaseResult'
+    | 'tests'
+    | 'pipelineStatus'
+    | 'dataProducts'
+    | 'parameterValues'
+    | 'retentionPeriod'
+    | 'parent'
     ;
 
     
 
 NAME_OR_FQN
-    : ~(':')+ ('>')*? ~(':'|'>')+
+    : ~(':')* ~(':'|'>')+
     ;

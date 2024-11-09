@@ -17,12 +17,14 @@ import { TAG_CONSTANT, TAG_START_WITH } from '../../../constants/Tag.constants';
 import { LabelType, State, TagSource } from '../../../generated/type/tagLabel';
 import TagsV1 from './TagsV1.component';
 
-const mockPush = jest.fn();
+const mockLinkButton = jest.fn();
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn().mockImplementation(() => ({
-    push: mockPush,
-  })),
+  Link: jest.fn().mockImplementation(({ children, ...rest }) => (
+    <a {...rest} onClick={mockLinkButton}>
+      {children}
+    </a>
+  )),
 }));
 
 jest.mock('../../../utils/TagsUtils', () => ({
@@ -71,12 +73,11 @@ describe('Test tags Component', () => {
         }}
       />
     );
-    const tag = getByTestId(container, 'tags');
+    const tag = getByTestId(container, 'tag-redirect-link');
 
     fireEvent.click(tag);
 
-    expect(mockPush).toHaveBeenCalledTimes(1);
-    expect(mockPush).toHaveBeenCalledWith('/tags/testTag');
+    expect(mockLinkButton).toHaveBeenCalledTimes(1);
   });
 
   it('Clicking on tag with source Glossary should redirect to the proper glossary term page', () => {
@@ -92,11 +93,29 @@ describe('Test tags Component', () => {
         }}
       />
     );
-    const tag = getByTestId(container, 'tags');
+    const tag = getByTestId(container, 'tag-redirect-link');
 
     fireEvent.click(tag);
 
-    expect(mockPush).toHaveBeenCalledTimes(1);
-    expect(mockPush).toHaveBeenCalledWith('/glossary/glossaryTag.Test1');
+    expect(mockLinkButton).toHaveBeenCalledTimes(1);
+  });
+
+  it('should render size based tags, for small class should contain small', () => {
+    const { container } = render(
+      <TagsV1
+        size="small"
+        startWith={TAG_START_WITH.SOURCE_ICON}
+        tag={{
+          description: 'TestDescription',
+          labelType: LabelType.Manual,
+          source: TagSource.Glossary,
+          state: State.Confirmed,
+          tagFQN: 'glossaryTag.Test1',
+        }}
+      />
+    );
+    const tag = getByTestId(container, 'tags');
+
+    expect(tag).toHaveClass('small');
   });
 });

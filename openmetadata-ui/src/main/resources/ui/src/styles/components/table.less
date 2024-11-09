@@ -59,6 +59,12 @@
       border-radius: 6px;
       overflow: hidden;
 
+      .ant-table-content {
+        .react-resizable {
+          display: contents;
+        }
+      }
+
       .ant-table-content > table {
         border-top: none;
         tbody > tr {
@@ -68,6 +74,10 @@
 
           &:last-child td {
             border-bottom: none;
+
+            td {
+              border-bottom: 1px solid @border-color;
+            }
           }
         }
         thead > tr {
@@ -91,7 +101,7 @@
 .drop-over-background {
   .drop-over-child {
     td {
-      background: @active-color;
+      background: @active-color !important;
       border: 2px dashed @primary-color;
       border-left: transparent;
 
@@ -113,9 +123,16 @@
         border: 2px dashed @primary-color;
 
         td {
-          background: @active-color;
+          background: @active-color !important;
         }
       }
     }
+  }
+}
+
+.align-table-filter-left {
+  .ant-table-filter-column {
+    flex-direction: row-reverse;
+    gap: 8px;
   }
 }

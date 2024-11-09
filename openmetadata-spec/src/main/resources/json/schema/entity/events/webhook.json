@@ -18,9 +18,13 @@
     }
   },
   "properties": {
-    "references": {
-      "description": "List of References for internal System Users or Teams",
-      "$ref": "../../type/entityReferenceList.json"
+    "receivers": {
+      "description": "List of receivers to send mail to",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true
     },
     "endpoint": {
       "description": "Endpoint to receive the webhook events over POST requests.",
@@ -30,6 +34,17 @@
     "secretKey": {
       "description": "Secret set by the webhook client used for computing HMAC SHA256 signature of webhook payload and sent in `X-OM-Signature` header in POST requests to publish the events.",
       "type": "string"
+    },
+    "headers": {
+      "description": "Custom headers to be sent with the webhook request.",
+      "type": "object",
+      "existingJavaType": "java.util.Map<String, String>"
+    },
+    "httpMethod": {
+      "description": "HTTP operation to send the webhook request. Supports POST or PUT.",
+      "type": "string",
+      "enum": ["POST", "PUT"],
+      "default": "POST"
     },
     "sendToAdmins": {
       "description": "Send the Event to Admins",

@@ -27,18 +27,23 @@ describe('Global Setting routes', () => {
       expect(path).toEqual(ROUTES.SETTINGS);
     });
 
-    it('should return default path when tab is undefined', () => {
-      const category = 'exampleCategory';
-      const path = getSettingPath(category);
-
-      expect(path).toEqual(ROUTES.SETTINGS);
-    });
-
     it('should return default path when category is undefined', () => {
       const tab = 'exampleTab';
       const path = getSettingPath(undefined, tab);
 
       expect(path).toEqual(ROUTES.SETTINGS);
+    });
+
+    it('should return path with category if tab is undefined', () => {
+      const category = 'exampleCategory';
+      const path = getSettingPath(category);
+
+      const expectedPath = ROUTES.SETTINGS_WITH_CATEGORY.replace(
+        PLACEHOLDER_SETTING_CATEGORY,
+        category
+      );
+
+      expect(path).toEqual(expectedPath);
     });
 
     it('should return path with category and tab when withFqn is false', () => {

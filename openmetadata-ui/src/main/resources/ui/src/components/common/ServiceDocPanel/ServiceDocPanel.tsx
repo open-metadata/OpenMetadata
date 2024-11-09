@@ -21,7 +21,7 @@ import {
 import { PipelineType } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { fetchMarkdownFile } from '../../../rest/miscAPI';
 import { SupportedLocales } from '../../../utils/i18next/i18nextUtil';
-import Loader from '../../Loader/Loader';
+import Loader from '../Loader/Loader';
 import RichTextEditorPreviewer from '../RichTextEditor/RichTextEditorPreviewer';
 import './service-doc-panel.less';
 
@@ -83,14 +83,16 @@ const ServiceDocPanel: FC<ServiceDocPanelProp> = ({
   const fetchRequirement = async () => {
     setIsLoading(true);
     try {
+      const supportedServiceType =
+        serviceType === 'Api' ? 'ApiEntity' : serviceType;
       let response = '';
       const isEnglishLanguage = i18n.language === SupportedLocales.English;
-      let filePath = `${i18n.language}/${serviceType}/${serviceName}.md`;
-      let fallbackFilePath = `${SupportedLocales.English}/${serviceType}/${serviceName}.md`;
+      let filePath = `${i18n.language}/${supportedServiceType}/${serviceName}.md`;
+      let fallbackFilePath = `${SupportedLocales.English}/${supportedServiceType}/${serviceName}.md`;
 
       if (isWorkflow && workflowType) {
-        filePath = `${i18n.language}/${serviceType}/workflows/${workflowType}.md`;
-        fallbackFilePath = `${SupportedLocales.English}/${serviceType}/workflows/${workflowType}.md`;
+        filePath = `${i18n.language}/${supportedServiceType}/workflows/${workflowType}.md`;
+        fallbackFilePath = `${SupportedLocales.English}/${supportedServiceType}/workflows/${workflowType}.md`;
       }
 
       const [translation, fallbackTranslation] = await Promise.allSettled([

@@ -13,7 +13,7 @@ To extract metadata, the user needs to have `SELECT` permission on the following
 Access to resources will be based on the user access permission to access specific data sources. More information regarding access and security can be found in the Trino documentation [here](https://trino.io/docs/current/security.html).
 
 ### Profiler & Data Quality
-Executing the profiler Workflow or data quality tests, will require the user to have `SELECT` permission on the tables/schemas where the profiler/tests will be executed. More information on the profiler workflow setup can be found [here](https://docs.open-metadata.org/connectors/ingestion/workflows/profiler) and data quality tests [here](https://docs.open-metadata.org/connectors/ingestion/workflows/data-quality).
+Executing the profiler Workflow or data quality tests, will require the user to have `SELECT` permission on the tables/schemas where the profiler/tests will be executed. More information on the profiler workflow setup can be found [here](https://docs.open-metadata.org/how-to-guides/data-quality-observability/profiler/workflow) and data quality tests [here](https://docs.open-metadata.org/connectors/ingestion/workflows/data-quality).
 
 You can find further information on the Trino connector in the [docs](https://docs.open-metadata.org/connectors/database/trino).
 
@@ -51,6 +51,56 @@ $$section
 JWT can be used to authenticate with trino.
 Follow the steps in the [official trino](https://trino.io/docs/current/security/jwt.html) documentation to setup trino with jwt.
 
+$$
+
+## Azure
+
+$$section
+### Client ID $(id="clientId")
+
+To get the Client ID (also known as application ID), follow these steps:
+
+1. Log into [Microsoft Azure](https://ms.portal.azure.com/#allservices).
+2. Search for `App registrations` and select the `App registrations link`.
+3. Select the `Azure AD` app you're using for Trino.
+4. From the Overview section, copy the `Application (client) ID`.
+
+$$
+
+$$section
+### Client Secret $(id="clientSecret")
+To get the client secret, follow these steps:
+
+1. Log into [Microsoft Azure](https://ms.portal.azure.com/#allservices).
+2. Search for `App registrations` and select the `App registrations link`.
+3. Select the `Azure AD` app you're using for Trino.
+4. Under `Manage`, select `Certificates & secrets`.
+5. Under `Client secrets`, select `New client secret`.
+6. In the `Add a client secret` pop-up window, provide a description for your application secret. Choose when the application should expire, and select `Add`.
+7. From the `Client secrets` section, copy the string in the `Value` column of the newly created application secret.
+
+$$
+
+$$section
+### Tenant ID $(id="tenantId")
+
+To get the tenant ID, follow these steps:
+
+1. Log into [Microsoft Azure](https://ms.portal.azure.com/#allservices).
+2. Search for `App registrations` and select the `App registrations link`.
+3. Select the `Azure AD` app you're using for Trino.
+4. From the `Overview` section, copy the `Directory (tenant) ID`.
+$$
+
+$$section
+### Scopes $(id="Scopes")
+
+To let OM use the Trino Auth APIs using your Azure AD app, you'll need to add the scope
+1. Log into [Microsoft Azure](https://ms.portal.azure.com/#allservices).
+2. Search for `App registrations` and select the `App registrations link`.
+3. Select the `Azure AD` app you're using for Trino.
+4. From the `Expose an API` section, copy the `Application ID URI`
+5. Make sure the URI ends with `/.default` in case it does not, you can append the same manually
 $$
 
 $$section

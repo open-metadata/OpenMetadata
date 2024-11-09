@@ -235,17 +235,17 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
             .withName("task")
             .withDescription("description")
             .withSourceUrl("http://localhost:0")
-            .withOwner(USER1_REF);
+            .withOwners(List.of(USER1_REF));
     create.setTasks(List.of(task));
     Pipeline entity = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
     Task actualTask = entity.getTasks().get(0);
-    assertEquals(USER1_REF.getName(), actualTask.getOwner().getName());
+    assertOwners(List.of(USER1_REF), actualTask.getOwners());
 
     // We can GET the task retrieving the owner info
     Pipeline storedPipeline =
-        getPipelineByName(entity.getFullyQualifiedName(), "owner,tasks", ADMIN_AUTH_HEADERS);
+        getPipelineByName(entity.getFullyQualifiedName(), "owners,tasks", ADMIN_AUTH_HEADERS);
     Task storedTask = storedPipeline.getTasks().get(0);
-    assertEquals(USER1_REF.getName(), storedTask.getOwner().getName());
+    assertOwners(List.of(USER1_REF), storedTask.getOwners());
   }
 
   @Test
@@ -626,13 +626,87 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
   }
 
   @Test
+  void patch_usingFqn_PipelineTasksUpdate_200_ok(TestInfo test) throws IOException {
+    CreatePipeline request =
+        createRequest(test).withService(AIRFLOW_REFERENCE.getFullyQualifiedName());
+    Pipeline pipeline = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
+
+    // Add a new task without description or tags
+    String origJson = JsonUtils.pojoToJson(pipeline);
+    ChangeDescription change = getChangeDescription(pipeline, MINOR_UPDATE);
+    List<Task> tasks = new ArrayList<>();
+    Task taskEmptyDesc = new Task().withName("taskEmpty").withSourceUrl("http://localhost:0");
+    tasks.add(taskEmptyDesc);
+    fieldAdded(change, "tasks", tasks);
+    fieldUpdated(change, "description", "", "newDescription");
+    List<Task> updatedTasks =
+        Stream.concat(TASKS.stream(), tasks.stream()).collect(Collectors.toList());
+    pipeline.setTasks(updatedTasks);
+    pipeline.setDescription("newDescription");
+    pipeline =
+        patchEntityUsingFqnAndCheck(pipeline, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    pipeline = getPipeline(pipeline.getId(), "*", ADMIN_AUTH_HEADERS);
+    validateTasks(updatedTasks, pipeline.getTasks());
+
+    // add description and tags to an existing task - taskEmpty
+    // Changes from this PATCH is consolidated with the previous changes
+    origJson = JsonUtils.pojoToJson(pipeline);
+    change = getChangeDescription(pipeline, CHANGE_CONSOLIDATED);
+    List<Task> newTasks = new ArrayList<>();
+    Task taskWithDesc =
+        taskEmptyDesc
+            .withDescription("taskDescription")
+            .withTags(List.of(USER_ADDRESS_TAG_LABEL, PII_SENSITIVE_TAG_LABEL));
+    newTasks.add(taskWithDesc);
+    fieldAdded(change, "tasks", newTasks);
+    fieldUpdated(change, "description", "", "newDescription");
+    List<Task> updatedNewTasks =
+        Stream.concat(TASKS.stream(), newTasks.stream()).collect(Collectors.toList());
+    pipeline.setTasks(updatedNewTasks);
+    pipeline =
+        patchEntityUsingFqnAndCheck(
+            pipeline, origJson, ADMIN_AUTH_HEADERS, CHANGE_CONSOLIDATED, change);
+
+    // Update the descriptions of pipeline and task and add tags to tasks
+    // Changes from this PATCH is consolidated with the previous changes
+    origJson = JsonUtils.pojoToJson(pipeline);
+    change = getChangeDescription(pipeline, CHANGE_CONSOLIDATED);
+    newTasks = new ArrayList<>();
+    taskWithDesc = taskEmptyDesc.withDescription("newTaskDescription");
+    newTasks.add(taskWithDesc);
+    fieldAdded(change, "tasks", tasks);
+    fieldUpdated(change, "description", "", "newDescription2");
+    updatedNewTasks = Stream.concat(TASKS.stream(), newTasks.stream()).collect(Collectors.toList());
+    pipeline.setTasks(updatedNewTasks);
+    pipeline.setDescription("newDescription2");
+    pipeline =
+        patchEntityUsingFqnAndCheck(
+            pipeline, origJson, ADMIN_AUTH_HEADERS, CHANGE_CONSOLIDATED, change);
+
+    // Delete task and pipeline description by setting them to null
+    // Changes from this PATCH is consolidated with the previous changes
+    origJson = JsonUtils.pojoToJson(pipeline);
+    change = getChangeDescription(pipeline, CHANGE_CONSOLIDATED);
+    newTasks = new ArrayList<>();
+    Task taskWithoutDesc = taskEmptyDesc.withDescription(null);
+    newTasks.add(taskWithoutDesc);
+    updatedNewTasks = Stream.concat(TASKS.stream(), newTasks.stream()).collect(Collectors.toList());
+    fieldAdded(change, "tasks", newTasks);
+    pipeline.setTasks(updatedNewTasks);
+    pipeline.setDescription(
+        ""); // Since description started out to be empty, during consolidation, no change
+    patchEntityUsingFqnAndCheck(
+        pipeline, origJson, ADMIN_AUTH_HEADERS, CHANGE_CONSOLIDATED, change);
+  }
+
+  @Test
   void testInheritedPermissionFromParent() throws IOException {
     // Create a pipeline service with owner data consumer
     PipelineServiceResourceTest serviceTest = new PipelineServiceResourceTest();
     CreatePipelineService createPipelineService =
         serviceTest
             .createRequest("testInheritedPermissions")
-            .withOwner(DATA_CONSUMER.getEntityReference());
+            .withOwners(List.of(DATA_CONSUMER.getEntityReference()));
     PipelineService service = serviceTest.createEntity(createPipelineService, ADMIN_AUTH_HEADERS);
 
     // Data consumer as an owner of the service can create pipeline under it
@@ -692,14 +766,14 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
             : getPipeline(pipeline.getId(), fields, ADMIN_AUTH_HEADERS);
     assertListNotNull(pipeline.getService(), pipeline.getServiceType());
     assertListNull(
-        pipeline.getOwner(),
+        pipeline.getOwners(),
         pipeline.getTasks(),
         pipeline.getPipelineStatus(),
         pipeline.getTags(),
         pipeline.getFollowers(),
         pipeline.getTags());
 
-    fields = "owner,tasks,pipelineStatus,followers,tags,scheduleInterval";
+    fields = "owners,tasks,pipelineStatus,followers,tags,scheduleInterval";
     pipeline =
         byName
             ? getPipelineByName(pipeline.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)

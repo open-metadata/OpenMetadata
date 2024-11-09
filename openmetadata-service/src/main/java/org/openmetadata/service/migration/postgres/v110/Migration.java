@@ -3,27 +3,18 @@ package org.openmetadata.service.migration.postgres.v110;
 import static org.openmetadata.service.migration.utils.v110.MigrationUtil.dataMigrationFQNHashing;
 import static org.openmetadata.service.migration.utils.v110.MigrationUtil.testSuitesMigration;
 
+import java.util.Collections;
+import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
-import org.jdbi.v3.core.Handle;
-import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.migration.QueryStatus;
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
 
 @Slf4j
 @SuppressWarnings("unused")
 public class Migration extends MigrationProcessImpl {
-  private CollectionDAO collectionDAO;
-  private Handle handle;
-
   public Migration(MigrationFile migrationFile) {
     super(migrationFile);
-  }
-
-  @Override
-  public void initialize(Handle handle) {
-    super.initialize(handle);
-    this.handle = handle;
-    this.collectionDAO = handle.attach(CollectionDAO.class);
   }
 
   @Override
@@ -37,8 +28,9 @@ public class Migration extends MigrationProcessImpl {
   }
 
   @Override
-  public void runPostDDLScripts() {
-    super.runPostDDLScripts();
+  public Map<String, QueryStatus> runPostDDLScripts(boolean isForceMigration) {
+    super.runPostDDLScripts(isForceMigration);
     testSuitesMigration(collectionDAO);
+    return Collections.emptyMap();
   }
 }

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { TableVersionProp } from '../components/TableVersion/TableVersion.interface';
+import { TableVersionProp } from '../components/Database/TableVersion/TableVersion.interface';
 import {
   Constraint,
   DatabaseServiceType,
@@ -53,14 +53,16 @@ export const mockTableData: Table = {
       ordinalPosition: 1,
     },
   ],
-  owner: {
-    id: '38be030f-f817-4712-bc3b-ff7b9b9b805e',
-    type: 'user',
-    name: 'aaron_johnson0',
-    fullyQualifiedName: 'aaron_johnson0',
-    displayName: 'Aaron Johnson',
-    deleted: false,
-  },
+  owners: [
+    {
+      id: '38be030f-f817-4712-bc3b-ff7b9b9b805e',
+      type: 'user',
+      name: 'aaron_johnson0',
+      fullyQualifiedName: 'aaron_johnson0',
+      displayName: 'Aaron Johnson',
+      deleted: false,
+    },
+  ],
   databaseSchema: {
     id: '3f0d9c39-0926-4028-8070-65b0c03556cb',
     type: 'databaseSchema',
@@ -108,7 +110,7 @@ export const tableVersionMockProps: TableVersionProp = {
   version: '0.3',
   currentVersionData: mockTableData,
   isVersionLoading: false,
-  owner: mockOwner,
+  owners: mockOwner,
   domain: mockDomain,
   dataProducts: [],
   tier: mockTier,

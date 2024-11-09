@@ -15,8 +15,8 @@ import { Button, Input, Modal } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { t } from 'i18next';
-import { isUndefined } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import { debounce, isUndefined } from 'lodash';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Edge } from 'reactflow';
 import { PAGE_SIZE } from '../../../../constants/constants';
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../../enums/common.enum';
@@ -29,15 +29,16 @@ import {
   getEntityReferenceFromEntity,
 } from '../../../../utils/EntityUtils';
 import Fqn from '../../../../utils/Fqn';
-import { getEntityIcon } from '../../../../utils/TableUtils';
+import searchClassBase from '../../../../utils/SearchClassBase';
 import { showErrorToast } from '../../../../utils/ToastUtils';
+import '../../../ActivityFeed/FeedEditor/feed-editor.less';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import '../../../FeedEditor/feed-editor.less';
 import './add-pipeline-modal.less';
 
 interface AddPipeLineModalType {
   showAddEdgeModal: boolean;
   selectedEdge?: Edge;
+  loading?: boolean;
   onModalCancel: () => void;
   onSave: (value?: EntityReference) => void;
   onRemoveEdgeClick: (evt: React.MouseEvent<HTMLButtonElement>) => void;
@@ -49,12 +50,19 @@ const AddPipeLineModal = ({
   onRemoveEdgeClick,
   onModalCancel,
   onSave,
+  loading,
 }: AddPipeLineModalType) => {
-  const currentPipeline = selectedEdge?.data.edge.pipeline;
+  const defaultPipeline = selectedEdge?.data.edge.pipeline;
+  const currentPipeline = defaultPipeline
+    ? getEntityReferenceFromEntity(
+        defaultPipeline,
+        defaultPipeline?.pipelineEntityType ?? EntityType.PIPELINE
+      )
+    : undefined;
   const [edgeSearchValue, setEdgeSearchValue] = useState<string>('');
-  const [edgeSelection, setEdgeSelection] = useState<EntityReference>(
-    currentPipeline ?? {}
-  );
+  const [edgeSelection, setEdgeSelection] = useState<
+    EntityReference | undefined
+  >(currentPipeline);
   const [edgeOptions, setEdgeOptions] = useState<EntityReference[]>([]);
 
   const getSearchResults = async (value = '*') => {
@@ -100,9 +108,16 @@ const AddPipeLineModal = ({
     return;
   }, [selectedEdge, edgeSearchValue]);
 
+  const debounceOnSearch = useCallback(debounce(getSearchResults, 300), []);
+
+  const handleChange = (value: string): void => {
+    setEdgeSearchValue(value);
+    debounceOnSearch(value);
+  };
+
   useEffect(() => {
     getSearchResults(edgeSearchValue);
-  }, [edgeSearchValue]);
+  }, []);
 
   return (
     <Modal
@@ -121,6 +136,7 @@ const AddPipeLineModal = ({
         <Button
           data-testid="save-button"
           key="save-btn"
+          loading={loading}
           type="primary"
           onClick={() => onSave(edgeSelection)}>
           {t('label.save')}
@@ -136,13 +152,13 @@ const AddPipeLineModal = ({
         data-testid="field-input"
         placeholder={t('message.search-for-edge')}
         value={edgeSearchValue}
-        onChange={(e) => setEdgeSearchValue(e.target.value)}
+        onChange={(e) => handleChange(e.target.value)}
       />
 
       <div className="edge-option-container">
         {edgeOptions.map((item) => {
-          const icon = getEntityIcon(item.type);
-          const breadcrumb = Fqn.split(item.fullyQualifiedName).join('/');
+          const icon = searchClassBase.getEntityIcon(item.type);
+          const breadcrumb = Fqn.split(item.fullyQualifiedName ?? '').join('/');
 
           return (
             <div

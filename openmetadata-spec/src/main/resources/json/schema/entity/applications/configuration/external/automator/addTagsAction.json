@@ -1,0 +1,47 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/applications/configuration/external/automator/addTagsAction.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AddTagsAction",
+  "description": "Apply Tags to the selected assets.",
+  "type": "object",
+  "definitions": {
+    "addTagsActionType": {
+      "description": "Add Tags action type.",
+      "type": "string",
+      "enum": ["AddTagsAction"],
+      "default": "AddTagsAction"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Application Type",
+      "description": "Application Type",
+      "$ref": "#/definitions/addTagsActionType",
+      "default": "AddTagsAction"
+    },
+    "tags": {
+      "description": "Tags to apply",
+      "type": "array",
+      "items": {
+        "$ref": "../../../../../type/tagLabel.json"
+      }
+    },
+    "applyToChildren": {
+      "title": "Apply to Children",
+      "description": "Apply tags to the children of the selected assets that match the criteria. E.g., columns, tasks, topic fields,...",
+      "type": "array",
+      "items": {
+        "$ref": "../../../../../type/basic.json#/definitions/entityName"
+      },
+      "default": null
+    },
+    "overwriteMetadata": {
+      "title": "Overwrite Metadata",
+      "description": "Update tags even if they are already defined in the asset. By default, incoming tags are merged with the existing ones.",
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": ["type", "tags"],
+  "additionalProperties": false
+}

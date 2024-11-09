@@ -18,9 +18,9 @@ import {
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
-import { refreshTokenKey } from '../../../constants/constants';
 import { AuthProvider as AuthProviderProps } from '../../../generated/configuration/authenticationConfiguration';
-import AuthProvider, { useAuthContext } from './AuthProvider';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import AuthProvider from './AuthProvider';
 
 const localStorageMock = {
   getItem: jest.fn(),
@@ -33,9 +33,14 @@ Object.defineProperty(window, 'localStorage', {
   value: localStorageMock,
 });
 
+const mockOnLogoutHandler = jest.fn();
+
+jest.mock('../../../hooks/useCustomLocation/useCustomLocation', () => {
+  return jest.fn().mockImplementation(() => ({ pathname: 'pathname' }));
+});
+
 jest.mock('react-router-dom', () => ({
   useHistory: jest.fn().mockReturnValue({ push: jest.fn(), listen: jest.fn() }),
-  useLocation: jest.fn().mockReturnValue({ pathname: 'pathname' }),
 }));
 
 jest.mock('../../../rest/miscAPI', () => ({
@@ -55,7 +60,7 @@ jest.mock('../../../rest/userAPI', () => ({
 describe('Test auth provider', () => {
   it('Logout handler should call the "updateUserDetails" method', async () => {
     const ConsumerComponent = () => {
-      const { onLogoutHandler } = useAuthContext();
+      const { onLogoutHandler } = useApplicationStore();
 
       return (
         <button data-testid="logout-button" onClick={onLogoutHandler}>
@@ -79,10 +84,8 @@ describe('Test auth provider', () => {
 
   it('Logout handler should remove the refresh token', async () => {
     const ConsumerComponent = () => {
-      const { onLogoutHandler } = useAuthContext();
-
       return (
-        <button data-testid="logout-button" onClick={onLogoutHandler}>
+        <button data-testid="logout-button" onClick={mockOnLogoutHandler}>
           Logout
         </button>
       );
@@ -94,8 +97,6 @@ describe('Test auth provider', () => {
       </AuthProvider>
     );
 
-    await waitForElementToBeRemoved(() => screen.getByTestId('loader'));
-
     const logoutButton = screen.getByTestId('logout-button');
 
     expect(logoutButton).toBeInTheDocument();
@@ -104,6 +105,6 @@ describe('Test auth provider', () => {
       userEvent.click(logoutButton);
     });
 
-    expect(localStorageMock.removeItem).toHaveBeenCalledWith(refreshTokenKey);
+    expect(mockOnLogoutHandler).toHaveBeenCalled();
   });
 });

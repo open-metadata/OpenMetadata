@@ -8,7 +8,7 @@ import org.openmetadata.service.resources.services.database.DatabaseServiceResou
 
 public class MetadataServiceRepository
     extends ServiceEntityRepository<MetadataService, MetadataConnection> {
-  private static final String UPDATE_FIELDS = "owner,tags,connection";
+  private static final String UPDATE_FIELDS = "owners,tags,connection";
 
   public MetadataServiceRepository() {
     super(
@@ -19,5 +19,6 @@ public class MetadataServiceRepository
         UPDATE_FIELDS,
         ServiceType.METADATA);
     supportsSearch = true;
+    parent = true;
   }
 }

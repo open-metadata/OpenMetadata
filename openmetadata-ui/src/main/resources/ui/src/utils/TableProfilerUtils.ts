@@ -12,7 +12,7 @@
  */
 
 import { findLast, isUndefined, last, sortBy } from 'lodash';
-import { MetricChartType } from '../components/ProfilerDashboard/profilerDashboard.interface';
+import { MetricChartType } from '../components/Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
 import { SystemProfile } from '../generated/api/data/createTableProfile';
 import { Table, TableProfile } from '../generated/entity/data/table';
 import { CustomMetric } from '../generated/tests/customMetric';

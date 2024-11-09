@@ -13,7 +13,7 @@ MongoDB source methods.
 """
 
 import traceback
-from typing import Dict, List, Union
+from typing import Dict, List, Optional, Union
 
 from pymongo.errors import OperationFailure
 
@@ -45,9 +45,11 @@ class MongodbSource(CommonNoSQLSource):
         self.mongodb = self.connection_obj
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata):
-        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: MongoDBConnection = config.serviceConnection.__root__.config
+    def create(
+        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
+    ):
+        config: WorkflowSource = WorkflowSource.model_validate(config_dict)
+        connection: MongoDBConnection = config.serviceConnection.root.config
         if not isinstance(connection, MongoDBConnection):
             raise InvalidSourceException(
                 f"Expected MongoDBConnection, but got {connection}"

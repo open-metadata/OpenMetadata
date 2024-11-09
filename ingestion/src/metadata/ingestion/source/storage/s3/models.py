@@ -14,7 +14,7 @@ S3 custom pydantic models
 from datetime import datetime
 from typing import List, Optional
 
-from pydantic import BaseModel, Extra, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from metadata.generated.schema.entity.data.container import (
     ContainerDataModel,
@@ -29,15 +29,29 @@ class S3BucketResponse(BaseModel):
     Class modelling a response received from s3_client.list_buckets operation
     """
 
-    class Config:
-        extra = Extra.forbid
+    model_config = ConfigDict(
+        extra="forbid",
+    )
 
     name: str = Field(..., description="Bucket name", alias="Name")
-    creation_date: datetime = Field(
-        ...,
+    creation_date: Optional[datetime] = Field(
+        None,
         description="Timestamp of Bucket creation in ISO format",
         alias="CreationDate",
     )
+
+
+class S3Tag(BaseModel):
+    Key: str
+    Value: str
+
+
+class S3TagResponse(BaseModel):
+    """
+    Class modelling a response received from s3_client.get_bucket_tagging operation
+    """
+
+    TagSet: List[S3Tag] = Field([], description="List of tags")
 
 
 class S3ContainerDetails(BaseModel):
@@ -45,30 +59,35 @@ class S3ContainerDetails(BaseModel):
     Class mapping container details used to create the container requests
     """
 
-    class Config:
-        extra = Extra.forbid
+    model_config = ConfigDict(
+        extra="forbid",
+    )
 
+    leaf_container: bool = Field(False, description="Leaf container")
+    container_fqn: Optional[str] = Field(
+        None, description="Fully qualified name of the container"
+    )
     name: str = Field(..., description="Bucket name")
     prefix: str = Field(..., description="Prefix for the container")
-    number_of_objects: float = Field(
-        ...,
+    number_of_objects: Optional[float] = Field(
+        None,
         description="Total nr. of objects",
     )
-    size: float = Field(
-        ...,
+    size: Optional[float] = Field(
+        None,
         description="Total size in bytes of all objects",
         title="Total size(bytes) of objects",
     )
     file_formats: Optional[List[FileFormat]] = Field(
-        ...,
+        None,
         description="File formats",
     )
     data_model: Optional[ContainerDataModel] = Field(
-        ...,
+        None,
         description="Data Model of the container",
     )
-    creation_date: str = Field(
-        ...,
+    creation_date: Optional[str] = Field(
+        None,
         description="Timestamp of Bucket creation in ISO format",
     )
     parent: Optional[EntityReference] = Field(
@@ -77,4 +96,8 @@ class S3ContainerDetails(BaseModel):
     )
     sourceUrl: Optional[basic.SourceUrl] = Field(
         None, description="Source URL of the container."
+    )
+
+    fullPath: Optional[str] = Field(
+        None, description="Full path of the container/file."
     )

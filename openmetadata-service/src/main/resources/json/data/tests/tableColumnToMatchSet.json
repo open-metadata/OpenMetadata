@@ -19,6 +19,8 @@
         "description": "Whether or not to considered the order of the list when performing the match check",
         "dataType": "BOOLEAN"
       }
-    ]
+    ],
+    "provider": "system",
+    "dataQualityDimension": "Integrity"
   }
   

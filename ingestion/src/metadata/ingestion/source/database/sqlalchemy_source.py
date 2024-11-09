@@ -24,7 +24,7 @@ from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.ingestion.models.topology import TopologyContext
+from metadata.ingestion.models.topology import TopologyContextManager
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.logger import ingestion_logger
 
@@ -38,7 +38,7 @@ class SqlAlchemySource(ABC):
 
     engine: Engine
     metadata: OpenMetadata
-    context: TopologyContext
+    context: TopologyContextManager
     database_source_state: Set
     source_config: DatabaseServiceMetadataPipeline
     config: WorkflowSource
@@ -74,11 +74,11 @@ class SqlAlchemySource(ABC):
         """
 
     @abstractmethod
-    def get_view_definition(
+    def get_schema_definition(
         self, table_type, table_name: str, schema_name: str, inspector: Inspector
     ) -> Optional[str]:
         """
-        Method to fetch view definition
+        Method to fetch schema definition
         """
 
     @abstractmethod

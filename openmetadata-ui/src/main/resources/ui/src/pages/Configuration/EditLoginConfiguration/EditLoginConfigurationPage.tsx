@@ -15,10 +15,10 @@ import { AxiosError } from 'axios';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
+import Loader from '../../../components/common/Loader/Loader';
 import ResizablePanels from '../../../components/common/ResizablePanels/ResizablePanels';
 import ServiceDocPanel from '../../../components/common/ServiceDocPanel/ServiceDocPanel';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
-import Loader from '../../../components/Loader/Loader';
 import { VALIDATION_MESSAGES } from '../../../constants/constants';
 import {
   GlobalSettingOptions,
@@ -71,7 +71,7 @@ const EditLoginConfiguration = () => {
       {
         name: t('label.login-configuration'),
         url: getSettingPath(
-          GlobalSettingsMenuCategory.OPEN_METADATA,
+          GlobalSettingsMenuCategory.PREFERENCES,
           GlobalSettingOptions.LOGIN_CONFIGURATION
         ),
       },
@@ -88,7 +88,7 @@ const EditLoginConfiguration = () => {
   const formFields: FieldProp[] = [
     {
       name: 'maxLoginFailAttempts',
-      label: t('label.max-login-fail-attampt-plural'),
+      label: t('label.max-login-fail-attempt-plural'),
       type: FieldTypes.NUMBER,
       required: false,
       id: 'root/maxLoginFailAttempts',
@@ -212,17 +212,19 @@ const EditLoginConfiguration = () => {
 
   return (
     <ResizablePanels
-      firstPanel={{ children: firstPanelChildren, minWidth: 700, flex: 0.7 }}
+      className="content-height-with-resizable-panel"
+      firstPanel={{
+        children: firstPanelChildren,
+        minWidth: 700,
+        flex: 0.7,
+        className: 'content-resizable-panel-container',
+      }}
       pageTitle={t('label.edit-entity', { entity: t('label.service') })}
       secondPanel={{
         children: secondPanelChildren,
-        className: 'service-doc-panel',
-        minWidth: 60,
-        overlay: {
-          displayThreshold: 200,
-          header: t('label.setup-guide'),
-          rotation: 'counter-clockwise',
-        },
+        className: 'service-doc-panel content-resizable-panel-container',
+        minWidth: 400,
+        flex: 0.3,
       }}
     />
   );

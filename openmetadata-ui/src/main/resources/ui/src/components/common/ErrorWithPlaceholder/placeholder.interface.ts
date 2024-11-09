@@ -26,6 +26,7 @@ export interface ErrorPlaceholderProps {
   icon?: ReactElement;
   onClick?: () => void;
   permission?: boolean;
+  placeholderText?: string | JSX.Element;
 }
 
 export interface NoDataPlaceholderProps {
@@ -33,6 +34,7 @@ export interface NoDataPlaceholderProps {
   className?: string;
   children?: React.ReactNode;
   icon?: ReactElement;
+  placeholderText?: string | JSX.Element;
 }
 
 export interface CreatePlaceholderProps {
@@ -43,6 +45,7 @@ export interface CreatePlaceholderProps {
   doc?: string;
   permission?: boolean;
   buttonId?: string;
+  placeholderText?: string | JSX.Element;
   onClick?: () => void;
 }
 
@@ -64,4 +67,9 @@ export interface FilterPlaceholderProps {
   size?: SIZE;
   className?: string;
   doc?: string;
+  placeholderText?: string | JSX.Element;
+}
+
+export interface FilterTablePlaceHolderProps {
+  placeholderText?: string | JSX.Element;
 }

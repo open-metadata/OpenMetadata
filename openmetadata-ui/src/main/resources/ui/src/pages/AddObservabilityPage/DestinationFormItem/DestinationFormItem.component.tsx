@@ -11,96 +11,80 @@
  *  limitations under the License.
  */
 
-import { CloseOutlined } from '@ant-design/icons';
-import { Button, Card, Col, Form, Row, Select, Typography } from 'antd';
-import Input from 'antd/lib/input/Input';
-import { DefaultOptionType } from 'antd/lib/select';
-import React from 'react';
+import { Button, Col, Divider, Form, Row } from 'antd';
+import { isEmpty, isNil } from 'lodash';
+import React, { Fragment } from 'react';
 import { useTranslation } from 'react-i18next';
-import { SubscriptionCategory } from '../../../generated/events/eventSubscription';
+import FormCardSection from '../../../components/common/FormCardSection/FormCardSection';
+import { CreateEventSubscription } from '../../../generated/events/api/createEventSubscription';
+import {
+  getConnectionTimeoutField,
+  listLengthValidator,
+} from '../../../utils/Alerts/AlertsUtil';
+import './destination-form-item.less';
+import DestinationSelectItem from './DestinationSelectItem/DestinationSelectItem';
 
-function DestinationFormItem({
-  heading,
-  subHeading,
-  buttonLabel,
-  filterResources,
-}: Readonly<{
-  heading: string;
-  subHeading: string;
-  buttonLabel: string;
-  filterResources: DefaultOptionType[];
-}>) {
+function DestinationFormItem() {
   const { t } = useTranslation();
+  const form = Form.useFormInstance();
+
+  const [selectedSource] =
+    Form.useWatch<CreateEventSubscription['resources']>(['resources'], form) ??
+    [];
 
   return (
-    <Card className="trigger-item-container">
-      <Row gutter={[8, 8]}>
-        <Col span={24}>
-          <Typography.Text>{heading}</Typography.Text>
-        </Col>
-        <Col span={24}>
-          <Typography.Text className="text-xs text-grey-muted">
-            {subHeading}
-          </Typography.Text>
-        </Col>
-        <Col span={12}>
-          <Form.List name="destinations">
-            {(fields, { add, remove }) => {
-              return (
-                <Row gutter={[16, 16]}>
-                  {fields.map((field, index) => (
-                    <>
-                      <Col span={11}>
-                        <Form.Item
-                          required
-                          messageVariables={{
-                            fieldName: t('label.data-asset-plural'),
-                          }}
-                          name={[index, 'type']}>
-                          <Select
-                            className="w-full"
-                            data-testid="triggerConfig-type"
-                            options={filterResources}
-                            placeholder={t('label.select-field', {
-                              field: t('label.data-asset-plural'),
-                            })}
-                          />
-                        </Form.Item>
-                      </Col>
-                      <Col span={11}>
-                        <Form.Item
-                          hidden
-                          initialValue={SubscriptionCategory.External}
-                          name={[index, 'category']}
-                        />
-                        <Form.Item
-                          label=""
-                          name={[index, 'config', 'receivers']}>
-                          <Input placeholder="EndPoint URL" />
-                        </Form.Item>
-                      </Col>
-                      <Col span={2}>
-                        <Button
-                          data-testid={`remove-action-rule-${name}`}
-                          icon={<CloseOutlined />}
-                          onClick={() => remove(field.name)}
-                        />
-                      </Col>
-                    </>
-                  ))}
+    <FormCardSection
+      heading={t('label.destination')}
+      subHeading={t('message.alerts-destination-description')}>
+      {getConnectionTimeoutField()}
+      <Form.List
+        name={['destinations']}
+        rules={[
+          {
+            validator: listLengthValidator(t('label.destination')),
+          },
+        ]}>
+        {(fields, { add, remove }, { errors }) => {
+          return (
+            <Row
+              data-testid="destination-list"
+              gutter={[16, 16]}
+              key="destinations">
+              {fields.map(({ key, name }, index) => (
+                <Fragment key={key}>
+                  <DestinationSelectItem
+                    id={name}
+                    remove={remove}
+                    selectorKey={key}
+                  />
+                  {index < fields.length - 1 && (
+                    <Col span={24}>
+                      <Divider className="m-y-xs p-x-xs" />
+                    </Col>
+                  )}
+                </Fragment>
+              ))}
 
-                  <Form.Item>
-                    <Button type="primary" onClick={add}>
-                      {buttonLabel}
-                    </Button>
-                  </Form.Item>
-                </Row>
-              );
-            }}
-          </Form.List>
-        </Col>
-      </Row>
-    </Card>
+              <Col span={24}>
+                <Button
+                  data-testid="add-destination-button"
+                  disabled={isEmpty(selectedSource) || isNil(selectedSource)}
+                  type="primary"
+                  onClick={() => add({})}>
+                  {t('label.add-entity', {
+                    entity: t('label.destination'),
+                  })}
+                </Button>
+              </Col>
+
+              <Col span={24}>
+                <Form.ErrorList errors={errors} />
+              </Col>
+            </Row>
+          );
+        }}
+      </Form.List>
+    </FormCardSection>
   );
 }
 

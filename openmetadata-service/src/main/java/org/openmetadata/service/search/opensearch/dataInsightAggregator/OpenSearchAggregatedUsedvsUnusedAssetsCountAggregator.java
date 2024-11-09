@@ -1,7 +1,7 @@
 package org.openmetadata.service.search.opensearch.dataInsightAggregator;
 
+import java.time.ZonedDateTime;
 import java.util.List;
-import java.util.Optional;
 import org.openmetadata.service.dataInsight.AggregatedUsedvsUnusedAssetsCountAggregator;
 import os.org.opensearch.search.aggregations.Aggregations;
 import os.org.opensearch.search.aggregations.bucket.histogram.Histogram;
@@ -25,8 +25,8 @@ public class OpenSearchAggregatedUsedvsUnusedAssetsCountAggregator
   }
 
   @Override
-  protected String getKeyAsString(Bucket bucket) {
-    return bucket.getKeyAsString();
+  protected long getKeyAsEpochTimestamp(Bucket bucket) {
+    return ((ZonedDateTime) bucket.getKey()).toInstant().toEpochMilli();
   }
 
   @Override
@@ -35,7 +35,7 @@ public class OpenSearchAggregatedUsedvsUnusedAssetsCountAggregator
   }
 
   @Override
-  protected Optional<Double> getValue(Sum aggregations) {
-    return Optional.ofNullable(aggregations != null ? aggregations.getValue() : null);
+  protected Double getValue(Sum aggregations) {
+    return aggregations != null ? aggregations.getValue() : null;
   }
 }

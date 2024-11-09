@@ -1,0 +1,35 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/applications/configuration/external/automator/addTierAction.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AddTierAction",
+  "description": "Add an owner to the selected assets.",
+  "type": "object",
+  "definitions": {
+    "addTierActionType": {
+      "description": "Add Tier Action Type.",
+      "type": "string",
+      "enum": ["AddTierAction"],
+      "default": "AddTierAction"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Application Type",
+      "description": "Application Type",
+      "$ref": "#/definitions/addTierActionType",
+      "default": "AddTierAction"
+    },
+    "tier": {
+      "description": "tier to apply",
+      "$ref": "../../../../../type/tagLabel.json"
+    },
+    "overwriteMetadata": {
+      "title": "Overwrite Metadata",
+      "description": "Update the tier even if it is defined in the asset. By default, we will only apply the tier to assets without tier.",
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": ["type", "tier"],
+  "additionalProperties": false
+}

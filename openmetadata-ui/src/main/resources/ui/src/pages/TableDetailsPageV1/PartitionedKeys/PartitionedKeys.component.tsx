@@ -10,22 +10,67 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from 'antd';
+import { Table, Typography } from 'antd';
+import { ColumnsType } from 'antd/lib/table';
 import { t } from 'i18next';
-import React from 'react';
-import { TablePartition } from '../../../generated/entity/data/table';
+import React, { useMemo } from 'react';
+import {
+  PartitionColumnDetails,
+  TablePartition,
+} from '../../../generated/entity/data/table';
 
 interface PartitionedKeysProps {
   tablePartition: TablePartition;
 }
 
 export const PartitionedKeys = ({ tablePartition }: PartitionedKeysProps) => {
+  const partitionColumnDetails = useMemo(
+    () =>
+      tablePartition?.columns?.map((column) => ({
+        ...column,
+        key: column.columnName,
+      })),
+    [tablePartition.columns]
+  );
+
+  const columns = useMemo(() => {
+    const data: ColumnsType<PartitionColumnDetails> = [
+      {
+        title: t('label.column'),
+        dataIndex: 'columnName',
+        key: 'columnName',
+        ellipsis: true,
+        width: '50%',
+      },
+      {
+        title: t('label.type'),
+        dataIndex: 'intervalType',
+        key: 'intervalType',
+        ellipsis: true,
+        width: '50%',
+        render: (text) => {
+          return text ?? '--';
+        },
+      },
+    ];
+
+    return data;
+  }, []);
+
   return (
     <>
       <Typography.Text className="right-panel-label">
-        {t('label.table-partitioned')}
+        {t('label.table-partition-plural')}
       </Typography.Text>
-      <span>{` - ${tablePartition.intervalType}`}</span>
+      <Table
+        bordered
+        columns={columns}
+        data-testid="partitioned-column-table"
+        dataSource={partitionColumnDetails}
+        pagination={false}
+        rowKey="name"
+        size="small"
+      />
     </>
   );
 };

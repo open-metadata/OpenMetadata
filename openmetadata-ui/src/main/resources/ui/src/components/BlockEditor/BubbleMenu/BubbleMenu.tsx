@@ -111,12 +111,14 @@ const BubbleMenu: FC<BubbleMenuProps> = ({ editor, toggleLink }) => {
     // - the selection is empty
     // - the selection is a node selection (for drag handles)
     // - link is active
+    // - editor is not editable
     if (
       editor.isActive('image') ||
       empty ||
       isNodeSelection(selection) ||
       editor.isActive('link') ||
-      editor.isActive('table')
+      editor.isActive('table') ||
+      !editor.isEditable
     ) {
       return false;
     }
@@ -127,6 +129,7 @@ const BubbleMenu: FC<BubbleMenuProps> = ({ editor, toggleLink }) => {
   return (
     <CoreBubbleMenu
       className="menu-wrapper"
+      data-testid="menu-container"
       editor={editor}
       shouldShow={handleShouldShow}>
       {menuList.map(
@@ -142,7 +145,7 @@ const BubbleMenu: FC<BubbleMenuProps> = ({ editor, toggleLink }) => {
               {isString(Icon) ? (
                 <Typography>{Icon}</Typography>
               ) : (
-                <Icon className="d-flex" height={24} width={24} />
+                <Icon className="d-flex " height={24} width={24} />
               )}
             </Button>
           </Tooltip>

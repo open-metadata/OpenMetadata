@@ -11,93 +11,157 @@
  *  limitations under the License.
  */
 
-import { Button, Card, Col, Form, Row, Select, Space, Typography } from 'antd';
-import { startCase } from 'lodash';
-import React, { useCallback, useMemo, useState } from 'react';
+import { CloseOutlined } from '@ant-design/icons';
+import { Button, Col, Form, Row, Select, Switch, Typography } from 'antd';
+import { isEmpty, isNil } from 'lodash';
+import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as IconTestSuite } from '../../../assets/svg/icon-test-suite.svg';
-import { getEntityIcon } from '../../../utils/TableUtils';
-import './observability-form-trigger-item.less';
+import FormCardSection from '../../../components/common/FormCardSection/FormCardSection';
+import { CreateEventSubscription } from '../../../generated/events/api/createEventSubscription';
+import {
+  Effect,
+  EventFilterRule,
+} from '../../../generated/events/eventSubscription';
+import {
+  getConditionalField,
+  getSupportedFilterOptions,
+} from '../../../utils/Alerts/AlertsUtil';
 import { ObservabilityFormTriggerItemProps } from './ObservabilityFormTriggerItem.interface';
 
 function ObservabilityFormTriggerItem({
-  heading,
-  subHeading,
-  buttonLabel,
-  filterResources,
+  supportedTriggers,
 }: Readonly<ObservabilityFormTriggerItemProps>) {
-  const [editMode, setEditMode] = useState<boolean>(false);
   const { t } = useTranslation();
+  const form = Form.useFormInstance();
 
-  const getIconForEntity = (type: string) => {
-    switch (type) {
-      case 'container':
-      case 'pipeline':
-      case 'topic':
-      case 'table':
-        return getEntityIcon(type);
-      case 'testCase':
-      case 'testSuite':
-        return <IconTestSuite height={16} width={16} />;
-    }
-
-    return null;
-  };
-
-  const handleAddTriggerClick = useCallback(() => {
-    setEditMode(true);
-  }, []);
-
-  const resourcesOptions = useMemo(
-    () =>
-      filterResources.map((resource) => ({
-        label: (
-          <Space align="center" size={4}>
-            {getIconForEntity(resource.name ?? '')}
-            {startCase(resource.name)}
-          </Space>
-        ),
-        value: resource.name,
-      })),
-    [filterResources]
+  // Watchers
+  const selectedTriggers = Form.useWatch<EventFilterRule[]>(
+    ['input', 'actions'],
+    form
   );
+  const [selectedTrigger] =
+    Form.useWatch<CreateEventSubscription['resources']>(['resources'], form) ??
+    [];
+
+  // Run time values needed for conditional rendering
+  const triggerOptions = useMemo(() => {
+    return getSupportedFilterOptions(selectedTriggers, supportedTriggers);
+  }, [selectedTriggers, supportedTriggers]);
 
   return (
-    <Card className="trigger-item-container">
-      <Row gutter={[8, 8]}>
-        <Col span={24}>
-          <Typography.Text>{heading}</Typography.Text>
-        </Col>
-        <Col span={24}>
-          <Typography.Text className="text-xs text-grey-muted">
-            {subHeading}
-          </Typography.Text>
-        </Col>
-        <Col span={24}>
-          {editMode ? (
-            <Form.Item
-              required
-              messageVariables={{
-                fieldName: t('label.data-asset-plural'),
-              }}
-              name={['resources']}>
-              <Select
-                className="w-full"
-                data-testid="triggerConfig-type"
-                options={resourcesOptions}
-                placeholder={t('label.select-field', {
-                  field: t('label.data-asset-plural'),
-                })}
-              />
-            </Form.Item>
-          ) : (
-            <Button type="primary" onClick={handleAddTriggerClick}>
-              {buttonLabel}
-            </Button>
-          )}
-        </Col>
-      </Row>
-    </Card>
+    <FormCardSection
+      heading={t('label.trigger')}
+      subHeading={t('message.alerts-trigger-description')}>
+      <Form.List name={['input', 'actions']}>
+        {(fields, { add, remove }, { errors }) => {
+          const showAddTriggerButton =
+            fields.length < (supportedTriggers?.length ?? 1);
+
+          return (
+            <Row data-testid="triggers-list" gutter={[16, 16]} key="triggers">
+              {fields.map(({ key, name }) => {
+                const effect =
+                  form.getFieldValue(['input', 'actions', name, 'effect']) ??
+                  Effect.Include;
+
+                const showConditionalFields =
+                  !isNil(supportedTriggers) &&
+                  !isEmpty(selectedTriggers) &&
+                  selectedTriggers[name];
+
+                return (
+                  <Col
+                    data-testid={`trigger-${name}`}
+                    key={`observability-${key}`}
+                    span={24}>
+                    <div className="flex gap-4">
+                      <div className="flex-1 w-min-0">
+                        <Row gutter={[8, 8]}>
+                          <Col span={12}>
+                            <Form.Item
+                              key={`trigger-${key}`}
+                              name={[name, 'name']}
+                              rules={[
+                                {
+                                  required: true,
+                                  message: t('message.field-text-is-required', {
+                                    fieldText: t('label.trigger'),
+                                  }),
+                                },
+                              ]}>
+                              <Select
+                                data-testid={`trigger-select-${name}`}
+                                options={triggerOptions}
+                                placeholder={t('label.select-field', {
+                                  field: t('label.trigger'),
+                                })}
+                                onChange={() => {
+                                  form.setFieldValue(
+                                    ['input', 'actions', name, 'arguments'],
+                                    []
+                                  );
+                                }}
+                              />
+                            </Form.Item>
+                          </Col>
+                          {showConditionalFields &&
+                            getConditionalField(
+                              selectedTriggers[name].name ?? '',
+                              name,
+                              selectedTrigger,
+                              supportedTriggers
+                            )}
+                        </Row>
+                      </div>
+                      <div>
+                        <Button
+                          data-testid={`remove-trigger-${name}`}
+                          icon={<CloseOutlined />}
+                          onClick={() => remove(name)}
+                        />
+                      </div>
+                    </div>
+                    <Form.Item
+                      label={
+                        <Typography.Text>{t('label.include')}</Typography.Text>
+                      }
+                      name={[name, 'effect']}
+                      normalize={(value) =>
+                        value ? Effect.Include : Effect.Exclude
+                      }>
+                      <Switch
+                        checked={effect === Effect.Include}
+                        data-testid={`trigger-switch-${name}`}
+                      />
+                    </Form.Item>
+                  </Col>
+                );
+              })}
+              {showAddTriggerButton && (
+                <Col span={24}>
+                  <Button
+                    data-testid="add-trigger"
+                    disabled={
+                      isEmpty(selectedTrigger) || isNil(selectedTrigger)
+                    }
+                    type="primary"
+                    onClick={() =>
+                      add({
+                        effect: Effect.Include,
+                      })
+                    }>
+                    {t('label.add-entity', {
+                      entity: t('label.trigger'),
+                    })}
+                  </Button>
+                </Col>
+              )}
+              <Form.ErrorList errors={errors} />
+            </Row>
+          );
+        }}
+      </Form.List>
+    </FormCardSection>
   );
 }
 

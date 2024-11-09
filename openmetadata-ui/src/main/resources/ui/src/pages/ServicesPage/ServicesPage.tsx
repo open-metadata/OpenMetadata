@@ -12,34 +12,53 @@
  */
 
 import { Col, Row, Tabs } from 'antd';
-import { isEmpty } from 'lodash';
+import { capitalize, isEmpty } from 'lodash';
 import qs from 'qs';
 import React, { useMemo } from 'react';
-import { useHistory, useLocation, useParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
+import { useHistory, useParams } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import { IngestionPipelineList } from '../../components/Ingestion/IngestionPipelineList/IngestionPipelineList.component';
-import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
-import Services from '../../components/Services/Services';
+import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
+import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
+import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
+import { IngestionPipelineList } from '../../components/Settings/Services/Ingestion/IngestionPipelineList/IngestionPipelineList.component';
+import Services from '../../components/Settings/Services/Services';
+import {
+  GlobalSettingOptions,
+  GlobalSettingsMenuCategory,
+} from '../../constants/GlobalSettings.constants';
 import { SERVICE_CATEGORY } from '../../constants/Services.constant';
+import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { ServiceCategory } from '../../enums/service.enum';
+import { useAuth } from '../../hooks/authHooks';
+import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
+import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
 import { userPermissions } from '../../utils/PermissionsUtils';
 import { getResourceEntityFromServiceCategory } from '../../utils/ServiceUtils';
 
 const ServicesPage = () => {
   const { tab } = useParams<{ tab: string }>();
-  const location = useLocation();
+  const location = useCustomLocation();
   const history = useHistory();
-
+  const { t } = useTranslation();
+  const { isAdminUser } = useAuth();
+  const queryParams = qs.parse(
+    location.search.startsWith('?')
+      ? location.search.substring(1)
+      : location.search
+  );
   const search =
-    qs.parse(
-      location.search.startsWith('?')
-        ? location.search.substring(1)
-        : location.search
-    ).tab ?? 'services';
+    queryParams.tab ??
+    (tab === GlobalSettingOptions.DATA_OBSERVABILITY
+      ? 'pipelines'
+      : 'services');
 
   const serviceName = useMemo(
-    () => SERVICE_CATEGORY[tab] ?? ServiceCategory.DATABASE_SERVICES,
+    () =>
+      tab === GlobalSettingOptions.DATA_OBSERVABILITY
+        ? 'dataObservabilityServices'
+        : SERVICE_CATEGORY[tab] ?? ServiceCategory.DATABASE_SERVICES,
     [tab]
   );
 
@@ -55,24 +74,62 @@ const ServicesPage = () => {
     );
   }, [permissions]);
 
+  const breadcrumbs: TitleBreadcrumbProps['titleLinks'] = useMemo(
+    () =>
+      getSettingPageEntityBreadCrumb(
+        GlobalSettingsMenuCategory.SERVICES,
+        tab === GlobalSettingOptions.DATA_OBSERVABILITY
+          ? t('label.data-observability')
+          : capitalize(tab)
+      ),
+    []
+  );
+
   return viewAllPermission ? (
-    <Tabs
-      destroyInactiveTabPane
-      activeKey={search as string}
-      items={[
-        {
-          key: 'services',
-          children: <Services serviceName={serviceName} />,
-          label: 'Services',
-        },
-        {
-          key: 'pipelines',
-          children: <IngestionPipelineList serviceName={serviceName} />,
-          label: 'Pipelines',
-        },
-      ]}
-      onChange={(activeKey) => history.push({ search: `tab=${activeKey}` })}
-    />
+    <PageLayoutV1 pageTitle={serviceName}>
+      <Row className="page-container" gutter={[0, 16]}>
+        <Col span={24}>
+          <TitleBreadcrumb titleLinks={breadcrumbs} />
+        </Col>
+        <Col span={24}>
+          <Tabs
+            destroyInactiveTabPane
+            activeKey={search as string}
+            items={[
+              ...(serviceName === 'dataObservabilityServices'
+                ? []
+                : [
+                    {
+                      key: 'services',
+                      children: <Services serviceName={serviceName} />,
+                      label: 'Services',
+                    },
+                  ]),
+              ...(isAdminUser
+                ? [
+                    {
+                      key: 'pipelines',
+                      children: (
+                        <IngestionPipelineList
+                          serviceName={
+                            serviceName === 'dataObservabilityServices'
+                              ? 'testSuites'
+                              : serviceName
+                          }
+                        />
+                      ),
+                      label: 'Pipelines',
+                    },
+                  ]
+                : []),
+            ]}
+            onChange={(activeKey) =>
+              history.push({ search: `tab=${activeKey}` })
+            }
+          />
+        </Col>
+      </Row>
+    </PageLayoutV1>
   ) : (
     <Row>
       <Col span={24}>

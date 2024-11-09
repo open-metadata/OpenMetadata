@@ -1,0 +1,29 @@
+{
+    "name": "BigTable",
+    "displayName": "BigTable Test Connection",
+    "description": "This Test Connection validates the access against the database and basic metadata extraction of schemas and tables.",
+    "steps": [
+      {
+        "name": "GetInstances",
+        "description": "Validate that we can get the instances with the given credentials.",
+        "errorMessage": "Failed to get BigTable instances, please validate to the credentials of service account",
+        "shortCircuit": true,
+        "mandatory": true
+      },
+      {
+        "name": "GetTables",
+        "description": "Validate that we can get tables with the given credentials.",
+        "errorMessage": "Failed to get BigTable tables, please validate to the credentials of service account",
+        "shortCircuit": true,
+        "mandatory": true
+      },
+      {
+        "name": "ReadRows",
+        "description": "Validate that we can read rows with the given credentials.",
+        "errorMessage": "Failed to read rows from BigTable, please validate to the credentials of service account",
+        "shortCircuit": true,
+        "mandatory": true
+      }
+    ]
+  }
+

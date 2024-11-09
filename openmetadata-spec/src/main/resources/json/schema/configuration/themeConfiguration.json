@@ -1,0 +1,37 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/configuration/themeConfiguration.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ThemeConfiguration",
+  "description": "This schema defines the Theme Configuration for UI elements.",
+  "type": "object",
+  "javaType": "org.openmetadata.api.configuration.ThemeConfiguration",
+  "properties": {
+    "primaryColor": {
+      "description": "Primary color used in the UI, in hex code format or empty.",
+      "type": "string",
+      "pattern": "^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$|^$"
+    },
+    "errorColor": {
+      "description": "Color used to indicate errors in the UI, in hex code format or empty",
+      "type": "string",
+      "pattern": "^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$|^$"
+    },
+    "successColor": {
+      "description": "Color used to indicate success in the UI, in hex code format or empty",
+      "type": "string",
+      "pattern": "^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$|^$"
+    },
+    "warningColor": {
+      "description": "Color used to indicate warnings in the UI, in hex code format or empty",
+      "type": "string",
+      "pattern": "^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$|^$"
+    },
+    "infoColor": {
+      "description": "Color used for informational messages in the UI, in hex code format or empty",
+      "type": "string",
+      "pattern": "^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$|^$"
+    }
+  },
+  "required": ["primaryColor", "errorColor", "successColor","warningColor","infoColor"],
+  "additionalProperties": false
+}

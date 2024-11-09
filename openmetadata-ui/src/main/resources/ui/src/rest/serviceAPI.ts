@@ -19,7 +19,8 @@ import {
   ServicesUpdateRequest,
 } from 'Models';
 import { WILD_CARD_CHAR } from '../constants/char.constants';
-import { configOptions, PAGE_SIZE } from '../constants/constants';
+import { PAGE_SIZE } from '../constants/constants';
+import { TabSpecificField } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { EntityHistory } from '../generated/type/entityHistory';
 import { Include } from '../generated/type/include';
@@ -59,7 +60,7 @@ export const getServices = async ({
   const url = `/services/${serviceName}`;
 
   const params = {
-    fields: 'owner',
+    fields: TabSpecificField.OWNERS,
     limit,
     after,
     before,
@@ -117,19 +118,6 @@ export const postService = async (
   return response.data;
 };
 
-export const updateService = async (
-  serviceCat: string,
-  _id: string,
-  options: ServicesUpdateRequest
-) => {
-  const response = await APIClient.put<
-    ServicesUpdateRequest,
-    AxiosResponse<ServicesType>
-  >(`/services/${serviceCat}`, options);
-
-  return response.data;
-};
-
 export const patchService = async (
   serviceCat: string,
   id: string,
@@ -138,7 +126,7 @@ export const patchService = async (
   const response = await APIClient.patch<
     ServicesUpdateRequest,
     AxiosResponse<ServicesType>
-  >(`/services/${serviceCat}/${id}`, options, configOptions);
+  >(`/services/${serviceCat}/${id}`, options);
 
   return response.data;
 };
@@ -151,7 +139,7 @@ export const patchDomainSupportedService = async (
   const response = await APIClient.patch<
     ServicesUpdateRequest,
     AxiosResponse<DomainSupportedServiceTypes>
-  >(`/services/${serviceCat}/${id}`, options, configOptions);
+  >(`/services/${serviceCat}/${id}`, options);
 
   return response.data;
 };

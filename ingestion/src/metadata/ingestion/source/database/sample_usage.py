@@ -26,6 +26,7 @@ from metadata.generated.schema.entity.services.databaseService import (
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.type.basic import DateTime
 from metadata.generated.schema.type.tableQuery import TableQueries, TableQuery
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -46,9 +47,9 @@ class SampleUsageSource(UsageSource):
 
     def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
         super().__init__(config, metadata, False)
-        self.analysis_date = datetime.utcnow()
+        self.analysis_date = DateTime(datetime.now())
 
-        sample_data_folder = self.service_connection.connectionOptions.__root__.get(
+        sample_data_folder = self.service_connection.connectionOptions.root.get(
             "sampleDataFolder"
         )
         if not sample_data_folder:
@@ -69,10 +70,12 @@ class SampleUsageSource(UsageSource):
         )
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata):
+    def create(
+        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
+    ):
         """Create class instance"""
-        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: CustomDatabaseConnection = config.serviceConnection.__root__.config
+        config: WorkflowSource = WorkflowSource.model_validate(config_dict)
+        connection: CustomDatabaseConnection = config.serviceConnection.root.config
         if not isinstance(connection, CustomDatabaseConnection):
             raise InvalidSourceException(
                 f"Expected CustomDatabaseConnection, but got {connection}"
@@ -84,9 +87,6 @@ class SampleUsageSource(UsageSource):
             queries=[
                 TableQuery(
                     query=row["query"],
-                    userName="",
-                    startTime="",
-                    endTime="",
                     analysisDate=self.analysis_date,
                     aborted=False,
                     databaseName="ecommerce_db",

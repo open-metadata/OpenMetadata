@@ -18,7 +18,7 @@ from functools import singledispatch
 from typing import Any, Optional
 from urllib.parse import quote_plus
 
-from pydantic import SecretStr
+from pydantic import SecretStr, ValidationError
 from sqlalchemy.engine import Engine
 
 from metadata.generated.schema.entity.automations.workflow import (
@@ -34,6 +34,9 @@ from metadata.generated.schema.entity.services.connections.database.mysqlConnect
 from metadata.generated.schema.entity.services.connections.database.postgresConnection import (
     PostgresConnection,
 )
+from metadata.generated.schema.entity.services.connections.testConnectionResult import (
+    TestConnectionResult,
+)
 from metadata.ingestion.connections.builders import (
     create_generic_db_connection,
     get_connection_args_common,
@@ -45,6 +48,7 @@ from metadata.ingestion.connections.test_connections import (
     test_connection_db_schema_sources,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.utils.constants import THREE_MIN
 
 HIVE_POSTGRES_SCHEME = "hive+postgres"
 HIVE_MYSQL_SCHEME = "hive+mysql"
@@ -100,12 +104,12 @@ def get_connection(connection: HiveConnection) -> Engine:
             in {HiveScheme.hive, HiveScheme.hive_http, HiveScheme.hive_https}
             else "auth_mechanism"
         )
-        connection.connectionArguments.__root__[auth_key] = connection.auth.value
+        connection.connectionArguments.root[auth_key] = connection.auth.value
 
     if connection.kerberosServiceName:
         if not connection.connectionArguments:
             connection.connectionArguments = init_empty_connection_arguments()
-        connection.connectionArguments.__root__[
+        connection.connectionArguments.root[
             "kerberos_service_name"
         ] = connection.kerberosServiceName
 
@@ -126,7 +130,6 @@ def get_metastore_connection(connection: Any) -> Engine:
 
 @get_metastore_connection.register
 def _(connection: PostgresConnection):
-
     # import required to load sqlalchemy plugin
     # pylint: disable=import-outside-toplevel,unused-import
     from metadata.ingestion.source.database.hive.metastore_dialects.postgres import (  # nopycln: import
@@ -153,7 +156,6 @@ def _(connection: PostgresConnection):
 
 @get_metastore_connection.register
 def _(connection: MysqlConnection):
-
     # import required to load sqlalchemy plugin
     # pylint: disable=import-outside-toplevel,unused-import
     from metadata.ingestion.source.database.hive.metastore_dialects.mysql import (  # nopycln: import
@@ -183,18 +185,35 @@ def test_connection(
     engine: Engine,
     service_connection: HiveConnection,
     automation_workflow: Optional[AutomationWorkflow] = None,
-) -> None:
+    timeout_seconds: Optional[int] = THREE_MIN,
+) -> TestConnectionResult:
     """
     Test connection. This can be executed either as part
     of a metadata workflow or during an Automation Workflow
     """
 
-    if service_connection.metastoreConnection:
+    if service_connection.metastoreConnection and isinstance(
+        service_connection.metastoreConnection, dict
+    ):
+        try:
+            service_connection.metastoreConnection = MysqlConnection.model_validate(
+                service_connection.metastoreConnection
+            )
+        except ValidationError:
+            try:
+                service_connection.metastoreConnection = (
+                    PostgresConnection.model_validate(
+                        service_connection.metastoreConnection
+                    )
+                )
+            except ValidationError:
+                raise ValueError("Invalid metastore connection")
         engine = get_metastore_connection(service_connection.metastoreConnection)
 
-    test_connection_db_schema_sources(
+    return test_connection_db_schema_sources(
         metadata=metadata,
         engine=engine,
         service_connection=service_connection,
         automation_workflow=automation_workflow,
+        timeout_seconds=timeout_seconds,
     )

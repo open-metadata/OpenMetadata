@@ -18,6 +18,16 @@
     }
   },
   "properties": {
+    "clientType": {
+      "javaType": "org.openmetadata.schema.api.security.ClientType",
+      "description": "Client Type",
+      "type": "string",
+      "enum": [
+        "public",
+        "confidential"
+      ],
+      "default": "public"
+    },
     "provider": {
       "$ref": "../entity/services/connections/metadata/openMetadataConnection.json#/definitions/authProvider"
     },
@@ -55,6 +65,13 @@
         "type": "string"
       }
     },
+    "jwtPrincipalClaimsMapping": {
+      "description": "Jwt Principal Claim Mapping",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
     "enableSelfSignup": {
       "description": "Enable Self Sign Up",
       "type": "boolean",
@@ -67,6 +84,10 @@
     "samlConfiguration": {
       "description": "Saml Configuration that is applicable only when the provider is Saml",
       "$ref": "../security/client/samlSSOClientConfig.json"
+    },
+    "oidcConfiguration": {
+      "description": "Oidc Configuration for Confidential Client Type",
+      "$ref": "../security/client/oidcClientConfig.json"
     }
   },
   "required": ["provider", "providerName", "publicKeyUrls", "authority", "callbackUrl", "clientId", "jwtPrincipalClaims"],

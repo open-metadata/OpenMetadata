@@ -26,7 +26,7 @@ jest.mock('react-router-dom', () => ({
     glossaryName: 'GlossaryName',
   }),
 }));
-jest.mock('../../../components/PermissionProvider/PermissionProvider', () => ({
+jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockReturnValue({
     getEntityPermission: jest.fn().mockReturnValue({
       Create: true,

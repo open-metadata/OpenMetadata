@@ -28,6 +28,7 @@ from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 API_TIMEOUT = 10
+PAGE_SIZE = 100
 QUERIES_PATH = "/sql/history/queries"
 
 
@@ -93,7 +94,6 @@ class DatabricksClient:
         Method returns List the history of queries through SQL warehouses
         """
         try:
-
             data = {}
             daydiff = end_date - start_date
 
@@ -155,7 +155,8 @@ class DatabricksClient:
         Method returns List all the created jobs in a Databricks Workspace
         """
         try:
-            data = {"limit": 25, "expand_tasks": True, "offset": 0}
+            iteration_count = 1
+            data = {"limit": PAGE_SIZE, "expand_tasks": True, "offset": 0}
 
             response = self.client.get(
                 self.jobs_list_url,
@@ -167,7 +168,7 @@ class DatabricksClient:
             yield from response.get("jobs") or []
 
             while response and response.get("has_more"):
-                data["offset"] = len(response.get("jobs") or [])
+                data["offset"] = PAGE_SIZE * iteration_count
 
                 response = self.client.get(
                     self.jobs_list_url,
@@ -175,7 +176,7 @@ class DatabricksClient:
                     headers=self.headers,
                     timeout=API_TIMEOUT,
                 ).json()
-
+                iteration_count += 1
                 yield from response.get("jobs") or []
 
         except Exception as exc:

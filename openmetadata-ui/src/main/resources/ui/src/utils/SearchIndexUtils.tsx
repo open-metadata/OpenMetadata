@@ -12,18 +12,13 @@
  */
 
 import { uniqueId } from 'lodash';
-import {
-  PLACEHOLDER_ROUTE_FQN,
-  PLACEHOLDER_ROUTE_SUB_TAB,
-  PLACEHOLDER_ROUTE_TAB,
-  ROUTES,
-} from '../constants/constants';
+import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs, TabSpecificField } from '../enums/entity.enum';
 import { SearchIndexField } from '../generated/entity/data/searchIndex';
 import { sortTagsCaseInsensitive } from './CommonUtils';
 
 // eslint-disable-next-line max-len
-export const defaultFields = `${TabSpecificField.FIELDS},${TabSpecificField.FOLLOWERS},${TabSpecificField.TAGS},${TabSpecificField.OWNER},${TabSpecificField.DOMAIN},${TabSpecificField.VOTES},${TabSpecificField.DATA_PRODUCTS},${TabSpecificField.EXTENSION}`;
+export const defaultFields = `${TabSpecificField.FIELDS},${TabSpecificField.FOLLOWERS},${TabSpecificField.TAGS},${TabSpecificField.OWNERS},${TabSpecificField.DOMAIN},${TabSpecificField.VOTES},${TabSpecificField.DATA_PRODUCTS},${TabSpecificField.EXTENSION}`;
 
 export const makeRow = (column: SearchIndexField) => {
   return {
@@ -47,27 +42,69 @@ export const makeData = (
   }));
 };
 
-export const getSearchIndexDetailsPath = (searchIndexFQN: string) => {
-  let path = ROUTES.SEARCH_INDEX_DETAILS;
-  path = path.replace(PLACEHOLDER_ROUTE_FQN, searchIndexFQN);
+export const getSearchIndexDetailsPageDefaultLayout = (tab: EntityTabs) => {
+  switch (tab) {
+    case EntityTabs.SCHEMA:
+      return [
+        {
+          h: 2,
+          i: DetailPageWidgetKeys.DESCRIPTION,
+          w: 6,
+          x: 0,
+          y: 0,
+          static: false,
+        },
+        {
+          h: 8,
+          i: DetailPageWidgetKeys.TABLE_SCHEMA,
+          w: 6,
+          x: 0,
+          y: 0,
+          static: false,
+        },
+        {
+          h: 1,
+          i: DetailPageWidgetKeys.FREQUENTLY_JOINED_TABLES,
+          w: 2,
+          x: 6,
+          y: 0,
+          static: false,
+        },
+        {
+          h: 1,
+          i: DetailPageWidgetKeys.DATA_PRODUCTS,
+          w: 2,
+          x: 6,
+          y: 1,
+          static: false,
+        },
+        {
+          h: 1,
+          i: DetailPageWidgetKeys.TAGS,
+          w: 2,
+          x: 6,
+          y: 2,
+          static: false,
+        },
+        {
+          h: 1,
+          i: DetailPageWidgetKeys.GLOSSARY_TERMS,
+          w: 2,
+          x: 6,
+          y: 3,
+          static: false,
+        },
+        {
+          h: 3,
+          i: DetailPageWidgetKeys.CUSTOM_PROPERTIES,
+          w: 2,
+          x: 6,
+          y: 4,
+          static: false,
+        },
+      ];
 
-  return path;
-};
-
-export const getSearchIndexTabPath = (
-  searchIndexFQN: string,
-  tab = 'fields',
-  subTab = 'all'
-) => {
-  let path = ROUTES.SEARCH_INDEX_DETAILS_WITH_TAB;
-  if (tab === EntityTabs.ACTIVITY_FEED) {
-    path = ROUTES.SEARCH_INDEX_DETAILS_WITH_SUB_TAB;
-
-    path = path.replace(PLACEHOLDER_ROUTE_SUB_TAB, subTab);
+    default:
+      return [];
   }
-  path = path
-    .replace(PLACEHOLDER_ROUTE_FQN, searchIndexFQN)
-    .replace(PLACEHOLDER_ROUTE_TAB, tab);
-
-  return path;
 };

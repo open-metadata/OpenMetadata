@@ -54,7 +54,9 @@ export const addServiceGuideWOAirflow = {
 
 const schedulingIngestionGuide = {
   step: 4,
-  title: i18n.t('label.schedule-for-ingestion'),
+  title: i18n.t('label.schedule-for-entity', {
+    entity: i18n.t('label.ingestion'),
+  }),
   description: i18n.t('message.schedule-for-ingestion-description'),
 };
 

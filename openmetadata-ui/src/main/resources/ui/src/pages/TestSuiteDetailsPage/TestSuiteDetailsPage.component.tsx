@@ -17,10 +17,10 @@ import { compare } from 'fast-json-patch';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
-import { AddTestCaseList } from '../../components/AddTestCaseList/AddTestCaseList.component';
-import Description from '../../components/common/EntityDescription/Description';
+import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
 import ManageButton from '../../components/common/EntityPageInfos/ManageButton/ManageButton';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import Loader from '../../components/common/Loader/Loader';
 import {
   NextPreviousProps,
   PagingHandlerParams,
@@ -28,16 +28,18 @@ import {
 import { OwnerLabel } from '../../components/common/OwnerLabel/OwnerLabel.component';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
-import Loader from '../../components/Loader/Loader';
+import DataQualityTab from '../../components/Database/Profiler/DataQualityTab/DataQualityTab';
+import { AddTestCaseList } from '../../components/DataQuality/AddTestCaseList/AddTestCaseList.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
+import { INITIAL_PAGING_VALUE } from '../../constants/constants';
+import { DEFAULT_SORT_ORDER } from '../../constants/profiler.constant';
+import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
   ResourceEntity,
-} from '../../components/PermissionProvider/PermissionProvider.interface';
-import DataQualityTab from '../../components/ProfilerDashboard/component/DataQualityTab';
+} from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ACTION_TYPE, ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
-import { EntityType } from '../../enums/entity.enum';
+import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { TestCase } from '../../generated/tests/testCase';
 import { TestSuite } from '../../generated/tests/testSuite';
 import { Include } from '../../generated/type/include';
@@ -47,9 +49,9 @@ import { useFqn } from '../../hooks/useFqn';
 import { DataQualityPageTabs } from '../../pages/DataQuality/DataQualityPage.interface';
 import {
   addTestCaseToLogicalTestSuite,
-  getListTestCase,
+  getListTestCaseBySearch,
   getTestSuiteByName,
-  ListTestCaseParams,
+  ListTestCaseParamsBySearch,
   updateTestSuiteById,
 } from '../../rest/testAPI';
 import { getEntityName } from '../../utils/EntityUtils';
@@ -86,18 +88,20 @@ const TestSuiteDetailsPage = () => {
     showPagination,
   } = usePaging();
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [testSuitePermissions, setTestSuitePermission] =
+  const [testSuitePermissions, setTestSuitePermissions] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
   const [isTestCaseModalOpen, setIsTestCaseModalOpen] =
     useState<boolean>(false);
+  const [sortOptions, setSortOptions] =
+    useState<ListTestCaseParamsBySearch>(DEFAULT_SORT_ORDER);
 
   const [slashedBreadCrumb, setSlashedBreadCrumb] = useState<
     TitleBreadcrumbProps['titleLinks']
   >([]);
 
-  const { testSuiteDescription, testSuiteId, testOwner } = useMemo(() => {
+  const { testSuiteDescription, testSuiteId, testOwners } = useMemo(() => {
     return {
-      testOwner: testSuite?.owner,
+      testOwners: testSuite?.owners,
       testSuiteId: testSuite?.id ?? '',
       testSuiteDescription: testSuite?.description ?? '',
     };
@@ -133,7 +137,7 @@ const TestSuiteDetailsPage = () => {
         ResourceEntity.TEST_SUITE,
         testSuiteFQN
       );
-      setTestSuitePermission(response);
+      setTestSuitePermissions(response);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -141,13 +145,18 @@ const TestSuiteDetailsPage = () => {
     }
   };
 
-  const fetchTestCases = async (param?: ListTestCaseParams) => {
+  const fetchTestCases = async (param?: ListTestCaseParamsBySearch) => {
     setIsTestCaseLoading(true);
     try {
-      const response = await getListTestCase({
-        fields: 'testCaseResult,testDefinition,testSuite,incidentId',
+      const response = await getListTestCaseBySearch({
+        fields: [
+          TabSpecificField.TEST_CASE_RESULT,
+          TabSpecificField.TEST_DEFINITION,
+          TabSpecificField.TESTSUITE,
+          TabSpecificField.INCIDENT_ID,
+        ],
         testSuiteId,
-        orderByLastExecutionDate: true,
+        ...sortOptions,
         ...param,
         limit: pageSize,
       });
@@ -165,8 +174,16 @@ const TestSuiteDetailsPage = () => {
       setIsTestCaseLoading(false);
     }
   };
+  const handleSortTestCase = async (apiParams?: ListTestCaseParamsBySearch) => {
+    setSortOptions(apiParams ?? DEFAULT_SORT_ORDER);
+    await fetchTestCases({ ...(apiParams ?? DEFAULT_SORT_ORDER), offset: 0 });
+    handlePageChange(INITIAL_PAGING_VALUE);
+  };
 
-  const handleAddTestCaseSubmit = async (testCaseIds: string[]) => {
+  const handleAddTestCaseSubmit = async (testCases: TestCase[]) => {
+    const testCaseIds = testCases.reduce((ids, curr) => {
+      return curr.id ? [...ids, curr.id] : ids;
+    }, [] as string[]);
     try {
       await addTestCaseToLogicalTestSuite({
         testCaseIds,
@@ -182,7 +199,7 @@ const TestSuiteDetailsPage = () => {
   const fetchTestSuiteByName = async () => {
     try {
       const response = await getTestSuiteByName(testSuiteFQN, {
-        fields: 'owner',
+        fields: TabSpecificField.OWNERS,
         include: Include.All,
       });
       setSlashedBreadCrumb([
@@ -232,20 +249,15 @@ const TestSuiteDetailsPage = () => {
   };
 
   const onUpdateOwner = useCallback(
-    (updatedOwner: TestSuite['owner']) => {
+    (updatedOwners: TestSuite['owners']) => {
       const updatedTestSuite = {
         ...testSuite,
-        owner: updatedOwner
-          ? {
-              ...testOwner,
-              ...updatedOwner,
-            }
-          : undefined,
+        owners: updatedOwners,
       } as TestSuite;
 
       updateTestSuiteData(updatedTestSuite, ACTION_TYPE.UPDATE);
     },
-    [testOwner, testSuite]
+    [testOwners, testSuite]
   );
 
   const onDescriptionUpdate = async (updatedHTML: string) => {
@@ -270,14 +282,11 @@ const TestSuiteDetailsPage = () => {
     }
   };
 
-  const handleTestCasePaging = ({
-    cursorType,
-    currentPage,
-  }: PagingHandlerParams) => {
-    if (cursorType) {
+  const handleTestCasePaging = ({ currentPage }: PagingHandlerParams) => {
+    if (currentPage) {
       handlePageChange(currentPage);
       fetchTestCases({
-        [cursorType]: paging[cursorType],
+        offset: (currentPage - 1) * pageSize,
       });
     }
   };
@@ -310,6 +319,7 @@ const TestSuiteDetailsPage = () => {
 
   const pagingData: NextPreviousProps = useMemo(
     () => ({
+      isNumberBased: true,
       currentPage,
       pageSize,
       paging,
@@ -332,7 +342,7 @@ const TestSuiteDetailsPage = () => {
       pageTitle={t('label.entity-detail-plural', {
         entity: getEntityName(testSuite),
       })}>
-      <Row className="page-container" gutter={[16, 32]}>
+      <Row className="page-container" gutter={[0, 32]}>
         <Col span={24}>
           <Space align="center" className="justify-between w-full">
             <TitleBreadcrumb
@@ -357,6 +367,7 @@ const TestSuiteDetailsPage = () => {
                 allowSoftDelete={false}
                 canDelete={isAdminUser}
                 deleted={testSuite?.deleted}
+                displayName={getEntityName(testSuite)}
                 entityId={testSuite?.id}
                 entityName={testSuite?.fullyQualifiedName as string}
                 entityType={EntityType.TEST_SUITE}
@@ -367,17 +378,19 @@ const TestSuiteDetailsPage = () => {
           <div className="w-full m-t-xxs m-b-xs">
             <OwnerLabel
               hasPermission={isAdminUser}
-              owner={testOwner}
+              owners={testOwners}
               onUpdate={onUpdateOwner}
             />
           </div>
 
-          <Description
+          <DescriptionV1
             className="test-suite-description"
             description={testSuiteDescription}
             entityName={getEntityName(testSuite)}
+            entityType={EntityType.TEST_SUITE}
             hasEditAccess={isAdminUser}
             isEdit={isDescriptionEditable}
+            showCommentsIcon={false}
             onCancel={() => descriptionHandler(false)}
             onDescriptionEdit={() => descriptionHandler(true)}
             onDescriptionUpdate={onDescriptionUpdate}
@@ -388,6 +401,7 @@ const TestSuiteDetailsPage = () => {
           <DataQualityTab
             afterDeleteAction={fetchTestCases}
             breadcrumbData={incidentUrlState}
+            fetchTestCases={handleSortTestCase}
             isLoading={isLoading || isTestCaseLoading}
             pagingData={pagingData}
             removeFromTestSuite={{ testSuite: testSuite as TestSuite }}

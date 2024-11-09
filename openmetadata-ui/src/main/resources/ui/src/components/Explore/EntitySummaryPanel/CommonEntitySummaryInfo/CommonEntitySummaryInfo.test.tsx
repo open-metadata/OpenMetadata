@@ -65,7 +65,7 @@ describe('CommonEntitySummaryInfo component', () => {
     );
 
     expect(screen.queryByTestId('label.owner-label')).not.toBeInTheDocument();
-    expect(screen.getByTestId('label.owner-value')).toHaveTextContent(
+    expect(screen.getByTestId('label.owner-plural-value')).toHaveTextContent(
       'No Owner'
     );
     expect(screen.getByTestId('Type-label')).toHaveTextContent('Type');

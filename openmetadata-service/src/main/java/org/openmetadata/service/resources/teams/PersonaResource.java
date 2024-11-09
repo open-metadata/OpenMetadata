@@ -42,6 +42,7 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.PersonaRepository;
+import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
@@ -69,8 +70,8 @@ public class PersonaResource extends EntityResource<Persona, PersonaRepository> 
     return persona;
   }
 
-  public PersonaResource(Authorizer authorizer) {
-    super(Entity.PERSONA, authorizer);
+  public PersonaResource(Authorizer authorizer, Limits limits) {
+    super(Entity.PERSONA, authorizer, limits);
   }
 
   @Override
@@ -329,6 +330,35 @@ public class PersonaResource extends EntityResource<Persona, PersonaRepository> 
                       }))
           JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
+  }
+
+  @PATCH
+  @Path("/name/{fqn}")
+  @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
+  @Operation(
+      operationId = "patchPersona",
+      summary = "Update a Persona using name.",
+      description = "Update an existing persona with JsonPatch.",
+      externalDocs =
+          @ExternalDocumentation(
+              description = "JsonPatch RFC",
+              url = "https://tools.ietf.org/html/rfc6902"))
+  public Response patch(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the Persona", schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn,
+      @RequestBody(
+              description = "JsonPatch with array of operations",
+              content =
+                  @Content(
+                      mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
+                      examples = {
+                        @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
+                      }))
+          JsonPatch patch) {
+    return patchInternal(uriInfo, securityContext, fqn, patch);
   }
 
   @DELETE

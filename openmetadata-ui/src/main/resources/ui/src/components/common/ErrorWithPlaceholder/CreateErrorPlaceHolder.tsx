@@ -17,6 +17,7 @@ import classNames from 'classnames';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as AddPlaceHolderIcon } from '../../../assets/svg/add-placeholder.svg';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { Transi18next } from '../../../utils/CommonUtils';
 import PermissionErrorPlaceholder from './PermissionErrorPlaceholder';
 import { CreatePlaceholderProps } from './placeholder.interface';
@@ -29,8 +30,10 @@ const CreateErrorPlaceHolder = ({
   heading,
   doc,
   buttonId,
+  placeholderText,
 }: CreatePlaceholderProps) => {
   const { t } = useTranslation();
+  const { theme } = useApplicationStore();
 
   if (!permission) {
     return <PermissionErrorPlaceholder className={className} size={size} />;
@@ -47,27 +50,30 @@ const CreateErrorPlaceHolder = ({
           width={size}
         />
         <div className="text-center text-sm font-normal">
-          <Typography.Paragraph style={{ marginBottom: '0' }}>
-            {t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
-              entity: heading,
-            })}
-          </Typography.Paragraph>
           <Typography.Paragraph>
-            <Transi18next
-              i18nKey="message.refer-to-our-doc"
-              renderElement={
-                <a
-                  href={doc}
-                  rel="noreferrer"
-                  style={{ color: '#1890ff' }}
-                  target="_blank"
-                />
-              }
-              values={{
-                doc: t('label.doc-plural-lowercase'),
-              }}
-            />
+            {placeholderText ??
+              t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
+                entity: heading,
+              })}
           </Typography.Paragraph>
+          {!placeholderText && (
+            <Typography.Paragraph>
+              <Transi18next
+                i18nKey="message.refer-to-our-doc"
+                renderElement={
+                  <a
+                    href={doc}
+                    rel="noreferrer"
+                    style={{ color: theme.primaryColor }}
+                    target="_blank"
+                  />
+                }
+                values={{
+                  doc: t('label.doc-plural-lowercase'),
+                }}
+              />
+            </Typography.Paragraph>
+          )}
 
           {onClick && (
             <Tooltip

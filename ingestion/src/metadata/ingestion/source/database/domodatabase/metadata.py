@@ -14,7 +14,7 @@ Domo Database source to extract metadata
 """
 
 import traceback
-from typing import Any, Iterable, List, Optional, Tuple, Union
+from typing import Any, Iterable, Optional, Tuple, Union
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
@@ -28,7 +28,12 @@ from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
-from metadata.generated.schema.entity.data.table import Column, Table, TableType
+from metadata.generated.schema.entity.data.table import (
+    Column,
+    ColumnName,
+    Table,
+    TableType,
+)
 from metadata.generated.schema.entity.services.connections.database.domoDatabaseConnection import (
     DomoDatabaseConnection,
 )
@@ -41,7 +46,8 @@ from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.basic import EntityName, FullyQualifiedEntityName
+from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
@@ -51,6 +57,7 @@ from metadata.ingestion.source.database.database_service import DatabaseServiceS
 from metadata.ingestion.source.database.domodatabase.models import (
     OutputDataset,
     Owner,
+    Schema,
     SchemaColumn,
     User,
 )
@@ -77,15 +84,20 @@ class DomodatabaseSource(DatabaseServiceSource):
             self.config.sourceConfig.config
         )
         self.metadata = metadata
-        self.service_connection = self.config.serviceConnection.__root__.config
+        self.service_connection = self.config.serviceConnection.root.config
         self.domo_client = get_connection(self.service_connection)
         self.connection_obj = self.domo_client
         self.test_connection()
 
     @classmethod
-    def create(cls, config_dict: dict, metadata: OpenMetadata):
-        config = WorkflowSource.parse_obj(config_dict)
-        connection: DomoDatabaseConnection = config.serviceConnection.__root__.config
+    def create(
+        cls,
+        config_dict: dict,
+        metadata: OpenMetadata,
+        pipeline_name: Optional[str] = None,
+    ):
+        config = WorkflowSource.model_validate(config_dict)
+        connection: DomoDatabaseConnection = config.serviceConnection.root.config
         if not isinstance(connection, DomoDatabaseConnection):
             raise InvalidSourceException(
                 f"Expected DomoDatabaseConnection, but got {connection}"
@@ -101,8 +113,8 @@ class DomodatabaseSource(DatabaseServiceSource):
     ) -> Iterable[Either[CreateDatabaseRequest]]:
         yield Either(
             right=CreateDatabaseRequest(
-                name=database_name,
-                service=self.context.database_service,
+                name=EntityName(database_name),
+                service=self.context.get().database_service,
             )
         )
 
@@ -115,18 +127,20 @@ class DomodatabaseSource(DatabaseServiceSource):
     ) -> Iterable[Either[CreateDatabaseSchemaRequest]]:
         yield Either(
             right=CreateDatabaseSchemaRequest(
-                name=schema_name,
-                database=fqn.build(
-                    metadata=self.metadata,
-                    entity_type=Database,
-                    service_name=self.context.database_service,
-                    database_name=self.context.database,
+                name=EntityName(schema_name),
+                database=FullyQualifiedEntityName(
+                    fqn.build(
+                        metadata=self.metadata,
+                        entity_type=Database,
+                        service_name=self.context.get().database_service,
+                        database_name=self.context.get().database,
+                    )
                 ),
             )
         )
 
     def get_tables_name_and_type(self) -> Optional[Iterable[Tuple[str, str]]]:
-        schema_name = self.context.database_schema
+        schema_name = self.context.get().database_schema
         try:
             tables = list(self.domo_client.datasets.list())
             for table in tables:
@@ -135,9 +149,9 @@ class DomodatabaseSource(DatabaseServiceSource):
                 table_fqn = fqn.build(
                     self.metadata,
                     entity_type=Table,
-                    service_name=self.context.database_service,
-                    database_name=self.context.database,
-                    schema_name=self.context.database_schema,
+                    service_name=self.context.get().database_service,
+                    database_name=self.context.get().database,
+                    schema_name=self.context.get().database_schema,
                     table_name=table["name"],
                 )
 
@@ -162,7 +176,7 @@ class DomodatabaseSource(DatabaseServiceSource):
                 )
             )
 
-    def get_owners(self, owner: Owner) -> Optional[EntityReference]:
+    def get_owners(self, owner: Owner) -> Optional[EntityReferenceList]:
         try:
             owner_details = User(**self.domo_client.users_get(owner.id))
             if owner_details.email:
@@ -172,31 +186,29 @@ class DomodatabaseSource(DatabaseServiceSource):
         return None
 
     def yield_table(
-        self, table_name_and_type: Tuple[str, str]
+        self, table_name_and_type: Tuple[str, TableType]
     ) -> Iterable[Either[CreateTableRequest]]:
         table_id, table_type = table_name_and_type
         try:
             table_constraints = None
             table_object = OutputDataset(**self.domo_client.datasets.get(table_id))
-            columns = (
-                self.get_columns(table_object.schemas.columns)
-                if table_object.columns
-                else []
-            )
+            columns = self.get_columns(table_object)
             table_request = CreateTableRequest(
-                name=table_object.name,
+                name=EntityName(table_object.name),
                 displayName=table_object.name,
                 tableType=table_type,
                 description=table_object.description,
                 columns=columns,
-                owner=self.get_owners(owner=table_object.owner),
+                owners=self.get_owners(owner=table_object.owner),
                 tableConstraints=table_constraints,
-                databaseSchema=fqn.build(
-                    metadata=self.metadata,
-                    entity_type=DatabaseSchema,
-                    service_name=self.context.database_service,
-                    database_name=self.context.database,
-                    schema_name=self.context.database_schema,
+                databaseSchema=FullyQualifiedEntityName(
+                    fqn.build(
+                        metadata=self.metadata,
+                        entity_type=DatabaseSchema,
+                        service_name=self.context.get().database_service,
+                        database_name=self.context.get().database,
+                        schema_name=self.context.get().database_schema,
+                    )
                 ),
                 sourceUrl=self.get_source_url(
                     table_name=table_id,
@@ -213,19 +225,57 @@ class DomodatabaseSource(DatabaseServiceSource):
                 )
             )
 
-    def get_columns(self, table_object: List[SchemaColumn]):
+    def get_columns_from_federated_dataset(self, table_name: str, dataset_id: str):
+        """
+        Method to retrieve the column metadata from federated datasets
+        """
+        try:
+            # SQL query to get all columns without fetching any rows
+            sql_query = f'SELECT * FROM "{table_name}" LIMIT 1'
+            schema_columns = []
+            response = self.domo_client.datasets.query(dataset_id, sql_query)
+            if response:
+                for i, column_name in enumerate(response["columns"] or []):
+                    schema_column = SchemaColumn(
+                        name=column_name, type=response["metadata"][i]["type"]
+                    )
+                    schema_columns.append(schema_column)
+            if schema_columns:
+                return Schema(columns=schema_columns)
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Error while fetching columns from federated dataset {table_name} - {exc}"
+            )
+        return None
+
+    def get_columns(self, table_object: OutputDataset):
+        """
+        Method to get domo table columns
+        """
         row_order = 1
         columns = []
-        for column in table_object:
-            columns.append(
-                Column(
-                    name=column.name,
-                    description=column.description,
-                    dataType=column.type,
-                    ordinalPosition=row_order,
-                )
+        if not table_object.schemas or not table_object.schemas.columns:
+            table_object.schemas = self.get_columns_from_federated_dataset(
+                table_name=table_object.name, dataset_id=table_object.id
             )
-            row_order += 1
+
+        for column in table_object.schemas.columns or []:
+            try:
+                columns.append(
+                    Column(
+                        name=ColumnName(column.name),
+                        description=column.description,
+                        dataType=column.type,
+                        ordinalPosition=row_order,
+                    )
+                )
+                row_order += 1
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.warning(
+                    f"Error while fetching details of column {column} - {exc}"
+                )
         return columns
 
     def yield_tag(

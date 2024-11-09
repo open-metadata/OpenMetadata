@@ -5,35 +5,33 @@ import java.util.List;
 import java.util.Map;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.ParseTags;
-import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.models.SearchSuggest;
-import org.openmetadata.service.util.JsonUtils;
 
 public record SearchEntityIndex(org.openmetadata.schema.entity.data.SearchIndex searchIndex)
     implements SearchIndex {
-  private static final List<String> excludeFields = List.of("changeDescription");
 
-  public Map<String, Object> buildESDoc() {
-    Map<String, Object> doc = JsonUtils.getMap(searchIndex);
-    SearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
+  @Override
+  public List<SearchSuggest> getSuggest() {
     List<SearchSuggest> suggest = new ArrayList<>();
     suggest.add(SearchSuggest.builder().input(searchIndex.getName()).weight(5).build());
     suggest.add(
         SearchSuggest.builder().input(searchIndex.getFullyQualifiedName()).weight(5).build());
-    doc.put("suggest", suggest);
-    doc.put("entityType", Entity.SEARCH_INDEX);
-    doc.put(
-        "fqnParts",
-        getFQNParts(
-            searchIndex.getFullyQualifiedName(),
-            suggest.stream().map(SearchSuggest::getInput).toList()));
+    return suggest;
+  }
+
+  @Override
+  public Object getEntity() {
+    return searchIndex;
+  }
+
+  public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
+    Map<String, Object> commonAttributes = getCommonAttributesMap(searchIndex, Entity.SEARCH_INDEX);
+    doc.putAll(commonAttributes);
     ParseTags parseTags = new ParseTags(Entity.getEntityTags(Entity.SEARCH_INDEX, searchIndex));
     doc.put("tags", parseTags.getTags());
     doc.put("tier", parseTags.getTierTag());
-    doc.put("owner", getEntityWithDisplayName(searchIndex.getOwner()));
     doc.put("service", getEntityWithDisplayName(searchIndex.getService()));
     doc.put("lineage", SearchIndex.getLineageData(searchIndex.getEntityReference()));
-    doc.put("domain", getEntityWithDisplayName(searchIndex.getDomain()));
     return doc;
   }
 

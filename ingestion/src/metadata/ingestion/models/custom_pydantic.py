@@ -15,20 +15,71 @@ This classes are used in the generated module, which should have NO
 dependencies against any other metadata package. This class should
 be self-sufficient with only pydantic at import time.
 """
+import json
 import logging
-import warnings
-from typing import Any, Dict
+from typing import Any, Dict, Literal, Optional, Union
 
-from pydantic.types import OptionalInt, SecretStr
-from pydantic.utils import update_not_none
-from pydantic.validators import constr_length_validator, str_validator
+from pydantic import BaseModel as PydanticBaseModel
+from pydantic import PlainSerializer
+from pydantic.main import IncEx
+from pydantic.types import SecretStr
+from typing_extensions import Annotated
 
 logger = logging.getLogger("metadata")
 
 SECRET = "secret:"
+JSON_ENCODERS = "json_encoders"
 
 
-class CustomSecretStr(SecretStr):
+class BaseModel(PydanticBaseModel):
+    """
+    Base model for OpenMetadata generated models.
+    Specified as `--base-class BASE_CLASS` in the generator.
+    """
+
+    def model_dump_json(  # pylint: disable=too-many-arguments
+        self,
+        *,
+        indent: Optional[int] = None,
+        include: IncEx = None,
+        exclude: IncEx = None,
+        context: Optional[Dict[str, Any]] = None,
+        by_alias: bool = False,
+        exclude_unset: bool = True,
+        exclude_defaults: bool = False,
+        exclude_none: bool = True,
+        round_trip: bool = False,
+        warnings: Union[bool, Literal["none", "warn", "error"]] = True,
+        serialize_as_any: bool = False,
+    ) -> str:
+        """
+        This is needed due to https://github.com/pydantic/pydantic/issues/8825
+
+        We also tried the suggested `serialize` method but it did not
+        work well with nested models.
+
+        This solution is covered in the `test_pydantic_v2` test comparing the
+        dump results from V1 vs. V2.
+        """
+        return json.dumps(
+            self.model_dump(
+                mode="json",
+                include=include,
+                exclude=exclude,
+                context=context,
+                by_alias=by_alias,
+                exclude_unset=exclude_unset,
+                exclude_none=exclude_none,
+                exclude_defaults=exclude_defaults,
+                round_trip=round_trip,
+                warnings=warnings,
+                serialize_as_any=serialize_as_any,
+            ),
+            ensure_ascii=True,
+        )
+
+
+class _CustomSecretStr(SecretStr):
     """
     Custom SecretStr class which use the configured Secrets Manager to retrieve the actual values.
 
@@ -36,47 +87,8 @@ class CustomSecretStr(SecretStr):
     in the secrets store.
     """
 
-    min_length: OptionalInt = None
-    max_length: OptionalInt = None
-
-    @classmethod
-    def __modify_schema__(cls, field_schema: Dict[str, Any]) -> None:
-        update_not_none(
-            field_schema,
-            type="string",
-            writeOnly=True,
-            format="password",
-            minLength=cls.min_length,
-            maxLength=cls.max_length,
-        )
-
-    @classmethod
-    def __get_validators__(cls) -> "CallableGenerator":
-        yield cls.validate
-        yield constr_length_validator
-
-    @classmethod
-    def validate(cls, value: Any) -> "CustomSecretStr":
-        if isinstance(value, cls):
-            return value
-        value = str_validator(value)
-        return cls(value)
-
-    def __init__(self, value: str):
-        self._secret_value = value
-
     def __repr__(self) -> str:
         return f"SecretStr('{self}')"
-
-    def __len__(self) -> int:
-        return len(self._secret_value)
-
-    def display(self) -> str:
-        warnings.warn(
-            "`secret_str.display()` is deprecated, use `str(secret_str)` instead",
-            DeprecationWarning,
-        )
-        return str(self)
 
     def get_secret_value(self, skip_secret_manager: bool = False) -> str:
         """
@@ -108,3 +120,17 @@ class CustomSecretStr(SecretStr):
                     f"Secret value [{secret_id}] not present in the configured secrets manager: {exc}"
                 )
         return self._secret_value
+
+
+CustomSecretStr = Annotated[
+    _CustomSecretStr, PlainSerializer(lambda secret: secret.get_secret_value())
+]
+
+
+def ignore_type_decoder(type_: Any) -> None:
+    """Given a type_, add a custom decoder to the BaseModel
+    to ignore any decoding errors for that type_."""
+    # We don't import the constants from the constants module to avoid circular imports
+    BaseModel.model_config[JSON_ENCODERS][type_] = {
+        lambda v: v.decode("utf-8", "ignore")
+    }

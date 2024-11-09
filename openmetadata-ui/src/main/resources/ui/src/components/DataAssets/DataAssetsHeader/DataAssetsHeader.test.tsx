@@ -10,13 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import React from 'react';
 import { EntityType } from '../../../enums/entity.enum';
+import {
+  APIEndpoint,
+  APIRequestMethod,
+} from '../../../generated/entity/data/apiEndpoint';
 import { Container } from '../../../generated/entity/data/container';
+import { MOCK_TIER_DATA } from '../../../mocks/TableData.mock';
 import { getContainerByName } from '../../../rest/storageAPI';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
-import { DataAssetsHeader } from './DataAssetsHeader.component';
+import { DataAssetsHeader, ExtraInfoLink } from './DataAssetsHeader.component';
 import { DataAssetsHeaderProps } from './DataAssetsHeader.interface';
 
 const mockProps: DataAssetsHeaderProps = {
@@ -87,11 +92,47 @@ jest.mock(
   () =>
     jest.fn().mockImplementation(() => <div>AnnouncementDrawer.component</div>)
 );
+
+jest.mock('../../Tag/TagsV1/TagsV1.component', () =>
+  jest.fn().mockImplementation(() => <div>TagsV1.component</div>)
+);
+
 jest.mock('../../../rest/storageAPI', () => ({
   getContainerByName: jest
     .fn()
     .mockImplementation(() => Promise.resolve({ name: 'test' })),
 }));
+
+describe('ExtraInfoLink component', () => {
+  const mockProps = {
+    label: 'myLabel',
+    value: 'example',
+    href: 'http://example.com/',
+  };
+
+  it('should not have target and rel attributes when newTab is false (default)', () => {
+    const { container } = render(<ExtraInfoLink {...mockProps} />);
+
+    const elm = container.querySelector('a');
+
+    expect(elm).toHaveAttribute('href', mockProps.href);
+    expect(elm).not.toHaveAttribute('target');
+    expect(elm).not.toHaveAttribute('rel');
+  });
+
+  it('should have target and rel attributes when newTab is true', () => {
+    const { container } = render(<ExtraInfoLink {...mockProps} newTab />);
+
+    const elm = container.querySelector('a');
+
+    expect(elm).toHaveAttribute('href', mockProps.href);
+    expect(elm).toHaveAttribute('target', '_blank');
+
+    const rel = (elm?.getAttribute('rel') || '').split(/\s+/g);
+
+    expect(rel.sort()).toStrictEqual(['noopener', 'noreferrer'].sort());
+  });
+});
 
 describe('DataAssetsHeader component', () => {
   it('should call getContainerByName API on Page load for container assets', () => {
@@ -113,5 +154,46 @@ describe('DataAssetsHeader component', () => {
     );
 
     expect(mockGetContainerByName).not.toHaveBeenCalled();
+  });
+
+  it('should render the Tier data if present', () => {
+    render(
+      <DataAssetsHeader
+        {...mockProps}
+        dataAsset={{
+          ...mockProps.dataAsset,
+          tags: [MOCK_TIER_DATA],
+        }}
+      />
+    );
+
+    expect(screen.getByText('TagsV1.component')).toBeInTheDocument();
+  });
+
+  it('should not render the Tier data if not  present', () => {
+    render(<DataAssetsHeader {...mockProps} dataAsset={mockProps.dataAsset} />);
+
+    expect(screen.getByTestId('Tier')).toContainHTML('label.no-entity');
+  });
+
+  it('should render the request method if entityType is apiEndpoint', () => {
+    render(
+      <DataAssetsHeader
+        {...mockProps}
+        dataAsset={
+          {
+            name: 'testAPIEndpoint',
+            id: 'testAPIEndpointId',
+            endpointURL: 'testAPIEndpointURL',
+            requestMethod: APIRequestMethod.Get,
+          } as APIEndpoint
+        }
+        entityType={EntityType.API_ENDPOINT}
+      />
+    );
+
+    expect(
+      screen.getByTestId('api-endpoint-request-method')
+    ).toBeInTheDocument();
   });
 });

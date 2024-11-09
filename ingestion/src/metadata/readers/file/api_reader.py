@@ -21,12 +21,15 @@ from metadata.generated.schema.security.credentials.bitbucketCredentials import 
 from metadata.generated.schema.security.credentials.githubCredentials import (
     GitHubCredentials,
 )
+from metadata.generated.schema.security.credentials.gitlabCredentials import (
+    GitlabCredentials,
+)
 from metadata.readers.file.base import Reader
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
-ReadersCredentials = Union[GitHubCredentials, BitBucketCredentials]
+ReadersCredentials = Union[GitHubCredentials, BitBucketCredentials, GitlabCredentials]
 
 
 class ApiReader(Reader, ABC):
@@ -35,7 +38,6 @@ class ApiReader(Reader, ABC):
     """
 
     def __init__(self, credentials: ReadersCredentials):
-
         self._auth_headers = None
         self.credentials = credentials
 
@@ -47,7 +49,7 @@ class ApiReader(Reader, ABC):
         """
         if self._auth_headers is None and self.credentials.token:
             self._auth_headers = {
-                "Authorization": f"Bearer {self.credentials.token.__root__.get_secret_value()}"
+                "Authorization": f"Bearer {self.credentials.token.root.get_secret_value()}"
             }
 
         return self._auth_headers

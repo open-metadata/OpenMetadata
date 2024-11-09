@@ -63,3 +63,6 @@ class HelpersTest(TestCase):
         )
         self.assertIsNone(not_found)
         self.assertIsNone(not_found_idx)
+
+        col = find_column_in_table(column_name="FOO", table=table, case_sensitive=False)
+        self.assertEqual(col, Column(name="foo", dataType=DataType.BIGINT))

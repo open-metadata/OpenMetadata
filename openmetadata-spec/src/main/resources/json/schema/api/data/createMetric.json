@@ -1,0 +1,76 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/createMetric.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CreateMetricRequest",
+  "description": "Create Metric entity request",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.data.CreateMetric",
+  "javaInterfaces": ["org.openmetadata.schema.CreateEntity"],
+  "properties": {
+    "name": {
+      "description": "Name that identifies this metric.",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "displayName": {
+      "description": "Display Name that identifies this metric.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of the metric instance.",
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "metricExpression": {
+      "description": "Expression used to compute the metric.",
+      "$ref": "../../entity/data/metric.json#/definitions/metricExpression"
+    },
+    "metricType": {
+      "description": "Type of the metric.",
+      "$ref": "../../entity/data/metric.json#/definitions/metricType"
+    },
+    "unitOfMeasurement": {
+      "description": "Unit of measurement for the metric.",
+      "$ref": "../../entity/data/metric.json#/definitions/unitOfMeasurement"
+    },
+    "granularity": {
+      "description": "Metric's granularity.",
+      "$ref": "../../entity/data/metric.json#/definitions/metricGranularity"
+    },
+    "relatedMetrics": {
+      "description": "Other array of related metric fully qualified names that are related to this Metric.",
+      "type" : "array",
+      "items": {
+        "$ref" : "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+      }
+    },
+    "owners": {
+      "description": "Owners of this metric",
+      "$ref": "../../type/entityReferenceList.json",
+      "default": null
+    },
+    "tags": {
+      "description": "Tags for this metric",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      },
+      "default": null
+    },
+    "domain" : {
+      "description": "Fully qualified name of the domain the Metric belongs to.",
+      "type": "string"
+    },
+    "dataProducts" : {
+      "description": "List of fully qualified names of data products this entity is part of.",
+      "type": "array",
+      "items" : {
+        "$ref" : "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+      }
+    },
+    "extension": {
+      "description": "Entity extension data with custom attributes added to the entity.",
+      "$ref": "../../type/basic.json#/definitions/entityExtension"
+    }
+  },
+  "required": ["name"],
+  "additionalProperties": false
+}

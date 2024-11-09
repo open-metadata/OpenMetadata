@@ -15,6 +15,7 @@ Athena Query parser module
 import traceback
 from abc import ABC
 from math import ceil
+from typing import Optional
 
 from metadata.clients.aws_client import AWSClient
 from metadata.generated.schema.entity.services.connections.database.athenaConnection import (
@@ -40,6 +41,8 @@ ATHENA_QUERY_PAGINATOR_LIMIT = 50
 
 ATHENA_ENABLED_WORK_GROUP_STATE = "ENABLED"
 
+QUERY_SUCCESS_STATUS = "SUCCEEDED"
+
 
 class AthenaQueryParserSource(QueryParserSource, ABC):
     """
@@ -53,10 +56,12 @@ class AthenaQueryParserSource(QueryParserSource, ABC):
         self.client = AWSClient(self.service_connection.awsConfig).get_athena_client()
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata):
+    def create(
+        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
+    ):
         """Create class instance"""
-        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: AthenaConnection = config.serviceConnection.__root__.config
+        config: WorkflowSource = WorkflowSource.model_validate(config_dict)
+        connection: AthenaConnection = config.serviceConnection.root.config
         if not isinstance(connection, AthenaConnection):
             raise InvalidSourceException(
                 f"Expected AthenaConnection, but got {connection}"

@@ -10,7 +10,7 @@
 #  limitations under the License.
 
 # Build stage
-FROM alpine:3.18 AS build
+FROM alpine:3 AS build
 
 COPY openmetadata-dist/target/openmetadata-*.tar.gz /
 
@@ -19,19 +19,18 @@ RUN mkdir -p /opt/openmetadata && \
     rm openmetadata-*.tar.gz
 
 # Final stage
-FROM alpine:3.18
+FROM alpine:3
 
 EXPOSE 8585
 
-RUN apk add --update --no-cache bash openjdk17-jre
+RUN adduser -D openmetadata && \
+    apk update && \
+    apk upgrade && \
+    apk add --update --no-cache bash openjdk17-jre
 
-COPY --from=build /opt/openmetadata /opt/openmetadata
-COPY docker/openmetadata-start.sh /
+COPY --chown=openmetadata:openmetadata --from=build /opt/openmetadata /opt/openmetadata
+COPY --chmod=755 docker/openmetadata-start.sh /
 
-RUN chmod 777 openmetadata-start.sh
-
-RUN adduser -D openmetadata
-RUN chown -R openmetadata:openmetadata /opt/openmetadata
 USER openmetadata
 
 WORKDIR /opt/openmetadata

@@ -22,10 +22,12 @@ export interface SelectableListProps {
   multiSelect?: boolean;
   selectedItems: EntityReference[];
   onCancel: () => void;
-  onUpdate: (updatedItems: EntityReference[]) => void;
+  onUpdate?: (updatedItems: EntityReference[]) => Promise<void>;
   searchPlaceholder?: string;
   customTagRenderer?: (props: EntityReference) => ReactNode;
   searchBarDataTestId?: string;
   removeIconTooltipLabel?: string;
   emptyPlaceholderText?: ReactNode;
+  onChange?: (selectedItems: EntityReference[]) => void;
+  height?: number;
 }

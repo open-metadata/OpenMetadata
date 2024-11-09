@@ -18,13 +18,14 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
-import Loader from '../../components/Loader/Loader';
 import { HTTP_STATUS_CODE } from '../../constants/Auth.constants';
+import { getGlossaryTermDetailsPath } from '../../constants/constants';
+import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
-  API_RES_MAX_SIZE,
-  getGlossaryTermDetailsPath,
-} from '../../constants/constants';
-import { EntityAction } from '../../enums/entity.enum';
+  OperationPermission,
+  ResourceEntity,
+} from '../../context/PermissionProvider/PermissionProvider.interface';
+import { EntityAction, EntityTabs } from '../../enums/entity.enum';
 import {
   CreateThread,
   ThreadType,
@@ -35,7 +36,7 @@ import { VERSION_VIEW_GLOSSARY_PERMISSION } from '../../mocks/Glossary.mock';
 import { postThread } from '../../rest/feedsAPI';
 import {
   addGlossaryTerm,
-  getGlossaryTerms,
+  getFirstLevelGlossaryTerms,
   ListGlossaryTermsParams,
   patchGlossaryTerm,
 } from '../../rest/glossaryAPI';
@@ -44,12 +45,8 @@ import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useActivityFeedProvider } from '../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import ActivityThreadPanel from '../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
+import Loader from '../common/Loader/Loader';
 import EntityDeleteModal from '../Modals/EntityDeleteModal/EntityDeleteModal';
-import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../PermissionProvider/PermissionProvider.interface';
 import { GlossaryTermForm } from './AddGlossaryTermForm/AddGlossaryTermForm.interface';
 import GlossaryDetails from './GlossaryDetails/GlossaryDetails.component';
 import GlossaryTermModal from './GlossaryTermModal/GlossaryTermModal.component';
@@ -57,10 +54,10 @@ import GlossaryTermsV1 from './GlossaryTerms/GlossaryTermsV1.component';
 import { GlossaryV1Props } from './GlossaryV1.interfaces';
 import './glossaryV1.less';
 import ImportGlossary from './ImportGlossary/ImportGlossary';
+import { ModifiedGlossary, useGlossaryStore } from './useGlossary.store';
 
 const GlossaryV1 = ({
   isGlossaryActive,
-  deleteStatus = 'initial',
   selectedData,
   onGlossaryTermUpdate,
   updateGlossary,
@@ -75,13 +72,15 @@ const GlossaryV1 = ({
   const { t } = useTranslation();
   const { action, tab } =
     useParams<{ action: EntityAction; glossaryName: string; tab: string }>();
+
   const history = useHistory();
   const [threadLink, setThreadLink] = useState<string>('');
   const [threadType, setThreadType] = useState<ThreadType>(
     ThreadType.Conversation
   );
   const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
-
+  const [activeGlossaryTerm, setActiveGlossaryTerm] =
+    useState<GlossaryTerm | null>(null);
   const { getEntityPermission } = usePermissionProvider();
   const [isLoading, setIsLoading] = useState(true);
   const [isTermsLoading, setIsTermsLoading] = useState(false);
@@ -95,13 +94,12 @@ const GlossaryV1 = ({
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [activeGlossaryTerm, setActiveGlossaryTerm] = useState<
-    GlossaryTerm | undefined
-  >();
+
   const [editMode, setEditMode] = useState(false);
 
-  const [glossaryTerms, setGlossaryTerms] = useState<GlossaryTerm[]>([]);
-  const { id } = selectedData ?? {};
+  const { activeGlossary, setGlossaryChildTerms } = useGlossaryStore();
+
+  const { id, fullyQualifiedName } = activeGlossary ?? {};
 
   const isImportAction = useMemo(
     () => action === EntityAction.IMPORT,
@@ -125,12 +123,14 @@ const GlossaryV1 = ({
   ) => {
     refresh ? setIsTermsLoading(true) : setIsLoading(true);
     try {
-      const { data } = await getGlossaryTerms({
-        ...params,
-        limit: API_RES_MAX_SIZE,
-        fields: 'tags,children,reviewers,relatedTerms,owner,parent',
-      });
-      setGlossaryTerms(data);
+      const { data } = await getFirstLevelGlossaryTerms(
+        params?.glossary ?? params?.parent ?? ''
+      );
+      const children = data.map((data) =>
+        data.childrenCount ?? 0 > 0 ? { ...data, children: [] } : data
+      );
+
+      setGlossaryChildTerms(children as ModifiedGlossary[]);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -175,12 +175,12 @@ const GlossaryV1 = ({
     }
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     const { id } = selectedData;
     if (isGlossaryActive) {
-      onGlossaryDelete(id);
+      await onGlossaryDelete(id);
     } else {
-      onGlossaryTermDelete(id);
+      await onGlossaryTermDelete(id);
     }
     setIsDelete(false);
   };
@@ -188,16 +188,18 @@ const GlossaryV1 = ({
   const loadGlossaryTerms = useCallback(
     (refresh = false) => {
       fetchGlossaryTerm(
-        isGlossaryActive ? { glossary: id } : { parent: id },
+        isGlossaryActive
+          ? { glossary: fullyQualifiedName }
+          : { parent: fullyQualifiedName },
         refresh
       );
     },
-    [id, isGlossaryActive]
+    [fullyQualifiedName, isGlossaryActive]
   );
 
   const handleGlossaryTermModalAction = (
     editMode: boolean,
-    glossaryTerm: GlossaryTerm | undefined
+    glossaryTerm: GlossaryTerm | null
   ) => {
     setEditMode(editMode);
     setActiveGlossaryTerm(glossaryTerm);
@@ -245,7 +247,7 @@ const GlossaryV1 = ({
       history.push(
         getGlossaryTermDetailsPath(
           selectedData.fullyQualifiedName || '',
-          'terms'
+          EntityTabs.TERMS
         )
       );
     }
@@ -256,9 +258,6 @@ const GlossaryV1 = ({
     try {
       await addGlossaryTerm({
         ...formData,
-        reviewers: formData.reviewers.map(
-          (item) => item.fullyQualifiedName || ''
-        ),
         glossary:
           activeGlossaryTerm?.glossary?.name ||
           (selectedData.fullyQualifiedName ?? ''),
@@ -300,7 +299,7 @@ const GlossaryV1 = ({
           references,
           mutuallyExclusive,
           reviewers,
-          owner,
+          owners,
           relatedTerms,
           style,
         } = formData || {};
@@ -313,7 +312,7 @@ const GlossaryV1 = ({
         newTermData.tags = tags;
         newTermData.mutuallyExclusive = mutuallyExclusive;
         newTermData.reviewers = reviewers;
-        newTermData.owner = owner;
+        newTermData.owners = owners;
         newTermData.references = references;
         newTermData.relatedTerms = relatedTerms?.map((term) => ({
           id: term,
@@ -322,8 +321,19 @@ const GlossaryV1 = ({
         await updateGlossaryTerm(activeGlossaryTerm, newTermData);
       }
     } else {
-      handleGlossaryTermAdd(formData);
+      await handleGlossaryTermAdd(formData);
     }
+  };
+
+  const handleGlossaryUpdate = async (newGlossary: Glossary) => {
+    const jsonPatch = compare(selectedData, newGlossary);
+
+    const shouldRefreshTerms = jsonPatch.some((patch) =>
+      patch.path.startsWith('/owners')
+    );
+
+    await updateGlossary(newGlossary);
+    shouldRefreshTerms && loadGlossaryTerms(true);
   };
 
   useEffect(() => {
@@ -350,26 +360,23 @@ const GlossaryV1 = ({
         !isEmpty(selectedData) &&
         (isGlossaryActive ? (
           <GlossaryDetails
-            glossary={selectedData as Glossary}
-            glossaryTerms={glossaryTerms}
             handleGlossaryDelete={onGlossaryDelete}
             isVersionView={isVersionsView}
             permissions={glossaryPermission}
             refreshGlossaryTerms={() => loadGlossaryTerms(true)}
             termsLoading={isTermsLoading}
-            updateGlossary={updateGlossary}
+            updateGlossary={handleGlossaryUpdate}
             updateVote={updateVote}
             onAddGlossaryTerm={(term) =>
-              handleGlossaryTermModalAction(false, term)
+              handleGlossaryTermModalAction(false, term ?? null)
             }
             onEditGlossaryTerm={(term) =>
-              handleGlossaryTermModalAction(true, term)
+              handleGlossaryTermModalAction(true, term ?? null)
             }
             onThreadLinkSelect={onThreadLinkSelect}
           />
         ) : (
           <GlossaryTermsV1
-            childGlossaryTerms={glossaryTerms}
             glossaryTerm={selectedData as GlossaryTerm}
             handleGlossaryTermDelete={onGlossaryTermDelete}
             handleGlossaryTermUpdate={onGlossaryTermUpdate}
@@ -381,7 +388,7 @@ const GlossaryV1 = ({
             termsLoading={isTermsLoading}
             updateVote={updateVote}
             onAddGlossaryTerm={(term) =>
-              handleGlossaryTermModalAction(false, term)
+              handleGlossaryTermModalAction(false, term ?? null)
             }
             onAssetClick={onAssetClick}
             onEditGlossaryTerm={(term) =>
@@ -396,7 +403,6 @@ const GlossaryV1 = ({
           bodyText={getEntityDeleteMessage(selectedData.name, '')}
           entityName={selectedData.name}
           entityType="Glossary"
-          loadingState={deleteStatus}
           visible={isDelete}
           onCancel={() => setIsDelete(false)}
           onConfirm={handleDelete}
@@ -406,9 +412,7 @@ const GlossaryV1 = ({
       {isEditModalOpen && (
         <GlossaryTermModal
           editMode={editMode}
-          glossaryName={selectedData.name}
-          glossaryReviewers={isGlossaryActive ? selectedData.reviewers : []}
-          glossaryTerm={activeGlossaryTerm}
+          glossaryTermFQN={activeGlossaryTerm?.fullyQualifiedName}
           visible={isEditModalOpen}
           onCancel={() => setIsEditModalOpen(false)}
           onSave={handleGlossaryTermSave}

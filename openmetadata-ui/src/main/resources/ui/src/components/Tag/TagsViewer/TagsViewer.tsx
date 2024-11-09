@@ -69,12 +69,13 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
   const readMoreRenderElement = useMemo(
     () => (
       <div data-testid="read-more-element">
-        {isOpen &&
-          sortedTagsBySource.slice(sizeCap).map((tag) => (
-            <p className="text-left" key={tag}>
-              {getTagsElement(tag)}
-            </p>
-          ))}
+        {isOpen && (
+          <div className="m-t-xs d-flex flex-wrap gap-2">
+            {sortedTagsBySource
+              .slice(sizeCap)
+              .map((tag) => getTagsElement(tag))}
+          </div>
+        )}
 
         {hasMoreElement && (
           <Button
@@ -94,18 +95,16 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
   );
 
   const popoverRenderElement = useMemo(
-    () => (
-      <div data-testid="popover-element">
-        {sortedTagsBySource.slice(sizeCap).length > 0 && (
+    () =>
+      sortedTagsBySource.slice(sizeCap).length > 0 && (
+        <div className="m-t-xs" data-testid="popover-element">
           <Popover
             content={
-              <>
-                {sortedTagsBySource.slice(sizeCap).map((tag) => (
-                  <p className="text-left" key={tag}>
-                    {getTagsElement(tag)}
-                  </p>
-                ))}
-              </>
+              <div className="d-flex flex-column flex-wrap gap-2">
+                {sortedTagsBySource
+                  .slice(sizeCap)
+                  .map((tag) => getTagsElement(tag))}
+              </div>
             }
             overlayClassName="tag-popover-container"
             placement="bottom"
@@ -116,9 +115,8 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
               sortedTagsBySource.length - (sizeCap ?? 0)
             } more`}</Tag>
           </Popover>
-        )}
-      </div>
-    ),
+        </div>
+      ),
 
     [sizeCap, sortedTagsBySource]
   );
@@ -137,7 +135,7 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
 
   return (
     <>
-      <div className="d-flex flex-wrap">
+      <div className="d-flex flex-wrap gap-2">
         {sortedTagsBySource.slice(0, sizeCap).map(getTagsElement)}
       </div>
       {displayType === DisplayType.POPOVER

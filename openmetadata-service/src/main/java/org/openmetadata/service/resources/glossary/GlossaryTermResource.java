@@ -69,6 +69,7 @@ import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.GlossaryRepository;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
@@ -89,7 +90,7 @@ import org.openmetadata.service.util.ResultList;
 public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryTermRepository> {
   public static final String COLLECTION_PATH = "v1/glossaryTerms/";
   static final String FIELDS =
-      "children,relatedTerms,reviewers,owner,tags,usageCount,domain,extension";
+      "children,relatedTerms,reviewers,owners,tags,usageCount,domain,extension,childrenCount";
 
   @Override
   public GlossaryTerm addHref(UriInfo uriInfo, GlossaryTerm term) {
@@ -100,8 +101,8 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
     return term;
   }
 
-  public GlossaryTermResource(Authorizer authorizer) {
-    super(Entity.GLOSSARY_TERM, authorizer);
+  public GlossaryTermResource(Authorizer authorizer, Limits limits) {
+    super(Entity.GLOSSARY_TERM, authorizer, limits);
   }
 
   @Override
@@ -210,7 +211,14 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include) {
+          Include include,
+      @Parameter(
+              description =
+                  "List glossary terms filtered to retrieve the first level/immediate children of the glossary term "
+                      + "`directChildrenOf` parameter.",
+              schema = @Schema(type = "string"))
+          @QueryParam("directChildrenOf")
+          String parentTermFQNParam) {
     RestUtil.validateCursors(before, after);
     Fields fields = getFields(fieldsParam);
 
@@ -234,7 +242,10 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
                 parentTermParam.toString(), glossaryIdParam));
       }
     }
-    ListFilter filter = new ListFilter(include).addQueryParam("parent", fqn);
+    ListFilter filter =
+        new ListFilter(include)
+            .addQueryParam("parent", fqn)
+            .addQueryParam("directChildrenOf", parentTermFQNParam);
 
     ResultList<GlossaryTerm> terms;
     if (before != null) { // Reverse paging
@@ -260,8 +271,10 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = Glossary.class))),
-        @ApiResponse(responseCode = "404", description = "Glossary for instance {id} is not found")
+                    schema = @Schema(implementation = GlossaryTerm.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Glossary term for instance {id} is not found")
       })
   public GlossaryTerm get(
       @Context UriInfo uriInfo,
@@ -296,8 +309,10 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = Glossary.class))),
-        @ApiResponse(responseCode = "404", description = "Glossary for instance {fqn} is not found")
+                    schema = @Schema(implementation = GlossaryTerm.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Glossary term for instance {fqn} is not found")
       })
   public GlossaryTerm getByName(
       @Context UriInfo uriInfo,
@@ -354,14 +369,14 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "glossaries",
+            description = "The glossary term",
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = Glossary.class))),
+                    schema = @Schema(implementation = GlossaryTerm.class))),
         @ApiResponse(
             responseCode = "404",
-            description = "Glossary for instance {id} and version {version} is not found")
+            description = "Glossary term for instance {id} and version {version} is not found")
       })
   public GlossaryTerm getVersion(
       @Context UriInfo uriInfo,
@@ -427,6 +442,35 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
                       }))
           JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
+  }
+
+  @PATCH
+  @Path("/name/{fqn}")
+  @Operation(
+      operationId = "patchGlossaryTerm",
+      summary = "Update a glossary term by name.",
+      description = "Update an existing glossary term using JsonPatch.",
+      externalDocs =
+          @ExternalDocumentation(
+              description = "JsonPatch RFC",
+              url = "https://tools.ietf.org/html/rfc6902"))
+  @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
+  public Response patch(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the glossary term", schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn,
+      @RequestBody(
+              description = "JsonPatch with array of operations",
+              content =
+                  @Content(
+                      mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
+                      examples = {
+                        @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
+                      }))
+          JsonPatch patch) {
+    return patchInternal(uriInfo, securityContext, fqn, patch);
   }
 
   @PUT
@@ -647,7 +691,6 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
         .withParent(getEntityReference(Entity.GLOSSARY_TERM, create.getParent()))
         .withRelatedTerms(getEntityReferences(Entity.GLOSSARY_TERM, create.getRelatedTerms()))
         .withReferences(create.getReferences())
-        .withReviewers(getEntityReferences(Entity.USER, create.getReviewers()))
         .withProvider(create.getProvider())
         .withMutuallyExclusive(create.getMutuallyExclusive());
   }

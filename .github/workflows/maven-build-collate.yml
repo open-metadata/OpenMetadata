@@ -28,19 +28,6 @@ on:
       - "yarn.lock"
       - "Makefile"
       - "bootstrap/**"
-  pull_request_target:
-    types: [labeled, opened, synchronize, reopened]
-    paths:
-      - "openmetadata-service/**"
-      - "openmetadata-ui/**"
-      - "openmetadata-spec/src/main/resources/json/schema/**"
-      - "openmetadata-dist/**"
-      - "openmetadata-clients/**"
-      - "common/**"
-      - "pom.xml"
-      - "yarn.lock"
-      - "Makefile"
-      - "bootstrap/**"
 
 permissions:
   contents: read
@@ -80,7 +67,7 @@ jobs:
         uses: aurelien-baudet/workflow-dispatch@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SHA: ${{ github.event_name == 'push' && 'main' || github.event.pull_request.head.sha }}
+          SHA: ${{ github.event_name == 'push' && github.event.after || github.event.pull_request.head.sha }}
         with:
           workflow: OpenMetadata Collate Test
           ref: main

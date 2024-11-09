@@ -20,8 +20,8 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AuthProvider } from '../../../generated/settings/settings';
-import localState from '../../../utils/LocalStorageUtils';
-import { useAuthContext } from '../AuthProviders/AuthProvider';
+
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { AuthenticatorRef } from '../AuthProviders/AuthProvider.interface';
 
 interface Props {
@@ -31,7 +31,8 @@ interface Props {
 
 const Auth0Authenticator = forwardRef<AuthenticatorRef, Props>(
   ({ children, onLogoutSuccess }: Props, ref) => {
-    const { setIsAuthenticated, authConfig } = useAuthContext();
+    const { setIsAuthenticated, authConfig, setOidcToken } =
+      useApplicationStore();
     const { t } = useTranslation();
     const { loginWithRedirect, getAccessTokenSilently, getIdTokenClaims } =
       useAuth0();
@@ -47,7 +48,7 @@ const Auth0Authenticator = forwardRef<AuthenticatorRef, Props>(
         setIsAuthenticated(false);
         onLogoutSuccess();
       },
-      renewIdToken() {
+      renewIdToken(): Promise<string> {
         let idToken = '';
         if (authConfig && authConfig.provider !== undefined) {
           return new Promise((resolve, reject) => {
@@ -59,7 +60,7 @@ const Auth0Authenticator = forwardRef<AuthenticatorRef, Props>(
                     .then((token) => {
                       if (token !== undefined) {
                         idToken = token.__raw;
-                        localState.setOidcToken(idToken);
+                        setOidcToken(idToken);
                         resolve(idToken);
                       }
                     })

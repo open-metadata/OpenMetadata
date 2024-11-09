@@ -35,7 +35,8 @@ class TestCaseDefinition(ConfigModel):
     description: Optional[str] = None
     testDefinitionName: str
     columnName: Optional[str] = None
-    parameterValues: Optional[List[TestCaseParameterValue]]
+    parameterValues: Optional[List[TestCaseParameterValue]] = None
+    computePassedFailedRowCount: Optional[bool] = False
 
 
 class TestSuiteProcessorConfig(ConfigModel):
@@ -55,7 +56,7 @@ class TableAndTests(BaseModel):
 
     table: Table = Field(None, description="Table being processed by the DQ workflow")
     service_type: str = Field(..., description="Service type the table belongs to")
-    test_cases: Optional[List[TestCase]] = Field(
+    test_cases: List[TestCase] = Field(
         None, description="Test Cases already existing in the Test Suite, if any"
     )
     executable_test_suite: Optional[CreateTestSuiteRequest] = Field(

@@ -30,7 +30,7 @@
     },
     "name": {
       "description": "Name that identifies this test case.",
-      "$ref": "../type/basic.json#/definitions/entityName"
+      "$ref": "../type/basic.json#/definitions/testCaseEntityName"
     },
     "displayName": {
       "description": "Display Name that identifies this test.",
@@ -45,15 +45,18 @@
       "$ref": "../type/basic.json#/definitions/markdown"
     },
     "testDefinition": {
+      "description": "Test definition that this test case is based on.",
       "$ref": "../type/entityReference.json"
     },
     "entityLink": {
+        "description": "Link to the entity that this test case is testing.",
       "$ref": "../type/basic.json#/definitions/entityLink"
     },
     "entityFQN": {
       "type": "string"
     },
     "testSuite": {
+      "description": "Test Suite that this test case belongs to.",
       "$ref": "../type/entityReference.json"
     },
     "testSuites": {
@@ -72,13 +75,17 @@
       "description": "Latest test case result obtained for this test case.",
       "$ref": "./basic.json#/definitions/testCaseResult"
     },
+    "testCaseStatus": {
+      "description": "Status of Test Case run.",
+      "$ref": "./basic.json#/definitions/testCaseStatus"
+    },
     "version": {
       "description": "Metadata version of the entity.",
       "$ref": "../type/entityHistory.json#/definitions/entityVersion"
     },
-    "owner": {
-      "description": "Owner of this Pipeline.",
-      "$ref": "../type/entityReference.json",
+    "owners": {
+      "description": "Owners of this Pipeline.",
+      "$ref": "../type/entityReferenceList.json",
       "default": null
     },
     "updatedAt": {
@@ -110,6 +117,31 @@
     "incidentId": {
       "description": "Reference to an ongoing Incident ID (stateId) for this test case.",
       "$ref": "../type/basic.json#/definitions/uuid"
+    },
+    "failedRowsSample": {
+      "description": "Sample of failed rows for this test case.",
+      "$ref": "../entity/data/table.json#/definitions/tableData"
+    },
+    "inspectionQuery": {
+      "description": "SQL query to retrieve the failed rows for this test case.",
+      "$ref": "../type/basic.json#/definitions/sqlQuery"
+    },
+    "domain" : {
+      "description": "Domain the test case belongs to. When not set, the test case inherits the domain from the table it belongs to.",
+      "$ref": "../type/entityReference.json"
+    },
+    "useDynamicAssertion": {
+      "description": "If the test definition supports it, use dynamic assertion to evaluate the test case.",
+      "type": "boolean",
+      "default": false
+    },
+    "tags": {
+      "description": "Tags for this test case. This is an inherited field from the parent entity and is not set directly on the test case.",
+      "type": "array",
+      "items": {
+        "$ref": "../type/tagLabel.json"
+      },
+      "default": null
     }
   },
   "required": ["name", "testDefinition", "entityLink", "testSuite"],

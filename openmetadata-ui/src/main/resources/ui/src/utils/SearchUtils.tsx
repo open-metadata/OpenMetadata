@@ -12,35 +12,36 @@
  */
 
 import { SearchOutlined } from '@ant-design/icons';
-import { Button } from 'antd';
+import { Button, Typography } from 'antd';
 import i18next from 'i18next';
 import { isEmpty } from 'lodash';
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { ReactComponent as GlossaryTermIcon } from '../assets/svg/book.svg';
+import { ReactComponent as IconChart } from '../assets/svg/chart.svg';
 import { ReactComponent as IconDashboard } from '../assets/svg/dashboard-grey.svg';
+import { ReactComponent as IconApiCollection } from '../assets/svg/ic-api-collection-default.svg';
+import { ReactComponent as IconApiEndpoint } from '../assets/svg/ic-api-endpoint-default.svg';
 import { ReactComponent as DataProductIcon } from '../assets/svg/ic-data-product.svg';
 import { ReactComponent as IconContainer } from '../assets/svg/ic-storage.svg';
 import { ReactComponent as IconStoredProcedure } from '../assets/svg/ic-stored-procedure.svg';
+import { ReactComponent as MetricIcon } from '../assets/svg/metric.svg';
 import { ReactComponent as IconMlModal } from '../assets/svg/mlmodal.svg';
 import { ReactComponent as IconPipeline } from '../assets/svg/pipeline-grey.svg';
-import { ReactComponent as IconTable } from '../assets/svg/table-grey.svg';
 import { ReactComponent as IconTag } from '../assets/svg/tag-grey.svg';
 import { ReactComponent as IconTopic } from '../assets/svg/topic-grey.svg';
+import { WILD_CARD_CHAR } from '../constants/char.constants';
 import {
   Option,
   SearchSuggestions,
-} from '../components/GlobalSearchProvider/GlobalSearchSuggestions/GlobalSearchSuggestions.interface';
-import {
-  FQN_SEPARATOR_CHAR,
-  WILD_CARD_CHAR,
-} from '../constants/char.constants';
+} from '../context/GlobalSearchProvider/GlobalSearchSuggestions/GlobalSearchSuggestions.interface';
 import { EntityType, FqnPart } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { SearchSourceAlias } from '../interface/search.interface';
 import { getPartialNameFromTableFQN } from './CommonUtils';
 import searchClassBase from './SearchClassBase';
 import serviceUtilClassBase from './ServiceUtilClassBase';
-import { escapeESReservedCharacters } from './StringsUtils';
+import { escapeESReservedCharacters, getEncodedFqn } from './StringsUtils';
 
 export const getSearchAPIQueryParams = (
   queryString: string,
@@ -51,17 +52,19 @@ export const getSearchAPIQueryParams = (
   sortOrder: string,
   searchIndex: SearchIndex | SearchIndex[],
   onlyDeleted = false,
-  trackTotalHits = false
+  trackTotalHits = false,
+  wildcard = true
 ): Record<string, string | boolean | number | string[]> => {
   const start = (from - 1) * size;
 
   const encodedQueryString = queryString
-    ? escapeESReservedCharacters(queryString)
+    ? getEncodedFqn(escapeESReservedCharacters(queryString))
     : '';
+
   const query =
-    encodedQueryString === WILD_CARD_CHAR
-      ? encodedQueryString
-      : `*${encodedQueryString}*`;
+    wildcard && encodedQueryString !== WILD_CARD_CHAR
+      ? `*${encodedQueryString}*`
+      : encodedQueryString;
 
   const params: Record<string, string | boolean | number | string[]> = {
     q: query + (filters ? ` AND ${filters}` : ''),
@@ -117,9 +120,9 @@ export const getGroupLabel = (index: string) => {
       GroupIcon = IconMlModal;
 
       break;
-    case SearchIndex.GLOSSARY:
+    case SearchIndex.GLOSSARY_TERM:
       label = i18next.t('label.glossary-term-plural');
-      GroupIcon = IconTable;
+      GroupIcon = GlossaryTermIcon;
 
       break;
     case SearchIndex.TAG:
@@ -157,6 +160,28 @@ export const getGroupLabel = (index: string) => {
 
       break;
 
+    case SearchIndex.CHART:
+      label = i18next.t('label.chart-plural');
+      GroupIcon = IconChart;
+
+      break;
+    case SearchIndex.API_COLLECTION_INDEX:
+      label = i18next.t('label.api-collection-plural');
+      GroupIcon = IconApiCollection;
+
+      break;
+
+    case SearchIndex.API_ENDPOINT_INDEX:
+      label = i18next.t('label.api-endpoint-plural');
+      GroupIcon = IconApiEndpoint;
+
+      break;
+    case SearchIndex.METRIC_SEARCH_INDEX:
+      label = i18next.t('label.metric-plural');
+      GroupIcon = MetricIcon;
+
+      break;
+
     default: {
       const { label: indexLabel, GroupIcon: IndexIcon } =
         searchClassBase.getIndexGroupLabel(index);
@@ -180,29 +205,19 @@ export const getGroupLabel = (index: string) => {
 
 export const getSuggestionElement = (
   suggestion: SearchSuggestions[number],
-  index: string,
   onClickHandler?: () => void
 ) => {
   const entitySource = suggestion as SearchSourceAlias;
   const { fullyQualifiedName: fqdn = '', name, serviceType = '' } = suggestion;
-  let database;
-  let schema;
-  if (index === SearchIndex.TABLE) {
-    database = getPartialNameFromTableFQN(fqdn, [FqnPart.Database]);
-    schema = getPartialNameFromTableFQN(fqdn, [FqnPart.Schema]);
-  }
-
   const entityLink = searchClassBase.getEntityLink(entitySource);
   const dataTestId = `${getPartialNameFromTableFQN(fqdn, [
     FqnPart.Service,
   ])}-${name}`.replaceAll(`"`, '');
 
-  const displayText =
-    database && schema
-      ? `${database}${FQN_SEPARATOR_CHAR}${schema}${FQN_SEPARATOR_CHAR}${name}`
-      : searchClassBase.getEntityName(entitySource);
+  const displayText = searchClassBase.getEntityName(entitySource);
+  const fqn = `(${entitySource.fullyQualifiedName ?? ''})`;
 
-  const retn = (
+  return (
     <Button
       block
       className="text-left truncate p-0"
@@ -219,18 +234,19 @@ export const getSuggestionElement = (
       key={fqdn}
       type="text">
       <Link
-        className="text-sm"
+        className="text-sm no-underline"
         data-testid="data-name"
         id={fqdn.replace(/\./g, '')}
         target={searchClassBase.getSearchEntityLinkTarget(entitySource)}
         to={entityLink}
         onClick={onClickHandler}>
         {displayText}
+        <Typography.Text className="m-l-xs text-xs" type="secondary">
+          {fqn}
+        </Typography.Text>
       </Link>
     </Button>
   );
-
-  return retn;
 };
 
 export const filterOptionsByIndex = (
@@ -239,7 +255,7 @@ export const filterOptionsByIndex = (
   maxItemsPerType = 5
 ) =>
   options
-    .filter((option) => option._index === searchIndex)
+    .filter((option) => option._index.includes(searchIndex))
     .map((option) => option._source)
     .slice(0, maxItemsPerType);
 
@@ -262,11 +278,15 @@ export const getEntityTypeFromSearchIndex = (searchIndex: string) => {
     [SearchIndex.ML_MODEL_SERVICE]: EntityType.MLMODEL_SERVICE,
     [SearchIndex.STORAGE_SERVICE]: EntityType.STORAGE_SERVICE,
     [SearchIndex.SEARCH_SERVICE]: EntityType.SEARCH_SERVICE,
-    [SearchIndex.GLOSSARY]: EntityType.GLOSSARY_TERM,
+    [SearchIndex.GLOSSARY_TERM]: EntityType.GLOSSARY_TERM,
     [SearchIndex.TAG]: EntityType.TAG,
     [SearchIndex.DATABASE]: EntityType.DATABASE,
     [SearchIndex.DOMAIN]: EntityType.DOMAIN,
     [SearchIndex.DATA_PRODUCT]: EntityType.DATA_PRODUCT,
+    [SearchIndex.API_COLLECTION_INDEX]: EntityType.API_COLLECTION,
+    [SearchIndex.API_ENDPOINT_INDEX]: EntityType.API_ENDPOINT,
+    [SearchIndex.METRIC_SEARCH_INDEX]: EntityType.METRIC,
+    [SearchIndex.API_SERVICE_INDEX]: EntityType.API_SERVICE,
   };
 
   return commonAssets[searchIndex] || null; // Return null if not found

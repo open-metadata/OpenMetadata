@@ -9,11 +9,11 @@ $$section
 
 Search index filter patterns to control whether to include search index as part of metadata ingestion. 
 
-**Include**: Explicitly include search index by adding a list of comma-separated regular expressions to the `Include` field. OpenMetadata will include all search indexes with names matching one or more of the supplied regular expressions. All other search indexes will be excluded.
+**Include**: Explicitly include search index by adding a list of regular expressions to the `Include` field. OpenMetadata will include all search indexes with names matching one or more of the supplied regular expressions. All other search indexes will be excluded.
 
 For example, to include only those search indexes whose name starts with the word `demo`, add the regex pattern in the include field as `^demo.*`.
 
-**Exclude**: Explicitly exclude search index by adding a list of comma-separated regular expressions to the `Exclude` field. OpenMetadata will exclude all search indexes with names matching one or more of the supplied regular expressions. All other search indexes will be included.
+**Exclude**: Explicitly exclude search index by adding a list of regular expressions to the `Exclude` field. OpenMetadata will exclude all search indexes with names matching one or more of the supplied regular expressions. All other search indexes will be included.
 
 For example, to exclude all search indexes with the name containing the word `demo`, add the regex pattern in the exclude field as `.*demo.*`.
 
@@ -38,6 +38,19 @@ $$section
 ### Include Sample Data $(id="includeSampleData")
 
 Set the Ingest Sample Data toggle to control whether to ingest sample data as part of metadata ingestion.
+$$
+
+$$section
+### Override Metadata $(id="overrideMetadata")
+
+Set the `Override Metadata` toggle to control whether to override the existing metadata in the OpenMetadata server with the metadata fetched from the source.
+
+If the toggle is `enabled`, the metadata fetched from the source will override and replace the existing metadata in the OpenMetadata.
+
+If the toggle is `disabled`, the metadata fetched from the source will not override the existing metadata in the OpenMetadata server. In this case the metadata will only get updated for fields that has no value added in OpenMetadata.
+
+This is applicable for fields like description, tags, owner and displayName
+
 $$
 
 $$section

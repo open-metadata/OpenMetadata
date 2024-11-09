@@ -10,11 +10,11 @@ $$section
 
 Dashboard filter patterns to control whether to include Dashboards as part of metadata ingestion.
 
-**Include**: Explicitly include Dashboards by adding a list of comma-separated regular expressions to the `Include` field. OpenMetadata will include all Dashboards with names matching one or more of the supplied regular expressions. All other Dashboards will be excluded.
+**Include**: Explicitly include Dashboards by adding a list of regular expressions to the `Include` field. OpenMetadata will include all Dashboards with names matching one or more of the supplied regular expressions. All other Dashboards will be excluded.
 
 For example, to include only those Dashboards whose name starts with the word `demo`, add the regex pattern in the include field as `^demo.*`.
 
-**Exclude**: Explicitly exclude Dashboards by adding a list of comma-separated regular expressions to the `Exclude` field. OpenMetadata will exclude all Dashboards with names matching one or more of the supplied regular expressions. All other Dashboards will be included.
+**Exclude**: Explicitly exclude Dashboards by adding a list of regular expressions to the `Exclude` field. OpenMetadata will exclude all Dashboards with names matching one or more of the supplied regular expressions. All other Dashboards will be included.
 
 For example, to exclude all Dashboards with the name containing the word `demo`, add the regex pattern in the exclude field as `.*demo.*`.
 
@@ -26,11 +26,11 @@ $$section
 
 Chart filter patterns are used to control whether to include Charts as part of metadata ingestion.
 
-**Include**: Explicitly include Charts by adding a list of comma-separated regular expressions to the `Include` field. OpenMetadata will include all Charts with names matching one or more of the supplied regular expressions. All other Charts will be excluded.
+**Include**: Explicitly include Charts by adding a list of regular expressions to the `Include` field. OpenMetadata will include all Charts with names matching one or more of the supplied regular expressions. All other Charts will be excluded.
 
 For example, to include only those Charts whose name starts with the word `demo`, add the regex pattern in the include field as `^demo.*`.
 
-**Exclude**: Explicitly exclude Charts by adding a list of comma-separated regular expressions to the `Exclude` field. OpenMetadata will exclude all Charts with names matching one or more of the supplied regular expressions. All other Charts will be included.
+**Exclude**: Explicitly exclude Charts by adding a list of regular expressions to the `Exclude` field. OpenMetadata will exclude all Charts with names matching one or more of the supplied regular expressions. All other Charts will be included.
 
 For example, to exclude all Charts with the name containing the word `demo`, add regex pattern in the exclude field as `.*demo.*`.
 
@@ -42,11 +42,11 @@ $$section
 
 Data Model filter patterns are used to control whether to include Data Models as part of metadata ingestion.
 
-**Include**: Explicitly include Data Models by adding a list of comma-separated regular expressions to the `Include` field. OpenMetadata will include all Data Models with names matching one or more of the supplied regular expressions. All other Data Models will be excluded.
+**Include**: Explicitly include Data Models by adding a list of regular expressions to the `Include` field. OpenMetadata will include all Data Models with names matching one or more of the supplied regular expressions. All other Data Models will be excluded.
 
 For example, to include only those Data Models whose name starts with the word `demo`, add the regex pattern in the include field as `^demo.*`.
 
-**Exclude**: Explicitly exclude Data Models by adding a list of comma-separated regular expressions to the `Exclude` field. OpenMetadata will exclude all Data Models with names matching one or more of the supplied regular expressions. All other Data Models will be included.
+**Exclude**: Explicitly exclude Data Models by adding a list of regular expressions to the `Exclude` field. OpenMetadata will exclude all Data Models with names matching one or more of the supplied regular expressions. All other Data Models will be included.
 
 For example, to exclude all Data Models with the name containing the word `demo`, add regex pattern in the exclude field as `.*demo.*`.
 
@@ -91,6 +91,25 @@ $$section
 ### Mark Deleted Dashboard $(id="markDeletedDashboards")
 
 Optional configuration to soft delete `dashboards` in OpenMetadata if the source `dashboards` are deleted. After deleting, all the associated entities like lineage, etc., with that `dashboard` will be deleted.
+$$
+
+$$section
+### Include Draft Dashboard $(id="includeDraftDashboard")
+
+Option to include/exclude draft dashboards. By default it will include draft dashboards.
+$$
+
+$$section
+### Override Metadata $(id="overrideMetadata")
+
+Set the `Override Metadata` toggle to control whether to override the existing metadata in the OpenMetadata server with the metadata fetched from the source.
+
+If the toggle is `enabled`, the metadata fetched from the source will override and replace the existing metadata in the OpenMetadata.
+
+If the toggle is `disabled`, the metadata fetched from the source will not override the existing metadata in the OpenMetadata server. In this case the metadata will only get updated for fields that has no value added in OpenMetadata.
+
+This is applicable for fields like description, tags, owner and displayName
+
 $$
 
 $$section

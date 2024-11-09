@@ -51,7 +51,7 @@ jest.mock('../ErrorWithPlaceholder/ErrorPlaceHolder', () => {
   return jest.fn().mockReturnValue(<div>ErrorPlaceHolder.component</div>);
 });
 
-jest.mock('../../../components/Loader/Loader', () => {
+jest.mock('../../common/Loader/Loader', () => {
   return jest.fn().mockReturnValue(<div data-testid="loader">Loader</div>);
 });
 
@@ -63,7 +63,7 @@ jest.mock('../../../rest/metadataTypeAPI', () => ({
   ),
 }));
 
-jest.mock('../../../components/PermissionProvider/PermissionProvider', () => ({
+jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockReturnValue({
     getEntityPermissionByFqn: jest.fn().mockReturnValue({
       Create: true,
@@ -153,17 +153,13 @@ describe('Test CustomProperty Table Component', () => {
         <CustomPropertyTable {...mockProp} entityType={EntityType.TABLE} />
       );
     });
-    const table = await screen.findByTestId('custom-properties-table');
+    const table = await screen.findByTestId('custom-properties-card');
 
     expect(table).toBeInTheDocument();
 
-    const propertyName = await screen.findByText('label.name');
-    const propertyValue = await screen.findByText('label.value');
-    const rows = await screen.findAllByRole('row');
+    const propertyValue = await screen.findByText('PropertyValue');
 
-    expect(propertyName).toBeInTheDocument();
     expect(propertyValue).toBeInTheDocument();
-    expect(rows).toHaveLength(mockCustomProperties.length + 1);
   });
 
   it('Should render no data placeholder if custom properties list is empty', async () => {
@@ -180,6 +176,23 @@ describe('Test CustomProperty Table Component', () => {
     );
 
     expect(noDataPlaceHolder).toBeInTheDocument();
+  });
+
+  it('Should not render no data placeholder if custom properties list is empty and isRenderedInRightPanel', async () => {
+    (getTypeByFQN as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve({ customProperties: [] })
+    );
+    await act(async () => {
+      render(
+        <CustomPropertyTable
+          {...mockProp}
+          isRenderedInRightPanel
+          entityType={EntityType.TABLE}
+        />
+      );
+    });
+
+    expect(screen.queryByText('ErrorPlaceHolder.component')).toBeNull();
   });
 
   it('Loader should be shown while loading the custom properties', async () => {
@@ -205,10 +218,9 @@ describe('Test CustomProperty Table Component', () => {
         <CustomPropertyTable {...mockProp} entityType={EntityType.TABLE} />
       );
     });
-    const tableRowTitle = await screen.findByText('xName');
+
     const tableRowValue = await screen.findByText('PropertyValue');
 
-    expect(tableRowTitle).toBeInTheDocument();
     expect(tableRowValue).toBeInTheDocument();
   });
 });

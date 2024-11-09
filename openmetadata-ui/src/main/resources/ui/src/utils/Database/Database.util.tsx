@@ -10,17 +10,23 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { t } from 'i18next';
-import { toLower } from 'lodash';
+import { isUndefined, toLower } from 'lodash';
 import React from 'react';
 import { Link } from 'react-router-dom';
 import RichTextEditorPreviewer from '../../components/common/RichTextEditor/RichTextEditorPreviewer';
 import {
-  getDatabaseSchemaDetailsPath,
+  getEntityDetailsPath,
   NO_DATA_PLACEHOLDER,
 } from '../../constants/constants';
-import { TabSpecificField } from '../../enums/entity.enum';
+import { DetailPageWidgetKeys } from '../../enums/CustomizeDetailPage.enum';
+import {
+  EntityTabs,
+  EntityType,
+  TabSpecificField,
+} from '../../enums/entity.enum';
 import { DatabaseSchema } from '../../generated/entity/data/databaseSchema';
 import { EntityReference } from '../../generated/entity/type';
 import { UsageDetails } from '../../generated/type/entityUsage';
@@ -50,7 +56,7 @@ export const getQueryFilterForDatabase = (
     },
   });
 
-export const DatabaseFields = `${TabSpecificField.TAGS}, ${TabSpecificField.OWNER}, ${TabSpecificField.DOMAIN},${TabSpecificField.DATA_PRODUCTS}`;
+export const DatabaseFields = `${TabSpecificField.TAGS}, ${TabSpecificField.OWNERS}, ${TabSpecificField.DOMAIN},${TabSpecificField.DATA_PRODUCTS}`;
 
 export const schemaTableColumns: ColumnsType<DatabaseSchema> = [
   {
@@ -65,7 +71,10 @@ export const schemaTableColumns: ColumnsType<DatabaseSchema> = [
           data-testid={record.name}
           to={
             record.fullyQualifiedName
-              ? getDatabaseSchemaDetailsPath(record.fullyQualifiedName)
+              ? getEntityDetailsPath(
+                  EntityType.DATABASE_SCHEMA,
+                  record.fullyQualifiedName
+                )
               : ''
           }>
           {getEntityName(record)}
@@ -87,12 +96,19 @@ export const schemaTableColumns: ColumnsType<DatabaseSchema> = [
       ),
   },
   {
-    title: t('label.owner'),
-    dataIndex: 'owner',
-    key: 'owner',
+    title: t('label.owner-plural'),
+    dataIndex: 'owners',
+    key: 'owners',
     width: 120,
-    render: (text: EntityReference) =>
-      getEntityName(text) || NO_DATA_PLACEHOLDER,
+
+    render: (owners: EntityReference[]) =>
+      !isUndefined(owners) && owners.length > 0 ? (
+        owners.map((owner: EntityReference) => getEntityName(owner))
+      ) : (
+        <Typography.Text data-testid="no-owner-text">
+          {NO_DATA_PLACEHOLDER}
+        </Typography.Text>
+      ),
   },
   {
     title: t('label.usage'),
@@ -103,3 +119,70 @@ export const schemaTableColumns: ColumnsType<DatabaseSchema> = [
       getUsagePercentile(text?.weeklyStats?.percentileRank ?? 0),
   },
 ];
+
+export const getDatabaseDetailsPageDefaultLayout = (tab: EntityTabs) => {
+  switch (tab) {
+    case EntityTabs.SCHEMA:
+      return [
+        {
+          h: 2,
+          i: DetailPageWidgetKeys.DESCRIPTION,
+          w: 6,
+          x: 0,
+          y: 0,
+          static: false,
+        },
+        {
+          h: 8,
+          i: DetailPageWidgetKeys.TABLE_SCHEMA,
+          w: 6,
+          x: 0,
+          y: 0,
+          static: false,
+        },
+        {
+          h: 1,
+          i: DetailPageWidgetKeys.FREQUENTLY_JOINED_TABLES,
+          w: 2,
+          x: 6,
+          y: 0,
+          static: false,
+        },
+        {
+          h: 1,
+          i: DetailPageWidgetKeys.DATA_PRODUCTS,
+          w: 2,
+          x: 6,
+          y: 1,
+          static: false,
+        },
+        {
+          h: 1,
+          i: DetailPageWidgetKeys.TAGS,
+          w: 2,
+          x: 6,
+          y: 2,
+          static: false,
+        },
+        {
+          h: 1,
+          i: DetailPageWidgetKeys.GLOSSARY_TERMS,
+          w: 2,
+          x: 6,
+          y: 3,
+          static: false,
+        },
+        {
+          h: 3,
+          i: DetailPageWidgetKeys.CUSTOM_PROPERTIES,
+          w: 2,
+          x: 6,
+          y: 4,
+          static: false,
+        },
+      ];
+
+    default:
+      return [];
+  }
+};

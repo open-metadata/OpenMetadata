@@ -17,6 +17,9 @@ from typing import Optional
 
 from botocore.exceptions import ClientError
 
+from metadata.generated.schema.security.secrets.secretsManagerClientLoader import (
+    SecretsManagerClientLoader,
+)
 from metadata.generated.schema.security.secrets.secretsManagerProvider import (
     SecretsManagerProvider,
 )
@@ -32,8 +35,10 @@ class AWSSSMSecretsManager(AWSBasedSecretsManager):
     AWS SSM Parameter Store Secret Manager Class
     """
 
-    def __init__(self, credentials: Optional["AWSCredentials"]):
-        super().__init__(credentials, "ssm", SecretsManagerProvider.aws)
+    def __init__(self, loader: SecretsManagerClientLoader):
+        super().__init__(
+            client="ssm", provider=SecretsManagerProvider.aws, loader=loader
+        )
 
     def get_string_value(self, secret_id: str) -> Optional[str]:
         """

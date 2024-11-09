@@ -22,7 +22,7 @@ import {
 } from 'lodash';
 import React from 'react';
 import { Layout } from 'react-grid-layout';
-import EmptyWidgetPlaceholder from '../components/CustomizableComponents/EmptyWidgetPlaceholder/EmptyWidgetPlaceholder';
+import EmptyWidgetPlaceholder from '../components/MyData/CustomizableComponents/EmptyWidgetPlaceholder/EmptyWidgetPlaceholder';
 import { SIZE } from '../enums/common.enum';
 import {
   LandingPageWidgetKeys,
@@ -32,7 +32,48 @@ import { Document } from '../generated/entity/docStore/document';
 import { Thread } from '../generated/entity/feed/thread';
 import { EntityReference } from '../generated/entity/type';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
-import customizePageClassBase from './CustomizePageClassBase';
+import customizeMyDataPageClassBase from './CustomizeMyDataPageClassBase';
+
+const getNewWidgetPlacement = (
+  currentLayout: WidgetConfig[],
+  widgetWidth: number
+) => {
+  const lowestWidgetLayout = currentLayout.reduce(
+    (acc, widget) => {
+      if (
+        widget.y >= acc.y &&
+        widget.i !== LandingPageWidgetKeys.EMPTY_WIDGET_PLACEHOLDER
+      ) {
+        if (widget.y === acc.y && widget.x < acc.x) {
+          return acc;
+        }
+
+        return widget;
+      }
+
+      return acc;
+    },
+    { y: 0, x: 0, w: 0 }
+  );
+
+  // Check if there's enough space to place the new widget on the same row
+  if (
+    customizeMyDataPageClassBase.landingPageMaxGridSize -
+      (lowestWidgetLayout.x + lowestWidgetLayout.w) >=
+    widgetWidth
+  ) {
+    return {
+      x: lowestWidgetLayout.x + lowestWidgetLayout.w,
+      y: lowestWidgetLayout.y,
+    };
+  }
+
+  // Otherwise, move to the next row
+  return {
+    x: 0,
+    y: lowestWidgetLayout.y + 1,
+  };
+};
 
 export const getAddWidgetHandler =
   (
@@ -43,7 +84,7 @@ export const getAddWidgetHandler =
   ) =>
   (currentLayout: Array<WidgetConfig>) => {
     const widgetFQN = uniqueId(`${newWidgetData.fullyQualifiedName}-`);
-    const widgetHeight = customizePageClassBase.getWidgetHeight(
+    const widgetHeight = customizeMyDataPageClassBase.getWidgetHeight(
       newWidgetData.name
     );
 
@@ -60,10 +101,9 @@ export const getAddWidgetHandler =
         {
           w: widgetWidth,
           h: widgetHeight,
-          x: 0,
-          y: 0,
           i: widgetFQN,
           static: false,
+          ...getNewWidgetPlacement(currentLayout, widgetWidth),
         },
       ];
     } else {
@@ -225,7 +265,7 @@ export const getWidgetFromKey = ({
     );
   }
 
-  const Widget = customizePageClassBase.getWidgetsFromKey(widgetConfig.i);
+  const Widget = customizeMyDataPageClassBase.getWidgetsFromKey(widgetConfig.i);
 
   return (
     <Widget
@@ -253,7 +293,7 @@ export const getLayoutWithEmptyWidgetPlaceholder = (
     i: LandingPageWidgetKeys.EMPTY_WIDGET_PLACEHOLDER,
     w: emptyWidgetWidth,
     x: 0,
-    y: 100,
+    y: 10,
     isDraggable: false,
   },
 ];

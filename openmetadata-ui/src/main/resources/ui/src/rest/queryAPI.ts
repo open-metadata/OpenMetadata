@@ -14,7 +14,7 @@
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { PagingResponse } from 'Models';
-import { QueryVote } from '../components/TableQueries/TableQueries.interface';
+import { QueryVote } from '../components/Database/TableQueries/TableQueries.interface';
 import { CreateQuery } from '../generated/api/data/createQuery';
 import { Query } from '../generated/entity/data/query';
 import { ListParams } from '../interface/API.interface';
@@ -62,14 +62,9 @@ export const postQuery = async (query: CreateQuery) => {
   return response.data;
 };
 export const patchQueries = async (id: string, patch: Operation[]) => {
-  const configOptions = {
-    headers: { 'Content-type': 'application/json-patch+json' },
-  };
-
   const response = await APIClient.patch<Operation[], AxiosResponse<Query>>(
     `${BASE_URL}/${id}`,
-    patch,
-    configOptions
+    patch
   );
 
   return response.data;

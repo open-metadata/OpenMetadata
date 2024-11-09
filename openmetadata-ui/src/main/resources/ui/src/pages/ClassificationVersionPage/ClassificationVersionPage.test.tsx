@@ -15,11 +15,16 @@ import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { ENTITY_PERMISSIONS } from '../../mocks/Permissions.mock';
+import {
+  getClassificationByName,
+  getClassificationVersionData,
+  getClassificationVersionsList,
+} from '../../rest/tagAPI';
 import { MOCK_ALL_CLASSIFICATIONS } from '../TagsPage/TagsPage.mock';
 import ClassificationVersionPage from './ClassificationVersionPage';
 
 const mockParams = {
-  fqn: 'table',
+  fqn: 'PersonalData',
   version: '0.1',
 };
 
@@ -31,12 +36,10 @@ jest.mock('react-router-dom', () => ({
 }));
 
 jest.mock(
-  '../../components/ClassificationDetails/ClassificationDetails',
-  () => ({
-    ClassificationDetails: jest
-      .fn()
-      .mockImplementation(() => <div>ClassificationDetails</div>),
-  })
+  '../../components/Classifications/ClassificationDetails/ClassificationDetails',
+  () => {
+    return jest.fn().mockImplementation(() => <div>ClassificationDetails</div>);
+  }
 );
 
 jest.mock(
@@ -53,7 +56,7 @@ jest.mock(
   }
 );
 
-jest.mock('../../components/Loader/Loader', () => {
+jest.mock('../../components/common/Loader/Loader', () => {
   return jest.fn().mockReturnValue(<div>Loader component</div>);
 });
 
@@ -68,7 +71,7 @@ const mockGetEntityPermissionByFqn = jest
   .fn()
   .mockImplementation(() => Promise.resolve(ENTITY_PERMISSIONS));
 
-jest.mock('../../components/PermissionProvider/PermissionProvider', () => ({
+jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockImplementation(() => ({
     getEntityPermissionByFqn: mockGetEntityPermissionByFqn,
   })),
@@ -82,16 +85,25 @@ jest.mock('../../utils/PermissionsUtils', () => ({
   },
 }));
 
+const mockClassification = { id: 123 };
+
 jest.mock('../../rest/tagAPI', () => ({
   getClassificationByName: jest
     .fn()
-    .mockImplementation(() => Promise.resolve(MOCK_ALL_CLASSIFICATIONS)),
+    .mockImplementation(() => Promise.resolve(mockClassification)),
   getClassificationVersionData: jest
     .fn()
-    .mockImplementation(() => Promise.resolve(MOCK_ALL_CLASSIFICATIONS)),
-  getClassificationVersionsList: jest
-    .fn()
-    .mockImplementation(() => Promise.resolve(MOCK_ALL_CLASSIFICATIONS)),
+    .mockImplementation(() =>
+      Promise.resolve(MOCK_ALL_CLASSIFICATIONS.data[0])
+    ),
+  getClassificationVersionsList: jest.fn().mockImplementation(() =>
+    Promise.resolve([
+      {
+        entityType: 'classification',
+        versions: [],
+      },
+    ])
+  ),
 }));
 
 jest.mock('../../utils/RouterUtils', () => ({
@@ -148,9 +160,19 @@ describe('ClassificationVersionPage component', () => {
       });
     });
 
-    expect(mockGetEntityPermissionByFqn).toHaveBeenCalled();
+    expect(mockGetEntityPermissionByFqn).toHaveBeenCalledWith(
+      'classification',
+      mockParams.fqn
+    );
 
-    expect(screen.findByText('testClassificationDetails')).toBeTruthy();
+    expect(getClassificationByName).toHaveBeenCalledWith(mockParams.fqn);
+    expect(getClassificationVersionsList).toHaveBeenCalledWith(123);
+
+    expect(getClassificationVersionData).toHaveBeenCalledWith(123, '0.1');
+
+    expect(
+      await screen.findByText('ClassificationDetails')
+    ).toBeInTheDocument();
   });
 
   it('should render ClassificationVersionPage with PageLayoutV1 and child components', async () => {

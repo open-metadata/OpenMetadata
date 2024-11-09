@@ -15,29 +15,24 @@ import { CloseOutlined } from '@ant-design/icons';
 import { Button, Drawer, Space, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { Operation } from 'fast-json-patch';
-import { uniqueId } from 'lodash';
-import React, { FC, useState } from 'react';
+import React, { FC, useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  CreateThread,
-  ThreadType,
-} from '../../../../generated/api/feed/createThread';
 import { Post } from '../../../../generated/entity/feed/thread';
-import { postFeedById, postThread } from '../../../../rest/feedsAPI';
+import { postFeedById } from '../../../../rest/feedsAPI';
 import { getEntityFeedLink } from '../../../../utils/EntityUtils';
 import { deletePost, updateThreadData } from '../../../../utils/FeedUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
-import ActivityThreadPanelBody from '../../../ActivityFeed/ActivityThreadPanel/ActivityThreadPanelBody';
-import { useAuthContext } from '../../../Auth/AuthProviders/AuthProvider';
+
+import { useApplicationStore } from '../../../../hooks/useApplicationStore';
+import AnnouncementThreadBody from '../../../Announcement/AnnouncementThreadBody.component';
 import AddAnnouncementModal from '../../../Modals/AnnouncementModal/AddAnnouncementModal';
 
 interface Props {
   open: boolean;
   entityType: string;
   entityFQN: string;
-  entityName: string;
+  createPermission: boolean;
   onClose: () => void;
-  createPermission?: boolean;
 }
 
 const AnnouncementDrawer: FC<Props> = ({
@@ -45,12 +40,13 @@ const AnnouncementDrawer: FC<Props> = ({
   onClose,
   entityFQN,
   entityType,
-  entityName,
-  createPermission,
+  createPermission = false,
 }) => {
   const { t } = useTranslation();
-  const { currentUser } = useAuthContext();
-  const [isAnnouncement, setIsAnnouncement] = useState<boolean>(false);
+  const { currentUser } = useApplicationStore();
+  const [isAddAnnouncementOpen, setIsAddAnnouncementOpen] =
+    useState<boolean>(false);
+  const [refetchThread, setRefetchThread] = useState<boolean>(false);
 
   const title = (
     <Space
@@ -59,96 +55,100 @@ const AnnouncementDrawer: FC<Props> = ({
       data-testid="title"
       style={{ width: '100%' }}>
       <Typography.Text className="font-medium break-all">
-        {t('label.announcement-on-entity', { entity: entityName })}
+        {t('label.announcement-plural')}
       </Typography.Text>
       <CloseOutlined onClick={onClose} />
     </Space>
   );
 
-  const createThread = (data: CreateThread) => {
-    postThread(data).catch((err: AxiosError) => {
-      showErrorToast(err);
-    });
-  };
-
-  const deletePostHandler = (
+  const deletePostHandler = async (
     threadId: string,
     postId: string,
     isThread: boolean
-  ) => {
-    deletePost(threadId, postId, isThread);
+  ): Promise<void> => {
+    await deletePost(threadId, postId, isThread);
   };
 
-  const postFeedHandler = (value: string, id: string) => {
+  const postFeedHandler = async (value: string, id: string): Promise<void> => {
     const data = {
       message: value,
       from: currentUser?.name,
     } as Post;
-    postFeedById(id, data).catch((err: AxiosError) => {
-      showErrorToast(err);
-    });
+
+    try {
+      await postFeedById(id, data);
+    } catch (err) {
+      showErrorToast(err as AxiosError);
+    }
   };
 
-  const updateThreadHandler = (
+  const updateThreadHandler = async (
     threadId: string,
     postId: string,
     isThread: boolean,
     data: Operation[]
-  ) => {
+  ): Promise<void> => {
     const callback = () => {
       return;
     };
 
-    updateThreadData(threadId, postId, isThread, data, callback);
+    await updateThreadData(threadId, postId, isThread, data, callback);
   };
 
-  return (
-    <>
-      <div data-testid="announcement-drawer">
-        <Drawer
-          closable={false}
-          open={open}
-          placement="right"
-          title={title}
-          width={576}
-          onClose={onClose}>
-          <div className="d-flex justify-end">
-            <Tooltip
-              title={!createPermission && t('message.no-permission-to-view')}>
-              <Button
-                data-testid="add-announcement"
-                disabled={!createPermission}
-                type="primary"
-                onClick={() => setIsAnnouncement(true)}>
-                {t('label.add-entity', { entity: t('label.announcement') })}
-              </Button>
-            </Tooltip>
-          </div>
+  const handleCloseAnnouncementModal = useCallback(
+    () => setIsAddAnnouncementOpen(false),
+    []
+  );
+  const handleOpenAnnouncementModal = useCallback(
+    () => setIsAddAnnouncementOpen(true),
+    []
+  );
 
-          <ActivityThreadPanelBody
-            className="p-0"
-            createThread={createThread}
-            deletePostHandler={deletePostHandler}
-            editAnnouncementPermission={createPermission}
-            key={uniqueId()}
-            postFeedHandler={postFeedHandler}
-            showHeader={false}
-            threadLink={getEntityFeedLink(entityType, entityFQN)}
-            threadType={ThreadType.Announcement}
-            updateThreadHandler={updateThreadHandler}
-          />
-        </Drawer>
+  const handleSaveAnnouncement = useCallback(() => {
+    handleCloseAnnouncementModal();
+    setRefetchThread((prev) => !prev);
+  }, []);
+
+  return (
+    <Drawer
+      closable={false}
+      open={open}
+      placement="right"
+      title={title}
+      width={576}
+      onClose={onClose}>
+      <div className="d-flex justify-end">
+        <Tooltip
+          title={!createPermission && t('message.no-permission-to-view')}>
+          <Button
+            data-testid="add-announcement"
+            disabled={!createPermission}
+            type="primary"
+            onClick={handleOpenAnnouncementModal}>
+            {t('label.add-entity', { entity: t('label.announcement') })}
+          </Button>
+        </Tooltip>
       </div>
 
-      {isAnnouncement && (
+      <AnnouncementThreadBody
+        deletePostHandler={deletePostHandler}
+        editPermission={createPermission}
+        postFeedHandler={postFeedHandler}
+        refetchThread={refetchThread}
+        threadLink={getEntityFeedLink(entityType, entityFQN)}
+        updateThreadHandler={updateThreadHandler}
+      />
+
+      {isAddAnnouncementOpen && (
         <AddAnnouncementModal
           entityFQN={entityFQN || ''}
           entityType={entityType || ''}
-          open={isAnnouncement}
-          onCancel={() => setIsAnnouncement(false)}
+          open={isAddAnnouncementOpen}
+          onCancel={handleCloseAnnouncementModal}
+          onSave={handleSaveAnnouncement}
         />
       )}
-    </>
+    </Drawer>
   );
 };
 

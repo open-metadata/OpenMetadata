@@ -20,7 +20,7 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EDITOR_OPTIONS } from '../../constants/BlockEditor.constants';
-import { formatContent } from '../../utils/BlockEditorUtils';
+import { formatContent, setEditorContent } from '../../utils/BlockEditorUtils';
 import './block-editor.less';
 import { EditorSlotsRef } from './BlockEditor.interface';
 import EditorSlots from './EditorSlots';
@@ -72,7 +72,7 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
       setTimeout(() => {
         if (content !== undefined) {
           const htmlContent = formatContent(content, 'client');
-          editor.commands.setContent(htmlContent);
+          setEditorContent(editor, htmlContent);
         }
       });
     }, [content, editor]);

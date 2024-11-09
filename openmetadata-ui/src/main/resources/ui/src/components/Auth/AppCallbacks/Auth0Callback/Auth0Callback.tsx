@@ -14,18 +14,17 @@
 import { useAuth0 } from '@auth0/auth0-react';
 import { t } from 'i18next';
 import React, { VFC } from 'react';
-import localState from '../../../../utils/LocalStorageUtils';
-import { useAuthContext } from '../../AuthProviders/AuthProvider';
+
+import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { OidcUser } from '../../AuthProviders/AuthProvider.interface';
 
 const Auth0Callback: VFC = () => {
   const { isAuthenticated, user, getIdTokenClaims, error } = useAuth0();
-  const { setIsAuthenticated, handleSuccessfulLogin } = useAuthContext();
+  const { handleSuccessfulLogin, setOidcToken } = useApplicationStore();
   if (isAuthenticated) {
     getIdTokenClaims()
       .then((token) => {
-        localState.setOidcToken(token?.__raw || '');
-        setIsAuthenticated(true);
+        setOidcToken(token?.__raw || '');
         const oidcUser: OidcUser = {
           id_token: token?.__raw || '',
           scope: '',

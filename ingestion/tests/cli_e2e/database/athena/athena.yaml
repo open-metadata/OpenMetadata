@@ -12,6 +12,9 @@ source:
   sourceConfig:
     config:
       type: DatabaseMetadata
+      schemaFilterPattern:
+        includes:
+        - e2e_db
 sink:
   type: metadata-rest
   config: {}

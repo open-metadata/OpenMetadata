@@ -19,10 +19,10 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import sqlparse
 from cached_property import cached_property
-from sqllineage import SQLPARSE_DIALECT
-from sqllineage.core.models import Column, Table
-from sqllineage.exceptions import SQLLineageException
-from sqllineage.runner import LineageRunner
+from collate_sqllineage import SQLPARSE_DIALECT
+from collate_sqllineage.core.models import Column, Table
+from collate_sqllineage.exceptions import SQLLineageException
+from collate_sqllineage.runner import LineageRunner
 from sqlparse.sql import Comparison, Identifier, Parenthesis, Statement
 
 from metadata.generated.schema.type.tableUsageCount import TableColumn, TableColumnJoin
@@ -67,6 +67,8 @@ class LineageParser:
         timeout_seconds: int = LINEAGE_PARSING_TIMEOUT,
     ):
         self.query = query
+        self.query_parsing_success = True
+        self.query_parsing_failure_reason = None
         self._clean_query = self.clean_raw_query(query)
         self.parser = self._evaluate_best_parser(
             self._clean_query, dialect=dialect, timeout_seconds=timeout_seconds
@@ -98,24 +100,30 @@ class LineageParser:
         """
         Get a list of intermediate tables
         """
-        # These are @lazy_property, not properly being picked up by IDEs. Ignore the warning
-        return self.retrieve_tables(self.parser.intermediate_tables)
+        if self.parser:
+            # These are @lazy_property, not properly being picked up by IDEs. Ignore the warning
+            return self.retrieve_tables(self.parser.intermediate_tables)
+        return []
 
     @cached_property
     def source_tables(self) -> List[Table]:
         """
         Get a list of source tables
         """
-        # These are @lazy_property, not properly being picked up by IDEs. Ignore the warning
-        return self.retrieve_tables(self.parser.source_tables)
+        if self.parser:
+            # These are @lazy_property, not properly being picked up by IDEs. Ignore the warning
+            return self.retrieve_tables(self.parser.source_tables)
+        return []
 
     @cached_property
     def target_tables(self) -> List[Table]:
         """
         Get a list of target tables
         """
-        # These are @lazy_property, not properly being picked up by IDEs. Ignore the warning
-        return self.retrieve_tables(self.parser.target_tables)
+        if self.parser:
+            # These are @lazy_property, not properly being picked up by IDEs. Ignore the warning
+            return self.retrieve_tables(self.parser.target_tables)
+        return []
 
     # pylint: disable=protected-access
     @cached_property
@@ -124,6 +132,8 @@ class LineageParser:
         Get a list of tuples of column lineage
         """
         column_lineage = []
+        if self.parser is None:
+            return []
         try:
             if self.parser._dialect == SQLPARSE_DIALECT:
                 return self.parser.get_column_lineage()
@@ -209,6 +219,11 @@ class LineageParser:
         """
         aliases = self.table_aliases
         values = identifier.value.split(".")
+
+        if len(values) > 4:
+            logger.debug(f"Invalid comparison element from identifier: {identifier}")
+            return None, None
+
         database_name, schema_name, table_or_alias, column_name = (
             [None] * (4 - len(values))
         ) + values
@@ -299,29 +314,39 @@ class LineageParser:
                 comparisons.append(sub)
 
         for comparison in comparisons:
-            if "." not in comparison.left.value or "." not in comparison.right.value:
-                logger.debug(f"Ignoring comparison {comparison}")
-                continue
+            try:
+                if (
+                    "." not in comparison.left.value
+                    or "." not in comparison.right.value
+                ):
+                    logger.debug(f"Ignoring comparison {comparison}")
+                    continue
 
-            table_left, column_left = self.get_comparison_elements(
-                identifier=comparison.left
-            )
-            table_right, column_right = self.get_comparison_elements(
-                identifier=comparison.right
-            )
+                table_left, column_left = self.get_comparison_elements(
+                    identifier=comparison.left
+                )
+                table_right, column_right = self.get_comparison_elements(
+                    identifier=comparison.right
+                )
 
-            if not table_left or not table_right:
-                logger.warning(f"Cannot find ingredients from {comparison}")
-                continue
+                if not table_left or not table_right:
+                    logger.warning(
+                        f"Can't extract table names when parsing JOIN information from {comparison}"
+                    )
+                    logger.debug(f"Query: {sql_statement}")
+                    continue
 
-            left_table_column = TableColumn(table=table_left, column=column_left)
-            right_table_column = TableColumn(table=table_right, column=column_right)
+                left_table_column = TableColumn(table=table_left, column=column_left)
+                right_table_column = TableColumn(table=table_right, column=column_right)
 
-            # We just send the info once, from Left -> Right.
-            # The backend will prepare the symmetric information.
-            self.stateful_add_table_joins(
-                join_data, left_table_column, right_table_column
-            )
+                # We just send the info once, from Left -> Right.
+                # The backend will prepare the symmetric information.
+                self.stateful_add_table_joins(
+                    join_data, left_table_column, right_table_column
+                )
+            except Exception as exc:
+                logger.debug(f"Cannot process comparison {comparison}: {exc}")
+                logger.debug(traceback.format_exc())
 
     @cached_property
     def table_joins(self) -> Dict[str, List[TableColumnJoin]]:
@@ -331,6 +356,8 @@ class LineageParser:
         :return: for each table name, list all joins against other tables
         """
         join_data = defaultdict(list)
+        if self.parser is None:
+            return join_data
         # These are @lazy_property, not properly being picked up by IDEs. Ignore the warning
         for statement in self.parser.statements():
             self.stateful_add_joins_from_statement(join_data, sql_statement=statement)
@@ -375,10 +402,12 @@ class LineageParser:
 
         return clean_query.strip()
 
-    @staticmethod
     def _evaluate_best_parser(
-        query: str, dialect: Dialect, timeout_seconds: int
-    ) -> LineageRunner:
+        self, query: str, dialect: Dialect, timeout_seconds: int
+    ) -> Optional[LineageRunner]:
+        if query is None:
+            return None
+
         @timeout(seconds=timeout_seconds)
         def get_sqlfluff_lineage_runner(qry: str, dlct: str) -> LineageRunner:
             lr_dialect = LineageRunner(qry, dialect=dlct)
@@ -396,15 +425,19 @@ class LineageParser:
                 )
             )
         except TimeoutError:
-            logger.debug(
-                f"Lineage with SqlFluff failed for the [{dialect.value}] query: [{query}]: "
+            self.query_parsing_success = False
+            self.query_parsing_failure_reason = (
+                f"Lineage with SqlFluff failed for the [{dialect.value}]. "
                 f"Parser has been running for more than {timeout_seconds} seconds."
             )
+            logger.debug(f"{self.query_parsing_failure_reason}] query: [{query}]")
             lr_sqlfluff = None
         except Exception:
-            logger.debug(
-                f"Lineage with SqlFluff failed for the [{dialect.value}] query: [{query}]"
+            self.query_parsing_success = False
+            self.query_parsing_failure_reason = (
+                f"Lineage with SqlFluff failed for the [{dialect.value}]"
             )
+            logger.debug(f"{self.query_parsing_failure_reason} query: [{query}]")
             lr_sqlfluff = None
 
         lr_sqlparser = LineageRunner(query)
@@ -423,10 +456,12 @@ class LineageParser:
         if lr_sqlfluff:
             # if sqlparser retrieve more lineage info that sqlfluff
             if sqlparser_count > sqlfluff_count:
-                logger.debug(
+                self.query_parsing_success = False
+                self.query_parsing_failure_reason = (
                     "Lineage computed with SqlFluff did not perform as expected "
-                    f"for the [{dialect.value}] query: [{query}]"
+                    f"for the [{dialect.value}]"
                 )
+                logger.debug(f"{self.query_parsing_failure_reason} query: [{query}]")
                 return lr_sqlparser
             return lr_sqlfluff
         return lr_sqlparser

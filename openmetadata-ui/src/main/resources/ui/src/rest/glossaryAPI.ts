@@ -14,13 +14,18 @@
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { PagingResponse } from 'Models';
-import { VotingDataProps } from '../components/Voting/voting.interface';
+import { CSVExportResponse } from '../components/Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
+import { VotingDataProps } from '../components/Entity/Voting/voting.interface';
+import { ES_MAX_PAGE_SIZE, PAGE_SIZE_MEDIUM } from '../constants/constants';
+import { TabSpecificField } from '../enums/entity.enum';
+import { SearchIndex } from '../enums/search.enum';
 import { AddGlossaryToAssetsRequest } from '../generated/api/addGlossaryToAssetsRequest';
 import { CreateGlossary } from '../generated/api/data/createGlossary';
 import { CreateGlossaryTerm } from '../generated/api/data/createGlossaryTerm';
 import { EntityReference, Glossary } from '../generated/entity/data/glossary';
 import { GlossaryTerm } from '../generated/entity/data/glossaryTerm';
 import { BulkOperationResult } from '../generated/type/bulkOperationResult';
+import { ChangeEvent } from '../generated/type/changeEvent';
 import { CSVImportResult } from '../generated/type/csvImportResult';
 import { EntityHistory } from '../generated/type/entityHistory';
 import { ListParams } from '../interface/API.interface';
@@ -53,23 +58,10 @@ export const addGlossaries = async (data: CreateGlossary) => {
   return response.data;
 };
 
-export const updateGlossaries = (
-  data: CreateGlossary
-): Promise<AxiosResponse> => {
-  const url = '/glossaries';
-
-  return APIClient.put(url, data);
-};
-
 export const patchGlossaries = async (id: string, patch: Operation[]) => {
-  const configOptions = {
-    headers: { 'Content-type': 'application/json-patch+json' },
-  };
-
   const response = await APIClient.patch<Operation[], AxiosResponse<Glossary>>(
     `/glossaries/${id}`,
-    patch,
-    configOptions
+    patch
   );
 
   return response.data;
@@ -105,6 +97,37 @@ export const getGlossaryTerms = async (params: ListGlossaryTermsParams) => {
   return response.data;
 };
 
+export const queryGlossaryTerms = async (glossaryName: string) => {
+  const apiUrl = `/search/query`;
+
+  const { data } = await APIClient.get(apiUrl, {
+    params: {
+      index: SearchIndex.GLOSSARY_TERM,
+      q: '',
+      from: 0,
+      size: ES_MAX_PAGE_SIZE,
+      deleted: false,
+      track_total_hits: true,
+      query_filter: JSON.stringify({
+        query: {
+          bool: {
+            must: [
+              {
+                term: {
+                  'glossary.name.keyword': glossaryName.toLocaleLowerCase(),
+                },
+              },
+            ],
+          },
+        },
+      }),
+      getHierarchy: true,
+    },
+  });
+
+  return data;
+};
+
 export const getGlossaryTermsById = async (id: string, params?: ListParams) => {
   const response = await APIClient.get<GlossaryTerm>(`/glossaryTerms/${id}`, {
     params,
@@ -131,14 +154,10 @@ export const addGlossaryTerm = (
 };
 
 export const patchGlossaryTerm = async (id: string, patch: Operation[]) => {
-  const configOptions = {
-    headers: { 'Content-type': 'application/json-patch+json' },
-  };
-
   const response = await APIClient.patch<
     Operation[],
     AxiosResponse<GlossaryTerm>
-  >(`/glossaryTerms/${id}`, patch, configOptions);
+  >(`/glossaryTerms/${id}`, patch);
 
   return response.data;
 };
@@ -154,8 +173,8 @@ export const deleteGlossaryTerm = (id: string) => {
 };
 
 export const exportGlossaryInCSVFormat = async (glossaryName: string) => {
-  const response = await APIClient.get<string>(
-    `/glossaries/name/${getEncodedFqn(glossaryName)}/export`
+  const response = await APIClient.get<CSVExportResponse>(
+    `/glossaries/name/${getEncodedFqn(glossaryName)}/exportAsync`
   );
 
   return response.data;
@@ -215,7 +234,7 @@ export const updateGlossaryVotes = async (
 ) => {
   const response = await APIClient.put<
     VotingDataProps,
-    AxiosResponse<Glossary>
+    AxiosResponse<ChangeEvent>
   >(`/glossaries/${id}/vote`, data);
 
   return response.data;
@@ -227,7 +246,7 @@ export const updateGlossaryTermVotes = async (
 ) => {
   const response = await APIClient.put<
     VotingDataProps,
-    AxiosResponse<GlossaryTerm>
+    AxiosResponse<ChangeEvent>
   >(`/glossaryTerms/${id}/vote`, data);
 
   return response.data;
@@ -285,4 +304,41 @@ export const removeAssetsFromGlossaryTerm = async (
   >(`/glossaryTerms/${glossaryTerm.id}/assets/remove`, data);
 
   return response.data;
+};
+
+export const searchGlossaryTerms = async (search: string, page = 1) => {
+  const apiUrl = `/search/query?q=*${search ?? ''}*`;
+
+  const { data } = await APIClient.get(apiUrl, {
+    params: {
+      index: SearchIndex.GLOSSARY_TERM,
+      from: (page - 1) * PAGE_SIZE_MEDIUM,
+      size: PAGE_SIZE_MEDIUM,
+      deleted: false,
+      track_total_hits: true,
+      getHierarchy: true,
+    },
+  });
+
+  return data;
+};
+
+export type GlossaryTermWithChildren = Omit<GlossaryTerm, 'children'> & {
+  children?: GlossaryTerm[];
+};
+
+export const getFirstLevelGlossaryTerms = async (parentFQN: string) => {
+  const apiUrl = `/glossaryTerms`;
+
+  const { data } = await APIClient.get<
+    PagingResponse<GlossaryTermWithChildren[]>
+  >(apiUrl, {
+    params: {
+      directChildrenOf: parentFQN,
+      fields: [TabSpecificField.CHILDREN_COUNT, TabSpecificField.OWNERS],
+      limit: 100000,
+    },
+  });
+
+  return data;
 };

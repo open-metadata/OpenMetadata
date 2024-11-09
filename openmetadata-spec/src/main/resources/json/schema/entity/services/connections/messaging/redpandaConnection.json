@@ -42,6 +42,13 @@
       "type": "string",
       "format": "password"
     },
+    "securityProtocol": {
+      "title": "Security Protocol",
+      "description": "security.protocol consumer config property",
+      "type": "string",
+      "enum": ["PLAINTEXT","SASL_PLAINTEXT","SASL_SSL","SSL"],
+      "default": "PLAINTEXT"
+    },
     "saslMechanism": {
       "title": "SASL Mechanism",
       "description": "sasl.mechanism Consumer Config property",
@@ -49,7 +56,7 @@
       "default": "PLAIN"
     },
     "basicAuthUserInfo": {
-      "title": "Basic Auth User Info",
+      "title": "Schema Registry Basic Auth User Info",
       "description": "basic.auth.user.info schema registry config property, Client HTTP credentials in the form of username:password.",
       "type": "string",
       "format": "password"

@@ -11,19 +11,23 @@
  *  limitations under the License.
  */
 
-import { Button } from 'antd';
+import Icon from '@ant-design/icons/lib/components/Icon';
+import { Button, Tag } from 'antd';
 import classNames from 'classnames';
-import React, { Fragment, useCallback, useEffect, useMemo } from 'react';
+import React, { Fragment, useCallback, useMemo } from 'react';
 import { EdgeProps, getBezierPath } from 'reactflow';
 import { ReactComponent as FunctionIcon } from '../../../assets/svg/ic-function.svg';
+import { ReactComponent as IconTimesCircle } from '../../../assets/svg/ic-times-circle.svg';
 import { ReactComponent as PipelineIcon } from '../../../assets/svg/pipeline-grey.svg';
-import { INFO_COLOR } from '../../../constants/constants';
 import { FOREIGN_OBJECT_SIZE } from '../../../constants/Lineage.constants';
+import { useLineageProvider } from '../../../context/LineageProvider/LineageProvider';
 import { EntityType } from '../../../enums/entity.enum';
 import { StatusType } from '../../../generated/entity/data/pipeline';
+import { LineageLayer } from '../../../generated/settings/settings';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { getColumnSourceTargetHandles } from '../../../utils/EntityLineageUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
-import SVGIcons from '../../../utils/SvgUtils';
-import { useLineageProvider } from '../../LineageProvider/LineageProvider';
+import EntityPopOverCard from '../../common/PopOverCard/EntityPopOverCard';
 import { CustomEdgeData } from './EntityLineage.interface';
 
 interface LineageEdgeIconProps {
@@ -64,27 +68,43 @@ export const CustomEdge = ({
   data,
   selected,
 }: EdgeProps) => {
-  const { edge, isColumnLineage, sourceHandle, targetHandle, ...rest } = data;
+  const {
+    edge,
+    isColumnLineage,
+    sourceHandle,
+    targetHandle,
+    isPipelineRootNode,
+    ...rest
+  } = data;
   const offset = 4;
+
+  const { fromEntity, toEntity, pipeline, pipelineEntityType } =
+    data?.edge ?? {};
 
   const {
     tracedNodes,
     tracedColumns,
     isEditMode,
-    pipelineStatus,
+    activeLayer,
     onAddPipelineClick,
     onColumnEdgeRemove,
-    fetchPipelineStatus,
   } = useLineageProvider();
+
+  const { theme } = useApplicationStore();
 
   const isColumnHighlighted = useMemo(() => {
     if (!isColumnLineage) {
       return false;
     }
 
+    const decodedHandles = getColumnSourceTargetHandles({
+      sourceHandle,
+      targetHandle,
+    });
+
     return (
-      tracedColumns.includes(sourceHandle) &&
-      tracedColumns.includes(targetHandle)
+      tracedColumns.includes(decodedHandles.sourceHandle ?? '') &&
+      tracedColumns.includes(decodedHandles.targetHandle ?? '')
     );
   }, [isColumnLineage, tracedColumns, sourceHandle, targetHandle]);
 
@@ -118,42 +138,56 @@ export const CustomEdge = ({
       tracedNodes.includes(edge.fromEntity.id) &&
       tracedNodes.includes(edge.toEntity.id);
 
-    let isStrokeNeeded = isNodeTraced;
-
+    const isStrokeNeeded = isColumnLineage ? isColumnHighlighted : isNodeTraced;
+    let opacity = 1;
     if (isColumnLineage) {
-      isStrokeNeeded = isColumnHighlighted;
+      opacity =
+        tracedNodes.length === 0 &&
+        (tracedColumns.length === 0 || isColumnHighlighted)
+          ? 1
+          : 0.25;
+    } else {
+      opacity = tracedNodes.length === 0 || isStrokeNeeded ? 1 : 0.25;
     }
 
     return {
       ...style,
-      ...{ stroke: isStrokeNeeded ? INFO_COLOR : undefined },
+      ...{
+        stroke: isStrokeNeeded ? theme.primaryColor : undefined,
+        opacity,
+      },
     };
-  }, [style, tracedNodes, edge, isColumnHighlighted, isColumnLineage]);
+  }, [
+    style,
+    tracedNodes,
+    edge,
+    isColumnHighlighted,
+    isColumnLineage,
+    tracedColumns,
+  ]);
 
   const isPipelineEdgeAllowed = (
     sourceType: EntityType,
     targetType: EntityType
   ) => {
     return (
-      [EntityType.TABLE, EntityType.TOPIC].indexOf(sourceType) > -1 &&
-      [EntityType.TABLE, EntityType.TOPIC].indexOf(targetType) > -1
+      sourceType !== EntityType.PIPELINE && targetType !== EntityType.PIPELINE
     );
   };
 
   const isColumnLineageAllowed =
-    !isColumnLineage &&
-    isPipelineEdgeAllowed(data.edge.fromEntity.type, data.edge.toEntity.type);
+    !isColumnLineage && isPipelineEdgeAllowed(fromEntity.type, toEntity.type);
 
   const hasLabel = useMemo(() => {
     if (isColumnLineage) {
       return false;
     }
-    if (data.edge?.pipeline) {
-      return getEntityName(data.edge?.pipeline);
+    if (pipeline) {
+      return getEntityName(pipeline);
     }
 
     return false;
-  }, [isColumnLineage, data]);
+  }, [isColumnLineage, pipeline]);
 
   const isSelectedEditMode = selected && isEditMode;
   const isSelected = selected;
@@ -171,23 +205,90 @@ export const CustomEdge = ({
     );
   };
 
+  const currentPipelineStatus = useMemo(() => {
+    const isPipelineActiveNow = activeLayer.includes(
+      LineageLayer.DataObservability
+    );
+    const pipelineData = pipeline?.pipelineStatus;
+    if (pipelineData && isPipelineActiveNow) {
+      switch (pipelineData.executionStatus) {
+        case StatusType.Failed:
+          return 'red';
+        case StatusType.Skipped:
+        case StatusType.Pending:
+          return 'amber';
+        case StatusType.Successful:
+          return 'green';
+        default:
+          return '';
+      }
+    }
+
+    return '';
+  }, [pipeline, activeLayer]);
+
+  const blinkingClass = useMemo(() => {
+    if (isPipelineRootNode && currentPipelineStatus) {
+      return `blinking-${currentPipelineStatus}-border`;
+    } else if (isPipelineRootNode) {
+      return 'blinking-border';
+    } else {
+      return '';
+    }
+  }, [currentPipelineStatus, isPipelineRootNode]);
+
   const getLineageEdgeIcon = useCallback(
     (icon: React.ReactNode, dataTestId: string, pipelineClass?: string) => {
+      const pipelineData = pipeline?.pipelineStatus;
+
       return (
         <LineageEdgeIcon offset={3} x={edgeCenterX} y={edgeCenterY}>
-          <Button
-            className={classNames(
-              'flex-center custom-edge-pipeline-button',
-              pipelineClass
-            )}
-            data-testid={dataTestId}
-            icon={icon}
-            onClick={() => isEditMode && onAddPipelineClick()}
-          />
+          {isEditMode ? (
+            <Button
+              className={classNames(
+                'flex-center custom-edge-pipeline-button',
+                pipelineClass,
+                blinkingClass
+              )}
+              data-testid={dataTestId}
+              icon={icon}
+              onClick={() => isEditMode && onAddPipelineClick()}
+            />
+          ) : (
+            <EntityPopOverCard
+              entityFQN={pipeline?.fullyQualifiedName}
+              entityType={pipelineEntityType}
+              extraInfo={
+                pipelineData && (
+                  <Tag className={pipelineClass}>
+                    {pipelineData?.executionStatus}
+                  </Tag>
+                )
+              }>
+              <Button
+                className={classNames(
+                  'flex-center custom-edge-pipeline-button',
+                  pipelineClass,
+                  blinkingClass
+                )}
+                data-testid={dataTestId}
+                icon={icon}
+                onClick={() => isEditMode && onAddPipelineClick()}
+              />
+            </EntityPopOverCard>
+          )}
         </LineageEdgeIcon>
       );
     },
-    [edgeCenterX, edgeCenterY, rest, data]
+    [
+      edgeCenterX,
+      edgeCenterY,
+      rest,
+      pipeline,
+      blinkingClass,
+      isEditMode,
+      isPipelineRootNode,
+    ]
   );
 
   const getEditLineageIcon = useCallback(
@@ -207,10 +308,11 @@ export const CustomEdge = ({
             className="cursor-pointer d-flex"
             data-testid={dataTestId}
             icon={
-              <SVGIcons
+              <Icon
                 alt="times-circle"
-                icon="icon-times-circle"
-                width="16px"
+                className="align-middle"
+                component={IconTimesCircle}
+                style={{ fontSize: '16px' }}
               />
             }
             style={{
@@ -232,29 +334,6 @@ export const CustomEdge = ({
       return `column-edge-${sourceHandle}-${targetHandle}`;
     }
   }, [edge, isColumnLineage, sourceHandle, targetHandle]);
-
-  useEffect(() => {
-    if (data.edge.pipeline) {
-      fetchPipelineStatus(data.edge.pipeline?.fullyQualifiedName);
-    }
-  }, [data.edge.pipeline]);
-
-  const currentPipelineStatus = useMemo(() => {
-    const pipelineData = pipelineStatus[data.edge.pipeline?.fullyQualifiedName];
-    if (pipelineData) {
-      switch (pipelineData.executionStatus) {
-        case StatusType.Failed:
-          return 'red';
-        case StatusType.Skipped:
-        case StatusType.Pending:
-          return 'amber';
-        case StatusType.Successful:
-          return 'green';
-      }
-    } else {
-      return '';
-    }
-  }, [data, pipelineStatus]);
 
   return (
     <Fragment>

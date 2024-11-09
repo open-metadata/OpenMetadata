@@ -1,0 +1,13 @@
+{
+  "name": "DomainOnlyAccessRole",
+  "displayName": "Domain Only Access Role",
+  "description": "Role Corresponding to Domain Access Restriction.",
+  "allowDelete": false,
+  "provider": "system",
+  "policies" : [
+    {
+      "type" : "policy",
+      "name" : "DomainOnlyAccessPolicy"
+    }
+  ]
+}

@@ -29,6 +29,7 @@ export type TestCaseIncidentStatusParams = ListParams & {
   assignee?: string;
   testCaseFQN?: string;
   offset?: string;
+  originEntityFQN?: string;
 };
 
 export const getListTestCaseIncidentStatus = async ({
@@ -67,14 +68,10 @@ export const updateTestCaseIncidentById = async (
   id: string,
   data: Operation[]
 ) => {
-  const configOptions = {
-    headers: { 'Content-type': 'application/json-patch+json' },
-  };
-
   const response = await APIClient.patch<
     Operation[],
     AxiosResponse<TestCaseResolutionStatus>
-  >(`${testCaseIncidentUrl}/${id}`, data, configOptions);
+  >(`${testCaseIncidentUrl}/${id}`, data);
 
   return response.data;
 };

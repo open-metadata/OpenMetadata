@@ -1,0 +1,20 @@
+{
+    "name": "Iceberg",
+    "displayName": "Iceberg Test Connection",
+    "description": "This Test Connection validates the access against the catalog and basic metadata extraction of namespaces and tables.",
+    "steps": [
+      {
+        "name": "GetNamespaces",
+        "description": "List all the namespaces available in the catalog.",
+        "errorMessage": "Failed to fetch namespaces, please validate the catalog configuration",
+        "shortCircuit": true,
+        "mandatory": true
+      },
+      {
+        "name": "GetTables",
+        "description": "From a given namespace, list the tables belonging to that namespace. If no namespace is specified, we'll list the tables of a random namespace.",
+        "errorMessage": "Failed to fetch tables, please validate if the configured credentials have enough access to fetch tables.",
+        "mandatory": true
+      }
+    ]
+  }

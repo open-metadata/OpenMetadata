@@ -13,7 +13,7 @@ Postgres Query parser module
 """
 import traceback
 from abc import ABC
-from typing import Iterable
+from typing import Iterable, Optional
 
 from sqlalchemy.engine.base import Engine
 
@@ -53,9 +53,11 @@ class PostgresQueryParserSource(QueryParserSource, ABC):
         self.start, self.end = get_start_and_end(duration)
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata):
-        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: PostgresConnection = config.serviceConnection.__root__.config
+    def create(
+        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
+    ):
+        config: WorkflowSource = WorkflowSource.model_validate(config_dict)
+        connection: PostgresConnection = config.serviceConnection.root.config
         if not isinstance(connection, PostgresConnection):
             raise InvalidSourceException(
                 f"Expected PostgresConnection, but got {connection}"
@@ -79,7 +81,7 @@ class PostgresQueryParserSource(QueryParserSource, ABC):
             if self.config.sourceConfig.config.queryLogFilePath:
                 yield from super().yield_table_queries_from_logs()
             else:
-                database = self.config.serviceConnection.__root__.config.database
+                database = self.config.serviceConnection.root.config.database
                 if database:
                     self.engine: Engine = get_connection(self.service_connection)
                     yield from self.process_table_query()
@@ -88,7 +90,7 @@ class PostgresQueryParserSource(QueryParserSource, ABC):
                     for res in results:
                         row = list(res)
                         logger.info(f"Ingesting from database: {row[0]}")
-                        self.config.serviceConnection.__root__.config.database = row[0]
+                        self.config.serviceConnection.root.config.database = row[0]
                         self.engine = get_connection(self.service_connection)
                         yield from self.process_table_query()
 

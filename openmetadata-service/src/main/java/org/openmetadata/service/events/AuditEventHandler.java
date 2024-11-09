@@ -13,13 +13,16 @@
 
 package org.openmetadata.service.events;
 
+import java.util.UUID;
 import javax.ws.rs.container.ContainerRequestContext;
 import javax.ws.rs.container.ContainerResponseContext;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.EntityTimeSeriesInterface;
+import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.type.AuditLog;
-import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.ChangeEvent;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.slf4j.Marker;
 import org.slf4j.MarkerFactory;
@@ -34,13 +37,6 @@ public class AuditEventHandler implements EventHandler {
 
   public Void process(
       ContainerRequestContext requestContext, ContainerResponseContext responseContext) {
-    if (requestContext
-        .getUriInfo()
-        .getPath()
-        .contains(WebAnalyticEventHandler.WEB_ANALYTIC_ENDPOINT)) {
-      // we don't want to send web analytic event to the audit log
-      return null;
-    }
     int responseCode = responseContext.getStatus();
     String method = requestContext.getMethod();
     if (responseContext.getEntity() != null) {
@@ -50,23 +46,35 @@ public class AuditEventHandler implements EventHandler {
         username = requestContext.getSecurityContext().getUserPrincipal().getName();
       }
       try {
-        EntityReference entityReference;
         // TODO: EntityInterface and EntityTimeSeriesInterface share some common implementation and
         // diverge at the edge (e.g. EntityTimeSeriesInterface does not expect owners, etc.).
         // We should implement a parent class that captures the common fields and then have
         // EntityInterface and EntityTimeSeriesInterface extend it.
+        // TODO: if we are just interested in entity's we can just do else and return null.
+        UUID entityId;
+        String entityType;
         if (responseContext.getEntity()
             instanceof EntityTimeSeriesInterface entityTimeSeriesInterface) {
-          entityReference = entityTimeSeriesInterface.getEntityReference();
+          entityId = entityTimeSeriesInterface.getEntityReference().getId();
+          entityType = entityTimeSeriesInterface.getEntityReference().getType();
+        } else if (responseContext.getEntity() instanceof EntityInterface entityInterface) {
+          entityId = entityInterface.getEntityReference().getId();
+          entityType = entityInterface.getEntityReference().getType();
+        } else if (responseContext.getEntity() instanceof ChangeEvent changeEvent) {
+          entityId = changeEvent.getId();
+          entityType = "CHANGE_EVENT";
+        } else if (responseContext.getEntity() instanceof Thread thread) {
+          entityId = thread.getId();
+          entityType = Entity.THREAD;
         } else {
-          entityReference = ((EntityInterface) responseContext.getEntity()).getEntityReference();
+          return null;
         }
         AuditLog auditLog =
             new AuditLog()
                 .withPath(path)
                 .withTimestamp(System.currentTimeMillis())
-                .withEntityId(entityReference.getId())
-                .withEntityType(entityReference.getType())
+                .withEntityId(entityId)
+                .withEntityType(entityType)
                 .withMethod(AuditLog.Method.fromValue(method))
                 .withUserName(username)
                 .withResponseCode(responseCode);

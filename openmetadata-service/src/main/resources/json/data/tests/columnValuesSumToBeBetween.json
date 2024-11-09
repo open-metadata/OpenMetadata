@@ -11,14 +11,25 @@
         "name": "minValueForColSum",
         "displayName": "Min",
         "description": "Expected sum of values in the column to be greater or equal than",
-        "dataType": "INT"
+        "dataType": "INT",
+        "validationRule": {
+          "parameterField": "maxValueForColSum",
+          "rule": "LESS_THAN_OR_EQUALS"
+        }
       },
       {
         "name": "maxValueForColSum",
         "displayName": "Max",
         "description": "Expected sum values in the column to be lower or equal than",
-        "dataType": "INT"
+        "dataType": "INT",
+        "validationRule": {
+          "parameterField": "minValueForColSum",
+          "rule": "GREATER_THAN_OR_EQUALS"
+        }
       }
-    ]
+    ],
+    "supportsDynamicAssertion": true,
+    "provider": "system",
+    "dataQualityDimension": "Accuracy"
   }
   

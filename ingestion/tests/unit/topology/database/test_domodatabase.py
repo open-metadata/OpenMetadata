@@ -63,12 +63,12 @@ MOCK_DATABASE_SCHEMA = DatabaseSchema(
     ),
 )
 
-EXPTECTED_DATABASE_SCHEMA = [
+EXPECTED_DATABASE_SCHEMA = [
     CreateDatabaseSchemaRequest(
         name="do_it_all_with_default_schema",
         displayName=None,
         description=None,
-        owner=None,
+        owners=None,
         database="domodashboard_source_test.do_it_all_with_default_config",
     )
 ]
@@ -227,10 +227,10 @@ EXPTECTED_TABLE = [
         tableConstraints=None,
         tablePartition=None,
         tableProfilerConfig=None,
-        owner=None,
+        owners=None,
         databaseSchema="domodashboard_source_test.do_it_all_with_default_config.do_it_all_with_default_schema",
         tags=None,
-        viewDefinition=None,
+        schemaDefinition=None,
         extension=None,
     )
 ]
@@ -254,23 +254,25 @@ class DomoDatabaseUnitTest(TestCase):
     ) -> None:
         super().__init__(methodName)
         test_connection.return_value = False
-        self.config = OpenMetadataWorkflowConfig.parse_obj(mock_domodatabase_config)
+        self.config = OpenMetadataWorkflowConfig.model_validate(
+            mock_domodatabase_config
+        )
         self.domodatabase = DomodatabaseSource.create(
             mock_domodatabase_config["source"],
             self.config.workflowConfig.openMetadataServerConfig,
         )
-        self.domodatabase.context.__dict__["database"] = MOCK_DATABASE.name.__root__
-        self.domodatabase.context.__dict__[
+        self.domodatabase.context.get().__dict__["database"] = MOCK_DATABASE.name.root
+        self.domodatabase.context.get().__dict__[
             "database_service"
-        ] = MOCK_DATABASE_SERVICE.name.__root__
-        self.domodatabase.context.__dict__[
+        ] = MOCK_DATABASE_SERVICE.name.root
+        self.domodatabase.context.get().__dict__[
             "database_schema"
-        ] = MOCK_DATABASE_SCHEMA.name.__root__
+        ] = MOCK_DATABASE_SCHEMA.name.root
 
     def test_yield_schema(self):
         schema_list = []
         yield_schemas = self.domodatabase.yield_database_schema(
-            schema_name=MOCK_DATABASE_SCHEMA.name
+            schema_name=MOCK_DATABASE_SCHEMA.name.root
         )
 
         for schema in yield_schemas:
@@ -278,7 +280,7 @@ class DomoDatabaseUnitTest(TestCase):
                 schema_list.append(schema)
 
         for _, (exptected, original) in enumerate(
-            zip(EXPTECTED_DATABASE_SCHEMA, schema_list)
+            zip(EXPECTED_DATABASE_SCHEMA, schema_list)
         ):
             self.assertEqual(exptected, original)
 

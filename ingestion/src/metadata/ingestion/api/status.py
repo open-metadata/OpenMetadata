@@ -13,9 +13,10 @@ Status output utilities
 """
 import pprint
 import time
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import AfterValidator, BaseModel, Field
+from typing_extensions import Annotated
 
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
@@ -26,22 +27,36 @@ from metadata.utils.logger import get_log_name, ingestion_logger
 logger = ingestion_logger()
 
 
+MAX_STACK_TRACE_LENGTH = 1_000_000
+TruncatedStr = Annotated[
+    Optional[str], AfterValidator(lambda v: v[:MAX_STACK_TRACE_LENGTH] if v else None)
+]
+
+
+class TruncatedStackTraceError(StackTraceError):
+    """
+    Update StackTraceError to limit the payload size,
+    since some connectors can make it explode
+    """
+
+    error: TruncatedStr
+    stackTrace: TruncatedStr = None
+
+
 class Status(BaseModel):
     """
     Class to handle status
     """
 
-    source_start_time: Any
+    source_start_time: float = Field(
+        default_factory=lambda: time.time()  # pylint: disable=unnecessary-lambda
+    )
 
-    records: List[Any] = Field(default_factory=list)
-    updated_records: List[Any] = Field(default_factory=list)
-    warnings: List[Any] = Field(default_factory=list)
-    filtered: List[Dict[str, str]] = Field(default_factory=list)
-    failures: List[StackTraceError] = Field(default_factory=list)
-
-    def __init__(self, **data):
-        super().__init__(**data)
-        self.source_start_time = time.time()
+    records: Annotated[List[Any], Field(default_factory=list)]
+    updated_records: Annotated[List[Any], Field(default_factory=list)]
+    warnings: Annotated[List[Any], Field(default_factory=list)]
+    filtered: Annotated[List[Dict[str, str]], Field(default_factory=list)]
+    failures: Annotated[List[TruncatedStackTraceError], Field(default_factory=list)]
 
     def scanned(self, record: Any) -> None:
         """
@@ -55,6 +70,10 @@ class Status(BaseModel):
                 self.updated_records.append(log_name)
             else:
                 self.records.append(log_name)
+
+    def updated(self, record: Any) -> None:
+        if log_name := get_log_name(record):
+            self.updated_records.append(log_name)
 
     def warning(self, key: str, reason: str) -> None:
         self.warnings.append({key: reason})
@@ -71,7 +90,14 @@ class Status(BaseModel):
         """
         logger.warning(error.error)
         logger.debug(error.stackTrace)
-        self.failures.append(error)
+        # Truncate StackTrace to avoid payload explosion
+        self.failures.append(
+            TruncatedStackTraceError(
+                name=error.name,
+                error=error.error,
+                stackTrace=error.stackTrace,
+            )
+        )
 
     def fail_all(self, failures: List[StackTraceError]) -> None:
         """

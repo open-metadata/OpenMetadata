@@ -14,7 +14,6 @@
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { isUndefined } from 'lodash';
-import { configOptions } from '../constants/constants';
 import { TaskOperation } from '../constants/Feeds.constants';
 import { FeedFilter } from '../enums/mydata.enum';
 import { CloseTask } from '../generated/api/feed/closeTask';
@@ -37,7 +36,8 @@ export const getAllFeeds = async (
   type?: ThreadType,
   filterType?: FeedFilter,
   taskStatus?: ThreadTaskStatus,
-  userId?: string
+  userId?: string,
+  limit?: number
 ) => {
   const isFilterAll = filterType === FeedFilter.ALL || isUndefined(filterType);
 
@@ -51,6 +51,7 @@ export const getAllFeeds = async (
         filterType: isFilterAll ? undefined : filterType,
         taskStatus,
         userId: isFilterAll ? undefined : userId,
+        limit,
       },
     }
   );
@@ -91,8 +92,7 @@ export const getFeedCount = async (
   taskStatus?: ThreadTaskStatus
 ) => {
   const response = await APIClient.get<{
-    totalCount: number;
-    counts: EntityFieldThreadCount[];
+    data: EntityFieldThreadCount[];
   }>(`/feed/count`, {
     params: {
       entityLink: entityLink,
@@ -101,7 +101,7 @@ export const getFeedCount = async (
     },
   });
 
-  return response.data;
+  return response.data.data;
 };
 
 export const postThread = async (data: CreateThread) => {
@@ -133,8 +133,7 @@ export const deletePostById = (threadId: string, postId: string) => {
 export const updateThread = async (threadId: string, data: Operation[]) => {
   const response = await APIClient.patch<Operation[], AxiosResponse<Thread>>(
     `/feed/${threadId}`,
-    data,
-    configOptions
+    data
   );
 
   return response.data;
@@ -147,8 +146,7 @@ export const updatePost = async (
 ) => {
   const response = await APIClient.patch<Operation[], AxiosResponse<Thread>>(
     `/feed/${threadId}/posts/${postId}`,
-    data,
-    configOptions
+    data
   );
 
   return response.data;

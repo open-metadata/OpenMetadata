@@ -11,28 +11,30 @@
  *  limitations under the License.
  */
 
+import { EntityType } from '../../../enums/entity.enum';
 import { Table } from '../../../generated/entity/data/table';
-import { ThreadType } from '../../../generated/entity/feed/thread';
-import { EntityFieldThreads } from '../../../interface/feed.interface';
 
 export interface DescriptionProps {
-  className?: string;
-  header?: string;
   entityName?: string;
-  owner?: Table['owner'];
+  owner?: Table['owners'];
   hasEditAccess?: boolean;
   removeBlur?: boolean;
   description?: string;
   isEdit?: boolean;
   isReadOnly?: boolean;
-  entityType?: string;
+  entityType: EntityType;
   entityFqn?: string;
-  entityFieldThreads?: EntityFieldThreads[];
-  entityFieldTasks?: EntityFieldThreads[];
-  onThreadLinkSelect?: (value: string, threadType?: ThreadType) => void;
+  onThreadLinkSelect?: (value: string) => void;
   onDescriptionEdit?: () => void;
   onCancel?: () => void;
   onDescriptionUpdate?: (value: string) => Promise<void>;
   onSuggest?: (value: string) => void;
+  onEntityFieldSelect?: (value: string) => void;
+  wrapInCard?: boolean;
+  showActions?: boolean;
+  showCommentsIcon?: boolean;
   reduceDescription?: boolean;
+  className?: string;
+  showSuggestions?: boolean;
+  isDescriptionExpanded?: boolean;
 }

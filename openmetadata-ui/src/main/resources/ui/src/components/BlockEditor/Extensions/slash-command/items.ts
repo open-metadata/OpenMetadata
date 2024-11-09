@@ -12,6 +12,7 @@
  */
 import { Editor, Range } from '@tiptap/core';
 import HashtagImage from '../../../../assets/img/ic-format-hashtag.png';
+import MathEquationImage from '../../../../assets/img/ic-format-math-equation.png';
 import BulletListImage from '../../../../assets/img/ic-slash-bullet-list.png';
 import DividerImage from '../../../../assets/img/ic-slash-divider.png';
 import H1Image from '../../../../assets/img/ic-slash-h1.png';
@@ -231,6 +232,27 @@ export const getSuggestionItems = (props: {
       },
       type: SuggestionItemType.ADVANCED_BLOCKS,
       imgSrc: IconTable,
+    },
+    {
+      title: 'Math Equation',
+      description: 'Add a math equation',
+      searchTerms: ['math', 'equation', 'latex', 'katex'],
+      command: ({ editor, range }) => {
+        editor
+          .chain()
+          .focus()
+          .deleteRange(range)
+          .insertContent({
+            type: 'MathEquation',
+            attrs: {
+              isEditing: true,
+              math_equation: '',
+            },
+          })
+          .run();
+      },
+      type: SuggestionItemType.ADVANCED_BLOCKS,
+      imgSrc: MathEquationImage,
     },
   ];
 

@@ -232,4 +232,20 @@ public final class MessageParser {
     }
     return links;
   }
+
+  public static String replaceEntityLinks(String message) {
+    String result = message;
+    int length = result.length();
+    Matcher matcher = ENTITY_LINK_PATTERN.matcher(result);
+    while (matcher.find()) {
+      EntityLink link = EntityLink.parse(matcher.group());
+      result =
+          result.substring(0, matcher.start())
+              + String.format("@%s", link.getEntityFQN())
+              + result.substring(matcher.end(), length);
+      length = result.length();
+      matcher = ENTITY_LINK_PATTERN.matcher(result);
+    }
+    return result;
+  }
 }

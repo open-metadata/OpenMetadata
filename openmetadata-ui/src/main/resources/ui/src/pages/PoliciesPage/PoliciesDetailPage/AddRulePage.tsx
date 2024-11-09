@@ -18,11 +18,12 @@ import { trim } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
+import Loader from '../../../components/common/Loader/Loader';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
-import Loader from '../../../components/Loader/Loader';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
 import { HTTP_STATUS_CODE } from '../../../constants/Auth.constants';
 import { GlobalSettingOptions } from '../../../constants/GlobalSettings.constants';
+import { TabSpecificField } from '../../../enums/entity.enum';
 import { Effect, Rule } from '../../../generated/api/policies/createPolicy';
 import { Policy } from '../../../generated/entity/policies/policy';
 import { useFqn } from '../../../hooks/useFqn';
@@ -81,7 +82,10 @@ const AddRulePage = () => {
   const fetchPolicy = async () => {
     setLoading(true);
     try {
-      const data = await getPolicyByName(fqn, 'owner,location,teams,roles');
+      const data = await getPolicyByName(
+        fqn,
+        `${TabSpecificField.OWNERS},${TabSpecificField.LOCATION},${TabSpecificField.TEAMS},${TabSpecificField.ROLES}`
+      );
       setPolicy(data ?? ({} as Policy));
     } catch (error) {
       showErrorToast(error as AxiosError);

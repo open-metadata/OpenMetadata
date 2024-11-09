@@ -33,35 +33,44 @@ import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
 import { CustomPropertyTable } from '../../components/common/CustomPropertyTable/CustomPropertyTable';
 import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import Loader from '../../components/common/Loader/Loader';
+import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
+import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import { DatabaseSchemaTable } from '../../components/Database/DatabaseSchema/DatabaseSchemaTable/DatabaseSchemaTable';
+import ProfilerSettings from '../../components/Database/Profiler/ProfilerSettings/ProfilerSettings';
+import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
 import EntityRightPanel from '../../components/Entity/EntityRightPanel/EntityRightPanel';
-import Loader from '../../components/Loader/Loader';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
+import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
+import {
+  getEntityDetailsPath,
+  getExplorePath,
+  getVersionPath,
+  ROUTES,
+} from '../../constants/constants';
+import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
+import { COMMON_RESIZABLE_PANEL_CONFIG } from '../../constants/ResizablePanel.constants';
+import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
   ResourceEntity,
-} from '../../components/PermissionProvider/PermissionProvider.interface';
-import ProfilerSettings from '../../components/ProfilerSettings/ProfilerSettings';
-import { QueryVote } from '../../components/TableQueries/TableQueries.interface';
-import TabsLabel from '../../components/TabsLabel/TabsLabel.component';
-import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
-import {
-  getDatabaseDetailsPath,
-  getExplorePath,
-  getVersionPathWithTab,
-} from '../../constants/constants';
+} from '../../context/PermissionProvider/PermissionProvider.interface';
+import { ClientErrors } from '../../enums/Axios.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
-import { EntityTabs, EntityType } from '../../enums/entity.enum';
+import {
+  EntityTabs,
+  EntityType,
+  TabSpecificField,
+} from '../../enums/entity.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { Tag } from '../../generated/entity/classification/tag';
 import { Database } from '../../generated/entity/data/database';
 import { Include } from '../../generated/type/include';
 import { useLocationSearch } from '../../hooks/LocationSearch/useLocationSearch';
 import { useFqn } from '../../hooks/useFqn';
-import { EntityFieldThreadCount } from '../../interface/feed.interface';
+import { FeedCounts } from '../../interface/feed.interface';
 import {
   getDatabaseDetailsByFQN,
   getDatabaseSchemas,
@@ -69,13 +78,15 @@ import {
   restoreDatabase,
   updateDatabaseVotes,
 } from '../../rest/databaseAPI';
-import { getFeedCount, postThread } from '../../rest/feedsAPI';
+import { postThread } from '../../rest/feedsAPI';
 import {
   getEntityMissingError,
+  getFeedCounts,
   sortTagsCaseInsensitive,
 } from '../../utils/CommonUtils';
 import { getQueryFilterForDatabase } from '../../utils/Database/Database.util';
-import { getEntityFeedLink, getEntityName } from '../../utils/EntityUtils';
+import entityUtilClassBase from '../../utils/EntityUtilClassBase';
+import { getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { createTagObject, updateTierTag } from '../../utils/TagsUtils';
@@ -107,10 +118,9 @@ const DatabaseDetails: FunctionComponent = () => {
 
   const [schemaInstanceCount, setSchemaInstanceCount] = useState<number>(0);
 
-  const [feedCount, setFeedCount] = useState<number>(0);
-  const [entityFieldThreadCount, setEntityFieldThreadCount] = useState<
-    EntityFieldThreadCount[]
-  >([]);
+  const [feedCount, setFeedCount] = useState<FeedCounts>(
+    FEED_COUNT_INITIAL_DATA
+  );
 
   const [threadLink, setThreadLink] = useState<string>('');
 
@@ -131,6 +141,15 @@ const DatabaseDetails: FunctionComponent = () => {
   const [databasePermission, setDatabasePermission] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
 
+  const extraDropdownContent = useMemo(
+    () =>
+      entityUtilClassBase.getManageExtraOptions(
+        EntityType.DATABASE,
+        decodedDatabaseFQN,
+        databasePermission
+      ),
+    [decodedDatabaseFQN, databasePermission]
+  );
   const fetchDatabasePermission = async () => {
     setIsLoading(true);
     try {
@@ -154,19 +173,12 @@ const DatabaseDetails: FunctionComponent = () => {
     setThreadLink('');
   };
 
+  const handleFeedCount = useCallback((data: FeedCounts) => {
+    setFeedCount(data);
+  }, []);
+
   const getEntityFeedCount = () => {
-    getFeedCount(getEntityFeedLink(EntityType.DATABASE, decodedDatabaseFQN))
-      .then((res) => {
-        if (res) {
-          setFeedCount(res.totalCount);
-          setEntityFieldThreadCount(res.counts);
-        } else {
-          throw t('server.unexpected-response');
-        }
-      })
-      .catch(() => {
-        // Error
-      });
+    getFeedCounts(EntityType.DATABASE, decodedDatabaseFQN, handleFeedCount);
   };
 
   const fetchDatabaseSchemaCount = useCallback(async () => {
@@ -192,7 +204,7 @@ const DatabaseDetails: FunctionComponent = () => {
   const getDetailsByFQN = () => {
     setIsDatabaseDetailsLoading(true);
     getDatabaseDetailsByFQN(decodedDatabaseFQN, {
-      fields: 'owner,tags,domain,votes,extension',
+      fields: `${TabSpecificField.OWNERS},${TabSpecificField.TAGS},${TabSpecificField.DOMAIN},${TabSpecificField.VOTES},${TabSpecificField.EXTENSION},${TabSpecificField.DATA_PRODUCTS}`,
       include: Include.All,
     })
       .then((res) => {
@@ -205,8 +217,13 @@ const DatabaseDetails: FunctionComponent = () => {
           setServiceType(serviceType);
         }
       })
-      .catch(() => {
+      .catch((error) => {
         // Error
+        if (
+          (error as AxiosError)?.response?.status === ClientErrors.FORBIDDEN
+        ) {
+          history.replace(ROUTES.FORBIDDEN);
+        }
       })
       .finally(() => {
         setIsLoading(false);
@@ -238,7 +255,6 @@ const DatabaseDetails: FunctionComponent = () => {
         if (response) {
           setDatabase(response);
           setDescription(updatedHTML);
-          getEntityFeedCount();
         } else {
           throw t('server.unexpected-response');
         }
@@ -259,7 +275,11 @@ const DatabaseDetails: FunctionComponent = () => {
   const activeTabHandler = (key: string) => {
     if (key !== activeTab) {
       history.push({
-        pathname: getDatabaseDetailsPath(decodedDatabaseFQN, key),
+        pathname: getEntityDetailsPath(
+          EntityType.DATABASE,
+          decodedDatabaseFQN,
+          key
+        ),
       });
     }
   };
@@ -278,7 +298,6 @@ const DatabaseDetails: FunctionComponent = () => {
 
         return res;
       });
-      getEntityFeedCount();
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -290,34 +309,28 @@ const DatabaseDetails: FunctionComponent = () => {
   };
 
   const handleUpdateOwner = useCallback(
-    async (owner: Database['owner']) => {
+    async (owners: Database['owners']) => {
       const updatedData = {
         ...database,
-        owner: owner ? { ...database?.owner, ...owner } : undefined,
+        owners,
       };
 
       await settingsUpdateHandler(updatedData as Database);
     },
-    [database, database?.owner, settingsUpdateHandler]
+    [database, database?.owners, settingsUpdateHandler]
   );
 
-  const createThread = (data: CreateThread) => {
-    postThread(data)
-      .then((res) => {
-        if (res) {
-          getEntityFeedCount();
-        } else {
-          showErrorToast(t('server.unexpected-response'));
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          t('server.create-entity-error', {
-            entity: t('label.conversation-lowercase'),
-          })
-        );
-      });
+  const createThread = async (data: CreateThread) => {
+    try {
+      await postThread(data);
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.create-entity-error', {
+          entity: t('label.conversation-lowercase'),
+        })
+      );
+    }
   };
 
   useEffect(() => {
@@ -448,7 +461,7 @@ const DatabaseDetails: FunctionComponent = () => {
   const versionHandler = useCallback(() => {
     currentVersion &&
       history.push(
-        getVersionPathWithTab(
+        getVersionPath(
           EntityType.DATABASE,
           decodedDatabaseFQN,
           toString(currentVersion),
@@ -507,44 +520,63 @@ const DatabaseDetails: FunctionComponent = () => {
         key: EntityTabs.SCHEMA,
         children: (
           <Row gutter={[0, 16]} wrap={false}>
-            <Col className="p-t-sm m-x-lg" flex="auto">
-              <Row gutter={[16, 16]}>
-                <Col data-testid="description-container" span={24}>
-                  <DescriptionV1
-                    description={description}
-                    entityFqn={decodedDatabaseFQN}
-                    entityName={getEntityName(database)}
-                    entityType={EntityType.DATABASE}
-                    hasEditAccess={editDescriptionPermission}
-                    isEdit={isEdit}
-                    showActions={!database.deleted}
-                    onCancel={onCancel}
-                    onDescriptionEdit={onDescriptionEdit}
-                    onDescriptionUpdate={onDescriptionUpdate}
-                    onThreadLinkSelect={onThreadLinkSelect}
-                  />
-                </Col>
-                <Col span={24}>
-                  <DatabaseSchemaTable isDatabaseDeleted={deleted} />
-                </Col>
-              </Row>
-            </Col>
-            <Col
-              className="entity-tag-right-panel-container"
-              data-testid="entity-right-panel"
-              flex="320px">
-              <EntityRightPanel
-                customProperties={database}
-                dataProducts={database?.dataProducts ?? []}
-                domain={database?.domain}
-                editTagPermission={editTagsPermission}
-                entityFQN={decodedDatabaseFQN}
-                entityId={database?.id ?? ''}
-                entityType={EntityType.DATABASE}
-                selectedTags={tags}
-                viewAllPermission={viewAllPermission}
-                onTagSelectionChange={handleTagSelection}
-                onThreadLinkSelect={onThreadLinkSelect}
+            <Col className="tab-content-height-with-resizable-panel" span={24}>
+              <ResizablePanels
+                firstPanel={{
+                  className: 'entity-resizable-panel-container',
+                  children: (
+                    <div className="p-t-sm m-x-lg">
+                      <Row gutter={[16, 16]}>
+                        <Col data-testid="description-container" span={24}>
+                          <DescriptionV1
+                            description={description}
+                            entityFqn={decodedDatabaseFQN}
+                            entityName={getEntityName(database)}
+                            entityType={EntityType.DATABASE}
+                            hasEditAccess={editDescriptionPermission}
+                            isDescriptionExpanded={isEmpty(database)}
+                            isEdit={isEdit}
+                            showActions={!database.deleted}
+                            onCancel={onCancel}
+                            onDescriptionEdit={onDescriptionEdit}
+                            onDescriptionUpdate={onDescriptionUpdate}
+                            onThreadLinkSelect={onThreadLinkSelect}
+                          />
+                        </Col>
+                        <Col span={24}>
+                          <DatabaseSchemaTable isDatabaseDeleted={deleted} />
+                        </Col>
+                      </Row>
+                    </div>
+                  ),
+                  ...COMMON_RESIZABLE_PANEL_CONFIG.LEFT_PANEL,
+                }}
+                secondPanel={{
+                  children: (
+                    <div data-testid="entity-right-panel">
+                      <EntityRightPanel<EntityType.DATABASE>
+                        customProperties={database}
+                        dataProducts={database?.dataProducts ?? []}
+                        domain={database?.domain}
+                        editCustomAttributePermission={
+                          editCustomAttributePermission
+                        }
+                        editTagPermission={editTagsPermission}
+                        entityFQN={decodedDatabaseFQN}
+                        entityId={database?.id ?? ''}
+                        entityType={EntityType.DATABASE}
+                        selectedTags={tags}
+                        viewAllPermission={viewAllPermission}
+                        onExtensionUpdate={settingsUpdateHandler}
+                        onTagSelectionChange={handleTagSelection}
+                        onThreadLinkSelect={onThreadLinkSelect}
+                      />
+                    </div>
+                  ),
+                  ...COMMON_RESIZABLE_PANEL_CONFIG.RIGHT_PANEL,
+                  className:
+                    'entity-resizable-right-panel-container entity-resizable-panel-container',
+                }}
               />
             </Col>
           </Row>
@@ -553,7 +585,7 @@ const DatabaseDetails: FunctionComponent = () => {
       {
         label: (
           <TabsLabel
-            count={feedCount}
+            count={feedCount.totalCount}
             id={EntityTabs.ACTIVITY_FEED}
             isActive={activeTab === EntityTabs.ACTIVITY_FEED}
             name={t('label.activity-feed-plural')}
@@ -562,10 +594,13 @@ const DatabaseDetails: FunctionComponent = () => {
         key: EntityTabs.ACTIVITY_FEED,
         children: (
           <ActivityFeedTab
+            refetchFeed
+            entityFeedTotalCount={feedCount.totalCount}
             entityType={EntityType.DATABASE}
             fqn={database?.fullyQualifiedName ?? ''}
             onFeedUpdate={getEntityFeedCount}
             onUpdateEntityDetails={getDetailsByFQN}
+            onUpdateFeedCount={handleFeedCount}
           />
         ),
       },
@@ -598,17 +633,17 @@ const DatabaseDetails: FunctionComponent = () => {
       database,
       description,
       databaseName,
-      entityFieldThreadCount,
       decodedDatabaseFQN,
       activeTab,
       databasePermission,
       schemaInstanceCount,
-      feedCount,
+      feedCount.totalCount,
       editTagsPermission,
       editDescriptionPermission,
       editCustomAttributePermission,
       viewAllPermission,
       deleted,
+      handleFeedCount,
     ]
   );
 
@@ -616,7 +651,11 @@ const DatabaseDetails: FunctionComponent = () => {
     try {
       await updateDatabaseVotes(id, data);
       const details = await getDatabaseDetailsByFQN(decodedDatabaseFQN, {
-        fields: 'owner,tags,votes',
+        fields: [
+          TabSpecificField.OWNERS,
+          TabSpecificField.TAGS,
+          TabSpecificField.VOTES,
+        ],
         include: Include.All,
       });
       setDatabase(details);
@@ -652,6 +691,8 @@ const DatabaseDetails: FunctionComponent = () => {
               afterDomainUpdateAction={afterDomainUpdateAction}
               dataAsset={database}
               entityType={EntityType.DATABASE}
+              extraDropdownContent={extraDropdownContent}
+              openTaskCount={feedCount.openTaskCount}
               permissions={databasePermission}
               onDisplayNameUpdate={handleUpdateDisplayName}
               onOwnerUpdate={handleUpdateOwner}

@@ -12,6 +12,7 @@
 AzureSQL usage module
 """
 from abc import ABC
+from typing import Optional
 
 from metadata.generated.schema.entity.services.connections.database.azureSQLConnection import (
     AzureSQLConnection,
@@ -32,10 +33,12 @@ class AzuresqlQueryParserSource(QueryParserSource, ABC):
     filters: str
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata):
+    def create(
+        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
+    ):
         """Create class instance"""
-        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: AzureSQLConnection = config.serviceConnection.__root__.config
+        config: WorkflowSource = WorkflowSource.model_validate(config_dict)
+        connection: AzureSQLConnection = config.serviceConnection.root.config
         if not isinstance(connection, AzureSQLConnection):
             raise InvalidSourceException(
                 f"Expected Azuresql Connection, but got {connection}"

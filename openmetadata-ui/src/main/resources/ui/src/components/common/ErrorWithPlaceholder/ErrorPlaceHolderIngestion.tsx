@@ -12,16 +12,20 @@
  */
 
 import { Card, Space, Typography } from 'antd';
+import classNames from 'classnames';
 import { t } from 'i18next';
 import React from 'react';
 import { ReactComponent as IconCollateSupport } from '../../../assets/svg/ic-collate-support.svg';
-import Loader from '../../../components/Loader/Loader';
 import { AIRFLOW_DOCS } from '../../../constants/docs.constants';
 import { PIPELINE_SERVICE_PLATFORM } from '../../../constants/Services.constant';
 import { useAirflowStatus } from '../../../hooks/useAirflowStatus';
 import AirflowMessageBanner from '../AirflowMessageBanner/AirflowMessageBanner';
+import Loader from '../Loader/Loader';
+import { ErrorPlaceHolderIngestionProps } from './ErrorPlaceHolderIngestion.interface';
 
-const ErrorPlaceHolderIngestion = () => {
+const ErrorPlaceHolderIngestion = ({
+  cardClassName,
+}: ErrorPlaceHolderIngestionProps) => {
   const { platform, isFetchingStatus } = useAirflowStatus();
 
   const isAirflowPlatform = platform === PIPELINE_SERVICE_PLATFORM;
@@ -29,7 +33,11 @@ const ErrorPlaceHolderIngestion = () => {
   const airflowSetupGuide = () => {
     return (
       <div className="mb-5" data-testid="error-steps">
-        <Card className="d-flex flex-col justify-between w-4/5 mx-auto">
+        <Card
+          className={classNames(
+            'd-flex flex-col justify-between w-4/5 mx-auto',
+            cardClassName
+          )}>
           <AirflowMessageBanner className="m-b-xs" />
           {isAirflowPlatform ? (
             <>

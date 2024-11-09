@@ -12,7 +12,7 @@
 Airbyte source to extract metadata
 """
 
-from typing import Iterable
+from typing import Iterable, Optional
 
 from pydantic import BaseModel
 
@@ -32,6 +32,12 @@ from metadata.generated.schema.entity.services.connections.pipeline.airbyteConne
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
+)
+from metadata.generated.schema.type.basic import (
+    EntityName,
+    FullyQualifiedEntityName,
+    SourceUrl,
+    Timestamp,
 )
 from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDetails
 from metadata.generated.schema.type.entityLineage import Source as LineageSource
@@ -75,9 +81,11 @@ class AirbyteSource(PipelineServiceSource):
     """
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata):
-        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: AirbyteConnection = config.serviceConnection.__root__.config
+    def create(
+        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
+    ):
+        config: WorkflowSource = WorkflowSource.model_validate(config_dict)
+        connection: AirbyteConnection = config.serviceConnection.root.config
         if not isinstance(connection, AirbyteConnection):
             raise InvalidSourceException(
                 f"Expected AirbyteConnection, but got {connection}"
@@ -92,7 +100,7 @@ class AirbyteSource(PipelineServiceSource):
             Task(
                 name=connection["connectionId"],
                 displayName=connection["name"],
-                sourceUrl=f"{connection_url}/status",
+                sourceUrl=SourceUrl(f"{connection_url}/status"),
             )
         ]
 
@@ -110,13 +118,13 @@ class AirbyteSource(PipelineServiceSource):
             f"/connections/{pipeline_details.connection.get('connectionId')}"
         )
         pipeline_request = CreatePipelineRequest(
-            name=pipeline_details.connection.get("connectionId"),
+            name=EntityName(pipeline_details.connection.get("connectionId")),
             displayName=pipeline_details.connection.get("name"),
-            sourceUrl=connection_url,
+            sourceUrl=SourceUrl(connection_url),
             tasks=self.get_connections_jobs(
                 pipeline_details.connection, connection_url
             ),
-            service=self.context.pipeline_service,
+            service=FullyQualifiedEntityName(self.context.get().pipeline_service),
         )
         yield Either(right=pipeline_request)
         self.register_record(pipeline_request=pipeline_request)
@@ -130,7 +138,7 @@ class AirbyteSource(PipelineServiceSource):
 
         # Airbyte does not offer specific attempt link, just at pipeline level
         log_link = (
-            f"{self.service_connection.hostPort}/workspaces/{pipeline_details.workspace.get('workspaceId')}"
+            f"{self.service_connection.hostPort}workspaces/{pipeline_details.workspace.get('workspaceId')}"
             f"/connections/{pipeline_details.connection.get('connectionId')}/status"
         )
 
@@ -166,13 +174,13 @@ class AirbyteSource(PipelineServiceSource):
                         attempt["status"].lower(), StatusType.Pending
                     ).value,
                     taskStatus=task_status,
-                    timestamp=created_at,
+                    timestamp=Timestamp(created_at),
                 )
                 pipeline_fqn = fqn.build(
                     metadata=self.metadata,
                     entity_type=Pipeline,
-                    service_name=self.context.pipeline_service,
-                    pipeline_name=self.context.pipeline,
+                    service_name=self.context.get().pipeline_service,
+                    pipeline_name=self.context.get().pipeline,
                 )
                 yield Either(
                     right=OMetaPipelineStatus(
@@ -235,17 +243,15 @@ class AirbyteSource(PipelineServiceSource):
             pipeline_fqn = fqn.build(
                 metadata=self.metadata,
                 entity_type=Pipeline,
-                service_name=self.context.pipeline_service,
-                pipeline_name=self.context.pipeline,
+                service_name=self.context.get().pipeline_service,
+                pipeline_name=self.context.get().pipeline,
             )
             pipeline_entity = self.metadata.get_by_name(
                 entity=Pipeline, fqn=pipeline_fqn
             )
 
             lineage_details = LineageDetails(
-                pipeline=EntityReference(
-                    id=pipeline_entity.id.__root__, type="pipeline"
-                ),
+                pipeline=EntityReference(id=pipeline_entity.id.root, type="pipeline"),
                 source=LineageSource.PipelineLineage,
             )
 

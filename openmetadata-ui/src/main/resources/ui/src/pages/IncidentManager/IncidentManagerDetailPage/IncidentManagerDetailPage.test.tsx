@@ -13,10 +13,12 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { TestCase } from '../../../generated/tests/testCase';
 import { getTestCaseByFqn } from '../../../rest/testAPI';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import { IncidentManagerTabs } from '../IncidentManager.interface';
 import IncidentManagerDetailPage from './IncidentManagerDetailPage';
+import { UseTestCaseStoreInterface } from './useTestCase.store';
 
 const mockTestCaseData = {
   id: '1b748634-d24b-4879-9791-289f2f90fc3c',
@@ -67,7 +69,19 @@ const mockTestCaseData = {
   version: 0.1,
   updatedAt: 1703570589915,
   updatedBy: 'admin',
+} as TestCase;
+const mockUseTestCase: UseTestCaseStoreInterface = {
+  testCase: mockTestCaseData,
+  setTestCase: jest.fn(),
+  isLoading: false,
+  setIsLoading: jest.fn(),
+  reset: jest.fn(),
+  showAILearningBanner: false,
+  setShowAILearningBanner: jest.fn(),
 };
+jest.mock('./useTestCase.store', () => ({
+  useTestCaseStore: jest.fn().mockImplementation(() => mockUseTestCase),
+}));
 
 jest.mock('../../../rest/testAPI', () => ({
   getTestCaseByFqn: jest
@@ -78,6 +92,12 @@ jest.mock('../../../rest/testAPI', () => ({
 const mockHistory = {
   push: jest.fn(),
 };
+jest.mock('../../../hooks/useCustomLocation/useCustomLocation', () => {
+  return jest
+    .fn()
+    .mockImplementation(() => ({ state: { breadcrumbData: [] } }));
+});
+
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
   useHistory: () => mockHistory,
@@ -85,7 +105,6 @@ jest.mock('react-router-dom', () => ({
     fqn: 'sample_data.ecommerce_db.shopify.dim_address.table_column_count_equals',
     tab: IncidentManagerTabs.TEST_CASE_RESULTS,
   }),
-  useLocation: jest.fn().mockReturnValue({ state: { breadcrumbData: [] } }),
 }));
 jest.mock('../../../components/PageLayoutV1/PageLayoutV1', () =>
   jest
@@ -94,11 +113,11 @@ jest.mock('../../../components/PageLayoutV1/PageLayoutV1', () =>
       <div data-testid="page-layout-v1">{children}</div>
     ))
 );
-jest.mock('../../../components/Loader/Loader', () =>
+jest.mock('../../../components/common/Loader/Loader', () =>
   jest.fn().mockImplementation(() => <div>Loader</div>)
 );
 jest.mock(
-  '../../../components/IncidentManager/IncidentManagerPageHeader/IncidentManagerPageHeader.component',
+  '../../../components/DataQuality/IncidentManager/IncidentManagerPageHeader/IncidentManagerPageHeader.component',
   () => jest.fn().mockImplementation(() => <div>IncidentManagerPageHeader</div>)
 );
 jest.mock(
@@ -117,11 +136,11 @@ jest.mock(
   () => jest.fn().mockImplementation(() => <div>EntityHeaderTitle</div>)
 );
 jest.mock(
-  '../../../components/IncidentManager/TestCaseResultTab/TestCaseResultTab.component',
+  '../../../components/DataQuality/IncidentManager/TestCaseResultTab/TestCaseResultTab.component',
   () => jest.fn().mockImplementation(() => <div>TestCaseResultTab</div>)
 );
 jest.mock(
-  '../../../components/IncidentManager/TestCaseIncidentTab/TestCaseIncidentTab.component',
+  '../../../components/DataQuality/IncidentManager/TestCaseIncidentTab/TestCaseIncidentTab.component',
   () => jest.fn().mockImplementation(() => <div>TestCaseIncidentTab</div>)
 );
 jest.mock(
@@ -179,13 +198,17 @@ describe('IncidentManagerDetailPage', () => {
   });
 
   it('should render no data placeholder message if there is no data', async () => {
+    mockUseTestCase.testCase = undefined;
     (getTestCaseByFqn as jest.Mock).mockImplementationOnce(() =>
       Promise.reject()
     );
+
     await act(async () => {
       render(<IncidentManagerDetailPage />, { wrapper: MemoryRouter });
     });
 
     expect(await screen.findByText('ErrorPlaceHolder')).toBeInTheDocument();
+
+    mockUseTestCase.testCase = mockTestCaseData;
   });
 });

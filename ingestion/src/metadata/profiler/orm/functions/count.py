@@ -18,6 +18,7 @@ from sqlalchemy.sql.sqltypes import NVARCHAR, TEXT
 
 from metadata.profiler.metrics.core import CACHE
 from metadata.profiler.orm.registry import Dialects
+from metadata.profiler.orm.types.custom_hex_byte_string import HexByteString
 
 # Keep SQA docs style defining custom constructs
 # pylint: disable=consider-using-f-string,duplicate-code
@@ -33,6 +34,14 @@ class CountFn(FunctionElement):
 
 @compiles(CountFn)
 def _(element, compiler, **kw):
+    return compiler.process(element.clauses, **kw)
+
+
+@compiles(CountFn, Dialects.Oracle)
+def _(element, compiler, **kw):
+    col_type = element.clauses.clauses[0].type
+    if isinstance(col_type, HexByteString):
+        return f"DBMS_LOB.GETLENGTH({compiler.process(element.clauses, **kw)})"
     return compiler.process(element.clauses, **kw)
 
 

@@ -707,7 +707,7 @@ body .list-option.rdw-option-active {
 }
 
 .slick-dots li.slick-active button:before {
-  color: #0968da !important;
+  color: var(--ant-primary-color) !important;
   opacity: 1 !important;
 }
 
@@ -810,4 +810,12 @@ body .list-option.rdw-option-active {
 .login-slider.slick-dots li button:before {
   color: #fff !important;
   opacity: 0.5 !important;
+}
+
+:root {
+  --ant-navbar-height: 64px;
+}
+
+:root .extra-banner {
+  --ant-navbar-height: 128px;
 }

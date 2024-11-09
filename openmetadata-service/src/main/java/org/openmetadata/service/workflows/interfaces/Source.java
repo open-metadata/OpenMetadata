@@ -15,12 +15,20 @@ package org.openmetadata.service.workflows.interfaces;
 
 import java.util.List;
 import java.util.Map;
-import org.openmetadata.service.exception.SourceException;
+import org.openmetadata.service.exception.SearchIndexException;
 
 public interface Source<R> extends Stats {
-  R readNext(Map<String, Object> contextData) throws SourceException;
+  R readNext(Map<String, Object> contextData) throws SearchIndexException;
 
   List<String> getReaderErrors();
 
   void reset();
+
+  String getEntityType();
+
+  int getBatchSize();
+
+  String getLastFailedCursor();
+
+  boolean isDone();
 }

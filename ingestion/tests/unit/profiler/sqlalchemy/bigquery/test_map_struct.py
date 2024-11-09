@@ -19,7 +19,7 @@ from metadata.profiler.source.bigquery.type_mapper import bigquery_type_mapper
 
 
 def test_map_struct():
-    column = Column.parse_obj(
+    column = Column.model_validate(
         {
             "name": "col",
             "dataType": "STRUCT",

@@ -15,41 +15,42 @@ import { RJSFSchema } from '@rjsf/utils';
 import validator from '@rjsf/validator-ajv8';
 import { Col, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
+import { isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
-import TestSuiteScheduler from '../../components/AddDataQualityTest/components/TestSuiteScheduler';
-import AppInstallVerifyCard from '../../components/Applications/AppInstallVerifyCard/AppInstallVerifyCard.component';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import FormBuilder from '../../components/common/FormBuilder/FormBuilder';
-import IngestionStepper from '../../components/IngestionStepper/IngestionStepper.component';
-import Loader from '../../components/Loader/Loader';
+import Loader from '../../components/common/Loader/Loader';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import { STEPS_FOR_APP_INSTALL } from '../../constants/Applications.constant';
 import {
-  GlobalSettingOptions,
-  GlobalSettingsMenuCategory,
-} from '../../constants/GlobalSettings.constants';
+  default as applicationSchemaClassBase,
+  default as applicationsClassBase,
+} from '../../components/Settings/Applications/AppDetails/ApplicationsClassBase';
+import AppInstallVerifyCard from '../../components/Settings/Applications/AppInstallVerifyCard/AppInstallVerifyCard.component';
+import ScheduleInterval from '../../components/Settings/Services/AddIngestion/Steps/ScheduleInterval';
+import { WorkflowExtraConfig } from '../../components/Settings/Services/AddIngestion/Steps/ScheduleInterval.interface';
+import IngestionStepper from '../../components/Settings/Services/Ingestion/IngestionStepper/IngestionStepper.component';
+import { STEPS_FOR_APP_INSTALL } from '../../constants/Applications.constant';
+import { GlobalSettingOptions } from '../../constants/GlobalSettings.constants';
+import { useLimitStore } from '../../context/LimitsProvider/useLimitsStore';
+import { TabSpecificField } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
-import { AppType } from '../../generated/entity/applications/app';
 import {
   CreateAppRequest,
   ScheduleTimeline,
 } from '../../generated/entity/applications/createAppRequest';
 import { AppMarketPlaceDefinition } from '../../generated/entity/applications/marketplace/appMarketPlaceDefinition';
-import { PipelineType } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { useFqn } from '../../hooks/useFqn';
 import { installApplication } from '../../rest/applicationAPI';
 import { getMarketPlaceApplicationByFqn } from '../../rest/applicationMarketPlaceAPI';
-import {
-  getEntityMissingError,
-  getIngestionFrequency,
-} from '../../utils/CommonUtils';
+import { getEntityMissingError } from '../../utils/CommonUtils';
 import { formatFormDataForSubmit } from '../../utils/JSONSchemaFormUtils';
 import {
   getMarketPlaceAppDetailsPath,
   getSettingPath,
 } from '../../utils/RouterUtils';
+import { getCronDefaultValue } from '../../utils/SchedularUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import './app-install.less';
 
@@ -59,14 +60,17 @@ const AppInstall = () => {
   const { fqn } = useFqn();
   const [appData, setAppData] = useState<AppMarketPlaceDefinition>();
   const [isLoading, setIsLoading] = useState(true);
+  const [isSavingLoading, setIsSavingLoading] = useState(false);
   const [activeServiceStep, setActiveServiceStep] = useState(1);
   const [appConfiguration, setAppConfiguration] = useState();
   const [jsonSchema, setJsonSchema] = useState<RJSFSchema>();
+  const UiSchema = applicationSchemaClassBase.getJSONUISchema();
+  const { config, getResourceLimit } = useLimitStore();
 
-  const isExternalApp = useMemo(
-    () => appData?.appType === AppType.External,
-    [appData]
-  );
+  const { pipelineSchedules } =
+    config?.limits?.config.featureLimits.find(
+      (feature) => feature.name === 'app'
+    ) ?? {};
 
   const stepperList = useMemo(
     () =>
@@ -76,15 +80,33 @@ const AppInstall = () => {
     [appData]
   );
 
+  const { initialOptions, defaultValue } = useMemo(() => {
+    if (!appData) {
+      return {};
+    }
+
+    const initialOptions = applicationsClassBase.getScheduleOptionsForApp(
+      appData?.name,
+      appData?.appType,
+      pipelineSchedules
+    );
+
+    return {
+      initialOptions,
+      defaultValue: getCronDefaultValue(appData?.name ?? ''),
+    };
+  }, [appData?.name, appData?.appType, pipelineSchedules, config?.enable]);
+
   const fetchAppDetails = useCallback(async () => {
     setIsLoading(true);
     try {
       const data = await getMarketPlaceApplicationByFqn(fqn, {
-        fields: 'owner',
+        fields: TabSpecificField.OWNERS,
       });
       setAppData(data);
 
-      const schema = await import(`../../utils/ApplicationSchemas/${fqn}.json`);
+      const schema = await applicationSchemaClassBase.importSchema(fqn);
+
       setJsonSchema(schema);
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -98,21 +120,20 @@ const AppInstall = () => {
   };
 
   const goToAppPage = () => {
-    history.push(
-      getSettingPath(
-        GlobalSettingsMenuCategory.INTEGRATIONS,
-        GlobalSettingOptions.APPLICATIONS
-      )
-    );
+    history.push(getSettingPath(GlobalSettingOptions.APPLICATIONS));
   };
 
-  const onSubmit = async (repeatFrequency: string) => {
+  const onSubmit = async (updatedValue: WorkflowExtraConfig) => {
+    const { cron } = updatedValue;
     try {
+      setIsSavingLoading(true);
       const data: CreateAppRequest = {
         appConfiguration: appConfiguration ?? appData?.appConfiguration,
         appSchedule: {
-          scheduleType: ScheduleTimeline.Custom,
-          cronExpression: repeatFrequency,
+          scheduleTimeline: isEmpty(cron)
+            ? ScheduleTimeline.None
+            : ScheduleTimeline.Custom,
+          ...(cron ? { cronExpression: cron } : {}),
         },
         name: fqn,
         description: appData?.description,
@@ -122,9 +143,14 @@ const AppInstall = () => {
 
       showSuccessToast(t('message.app-installed-successfully'));
 
+      // Update current count when Create / Delete operation performed
+      await getResourceLimit('app', true, true);
+
       goToAppPage();
     } catch (error) {
       showErrorToast(error as AxiosError);
+    } finally {
+      setIsSavingLoading(false);
     }
   };
 
@@ -158,17 +184,15 @@ const AppInstall = () => {
 
       case 2:
         return (
-          <div className="w-500 p-md border rounded-4">
+          <div className="w-4/5 p-md border rounded-4">
             <FormBuilder
-              disableTestConnection
               showFormHeader
               useSelectWidget
               cancelText={t('label.back')}
               okText={t('label.submit')}
               schema={jsonSchema}
               serviceCategory={ServiceCategory.DASHBOARD_SERVICES}
-              serviceType=""
-              showTestConnection={false}
+              uiSchema={UiSchema}
               validator={validator}
               onCancel={() => setActiveServiceStep(1)}
               onSubmit={onSaveConfiguration}
@@ -179,21 +203,28 @@ const AppInstall = () => {
         return (
           <div className="w-500 p-md border rounded-4">
             <Typography.Title level={5}>{t('label.schedule')}</Typography.Title>
-            <TestSuiteScheduler
-              isQuartzCron
-              includePeriodOptions={isExternalApp ? ['Day'] : undefined}
-              initialData={getIngestionFrequency(PipelineType.Application)}
-              onCancel={() =>
+            <ScheduleInterval
+              defaultSchedule={defaultValue}
+              includePeriodOptions={initialOptions}
+              status={isSavingLoading ? 'waiting' : 'initial'}
+              onBack={() =>
                 setActiveServiceStep(appData.allowConfiguration ? 2 : 1)
               }
-              onSubmit={onSubmit}
+              onDeploy={onSubmit}
             />
           </div>
         );
       default:
         return <></>;
     }
-  }, [activeServiceStep, appData, jsonSchema, isExternalApp]);
+  }, [
+    activeServiceStep,
+    appData,
+    jsonSchema,
+    initialOptions,
+    defaultValue,
+    isSavingLoading,
+  ]);
 
   useEffect(() => {
     fetchAppDetails();

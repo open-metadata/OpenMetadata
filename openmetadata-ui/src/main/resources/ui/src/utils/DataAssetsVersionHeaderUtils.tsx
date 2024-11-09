@@ -12,6 +12,7 @@
  *  limitations under the License.
  */
 
+import Icon from '@ant-design/icons/lib/components/Icon';
 import { Divider, Typography } from 'antd';
 import { t } from 'i18next';
 import { isEmpty, isUndefined, toString } from 'lodash';
@@ -22,9 +23,11 @@ import {
   VersionExtraInfoLink,
 } from '../components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
 import { DataAssetsVersionHeaderProps } from '../components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader.interface';
+import { DATA_ASSET_ICON_DIMENSION } from '../constants/constants';
 import { EntityField } from '../constants/Feeds.constants';
 import { EntityType } from '../enums/entity.enum';
 import { Dashboard } from '../generated/entity/data/dashboard';
+import { Metric } from '../generated/entity/data/metric';
 import { Pipeline } from '../generated/entity/data/pipeline';
 import { Topic } from '../generated/entity/data/topic';
 import { ChangeDescription } from '../generated/entity/type';
@@ -66,7 +69,11 @@ export const getExtraInfoSourceUrl = (
               style={{ fontSize: '12px' }}>
               {getEntityName(pipelineDetails)}{' '}
             </Typography.Link>
-            <IconExternalLink className="m-l-xss " width={14} />{' '}
+            <Icon
+              className="m-l-xss"
+              component={IconExternalLink}
+              style={DATA_ASSET_ICON_DIMENSION}
+            />
           </div>
         </>
       ) : (
@@ -129,6 +136,51 @@ export const getDataAssetsVersionHeaderInfo = (
         currentVersionData as Dashboard,
         changeDescription
       );
+
+    case EntityType.METRIC: {
+      const metricDetails = currentVersionData as Metric;
+
+      const metricType = getEntityVersionByField(
+        changeDescription,
+        'metricType',
+        toString(metricDetails.metricType)
+      );
+
+      const unitOfMeasurement = getEntityVersionByField(
+        changeDescription,
+        'unitOfMeasurement',
+        toString(metricDetails.unitOfMeasurement)
+      );
+
+      const granularity = getEntityVersionByField(
+        changeDescription,
+        'granularity',
+        toString(metricDetails.granularity)
+      );
+
+      return (
+        <>
+          {!isEmpty(metricType) && (
+            <VersionExtraInfoLabel
+              label={t('label.metric-type')}
+              value={metricType}
+            />
+          )}
+          {!isEmpty(unitOfMeasurement) && (
+            <VersionExtraInfoLabel
+              label={t('label.unit-of-measurement')}
+              value={unitOfMeasurement}
+            />
+          )}
+          {!isEmpty(granularity) && (
+            <VersionExtraInfoLabel
+              label={t('label.granularity')}
+              value={granularity}
+            />
+          )}
+        </>
+      );
+    }
     default:
       return null;
   }

@@ -18,20 +18,20 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import Loader from '../../components/common/Loader/Loader';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
-import Loader from '../../components/Loader/Loader';
+import QueryCard from '../../components/Database/TableQueries/QueryCard';
+import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
+import { getEntityDetailsPath } from '../../constants/constants';
+import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
   ResourceEntity,
-} from '../../components/PermissionProvider/PermissionProvider.interface';
-import QueryCard from '../../components/TableQueries/QueryCard';
-import { QueryVote } from '../../components/TableQueries/TableQueries.interface';
-import { getTableTabPath } from '../../constants/constants';
+} from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
-import { EntityType } from '../../enums/entity.enum';
+import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { Query } from '../../generated/entity/data/query';
 import { useFqn } from '../../hooks/useFqn';
 import {
@@ -103,7 +103,11 @@ const QueryPage = () => {
         ...getEntityBreadcrumbs(tableRes, EntityType.TABLE),
         {
           name: getEntityName(tableRes),
-          url: getTableTabPath(datasetFQN, 'table_queries'),
+          url: getEntityDetailsPath(
+            EntityType.TABLE,
+            datasetFQN,
+            'table_queries'
+          ),
         },
         {
           name: t('label.query'),
@@ -126,7 +130,7 @@ const QueryPage = () => {
     setIsLoading((pre) => ({ ...pre, query: true }));
     try {
       const queryResponse = await getQueryById(queryId, {
-        fields: 'votes,queryUsedIn',
+        fields: [TabSpecificField.VOTES, TabSpecificField.QUERY_USED_IN],
       });
       setQuery(queryResponse);
     } catch (error) {
@@ -162,7 +166,7 @@ const QueryPage = () => {
     try {
       await updateQueryVote(id || '', data);
       const response = await getQueryById(queryId || '', {
-        fields: 'votes,queryUsedIn',
+        fields: [TabSpecificField.VOTES, TabSpecificField.QUERY_USED_IN],
       });
       setQuery(response);
     } catch (error) {

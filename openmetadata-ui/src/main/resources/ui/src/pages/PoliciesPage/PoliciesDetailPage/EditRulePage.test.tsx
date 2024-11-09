@@ -13,6 +13,8 @@
 
 import { render, screen } from '@testing-library/react';
 import React from 'react';
+import { TabSpecificField } from '../../../enums/entity.enum';
+import { getPolicyByName } from '../../../rest/rolesAPIV1';
 import { POLICY_DATA } from '../PoliciesData.mock';
 import EditRulePage from './EditRulePage';
 
@@ -36,19 +38,13 @@ jest.mock(
     jest.fn().mockReturnValue(<div data-testid="breadcrumb">BreadCrumb</div>)
 );
 
-jest.mock('../../../components/Loader/Loader', () =>
+jest.mock('../../../components/common/Loader/Loader', () =>
   jest.fn().mockReturnValue(<div data-testid="loader">Loader</div>)
 );
 
 jest.mock('../../../components/PageLayoutV1/PageLayoutV1', () =>
   jest.fn().mockImplementation(({ children }) => <div>{children}</div>)
 );
-
-jest.mock('../../../constants/GlobalSettings.constants', () => ({
-  GlobalSettingOptions: {
-    POLICIES: 'policies',
-  },
-}));
 
 jest.mock('../../../utils/CommonUtils', () => ({
   getEntityName: jest.fn(),
@@ -71,6 +67,11 @@ jest.mock('../RuleForm/RuleForm', () =>
 describe('Test Edit rule page Component', () => {
   it('Should render the rule form fields', async () => {
     render(<EditRulePage />);
+
+    expect(getPolicyByName).toHaveBeenCalledWith(
+      'data-consumer',
+      `${TabSpecificField.OWNERS},${TabSpecificField.LOCATION},${TabSpecificField.TEAMS},${TabSpecificField.ROLES}`
+    );
 
     const breadcrumb = await screen.findByTestId('breadcrumb');
 

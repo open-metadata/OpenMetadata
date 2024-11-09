@@ -51,7 +51,7 @@ def build_dbt_workflow_config(
             config={},
         ),
         workflowConfig=build_workflow_config_property(ingestion_pipeline),
-        ingestionPipelineFQN=ingestion_pipeline.fullyQualifiedName.__root__,
+        ingestionPipelineFQN=ingestion_pipeline.fullyQualifiedName.root,
     )
 
     return workflow_config

@@ -11,25 +11,19 @@
  *  limitations under the License.
  */
 
+import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { Glossary } from '../../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
-import { OperationPermission } from '../../PermissionProvider/PermissionProvider.interface';
-import { VotingDataProps } from '../../Voting/voting.interface';
-
-export enum GlossaryTabs {
-  TERMS = 'terms',
-  ACTIVITY_FEED = 'activity_feed',
-}
+import { VotingDataProps } from '../../Entity/Voting/voting.interface';
 
 export type GlossaryDetailsProps = {
   isVersionView?: boolean;
   permissions: OperationPermission;
-  glossary: Glossary;
-  glossaryTerms: GlossaryTerm[];
+
   termsLoading: boolean;
   updateGlossary: (value: Glossary) => Promise<void>;
   updateVote?: (data: VotingDataProps) => Promise<void>;
-  handleGlossaryDelete: (id: string) => void;
+  handleGlossaryDelete: (id: string) => Promise<void>;
   refreshGlossaryTerms: () => void;
   onAddGlossaryTerm: (glossaryTerm: GlossaryTerm | undefined) => void;
   onEditGlossaryTerm: (glossaryTerm: GlossaryTerm) => void;

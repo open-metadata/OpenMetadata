@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Select, SelectProps, Space, Typography } from 'antd';
+import { Select, SelectProps, Typography } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import { t } from 'i18next';
 import { debounce, groupBy, isArray, isUndefined } from 'lodash';
@@ -56,6 +56,7 @@ const Assignees: FC<Props> = ({
           value: option.value,
           type: option.type,
           name: option.name,
+          displayName: option.displayName,
         }));
 
     onChange(newValues as Option[]);
@@ -72,10 +73,17 @@ const Assignees: FC<Props> = ({
         options: groupByType.team.map((team) => ({
           ...team,
           label: (
-            <Space data-testid={team.name} key={team.value}>
-              <TeamIcon height={16} width={16} />
+            <div
+              className="d-flex items-center"
+              data-testid={team.name}
+              key={team.value}>
+              <TeamIcon
+                className="vertical-middle m-r-xs"
+                height={16}
+                width={16}
+              />
               <Typography.Text>{team.label}</Typography.Text>
-            </Space>
+            </div>
           ),
         })),
       });

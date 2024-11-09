@@ -14,6 +14,7 @@
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { PagingResponse, RestoreRequestType } from 'Models';
+import { CSVExportResponse } from '../components/Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
 import { CreateTeam } from '../generated/api/teams/createTeam';
 import { Team } from '../generated/entity/teams/team';
 import { TeamHierarchy } from '../generated/entity/teams/teamHierarchy';
@@ -66,14 +67,9 @@ export const createTeam = async (data: CreateTeam) => {
 };
 
 export const patchTeamDetail = async (id: string, data: Operation[]) => {
-  const configOptions = {
-    headers: { 'Content-type': 'application/json-patch+json' },
-  };
-
   const response = await APIClient.patch<Operation[], AxiosResponse<Team>>(
     `/teams/${id}`,
-    data,
-    configOptions
+    data
   );
 
   return response.data;
@@ -81,15 +77,6 @@ export const patchTeamDetail = async (id: string, data: Operation[]) => {
 
 export const deleteTeam = async (id: string) => {
   const response = await APIClient.delete<Team>(`/teams/${id}`);
-
-  return response.data;
-};
-
-export const updateTeam = async (data: CreateTeam) => {
-  const response = await APIClient.put<CreateTeam, AxiosResponse<Team>>(
-    '/teams',
-    data
-  );
 
   return response.data;
 };
@@ -104,17 +91,20 @@ export const restoreTeam = async (id: string) => {
 };
 
 export const exportTeam = async (teamName: string) => {
-  const response = await APIClient.get<string>(
-    `/teams/name/${getEncodedFqn(teamName)}/export`
+  const response = await APIClient.get<CSVExportResponse>(
+    `/teams/name/${getEncodedFqn(teamName)}/exportAsync`
   );
 
   return response.data;
 };
 
 export const exportUserOfTeam = async (team: string) => {
-  const response = await APIClient.get<string>(`/users/export`, {
-    params: { team },
-  });
+  const response = await APIClient.get<CSVExportResponse>(
+    `/users/exportAsync`,
+    {
+      params: { team },
+    }
+  );
 
   return response.data;
 };

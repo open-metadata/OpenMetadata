@@ -199,9 +199,9 @@
       "$ref": "#/definitions/searchIndexSampleData",
       "default": null
     },
-    "owner": {
-      "description": "Owner of this searchIndex.",
-      "$ref": "../../type/entityReference.json"
+    "owners": {
+      "description": "Owners of this searchIndex.",
+      "$ref": "../../type/entityReferenceList.json"
     },
     "followers": {
       "description": "Followers of this searchIndex.",
@@ -241,11 +241,15 @@
       "$ref" : "../../type/entityReferenceList.json"
     },
     "votes" : {
+      "description": "Votes on the entity.",
       "$ref": "../../type/votes.json"
     },
     "lifeCycle": {
       "description": "Life Cycle of the entity",
       "$ref": "../../type/lifeCycle.json"
+    },
+    "certification": {
+      "$ref": "../../type/assetCertification.json"
     },
     "sourceHash": {
       "description": "Source hash of the entity",
