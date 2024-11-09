@@ -37,11 +37,6 @@
         "type": "string"
       }
     },
-    "owners": {
-      "description": "Owners of this classification",
-      "$ref": "../../type/entityReferenceList.json",
-      "default": null
-    },
     "provider": {
       "$ref": "../../type/basic.json#/definitions/providerType"
     },
