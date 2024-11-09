@@ -25,12 +25,16 @@ MASK_TOKEN = "?"
 
 
 def get_logger():
+    # pylint: disable=import-outside-toplevel
     from metadata.utils.logger import utils_logger
 
     return utils_logger()
 
 
 def mask_literals_with_sqlparse(query: str):
+    """
+    Mask literals in a query using sqlparse.
+    """
     logger = get_logger()
 
     try:
@@ -76,6 +80,9 @@ def mask_literals_with_sqlparse(query: str):
 
 
 def mask_literals_with_sqlfluff(query: str, dialect: str = Dialect.ANSI.value) -> str:
+    """
+    Mask literals in a query using SQLFluff.
+    """
     logger = get_logger()
     try:
         # Initialize SQLFluff linter
@@ -88,14 +95,12 @@ def mask_literals_with_sqlfluff(query: str, dialect: str = Dialect.ANSI.value) -
             """Recursively replace literals with placeholders."""
             if segment.is_type("literal", "quoted_literal", "numeric_literal"):
                 return MASK_TOKEN
-            elif segment.segments:
+            if segment.segments:
                 # Recursively process sub-segments
                 return "".join(
                     replace_literals(sub_seg) for sub_seg in segment.segments
                 )
-            else:
-                # Return the raw SQL for non-literal segments
-                return segment.raw
+            return segment.raw
 
         # Reconstruct the query with masked literals
         masked_query = "".join(
