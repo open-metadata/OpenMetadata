@@ -2128,7 +2128,7 @@ public interface CollectionDAO {
 
     @SqlQuery(
         "SELECT COUNT(*) FROM successful_sent_change_events WHERE event_subscription_id = :eventSubscriptionId")
-    int getRecordCount(@Bind("eventSubscriptionId") String eventSubscriptionId);
+    long getSuccessfulRecordCount(@Bind("eventSubscriptionId") String eventSubscriptionId);
 
     @SqlQuery(
         "SELECT event_subscription_id FROM successful_sent_change_events "
@@ -2139,10 +2139,10 @@ public interface CollectionDAO {
     @SqlUpdate(
         "DELETE FROM successful_sent_change_events WHERE event_subscription_id = :eventSubscriptionId ORDER BY timestamp ASC LIMIT :limit")
     void deleteOldRecords(
-        @Bind("eventSubscriptionId") String eventSubscriptionId, @Bind("limit") int limit);
+        @Bind("eventSubscriptionId") String eventSubscriptionId, @Bind("limit") long limit);
 
     @SqlQuery(
-        "SELECT json FROM successful_sent_change_events WHERE event_subscription_id = :eventSubscriptionId LIMIT :limit OFFSET :paginationOffset")
+        "SELECT json FROM successful_sent_change_events WHERE event_subscription_id = :eventSubscriptionId ORDER BY timestamp DESC LIMIT :limit OFFSET :paginationOffset")
     List<String> getSuccessfulChangeEventBySubscriptionId(
         @Bind("eventSubscriptionId") String eventSubscriptionId,
         @Bind("limit") int limit,
@@ -3981,22 +3981,25 @@ public interface CollectionDAO {
 
   interface ChangeEventDAO {
     @SqlQuery(
-        "SELECT json FROM change_event ce where ce.offset > :offset ORDER BY ce.eventTime ASC LIMIT :limit OFFSET :paginationOffset")
+        "SELECT json FROM change_event ce where ce.offset > :offset ORDER BY ce.eventTime DESC LIMIT :limit OFFSET :paginationOffset")
     List<String> listUnprocessedEvents(
         @Bind("offset") long offset,
         @Bind("limit") int limit,
         @Bind("paginationOffset") int paginationOffset);
 
     @SqlQuery(
-        "SELECT json, source FROM consumers_dlq WHERE id = :id ORDER BY timestamp ASC LIMIT :limit OFFSET :paginationOffset")
+        "SELECT json, source FROM consumers_dlq WHERE id = :id ORDER BY timestamp DESC LIMIT :limit OFFSET :paginationOffset")
     @RegisterRowMapper(FailedEventResponseMapper.class)
     List<FailedEventResponse> listFailedEventsById(
         @Bind("id") String id,
         @Bind("limit") int limit,
         @Bind("paginationOffset") int paginationOffset);
 
+    @SqlQuery("SELECT COUNT(*) FROM consumers_dlq WHERE id = :id")
+    long countFailedEvents(@Bind("id") String id);
+
     @SqlQuery(
-        "SELECT json, source FROM consumers_dlq WHERE id = :id AND source = :source ORDER BY timestamp ASC LIMIT :limit OFFSET :paginationOffset")
+        "SELECT json, source FROM consumers_dlq WHERE id = :id AND source = :source ORDER BY timestamp DESC LIMIT :limit OFFSET :paginationOffset")
     @RegisterRowMapper(FailedEventResponseMapper.class)
     List<FailedEventResponse> listFailedEventsByIdAndSource(
         @Bind("id") String id,
@@ -4004,13 +4007,14 @@ public interface CollectionDAO {
         @Bind("limit") int limit,
         @Bind("paginationOffset") int paginationOffset);
 
-    @SqlQuery("SELECT json, source FROM consumers_dlq LIMIT :limit OFFSET :paginationOffset")
+    @SqlQuery(
+        "SELECT json, source FROM consumers_dlq ORDER BY timestamp DESC LIMIT :limit OFFSET :paginationOffset")
     @RegisterRowMapper(FailedEventResponseMapper.class)
     List<FailedEventResponse> listAllFailedEvents(
         @Bind("limit") int limit, @Bind("paginationOffset") int paginationOffset);
 
     @SqlQuery(
-        "SELECT json, source FROM consumers_dlq WHERE source = :source LIMIT :limit OFFSET :paginationOffset")
+        "SELECT json, source FROM consumers_dlq WHERE source = :source ORDER BY timestamp DESC LIMIT :limit OFFSET :paginationOffset")
     @RegisterRowMapper(FailedEventResponseMapper.class)
     List<FailedEventResponse> listAllFailedEventsBySource(
         @Bind("source") String source,
@@ -4026,11 +4030,8 @@ public interface CollectionDAO {
                 + "    UNION ALL "
                 + "    SELECT json, 'SUCCESSFUL' AS status, timestamp "
                 + "    FROM successful_sent_change_events WHERE event_subscription_id = :id "
-                + "    UNION ALL "
-                + "    SELECT ce.json, 'UNPROCESSED' AS status, ce.eventTime AS timestamp "
-                + "    FROM change_event ce WHERE ce.offset > :currentOffset "
                 + ") AS combined_events "
-                + "ORDER BY timestamp ASC "
+                + "ORDER BY timestamp DESC "
                 + "LIMIT :limit OFFSET :paginationOffset",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
@@ -4042,9 +4043,6 @@ public interface CollectionDAO {
                 + "    UNION ALL "
                 + "    SELECT json, 'successful' AS status, timestamp "
                 + "    FROM successful_sent_change_events WHERE event_subscription_id = :id "
-                + "    UNION ALL "
-                + "    SELECT ce.json, 'unprocessed' AS status, ce.eventTime AS timestamp "
-                + "    FROM change_event ce WHERE ce.offset > :currentOffset "
                 + ") AS combined_events "
                 + "ORDER BY timestamp ASC "
                 + "LIMIT :limit OFFSET :paginationOffset",
@@ -4052,7 +4050,6 @@ public interface CollectionDAO {
     @RegisterRowMapper(EventResponseMapper.class)
     List<TypedEvent> listAllEventsWithStatuses(
         @Bind("id") String id,
-        @Bind("currentOffset") long currentOffset,
         @Bind("limit") int limit,
         @Bind("paginationOffset") long paginationOffset);
 

@@ -22,8 +22,20 @@
       "description": "Indicates whether all events have been processed.",
       "type": "boolean"
     },
+    "successfulEventsCount": {
+      "description": "Count of successful events.",
+      "existingJavaType": "java.lang.Long"
+    },
+    "failedEventsCount": {
+      "description": "Count of failed events.",
+      "existingJavaType": "java.lang.Long"
+    },
     "relevantUnprocessedEventsCount": {
       "description": "The number of relevant unprocessed events based on the alert's filtering rules.",
+      "existingJavaType": "java.lang.Long"
+    },
+    "totalUnprocessedEventsCount": {
+      "description": "The total number of unprocessed events.",
       "existingJavaType": "java.lang.Long"
     },
     "relevantUnprocessedEventsList": {
@@ -32,10 +44,6 @@
       "items": {
         "$ref": "../../type/changeEvent.json"
       }
-    },
-    "totalUnprocessedEventsCount": {
-      "description": "The total number of unprocessed events.",
-      "existingJavaType": "java.lang.Long"
     },
     "totalUnprocessedEventsList": {
       "description": "A list of all unprocessed events.",
