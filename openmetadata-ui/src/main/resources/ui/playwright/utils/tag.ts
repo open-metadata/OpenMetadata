@@ -10,10 +10,21 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Page } from '@playwright/test';
+import { expect, Page } from '@playwright/test';
 import { SidebarItem } from '../constant/sidebar';
-import { redirectToHomePage } from './common';
+import {
+  NAME_MIN_MAX_LENGTH_VALIDATION_ERROR,
+  NAME_VALIDATION_ERROR,
+  redirectToHomePage,
+} from './common';
 import { sidebarClick } from './sidebar';
+
+export const TAG_INVALID_NAMES = {
+  MIN_LENGTH: 'c',
+  MAX_LENGTH:
+    'a87439625b1c2d3e4f5061728394a5b6c7d8e90a1b2c3d4e5f67890aba87439625b1c2d3e4f5061728394a5',
+  WITH_SPECIAL_CHARS: '!@#$%^&*()',
+};
 
 export const visitClassificationPage = async (
   page: Page,
@@ -26,4 +37,106 @@ export const visitClassificationPage = async (
   await sidebarClick(page, SidebarItem.TAGS);
   await classificationResponse;
   await page.getByRole('menuitem', { name: classificationName }).click();
+};
+
+export async function submitForm(page: Page) {
+  await page.locator('button[type="submit"]').scrollIntoViewIfNeeded();
+  await page.locator('button[type="submit"]').click();
+}
+
+export async function validateForm(page: Page) {
+  // submit form without any data to trigger validation
+  await submitForm(page);
+
+  // error messages
+  await expect(page.locator('#tags_name_help')).toBeVisible();
+  await expect(page.locator('#tags_name_help')).toContainText(
+    'Name is required'
+  );
+
+  await expect(page.locator('#tags_description_help')).toBeVisible();
+  await expect(page.locator('#tags_description_help')).toContainText(
+    'Description is required'
+  );
+
+  // validation should work for invalid names
+
+  // min length validation
+  await page.locator('[data-testid="name"]').scrollIntoViewIfNeeded();
+  await page.locator('[data-testid="name"]').clear();
+  await page.locator('[data-testid="name"]').fill(TAG_INVALID_NAMES.MIN_LENGTH);
+  await page.waitForLoadState('domcontentloaded');
+
+  await expect(
+    page.getByText(NAME_MIN_MAX_LENGTH_VALIDATION_ERROR)
+  ).toBeVisible();
+
+  // max length validation
+  await page.locator('[data-testid="name"]').clear();
+  await page.locator('[data-testid="name"]').fill(TAG_INVALID_NAMES.MAX_LENGTH);
+  await page.waitForLoadState('domcontentloaded');
+
+  await expect(
+    page.getByText(NAME_MIN_MAX_LENGTH_VALIDATION_ERROR)
+  ).toBeVisible();
+
+  // with special char validation
+  await page.locator('[data-testid="name"]').clear();
+  await page
+    .locator('[data-testid="name"]')
+    .fill(TAG_INVALID_NAMES.WITH_SPECIAL_CHARS);
+  await page.waitForLoadState('domcontentloaded');
+
+  await expect(page.getByText(NAME_VALIDATION_ERROR)).toBeVisible();
+}
+
+export const addTagToTableColumn = async (
+  page: Page,
+  {
+    tagName,
+    tagFqn,
+    tagDisplayName,
+    tableId,
+    columnNumber,
+    rowName,
+  }: {
+    tagName: string;
+    tagFqn: string;
+    tagDisplayName: string;
+    tableId: string;
+    columnNumber: number;
+    rowName: string;
+  }
+) => {
+  await page.click(
+    `[data-testid="classification-tags-${columnNumber}"] [data-testid="entity-tags"] [data-testid="add-tag"]`
+  );
+  await page.fill('[data-testid="tag-selector"] input', tagName);
+  await page.click(`[data-testid="tag-${tagFqn}"]`);
+
+  await expect(
+    page.locator('[data-testid="tag-selector"] > .ant-select-selector')
+  ).toContainText(tagDisplayName);
+
+  const saveAssociatedTag = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'PATCH' &&
+      response.url().includes(`/api/v1/tables/${tableId}`)
+  );
+  await page.click('[data-testid="saveAssociatedTag"]');
+  await saveAssociatedTag;
+
+  await page.waitForSelector('.ant-select-dropdown', {
+    state: 'detached',
+  });
+
+  await expect(
+    page.getByRole('row', { name: rowName }).getByTestId('tags-container')
+  ).toContainText(tagDisplayName);
+
+  await expect(
+    page.locator(
+      `[data-testid="classification-tags-${columnNumber}"] [data-testid="tags-container"] [data-testid="tag-${tagFqn}"]`
+    )
+  ).toBeVisible();
 };

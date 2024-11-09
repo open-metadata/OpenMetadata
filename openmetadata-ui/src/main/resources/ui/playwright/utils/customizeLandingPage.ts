@@ -12,7 +12,7 @@
  */
 import { expect, Page } from '@playwright/test';
 import { GlobalSettingOptions } from '../constant/settings';
-import { visitUserProfilePage } from './common';
+import { toastNotification, visitOwnProfilePage } from './common';
 import { settingClick } from './sidebar';
 
 export const navigateToCustomizeLandingPage = async (
@@ -21,20 +21,20 @@ export const navigateToCustomizeLandingPage = async (
 ) => {
   const getPersonas = page.waitForResponse('/api/v1/personas*');
 
-  await settingClick(page, GlobalSettingOptions.CUSTOMIZE_LANDING_PAGE);
+  await settingClick(page, GlobalSettingOptions.PERSONA);
 
   await getPersonas;
 
   const getCustomPageDataResponse = page.waitForResponse(
-    `/api/v1/docStore/name/persona.${encodeURIComponent(
-      personaName
-    )}.Page.LandingPage`
+    `/api/v1/docStore/name/persona.${encodeURIComponent(personaName)}`
   );
 
   // Navigate to the customize landing page
-  await page.click(
-    `[data-testid="persona-details-card-${personaName}"] [data-testid="customize-page-button"]`
-  );
+  await page.getByTestId(`persona-details-card-${personaName}`).click();
+
+  await page.getByRole('tab', { name: 'Customize UI' }).click();
+
+  await page.getByTestId('LandingPage').click();
 
   expect((await getCustomPageDataResponse).status()).toBe(
     customPageDataResponse
@@ -95,7 +95,7 @@ export const setUserDefaultPersona = async (
   page: Page,
   personaName: string
 ) => {
-  await visitUserProfilePage(page);
+  await visitOwnProfilePage(page);
 
   await page
     .locator(
@@ -116,4 +116,33 @@ export const setUserDefaultPersona = async (
   await expect(
     page.locator('[data-testid="user-profile-details"]')
   ).toContainText(personaName);
+};
+
+export const openAddCustomizeWidgetModal = async (page: Page) => {
+  const fetchResponse = page.waitForResponse(
+    '/api/v1/docStore?fqnPrefix=KnowledgePanel*'
+  );
+  await page
+    .locator(
+      '[data-testid="ExtraWidget.EmptyWidgetPlaceholder"] [data-testid="add-widget-button"]'
+    )
+    .click();
+
+  await fetchResponse;
+};
+
+export const saveCustomizeLayoutPage = async (
+  page: Page,
+  isCreated?: boolean
+) => {
+  const saveResponse = page.waitForResponse(
+    isCreated ? '/api/v1/docStore' : '/api/v1/docStore/*'
+  );
+  await page.locator('[data-testid="save-button"]').click();
+  await saveResponse;
+
+  await toastNotification(
+    page,
+    `Page layout ${isCreated ? 'created' : 'updated'} successfully.`
+  );
 };

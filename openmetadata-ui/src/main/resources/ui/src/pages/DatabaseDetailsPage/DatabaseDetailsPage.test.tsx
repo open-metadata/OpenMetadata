@@ -137,6 +137,10 @@ jest.mock(
   }
 );
 
+jest.mock('../../hooks/useCustomLocation/useCustomLocation', () => {
+  return jest.fn().mockImplementation(() => ({ search: '?schema=sales' }));
+});
+
 jest.mock('react-router-dom', () => ({
   Link: jest
     .fn()
@@ -150,9 +154,6 @@ jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockReturnValue({
     fqn: 'bigquery.shopify',
   }),
-  useLocation: jest
-    .fn()
-    .mockImplementation(() => ({ search: '?schema=sales' })),
 }));
 
 jest.mock(

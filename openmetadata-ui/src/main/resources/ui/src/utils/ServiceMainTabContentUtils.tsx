@@ -89,7 +89,7 @@ export const getServiceMainTabColumns = (
       ]
     : []),
   {
-    title: t('label.owner'),
+    title: t('label.owner-plural'),
     dataIndex: 'owners',
     key: 'owners',
     render: (owners: ServicePageData['owners']) =>

@@ -16,7 +16,7 @@ import { capitalize, isEmpty } from 'lodash';
 import qs from 'qs';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useLocation, useParams } from 'react-router-dom';
+import { useHistory, useParams } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
@@ -32,13 +32,14 @@ import { usePermissionProvider } from '../../context/PermissionProvider/Permissi
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { useAuth } from '../../hooks/authHooks';
+import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
 import { userPermissions } from '../../utils/PermissionsUtils';
 import { getResourceEntityFromServiceCategory } from '../../utils/ServiceUtils';
 
 const ServicesPage = () => {
   const { tab } = useParams<{ tab: string }>();
-  const location = useLocation();
+  const location = useCustomLocation();
   const history = useHistory();
   const { t } = useTranslation();
   const { isAdminUser } = useAuth();
@@ -104,8 +105,7 @@ const ServicesPage = () => {
                       label: 'Services',
                     },
                   ]),
-              // pipelines are not supported for apiServices so don't show pipelines tab for apiServices
-              ...(isAdminUser && serviceName !== 'apiServices'
+              ...(isAdminUser
                 ? [
                     {
                       key: 'pipelines',

@@ -32,6 +32,10 @@
       "$ref": "../entity/data/table.json#/definitions/profileSampleType",
       "title": "Profile Sample Type"
     },
+    "samplingMethodType": {
+      "$ref": "../entity/data/table.json#/definitions/samplingMethodType",
+      "title": "Sampling Method Type"
+    },
     "testCases": {
       "description": "List of test cases to be executed on the entity. If null, all test cases will be executed.",
       "type": "array",

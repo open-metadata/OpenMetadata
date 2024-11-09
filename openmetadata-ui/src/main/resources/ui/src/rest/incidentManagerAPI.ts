@@ -29,6 +29,7 @@ export type TestCaseIncidentStatusParams = ListParams & {
   assignee?: string;
   testCaseFQN?: string;
   offset?: string;
+  originEntityFQN?: string;
 };
 
 export const getListTestCaseIncidentStatus = async ({

@@ -4,7 +4,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.models.SearchSuggest;
@@ -39,9 +38,6 @@ public class TeamIndex implements SearchIndex {
     Map<String, Object> commonAttributes = getCommonAttributesMap(team, Entity.TEAM);
     doc.putAll(commonAttributes);
     doc.put("isBot", false);
-    doc.put(
-        "displayName",
-        CommonUtil.nullOrEmpty(team.getDisplayName()) ? team.getName() : team.getDisplayName());
     return doc;
   }
 }

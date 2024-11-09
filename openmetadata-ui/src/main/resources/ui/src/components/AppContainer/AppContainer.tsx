@@ -15,60 +15,60 @@ import { Layout } from 'antd';
 import classNames from 'classnames';
 import React, { useCallback, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ES_MAX_PAGE_SIZE } from '../../constants/constants';
 import { useLimitStore } from '../../context/LimitsProvider/useLimitsStore';
+import { LineageSettings } from '../../generated/configuration/lineageSettings';
+import { SettingType } from '../../generated/settings/settings';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
-import { useDomainStore } from '../../hooks/useDomainStore';
-import { getDomainList } from '../../rest/domainAPI';
 import { getLimitConfig } from '../../rest/limitsAPI';
+import { getSettingsByType } from '../../rest/settingConfigAPI';
 import applicationRoutesClass from '../../utils/ApplicationRoutesClassBase';
 import Appbar from '../AppBar/Appbar';
 import { LimitBanner } from '../common/LimitBanner/LimitBanner';
 import LeftSidebar from '../MyData/LeftSidebar/LeftSidebar.component';
 import applicationsClassBase from '../Settings/Applications/AppDetails/ApplicationsClassBase';
+import { useApplicationsProvider } from '../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import './app-container.less';
 
 const AppContainer = () => {
   const { i18n } = useTranslation();
   const { Header, Sider, Content } = Layout;
-  const { currentUser } = useApplicationStore();
-  const { updateDomains, updateDomainLoading } = useDomainStore();
+  const { currentUser, setAppPreferences } = useApplicationStore();
+  const { applications } = useApplicationsProvider();
   const AuthenticatedRouter = applicationRoutesClass.getRouteElements();
   const ApplicationExtras = applicationsClassBase.getApplicationExtension();
   const isDirectionRTL = useMemo(() => i18n.dir() === 'rtl', [i18n]);
   const { setConfig, bannerDetails } = useLimitStore();
 
-  const fetchDomainList = useCallback(async () => {
+  const fetchAppConfigurations = useCallback(async () => {
     try {
-      updateDomainLoading(true);
-      const { data } = await getDomainList({
-        limit: ES_MAX_PAGE_SIZE,
-        fields: 'parent',
-      });
-      updateDomains(data);
-    } catch (error) {
-      // silent fail
-    } finally {
-      updateDomainLoading(false);
-    }
-  }, [currentUser]);
-
-  const fetchLimitConfig = useCallback(async () => {
-    try {
-      const response = await getLimitConfig();
+      const [response, lineageConfig] = await Promise.all([
+        getLimitConfig(),
+        getSettingsByType(SettingType.LineageSettings),
+      ]);
 
       setConfig(response);
+      setAppPreferences({ lineageConfig: lineageConfig as LineageSettings });
     } catch (error) {
       // silent fail
     }
   }, []);
 
+  const appendReserveRightSidebarClass = useCallback(() => {
+    const element = document.getElementsByTagName('body');
+    element[0].classList.add('reserve-right-sidebar');
+  }, []);
+
   useEffect(() => {
     if (currentUser?.id) {
-      fetchDomainList();
-      fetchLimitConfig();
+      fetchAppConfigurations();
     }
   }, [currentUser?.id]);
+
+  useEffect(() => {
+    if (applicationsClassBase.isFloatingButtonPresent(applications)) {
+      appendReserveRightSidebarClass();
+    }
+  }, [applications]);
 
   return (
     <Layout>
@@ -76,7 +76,6 @@ const AppContainer = () => {
       <Layout
         className={classNames('app-container', {
           ['extra-banner']: Boolean(bannerDetails),
-          ['reserve-right-sidebar']: Boolean(ApplicationExtras),
         })}>
         <Sider
           className={classNames('left-sidebar-col', {

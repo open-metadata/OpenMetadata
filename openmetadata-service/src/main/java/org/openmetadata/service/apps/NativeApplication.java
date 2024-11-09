@@ -1,10 +1,10 @@
 package org.openmetadata.service.apps;
 
 import org.openmetadata.schema.entity.app.App;
-import org.quartz.Job;
+import org.quartz.InterruptableJob;
 import org.quartz.JobExecutionContext;
 
-public interface NativeApplication extends Job {
+public interface NativeApplication extends InterruptableJob {
   void init(App app);
 
   void install();

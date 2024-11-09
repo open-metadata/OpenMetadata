@@ -14,6 +14,7 @@
 package org.openmetadata.service.security.saml;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.security.AuthenticationCodeFlowHandler.SESSION_REDIRECT_URI;
 import static org.openmetadata.service.util.UserUtil.getRoleListFromUser;
 
 import com.onelogin.saml2.Auth;
@@ -47,7 +48,7 @@ import org.openmetadata.service.util.UserUtil;
 @WebServlet("/api/v1/saml/acs")
 @Slf4j
 public class SamlAssertionConsumerServlet extends HttpServlet {
-  private Set<String> admins;
+  private final Set<String> admins;
 
   public SamlAssertionConsumerServlet(AuthorizerConfiguration configuration) {
     admins = configuration.getAdminPrincipals();
@@ -127,8 +128,9 @@ public class SamlAssertionConsumerServlet extends HttpServlet {
       resp.addCookie(refreshTokenCookie);
 
       // Redirect with JWT Token
+      String redirectUri = (String) req.getSession().getAttribute(SESSION_REDIRECT_URI);
       String url =
-          SamlSettingsHolder.getInstance().getRelayState()
+          redirectUri
               + "?id_token="
               + jwtAuthMechanism.getJWTToken()
               + "&email="

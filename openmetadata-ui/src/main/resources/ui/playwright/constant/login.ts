@@ -16,3 +16,6 @@ export const JWT_EXPIRY_TIME_MAP = {
   '3 hours': 10800,
   '4 hours': 14400,
 };
+
+export const LOGIN_ERROR_MESSAGE =
+  'You have entered an invalid username or password.';

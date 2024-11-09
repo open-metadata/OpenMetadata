@@ -1,6 +1,7 @@
 ---
 title: Alation
 slug: /connectors/metadata/alation
+collate: true
 ---
 
 {% connectorDetailsHeader

@@ -70,6 +70,11 @@ export enum GlobalSettingOptions {
   APIS = 'apiServices',
   API_COLLECTIONS = 'apiCollections',
   API_ENDPOINTS = 'apiEndpoints',
+  DATA_PRODUCTS = 'dataProducts',
+  DASHBOARD_DATA_MODEL = 'dashboardDataModels',
+  METRICS = 'metrics',
+  SEARCH_RBAC = 'search-rbac',
+  LINEAGE_CONFIG = 'lineageConfig',
 }
 
 export const SETTINGS_OPTIONS_PATH = {
@@ -144,10 +149,7 @@ export const SETTINGS_OPTIONS_PATH = {
     GlobalSettingsMenuCategory.MEMBERS,
     `${GlobalSettingsMenuCategory.MEMBERS}.${GlobalSettingOptions.ADMINS}`,
   ],
-  [GlobalSettingOptions.PERSONA]: [
-    GlobalSettingsMenuCategory.MEMBERS,
-    `${GlobalSettingsMenuCategory.MEMBERS}.${GlobalSettingOptions.PERSONA}`,
-  ],
+  [GlobalSettingOptions.PERSONA]: [GlobalSettingOptions.PERSONA],
 
   // Access Control
 
@@ -162,10 +164,6 @@ export const SETTINGS_OPTIONS_PATH = {
 
   // Open-metadata
 
-  [GlobalSettingOptions.CUSTOMIZE_LANDING_PAGE]: [
-    GlobalSettingsMenuCategory.PREFERENCES,
-    `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.CUSTOMIZE_LANDING_PAGE}`,
-  ],
   [GlobalSettingOptions.EMAIL]: [
     GlobalSettingsMenuCategory.PREFERENCES,
     `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.EMAIL}`,
@@ -185,6 +183,15 @@ export const SETTINGS_OPTIONS_PATH = {
   [GlobalSettingOptions.GLOSSARY_TERM]: [
     GlobalSettingsMenuCategory.CUSTOM_PROPERTIES,
     `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.GLOSSARY_TERM}`,
+  ],
+
+  [GlobalSettingOptions.SEARCH_RBAC]: [
+    GlobalSettingsMenuCategory.PREFERENCES,
+    `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.SEARCH_RBAC}`,
+  ],
+  [GlobalSettingOptions.LINEAGE_CONFIG]: [
+    GlobalSettingsMenuCategory.PREFERENCES,
+    `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.LINEAGE_CONFIG}`,
   ],
 };
 
@@ -240,5 +247,17 @@ export const SETTING_CUSTOM_PROPERTIES_PATH = {
   [GlobalSettingOptions.API_ENDPOINTS]: [
     GlobalSettingsMenuCategory.CUSTOM_PROPERTIES,
     `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.API_ENDPOINTS}`,
+  ],
+  [GlobalSettingOptions.DATA_PRODUCTS]: [
+    GlobalSettingsMenuCategory.CUSTOM_PROPERTIES,
+    `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.DATA_PRODUCTS}`,
+  ],
+  [GlobalSettingOptions.DASHBOARD_DATA_MODEL]: [
+    GlobalSettingsMenuCategory.CUSTOM_PROPERTIES,
+    `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.DASHBOARD_DATA_MODEL}`,
+  ],
+  [GlobalSettingOptions.METRICS]: [
+    GlobalSettingsMenuCategory.CUSTOM_PROPERTIES,
+    `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.METRICS}`,
   ],
 };

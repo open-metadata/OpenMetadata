@@ -44,7 +44,7 @@ public class PostgresConnectionClassConverter extends ClassConverter {
         .ifPresent(postgresConnection::setAuthType);
 
     tryToConvert(postgresConnection.getSslConfig(), SSL_SOURCE_CLASS)
-        .ifPresent(obj -> postgresConnection.setSslConfig((ValidateSSLClientConfig) obj));
+        .ifPresent(postgresConnection::setSslConfig);
 
     return postgresConnection;
   }

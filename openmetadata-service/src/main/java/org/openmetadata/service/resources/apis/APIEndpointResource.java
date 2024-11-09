@@ -47,7 +47,6 @@ import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.api.data.CreateAPIEndpoint;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.data.APIEndpoint;
-import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
@@ -320,7 +319,7 @@ public class APIEndpointResource extends EntityResource<APIEndpoint, APIEndpoint
               description = "JsonPatch RFC",
               url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
-  public Response updateDescription(
+  public Response updateMetric(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the APIEndpoint", schema = @Schema(type = "UUID"))
@@ -349,10 +348,10 @@ public class APIEndpointResource extends EntityResource<APIEndpoint, APIEndpoint
               description = "JsonPatch RFC",
               url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
-  public Response updateDescription(
+  public Response updateAPIEndpoint(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Name of the topic", schema = @Schema(type = "string"))
+      @Parameter(description = "Name of the APIEndpoint", schema = @Schema(type = "string"))
           @PathParam("fqn")
           String fqn,
       @RequestBody(
@@ -370,17 +369,17 @@ public class APIEndpointResource extends EntityResource<APIEndpoint, APIEndpoint
   @PUT
   @Operation(
       operationId = "createOrUpdateAPIEndpoint",
-      summary = "Update topic",
+      summary = "Update API Endpoint",
       description =
           "Create a API Endpoint, it it does not exist or update an existing API Endpoint.",
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "The updated topic ",
+            description = "The updated api endpoint ",
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = Topic.class)))
+                    schema = @Schema(implementation = APIEndpoint.class)))
       })
   public Response createOrUpdate(
       @Context UriInfo uriInfo,
@@ -547,7 +546,7 @@ public class APIEndpointResource extends EntityResource<APIEndpoint, APIEndpoint
                     mediaType = "application/json",
                     schema = @Schema(implementation = APIEndpoint.class)))
       })
-  public Response restoreTopic(
+  public Response restore(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {

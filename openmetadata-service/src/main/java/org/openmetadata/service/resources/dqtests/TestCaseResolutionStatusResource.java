@@ -48,6 +48,7 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ReportDataContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
+import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
@@ -134,7 +135,12 @@ public class TestCaseResolutionStatusResource
           String assignee,
       @Parameter(description = "Test case fully qualified name", schema = @Schema(type = "String"))
           @QueryParam("testCaseFQN")
-          String testCaseFQN) {
+          String testCaseFQN,
+      @Parameter(
+              description = "Origin entity for which the incident was opened for",
+              schema = @Schema(type = "String"))
+          @QueryParam("originEntityFQN")
+          String originEntityFQN) {
     OperationContext operationContext =
         new OperationContext(Entity.TEST_CASE, MetadataOperation.VIEW_ALL);
     ResourceContextInterface resourceContext = ReportDataContext.builder().build();
@@ -143,7 +149,8 @@ public class TestCaseResolutionStatusResource
     ListFilter filter = new ListFilter(null);
     filter.addQueryParam("testCaseResolutionStatusType", testCaseResolutionStatusType);
     filter.addQueryParam("assignee", assignee);
-    filter.addQueryParam("entityFQNHash", testCaseFQN);
+    filter.addQueryParam("entityFQNHash", FullyQualifiedName.buildHash(testCaseFQN));
+    filter.addQueryParam("originEntityFQN", originEntityFQN);
 
     return repository.list(offset, startTs, endTs, limitParam, filter, latest);
   }

@@ -21,6 +21,7 @@ import static org.openmetadata.service.Entity.API_ENDPOINT;
 import static org.openmetadata.service.Entity.CONTAINER;
 import static org.openmetadata.service.Entity.DASHBOARD;
 import static org.openmetadata.service.Entity.DASHBOARD_DATA_MODEL;
+import static org.openmetadata.service.Entity.METRIC;
 import static org.openmetadata.service.Entity.MLMODEL;
 import static org.openmetadata.service.Entity.PIPELINE;
 import static org.openmetadata.service.Entity.SEARCH_INDEX;
@@ -39,6 +40,7 @@ import java.util.Map;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.ws.rs.core.Response;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
@@ -70,9 +72,11 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.models.IndexMapping;
+import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
 
+@Slf4j
 @Repository
 public class LineageRepository {
   private final CollectionDAO dao;
@@ -156,6 +160,7 @@ public class LineageRepository {
     details.put("id", entityRef.getId().toString());
     details.put("type", entityRef.getType());
     details.put("fqn", entityRef.getFullyQualifiedName());
+    details.put("fqnHash", FullyQualifiedName.buildHash(entityRef.getFullyQualifiedName()));
     return details;
   }
 
@@ -274,7 +279,7 @@ public class LineageRepository {
         }
       }
       // remove the last ;
-      return str.toString().substring(0, str.toString().length() - 1);
+      return str.substring(0, str.toString().length() - 1);
     }
     return "";
   }
@@ -359,6 +364,9 @@ public class LineageRepository {
             Entity.getEntity(
                 API_ENDPOINT, entityReference.getId(), "responseSchema", Include.NON_DELETED);
         ColumnUtil.validateFieldFQN(apiEndpoint.getResponseSchema().getSchemaFields(), columnFQN);
+      }
+      case METRIC -> {
+        LOG.info("Metric column level lineage is not supported");
       }
       default -> throw new IllegalArgumentException(
           String.format("Unsupported Entity Type %s for lineage", entityReference.getType()));

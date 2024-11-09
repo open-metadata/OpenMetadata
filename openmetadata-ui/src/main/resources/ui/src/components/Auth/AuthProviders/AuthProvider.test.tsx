@@ -35,9 +35,12 @@ Object.defineProperty(window, 'localStorage', {
 
 const mockOnLogoutHandler = jest.fn();
 
+jest.mock('../../../hooks/useCustomLocation/useCustomLocation', () => {
+  return jest.fn().mockImplementation(() => ({ pathname: 'pathname' }));
+});
+
 jest.mock('react-router-dom', () => ({
   useHistory: jest.fn().mockReturnValue({ push: jest.fn(), listen: jest.fn() }),
-  useLocation: jest.fn().mockReturnValue({ pathname: 'pathname' }),
 }));
 
 jest.mock('../../../rest/miscAPI', () => ({

@@ -30,7 +30,7 @@ export interface SelectTestSuiteProps {
 
 export interface TestCaseFormProps {
   initialValue?: CreateTestCase;
-  onSubmit: (data: CreateTestCase) => void;
+  onSubmit: (data: CreateTestCase) => Promise<void>;
   onCancel: (data: CreateTestCase) => void;
   table: Table;
 }
@@ -43,7 +43,7 @@ export interface TestSuiteIngestionProps {
 }
 
 export type TestSuiteIngestionDataType = {
-  repeatFrequency: string;
+  cron?: string;
   enableDebugLog?: boolean;
   testCases?: string[];
   name?: string;

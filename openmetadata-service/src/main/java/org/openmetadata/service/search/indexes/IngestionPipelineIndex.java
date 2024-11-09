@@ -6,11 +6,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import org.json.JSONObject;
 import org.openmetadata.schema.entity.services.ingestionPipelines.AirflowConfig;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.ParseTags;
 import org.openmetadata.service.search.models.SearchSuggest;
+import org.openmetadata.service.util.JsonUtils;
 
 public class IngestionPipelineIndex implements SearchIndex {
   final IngestionPipeline ingestionPipeline;
@@ -60,11 +62,6 @@ public class IngestionPipelineIndex implements SearchIndex {
         ingestionPipeline.getName() != null
             ? ingestionPipeline.getName()
             : ingestionPipeline.getDisplayName());
-    doc.put(
-        "displayName",
-        ingestionPipeline.getDisplayName() != null
-            ? ingestionPipeline.getDisplayName()
-            : ingestionPipeline.getName());
     doc.put("tags", parseTags.getTags());
     doc.put("tier", parseTags.getTierTag());
     doc.put("service_suggest", serviceSuggest);
@@ -78,7 +75,11 @@ public class IngestionPipelineIndex implements SearchIndex {
               airflowConfigMap.put("scheduleInterval", scheduleInterval);
               doc.put("airflowConfig", airflowConfigMap);
             });
-
+    JSONObject sourceConfigJson =
+        new JSONObject(JsonUtils.pojoToJson(ingestionPipeline.getSourceConfig().getConfig()));
+    Optional.ofNullable(sourceConfigJson.optJSONObject("appConfig"))
+        .map(appConfig -> appConfig.optString("type", null))
+        .ifPresent(c -> doc.put("applicationType", c));
     return doc;
   }
 

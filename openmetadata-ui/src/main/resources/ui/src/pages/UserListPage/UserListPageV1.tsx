@@ -17,7 +17,7 @@ import { AxiosError } from 'axios';
 import { capitalize, isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useLocation, useParams } from 'react-router-dom';
+import { useHistory, useParams } from 'react-router-dom';
 import { ReactComponent as IconDelete } from '../../assets/svg/ic-delete.svg';
 import { ReactComponent as IconRestore } from '../../assets/svg/ic-restore.svg';
 import DeleteWidgetModal from '../../components/common/DeleteWidget/DeleteWidgetModal';
@@ -52,6 +52,7 @@ import { Include } from '../../generated/type/include';
 import LimitWrapper from '../../hoc/LimitWrapper';
 import { useAuth } from '../../hooks/authHooks';
 import { usePaging } from '../../hooks/paging/usePaging';
+import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { searchData } from '../../rest/miscAPI';
 import { getUsers, restoreUser, UsersQueryParams } from '../../rest/userAPI';
 import { getEntityName } from '../../utils/EntityUtils';
@@ -67,7 +68,7 @@ const UserListPageV1 = () => {
   const { tab } = useParams<{ [key: string]: GlobalSettingOptions }>();
 
   const history = useHistory();
-  const location = useLocation();
+  const location = useCustomLocation();
   const isAdminPage = useMemo(() => tab === GlobalSettingOptions.ADMINS, [tab]);
   const { isAdminUser } = useAuth();
 
@@ -275,7 +276,10 @@ const UserListPageV1 = () => {
   }, [pageSize, isAdminPage]);
 
   const handleAddNewUser = () => {
-    history.push(ROUTES.CREATE_USER);
+    history.push({
+      pathname: ROUTES.CREATE_USER,
+      state: { isAdminPage },
+    });
   };
 
   const handleReactiveUser = async () => {
@@ -307,8 +311,12 @@ const UserListPageV1 = () => {
   };
 
   const columns: ColumnsType<User> = useMemo(() => {
+    const commonFields = isAdminPage
+      ? commonUserDetailColumns().filter((col) => col.key !== 'roles')
+      : commonUserDetailColumns();
+
     return [
-      ...commonUserDetailColumns(),
+      ...commonFields,
       {
         title: t('label.action-plural'),
         dataIndex: 'actions',
@@ -436,7 +444,9 @@ const UserListPageV1 = () => {
                   data-testid="add-user"
                   type="primary"
                   onClick={handleAddNewUser}>
-                  {t('label.add-entity', { entity: t('label.user') })}
+                  {t('label.add-entity', {
+                    entity: t(`label.${isAdminPage ? 'admin' : 'user'}`),
+                  })}
                 </Button>
               </LimitWrapper>
             )}
@@ -473,6 +483,7 @@ const UserListPageV1 = () => {
           {showPagination && (
             <NextPrevious
               currentPage={currentPage}
+              isLoading={isDataLoading}
               isNumberBased={Boolean(searchValue)}
               pageSize={pageSize}
               paging={paging}

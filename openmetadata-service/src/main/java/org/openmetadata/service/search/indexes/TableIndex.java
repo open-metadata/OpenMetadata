@@ -91,8 +91,6 @@ public record TableIndex(Table table) implements ColumnIndex {
             .collect(ArrayList::new, ArrayList::add, ArrayList::addAll);
     Map<String, Object> commonAttributes = getCommonAttributesMap(table, Entity.TABLE);
     doc.putAll(commonAttributes);
-    doc.put(
-        "displayName", table.getDisplayName() != null ? table.getDisplayName() : table.getName());
     doc.put("tags", flattenedTagList);
     doc.put("tier", parseTags.getTierTag());
     doc.put("service_suggest", serviceSuggest);
@@ -100,9 +98,12 @@ public record TableIndex(Table table) implements ColumnIndex {
     doc.put("schema_suggest", schemaSuggest);
     doc.put("database_suggest", databaseSuggest);
     doc.put("serviceType", table.getServiceType());
+    doc.put("locationPath", table.getLocationPath());
+    doc.put("schemaDefinition", table.getSchemaDefinition());
     doc.put("service", getEntityWithDisplayName(table.getService()));
     doc.put("database", getEntityWithDisplayName(table.getDatabase()));
     doc.put("lineage", SearchIndex.getLineageData(table.getEntityReference()));
+    doc.put("entityRelationship", SearchIndex.populateEntityRelationshipData(table));
     doc.put("databaseSchema", getEntityWithDisplayName(table.getDatabaseSchema()));
     return doc;
   }
@@ -113,7 +114,7 @@ public record TableIndex(Table table) implements ColumnIndex {
     fields.put("columns.name", 5.0f);
     fields.put("columns.displayName", 5.0f);
     fields.put("columns.description", 2.0f);
-    fields.put("columns.children.name", 5.0f);
+    fields.put("columns.children.name", 3.0f);
     return fields;
   }
 }

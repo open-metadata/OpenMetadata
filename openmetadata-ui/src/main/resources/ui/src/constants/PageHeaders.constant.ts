@@ -118,6 +118,12 @@ export const PAGE_HEADERS = {
       entity: i18n.t('label.dashboard-data-model-plural'),
     }),
   },
+  DATA_PRODUCT_CUSTOM_ATTRIBUTES: {
+    header: i18n.t('label.data-product-plural'),
+    subHeader: i18n.t('message.define-custom-property-for-entity', {
+      entity: i18n.t('label.data-product-plural'),
+    }),
+  },
   PIPELINES_CUSTOM_ATTRIBUTES: {
     header: i18n.t('label.pipeline-plural'),
     subHeader: i18n.t('message.define-custom-property-for-entity', {
@@ -192,6 +198,14 @@ export const PAGE_HEADERS = {
     header: i18n.t('label.login'),
     subHeader: i18n.t('message.page-sub-header-for-login-configuration'),
   },
+  SEARCH_RBAC: {
+    header: i18n.t('label.search'),
+    subHeader: i18n.t('message.page-sub-header-for-search-setting'),
+  },
+  LINEAGE_CONFIG: {
+    header: i18n.t('label.lineage-config'),
+    subHeader: i18n.t('message.page-sub-header-for-lineage-config-setting'),
+  },
   OM_HEALTH: {
     header: i18n.t('label.health-check'),
     subHeader: i18n.t('message.page-sub-header-for-om-health-configuration'),
@@ -215,6 +229,12 @@ export const PAGE_HEADERS = {
     header: i18n.t('label.api-endpoint-plural'),
     subHeader: i18n.t('message.define-custom-property-for-entity', {
       entity: i18n.t('label.api-endpoint-plural'),
+    }),
+  },
+  METRIC_CUSTOM_ATTRIBUTES: {
+    header: i18n.t('label.metric-plural'),
+    subHeader: i18n.t('message.define-custom-property-for-entity', {
+      entity: i18n.t('label.metric-plural'),
     }),
   },
 };

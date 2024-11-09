@@ -34,8 +34,12 @@ export class GlossaryTerm {
 
   responseData: GlossaryTermResponseDataType;
 
-  constructor(glossary: Glossary, name?: string) {
+  constructor(glossary: Glossary, parent?: string, name?: string) {
     this.data.glossary = glossary.data.name;
+    if (parent) {
+      this.data.parent = parent;
+    }
+
     this.data.name = name ?? this.data.name;
     // eslint-disable-next-line no-useless-escape
     this.data.fullyQualifiedName = `\"${this.data.glossary}\".\"${this.data.name}\"`;

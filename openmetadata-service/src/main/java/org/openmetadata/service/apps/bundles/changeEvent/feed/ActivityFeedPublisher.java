@@ -36,7 +36,7 @@ import org.openmetadata.service.util.JsonUtils;
 @Slf4j
 public class ActivityFeedPublisher implements Destination<ChangeEvent> {
   private final FeedMessageDecorator feedMessageFormatter = new FeedMessageDecorator();
-  FeedRepository feedRepository = new FeedRepository();
+  final FeedRepository feedRepository = new FeedRepository();
 
   @Getter private final SubscriptionDestination subscriptionDestination;
   private final EventSubscription eventSubscription;
@@ -73,12 +73,13 @@ public class ActivityFeedPublisher implements Destination<ChangeEvent> {
               ACTIVITY_FEED, changeEvent, ex.getMessage());
       LOG.error(message);
       throw new EventPublisherException(
-          message, Pair.of(subscriptionDestination.getId(), changeEvent));
+          CatalogExceptionMessage.eventPublisherFailedToPublish(ACTIVITY_FEED, ex.getMessage()),
+          Pair.of(subscriptionDestination.getId(), changeEvent));
     }
   }
 
   @Override
-  public void sendTestMessage() throws EventPublisherException {}
+  public void sendTestMessage() {}
 
   @Override
   public EventSubscription getEventSubscriptionForDestination() {

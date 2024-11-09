@@ -1,7 +1,10 @@
 package org.openmetadata.service.search;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import lombok.Getter;
 import lombok.Setter;
 import org.openmetadata.schema.type.EntityReference;
@@ -25,6 +28,8 @@ public class SearchRequest {
   private final boolean applyDomainFilter;
   private final List<String> domains;
   private final boolean getHierarchy;
+  private final Object[] searchAfter;
+  private final boolean explain;
 
   public SearchRequest(ElasticSearchRequestBuilder builder) {
     this.query = builder.query;
@@ -43,6 +48,8 @@ public class SearchRequest {
     this.getHierarchy = builder.getHierarchy;
     this.domains = builder.domains;
     this.applyDomainFilter = builder.applyDomainFilter;
+    this.searchAfter = builder.searchAfter;
+    this.explain = builder.explain;
   }
 
   // Builder class for ElasticSearchRequest
@@ -64,6 +71,8 @@ public class SearchRequest {
     private boolean getHierarchy;
     private boolean applyDomainFilter;
     private List<String> domains;
+    private Object[] searchAfter;
+    private boolean explain;
 
     public ElasticSearchRequestBuilder(String query, int size, String index) {
       this.query = query;
@@ -136,6 +145,19 @@ public class SearchRequest {
           references.stream()
               .map(EntityReference::getFullyQualifiedName)
               .collect(Collectors.toList());
+      return this;
+    }
+
+    public ElasticSearchRequestBuilder searchAfter(String searchAfter) {
+      this.searchAfter = null;
+      if (!nullOrEmpty(searchAfter)) {
+        this.searchAfter = Stream.of(searchAfter.split(",")).toArray(Object[]::new);
+      }
+      return this;
+    }
+
+    public ElasticSearchRequestBuilder explain(boolean explain) {
+      this.explain = explain;
       return this;
     }
 

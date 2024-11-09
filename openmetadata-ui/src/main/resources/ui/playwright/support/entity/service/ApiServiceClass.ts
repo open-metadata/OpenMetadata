@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { APIRequestContext, Page } from '@playwright/test';
+import { Operation } from 'fast-json-patch';
 import { SERVICE_TYPE } from '../../../constant/service';
 import { uuid } from '../../../utils/common';
 import { visitServiceDetailsPage } from '../../../utils/service';
@@ -20,10 +21,10 @@ import { EntityClass } from '../EntityClass';
 export class ApiServiceClass extends EntityClass {
   entity = {
     name: `pw-api-service-${uuid()}`,
-    serviceType: 'REST',
+    serviceType: 'Rest',
     connection: {
       config: {
-        type: 'REST',
+        type: 'Rest',
         openAPISchemaURL: 'https://sandbox-beta.open-metadata.org/swagger.json',
       },
     },
@@ -42,6 +43,23 @@ export class ApiServiceClass extends EntityClass {
       '/api/v1/services/apiServices',
       {
         data: this.entity,
+      }
+    );
+
+    const service = await serviceResponse.json();
+
+    this.entityResponseData = service;
+
+    return service;
+  }
+  async patch(apiContext: APIRequestContext, payload: Operation[]) {
+    const serviceResponse = await apiContext.patch(
+      `/api/v1/services/apiServices/${this.entityResponseData?.['id']}`,
+      {
+        data: payload,
+        headers: {
+          'Content-Type': 'application/json-patch+json',
+        },
       }
     );
 

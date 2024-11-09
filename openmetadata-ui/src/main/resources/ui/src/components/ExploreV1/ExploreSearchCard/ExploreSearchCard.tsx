@@ -17,6 +17,7 @@ import { ExtraInfo } from 'Models';
 import React, { forwardRef, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router-dom';
+import { TAG_START_WITH } from '../../../constants/Tag.constants';
 import { useTourProvider } from '../../../context/TourProvider/TourProvider';
 import { EntityType } from '../../../enums/entity.enum';
 import {
@@ -24,6 +25,7 @@ import {
   Status,
 } from '../../../generated/entity/data/glossaryTerm';
 import { EntityReference } from '../../../generated/entity/type';
+import { TagLabel } from '../../../generated/tests/testCase';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getDomainPath } from '../../../utils/RouterUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
@@ -33,6 +35,7 @@ import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.component';
 import TableDataCardBody from '../../Database/TableDataCardBody/TableDataCardBody';
 import { GlossaryStatusBadge } from '../../Glossary/GlossaryStatusBadge/GlossaryStatusBadge.component';
+import TagsV1 from '../../Tag/TagsV1/TagsV1.component';
 import './explore-search-card.less';
 import { ExploreSearchCardProps } from './ExploreSearchCard.interface';
 
@@ -64,7 +67,12 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
     const otherDetails = useMemo(() => {
       const tierValue = isString(source.tier)
         ? source.tier
-        : getEntityName(source.tier);
+        : source.tier && (
+            <TagsV1
+              startWith={TAG_START_WITH.SOURCE_ICON}
+              tag={source.tier as TagLabel}
+            />
+          );
 
       const _otherDetails: ExtraInfo[] = [
         {

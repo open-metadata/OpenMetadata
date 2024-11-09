@@ -14,10 +14,11 @@
 package org.openmetadata.service.formatter.decorators;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import static org.openmetadata.service.util.EmailUtil.getSmtpSettings;
+import static org.openmetadata.service.util.email.EmailUtil.getSmtpSettings;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import org.apache.commons.lang3.StringUtils;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.service.apps.bundles.changeEvent.email.EmailMessage;
 import org.openmetadata.service.exception.UnhandledServerException;
@@ -96,6 +97,7 @@ public class EmailMessageDecorator implements MessageDecorator<EmailMessage> {
       EmailMessage emailMessage = new EmailMessage();
       emailMessage.setUserName("test_user");
       emailMessage.setUpdatedBy("system");
+      emailMessage.setEntityUrl(StringUtils.EMPTY);
       emailMessage.setChangeMessage(
           new ArrayList<>(
               Collections.singleton(

@@ -34,14 +34,14 @@ import { cloneDeep, isEmpty, isUndefined } from 'lodash';
 import Qs from 'qs';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useLocation } from 'react-router-dom';
+import { useHistory } from 'react-router-dom';
 import { ReactComponent as AddPlaceHolderIcon } from '../../../../assets/svg/add-placeholder.svg';
 import { ReactComponent as ExportIcon } from '../../../../assets/svg/ic-export.svg';
 import { ReactComponent as ImportIcon } from '../../../../assets/svg/ic-import.svg';
 import { ReactComponent as IconRestore } from '../../../../assets/svg/ic-restore.svg';
 import { ReactComponent as IconOpenLock } from '../../../../assets/svg/open-lock.svg';
 import { ReactComponent as IconTeams } from '../../../../assets/svg/teams.svg';
-import { ROUTES } from '../../../../constants/constants';
+import { PAGE_SIZE, ROUTES } from '../../../../constants/constants';
 import {
   GLOSSARIES_DOCS,
   ROLE_DOCS,
@@ -66,9 +66,10 @@ import {
 import { EntityReference } from '../../../../generated/type/entityReference';
 import { useAuth } from '../../../../hooks/authHooks';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
+import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
 import AddAttributeModal from '../../../../pages/RolesPage/AddAttributeModal/AddAttributeModal';
 import { ImportType } from '../../../../pages/TeamsPage/ImportTeamsPage/ImportTeamsPage.interface';
-import { getSuggestions } from '../../../../rest/miscAPI';
+import { searchQuery } from '../../../../rest/searchAPI';
 import { exportTeam, restoreTeam } from '../../../../rest/teamsAPI';
 import { Transi18next } from '../../../../utils/CommonUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
@@ -136,7 +137,7 @@ const TeamDetailsV1 = ({
 }: TeamDetailsProp) => {
   const { t } = useTranslation();
   const history = useHistory();
-  const location = useLocation();
+  const location = useCustomLocation();
   const { isAdminUser } = useAuth();
   const { currentUser } = useApplicationStore();
 
@@ -267,15 +268,38 @@ const TeamDetailsV1 = ({
 
   const searchTeams = async (text: string) => {
     try {
-      const res = await getSuggestions<SearchIndex.TEAM>(
-        text,
-        SearchIndex.TEAM
-      );
-      const data = res.data.suggest['metadata-suggest'][0].options.map(
-        (value) => value._source as Team
-      );
+      const res = await searchQuery({
+        query: `*${text}*`,
+        pageNumber: 1,
+        pageSize: PAGE_SIZE,
+        queryFilter: {
+          query: {
+            bool: {
+              must_not: [
+                {
+                  term: {
+                    'name.keyword': 'Organization',
+                  },
+                },
+              ],
+            },
+          },
+        },
+        searchIndex: SearchIndex.TEAM,
+      });
 
-      setChildTeamList(data);
+      const data = res.hits.hits.map((value) => value._source as Team);
+
+      setChildTeamList(
+        data.map((team) => {
+          return {
+            ...team,
+            // search data will contain children empty array, so we need to remove it
+            // to avoid expand handler to show in ui
+            children: isEmpty(team.children) ? undefined : team.children,
+          };
+        })
+      );
     } catch (error) {
       setChildTeamList([]);
     }
@@ -1050,13 +1074,7 @@ const TeamDetailsV1 = ({
 
   const tabs = useMemo(
     () =>
-      getTabs(
-        currentTeam,
-        isGroupType,
-        isOrganization,
-        teamCount,
-        assetsCount
-      ).map((tab) => ({
+      getTabs(currentTeam, isGroupType, teamCount, assetsCount).map((tab) => ({
         ...tab,
         label: (
           <TabsLabel

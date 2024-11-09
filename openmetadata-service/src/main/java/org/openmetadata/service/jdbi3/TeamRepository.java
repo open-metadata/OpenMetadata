@@ -102,6 +102,7 @@ public class TeamRepository extends EntityRepository<Team> {
         TEAM_UPDATE_FIELDS);
     this.quoteFqn = true;
     supportsSearch = true;
+    parent = true;
   }
 
   @Override
@@ -738,7 +739,7 @@ public class TeamRepository extends EntityRepository<Team> {
       }
       teams.addAll(list);
       for (Team teamEntry : list) {
-        listTeams(repository, teamEntry.getName(), teams, fields);
+        listTeams(repository, teamEntry.getFullyQualifiedName(), teams, fields);
       }
       return teams;
     }
@@ -746,7 +747,8 @@ public class TeamRepository extends EntityRepository<Team> {
     public String exportCsv() throws IOException {
       TeamRepository repository = (TeamRepository) Entity.getEntityRepository(TEAM);
       final Fields fields = repository.getFields("owners,defaultRoles,parents,policies");
-      return exportCsv(listTeams(repository, team.getName(), new ArrayList<>(), fields));
+      return exportCsv(
+          listTeams(repository, team.getFullyQualifiedName(), new ArrayList<>(), fields));
     }
   }
 
@@ -796,6 +798,8 @@ public class TeamRepository extends EntityRepository<Team> {
           origUsers,
           updatedUsers,
           false);
+
+      updatedTeam.setUserCount(updatedUsers.size());
     }
 
     private void updateDefaultRoles(Team origTeam, Team updatedTeam) {

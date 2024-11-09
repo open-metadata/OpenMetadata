@@ -12,7 +12,7 @@
  */
 
 import { t } from 'i18next';
-import { isEmpty, sortBy } from 'lodash';
+import { debounce, isEmpty, sortBy } from 'lodash';
 import {
   AsyncFetchListValues,
   AsyncFetchListValuesResult,
@@ -27,9 +27,78 @@ import { SearchIndex } from '../enums/search.enum';
 import { getAggregateFieldOptions } from '../rest/miscAPI';
 import { renderAdvanceSearchButtons } from './AdvancedSearchUtils';
 import { getCombinedQueryFilterObject } from './ExplorePage/ExplorePageUtils';
+import { renderQueryBuilderFilterButtons } from './QueryBuilderUtils';
 
 class AdvancedSearchClassBase {
   baseConfig = AntdConfig as BasicConfig;
+  configTypes: BasicConfig['types'] = {
+    ...this.baseConfig.types,
+    multiselect: {
+      ...this.baseConfig.types.multiselect,
+      widgets: {
+        ...this.baseConfig.types.multiselect.widgets,
+        // Adds the "Contains" and "Not contains" options for fields with type multiselect
+        text: {
+          operators: ['like', 'not_like', 'regexp'],
+        },
+      },
+      // Limits source to user input values, not other fields
+      valueSources: ['value'],
+    },
+    select: {
+      ...this.baseConfig.types.select,
+      widgets: {
+        ...this.baseConfig.types.select.widgets,
+        text: {
+          operators: ['like', 'not_like', 'regexp'],
+        },
+      },
+      valueSources: ['value'],
+    },
+    text: {
+      ...this.baseConfig.types.text,
+      valueSources: ['value'],
+    },
+  };
+  configWidgets: BasicConfig['widgets'] = {
+    ...this.baseConfig.widgets,
+    multiselect: {
+      ...this.baseConfig.widgets.multiselect,
+      showSearch: true,
+      showCheckboxes: true,
+      useAsyncSearch: true,
+      useLoadMore: false,
+      customProps: {
+        popupClassName: 'w-max-600',
+      },
+    },
+    select: {
+      ...this.baseConfig.widgets.select,
+      showSearch: true,
+      showCheckboxes: true,
+      useAsyncSearch: true,
+      useLoadMore: false,
+      customProps: {
+        popupClassName: 'w-max-600',
+      },
+    },
+    text: {
+      ...this.baseConfig.widgets.text,
+    },
+  };
+  configOperators = {
+    ...this.baseConfig.operators,
+    like: {
+      ...this.baseConfig.operators.like,
+      elasticSearchQueryType: 'wildcard',
+    },
+    regexp: {
+      label: t('label.regular-expression'),
+      labelForFormat: t('label.regular-expression'),
+      elasticSearchQueryType: 'regexp',
+      valueSources: ['value'],
+    },
+  };
 
   mainWidgetProps = {
     fullWidth: true,
@@ -46,8 +115,9 @@ class AdvancedSearchClassBase {
     entityField: EntityFields;
     suggestField?: SuggestionField;
   }) => SelectFieldSettings['asyncFetch'] = ({ searchIndex, entityField }) => {
-    return (search) => {
-      return getAggregateFieldOptions(
+    // Wrapping the fetch function in a debounce of 300 ms
+    const debouncedFetch = debounce((search, callback) => {
+      getAggregateFieldOptions(
         searchIndex,
         entityField,
         search ?? '',
@@ -56,13 +126,19 @@ class AdvancedSearchClassBase {
         const buckets =
           response.data.aggregations[`sterms#${entityField}`].buckets;
 
-        return {
+        callback({
           values: buckets.map((bucket) => ({
             value: bucket.key,
             title: bucket.label ?? bucket.key,
           })),
           hasMore: false,
-        };
+        });
+      });
+    }, 300);
+
+    return (search) => {
+      return new Promise((resolve) => {
+        debouncedFetch(search, resolve);
       });
     };
   };
@@ -71,7 +147,7 @@ class AdvancedSearchClassBase {
    * Fields specific to tables
    */
   tableQueryBuilderFields: Fields = {
-    'database.displayName.keyword': {
+    [EntityFields.DATABASE]: {
       label: t('label.database'),
       type: 'select',
       mainWidgetProps: this.mainWidgetProps,
@@ -84,7 +160,7 @@ class AdvancedSearchClassBase {
       },
     },
 
-    'databaseSchema.displayName.keyword': {
+    [EntityFields.DATABASE_SCHEMA]: {
       label: t('label.database-schema'),
       type: 'select',
       mainWidgetProps: this.mainWidgetProps,
@@ -97,7 +173,7 @@ class AdvancedSearchClassBase {
       },
     },
 
-    tableType: {
+    [EntityFields.TABLE_TYPE]: {
       label: t('label.table-type'),
       type: 'select',
       mainWidgetProps: this.mainWidgetProps,
@@ -115,7 +191,7 @@ class AdvancedSearchClassBase {
    * Fields specific to pipelines
    */
   pipelineQueryBuilderFields: Fields = {
-    'tasks.displayName.keyword': {
+    [EntityFields.TASK]: {
       label: t('label.task'),
       type: 'select',
       mainWidgetProps: this.mainWidgetProps,
@@ -133,7 +209,7 @@ class AdvancedSearchClassBase {
    * Fields specific to topics
    */
   topicQueryBuilderFields: Fields = {
-    'messageSchema.schemaFields.name.keyword': {
+    [EntityFields.SCHEMA_FIELD]: {
       label: t('label.schema-field'),
       type: 'select',
       mainWidgetProps: this.mainWidgetProps,
@@ -151,7 +227,7 @@ class AdvancedSearchClassBase {
    * Fields specific to API endpoints
    */
   apiEndpointQueryBuilderFields: Fields = {
-    'requestSchema.schemaFields.name.keyword': {
+    [EntityFields.REQUEST_SCHEMA_FIELD]: {
       label: t('label.request-schema-field'),
       type: 'select',
       mainWidgetProps: this.mainWidgetProps,
@@ -163,7 +239,7 @@ class AdvancedSearchClassBase {
         useAsyncSearch: true,
       },
     },
-    'responseSchema.schemaFields.name.keyword': {
+    [EntityFields.RESPONSE_SCHEMA_FIELD]: {
       label: t('label.response-schema-field'),
       type: 'select',
       mainWidgetProps: this.mainWidgetProps,
@@ -181,7 +257,7 @@ class AdvancedSearchClassBase {
    * Fields specific to Glossary
    */
   glossaryQueryBuilderFields: Fields = {
-    status: {
+    [EntityFields.GLOSSARY_TERM_STATUS]: {
       label: t('label.status'),
       type: 'select',
       mainWidgetProps: this.mainWidgetProps,
@@ -199,7 +275,7 @@ class AdvancedSearchClassBase {
    * Fields specific to dashboard
    */
   dashboardQueryBuilderFields: Fields = {
-    'dataModels.displayName.keyword': {
+    [EntityFields.DATA_MODEL]: {
       label: t('label.data-model'),
       type: 'select',
       mainWidgetProps: this.mainWidgetProps,
@@ -211,7 +287,7 @@ class AdvancedSearchClassBase {
         useAsyncSearch: true,
       },
     },
-    'charts.displayName.keyword': {
+    [EntityFields.CHART]: {
       label: t('label.chart'),
       type: 'select',
       mainWidgetProps: this.mainWidgetProps,
@@ -223,7 +299,7 @@ class AdvancedSearchClassBase {
         useAsyncSearch: true,
       },
     },
-    'project.keyword': {
+    [EntityFields.PROJECT]: {
       label: t('label.project'),
       type: 'select',
       mainWidgetProps: this.mainWidgetProps,
@@ -241,7 +317,7 @@ class AdvancedSearchClassBase {
    * Fields specific to ML models
    */
   mlModelQueryBuilderFields: Fields = {
-    'mlFeatures.name': {
+    [EntityFields.FEATURE]: {
       label: t('label.feature'),
       type: 'select',
       mainWidgetProps: this.mainWidgetProps,
@@ -259,7 +335,7 @@ class AdvancedSearchClassBase {
    * Fields specific to containers
    */
   containerQueryBuilderFields: Fields = {
-    'dataModel.columns.name.keyword': {
+    [EntityFields.CONTAINER_COLUMN]: {
       label: t('label.container-column'),
       type: 'select',
       mainWidgetProps: this.mainWidgetProps,
@@ -277,7 +353,7 @@ class AdvancedSearchClassBase {
    * Fields specific to search indexes
    */
   searchIndexQueryBuilderFields: Fields = {
-    'fields.name.keyword': {
+    [EntityFields.FIELD]: {
       label: t('label.field'),
       type: 'select',
       mainWidgetProps: this.mainWidgetProps,
@@ -295,7 +371,7 @@ class AdvancedSearchClassBase {
    * Fields specific to dashboard data models
    */
   dataModelQueryBuilderFields: Fields = {
-    dataModelType: {
+    [EntityFields.DATA_MODEL_TYPE]: {
       label: t('label.data-model-type'),
       type: 'select',
       mainWidgetProps: this.mainWidgetProps,
@@ -307,7 +383,7 @@ class AdvancedSearchClassBase {
         useAsyncSearch: true,
       },
     },
-    'project.keyword': {
+    [EntityFields.PROJECT]: {
       label: t('label.project'),
       type: 'select',
       mainWidgetProps: this.mainWidgetProps,
@@ -328,62 +404,9 @@ class AdvancedSearchClassBase {
   public getInitialConfigWithoutFields = (isExplorePage = true) => {
     const initialConfigWithoutFields: BasicConfig = {
       ...this.baseConfig,
-      types: {
-        ...this.baseConfig.types,
-        multiselect: {
-          ...this.baseConfig.types.multiselect,
-          widgets: {
-            ...this.baseConfig.types.multiselect.widgets,
-            // Adds the "Contains" and "Not contains" options for fields with type multiselect
-            text: {
-              operators: ['like', 'not_like'],
-            },
-          },
-          // Limits source to user input values, not other fields
-          valueSources: ['value'],
-        },
-        select: {
-          ...this.baseConfig.types.select,
-          widgets: {
-            ...this.baseConfig.types.select.widgets,
-            text: {
-              operators: ['like', 'not_like'],
-            },
-          },
-          valueSources: ['value'],
-        },
-        text: {
-          ...this.baseConfig.types.text,
-          valueSources: ['value'],
-        },
-      },
-      widgets: {
-        ...this.baseConfig.widgets,
-        multiselect: {
-          ...this.baseConfig.widgets.multiselect,
-          showSearch: true,
-          showCheckboxes: true,
-          useAsyncSearch: true,
-          useLoadMore: false,
-        },
-        select: {
-          ...this.baseConfig.widgets.select,
-          showSearch: true,
-          showCheckboxes: true,
-          useAsyncSearch: true,
-          useLoadMore: false,
-        },
-        text: {
-          ...this.baseConfig.widgets.text,
-        },
-      },
-      operators: {
-        ...this.baseConfig.operators,
-        like: {
-          ...this.baseConfig.operators.like,
-          elasticSearchQueryType: 'wildcard',
-        },
-      },
+      types: this.configTypes,
+      widgets: this.configWidgets,
+      operators: this.configOperators,
       settings: {
         ...this.baseConfig.settings,
         showLabels: isExplorePage,
@@ -393,7 +416,9 @@ class AdvancedSearchClassBase {
         operatorLabel: t('label.condition') + ':',
         showNot: false,
         valueLabel: t('label.criteria') + ':',
-        renderButton: renderAdvanceSearchButtons,
+        renderButton: isExplorePage
+          ? renderAdvanceSearchButtons
+          : renderQueryBuilderFilterButtons,
       },
     };
 
@@ -427,14 +452,57 @@ class AdvancedSearchClassBase {
     } = args;
 
     return {
+      [EntityFields.DISPLAY_NAME_KEYWORD]: {
+        label: t('label.display-name'),
+        type: 'select',
+        mainWidgetProps: this.mainWidgetProps,
+        fieldSettings: {
+          asyncFetch: this.autocomplete({
+            searchIndex: SearchIndex.DATA_ASSET,
+            entityField: EntityFields.DISPLAY_NAME_KEYWORD,
+          }),
+          useAsyncSearch: true,
+        },
+        operators: [
+          'select_equals',
+          'select_not_equals',
+          'select_any_in',
+          'select_not_any_in',
+          'like',
+          'not_like',
+          'regexp',
+        ],
+      },
+      [EntityFields.NAME_KEYWORD]: {
+        label: t('label.name'),
+        type: 'select',
+        mainWidgetProps: this.mainWidgetProps,
+        fieldSettings: {
+          asyncFetch: this.autocomplete({
+            searchIndex: SearchIndex.DATA_ASSET,
+            entityField: EntityFields.NAME_KEYWORD,
+          }),
+          useAsyncSearch: true,
+        },
+        operators: [
+          'select_equals',
+          'select_not_equals',
+          'select_any_in',
+          'select_not_any_in',
+          'like',
+          'not_like',
+          'regexp',
+        ],
+      },
+
       deleted: {
         label: t('label.deleted'),
         type: 'boolean',
         defaultValue: true,
       },
 
-      'owners.displayName.keyword': {
-        label: t('label.owner'),
+      [EntityFields.OWNERS]: {
+        label: t('label.owner-plural'),
         type: 'select',
         mainWidgetProps: this.mainWidgetProps,
 
@@ -447,7 +515,7 @@ class AdvancedSearchClassBase {
         },
       },
 
-      'domain.displayName.keyword': {
+      [EntityFields.DOMAIN]: {
         label: t('label.domain'),
         type: 'select',
         mainWidgetProps: this.mainWidgetProps,
@@ -461,7 +529,7 @@ class AdvancedSearchClassBase {
         },
       },
 
-      serviceType: {
+      [EntityFields.SERVICE_TYPE]: {
         label: t('label.service-type'),
         type: 'select',
         mainWidgetProps: this.mainWidgetProps,
@@ -475,7 +543,7 @@ class AdvancedSearchClassBase {
         },
       },
 
-      'tags.tagFQN': {
+      [EntityFields.TAG]: {
         label: t('label.tag-plural'),
         type: 'select',
         mainWidgetProps: this.mainWidgetProps,
@@ -490,7 +558,7 @@ class AdvancedSearchClassBase {
         },
       },
 
-      'tier.tagFQN': {
+      [EntityFields.TIER]: {
         label: t('label.tier'),
         type: 'select',
         mainWidgetProps: this.mainWidgetProps,
@@ -540,7 +608,7 @@ class AdvancedSearchClassBase {
 
     return !isEmpty(searchIndexWithColumns)
       ? {
-          'columns.name.keyword': {
+          [EntityFields.COLUMN]: {
             label: t('label.column'),
             type: 'select',
             mainWidgetProps: this.mainWidgetProps,
@@ -618,7 +686,7 @@ class AdvancedSearchClassBase {
     shouldAddServiceField?: boolean;
   }) => {
     const serviceQueryBuilderFields: Fields = {
-      'service.displayName.keyword': {
+      [EntityFields.SERVICE]: {
         label: t('label.service'),
         type: 'select',
         mainWidgetProps: this.mainWidgetProps,

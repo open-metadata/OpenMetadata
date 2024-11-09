@@ -29,9 +29,9 @@ public class OpenSearchIndexSink implements Sink<BulkRequest, BulkResponse> {
   private final StepStats stats = new StepStats();
   private final SearchRepository searchRepository;
 
-  private final int maxPayLoadSizeInBytes;
+  private final long maxPayLoadSizeInBytes;
 
-  public OpenSearchIndexSink(SearchRepository repository, int total, int maxPayLoadSizeInBytes) {
+  public OpenSearchIndexSink(SearchRepository repository, int total, long maxPayLoadSizeInBytes) {
     this.searchRepository = repository;
     this.maxPayLoadSizeInBytes = maxPayLoadSizeInBytes;
     this.stats.withTotalRecords(total).withSuccessRecords(0).withFailedRecords(0);

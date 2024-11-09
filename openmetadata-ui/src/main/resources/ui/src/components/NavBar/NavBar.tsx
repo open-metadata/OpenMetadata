@@ -13,7 +13,9 @@
 
 import Icon from '@ant-design/icons';
 import {
+  Alert,
   Badge,
+  Button,
   Col,
   Dropdown,
   Input,
@@ -45,6 +47,7 @@ import { ReactComponent as DropDownIcon } from '../../assets/svg/drop-down.svg';
 import { ReactComponent as IconBell } from '../../assets/svg/ic-alert-bell.svg';
 import { ReactComponent as DomainIcon } from '../../assets/svg/ic-domain.svg';
 import { ReactComponent as Help } from '../../assets/svg/ic-help.svg';
+import { ReactComponent as RefreshIcon } from '../../assets/svg/ic-refresh.svg';
 import { ReactComponent as IconSearch } from '../../assets/svg/search.svg';
 import {
   NOTIFICATION_READ_TIMER,
@@ -54,8 +57,10 @@ import { HELP_ITEMS_ENUM } from '../../constants/Navbar.constants';
 import { useWebSocketConnector } from '../../context/WebSocketProvider/WebSocketProvider';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
+import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { useDomainStore } from '../../hooks/useDomainStore';
 import { getVersion } from '../../rest/miscAPI';
+import { isProtectedRoute } from '../../utils/AuthProvider.util';
 import brandImageClassBase from '../../utils/BrandImage/BrandImageClassBase';
 import {
   hasNotificationPermission,
@@ -85,6 +90,8 @@ import { ActivityFeedTabs } from '../ActivityFeed/ActivityFeedTab/ActivityFeedTa
 import SearchOptions from '../AppBar/SearchOptions';
 import Suggestions from '../AppBar/Suggestions';
 import CmdKIcon from '../common/CmdKIcon/CmdKIcon.component';
+import { useEntityExportModalProvider } from '../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
+import { CSVExportWebsocketResponse } from '../Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
 import WhatsNewModal from '../Modals/WhatsNewModal/WhatsNewModal';
 import NotificationBox from '../NotificationBox/NotificationBox.component';
 import { UserProfileIcon } from '../Settings/Users/UserProfileIcon/UserProfileIcon.component';
@@ -105,10 +112,13 @@ const NavBar = ({
   handleOnClick,
   handleClear,
 }: NavBarProps) => {
+  const { onUpdateCSVExportJob } = useEntityExportModalProvider();
   const { searchCriteria, updateSearchCriteria } = useApplicationStore();
   const searchContainerRef = useRef<HTMLDivElement>(null);
   const Logo = useMemo(() => brandImageClassBase.getMonogram().src, []);
-
+  const [showVersionMissMatchAlert, setShowVersionMissMatchAlert] =
+    useState(false);
+  const location = useCustomLocation();
   const history = useHistory();
   const {
     domainOptions,
@@ -298,7 +308,24 @@ const NavBar = ({
     if (shouldRequestPermission()) {
       Notification.requestPermission();
     }
-  }, []);
+
+    const handleDocumentVisibilityChange = async () => {
+      if (isProtectedRoute(location.pathname) && isTourRoute) {
+        return;
+      }
+      const newVersion = await getVersion();
+      // Compare version only if version is set previously to have fair comparison
+      if (version && version !== newVersion.version) {
+        setShowVersionMissMatchAlert(true);
+      }
+    };
+
+    addEventListener('focus', handleDocumentVisibilityChange);
+
+    return () => {
+      removeEventListener('focus', handleDocumentVisibilityChange);
+    };
+  }, [isTourRoute, version]);
 
   useEffect(() => {
     if (socket) {
@@ -325,11 +352,22 @@ const NavBar = ({
           );
         }
       });
+
+      socket.on(SOCKET_EVENTS.CSV_EXPORT_CHANNEL, (exportResponse) => {
+        if (exportResponse) {
+          const exportResponseData = JSON.parse(
+            exportResponse
+          ) as CSVExportWebsocketResponse;
+
+          onUpdateCSVExportJob(exportResponseData);
+        }
+      });
     }
 
     return () => {
       socket && socket.off(SOCKET_EVENTS.TASK_CHANNEL);
       socket && socket.off(SOCKET_EVENTS.MENTION_CHANNEL);
+      socket && socket.off(SOCKET_EVENTS.CSV_EXPORT_CHANNEL);
     };
   }, [socket]);
 
@@ -426,6 +464,7 @@ const NavBar = ({
                           'text-primary': !isSearchBlur,
                         })}
                         component={IconCloseCircleOutlined}
+                        data-testid="cancel-icon"
                         style={{ fontSize: '16px' }}
                         onClick={handleClear}
                       />
@@ -578,6 +617,26 @@ const NavBar = ({
         onCancel={handleModalCancel}
       />
 
+      {showVersionMissMatchAlert && (
+        <Alert
+          showIcon
+          action={
+            <Button
+              size="small"
+              type="link"
+              onClick={() => {
+                history.go(0);
+              }}>
+              {t('label.refresh')}
+            </Button>
+          }
+          className="refresh-alert slide-in-top"
+          description="For a seamless experience recommend you to refresh the page"
+          icon={<RefreshIcon />}
+          message="A new version is available"
+          type="info"
+        />
+      )}
       {renderAlertCards}
     </>
   );

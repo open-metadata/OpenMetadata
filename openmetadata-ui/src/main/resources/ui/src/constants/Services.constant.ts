@@ -36,6 +36,7 @@ import domo from '../assets/img/service-icon-domo.png';
 import doris from '../assets/img/service-icon-doris.png';
 import druid from '../assets/img/service-icon-druid.png';
 import dynamodb from '../assets/img/service-icon-dynamodb.png';
+import exasol from '../assets/img/service-icon-exasol.png';
 import fivetran from '../assets/img/service-icon-fivetran.png';
 import flink from '../assets/img/service-icon-flink.png';
 import gcs from '../assets/img/service-icon-gcs.png';
@@ -77,6 +78,7 @@ import sapErp from '../assets/img/service-icon-sap-erp.png';
 import sapHana from '../assets/img/service-icon-sap-hana.png';
 import sas from '../assets/img/service-icon-sas.svg';
 import scikit from '../assets/img/service-icon-scikit.png';
+import sigma from '../assets/img/service-icon-sigma.png';
 import singlestore from '../assets/img/service-icon-singlestore.png';
 import snowflakes from '../assets/img/service-icon-snowflakes.png';
 import spark from '../assets/img/service-icon-spark.png';
@@ -93,6 +95,7 @@ import iconDefaultService from '../assets/svg/default-service-icon.svg';
 import elasticSearch from '../assets/svg/elasticsearch.svg';
 import databaseDefault from '../assets/svg/ic-custom-database.svg';
 import mlModelDefault from '../assets/svg/ic-custom-model.svg';
+import searchDefault from '../assets/svg/ic-custom-search.svg';
 import storageDefault from '../assets/svg/ic-custom-storage.svg';
 import restService from '../assets/svg/ic-service-rest-api.svg';
 import logo from '../assets/svg/logo-monogram.svg';
@@ -162,6 +165,7 @@ export const IBMDB2 = ibmdb2;
 export const DORIS = doris;
 export const DRUID = druid;
 export const DYNAMODB = dynamodb;
+export const SIGMA = sigma;
 export const SINGLESTORE = singlestore;
 export const SALESFORCE = salesforce;
 export const MLFLOW = mlflow;
@@ -183,6 +187,7 @@ export const ALATIONSINK = alationsink;
 export const SAS = sas;
 export const OPENLINEAGE = openlineage;
 export const LOGO = logo;
+export const EXASOL = exasol;
 
 export const AIRFLOW = airflow;
 export const PREFECT = prefect;
@@ -210,6 +215,7 @@ export const COUCHBASE = couchbase;
 export const GREENPLUM = greenplum;
 export const ELASTIC_SEARCH = elasticSearch;
 export const OPEN_SEARCH = openSearch;
+export const CUSTOM_SEARCH_DEFAULT = searchDefault;
 export const PLUS = plus;
 export const NOSERVICE = noService;
 export const ICEBERGE = iceberge;
@@ -282,6 +288,10 @@ export const DEF_UI_SCHEMA = {
   supportsMetadataExtraction: { 'ui:widget': 'hidden', 'ui:hideError': true },
   supportsUsageExtraction: { 'ui:widget': 'hidden', 'ui:hideError': true },
   supportsLineageExtraction: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  supportsViewLineageExtraction: {
+    'ui:widget': 'hidden',
+    'ui:hideError': true,
+  },
   supportsProfiler: { 'ui:widget': 'hidden', 'ui:hideError': true },
   supportsDatabase: { 'ui:widget': 'hidden', 'ui:hideError': true },
   supportsQueryComment: { 'ui:widget': 'hidden', 'ui:hideError': true },
@@ -413,7 +423,6 @@ export const BETA_SERVICES = [
   PipelineServiceType.OpenLineage,
   PipelineServiceType.Flink,
   DatabaseServiceType.Teradata,
-  APIServiceType.REST,
   StorageServiceType.Gcs,
   DatabaseServiceType.SapERP,
   PipelineServiceType.Flink,

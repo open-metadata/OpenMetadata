@@ -15,12 +15,11 @@ import { OperationPermission } from '../../../../context/PermissionProvider/Perm
 import { DashboardDataModel } from '../../../../generated/entity/data/dashboardDataModel';
 import { EntityHistory } from '../../../../generated/type/entityHistory';
 import { TagLabel } from '../../../../generated/type/tagLabel';
-import { VersionData } from '../../../../pages/EntityVersionPage/EntityVersionPage.component';
 import { TitleBreadcrumbProps } from '../../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
 
 export interface DataModelVersionProp {
   version: string;
-  currentVersionData: VersionData;
+  currentVersionData: DashboardDataModel;
   isVersionLoading: boolean;
   owners: DashboardDataModel['owners'];
   domain: DashboardDataModel['domain'];

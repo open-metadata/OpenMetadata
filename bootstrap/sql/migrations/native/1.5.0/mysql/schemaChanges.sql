@@ -329,3 +329,8 @@ ADD COLUMN taskAssigneesIds TEXT GENERATED ALWAYS AS (
 ) STORED;
 
 CREATE FULLTEXT INDEX taskAssigneesIds_index ON thread_entity(taskAssigneesIds);
+
+-- Add indexes on thread_entity and entity_relationship to improve count/feed api performance
+CREATE INDEX idx_thread_entity_entityId_createdAt ON thread_entity (entityId, createdAt);
+CREATE INDEX idx_thread_entity_id_type_status ON thread_entity (id, type, taskStatus);
+CREATE INDEX idx_er_fromEntity_fromId_toEntity_relation ON entity_relationship (fromEntity, fromId, toEntity, relation);

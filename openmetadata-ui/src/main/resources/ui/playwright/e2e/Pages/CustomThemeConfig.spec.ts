@@ -72,7 +72,7 @@ test.describe('Custom Theme Config Page', () => {
     }
 
     const updatedConfigResponsePromise = page.waitForResponse(
-      'api/v1/system/settings'
+      '/api/v1/system/settings'
     );
 
     // Click the save button
@@ -90,7 +90,7 @@ test.describe('Custom Theme Config Page', () => {
     );
 
     const defaultConfigResponsePromise = page.waitForResponse(
-      'api/v1/system/settings'
+      '/api/v1/system/settings'
     );
 
     // Click the reset button

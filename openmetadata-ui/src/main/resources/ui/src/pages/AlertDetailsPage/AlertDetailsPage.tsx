@@ -30,7 +30,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useHistory } from 'react-router-dom';
+import { useHistory } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../assets/svg/edit-new.svg';
 import { ReactComponent as DeleteIcon } from '../../assets/svg/ic-delete.svg';
 import DeleteWidgetModal from '../../components/common/DeleteWidget/DeleteWidgetModal';
@@ -131,6 +131,14 @@ function AlertDetailsPage({
     isNotificationAlert
       ? history.push(ROUTES.NOTIFICATION_ALERTS)
       : history.push(ROUTES.OBSERVABILITY_ALERTS);
+  }, [history]);
+
+  const handleAlertEdit = useCallback(async () => {
+    history.push(
+      isNotificationAlert
+        ? getNotificationAlertsEditPath(fqn)
+        : getObservabilityAlertsEditPath(fqn)
+    );
   }, [history]);
 
   const getFilterDetails = (isFilter: boolean, filters?: ArgumentsInput[]) => (
@@ -329,27 +337,21 @@ function AlertDetailsPage({
                     </Typography.Title>
                   </Col>
                   <Col>
-                    <Space size={8}>
-                      <Link
-                        to={
-                          isNotificationAlert
-                            ? getNotificationAlertsEditPath(fqn)
-                            : getObservabilityAlertsEditPath(fqn)
-                        }>
-                        <Tooltip
-                          title={t('label.edit-entity', {
-                            entity: t('label.alert'),
-                          })}>
-                          <Button
-                            className="flex flex-center"
-                            data-testid="edit-button"
-                            disabled={
-                              alertDetails?.provider === ProviderType.System
-                            }
-                            icon={<EditIcon height={16} width={16} />}
-                          />
-                        </Tooltip>
-                      </Link>
+                    <Space align="center" size={8}>
+                      <Tooltip
+                        title={t('label.edit-entity', {
+                          entity: t('label.alert'),
+                        })}>
+                        <Button
+                          className="flex flex-center"
+                          data-testid="edit-button"
+                          disabled={
+                            alertDetails?.provider === ProviderType.System
+                          }
+                          icon={<EditIcon height={16} width={16} />}
+                          onClick={handleAlertEdit}
+                        />
+                      </Tooltip>
                       <Tooltip
                         title={t('label.delete-entity', {
                           entity: t('label.alert'),

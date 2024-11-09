@@ -23,6 +23,7 @@ import { DashboardDataModel } from '../../../generated/entity/data/dashboardData
 import { Database } from '../../../generated/entity/data/database';
 import { DatabaseSchema } from '../../../generated/entity/data/databaseSchema';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
+import { Metric } from '../../../generated/entity/data/metric';
 import { Mlmodel } from '../../../generated/entity/data/mlmodel';
 import { Pipeline } from '../../../generated/entity/data/pipeline';
 import { SearchIndex } from '../../../generated/entity/data/searchIndex';
@@ -66,7 +67,8 @@ export type DataAssetsType =
   | SearchService
   | APIService
   | APICollection
-  | APIEndpoint;
+  | APIEndpoint
+  | Metric;
 
 export type DataAssetsWithoutServiceField =
   | DatabaseService
@@ -86,7 +88,7 @@ export type DataAssetsWithFollowersField = Exclude<
 
 export type DataAssetsWithServiceField = Exclude<
   DataAssetsType,
-  DataAssetsWithoutServiceField
+  DataAssetsWithoutServiceField | Metric
 >;
 
 export type DataAssetWithDomains =
@@ -99,6 +101,7 @@ export type DataAssetsHeaderProps = {
   allowSoftDelete?: boolean;
   showDomain?: boolean;
   isRecursiveDelete?: boolean;
+  badge?: React.ReactNode;
   afterDomainUpdateAction?: (asset: DataAssetWithDomains) => void;
   afterDeleteAction?: (isSoftDelete?: boolean, version?: number) => void;
   onTierUpdate: (tier?: Tag) => Promise<void>;
@@ -111,6 +114,7 @@ export type DataAssetsHeaderProps = {
   onUpdateVote?: (data: QueryVote, id: string) => Promise<void>;
   onUpdateRetentionPeriod?: (value: string) => Promise<void>;
   extraDropdownContent?: ManageButtonProps['extraDropdownContent'];
+  onMetricUpdate?: (updatedData: Metric, key: keyof Metric) => Promise<void>;
 } & (
   | DataAssetTable
   | DataAssetTopic
@@ -134,6 +138,7 @@ export type DataAssetsHeaderProps = {
   | DataAssetApiService
   | DataAssetAPICollection
   | DataAssetAPIEndpoint
+  | DataAssetMetric
 );
 
 export interface DataAssetTable {
@@ -235,6 +240,11 @@ export interface DataAssetAPICollection {
 export interface DataAssetAPIEndpoint {
   dataAsset: APIEndpoint;
   entityType: EntityType.API_ENDPOINT;
+}
+
+export interface DataAssetMetric {
+  dataAsset: Metric;
+  entityType: EntityType.METRIC;
 }
 
 export interface DataAssetHeaderInfo {

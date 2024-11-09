@@ -13,13 +13,13 @@
 
 package org.openmetadata.service;
 
+import static org.openmetadata.service.util.jdbi.JdbiUtils.createAndSetupJDBI;
+
 import io.dropwizard.Application;
 import io.dropwizard.configuration.EnvironmentVariableSubstitutor;
 import io.dropwizard.configuration.SubstitutingSourceProvider;
-import io.dropwizard.db.DataSourceFactory;
 import io.dropwizard.health.conf.HealthConfiguration;
 import io.dropwizard.health.core.HealthCheckBundle;
-import io.dropwizard.jdbi3.JdbiFactory;
 import io.dropwizard.jersey.errors.EarlyEofExceptionMapper;
 import io.dropwizard.jersey.errors.LoggingExceptionMapper;
 import io.dropwizard.jersey.jackson.JsonProcessingExceptionMapper;
@@ -59,7 +59,6 @@ import org.eclipse.jetty.websocket.server.WebSocketUpgradeFilter;
 import org.glassfish.jersey.media.multipart.MultiPartFeature;
 import org.glassfish.jersey.server.ServerProperties;
 import org.jdbi.v3.core.Jdbi;
-import org.jdbi.v3.core.statement.SqlStatements;
 import org.jdbi.v3.sqlobject.SqlObjects;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
@@ -116,6 +115,7 @@ import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.security.saml.OMMicrometerHttpFilter;
 import org.openmetadata.service.security.saml.SamlAssertionConsumerServlet;
 import org.openmetadata.service.security.saml.SamlLoginServlet;
+import org.openmetadata.service.security.saml.SamlLogoutServlet;
 import org.openmetadata.service.security.saml.SamlMetadataServlet;
 import org.openmetadata.service.security.saml.SamlSettingsHolder;
 import org.openmetadata.service.security.saml.SamlTokenRefreshServlet;
@@ -125,8 +125,6 @@ import org.openmetadata.service.socket.SocketAddressFilter;
 import org.openmetadata.service.socket.WebSocketManager;
 import org.openmetadata.service.util.MicrometerBundleSingleton;
 import org.openmetadata.service.util.incidentSeverityClassifier.IncidentSeverityClassifierInterface;
-import org.openmetadata.service.util.jdbi.DatabaseAuthenticationProviderFactory;
-import org.openmetadata.service.util.jdbi.OMSqlLogger;
 import org.pac4j.core.util.CommonHelper;
 import org.quartz.SchedulerException;
 
@@ -165,7 +163,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     jdbi = createAndSetupJDBI(environment, catalogConfig.getDataSourceFactory());
     Entity.setCollectionDAO(getDao(jdbi));
 
-    installSearchRepository(catalogConfig.getElasticSearchConfiguration());
+    initializeSearchRepository(catalogConfig.getElasticSearchConfiguration());
     // Initialize the MigrationValidationClient, used in the Settings Repository
     MigrationValidationClient.initialize(jdbi.onDemand(MigrationDAO.class), catalogConfig);
     // as first step register all the repositories
@@ -301,7 +299,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     }
   }
 
-  protected void installSearchRepository(ElasticSearchConfiguration esConfig) {
+  protected void initializeSearchRepository(ElasticSearchConfiguration esConfig) {
     // initialize Search Repository, all repositories use SearchRepository this line should always
     // before initializing repository
     SearchRepository searchRepository = new SearchRepository(esConfig);
@@ -350,6 +348,13 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       throws IOException, CertificateException, KeyStoreException, NoSuchAlgorithmException {
     if (catalogConfig.getAuthenticationConfiguration() != null
         && catalogConfig.getAuthenticationConfiguration().getProvider().equals(AuthProvider.SAML)) {
+
+      // Set up a Session Manager
+      MutableServletContextHandler contextHandler = environment.getApplicationContext();
+      if (contextHandler.getSessionHandler() == null) {
+        contextHandler.setSessionHandler(new SessionHandler());
+      }
+
       SamlSettingsHolder.getInstance().initDefaultSettings(catalogConfig);
       ServletRegistration.Dynamic samlRedirectServlet =
           environment.servlets().addServlet("saml_login", new SamlLoginServlet());
@@ -368,29 +373,17 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       ServletRegistration.Dynamic samlRefreshServlet =
           environment.servlets().addServlet("saml_refresh_token", new SamlTokenRefreshServlet());
       samlRefreshServlet.addMapping("/api/v1/saml/refresh");
+
+      ServletRegistration.Dynamic samlLogoutServlet =
+          environment
+              .servlets()
+              .addServlet(
+                  "saml_logout_token",
+                  new SamlLogoutServlet(
+                      catalogConfig.getAuthenticationConfiguration(),
+                      catalogConfig.getAuthorizerConfiguration()));
+      samlLogoutServlet.addMapping("/api/v1/saml/logout");
     }
-  }
-
-  private Jdbi createAndSetupJDBI(Environment environment, DataSourceFactory dbFactory) {
-    // Check for db auth providers.
-    DatabaseAuthenticationProviderFactory.get(dbFactory.getUrl())
-        .ifPresent(
-            databaseAuthenticationProvider -> {
-              String token =
-                  databaseAuthenticationProvider.authenticate(
-                      dbFactory.getUrl(), dbFactory.getUser(), dbFactory.getPassword());
-              dbFactory.setPassword(token);
-            });
-
-    Jdbi jdbiInstance = new JdbiFactory().build(environment, dbFactory, "database");
-    jdbiInstance.setSqlLogger(new OMSqlLogger());
-    // Set the Database type for choosing correct queries from annotations
-    jdbiInstance
-        .getConfig(SqlObjects.class)
-        .setSqlLocator(new ConnectionAwareAnnotationSqlLocator(dbFactory.getDriverClass()));
-    jdbiInstance.getConfig(SqlStatements.class).setUnusedBindingAllowed(true);
-
-    return jdbiInstance;
   }
 
   @SneakyThrows
@@ -454,6 +447,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
             connectionType,
             conf.getMigrationConfiguration().getExtensionPath(),
             conf.getPipelineServiceClientConfiguration(),
+            conf.getAuthenticationConfiguration(),
             false);
     migrationWorkflow.loadMigrations();
     migrationWorkflow.validateMigrationsForServer();

@@ -151,7 +151,7 @@ public class ReindexingUtil {
             .includeSourceFields(new ArrayList<>())
             .build();
     List<EntityReference> entities = new ArrayList<>();
-    Response response = Entity.getSearchRepository().search(searchRequest);
+    Response response = Entity.getSearchRepository().search(searchRequest, null);
     String json = (String) response.getEntity();
 
     for (Iterator<JsonNode> it =

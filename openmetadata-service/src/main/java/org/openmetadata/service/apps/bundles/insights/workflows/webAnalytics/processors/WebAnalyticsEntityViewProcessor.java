@@ -46,7 +46,6 @@ public class WebAnalyticsEntityViewProcessor
           "topic");
 
   private record ProcessedUrl(String entityType, String entityFqn) {}
-  ;
 
   public WebAnalyticsEntityViewProcessor(int total) {
     this.stats.withTotalRecords(total).withSuccessRecords(0).withFailedRecords(0);

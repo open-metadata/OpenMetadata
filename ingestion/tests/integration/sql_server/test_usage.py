@@ -10,7 +10,7 @@ if not sys.version_info >= (3, 9):
 
 
 @pytest.fixture()
-def usage_config(db_service, workflow_config):
+def usage_config(db_service, workflow_config, db_name):
     return {
         "source": {
             "type": "mssql-usage",
@@ -19,7 +19,7 @@ def usage_config(db_service, workflow_config):
                 "config": {
                     "queryLogDuration": 2,
                     "resultLimit": 1000,
-                    "databaseFilterPattern": {"includes": ["TestDB", "AdventureWorks"]},
+                    "databaseFilterPattern": {"includes": ["TestDB", db_name]},
                 },
             },
         },

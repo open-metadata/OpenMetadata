@@ -17,7 +17,7 @@ import incidentManagerSampleData from '../../../assets/img/incidentManagerSample
 import profilerConfigPage from '../../../assets/img/profilerConfigPage.png';
 import collateIcon from '../../../assets/svg/ic-collate.svg';
 
-export const COOKIE_VERSION = 'VERSION_1_4_8'; // To be changed with each release.
+export const COOKIE_VERSION = 'VERSION_1_5_11'; // To be changed with each release.
 
 // for youtube video make isImage = false and path = {video embed id}
 // embed:- youtube video => share => click on embed and take {url with id} from it
@@ -718,7 +718,7 @@ API:
   {
     id: 43,
     version: 'v1.5.0',
-    description: `Released on 23rd August 2024.`,
+    description: `Released on 26th August 2024.`,
     features: [
       {
         title: `Data Observability with Anomaly Detection (Collate)`,
@@ -851,7 +851,13 @@ In the latest release, several updates and enhancements have been made to the JS
 **Include DDL:**
         
 - During the Database Metadata ingestion, we can optionally pick up the DDL for both tables and views. During the metadata ingestion, we use the view DDLs to generate the View Lineage.
-- To reduce the processing time for out-of-the-box workflows, we are disabling the include DDL by default, whereas before, it was enabled, which potentially led to long-running workflows.`,
+- To reduce the processing time for out-of-the-box workflows, we are disabling the include DDL by default, whereas before, it was enabled, which potentially led to long-running workflows.
+
+**Secrets Manager**
+Starting with the release 1.5.0, the JWT Token for the bots will be sent to the Secrets Manager if you configured one. It won't appear anymore in your dag_generated_configs in Airflow.
+
+**Python SDK**
+The \`metadata insight\` command has been removed. Since Data Insights application was moved to be an internal system application instead of relying on external pipelines the SDK command to run the pipeline was removed.`,
       [`Data Observability with Anomaly Detection ${CollateIconWithLinkMD}`]: `OpenMetadata has been driving innovation in Data Quality in Open Source. Many organizations are taking advantage of the following Data Quality features to achieve better-quality data
 
 1.  A Native Profiler to understand the shape of the data, freshness, completeness, volume, and ability to add your own metrics, including column level profiler over time-series and dashboards
@@ -909,6 +915,231 @@ To continue pursuing this objective, the application was completely refactored t
 
 4.  **GCS Storage Connector** as a community contribution from [Matt Chamberlin](https://github.com/MChamberlin)
 5.  **Synapse Connector** ${CollateIconWithLinkMD}`,
+    },
+  },
+  {
+    id: 44,
+    version: 'v1.5.2',
+    description: `Released on 2nd September 2024.`,
+    features: [],
+    changeLogs: {
+      Improvements: `-   [Fix]: Resolved issue with lineage lookup for long Fully Qualified Names (FQNs), ensuring accurate lineage tracking and display.
+-   [Improve]: Fixed the 'Edit Reviewers' permission issue, allowing correct permission management for editing reviewers.
+-   [Improve]: Addressed email update issues to ensure that email addresses are properly updated throughout the system.
+-   [Improve]: Fixed the delete lineage functionality to handle cases where override lineage is enabled, preventing errors and ensuring consistency.
+-   [Improve]: Added support for the 'Edit Assign' button in the Incident Manager, allowing for easier assignment changes.
+-   [Improve]: Introduced a resizable layout for the glossary page, improving usability and adaptability to different screen sizes.
+-   [Improve]: Enhanced the display of tier tags with improved styling for better visibility and distinction.
+-   [Improve]: Pick email and name based on claim values at login. This update ensures that user details are automatically populated during the login process, streamlining user experience.
+-   [Improve]: Added custom properties support in Data Product`,
+    },
+  },
+  {
+    id: 45,
+    version: 'v1.5.3',
+    description: `Released on 10th September 2024.`,
+    features: [],
+    changeLogs: {
+      Improvements: `-   Added resizable columns for custom properties
+-   Added support for automated ingestion of Tableau data source tags and description
+-   Improved "follow data" landing page module performance
+-   Improved search result suggestion by showing display name instead of FQN
+-   Fixed Cost Analysis issue when service has no connection
+-   Improved PII classification for JSON data types
+-   Fixed issue with expand all operation on terms page
+-   Fixed feed freezing when large images are part of the feed results
+-   Fixed dbt run_results file name with dbt cloud connection
+-   Cleaned Argo logs artifacts ${CollateIconWithLinkMD}
+-   Shipped VertexAI Connector ${CollateIconWithLinkMD}
+-   Fixed automator lineage propagation issues with possible None entities ${CollateIconWithLinkMD}`,
+    },
+  },
+  {
+    id: 46,
+    version: 'v1.5.4',
+    description: `Released on 12th September 2024.`,
+    features: [],
+    changeLogs: {
+      Improvements: `-   Hotfix to the Term Aggregation size on Data Insights
+-   ES pagination with error handling
+-   Updated Domain in Docker Compose & Docs
+-   Fix Classification API returns Table class for restore
+-   Fix Redshift View Def regex_replace Error
+-   Make ingestion pipeline APIs public
+-   Fix token limitations using config ${CollateIconWithLinkMD}
+-   Updating the domain PRINCIPAL DOMAIN
+-   Fix Automator pagination ${CollateIconWithLinkMD}
+-   Fix MetaPilot push for no constraint ${CollateIconWithLinkMD}
+-   Glossary list selector for bulk import
+-   Unable to access import glossary page`,
+    },
+  },
+  {
+    id: 47,
+    version: 'v1.5.5',
+    description: `Released on 23rd September 2024.`,
+    features: [],
+    changeLogs: {
+      Improvements: `-   **Minor**: Made the type optional in ES Response.
+-   **Feature**: Added support for refresh tokens with multiple tabs open.
+-   **Fix**: Resolved issue of overriding user info after login.
+-   **Minor**: Updated the custom property entities data model, along with the data product and database schema icons.
+-   **Fix**: Ensured Teams and Owner fields are correctly passed in the policy API call.
+-   **Improvement**: Enhanced PII logging information.
+-   **Fix**: Addressed the paginate_es issue in OpenSearch.
+-   **Feature**: Decrypted JWT internally for system health checks.
+-   **Minor**: Implemented multithreading in View Lineage Processing.
+-   **Improvement**: Improved search relevancy.
+-   **Fix**: Resolved issue with owners patch.
+-   **Fix (Data Quality)**: Fixed Snowflake data diff issue.
+-   **Minor**: Updated Presidio Analyzer version and validated support for legal entities.
+-   **Feature**: Added validations for Salesforce connection.
+-   **Feature**: Allowed PII Processor to operate without storing sample data.
+-   **Minor**: Added seconds to the human-readable format scale for test case graphs.
+-   **Fix**: Added missing field in glossary term.
+-   **Fix**: Excluded defaultPersona if not present in personas.
+-   **Fix**: Resolved team export issue.
+-   **Fix**: Updated Python lineage SDK to work with UUID and FQN models.
+-   **Fix**: Fixed LDAP login issue.
+-   **Fix**: Column sizing of data quality and pipeline widget ${CollateIconWithLinkMD}
+-   **Fix**: Export with new line in description ${CollateIconWithLinkMD}
+-   **Minor**: Fix Page entity publicationDate datatype ${CollateIconWithLinkMD}
+`,
+    },
+  },
+  {
+    id: 48,
+    version: 'v1.5.6',
+    description: 'Released on 3rd October 2024.',
+    features: [],
+    changeLogs: {
+      Improvements: `-   **Minor**: MSTR connector import fix.
+-   **Minor**: Show displayName for database and databaseSchema in explore tree.
+-   **Minor**: Allow PowerBI datamodel children in col.lineage.
+-   **Fix**: Manifest is not parsed correctly on dbt versionless.
+-   **Minor**: Fixed lineage & queries in dbt.
+-   **Improvement**: Added DBT tests with versionless and fixed v7 parsing.
+-   **Minor**: Reset displayName to avoid being persisted.
+-   **Fix**: Fixed incorrect @Schema implementations in Swagger annotations.
+-   **Fix**: Resolved type null exception on user feed.
+-   **Fix**: Addressed missing cast to str.
+-   **Minor**: DI Missing Dashboard Description Status.
+-   **Fix**: SAML redirect leads to 404 page on UI.
+-   **Minor**: Fixed General Profiler Bugs.
+-   **Improvement**: Change time format for the created_at of the DBT cloud pipeline status.
+-   **Minor**: Fixed role page size from 10 to 50.
+-   **Fix**: Search Indexing Fixes.
+-   **Improvement**: Collate API with Knowledge Center routes ${CollateIconWithLinkMD}.`,
+    },
+  },
+  {
+    id: 49,
+    version: 'v1.5.7',
+    description: 'Released on 17th October 2024.',
+    features: [],
+    changeLogs: {
+      Improvements: `-   **Feature**: Add table-type custom property.
+-   **Feature**: support Persian language option
+-   **Feature**: Postgres stored procedures support.
+-   **Feature**: Allow Custom Property Update in Glossary Bulk Import/export.
+-   **Improvement**: Remove table details from table level Import/Export, allowing updates only for column details.
+-   **MINOR**: looker exclude version.
+-   **MINOR**: Add deleteEntityByFQNPrefix.
+-   **MINOR**: Reduce lineage response size.
+-   **MINOR**: Updated pyiceberg version to 0.5.1
+-   **MINOR**: Fix dark border shown in navbar on UI.
+-   **MINOR**: Add column case sensitivity parameter.    
+-   **MINOR**: Pagination with search on service page.
+-   **MINOR**: Added loader in activity feed open and closed count.
+-   **MINOR**: Superset get primitive datatype in case of array, struct.
+-   **MINOR**: fix term references validation msg on glossary import.
+-   **MINOR**: supported search filter and only all show in case of all node value selected.
+-   **Fix**: Fix PinotDB Ingestion.
+-   **Fix**: MSAL popup auth issue.
+-   **Fix**: Fix Alerts for Test Suites.
+-   **Fix**: Added Glue Pipeline Lineage.
+-   **Fix**: ClassGraph performance issue.
+-   **Fix**: Superset query for mysql con. 
+-   **Fix**: Empty Connection Overwrite Logic.
+-   **Fix**: Couchbase columns not fetched fix.
+-   **Fix**: Quicksight Ingestion Error handled.
+-   **Fix**: DBT Manifest and Run results parsing.
+-   **Fix**: Increase MAX_AGGREGATE_SIZE in search.
+-   **Fix**: Add display name field in the advanced search filter.
+-   **Fix**: On dashboard soft delete, chart should not be visible.
+-   **Fix**: Fix the automator page breaking when no source is selected.
+-   **Fix**: Salesforce table description from label if not through query.
+-   **Fix**: Add Import/export support for table type custom property in glossary.
+-   **Fix**: Fix exception in search due to exception in database.displayName and databaseSchema.aggregation.
+-   **MINOR**: Knowledge Center publicationDate mismatch error ${CollateIconWithLinkMD}
+-   **MINOR**: Add owner label for knowledge center right panel ${CollateIconWithLinkMD}
+-   **Fix**: Automator pagination & improvments ${CollateIconWithLinkMD}
+-   **Fix**: ArchiveLog to FALSE for test connection ${CollateIconWithLinkMD}
+-   **Fix**: Knowledge Page deletion is not deleting from the search index ${CollateIconWithLinkMD}`,
+    },
+  },
+  {
+    id: 50,
+    version: 'v1.5.8',
+    description: 'Released on 24th October 2024.',
+    features: [],
+    changeLogs: {
+      Improvements: `- **Fix**: Hive Meta store connection issue.
+- **Fix**: Live index is on test suite creation.
+- **Minor**: Supported total unique user count on the Team page.
+- **Fix**: Issues in zh language search index mapping.
+- **Minor**: Add location path to a table entity.
+- **Fix**: LocationPath Index.
+- **Fix**: Mode dashboard ingestion API call.
+- **Fix**: Task deserialization in Airflow metadata ingestion.
+- **Fix**: Mode test connection returns data in dict instead of JSON.
+- **Minor**: Do not include soft deleted assets in the Data Insight.
+- **Fix**: Web analytic activity being reset.
+- **Fix**: Quicksight lineage source.
+- **Fix**: Add Azure Token Base Authentication
+`,
+    },
+  },
+  {
+    id: 51,
+    version: 'v1.5.9',
+    description: 'Released on 29th October 2024.',
+    features: [],
+    changeLogs: {
+      Improvements: `- **Minor**: Prepare App Framework to handle application limits.
+- **Minor**: Add Query Builder widget.
+- **Fix**: Revamp MetaPilot as Collate AI and add limits ${CollateIconWithLinkMD}
+- **Fix**: Implemented a fix on EntityLink for names with brackets.
+`,
+    },
+  },
+  {
+    id: 52,
+    version: 'v1.5.10',
+    description: 'Released on 31st October 2024.',
+    features: [],
+    changeLogs: {
+      Improvements: `- **Fix**: Encoding issue for teams search query.
+- **Fix**: Disable empty rule for query builder widget.
+- **Fix**: Unable to add more enum values for enum cp.
+- **Fix**: Navigate to listing for deleting a service.
+`,
+    },
+  },
+  {
+    id: 53,
+    version: 'v1.5.11',
+    description: 'Released on 6th November 2024.',
+    features: [],
+    changeLogs: {
+      Improvements: `- **Improvement**: Parallelize the search indexing process.
+- **Fix**: Return s3 endpoint as str() instead of Url.
+- **Improvement**: Databricks query run optimisation.
+- **Fix**: Make Export CSV Async API, websocket to push data back.
+- **Fix**: Airflow dependency.
+- **Improvement**: Add Column Value to be At Expected Location Test.
+- **Fix**: User count doesn't update on adding to the team while using search.
+`,
     },
   },
 ];

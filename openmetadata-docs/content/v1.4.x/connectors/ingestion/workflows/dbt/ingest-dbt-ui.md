@@ -151,7 +151,7 @@ Refer to the code [here](https://github.com/open-metadata/OpenMetadata/blob/main
 
 The fields for `Dbt Cloud Account Id`, `Dbt Cloud Project Id` and `Dbt Cloud Job Id` should be numeric values.
 
-To know how to get the values for `Dbt Cloud Account Id`, `Dbt Cloud Project Id` and `Dbt Cloud Job Id` fields check [here](/connectors/ingestion/workflows/dbt/ingest-dbt-yaml).
+To know how to get the values for `Dbt Cloud Account Id`, `Dbt Cloud Project Id` and `Dbt Cloud Job Id` fields check [here](/connectors/ingestion/workflows/dbt/run-dbt-workflow-externally).
 
 {% /note %}
 

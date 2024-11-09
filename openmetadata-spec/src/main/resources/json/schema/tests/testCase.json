@@ -75,6 +75,10 @@
       "description": "Latest test case result obtained for this test case.",
       "$ref": "./basic.json#/definitions/testCaseResult"
     },
+    "testCaseStatus": {
+      "description": "Status of Test Case run.",
+      "$ref": "./basic.json#/definitions/testCaseStatus"
+    },
     "version": {
       "description": "Metadata version of the entity.",
       "$ref": "../type/entityHistory.json#/definitions/entityVersion"

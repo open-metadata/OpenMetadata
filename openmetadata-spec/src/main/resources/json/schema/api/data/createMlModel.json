@@ -22,7 +22,8 @@
     },
     "algorithm": {
       "description": "Algorithm used to train the ML Model",
-      "type": "string"
+      "type": "string",
+      "default": "mlmodel"
     },
     "mlFeatures": {
       "description": "Features used to train the ML Model.",
@@ -103,6 +104,6 @@
       "maxLength": 32
     }
   },
-  "required": ["name", "algorithm", "service"],
+  "required": ["name", "service"],
   "additionalProperties": false
 }

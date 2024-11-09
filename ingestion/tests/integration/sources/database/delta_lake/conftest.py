@@ -36,7 +36,7 @@ class DeltaLakeStorageTestConfig:
         ] = f"http://localhost:{self.minio_config.exposed_port}"
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="module")
 def deltalake_storage_environment():
     config = DeltaLakeStorageTestConfig()
     minio = get_minio_container(config.minio_config)

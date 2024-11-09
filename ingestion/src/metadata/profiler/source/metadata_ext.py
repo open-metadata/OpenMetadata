@@ -21,15 +21,15 @@ and sample data for that identified entity.
 """
 import traceback
 from copy import deepcopy
-from typing import Iterable, cast
+from typing import Iterable, Type, cast
 
 from sqlalchemy.inspection import inspect
 
 from metadata.generated.schema.entity.data.database import Database
-from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
 )
+from metadata.generated.schema.entity.services.serviceType import ServiceType
 from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
     DatabaseServiceMetadataPipeline,
 )
@@ -41,16 +41,18 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.profiler.interface.profiler_interface import ProfilerInterface
 from metadata.profiler.source.metadata import (
     OpenMetadataSource,
     ProfilerSourceAndEntity,
 )
-from metadata.profiler.source.profiler_source_factory import profiler_source_factory
 from metadata.utils import fqn
 from metadata.utils.class_helper import get_service_type_from_source_type
 from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_table
-from metadata.utils.importer import import_source_class
+from metadata.utils.importer import import_from_module
 from metadata.utils.logger import profiler_logger
+from metadata.utils.service_spec import BaseSpec
+from metadata.utils.service_spec.service_spec import import_source_class
 from metadata.utils.ssl_manager import get_ssl_connection
 
 logger = profiler_logger()
@@ -138,7 +140,7 @@ class OpenMetadataSourceExt(OpenMetadataSource):
                             service_name=None,
                             schema_name=schema_name,
                             table_name=table_name,
-                            fields="tableProfilerConfig",
+                            fields=",".join(self._get_fields()),
                         )
                         if not table_entity:
                             logger.debug(
@@ -146,8 +148,7 @@ class OpenMetadataSourceExt(OpenMetadataSource):
                             )
                             continue
 
-                        profiler_source = profiler_source_factory.create(
-                            self.config.source.type.lower(),
+                        profiler_source = self.import_profiler_interface()(
                             self.config,
                             database_entity,
                             self.metadata,
@@ -174,6 +175,14 @@ class OpenMetadataSourceExt(OpenMetadataSource):
                 self.status.filter(table_name, "Table pattern not allowed")
                 continue
             yield table_name
+
+    def import_profiler_interface(self) -> Type[ProfilerInterface]:
+        class_path = BaseSpec.get_for_source(
+            ServiceType.Database,
+            source_type=self.config.source.type.lower(),
+        ).profiler_class
+        profiler_source_class = import_from_module(class_path)
+        return cast(Type[ProfilerInterface], profiler_source_class)
 
     def get_schema_names(self) -> Iterable[str]:
         if self.service_connection.__dict__.get("databaseSchema"):
@@ -207,9 +216,11 @@ class OpenMetadataSourceExt(OpenMetadataSource):
                         )
                         if filter_by_database(
                             self.source_config.databaseFilterPattern,
-                            database_fqn
-                            if self.source_config.useFqnForFiltering
-                            else database,
+                            (
+                                database_fqn
+                                if self.source_config.useFqnForFiltering
+                                else database
+                            ),
                         ):
                             self.status.filter(database, "Database pattern not allowed")
                             continue
@@ -226,36 +237,3 @@ class OpenMetadataSourceExt(OpenMetadataSource):
         except Exception as exc:
             logger.debug(f"Failed to fetch database names {exc}")
             logger.debug(traceback.format_exc())
-
-    def get_table_entities(self, database):
-        """
-        List and filter OpenMetadata tables based on the
-        source configuration.
-
-        The listing will be based on the entities from the
-        informed service name in the source configuration.
-
-        Note that users can specify `table_filter_pattern` to
-        either be `includes` or `excludes`. This means
-        that we will either what is specified in `includes`
-        or we will use everything but the tables excluded.
-
-        Same with `schema_filter_pattern`.
-        """
-        tables = self.metadata.list_all_entities(
-            entity=Table,
-            fields=[
-                "tableProfilerConfig",
-            ],
-            params={
-                "service": self.config.source.serviceName,
-                "database": fqn.build(
-                    self.metadata,
-                    entity_type=Database,
-                    service_name=self.config.source.serviceName,
-                    database_name=database.name.root,
-                ),
-            },  # type: ignore
-        )
-
-        yield from self.filter_entities(tables)

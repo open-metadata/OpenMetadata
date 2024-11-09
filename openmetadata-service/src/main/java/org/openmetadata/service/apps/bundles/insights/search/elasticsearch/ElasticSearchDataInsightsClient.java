@@ -27,17 +27,17 @@ public class ElasticSearchDataInsightsClient implements DataInsightsSearchInterf
 
   @Override
   public void createLifecyclePolicy(String name, String policy) throws IOException {
-    performRequest("PUT", String.format("_ilm/policy/%s", name), policy);
+    performRequest("PUT", String.format("/_ilm/policy/%s", name), policy);
   }
 
   @Override
   public void createComponentTemplate(String name, String template) throws IOException {
-    performRequest("PUT", String.format("_component_template/%s", name), template);
+    performRequest("PUT", String.format("/_component_template/%s", name), template);
   }
 
   @Override
   public void createIndexTemplate(String name, String template) throws IOException {
-    performRequest("PUT", String.format("_index_template/%s", name), template);
+    performRequest("PUT", String.format("/_index_template/%s", name), template);
   }
 
   @Override
@@ -47,7 +47,7 @@ public class ElasticSearchDataInsightsClient implements DataInsightsSearchInterf
 
   @Override
   public Boolean dataAssetDataStreamExists(String name) throws IOException {
-    Response response = performRequest("HEAD", name);
+    Response response = performRequest("HEAD", String.format("/%s", name));
     return response.getStatusLine().getStatusCode() == 200;
   }
 

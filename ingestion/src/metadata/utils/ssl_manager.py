@@ -45,6 +45,9 @@ from metadata.generated.schema.entity.services.connections.database.salesforceCo
 from metadata.generated.schema.entity.services.connections.messaging.kafkaConnection import (
     KafkaConnection,
 )
+from metadata.generated.schema.entity.services.connections.pipeline.matillionConnection import (
+    MatillionConnection,
+)
 from metadata.generated.schema.security.ssl import verifySSLConfig
 from metadata.ingestion.connections.builders import init_empty_connection_arguments
 from metadata.ingestion.models.custom_pydantic import CustomSecretStr
@@ -104,6 +107,21 @@ class SSLManager:
         if connection.sslConfig.root.sslKey:
             ssl_args["ssl_key"] = self.key_file_path
         connection.connectionArguments.root["ssl"] = ssl_args
+        return connection
+
+    @setup_ssl.register(MatillionConnection)
+    def _(self, connection):
+        matillion_connection = cast(MatillionConnection, connection)
+        if (
+            matillion_connection.connection
+            and matillion_connection.connection.sslConfig
+        ):
+            if matillion_connection.connection.sslConfig.root.caCertificate:
+                setattr(
+                    matillion_connection.connection.sslConfig.root,
+                    "caCertificate",
+                    self.ca_file_path,
+                )
         return connection
 
     @setup_ssl.register(PostgresConnection)
@@ -171,6 +189,21 @@ class SSLManager:
 
 @singledispatch
 def check_ssl_and_init(_) -> None:
+    return None
+
+
+@check_ssl_and_init.register(MatillionConnection)
+def _(connection) -> Union[SSLManager, None]:
+    service_connection = cast(MatillionConnection, connection)
+    if service_connection.connection:
+        ssl: Optional[
+            verifySSLConfig.SslConfig
+        ] = service_connection.connection.sslConfig
+        if ssl and ssl.root.caCertificate:
+            ssl_dict: dict[str, Union[CustomSecretStr, None]] = {
+                "ca": ssl.root.caCertificate
+            }
+            return SSLManager(**ssl_dict)
     return None
 
 

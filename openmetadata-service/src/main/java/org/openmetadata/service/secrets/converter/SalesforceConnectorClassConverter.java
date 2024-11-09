@@ -36,7 +36,7 @@ public class SalesforceConnectorClassConverter extends ClassConverter {
 
     // Convert the `sslConfig` field to the appropriate class
     tryToConvert(salesforceConnection.getSslConfig(), SSL_SOURCE_CLASS)
-        .ifPresent(obj -> salesforceConnection.setSslConfig((ValidateSSLClientConfig) obj));
+        .ifPresent(salesforceConnection::setSslConfig);
 
     return salesforceConnection;
   }

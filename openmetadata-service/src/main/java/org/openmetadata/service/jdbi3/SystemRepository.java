@@ -9,6 +9,7 @@ import com.slack.api.bolt.model.builtin.DefaultInstaller;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import javax.json.JsonPatch;
 import javax.json.JsonValue;
 import javax.ws.rs.core.Response;
@@ -16,8 +17,10 @@ import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.api.configuration.UiThemePreference;
+import org.openmetadata.schema.configuration.AssetCertificationSettings;
 import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
+import org.openmetadata.schema.security.client.OpenMetadataJWTClientConfig;
 import org.openmetadata.schema.service.configuration.slackApp.SlackAppConfiguration;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.schema.settings.Settings;
@@ -35,6 +38,8 @@ import org.openmetadata.service.jdbi3.CollectionDAO.SystemDAO;
 import org.openmetadata.service.migration.MigrationValidationClient;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.secrets.SecretsManager;
+import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.security.JwtFilter;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
@@ -99,17 +104,21 @@ public class SystemRepository {
       if (fetchedSettings == null) {
         return null;
       }
-      if (fetchedSettings.getConfigType() == SettingsType.EMAIL_CONFIGURATION) {
-        SmtpSettings emailConfig = (SmtpSettings) fetchedSettings.getConfigValue();
-        emailConfig.setPassword("***********");
-        fetchedSettings.setConfigValue(emailConfig);
-      }
-      return fetchedSettings;
 
+      return fetchedSettings;
     } catch (Exception ex) {
       LOG.error("Error while trying fetch Settings ", ex);
     }
     return null;
+  }
+
+  public AssetCertificationSettings getAssetCertificationSettings() {
+    Optional<Settings> oAssetCertificationSettings =
+        Optional.ofNullable(getConfigWithKey(SettingsType.ASSET_CERTIFICATION_SETTINGS.value()));
+
+    return oAssetCertificationSettings
+        .map(settings -> (AssetCertificationSettings) settings.getConfigValue())
+        .orElse(null);
   }
 
   public Settings getEmailConfigInternal() {
@@ -141,6 +150,21 @@ public class SystemRepository {
   @Transaction
   public Response createOrUpdate(Settings setting) {
     Settings oldValue = getConfigWithKey(setting.getConfigType().toString());
+
+    if (oldValue != null && oldValue.getConfigType().equals(SettingsType.EMAIL_CONFIGURATION)) {
+      SmtpSettings configValue =
+          JsonUtils.convertValue(oldValue.getConfigValue(), SmtpSettings.class);
+      if (configValue != null) {
+        SmtpSettings.Templates templates = configValue.getTemplates();
+        SmtpSettings newConfigValue =
+            JsonUtils.convertValue(setting.getConfigValue(), SmtpSettings.class);
+        if (newConfigValue != null) {
+          newConfigValue.setTemplates(templates);
+          setting.setConfigValue(newConfigValue);
+        }
+      }
+    }
+
     try {
       updateSetting(setting);
     } catch (Exception ex) {
@@ -422,11 +446,13 @@ public class SystemRepository {
 
   private StepValidation getJWKsValidation(
       OpenMetadataApplicationConfig applicationConfig, JwtFilter jwtFilter) {
+    SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
     OpenMetadataConnection openMetadataServerConnection =
         new OpenMetadataConnectionBuilder(applicationConfig).build();
+    OpenMetadataJWTClientConfig realJWTConfig =
+        secretsManager.decryptJWTConfig(openMetadataServerConnection.getSecurityConfig());
     try {
-      jwtFilter.validateJwtAndGetClaims(
-          openMetadataServerConnection.getSecurityConfig().getJwtToken());
+      jwtFilter.validateJwtAndGetClaims(realJWTConfig.getJwtToken());
       return new StepValidation()
           .withDescription(ValidationStepDescription.JWT_TOKEN.key)
           .withPassed(Boolean.TRUE)

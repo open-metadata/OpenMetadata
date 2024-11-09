@@ -14,8 +14,11 @@ OMeta ES Mixin integration tests. The API needs to be up
 import logging
 import time
 import uuid
+from copy import deepcopy
 from unittest import TestCase
+from unittest.mock import patch
 
+import pytest
 from requests.utils import quote
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
@@ -46,9 +49,11 @@ from metadata.generated.schema.entity.services.databaseService import (
 from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
     OpenMetadataJWTClientConfig,
 )
-from metadata.generated.schema.type.basic import SqlQuery
+from metadata.generated.schema.type.basic import EntityName, SqlQuery
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils import fqn
+
+from ..integration_base import TIER1_TAG, get_create_entity
 
 
 class OMetaESTest(TestCase):
@@ -295,3 +300,94 @@ class OMetaESTest(TestCase):
         """Check the payload from ES"""
         res = self.metadata.es_get_queries_with_lineage(self.service.name.root)
         self.assertIn(self.checksum, res)
+
+    def test_paginate_no_filter(self):
+        """We can paginate all the data"""
+        # Since the test can run in parallel with other tables being there, we just
+        # want to check we are actually getting some results
+        for asset in self.metadata.paginate_es(entity=Table, size=2):
+            assert asset
+            break
+
+    def test_paginate_with_errors(self):
+        """We don't want to stop the ES yields just because a single Entity has an error"""
+        # 1. First, prepare some tables
+        for name in [f"table_{i}" for i in range(10)]:
+            self.metadata.create_or_update(
+                data=get_create_entity(
+                    entity=Table,
+                    name=EntityName(name),
+                    reference=self.create_schema_entity.fullyQualifiedName,
+                )
+            )
+
+        # 2. We'll fetch the entities, but we need to force a failure to ensure we can recover
+        error_name = fqn._build(
+            self.service_entity.name.root,
+            self.create_db_entity.name.root,
+            self.create_schema_entity.name.root,
+            "table_5",
+        )
+        ok_name = fqn._build(
+            self.service_entity.name.root,
+            self.create_db_entity.name.root,
+            self.create_schema_entity.name.root,
+            "table_6",
+        )
+
+        rest_client = self.metadata.client
+        original_get = rest_client.get
+        with patch.object(rest_client, "get", wraps=rest_client.get) as mock_get:
+
+            def side_effect(path: str, data=None):
+                # In case we pass filters as well, use `in path` rather than ==
+                if f"/tables/name/{error_name}" in path:
+                    raise RuntimeError("Error")
+                return original_get(path, data)
+
+            mock_get.side_effect = side_effect
+
+            # Validate we are raising the error
+            with pytest.raises(RuntimeError):
+                self.metadata.get_by_name(entity=Table, fqn=error_name)
+
+            # This works
+            self.metadata.get_by_name(entity=Table, fqn=ok_name)
+
+            query_filter = (
+                '{"query":{"bool":{"must":[{"bool":{"should":[{"term":'
+                f'{{"service.displayName.keyword":"{self.service_entity.name.root}"}}}}]}}}}]}}}}}}'
+            )
+            assets = list(
+                self.metadata.paginate_es(
+                    entity=Table, query_filter=query_filter, size=2
+                )
+            )
+            assert len(assets) == 10
+
+    def test_paginate_with_filters(self):
+        """We can paginate only tier 1 tables"""
+        # prepare some tables with tier 1 tags
+        for idx, name in enumerate([f"filtered_{i}" for i in range(10)]):
+            table = self.metadata.create_or_update(
+                data=get_create_entity(
+                    entity=Table,
+                    name=EntityName(name),
+                    reference=self.create_schema_entity.fullyQualifiedName,
+                )
+            )
+            if idx % 2 == 0:
+                dest = deepcopy(table)
+                dest.tags = [TIER1_TAG]
+                self.metadata.patch(entity=Table, source=table, destination=dest)
+
+        query_filter = (
+            '{"query":{"bool":{"must":[{"bool":{"must":['
+            '{"term":{"tier.tagFQN":"Tier.Tier1"}},'
+            f'{{"term":{{"service.displayName.keyword":"{self.service_entity.name.root}"}}}}'
+            "]}}]}}}"
+        )
+        assets = list(
+            self.metadata.paginate_es(entity=Table, query_filter=query_filter, size=2)
+        )
+        assert len(assets) == 5

@@ -25,18 +25,17 @@ import {
   ImmutableTree,
   JsonTree,
   Utils as QbUtils,
-  ValueSource,
+  ValueField,
 } from 'react-awesome-query-builder';
-import { useHistory, useLocation, useParams } from 'react-router-dom';
+import { useHistory, useParams } from 'react-router-dom';
 import { emptyJsonTree } from '../../../constants/AdvancedSearch.constants';
 import { SearchIndex } from '../../../enums/search.enum';
-import { getTypeByFQN } from '../../../rest/metadataTypeAPI';
+import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
+import { getAllCustomProperties } from '../../../rest/metadataTypeAPI';
 import advancedSearchClassBase from '../../../utils/AdvancedSearchClassBase';
 import { getTierOptions } from '../../../utils/AdvancedSearchUtils';
-import { EntitiesSupportedCustomProperties } from '../../../utils/CustomProperties/CustomProperty.utils';
 import { elasticSearchFormat } from '../../../utils/QueryBuilderElasticsearchFormatUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
-import { getEntityTypeFromSearchIndex } from '../../../utils/SearchUtils';
 import Loader from '../../common/Loader/Loader';
 import { AdvancedSearchModal } from '../AdvanceSearchModal.component';
 import { UrlParams } from '../ExplorePage.interface';
@@ -61,7 +60,7 @@ export const AdvanceSearchProvider = ({
     () => searchClassBase.getTabsInfo(),
     [searchClassBase]
   );
-  const location = useLocation();
+  const location = useCustomLocation();
   const history = useHistory();
   const { tab } = useParams<UrlParams>();
   const [loading, setLoading] = useState(true);
@@ -202,46 +201,30 @@ export const AdvanceSearchProvider = ({
     });
   }, [history, location.pathname]);
 
-  async function getCustomAttributesSubfields() {
-    const subfields: Record<
-      string,
-      { type: string; valueSources: ValueSource[] }
-    > = {};
+  const fetchCustomPropertyType = async () => {
+    const subfields: Record<string, ValueField> = {};
 
     try {
-      if (
-        !EntitiesSupportedCustomProperties.includes(
-          isArray(searchIndex) ? searchIndex[0] : searchIndex
-        )
-      ) {
-        return subfields;
-      }
+      const res = await getAllCustomProperties();
 
-      const entityType = getEntityTypeFromSearchIndex(
-        isArray(searchIndex) ? searchIndex[0] : searchIndex
-      );
-      if (!entityType) {
-        return subfields;
-      }
-
-      const res = await getTypeByFQN(entityType);
-      const customAttributes = res.customProperties;
-
-      if (customAttributes) {
-        customAttributes.forEach((attr) => {
-          subfields[attr.name] = {
-            type: 'text',
-            valueSources: ['value'],
-          };
-        });
-      }
-
-      return subfields;
+      Object.entries(res).forEach(([_, fields]) => {
+        if (Array.isArray(fields) && fields.length > 0) {
+          fields.forEach((field: { name: string; type: string }) => {
+            if (field.name && field.type) {
+              subfields[field.name] = {
+                type: 'text',
+                valueSources: ['value'],
+              };
+            }
+          });
+        }
+      });
     } catch (error) {
-      // Error
       return subfields;
     }
-  }
+
+    return subfields;
+  };
 
   const loadData = async () => {
     const actualConfig = advancedSearchClassBase.getQbConfigs(
@@ -250,7 +233,7 @@ export const AdvanceSearchProvider = ({
       isExplorePage
     );
 
-    const extensionSubField = await getCustomAttributesSubfields();
+    const extensionSubField = await fetchCustomPropertyType();
 
     if (!isEmpty(extensionSubField)) {
       (actualConfig.fields.extension as FieldGroup).subfields =

@@ -245,6 +245,7 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
           pipelineIdToFetchStatus={pipelineIdToFetchStatus}
           serviceCategory={ServiceCategory.DATABASE_SERVICES}
           serviceName={getServiceFromTestSuiteFQN(testSuiteFQN)}
+          tableClassName="test-suite-pipeline-tab"
           triggerIngestion={handleTriggerIngestion}
           onIngestionWorkflowsUpdate={getAllIngestionWorkflows}
         />

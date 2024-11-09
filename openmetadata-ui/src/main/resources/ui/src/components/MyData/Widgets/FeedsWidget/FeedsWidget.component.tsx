@@ -17,7 +17,7 @@ import { isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
-import { PAGE_SIZE_LARGE, ROUTES } from '../../../../constants/constants';
+import { PAGE_SIZE_MEDIUM, ROUTES } from '../../../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../../constants/entity.constants';
 import { mockFeedData } from '../../../../constants/mockTourData.constants';
 import { useTourProvider } from '../../../../context/TourProvider/TourProvider';
@@ -70,7 +70,7 @@ const FeedsWidget = ({
         undefined,
         undefined,
         undefined,
-        PAGE_SIZE_LARGE
+        PAGE_SIZE_MEDIUM
       );
     } else if (activeTab === ActivityFeedTabs.MENTIONS) {
       getFeedData(FeedFilter.MENTIONS);
@@ -175,6 +175,21 @@ const FeedsWidget = ({
     !isUndefined(handleRemoveWidget) && handleRemoveWidget(widgetKey);
   }, [widgetKey]);
 
+  const emptyPlaceholderText = useMemo(
+    () => (
+      <Transi18next
+        i18nKey="message.no-activity-feed"
+        renderElement={
+          <Link rel="noreferrer" to={{ pathname: ROUTES.EXPLORE }} />
+        }
+        values={{
+          explored: t('message.have-not-explored-yet'),
+        }}
+      />
+    ),
+    []
+  );
+
   return (
     <div
       className="feeds-widget-container h-full"
@@ -189,20 +204,7 @@ const FeedsWidget = ({
             children: (
               <>
                 <ActivityFeedListV1
-                  emptyPlaceholderText={
-                    <Transi18next
-                      i18nKey="message.no-activity-feed"
-                      renderElement={
-                        <Link
-                          rel="noreferrer"
-                          to={{ pathname: ROUTES.EXPLORE }}
-                        />
-                      }
-                      values={{
-                        explored: t('message.have-not-explored-yet'),
-                      }}
-                    />
-                  }
+                  emptyPlaceholderText={emptyPlaceholderText}
                   feedList={isTourOpen ? mockFeedData : threads}
                   hidePopover={isEditView}
                   isLoading={loading && !isTourOpen}

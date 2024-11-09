@@ -14,11 +14,7 @@ Workflow definition for metadata related ingestions: metadata and lineage.
 
 from metadata.config.common import WorkflowExecutionError
 from metadata.ingestion.api.steps import Sink, Source
-from metadata.utils.importer import (
-    import_from_module,
-    import_sink_class,
-    import_source_class,
-)
+from metadata.utils.importer import import_sink_class
 from metadata.utils.logger import ingestion_logger
 from metadata.workflow.ingestion import IngestionWorkflow
 
@@ -47,15 +43,7 @@ class MetadataWorkflow(IngestionWorkflow):
                 "configuration here: https://docs.open-metadata.org/connectors"
             )
 
-        source_class = (
-            import_from_module(
-                self.config.source.serviceConnection.root.config.sourcePythonClass
-            )
-            if source_type.startswith("custom")
-            else import_source_class(
-                service_type=self.service_type, source_type=source_type
-            )
-        )
+        source_class = self.import_source_class()
 
         pipeline_name = (
             self.ingestion_pipeline.fullyQualifiedName.root

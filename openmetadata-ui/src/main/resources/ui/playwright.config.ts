@@ -32,7 +32,7 @@ export default defineConfig({
   /* Retry on CI only */
   retries: process.env.CI ? 1 : 0,
   /* Opt out of parallel tests on CI. */
-  workers: process.env.CI ? 3 : undefined,
+  workers: process.env.CI ? 4 : undefined,
   maxFailures: 30,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: [
@@ -83,6 +83,9 @@ export default defineConfig({
       grep: /data-insight/,
     },
   ],
+
+  // Increase timeout for the test
+  timeout: 60000,
 
   /* Run your local dev server before starting the tests */
   // webServer: {

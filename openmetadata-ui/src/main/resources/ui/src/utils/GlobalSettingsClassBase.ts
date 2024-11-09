@@ -17,18 +17,21 @@ import { ReactComponent as AdminIcon } from '../assets/svg/admin-colored.svg';
 import { ReactComponent as ApplicationIcon } from '../assets/svg/application-colored.svg';
 import { ReactComponent as BotIcon } from '../assets/svg/bot-colored.svg';
 import { ReactComponent as AppearanceIcon } from '../assets/svg/custom-logo-colored.svg';
-import { ReactComponent as CustomDashboardLogoIcon } from '../assets/svg/customize-landing-page-colored.svg';
 import { ReactComponent as DashboardIcon } from '../assets/svg/dashboard-colored.svg';
 import { ReactComponent as DatabaseIcon } from '../assets/svg/database-colored.svg';
-import { ReactComponent as SchemaIcon } from '../assets/svg/database-schema.svg';
 import { ReactComponent as EmailIcon } from '../assets/svg/email-colored.svg';
 import { ReactComponent as GlossaryIcon } from '../assets/svg/glossary-colored.svg';
 import { ReactComponent as APICollectionIcon } from '../assets/svg/ic-api-collection.svg';
 import { ReactComponent as APIEndpointIcon } from '../assets/svg/ic-api-endpoint.svg';
 import { ReactComponent as IconAPI } from '../assets/svg/ic-api-service.svg';
+import { ReactComponent as DashboardDataModelIcon } from '../assets/svg/ic-dashboard-data-model-colored.svg';
+import { ReactComponent as DataProductIcon } from '../assets/svg/ic-data-product-colored.svg';
+import { ReactComponent as SchemaIcon } from '../assets/svg/ic-database-schema-colored.svg';
+import { ReactComponent as LineageIcon } from '../assets/svg/ic-lineage-config.svg';
 import { ReactComponent as LoginIcon } from '../assets/svg/login-colored.svg';
 import { ReactComponent as OpenMetadataIcon } from '../assets/svg/logo-monogram.svg';
 import { ReactComponent as MessagingIcon } from '../assets/svg/messaging-colored.svg';
+import { ReactComponent as MetricColoredIcon } from '../assets/svg/metric-colored.svg';
 import { ReactComponent as MlModelIcon } from '../assets/svg/ml-model-colored.svg';
 import { ReactComponent as OMHealthIcon } from '../assets/svg/om-health-colored.svg';
 import { ReactComponent as PersonasIcon } from '../assets/svg/persona-colored.svg';
@@ -92,6 +95,10 @@ class GlobalSettingsClassBase {
       name: t('label.application-plural'),
       url: GlobalSettingsMenuCategory.APPLICATIONS,
     },
+    [GlobalSettingsMenuCategory.PERSONA]: {
+      name: t('label.persona'),
+      url: GlobalSettingsMenuCategory.PERSONA,
+    },
   };
 
   protected updateSettingCategories(
@@ -114,6 +121,16 @@ class GlobalSettingsClassBase {
         icon: ServiceIcon,
         description: t('message.service-description'),
         items: [
+          {
+            label: t('label.api-uppercase-plural'),
+            description: t('message.page-sub-header-for-apis'),
+            isProtected: userPermissions.hasViewPermissions(
+              ResourceEntity.API_SERVICE,
+              permissions
+            ),
+            key: `${GlobalSettingsMenuCategory.SERVICES}.${GlobalSettingOptions.APIS}`,
+            icon: IconAPI,
+          },
           {
             label: t('label.database-plural'),
             description: t('message.page-sub-header-for-databases'),
@@ -195,17 +212,6 @@ class GlobalSettingsClassBase {
             icon: OpenMetadataIcon,
           },
           {
-            label: t('label.api-uppercase-plural'),
-            description: t('message.page-sub-header-for-apis'),
-            isProtected: userPermissions.hasViewPermissions(
-              ResourceEntity.API_SERVICE,
-              permissions
-            ),
-            key: `${GlobalSettingsMenuCategory.SERVICES}.${GlobalSettingOptions.APIS}`,
-            icon: IconAPI,
-            isBeta: true,
-          },
-          {
             label: t('label.data-observability'),
             description: t('message.page-sub-header-for-data-observability'),
             isProtected: true,
@@ -264,14 +270,6 @@ class GlobalSettingsClassBase {
             key: `${GlobalSettingsMenuCategory.MEMBERS}.${GlobalSettingOptions.ADMINS}`,
             icon: AdminIcon,
           },
-
-          {
-            label: t('label.persona-plural'),
-            description: t('message.page-sub-header-for-persona'),
-            isProtected: Boolean(isAdminUser),
-            key: `${GlobalSettingsMenuCategory.MEMBERS}.${GlobalSettingOptions.PERSONA}`,
-            icon: PersonasIcon,
-          },
         ],
       },
       {
@@ -310,17 +308,6 @@ class GlobalSettingsClassBase {
             icon: AppearanceIcon,
           },
           {
-            label: t('label.customize-entity', {
-              entity: t('label.landing-page'),
-            }),
-            description: t(
-              'message.page-sub-header-for-customize-landing-page'
-            ),
-            isProtected: Boolean(isAdminUser),
-            key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.CUSTOMIZE_LANDING_PAGE}`,
-            icon: CustomDashboardLogoIcon,
-          },
-          {
             label: t('label.email'),
             description: t('message.email-configuration-message'),
             isProtected: Boolean(isAdminUser),
@@ -352,6 +339,22 @@ class GlobalSettingsClassBase {
             key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.PROFILER_CONFIGURATION}`,
             icon: ProfilerConfigIcon,
           },
+          {
+            label: t('label.search'),
+            description: t('message.page-sub-header-for-search-setting'),
+            isProtected: Boolean(isAdminUser),
+            key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.SEARCH_RBAC}`,
+            icon: PoliciesIcon,
+          },
+          {
+            label: t('label.lineage'),
+            description: t(
+              'message.page-sub-header-for-lineage-config-setting'
+            ),
+            isProtected: Boolean(isAdminUser),
+            key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.LINEAGE_CONFIG}`,
+            icon: LineageIcon,
+          },
         ],
       },
       {
@@ -379,6 +382,24 @@ class GlobalSettingsClassBase {
             icon: APIEndpointIcon,
           },
           {
+            label: t('label.data-product'),
+            description: t('message.define-custom-property-for-entity', {
+              entity: t('label.data-product'),
+            }),
+            isProtected: Boolean(isAdminUser),
+            key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.DATA_PRODUCT}`,
+            icon: DataProductIcon,
+          },
+          {
+            label: t('label.dashboard-data-model-plural'),
+            description: t('message.define-custom-property-for-entity', {
+              entity: t('label.dashboard-data-model-plural'),
+            }),
+            isProtected: Boolean(isAdminUser),
+            key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.DASHBOARD_DATA_MODEL}`,
+            icon: DashboardDataModelIcon,
+          },
+          {
             label: t('label.database'),
             description: t('message.define-custom-property-for-entity', {
               entity: t('label.database'),
@@ -395,6 +416,15 @@ class GlobalSettingsClassBase {
             isProtected: Boolean(isAdminUser),
             key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.DATABASE_SCHEMA}`,
             icon: SchemaIcon,
+          },
+          {
+            label: t('label.metric'),
+            description: t('message.define-custom-property-for-entity', {
+              entity: t('label.metric'),
+            }),
+            isProtected: Boolean(isAdminUser),
+            key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.METRICS}`,
+            icon: MetricColoredIcon,
           },
           {
             label: t('label.table-plural'),
@@ -485,6 +515,13 @@ class GlobalSettingsClassBase {
         isProtected: Boolean(isAdminUser),
         key: GlobalSettingOptions.BOTS,
         icon: BotIcon,
+      },
+      {
+        category: t('label.persona-plural'),
+        description: t('message.page-sub-header-for-persona'),
+        isProtected: Boolean(isAdminUser),
+        key: GlobalSettingOptions.PERSONA,
+        icon: PersonasIcon,
       },
     ];
   }

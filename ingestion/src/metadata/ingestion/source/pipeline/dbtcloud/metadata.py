@@ -314,7 +314,7 @@ class DbtcloudSource(PipelineServiceSource):
                 timestamp=Timestamp(
                     datetime_to_ts(
                         datetime.strptime(
-                            pipeline_details.created_at, "%Y-%m-%dT%H:%M:%S.%f%z"
+                            pipeline_details.created_at, "%Y-%m-%d %H:%M:%S.%f%z"
                         )
                         if pipeline_details.created_at
                         else None

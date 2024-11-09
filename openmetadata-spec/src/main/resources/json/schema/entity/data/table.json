@@ -19,6 +19,14 @@
       ],
       "default": "PERCENTAGE"
     },
+    "samplingMethodType": {
+      "description": "Type of Sampling Method (BERNOULLI or SYSTEM)",
+      "type": "string",
+      "enum": [
+        "BERNOULLI",
+        "SYSTEM"
+      ]
+    },
     "tableType": {
       "javaType": "org.openmetadata.schema.type.TableType",
       "description": "This schema defines the type used for describing different types of tables.",
@@ -155,7 +163,8 @@
         "AGG_STATE",
         "BITMAP",
         "UINT",
-        "BIT"
+        "BIT",
+        "MONEY"
       ]
     },
     "constraint": {
@@ -201,6 +210,15 @@
             "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
           },
           "default": null
+        },
+        "relationshipType": {
+          "type": "string",
+          "enum": [
+            "ONE_TO_ONE",
+            "ONE_TO_MANY",
+            "MANY_TO_ONE",
+            "MANY_TO_MANY"
+          ]
         }
       },
       "additionalProperties": false
@@ -743,6 +761,9 @@
           "type": "number",
           "default": null
         },
+        "samplingMethodType": {
+          "$ref": "#/definitions/samplingMethodType"
+        },
         "sampleDataCount": {
           "description": "Number of sample rows to ingest when 'Generate Sample Data' is enabled",
           "type": "integer",
@@ -792,6 +813,9 @@
         },
         "profileSampleType": {
           "$ref": "#/definitions/profileSampleType"
+        },
+        "samplingMethodType": {
+          "$ref": "#/definitions/samplingMethodType"
         },
         "columnCount": {
           "description": "No.of columns in the table.",
@@ -995,6 +1019,11 @@
       "description": "Reference to the Location that contains this table.",
       "$ref": "../../type/entityReference.json"
     },
+    "locationPath": {
+      "description": "Full storage path in case of external and managed tables.",
+      "type": "string",
+      "default": null
+    },
     "schemaDefinition": {
       "description": "DDL for Tables and Views",
       "$ref": "../../type/basic.json#/definitions/sqlQuery"
@@ -1091,6 +1120,9 @@
     "lifeCycle": {
       "description": "Life Cycle of the entity",
       "$ref": "../../type/lifeCycle.json"
+    },
+    "certification": {
+      "$ref": "../../type/assetCertification.json"
     },
     "sourceHash": {
       "description": "Source hash of the entity",

@@ -162,8 +162,8 @@ public class SubscriptionUtil {
     Map<UUID, Team> teams = new HashMap<>();
     Map<UUID, User> users = new HashMap<>();
 
-    Team tempTeamVar = null;
-    User tempUserVar = null;
+    Team tempTeamVar;
+    User tempUserVar;
 
     if (category.equals(SubscriptionDestination.SubscriptionCategory.ASSIGNEES)) {
       List<EntityReference> assignees = thread.getTask().getAssignees();
@@ -223,8 +223,8 @@ public class SubscriptionUtil {
     Map<UUID, Team> teams = new HashMap<>();
     Map<UUID, User> users = new HashMap<>();
 
-    Team tempTeamVar = null;
-    User tempUserVar = null;
+    Team tempTeamVar;
+    User tempUserVar;
 
     if (category.equals(SubscriptionDestination.SubscriptionCategory.MENTIONS)) {
       List<MessageParser.EntityLink> mentions = MessageParser.getEntityLinks(thread.getMessage());
@@ -372,20 +372,29 @@ public class SubscriptionUtil {
             handleConversationNotification(category, type, event));
           // TODO: For Announcement, Immediate Consumer needs to be Notified (find information from
           // Lineage)
+        case Announcement -> {
+          receiverUrls.addAll(buildReceivers(action, category, type, event, event.getEntityId()));
+        }
       }
     } else {
       EntityInterface entityInterface = getEntity(event);
-      receiverUrls.addAll(
-          buildReceiversListFromActions(
-              action,
-              category,
-              type,
-              Entity.getCollectionDAO(),
-              entityInterface.getId(),
-              event.getEntityType()));
+      receiverUrls.addAll(buildReceivers(action, category, type, event, entityInterface.getId()));
     }
 
     return receiverUrls;
+  }
+
+  private static Set<String> buildReceivers(
+      SubscriptionAction action,
+      SubscriptionDestination.SubscriptionCategory category,
+      SubscriptionDestination.SubscriptionType type,
+      ChangeEvent event,
+      UUID id) {
+    Set<String> result = new HashSet<>();
+    result.addAll(
+        buildReceiversListFromActions(
+            action, category, type, Entity.getCollectionDAO(), id, event.getEntityType()));
+    return result;
   }
 
   public static List<Invocation.Builder> getTargetsForWebhookAlert(
@@ -408,14 +417,31 @@ public class SubscriptionUtil {
 
   public static void postWebhookMessage(
       Destination<ChangeEvent> destination, Invocation.Builder target, Object message) {
+    postWebhookMessage(destination, target, message, Webhook.HttpMethod.POST);
+  }
+
+  public static void postWebhookMessage(
+      Destination<ChangeEvent> destination,
+      Invocation.Builder target,
+      Object message,
+      Webhook.HttpMethod httpMethod) {
     long attemptTime = System.currentTimeMillis();
-    Response response =
-        target.post(javax.ws.rs.client.Entity.entity(message, MediaType.APPLICATION_JSON_TYPE));
+    Response response;
+
+    if (httpMethod == Webhook.HttpMethod.PUT) {
+      response =
+          target.put(javax.ws.rs.client.Entity.entity(message, MediaType.APPLICATION_JSON_TYPE));
+    } else {
+      response =
+          target.post(javax.ws.rs.client.Entity.entity(message, MediaType.APPLICATION_JSON_TYPE));
+    }
+
     LOG.debug(
-        "Subscription Destination Posted Message {}:{} received response {}",
+        "Subscription Destination HTTP Operation {}:{} received response {}",
+        httpMethod,
         destination.getSubscriptionDestination().getId(),
-        message,
         response.getStatusInfo());
+
     if (response.getStatus() >= 300 && response.getStatus() < 400) {
       // 3xx response/redirection is not allowed for callback. Set the webhook state as in error
       destination.setErrorStatus(

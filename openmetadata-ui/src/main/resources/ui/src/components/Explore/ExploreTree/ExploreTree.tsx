@@ -13,7 +13,7 @@
 import { Tree, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { isString, isUndefined } from 'lodash';
+import { isEmpty, isString, isUndefined } from 'lodash';
 import Qs from 'qs';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
@@ -40,6 +40,7 @@ import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import { generateUUID } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { UrlParams } from '../ExplorePage.interface';
+import './explore-tree.less';
 import {
   ExploreTreeNode,
   ExploreTreeProps,
@@ -55,7 +56,9 @@ const ExploreTreeTitle = ({ node }: { node: ExploreTreeNode }) => (
       data-testid={`explore-tree-title-${node.data?.dataId ?? node.title}`}>
       {node.title}
     </Typography.Text>
-    {!isUndefined(node.count) && <span>{getCountBadge(node.count)}</span>}
+    {!isUndefined(node.count) && (
+      <span className="explore-node-count">{getCountBadge(node.count)}</span>
+    )}
   </div>
 );
 
@@ -70,7 +73,7 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
     return searchClassBase.getExploreTreeKey(tab as ExplorePageTabs);
   }, [tab]);
 
-  const [searchQueryParam, defaultServiceType] = useMemo(() => {
+  const [parsedSearch, searchQueryParam, defaultServiceType] = useMemo(() => {
     const parsedSearch = Qs.parse(
       location.search.startsWith('?')
         ? location.search.substring(1)
@@ -83,7 +86,7 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
       ? parsedSearch.search
       : '';
 
-    return [searchQueryParam, defaultServiceType];
+    return [parsedSearch, searchQueryParam, defaultServiceType];
   }, [location.search]);
 
   const onLoadData = useCallback(
@@ -222,6 +225,7 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
           ),
         ]);
       }
+
       setSelectedKeys([node.key]);
     },
     [onFieldValueSelect]
@@ -259,6 +263,13 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
   useEffect(() => {
     fetchEntityCounts();
   }, []);
+
+  useEffect(() => {
+    // Tree works on the quickFilter, so we need to reset the selectedKeys when the quickFilter is empty
+    if (isEmpty(parsedSearch.quickFilter)) {
+      setSelectedKeys([]);
+    }
+  }, [parsedSearch]);
 
   return (
     <Tree

@@ -21,6 +21,7 @@ from metadata.generated.schema.api.classification.createClassification import (
     CreateClassificationRequest,
 )
 from metadata.generated.schema.api.classification.createTag import CreateTagRequest
+from metadata.generated.schema.api.createBot import CreateBot
 from metadata.generated.schema.api.data.createAPICollection import (
     CreateAPICollectionRequest,
 )
@@ -41,6 +42,7 @@ from metadata.generated.schema.api.data.createGlossary import CreateGlossaryRequ
 from metadata.generated.schema.api.data.createGlossaryTerm import (
     CreateGlossaryTermRequest,
 )
+from metadata.generated.schema.api.data.createMetric import CreateMetricRequest
 from metadata.generated.schema.api.data.createMlModel import CreateMlModelRequest
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.data.createQuery import CreateQueryRequest
@@ -125,7 +127,7 @@ from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.glossary import Glossary
 from metadata.generated.schema.entity.data.glossaryTerm import GlossaryTerm
-from metadata.generated.schema.entity.data.metrics import Metrics
+from metadata.generated.schema.entity.data.metric import Metric
 from metadata.generated.schema.entity.data.mlmodel import MlModel
 from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.data.query import Query
@@ -180,7 +182,8 @@ ROUTES = {
     CreateTableRequest.__name__: "/tables",
     Topic.__name__: "/topics",
     CreateTopicRequest.__name__: "/topics",
-    Metrics.__name__: "/metrics",
+    Metric.__name__: "/metrics",
+    CreateMetricRequest.__name__: "/metrics",
     AddLineageRequest.__name__: "/lineage",
     Report.__name__: "/reports",
     Query.__name__: "/queries",
@@ -211,7 +214,8 @@ ROUTES = {
     User.__name__: "/users",
     CreateUserRequest.__name__: "/users",
     AuthenticationMechanism.__name__: "/users/auth-mechanism",
-    Bot.__name__: "/bots",  # We won't allow bot creation from the client
+    Bot.__name__: "/bots",
+    CreateBot.__name__: "/bots",
     # Roles
     Role.__name__: "/roles",
     CreateRoleRequest.__name__: "/roles",

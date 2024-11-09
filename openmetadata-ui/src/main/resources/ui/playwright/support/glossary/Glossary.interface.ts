@@ -64,4 +64,5 @@ export type GlossaryTermData = {
   owners?: UserTeamRef[];
   fullyQualifiedName: string;
   reviewers: UserTeamRef[];
+  parent?: string;
 };

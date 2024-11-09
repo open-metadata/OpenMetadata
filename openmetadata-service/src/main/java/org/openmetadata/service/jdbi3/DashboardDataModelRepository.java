@@ -186,7 +186,7 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
 
   @Override
   public EntityInterface getParentEntity(DashboardDataModel entity, String fields) {
-    return Entity.getEntity(entity.getService(), fields, Include.NON_DELETED);
+    return Entity.getEntity(entity.getService(), fields, ALL);
   }
 
   @Override

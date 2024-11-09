@@ -62,12 +62,7 @@ const AddRolePage = () => {
   const fetchPolicies = async () => {
     try {
       const data = await getPolicies(
-        `${
-          (TabSpecificField.OWNERS,
-          TabSpecificField.LOCATION,
-          TabSpecificField.TEAMS,
-          TabSpecificField.ROLES)
-        }`,
+        `${TabSpecificField.OWNERS},${TabSpecificField.LOCATION},${TabSpecificField.TEAMS},${TabSpecificField.ROLES}`,
         undefined,
         undefined,
         100

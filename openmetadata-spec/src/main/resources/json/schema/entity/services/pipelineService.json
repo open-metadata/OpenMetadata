@@ -31,7 +31,10 @@
         "Spark",
         "OpenLineage",
         "KafkaConnect",
-        "DBTCloud"
+        "DBTCloud",
+        "Matillion",
+        "Stitch",
+        "DataFactory"
       ],
       "javaEnums": [
         {
@@ -78,6 +81,15 @@
         },
         {
           "name": "DBTCloud"
+        },
+        {
+          "name": "Matillion"
+        },
+        {
+          "name": "DataFactory"
+        },
+        {
+          "name": "Stitch"
         }
       ]
     },
@@ -136,6 +148,15 @@
             },
             {
               "$ref": "./connections/pipeline/dbtCloudConnection.json"
+            },
+            {
+              "$ref": "./connections/pipeline/matillionConnection.json"
+            },
+            {
+              "$ref": "./connections/pipeline/datafactoryConnection.json"
+            },
+            {
+              "$ref": "./connections/pipeline/stitchConnection.json"
             }
           ]
         }

@@ -163,7 +163,7 @@ const GlossaryTermTab = ({
           ),
       },
       {
-        title: t('label.owner'),
+        title: t('label.owner-plural'),
         dataIndex: 'owners',
         key: 'owners',
         width: '17%',
@@ -390,8 +390,9 @@ const GlossaryTermTab = ({
 
   const fetchAllTerms = async () => {
     setIsTableLoading(true);
+    const key = isGlossary ? 'glossary' : 'parent';
     const { data } = await getGlossaryTerms({
-      glossary: activeGlossary?.id || '',
+      [key]: activeGlossary?.id || '',
       limit: API_RES_MAX_SIZE,
       fields: [
         TabSpecificField.OWNERS,

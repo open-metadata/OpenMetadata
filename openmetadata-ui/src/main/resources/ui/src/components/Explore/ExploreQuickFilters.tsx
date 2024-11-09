@@ -17,7 +17,6 @@ import { isEqual, isUndefined, uniqWith } from 'lodash';
 import { Bucket } from 'Models';
 import Qs from 'qs';
 import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
-import { useLocation } from 'react-router-dom';
 import {
   MISC_FIELDS,
   OWNER_QUICK_FILTER_DEFAULT_OPTIONS_KEY,
@@ -25,6 +24,7 @@ import {
 import { TIER_FQN_KEY } from '../../constants/explore.constants';
 import { EntityFields } from '../../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../../enums/search.enum';
+import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { QueryFilterInterface } from '../../pages/ExplorePage/ExplorePage.interface';
 import { getAggregateFieldOptions } from '../../rest/miscAPI';
 import { getTags } from '../../rest/tagAPI';
@@ -49,7 +49,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
   onFieldValueSelect,
   fieldsWithNullValues = [],
 }) => {
-  const location = useLocation();
+  const location = useCustomLocation();
   const [options, setOptions] = useState<SearchDropdownOption[]>();
   const [isOptionsLoading, setIsOptionsLoading] = useState<boolean>(false);
   const [tierOptions, setTierOptions] = useState<SearchDropdownOption[]>();
@@ -94,7 +94,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
           JSON.stringify(combinedQueryFilter)
         ),
         key === TIER_FQN_KEY
-          ? getTags({ parent: 'Tier' })
+          ? getTags({ parent: 'Tier', limit: 50 })
           : Promise.resolve(null),
       ]);
 
@@ -181,7 +181,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
   }, [fields]);
 
   return (
-    <Space wrap className="explore-quick-filters-container" size={[4, 0]}>
+    <Space wrap className="explore-quick-filters-container" size={[8, 0]}>
       {fields.map((field) => {
         const hasNullOption = fieldsWithNullValues.includes(
           field.key as EntityFields

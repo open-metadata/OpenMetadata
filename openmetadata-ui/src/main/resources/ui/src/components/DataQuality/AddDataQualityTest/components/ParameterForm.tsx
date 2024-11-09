@@ -72,11 +72,12 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
     DynamicField?: ReactElement
   ) => {
     const ruleValidation: RuleRender = ({ getFieldValue }) => ({
-      validator(_, value) {
+      validator(_, formValue) {
         if (data?.validationRule) {
           const fieldValue = data.validationRule.parameterField
-            ? getFieldValue(['params', data.validationRule.parameterField])
+            ? +getFieldValue(['params', data.validationRule.parameterField])
             : undefined;
+          const value = +formValue;
           if (fieldValue && value) {
             switch (data.validationRule.rule) {
               case Rule.GreaterThanOrEquals:

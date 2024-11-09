@@ -55,4 +55,5 @@ export interface IngestionListTableProps {
     text: string,
     record: IngestionPipeline
   ) => ReactNode;
+  tableClassName?: string;
 }

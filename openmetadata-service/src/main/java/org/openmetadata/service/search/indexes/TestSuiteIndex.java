@@ -44,7 +44,7 @@ public record TestSuiteIndex(TestSuite testSuite) implements SearchIndex {
     addTestSuiteParentEntityRelations(entityReference, doc);
   }
 
-  protected static void addTestSuiteParentEntityRelations(
+  static void addTestSuiteParentEntityRelations(
       EntityReference testSuiteRef, Map<String, Object> doc) {
     if (testSuiteRef.getType().equals(Entity.TABLE)) {
       Table table = Entity.getEntity(testSuiteRef, "", Include.ALL);

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { expect, Page } from '@playwright/test';
-import { lowerCase } from 'lodash';
+import { isEmpty, lowerCase } from 'lodash';
 import {
   customFormatDateTime,
   getCurrentMillis,
@@ -141,6 +141,40 @@ export const updateOwner = async ({
   );
 };
 
+export const removeOwnersFromList = async ({
+  page,
+  endpoint,
+  ownerNames,
+  dataTestId,
+}: {
+  page: Page;
+  endpoint: EntityTypeEndpoint;
+  ownerNames: string[];
+  dataTestId?: string;
+}) => {
+  await page.getByTestId('edit-owner').click();
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
+  for (const ownerName of ownerNames) {
+    const ownerItem = page.getByRole('listitem', {
+      name: ownerName,
+      exact: true,
+    });
+
+    await ownerItem.click();
+  }
+  const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
+  await page.click('[data-testid="selectable-list-update-btn"]');
+  await patchRequest;
+
+  for (const ownerName of ownerNames) {
+    await expect(
+      page.getByTestId(dataTestId ?? 'owner-link')
+    ).not.toContainText(ownerName);
+  }
+};
+
+// Removes All Owners
 export const removeOwner = async ({
   page,
   endpoint,
@@ -182,6 +216,7 @@ export const addMultiOwner = async (data: {
   resultTestId?: string;
   isSelectableInsideForm?: boolean;
   type: 'Teams' | 'Users';
+  clearAll?: boolean;
 }) => {
   const {
     page,
@@ -191,6 +226,7 @@ export const addMultiOwner = async (data: {
     isSelectableInsideForm = false,
     endpoint,
     type,
+    clearAll = true,
   } = data;
   const isMultipleOwners = Array.isArray(ownerNames);
   const owners = isMultipleOwners ? ownerNames : [ownerNames];
@@ -201,11 +237,14 @@ export const addMultiOwner = async (data: {
 
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
-  await page.getByRole('tab', { name: 'Users' }).click();
+  await page
+    .locator("[data-testid='select-owner-tabs']")
+    .getByRole('tab', { name: 'Users' })
+    .click();
 
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
-  if (isMultipleOwners) {
+  if (clearAll && isMultipleOwners) {
     await page.click('[data-testid="clear-all-button"]');
   }
 
@@ -286,18 +325,23 @@ export const updateDescription = async (page: Page, description: string) => {
   await page.locator('.ProseMirror').first().fill(description);
   await page.getByTestId('save').click();
 
-  await expect(
-    page.getByTestId('asset-description-container').getByRole('paragraph')
-  ).toContainText(description);
+  isEmpty(description)
+    ? await expect(
+        page.getByTestId('asset-description-container')
+      ).toContainText('No description')
+    : await expect(
+        page.getByTestId('asset-description-container').getByRole('paragraph')
+      ).toContainText(description);
 };
 
 export const assignTag = async (
   page: Page,
   tag: string,
-  action: 'Add' | 'Edit' = 'Add'
+  action: 'Add' | 'Edit' = 'Add',
+  parentId = 'entity-right-panel'
 ) => {
   await page
-    .getByTestId('entity-right-panel')
+    .getByTestId(parentId)
     .getByTestId('tags-container')
     .getByTestId(action === 'Add' ? 'add-tag' : 'edit-button')
     .click();
@@ -309,13 +353,18 @@ export const assignTag = async (
   await searchTags;
   await page.getByTestId(`tag-${tag}`).click();
 
+  await page.waitForSelector(
+    '.ant-select-dropdown [data-testid="saveAssociatedTag"]',
+    { state: 'visible' }
+  );
+
   await expect(page.getByTestId('saveAssociatedTag')).toBeEnabled();
 
   await page.getByTestId('saveAssociatedTag').click();
 
   await expect(
     page
-      .getByTestId('entity-right-panel')
+      .getByTestId(parentId)
       .getByTestId('tags-container')
       .getByTestId(`tag-${tag}`)
   ).toBeVisible();
@@ -354,6 +403,11 @@ export const assignTagToChildren = async ({
     (response) => response.request().method() === 'PATCH'
   );
 
+  await page.waitForSelector(
+    '.ant-select-dropdown [data-testid="saveAssociatedTag"]',
+    { state: 'visible' }
+  );
+
   await expect(page.getByTestId('saveAssociatedTag')).toBeEnabled();
 
   await page.getByTestId('saveAssociatedTag').click();
@@ -384,6 +438,11 @@ export const removeTag = async (page: Page, tags: string[]) => {
 
     const patchRequest = page.waitForResponse(
       (response) => response.request().method() === 'PATCH'
+    );
+
+    await page.waitForSelector(
+      '.ant-select-dropdown [data-testid="saveAssociatedTag"]',
+      { state: 'visible' }
     );
 
     await expect(page.getByTestId('saveAssociatedTag')).toBeEnabled();
@@ -428,6 +487,11 @@ export const removeTagsFromChildren = async ({
       (response) => response.request().method() === 'PATCH'
     );
 
+    await page.waitForSelector(
+      '.ant-select-dropdown [data-testid="saveAssociatedTag"]',
+      { state: 'visible' }
+    );
+
     await expect(page.getByTestId('saveAssociatedTag')).toBeEnabled();
 
     await page.getByTestId('saveAssociatedTag').click();
@@ -467,6 +531,11 @@ export const assignGlossaryTerm = async (
   await page.locator('#tagsForm_tags').fill(glossaryTerm.displayName);
   await searchGlossaryTerm;
   await page.getByTestId(`tag-${glossaryTerm.fullyQualifiedName}`).click();
+
+  await page.waitForSelector(
+    '.ant-select-dropdown [data-testid="saveAssociatedTag"]',
+    { state: 'visible' }
+  );
 
   await expect(page.getByTestId('saveAssociatedTag')).toBeEnabled();
 
@@ -510,6 +579,11 @@ export const assignGlossaryTermToChildren = async ({
     (response) => response.request().method() === 'PATCH'
   );
 
+  await page.waitForSelector(
+    '.ant-select-dropdown [data-testid="saveAssociatedTag"]',
+    { state: 'visible' }
+  );
+
   await expect(page.getByTestId('saveAssociatedTag')).toBeEnabled();
 
   await page.getByTestId('saveAssociatedTag').click();
@@ -544,6 +618,11 @@ export const removeGlossaryTerm = async (
 
     const patchRequest = page.waitForResponse(
       (response) => response.request().method() === 'PATCH'
+    );
+
+    await page.waitForSelector(
+      '.ant-select-dropdown [data-testid="saveAssociatedTag"]',
+      { state: 'visible' }
     );
 
     await expect(page.getByTestId('saveAssociatedTag')).toBeEnabled();
@@ -587,6 +666,11 @@ export const removeGlossaryTermFromChildren = async ({
 
     const patchRequest = page.waitForResponse(
       (response) => response.request().method() === 'PATCH'
+    );
+
+    await page.waitForSelector(
+      '.ant-select-dropdown [data-testid="saveAssociatedTag"]',
+      { state: 'visible' }
     );
 
     await expect(page.getByTestId('saveAssociatedTag')).toBeEnabled();
@@ -874,7 +958,15 @@ export const updateDisplayNameForEntity = async (
   ).toHaveText(displayName);
 };
 
-export const checkForEditActions = async ({ entityType, deleted, page }) => {
+export const checkForEditActions = async ({
+  page,
+  entityType,
+  deleted = false,
+}: {
+  page: Page;
+  entityType: string;
+  deleted?: boolean;
+}) => {
   for (const {
     containerSelector,
     elementSelector,
@@ -1236,4 +1328,21 @@ export const escapeESReservedCharacters = (text?: string) => {
   return text && reHasUnescapedHtml.test(text)
     ? text.replace(reUnescapedHtml, getReplacedChar)
     : text ?? '';
+};
+
+export const getEncodedFqn = (fqn: string, spaceAsPlus = false) => {
+  let uri = encodeURIComponent(fqn);
+
+  if (spaceAsPlus) {
+    uri = uri.replaceAll('%20', '+');
+  }
+
+  return uri;
+};
+
+export const getEntityDisplayName = (entity?: {
+  name?: string;
+  displayName?: string;
+}) => {
+  return entity?.displayName || entity?.name || '';
 };

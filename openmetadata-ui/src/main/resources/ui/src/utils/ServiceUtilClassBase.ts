@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { capitalize, toLower } from 'lodash';
+import { capitalize, get, toLower } from 'lodash';
+import MetricIcon from '../assets/svg/metric.svg';
 import {
   AIRBYTE,
   AIRFLOW,
@@ -25,6 +26,7 @@ import {
   BIGTABLE,
   CLICKHOUSE,
   COUCHBASE,
+  CUSTOM_SEARCH_DEFAULT,
   CUSTOM_STORAGE_DEFAULT,
   DAGSTER,
   DASHBOARD_DEFAULT,
@@ -39,6 +41,7 @@ import {
   DRUID,
   DYNAMODB,
   ELASTIC_SEARCH,
+  EXASOL,
   FIVETRAN,
   FLINK,
   GCS,
@@ -82,12 +85,14 @@ import {
   SAP_HANA,
   SAS,
   SCIKIT,
+  SIGMA,
   SINGLESTORE,
   SNOWFLAKE,
   SPARK,
   SPLINE,
   SQLITE,
   SUPERSET,
+  SYNAPSE,
   TABLEAU,
   TERADATA,
   TOPIC_DEFAULT,
@@ -96,6 +101,7 @@ import {
   VERTICA,
 } from '../constants/Services.constant';
 import { SearchSuggestions } from '../context/GlobalSearchProvider/GlobalSearchSuggestions/GlobalSearchSuggestions.interface';
+import { EntityType } from '../enums/entity.enum';
 import { ExplorePageTabs } from '../enums/Explore.enum';
 import {
   ApiServiceTypeSmallCaseType,
@@ -137,6 +143,9 @@ class ServiceUtilClassBase {
     DatabaseServiceType.Synapse,
     MetadataServiceType.Alation,
     APIServiceType.Webhook,
+    MlModelServiceType.VertexAI,
+    PipelineServiceType.Matillion,
+    PipelineServiceType.DataFactory,
   ];
 
   DatabaseServiceTypeSmallCase = this.convertEnumToLowerCase<
@@ -227,6 +236,8 @@ class ServiceUtilClassBase {
   public getServiceLogo(type: string) {
     const serviceTypes = this.getSupportedServiceFromList();
     switch (toLower(type)) {
+      case this.DatabaseServiceTypeSmallCase.CustomDatabase:
+        return DATABASE_DEFAULT;
       case this.DatabaseServiceTypeSmallCase.Mysql:
         return MYSQL;
 
@@ -302,6 +313,9 @@ class ServiceUtilClassBase {
       case this.DatabaseServiceTypeSmallCase.DynamoDB:
         return DYNAMODB;
 
+      case this.DatabaseServiceTypeSmallCase.Exasol:
+        return EXASOL;
+
       case this.DatabaseServiceTypeSmallCase.SingleStore:
         return SINGLESTORE;
 
@@ -344,6 +358,12 @@ class ServiceUtilClassBase {
       case this.DatabaseServiceTypeSmallCase.Teradata:
         return TERADATA;
 
+      case this.DatabaseServiceTypeSmallCase.Synapse:
+        return SYNAPSE;
+
+      case this.MessagingServiceTypeSmallCase.CustomMessaging:
+        return TOPIC_DEFAULT;
+
       case this.MessagingServiceTypeSmallCase.Kafka:
         return KAFKA;
 
@@ -353,6 +373,8 @@ class ServiceUtilClassBase {
       case this.MessagingServiceTypeSmallCase.Kinesis:
         return KINESIS;
 
+      case this.DashboardServiceTypeSmallCase.CustomDashboard:
+        return DASHBOARD_DEFAULT;
       case this.DashboardServiceTypeSmallCase.Superset:
         return SUPERSET;
 
@@ -388,6 +410,12 @@ class ServiceUtilClassBase {
 
       case this.DashboardServiceTypeSmallCase.Lightdash:
         return LIGHT_DASH;
+
+      case this.DashboardServiceTypeSmallCase.Sigma:
+        return SIGMA;
+
+      case this.PipelineServiceTypeSmallCase.CustomPipeline:
+        return PIPELINE_DEFAULT;
 
       case this.PipelineServiceTypeSmallCase.Airflow:
         return AIRFLOW;
@@ -431,6 +459,9 @@ class ServiceUtilClassBase {
       case this.PipelineServiceTypeSmallCase.Flink:
         return FLINK;
 
+      case this.MlModelServiceTypeSmallCase.CustomMlModel:
+        return ML_MODEL_DEFAULT;
+
       case this.MlModelServiceTypeSmallCase.Mlflow:
         return MLFLOW;
 
@@ -451,11 +482,17 @@ class ServiceUtilClassBase {
       case this.MetadataServiceTypeSmallCase.OpenMetadata:
         return LOGO;
 
+      case this.StorageServiceTypeSmallCase.CustomStorage:
+        return CUSTOM_STORAGE_DEFAULT;
+
       case this.StorageServiceTypeSmallCase.S3:
         return AMAZON_S3;
 
       case this.StorageServiceTypeSmallCase.Gcs:
         return GCS;
+
+      case this.SearchServiceTypeSmallCase.CustomSearch:
+        return CUSTOM_SEARCH_DEFAULT;
 
       case this.SearchServiceTypeSmallCase.ElasticSearch:
         return ELASTIC_SEARCH;
@@ -480,6 +517,8 @@ class ServiceUtilClassBase {
           logo = ML_MODEL_DEFAULT;
         } else if (serviceTypes.storageServices.includes(type)) {
           logo = CUSTOM_STORAGE_DEFAULT;
+        } else if (serviceTypes.searchServices.includes(type)) {
+          logo = CUSTOM_SEARCH_DEFAULT;
         } else {
           logo = DEFAULT_SERVICE;
         }
@@ -492,7 +531,13 @@ class ServiceUtilClassBase {
   public getServiceTypeLogo(
     searchSource: SearchSuggestions[number] | SearchSourceAlias
   ) {
-    const type = searchSource?.serviceType ?? '';
+    const type = get(searchSource, 'serviceType', '');
+    const entityType = get(searchSource, 'entityType', '');
+
+    // metric entity does not have service so we need to handle it separately
+    if (entityType === EntityType.METRIC) {
+      return MetricIcon;
+    }
 
     return this.getServiceLogo(type);
   }

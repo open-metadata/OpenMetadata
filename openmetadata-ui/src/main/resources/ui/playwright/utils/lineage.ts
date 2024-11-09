@@ -16,12 +16,17 @@ import { ApiEndpointClass } from '../support/entity/ApiEndpointClass';
 import { ContainerClass } from '../support/entity/ContainerClass';
 import { DashboardClass } from '../support/entity/DashboardClass';
 import { EntityClass } from '../support/entity/EntityClass';
+import { MetricClass } from '../support/entity/MetricClass';
 import { MlModelClass } from '../support/entity/MlModelClass';
 import { PipelineClass } from '../support/entity/PipelineClass';
 import { SearchIndexClass } from '../support/entity/SearchIndexClass';
 import { TableClass } from '../support/entity/TableClass';
 import { TopicClass } from '../support/entity/TopicClass';
-import { getApiContext, getEntityTypeSearchIndexMapping } from './common';
+import {
+  getApiContext,
+  getEntityTypeSearchIndexMapping,
+  toastNotification,
+} from './common';
 
 export const verifyColumnLayerInactive = async (page: Page) => {
   await page.click('[data-testid="lineage-layer-btn"]'); // Open Layer popover
@@ -36,12 +41,20 @@ export const activateColumnLayer = async (page: Page) => {
   await page.click('[data-testid="lineage-layer-column-btn"]');
 };
 
+export const editLineage = async (page: Page) => {
+  await page.click('[data-testid="edit-lineage"]');
+
+  await expect(
+    page.getByTestId('table_search_index-draggable-icon')
+  ).toBeVisible();
+};
+
 export const performZoomOut = async (page: Page) => {
-  for (let i = 0; i < 5; i++) {
-    const zoomOutBtn = page.locator('.react-flow__controls-zoomout');
-    const enabled = await zoomOutBtn.isEnabled();
-    if (enabled) {
-      zoomOutBtn.dispatchEvent('click');
+  const zoomOutBtn = page.locator('.react-flow__controls-zoomout');
+  const enabled = await zoomOutBtn.isEnabled();
+  if (enabled) {
+    for (const _ of Array.from({ length: 8 })) {
+      await zoomOutBtn.dispatchEvent('click');
     }
   }
 };
@@ -77,6 +90,20 @@ export const deleteEdge = async (
   await deleteRes;
 };
 
+export const dragAndDropNode = async (
+  page: Page,
+  originSelector: string,
+  destinationSelector: string
+) => {
+  const destinationElement = await page.waitForSelector(destinationSelector);
+  await page.hover(originSelector);
+  await page.mouse.down();
+  const box = (await destinationElement.boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await destinationElement.hover();
+  await page.mouse.up();
+};
+
 export const dragConnection = async (
   page: Page,
   sourceId: string,
@@ -108,10 +135,10 @@ export const connectEdgeBetweenNodes = async (
   const toNodeName = get(toNode, 'entityResponseData.name');
   const toNodeFqn = get(toNode, 'entityResponseData.fullyQualifiedName');
 
-  await page.locator(`[data-testid="${type}-draggable-icon"]`).hover();
-  await page.mouse.down();
-  await page.locator('[data-testid="lineage-details"]').hover();
-  await page.mouse.up();
+  const source = `[data-testid="${type}-draggable-icon"]`;
+  const target = '[data-testid="lineage-details"]';
+
+  await dragAndDropNode(page, source, target);
 
   await page.locator('[data-testid="suggestion-node"]').dispatchEvent('click');
 
@@ -158,6 +185,7 @@ export const setupEntitiesForLineage = async (
     | ContainerClass
     | SearchIndexClass
     | ApiEndpointClass
+    | MetricClass
 ) => {
   const entities = [
     new TableClass(),
@@ -167,13 +195,13 @@ export const setupEntitiesForLineage = async (
     new ContainerClass(),
     new SearchIndexClass(),
     new ApiEndpointClass(),
+    new MetricClass(),
   ] as const;
 
   const { apiContext, afterAction } = await getApiContext(page);
   for (const entity of entities) {
     await entity.create(apiContext);
   }
-
   await currentEntity.create(apiContext);
 
   const cleanup = async () => {
@@ -368,7 +396,7 @@ export const addPipelineBetweenNodes = async (
 ) => {
   await sourceEntity.visitEntityPage(page);
   await page.click('[data-testid="lineage"]');
-  await page.click('[data-testid="edit-lineage"]');
+  await editLineage(page);
 
   await performZoomOut(page);
 
@@ -395,4 +423,30 @@ export const visitLineageTab = async (page: Page) => {
   const lineageRes = page.waitForResponse('/api/v1/lineage/getLineage?*');
   await page.click('[data-testid="lineage"]');
   await lineageRes;
+};
+
+export const fillLineageConfigForm = async (
+  page: Page,
+  config: { upstreamDepth: number; downstreamDepth: number; layer: string }
+) => {
+  await page
+    .getByTestId('field-upstream')
+    .fill(config.upstreamDepth.toString());
+  await page
+    .getByTestId('field-downstream')
+    .fill(config.downstreamDepth.toString());
+  await page.getByTestId('field-lineage-layer').click();
+  await page.locator(`.ant-select-item[title="${config.layer}"]`).click();
+
+  const saveRes = page.waitForResponse('/api/v1/system/settings');
+  await page.getByTestId('save-button').click();
+  await saveRes;
+
+  await toastNotification(page, /Lineage Config updated successfully/);
+};
+
+export const verifyColumnLayerActive = async (page: Page) => {
+  await page.click('[data-testid="lineage-layer-btn"]'); // Open Layer popover
+  await page.waitForSelector('[data-testid="lineage-layer-column-btn"].active');
+  await page.click('[data-testid="lineage-layer-btn"]'); // Close Layer popover
 };

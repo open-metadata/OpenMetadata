@@ -194,7 +194,7 @@ const ClassificationDetails = forwardRef(
 
     const handleUpdateDisplayName = async (data: {
       name: string;
-      displayName: string;
+      displayName?: string;
     }) => {
       if (
         !isUndefined(currentClassification) &&
@@ -388,9 +388,9 @@ const ClassificationDetails = forwardRef(
     }));
 
     return (
-      <div className="p-x-md" data-testid="tags-container">
+      <div className="p-t-sm p-x-md" data-testid="tags-container">
         {currentClassification && (
-          <Row data-testid="header" wrap={false}>
+          <Row className="p-l-lg" data-testid="header" wrap={false}>
             <Col flex="auto">
               <EntityHeaderTitle
                 badge={
@@ -521,9 +521,10 @@ const ClassificationDetails = forwardRef(
             size="small"
           />
 
-          {showPagination && !isTagsLoading && (
+          {showPagination && (
             <NextPrevious
               currentPage={currentPage}
+              isLoading={isTagsLoading}
               pageSize={pageSize}
               paging={paging}
               pagingHandler={handleTagsPageChange}

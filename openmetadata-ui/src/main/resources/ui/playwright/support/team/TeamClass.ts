@@ -20,6 +20,7 @@ type ResponseDataType = {
   id?: string;
   fullyQualifiedName?: string;
   users?: string[];
+  defaultRoles?: string[];
 };
 
 export class TeamClass {

@@ -14,11 +14,11 @@ import { Form, Input, Select } from 'antd';
 import QueryString from 'qs';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useLocation } from 'react-router-dom';
 import { VALIDATION_MESSAGES } from '../../../constants/constants';
 import { NAME_FIELD_RULES } from '../../../constants/Form.constants';
 import { CSMode } from '../../../enums/codemirror.enum';
 import { CustomMetric } from '../../../generated/entity/data/table';
+import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { getEntityName } from '../../../utils/EntityUtils';
 import Loader from '../../common/Loader/Loader';
 import SchemaEditor from '../../Database/SchemaEditor/SchemaEditor';
@@ -33,7 +33,7 @@ const CustomMetricForm = ({
   isEditMode = false,
 }: CustomMetricFormProps) => {
   const { t } = useTranslation();
-  const location = useLocation();
+  const location = useCustomLocation();
   const [isLoading, setIsLoading] = useState(true);
 
   const { activeColumnFqn } = useMemo(() => {

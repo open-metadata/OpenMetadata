@@ -39,6 +39,11 @@ export const OwnerLabel = ({
   ownerDisplayName,
   placeHolder,
   maxVisibleOwners = 3, // Default to 3 if not provided
+  multiple = {
+    user: true,
+    team: false,
+  },
+  tooltipText,
 }: {
   owners?: EntityReference[];
   className?: string;
@@ -47,6 +52,11 @@ export const OwnerLabel = ({
   ownerDisplayName?: ReactNode[];
   placeHolder?: string;
   maxVisibleOwners?: number;
+  multiple?: {
+    user: boolean;
+    team: boolean;
+  };
+  tooltipText?: string;
 }) => {
   const { t } = useTranslation();
   const [showAllOwners, setShowAllOwners] = useState(false);
@@ -99,7 +109,9 @@ export const OwnerLabel = ({
                   key={owner.id}
                   to={
                     owner.type === OwnerType.TEAM
-                      ? getTeamAndUserDetailsPath(owner.name ?? '')
+                      ? getTeamAndUserDetailsPath(
+                          owner.fullyQualifiedName ?? ''
+                        )
                       : getUserPath(owner.name ?? '')
                   }>
                   {ownerDisplayName?.[index] ?? displayName}
@@ -109,7 +121,7 @@ export const OwnerLabel = ({
               const inheritedIcon = owner?.inherited ? (
                 <Tooltip
                   title={t('label.inherited-entity', {
-                    entity: t('label.owner'),
+                    entity: t('label.owner-plural'),
                   })}>
                   <InheritIcon
                     className="inherit-icon cursor-pointer"
@@ -155,18 +167,16 @@ export const OwnerLabel = ({
               className={classNames('no-owner font-medium text-xs', className)}
               data-testid="owner-link">
               {placeHolder ??
-                t('label.no-entity', { entity: t('label.owner') })}
+                t('label.no-entity', { entity: t('label.owner-plural') })}
             </Typography.Text>
           </div>
         )}
         {onUpdate && (
           <UserTeamSelectableList
             hasPermission={Boolean(hasPermission)}
-            multiple={{
-              user: true,
-              team: false,
-            }}
+            multiple={multiple}
             owner={owners}
+            tooltipText={tooltipText}
             onUpdate={(updatedUsers) => {
               onUpdate(updatedUsers);
             }}

@@ -46,8 +46,6 @@ import { EntityType, TabSpecificField } from '../enums/entity.enum';
 import { EntityChangeOperations } from '../enums/VersionPage.enum';
 import { Column as ContainerColumn } from '../generated/entity/data/container';
 import { Column as DataModelColumn } from '../generated/entity/data/dashboardDataModel';
-import { Glossary } from '../generated/entity/data/glossary';
-import { GlossaryTerm } from '../generated/entity/data/glossaryTerm';
 import { Column as TableColumn } from '../generated/entity/data/table';
 import { Field } from '../generated/entity/data/topic';
 import {
@@ -137,33 +135,31 @@ export const getDiffValue = (oldValue: string, newValue: string) => {
 
 export const getAddedDiffElement = (text: string) => {
   return (
-    <Typography.Text
-      underline
-      className="diff-added"
+    <span
+      className="diff-added text-underline"
       data-testid="diff-added"
       key={uniqueId()}>
       {text}
-    </Typography.Text>
+    </span>
   );
 };
 
 export const getRemovedDiffElement = (text: string) => {
   return (
-    <Typography.Text
-      delete
-      className="text-grey-muted"
+    <span
+      className="text-grey-muted text-line-through"
       data-testid="diff-removed"
       key={uniqueId()}>
       {text}
-    </Typography.Text>
+    </span>
   );
 };
 
 export const getNormalDiffElement = (text: string) => {
   return (
-    <Typography.Text data-testid="diff-normal" key={uniqueId()}>
+    <span data-testid="diff-normal" key={uniqueId()}>
       {text}
-    </Typography.Text>
+    </span>
   );
 };
 
@@ -172,8 +168,16 @@ export const getTextDiff = (
   newText: string,
   latestText?: string
 ) => {
+  const imagePlaceholder = 'data:image';
   if (isEmpty(oldText) && isEmpty(newText)) {
     return latestText ?? '';
+  }
+
+  if (
+    newText?.includes(imagePlaceholder) ||
+    oldText?.includes(imagePlaceholder)
+  ) {
+    return newText;
   }
 
   const diffArr = diffWords(toString(oldText), toString(newText));
@@ -602,9 +606,6 @@ export const getCommonExtraInfoForVersionDetails = (
   tier?: TagLabel,
   domain?: EntityReference
 ) => {
-  // const { entityRef: ownerRef, entityDisplayName: ownerDisplayName } =
-  //   getEntityReferenceDiffFromFieldName('owners', changeDescription, owners);
-
   const { owners: ownerRef, ownerDisplayName } = getOwnerDiff(
     owners ?? [],
     changeDescription
@@ -1028,7 +1029,10 @@ export const getOwnerDiff = (
 };
 
 export const getOwnerVersionLabel = (
-  entity: Glossary | GlossaryTerm,
+  entity: {
+    [TabSpecificField.OWNERS]?: EntityReference[];
+    changeDescription?: ChangeDescription;
+  },
   isVersionView: boolean,
   ownerField = TabSpecificField.OWNERS, // Can be owners, experts, reviewers all are OwnerLabels
   hasPermission = true

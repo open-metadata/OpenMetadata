@@ -1,5 +1,6 @@
 package org.openmetadata.service.search.opensearch.dataInsightAggregator;
 
+import java.time.ZonedDateTime;
 import java.util.List;
 import org.openmetadata.service.dataInsight.PageViewsByEntitiesAggregator;
 import os.org.opensearch.search.aggregations.Aggregations;
@@ -32,6 +33,11 @@ public class OpenSearchPageViewsByEntitiesAggregator
   @Override
   protected String getKeyAsString(MultiBucketsAggregation.Bucket bucket) {
     return bucket.getKeyAsString();
+  }
+
+  @Override
+  protected long getKeyAsEpochTimestamp(MultiBucketsAggregation.Bucket bucket) {
+    return ((ZonedDateTime) bucket.getKey()).toInstant().toEpochMilli();
   }
 
   @Override

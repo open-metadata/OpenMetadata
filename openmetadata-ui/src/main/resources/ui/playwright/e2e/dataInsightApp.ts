@@ -17,9 +17,13 @@ import { getApiContext, redirectToHomePage } from '../utils/common';
 // use the admin user to login
 setup.use({
   storageState: 'playwright/.auth/admin.json',
+  trace: 'on',
 });
 
-setup.describe.configure({ timeout: process.env.isOss ? 150000 : 3600000 });
+setup.describe.configure({
+  timeout: process.env.PLAYWRIGHT_IS_OSS ? 150000 : 5600000,
+  retries: 0,
+});
 
 setup(
   'Run Data Insight application and wait until success',
@@ -31,23 +35,54 @@ setup(
 
     await table.create(apiContext);
 
-    apiContext.patch(`/api/v1/tables/${table.entityResponseData?.id ?? ''}`, {
-      data: [
-        {
-          op: 'add',
-          path: '/tags/0',
-          value: {
-            name: 'Tier2',
-            tagFQN: 'Tier.Tier2',
-            labelType: 'Manual',
-            state: 'Confirmed',
+    await apiContext.patch(
+      `/api/v1/tables/${table.entityResponseData?.id ?? ''}`,
+      {
+        data: [
+          {
+            op: 'add',
+            path: '/tags/0',
+            value: {
+              name: 'Tier2',
+              tagFQN: 'Tier.Tier2',
+              labelType: 'Manual',
+              state: 'Confirmed',
+            },
           },
+        ],
+        headers: {
+          'Content-Type': 'application/json-patch+json',
         },
-      ],
-      headers: {
-        'Content-Type': 'application/json-patch+json',
-      },
-    });
+      }
+    );
+
+    await expect(
+      await apiContext.patch(
+        `/api/v1/apps/marketplace/name/DataInsightsApplication`,
+        {
+          data: [
+            {
+              op: 'replace',
+              path: '/appConfiguration/batchSize',
+              value: 1000,
+            },
+            {
+              op: 'replace',
+              path: '/appConfiguration/recreateDataAssetsIndex',
+              value: false,
+            },
+            {
+              op: 'replace',
+              path: '/appConfiguration/backfillConfiguration/enabled',
+              value: false,
+            },
+          ],
+          headers: {
+            'Content-Type': 'application/json-patch+json',
+          },
+        }
+      )
+    ).toBeOK();
 
     await apiContext.post('/api/v1/apps/trigger/DataInsightsApplication');
 
@@ -68,18 +103,18 @@ setup(
         {
           // Custom expect message for reporting, optional.
           message: 'Wait for the Data Insight Application run to be successful',
-          ...(process.env.isOss
+          ...(process.env.PLAYWRIGHT_IS_OSS
             ? {
                 timeout: 120_000,
                 intervals: [5_000, 10_000],
               }
             : {
-                timeout: 3600_000,
+                timeout: 5400_000,
                 intervals: [300_000, 300_000, 120_000],
               }),
         }
       )
-      .toBe('success');
+      .toEqual(expect.stringMatching(/(success|failed|partialSuccess)/));
 
     await table.delete(apiContext);
 

@@ -15,7 +15,7 @@ supporting sqlalchemy abstraction layer
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Type, Union
 
 from sqlalchemy import Column
 
@@ -29,6 +29,7 @@ from metadata.generated.schema.entity.data.databaseSchema import (
 )
 from metadata.generated.schema.entity.data.table import (
     PartitionProfilerConfig,
+    SystemProfile,
     Table,
     TableData,
 )
@@ -59,7 +60,9 @@ from metadata.profiler.api.models import (
 )
 from metadata.profiler.metrics.core import MetricTypes
 from metadata.profiler.metrics.registry import Metrics
+from metadata.profiler.metrics.system.system import System
 from metadata.profiler.processor.runner import QueryRunner
+from metadata.utils.collaborative_super import Root
 from metadata.utils.constants import SAMPLE_DATA_DEFAULT_COUNT
 from metadata.utils.partition import get_partition_details
 from metadata.utils.ssl_manager import get_ssl_connection
@@ -84,11 +87,10 @@ class ProfilerProcessorStatus(Status):
 
 
 # pylint: disable=too-many-instance-attributes
-class ProfilerInterface(ABC):
+class ProfilerInterface(Root, ABC):
     """Protocol interface for the profiler processor"""
 
-    # pylint: disable=too-many-arguments,unused-argument
-    def __init__(
+    def __init__(  # pylint: disable=too-many-arguments
         self,
         service_connection_config: Union[DatabaseConnection, DatalakeConnection],
         ometa_client: OpenMetadata,
@@ -135,6 +137,21 @@ class ProfilerInterface(ABC):
             MetricTypes.Custom.value: self._compute_custom_metrics,
         }
 
+        super().__init__(
+            service_connection_config=service_connection_config,
+            ometa_client=ometa_client,
+            entity=entity,
+            storage_config=storage_config,
+            profile_sample_config=profile_sample_config,
+            source_config=source_config,
+            sample_query=sample_query,
+            table_partition_config=table_partition_config,
+            thread_count=thread_count,
+            timeout_seconds=timeout_seconds,
+            sample_data_count=sample_data_count,
+            **kwargs,
+        )
+
     @abstractmethod
     def _get_sampler(self):
         """Get the sampler"""
@@ -142,7 +159,7 @@ class ProfilerInterface(ABC):
 
     # pylint: disable=too-many-locals
     @classmethod
-    def create(
+    def create(  # pylint: disable=too-many-arguments
         cls,
         entity: Table,
         database_schema: DatabaseSchema,
@@ -247,7 +264,7 @@ class ProfilerInterface(ABC):
             DatabaseSchemaProfilerConfig,
             DatabaseProfilerConfig,
             DatabaseAndSchemaConfig,
-        ]
+        ],
     ) -> Optional[DataStorageConfig]:
         if (
             config
@@ -328,6 +345,7 @@ class ProfilerInterface(ABC):
                     return ProfileSampleConfig(
                         profile_sample=config.profileSample,
                         profile_sample_type=config.profileSampleType,
+                        sampling_method_type=config.samplingMethodType,
                     )
             except AttributeError:
                 pass
@@ -458,11 +476,11 @@ class ProfilerInterface(ABC):
     @abstractmethod
     def _compute_system_metrics(
         self,
-        metrics: Metrics,
+        metrics: Type[System],
         runner,
         *args,
         **kwargs,
-    ):
+    ) -> List[SystemProfile]:
         """Get metrics"""
         raise NotImplementedError
 

@@ -21,6 +21,8 @@ test.use({ storageState: 'playwright/.auth/admin.json' });
 
 const table1 = new TableClass();
 
+test.slow(true);
+
 test.describe('Table pagination sorting search scenarios ', () => {
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
     const { afterAction, apiContext } = await createNewPage(browser);
@@ -53,7 +55,7 @@ test.describe('Table pagination sorting search scenarios ', () => {
       `/api/v1/dataQuality/testCases/search/list?**`
     );
 
-    await page.getByText('By Test Cases').click();
+    await page.click('[data-testid="by-test-cases"]');
     await listTestCaseResponse;
     await page.getByText('Name', { exact: true }).click();
 
@@ -65,7 +67,7 @@ test.describe('Table pagination sorting search scenarios ', () => {
   test('Table search with sorting should works', async ({ page }) => {
     await sidebarClick(page, SidebarItem.DATA_QUALITY);
 
-    await page.getByText('By Test Cases').click();
+    await page.click('[data-testid="by-test-cases"]');
     await page.getByText('Name', { exact: true }).click();
     await page.getByTestId('searchbar').click();
     await page.getByTestId('searchbar').fill('temp-test-case');
@@ -76,7 +78,7 @@ test.describe('Table pagination sorting search scenarios ', () => {
   test('Table filter with sorting should works', async ({ page }) => {
     await sidebarClick(page, SidebarItem.DATA_QUALITY);
 
-    await page.getByText('By Test Cases').click();
+    await page.click('[data-testid="by-test-cases"]');
     await page.getByText('Name', { exact: true }).click();
 
     await page.getByTestId('status-select-filter').locator('div').click();

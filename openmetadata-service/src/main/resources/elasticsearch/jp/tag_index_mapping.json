@@ -99,6 +99,9 @@
         "deleted": {
           "type": "text"
         },
+        "disabled": {
+          "type": "boolean"
+        },
         "classification": {
           "properties": {
             "id": {
@@ -136,16 +139,6 @@
             }
           }
         },
-        "suggest": {
-          "type": "completion",
-          "contexts": [
-            {
-              "name": "deleted",
-              "type": "category",
-              "path": "deleted"
-            }
-          ]
-      },
       "entityType": {
         "type": "keyword"
       },

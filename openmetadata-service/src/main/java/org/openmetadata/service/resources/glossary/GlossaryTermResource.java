@@ -271,8 +271,10 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = Glossary.class))),
-        @ApiResponse(responseCode = "404", description = "Glossary for instance {id} is not found")
+                    schema = @Schema(implementation = GlossaryTerm.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Glossary term for instance {id} is not found")
       })
   public GlossaryTerm get(
       @Context UriInfo uriInfo,
@@ -307,8 +309,10 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = Glossary.class))),
-        @ApiResponse(responseCode = "404", description = "Glossary for instance {fqn} is not found")
+                    schema = @Schema(implementation = GlossaryTerm.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Glossary term for instance {fqn} is not found")
       })
   public GlossaryTerm getByName(
       @Context UriInfo uriInfo,
@@ -365,14 +369,14 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "glossaries",
+            description = "The glossary term",
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = Glossary.class))),
+                    schema = @Schema(implementation = GlossaryTerm.class))),
         @ApiResponse(
             responseCode = "404",
-            description = "Glossary for instance {id} and version {version} is not found")
+            description = "Glossary term for instance {id} and version {version} is not found")
       })
   public GlossaryTerm getVersion(
       @Context UriInfo uriInfo,

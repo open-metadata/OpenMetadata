@@ -13,6 +13,8 @@ import static org.openmetadata.service.exception.CatalogExceptionMessage.MAX_FAI
 import static org.openmetadata.service.exception.CatalogExceptionMessage.MULTIPLE_EMAIL_ENTRIES;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.emailNotFound;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.PASSWORD_RESET_TOKEN_EXPIRED;
+import static org.openmetadata.service.exception.CatalogExceptionMessage.SELF_SIGNUP_DISABLED_MESSAGE;
+import static org.openmetadata.service.exception.CatalogExceptionMessage.SELF_SIGNUP_NOT_ENABLED;
 import static org.openmetadata.service.util.UserUtil.getRoleListFromUser;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -63,18 +65,17 @@ import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.auth.JwtResponse;
 import org.openmetadata.service.exception.CustomExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.jdbi3.RoleRepository;
 import org.openmetadata.service.jdbi3.TokenRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.security.AuthenticationException;
 import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
-import org.openmetadata.service.util.EmailUtil;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.LdapUtil;
 import org.openmetadata.service.util.TokenUtil;
 import org.openmetadata.service.util.UserUtil;
+import org.openmetadata.service.util.email.EmailUtil;
 import org.springframework.beans.BeanUtils;
 import org.springframework.util.CollectionUtils;
 
@@ -87,6 +88,7 @@ public class LdapAuthenticator implements AuthenticatorHandler {
   private LoginAttemptCache loginAttemptCache;
   private LdapConfiguration ldapConfiguration;
   private LDAPConnectionPool ldapLookupConnectionPool;
+  private boolean isSelfSignUpEnabled;
 
   @Override
   public void init(OpenMetadataApplicationConfig config) {
@@ -102,6 +104,7 @@ public class LdapAuthenticator implements AuthenticatorHandler {
     this.tokenRepository = Entity.getTokenRepository();
     this.ldapConfiguration = config.getAuthenticationConfiguration().getLdapConfiguration();
     this.loginAttemptCache = new LoginAttemptCache();
+    this.isSelfSignUpEnabled = config.getAuthenticationConfiguration().getEnableSelfSignup();
   }
 
   private LDAPConnectionPool getLdapConnectionPool(LdapConfiguration ldapConfiguration) {
@@ -140,10 +143,9 @@ public class LdapAuthenticator implements AuthenticatorHandler {
 
   @Override
   public JwtResponse loginUser(LoginRequest loginRequest) throws IOException, TemplateException {
-    checkIfLoginBlocked(loginRequest.getEmail());
-    User storedUser = lookUserInProvider(loginRequest.getEmail());
-    validatePassword(storedUser.getEmail(), storedUser, loginRequest.getPassword());
-    User omUser = checkAndCreateUser(storedUser.getEmail(), storedUser.getName());
+    String email = loginRequest.getEmail();
+    checkIfLoginBlocked(email);
+    User omUser = lookUserInProvider(email, loginRequest.getPassword());
     return getJwtResponse(omUser, SecurityUtil.getLoginConfiguration().getJwtTokenExpiryTime());
   }
 
@@ -151,28 +153,25 @@ public class LdapAuthenticator implements AuthenticatorHandler {
    * Check if the user exists in database by userName, if user exist, reassign roles for user according to it's ldap
    * group else, create a new user and assign roles according to it's ldap group
    *
-   * @param email email address of user
-   * @param name userName of user
+   * @param userDn userDn from LDAP
+   * @param email Email of the User
    * @return user info
    * @author Eric Wen@2023-07-16 17:06:43
    */
-  private User checkAndCreateUser(String email, String name) throws IOException {
+  private User checkAndCreateUser(String userDn, String email, String userName) throws IOException {
     // Check if the user exists in OM Database
     try {
       User omUser =
-          userRepository.getByName(null, name, userRepository.getFields("id,name,email,roles"));
-      getRoleForLdap(omUser, Boolean.TRUE);
+          userRepository.getByEmail(null, email, userRepository.getFields("id,name,email,roles"));
+      getRoleForLdap(userDn, omUser, Boolean.TRUE);
       return omUser;
     } catch (EntityNotFoundException ex) {
-      // User does not exist
-      return userRepository.create(null, getUserForLdap(email, name));
-    } catch (LDAPException e) {
-      LOG.error(
-          "An error occurs when reassigning roles for an LDAP user({}): {}",
-          name,
-          e.getMessage(),
-          e);
-      throw new UnhandledServerException(e.getMessage());
+      if (isSelfSignUpEnabled) {
+        return userRepository.create(null, getUserForLdap(userDn, email, userName));
+      } else {
+        throw new CustomExceptionMessage(
+            INTERNAL_SERVER_ERROR, SELF_SIGNUP_NOT_ENABLED, SELF_SIGNUP_DISABLED_MESSAGE);
+      }
     }
   }
 
@@ -184,13 +183,14 @@ public class LdapAuthenticator implements AuthenticatorHandler {
   }
 
   @Override
-  public void recordFailedLoginAttempt(String providedIdentity, User storedUser)
+  public void recordFailedLoginAttempt(String email, String userName)
       throws TemplateException, IOException {
-    loginAttemptCache.recordFailedLogin(providedIdentity);
-    int failedLoginAttempt = loginAttemptCache.getUserFailedLoginCount(providedIdentity);
+    loginAttemptCache.recordFailedLogin(email);
+    int failedLoginAttempt = loginAttemptCache.getUserFailedLoginCount(email);
     if (failedLoginAttempt == SecurityUtil.getLoginConfiguration().getMaxLoginFailAttempts()) {
       EmailUtil.sendAccountStatus(
-          storedUser,
+          userName,
+          email,
           "Multiple Failed Login Attempts.",
           String.format(
               "Someone is tried accessing your account. Login is Blocked for %s seconds.",
@@ -199,12 +199,12 @@ public class LdapAuthenticator implements AuthenticatorHandler {
   }
 
   @Override
-  public void validatePassword(String providedIdentity, User storedUser, String reqPassword)
+  public void validatePassword(String userDn, String reqPassword, User dummy)
       throws TemplateException, IOException {
     // performed in LDAP , the storedUser's name set as DN of the User in Ldap
     BindResult bindingResult = null;
     try {
-      bindingResult = ldapLookupConnectionPool.bind(storedUser.getName(), reqPassword);
+      bindingResult = ldapLookupConnectionPool.bind(userDn, reqPassword);
       if (Objects.equals(bindingResult.getResultCode().getName(), ResultCode.SUCCESS.getName())) {
         return;
       }
@@ -212,7 +212,7 @@ public class LdapAuthenticator implements AuthenticatorHandler {
       if (bindingResult != null
           && Objects.equals(
               bindingResult.getResultCode().getName(), ResultCode.INVALID_CREDENTIALS.getName())) {
-        recordFailedLoginAttempt(providedIdentity, storedUser);
+        recordFailedLoginAttempt(dummy.getEmail(), dummy.getName());
         throw new CustomExceptionMessage(
             UNAUTHORIZED, INVALID_USER_OR_PASSWORD, INVALID_EMAIL_PASSWORD);
       }
@@ -227,7 +227,20 @@ public class LdapAuthenticator implements AuthenticatorHandler {
   }
 
   @Override
-  public User lookUserInProvider(String email) {
+  public User lookUserInProvider(String email, String pwd) throws TemplateException, IOException {
+    String userDN = getUserDnFromLdap(email);
+
+    if (!nullOrEmpty(userDN)) {
+      User dummy = getUserForLdap(email);
+      validatePassword(userDN, pwd, dummy);
+      return checkAndCreateUser(userDN, email, dummy.getName());
+    }
+
+    throw new CustomExceptionMessage(
+        INTERNAL_SERVER_ERROR, INVALID_USER_OR_PASSWORD, INVALID_EMAIL_PASSWORD);
+  }
+
+  private String getUserDnFromLdap(String email) {
     try {
       Filter emailFilter =
           Filter.createEqualityFilter(ldapConfiguration.getMailAttributeName(), email);
@@ -246,8 +259,10 @@ public class LdapAuthenticator implements AuthenticatorHandler {
         Attribute emailAttr =
             searchResultEntry.getAttribute(ldapConfiguration.getMailAttributeName());
 
-        if (!CommonUtil.nullOrEmpty(userDN) && emailAttr != null) {
-          return getUserForLdap(email).withName(userDN.toLowerCase());
+        if (!CommonUtil.nullOrEmpty(userDN)
+            && emailAttr != null
+            && email.equalsIgnoreCase(emailAttr.getValue())) {
+          return userDN;
         } else {
           throw new CustomExceptionMessage(FORBIDDEN, INVALID_USER_OR_PASSWORD, LDAP_MISSING_ATTR);
         }
@@ -271,15 +286,15 @@ public class LdapAuthenticator implements AuthenticatorHandler {
         .withAuthenticationMechanism(null);
   }
 
-  private User getUserForLdap(String email, String userName) {
+  private User getUserForLdap(String ldapUserDn, String email, String userName) {
     User user =
         UserUtil.getUser(
                 userName, new CreateUser().withName(userName).withEmail(email).withIsBot(false))
             .withIsEmailVerified(false)
             .withAuthenticationMechanism(null);
     try {
-      getRoleForLdap(user, false);
-    } catch (LDAPException | JsonProcessingException e) {
+      getRoleForLdap(ldapUserDn, user, false);
+    } catch (JsonProcessingException e) {
       LOG.error(
           "Failed to assign roles from LDAP to OpenMetadata for the user {} due to {}",
           user.getName(),
@@ -295,8 +310,8 @@ public class LdapAuthenticator implements AuthenticatorHandler {
    * @param reAssign flag to decide whether to reassign roles
    * @author Eric Wen@2023-07-16 17:23:57
    */
-  private void getRoleForLdap(User user, Boolean reAssign)
-      throws LDAPException, JsonProcessingException {
+  private void getRoleForLdap(String userDn, User user, Boolean reAssign)
+      throws JsonProcessingException {
     // Get user's groups from LDAP server using the DN of the user
     try {
       Filter groupFilter =
@@ -304,8 +319,7 @@ public class LdapAuthenticator implements AuthenticatorHandler {
               ldapConfiguration.getGroupAttributeName(),
               ldapConfiguration.getGroupAttributeValue());
       Filter groupMemberAttr =
-          Filter.createEqualityFilter(
-              ldapConfiguration.getGroupMemberAttributeName(), user.getName());
+          Filter.createEqualityFilter(ldapConfiguration.getGroupMemberAttributeName(), userDn);
       Filter groupAndMemberFilter = Filter.createANDFilter(groupFilter, groupMemberAttr);
       SearchRequest searchRequest =
           new SearchRequest(

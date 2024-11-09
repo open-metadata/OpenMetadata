@@ -18,10 +18,7 @@ from unittest import TestCase
 from unittest.mock import patch
 from uuid import uuid4
 
-import boto3
-import botocore
 import pandas as pd
-from moto import mock_aws
 
 from metadata.generated.schema.entity.data.table import Column as EntityColumn
 from metadata.generated.schema.entity.data.table import ColumnName, DataType, Table
@@ -40,9 +37,9 @@ from metadata.profiler.interface.pandas.profiler_interface import (
 from metadata.profiler.processor.core import Profiler
 
 BUCKET_NAME = "MyBucket"
+REGION = "us-west-1"
 
 
-@mock_aws
 class MetricsTest(TestCase):
     """
     Run checks on different metrics
@@ -56,7 +53,7 @@ class MetricsTest(TestCase):
             securityConfig=AWSCredentials(
                 awsAccessKeyId="fake_access_key",
                 awsSecretAccessKey="fake_secret_key",
-                awsRegion="us-west-1",
+                awsRegion=REGION,
             )
         )
     )
@@ -102,45 +99,6 @@ class MetricsTest(TestCase):
     )
 
     def setUp(self):
-        # Mock our S3 bucket and ingest a file
-        boto3.DEFAULT_SESSION = None
-        self.client = boto3.client(
-            "s3",
-            region_name="us-weat-1",
-        )
-
-        # check that we are not running our test against a real bucket
-        try:
-            s3 = boto3.resource(
-                "s3",
-                region_name="us-west-1",
-                aws_access_key_id="fake_access_key",
-                aws_secret_access_key="fake_secret_key",
-            )
-            s3.meta.client.head_bucket(Bucket=BUCKET_NAME)
-        except botocore.exceptions.ClientError:
-            pass
-        else:
-            err = f"{BUCKET_NAME} should not exist."
-            raise EnvironmentError(err)
-        self.client.create_bucket(
-            Bucket=BUCKET_NAME,
-            CreateBucketConfiguration={"LocationConstraint": "us-west-1"},
-        )
-
-        resources_paths = [
-            os.path.join(path, filename)
-            for path, _, files in os.walk(self.resources_dir)
-            for filename in files
-        ]
-
-        self.s3_keys = []
-
-        for path in resources_paths:
-            key = os.path.relpath(path, self.resources_dir)
-            self.s3_keys.append(key)
-            self.client.upload_file(Filename=path, Bucket=BUCKET_NAME, Key=key)
-
         with patch(
             "metadata.mixins.pandas.pandas_mixin.fetch_dataframe",
             return_value=self.dfs,

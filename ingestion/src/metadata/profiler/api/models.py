@@ -15,11 +15,13 @@ Return types for Profiler workflow execution.
 We need to define this class as we end up having
 multiple profilers per table and columns.
 """
+
 from typing import List, Optional, Type, Union
 
-from pydantic import ConfigDict
+from pydantic import ConfigDict, Field
 from sqlalchemy import Column
 from sqlalchemy.orm import DeclarativeMeta
+from typing_extensions import Annotated
 
 from metadata.config.common import ConfigModel
 from metadata.generated.schema.api.data.createTableProfile import (
@@ -29,6 +31,7 @@ from metadata.generated.schema.entity.data.table import (
     ColumnProfilerConfig,
     PartitionProfilerConfig,
     ProfileSampleType,
+    SamplingMethodType,
     Table,
     TableData,
 )
@@ -37,6 +40,7 @@ from metadata.generated.schema.entity.services.connections.connectionBasicType i
 )
 from metadata.generated.schema.tests.customMetric import CustomMetric
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName
+from metadata.ingestion.models.custom_pydantic import BaseModel
 from metadata.ingestion.models.table_metadata import ColumnTag
 from metadata.profiler.metrics.core import Metric, MetricTypes
 from metadata.profiler.processor.models import ProfilerDef
@@ -56,6 +60,7 @@ class BaseProfileConfig(ConfigModel):
     fullyQualifiedName: FullyQualifiedEntityName
     profileSample: Optional[Union[float, int]] = None
     profileSampleType: Optional[ProfileSampleType] = None
+    samplingMethodType: Optional[SamplingMethodType] = None
     sampleDataCount: Optional[int] = 100
 
 
@@ -75,6 +80,7 @@ class TableConfig(BaseProfileConfig):
             profileSample=config.profileSample,
             profileSampleType=config.profileSampleType,
             sampleDataCount=config.sampleDataCount,
+            samplingMethodType=config.samplingMethodType,
         )
         return table_config
 
@@ -90,6 +96,7 @@ class ProfileSampleConfig(ConfigModel):
 
     profile_sample: Optional[Union[float, int]] = None
     profile_sample_type: Optional[ProfileSampleType] = ProfileSampleType.PERCENTAGE
+    sampling_method_type: Optional[SamplingMethodType] = None
 
 
 class ProfilerProcessorConfig(ConfigModel):
@@ -104,6 +111,15 @@ class ProfilerProcessorConfig(ConfigModel):
     databaseConfig: Optional[List[DatabaseAndSchemaConfig]] = []
 
 
+class SampleData(BaseModel):
+    """TableData wrapper to handle ephemeral SampleData"""
+
+    data: Annotated[TableData, Field(None, description="Table Sample Data")]
+    store: Annotated[
+        bool, Field(False, description="Is the sample data should be stored or not")
+    ]
+
+
 class ProfilerResponse(ConfigModel):
     """
     ORM Profiler processor response.
@@ -114,7 +130,7 @@ class ProfilerResponse(ConfigModel):
 
     table: Table
     profile: CreateTableProfileRequest
-    sample_data: Optional[TableData] = None
+    sample_data: Optional[SampleData] = None
     column_tags: Optional[List[ColumnTag]] = None
 
     def __str__(self):

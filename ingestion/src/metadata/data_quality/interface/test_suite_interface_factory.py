@@ -8,27 +8,14 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+#  pylint: disable=import-outside-toplevel
 """
 Interface factory
 """
 import traceback
 from logging import Logger
+from typing import Callable, Dict, Type
 
-from metadata.data_quality.interface.pandas.pandas_test_suite_interface import (
-    PandasTestSuiteInterface,
-)
-from metadata.data_quality.interface.sqlalchemy.databricks.test_suite_interface import (
-    DatabricksTestSuiteInterface,
-)
-from metadata.data_quality.interface.sqlalchemy.snowflake.test_suite_interface import (
-    SnowflakeTestSuiteInterface,
-)
-from metadata.data_quality.interface.sqlalchemy.sqa_test_suite_interface import (
-    SQATestSuiteInterface,
-)
-from metadata.data_quality.interface.sqlalchemy.unity_catalog.test_suite_interface import (
-    UnityCatalogTestSuiteInterface,
-)
 from metadata.data_quality.interface.test_suite_interface import TestSuiteInterface
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.database.databricksConnection import (
@@ -55,19 +42,18 @@ class TestSuiteInterfaceFactory:
 
     def __init__(self):
         """Initialize the interface factory"""
-        self._interface_type = {
-            "base": SQATestSuiteInterface,
-            DatalakeConnection.__name__: PandasTestSuiteInterface,
+        self._interface_type: Dict[str, Callable[[], Type[TestSuiteInterface]]] = {
+            "base": self.sqa,
         }
 
-    def register(self, interface_type: str, interface: TestSuiteInterface):
+    def register(self, interface_type: str, fn: Callable[[], Type[TestSuiteInterface]]):
         """Register the interface
 
         Args:
             interface_type (str): type of the interface
-            interface (TestSuiteInterface): a class that implements the TestSuiteInterface
+            interface (callable): a class that implements the TestSuiteInterface
         """
-        self._interface_type[interface_type] = interface
+        self._interface_type[interface_type] = fn
 
     def register_many(self, interface_dict):
         """
@@ -77,8 +63,8 @@ class TestSuiteInterfaceFactory:
             interface_dict: A dictionary mapping connection class names (strings) to their
             corresponding profiler interface classes.
         """
-        for interface_type, interface_class in interface_dict.items():
-            self.register(interface_type, interface_class)
+        for interface_type, interface_fn in interface_dict.items():
+            self.register(interface_type, interface_fn)
 
     def create(
         self,
@@ -104,25 +90,69 @@ class TestSuiteInterfaceFactory:
         except AttributeError as err:
             logger.debug(traceback.format_exc())
             raise AttributeError(f"Could not instantiate interface class: {err}")
-        interface = self._interface_type.get(connection_type)
+        interface_fn = self._interface_type.get(connection_type)
 
-        if not interface:
-            interface = self._interface_type["base"]
+        if not interface_fn:
+            interface_fn = self._interface_type["base"]
 
-        return interface(
+        interface_class = interface_fn()
+        return interface_class(
             service_connection_config, ometa_client, table_entity, *args, **kwargs
         )
 
+    @staticmethod
+    def sqa() -> Type[TestSuiteInterface]:
+        """Lazy load the SQATestSuiteInterface"""
+        from metadata.data_quality.interface.sqlalchemy.sqa_test_suite_interface import (
+            SQATestSuiteInterface,
+        )
 
-test_suite_interface_factory = TestSuiteInterfaceFactory()
+        return SQATestSuiteInterface
+
+    @staticmethod
+    def pandas() -> Type[TestSuiteInterface]:
+        """Lazy load the PandasTestSuiteInterface"""
+        from metadata.data_quality.interface.pandas.pandas_test_suite_interface import (
+            PandasTestSuiteInterface,
+        )
+
+        return PandasTestSuiteInterface
+
+    @staticmethod
+    def snowflake() -> Type[TestSuiteInterface]:
+        """Lazy load the SnowflakeTestSuiteInterface"""
+        from metadata.data_quality.interface.sqlalchemy.snowflake.test_suite_interface import (
+            SnowflakeTestSuiteInterface,
+        )
+
+        return SnowflakeTestSuiteInterface
+
+    @staticmethod
+    def unity_catalog() -> Type[TestSuiteInterface]:
+        """Lazy load the UnityCatalogTestSuiteInterface"""
+        from metadata.data_quality.interface.sqlalchemy.unity_catalog.test_suite_interface import (
+            UnityCatalogTestSuiteInterface,
+        )
+
+        return UnityCatalogTestSuiteInterface
+
+    @staticmethod
+    def databricks() -> Type[TestSuiteInterface]:
+        """Lazy load the DatabricksTestSuiteInterface"""
+        from metadata.data_quality.interface.sqlalchemy.databricks.test_suite_interface import (
+            DatabricksTestSuiteInterface,
+        )
+
+        return DatabricksTestSuiteInterface
 
 
 test_suite_interface = {
-    DatabaseConnection.__name__: SQATestSuiteInterface,
-    DatalakeConnection.__name__: PandasTestSuiteInterface,
-    SnowflakeConnection.__name__: SnowflakeTestSuiteInterface,
-    UnityCatalogConnection.__name__: UnityCatalogTestSuiteInterface,
-    DatabricksConnection.__name__: DatabricksTestSuiteInterface,
+    DatabaseConnection.__name__: TestSuiteInterfaceFactory.sqa,
+    DatalakeConnection.__name__: TestSuiteInterfaceFactory.pandas,
+    SnowflakeConnection.__name__: TestSuiteInterfaceFactory.snowflake,
+    UnityCatalogConnection.__name__: TestSuiteInterfaceFactory.unity_catalog,
+    DatabricksConnection.__name__: TestSuiteInterfaceFactory.databricks,
 }
 
+test_suite_interface_factory = TestSuiteInterfaceFactory()
 test_suite_interface_factory.register_many(test_suite_interface)

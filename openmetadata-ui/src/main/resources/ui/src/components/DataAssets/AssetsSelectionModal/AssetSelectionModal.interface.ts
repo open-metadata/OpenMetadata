@@ -20,6 +20,7 @@ import { Database } from '../../../generated/entity/data/database';
 import { DatabaseSchema } from '../../../generated/entity/data/databaseSchema';
 import { Glossary } from '../../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
+import { Metric } from '../../../generated/entity/data/metric';
 import { Mlmodel } from '../../../generated/entity/data/mlmodel';
 import { Pipeline } from '../../../generated/entity/data/pipeline';
 import { SearchIndex } from '../../../generated/entity/data/searchIndex';
@@ -71,7 +72,8 @@ export type AssetsUnion =
   | EntityType.SEARCH_SERVICE
   | EntityType.API_SERVICE
   | EntityType.API_COLLECTION
-  | EntityType.API_ENDPOINT;
+  | EntityType.API_ENDPOINT
+  | EntityType.METRIC;
 
 export type MapPatchAPIResponse = {
   [EntityType.TABLE]: Table;
@@ -99,4 +101,5 @@ export type MapPatchAPIResponse = {
   [EntityType.API_SERVICE]: APIService;
   [EntityType.API_COLLECTION]: APICollection;
   [EntityType.API_ENDPOINT]: APIEndpoint;
+  [EntityType.METRIC]: Metric;
 };

@@ -32,6 +32,7 @@ def run_app(config_path: Path) -> None:
 
     try:
         config_dict = load_config_file(config_path)
+        # no logging for config because apps might have custom secrets
         workflow = ApplicationWorkflow.create(config_dict)
     except Exception as exc:
         logger.error(f"Error running the application {exc}")

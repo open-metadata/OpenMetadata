@@ -15,6 +15,7 @@ import static org.openmetadata.service.search.SearchClient.DEFAULT_UPDATE_SCRIPT
 import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
 import static org.openmetadata.service.search.SearchClient.PROPAGATE_ENTITY_REFERENCE_FIELD_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.PROPAGATE_FIELD_SCRIPT;
+import static org.openmetadata.service.search.SearchClient.PROPAGATE_TEST_SUITES_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.REMOVE_DOMAINS_CHILDREN_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.REMOVE_OWNERS_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.REMOVE_PROPAGATED_ENTITY_REFERENCE_FIELD_SCRIPT;
@@ -32,7 +33,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import java.io.IOException;
 import java.io.InputStream;
-import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -43,7 +43,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.SortedMap;
 import java.util.TreeSet;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -75,6 +74,7 @@ import org.openmetadata.service.search.elasticsearch.ElasticSearchClient;
 import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.search.models.IndexMapping;
 import org.openmetadata.service.search.opensearch.OpenSearchClient;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 
@@ -90,7 +90,11 @@ public class SearchRepository {
   @Getter @Setter public SearchIndexFactory searchIndexFactory = new SearchIndexFactory();
 
   private final List<String> inheritableFields =
-      List.of(Entity.FIELD_OWNERS, Entity.FIELD_DOMAIN, Entity.FIELD_DISABLED);
+      List.of(
+          Entity.FIELD_OWNERS,
+          Entity.FIELD_DOMAIN,
+          Entity.FIELD_DISABLED,
+          Entity.FIELD_TEST_SUITES);
   private final List<String> propagateFields = List.of(Entity.FIELD_TAGS);
 
   @Getter private final ElasticSearchConfiguration elasticSearchConfiguration;
@@ -180,12 +184,6 @@ public class SearchRepository {
     }
   }
 
-  public void dropIndexes() {
-    for (IndexMapping indexMapping : entityIndexMap.values()) {
-      deleteIndex(indexMapping);
-    }
-  }
-
   public IndexMapping getIndexMapping(String entityType) {
     return entityIndexMap.get(entityType);
   }
@@ -238,9 +236,7 @@ public class SearchRepository {
       }
       searchClient.createAliases(indexMapping);
     } catch (Exception e) {
-      LOG.warn(
-          String.format(
-              "Failed to Update Index for entity %s", indexMapping.getIndexName(clusterAlias)));
+      LOG.warn("Failed to Update Index for entity {}", indexMapping.getIndexName(clusterAlias));
     }
   }
 
@@ -282,13 +278,12 @@ public class SearchRepository {
         searchClient.createEntity(indexMapping.getIndexName(clusterAlias), entityId, doc);
       } catch (Exception ie) {
         LOG.error(
-            String.format(
-                "Issue in Creating new search document for entity [%s] and entityType [%s]. Reason[%s], Cause[%s], Stack [%s]",
-                entityId,
-                entityType,
-                ie.getMessage(),
-                ie.getCause(),
-                ExceptionUtils.getStackTrace(ie)));
+            "Issue in Creating new search document for entity [{}] and entityType [{}]. Reason[{}], Cause[{}], Stack [{}]",
+            entityId,
+            entityType,
+            ie.getMessage(),
+            ie.getCause(),
+            ExceptionUtils.getStackTrace(ie));
       }
     }
   }
@@ -310,13 +305,35 @@ public class SearchRepository {
         searchClient.createTimeSeriesEntity(indexMapping.getIndexName(clusterAlias), entityId, doc);
       } catch (Exception ie) {
         LOG.error(
-            String.format(
-                "Issue in Creating new search document for entity [%s] and entityType [%s]. Reason[%s], Cause[%s], Stack [%s]",
-                entityId,
-                entityType,
-                ie.getMessage(),
-                ie.getCause(),
-                ExceptionUtils.getStackTrace(ie)));
+            "Issue in Creating new search document for entity [{}] and entityType [{}]. Reason[{}], Cause[{}], Stack [{}]",
+            entityId,
+            entityType,
+            ie.getMessage(),
+            ie.getCause(),
+            ExceptionUtils.getStackTrace(ie));
+      }
+    }
+  }
+
+  public void updateTimeSeriesEntity(EntityTimeSeriesInterface entityTimeSeries) {
+    if (entityTimeSeries != null) {
+      String entityType = entityTimeSeries.getEntityReference().getType();
+      String entityId = entityTimeSeries.getId().toString();
+      try {
+        IndexMapping indexMapping = entityIndexMap.get(entityType);
+        SearchIndex elasticSearchIndex =
+            searchIndexFactory.buildIndex(entityType, entityTimeSeries);
+        Map<String, Object> doc = elasticSearchIndex.buildSearchIndexDoc();
+        searchClient.updateEntity(
+            indexMapping.getIndexName(clusterAlias), entityId, doc, DEFAULT_UPDATE_SCRIPT);
+      } catch (RuntimeException e) {
+        LOG.error(
+            "Issue in Updating the search document for entity [{}] and entityType [{}]. Reason[{}], Cause[{}], Stack [{}]",
+            entityId,
+            entityType,
+            e.getMessage(),
+            e.getCause(),
+            ExceptionUtils.getStackTrace(e));
       }
     }
   }
@@ -345,13 +362,12 @@ public class SearchRepository {
             entityType, entity.getFullyQualifiedName(), entity.getChangeDescription());
       } catch (Exception ie) {
         LOG.error(
-            String.format(
-                "Issue in Updating the search document for entity [%s] and entityType [%s]. Reason[%s], Cause[%s], Stack [%s]",
-                entityId,
-                entityType,
-                ie.getMessage(),
-                ie.getCause(),
-                ExceptionUtils.getStackTrace(ie)));
+            "Issue in Updating the search document for entity [{}] and entityType [{}]. Reason[{}], Cause[{}], Stack [{}]",
+            entityId,
+            entityType,
+            ie.getMessage(),
+            ie.getCause(),
+            ExceptionUtils.getStackTrace(ie));
       }
     }
   }
@@ -433,11 +449,64 @@ public class SearchRepository {
     Map<String, Object> fieldData = new HashMap<>();
 
     if (changeDescription != null) {
-      EntityRepository<?> entityRepository =
-          Entity.getEntityRepository(entity.getEntityReference().getType());
-      EntityInterface entityBeforeUpdate =
-          entityRepository.get(null, entity.getId(), entityRepository.getFields("*"));
-
+      for (FieldChange field : changeDescription.getFieldsDeleted()) {
+        if (inheritableFields.contains(field.getName())) {
+          try {
+            if (field.getName().equals(FIELD_OWNERS)) {
+              List<EntityReference> inheritedOwners =
+                  JsonUtils.deepCopyList(entity.getOwners(), EntityReference.class);
+              for (EntityReference inheritedOwner : inheritedOwners) {
+                inheritedOwner.setInherited(true);
+              }
+              fieldData.put("deletedOwners", inheritedOwners);
+              scriptTxt.append(REMOVE_OWNERS_SCRIPT);
+              scriptTxt.append(" ");
+            } else {
+              EntityReference entityReference =
+                  JsonUtils.readValue(field.getOldValue().toString(), EntityReference.class);
+              scriptTxt.append(
+                  String.format(
+                      REMOVE_PROPAGATED_ENTITY_REFERENCE_FIELD_SCRIPT,
+                      field.getName(),
+                      field.getName(),
+                      field.getName()));
+              fieldData.put(field.getName(), JsonUtils.getMap(entityReference));
+              scriptTxt.append(" ");
+            }
+          } catch (UnhandledServerException e) {
+            scriptTxt.append(String.format(REMOVE_PROPAGATED_FIELD_SCRIPT, field.getName()));
+          }
+        }
+      }
+      for (FieldChange field : changeDescription.getFieldsUpdated()) {
+        if (inheritableFields.contains(field.getName())) {
+          try {
+            EntityReference newEntityReference =
+                JsonUtils.readValue(field.getNewValue().toString(), EntityReference.class);
+            fieldData.put(
+                "entityBeforeUpdate",
+                JsonUtils.readValue(field.getOldValue().toString(), EntityReference.class));
+            scriptTxt.append(
+                String.format(
+                    UPDATE_PROPAGATED_ENTITY_REFERENCE_FIELD_SCRIPT,
+                    field.getName(),
+                    field.getName(),
+                    field.getName(),
+                    field.getName(),
+                    field.getName()));
+            fieldData.put(field.getName(), newEntityReference);
+          } catch (UnhandledServerException e) {
+            if (field.getName().equals(Entity.FIELD_TEST_SUITES)) {
+              scriptTxt.append(PROPAGATE_TEST_SUITES_SCRIPT);
+              fieldData.put(Entity.FIELD_TEST_SUITES, field.getNewValue());
+            } else {
+              scriptTxt.append(
+                  String.format(PROPAGATE_FIELD_SCRIPT, field.getName(), field.getNewValue()));
+            }
+          }
+          scriptTxt.append(" ");
+        }
+      }
       for (FieldChange field : changeDescription.getFieldsAdded()) {
         if (inheritableFields.contains(field.getName())) {
           try {
@@ -462,59 +531,11 @@ public class SearchRepository {
                       field.getName()));
               fieldData.put(field.getName(), entityReference);
             }
+            scriptTxt.append(" ");
           } catch (UnhandledServerException e) {
             scriptTxt.append(
                 String.format(PROPAGATE_FIELD_SCRIPT, field.getName(), field.getNewValue()));
-          }
-        }
-      }
-      for (FieldChange field : changeDescription.getFieldsUpdated()) {
-        if (inheritableFields.contains(field.getName())) {
-          try {
-            EntityReference newEntityReference =
-                JsonUtils.readValue(field.getNewValue().toString(), EntityReference.class);
-            fieldData.put(
-                "entityBeforeUpdate",
-                JsonUtils.readValue(field.getOldValue().toString(), EntityReference.class));
-            scriptTxt.append(
-                String.format(
-                    UPDATE_PROPAGATED_ENTITY_REFERENCE_FIELD_SCRIPT,
-                    field.getName(),
-                    field.getName(),
-                    field.getName(),
-                    field.getName(),
-                    field.getName()));
-            fieldData.put(field.getName(), newEntityReference);
-          } catch (UnhandledServerException e) {
-            scriptTxt.append(
-                String.format(PROPAGATE_FIELD_SCRIPT, field.getName(), field.getNewValue()));
-          }
-        }
-      }
-      for (FieldChange field : changeDescription.getFieldsDeleted()) {
-        if (inheritableFields.contains(field.getName())) {
-          try {
-            if (field.getName().equals(FIELD_OWNERS)) {
-              List<EntityReference> inheritedOwners =
-                  JsonUtils.deepCopyList(entity.getOwners(), EntityReference.class);
-              for (EntityReference inheritedOwner : inheritedOwners) {
-                inheritedOwner.setInherited(true);
-              }
-              fieldData.put("deletedOwners", inheritedOwners);
-              scriptTxt.append(REMOVE_OWNERS_SCRIPT);
-            } else {
-              EntityReference entityReference =
-                  JsonUtils.readValue(field.getOldValue().toString(), EntityReference.class);
-              scriptTxt.append(
-                  String.format(
-                      REMOVE_PROPAGATED_ENTITY_REFERENCE_FIELD_SCRIPT,
-                      field.getName(),
-                      field.getName(),
-                      field.getName()));
-              fieldData.put(field.getName(), JsonUtils.getMap(entityReference));
-            }
-          } catch (UnhandledServerException e) {
-            scriptTxt.append(String.format(REMOVE_PROPAGATED_FIELD_SCRIPT, field.getName()));
+            scriptTxt.append(" ");
           }
         }
       }
@@ -528,9 +549,11 @@ public class SearchRepository {
       searchClient.deleteByScript(indexMapping.getIndexName(clusterAlias), scriptTxt, params);
     } catch (Exception ie) {
       LOG.error(
-          String.format(
-              "Issue in Creating new search document for entityType [%s]. Reason[%s], Cause[%s], Stack [%s]",
-              entityType, ie.getMessage(), ie.getCause(), ExceptionUtils.getStackTrace(ie)));
+          "Issue in deleting  search document for entityType [{}]. Reason[{}], Cause[{}], Stack [{}]",
+          entityType,
+          ie.getMessage(),
+          ie.getCause(),
+          ExceptionUtils.getStackTrace(ie));
     }
   }
 
@@ -544,13 +567,31 @@ public class SearchRepository {
         deleteOrUpdateChildren(entity, indexMapping);
       } catch (Exception ie) {
         LOG.error(
-            String.format(
-                "Issue in Deleting the search document for entityID [%s] and entityType [%s]. Reason[%s], Cause[%s], Stack [%s]",
-                entityId,
-                entityType,
-                ie.getMessage(),
-                ie.getCause(),
-                ExceptionUtils.getStackTrace(ie)));
+            "Issue in Deleting the search document for entityID [{}] and entityType [{}]. Reason[{}], Cause[{}], Stack [{}]",
+            entityId,
+            entityType,
+            ie.getMessage(),
+            ie.getCause(),
+            ExceptionUtils.getStackTrace(ie));
+      }
+    }
+  }
+
+  public void deleteEntityByFQNPrefix(EntityInterface entity) {
+    if (entity != null) {
+      String entityType = entity.getEntityReference().getType();
+      String fqn = entity.getFullyQualifiedName();
+      IndexMapping indexMapping = entityIndexMap.get(entityType);
+      try {
+        searchClient.deleteEntityByFQNPrefix(indexMapping.getIndexName(clusterAlias), fqn);
+      } catch (Exception ie) {
+        LOG.error(
+            "Issue in Deleting the search document for entityFQN [{}] and entityType [{}]. Reason[{}], Cause[{}], Stack [{}]",
+            fqn,
+            entityType,
+            ie.getMessage(),
+            ie.getCause(),
+            ExceptionUtils.getStackTrace(ie));
       }
     }
   }
@@ -564,13 +605,12 @@ public class SearchRepository {
         searchClient.deleteEntity(indexMapping.getIndexName(clusterAlias), entityId);
       } catch (Exception ie) {
         LOG.error(
-            String.format(
-                "Issue in Deleting the search document for entityID [%s] and entityType [%s]. Reason[%s], Cause[%s], Stack [%s]",
-                entityId,
-                entityType,
-                ie.getMessage(),
-                ie.getCause(),
-                ExceptionUtils.getStackTrace(ie)));
+            "Issue in Deleting the search document for entityID [{}] and entityType [{}]. Reason[{}], Cause[{}], Stack [{}]",
+            entityId,
+            entityType,
+            ie.getMessage(),
+            ie.getCause(),
+            ExceptionUtils.getStackTrace(ie));
       }
     }
   }
@@ -587,13 +627,12 @@ public class SearchRepository {
         softDeleteOrRestoredChildren(entity.getEntityReference(), indexMapping, delete);
       } catch (Exception ie) {
         LOG.error(
-            String.format(
-                "Issue in Soft Deleting the search document for entityID [%s] and entityType [%s]. Reason[%s], Cause[%s], Stack [%s]",
-                entityId,
-                entityType,
-                ie.getMessage(),
-                ie.getCause(),
-                ExceptionUtils.getStackTrace(ie)));
+            "Issue in Soft Deleting the search document for entityID [{}] and entityType [{}]. Reason[{}], Cause[{}], Stack [{}]",
+            entityId,
+            entityType,
+            ie.getMessage(),
+            ie.getCause(),
+            ExceptionUtils.getStackTrace(ie));
       }
     }
   }
@@ -619,6 +658,16 @@ public class SearchRepository {
           new ImmutablePair<>(
               REMOVE_TAGS_CHILDREN_SCRIPT,
               Collections.singletonMap("fqn", entity.getFullyQualifiedName())));
+      case Entity.DASHBOARD -> {
+        String scriptTxt =
+            String.format(
+                "if (ctx._source.dashboards.size() == 1) { ctx._source.put('deleted', '%s') }",
+                true);
+        searchClient.softDeleteOrRestoreChildren(
+            indexMapping.getChildAliases(clusterAlias),
+            scriptTxt,
+            List.of(new ImmutablePair<>("dashboards.id", docId)));
+      }
       case Entity.TEST_SUITE -> {
         TestSuite testSuite = (TestSuite) entity;
         if (Boolean.TRUE.equals(testSuite.getExecutable())) {
@@ -638,11 +687,9 @@ public class SearchRepository {
           Entity.PIPELINE_SERVICE,
           Entity.MLMODEL_SERVICE,
           Entity.STORAGE_SERVICE,
-          Entity.SEARCH_SERVICE -> {
-        searchClient.deleteEntityByFields(
-            indexMapping.getChildAliases(clusterAlias),
-            List.of(new ImmutablePair<>("service.id", docId)));
-      }
+          Entity.SEARCH_SERVICE -> searchClient.deleteEntityByFields(
+          indexMapping.getChildAliases(clusterAlias),
+          List.of(new ImmutablePair<>("service.id", docId)));
       default -> {
         List<String> indexNames = indexMapping.getChildAliases(clusterAlias);
         if (!indexNames.isEmpty()) {
@@ -669,6 +716,16 @@ public class SearchRepository {
           indexMapping.getChildAliases(clusterAlias),
           scriptTxt,
           List.of(new ImmutablePair<>("service.id", docId)));
+      case Entity.DASHBOARD -> {
+        scriptTxt =
+            String.format(
+                "if (ctx._source.dashboards.size() == 1) { ctx._source.put('deleted', '%s') }",
+                delete);
+        searchClient.softDeleteOrRestoreChildren(
+            indexMapping.getChildAliases(clusterAlias),
+            scriptTxt,
+            List.of(new ImmutablePair<>("dashboards.id", docId)));
+      }
       default -> searchClient.softDeleteOrRestoreChildren(
           indexMapping.getChildAliases(clusterAlias),
           scriptTxt,
@@ -734,12 +791,17 @@ public class SearchRepository {
         Map<String, Object> doc = JsonUtils.getMap(entity);
         fieldAddParams.put("newPipelineStatus", doc.get("pipelineStatus"));
       }
+      if (fieldChange.getName().equalsIgnoreCase("testSuites")) {
+        scriptTxt.append("ctx._source.testSuites = params.testSuites;");
+        Map<String, Object> doc = JsonUtils.getMap(entity);
+        fieldAddParams.put("testSuites", doc.get("testSuites"));
+      }
     }
     return scriptTxt.toString();
   }
 
-  public Response search(SearchRequest request) throws IOException {
-    return searchClient.search(request);
+  public Response search(SearchRequest request, SubjectContext subjectContext) throws IOException {
+    return searchClient.search(request, subjectContext);
   }
 
   public Response getDocument(String indexName, UUID entityId) throws IOException {
@@ -780,6 +842,25 @@ public class SearchRepository {
         fqn, upstreamDepth, downstreamDepth, queryFilter, deleted, entityType);
   }
 
+  public Response searchEntityRelationship(
+      String fqn, int upstreamDepth, int downstreamDepth, String queryFilter, boolean deleted)
+      throws IOException {
+    return searchClient.searchEntityRelationship(
+        fqn, upstreamDepth, downstreamDepth, queryFilter, deleted);
+  }
+
+  public Response searchDataQualityLineage(
+      String fqn, int upstreamDepth, String queryFilter, boolean deleted) throws IOException {
+    return searchClient.searchDataQualityLineage(fqn, upstreamDepth, queryFilter, deleted);
+  }
+
+  public Response searchSchemaEntityRelationship(
+      String fqn, int upstreamDepth, int downstreamDepth, String queryFilter, boolean deleted)
+      throws IOException {
+    return searchClient.searchSchemaEntityRelationship(
+        fqn, upstreamDepth, downstreamDepth, queryFilter, deleted);
+  }
+
   public Map<String, Object> searchLineageForExport(
       String fqn,
       int upstreamDepth,
@@ -802,28 +883,20 @@ public class SearchRepository {
     return searchClient.aggregate(index, fieldName, value, query);
   }
 
-  public JsonObject aggregate(String query, String index, JsonObject aggregationJson)
+  public JsonObject aggregate(
+      String query, String entityType, SearchAggregation searchAggregation, SearchListFilter filter)
       throws IOException {
-    return searchClient.aggregate(query, index, aggregationJson);
+    return searchClient.aggregate(
+        query, entityType, searchAggregation, filter.getCondition(entityType));
   }
 
   public DataQualityReport genericAggregation(
-      String query, String index, Map<String, Object> aggregationMetadata) throws IOException {
+      String query, String index, SearchAggregation aggregationMetadata) throws IOException {
     return searchClient.genericAggregation(query, index, aggregationMetadata);
   }
 
   public Response suggest(SearchRequest request) throws IOException {
     return searchClient.suggest(request);
-  }
-
-  public SortedMap<Long, List<Object>> getSortedDate(
-      String team,
-      Long scheduleTime,
-      Long currentTime,
-      DataInsightChartResult.DataInsightChartType chartType,
-      String indexName)
-      throws IOException, ParseException {
-    return searchClient.getSortedDate(team, scheduleTime, currentTime, chartType, indexName);
   }
 
   public Response listDataInsightChartResult(
@@ -836,7 +909,7 @@ public class SearchRepository {
       Integer from,
       String queryFilter,
       String dataReportIndex)
-      throws IOException, ParseException {
+      throws IOException {
     return searchClient.listDataInsightChartResult(
         startTs, endTs, tier, team, dataInsightChartName, size, from, queryFilter, dataReportIndex);
   }
@@ -863,7 +936,7 @@ public class SearchRepository {
               .build();
 
       // Execute the search and parse the response
-      Response response = search(searchRequest);
+      Response response = search(searchRequest, null);
       String json = (String) response.getEntity();
       Set<EntityReference> fqns = new TreeSet<>(compareEntityReferenceById);
 
@@ -889,9 +962,5 @@ public class SearchRepository {
       LOG.error("Error while getting entities from ES for validation", ex);
     }
     return new ArrayList<>();
-  }
-
-  public <T> T getRestHighLevelClient() {
-    return (T) searchClient;
   }
 }
