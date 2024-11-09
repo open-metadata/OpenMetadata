@@ -85,7 +85,6 @@ const ClassificationDetails = forwardRef(
       handleAddNewTagClick,
       handleEditDescriptionClick,
       handleCancelEditDescription,
-      disableEditButton,
       isVersionView = false,
     }: Readonly<ClassificationDetailsProps>,
     ref

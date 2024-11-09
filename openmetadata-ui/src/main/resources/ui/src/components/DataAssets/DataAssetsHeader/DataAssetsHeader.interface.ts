@@ -14,7 +14,6 @@ import { ReactNode } from 'react';
 import { EntityName } from '../../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../../enums/entity.enum';
-import { Classification } from '../../../generated/entity/classification/classification';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { APICollection } from '../../../generated/entity/data/apiCollection';
 import { APIEndpoint } from '../../../generated/entity/data/apiEndpoint';
@@ -94,9 +93,7 @@ export type DataAssetsWithServiceField = Exclude<
 
 export type DataAssetWithDomains =
   | Exclude<DataAssetsType, MetadataService>
-  | GlossaryTerm
-  | Tag
-  | Classification;
+  | GlossaryTerm;
 
 export type DataAssetsHeaderProps = {
   permissions: OperationPermission;
