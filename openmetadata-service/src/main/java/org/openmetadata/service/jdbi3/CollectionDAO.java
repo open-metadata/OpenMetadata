@@ -124,6 +124,7 @@ import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestDefinition;
 import org.openmetadata.schema.tests.TestSuite;
+import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
@@ -140,6 +141,7 @@ import org.openmetadata.service.jdbi3.CollectionDAO.UsageDAO.UsageDetailsMapper;
 import org.openmetadata.service.jdbi3.FeedRepository.FilterType;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlQuery;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlUpdate;
+import org.openmetadata.service.resources.events.subscription.TypedEvent;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.resources.tags.TagLabelUtil;
 import org.openmetadata.service.util.EntityUtil;
@@ -2108,6 +2110,52 @@ public interface CollectionDAO {
         @Bind("extension") String extension,
         @Bind("json") String json,
         @Bind("source") String source);
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO successful_sent_change_events (id, change_event_id, event_subscription_id, json, timestamp) VALUES (:id, :change_event_id, :event_subscription_id, :json, :timestamp)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO successful_sent_change_events (id, change_event_id, event_subscription_id, json, timestamp) VALUES (:id, :change_event_id, :event_subscription_id, CAST(:json AS jsonb), :timestamp)",
+        connectionType = POSTGRES)
+    void insertSuccessfulChangeEvent(
+        @Bind("id") String id,
+        @Bind("change_event_id") String changeEventId,
+        @Bind("event_subscription_id") String eventSubscriptionId,
+        @Bind("json") String json,
+        @Bind("timestamp") long timestamp);
+
+    @SqlQuery(
+        "SELECT COUNT(*) FROM successful_sent_change_events WHERE event_subscription_id = :eventSubscriptionId")
+    long getSuccessfulRecordCount(@Bind("eventSubscriptionId") String eventSubscriptionId);
+
+    @SqlQuery(
+        "SELECT event_subscription_id FROM successful_sent_change_events "
+            + "GROUP BY event_subscription_id "
+            + "HAVING COUNT(*) >= :threshold")
+    List<String> findSubscriptionsAboveThreshold(@Bind("threshold") int threshold);
+
+    @SqlUpdate(
+        "DELETE FROM successful_sent_change_events WHERE event_subscription_id = :eventSubscriptionId ORDER BY timestamp ASC LIMIT :limit")
+    void deleteOldRecords(
+        @Bind("eventSubscriptionId") String eventSubscriptionId, @Bind("limit") long limit);
+
+    @SqlQuery(
+        "SELECT json FROM successful_sent_change_events WHERE event_subscription_id = :eventSubscriptionId ORDER BY timestamp DESC LIMIT :limit OFFSET :paginationOffset")
+    List<String> getSuccessfulChangeEventBySubscriptionId(
+        @Bind("eventSubscriptionId") String eventSubscriptionId,
+        @Bind("limit") int limit,
+        @Bind("paginationOffset") long paginationOffset);
+
+    @SqlUpdate(
+        "DELETE FROM successful_sent_change_events WHERE event_subscription_id = :eventSubscriptionId")
+    void deleteSuccessfulChangeEventBySubscriptionId(
+        @Bind("eventSubscriptionId") String eventSubscriptionId);
+
+    @SqlUpdate("DELETE FROM consumers_dlq WHERE id = :eventSubscriptionId")
+    void deleteFailedRecordsBySubscriptionId(
+        @Bind("eventSubscriptionId") String eventSubscriptionId);
   }
 
   interface ChartDAO extends EntityDAO<Chart> {
@@ -2621,6 +2669,25 @@ public interface CollectionDAO {
       return listAfter(
           getTableName(), filter.getQueryParams(), condition, condition, limit, afterName, afterId);
     }
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM table_entity "
+                + "WHERE JSON_SEARCH(JSON_EXTRACT(json, '$.tableConstraints[*].referredColumns'), "
+                + "'one', :fqn) IS NOT NULL",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json "
+                + "FROM table_entity "
+                + "WHERE EXISTS ("
+                + "    SELECT 1"
+                + "    FROM jsonb_array_elements(json->'tableConstraints') AS constraints"
+                + "    CROSS JOIN jsonb_array_elements_text(constraints->'referredColumns') AS referredColumn "
+                + "    WHERE referredColumn LIKE :fqn"
+                + ")",
+        connectionType = POSTGRES)
+    List<String> findRelatedTables(@Bind("fqn") String fqn);
   }
 
   interface StoredProcedureDAO extends EntityDAO<StoredProcedure> {
@@ -3914,34 +3981,77 @@ public interface CollectionDAO {
 
   interface ChangeEventDAO {
     @SqlQuery(
-        "SELECT json FROM change_event ce where ce.offset > :offset ORDER BY ce.eventTime ASC LIMIT :limit")
-    List<String> listUnprocessedEvents(@Bind("offset") long offset, @Bind("limit") long limit);
+        "SELECT json FROM change_event ce where ce.offset > :offset ORDER BY ce.eventTime DESC LIMIT :limit OFFSET :paginationOffset")
+    List<String> listUnprocessedEvents(
+        @Bind("offset") long offset,
+        @Bind("limit") int limit,
+        @Bind("paginationOffset") int paginationOffset);
 
     @SqlQuery(
-        "SELECT json, source FROM consumers_dlq WHERE id = :id ORDER BY timestamp ASC LIMIT :limit")
+        "SELECT json, source FROM consumers_dlq WHERE id = :id ORDER BY timestamp DESC LIMIT :limit OFFSET :paginationOffset")
     @RegisterRowMapper(FailedEventResponseMapper.class)
     List<FailedEventResponse> listFailedEventsById(
-        @Bind("id") String id, @Bind("limit") long limit);
+        @Bind("id") String id,
+        @Bind("limit") int limit,
+        @Bind("paginationOffset") int paginationOffset);
+
+    @SqlQuery("SELECT COUNT(*) FROM consumers_dlq WHERE id = :id")
+    long countFailedEvents(@Bind("id") String id);
 
     @SqlQuery(
-        "SELECT json, source FROM consumers_dlq WHERE id = :id AND source = :source ORDER BY timestamp ASC LIMIT :limit")
+        "SELECT json, source FROM consumers_dlq WHERE id = :id AND source = :source ORDER BY timestamp DESC LIMIT :limit OFFSET :paginationOffset")
     @RegisterRowMapper(FailedEventResponseMapper.class)
     List<FailedEventResponse> listFailedEventsByIdAndSource(
-        @Bind("id") String id, @Bind("source") String source, @Bind("limit") long limit);
-
-    @SqlQuery("SELECT json, source FROM consumers_dlq LIMIT :limit")
-    @RegisterRowMapper(FailedEventResponseMapper.class)
-    List<FailedEventResponse> listAllFailedEvents(@Bind("limit") long limit);
-
-    @SqlQuery("SELECT json, source FROM consumers_dlq WHERE source = :source LIMIT :limit")
-    @RegisterRowMapper(FailedEventResponseMapper.class)
-    List<FailedEventResponse> listAllFailedEventsBySource(
-        @Bind("source") String source, @Bind("limit") long limit);
+        @Bind("id") String id,
+        @Bind("source") String source,
+        @Bind("limit") int limit,
+        @Bind("paginationOffset") int paginationOffset);
 
     @SqlQuery(
-        "SELECT json FROM change_event ce where ce.offset < :offset ORDER BY ce.eventTime ASC LIMIT :limit")
-    List<String> listChangeEventsBeforeOffset(
-        @Bind("limit") long limit, @Bind("offset") long offset);
+        "SELECT json, source FROM consumers_dlq ORDER BY timestamp DESC LIMIT :limit OFFSET :paginationOffset")
+    @RegisterRowMapper(FailedEventResponseMapper.class)
+    List<FailedEventResponse> listAllFailedEvents(
+        @Bind("limit") int limit, @Bind("paginationOffset") int paginationOffset);
+
+    @SqlQuery(
+        "SELECT json, source FROM consumers_dlq WHERE source = :source ORDER BY timestamp DESC LIMIT :limit OFFSET :paginationOffset")
+    @RegisterRowMapper(FailedEventResponseMapper.class)
+    List<FailedEventResponse> listAllFailedEventsBySource(
+        @Bind("source") String source,
+        @Bind("limit") int limit,
+        @Bind("paginationOffset") int paginationOffset);
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json, status, timestamp "
+                + "FROM ( "
+                + "    SELECT json, 'FAILED' AS status, timestamp "
+                + "    FROM consumers_dlq WHERE id = :id "
+                + "    UNION ALL "
+                + "    SELECT json, 'SUCCESSFUL' AS status, timestamp "
+                + "    FROM successful_sent_change_events WHERE event_subscription_id = :id "
+                + ") AS combined_events "
+                + "ORDER BY timestamp DESC "
+                + "LIMIT :limit OFFSET :paginationOffset",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json, status, timestamp "
+                + "FROM ( "
+                + "    SELECT json, 'failed' AS status, timestamp "
+                + "    FROM consumers_dlq WHERE id = :id "
+                + "    UNION ALL "
+                + "    SELECT json, 'successful' AS status, timestamp "
+                + "    FROM successful_sent_change_events WHERE event_subscription_id = :id "
+                + ") AS combined_events "
+                + "ORDER BY timestamp ASC "
+                + "LIMIT :limit OFFSET :paginationOffset",
+        connectionType = POSTGRES)
+    @RegisterRowMapper(EventResponseMapper.class)
+    List<TypedEvent> listAllEventsWithStatuses(
+        @Bind("id") String id,
+        @Bind("limit") int limit,
+        @Bind("paginationOffset") long paginationOffset);
 
     @SqlQuery(
         "SELECT CASE WHEN EXISTS (SELECT 1 FROM event_subscription_entity WHERE id = :id) THEN 1 ELSE 0 END AS record_exists")
@@ -4005,6 +4115,28 @@ public interface CollectionDAO {
       response.setReason(failedEvent.getReason());
       response.setSource(rs.getString("source"));
       response.setTimestamp(failedEvent.getTimestamp());
+      return response;
+    }
+  }
+
+  class EventResponseMapper implements RowMapper<TypedEvent> {
+    @Override
+    public TypedEvent map(ResultSet rs, StatementContext ctx) throws SQLException {
+      TypedEvent response = new TypedEvent();
+      String status = rs.getString("status").toLowerCase();
+
+      if (TypedEvent.Status.FAILED.value().equalsIgnoreCase(status)) {
+        FailedEvent failedEvent = JsonUtils.readValue(rs.getString("json"), FailedEvent.class);
+        response.setData(List.of(failedEvent));
+        response.setStatus(TypedEvent.Status.FAILED);
+      } else {
+        ChangeEvent changeEvent = JsonUtils.readValue(rs.getString("json"), ChangeEvent.class);
+        response.setData(List.of(changeEvent));
+        response.setStatus(TypedEvent.Status.fromValue(status));
+      }
+
+      long timestampMillis = rs.getLong("timestamp");
+      response.setTimestamp((double) timestampMillis);
       return response;
     }
   }

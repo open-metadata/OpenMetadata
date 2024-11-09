@@ -238,6 +238,10 @@ site_menu:
     url: /connectors/dashboard/domo-dashboard
   - category: Connectors / Dashboard / Domo Dashboard / Run Externally
     url: /connectors/dashboard/domo-dashboard/yaml
+  - category: Connectors / Dashboard / Lightdash
+    url: /connectors/dashboard/lightdash
+  - category: Connectors / Dashboard / Lightdash / Run Externally
+    url: /connectors/dashboard/lightdash/yaml
   - category: Connectors / Dashboard / Looker
     url: /connectors/dashboard/looker
   - category: Connectors / Dashboard / Looker / Run Externally
@@ -246,6 +250,10 @@ site_menu:
     url: /connectors/dashboard/metabase
   - category: Connectors / Dashboard / Metabase / Run Externally
     url: /connectors/dashboard/metabase/yaml
+  - category: Connectors / Dashboard / MicroStrategy
+    url: /connectors/dashboard/microstrategy
+  - category: Connectors / Dashboard / MicroStrategy / Run Externally
+    url: /connectors/dashboard/microstrategy/yaml
   - category: Connectors / Dashboard / Mode
     url: /connectors/dashboard/mode
   - category: Connectors / Dashboard / Mode / Run Externally
@@ -341,6 +349,11 @@ site_menu:
     isCollateOnly: true
   - category: Connectors / Pipeline / Matillion / Run Externally
     url: /connectors/pipeline/matillion/yaml
+  - category: Connectors / Pipeline / DataFactory
+    url: /connectors/pipeline/datafactory
+    isCollateOnly: true
+  - category: Connectors / Pipeline / DataFactory / Run Externally
+    url: /connectors/pipeline/datafactory/yaml
   - category: Connectors / Pipeline / Databricks Pipeline
     url: /connectors/pipeline/databricks-pipeline
   - category: Connectors / Pipeline / Databricks Pipeline / Run Externally
@@ -872,8 +885,6 @@ site_menu:
   - category: Releases / All Releases / 0.4.0 Release
     url: /releases/all-releases/#0.4.0-release
 
-  - category: Roadmap
-    url: /roadmap
 
   - category: Main Concepts
     url: /main-concepts
