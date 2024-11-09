@@ -28,10 +28,10 @@ import TagButton from '../../common/TagButton/TagButton.component';
 type Props = {
   isVersionView?: boolean;
   permissions: OperationPermission;
-  selectedData: Classification | Tag;
+  selectedData: Classification;
   isClassification?: boolean;
   entityType: EntityType;
-  onUpdate: (data: Classification | Tag) => void | Promise<void>;
+  onUpdate: (data: Classification) => void | Promise<void>;
   onThreadLinkSelect?: (value: string) => void;
   refreshClassificationTags?: () => void;
   editCustomAttributePermission?: boolean;

@@ -61,17 +61,6 @@
       "description": "Link to the resource corresponding to the tag.",
       "$ref": "../../type/basic.json#/definitions/href"
     },
-    "reviewers": {
-      "description": "User references of the reviewers for this classification.",
-      "type": "array",
-      "items": {
-        "$ref": "../../type/entityReference.json"
-      }
-    },
-    "owners": {
-      "description": "Owners of this classification.",
-      "$ref": "../../type/entityReferenceList.json"
-    },
     "usageCount": {
       "description": "Count of how many times this tag and children tags are used.",
       "type": "integer"

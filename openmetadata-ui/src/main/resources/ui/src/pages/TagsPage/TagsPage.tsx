@@ -57,7 +57,6 @@ import {
   deleteTag,
   getAllClassifications,
   getClassificationByName,
-  getTags,
   patchClassification,
   patchTag,
 } from '../../rest/tagAPI';
@@ -360,7 +359,7 @@ const TagsPage = () => {
         ) {
           history.push(getTagPath(response.fullyQualifiedName));
         }
-        await handleUpdateTagOwners(updatedClassification);
+        /* await handleUpdateTagOwners(updatedClassification);*/
       } catch (error) {
         if (
           (error as AxiosError).response?.status === HTTP_STATUS_CODE.CONFLICT
@@ -386,7 +385,7 @@ const TagsPage = () => {
       }
     }
   };
-
+  /*
   const handleUpdateTagOwners = async (classification: Classification) => {
     try {
       const tagsResponse = await getTags({
@@ -414,7 +413,7 @@ const TagsPage = () => {
       );
     }
   };
-
+  */
   const handleCreatePrimaryTag = async (data: CreateTag) => {
     try {
       await createTag({
