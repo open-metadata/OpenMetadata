@@ -30,6 +30,7 @@ import org.openmetadata.schema.tests.TestCaseParameterValue;
 import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.changeEvent.gchat.GChatMessage;
@@ -117,9 +118,25 @@ public class GChatMessageDecorator implements MessageDecorator<GChatMessage> {
     String entityType = event.getEntityType();
 
     return switch (entityType) {
-      case Entity.TEST_CASE -> createDQTemplate(publisherName, event, outgoingMessage);
+      case Entity.TEST_CASE -> createTestCaseMessage(publisherName, event, outgoingMessage);
       default -> createGeneralChangeEventMessage(publisherName, event, outgoingMessage);
     };
+  }
+
+  private GChatMessage createTestCaseMessage(
+      String publisherName, ChangeEvent event, OutgoingMessage outgoingMessage) {
+    final String testCaseResult = "testCaseResult";
+
+    List<FieldChange> fieldsAdded = event.getChangeDescription().getFieldsAdded();
+    List<FieldChange> fieldsUpdated = event.getChangeDescription().getFieldsUpdated();
+
+    boolean hasRelevantChange =
+        fieldsAdded.stream().anyMatch(field -> testCaseResult.equals(field.getName()))
+            || fieldsUpdated.stream().anyMatch(field -> testCaseResult.equals(field.getName()));
+
+    return hasRelevantChange
+        ? createDQTemplate(publisherName, event, outgoingMessage)
+        : createGeneralChangeEventMessage(publisherName, event, outgoingMessage);
   }
 
   public GChatMessage createGeneralChangeEventMessage(

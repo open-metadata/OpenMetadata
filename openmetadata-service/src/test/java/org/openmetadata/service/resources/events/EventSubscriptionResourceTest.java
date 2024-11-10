@@ -1513,8 +1513,11 @@ public class EventSubscriptionResourceTest
     String entityName = getEntityName(test);
 
     LOG.info("creating webhook in disabled state");
-    String uri = "http://localhost:" + APP.getLocalPort() + "/api/v1/test/msteams/" + entityName;
-
+    String uri =
+        "http://localhost:"
+            + APP.getLocalPort()
+            + "/api/v1/test/msteams/"
+            + URLEncoder.encode(entityName, StandardCharsets.UTF_8);
     // Create a Disabled Generic Webhook
     CreateEventSubscription genericWebhookActionRequest =
         createRequest(entityName).withEnabled(false).withDestinations(getTeamsWebhook(uri));

@@ -34,6 +34,7 @@ import org.openmetadata.schema.tests.TestCaseParameterValue;
 import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.changeEvent.slack.SlackMessage;
@@ -110,11 +111,24 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
   }
 
   private SlackMessage createMessage(ChangeEvent event, OutgoingMessage outgoingMessage) {
-
     return switch (event.getEntityType()) {
-      case Entity.TEST_CASE -> createDQTemplateMessage(event, outgoingMessage);
+      case Entity.TEST_CASE -> createTestCaseMessage(event, outgoingMessage);
       default -> createGeneralChangeEventMessage(event, outgoingMessage);
     };
+  }
+
+  private SlackMessage createTestCaseMessage(ChangeEvent event, OutgoingMessage outgoingMessage) {
+    final String testCaseResult = "testCaseResult";
+    List<FieldChange> fieldsAdded = event.getChangeDescription().getFieldsAdded();
+    List<FieldChange> fieldsUpdated = event.getChangeDescription().getFieldsUpdated();
+
+    boolean hasRelevantChange =
+        fieldsAdded.stream().anyMatch(field -> testCaseResult.equals(field.getName()))
+            || fieldsUpdated.stream().anyMatch(field -> testCaseResult.equals(field.getName()));
+
+    return hasRelevantChange
+        ? createDQTemplateMessage(event, outgoingMessage)
+        : createGeneralChangeEventMessage(event, outgoingMessage);
   }
 
   public SlackMessage createConnectionTestMessage(String publisherName) {
@@ -457,14 +471,10 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
       return;
     }
 
-    List<TextObject> idNameFields =
-        Stream.of(
-                createFieldTextWithNewLine(
-                    "Description",
-                    testCaseDetails.getOrDefault(DQ_TestCaseDetailsKeys.DESCRIPTION, "-")))
-            .collect(Collectors.toList());
-
-    blocks.add(Blocks.section(section -> section.fields(idNameFields)));
+    TextObject idNameFields =
+        createFieldTextWithNewLine(
+            "Description", testCaseDetails.getOrDefault(DQ_TestCaseDetailsKeys.DESCRIPTION, "-"));
+    blocks.add(Blocks.section(section -> section.text(idNameFields)));
   }
 
   private void addOwnersTagsSection(
