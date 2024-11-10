@@ -322,7 +322,6 @@ public class SearchIndexApp extends AbstractNativeApplication {
     }
   }
 
-
   private int calculateNumberOfConsumers() {
     return Math.min(Runtime.getRuntime().availableProcessors(), MAX_CONSUMERS);
   }
