@@ -196,7 +196,6 @@ public class SearchIndexApp extends AbstractNativeApplication {
       }
 
       performReindex(jobExecutionContext);
-      sendUpdates(jobExecutionContext);
     } catch (Exception ex) {
       handleJobFailure(ex);
     } finally {
@@ -413,7 +412,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
     jobData.setFailure(indexingError);
   }
 
-  public void updateStats(String entityType, StepStats currentEntityStats) {
+  public synchronized void updateStats(String entityType, StepStats currentEntityStats) {
     Stats jobDataStats = jobData.getStats();
     if (jobDataStats.getEntityStats() == null) {
       jobDataStats.setEntityStats(new StepStats());
@@ -459,40 +458,38 @@ public class SearchIndexApp extends AbstractNativeApplication {
     target.setFailedRecords(target.getFailedRecords() + source.getFailedRecords());
   }
 
-  public Stats initializeTotalRecords(Set<String> entities) {
-    synchronized (jobDataLock) {
-      Stats jobDataStats = jobData.getStats();
-      if (jobDataStats.getEntityStats() == null) {
-        jobDataStats.setEntityStats(new StepStats());
-        LOG.debug("Initialized entityStats map.");
-      }
-
-      int total = 0;
-      for (String entityType : entities) {
-        int entityTotal = getEntityTotal(entityType);
-        total += entityTotal;
-
-        StepStats entityStats = new StepStats();
-        entityStats.setTotalRecords(entityTotal);
-        entityStats.setSuccessRecords(0);
-        entityStats.setFailedRecords(0);
-
-        jobDataStats.getEntityStats().getAdditionalProperties().put(entityType, entityStats);
-        LOG.debug("Set Total Records for entityType '{}': {}", entityType, entityTotal);
-      }
-
-      StepStats jobStats = jobDataStats.getJobStats();
-      if (jobStats == null) {
-        jobStats = new StepStats();
-        jobDataStats.setJobStats(jobStats);
-        LOG.debug("Initialized jobStats.");
-      }
-      jobStats.setTotalRecords(total);
-      LOG.debug("Set job-level Total Records: {}", jobStats.getTotalRecords());
-
-      jobData.setStats(jobDataStats);
-      return jobDataStats;
+  public synchronized Stats initializeTotalRecords(Set<String> entities) {
+    Stats jobDataStats = jobData.getStats();
+    if (jobDataStats.getEntityStats() == null) {
+      jobDataStats.setEntityStats(new StepStats());
+      LOG.debug("Initialized entityStats map.");
     }
+
+    int total = 0;
+    for (String entityType : entities) {
+      int entityTotal = getEntityTotal(entityType);
+      total += entityTotal;
+
+      StepStats entityStats = new StepStats();
+      entityStats.setTotalRecords(entityTotal);
+      entityStats.setSuccessRecords(0);
+      entityStats.setFailedRecords(0);
+
+      jobDataStats.getEntityStats().getAdditionalProperties().put(entityType, entityStats);
+      LOG.debug("Set Total Records for entityType '{}': {}", entityType, entityTotal);
+    }
+
+    StepStats jobStats = jobDataStats.getJobStats();
+    if (jobStats == null) {
+      jobStats = new StepStats();
+      jobDataStats.setJobStats(jobStats);
+      LOG.debug("Initialized jobStats.");
+    }
+    jobStats.setTotalRecords(total);
+    LOG.debug("Set job-level Total Records: {}", jobStats.getTotalRecords());
+
+    jobData.setStats(jobDataStats);
+    return jobDataStats;
   }
 
   private int getEntityTotal(String entityType) {
@@ -524,7 +521,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
       if (WebSocketManager.getInstance() != null) {
         WebSocketManager.getInstance()
             .broadCastMessageToAll(
-                WebSocketManager.JOB_STATUS_BROADCAST_CHANNEL, JsonUtils.pojoToJson(jobData));
+                WebSocketManager.SEARCH_INDEX_JOB_BROADCAST_CHANNEL, JsonUtils.pojoToJson(jobData));
         LOG.debug("Broadcasted job updates via WebSocket.");
       }
     } catch (Exception ex) {
@@ -584,7 +581,6 @@ public class SearchIndexApp extends AbstractNativeApplication {
         updateStats(entityType, currentEntityStats);
       }
 
-      sendUpdates(jobExecutionContext);
     } catch (Exception e) {
       synchronized (jobDataLock) {
         jobData.setStatus(EventPublisherJob.Status.FAILED);
@@ -598,9 +594,9 @@ public class SearchIndexApp extends AbstractNativeApplication {
         failedEntityStats.setFailedRecords(entities.size());
         updateStats(entityType, failedEntityStats);
       }
-
-      sendUpdates(jobExecutionContext);
       LOG.error("Unexpected error during processing task for entity {}", entityType, e);
+    } finally {
+      sendUpdates(jobExecutionContext);
     }
   }
 
@@ -630,6 +626,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
 
   private void processEntityType(String entityType)
       throws InterruptedException, SearchIndexException {
+    Thread.sleep(50000);
     Source<?> source = createSource(entityType);
     while (!source.isDone() && !stopped) {
       Object resultList = source.readNext(null);

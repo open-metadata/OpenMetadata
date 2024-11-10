@@ -437,7 +437,8 @@ public class DataInsightsApp extends AbstractNativeApplication {
       if (WebSocketManager.getInstance() != null) {
         WebSocketManager.getInstance()
             .broadCastMessageToAll(
-                WebSocketManager.JOB_STATUS_BROADCAST_CHANNEL, JsonUtils.pojoToJson(jobData));
+                WebSocketManager.DATA_INSIGHTS_JOB_BROADCAST_CHANNEL,
+                JsonUtils.pojoToJson(jobData));
       }
     } catch (Exception ex) {
       LOG.error("Failed to send updated stats with WebSocket", ex);
