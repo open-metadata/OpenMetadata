@@ -45,7 +45,9 @@ import {
 } from '../../../../utils/ApplicationUtils';
 import {
   formatDateTime,
+  formatDuration,
   getEpochMillisForPastDays,
+  getIntervalInMilliseconds,
 } from '../../../../utils/date-time/DateTimeUtils';
 import { getLogsViewerPath } from '../../../../utils/RouterUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
@@ -175,6 +177,23 @@ const AppRunsHistory = forwardRef(
           ),
         },
         {
+          title: t('label.duration'),
+          dataIndex: 'executionTime',
+          key: 'executionTime',
+          render: (_, record: AppRunRecordWithId) => {
+            if (record.startTime && record.endTime) {
+              const ms = getIntervalInMilliseconds(
+                record.startTime,
+                record.endTime
+              );
+
+              return formatDuration(ms);
+            } else {
+              return '-';
+            }
+          },
+        },
+        {
           title: t('label.status'),
           dataIndex: 'status',
           key: 'status',
@@ -289,7 +308,12 @@ const AppRunsHistory = forwardRef(
             data-testid="app-run-history-table"
             dataSource={appRunsHistoryData}
             expandable={{
-              expandedRowRender: (record) => <AppLogsViewer data={record} />,
+              expandedRowRender: (record) => (
+                <AppLogsViewer
+                  data={record}
+                  scrollHeight={maxRecords !== 1 ? 200 : undefined}
+                />
+              ),
               showExpandColumn: false,
               rowExpandable: (record) => !showLogAction(record),
               expandedRowKeys,

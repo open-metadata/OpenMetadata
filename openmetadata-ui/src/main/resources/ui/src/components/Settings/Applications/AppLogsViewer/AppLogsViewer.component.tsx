@@ -31,7 +31,6 @@ import { ICON_DIMENSION, STATUS_ICON } from '../../../../constants/constants';
 import { getEntityStatsData } from '../../../../utils/ApplicationUtils';
 import { formatDateTimeWithTimezone } from '../../../../utils/date-time/DateTimeUtils';
 import { formatJsonString } from '../../../../utils/StringsUtils';
-import AppBadge from '../../../common/Badge/Badge.component';
 import CopyToClipboardButton from '../../../common/CopyToClipboardButton/CopyToClipboardButton';
 import './app-logs-viewer.less';
 import {
@@ -40,7 +39,7 @@ import {
   JobStats,
 } from './AppLogsViewer.interface';
 
-const AppLogsViewer = ({ data }: AppLogsViewerProps) => {
+const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
   const { t } = useTranslation();
 
   const { successContext, failureContext, timestamp, status } = data;
@@ -185,10 +184,6 @@ const AppLogsViewer = ({ data }: AppLogsViewerProps) => {
                     entity: t('label.total'),
                   })}{' '}
                 </Typography.Text>
-                <AppBadge
-                  className="entity-stats total m-l-sm"
-                  label={entityTotalJobStatsData.totalRecords}
-                />
               </div>
             ),
             dataIndex: 'totalRecords',
@@ -205,10 +200,6 @@ const AppLogsViewer = ({ data }: AppLogsViewerProps) => {
                     entity: t('label.success'),
                   })}{' '}
                 </Typography.Text>
-                <AppBadge
-                  className="entity-stats success m-l-sm"
-                  label={entityTotalJobStatsData.successRecords}
-                />
               </div>
             ),
             dataIndex: 'successRecords',
@@ -225,10 +216,6 @@ const AppLogsViewer = ({ data }: AppLogsViewerProps) => {
                     entity: t('label.failed'),
                   })}{' '}
                 </Typography.Text>
-                <AppBadge
-                  className="entity-stats failure m-l-sm"
-                  label={entityTotalJobStatsData.failedRecords}
-                />
               </div>
             ),
             dataIndex: 'failedRecords',
@@ -251,7 +238,7 @@ const AppLogsViewer = ({ data }: AppLogsViewerProps) => {
           dataSource={getEntityStatsData(entityStats)}
           pagination={false}
           rowKey="name"
-          scroll={{ y: 200 }}
+          scroll={scrollHeight ? { y: scrollHeight } : undefined}
           size="small"
         />
       );
