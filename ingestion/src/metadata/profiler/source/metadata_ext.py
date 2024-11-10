@@ -72,8 +72,6 @@ class OpenMetadataSourceExt(OpenMetadataSource):
         config: OpenMetadataWorkflowConfig,
         metadata: OpenMetadata,
     ):
-        self.init_steps()
-
         self.config = config
         self.metadata = metadata
         self.test_connection()

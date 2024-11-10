@@ -45,9 +45,6 @@ class OpenMetadataSource(Source):
     We do this here as well.
     """
 
-    def init_steps(self):
-        super().__init__()
-
     @property
     def name(self) -> str:
         return "OpenMetadata Service"
@@ -57,7 +54,7 @@ class OpenMetadataSource(Source):
         config: OpenMetadataWorkflowConfig,
         metadata: OpenMetadata,
     ):
-        self.init_steps()
+        super().__init__()
 
         self.config = config
         self.metadata = metadata
