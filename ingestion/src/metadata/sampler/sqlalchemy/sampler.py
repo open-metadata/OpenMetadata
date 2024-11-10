@@ -132,7 +132,7 @@ class SQASampler(SamplerInterface):
 
         Args:
             columns (Optional[List]): List of columns to fetch
-        Returns:
+        Retunrs:
             TableData to be added to the Table Entity
         """
         if self._profile_sample_query:

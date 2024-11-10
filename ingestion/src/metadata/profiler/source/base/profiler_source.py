@@ -40,14 +40,18 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.profiler.api.models import ProfilerProcessorConfig, TableConfig
+from metadata.profiler.config import get_schema_profiler_config, get_database_profiler_config
 from metadata.profiler.interface.profiler_interface import ProfilerInterface
 from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.processor.core import Profiler
 from metadata.profiler.processor.default import DefaultProfiler, get_default_metrics
 from metadata.profiler.source.profiler_source_interface import ProfilerSourceInterface
+from metadata.sampler.config import get_profile_query, get_sample_data_count_config
+from metadata.sampler.models import ProfileSampleConfig
+from metadata.sampler.sampler_interface import SamplerInterface
 from metadata.utils.importer import import_from_module
 from metadata.utils.logger import profiler_logger
-from metadata.utils.service_spec.service_spec import BaseSpec
+from metadata.utils.service_spec.service_spec import BaseSpec, import_profiler_class, import_sampler_class
 
 NON_SQA_DATABASE_CONNECTIONS = (DatalakeConnection,)
 
@@ -189,30 +193,47 @@ class ProfilerSource(ProfilerSourceInterface):
         db_service: Optional[DatabaseService],
     ) -> ProfilerInterface:
         """Create sqlalchemy profiler interface"""
-        profiler_class = self.import_profiler_class(
+        profiler_class = import_profiler_class(
             ServiceType.Database, source_type=self.profiler_interface_type
+        )
+        sampler_class = import_sampler_class(
+            ServiceType.Database, source_type=self.profiler_interface_type
+        )
+        sampler_interface: SamplerInterface = sampler_class.create(
+            table=entity,
+            sample_config=ProfileSampleConfig(
+                profile_sample=self.source_config.profileSample,
+                profile_sample_type=self.source_config.profileSampleType,
+                sampling_method_type=self.source_config.samplingMethodType,
+            ),
+            profile_sample_query=get_profile_query(entity=entity, entity_config=config),
+            storage_config=get_sample_data_count_config(
+                entity=entity,
+                schema_profiler_config=get_schema_profiler_config(
+                    schema_entity=schema_entity
+                ),
+                database_profiler_config=get_database_profiler_config(
+                    database_entity=database_entity
+                ),
+                entity_config=config,
+                source_config=self.source_config,
+            ),
+            sample_data_count=self.source_config.sampleDataCount,
         )
         profiler_interface: ProfilerInterface = profiler_class.create(
             entity,
             schema_entity,
             database_entity,
-            db_service,
             config,
-            profiler_config,
             self.source_config,
             self.service_conn_config,
+            sampler=sampler_interface,
             self.ometa_client,
             sqa_metadata=self.sqa_metadata,
         )  # type: ignore
 
         self.interface = profiler_interface
         return self.interface
-
-    def import_profiler_class(
-        self, service_type: ServiceType, source_type: str
-    ) -> Type[ProfilerInterface]:
-        class_path = BaseSpec.get_for_source(service_type, source_type).profiler_class
-        return cast(Type[ProfilerInterface], import_from_module(class_path))
 
     def _get_context_entities(
         self, entity: Table
