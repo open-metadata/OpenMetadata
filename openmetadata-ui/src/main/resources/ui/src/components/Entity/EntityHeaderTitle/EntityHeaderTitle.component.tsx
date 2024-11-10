@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { ExclamationCircleFilled } from '@ant-design/icons';
-import { Badge, Col, Row, Typography } from 'antd';
+import { Badge, Col, Divider, Row, Typography } from 'antd';
 import { isEmpty } from 'lodash';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -87,7 +87,10 @@ const EntityHeaderTitle = ({
       </Col>
       {certification && (
         <Col className="text-xs">
-          <CertificationTag certification={certification} />
+          <div className="d-flex items-center">
+            <Divider className="m-x-xs h-6" type="vertical" />
+            <CertificationTag certification={certification} />
+          </div>
         </Col>
       )}
       {isDisabled && (
