@@ -5,7 +5,7 @@ import static org.openmetadata.service.Entity.TEST_CASE_RESULT;
 import static org.openmetadata.service.apps.scheduler.AbstractOmAppJobListener.APP_RUN_STATS;
 import static org.openmetadata.service.apps.scheduler.AppScheduler.ON_DEMAND_JOB;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.ENTITY_TYPE_KEY;
-import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getInitialStatsForEntities;
+import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.isDataInsightIndex;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -28,12 +28,17 @@ import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.schema.system.IndexingError;
 import org.openmetadata.schema.system.Stats;
 import org.openmetadata.schema.system.StepStats;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.AbstractNativeApplication;
 import org.openmetadata.service.exception.SearchIndexException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.jdbi3.EntityTimeSeriesRepository;
+import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.models.IndexMapping;
 import org.openmetadata.service.socket.WebSocketManager;
+import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.workflows.interfaces.Source;
@@ -102,11 +107,8 @@ public class SearchIndexApp extends AbstractNativeApplication {
   private final Object jobDataLock = new Object();
   private volatile boolean stopped = false;
 
-  // Executors for producers and consumers
   private ExecutorService producerExecutor;
   private ExecutorService consumerExecutor;
-
-  // BlockingQueue for tasks
   private final BlockingQueue<IndexingTask> taskQueue = new LinkedBlockingQueue<>();
 
   public SearchIndexApp(CollectionDAO collectionDAO, SearchRepository searchRepository) {
@@ -116,7 +118,6 @@ public class SearchIndexApp extends AbstractNativeApplication {
   @Override
   public void init(App app) {
     super.init(app);
-    // Request for reindexing
     EventPublisherJob request =
         JsonUtils.convertValue(app.getAppConfiguration(), EventPublisherJob.class)
             .withStats(new Stats());
@@ -167,9 +168,8 @@ public class SearchIndexApp extends AbstractNativeApplication {
 
   private void initializeJob() {
     cleanUpStaleJobsFromRuns();
-    this.jobData.setStats(getInitialStatsForEntities(jobData.getEntities()));
+    this.jobData.setStats(initializeTotalRecords(jobData.getEntities(), collectionDAO));
 
-    // Initialize the sink
     if (searchRepository.getSearchType().equals(ElasticSearchConfiguration.SearchType.OPENSEARCH)) {
       this.searchIndexSink =
           new OpenSearchIndexSink(
@@ -338,13 +338,17 @@ public class SearchIndexApp extends AbstractNativeApplication {
         searchIndexSink.write(entityList, contextData);
       }
 
+      // After successful write, create a new StepStats for the current batch
+      StepStats currentEntityStats = new StepStats();
+      currentEntityStats.setSuccessRecords(entities.size());
+      currentEntityStats.setFailedRecords(0);
+      // Do NOT set Total Records here
+
+      // Update statistics in a thread-safe manner
       synchronized (jobDataLock) {
-        StepStats currentEntityStats =
-            (StepStats)
-                jobData.getStats().getEntityStats().getAdditionalProperties().get(entityType);
-        currentEntityStats.withSuccessRecords(entities.size());
         updateStats(entityType, currentEntityStats);
       }
+
       sendUpdates(jobExecutionContext);
     } catch (Exception e) {
       synchronized (jobDataLock) {
@@ -353,9 +357,110 @@ public class SearchIndexApp extends AbstractNativeApplication {
             new IndexingError()
                 .withErrorSource(IndexingError.ErrorSource.JOB)
                 .withMessage(e.getMessage()));
+
+        StepStats failedEntityStats = new StepStats();
+        failedEntityStats.setSuccessRecords(0);
+        failedEntityStats.setFailedRecords(entities.size());
+        updateStats(entityType, failedEntityStats);
       }
+
       sendUpdates(jobExecutionContext);
       LOG.error("Unexpected error during processing task for entity {}", entityType, e);
+    }
+  }
+
+  public synchronized void updateStats(String entityType, StepStats currentEntityStats) {
+    Stats jobDataStats = jobData.getStats();
+    if (jobDataStats.getEntityStats() == null) {
+      jobDataStats.setEntityStats(new StepStats());
+      LOG.debug("Initialized entityStats map.");
+    }
+
+    StepStats existingEntityStats =
+        (StepStats) jobDataStats.getEntityStats().getAdditionalProperties().get(entityType);
+    if (existingEntityStats == null) {
+      jobDataStats.getEntityStats().getAdditionalProperties().put(entityType, currentEntityStats);
+      LOG.debug("Initialized StepStats for entityType '{}': {}", entityType, currentEntityStats);
+    } else {
+      existingEntityStats.setSuccessRecords(
+          existingEntityStats.getSuccessRecords() + currentEntityStats.getSuccessRecords());
+      existingEntityStats.setFailedRecords(
+          existingEntityStats.getFailedRecords() + currentEntityStats.getFailedRecords());
+      LOG.debug(
+          "Accumulated StepStats for entityType '{}': Success - {}, Failed - {}",
+          entityType,
+          existingEntityStats.getSuccessRecords(),
+          existingEntityStats.getFailedRecords());
+    }
+
+    StepStats jobStats = jobDataStats.getJobStats();
+    if (jobStats == null) {
+      jobStats = new StepStats();
+      jobDataStats.setJobStats(jobStats);
+      LOG.debug("Initialized jobStats.");
+    }
+
+    jobStats.setSuccessRecords(
+        jobStats.getSuccessRecords() + currentEntityStats.getSuccessRecords());
+    jobStats.setFailedRecords(jobStats.getFailedRecords() + currentEntityStats.getFailedRecords());
+    LOG.debug(
+        "Updated jobStats: Success - {}, Failed - {}",
+        jobStats.getSuccessRecords(),
+        jobStats.getFailedRecords());
+    jobData.setStats(jobDataStats);
+  }
+
+  public Stats initializeTotalRecords(Set<String> entities, CollectionDAO dao) {
+    synchronized (jobDataLock) {
+      Stats jobDataStats = jobData.getStats();
+      int total = 0;
+      if (jobDataStats.getEntityStats() == null) {
+        jobDataStats.setEntityStats(new StepStats());
+        LOG.debug("Initialized entityStats map.");
+      }
+
+      for (String entityType : entities) {
+        int entityTotal = getEntityTotal(entityType);
+        total += entityTotal;
+        StepStats entityStats = new StepStats();
+        entityStats.setTotalRecords(entityTotal);
+        entityStats.setSuccessRecords(0);
+        entityStats.setFailedRecords(0);
+        jobDataStats.getEntityStats().getAdditionalProperties().put(entityType, entityStats);
+        LOG.debug("Set Total Records for entityType '{}': {}", entityType, entityTotal);
+      }
+
+      StepStats jobStats = jobDataStats.getJobStats();
+      if (jobStats == null) {
+        jobStats = new StepStats();
+        jobDataStats.setJobStats(jobStats);
+      }
+      jobStats.setTotalRecords(total);
+      LOG.debug("Set job-level Total Records: {}", jobStats.getTotalRecords());
+      jobData.setStats(jobDataStats);
+      return jobDataStats;
+    }
+  }
+
+  private int getEntityTotal(String entityType) {
+    try {
+      if (!TIME_SERIES_ENTITIES.contains(entityType)) {
+        EntityRepository<?> repository = Entity.getEntityRepository(entityType);
+        return repository.getDao().listTotalCount();
+      } else {
+        EntityTimeSeriesRepository<?> repository;
+        ListFilter listFilter = new ListFilter(null);
+        if (isDataInsightIndex(entityType)) {
+          listFilter.addQueryParam("entityFQNHash", FullyQualifiedName.buildHash(entityType));
+          repository = Entity.getEntityTimeSeriesRepository(Entity.ENTITY_REPORT_DATA);
+        } else {
+          repository = Entity.getEntityTimeSeriesRepository(entityType);
+        }
+        return repository.getTimeSeriesDao().listCount(listFilter);
+      }
+    } catch (Exception e) {
+      LOG.debug("Error while getting total entities to index for '{}'", entityType, e);
+      return 0;
     }
   }
 
@@ -371,29 +476,6 @@ public class SearchIndexApp extends AbstractNativeApplication {
     } catch (Exception ex) {
       LOG.error("Failed to send updated stats with WebSocket", ex);
     }
-  }
-
-  public void updateStats(String entityType, StepStats currentEntityStats) {
-    Stats jobDataStats = jobData.getStats();
-
-    // Update Entity Level Stats
-    StepStats entityLevelStats = jobDataStats.getEntityStats();
-    entityLevelStats.withAdditionalProperty(entityType, currentEntityStats);
-
-    // Update job-level stats
-    StepStats jobStats = jobDataStats.getJobStats();
-
-    // Sum up the success and failed records
-    int totalSuccess = jobStats.getSuccessRecords() + currentEntityStats.getSuccessRecords();
-    int totalFailed = jobStats.getFailedRecords() + currentEntityStats.getFailedRecords();
-
-    jobStats.setSuccessRecords(totalSuccess);
-    jobStats.setFailedRecords(totalFailed);
-
-    jobDataStats.setJobStats(jobStats);
-    jobDataStats.setEntityStats(entityLevelStats);
-
-    jobData.setStats(jobDataStats);
   }
 
   private void reCreateIndexes(String entityType) {

@@ -73,14 +73,6 @@ public class ElasticSearchIndexSink implements BulkSink, Closeable {
         DocWriteRequest<?> request = convertEntityToRequest(entity, entityType);
         long requestSize = estimateRequestSizeInBytes(request);
 
-        if (requestSize > maxPayloadSizeInBytes) {
-          entityErrorList.add(
-              new EntityError()
-                  .withMessage("Entity size exceeds Elasticsearch maximum payload size")
-                  .withEntity(entity.toString()));
-          continue;
-        }
-
         if (currentBatchSize + requestSize > maxPayloadSizeInBytes) {
           // Flush current batch
           sendBulkRequest(requests, entityErrorList);
