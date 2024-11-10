@@ -18,6 +18,11 @@
       "$ref": "#/definitions/profilerConfigType",
       "default": "Profiler"
     },
+    "classificationFilterPattern": {
+      "description": "Regex to only compute metrics for table that matches the given tag, tiers, gloassary pattern.",
+      "$ref": "../type/filterPattern.json#/definitions/filterPattern",
+      "title": "Classification Filter Pattern"
+    },
     "schemaFilterPattern": {
       "description": "Regex to only fetch tables or databases that matches the pattern.",
       "$ref": "../type/filterPattern.json#/definitions/filterPattern",
@@ -36,7 +41,7 @@
     "includeViews": {
       "description": "Optional configuration to turn off fetching metadata for views.",
       "type": "boolean",
-      "default": true,
+      "default": false,
       "title": "Include Views"
     },
     "useFqnForFiltering": {
@@ -56,6 +61,18 @@
       "type": "boolean",
       "default": true,
       "title": "Compute Metrics"
+    },
+    "computeTableMetrics": {
+      "description": "Option to turn on/off table metric computation. If enabled, profiler will compute table level metrics.",
+      "type": "boolean",
+      "default": true,
+      "title": "Compute Table Metrics"
+    },
+    "computeColumnMetrics": {
+      "description": "Option to turn on/off column metric computation. If enabled, profiler will compute column level metrics.",
+      "type": "boolean",
+      "default": true,
+      "title": "Compute Column Metrics"
     },
     "processPiiSensitive": {
       "description": "Optional configuration to automatically tag columns that might contain sensitive information",
