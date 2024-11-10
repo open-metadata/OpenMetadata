@@ -31,4 +31,6 @@ public interface Source<R> extends Stats {
   String getLastFailedCursor();
 
   boolean isDone();
+
+  String getCursor();
 }

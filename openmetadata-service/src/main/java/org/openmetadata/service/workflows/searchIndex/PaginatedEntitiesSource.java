@@ -36,17 +36,18 @@ import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.workflows.interfaces.Source;
 
 @Slf4j
+@Getter
 public class PaginatedEntitiesSource implements Source<ResultList<? extends EntityInterface>> {
-  @Getter private String name = "PaginatedEntitiesSource";
-  @Getter private final int batchSize;
-  @Getter private final String entityType;
-  @Getter private final List<String> fields;
-  @Getter private final List<String> readerErrors = new ArrayList<>();
-  @Getter private final StepStats stats = new StepStats();
-  @Getter private final ListFilter filter;
-  @Getter private String lastFailedCursor = null;
+  private String name = "PaginatedEntitiesSource";
+  private final int batchSize;
+  private final String entityType;
+  private final List<String> fields;
+  private final List<String> readerErrors = new ArrayList<>();
+  private final StepStats stats = new StepStats();
+  private final ListFilter filter;
+  private String lastFailedCursor = null;
   @Setter private String cursor = RestUtil.encodeCursor("0");
-  @Getter private boolean isDone = false;
+  private boolean isDone = false;
 
   public PaginatedEntitiesSource(String entityType, int batchSize, List<String> fields) {
     this.entityType = entityType;
@@ -155,5 +156,9 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
   @Override
   public void updateStats(int currentSuccess, int currentFailed) {
     getUpdatedStats(stats, currentSuccess, currentFailed);
+  }
+
+  public String getCursor() {
+    return RestUtil.decodeCursor(cursor);
   }
 }

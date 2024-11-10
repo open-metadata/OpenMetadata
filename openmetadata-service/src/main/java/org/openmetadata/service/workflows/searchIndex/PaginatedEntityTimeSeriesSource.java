@@ -23,18 +23,19 @@ import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.workflows.interfaces.Source;
 
 @Slf4j
+@Getter
 public class PaginatedEntityTimeSeriesSource
     implements Source<ResultList<? extends EntityTimeSeriesInterface>> {
-  @Getter private final int batchSize;
-  @Getter private final String entityType;
-  @Getter private final List<String> fields;
-  @Getter private final List<String> readerErrors = new ArrayList<>();
-  @Getter private final StepStats stats = new StepStats();
-  @Getter private String lastFailedCursor = null;
+  private final int batchSize;
+  private final String entityType;
+  private final List<String> fields;
+  private final List<String> readerErrors = new ArrayList<>();
+  private final StepStats stats = new StepStats();
+  private String lastFailedCursor = null;
   @Setter private String cursor = RestUtil.encodeCursor("0");
-  @Getter private boolean isDone = false;
-  @Getter private Long startTs;
-  @Getter private Long endTs;
+  private boolean isDone = false;
+  private Long startTs;
+  private Long endTs;
 
   public PaginatedEntityTimeSeriesSource(String entityType, int batchSize, List<String> fields) {
     this.entityType = entityType;
@@ -158,5 +159,9 @@ public class PaginatedEntityTimeSeriesSource
     } else {
       return Entity.getEntityTimeSeriesRepository(entityType);
     }
+  }
+
+  public String getCursor() {
+    return RestUtil.decodeCursor(cursor);
   }
 }

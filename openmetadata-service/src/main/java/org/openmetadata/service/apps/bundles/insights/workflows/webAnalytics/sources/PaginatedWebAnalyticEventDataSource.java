@@ -7,7 +7,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import lombok.Getter;
-import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.glassfish.jersey.internal.util.ExceptionUtils;
 import org.openmetadata.schema.analytics.WebAnalyticEventData;
@@ -23,25 +22,26 @@ import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.workflows.interfaces.Source;
 
 @Slf4j
+@Getter
 public class PaginatedWebAnalyticEventDataSource
     implements Source<ResultList<WebAnalyticEventData>> {
-  @Getter private final String name;
-  @Getter private final int batchSize;
-  @Getter private final Long startTs;
-  @Getter private final Long endTs;
-  @Getter private final int totalRecords;
-  @Getter private final String entityType = Entity.WEB_ANALYTIC_EVENT;
+  private final String name;
+  private final int batchSize;
+  private final Long startTs;
+  private final Long endTs;
+  private final int totalRecords;
+  private final String entityType = Entity.WEB_ANALYTIC_EVENT;
 
   @Getter
   private final WebAnalyticEventRepository repository =
       (WebAnalyticEventRepository) Entity.getEntityRepository(entityType);
 
-  @Getter private final String eventType = WebAnalyticEventType.PAGE_VIEW.toString();
-  @Getter private final List<String> readerErrors = new ArrayList<>();
-  @Getter private final StepStats stats = new StepStats();
-  @Getter private String lastFailedCursor = null;
-  @Setter private String cursor = RestUtil.encodeCursor("0");
-  @Getter private boolean isDone = false;
+  private final String eventType = WebAnalyticEventType.PAGE_VIEW.toString();
+  private final List<String> readerErrors = new ArrayList<>();
+  private final StepStats stats = new StepStats();
+  private String lastFailedCursor = null;
+  private String cursor = RestUtil.encodeCursor("0");
+  private boolean isDone = false;
 
   public PaginatedWebAnalyticEventDataSource(int batchSize, Long startTs, Long endTs) {
     this.batchSize = batchSize;
@@ -130,5 +130,9 @@ public class PaginatedWebAnalyticEventDataSource
   @Override
   public void updateStats(int currentSuccess, int currentFailed) {
     getUpdatedStats(stats, currentSuccess, currentFailed);
+  }
+
+  public String getCursor() {
+    return RestUtil.decodeCursor(cursor);
   }
 }

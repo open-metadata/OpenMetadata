@@ -57,6 +57,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.exception.ExceptionUtils;
 import org.jetbrains.annotations.NotNull;
 import org.openmetadata.common.utils.CommonUtil;
@@ -185,10 +186,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
   @Override
   public void startApp(JobExecutionContext jobExecutionContext) {
     try {
-      initializeJob();
-      LOG.info("Executing Reindexing Job with JobData: {}", jobData);
-      jobData.setStatus(EventPublisherJob.Status.RUNNING);
-
+      initializeJob(jobExecutionContext);
       String runType =
           (String) jobExecutionContext.getJobDetail().getJobDataMap().get("triggerType");
       if (!ON_DEMAND_JOB.equals(runType)) {
@@ -217,10 +215,15 @@ public class SearchIndexApp extends AbstractNativeApplication {
     }
   }
 
-  private void initializeJob() {
+  private void initializeJob(JobExecutionContext jobExecutionContext) {
     cleanUpStaleJobsFromRuns();
+
+    LOG.info("Executing Reindexing Job with JobData: {}", jobData);
+    jobData.setStatus(EventPublisherJob.Status.RUNNING);
+
     LOG.debug("Initializing job statistics.");
     jobData.setStats(initializeTotalRecords(jobData.getEntities()));
+    sendUpdates(jobExecutionContext);
 
     ElasticSearchConfiguration.SearchType searchType = searchRepository.getSearchType();
     LOG.info("Initializing searchIndexSink with search type: {}", searchType);
@@ -351,6 +354,10 @@ public class SearchIndexApp extends AbstractNativeApplication {
   private void consumeTasks(JobExecutionContext jobExecutionContext) throws InterruptedException {
     while (true) {
       IndexingTask<?> task = taskQueue.take();
+      LOG.info(
+          "Consuming Indexing Task for entityType: {}, entity offset : {}",
+          task.entityType(),
+          task.currentEntityOffset());
       if (task == IndexingTask.POISON_PILL) {
         LOG.debug("Received POISON_PILL. Consumer thread terminating.");
         break;
@@ -522,7 +529,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
         WebSocketManager.getInstance()
             .broadCastMessageToAll(
                 WebSocketManager.SEARCH_INDEX_JOB_BROADCAST_CHANNEL, JsonUtils.pojoToJson(jobData));
-        LOG.debug("Broadcasted job updates via WebSocket.");
+        LOG.debug("Broad-casted job updates via WebSocket.");
       }
     } catch (Exception ex) {
       LOG.error("Failed to send updated stats with WebSocket", ex);
@@ -546,6 +553,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
     }
   }
 
+  @SuppressWarnings("unused")
   public void stopJob() {
     LOG.info("Stopping reindexing job.");
     stopped = true;
@@ -554,8 +562,8 @@ public class SearchIndexApp extends AbstractNativeApplication {
   }
 
   private void processTask(IndexingTask<?> task, JobExecutionContext jobExecutionContext) {
-    String entityType = task.getEntityType();
-    List<?> entities = task.getEntities();
+    String entityType = task.entityType();
+    List<?> entities = task.entities();
     Map<String, Object> contextData = new HashMap<>();
     contextData.put(ENTITY_TYPE_KEY, entityType);
 
@@ -626,7 +634,6 @@ public class SearchIndexApp extends AbstractNativeApplication {
 
   private void processEntityType(String entityType)
       throws InterruptedException, SearchIndexException {
-    Thread.sleep(50000);
     Source<?> source = createSource(entityType);
     while (!source.isDone() && !stopped) {
       Object resultList = source.readNext(null);
@@ -636,7 +643,11 @@ public class SearchIndexApp extends AbstractNativeApplication {
 
       List<?> entities = extractEntities(entityType, resultList);
       if (entities != null && !entities.isEmpty()) {
-        IndexingTask<?> task = new IndexingTask<>(entityType, entities);
+        LOG.info(
+            "Creating Indexing Task for entityType: {}, current offset : {}",
+            entityType,
+            source.getCursor());
+        IndexingTask<?> task = new IndexingTask<>(entityType, entities, source.getCursor());
         taskQueue.put(task);
       }
     }
@@ -651,16 +662,8 @@ public class SearchIndexApp extends AbstractNativeApplication {
     }
   }
 
-  @Getter
-  private static class IndexingTask<T> {
-    private final String entityType;
-    private final List<T> entities;
+  private record IndexingTask<T>(String entityType, List<T> entities, String currentEntityOffset) {
     public static final IndexingTask<?> POISON_PILL =
-        new IndexingTask<>(null, Collections.emptyList());
-
-    public IndexingTask(String entityType, List<T> entities) {
-      this.entityType = entityType;
-      this.entities = entities;
-    }
+        new IndexingTask<>(null, Collections.emptyList(), StringUtils.EMPTY);
   }
 }
