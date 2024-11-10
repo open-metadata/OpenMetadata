@@ -13,7 +13,7 @@ Superset source module
 """
 
 import traceback
-from typing import Iterable, Optional
+from typing import Iterable, List, Optional
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
@@ -38,6 +38,7 @@ from metadata.ingestion.source.dashboard.superset.mixin import SupersetSourceMix
 from metadata.ingestion.source.dashboard.superset.models import (
     ChartResult,
     DashboardResult,
+    FetchChart,
 )
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_datamodel
@@ -115,7 +116,7 @@ class SupersetAPISource(SupersetSourceMixin):
                     for chart in self.context.get().charts or []
                 ],
                 service=FullyQualifiedEntityName(self.context.get().dashboard_service),
-                owner=self.get_owner_ref(dashboard_details=dashboard_details),
+                owners=self.get_owner_ref(dashboard_details=dashboard_details),
             )
             yield Either(right=dashboard_request)
             self.register_record(dashboard_request=dashboard_request)
@@ -250,3 +251,14 @@ class SupersetAPISource(SupersetSourceMixin):
                             stackTrace=traceback.format_exc(),
                         )
                     )
+
+    def _get_columns_list_for_lineage(self, chart_json: FetchChart) -> List[str]:
+        """
+        Args:
+            chart_json: FetchChart
+        Returns:
+            List of columns as str to generate column lineage
+        """
+        datasource_json = self.client.fetch_datasource(chart_json.datasource_id)
+        datasource_columns = self.get_column_info(datasource_json.result.columns)
+        return [col.displayName for col in datasource_columns]

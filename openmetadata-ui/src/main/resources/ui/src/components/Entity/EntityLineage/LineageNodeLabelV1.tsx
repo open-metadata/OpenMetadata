@@ -15,6 +15,7 @@ import { Col, Row, Space, Typography } from 'antd';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconDBTModel } from '../../../assets/svg/dbt-model.svg';
+import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
 import { EntityType } from '../../../enums/entity.enum';
 import { ModelType, Table } from '../../../generated/entity/data/table';
 import {
@@ -30,11 +31,14 @@ interface LineageNodeLabelProps {
 }
 
 const EntityLabel = ({ node }: Pick<LineageNodeLabelProps, 'node'>) => {
-  const showDbtIcon = useMemo(() => {
-    return (
-      node.entityType === EntityType.TABLE &&
-      (node as Table)?.dataModel?.modelType === ModelType.Dbt
-    );
+  const { showDeletedIcon, showDbtIcon } = useMemo(() => {
+    return {
+      showDbtIcon:
+        node.entityType === EntityType.TABLE &&
+        (node as Table)?.dataModel?.modelType === ModelType.Dbt &&
+        (node as Table)?.dataModel?.resourceType?.toLowerCase() !== 'seed',
+      showDeletedIcon: node.deleted ?? false,
+    };
   }, [node]);
 
   return (
@@ -57,9 +61,16 @@ const EntityLabel = ({ node }: Pick<LineageNodeLabelProps, 'node'>) => {
             {getEntityName(node)}
           </Typography.Text>
         </Space>
-        {showDbtIcon && (
+        {!showDeletedIcon && showDbtIcon && (
           <div className="m-r-xs" data-testid="dbt-icon">
             <IconDBTModel />
+          </div>
+        )}
+        {showDeletedIcon && (
+          <div className="flex-center p-xss custom-node-deleted-icon">
+            <div className="d-flex text-danger" data-testid="node-deleted-icon">
+              <DeleteIcon height={16} width={16} />
+            </div>
           </div>
         )}
       </Col>

@@ -11,27 +11,42 @@
  *  limitations under the License.
  */
 import { test } from '@playwright/test';
+import { isUndefined } from 'lodash';
 import { CustomPropertySupportedEntityList } from '../../constant/customProperty';
+import { ApiEndpointClass } from '../../support/entity/ApiEndpointClass';
 import { ContainerClass } from '../../support/entity/ContainerClass';
 import { DashboardClass } from '../../support/entity/DashboardClass';
 import { DashboardDataModelClass } from '../../support/entity/DashboardDataModelClass';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
+import { MetricClass } from '../../support/entity/MetricClass';
 import { MlModelClass } from '../../support/entity/MlModelClass';
 import { PipelineClass } from '../../support/entity/PipelineClass';
 import { SearchIndexClass } from '../../support/entity/SearchIndexClass';
 import { StoredProcedureClass } from '../../support/entity/StoredProcedureClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { TopicClass } from '../../support/entity/TopicClass';
+import { UserClass } from '../../support/user/UserClass';
 import {
+  assignDomain,
   createNewPage,
+  generateRandomUsername,
   getApiContext,
   getAuthContext,
   getToken,
   redirectToHomePage,
+  removeDomain,
+  verifyDomainPropagation,
 } from '../../utils/common';
 import { CustomPropertyTypeByName } from '../../utils/customProperty';
+import {
+  addMultiOwner,
+  removeOwner,
+  removeOwnersFromList,
+} from '../../utils/entity';
+import { visitServiceDetailsPage } from '../../utils/service';
 
 const entities = [
+  ApiEndpointClass,
   TableClass,
   StoredProcedureClass,
   DashboardClass,
@@ -41,6 +56,7 @@ const entities = [
   ContainerClass,
   SearchIndexClass,
   DashboardDataModelClass,
+  MetricClass,
 ] as const;
 
 // use the admin user to login
@@ -72,20 +88,108 @@ entities.forEach((EntityClass) => {
       );
     });
 
+    test('Domain Propagation', async ({ page }) => {
+      const serviceCategory = entity.serviceCategory;
+      if (serviceCategory && 'service' in entity) {
+        await visitServiceDetailsPage(
+          page,
+          {
+            name: entity.service.name,
+            type: serviceCategory,
+          },
+          false
+        );
+
+        await assignDomain(page, EntityDataClass.domain1.responseData);
+        await verifyDomainPropagation(
+          page,
+          EntityDataClass.domain1.responseData,
+          entity.entityResponseData?.['fullyQualifiedName']
+        );
+
+        await visitServiceDetailsPage(
+          page,
+          {
+            name: entity.service.name,
+            type: serviceCategory,
+          },
+          false
+        );
+        await removeDomain(page);
+      }
+    });
+
     test('User as Owner Add, Update and Remove', async ({ page }) => {
+      test.slow(true);
+
       const OWNER1 = EntityDataClass.user1.getUserName();
       const OWNER2 = EntityDataClass.user2.getUserName();
-      await entity.owner(page, OWNER1, OWNER2);
+      const OWNER3 = EntityDataClass.user3.getUserName();
+      await entity.owner(page, [OWNER1, OWNER3], [OWNER2]);
     });
 
     test('Team as Owner Add, Update and Remove', async ({ page }) => {
       const OWNER1 = EntityDataClass.team1.data.displayName;
       const OWNER2 = EntityDataClass.team2.data.displayName;
-      await entity.owner(page, OWNER1, OWNER2, 'Teams');
+      await entity.owner(page, [OWNER1], [OWNER2], 'Teams');
+    });
+
+    test('User as Owner with unsorted list', async ({ page }) => {
+      test.slow(true);
+
+      const { afterAction, apiContext } = await getApiContext(page);
+      const owner1Data = generateRandomUsername('PW_A_');
+      const owner2Data = generateRandomUsername('PW_B_');
+      const OWNER1 = new UserClass(owner1Data);
+      const OWNER2 = new UserClass(owner2Data);
+      await OWNER1.create(apiContext);
+      await OWNER2.create(apiContext);
+
+      await addMultiOwner({
+        page,
+        ownerNames: [OWNER2.getUserName()],
+        activatorBtnDataTestId: 'edit-owner',
+        resultTestId: 'data-assets-header',
+        endpoint: entity.endpoint,
+        type: 'Users',
+      });
+
+      await addMultiOwner({
+        page,
+        ownerNames: [OWNER1.getUserName()],
+        activatorBtnDataTestId: 'edit-owner',
+        resultTestId: 'data-assets-header',
+        endpoint: entity.endpoint,
+        type: 'Users',
+        clearAll: false,
+      });
+
+      await removeOwnersFromList({
+        page,
+        ownerNames: [OWNER1.getUserName()],
+        endpoint: entity.endpoint,
+        dataTestId: 'data-assets-header',
+      });
+
+      await removeOwner({
+        page,
+        endpoint: entity.endpoint,
+        ownerName: OWNER2.getUserName(),
+        type: 'Users',
+        dataTestId: 'data-assets-header',
+      });
+
+      await OWNER1.delete(apiContext);
+      await OWNER2.delete(apiContext);
+      await afterAction();
     });
 
     test('Tier Add, Update and Remove', async ({ page }) => {
-      await entity.tier(page, 'Tier1', 'Tier5');
+      await entity.tier(
+        page,
+        'Tier1',
+        EntityDataClass.tierTag1.data.displayName
+      );
     });
 
     test('Update description', async ({ page }) => {
@@ -103,6 +207,42 @@ entities.forEach((EntityClass) => {
         EntityDataClass.glossaryTerm2.responseData
       );
     });
+
+    // Run only if entity has children
+    if (!isUndefined(entity.childrenTabId)) {
+      test('Tag Add, Update and Remove for child entities', async ({
+        page,
+      }) => {
+        await page.getByTestId(entity.childrenTabId ?? '').click();
+
+        await entity.tagChildren({
+          page: page,
+          tag1: 'PersonalData.Personal',
+          tag2: 'PII.None',
+          rowId: entity.childrenSelectorId ?? '',
+          rowSelector:
+            entity.type === 'MlModel' ? 'data-testid' : 'data-row-key',
+        });
+      });
+    }
+
+    // Run only if entity has children
+    if (!isUndefined(entity.childrenTabId)) {
+      test('Glossary Term Add, Update and Remove for child entities', async ({
+        page,
+      }) => {
+        await page.getByTestId(entity.childrenTabId ?? '').click();
+
+        await entity.glossaryTermChildren({
+          page: page,
+          glossaryTerm1: EntityDataClass.glossaryTerm1.responseData,
+          glossaryTerm2: EntityDataClass.glossaryTerm2.responseData,
+          rowId: entity.childrenSelectorId ?? '',
+          rowSelector:
+            entity.type === 'MlModel' ? 'data-testid' : 'data-row-key',
+        });
+      });
+    }
 
     test(`Announcement create & delete`, async ({ page }) => {
       await entity.announcement(
@@ -139,7 +279,7 @@ entities.forEach((EntityClass) => {
 
         await test.step(`Set ${titleText} Custom Property`, async () => {
           for (const type of properties) {
-            await entity.setCustomProperty(
+            await entity.updateCustomProperty(
               page,
               entity.customPropertyValue[type].property,
               entity.customPropertyValue[type].value

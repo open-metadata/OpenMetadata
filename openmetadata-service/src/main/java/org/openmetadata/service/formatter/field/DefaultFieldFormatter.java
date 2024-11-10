@@ -39,7 +39,7 @@ import org.openmetadata.service.util.JsonUtils;
 public class DefaultFieldFormatter implements FieldFormatter {
   protected final Thread thread;
   protected String fieldChangeName;
-  protected FieldChange fieldChange;
+  protected final FieldChange fieldChange;
   protected final String fieldOldValue;
   protected final String fieldNewValue;
   protected final MessageDecorator<?> messageDecorator;

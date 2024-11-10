@@ -31,7 +31,7 @@ import {
   ResourceEntity,
 } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
-import { EntityType } from '../../enums/entity.enum';
+import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { Query } from '../../generated/entity/data/query';
 import { useFqn } from '../../hooks/useFqn';
 import {
@@ -130,7 +130,7 @@ const QueryPage = () => {
     setIsLoading((pre) => ({ ...pre, query: true }));
     try {
       const queryResponse = await getQueryById(queryId, {
-        fields: 'votes,queryUsedIn',
+        fields: [TabSpecificField.VOTES, TabSpecificField.QUERY_USED_IN],
       });
       setQuery(queryResponse);
     } catch (error) {
@@ -166,7 +166,7 @@ const QueryPage = () => {
     try {
       await updateQueryVote(id || '', data);
       const response = await getQueryById(queryId || '', {
-        fields: 'votes,queryUsedIn',
+        fields: [TabSpecificField.VOTES, TabSpecificField.QUERY_USED_IN],
       });
       setQuery(response);
     } catch (error) {

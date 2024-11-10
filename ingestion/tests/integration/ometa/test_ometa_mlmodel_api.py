@@ -64,6 +64,7 @@ from metadata.generated.schema.security.client.openMetadataJWTClientConfig impor
 )
 from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
 
@@ -87,7 +88,7 @@ class OMetaModelTest(TestCase):
     user = metadata.create_or_update(
         data=CreateUserRequest(name="random-user", email="random@user.com"),
     )
-    owner = EntityReference(id=user.id, type="user")
+    owners = EntityReferenceList(root=[EntityReference(id=user.id, type="user")])
 
     service = CreateMlModelServiceRequest(
         name="test-model-service",
@@ -153,7 +154,7 @@ class OMetaModelTest(TestCase):
 
         self.assertEqual(res.name, self.entity.name)
         self.assertEqual(res.algorithm, self.entity.algorithm)
-        self.assertEqual(res.owner, None)
+        self.assertIsNone(res.owners)
 
     def test_update(self):
         """
@@ -162,8 +163,8 @@ class OMetaModelTest(TestCase):
 
         res_create = self.metadata.create_or_update(data=self.create)
 
-        updated = self.create.dict(exclude_unset=True)
-        updated["owner"] = self.owner
+        updated = self.create.model_dump(exclude_unset=True)
+        updated["owners"] = self.owners
         updated_entity = CreateMlModelRequest(**updated)
 
         res = self.metadata.create_or_update(data=updated_entity)
@@ -171,21 +172,21 @@ class OMetaModelTest(TestCase):
         # Same ID, updated algorithm
         self.assertEqual(res.algorithm, updated_entity.algorithm)
         self.assertEqual(res_create.id, res.id)
-        self.assertEqual(res.owner.id, self.user.id)
+        self.assertEqual(res.owners.root[0].id, self.user.id)
 
         # Getting without owner field does not return it by default
         res_none = self.metadata.get_by_name(
             entity=MlModel, fqn=self.entity.fullyQualifiedName
         )
-        self.assertIsNone(res_none.owner)
+        self.assertIsNone(res_none.owners)
 
         # We can request specific fields to be added
         res_owner = self.metadata.get_by_name(
             entity=MlModel,
             fqn=self.entity.fullyQualifiedName,
-            fields=["owner", "followers"],
+            fields=["owners", "followers"],
         )
-        self.assertEqual(res_owner.owner.id, self.user.id)
+        self.assertEqual(res_owner.owners.root[0].id, self.user.id)
 
     def test_get_name(self):
         """

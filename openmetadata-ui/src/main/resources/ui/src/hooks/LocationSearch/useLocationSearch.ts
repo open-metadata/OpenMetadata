@@ -12,10 +12,10 @@
  */
 import { default as qs, default as QueryString } from 'qs';
 import { useMemo } from 'react';
-import { useLocation } from 'react-router-dom';
+import useCustomLocation from '../useCustomLocation/useCustomLocation';
 
 export const useLocationSearch = <T extends QueryString.ParsedQs>() => {
-  const location = useLocation();
+  const location = useCustomLocation();
 
   return useMemo(() => {
     const searchQuery = qs.parse(location.search, { ignoreQueryPrefix: true });

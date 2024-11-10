@@ -15,6 +15,8 @@ import { SearchedDataProps } from '../components/SearchedData/SearchedData.inter
 import { DataInsightIndex } from '../enums/DataInsight.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { Tag } from '../generated/entity/classification/tag';
+import { APICollection } from '../generated/entity/data/apiCollection';
+import { APIEndpoint } from '../generated/entity/data/apiEndpoint';
 import { Chart } from '../generated/entity/data/chart';
 import { Container } from '../generated/entity/data/container';
 import { Dashboard } from '../generated/entity/data/dashboard';
@@ -23,6 +25,7 @@ import { Database } from '../generated/entity/data/database';
 import { DatabaseSchema } from '../generated/entity/data/databaseSchema';
 import { Glossary } from '../generated/entity/data/glossary';
 import { GlossaryTerm } from '../generated/entity/data/glossaryTerm';
+import { Metric } from '../generated/entity/data/metric';
 import { Mlmodel } from '../generated/entity/data/mlmodel';
 import { Pipeline } from '../generated/entity/data/pipeline';
 import { Query } from '../generated/entity/data/query';
@@ -32,6 +35,7 @@ import { Table } from '../generated/entity/data/table';
 import { Topic } from '../generated/entity/data/topic';
 import { DataProduct } from '../generated/entity/domains/dataProduct';
 import { Domain } from '../generated/entity/domains/domain';
+import { APIService } from '../generated/entity/services/apiService';
 import { DashboardService } from '../generated/entity/services/dashboardService';
 import { DatabaseService } from '../generated/entity/services/databaseService';
 import { IngestionPipeline } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
@@ -41,7 +45,7 @@ import { PipelineService } from '../generated/entity/services/pipelineService';
 import { SearchService } from '../generated/entity/services/searchService';
 import { Team } from '../generated/entity/teams/team';
 import { User } from '../generated/entity/teams/user';
-import { TestCase } from '../generated/tests/testCase';
+import { TestCase, TestCaseResult } from '../generated/tests/testCase';
 import { TestCaseResolutionStatus } from '../generated/tests/testCaseResolutionStatus';
 import { TestSuite } from '../generated/tests/testSuite';
 import { TagLabel } from '../generated/type/tagLabel';
@@ -141,6 +145,15 @@ export interface TestCaseResolutionStatusSearchSource
   serviceType: string;
   description: string;
 }
+export interface TestCaseResultSearchSource
+  extends SearchSourceBase,
+    TestCaseResult {
+  name: string;
+  displayName: string;
+  fullyQualifiedName: string;
+  serviceType: string;
+  description: string;
+}
 
 export interface IngestionPipelineSearchSource
   extends SearchSourceBase,
@@ -170,6 +183,18 @@ export interface StorageServiceSearchSource
   extends SearchSourceBase,
     SearchService {}
 
+export interface APIServiceSearchSource extends SearchSourceBase, APIService {}
+
+export interface APICollectionSearchSource
+  extends SearchSourceBase,
+    APICollection {}
+
+export interface APIEndpointSearchSource
+  extends SearchSourceBase,
+    APIEndpoint {}
+
+export interface MetricSearchSource extends SearchSourceBase, Metric {}
+
 export type ExploreSearchSource =
   | TableSearchSource
   | DashboardSearchSource
@@ -195,7 +220,11 @@ export type ExploreSearchSource =
   | SearchServiceSearchSource
   | StorageServiceSearchSource
   | DomainSearchSource
-  | SearchIndexSearchSource;
+  | SearchIndexSearchSource
+  | APIServiceSearchSource
+  | APICollectionSearchSource
+  | APIEndpointSearchSource
+  | MetricSearchSource;
 
 export type SearchIndexSearchSourceMapping = {
   [SearchIndex.ALL]: TableSearchSource;
@@ -230,6 +259,10 @@ export type SearchIndexSearchSourceMapping = {
   [SearchIndex.DATA_PRODUCT]: DataProductSearchSource;
   [SearchIndex.TEST_SUITE]: TestSuiteSearchSource;
   [SearchIndex.INGESTION_PIPELINE]: IngestionPipelineSearchSource;
+  [SearchIndex.API_SERVICE_INDEX]: APIServiceSearchSource;
+  [SearchIndex.API_COLLECTION_INDEX]: APICollectionSearchSource;
+  [SearchIndex.API_ENDPOINT_INDEX]: APIEndpointSearchSource;
+  [SearchIndex.METRIC_SEARCH_INDEX]: MetricSearchSource;
 };
 
 export type SearchRequest<

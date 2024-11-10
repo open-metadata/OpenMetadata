@@ -1,0 +1,11 @@
+{
+  "name": "testsuite-bot",
+  "displayName": "TestSuiteBot",
+  "description": "Bot used for ingesting data quality.",
+  "fullyQualifiedName": "testsuite-bot",
+  "botUser": {
+    "name" : "testsuite-bot",
+    "type" : "user"
+  },
+  "provider": "system"
+}

@@ -7,8 +7,7 @@
   "javaType": "org.openmetadata.schema.type.TagLabel",
   "definitions": {
     "tagFQN": {
-      "type": "string",
-      "maxLength": 128
+      "type": "string"
     },
     "TagSource": {
       "type": "string",

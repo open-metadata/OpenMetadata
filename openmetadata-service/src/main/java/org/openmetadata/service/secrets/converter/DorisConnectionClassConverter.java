@@ -38,7 +38,7 @@ public class DorisConnectionClassConverter extends ClassConverter {
   public Object convert(Object object) {
     DorisConnection dorisConnection = (DorisConnection) JsonUtils.convertValue(object, this.clazz);
     tryToConvert(dorisConnection.getSslConfig(), SSL_SOURCE_CLASS)
-        .ifPresent(obj -> dorisConnection.setSslConfig((ValidateSSLClientConfig) obj));
+        .ifPresent(dorisConnection::setSslConfig);
     return dorisConnection;
   }
 }

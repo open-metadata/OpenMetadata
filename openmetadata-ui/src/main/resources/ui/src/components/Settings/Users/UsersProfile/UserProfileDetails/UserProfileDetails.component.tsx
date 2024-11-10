@@ -14,7 +14,8 @@
 import { ExclamationCircleFilled } from '@ant-design/icons';
 import { Button, Divider, Input, Space, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import React, { useCallback, useMemo, useState } from 'react';
+import { isEmpty } from 'lodash';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../../../assets/svg/edit-new.svg';
 import {
@@ -94,14 +95,16 @@ const UserProfileDetails = ({
     [userData]
   );
 
-  const onDisplayNameChange = (e: React.ChangeEvent<HTMLInputElement>) =>
-    setDisplayName(e.target.value);
+  const onDisplayNameChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => setDisplayName(e.target.value),
+    []
+  );
 
   const handleDisplayNameSave = useCallback(async () => {
     if (displayName !== userData.displayName) {
       setIsLoading(true);
       await updateUserDetails(
-        { displayName: displayName ?? '' },
+        { displayName: isEmpty(displayName) ? undefined : displayName },
         'displayName'
       );
       setIsLoading(false);
@@ -113,68 +116,6 @@ const UserProfileDetails = ({
     setDisplayName(userData.displayName);
     setIsDisplayNameEdit(false);
   }, [userData.displayName]);
-
-  const displayNameRenderComponent = useMemo(
-    () =>
-      isDisplayNameEdit ? (
-        <InlineEdit
-          isLoading={isLoading}
-          onCancel={handleCloseEditDisplayName}
-          onSave={handleDisplayNameSave}>
-          <Input
-            className="w-full"
-            data-testid="displayName"
-            id="displayName"
-            name="displayName"
-            placeholder={t('label.display-name')}
-            type="text"
-            value={displayName}
-            onChange={onDisplayNameChange}
-          />
-        </InlineEdit>
-      ) : (
-        <Space align="center">
-          <Typography.Text
-            className="font-medium text-md"
-            data-testid="user-name"
-            ellipsis={{ tooltip: true }}
-            style={{ maxWidth: '400px' }}>
-            {hasEditPermission
-              ? userData.displayName ||
-                t('label.add-entity', { entity: t('label.display-name') })
-              : getEntityName(userData)}
-          </Typography.Text>
-          {hasEditPermission && (
-            <Tooltip
-              title={t('label.edit-entity', {
-                entity: t('label.display-name'),
-              })}>
-              <EditIcon
-                className="cursor-pointer align-middle"
-                color={DE_ACTIVE_COLOR}
-                data-testid="edit-displayName"
-                {...ICON_DIMENSION}
-                onClick={(e) => {
-                  // Used to stop click propagation event to parent User.component collapsible panel
-                  e.stopPropagation();
-                  setIsDisplayNameEdit(true);
-                }}
-              />
-            </Tooltip>
-          )}
-        </Space>
-      ),
-    [
-      userData,
-      displayName,
-      isDisplayNameEdit,
-      hasEditPermission,
-      getEntityName,
-      onDisplayNameChange,
-      handleDisplayNameSave,
-      handleCloseEditDisplayName,
-    ]
-  );
 
   const changePasswordRenderComponent = useMemo(
     () =>
@@ -255,16 +196,17 @@ const UserProfileDetails = ({
           'label.domain'
         )} :`}</Typography.Text>
         <DomainLabel
-          domain={userData?.domain}
+          multiple
+          domain={userData?.domains}
           entityFqn={userData.fullyQualifiedName ?? ''}
           entityId={userData.id ?? ''}
           entityType={EntityType.USER}
-          hasPermission={false}
+          hasPermission={Boolean(isAdminUser) && !userData.deleted}
           textClassName="text-sm text-grey-muted"
         />
       </div>
     ),
-    [userData.domain]
+    [userData.domains, isAdminUser]
   );
 
   const handleDefaultPersonaUpdate = useCallback(
@@ -327,6 +269,11 @@ const UserProfileDetails = ({
     }
   }, [userData.id]);
 
+  useEffect(() => {
+    // Reset display name when user data changes
+    setDisplayName(userData.displayName);
+  }, [userData.displayName]);
+
   return (
     <>
       <Space
@@ -336,7 +283,58 @@ const UserProfileDetails = ({
         size="middle">
         <Space className="w-full">
           <UserProfileImage userData={userData} />
-          {displayNameRenderComponent}
+          {isDisplayNameEdit ? (
+            <InlineEdit
+              isLoading={isLoading}
+              onCancel={handleCloseEditDisplayName}
+              onSave={handleDisplayNameSave}>
+              <Input
+                className="w-full"
+                data-testid="displayName"
+                id="displayName"
+                name="displayName"
+                placeholder={t('label.display-name')}
+                type="text"
+                value={displayName}
+                onChange={onDisplayNameChange}
+              />
+            </InlineEdit>
+          ) : (
+            <Space align="center">
+              {userData.displayName && (
+                <Typography.Text
+                  className="font-medium text-md"
+                  data-testid="user-name"
+                  ellipsis={{ tooltip: true }}
+                  style={{ maxWidth: '400px' }}>
+                  {userData.displayName}
+                </Typography.Text>
+              )}
+              {isLoggedInUser && !userData.deleted && (
+                <Tooltip
+                  title={t(
+                    `label.${
+                      isEmpty(userData.displayName) ? 'add' : 'edit'
+                    }-entity`,
+                    {
+                      entity: t('label.display-name'),
+                    }
+                  )}>
+                  <EditIcon
+                    className="cursor-pointer align-middle"
+                    color={DE_ACTIVE_COLOR}
+                    data-testid="edit-displayName"
+                    {...ICON_DIMENSION}
+                    onClick={(e) => {
+                      /* Used to stop click propagation event to parent User.component collapsible panel*/
+                      e.stopPropagation();
+                      setIsDisplayNameEdit(true);
+                    }}
+                  />
+                </Tooltip>
+              )}
+            </Space>
+          )}
           {userData.deleted && (
             <span className="deleted-badge-button" data-testid="deleted-badge">
               <ExclamationCircleFilled className="m-r-xss font-medium text-xs" />

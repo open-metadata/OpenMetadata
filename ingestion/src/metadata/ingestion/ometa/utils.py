@@ -17,6 +17,9 @@ import string
 from typing import Any, Type, TypeVar, Union
 
 from pydantic import BaseModel
+from requests.utils import quote as url_quote
+
+from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 
 T = TypeVar("T", bound=BaseModel)
 
@@ -74,3 +77,11 @@ def model_str(arg: Any) -> str:
         return str(arg.root)
 
     return str(arg)
+
+
+def quote(fqn: Union[FullyQualifiedEntityName, str]) -> str:
+    """
+    Quote the FQN so that it's safe to pass to the API.
+    E.g., `"foo.bar/baz"` -> `%22foo.bar%2Fbaz%22`
+    """
+    return url_quote(model_str(fqn), safe="")

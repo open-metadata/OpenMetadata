@@ -14,13 +14,13 @@ Snowflake source module
 import json
 import traceback
 from datetime import datetime
-from typing import Dict, Iterable, List, Optional, Tuple
+from typing import Iterable, List, Optional, Tuple
 
 import sqlparse
 from snowflake.sqlalchemy.custom_types import VARIANT
 from snowflake.sqlalchemy.snowdialect import SnowflakeDialect, ischema_names
 from sqlalchemy.engine.reflection import Inspector
-from sqlparse.sql import Function, Identifier
+from sqlparse.sql import Function, Identifier, Token
 
 from metadata.generated.schema.api.data.createStoredProcedure import (
     CreateStoredProcedureRequest,
@@ -65,9 +65,6 @@ from metadata.ingestion.source.database.external_table_lineage_mixin import (
 from metadata.ingestion.source.database.incremental_metadata_extraction import (
     IncrementalConfig,
 )
-from metadata.ingestion.source.database.life_cycle_query_mixin import (
-    LifeCycleQueryMixin,
-)
 from metadata.ingestion.source.database.multi_db_source import MultiDBSource
 from metadata.ingestion.source.database.snowflake.models import (
     STORED_PROC_LANGUAGE_MAP,
@@ -83,7 +80,6 @@ from metadata.ingestion.source.database.snowflake.queries import (
     SNOWFLAKE_GET_EXTERNAL_LOCATIONS,
     SNOWFLAKE_GET_ORGANIZATION_NAME,
     SNOWFLAKE_GET_SCHEMA_COMMENTS,
-    SNOWFLAKE_GET_STORED_PROCEDURE_QUERIES,
     SNOWFLAKE_GET_STORED_PROCEDURES,
     SNOWFLAKE_LIFE_CYCLE_QUERY,
     SNOWFLAKE_SESSION_TAG_QUERY,
@@ -105,13 +101,8 @@ from metadata.ingestion.source.database.snowflake.utils import (
     get_view_names_reflection,
     normalize_names,
 )
-from metadata.ingestion.source.database.stored_procedures_mixin import (
-    QueryByProcedure,
-    StoredProcedureMixin,
-)
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database
-from metadata.utils.helpers import get_start_and_end
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import get_all_table_comments, get_all_table_ddls
 from metadata.utils.tag_utils import get_ometa_tag_and_classification
@@ -148,8 +139,6 @@ SnowflakeDialect._get_schema_foreign_keys = get_schema_foreign_keys
 
 
 class SnowflakeSource(
-    LifeCycleQueryMixin,
-    StoredProcedureMixin,
     ExternalTableLineageMixin,
     CommonDbSourceService,
     MultiDBSource,
@@ -330,6 +319,21 @@ class SnowflakeSource(
                         f"Error trying to connect to database {new_database}: {exc}"
                     )
 
+    def __clean_append(self, token: Token, result_list: List) -> None:
+        """
+        Appends the real name of the given token to the result list if it exists.
+
+        Args:
+            token (Token): The token whose real name is to be appended.
+            result_list (List): The list to which the real name will be appended.
+
+        Returns:
+            None
+        """
+        name = token.get_real_name()
+        if name is not None:
+            result_list.append(name)
+
     def __get_identifier_from_function(self, function_token: Function) -> List:
         identifiers = []
         for token in function_token.get_parameters():
@@ -337,7 +341,7 @@ class SnowflakeSource(
                 # get column names from nested functions
                 identifiers.extend(self.__get_identifier_from_function(token))
             elif isinstance(token, Identifier):
-                identifiers.append(token.get_real_name())
+                self.__clean_append(token, identifiers)
         return identifiers
 
     def parse_column_name_from_expr(self, cluster_key_expr: str) -> Optional[List[str]]:
@@ -351,7 +355,7 @@ class SnowflakeSource(
                 if isinstance(token, Function):
                     result.extend(self.__get_identifier_from_function(token))
                 elif isinstance(token, Identifier):
-                    result.append(token.get_real_name())
+                    self.__clean_append(token, result)
             return result
         except Exception as err:
             logger.debug(traceback.format_exc())
@@ -700,22 +704,6 @@ class SnowflakeSource(
                     stackTrace=traceback.format_exc(),
                 )
             )
-
-    def get_stored_procedure_queries_dict(self) -> Dict[str, List[QueryByProcedure]]:
-        """
-        Return the dictionary associating stored procedures to the
-        queries they triggered
-        """
-        start, _ = get_start_and_end(self.source_config.queryLogDuration)
-        query = SNOWFLAKE_GET_STORED_PROCEDURE_QUERIES.format(
-            start_date=start,
-        )
-
-        queries_dict = self.procedure_queries_dict(
-            query=query,
-        )
-
-        return queries_dict
 
     def mark_tables_as_deleted(self):
         """

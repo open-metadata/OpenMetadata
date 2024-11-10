@@ -75,6 +75,7 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
     ):
         super().__init__(config, metadata)
         self.generate_sample_data = self.config.sourceConfig.config.generateSampleData
+        self.service_connection = self.config.serviceConnection.root.config
         self.admin_client = self.connection.admin_client
         self.schema_registry_client = self.connection.schema_registry_client
         self.context.processed_schemas = {}
@@ -236,15 +237,27 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
         return None
 
     def _parse_topic_metadata(self, topic_name: str) -> Optional[Schema]:
+
+        # To find topic in artifact registry, dafault is "<topic_name>-value"
+        # But suffix can be overridden using schemaRegistryTopicSuffixName
+        topic_schema_registry_name = (
+            topic_name + self.service_connection.schemaRegistryTopicSuffixName
+        )
+
         try:
             if self.schema_registry_client:
                 registered_schema = self.schema_registry_client.get_latest_version(
-                    topic_name + "-value"
+                    topic_schema_registry_name
                 )
                 return registered_schema.schema
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Failed to get schema for topic [{topic_name}]: {exc}")
+            logger.warning(
+                (
+                    f"Failed to get schema for topic [{topic_name}] "
+                    f"(looking for {topic_schema_registry_name}) in registry: {exc}"
+                )
+            )
             self.status.warning(
                 topic_name, f"failed to get schema: {exc} for topic {topic_name}"
             )

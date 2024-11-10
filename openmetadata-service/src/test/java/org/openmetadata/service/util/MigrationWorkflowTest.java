@@ -28,7 +28,7 @@ public class MigrationWorkflowTest extends OpenMetadataApplicationTest {
     migrationWorkflow =
         spy(
             new MigrationWorkflow(
-                jdbi, "nativePath", ConnectionType.MYSQL, "extensionPath", false));
+                jdbi, "nativePath", ConnectionType.MYSQL, "extensionPath", null, null, false));
 
     omMigrationList =
         List.of(
@@ -36,16 +36,22 @@ public class MigrationWorkflowTest extends OpenMetadataApplicationTest {
                 new File("/bootstrap/sql/migrations/native/1.1.0"),
                 null,
                 ConnectionType.MYSQL,
+                migrationWorkflow.getPipelineServiceClientConfiguration(),
+                migrationWorkflow.getAuthenticationConfiguration(),
                 false),
             new MigrationFile(
                 new File("/bootstrap/sql/migrations/native/1.2.0"),
                 null,
                 ConnectionType.MYSQL,
+                migrationWorkflow.getPipelineServiceClientConfiguration(),
+                migrationWorkflow.getAuthenticationConfiguration(),
                 false),
             new MigrationFile(
                 new File("/bootstrap/sql/migrations/native/1.2.1"),
                 null,
                 ConnectionType.MYSQL,
+                migrationWorkflow.getPipelineServiceClientConfiguration(),
+                migrationWorkflow.getAuthenticationConfiguration(),
                 false));
 
     collateMigrationList =
@@ -54,11 +60,15 @@ public class MigrationWorkflowTest extends OpenMetadataApplicationTest {
                 new File("/bootstrap-collate/sql/migrations/native/1.1.0-collate"),
                 null,
                 ConnectionType.MYSQL,
+                migrationWorkflow.getPipelineServiceClientConfiguration(),
+                migrationWorkflow.getAuthenticationConfiguration(),
                 true),
             new MigrationFile(
                 new File("/bootstrap-collate/sql/migrations/native/1.2.2-collate"),
                 null,
                 ConnectionType.MYSQL,
+                migrationWorkflow.getPipelineServiceClientConfiguration(),
+                migrationWorkflow.getAuthenticationConfiguration(),
                 true));
   }
 
@@ -66,13 +76,20 @@ public class MigrationWorkflowTest extends OpenMetadataApplicationTest {
   void test_getMigrationFiles() {
     Mockito.doReturn(omMigrationList)
         .when(migrationWorkflow)
-        .getMigrationFilesFromPath(eq("nativePath"), any(ConnectionType.class), eq(false));
+        .getMigrationFilesFromPath(
+            eq("nativePath"), any(ConnectionType.class), eq(null), eq(null), eq(false));
     Mockito.doReturn(collateMigrationList)
         .when(migrationWorkflow)
-        .getMigrationFilesFromPath(eq("extensionPath"), any(ConnectionType.class), eq(true));
+        .getMigrationFilesFromPath(
+            eq("extensionPath"), any(ConnectionType.class), eq(null), eq(null), eq(true));
 
     List<MigrationFile> foundList =
-        migrationWorkflow.getMigrationFiles("nativePath", ConnectionType.MYSQL, "extensionPath");
+        migrationWorkflow.getMigrationFiles(
+            "nativePath",
+            ConnectionType.MYSQL,
+            "extensionPath",
+            migrationWorkflow.getPipelineServiceClientConfiguration(),
+            migrationWorkflow.getAuthenticationConfiguration());
 
     assertEquals(
         List.of("1.1.0", "1.1.0-collate", "1.2.0", "1.2.1", "1.2.2-collate"),

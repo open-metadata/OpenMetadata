@@ -35,10 +35,6 @@ const EditorSlots = forwardRef<EditorSlotsRef, EditorSlotsProps>(
 
     const handleLinkCancel = () => {
       handleLinkToggle();
-      if (!isNil(editor)) {
-        editor.chain().focus().extendMarkRange('link').unsetLink().run();
-        editor.chain().blur().run();
-      }
     };
 
     const handleLinkSave = (values: LinkData, op: 'edit' | 'add') => {
@@ -82,6 +78,11 @@ const EditorSlots = forwardRef<EditorSlotsRef, EditorSlotsProps>(
     const handleLinkPopup = (
       e: React.MouseEvent<HTMLDivElement, MouseEvent>
     ) => {
+      // if editor is not editable, do not show the link popup
+      if (!editor?.isEditable) {
+        return;
+      }
+
       let popup: Instance<Props>[] = [];
       let component: ReactRenderer;
       const target = e.target as HTMLElement;
@@ -98,8 +99,11 @@ const EditorSlots = forwardRef<EditorSlotsRef, EditorSlotsProps>(
 
         return;
       }
-      if (target.nodeName === 'A') {
-        const href = target.getAttribute('href');
+
+      const closestElement = target.closest('a');
+      if (target.nodeName === 'A' || closestElement) {
+        const href =
+          target.getAttribute('href') || closestElement?.getAttribute('href');
 
         component = new ReactRenderer(LinkPopup, {
           editor: editor as Editor,

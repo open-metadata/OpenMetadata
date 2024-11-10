@@ -65,4 +65,5 @@ export const ENTITIES_WITHOUT_FOLLOWING_BUTTON = [
   'services/storageServices',
   'services/metadataServices',
   'services/searchServices',
+  'apiCollections',
 ];

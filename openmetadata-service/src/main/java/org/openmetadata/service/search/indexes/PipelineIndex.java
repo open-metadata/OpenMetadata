@@ -46,9 +46,6 @@ public class PipelineIndex implements SearchIndex {
     Map<String, Object> commonAttributes = getCommonAttributesMap(pipeline, Entity.PIPELINE);
     doc.putAll(commonAttributes);
     doc.put("name", pipeline.getName() != null ? pipeline.getName() : pipeline.getDisplayName());
-    doc.put(
-        "displayName",
-        pipeline.getDisplayName() != null ? pipeline.getDisplayName() : pipeline.getName());
     doc.put("tags", parseTags.getTags());
     doc.put("tier", parseTags.getTierTag());
     doc.put("task_suggest", taskSuggest);

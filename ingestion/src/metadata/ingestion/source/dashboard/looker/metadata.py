@@ -28,6 +28,7 @@ from typing import Dict, Iterable, List, Optional, Sequence, Set, Type, Union, c
 
 import giturlparse
 import lkml
+from liquid import Template
 from looker_sdk.sdk.api40.methods import Looker40SDK
 from looker_sdk.sdk.api40.models import Dashboard as LookerDashboard
 from looker_sdk.sdk.api40.models import (
@@ -73,6 +74,9 @@ from metadata.generated.schema.security.credentials.bitbucketCredentials import 
 from metadata.generated.schema.security.credentials.githubCredentials import (
     GitHubCredentials,
 )
+from metadata.generated.schema.security.credentials.gitlabCredentials import (
+    GitlabCredentials,
+)
 from metadata.generated.schema.type.basic import (
     EntityName,
     FullyQualifiedEntityName,
@@ -83,6 +87,7 @@ from metadata.generated.schema.type.basic import (
 from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDetails
 from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.generated.schema.type.usageRequest import UsageRequest
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
@@ -202,6 +207,7 @@ class LookerSource(DashboardServiceSource):
                 NoGitCredentials,
                 GitHubCredentials,
                 BitBucketCredentials,
+                GitlabCredentials,
             ]
         ]
     ) -> "LookMLRepo":
@@ -224,6 +230,7 @@ class LookerSource(DashboardServiceSource):
                 NoGitCredentials,
                 GitHubCredentials,
                 BitBucketCredentials,
+                GitlabCredentials,
             ]
         ],
         path="manifest.lkml",
@@ -283,7 +290,7 @@ class LookerSource(DashboardServiceSource):
             }
             logger.info(f"We found the following parsers:\n {self._project_parsers}")
 
-    def get_lookml_project_credentials(self, project_name: str) -> GitHubCredentials:
+    def get_lookml_project_credentials(self, project_name: str) -> ReadersCredentials:
         """
         Given a lookml project, get its git URL and build the credentials
         """
@@ -304,7 +311,7 @@ class LookerSource(DashboardServiceSource):
         Depending on the type of the credentials we'll need a different reader
         """
         if not self._reader_class and self.service_connection.gitCredentials:
-            # Both credentials from Github & Bitbucket will process by LocalReader
+            # Credentials from Github/Gitlab/Bitbucket will process by LocalReader
             self._reader_class = LocalReader
 
         return self._reader_class
@@ -318,7 +325,7 @@ class LookerSource(DashboardServiceSource):
         """
         if not self._repo_credentials:
             if self.service_connection.gitCredentials and isinstance(
-                self.service_connection.gitCredentials, GitHubCredentials
+                self.service_connection.gitCredentials, ReadersCredentials
             ):
                 self._repo_credentials = self.service_connection.gitCredentials
 
@@ -444,11 +451,11 @@ class LookerSource(DashboardServiceSource):
                                 view.name, "Data model (View) filtered out."
                             )
                             continue
-
+                        view_name = view.from_ if view.from_ else view.name
                         yield from self._process_view(
-                            view_name=ViewName(view.name), explore=model
+                            view_name=ViewName(view_name), explore=model
                         )
-                    if len(model.joins) == 0 and model.sql_table_name:
+                    if model.view_name:
                         yield from self._process_view(
                             view_name=ViewName(model.view_name), explore=model
                         )
@@ -564,7 +571,8 @@ class LookerSource(DashboardServiceSource):
             db_service_names = self.get_db_service_names()
 
             if view.sql_table_name:
-                source_table_name = self._clean_table_name(view.sql_table_name)
+                sql_table_name = self._render_table_name(view.sql_table_name)
+                source_table_name = self._clean_table_name(sql_table_name)
 
                 # View to the source is only there if we are informing the dbServiceNames
                 for db_service_name in db_service_names or []:
@@ -638,7 +646,7 @@ class LookerSource(DashboardServiceSource):
 
     def get_owner_ref(
         self, dashboard_details: LookerDashboard
-    ) -> Optional[EntityReference]:
+    ) -> Optional[EntityReferenceList]:
         """Get dashboard owner
 
         Store the visited users in the _owners_ref cache, even if we found them
@@ -692,7 +700,7 @@ class LookerSource(DashboardServiceSource):
                 f"{clean_uri(self.service_connection.hostPort)}/dashboards/{dashboard_details.id}"
             ),
             service=self.context.get().dashboard_service,
-            owner=self.get_owner_ref(dashboard_details=dashboard_details),
+            owners=self.get_owner_ref(dashboard_details=dashboard_details),
         )
         yield Either(right=dashboard_request)
         self.register_record(dashboard_request=dashboard_request)
@@ -719,6 +727,33 @@ class LookerSource(DashboardServiceSource):
         """
 
         return table_name.lower().split(" as ")[0].strip()
+
+    @staticmethod
+    def _render_table_name(table_name: str) -> str:
+        """
+        sql_table_names might contain Liquid templates
+        when defining an explore. e.g,:
+        sql_table_name:
+            {% if openmetadata %}
+                event
+            {% elsif event.created_week._in_query %}
+                event_by_week
+            {% else %}
+                event
+            {% endif %} ;;
+        we should render the template and give the option
+        to render a specific value during metadata ingestion
+        using the "openmetadata" context argument
+        :param table_name: table name with possible templating
+        :return: rendered table name
+        """
+        try:
+            context = {"openmetadata": True}
+            template = Template(table_name)
+            sql_table_name = template.render(context)
+        except Exception:
+            sql_table_name = table_name
+        return sql_table_name
 
     @staticmethod
     def get_dashboard_sources(dashboard_details: LookerDashboard) -> Set[str]:

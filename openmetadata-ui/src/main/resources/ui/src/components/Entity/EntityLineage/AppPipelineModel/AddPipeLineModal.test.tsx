@@ -20,15 +20,21 @@ const mockProps = {
   showAddEdgeModal: true,
   edgeSearchValue: '',
   selectedEdgeId: undefined,
-  edgeOptions: [
-    {
-      displayName: 'Pipeline 1',
-      name: 'Pipeline 1',
-      id: 'test-pipeline-1',
-      type: 'pipeline',
-      fullyQualifiedName: 'sample_airflow/presto_etl',
+  selectedEdge: {
+    id: '1',
+    source: 'table1',
+    target: 'table2',
+    data: {
+      edge: {
+        pipeline: {
+          name: 'Pipeline 1',
+          id: 'test-pipeline-1',
+          type: 'pipeline',
+          fullyQualifiedName: 'sample_airflow/presto_etl',
+        },
+      },
     },
-  ],
+  },
   onModalCancel: jest.fn(),
   onSave: jest.fn(),
   onRemoveEdgeClick: jest.fn(),

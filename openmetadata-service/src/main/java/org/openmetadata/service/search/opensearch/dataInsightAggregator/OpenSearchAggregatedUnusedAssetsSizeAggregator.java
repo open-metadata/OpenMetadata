@@ -1,5 +1,6 @@
 package org.openmetadata.service.search.opensearch.dataInsightAggregator;
 
+import java.time.ZonedDateTime;
 import java.util.List;
 import org.openmetadata.service.dataInsight.AggregatedUnusedAssetsSizeAggregator;
 import os.org.opensearch.search.aggregations.Aggregations;
@@ -24,8 +25,8 @@ public class OpenSearchAggregatedUnusedAssetsSizeAggregator
   }
 
   @Override
-  protected String getKeyAsString(Bucket bucket) {
-    return bucket.getKeyAsString();
+  protected long getKeyAsEpochTimestamp(Bucket bucket) {
+    return ((ZonedDateTime) bucket.getKey()).toInstant().toEpochMilli();
   }
 
   @Override

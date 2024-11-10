@@ -13,9 +13,12 @@
 
 package org.openmetadata.service.resources.settings;
 
+import static org.openmetadata.schema.settings.SettingsType.ASSET_CERTIFICATION_SETTINGS;
 import static org.openmetadata.schema.settings.SettingsType.CUSTOM_UI_THEME_PREFERENCE;
 import static org.openmetadata.schema.settings.SettingsType.EMAIL_CONFIGURATION;
+import static org.openmetadata.schema.settings.SettingsType.LINEAGE_SETTINGS;
 import static org.openmetadata.schema.settings.SettingsType.LOGIN_CONFIGURATION;
+import static org.openmetadata.schema.settings.SettingsType.SEARCH_SETTINGS;
 
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
@@ -28,6 +31,10 @@ import org.openmetadata.api.configuration.LogoConfiguration;
 import org.openmetadata.api.configuration.ThemeConfiguration;
 import org.openmetadata.api.configuration.UiThemePreference;
 import org.openmetadata.schema.api.configuration.LoginConfiguration;
+import org.openmetadata.schema.api.lineage.LineageLayer;
+import org.openmetadata.schema.api.lineage.LineageSettings;
+import org.openmetadata.schema.api.search.SearchSettings;
+import org.openmetadata.schema.configuration.AssetCertificationSettings;
 import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
@@ -111,6 +118,45 @@ public class SettingsCache {
                       .withJwtTokenExpiryTime(3600));
       systemRepository.createNewSetting(setting);
     }
+
+    // Initialise Rbac Settings
+    Settings storedRbacSettings = systemRepository.getConfigWithKey(SEARCH_SETTINGS.toString());
+    if (storedRbacSettings == null) {
+      // Only in case a config doesn't exist in DB we insert it
+      Settings setting =
+          new Settings()
+              .withConfigType(SEARCH_SETTINGS)
+              .withConfigValue(new SearchSettings().withEnableAccessControl(false));
+      systemRepository.createNewSetting(setting);
+    }
+
+    // Initialise Certification Settings
+    Settings certificationSettings =
+        systemRepository.getConfigWithKey(ASSET_CERTIFICATION_SETTINGS.toString());
+    if (certificationSettings == null) {
+      Settings setting =
+          new Settings()
+              .withConfigType(ASSET_CERTIFICATION_SETTINGS)
+              .withConfigValue(
+                  new AssetCertificationSettings()
+                      .withAllowedClassification("Certification")
+                      .withValidityPeriod("P30D"));
+      systemRepository.createNewSetting(setting);
+    }
+
+    Settings lineageSettings = systemRepository.getConfigWithKey(LINEAGE_SETTINGS.toString());
+    if (lineageSettings == null) {
+      // Only in case a config doesn't exist in DB we insert it
+      Settings setting =
+          new Settings()
+              .withConfigType(LINEAGE_SETTINGS)
+              .withConfigValue(
+                  new LineageSettings()
+                      .withDownstreamDepth(2)
+                      .withUpstreamDepth(2)
+                      .withLineageLayer(LineageLayer.ENTITY_LINEAGE));
+      systemRepository.createNewSetting(setting);
+    }
   }
 
   public static <T> T getSetting(SettingsType settingName, Class<T> clazz) {
@@ -149,6 +195,21 @@ public class SettingsCache {
           // Only if available
           fetchedSettings = systemRepository.getSlackApplicationConfigInternal();
           LOG.info("Loaded Slack Application Configuration");
+        }
+        case SLACK_BOT -> {
+          // Only if available
+          fetchedSettings = systemRepository.getSlackbotConfigInternal();
+          LOG.info("Loaded Slack Bot Configuration");
+        }
+        case SLACK_INSTALLER -> {
+          // Only if available
+          fetchedSettings = systemRepository.getSlackInstallerConfigInternal();
+          LOG.info("Loaded Slack Installer Configuration");
+        }
+        case SLACK_STATE -> {
+          // Only if available
+          fetchedSettings = systemRepository.getSlackStateConfigInternal();
+          LOG.info("Loaded Slack state Configuration");
         }
         default -> {
           fetchedSettings = systemRepository.getConfigWithKey(settingsName);

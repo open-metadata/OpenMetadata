@@ -26,6 +26,7 @@ from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.entity.domains.dataProduct import DataProduct
 from metadata.generated.schema.entity.domains.domain import Domain
+from metadata.generated.schema.entity.services.apiService import ApiService
 from metadata.generated.schema.entity.services.dashboardService import DashboardService
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.messagingService import MessagingService
@@ -39,6 +40,7 @@ from metadata.generated.schema.entity.teams.user import User
 
 DOT = "_DOT_"
 TEN_MIN = 10 * 60
+THREE_MIN = 3 * 60
 UTF_8 = "utf-8"
 CHUNKSIZE = 200000
 DEFAULT_DATABASE = "default"
@@ -76,6 +78,7 @@ ENTITY_REFERENCE_CLASS_MAP = {
     # Service Entities
     "databaseService": DatabaseService,
     "messagingService": MessagingService,
+    "apiService": ApiService,
     "dashboardService": DashboardService,
     "pipelineService": PipelineService,
     "storageService": StorageService,
@@ -106,3 +109,5 @@ ENTITY_REFERENCE_CLASS_MAP = {
 ENTITY_REFERENCE_TYPE_MAP = {
     value.__name__: key for key, value in ENTITY_REFERENCE_CLASS_MAP.items()
 }
+
+CUSTOM_CONNECTOR_PREFIX = "custom"

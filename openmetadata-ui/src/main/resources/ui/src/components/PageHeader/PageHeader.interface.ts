@@ -11,11 +11,15 @@
  *  limitations under the License.
  */
 
+import { TypographyProps } from 'antd';
+import { ParagraphProps } from 'antd/lib/typography/Paragraph';
 import { ReactNode } from 'react';
 
 export interface HeaderProps {
   data: {
     header: ReactNode;
-    subHeader: string;
+    subHeader: ReactNode;
   };
+  titleProps?: TypographyProps;
+  subHeaderProps?: ParagraphProps;
 }

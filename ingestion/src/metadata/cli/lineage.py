@@ -21,11 +21,14 @@ from pydantic import BaseModel
 
 from metadata.config.common import load_config_file
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
+    PipelineType,
+)
 from metadata.generated.schema.metadataIngestion.workflow import WorkflowConfig
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.constants import UTF_8
-from metadata.utils.logger import cli_logger
-from metadata.workflow.workflow_output_handler import WorkflowType, print_init_error
+from metadata.utils.logger import cli_logger, redacted_config
+from metadata.workflow.workflow_init_error_handler import WorkflowInitErrorHandler
 
 logger = cli_logger()
 
@@ -49,11 +52,14 @@ def run_lineage(config_path: Path) -> None:
     config_dict = None
     try:
         config_dict = load_config_file(config_path)
+        logger.debug("Using workflow config:\n%s", redacted_config(config_dict))
         workflow = LineageWorkflow.model_validate(config_dict)
 
     except Exception as exc:
         logger.debug(traceback.format_exc())
-        print_init_error(exc, config_dict, WorkflowType.INGEST)
+        WorkflowInitErrorHandler.print_init_error(
+            exc, config_dict, PipelineType.lineage
+        )
         sys.exit(1)
 
     if workflow.filePath:

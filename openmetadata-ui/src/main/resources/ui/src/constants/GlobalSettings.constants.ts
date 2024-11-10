@@ -22,6 +22,7 @@ export enum GlobalSettingsMenuCategory {
   SERVICES = 'services',
   BOTS = 'bots',
   APPLICATIONS = 'apps',
+  PERSONA = 'persona',
 }
 
 export enum GlobalSettingOptions {
@@ -70,6 +71,14 @@ export enum GlobalSettingOptions {
   PROFILER_CONFIGURATION = 'profiler-configuration',
   APPEARANCE = 'appearance',
   DASHBOARD_DATA_MODEL = 'dashboardDataModels',
+  DATA_OBSERVABILITY = 'dataObservability',
+  APIS = 'apiServices',
+  API_COLLECTIONS = 'apiCollections',
+  API_ENDPOINTS = 'apiEndpoints',
+  DATA_PRODUCT = 'dataProducts',
+  METRICS = 'metrics',
+  SEARCH_RBAC = 'search-rbac',
+  LINEAGE_CONFIG = 'lineageConfig',
 }
 
 export const GLOBAL_SETTING_PERMISSION_RESOURCES = [

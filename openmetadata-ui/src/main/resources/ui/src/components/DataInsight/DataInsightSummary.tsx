@@ -16,10 +16,7 @@ import { AxiosError } from 'axios';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
-import {
-  ENTITIES_CHARTS,
-  WEB_CHARTS,
-} from '../../constants/DataInsight.constants';
+import { WEB_CHARTS } from '../../constants/DataInsight.constants';
 import { DataReportIndex } from '../../generated/dataInsight/dataInsightChart';
 import {
   DataInsightChartResult,
@@ -31,10 +28,16 @@ import {
   ChartFilter,
   DataInsightTabs,
 } from '../../interface/data-insight.interface';
-import { getAggregateChartData } from '../../rest/DataInsightAPI';
+import { useDataInsightProvider } from '../../pages/DataInsightPage/DataInsightProvider';
+import {
+  getAggregateChartData,
+  getMultiChartsPreviewByName,
+  SystemChartType,
+} from '../../rest/DataInsightAPI';
 import { getTeamByName } from '../../rest/teamsAPI';
 import {
   getEntitiesChartSummary,
+  getQueryFilterForDataInsightChart,
   getWebChartSummary,
 } from '../../utils/DataInsightUtils';
 import { getEntityName } from '../../utils/EntityUtils';
@@ -45,7 +48,7 @@ import './data-insight-detail.less';
 
 interface Props {
   chartFilter: ChartFilter;
-  onScrollToChart: (chartType: DataInsightChartType) => void;
+  onScrollToChart: (chartType: SystemChartType | DataInsightChartType) => void;
 }
 
 const DataInsightSummary: FC<Props> = ({ chartFilter, onScrollToChart }) => {
@@ -53,20 +56,18 @@ const DataInsightSummary: FC<Props> = ({ chartFilter, onScrollToChart }) => {
     useParams<{ tab: DataInsightTabs }>();
 
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [entitiesCharts, setEntitiesChart] = useState<
-    (DataInsightChartResult | undefined)[]
-  >([]);
   const [webCharts, setWebCharts] = useState<
     (DataInsightChartResult | undefined)[]
   >([]);
+  const { entitiesSummary, updateEntitySummary } = useDataInsightProvider();
 
   const [mostActiveUser, setMostActiveUser] = useState<MostActiveUsers>();
 
   const [OrganizationDetails, setOrganizationDetails] = useState<Team>();
 
   const entitiesSummaryList = useMemo(
-    () => getEntitiesChartSummary(entitiesCharts),
-    [entitiesCharts, chartFilter]
+    () => getEntitiesChartSummary(entitiesSummary),
+    [entitiesSummary, chartFilter]
   );
 
   const webSummaryList = useMemo(
@@ -88,29 +89,25 @@ const DataInsightSummary: FC<Props> = ({ chartFilter, onScrollToChart }) => {
   const fetchEntitiesChartData = async () => {
     setIsLoading(true);
     try {
-      const promises = ENTITIES_CHARTS.map((chartName) => {
-        const params = {
-          ...chartFilter,
-          dataInsightChartName: chartName,
-          dataReportIndex: DataReportIndex.EntityReportDataIndex,
-        };
+      const filter = getQueryFilterForDataInsightChart(
+        chartFilter.team,
+        chartFilter.tier
+      );
+      const chartsData = await getMultiChartsPreviewByName(
+        [
+          SystemChartType.TotalDataAssetsSummaryCard,
+          SystemChartType.DataAssetsWithDescriptionSummaryCard,
+          SystemChartType.DataAssetsWithOwnerSummaryCard,
+          SystemChartType.TotalDataAssetsWithTierSummaryCard,
+        ],
+        {
+          start: chartFilter.startTs,
+          end: chartFilter.endTs,
+          filter,
+        }
+      );
 
-        return getAggregateChartData(params);
-      });
-
-      const responses = await Promise.allSettled(promises);
-
-      const chartDataList = responses
-        .map((response) => {
-          if (response.status === 'fulfilled') {
-            return response.value;
-          }
-
-          return;
-        })
-        .filter(Boolean);
-
-      setEntitiesChart(chartDataList);
+      updateEntitySummary(chartsData);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -171,10 +168,13 @@ const DataInsightSummary: FC<Props> = ({ chartFilter, onScrollToChart }) => {
 
   useEffect(() => {
     fetchOrganizationDetails();
-    fetchEntitiesChartData();
-    fetchMostActiveUser();
-    fetchWebChartData();
-  }, [chartFilter]);
+  }, []);
+
+  useEffect(() => {
+    tab === DataInsightTabs.DATA_ASSETS && fetchEntitiesChartData();
+    tab === DataInsightTabs.APP_ANALYTICS && fetchMostActiveUser();
+    tab === DataInsightTabs.APP_ANALYTICS && fetchWebChartData();
+  }, [chartFilter, tab]);
 
   return (
     <div data-testid="summary-card">
@@ -202,12 +202,7 @@ const DataInsightSummary: FC<Props> = ({ chartFilter, onScrollToChart }) => {
                   total={0}
                   value={`${summary.latest}
                     ${
-                      summary.id.startsWith('Percentage') ||
-                      summary.id.includes(
-                        DataInsightChartType.TotalEntitiesByTier
-                      )
-                        ? '%'
-                        : ''
+                      summary.id === SystemChartType.TotalDataAssets ? '' : '%'
                     }`}
                 />
               </Col>

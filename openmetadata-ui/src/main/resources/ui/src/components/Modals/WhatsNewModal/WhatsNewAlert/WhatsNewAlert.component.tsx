@@ -14,21 +14,21 @@ import { Affix, Button, Card, Col, Row, Space, Typography } from 'antd';
 import { CookieStorage } from 'cookie-storage';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useLocation } from 'react-router-dom';
 import { ReactComponent as CloseIcon } from '../../../../assets/svg/close.svg';
 import { ReactComponent as RightArrowIcon } from '../../../../assets/svg/ic-arrow-right-full.svg';
 import { ReactComponent as PlayIcon } from '../../../../assets/svg/ic-play-button.svg';
 import { BLACK_COLOR, ROUTES } from '../../../../constants/constants';
 import { useAuth } from '../../../../hooks/authHooks';
+import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
 import { getReleaseVersionExpiry } from '../../../../utils/WhatsNewModal.util';
-import { COOKIE_VERSION, LATEST_VERSION_ID, WHATS_NEW } from '../whatsNewData';
+import { COOKIE_VERSION, WHATS_NEW } from '../whatsNewData';
 import WhatsNewModal from '../WhatsNewModal';
 
 const cookieStorage = new CookieStorage();
 
 const WhatsNewAlert = () => {
   const { t } = useTranslation();
-  const location = useLocation();
+  const location = useCustomLocation();
   const { isFirstTimeUser } = useAuth();
   const [showWhatsNew, setShowWhatsNew] = useState({
     alert: false,
@@ -36,8 +36,8 @@ const WhatsNewAlert = () => {
   });
 
   const latestVersion = useMemo(
-    () => WHATS_NEW[LATEST_VERSION_ID],
-    [WHATS_NEW, LATEST_VERSION_ID]
+    () => WHATS_NEW[WHATS_NEW.length - 1], // latest version will be last in the array
+    [WHATS_NEW]
   );
   const isHomePage = useMemo(
     () => location.pathname.includes(ROUTES.MY_DATA),

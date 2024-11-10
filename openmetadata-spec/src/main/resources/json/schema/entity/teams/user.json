@@ -136,9 +136,9 @@
       "description": "If the User has verified the mail",
       "type": "boolean"
     },
-    "domain" : {
+    "domains" : {
       "description": "Domain the User belongs to. This is inherited by the team the user belongs to.",
-      "$ref": "../../type/entityReference.json"
+      "$ref": "../../type/entityReferenceList.json"
     }
   },
   "additionalProperties": false,

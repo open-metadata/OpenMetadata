@@ -34,9 +34,10 @@
         "$ref" : "../../type/basic.json#/definitions/fullyQualifiedEntityName"
       }
     },
-    "owner": {
-      "description": "Owner of this data model.",
-      "$ref": "../../type/entityReference.json"
+    "owners": {
+      "description": "Owners of this data model.",
+      "$ref": "../../type/entityReferenceList.json",
+      "default": null
     },
     "service": {
       "description": "Link to the data model service where this data model is hosted in.",

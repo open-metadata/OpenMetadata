@@ -37,6 +37,7 @@ const NextPrevious: FC<NextPreviousProps> = ({
   pageSize,
   isNumberBased = false,
   currentPage = 1,
+  isLoading,
   ...pagingProps
 }: NextPreviousProps) => {
   const { t } = useTranslation();
@@ -91,7 +92,7 @@ const NextPrevious: FC<NextPreviousProps> = ({
         ghost
         className="hover-button text-sm flex-center"
         data-testid="previous"
-        disabled={computePrevDisableState()}
+        disabled={computePrevDisableState() || isLoading}
         icon={<ArrowLeftOutlined />}
         type="primary"
         onClick={onPreviousHandler}>
@@ -105,7 +106,7 @@ const NextPrevious: FC<NextPreviousProps> = ({
         ghost
         className="hover-button text-sm flex-center"
         data-testid="next"
-        disabled={computeNextDisableState()}
+        disabled={computeNextDisableState() || isLoading}
         type="primary"
         onClick={onNextHandler}>
         <span> {t('label.next')}</span>
@@ -113,6 +114,7 @@ const NextPrevious: FC<NextPreviousProps> = ({
       </Button>
       {onShowSizeChange && (
         <Dropdown
+          disabled={isLoading}
           menu={{
             items: pageSizeOptions.map((size) => ({
               label: `${size} / Page`,

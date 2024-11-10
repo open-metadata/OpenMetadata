@@ -17,7 +17,10 @@ export interface ResizablePanelsProps {
   secondPanel: PanelProps;
   pageTitle?: string;
   hideSecondPanel?: boolean;
-  applyDefaultStyle?: boolean;
+}
+
+export interface ResizablePanelsLeftProps extends ResizablePanelsProps {
+  hideFirstPanel?: boolean;
 }
 
 export interface PanelProps {

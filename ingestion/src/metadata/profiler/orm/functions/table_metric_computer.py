@@ -176,6 +176,8 @@ class SnowflakeTableMetricComputer(BaseTableMetricComputer):
         )
 
         rest = self._runner._session.execute(query).first()
+        if not rest:
+            return None
         if rest.rowCount is None:
             # if we don't have any row count, fallback to the base logic
             return super().compute()
@@ -194,7 +196,7 @@ class OracleTableMetricComputer(BaseTableMetricComputer):
                     Column("object_name").label("table_name"),
                     Column("created"),
                 ],
-                self._build_table("all_objects", None),
+                self._build_table("DBA_OBJECTS", None),
                 [
                     func.lower(Column("owner")) == self.schema_name.lower(),
                     func.lower(Column("object_name")) == self.table_name.lower(),
@@ -209,7 +211,7 @@ class OracleTableMetricComputer(BaseTableMetricComputer):
                     Column("table_name"),
                     Column("NUM_ROWS"),
                 ],
-                self._build_table("all_tables", None),
+                self._build_table("DBA_TABLES", None),
                 [
                     func.lower(Column("owner")) == self.schema_name.lower(),
                     func.lower(Column("table_name")) == self.table_name.lower(),
@@ -324,7 +326,7 @@ class BigQueryTableMetricComputer(BaseTableMetricComputer):
         columns = [
             Column("row_count").label("rowCount"),
             Column("size_bytes").label("sizeInBytes"),
-            Column("creation_time").label("createDateTime"),
+            func.TIMESTAMP_MILLIS(Column("creation_time")).label(CREATE_DATETIME),
             *self._get_col_names_and_count(),
         ]
         where_clause = [
@@ -333,7 +335,6 @@ class BigQueryTableMetricComputer(BaseTableMetricComputer):
             Column("dataset_id") == self.schema_name,
             Column("table_id") == self.table_name,
         ]
-
         query = self._build_query(
             columns,
             self._build_table(
@@ -411,7 +412,7 @@ class RedshiftTableMetricComputer(BaseTableMetricComputer):
         )
         res = self.runner._session.execute(query).first()
         if not res:
-            return None
+            return super().compute()
         if res.rowCount is None or (
             res.rowCount == 0 and self._entity.tableType == TableType.View
         ):

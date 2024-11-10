@@ -23,6 +23,7 @@ import { Link, useHistory } from 'react-router-dom';
 import {
   DISABLED,
   getServiceDetailsPath,
+  INITIAL_PAGING_VALUE,
   pagingObject,
 } from '../../../constants/constants';
 import { CONNECTORS_DOCS } from '../../../constants/docs.constants';
@@ -39,6 +40,7 @@ import { ServiceCategory } from '../../../enums/service.enum';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { EntityReference } from '../../../generated/entity/type';
 import { Include } from '../../../generated/type/include';
+import LimitWrapper from '../../../hoc/LimitWrapper';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { useAirflowStatus } from '../../../hooks/useAirflowStatus';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
@@ -117,6 +119,8 @@ const Services = ({ serviceName }: ServicesProps) => {
         return SearchIndex.STORAGE_SERVICE;
       case ServiceCategory.SEARCH_SERVICES:
         return SearchIndex.SEARCH_SERVICE;
+      case ServiceCategory.API_SERVICES:
+        return SearchIndex.API_SERVICE_INDEX;
     }
 
     return SearchIndex.DATABASE_SERVICE;
@@ -191,15 +195,27 @@ const Services = ({ serviceName }: ServicesProps) => {
     [searchIndex, serviceName, deleted]
   );
 
-  const handleServicePageChange = ({
-    cursorType,
-    currentPage,
-  }: PagingHandlerParams) => {
-    if (cursorType) {
-      getServiceDetails({ [cursorType]: paging[cursorType] });
-    }
-    handlePageChange(currentPage);
-  };
+  const handleServicePageChange = useCallback(
+    ({ cursorType, currentPage }: PagingHandlerParams) => {
+      if (searchTerm) {
+        handlePageChange(currentPage);
+        getServiceDetails({
+          currentPage,
+          search: searchTerm,
+          limit: pageSize,
+          filters: serviceTypeFilter?.length
+            ? `(${serviceTypeFilter
+                .map((type) => `serviceType:${type}`)
+                .join(' ')})`
+            : undefined,
+        });
+      } else if (cursorType) {
+        handlePageChange(currentPage);
+        getServiceDetails({ [cursorType]: paging[cursorType] });
+      }
+    },
+    [getServiceDetails, searchTerm, serviceTypeFilter, paging, pageSize]
+  );
 
   const addServicePermission = useMemo(
     () =>
@@ -235,6 +251,8 @@ const Services = ({ serviceName }: ServicesProps) => {
         return PAGE_HEADERS.STORAGE_SERVICES;
       case ServiceCategory.SEARCH_SERVICES:
         return PAGE_HEADERS.SEARCH_SERVICES;
+      case ServiceCategory.API_SERVICES:
+        return PAGE_HEADERS.API_SERVICES;
       default:
         return PAGE_HEADERS.DATABASES_SERVICES;
     }
@@ -339,11 +357,11 @@ const Services = ({ serviceName }: ServicesProps) => {
       ),
     },
     {
-      title: t('label.owner'),
-      dataIndex: 'owner',
-      key: 'owner',
+      title: t('label.owner-plural'),
+      dataIndex: 'owners',
+      key: 'owners',
       width: 200,
-      render: (owner: EntityReference) => <OwnerLabel owner={owner} />,
+      render: (owners: EntityReference[]) => <OwnerLabel owners={owners} />,
     },
   ];
 
@@ -409,6 +427,7 @@ const Services = ({ serviceName }: ServicesProps) => {
 
   const handleServiceSearch = useCallback(
     async (search: string) => {
+      handlePageChange(INITIAL_PAGING_VALUE);
       setSearchTerm(search);
     },
     [getServiceDetails]
@@ -461,16 +480,18 @@ const Services = ({ serviceName }: ServicesProps) => {
                   : NO_PERMISSION_FOR_ACTION
               }>
               {addServicePermission && !isPlatFormDisabled && (
-                <Button
-                  className="m-b-xs"
-                  data-testid="add-service-button"
-                  size="middle"
-                  type="primary"
-                  onClick={handleAddServiceClick}>
-                  {t('label.add-new-entity', {
-                    entity: t('label.service'),
-                  })}
-                </Button>
+                <LimitWrapper resource="dataAssets">
+                  <Button
+                    className="m-b-xs"
+                    data-testid="add-service-button"
+                    size="middle"
+                    type="primary"
+                    onClick={handleAddServiceClick}>
+                    {t('label.add-new-entity', {
+                      entity: t('label.service'),
+                    })}
+                  </Button>
+                </LimitWrapper>
               )}
             </Tooltip>
           )}
@@ -504,6 +525,8 @@ const Services = ({ serviceName }: ServicesProps) => {
         {showPagination && (
           <NextPrevious
             currentPage={currentPage}
+            isLoading={isLoading}
+            isNumberBased={!isEmpty(searchTerm)}
             pageSize={pageSize}
             paging={paging}
             pagingHandler={handleServicePageChange}

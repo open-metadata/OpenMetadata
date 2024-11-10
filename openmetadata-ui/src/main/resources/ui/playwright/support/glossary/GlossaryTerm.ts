@@ -11,39 +11,39 @@
  *  limitations under the License.
  */
 import { APIRequestContext, expect, Page } from '@playwright/test';
-import { uuid } from '../../utils/common';
-import { visitGlossaryPage } from '../../utils/glossary';
-import { getRandomLastName } from '../../utils/user';
-
-type ResponseDataType = {
-  name: string;
-  displayName: string;
-  description: string;
-  reviewers: unknown[];
-  relatedTerms: unknown[];
-  synonyms: unknown[];
-  mutuallyExclusive: boolean;
-  tags: unknown[];
-  glossary: Record<string, string>;
-  id: string;
-  fullyQualifiedName: string;
-};
+import { omit } from 'lodash';
+import { getRandomLastName, uuid, visitGlossaryPage } from '../../utils/common';
+import { Glossary } from './Glossary';
+import {
+  GlossaryTermData,
+  GlossaryTermResponseDataType,
+} from './Glossary.interface';
 
 export class GlossaryTerm {
   randomName = getRandomLastName();
-  data = {
+  data: GlossaryTermData = {
     name: `PW.${uuid()}%${this.randomName}`,
     displayName: `PW ${uuid()}%${this.randomName}`,
     description: 'A bank account number.',
     mutuallyExclusive: false,
     glossary: '',
+    synonyms: '',
+    fullyQualifiedName: '',
+    reviewers: [],
   };
 
-  responseData: ResponseDataType;
+  responseData: GlossaryTermResponseDataType;
 
-  constructor(glossaryName: string, name?: string) {
-    this.data.glossary = glossaryName;
+  constructor(glossary: Glossary, parent?: string, name?: string) {
+    this.data.glossary = glossary.data.name;
+    if (parent) {
+      this.data.parent = parent;
+    }
+
     this.data.name = name ?? this.data.name;
+    // eslint-disable-next-line no-useless-escape
+    this.data.fullyQualifiedName = `\"${this.data.glossary}\".\"${this.data.name}\"`;
+    this.data.reviewers = glossary.data.reviewers;
   }
 
   async visitPage(page: Page) {
@@ -73,8 +73,13 @@ export class GlossaryTerm {
   }
 
   async create(apiContext: APIRequestContext) {
+    const apiData = omit(this.data, [
+      'fullyQualifiedName',
+      'synonyms',
+      'reviewers',
+    ]);
     const response = await apiContext.post('/api/v1/glossaryTerms', {
-      data: this.data,
+      data: apiData,
     });
 
     this.responseData = await response.json();
@@ -110,5 +115,10 @@ export class GlossaryTerm {
     );
 
     return await response.json();
+  }
+
+  rename(newTermName: string, newTermFqn: string) {
+    this.responseData.name = newTermName;
+    this.responseData.fullyQualifiedName = newTermFqn;
   }
 }

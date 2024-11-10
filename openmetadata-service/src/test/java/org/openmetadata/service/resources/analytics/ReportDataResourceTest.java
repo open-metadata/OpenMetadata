@@ -25,17 +25,20 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import javax.ws.rs.client.WebTarget;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.analytics.EntityReportData;
 import org.openmetadata.schema.analytics.ReportData;
 import org.openmetadata.schema.analytics.WebAnalyticUserActivityReportData;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.resources.analytics.ReportDataResource.ReportDataResultList;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
 
+@Slf4j
 class ReportDataResourceTest extends OpenMetadataApplicationTest {
 
   public static final String JSON_QUERY =
@@ -44,7 +47,7 @@ class ReportDataResourceTest extends OpenMetadataApplicationTest {
   private final String collectionName = "analytics/dataInsights/data";
 
   @Test
-  void report_data_admin_200() throws ParseException, IOException, InterruptedException {
+  void report_data_admin_200() throws ParseException, IOException {
     EntityReportData entityReportData =
         new EntityReportData()
             .withEntityType("table")
@@ -92,7 +95,7 @@ class ReportDataResourceTest extends OpenMetadataApplicationTest {
   }
 
   @Test
-  void report_data_bot_200() throws HttpResponseException, ParseException, InterruptedException {
+  void report_data_bot_200() throws HttpResponseException, ParseException {
     EntityReportData entityReportData =
         new EntityReportData()
             .withEntityType("table")
@@ -119,7 +122,7 @@ class ReportDataResourceTest extends OpenMetadataApplicationTest {
   }
 
   @Test
-  void delete_endpoint_200() throws ParseException, IOException, InterruptedException {
+  void delete_endpoint_200() throws ParseException, IOException {
     List<ReportData> createReportDataList = new ArrayList<>();
 
     // create some entity report data
@@ -228,7 +231,12 @@ class ReportDataResourceTest extends OpenMetadataApplicationTest {
   private JsonNode runSearchQuery(String query, String index) throws IOException {
     RestClient searchClient = getSearchClient();
     Response response;
-    Request request = new Request("POST", String.format("/%s/_search", index));
+    Request request =
+        new Request(
+            "POST",
+            String.format(
+                "/%s/_search",
+                Entity.getSearchRepository().getIndexOrAliasName(String.valueOf(index))));
     request.setJsonEntity(query);
     try {
       response = searchClient.performRequest(request);
@@ -239,7 +247,7 @@ class ReportDataResourceTest extends OpenMetadataApplicationTest {
   }
 
   private void assertDocumentCountEquals(String query, String index, Integer count)
-      throws IOException, InterruptedException {
+      throws IOException {
     // async client will return a future which we don't have access to, hence sleep
     JsonNode json = runSearchQuery(query, index);
     Integer docCount = json.get("hits").get("total").get("value").asInt();

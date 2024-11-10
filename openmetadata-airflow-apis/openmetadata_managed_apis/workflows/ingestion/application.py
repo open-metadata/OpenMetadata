@@ -34,7 +34,6 @@ from metadata.generated.schema.metadataIngestion.applicationPipeline import (
     ApplicationPipeline,
 )
 from metadata.workflow.application import ApplicationWorkflow
-from metadata.workflow.application_output_handler import print_status
 
 
 def application_workflow(workflow_config: OpenMetadataApplicationConfig):
@@ -49,12 +48,12 @@ def application_workflow(workflow_config: OpenMetadataApplicationConfig):
 
     set_operator_logger(workflow_config)
 
-    config = json.loads(workflow_config.model_dump_json())
+    config = json.loads(workflow_config.model_dump_json(exclude_defaults=False))
     workflow = ApplicationWorkflow.create(config)
 
     workflow.execute()
     workflow.raise_from_status()
-    print_status(workflow)
+    workflow.print_status()
     workflow.stop()
 
 

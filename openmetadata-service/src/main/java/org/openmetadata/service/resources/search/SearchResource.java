@@ -14,7 +14,9 @@
 package org.openmetadata.service.resources.search;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.jdbi3.RoleRepository.DOMAIN_ONLY_ACCESS_ROLE;
 import static org.openmetadata.service.search.SearchRepository.ELASTIC_SEARCH_EXTENSION;
+import static org.openmetadata.service.security.DefaultAuthorizer.getSubjectContext;
 
 import es.org.elasticsearch.action.search.SearchResponse;
 import es.org.elasticsearch.search.suggest.Suggest;
@@ -25,6 +27,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import javax.ws.rs.DefaultValue;
@@ -40,11 +43,13 @@ import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.system.EventPublisherJob;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.SearchRequest;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
@@ -124,6 +129,11 @@ public class SearchResource {
           int size,
       @Parameter(
               description =
+                  "When paginating, specify the search_after values. Use it ass search_after=<val1>,<val2>,...")
+          @QueryParam("search_after")
+          String searchAfter,
+      @Parameter(
+              description =
                   "Sort the search results by field, available fields to "
                       + "sort weekly_stats"
                       + " , daily_stats, monthly_stats, last_updated_timestamp")
@@ -161,11 +171,24 @@ public class SearchResource {
                   "Fetch search results in hierarchical order of children elements. By default hierarchy is not fetched. Currently only supported for glossary_term_search_index.")
           @DefaultValue("false")
           @QueryParam("getHierarchy")
-          boolean getHierarchy)
+          boolean getHierarchy,
+      @Parameter(
+              description =
+                  "Explain the results of the query. Defaults to false. Only for debugging purposes.")
+          @DefaultValue("false")
+          @QueryParam("explain")
+          boolean explain)
       throws IOException {
 
     if (nullOrEmpty(query)) {
       query = "*";
+    }
+
+    // Add Domain Filter
+    List<EntityReference> domains = new ArrayList<>();
+    SubjectContext subjectContext = getSubjectContext(securityContext);
+    if (!subjectContext.isAdmin()) {
+      domains = subjectContext.getUserDomains();
     }
 
     SearchRequest request =
@@ -181,8 +204,13 @@ public class SearchResource {
             .sortOrder(sortOrder)
             .includeSourceFields(includeSourceFields)
             .getHierarchy(getHierarchy)
+            .domains(domains)
+            .applyDomainFilter(
+                !subjectContext.isAdmin() && subjectContext.hasAnyRole(DOMAIN_ONLY_ACCESS_ROLE))
+            .searchAfter(searchAfter)
+            .explain(explain)
             .build();
-    return searchRepository.search(request);
+    return searchRepository.search(request, subjectContext);
   }
 
   @GET

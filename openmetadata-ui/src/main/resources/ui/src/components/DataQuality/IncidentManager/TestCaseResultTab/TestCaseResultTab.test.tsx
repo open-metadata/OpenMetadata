@@ -21,54 +21,67 @@ import React from 'react';
 import { TestCase } from '../../../../generated/tests/testCase';
 import { checkPermission } from '../../../../utils/PermissionsUtils';
 import TestCaseResultTab from './TestCaseResultTab.component';
-import { TestCaseResultTabProps } from './TestCaseResultTab.interface';
 
-const mockProps: TestCaseResultTabProps = {
-  testCaseData: {
-    id: '1b748634-d24b-4879-9791-289f2f90fc3c',
-    name: 'table_column_count_equals',
+const mockTestCaseData: TestCase = {
+  id: '1b748634-d24b-4879-9791-289f2f90fc3c',
+  name: 'table_column_count_equals',
+  fullyQualifiedName:
+    'sample_data.ecommerce_db.shopify.dim_address.table_column_count_equals',
+  testDefinition: {
+    id: '48063740-ac35-4854-9ab3-b1b542c820fe',
+    type: 'testDefinition',
+    name: 'tableColumnCountToEqual',
+    fullyQualifiedName: 'tableColumnCountToEqual',
+    displayName: 'Table Column Count To Equal',
+  },
+  entityLink: '<#E::table::sample_data.ecommerce_db.shopify.dim_address>',
+  entityFQN: 'sample_data.ecommerce_db.shopify.dim_address',
+  testSuite: {
+    id: 'fe44ef1a-1b83-4872-bef6-fbd1885986b8',
+    type: 'testSuite',
+    name: 'sample_data.ecommerce_db.shopify.dim_address.testSuite',
     fullyQualifiedName:
-      'sample_data.ecommerce_db.shopify.dim_address.table_column_count_equals',
-    testDefinition: {
-      id: '48063740-ac35-4854-9ab3-b1b542c820fe',
-      type: 'testDefinition',
-      name: 'tableColumnCountToEqual',
-      fullyQualifiedName: 'tableColumnCountToEqual',
-      displayName: 'Table Column Count To Equal',
+      'sample_data.ecommerce_db.shopify.dim_address.testSuite',
+  },
+  parameterValues: [
+    {
+      name: 'columnCount',
+      value: '10',
     },
-    entityLink: '<#E::table::sample_data.ecommerce_db.shopify.dim_address>',
-    entityFQN: 'sample_data.ecommerce_db.shopify.dim_address',
-    testSuite: {
-      id: 'fe44ef1a-1b83-4872-bef6-fbd1885986b8',
-      type: 'testSuite',
-      name: 'sample_data.ecommerce_db.shopify.dim_address.testSuite',
-      fullyQualifiedName:
-        'sample_data.ecommerce_db.shopify.dim_address.testSuite',
-    },
-    parameterValues: [
+    { name: 'sqlExpression', value: 'select * from dim_address' },
+  ],
+  testCaseResult: {
+    timestamp: 1703570591595,
+    testCaseStatus: 'Success',
+    result: 'Found 10 columns vs. the expected 10',
+    testResultValue: [
       {
         name: 'columnCount',
         value: '10',
       },
-      { name: 'sqlExpression', value: 'select * from dim_address' },
     ],
-    testCaseResult: {
-      timestamp: 1703570591595,
-      testCaseStatus: 'Success',
-      result: 'Found 10 columns vs. the expected 10',
-      testResultValue: [
-        {
-          name: 'columnCount',
-          value: '10',
-        },
-      ],
-    },
-    updatedAt: 1703570589915,
-    updatedBy: 'admin',
-  } as TestCase,
-  onTestCaseUpdate: jest.fn(),
+  },
+  updatedAt: 1703570589915,
+  updatedBy: 'admin',
+} as TestCase;
+
+const mockUseTestCaseStore = {
+  testCase: mockTestCaseData,
+  setTestCase: jest.fn(),
+  showAILearningBanner: false,
 };
 
+jest.mock(
+  '../../../../pages/IncidentManager/IncidentManagerDetailPage/useTestCase.store',
+  () => ({
+    useTestCaseStore: jest.fn().mockImplementation(() => mockUseTestCaseStore),
+  })
+);
+const mockBannerComponent = () => <div>BannerComponent</div>;
+jest.mock('./TestCaseResultTabClassBase', () => ({
+  getAdditionalComponents: jest.fn().mockReturnValue([]),
+  getAlertBanner: jest.fn().mockImplementation(() => mockBannerComponent),
+}));
 jest.mock('../../../common/EntityDescription/DescriptionV1', () => {
   return jest.fn().mockImplementation(() => <div>DescriptionV1</div>);
 });
@@ -97,7 +110,7 @@ jest.mock('../../../../utils/PermissionsUtils', () => ({
 
 describe('TestCaseResultTab', () => {
   it('Should render component', async () => {
-    render(<TestCaseResultTab {...mockProps} />);
+    render(<TestCaseResultTab />);
 
     expect(
       await screen.findByTestId('test-case-result-tab-container')
@@ -113,7 +126,7 @@ describe('TestCaseResultTab', () => {
   });
 
   it("EditTestCaseModal should be rendered when 'Edit' button is clicked", async () => {
-    render(<TestCaseResultTab {...mockProps} />);
+    render(<TestCaseResultTab />);
 
     const editButton = await screen.findByTestId('edit-parameter-icon');
     fireEvent.click(editButton);
@@ -122,7 +135,7 @@ describe('TestCaseResultTab', () => {
   });
 
   it('EditTestCaseModal should be removed on cancel click', async () => {
-    const { container } = render(<TestCaseResultTab {...mockProps} />);
+    const { container } = render(<TestCaseResultTab />);
 
     const editButton = await screen.findByTestId('edit-parameter-icon');
     fireEvent.click(editButton);
@@ -136,7 +149,7 @@ describe('TestCaseResultTab', () => {
   });
 
   it('onTestCaseUpdate should be called while updating params', async () => {
-    render(<TestCaseResultTab {...mockProps} />);
+    render(<TestCaseResultTab />);
 
     const editButton = await screen.findByTestId('edit-parameter-icon');
     fireEvent.click(editButton);
@@ -146,17 +159,68 @@ describe('TestCaseResultTab', () => {
     const updateButton = await screen.findByTestId('update-test');
     fireEvent.click(updateButton);
 
-    expect(mockProps.onTestCaseUpdate).toHaveBeenCalledWith(
-      mockProps.testCaseData
+    expect(mockUseTestCaseStore.setTestCase).toHaveBeenCalledWith(
+      mockTestCaseData
     );
   });
 
   it("Should not show edit icon if user doesn't have edit permission", () => {
     (checkPermission as jest.Mock).mockReturnValueOnce(false);
-    const { container } = render(<TestCaseResultTab {...mockProps} />);
+    const { container } = render(<TestCaseResultTab />);
 
     const editButton = queryByTestId(container, 'edit-parameter-icon');
 
     expect(editButton).not.toBeInTheDocument();
+  });
+
+  it('Should show useDynamicAssertion if enabled', async () => {
+    mockUseTestCaseStore.testCase.useDynamicAssertion = true;
+
+    render(<TestCaseResultTab />);
+
+    const useDynamicAssertion = await screen.findByTestId('dynamic-assertion');
+
+    expect(useDynamicAssertion).toBeInTheDocument();
+
+    mockUseTestCaseStore.testCase.useDynamicAssertion = false;
+  });
+
+  it('Should show edit button, for useDynamicAssertion', async () => {
+    mockUseTestCaseStore.testCase.useDynamicAssertion = true;
+    render(<TestCaseResultTab />);
+    const editButton = await screen.findByTestId('edit-parameter-icon');
+    fireEvent.click(editButton);
+
+    expect(await screen.findByText('EditTestCaseModal')).toBeInTheDocument();
+
+    mockUseTestCaseStore.testCase.useDynamicAssertion = false;
+  });
+
+  it('Should show banner if banner component is available, useDynamicAssertion and showAILearningBanner is true', async () => {
+    mockTestCaseData.useDynamicAssertion = true;
+    mockUseTestCaseStore.showAILearningBanner = true;
+
+    render(<TestCaseResultTab />);
+
+    const bannerComponent = await screen.findByText('BannerComponent');
+
+    expect(bannerComponent).toBeInTheDocument();
+
+    mockTestCaseData.useDynamicAssertion = false;
+    mockUseTestCaseStore.showAILearningBanner = false;
+  });
+
+  it('Should not show banner if banner component is available, useDynamicAssertion is false and showAILearningBanner is true', async () => {
+    mockTestCaseData.useDynamicAssertion = false;
+    mockUseTestCaseStore.showAILearningBanner = true;
+
+    render(<TestCaseResultTab />);
+
+    const bannerComponent = screen.queryByText('BannerComponent');
+
+    expect(bannerComponent).not.toBeInTheDocument();
+
+    mockTestCaseData.useDynamicAssertion = false;
+    mockUseTestCaseStore.showAILearningBanner = false;
   });
 });

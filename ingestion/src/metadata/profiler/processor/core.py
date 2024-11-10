@@ -33,7 +33,6 @@ from metadata.generated.schema.entity.data.table import (
     ColumnProfile,
     ColumnProfilerConfig,
     SystemProfile,
-    TableData,
     TableProfile,
 )
 from metadata.generated.schema.settings.settings import Settings
@@ -41,7 +40,7 @@ from metadata.generated.schema.tests.customMetric import (
     CustomMetric as CustomMetricEntity,
 )
 from metadata.generated.schema.type.basic import Timestamp
-from metadata.profiler.api.models import ProfilerResponse, ThreadPoolMetrics
+from metadata.profiler.api.models import ProfilerResponse, SampleData, ThreadPoolMetrics
 from metadata.profiler.interface.profiler_interface import ProfilerInterface
 from metadata.profiler.metrics.core import (
     ComposedMetric,
@@ -52,6 +51,7 @@ from metadata.profiler.metrics.core import (
     TMetric,
 )
 from metadata.profiler.metrics.static.row_count import RowCount
+from metadata.profiler.orm.functions.table_metric_computer import CREATE_DATETIME
 from metadata.profiler.orm.registry import NOT_COMPUTE
 from metadata.profiler.processor.metric_filter import MetricFilter
 from metadata.profiler.processor.sample_data_handler import upload_sample_data
@@ -273,9 +273,6 @@ class Profiler(Generic[TMetric]):
 
         Data should be saved under self.results
         """
-
-        logger.debug("Running post Profiler...")
-
         current_col_results: Dict[str, Any] = self._column_results.get(col.name)
         if not current_col_results:
             logger.debug(
@@ -491,7 +488,12 @@ class Profiler(Generic[TMetric]):
             )
             self.compute_metrics()
 
-        if self.source_config.generateSampleData:
+        # We need the sample data for Sample Data or PII Sensitive processing.
+        # We'll nullify the Sample Data after the PII processing so that it's not stored.
+        if (
+            self.source_config.generateSampleData
+            or self.source_config.processPiiSensitive
+        ):
             sample_data = self.generate_sample_data()
         else:
             sample_data = None
@@ -509,7 +511,7 @@ class Profiler(Generic[TMetric]):
         return table_profile
 
     @calculate_execution_time(store=False)
-    def generate_sample_data(self) -> Optional[TableData]:
+    def generate_sample_data(self) -> Optional[SampleData]:
         """Fetch and ingest sample data
 
         Returns:
@@ -531,7 +533,10 @@ class Profiler(Generic[TMetric]):
                     SAMPLE_DATA_DEFAULT_COUNT, self.profiler_interface.sample_data_count
                 )
             ]
-            return table_data
+            return SampleData(
+                data=table_data, store=self.source_config.generateSampleData
+            )
+
         except Exception as err:
             logger.debug(traceback.format_exc())
             logger.warning(f"Error fetching sample data: {err}")
@@ -579,7 +584,7 @@ class Profiler(Generic[TMetric]):
             ]
 
             raw_create_date: Optional[datetime] = self._table_results.get(
-                "createDateTime"
+                CREATE_DATETIME
             )
             if raw_create_date:
                 raw_create_date = raw_create_date.replace(tzinfo=timezone.utc)
@@ -605,7 +610,7 @@ class Profiler(Generic[TMetric]):
 
             if self._system_results:
                 system_profile = [
-                    SystemProfile(**system_result)
+                    SystemProfile.model_validate(system_result)
                     for system_result in self._system_results
                 ]
             else:

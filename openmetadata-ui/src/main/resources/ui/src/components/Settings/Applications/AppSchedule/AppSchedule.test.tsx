@@ -17,9 +17,13 @@ import {
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
-import { AppType } from '../../../../generated/entity/applications/app';
+import {
+  AppType,
+  ScheduleType,
+} from '../../../../generated/entity/applications/app';
 import { EntityReference } from '../../../../generated/tests/testSuite';
 import { mockApplicationData } from '../../../../mocks/rests/applicationAPI.mock';
+import { getScheduleOptionsFromSchedules } from '../../../../utils/SchedularUtils';
 import AppSchedule from './AppSchedule.component';
 
 const mockGetIngestionPipelineByFqn = jest.fn().mockResolvedValue({
@@ -35,16 +39,14 @@ jest.mock('../../../../rest/ingestionPipelineAPI', () => ({
     .mockImplementation((...args) => mockGetIngestionPipelineByFqn(...args)),
 }));
 
-jest.mock(
-  '../../../DataQuality/AddDataQualityTest/components/TestSuiteScheduler',
-  () =>
-    jest.fn().mockImplementation(({ onSubmit, onCancel }) => (
-      <div>
-        TestSuiteScheduler
-        <button onClick={onSubmit}>Submit TestSuiteSchedular</button>
-        <button onClick={onCancel}>Cancel TestSuiteSchedular</button>
-      </div>
-    ))
+jest.mock('../../Services/AddIngestion/Steps/ScheduleInterval', () =>
+  jest.fn().mockImplementation(({ onDeploy, onBack }) => (
+    <div>
+      ScheduleInterval
+      <button onClick={onDeploy}>Submit ScheduleInterval</button>
+      <button onClick={onBack}>Cancel ScheduleInterval</button>
+    </div>
+  ))
 );
 
 jest.mock('../../../common/Loader/Loader', () => {
@@ -86,6 +88,7 @@ const mockProps2 = {
     appType: AppType.External,
     pipelines: [{}] as EntityReference[],
     appSchedule: null,
+    scheduleType: ScheduleType.Scheduled,
     name: 'DataInsightsReportApplication',
   },
 };
@@ -97,6 +100,25 @@ const mockProps3 = {
     deleted: true,
   },
 };
+
+jest.mock('../../../../context/LimitsProvider/useLimitsStore', () => ({
+  useLimitStore: jest.fn().mockReturnValue({
+    config: {
+      limits: {
+        config: {
+          featureLimits: [
+            { name: 'app', pipelineSchedules: ['daily', 'weekly'] },
+          ],
+        },
+      },
+    },
+  }),
+}));
+
+jest.mock('../../../../utils/SchedularUtils', () => ({
+  getCronDefaultValue: jest.fn().mockReturnValue('0 0 * * *'),
+  getScheduleOptionsFromSchedules: jest.fn().mockReturnValue([]),
+}));
 
 describe('AppSchedule component', () => {
   it('should render necessary elements for mockProps1', () => {
@@ -120,6 +142,8 @@ describe('AppSchedule component', () => {
     render(<AppSchedule {...mockProps2} />);
 
     await waitForElementToBeRemoved(() => screen.getByText('Loader'));
+
+    expect(screen.queryByText('label.run-now')).not.toBeInTheDocument();
 
     expect(screen.queryByText('label.schedule-type')).not.toBeInTheDocument();
     expect(
@@ -146,13 +170,13 @@ describe('AppSchedule component', () => {
     expect(screen.getByText('Modal is open')).toBeInTheDocument();
 
     userEvent.click(
-      screen.getByRole('button', { name: 'Submit TestSuiteSchedular' })
+      screen.getByRole('button', { name: 'Submit ScheduleInterval' })
     );
 
     expect(mockOnSave).toHaveBeenCalled();
 
     userEvent.click(
-      screen.getByRole('button', { name: 'Cancel TestSuiteSchedular' })
+      screen.getByRole('button', { name: 'Cancel ScheduleInterval' })
     );
 
     expect(screen.getByText('Modal is close')).toBeInTheDocument();
@@ -171,5 +195,24 @@ describe('AppSchedule component', () => {
     render(<AppSchedule {...mockProps2} />);
 
     expect(screen.queryByText('AppRunsHistory')).not.toBeInTheDocument();
+  });
+
+  it('should call getScheduleOptionsFromSchedules with application pipelineStatus values', () => {
+    mockGetIngestionPipelineByFqn.mockRejectedValueOnce({});
+    render(
+      <AppSchedule
+        {...mockProps1}
+        appData={{
+          ...mockApplicationData,
+          name: 'something',
+          appType: AppType.Internal,
+        }}
+      />
+    );
+
+    expect(getScheduleOptionsFromSchedules).toHaveBeenCalledWith([
+      'daily',
+      'weekly',
+    ]);
   });
 });

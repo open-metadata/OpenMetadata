@@ -54,8 +54,9 @@ const FeedPanelBodyV1: FC<FeedPanelBodyPropV1> = ({
   return (
     <Button
       block
-      className={classNames('activity-feed-card-container', className)}
+      className={classNames('activity-feed-card-container ', className)}
       data-testid="message-container"
+      type="text"
       onClick={handleFeedClick}>
       {feed.type === ThreadType.Task ? (
         <TaskFeedCard

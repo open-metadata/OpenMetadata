@@ -146,30 +146,6 @@ class OpenlineageSource(PipelineServiceSource):
             except FQNNotFoundException:
                 return None
 
-    def _get_table_fqn_from_om(self, table_details: TableDetails) -> Optional[str]:
-        """
-        Based on partial schema and table names look for matching table object in open metadata.
-        :param schema: schema name
-        :param table: table name
-        :return: fully qualified name of a Table in Open Metadata
-        """
-        result = None
-        services = self.get_db_service_names()
-        for db_service in services:
-            result = fqn.build(
-                metadata=self.metadata,
-                entity_type=Table,
-                service_name=db_service,
-                database_name=None,
-                schema_name=table_details.schema,
-                table_name=table_details.name,
-            )
-        if not result:
-            raise FQNNotFoundException(
-                f"Table FQN not found for table: {table_details} within services: {services}"
-            )
-        return result
-
     def _get_schema_fqn_from_om(self, schema: str) -> Optional[str]:
         """
         Based on partial schema name look for any matching DatabaseSchema object in open metadata.

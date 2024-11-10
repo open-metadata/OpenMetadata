@@ -8,6 +8,7 @@ import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.search.ParseTags;
 import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.models.SearchSuggest;
 
@@ -28,8 +29,10 @@ public record TestSuiteIndex(TestSuite testSuite) implements SearchIndex {
             suggest.stream().map(SearchSuggest::getInput).toList()));
     doc.put("suggest", suggest);
     doc.put("entityType", Entity.TEST_SUITE);
-    doc.put("owner", getEntityWithDisplayName(testSuite.getOwner()));
+    doc.put("owners", getEntitiesWithDisplayName(testSuite.getOwners()));
     doc.put("followers", SearchIndexUtils.parseFollowers(testSuite.getFollowers()));
+    ParseTags parseTags = new ParseTags(Entity.getEntityTags(Entity.TEST_SUITE, testSuite));
+    doc.put("tags", parseTags.getTags());
     setParentRelationships(doc, testSuite);
     return doc;
   }
@@ -41,7 +44,7 @@ public record TestSuiteIndex(TestSuite testSuite) implements SearchIndex {
     addTestSuiteParentEntityRelations(entityReference, doc);
   }
 
-  protected static void addTestSuiteParentEntityRelations(
+  static void addTestSuiteParentEntityRelations(
       EntityReference testSuiteRef, Map<String, Object> doc) {
     if (testSuiteRef.getType().equals(Entity.TABLE)) {
       Table table = Entity.getEntity(testSuiteRef, "", Include.ALL);

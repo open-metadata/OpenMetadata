@@ -62,6 +62,7 @@ import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.ResourceRegistry;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.PolicyRepository;
+import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.CollectionRegistry;
 import org.openmetadata.service.resources.EntityResource;
@@ -82,7 +83,7 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "policies", order = 0, requiredForOps = true)
 public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
   public static final String COLLECTION_PATH = "v1/policies/";
-  public static final String FIELDS = "owner,location,teams,roles";
+  public static final String FIELDS = "owners,location,teams,roles";
 
   @Override
   public Policy addHref(UriInfo uriInfo, Policy policy) {
@@ -92,8 +93,8 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
     return policy;
   }
 
-  public PolicyResource(Authorizer authorizer) {
-    super(Entity.POLICY, authorizer);
+  public PolicyResource(Authorizer authorizer, Limits limits) {
+    super(Entity.POLICY, authorizer, limits);
   }
 
   @Override

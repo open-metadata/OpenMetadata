@@ -149,7 +149,7 @@ EXPECTED_DATABASE = [
         displayName=None,
         description=None,
         tags=None,
-        owner=None,
+        owners=None,
         service=FullyQualifiedEntityName("hive_source_test"),
         dataProducts=None,
         default=False,
@@ -167,7 +167,7 @@ EXPECTED_DATABASE_SCHEMA = [
         name=EntityName("sample_schema"),
         displayName=None,
         description=None,
-        owner=None,
+        owners=None,
         database=FullyQualifiedEntityName("hive_source_test.sample_database"),
         dataProducts=None,
         tags=None,
@@ -267,7 +267,7 @@ EXPECTED_TABLE = [
         tableConstraints=[],
         tablePartition=None,
         tableProfilerConfig=None,
-        owner=None,
+        owners=None,
         databaseSchema=FullyQualifiedEntityName(
             "hive_source_test.sample_database.sample_schema"
         ),

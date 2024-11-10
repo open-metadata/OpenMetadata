@@ -67,6 +67,9 @@ from metadata.generated.schema.entity.services.connections.database.sqliteConnec
 from metadata.generated.schema.entity.services.connections.database.teradataConnection import (
     TeradataType,
 )
+from metadata.generated.schema.entity.services.connections.database.unityCatalogConnection import (
+    DatabricksType as UnityCatalogType,
+)
 from metadata.utils.singleton import Singleton
 
 
@@ -103,6 +106,7 @@ MAP_CONNECTION_TYPE_DIALECT: Dict[str, Dialect] = {
     str(BigqueryType.BigQuery.value): Dialect.BIGQUERY,
     str(ClickhouseType.Clickhouse.value): Dialect.CLICKHOUSE,
     str(DatabricksType.Databricks.value): Dialect.DATABRICKS,
+    str(UnityCatalogType.UnityCatalog.value): Dialect.DATABRICKS,
     str(Db2Type.Db2.value): Dialect.DB2,
     str(HiveType.Hive.value): Dialect.HIVE,
     str(ImpalaType.Impala.value): Dialect.IMPALA,

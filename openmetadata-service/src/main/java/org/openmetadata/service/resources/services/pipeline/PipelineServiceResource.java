@@ -47,7 +47,6 @@ import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.services.CreatePipelineService;
-import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.PipelineService;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.entity.services.connections.TestConnectionResult;
@@ -57,6 +56,7 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.PipelineConnection;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.PipelineServiceRepository;
+import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.services.ServiceEntityResource;
 import org.openmetadata.service.security.Authorizer;
@@ -72,7 +72,7 @@ import org.openmetadata.service.util.ResultList;
 public class PipelineServiceResource
     extends ServiceEntityResource<PipelineService, PipelineServiceRepository, PipelineConnection> {
   public static final String COLLECTION_PATH = "v1/services/pipelineServices/";
-  static final String FIELDS = "pipelines,owner,domain";
+  static final String FIELDS = "pipelines,owners,domain";
 
   @Override
   public PipelineService addHref(UriInfo uriInfo, PipelineService service) {
@@ -81,8 +81,8 @@ public class PipelineServiceResource
     return service;
   }
 
-  public PipelineServiceResource(Authorizer authorizer) {
-    super(Entity.PIPELINE_SERVICE, authorizer, ServiceType.PIPELINE);
+  public PipelineServiceResource(Authorizer authorizer, Limits limits) {
+    super(Entity.PIPELINE_SERVICE, authorizer, limits, ServiceType.PIPELINE);
   }
 
   @Override
@@ -245,7 +245,7 @@ public class PipelineServiceResource
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = DatabaseService.class)))
+                    schema = @Schema(implementation = PipelineService.class)))
       })
   public PipelineService addTestConnectionResult(
       @Context UriInfo uriInfo,

@@ -19,7 +19,7 @@ import { capitalize, startCase, uniq, uniqBy } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import RichTextEditor from '../../../components/common/RichTextEditor/RichTextEditor';
-import { ENTITY_NAME_REGEX } from '../../../constants/regex.constants';
+import { NAME_FIELD_RULES } from '../../../constants/Form.constants';
 import {
   Effect,
   Operation,
@@ -203,22 +203,7 @@ const RuleForm: FC<RuleFormProps> = ({ ruleData, setRuleData }) => {
       <Form.Item
         label={`${t('label.rule-name')}:`}
         name="ruleName"
-        rules={[
-          {
-            required: true,
-            max: 128,
-            min: 1,
-            message: `${t('message.entity-size-in-between', {
-              entity: `${t('label.name')}`,
-              max: '128',
-              min: '1',
-            })}`,
-          },
-          {
-            pattern: ENTITY_NAME_REGEX,
-            message: t('message.entity-name-validation'),
-          },
-        ]}>
+        rules={NAME_FIELD_RULES}>
         <Input
           data-testid="rule-name"
           placeholder={t('label.rule-name')}

@@ -14,9 +14,10 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.csv.CsvUtil.addExtension;
 import static org.openmetadata.csv.CsvUtil.addField;
 import static org.openmetadata.csv.CsvUtil.addGlossaryTerms;
-import static org.openmetadata.csv.CsvUtil.addOwner;
+import static org.openmetadata.csv.CsvUtil.addOwners;
 import static org.openmetadata.csv.CsvUtil.addTagLabels;
 import static org.openmetadata.csv.CsvUtil.addTagTiers;
 import static org.openmetadata.schema.type.Include.ALL;
@@ -28,6 +29,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVPrinter;
@@ -72,6 +74,7 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
         "",
         "");
     supportsSearch = true;
+    parent = true;
   }
 
   @Override
@@ -115,7 +118,6 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
 
   public void setFields(DatabaseSchema schema, Fields fields) {
     setDefaultFields(schema);
-    schema.setSourceHash(fields.contains("sourceHash") ? schema.getSourceHash() : null);
     schema.setTables(fields.contains("tables") ? getTables(schema) : null);
     schema.setDatabaseSchemaProfilerConfig(
         fields.contains(DATABASE_SCHEMA_PROFILER_CONFIG)
@@ -145,8 +147,8 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
   @Override
   public void setInheritedFields(DatabaseSchema schema, Fields fields) {
     Database database =
-        Entity.getEntity(Entity.DATABASE, schema.getDatabase().getId(), "owner,domain", ALL);
-    inheritOwner(schema, fields, database);
+        Entity.getEntity(Entity.DATABASE, schema.getDatabase().getId(), "owners,domain", ALL);
+    inheritOwners(schema, fields, database);
     inheritDomain(schema, fields, database);
     schema.withRetentionPeriod(
         schema.getRetentionPeriod() == null
@@ -163,7 +165,7 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
 
   @Override
   public EntityInterface getParentEntity(DatabaseSchema entity, String fields) {
-    return Entity.getEntity(entity.getDatabase(), fields, Include.NON_DELETED);
+    return Entity.getEntity(entity.getDatabase(), fields, ALL);
   }
 
   @Override
@@ -181,11 +183,26 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
   }
 
   @Override
+  public void entityRelationshipReindex(DatabaseSchema original, DatabaseSchema updated) {
+    super.entityRelationshipReindex(original, updated);
+
+    // Update search indexes of assets and entity on databaseSchema displayName change
+    if (!Objects.equals(original.getDisplayName(), updated.getDisplayName())) {
+      searchRepository
+          .getSearchClient()
+          .reindexAcrossIndices("databaseSchema.fullyQualifiedName", original.getEntityReference());
+    }
+  }
+
+  @Override
   public String exportToCsv(String name, String user) throws IOException {
     DatabaseSchema schema = getByName(null, name, Fields.EMPTY_FIELDS); // Validate database schema
     TableRepository repository = (TableRepository) Entity.getEntityRepository(TABLE);
-    ListFilter filter = new ListFilter(Include.NON_DELETED).addQueryParam("databaseSchema", name);
-    List<Table> tables = repository.listAll(repository.getFields("owner,tags,domain"), filter);
+
+    List<Table> tables =
+        repository.listAllForCSV(
+            repository.getFields("owners,tags,domain,extension"), schema.getFullyQualifiedName());
+
     tables.sort(Comparator.comparing(EntityInterface::getFullyQualifiedName));
     return new DatabaseSchemaCsv(schema, user).exportCsv(tables);
   }
@@ -209,6 +226,7 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
     public void entitySpecificUpdate() {
       recordChange("retentionPeriod", original.getRetentionPeriod(), updated.getRetentionPeriod());
       recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl());
+      recordChange("sourceHash", original.getSourceHash(), updated.getSourceHash());
     }
   }
 
@@ -280,7 +298,8 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
                 .withDatabaseSchema(schema.getEntityReference());
       }
 
-      // Headers: name, displayName, description, owner, tags, glossaryTerms, tiers retentionPeriod,
+      // Headers: name, displayName, description, owners, tags, glossaryTerms, tiers
+      // retentionPeriod,
       // sourceUrl, domain
       // Field 1,2,3,6,7 - database schema name, displayName, description
       List<TagLabel> tagLabels =
@@ -295,12 +314,13 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
           .withName(csvRecord.get(0))
           .withDisplayName(csvRecord.get(1))
           .withDescription(csvRecord.get(2))
-          .withOwner(getOwner(printer, csvRecord, 3))
+          .withOwners(getOwners(printer, csvRecord, 3))
           .withTags(tagLabels)
           .withRetentionPeriod(csvRecord.get(7))
           .withSourceUrl(csvRecord.get(8))
           .withColumns(nullOrEmpty(table.getColumns()) ? new ArrayList<>() : table.getColumns())
-          .withDomain(getEntityReference(printer, csvRecord, 9, Entity.DOMAIN));
+          .withDomain(getEntityReference(printer, csvRecord, 9, Entity.DOMAIN))
+          .withExtension(getExtension(printer, csvRecord, 10));
 
       if (processRecord) {
         createEntity(printer, csvRecord, table);
@@ -314,7 +334,7 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
       addField(recordList, entity.getName());
       addField(recordList, entity.getDisplayName());
       addField(recordList, entity.getDescription());
-      addOwner(recordList, entity.getOwner());
+      addOwners(recordList, entity.getOwners());
       addTagLabels(recordList, entity.getTags());
       addGlossaryTerms(recordList, entity.getTags());
       addTagTiers(recordList, entity.getTags());
@@ -325,6 +345,7 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
               ? ""
               : entity.getDomain().getFullyQualifiedName();
       addField(recordList, domain);
+      addExtension(recordList, entity.getExtension());
       addRecord(csvFile, recordList);
     }
   }

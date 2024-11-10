@@ -25,11 +25,12 @@ import {
   OperationPermission,
   ResourceEntity,
 } from '../../context/PermissionProvider/PermissionProvider.interface';
-import { EntityAction } from '../../enums/entity.enum';
+import { EntityAction, EntityTabs } from '../../enums/entity.enum';
 import {
   CreateThread,
   ThreadType,
 } from '../../generated/api/feed/createThread';
+import { Glossary } from '../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
 import { VERSION_VIEW_GLOSSARY_PERMISSION } from '../../mocks/Glossary.mock';
 import { postThread } from '../../rest/feedsAPI';
@@ -246,7 +247,7 @@ const GlossaryV1 = ({
       history.push(
         getGlossaryTermDetailsPath(
           selectedData.fullyQualifiedName || '',
-          'terms'
+          EntityTabs.TERMS
         )
       );
     }
@@ -298,7 +299,7 @@ const GlossaryV1 = ({
           references,
           mutuallyExclusive,
           reviewers,
-          owner,
+          owners,
           relatedTerms,
           style,
         } = formData || {};
@@ -311,7 +312,7 @@ const GlossaryV1 = ({
         newTermData.tags = tags;
         newTermData.mutuallyExclusive = mutuallyExclusive;
         newTermData.reviewers = reviewers;
-        newTermData.owner = owner;
+        newTermData.owners = owners;
         newTermData.references = references;
         newTermData.relatedTerms = relatedTerms?.map((term) => ({
           id: term,
@@ -322,6 +323,17 @@ const GlossaryV1 = ({
     } else {
       await handleGlossaryTermAdd(formData);
     }
+  };
+
+  const handleGlossaryUpdate = async (newGlossary: Glossary) => {
+    const jsonPatch = compare(selectedData, newGlossary);
+
+    const shouldRefreshTerms = jsonPatch.some((patch) =>
+      patch.path.startsWith('/owners')
+    );
+
+    await updateGlossary(newGlossary);
+    shouldRefreshTerms && loadGlossaryTerms(true);
   };
 
   useEffect(() => {
@@ -353,7 +365,7 @@ const GlossaryV1 = ({
             permissions={glossaryPermission}
             refreshGlossaryTerms={() => loadGlossaryTerms(true)}
             termsLoading={isTermsLoading}
-            updateGlossary={updateGlossary}
+            updateGlossary={handleGlossaryUpdate}
             updateVote={updateVote}
             onAddGlossaryTerm={(term) =>
               handleGlossaryTermModalAction(false, term ?? null)

@@ -23,6 +23,7 @@ import {
   getVersionPath,
 } from '../../../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../../constants/entity.constants';
+import { COMMON_RESIZABLE_PANEL_CONFIG } from '../../../../constants/ResizablePanel.constants';
 import LineageProvider from '../../../../context/LineageProvider/LineageProvider';
 import { CSMode } from '../../../../enums/codemirror.enum';
 import { EntityTabs, EntityType } from '../../../../enums/entity.enum';
@@ -83,11 +84,11 @@ const DataModelDetails = ({
     FEED_COUNT_INITIAL_DATA
   );
 
-  const { deleted, owner, description, version, entityName, tags } =
+  const { deleted, owners, description, version, entityName, tags } =
     useMemo(() => {
       return {
         deleted: dataModelData?.deleted,
-        owner: dataModelData?.owner,
+        owners: dataModelData?.owners,
         description: dataModelData?.description,
         version: dataModelData?.version,
         entityName: getEntityName(dataModelData),
@@ -227,10 +228,10 @@ const DataModelDetails = ({
   const modelComponent = useMemo(() => {
     return (
       <Row gutter={[0, 16]} wrap={false}>
-        <Col className="tab-content-height" span={24}>
+        <Col className="tab-content-height-with-resizable-panel" span={24}>
           <ResizablePanels
-            applyDefaultStyle={false}
             firstPanel={{
+              className: 'entity-resizable-panel-container',
               children: (
                 <div className="d-flex flex-col gap-4 p-t-sm m-x-lg">
                   <DescriptionV1
@@ -241,7 +242,7 @@ const DataModelDetails = ({
                     hasEditAccess={editDescriptionPermission}
                     isDescriptionExpanded={isEmpty(dataModelData.columns)}
                     isEdit={isEditDescription}
-                    owner={owner}
+                    owner={owners}
                     showActions={!deleted}
                     onCancel={() => setIsEditDescription(false)}
                     onDescriptionEdit={() => setIsEditDescription(true)}
@@ -259,8 +260,7 @@ const DataModelDetails = ({
                   />
                 </div>
               ),
-              minWidth: 800,
-              flex: 0.87,
+              ...COMMON_RESIZABLE_PANEL_CONFIG.LEFT_PANEL,
             }}
             secondPanel={{
               children: (
@@ -286,9 +286,9 @@ const DataModelDetails = ({
                   />
                 </div>
               ),
-              minWidth: 320,
-              flex: 0.13,
-              className: 'entity-resizable-right-panel-container',
+              ...COMMON_RESIZABLE_PANEL_CONFIG.RIGHT_PANEL,
+              className:
+                'entity-resizable-right-panel-container entity-resizable-panel-container',
             }}
           />
         </Col>
@@ -316,7 +316,7 @@ const DataModelDetails = ({
         label: (
           <TabsLabel
             data-testid={EntityTabs.MODEL}
-            id={EntityTabs.DETAILS}
+            id={EntityTabs.MODEL}
             name={t('label.model')}
           />
         ),
@@ -406,11 +406,11 @@ const DataModelDetails = ({
               entityDetails={dataModelData}
               entityType={EntityType.DASHBOARD_DATA_MODEL}
               handleExtensionUpdate={handelExtensionUpdate}
-              hasEditAccess={dataModelPermissions.ViewAll}
-              hasPermission={
+              hasEditAccess={
                 dataModelPermissions.EditAll ||
                 dataModelPermissions.EditCustomFields
               }
+              hasPermission={dataModelPermissions.ViewAll}
               isVersionView={false}
             />
           </div>

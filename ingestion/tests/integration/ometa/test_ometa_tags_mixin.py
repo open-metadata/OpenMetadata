@@ -25,6 +25,8 @@ CLASSIFICATION_NAME = "TestTag"
 PRIMARY_TAG_NAME = "TestPrimaryTag"
 SECONDARY_TAG_NAME = "TestSecondaryTag"
 TEST_SPECIAL_CHARS_TAG_NAME = "Test/Sepcial_Chars/Tag"
+LONG_CLASSIFICATION_NAME = "A" * 256
+LONG_PRIMARY_TAG_NAME = "B" * 256
 
 
 class OMetaTagMixinPost(TestCase):
@@ -132,3 +134,28 @@ class OMetaTagMixinPost(TestCase):
         ).entities
 
         self.assertIsNotNone(tags)
+
+    def test_c_create_classifications(self):
+        """Test POST classification for long name"""
+
+        classification = CreateClassificationRequest(
+            description="test tag", name=LONG_CLASSIFICATION_NAME
+        )
+
+        classification: Classification = self.metadata.create_or_update(classification)
+        self.assertEqual(classification.name.root, LONG_CLASSIFICATION_NAME)
+
+    def test_d_create_tag(self):
+        """Test POST tag creation with long name"""
+        create_primary_tag = CreateTagRequest(
+            name=LONG_PRIMARY_TAG_NAME,
+            classification=LONG_CLASSIFICATION_NAME,
+            description="test tag",
+        )
+
+        primary_tag: Tag = self.metadata.create_or_update(create_primary_tag)
+        self.assertEqual(primary_tag.name.root, LONG_PRIMARY_TAG_NAME)
+        self.assertEqual(
+            primary_tag.fullyQualifiedName,
+            f"{LONG_CLASSIFICATION_NAME}.{LONG_PRIMARY_TAG_NAME}",
+        )

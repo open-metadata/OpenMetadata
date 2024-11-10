@@ -11,23 +11,30 @@
  *  limitations under the License.
  */
 
-import { isNil } from 'lodash';
+import { isEmpty, isNil } from 'lodash';
 import React, { useCallback, useEffect } from 'react';
-import { Switch, useLocation } from 'react-router-dom';
+import { Redirect, Route, Switch } from 'react-router-dom';
 import { useAnalytics } from 'use-analytics';
+import { ROUTES } from '../../constants/constants';
 import { CustomEventTypes } from '../../generated/analytics/webAnalyticEventData';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
+import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
+import AccessNotAllowedPage from '../../pages/AccessNotAllowedPage/AccessNotAllowedPage';
+import PageNotFound from '../../pages/PageNotFound/PageNotFound';
+import SignUpPage from '../../pages/SignUp/SignUpPage';
 import AppContainer from '../AppContainer/AppContainer';
 import Loader from '../common/Loader/Loader';
 import { UnAuthenticatedAppRouter } from './UnAuthenticatedAppRouter';
 
+import SamlCallback from '../../pages/SamlCallback';
+
 const AppRouter = () => {
-  const location = useLocation();
+  const location = useCustomLocation();
 
   // web analytics instance
   const analytics = useAnalytics();
-
-  const { isAuthenticated, isApplicationLoading } = useApplicationStore();
+  const { currentUser, isAuthenticated, isApplicationLoading } =
+    useApplicationStore();
 
   useEffect(() => {
     const { pathname } = location;
@@ -78,6 +85,23 @@ const AppRouter = () => {
 
   return (
     <Switch>
+      <Route exact component={PageNotFound} path={ROUTES.NOT_FOUND} />
+      <Route
+        exact
+        component={AccessNotAllowedPage}
+        path={ROUTES.UNAUTHORISED}
+      />
+      <Route exact component={SignUpPage} path={ROUTES.SIGNUP}>
+        {!isEmpty(currentUser) && <Redirect to={ROUTES.HOME} />}
+      </Route>
+
+      {/* When authenticating from an SSO provider page (e.g., SAML Apps), if the user is already logged in, 
+          the callbacks should be available. This ensures consistent behavior across different authentication scenarios. */}
+      <Route
+        component={SamlCallback}
+        path={[ROUTES.SAML_CALLBACK, ROUTES.AUTH_CALLBACK]}
+      />
+
       {isAuthenticated ? <AppContainer /> : <UnAuthenticatedAppRouter />}
     </Switch>
   );

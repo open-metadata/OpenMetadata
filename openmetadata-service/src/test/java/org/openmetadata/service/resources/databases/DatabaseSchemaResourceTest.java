@@ -57,7 +57,8 @@ import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
-class DatabaseSchemaResourceTest extends EntityResourceTest<DatabaseSchema, CreateDatabaseSchema> {
+public class DatabaseSchemaResourceTest
+    extends EntityResourceTest<DatabaseSchema, CreateDatabaseSchema> {
   public DatabaseSchemaResourceTest() {
     super(
         Entity.DATABASE_SCHEMA,
@@ -119,10 +120,10 @@ class DatabaseSchemaResourceTest extends EntityResourceTest<DatabaseSchema, Crea
     // Headers: name, displayName, description, owner, tags, retentionPeriod, sourceUrl, domain
     // Create table with invalid tags field
     String resultsHeader = recordToString(EntityCsv.getResultHeaders(DatabaseSchemaCsv.HEADERS));
-    String record = "s1,dsp1,dsc1,,Tag.invalidTag,,,,,";
+    String record = "s1,dsp1,dsc1,,Tag.invalidTag,,,,,,";
     String csv = createCsv(DatabaseSchemaCsv.HEADERS, listOf(record), null);
     CsvImportResult result = importCsv(schemaName, csv, false);
-    assertSummary(result, ApiStatus.FAILURE, 2, 1, 1);
+    assertSummary(result, ApiStatus.PARTIAL_SUCCESS, 2, 1, 1);
     String[] expectedRows =
         new String[] {
           resultsHeader, getFailedRecord(record, entityNotFound(4, "tag", "Tag.invalidTag"))
@@ -130,10 +131,10 @@ class DatabaseSchemaResourceTest extends EntityResourceTest<DatabaseSchema, Crea
     assertRows(result, expectedRows);
 
     // Tag will cause failure
-    record = "non-existing,dsp1,dsc1,,Tag.invalidTag,,,,,";
+    record = "non-existing,dsp1,dsc1,,Tag.invalidTag,,,,,,";
     csv = createCsv(DatabaseSchemaCsv.HEADERS, listOf(record), null);
     result = importCsv(schemaName, csv, false);
-    assertSummary(result, ApiStatus.FAILURE, 2, 1, 1);
+    assertSummary(result, ApiStatus.PARTIAL_SUCCESS, 2, 1, 1);
     expectedRows =
         new String[] {
           resultsHeader, getFailedRecord(record, entityNotFound(4, "tag", "Tag.invalidTag"))
@@ -141,7 +142,7 @@ class DatabaseSchemaResourceTest extends EntityResourceTest<DatabaseSchema, Crea
     assertRows(result, expectedRows);
 
     // non-existing table will cause
-    record = "non-existing,dsp1,dsc1,,,,,,,";
+    record = "non-existing,dsp1,dsc1,,,,,,,,";
     String tableFqn = FullyQualifiedName.add(schema.getFullyQualifiedName(), "non-existing");
     csv = createCsv(DatabaseSchemaCsv.HEADERS, listOf(record), null);
     result = importCsv(schemaName, csv, false);
@@ -166,7 +167,7 @@ class DatabaseSchemaResourceTest extends EntityResourceTest<DatabaseSchema, Crea
     List<String> updateRecords =
         listOf(
             String.format(
-                "s1,dsp1,new-dsc1,user;%s,,,Tier.Tier1,P23DT23H,http://test.com,%s",
+                "s1,dsp1,new-dsc1,user:%s,,,Tier.Tier1,P23DT23H,http://test.com,%s,",
                 user1, escapeCsv(DOMAIN.getFullyQualifiedName())));
 
     // Update created entity with changes
@@ -197,9 +198,9 @@ class DatabaseSchemaResourceTest extends EntityResourceTest<DatabaseSchema, Crea
             ? getEntityByName(schema.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(schema.getId(), fields, ADMIN_AUTH_HEADERS);
     assertListNotNull(schema.getService(), schema.getServiceType(), schema.getDatabase());
-    assertListNull(schema.getOwner(), schema.getTables());
+    assertListNull(schema.getOwners(), schema.getTables());
 
-    fields = "owner,tags,tables";
+    fields = "owners,tags,tables";
     schema =
         byName
             ? getEntityByName(schema.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)

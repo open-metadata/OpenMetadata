@@ -38,6 +38,6 @@ export interface GlossaryTermForm {
   synonyms: string[];
   mutuallyExclusive: boolean;
   tags: TagLabel[];
-  owner: EntityReference;
+  owners: EntityReference[];
   style: GlossaryTerm['style'];
 }

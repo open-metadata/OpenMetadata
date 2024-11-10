@@ -12,7 +12,6 @@
  */
 
 import {
-  AuthenticationResult,
   InteractionRequiredAuthError,
   InteractionStatus,
 } from '@azure/msal-browser';
@@ -25,12 +24,14 @@ import React, {
   useEffect,
   useImperativeHandle,
 } from 'react';
-import { useMutex } from 'react-context-mutex';
 import { toast } from 'react-toastify';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
-import { msalLoginRequest } from '../../../utils/AuthProvider.util';
+import {
+  msalLoginRequest,
+  parseMSALResponse,
+} from '../../../utils/AuthProvider.util';
 import { getPopupSettingLink } from '../../../utils/BrowserUtils';
 import { Transi18next } from '../../../utils/CommonUtils';
+import Loader from '../../common/Loader/Loader';
 import {
   AuthenticatorRef,
   OidcUser,
@@ -48,13 +49,10 @@ const MsalAuthenticator = forwardRef<AuthenticatorRef, Props>(
     { children, onLoginSuccess, onLogoutSuccess, onLoginFailure }: Props,
     ref
   ) => {
-    const { setOidcToken, getOidcToken } = useApplicationStore();
     const { instance, accounts, inProgress } = useMsal();
     const account = useAccount(accounts[0] || {});
-    const MutexRunner = useMutex();
-    const mutex = new MutexRunner('fetchIdToken');
 
-    const handleOnLogoutSuccess = () => {
+    const handleOnLogoutSuccess = async () => {
       for (const key in localStorage) {
         if (key.includes('-login.windows.net-') || key.startsWith('msal.')) {
           localStorage.removeItem(key);
@@ -63,37 +61,17 @@ const MsalAuthenticator = forwardRef<AuthenticatorRef, Props>(
       onLogoutSuccess();
     };
 
-    const login = () => {
+    const login = async () => {
       try {
-        instance.loginPopup(msalLoginRequest);
+        // Use login with redirect to avoid popup issue with maximized browser window
+        await instance.loginRedirect();
       } catch (error) {
-        // eslint-disable-next-line no-console
-        console.error(error);
         onLoginFailure(error as AxiosError);
       }
     };
 
     const logout = () => {
       handleOnLogoutSuccess();
-    };
-
-    const parseResponse = (response: AuthenticationResult): OidcUser => {
-      // Call your API with the access token and return the data you need to save in state
-      const { idToken, scopes, account } = response;
-      const user = {
-        id_token: idToken,
-        scope: scopes.join(),
-        profile: {
-          email: account?.username || '',
-          name: account?.name || '',
-          picture: '',
-          sub: '',
-        },
-      };
-
-      setOidcToken(idToken);
-
-      return user;
     };
 
     const fetchIdToken = async (
@@ -106,7 +84,7 @@ const MsalAuthenticator = forwardRef<AuthenticatorRef, Props>(
       try {
         const response = await instance.ssoSilent(tokenRequest);
 
-        return parseResponse(response);
+        return parseMSALResponse(response);
       } catch (error) {
         if (
           error instanceof InteractionRequiredAuthError &&
@@ -135,7 +113,7 @@ const MsalAuthenticator = forwardRef<AuthenticatorRef, Props>(
               throw e;
             });
 
-          return parseResponse(response);
+          return parseMSALResponse(response);
         } else {
           // eslint-disable-next-line no-console
           console.error(error);
@@ -145,48 +123,43 @@ const MsalAuthenticator = forwardRef<AuthenticatorRef, Props>(
       }
     };
 
-    useEffect(() => {
-      const oidcUserToken = getOidcToken();
-      if (
-        !oidcUserToken &&
-        inProgress === InteractionStatus.None &&
-        (accounts.length > 0 || account?.idTokenClaims)
-      ) {
-        mutex.run(async () => {
-          mutex.lock();
-          fetchIdToken(true)
-            .then((user) => {
-              if ((user as OidcUser).id_token) {
-                onLoginSuccess(user as OidcUser);
-              }
-            })
-            .catch(onLoginFailure)
-            .finally(() => {
-              mutex.unlock();
-            });
-        });
-      }
-    }, [inProgress, accounts, instance, account]);
+    const renewIdToken = async () => {
+      const user = await fetchIdToken(true);
+
+      return user.id_token;
+    };
 
     useImperativeHandle(ref, () => ({
-      invokeLogin() {
-        login();
-      },
-      invokeLogout() {
-        logout();
-      },
-      renewIdToken() {
-        return new Promise((resolve, reject) => {
-          fetchIdToken()
-            .then((user) => {
-              resolve(user.id_token);
-            })
-            .catch((e) => {
-              reject(e);
-            });
-        });
-      },
+      invokeLogin: login,
+      invokeLogout: logout,
+      renewIdToken: renewIdToken,
     }));
+
+    // Need to capture redirect and parse ID token
+    // Call login success callback
+    const handleRedirect = async () => {
+      try {
+        const response = await instance.handleRedirectPromise();
+
+        if (response) {
+          const user = parseMSALResponse(response);
+
+          onLoginSuccess(user);
+        }
+      } catch (error) {
+        onLoginFailure(error as AxiosError);
+      }
+    };
+
+    // To add redirect callback
+    useEffect(() => {
+      instance && handleRedirect();
+    }, [instance]);
+
+    // Show loader until the interaction is completed
+    if (inProgress !== InteractionStatus.None) {
+      return <Loader />;
+    }
 
     return <Fragment>{children}</Fragment>;
   }

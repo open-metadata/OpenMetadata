@@ -175,7 +175,7 @@ The final important elements here are:
 - `environment={"config": config, "pipelineType": "metadata"}`: Again, in most cases you will just need to update
   the `config` string to point to the right connector.
 
-Other supported values of `pipelineType` are `usage`, `lineage`, `profiler` or `TestSuite`. Pass the required flag
+Other supported values of `pipelineType` are `usage`, `lineage`, `profiler`, `dataInsight`, `elasticSearchReindex`, `dbt`, `application` or `TestSuite`. Pass the required flag
 depending on the type of workflow you want to execute. Make sure that the YAML config reflects what ingredients
 are required for your Workflow.
 

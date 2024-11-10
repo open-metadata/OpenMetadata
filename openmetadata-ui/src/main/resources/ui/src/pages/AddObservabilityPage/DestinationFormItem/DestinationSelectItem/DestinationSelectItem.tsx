@@ -228,7 +228,6 @@ function DestinationSelectItem({
             )}
             {selectedDestinations &&
               !isEmpty(selectedDestinations[id]) &&
-              selectedDestinations[id] &&
               getDestinationConfigField(
                 selectedDestinations[id]?.destinationType,
                 id

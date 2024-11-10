@@ -19,6 +19,7 @@ import static org.openmetadata.schema.entity.events.SubscriptionDestination.Subs
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.Pair;
+import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.type.ChangeEvent;
@@ -35,13 +36,16 @@ import org.openmetadata.service.util.JsonUtils;
 @Slf4j
 public class ActivityFeedPublisher implements Destination<ChangeEvent> {
   private final FeedMessageDecorator feedMessageFormatter = new FeedMessageDecorator();
-  FeedRepository feedRepository = new FeedRepository();
+  final FeedRepository feedRepository = new FeedRepository();
 
   @Getter private final SubscriptionDestination subscriptionDestination;
+  private final EventSubscription eventSubscription;
 
-  public ActivityFeedPublisher(SubscriptionDestination subscription) {
-    if (subscription.getType() == ACTIVITY_FEED) {
-      this.subscriptionDestination = subscription;
+  public ActivityFeedPublisher(
+      EventSubscription eventSubscription, SubscriptionDestination subscriptionDestination) {
+    if (subscriptionDestination.getType() == ACTIVITY_FEED) {
+      this.eventSubscription = eventSubscription;
+      this.subscriptionDestination = subscriptionDestination;
     } else {
       throw new IllegalArgumentException("Activity Alert Invoked with Illegal Type and Settings.");
     }
@@ -69,8 +73,17 @@ public class ActivityFeedPublisher implements Destination<ChangeEvent> {
               ACTIVITY_FEED, changeEvent, ex.getMessage());
       LOG.error(message);
       throw new EventPublisherException(
-          message, Pair.of(subscriptionDestination.getId(), changeEvent));
+          CatalogExceptionMessage.eventPublisherFailedToPublish(ACTIVITY_FEED, ex.getMessage()),
+          Pair.of(subscriptionDestination.getId(), changeEvent));
     }
+  }
+
+  @Override
+  public void sendTestMessage() {}
+
+  @Override
+  public EventSubscription getEventSubscriptionForDestination() {
+    return eventSubscription;
   }
 
   @Override

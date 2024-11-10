@@ -98,14 +98,14 @@ class SagemakerSource(MlModelServiceSource):
         try:
             while has_more_models:
                 response = self.sagemaker.list_models(**args)
-                models.append(response["Models"])
+                models.extend(response["Models"])
                 has_more_models = response.get("NextToken")
                 args["NextToken"] = response.get("NextToken")
         except Exception as err:
             logger.debug(traceback.format_exc())
             logger.error(f"Failed to fetch models list - {err}")
 
-        for model in response["Models"]:
+        for model in models:
             try:
                 if filter_by_mlmodel(
                     self.source_config.mlModelFilterPattern,

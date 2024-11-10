@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Bucket } from 'Models';
 import { SearchIndex } from '../../enums/search.enum';
 import {
   DatabaseServiceType,
@@ -414,3 +415,21 @@ export const mockGetChartsOptionsDataWithoutNameDN: SuggestOption<
     ],
   },
 };
+
+export const mockBucketOptions: Bucket[] = [
+  {
+    key: 'pipeline',
+    doc_count: 1,
+    label: 'pipeline',
+  },
+  {
+    key: 'ingestionPipeline',
+    doc_count: 2,
+    label: 'ingestionPipeline',
+  },
+  {
+    key: 'chart',
+    doc_count: 3,
+    label: 'chart',
+  },
+];

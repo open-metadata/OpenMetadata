@@ -24,14 +24,16 @@ export const mockIngestionPipeline = {
   name: 'test-redshift_metadata_ZeCajs9g',
   displayName: 'test-redshift_metadata_ZeCajs9g',
   pipelineType: 'metadata',
-  owner: {
-    id: 'e43cdd2e-7698-4e06-8cb4-dbcdf401d6dc',
-    type: 'user',
-    name: 'admin',
-    fullyQualifiedName: 'admin',
-    deleted: false,
-    href: 'http://localhost:8585/api/v1/users/e43cdd2e-7698-4e06-8cb4-dbcdf401d6dc',
-  },
+  owners: [
+    {
+      id: 'e43cdd2e-7698-4e06-8cb4-dbcdf401d6dc',
+      type: 'user',
+      name: 'admin',
+      fullyQualifiedName: 'admin',
+      deleted: false,
+      href: 'http://localhost:8585/api/v1/users/e43cdd2e-7698-4e06-8cb4-dbcdf401d6dc',
+    },
+  ],
   fullyQualifiedName: 'test-redshift.test-redshift_metadata_ZeCajs9g',
   sourceConfig: {
     config: {

@@ -2,7 +2,8 @@ package org.openmetadata.service.apps;
 
 import static org.openmetadata.service.apps.scheduler.AbstractOmAppJobListener.JOB_LISTENER_NAME;
 import static org.openmetadata.service.apps.scheduler.AppScheduler.APP_NAME;
-import static org.openmetadata.service.exception.CatalogExceptionMessage.LIVE_APP_SCHEDULE_ERR;
+import static org.openmetadata.service.exception.CatalogExceptionMessage.NO_MANUAL_TRIGGER_ERR;
+import static org.openmetadata.service.resources.apps.AppResource.SCHEDULED_TYPES;
 
 import java.util.List;
 import lombok.Getter;
@@ -13,7 +14,6 @@ import org.openmetadata.schema.api.services.ingestionPipelines.CreateIngestionPi
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.app.AppType;
-import org.openmetadata.schema.entity.app.ScheduleTimeline;
 import org.openmetadata.schema.entity.app.ScheduleType;
 import org.openmetadata.schema.entity.app.ScheduledExecutionContext;
 import org.openmetadata.schema.entity.applications.configuration.ApplicationConfig;
@@ -24,6 +24,7 @@ import org.openmetadata.schema.metadataIngestion.ApplicationPipeline;
 import org.openmetadata.schema.metadataIngestion.SourceConfig;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
@@ -39,6 +40,7 @@ import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 import org.quartz.JobExecutionContext;
 import org.quartz.SchedulerException;
+import org.quartz.UnableToInterruptJobException;
 
 @Getter
 @Slf4j
@@ -46,6 +48,7 @@ public class AbstractNativeApplication implements NativeApplication {
   protected CollectionDAO collectionDAO;
   private App app;
   protected SearchRepository searchRepository;
+  protected boolean isJobInterrupted = false;
 
   // Default service that contains external apps' Ingestion Pipelines
   private static final String SERVICE_NAME = "OpenMetadata";
@@ -63,12 +66,11 @@ public class AbstractNativeApplication implements NativeApplication {
   @Override
   public void install() {
     // If the app does not have any Schedule Return without scheduling
-    if (app.getAppSchedule() != null
-        && app.getAppSchedule().getScheduleTimeline().equals(ScheduleTimeline.NONE)) {
+    if (Boolean.TRUE.equals(app.getDeleted()) || (app.getAppSchedule() == null)) {
       return;
     }
-    if (app.getAppType() == AppType.Internal
-        && app.getScheduleType().equals(ScheduleType.Scheduled)) {
+    if (app.getAppType().equals(AppType.Internal)
+        && (SCHEDULED_TYPES.contains(app.getScheduleType()))) {
       try {
         ApplicationHandler.getInstance().removeOldJobs(app);
         ApplicationHandler.getInstance().migrateQuartzConfig(app);
@@ -81,7 +83,7 @@ public class AbstractNativeApplication implements NativeApplication {
       }
       scheduleInternal();
     } else if (app.getAppType() == AppType.External
-        && app.getScheduleType().equals(ScheduleType.Scheduled)) {
+        && (SCHEDULED_TYPES.contains(app.getScheduleType()))) {
       scheduleExternal();
     }
   }
@@ -89,13 +91,13 @@ public class AbstractNativeApplication implements NativeApplication {
   @Override
   public void triggerOnDemand() {
     // Validate Native Application
-    if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
+    if (app.getScheduleType().equals(ScheduleType.ScheduledOrManual)) {
       AppRuntime runtime = getAppRuntime(app);
       validateServerExecutableApp(runtime);
       // Trigger the application
       AppScheduler.getInstance().triggerOnDemandApplication(app);
     } else {
-      throw new IllegalArgumentException(LIVE_APP_SCHEDULE_ERR);
+      throw new IllegalArgumentException(NO_MANUAL_TRIGGER_ERR);
     }
   }
 
@@ -113,6 +115,7 @@ public class AbstractNativeApplication implements NativeApplication {
 
     try {
       bindExistingIngestionToApplication(ingestionPipelineRepository);
+      updateAppConfig(ingestionPipelineRepository, this.getApp().getAppConfiguration());
     } catch (EntityNotFoundException ex) {
       ApplicationConfig config =
           JsonUtils.convertValue(this.getApp().getAppConfiguration(), ApplicationConfig.class);
@@ -148,6 +151,17 @@ public class AbstractNativeApplication implements NativeApplication {
               Entity.INGESTION_PIPELINE,
               Relationship.HAS.ordinal());
     }
+  }
+
+  private void updateAppConfig(IngestionPipelineRepository repository, Object appConfiguration) {
+    String fqn = FullyQualifiedName.add(SERVICE_NAME, this.getApp().getName());
+    IngestionPipeline updated = repository.findByName(fqn, Include.NON_DELETED);
+    ApplicationPipeline appPipeline =
+        JsonUtils.convertValue(updated.getSourceConfig().getConfig(), ApplicationPipeline.class);
+    IngestionPipeline original = JsonUtils.deepCopy(updated, IngestionPipeline.class);
+    updated.setSourceConfig(
+        updated.getSourceConfig().withConfig(appPipeline.withAppConfig(appConfiguration)));
+    repository.update(null, original, updated);
   }
 
   private void createAndBindIngestionPipeline(
@@ -194,6 +208,11 @@ public class AbstractNativeApplication implements NativeApplication {
             Entity.APPLICATION,
             Entity.INGESTION_PIPELINE,
             Relationship.HAS.ordinal());
+  }
+
+  @Override
+  public void cleanup() {
+    /* Not needed by default*/
   }
 
   protected void validateServerExecutableApp(AppRuntime context) {
@@ -275,5 +294,11 @@ public class AbstractNativeApplication implements NativeApplication {
       JobExecutionContext jobExecutionContext, AppRunRecord appRecord, boolean update) {
     OmAppJobListener listener = getJobListener(jobExecutionContext);
     listener.pushApplicationStatusUpdates(jobExecutionContext, appRecord, update);
+  }
+
+  @Override
+  public void interrupt() throws UnableToInterruptJobException {
+    LOG.info("Interrupting the job for app: {}", this.app.getName());
+    isJobInterrupted = true;
   }
 }

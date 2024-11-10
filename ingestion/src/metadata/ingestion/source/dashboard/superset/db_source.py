@@ -13,7 +13,7 @@ Superset source module
 """
 
 import traceback
-from typing import Iterable, Optional
+from typing import Iterable, List, Optional
 
 from sqlalchemy.engine import Engine
 from sqlalchemy.engine.url import make_url
@@ -26,6 +26,9 @@ from metadata.generated.schema.api.data.createDashboardDataModel import (
 from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.dashboardDataModel import DataModelType
 from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
+    MysqlConnection,
+)
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
@@ -81,7 +84,10 @@ class SupersetDBSource(SupersetSourceMixin):
         the required information which is not available in fetch_charts_with_id api
         """
         try:
-            charts = self.engine.execute(FETCH_ALL_CHARTS)
+            if isinstance(self.service_connection.connection, MysqlConnection):
+                charts = self.engine.execute(FETCH_ALL_CHARTS.replace('"', "`"))
+            else:
+                charts = self.engine.execute(FETCH_ALL_CHARTS)
             for chart in charts:
                 chart_detail = FetchChart(**chart)
                 self.all_charts[chart_detail.id] = chart_detail
@@ -139,7 +145,7 @@ class SupersetDBSource(SupersetSourceMixin):
                     for chart in self.context.get().charts or []
                 ],
                 service=FullyQualifiedEntityName(self.context.get().dashboard_service),
-                owner=self.get_owner_ref(dashboard_details=dashboard_details),
+                owners=self.get_owner_ref(dashboard_details=dashboard_details),
             )
             yield Either(right=dashboard_request)
             self.register_record(dashboard_request=dashboard_request)
@@ -271,3 +277,13 @@ class SupersetDBSource(SupersetSourceMixin):
                             stackTrace=traceback.format_exc(),
                         )
                     )
+
+    def _get_columns_list_for_lineage(self, chart_json: FetchChart) -> List[str]:
+        """
+        Args:
+            chart_json: FetchChart
+        Returns:
+            List of columns as str to generate column lineage
+        """
+        col_list = self.get_column_list(chart_json.table_name)
+        return [col.column_name for col in col_list]

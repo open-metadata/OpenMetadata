@@ -33,6 +33,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TestConnectionDefinitionRepository;
+import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
@@ -51,10 +52,10 @@ import org.openmetadata.service.util.ResultList;
 public class TestConnectionDefinitionResource
     extends EntityResource<TestConnectionDefinition, TestConnectionDefinitionRepository> {
   public static final String COLLECTION_PATH = "/v1/services/testConnectionDefinitions";
-  static final String FIELDS = "owner";
+  static final String FIELDS = "owners";
 
-  public TestConnectionDefinitionResource(Authorizer authorizer) {
-    super(Entity.TEST_CONNECTION_DEFINITION, authorizer);
+  public TestConnectionDefinitionResource(Authorizer authorizer, Limits limits) {
+    super(Entity.TEST_CONNECTION_DEFINITION, authorizer, limits);
   }
 
   @Override

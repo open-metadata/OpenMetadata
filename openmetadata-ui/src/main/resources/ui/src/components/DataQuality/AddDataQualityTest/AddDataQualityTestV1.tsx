@@ -31,6 +31,7 @@ import {
   DEFAULT_RANGE_DATA,
   STEPS_FOR_ADD_TEST_CASE,
 } from '../../../constants/profiler.constant';
+import { useLimitStore } from '../../../context/LimitsProvider/useLimitsStore';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { FormSubmitType } from '../../../enums/form.enum';
 import { ProfilerDashboardType } from '../../../enums/table.enum';
@@ -79,6 +80,7 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
   const [testCaseRes, setTestCaseRes] = useState<TestCase>();
   const [addIngestion, setAddIngestion] = useState(false);
   const { currentUser } = useApplicationStore();
+  const { getResourceLimit } = useLimitStore();
 
   const breadcrumb = useMemo(() => {
     const data: TitleBreadcrumbProps['titleLinks'] = [
@@ -103,11 +105,13 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
     return data;
   }, [table, fqn, isColumnFqn]);
 
-  const owner = useMemo(
-    () => ({
-      id: currentUser?.id ?? '',
-      type: OwnerType.USER,
-    }),
+  const owners = useMemo(
+    () => [
+      {
+        id: currentUser?.id ?? '',
+        type: OwnerType.USER,
+      },
+    ],
     [currentUser]
   );
 
@@ -126,7 +130,7 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
     const testSuite = {
       name: `${table.fullyQualifiedName}.testSuite`,
       executableEntityReference: table.fullyQualifiedName,
-      owner,
+      owners,
     };
     const response = await createExecutableTestSuite(testSuite);
     setTestSuiteData(response);
@@ -159,11 +163,13 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
 
       const testCasePayload: CreateTestCase = {
         ...data,
-        owner,
+        owners,
         testSuite: testSuite?.fullyQualifiedName ?? '',
       };
 
       const testCaseResponse = await createTestCase(testCasePayload);
+      // Update current count when Create / Delete operation performed
+      await getResourceLimit('dataQuality', true, true);
       setActiveServiceStep(2);
       setTestCaseRes(testCaseResponse);
     } catch (error) {
@@ -272,7 +278,9 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
 
   return (
     <ResizablePanels
+      className="content-height-with-resizable-panel"
       firstPanel={{
+        className: 'content-resizable-panel-container',
         children: (
           <div className="max-width-md w-9/10 service-form-container">
             <TitleBreadcrumb titleLinks={breadcrumb} />
@@ -281,6 +289,7 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
                 <TestSuiteIngestion
                   testSuite={testSuiteData as TestSuite}
                   onCancel={() => setAddIngestion(false)}
+                  onViewServiceClick={handleRedirection}
                 />
               ) : (
                 <Row className="p-xs" gutter={[16, 16]}>
@@ -315,7 +324,7 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
       })}
       secondPanel={{
         children: secondPanel,
-        className: 'p-md p-t-xl',
+        className: 'p-md p-t-xl content-resizable-panel-container',
         minWidth: 400,
         flex: 0.4,
       }}

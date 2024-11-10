@@ -14,7 +14,7 @@ This Processor is in charge of executing the test cases
 """
 import traceback
 from copy import deepcopy
-from typing import List, Optional, cast
+from typing import List, Optional
 
 from metadata.data_quality.api.models import (
     TableAndTests,
@@ -36,7 +36,11 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.generated.schema.tests.testCase import TestCase
-from metadata.generated.schema.tests.testDefinition import TestDefinition, TestPlatform
+from metadata.generated.schema.tests.testDefinition import (
+    EntityType,
+    TestDefinition,
+    TestPlatform,
+)
 from metadata.generated.schema.tests.testSuite import TestSuite
 from metadata.generated.schema.type.basic import EntityLink, FullyQualifiedEntityName
 from metadata.ingestion.api.models import Either
@@ -86,16 +90,10 @@ class TestCaseRunner(Processor):
             ),
             table_fqn=record.table.fullyQualifiedName.root,
         )
-
-        if not test_cases:
-            return Either(
-                left=StackTraceError(
-                    name="No test Cases",
-                    error=f"No tests cases found for table {record.table.fullyQualifiedName.root}",
-                )
-            )
-
         openmetadata_test_cases = self.filter_for_om_test_cases(test_cases)
+        openmetadata_test_cases = self.filter_incompatible_test_cases(
+            record.table, openmetadata_test_cases
+        )
 
         test_suite_runner = test_suite_source_factory.create(
             record.service_type.lower(),
@@ -103,6 +101,12 @@ class TestCaseRunner(Processor):
             self.metadata,
             record.table,
         ).get_data_quality_runner()
+
+        logger.debug(
+            f"Found {len(openmetadata_test_cases)} test cases for table {record.table.fullyQualifiedName.root}"
+        )
+        if len(openmetadata_test_cases) == 0:
+            logger.warning("No test cases found for the table")
 
         test_results = [
             test_case_result
@@ -113,17 +117,14 @@ class TestCaseRunner(Processor):
         return Either(right=TestCaseResults(test_results=test_results))
 
     def get_test_cases(
-        self, test_cases: Optional[List[TestCase]], test_suite_fqn: str, table_fqn: str
+        self, test_cases: List[TestCase], test_suite_fqn: str, table_fqn: str
     ) -> List[TestCase]:
         """
         Based on the test suite test cases that we already know, pick up
         the rest from the YAML config, compare and create the new ones
         """
         if self.processor_config.testCases is not None:
-            cli_test_cases = self.get_test_case_from_cli_config()  # type: ignore
-            cli_test_cases = cast(
-                List[TestCaseDefinition], cli_test_cases
-            )  # satisfy type checker
+            cli_test_cases = self.get_test_case_from_cli_config()
             return self.compare_and_create_test_cases(
                 cli_test_cases_definitions=cli_test_cases,
                 test_cases=test_cases,
@@ -135,15 +136,13 @@ class TestCaseRunner(Processor):
 
     def get_test_case_from_cli_config(
         self,
-    ) -> Optional[List[TestCaseDefinition]]:
+    ) -> List[TestCaseDefinition]:
         """Get all the test cases names defined in the CLI config file"""
-        if self.processor_config.testCases is not None:
-            return list(self.processor_config.testCases)
-        return None
+        return list(self.processor_config.testCases or [])
 
     def compare_and_create_test_cases(
         self,
-        cli_test_cases_definitions: Optional[List[TestCaseDefinition]],
+        cli_test_cases_definitions: List[TestCaseDefinition],
         test_cases: List[TestCase],
         table_fqn: str,
         test_suite_fqn: str,
@@ -204,10 +203,12 @@ class TestCaseRunner(Processor):
                             )
                         ),
                         testSuite=test_suite_fqn,
-                        parameterValues=list(test_case_to_create.parameterValues)
-                        if test_case_to_create.parameterValues
-                        else None,
-                        owner=None,
+                        parameterValues=(
+                            list(test_case_to_create.parameterValues)
+                            if test_case_to_create.parameterValues
+                            else None
+                        ),
+                        owners=None,
                         computePassedFailedRowCount=test_case_to_create.computePassedFailedRowCount,
                     )
                 )
@@ -319,3 +320,40 @@ class TestCaseRunner(Processor):
 
     def close(self) -> None:
         """Nothing to close"""
+
+    def filter_incompatible_test_cases(
+        self, table: Table, test_cases: List[TestCase]
+    ) -> List[TestCase]:
+        """Filter out test cases that are defined for incompatible columns. An example of this is a
+        test case that checks for a column value to be between two values, but the column is of type
+        VARCHAR and not a numeric type. Incompatible test cases will be logged as failures.
+
+        Args:
+            table: Table entity the test cases are run against
+            test_cases: List of test cases
+
+        Returns:
+            List of test cases that are compatible with the table columns
+        """
+        result: List[TestCase] = []
+        for tc in test_cases:
+            test_definition: TestDefinition = self.metadata.get_by_id(
+                TestDefinition, tc.testDefinition.id, nullable=False
+            )
+            if test_definition.entityType != EntityType.COLUMN:
+                result.append(tc)
+                continue
+            column_name = entity_link.get_decoded_column(tc.entityLink.root)
+            column = next(c for c in table.columns if c.name.root == column_name)
+
+            if column.dataType not in test_definition.supportedDataTypes:
+                self.status.failed(
+                    StackTraceError(
+                        name="Incompatible Column for Test Case",
+                        error=f"Test case {tc.name.root} of type {test_definition.name.root}"
+                        f" is not compatible with column {column.name.root} of type {column.dataType.value}",
+                    )
+                )
+            else:
+                result.append(tc)
+        return result

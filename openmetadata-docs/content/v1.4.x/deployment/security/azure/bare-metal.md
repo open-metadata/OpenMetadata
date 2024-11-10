@@ -24,6 +24,12 @@ Then,
 - Update `authorizerConfiguration` to add login names of the admin users in `adminPrincipals` section as shown below.
 - Update the `principalDomain` to your company domain name.
 
+{% note %}
+
+Altering the order of claims in `jwtPrincipalClaims` may lead to problems when matching a user from a token with an existing user in the system. The mapping process relies on the specific order of claims, so changing it can result in inconsistencies or authentication failures, as the system cannot ensure correct user mapping with a new claim order.
+
+{% /note %}
+
 ```yaml
 authorizerConfiguration:
   className: "org.openmetadata.service.security.DefaultAuthorizer"

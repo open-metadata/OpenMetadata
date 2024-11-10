@@ -12,9 +12,11 @@
  */
 import { test } from '@playwright/test';
 import { CustomPropertySupportedEntityList } from '../../constant/customProperty';
+import { ApiCollectionClass } from '../../support/entity/ApiCollectionClass';
 import { DatabaseClass } from '../../support/entity/DatabaseClass';
 import { DatabaseSchemaClass } from '../../support/entity/DatabaseSchemaClass';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
+import { ApiServiceClass } from '../../support/entity/service/ApiServiceClass';
 import { DashboardServiceClass } from '../../support/entity/service/DashboardServiceClass';
 import { DatabaseServiceClass } from '../../support/entity/service/DatabaseServiceClass';
 import { MessagingServiceClass } from '../../support/entity/service/MessagingServiceClass';
@@ -32,6 +34,8 @@ import {
 import { CustomPropertyTypeByName } from '../../utils/customProperty';
 
 const entities = [
+  ApiServiceClass,
+  ApiCollectionClass,
   DatabaseServiceClass,
   DashboardServiceClass,
   MessagingServiceClass,
@@ -73,15 +77,18 @@ entities.forEach((EntityClass) => {
     });
 
     test('User as Owner Add, Update and Remove', async ({ page }) => {
+      test.slow(true);
+
       const OWNER1 = EntityDataClass.user1.getUserName();
       const OWNER2 = EntityDataClass.user2.getUserName();
-      await entity.owner(page, OWNER1, OWNER2);
+      const OWNER3 = EntityDataClass.user3.getUserName();
+      await entity.owner(page, [OWNER1, OWNER3], [OWNER2]);
     });
 
     test('Team as Owner Add, Update and Remove', async ({ page }) => {
       const OWNER1 = EntityDataClass.team1.data.displayName;
       const OWNER2 = EntityDataClass.team2.data.displayName;
-      await entity.owner(page, OWNER1, OWNER2, 'Teams');
+      await entity.owner(page, [OWNER1], [OWNER2], 'Teams');
     });
 
     test('Tier Add, Update and Remove', async ({ page }) => {
@@ -129,7 +136,7 @@ entities.forEach((EntityClass) => {
 
         await test.step(`Set ${titleText} Custom Property`, async () => {
           for (const type of properties) {
-            await entity.setCustomProperty(
+            await entity.updateCustomProperty(
               page,
               entity.customPropertyValue[type].property,
               entity.customPropertyValue[type].value

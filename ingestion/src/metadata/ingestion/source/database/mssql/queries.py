@@ -265,3 +265,5 @@ order by PROCEDURE_START_TIME desc
 ;
     """
 )
+
+GET_DB_CONFIGS = textwrap.dedent("DBCC USEROPTIONS;")

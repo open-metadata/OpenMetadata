@@ -3,7 +3,7 @@ package org.openmetadata.service.events.scheduled;
 import io.micrometer.prometheus.PrometheusMeterRegistry;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration;
-import org.openmetadata.sdk.PipelineServiceClient;
+import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
 import org.openmetadata.service.util.MicrometerBundleSingleton;
 import org.quartz.JobBuilder;
@@ -27,7 +27,7 @@ public class PipelineServiceStatusJobHandler {
   public static final String JOB_CONTEXT_CLUSTER_NAME = "clusterName";
 
   private final PipelineServiceClientConfiguration config;
-  private final PipelineServiceClient pipelineServiceClient;
+  private final PipelineServiceClientInterface pipelineServiceClient;
   private final PrometheusMeterRegistry meterRegistry;
   private final String clusterName;
   private final Integer healthCheckInterval;

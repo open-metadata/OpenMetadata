@@ -16,12 +16,14 @@ import {
   IAuthContext,
   OidcUser,
 } from '../components/Auth/AuthProviders/AuthProvider.interface';
+import { InlineAlertProps } from '../components/common/InlineAlert/InlineAlert.interface';
 import {
   EntityUnion,
   ExploreSearchIndex,
 } from '../components/Explore/ExplorePage.interface';
 import { AuthenticationConfiguration } from '../generated/configuration/authenticationConfiguration';
 import { AuthorizerConfiguration } from '../generated/configuration/authorizerConfiguration';
+import { LineageSettings } from '../generated/configuration/lineageSettings';
 import { LoginConfiguration } from '../generated/configuration/loginConfiguration';
 import { LogoConfiguration } from '../generated/configuration/logoConfiguration';
 import { UIThemePreference } from '../generated/configuration/uiThemePreference';
@@ -36,6 +38,10 @@ export interface HelperFunctions {
   handleFailedLogin: () => void;
   updateAxiosInterceptors: () => void;
   trySilentSignIn: (forceLogout?: boolean) => Promise<void>;
+}
+
+export interface AppPreferences {
+  lineageConfig?: LineageSettings;
 }
 
 export interface ApplicationStore
@@ -53,13 +59,21 @@ export interface ApplicationStore
   applicationConfig?: UIThemePreference;
   searchCriteria: ExploreSearchIndex | '';
   theme: UIThemePreference['customTheme'];
+  inlineAlertDetails?: InlineAlertProps;
+  applications: string[];
+  appPreferences: AppPreferences;
+  setInlineAlertDetails: (alertDetails?: InlineAlertProps) => void;
   setSelectedPersona: (persona: EntityReference) => void;
   setApplicationConfig: (config: UIThemePreference) => void;
+  setAppPreferences: (preferences: AppPreferences) => void;
   setCurrentUser: (user: User) => void;
   setAuthConfig: (authConfig: AuthenticationConfigurationWithScope) => void;
   setAuthorizerConfig: (authorizerConfig: AuthorizerConfiguration) => void;
   setJwtPrincipalClaims: (
     claims: AuthenticationConfiguration['jwtPrincipalClaims']
+  ) => void;
+  setJwtPrincipalClaimsMapping: (
+    claimsMapping: AuthenticationConfiguration['jwtPrincipalClaimsMapping']
   ) => void;
   setHelperFunctionsRef: (helperFunctions: HelperFunctions) => void;
   updateUserProfilePics: (data: { id: string; user: User }) => void;
@@ -76,15 +90,19 @@ export interface ApplicationStore
   removeRefreshToken: () => void;
   updateSearchCriteria: (criteria: ExploreSearchIndex | '') => void;
   trySilentSignIn: (forceLogout?: boolean) => void;
+  setApplicationsName: (applications: string[]) => void;
 }
 
 export interface DomainStore {
   domains: Domain[];
+  userDomains: EntityReference[];
   domainLoading: boolean;
   activeDomain: string;
+  activeDomainEntityRef?: EntityReference;
   domainOptions: ItemType[];
-  fetchDomainList: () => Promise<void>;
-  updateDomains: (domainsArr: Domain[]) => void;
-  refreshDomains: () => Promise<void>;
+  updateDomains: (domainsArr: Domain[], selectDefault?: boolean) => void;
   updateActiveDomain: (activeDomainKey: string) => void;
+  setDomains: (domains: Domain[]) => void;
+  setUserDomains: (userDomainsArr: EntityReference[]) => void;
+  updateDomainLoading: (loading: boolean) => void;
 }

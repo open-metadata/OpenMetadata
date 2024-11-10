@@ -102,7 +102,8 @@ class PowerbiSource(DashboardServiceSource):
 
     def close(self):
         self.metadata.close()
-        self.client.file_client.delete_tmp_files()
+        if self.client.file_client:
+            self.client.file_client.delete_tmp_files()
 
     def get_filtered_workspaces(self, groups: List[Group]) -> List[Group]:
         """
@@ -436,7 +437,7 @@ class PowerbiSource(DashboardServiceSource):
                     service=FullyQualifiedEntityName(
                         self.context.get().dashboard_service
                     ),
-                    owner=self.get_owner_ref(dashboard_details=dashboard_details),
+                    owners=self.get_owner_ref(dashboard_details=dashboard_details),
                 )
             else:
                 dashboard_request = CreateDashboardRequest(
@@ -451,7 +452,7 @@ class PowerbiSource(DashboardServiceSource):
                     project=self.get_project_name(dashboard_details=dashboard_details),
                     displayName=dashboard_details.name,
                     service=self.context.get().dashboard_service,
-                    owner=self.get_owner_ref(dashboard_details=dashboard_details),
+                    owners=self.get_owner_ref(dashboard_details=dashboard_details),
                 )
             yield Either(right=dashboard_request)
             self.register_record(dashboard_request=dashboard_request)
@@ -543,12 +544,12 @@ class PowerbiSource(DashboardServiceSource):
                         to_entity=report_entity, from_entity=datamodel_entity
                     )
 
-                    # create the lineage between table and datamodel
-                    yield from self.create_table_datamodel_lineage(
-                        db_service_name=db_service_name,
-                        tables=dataset.tables,
-                        datamodel_entity=datamodel_entity,
-                    )
+                    for table in dataset.tables or []:
+                        yield self._get_table_and_datamodel_lineage(
+                            db_service_name=db_service_name,
+                            table=table,
+                            datamodel_entity=datamodel_entity,
+                        )
 
                     # create the lineage between table and datamodel using the pbit files
                     if self.client.file_client:
@@ -675,20 +676,6 @@ class PowerbiSource(DashboardServiceSource):
                     ),
                     stackTrace=traceback.format_exc(),
                 )
-            )
-
-    def create_table_datamodel_lineage(
-        self,
-        db_service_name: str,
-        tables: Optional[List[PowerBiTable]],
-        datamodel_entity: Optional[DashboardDataModel],
-    ) -> Iterable[Either[CreateDashboardRequest]]:
-        """Method to create lineage between table and datamodels"""
-        for table in tables or []:
-            yield self._get_table_and_datamodel_lineage(
-                db_service_name=db_service_name,
-                table=table,
-                datamodel_entity=datamodel_entity,
             )
 
     def yield_dashboard_lineage_details(

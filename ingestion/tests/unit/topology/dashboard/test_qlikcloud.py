@@ -92,7 +92,7 @@ EXPECTED_DASHBOARD = CreateDashboardRequest(
     sourceUrl="https://test/sense/app/14/overview",
     charts=[],
     tags=None,
-    owner=None,
+    owners=None,
     service="qlikcloud_source_test",
     extension=None,
 )
@@ -112,7 +112,7 @@ EXPECTED_CHARTS = [
         chartType="Other",
         sourceUrl="https://test/sense/app/14/sheet/9",
         tags=None,
-        owner=None,
+        owners=None,
         service="qlikcloud_source_test",
     ),
     CreateChartRequest(
@@ -121,7 +121,7 @@ EXPECTED_CHARTS = [
         chartType="Other",
         sourceUrl="https://test/sense/app/14/sheet/10",
         tags=None,
-        owner=None,
+        owners=None,
         service="qlikcloud_source_test",
         description="American car sales data",
     ),
@@ -157,7 +157,11 @@ class QlikCloudUnitTest(TestCase):
     """
 
     def __init__(self, methodName) -> None:
-        with patch.object(QlikCloudClient, "get_dashboards_list", return_value=None):
+        with patch.object(
+            QlikCloudClient, "get_dashboards_list", return_value=None
+        ), patch.object(
+            QlikCloudClient, "get_dashboards_list_test_conn", return_value=None
+        ):
             super().__init__(methodName)
             # test_connection.return_value = False
             self.config = OpenMetadataWorkflowConfig.model_validate(

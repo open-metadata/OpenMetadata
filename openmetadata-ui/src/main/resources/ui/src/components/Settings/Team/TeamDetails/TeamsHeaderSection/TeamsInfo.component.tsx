@@ -10,15 +10,22 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import Icon from '@ant-design/icons/lib/components/Icon';
+import {
+  CheckOutlined,
+  CloseOutlined,
+  InfoCircleOutlined,
+} from '@ant-design/icons';
 import { Button, Divider, Form, Input, Space, Tooltip, Typography } from 'antd';
-import classNames from 'classnames';
 import { isEmpty, last } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../../../assets/svg/edit-new.svg';
-import { NO_DATA_PLACEHOLDER } from '../../../../../constants/constants';
+import {
+  DE_ACTIVE_COLOR,
+  GRAYED_OUT_COLOR,
+  ICON_DIMENSION,
+  NO_DATA_PLACEHOLDER,
+} from '../../../../../constants/constants';
 import { EMAIL_REG_EX } from '../../../../../constants/regex.constants';
 import { EntityType } from '../../../../../enums/entity.enum';
 import { Team, TeamType } from '../../../../../generated/entity/teams/team';
@@ -50,7 +57,7 @@ const TeamsInfo = ({
 
   const { currentUser } = useApplicationStore();
 
-  const { email, owner, teamType, id, fullyQualifiedName } = useMemo(
+  const { email, owners, teamType, id, fullyQualifiedName } = useMemo(
     () => currentTeam,
     [currentTeam]
   );
@@ -64,12 +71,14 @@ const TeamsInfo = ({
     [entityPermissions, isTeamDeleted]
   );
 
+  const isUserPartOfCurrentTeam = useMemo<boolean>(() => {
+    return owners?.some((owner) => owner.id === currentUser?.id) ?? false;
+  }, [owners, currentUser]);
+
   const hasEditSubscriptionPermission = useMemo(
     () =>
-      (entityPermissions.EditAll ||
-        currentTeam.owner?.id === currentUser?.id) &&
-      !isTeamDeleted,
-    [entityPermissions, currentTeam, currentUser, isTeamDeleted]
+      (entityPermissions.EditAll || isUserPartOfCurrentTeam) && !isTeamDeleted,
+    [entityPermissions, isUserPartOfCurrentTeam, isTeamDeleted]
   );
 
   const onEmailSave = async (data: { email: string }) => {
@@ -88,11 +97,11 @@ const TeamsInfo = ({
   };
 
   const updateOwner = useCallback(
-    async (owner?: EntityReference) => {
+    async (owners?: EntityReference[]) => {
       if (currentTeam) {
         const updatedData: Team = {
           ...currentTeam,
-          owner,
+          owners,
         };
 
         await updateTeamHandler(updatedData);
@@ -194,18 +203,17 @@ const TeamsInfo = ({
             </Typography.Text>
             {hasEditPermission && (
               <Tooltip
-                title={
-                  hasEditPermission
-                    ? t('label.edit-entity', {
-                        entity: t('label.email'),
-                      })
-                    : t('message.no-permission-for-action')
-                }>
-                <Icon
-                  className="toolbar-button align-middle"
-                  component={EditIcon}
+                title={t('label.edit-entity', {
+                  entity: t('label.email'),
+                })}>
+                <Button
+                  className="flex-center p-0"
                   data-testid="edit-email"
-                  style={{ fontSize: '16px' }}
+                  icon={
+                    <EditIcon color={DE_ACTIVE_COLOR} {...ICON_DIMENSION} />
+                  }
+                  size="small"
+                  type="text"
                   onClick={(e) => {
                     // Used to stop click propagation event to parent TeamDetailV1 collapsible panel
                     e.stopPropagation();
@@ -248,33 +256,25 @@ const TeamsInfo = ({
               {teamType}
             </Typography.Text>
 
-            {hasEditPermission && (
+            {hasEditPermission && !isGroupType && (
               <Tooltip
                 title={t('label.edit-entity', {
                   entity: t('label.team-type'),
                 })}>
-                <Icon
-                  className={classNames('vertical-middle m-l-xs', {
-                    'opacity-50': isGroupType,
-                  })}
+                <Button
+                  className="flex-center p-0"
                   data-testid="edit-team-type-icon"
-                  title={
-                    isGroupType
-                      ? t('message.group-team-type-change-message')
-                      : t('label.edit-entity', {
-                          entity: t('label.team-type'),
-                        })
+                  icon={
+                    <EditIcon color={DE_ACTIVE_COLOR} {...ICON_DIMENSION} />
                   }
+                  size="small"
+                  type="text"
                   onClick={(e) => {
                     // Used to stop click propagation event to parent TeamDetailV1 collapsible panel
                     e.stopPropagation();
-                    if (isGroupType) {
-                      return;
-                    }
                     setShowTypeSelector(true);
-                  }}>
-                  <EditIcon />
-                </Icon>
+                  }}
+                />
               </Tooltip>
             )}
           </>
@@ -295,7 +295,8 @@ const TeamsInfo = ({
   return (
     <Space size={0}>
       <DomainLabel
-        domain={currentTeam.domain}
+        multiple
+        domain={currentTeam.domains}
         entityFqn={fullyQualifiedName ?? ''}
         entityId={id ?? ''}
         entityType={EntityType.TEAM}
@@ -305,7 +306,7 @@ const TeamsInfo = ({
       <OwnerLabel
         className="text-sm"
         hasPermission={hasAccess}
-        owner={owner}
+        owners={owners}
         onUpdate={updateOwner}
       />
       <Divider type="vertical" />
@@ -318,6 +319,29 @@ const TeamsInfo = ({
         updateTeamSubscription={updateTeamSubscription}
       />
       {teamTypeElement}
+
+      <Divider type="vertical" />
+
+      <Space size={4}>
+        <Divider type="vertical" />
+        <Typography.Text className="text-grey-muted d-flex items-center">
+          {t('label.total-user-plural')}
+          <Tooltip
+            destroyTooltipOnHide
+            title={t('message.team-distinct-user-description')}>
+            <InfoCircleOutlined
+              className="m-x-xss"
+              data-testid="helper-icon"
+              style={{ color: GRAYED_OUT_COLOR }}
+            />
+          </Tooltip>
+          {' : '}
+        </Typography.Text>
+
+        <Typography.Text className="font-medium" data-testid="team-user-count">
+          {currentTeam.userCount}
+        </Typography.Text>
+      </Space>
     </Space>
   );
 };

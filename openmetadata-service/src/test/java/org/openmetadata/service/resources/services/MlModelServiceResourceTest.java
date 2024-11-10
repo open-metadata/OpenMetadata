@@ -55,7 +55,7 @@ public class MlModelServiceResourceTest
         MlModelService.class,
         MlModelServiceList.class,
         "services/mlmodelServices",
-        "owner");
+        "owners");
     this.supportsPatch = false;
     supportsSearchIndex = true;
   }
@@ -123,7 +123,10 @@ public class MlModelServiceResourceTest
                     .withTrackingUri("http://localhost:5001"));
 
     CreateMlModelService update =
-        createRequest(test).withDescription("description1").withConnection(MlModelConnection1);
+        createRequest(test)
+            .withDescription("description1")
+            .withConnection(MlModelConnection1)
+            .withName(service.getName());
 
     ChangeDescription change = getChangeDescription(service, MINOR_UPDATE);
     fieldAdded(change, "description", "description1");
@@ -195,9 +198,9 @@ public class MlModelServiceResourceTest
         byName
             ? getEntityByName(service.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(service.getId(), fields, ADMIN_AUTH_HEADERS);
-    TestUtils.assertListNull(service.getOwner());
+    TestUtils.assertListNull(service.getOwners());
 
-    fields = "owner,tags";
+    fields = "owners,tags";
     service =
         byName
             ? getEntityByName(service.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)

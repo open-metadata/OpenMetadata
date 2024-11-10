@@ -1,0 +1,14 @@
+{
+    "collections" : [
+        {
+            "name": "tables",
+            "service": "ometa_api_service",
+            "endpointURL": "https://docs.open-metadata.org/swagger.html#tag/Tables"
+        },
+        {
+            "name": "users",
+            "service": "ometa_api_service",
+            "endpointURL": "https://docs.open-metadata.org/swagger.html#tag/Users"
+        }
+    ]
+}

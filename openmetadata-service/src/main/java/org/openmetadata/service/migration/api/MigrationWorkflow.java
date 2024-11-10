@@ -12,10 +12,13 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Stream;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
 import org.jdbi.v3.core.Jdbi;
 import org.json.JSONObject;
+import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration;
+import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.service.jdbi3.MigrationDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.QueryStatus;
@@ -32,6 +35,8 @@ public class MigrationWorkflow {
   private final String nativeSQLScriptRootPath;
   private final ConnectionType connectionType;
   private final String extensionSQLScriptRootPath;
+  @Getter private final PipelineServiceClientConfiguration pipelineServiceClientConfiguration;
+  @Getter private final AuthenticationConfiguration authenticationConfiguration;
   private final MigrationDAO migrationDAO;
   private final Jdbi jdbi;
   private final boolean forceMigrations;
@@ -43,6 +48,8 @@ public class MigrationWorkflow {
       String nativeSQLScriptRootPath,
       ConnectionType connectionType,
       String extensionSQLScriptRootPath,
+      PipelineServiceClientConfiguration pipelineServiceClientConfiguration,
+      AuthenticationConfiguration authenticationConfiguration,
       boolean forceMigrations) {
     this.jdbi = jdbi;
     this.migrationDAO = jdbi.onDemand(MigrationDAO.class);
@@ -50,12 +57,19 @@ public class MigrationWorkflow {
     this.nativeSQLScriptRootPath = nativeSQLScriptRootPath;
     this.connectionType = connectionType;
     this.extensionSQLScriptRootPath = extensionSQLScriptRootPath;
+    this.pipelineServiceClientConfiguration = pipelineServiceClientConfiguration;
+    this.authenticationConfiguration = authenticationConfiguration;
   }
 
   public void loadMigrations() {
     // Sort Migration on the basis of version
     List<MigrationFile> availableMigrations =
-        getMigrationFiles(nativeSQLScriptRootPath, connectionType, extensionSQLScriptRootPath);
+        getMigrationFiles(
+            nativeSQLScriptRootPath,
+            connectionType,
+            extensionSQLScriptRootPath,
+            pipelineServiceClientConfiguration,
+            authenticationConfiguration);
     // Filter Migrations to Be Run
     this.migrations = filterAndGetMigrationsToRun(availableMigrations);
   }
@@ -64,7 +78,7 @@ public class MigrationWorkflow {
     if (!migrations.isEmpty()) {
       throw new IllegalStateException(
           "There are pending migrations to be run on the database."
-              + " Please backup your data and run `./bootstrap/bootstrap_storage.sh migrate-all`."
+              + " Please backup your data and run `./bootstrap/openmetadata-ops.sh migrate`."
               + " You can find more information on upgrading OpenMetadata at"
               + " https://docs.open-metadata.org/deployment/upgrade ");
     }
@@ -73,9 +87,16 @@ public class MigrationWorkflow {
   public List<MigrationFile> getMigrationFiles(
       String nativeSQLScriptRootPath,
       ConnectionType connectionType,
-      String extensionSQLScriptRootPath) {
+      String extensionSQLScriptRootPath,
+      PipelineServiceClientConfiguration pipelineServiceClientConfiguration,
+      AuthenticationConfiguration authenticationConfiguration) {
     List<MigrationFile> availableOMNativeMigrations =
-        getMigrationFilesFromPath(nativeSQLScriptRootPath, connectionType, false);
+        getMigrationFilesFromPath(
+            nativeSQLScriptRootPath,
+            connectionType,
+            pipelineServiceClientConfiguration,
+            authenticationConfiguration,
+            false);
 
     // If we only have OM migrations, return them
     if (extensionSQLScriptRootPath == null || extensionSQLScriptRootPath.isEmpty()) {
@@ -84,7 +105,12 @@ public class MigrationWorkflow {
 
     // Otherwise, fetch the extension migrations and sort the executions
     List<MigrationFile> availableExtensionMigrations =
-        getMigrationFilesFromPath(extensionSQLScriptRootPath, connectionType, true);
+        getMigrationFilesFromPath(
+            extensionSQLScriptRootPath,
+            connectionType,
+            pipelineServiceClientConfiguration,
+            authenticationConfiguration,
+            true);
 
     /*
      If we create migrations version as:
@@ -99,9 +125,21 @@ public class MigrationWorkflow {
   }
 
   public List<MigrationFile> getMigrationFilesFromPath(
-      String path, ConnectionType connectionType, Boolean isExtension) {
+      String path,
+      ConnectionType connectionType,
+      PipelineServiceClientConfiguration pipelineServiceClientConfiguration,
+      AuthenticationConfiguration authenticationConfiguration,
+      Boolean isExtension) {
     return Arrays.stream(Objects.requireNonNull(new File(path).listFiles(File::isDirectory)))
-        .map(dir -> new MigrationFile(dir, migrationDAO, connectionType, isExtension))
+        .map(
+            dir ->
+                new MigrationFile(
+                    dir,
+                    migrationDAO,
+                    connectionType,
+                    pipelineServiceClientConfiguration,
+                    authenticationConfiguration,
+                    isExtension))
         .sorted()
         .toList();
   }
@@ -121,11 +159,22 @@ public class MigrationWorkflow {
     try {
       for (MigrationFile file : applyMigrations) {
         file.parseSQLFiles();
-        String clazzName = file.getMigrationProcessClassName();
-        MigrationProcess process =
-            (MigrationProcess)
-                Class.forName(clazzName).getConstructor(MigrationFile.class).newInstance(file);
-        processes.add(process);
+        String extClazzName = null;
+        if (file.version.contains("collate")) {
+          extClazzName = file.getMigrationProcessExtClassName();
+        }
+        if (extClazzName != null) {
+          MigrationProcess collateProcess =
+              (MigrationProcess)
+                  Class.forName(extClazzName).getConstructor(MigrationFile.class).newInstance(file);
+          processes.add(collateProcess);
+        } else {
+          String clazzName = file.getMigrationProcessClassName();
+          MigrationProcess openMetadataProcess =
+              (MigrationProcess)
+                  Class.forName(clazzName).getConstructor(MigrationFile.class).newInstance(file);
+          processes.add(openMetadataProcess);
+        }
       }
     } catch (Exception e) {
       LOG.error("Failed to list and add migrations to run due to ", e);
@@ -216,7 +265,7 @@ public class MigrationWorkflow {
           row.add(process.getVersion());
           try {
             // Initialize
-            runStepAndAddStatus(row, () -> process.initialize(transactionHandler));
+            runStepAndAddStatus(row, () -> process.initialize(transactionHandler, jdbi));
 
             // Schema Changes
             runSchemaChanges(row, process);

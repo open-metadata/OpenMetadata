@@ -28,7 +28,11 @@
         "slackAppConfiguration",
         "slackBot",
         "slackInstaller",
-        "profilerConfiguration"
+        "slackState",
+        "profilerConfiguration",
+        "searchSettings",
+        "assetCertificationSettings",
+        "lineageSettings"
       ]
     }
   },
@@ -71,6 +75,15 @@
         },
         {
           "$ref": "../configuration/profilerConfiguration.json"
+        },
+        {
+          "$ref": "../configuration/searchSettings.json"
+        },
+        {
+          "$ref": "../configuration/assetCertificationSettings.json"
+        },
+        {
+          "$ref": "../configuration/lineageSettings.json"
         }
       ]
     }

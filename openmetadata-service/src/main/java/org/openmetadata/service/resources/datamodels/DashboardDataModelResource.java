@@ -53,6 +53,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.DashboardDataModelRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.resources.databases.DatabaseUtil;
@@ -71,7 +72,7 @@ import org.openmetadata.service.util.ResultList;
 public class DashboardDataModelResource
     extends EntityResource<DashboardDataModel, DashboardDataModelRepository> {
   public static final String COLLECTION_PATH = "/v1/dashboard/datamodels";
-  protected static final String FIELDS = "owner,tags,followers,domain,sourceHash,extension";
+  protected static final String FIELDS = "owners,tags,followers,domain,sourceHash,extension";
 
   @Override
   public DashboardDataModel addHref(UriInfo uriInfo, DashboardDataModel dashboardDataModel) {
@@ -80,8 +81,8 @@ public class DashboardDataModelResource
     return dashboardDataModel;
   }
 
-  public DashboardDataModelResource(Authorizer authorizer) {
-    super(Entity.DASHBOARD_DATA_MODEL, authorizer);
+  public DashboardDataModelResource(Authorizer authorizer, Limits limits) {
+    super(Entity.DASHBOARD_DATA_MODEL, authorizer, limits);
   }
 
   public static class DashboardDataModelList extends ResultList<DashboardDataModel> {

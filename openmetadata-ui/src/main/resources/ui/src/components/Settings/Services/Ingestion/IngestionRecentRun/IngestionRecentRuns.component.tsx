@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { Popover, Skeleton, Space, Tag } from 'antd';
+import { Popover, Skeleton, Space, Tag, Typography } from 'antd';
 import classNamesFunc from 'classnames';
-import { isEmpty, isUndefined, startCase } from 'lodash';
+import { isEmpty, isUndefined, upperCase } from 'lodash';
 import React, {
   FunctionComponent,
   useCallback,
@@ -21,6 +21,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import { NO_DATA_PLACEHOLDER } from '../../../../../constants/constants';
 import { PIPELINE_INGESTION_RUN_STATUS } from '../../../../../constants/pipeline.constants';
 import {
   IngestionPipeline,
@@ -40,6 +41,8 @@ interface Props {
   classNames?: string;
   appRuns?: PipelineStatus[];
   isApplicationType?: boolean;
+  pipelineIdToFetchStatus?: string;
+  handlePipelineIdToFetchStatus?: (pipelineId?: string) => void;
 }
 const queryParams = {
   startTs: getEpochMillisForPastDays(1),
@@ -51,6 +54,8 @@ export const IngestionRecentRuns: FunctionComponent<Props> = ({
   classNames,
   appRuns,
   isApplicationType,
+  pipelineIdToFetchStatus = '',
+  handlePipelineIdToFetchStatus,
 }: Props) => {
   const { t } = useTranslation();
   const [recentRunStatus, setRecentRunStatus] = useState<PipelineStatus[]>([]);
@@ -86,6 +91,15 @@ export const IngestionRecentRuns: FunctionComponent<Props> = ({
     }
   }, [ingestion, ingestion?.fullyQualifiedName]);
 
+  useEffect(() => {
+    // To fetch pipeline status on demand
+    // If pipelineIdToFetchStatus is present and equal to current pipeline id
+    if (pipelineIdToFetchStatus === ingestion?.id) {
+      fetchPipelineStatus();
+      handlePipelineIdToFetchStatus?.(); // Clear the id after fetching status
+    }
+  }, [pipelineIdToFetchStatus]);
+
   const handleRunStatusClick = (status: PipelineStatus) => {
     setSelectedStatus(status);
   };
@@ -97,9 +111,11 @@ export const IngestionRecentRuns: FunctionComponent<Props> = ({
   }
 
   return (
-    <Space className={classNames} size={2}>
+    <Space className={classNames} size={5}>
       {isEmpty(recentRunStatus) ? (
-        <p data-testid="pipeline-status">--</p>
+        <Typography.Text data-testid="pipeline-status">
+          {NO_DATA_PLACEHOLDER}
+        </Typography.Text>
       ) : (
         recentRunStatus.map((r, i) => {
           const status = (
@@ -114,7 +130,7 @@ export const IngestionRecentRuns: FunctionComponent<Props> = ({
               key={`${r.runId}-status`}
               onClick={() => handleRunStatusClick(r)}>
               {i === recentRunStatus.length - 1
-                ? startCase(r?.pipelineState)
+                ? upperCase(r?.pipelineState)
                 : ''}
             </Tag>
           );

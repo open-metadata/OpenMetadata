@@ -21,7 +21,6 @@ import { ReactComponent as IconUser } from '../../../../assets/svg/user.svg';
 import { DE_ACTIVE_COLOR, getUserPath } from '../../../../constants/constants';
 import { EntityType } from '../../../../enums/entity.enum';
 import { Query } from '../../../../generated/entity/data/query';
-import { EntityReference } from '../../../../generated/entity/type';
 import { TagLabel } from '../../../../generated/type/tagLabel';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import DescriptionV1 from '../../../common/EntityDescription/DescriptionV1';
@@ -39,16 +38,16 @@ const TableQueryRightPanel = ({
   permission,
 }: TableQueryRightPanelProps) => {
   const { t } = useTranslation();
-  const { EditAll, EditDescription, EditOwner, EditTags } = permission;
+  const { EditAll, EditDescription, EditOwners, EditTags } = permission;
 
   const [isEditDescription, setIsEditDescription] = useState(false);
 
-  const handleUpdateOwner = async (owner: Query['owner']) => {
+  const handleUpdateOwner = async (owners: Query['owners']) => {
     const updatedData = {
       ...query,
-      owner,
+      owners,
     };
-    await onQueryUpdate(updatedData, 'owner');
+    await onQueryUpdate(updatedData, 'owners');
   };
 
   const onDescriptionUpdate = async (description: string) => {
@@ -87,19 +86,20 @@ const TableQueryRightPanel = ({
             <Space className="relative" direction="vertical" size={4}>
               <Space align="center" className="w-full" size={0}>
                 <Typography.Text className="right-panel-label">
-                  {t('label.owner')}
+                  {t('label.owner-plural')}
                 </Typography.Text>
 
-                {(EditAll || EditOwner) && (
+                {(EditAll || EditOwners) && (
                   <UserTeamSelectableList
-                    hasPermission={EditAll || EditOwner}
-                    owner={query.owner}
-                    onUpdate={(updatedUser) =>
-                      handleUpdateOwner(updatedUser as EntityReference)
+                    hasPermission={EditAll || EditOwners}
+                    multiple={{ user: true, team: false }}
+                    owner={query.owners}
+                    onUpdate={(updatedUsers) =>
+                      handleUpdateOwner(updatedUsers)
                     }>
                     <Tooltip
                       title={t('label.edit-entity', {
-                        entity: t('label.owner-lowercase'),
+                        entity: t('label.owner-lowercase-plural'),
                       })}>
                       <Button
                         className="cursor-pointer flex-center"
@@ -112,7 +112,7 @@ const TableQueryRightPanel = ({
                   </UserTeamSelectableList>
                 )}
               </Space>
-              <OwnerLabel hasPermission={false} owner={query.owner} />
+              <OwnerLabel hasPermission={false} owners={query.owners} />
             </Space>
           </Col>
           <Col span={24}>

@@ -309,6 +309,9 @@ export const jsonToCSV = <T extends JSONRecord>(
     const row = headers
       .map((header) => {
         const value = obj[header.field];
+        if (!value) {
+          return '""';
+        }
         const escaped =
           typeof value === 'string'
             ? value.replace(/"/g, '\\"')

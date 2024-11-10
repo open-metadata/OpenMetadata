@@ -68,7 +68,7 @@ EXPECTED_DATABASE_SCHEMA = [
         name="do_it_all_with_default_schema",
         displayName=None,
         description=None,
-        owner=None,
+        owners=None,
         database="domodashboard_source_test.do_it_all_with_default_config",
     )
 ]
@@ -227,7 +227,7 @@ EXPTECTED_TABLE = [
         tableConstraints=None,
         tablePartition=None,
         tableProfilerConfig=None,
-        owner=None,
+        owners=None,
         databaseSchema="domodashboard_source_test.do_it_all_with_default_config.do_it_all_with_default_schema",
         tags=None,
         schemaDefinition=None,

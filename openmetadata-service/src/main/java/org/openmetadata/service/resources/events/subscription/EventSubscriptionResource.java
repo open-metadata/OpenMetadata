@@ -17,6 +17,7 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.api.events.CreateEventSubscription.AlertType.NOTIFICATION;
 import static org.openmetadata.service.events.subscription.AlertUtil.validateAndBuildFilteringConditions;
+import static org.openmetadata.service.fernet.Fernet.encryptWebhookSecretKey;
 
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -50,6 +51,7 @@ import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
+import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
@@ -58,22 +60,31 @@ import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.events.CreateEventSubscription;
+import org.openmetadata.schema.api.events.EventSubscriptionDestinationTestRequest;
+import org.openmetadata.schema.api.events.EventSubscriptionDiagnosticInfo;
 import org.openmetadata.schema.entity.events.EventFilterRule;
 import org.openmetadata.schema.entity.events.EventSubscription;
+import org.openmetadata.schema.entity.events.FailedEventResponse;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.entity.events.SubscriptionStatus;
+import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.FilterResourceDescriptor;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.NotificationResourceDescriptor;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.apps.bundles.changeEvent.AlertFactory;
+import org.openmetadata.service.apps.bundles.changeEvent.Destination;
+import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.events.scheduled.EventSubscriptionScheduler;
 import org.openmetadata.service.events.subscription.AlertUtil;
 import org.openmetadata.service.events.subscription.EventsSubscriptionRegistry;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EventSubscriptionRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
@@ -94,10 +105,10 @@ import org.quartz.SchedulerException;
 public class EventSubscriptionResource
     extends EntityResource<EventSubscription, EventSubscriptionRepository> {
   public static final String COLLECTION_PATH = "/v1/events/subscriptions";
-  public static final String FIELDS = "owner,filteringRules";
+  public static final String FIELDS = "owners,filteringRules";
 
-  public EventSubscriptionResource(Authorizer authorizer) {
-    super(Entity.EVENT_SUBSCRIPTION, authorizer);
+  public EventSubscriptionResource(Authorizer authorizer, Limits limits) {
+    super(Entity.EVENT_SUBSCRIPTION, authorizer, limits);
   }
 
   @Override
@@ -406,33 +417,6 @@ public class EventSubscriptionResource
   }
 
   @GET
-  @Path("/{id}/processedEvents")
-  @Operation(
-      operationId = "checkIfThePublisherProcessedALlEvents",
-      summary = "Check If the Publisher Processed All Events",
-      description =
-          "Return a boolean 'true' or 'false' to indicate if the publisher processed all events",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "List of Event Subscription versions",
-            content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = EntityHistory.class)))
-      })
-  public Response checkIfThePublisherProcessedALlEvents(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the Event Subscription", schema = @Schema(type = "UUID"))
-          @PathParam("id")
-          UUID id) {
-    return Response.ok()
-        .entity(EventSubscriptionScheduler.getInstance().checkIfPublisherPublishedAllEvents(id))
-        .build();
-  }
-
-  @GET
   @Path("/{id}/versions/{version}")
   @Operation(
       operationId = "getSpecificEventSubscriptionVersion",
@@ -490,6 +474,7 @@ public class EventSubscriptionResource
       throws SchedulerException {
     EventSubscription eventSubscription = repository.get(null, id, repository.getFields("id"));
     EventSubscriptionScheduler.getInstance().deleteEventSubscriptionPublisher(eventSubscription);
+    EventSubscriptionScheduler.getInstance().deleteSuccessfulAndFailedEventsRecordByAlert(id);
     return delete(uriInfo, securityContext, id, true, true);
   }
 
@@ -513,6 +498,8 @@ public class EventSubscriptionResource
     EventSubscription eventSubscription =
         repository.getByName(null, name, repository.getFields("id"));
     EventSubscriptionScheduler.getInstance().deleteEventSubscriptionPublisher(eventSubscription);
+    EventSubscriptionScheduler.getInstance()
+        .deleteSuccessfulAndFailedEventsRecordByAlert(eventSubscription.getId());
     return deleteByName(uriInfo, securityContext, name, true, true);
   }
 
@@ -619,6 +606,673 @@ public class EventSubscriptionResource
     AlertUtil.validateExpression(expression, Boolean.class);
   }
 
+  @GET
+  @Path("/{id}/processedEvents")
+  @Operation(
+      operationId = "checkIfThePublisherProcessedALlEvents",
+      summary = "Check If the Publisher Processed All Events",
+      description =
+          "Return a boolean 'true' or 'false' to indicate if the publisher processed all events",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of Event Subscription versions",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = EntityHistory.class)))
+      })
+  public Response checkIfThePublisherProcessedALlEvents(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the Event Subscription", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id) {
+    return Response.ok()
+        .entity(EventSubscriptionScheduler.getInstance().checkIfPublisherPublishedAllEvents(id))
+        .build();
+  }
+
+  @GET
+  @Path("id/{id}/listEvents")
+  @Operation(
+      operationId = "getEvents",
+      summary = "Retrieve events based on various filters",
+      description =
+          "Retrieve failed, successfully sent, or unprocessed change events, identified by alert ID, with an optional limit. If status is not provided, retrieves data from all statuses in ascending timestamp.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "Events retrieved successfully"),
+        @ApiResponse(responseCode = "404", description = "Entity not found"),
+        @ApiResponse(responseCode = "400", description = "Invalid request parameters"),
+        @ApiResponse(responseCode = "500", description = "Internal server error")
+      })
+  public Response getEvents(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Status of events to retrieve (failed, successful)",
+              schema =
+                  @Schema(
+                      type = "string",
+                      allowableValues = {"failed", "successful"}))
+          @QueryParam("status")
+          String statusParam,
+      @Parameter(description = "ID of the alert or destination", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
+      @Parameter(
+              description = "Maximum number of events to retrieve",
+              schema = @Schema(type = "integer"))
+          @QueryParam("limit")
+          @DefaultValue("15")
+          @Min(0)
+          int limit,
+      @Parameter(
+              description = "Offset for pagination (starting point for records)",
+              schema = @Schema(type = "integer"))
+          @QueryParam("paginationOffset")
+          @DefaultValue("0")
+          int paginationOffset) {
+    authorizer.authorizeAdmin(securityContext);
+
+    try {
+      List<TypedEvent> combinedEvents = new ArrayList<>();
+      TypedEvent.Status status = null;
+
+      if (statusParam != null && !statusParam.isBlank()) {
+        try {
+          status = TypedEvent.Status.fromValue(statusParam);
+        } catch (IllegalArgumentException e) {
+          throw new WebApplicationException(
+              "Invalid status. Must be 'failed' or 'successful'.", Response.Status.BAD_REQUEST);
+        }
+      }
+
+      if (status == null) {
+        combinedEvents.addAll(fetchEvents(id, limit, paginationOffset));
+      } else {
+        combinedEvents.addAll(fetchEvents(id, limit, paginationOffset, status));
+      }
+
+      return Response.ok().entity(combinedEvents).build();
+    } catch (EntityNotFoundException e) {
+      LOG.error("Entity not found for ID: {}", id, e);
+      return Response.status(Response.Status.NOT_FOUND)
+          .entity(String.format("Entity with ID %s not found.", id))
+          .build();
+    } catch (Exception e) {
+      LOG.error("Error retrieving events for ID: {}", id, e);
+      return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+          .entity(String.format("An error occurred while retrieving events. [%s]", e.getMessage()))
+          .build();
+    }
+  }
+
+  private List<TypedEvent> fetchEvents(
+      UUID id, int limit, int paginationOffset, TypedEvent.Status status) {
+    List<?> events;
+    switch (status) {
+      case FAILED -> events =
+          EventSubscriptionScheduler.getInstance().getFailedEventsById(id, limit, paginationOffset);
+      case SUCCESSFUL -> events =
+          EventSubscriptionScheduler.getInstance()
+              .getSuccessfullySentChangeEventsForAlert(id, limit, paginationOffset);
+      default -> throw new IllegalArgumentException("Unknown event status: " + status);
+    }
+
+    return events.stream()
+        .map(
+            event ->
+                new TypedEvent()
+                    .withStatus(status)
+                    .withData(List.of(event))
+                    .withTimestamp(Double.valueOf(extractTimestamp(event))))
+        .toList();
+  }
+
+  private List<TypedEvent> fetchEvents(UUID id, int limit, int paginationOffset) {
+    return EventSubscriptionScheduler.getInstance()
+        .listEventsForSubscription(id, limit, paginationOffset);
+  }
+
+  private Long extractTimestamp(Object event) {
+    if (event instanceof ChangeEvent changeEvent) {
+      return changeEvent.getTimestamp();
+    } else if (event instanceof FailedEventResponse failedEvent) {
+      return failedEvent.getChangeEvent().getTimestamp();
+    }
+    throw new IllegalArgumentException("Unknown event type: " + event.getClass());
+  }
+
+  @GET
+  @Path("/id/{subscriptionId}/diagnosticInfo")
+  @Operation(
+      operationId = "getEventSubscriptionDiagnosticInfoById",
+      summary = "Get event subscription diagnostic info",
+      description =
+          "Retrieve diagnostic information for a given event subscription ID, including current and latest offsets, unprocessed events count, and more.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Event subscription diagnostic info retrieved successfully",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = EventSubscriptionDiagnosticInfo.class))),
+        @ApiResponse(responseCode = "404", description = "Event subscription not found"),
+        @ApiResponse(responseCode = "500", description = "Internal server error")
+      })
+  public Response getEventSubscriptionDiagnosticInfoById(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Maximum number of unprocessed events returned")
+          @DefaultValue("15")
+          @Min(0)
+          @QueryParam("limit")
+          int limit,
+      @Parameter(
+              description = "Offset for pagination (starting point for records)",
+              schema = @Schema(type = "integer"))
+          @QueryParam("paginationOffset")
+          @DefaultValue("0")
+          int paginationOffset,
+      @Parameter(description = "UUID of the Event Subscription", schema = @Schema(type = "UUID"))
+          @PathParam("subscriptionId")
+          UUID subscriptionId,
+      @Parameter(description = "Return only count if true")
+          @QueryParam("listCountOnly")
+          @DefaultValue("false")
+          boolean listCountOnly) {
+    authorizer.authorizeAdmin(securityContext);
+    try {
+      if (!EventSubscriptionScheduler.getInstance().doesRecordExist(subscriptionId)) {
+        return Response.status(Response.Status.NOT_FOUND)
+            .entity("Event subscription not found for ID: " + subscriptionId)
+            .build();
+      }
+
+      EventSubscriptionDiagnosticInfo diagnosticInfo =
+          EventSubscriptionScheduler.getInstance()
+              .getEventSubscriptionDiagnosticInfo(
+                  subscriptionId, limit, paginationOffset, listCountOnly);
+
+      return Response.ok().entity(diagnosticInfo).build();
+    } catch (Exception e) {
+      LOG.error("Error retrieving diagnostic info for subscription ID: {}", subscriptionId, e);
+      return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+          .entity(
+              "An error occurred while retrieving diagnostic info for subscription ID: "
+                  + subscriptionId)
+          .build();
+    }
+  }
+
+  @GET
+  @Path("/name/{subscriptionName}/diagnosticInfo")
+  @Operation(
+      operationId = "getEventSubscriptionDiagnosticInfoByName",
+      summary = "Get event subscription diagnostic info by name",
+      description =
+          "Retrieve diagnostic information for a given event subscription name, including current and latest offsets, unprocessed events count, and more.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Event subscription diagnostic info retrieved successfully",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = EventSubscriptionDiagnosticInfo.class))),
+        @ApiResponse(responseCode = "404", description = "Event subscription not found"),
+        @ApiResponse(responseCode = "500", description = "Internal server error")
+      })
+  public Response getEventSubscriptionDiagnosticInfoByName(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Maximum number of unprocessed events returned")
+          @DefaultValue("15")
+          @Min(0)
+          @QueryParam("limit")
+          int limit,
+      @Parameter(
+              description = "Offset for pagination (starting point for records)",
+              schema = @Schema(type = "integer"))
+          @QueryParam("paginationOffset")
+          @DefaultValue("0")
+          int paginationOffset,
+      @Parameter(description = "Name of the Event Subscription", schema = @Schema(type = "string"))
+          @PathParam("subscriptionName")
+          String subscriptionName,
+      @Parameter(description = "Return only count if true")
+          @QueryParam("listCountOnly")
+          @DefaultValue("false")
+          boolean listCountOnly) {
+    authorizer.authorizeAdmin(securityContext);
+    try {
+      EventSubscription subscription =
+          repository.getByName(null, subscriptionName, repository.getFields("id"));
+
+      if (subscription == null) {
+        return Response.status(Response.Status.NOT_FOUND)
+            .entity("Event subscription not found for name: " + subscriptionName)
+            .build();
+      }
+
+      EventSubscriptionDiagnosticInfo diagnosticInfo =
+          EventSubscriptionScheduler.getInstance()
+              .getEventSubscriptionDiagnosticInfo(
+                  subscription.getId(), limit, paginationOffset, listCountOnly);
+
+      return Response.ok().entity(diagnosticInfo).build();
+    } catch (Exception e) {
+      LOG.error("Error retrieving diagnostic info for subscription name: {}", subscriptionName, e);
+      return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+          .entity(
+              "An error occurred while retrieving diagnostic info for subscription name: "
+                  + subscriptionName)
+          .build();
+    }
+  }
+
+  @GET
+  @Path("/id/{id}/failedEvents")
+  @Operation(
+      operationId = "getFailedEventsBySubscriptionId",
+      summary = "Get failed events for a subscription by id",
+      description = "Retrieve failed events for a given subscription id.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Failed events retrieved successfully",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ChangeEvent.class))),
+        @ApiResponse(responseCode = "404", description = "Event subscription not found"),
+        @ApiResponse(responseCode = "500", description = "Internal server error")
+      })
+  public Response getFailedEvents(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the Event Subscription", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
+      @Parameter(
+              description = "Maximum number of failed events to retrieve",
+              schema = @Schema(type = "integer"))
+          @QueryParam("limit")
+          @DefaultValue("15")
+          @Min(0)
+          int limit,
+      @Parameter(
+              description = "Offset for pagination (starting point for records)",
+              schema = @Schema(type = "integer"))
+          @QueryParam("paginationOffset")
+          @DefaultValue("0")
+          int paginationOffset,
+      @Parameter(description = "Source of the failed events", schema = @Schema(type = "string"))
+          @QueryParam("source")
+          String source) {
+    authorizer.authorizeAdmin(securityContext);
+
+    try {
+      List<FailedEventResponse> failedEvents =
+          EventSubscriptionScheduler.getInstance()
+              .getFailedEventsByIdAndSource(id, source, limit, paginationOffset);
+
+      return Response.ok().entity(failedEvents).build();
+    } catch (Exception e) {
+      LOG.error("Error retrieving failed events for subscription ID: {}", id, e);
+      return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+          .entity("An error occurred while retrieving failed events for subscription ID: " + id)
+          .build();
+    }
+  }
+
+  @GET
+  @Path("/name/{eventSubscriptionName}/failedEvents")
+  @Operation(
+      operationId = "getFailedEventsBySubscriptionName",
+      summary = "Get failed events for a subscription by name",
+      description = "Retrieve failed events for a given subscription name.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Failed events retrieved successfully",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ChangeEvent.class))),
+        @ApiResponse(responseCode = "404", description = "Event subscription not found"),
+        @ApiResponse(responseCode = "500", description = "Internal server error")
+      })
+  public Response getFailedEventsByEventSubscriptionName(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the Event Subscription", schema = @Schema(type = "string"))
+          @PathParam("eventSubscriptionName")
+          String name,
+      @Parameter(
+              description = "Maximum number of failed events to retrieve",
+              schema = @Schema(type = "integer"))
+          @QueryParam("limit")
+          @DefaultValue("15")
+          @Min(0)
+          int limit,
+      @Parameter(
+              description = "Offset for pagination (starting point for records)",
+              schema = @Schema(type = "integer"))
+          @QueryParam("paginationOffset")
+          @DefaultValue("0")
+          int paginationOffset,
+      @Parameter(description = "Source of the failed events", schema = @Schema(type = "string"))
+          @QueryParam("source")
+          String source) {
+    authorizer.authorizeAdmin(securityContext);
+
+    try {
+      EventSubscription subscription = repository.getByName(null, name, repository.getFields("id"));
+
+      List<FailedEventResponse> failedEvents =
+          EventSubscriptionScheduler.getInstance()
+              .getFailedEventsByIdAndSource(subscription.getId(), source, limit, paginationOffset);
+
+      return Response.ok().entity(failedEvents).build();
+
+    } catch (EntityNotFoundException ex) {
+      return Response.status(Response.Status.NOT_FOUND)
+          .entity("Event subscription not found for name: " + name)
+          .build();
+
+    } catch (Exception e) {
+      LOG.error("Error retrieving failed events for subscription Name: {}", name, e);
+      return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+          .entity("An error occurred while retrieving failed events for subscription name: " + name)
+          .build();
+    }
+  }
+
+  @GET
+  @Path("/listAllFailedEvents")
+  @Operation(
+      operationId = "getAllFailedEvents",
+      summary = "Get all failed events",
+      description = "Retrieve all failed events, optionally filtered by source, and apply a limit.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Failed events retrieved successfully",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ChangeEvent.class))),
+        @ApiResponse(responseCode = "500", description = "Internal server error")
+      })
+  public Response getAllFailedEvents(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Maximum number of failed events to retrieve",
+              schema = @Schema(type = "integer"))
+          @QueryParam("limit")
+          @DefaultValue("15")
+          @Min(0)
+          int limit,
+      @Parameter(
+              description = "Offset for pagination (starting point for records)",
+              schema = @Schema(type = "integer"))
+          @QueryParam("paginationOffset")
+          @DefaultValue("0")
+          int paginationOffset,
+      @Parameter(description = "Source of the failed events", schema = @Schema(type = "string"))
+          @QueryParam("source")
+          String source) {
+    authorizer.authorizeAdmin(securityContext);
+
+    try {
+      List<FailedEventResponse> failedEvents =
+          EventSubscriptionScheduler.getInstance()
+              .getAllFailedEvents(source, limit, paginationOffset);
+
+      return Response.ok().entity(failedEvents).build();
+    } catch (Exception e) {
+      LOG.error("Error retrieving all failed events", e);
+      return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+          .entity("An error occurred while retrieving all failed events." + e.getMessage())
+          .build();
+    }
+  }
+
+  @GET
+  @Path("id/{id}/listSuccessfullySentChangeEvents")
+  @Operation(
+      operationId = "getSuccessfullySentChangeEventsForAlert",
+      summary = "Get successfully sent change events for an alert",
+      description =
+          "Retrieve successfully sent change events for a specific alert, identified by its ID, with an optional limit.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully sent change events retrieved successfully",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ChangeEvent.class))),
+        @ApiResponse(responseCode = "404", description = "Alert not found"),
+        @ApiResponse(responseCode = "500", description = "Internal server error")
+      })
+  public Response getSuccessfullySentChangeEventsForAlert(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "ID of the alert to retrieve change events for",
+              schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
+      @Parameter(
+              description = "Maximum number of change events to retrieve",
+              schema = @Schema(type = "integer"))
+          @QueryParam("limit")
+          @DefaultValue("15")
+          @Min(0)
+          int limit,
+      @Parameter(
+              description = "Offset for pagination (starting point for records)",
+              schema = @Schema(type = "integer"))
+          @QueryParam("paginationOffset")
+          @DefaultValue("0")
+          int paginationOffset) {
+    authorizer.authorizeAdmin(securityContext);
+
+    try {
+      List<ChangeEvent> changeEvents =
+          EventSubscriptionScheduler.getInstance()
+              .getSuccessfullySentChangeEventsForAlert(id, limit, paginationOffset);
+
+      return Response.ok().entity(changeEvents).build();
+    } catch (EntityNotFoundException e) {
+      LOG.error("Alert not found: {}", id, e);
+      return Response.status(Response.Status.NOT_FOUND)
+          .entity(String.format("Alert with ID %s not found.", id))
+          .build();
+    } catch (Exception e) {
+      LOG.error("Error retrieving successfully sent change events for alert: {}", id, e);
+      return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+          .entity(
+              String.format(
+                  "An error occurred while retrieving successfully sent change events for alert: %s. [%s]",
+                  id, e.getMessage()))
+          .build();
+    }
+  }
+
+  @GET
+  @Path("name/{eventSubscriptionName}/listSuccessfullySentChangeEvents")
+  @Operation(
+      operationId = "getSuccessfullySentChangeEventsForAlertByName",
+      summary = "Get successfully sent change events for an alert by name",
+      description =
+          "Retrieve successfully sent change events for a specific alert, identified by its name, with an optional limit.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully sent change events retrieved successfully",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ChangeEvent.class))),
+        @ApiResponse(responseCode = "404", description = "Alert not found"),
+        @ApiResponse(responseCode = "500", description = "Internal server error")
+      })
+  public Response getSuccessfullySentChangeEventsForAlertByName(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Name of the alert to retrieve change events for",
+              schema = @Schema(type = "string"))
+          @PathParam("eventSubscriptionName")
+          String name,
+      @Parameter(
+              description = "Maximum number of change events to retrieve",
+              schema = @Schema(type = "integer"))
+          @QueryParam("limit")
+          @DefaultValue("15")
+          @Min(0)
+          int limit,
+      @Parameter(
+              description = "Offset for pagination (starting point for records)",
+              schema = @Schema(type = "integer"))
+          @QueryParam("paginationOffset")
+          @DefaultValue("0")
+          int paginationOffset) {
+    authorizer.authorizeAdmin(securityContext);
+
+    try {
+      EventSubscription subscription = repository.getByName(null, name, repository.getFields("id"));
+
+      List<ChangeEvent> changeEvents =
+          EventSubscriptionScheduler.getInstance()
+              .getSuccessfullySentChangeEventsForAlert(
+                  subscription.getId(), limit, paginationOffset);
+
+      return Response.ok().entity(changeEvents).build();
+    } catch (EntityNotFoundException e) {
+      LOG.error("Alert not found with name: {}", name, e);
+      return Response.status(Response.Status.NOT_FOUND)
+          .entity(String.format("Alert with name '%s' not found.", name))
+          .build();
+    } catch (Exception e) {
+      LOG.error(
+          "Error retrieving successfully sent change events for alert with name: {}", name, e);
+      return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+          .entity(
+              String.format(
+                  "An error occurred while retrieving successfully sent change events for alert with name: %s. [%s]",
+                  name, e.getMessage()))
+          .build();
+    }
+  }
+
+  @GET
+  @Path("/id/{eventSubscriptionId}/destinations")
+  @Valid
+  @Operation(
+      operationId = "getAllDestinationForEventSubscription",
+      summary = "Get the destinations for a specific Event Subscription",
+      description =
+          "Retrieve the status of all destinations associated with the given Event Subscription ID",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Returns the destinations for the Event Subscription",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = SubscriptionDestination.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Event Subscription for instance {eventSubscriptionId} is not found")
+      })
+  public List<SubscriptionDestination> getAllDestinationForSubscriptionById(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "ID of the Event Subscription", schema = @Schema(type = "UUID"))
+          @PathParam("eventSubscriptionId")
+          UUID id) {
+    return EventSubscriptionScheduler.getInstance().listAlertDestinations(id);
+  }
+
+  @GET
+  @Path("name/{eventSubscriptionName}/destinations")
+  @Valid
+  @Operation(
+      operationId = "getAllDestinationForEventSubscriptionByName",
+      summary = "Get the destinations for a specific Event Subscription by its name",
+      description =
+          "Retrieve the status of all destinations associated with the given Event Subscription's fully qualified name (FQN)",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Returns the destinations for the Event Subscription",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = SubscriptionDestination.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Event Subscription with the name {fqn} is not found")
+      })
+  public List<SubscriptionDestination> getAllDestinationStatusesForSubscriptionByName(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the Event Subscription", schema = @Schema(type = "string"))
+          @PathParam("eventSubscriptionName")
+          String name) {
+    authorizer.authorizeAdmin(securityContext);
+    EventSubscription sub = repository.getByName(null, name, repository.getFields("id"));
+    return EventSubscriptionScheduler.getInstance().listAlertDestinations(sub.getId());
+  }
+
+  @POST
+  @Path("/testDestination")
+  @Operation(
+      operationId = "testDestination",
+      summary = "Send a test message alert to external destinations.",
+      description = "Send a test message alert to external destinations of the alert.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Test message sent successfully",
+            content = @Content(schema = @Schema(implementation = Response.class)))
+      })
+  public Response sendTestMessageAlert(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      EventSubscriptionDestinationTestRequest request) {
+    authorizer.authorizeAdmin(securityContext);
+
+    EventSubscription eventSubscription =
+        new EventSubscription().withFullyQualifiedName(request.getAlertName());
+
+    List<SubscriptionDestination> resultDestinations = new ArrayList<>();
+
+    // by-pass AbstractEventConsumer - covers external destinations as of now
+    request
+        .getDestinations()
+        .forEach(
+            (destination) -> {
+              Destination<ChangeEvent> alert =
+                  AlertFactory.getAlert(eventSubscription, destination);
+              try {
+                alert.sendTestMessage();
+                resultDestinations.add(destination);
+              } catch (EventPublisherException e) {
+                LOG.error(e.getMessage());
+              }
+            });
+
+    return Response.ok(resultDestinations).build();
+  }
+
   private EventSubscription getEventSubscription(CreateEventSubscription create, String user) {
     return repository
         .copy(new EventSubscription(), create, user)
@@ -629,7 +1283,7 @@ public class EventSubscriptionResource
         .withFilteringRules(
             validateAndBuildFilteringConditions(
                 create.getResources(), create.getAlertType(), create.getInput()))
-        .withDestinations(getSubscriptions(create.getDestinations()))
+        .withDestinations(encryptWebhookSecretKey(getSubscriptions(create.getDestinations())))
         .withProvider(create.getProvider())
         .withRetries(create.getRetries())
         .withPollInterval(create.getPollInterval())

@@ -20,7 +20,7 @@ export interface SearchIndexVersionProps {
   version: string;
   currentVersionData: SearchIndex;
   isVersionLoading: boolean;
-  owner: SearchIndex['owner'];
+  owners: SearchIndex['owners'];
   domain: SearchIndex['domain'];
   dataProducts: SearchIndex['dataProducts'];
   tier: TagLabel;
