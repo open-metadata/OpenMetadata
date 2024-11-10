@@ -11,7 +11,7 @@
 """
 OpenMetadata source for the profiler
 """
-from typing import Iterable, Optional, cast
+from typing import Iterable, List, Optional, cast
 
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline import (
@@ -79,6 +79,14 @@ class OpenMetadataSource(Source):
         logger.info(
             f"Starting profiler for service {self.config.source.serviceName}"
             f":{self.config.source.type.lower()}"
+        )
+
+    def _get_fields(self) -> List[str]:
+        """Get the fields required to process the tables"""
+        return (
+            TABLE_FIELDS
+            if not self.source_config.processPiiSensitive
+            else TABLE_FIELDS + TAGS_FIELD
         )
 
     def _validate_service_name(self):

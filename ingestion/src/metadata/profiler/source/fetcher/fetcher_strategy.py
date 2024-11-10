@@ -94,7 +94,10 @@ class FetcherStrategy(ABC):
                 if not tag_name:
                     continue
                 if filter_by_classification(classification_filter_pattern, tag_name):
-                    self.status.filter(tag_name, f"Classification pattern not allowed for entity {entity.fullyQualifiedName.root}")  # type: ignore
+                    self.status.filter(
+                        tag_name,
+                        f"Classification pattern not allowed for entity {entity.fullyQualifiedName.root}",
+                    )  # type: ignore
                     break
             else:
                 filtered_entities.append(entity)
