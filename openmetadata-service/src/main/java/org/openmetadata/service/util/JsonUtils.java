@@ -532,14 +532,17 @@ public final class JsonUtils {
 
   public static <T> T extractValue(String jsonResponse, String... keys) {
     JsonNode jsonNode = JsonUtils.readTree(jsonResponse);
-
-    // Traverse the JSON structure using keys
     for (String key : keys) {
       jsonNode = jsonNode.path(key);
     }
-
-    // Extract the final value
-    return JsonUtils.treeToValue(jsonNode, (Class<T>) getValueClass(jsonNode));
+    if (jsonNode.isMissingNode() || jsonNode.isNull()) {
+      return null;
+    }
+    try {
+      return JsonUtils.treeToValue(jsonNode, (Class<T>) getValueClass(jsonNode));
+    } catch (Exception e) {
+      return null;
+    }
   }
 
   public static <T> T extractValue(JsonNode jsonNode, String... keys) {
