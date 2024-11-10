@@ -354,7 +354,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
   private void consumeTasks(JobExecutionContext jobExecutionContext) throws InterruptedException {
     while (true) {
       IndexingTask<?> task = taskQueue.take();
-      LOG.info(
+      LOG.debug(
           "Consuming Indexing Task for entityType: {}, entity offset : {}",
           task.entityType(),
           task.currentEntityOffset());
@@ -643,7 +643,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
 
       List<?> entities = extractEntities(entityType, resultList);
       if (entities != null && !entities.isEmpty()) {
-        LOG.info(
+        LOG.debug(
             "Creating Indexing Task for entityType: {}, current offset : {}",
             entityType,
             source.getCursor());
