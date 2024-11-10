@@ -195,7 +195,7 @@ const ClassificationDetails = forwardRef(
 
     const handleUpdateDisplayName = async (data: {
       name: string;
-      displayName: string;
+      displayName?: string;
     }) => {
       if (
         !isUndefined(currentClassification) &&

@@ -47,8 +47,6 @@ import { EntityChangeOperations } from '../enums/VersionPage.enum';
 import { Classification } from '../generated/entity/classification/classification';
 import { Column as ContainerColumn } from '../generated/entity/data/container';
 import { Column as DataModelColumn } from '../generated/entity/data/dashboardDataModel';
-import { Glossary } from '../generated/entity/data/glossary';
-import { GlossaryTerm } from '../generated/entity/data/glossaryTerm';
 import { Column as TableColumn } from '../generated/entity/data/table';
 import { Field } from '../generated/entity/data/topic';
 import {
@@ -609,9 +607,6 @@ export const getCommonExtraInfoForVersionDetails = (
   tier?: TagLabel,
   domain?: EntityReference
 ) => {
-  // const { entityRef: ownerRef, entityDisplayName: ownerDisplayName } =
-  //   getEntityReferenceDiffFromFieldName('owners', changeDescription, owners);
-
   const { owners: ownerRef, ownerDisplayName } = getOwnerDiff(
     owners ?? [],
     changeDescription
@@ -1035,7 +1030,10 @@ export const getOwnerDiff = (
 };
 
 export const getOwnerVersionLabel = (
-  entity: Glossary | GlossaryTerm | Classification,
+  entity: {
+    [TabSpecificField.OWNERS]?: EntityReference[];
+    changeDescription?: ChangeDescription;
+  },
   isVersionView: boolean,
   ownerField = TabSpecificField.OWNERS, // Can be owners, experts, reviewers all are OwnerLabels
   hasPermission = true

@@ -25,6 +25,7 @@ import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_COLUMN
 import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_DISPLAY_NAME_NGRAM;
 import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_NAME_NGRAM;
 import static org.openmetadata.service.search.EntityBuilderConstant.MAX_AGGREGATE_SIZE;
+import static org.openmetadata.service.search.EntityBuilderConstant.MAX_ANALYZED_OFFSET;
 import static org.openmetadata.service.search.EntityBuilderConstant.MAX_RESULT_HITS;
 import static org.openmetadata.service.search.EntityBuilderConstant.OWNER_DISPLAY_NAME_KEYWORD;
 import static org.openmetadata.service.search.EntityBuilderConstant.POST_TAG;
@@ -1442,6 +1443,7 @@ public class ElasticSearchClient implements SearchClient {
     }
     hb.preTags(PRE_TAG);
     hb.postTags(POST_TAG);
+    hb.maxAnalyzedOffset(MAX_ANALYZED_OFFSET);
     return hb;
   }
 
@@ -2096,7 +2098,7 @@ public class ElasticSearchClient implements SearchClient {
   private void updateElasticSearchByQuery(UpdateByQueryRequest updateByQueryRequest) {
     if (updateByQueryRequest != null && isClientAvailable) {
       updateByQueryRequest.setRefresh(true);
-      LOG.info(SENDING_REQUEST_TO_ELASTIC_SEARCH, updateByQueryRequest);
+      LOG.debug(SENDING_REQUEST_TO_ELASTIC_SEARCH, updateByQueryRequest);
       client.updateByQuery(updateByQueryRequest, RequestOptions.DEFAULT);
     }
   }
