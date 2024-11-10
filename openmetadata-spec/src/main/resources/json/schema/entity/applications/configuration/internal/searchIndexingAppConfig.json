@@ -60,7 +60,7 @@
       "title": "Max Retries",
       "description": "Maximum number of retries for a failed request",
       "type": "integer",
-      "default": 5
+      "default": 3
     },
     "initialBackoff": {
       "title": "Initial Backoff Millis",

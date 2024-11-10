@@ -194,6 +194,9 @@ public class SearchIndexApp extends AbstractNativeApplication {
       }
 
       performReindex(jobExecutionContext);
+    } catch (InterruptedException ex) {
+      Thread.currentThread().interrupt();
+      handleJobFailure(ex);
     } catch (Exception ex) {
       handleJobFailure(ex);
     } finally {
@@ -251,11 +254,6 @@ public class SearchIndexApp extends AbstractNativeApplication {
     }
   }
 
-  /**
-   * Updates the job record in the database.
-   *
-   * @param jobExecutionContext The context of the job execution.
-   */
   public void updateRecordToDb(JobExecutionContext jobExecutionContext) {
     AppRunRecord appRecord = getJobRecord(jobExecutionContext);
 
@@ -273,12 +271,6 @@ public class SearchIndexApp extends AbstractNativeApplication {
     LOG.debug("Updated AppRunRecord in DB: {}", appRecord);
   }
 
-  /**
-   * Performs the reindexing process using producer-consumer pattern.
-   *
-   * @param jobExecutionContext The context of the job execution.
-   * @throws InterruptedException If the thread is interrupted while waiting.
-   */
   private void performReindex(JobExecutionContext jobExecutionContext) throws InterruptedException {
     if (jobData.getStats() == null) {
       jobData.setStats(new Stats());
@@ -293,7 +285,6 @@ public class SearchIndexApp extends AbstractNativeApplication {
     CountDownLatch producerLatch = new CountDownLatch(numProducers);
 
     try {
-      // Start Producer Threads
       for (String entityType : jobData.getEntities()) {
         producerExecutor.submit(
             () -> {
@@ -308,7 +299,6 @@ public class SearchIndexApp extends AbstractNativeApplication {
             });
       }
 
-      // Start Consumer Threads
       for (int i = 0; i < numConsumers; i++) {
         consumerExecutor.submit(
             () -> {
@@ -321,12 +311,8 @@ public class SearchIndexApp extends AbstractNativeApplication {
             });
       }
 
-      // Wait for Producers to finish
       producerLatch.await();
-
-      // Send POISON_PILLs to Consumers to signal termination
       sendPoisonPills(numConsumers);
-
     } catch (Exception e) {
       LOG.error("Error during reindexing process.", e);
       throw e;
@@ -336,21 +322,11 @@ public class SearchIndexApp extends AbstractNativeApplication {
     }
   }
 
-  /**
-   * Calculates the number of consumer threads to use.
-   *
-   * @return The number of consumers.
-   */
+
   private int calculateNumberOfConsumers() {
     return Math.min(Runtime.getRuntime().availableProcessors(), MAX_CONSUMERS);
   }
 
-  /**
-   * Starts consuming tasks from the queue.
-   *
-   * @param jobExecutionContext The context of the job execution.
-   * @throws InterruptedException If the thread is interrupted while waiting.
-   */
   private void consumeTasks(JobExecutionContext jobExecutionContext) throws InterruptedException {
     while (true) {
       IndexingTask<?> task = taskQueue.take();
@@ -423,7 +399,6 @@ public class SearchIndexApp extends AbstractNativeApplication {
     Stats jobDataStats = jobData.getStats();
     if (jobDataStats.getEntityStats() == null) {
       jobDataStats.setEntityStats(new StepStats());
-      LOG.debug("Initialized entityStats map.");
     }
 
     StepStats existingEntityStats =
@@ -444,7 +419,6 @@ public class SearchIndexApp extends AbstractNativeApplication {
     if (jobStats == null) {
       jobStats = new StepStats();
       jobDataStats.setJobStats(jobStats);
-      LOG.debug("Initialized jobStats.");
     }
 
     accumulateStepStats(jobStats, currentEntityStats);
