@@ -42,10 +42,8 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.profiler.interface.profiler_interface import ProfilerInterface
-from metadata.profiler.source.metadata import (
-    OpenMetadataSource,
-    ProfilerSourceAndEntity,
-)
+from metadata.profiler.source.metadata import OpenMetadataSource
+from metadata.profiler.source.model import ProfilerSourceAndEntity
 from metadata.utils import fqn
 from metadata.utils.class_helper import get_service_type_from_source_type
 from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_table
