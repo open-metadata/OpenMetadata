@@ -407,7 +407,7 @@ public class DataInsightsApp extends AbstractNativeApplication {
     jobData.setStats(jobDataStats);
   }
 
-  public void updateRecordToDb(JobExecutionContext jobExecutionContext) {
+  public void updateRecordToDbAndNotify(JobExecutionContext jobExecutionContext) {
     AppRunRecord appRecord = getJobRecord(jobExecutionContext);
 
     // Update Run Record with Status
@@ -425,6 +425,13 @@ public class DataInsightsApp extends AbstractNativeApplication {
           new SuccessContext().withAdditionalProperty("stats", jobData.getStats()));
     }
 
+    if (WebSocketManager.getInstance() != null) {
+      WebSocketManager.getInstance()
+          .broadCastMessageToAll(
+              WebSocketManager.DATA_INSIGHTS_JOB_BROADCAST_CHANNEL,
+              JsonUtils.pojoToJson(appRecord));
+    }
+
     pushAppStatusUpdates(jobExecutionContext, appRecord, true);
   }
 
@@ -433,13 +440,7 @@ public class DataInsightsApp extends AbstractNativeApplication {
       // store job details in Database
       jobExecutionContext.getJobDetail().getJobDataMap().put(APP_RUN_STATS, jobData.getStats());
       // Update Record to db
-      updateRecordToDb(jobExecutionContext);
-      if (WebSocketManager.getInstance() != null) {
-        WebSocketManager.getInstance()
-            .broadCastMessageToAll(
-                WebSocketManager.DATA_INSIGHTS_JOB_BROADCAST_CHANNEL,
-                JsonUtils.pojoToJson(jobData));
-      }
+      updateRecordToDbAndNotify(jobExecutionContext);
     } catch (Exception ex) {
       LOG.error("Failed to send updated stats with WebSocket", ex);
     }
