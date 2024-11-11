@@ -303,7 +303,7 @@ class SigmaSource(DashboardServiceSource):
                         service=FullyQualifiedEntityName(
                             self.context.get().dashboard_service
                         ),
-                        dataModelType=DataModelType.SigmaDataModel.value,  # pylint: disable=no-member
+                        dataModelType=DataModelType.SigmaDataModel.value,
                         serviceType=self.service_connection.type.value,
                         columns=self.get_column_info(data_model),
                     )
