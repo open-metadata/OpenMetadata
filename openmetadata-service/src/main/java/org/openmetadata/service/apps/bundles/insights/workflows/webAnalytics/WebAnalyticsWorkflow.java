@@ -166,7 +166,7 @@ public class WebAnalyticsWorkflow {
       throws SearchIndexException {
     Optional<String> error = Optional.empty();
 
-    while (!source.isDone()) {
+    while (!source.isDone().get()) {
       ResultList<WebAnalyticEventData> resultList = source.readNext(null);
       try {
         if (!resultList.getData().isEmpty()) {
