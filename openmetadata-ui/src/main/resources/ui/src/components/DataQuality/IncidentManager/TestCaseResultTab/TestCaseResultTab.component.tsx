@@ -225,7 +225,7 @@ const TestCaseResultTab = () => {
                       })}>
                       <Icon
                         component={EditIcon}
-                        data-testid="edit-parameter-icon"
+                        data-testid="edit-sql-param-icon"
                         style={{ color: DE_ACTIVE_COLOR, ...ICON_DIMENSION }}
                         onClick={() => setIsParameterEdit(true)}
                       />
