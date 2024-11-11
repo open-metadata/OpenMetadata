@@ -1833,6 +1833,10 @@ public class OpenSearchClient implements SearchClient {
         .aggregation(
             AggregationBuilders.terms("tier.tagFQN").field("tier.tagFQN").size(MAX_AGGREGATE_SIZE))
         .aggregation(
+            AggregationBuilders.terms("certification.tagFQN")
+                .field("certification.tagFQN")
+                .size(MAX_AGGREGATE_SIZE))
+        .aggregation(
             AggregationBuilders.terms(OWNER_DISPLAY_NAME_KEYWORD)
                 .field(OWNER_DISPLAY_NAME_KEYWORD)
                 .size(MAX_AGGREGATE_SIZE))

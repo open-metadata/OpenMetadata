@@ -18,16 +18,19 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.type.AssetCertification;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.LineageDetails;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TableConstraint;
+import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -96,6 +99,7 @@ public interface SearchIndex {
             entity.getFullyQualifiedName(),
             suggest.stream().map(SearchSuggest::getInput).toList()));
     map.put("deleted", entity.getDeleted() != null && entity.getDeleted());
+    map.put("certification", getAssetCertification(entity));
     return map;
   }
 
@@ -138,6 +142,12 @@ public interface SearchIndex {
             ? cloneEntity.getName()
             : cloneEntity.getDisplayName());
     return cloneEntity;
+  }
+
+  default TagLabel getAssetCertification(EntityInterface entity) {
+    return Optional.ofNullable(entity.getCertification())
+        .map(AssetCertification::getTagLabel)
+        .orElse(null);
   }
 
   default String getDescriptionStatus(EntityInterface entity) {
