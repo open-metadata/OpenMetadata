@@ -188,6 +188,18 @@ export const isValidDateFormat = (format: string) => {
   }
 };
 
+export const getIntervalInMilliseconds = (
+  startTime: number,
+  endTime: number
+) => {
+  const startDateTime = DateTime.fromMillis(startTime);
+  const endDateTime = DateTime.fromMillis(endTime);
+
+  const interval = endDateTime.diff(startDateTime);
+
+  return interval.milliseconds;
+};
+
 /**
  * Calculates the interval between two timestamps in milliseconds
  * and returns the result as a formatted string "X Days, Y Hours".
@@ -201,11 +213,12 @@ export const calculateInterval = (
   endTime: number
 ): string => {
   try {
-    const startDateTime = DateTime.fromMillis(startTime);
-    const endDateTime = DateTime.fromMillis(endTime);
+    const intervalInMilliseconds = getIntervalInMilliseconds(
+      startTime,
+      endTime
+    );
 
-    const interval = endDateTime.diff(startDateTime);
-    const duration = Duration.fromMillis(interval.milliseconds);
+    const duration = Duration.fromMillis(intervalInMilliseconds);
     const days = Math.floor(duration.as('days'));
     const hours = Math.floor(duration.as('hours')) % 24;
 
@@ -250,6 +263,23 @@ export const convertMillisecondsToHumanReadableFormat = (
   }
 
   return result.join(' ');
+};
+
+export const formatDuration = (ms: number) => {
+  const seconds = ms / 1000;
+  const minutes = seconds / 60;
+  const hours = minutes / 60;
+
+  const pluralize = (value: number, unit: string) =>
+    `${value.toFixed(2)} ${unit}${value !== 1 ? 's' : ''}`;
+
+  if (seconds < 60) {
+    return pluralize(seconds, 'second');
+  } else if (minutes < 60) {
+    return pluralize(minutes, 'minute');
+  } else {
+    return pluralize(hours, 'hour');
+  }
 };
 
 export const getStartOfDayInMillis = (timestamp: number) =>

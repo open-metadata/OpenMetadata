@@ -100,7 +100,7 @@ public class CostAnalysisWorkflow {
         new PaginatedEntitiesSource(Entity.DATABASE_SERVICE, batchSize, List.of("*"));
     int total = 0;
 
-    while (!databaseServices.isDone()) {
+    while (!databaseServices.isDone().get()) {
       ResultList<DatabaseService> resultList =
           filterDatabaseServices(databaseServices.readNext(null));
       if (!resultList.getData().isEmpty()) {
@@ -156,7 +156,7 @@ public class CostAnalysisWorkflow {
 
       Optional<String> initialProcessorError = Optional.empty();
 
-      while (!source.isDone()) {
+      while (!source.isDone().get()) {
         try {
           ResultList<? extends EntityInterface> resultList = source.readNext(null);
           List<CostAnalysisTableData> costAnalysisTableData =

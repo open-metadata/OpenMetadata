@@ -112,7 +112,11 @@ const AppSchedule = ({
 
   const onAppTrigger = async () => {
     await onDemandTrigger();
-    appRunsHistoryRef.current?.refreshAppHistory();
+
+    // Refresh the app history after 750ms to get the latest run as the run is triggered asynchronously
+    setTimeout(() => {
+      appRunsHistoryRef.current?.refreshAppHistory();
+    }, 750);
   };
 
   const appRunHistory = useMemo(() => {

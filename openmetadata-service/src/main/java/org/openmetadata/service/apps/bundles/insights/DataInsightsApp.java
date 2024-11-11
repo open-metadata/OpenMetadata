@@ -1,8 +1,10 @@
 package org.openmetadata.service.apps.bundles.insights;
 
 import static org.openmetadata.service.apps.scheduler.AbstractOmAppJobListener.APP_RUN_STATS;
+import static org.openmetadata.service.apps.scheduler.AbstractOmAppJobListener.WEBSOCKET_STATUS_CHANNEL;
 import static org.openmetadata.service.apps.scheduler.AppScheduler.ON_DEMAND_JOB;
-import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getTotalRequestToProcess;
+import static org.openmetadata.service.socket.WebSocketManager.DATA_INSIGHTS_JOB_BROADCAST_CHANNEL;
+import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getInitialStatsForEntities;
 
 import es.org.elasticsearch.client.RestClient;
 import java.io.IOException;
@@ -377,7 +379,10 @@ public class DataInsightsApp extends AbstractNativeApplication {
     if (stats == null) {
       stats =
           new StepStats()
-              .withTotalRecords(getTotalRequestToProcess(jobData.getEntities(), collectionDAO));
+              .withTotalRecords(
+                  getInitialStatsForEntities(jobData.getEntities())
+                      .getJobStats()
+                      .getTotalRecords());
     }
 
     stats.setTotalRecords(
@@ -404,7 +409,7 @@ public class DataInsightsApp extends AbstractNativeApplication {
     jobData.setStats(jobDataStats);
   }
 
-  public void updateRecordToDb(JobExecutionContext jobExecutionContext) {
+  public void updateRecordToDbAndNotify(JobExecutionContext jobExecutionContext) {
     AppRunRecord appRecord = getJobRecord(jobExecutionContext);
 
     // Update Run Record with Status
@@ -422,6 +427,12 @@ public class DataInsightsApp extends AbstractNativeApplication {
           new SuccessContext().withAdditionalProperty("stats", jobData.getStats()));
     }
 
+    if (WebSocketManager.getInstance() != null) {
+      WebSocketManager.getInstance()
+          .broadCastMessageToAll(
+              DATA_INSIGHTS_JOB_BROADCAST_CHANNEL, JsonUtils.pojoToJson(appRecord));
+    }
+
     pushAppStatusUpdates(jobExecutionContext, appRecord, true);
   }
 
@@ -429,13 +440,12 @@ public class DataInsightsApp extends AbstractNativeApplication {
     try {
       // store job details in Database
       jobExecutionContext.getJobDetail().getJobDataMap().put(APP_RUN_STATS, jobData.getStats());
+      jobExecutionContext
+          .getJobDetail()
+          .getJobDataMap()
+          .put(WEBSOCKET_STATUS_CHANNEL, DATA_INSIGHTS_JOB_BROADCAST_CHANNEL);
       // Update Record to db
-      updateRecordToDb(jobExecutionContext);
-      if (WebSocketManager.getInstance() != null) {
-        WebSocketManager.getInstance()
-            .broadCastMessageToAll(
-                WebSocketManager.JOB_STATUS_BROADCAST_CHANNEL, JsonUtils.pojoToJson(jobData));
-      }
+      updateRecordToDbAndNotify(jobExecutionContext);
     } catch (Exception ex) {
       LOG.error("Failed to send updated stats with WebSocket", ex);
     }

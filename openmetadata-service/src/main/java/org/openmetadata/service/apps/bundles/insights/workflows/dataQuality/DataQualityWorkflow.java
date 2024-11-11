@@ -3,7 +3,7 @@ package org.openmetadata.service.apps.bundles.insights.workflows.dataQuality;
 import static org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils.END_TIMESTAMP_KEY;
 import static org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils.START_TIMESTAMP_KEY;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.ENTITY_TYPE_KEY;
-import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getTotalRequestToProcess;
+import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getInitialStatsForEntities;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -101,7 +101,8 @@ public class DataQualityWorkflow {
   }
 
   private void initialize() {
-    int totalRecords = getTotalRequestToProcess(Set.of(entityType), collectionDAO);
+    int totalRecords =
+        getInitialStatsForEntities(Set.of(entityType)).getJobStats().getTotalRecords();
 
     List<String> fields = List.of("*");
     PaginatedEntityTimeSeriesSource source =
@@ -151,7 +152,7 @@ public class DataQualityWorkflow {
       deleteDataBeforeInserting(getIndexNameByType(source.getEntityType()));
       contextData.put(ENTITY_TYPE_KEY, entityType);
 
-      while (!source.isDone()) {
+      while (!source.isDone().get()) {
         try {
           processEntity(source.readNext(null), contextData, source);
         } catch (SearchIndexException ex) {

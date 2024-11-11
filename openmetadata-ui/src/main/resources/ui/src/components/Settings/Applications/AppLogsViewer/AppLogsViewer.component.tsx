@@ -40,7 +40,7 @@ import {
   JobStats,
 } from './AppLogsViewer.interface';
 
-const AppLogsViewer = ({ data }: AppLogsViewerProps) => {
+const AppLogsViewer = ({ data, scrollHeight }: AppLogsViewerProps) => {
   const { t } = useTranslation();
 
   const { successContext, failureContext, timestamp, status } = data;
@@ -251,7 +251,7 @@ const AppLogsViewer = ({ data }: AppLogsViewerProps) => {
           dataSource={getEntityStatsData(entityStats)}
           pagination={false}
           rowKey="name"
-          scroll={{ y: 200 }}
+          scroll={scrollHeight ? { y: scrollHeight } : undefined}
           size="small"
         />
       );

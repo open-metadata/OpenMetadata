@@ -28,10 +28,10 @@ import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.system.EntityError;
+import org.openmetadata.schema.system.Stats;
 import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.EntityTimeSeriesRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -59,14 +59,19 @@ public class ReindexingUtil {
     return Entity.getSearchRepository().getDataInsightReports().contains(entityType);
   }
 
-  public static int getTotalRequestToProcess(Set<String> entities, CollectionDAO dao) {
+  public static Stats getInitialStatsForEntities(Set<String> entities) {
+    Stats initialStats = new Stats();
+    StepStats entityLevelStat = new StepStats();
     int total = 0;
 
     for (String entityType : entities) {
       try {
         if (!TIME_SERIES_ENTITIES.contains(entityType)) {
           EntityRepository<?> repository = Entity.getEntityRepository(entityType);
-          total += repository.getDao().listTotalCount();
+          int entityCount = repository.getDao().listTotalCount();
+          total += entityCount;
+          entityLevelStat.withAdditionalProperty(
+              entityType, new StepStats().withTotalRecords(entityCount));
         } else {
           EntityTimeSeriesRepository<?> repository;
           ListFilter listFilter = new ListFilter(null);
@@ -76,13 +81,18 @@ public class ReindexingUtil {
           } else {
             repository = Entity.getEntityTimeSeriesRepository(entityType);
           }
-          total += repository.getTimeSeriesDao().listCount(listFilter);
+          int entityCount = repository.getTimeSeriesDao().listCount(listFilter);
+          total += entityCount;
+          entityLevelStat.withAdditionalProperty(
+              entityType, new StepStats().withTotalRecords(entityCount));
         }
       } catch (Exception e) {
         LOG.debug("Error while getting total entities to index", e);
       }
     }
-    return total;
+    initialStats.setJobStats(new StepStats().withTotalRecords(total));
+    initialStats.setEntityStats(entityLevelStat);
+    return initialStats;
   }
 
   public static int getSuccessFromBulkResponse(BulkResponse response) {

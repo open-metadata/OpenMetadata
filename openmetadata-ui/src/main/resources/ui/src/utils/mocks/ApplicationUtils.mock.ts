@@ -198,6 +198,9 @@ export const MOCK_APPLICATION_ENTITY_STATS = {
     failedRecords: 0,
     successRecords: 4,
   },
+  totalRecords: 0,
+  successRecords: 0,
+  failedRecords: 0,
 };
 
 export const MOCK_APPLICATION_ENTITY_STATS_DATA = [
