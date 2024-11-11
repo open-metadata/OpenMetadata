@@ -1561,8 +1561,15 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   }
 
   @Override
-  protected String initiateExport(String teamName) throws HttpResponseException {
+  protected String exportCsv(String teamName) throws HttpResponseException {
     WebTarget target = getCollection().path("/export");
+    target = target.queryParam("team", teamName);
+    return TestUtils.get(target, String.class, ADMIN_AUTH_HEADERS);
+  }
+
+  @Override
+  protected String initiateExport(String teamName) throws HttpResponseException {
+    WebTarget target = getCollection().path("/exportAsync");
     target = target.queryParam("team", teamName);
     CSVExportResponse response =
         TestUtils.getWithResponse(

@@ -24,10 +24,10 @@ public class EventSubscriptionCleanupJob implements Job {
         Entity.getCollectionDAO().eventSubscriptionDAO().findSubscriptionsAboveThreshold(THRESHOLD);
 
     for (String subscriptionId : subscriptionsToClean) {
-      int recordCount =
-          Entity.getCollectionDAO().eventSubscriptionDAO().getRecordCount(subscriptionId);
+      long recordCount =
+          Entity.getCollectionDAO().eventSubscriptionDAO().getSuccessfulRecordCount(subscriptionId);
 
-      int excessRecords = recordCount - TARGET_COUNT;
+      long excessRecords = recordCount - TARGET_COUNT;
       if (excessRecords > 0) {
         Entity.getCollectionDAO()
             .eventSubscriptionDAO()
