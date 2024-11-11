@@ -28,6 +28,7 @@
     "add": "Toevoegen",
     "add-a-new-service": "Nieuwe service toevoegen",
     "add-an-image": "Afbeelding toevoegen",
+    "add-column": "Add Column",
     "add-custom-entity-property": "Aangepaste {{entity}} eigenschap toevoegen",
     "add-deploy": "Toevoegen en deployen",
     "add-entity": "{{entity}} toevoegen",

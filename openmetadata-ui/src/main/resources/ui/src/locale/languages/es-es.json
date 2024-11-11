@@ -28,6 +28,7 @@
     "add": "Añadir",
     "add-a-new-service": "Añadir un nuevo servicio",
     "add-an-image": "Añadir una imagen",
+    "add-column": "Add Column",
     "add-custom-entity-property": "Añadir propiedad personalizada de {{entity}}",
     "add-deploy": "Añadir y desplegar",
     "add-entity": "Añadir {{entity}}",
