@@ -72,9 +72,12 @@ export enum EntityFields {
 export enum EntityReferenceFields {
   REVIEWERS = 'reviewers.fullyQualifiedName',
   OWNERS = 'owners.fullyQualifiedName',
+  DATABASE = 'database.fullyQualifiedName',
+  DATABASE_SCHEMA = 'databaseSchema.fullyQualifiedName',
   DESCRIPTION = 'description',
   NAME = 'name',
   DISPLAY_NAME = 'displayName',
   TAG = 'tags.tagFQN',
   TIER = 'tier.tagFQN',
+  TABLE_TYPE = 'tableType',
 }

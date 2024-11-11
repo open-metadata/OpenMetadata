@@ -125,6 +125,14 @@ class JSONLogicSearchClassBase {
       label: t('label.is-set'),
     },
   };
+  defaultSelectOperators = [
+    'select_equals',
+    'select_not_equals',
+    'select_any_in',
+    'select_not_any_in',
+    'is_null',
+    'is_not_null',
+  ];
 
   public searchAutocomplete: (args: {
     searchIndex: SearchIndex | SearchIndex[];
@@ -171,18 +179,55 @@ class JSONLogicSearchClassBase {
       label: t('label.reviewer-plural'),
       type: 'select',
       mainWidgetProps: this.mainWidgetProps,
-      operators: [
-        'select_equals',
-        'select_not_equals',
-        'select_any_in',
-        'select_not_any_in',
-        'is_null',
-        'is_not_null',
-      ],
+      operators: this.defaultSelectOperators,
       fieldSettings: {
         asyncFetch: advancedSearchClassBase.autocomplete({
           searchIndex: [SearchIndex.USER, SearchIndex.TEAM],
           entityField: EntityFields.DISPLAY_NAME_KEYWORD,
+        }),
+        useAsyncSearch: true,
+      },
+    },
+  };
+
+  tableEntityFields: Fields = {
+    [EntityReferenceFields.DATABASE]: {
+      label: t('label.database'),
+      type: 'select',
+      mainWidgetProps: this.mainWidgetProps,
+      operators: this.defaultSelectOperators,
+      fieldSettings: {
+        asyncFetch: advancedSearchClassBase.autocomplete({
+          searchIndex: SearchIndex.TABLE,
+          entityField: EntityFields.DATABASE,
+        }),
+        useAsyncSearch: true,
+      },
+    },
+
+    [EntityReferenceFields.DATABASE_SCHEMA]: {
+      label: t('label.database-schema'),
+      type: 'select',
+      mainWidgetProps: this.mainWidgetProps,
+      operators: this.defaultSelectOperators,
+      fieldSettings: {
+        asyncFetch: advancedSearchClassBase.autocomplete({
+          searchIndex: SearchIndex.TABLE,
+          entityField: EntityFields.DATABASE_SCHEMA,
+        }),
+        useAsyncSearch: true,
+      },
+    },
+
+    [EntityReferenceFields.TABLE_TYPE]: {
+      label: t('label.table-type'),
+      type: 'select',
+      mainWidgetProps: this.mainWidgetProps,
+      operators: this.defaultSelectOperators,
+      fieldSettings: {
+        asyncFetch: advancedSearchClassBase.autocomplete({
+          searchIndex: SearchIndex.TABLE,
+          entityField: EntityFields.TABLE_TYPE,
         }),
         useAsyncSearch: true,
       },
@@ -198,14 +243,7 @@ class JSONLogicSearchClassBase {
         label: t('label.owner-plural'),
         type: 'select',
         mainWidgetProps: this.mainWidgetProps,
-        operators: [
-          'select_equals',
-          'select_not_equals',
-          'select_any_in',
-          'select_not_any_in',
-          'is_null',
-          'is_not_null',
-        ],
+        operators: this.defaultSelectOperators,
         fieldSettings: {
           asyncFetch: advancedSearchClassBase.autocomplete({
             searchIndex: [SearchIndex.USER, SearchIndex.TEAM],
@@ -225,15 +263,7 @@ class JSONLogicSearchClassBase {
           }),
           useAsyncSearch: true,
         },
-        operators: [
-          'select_equals',
-          'select_not_equals',
-          'select_any_in',
-          'select_not_any_in',
-          'like',
-          'not_like',
-          'regexp',
-        ],
+        operators: this.defaultSelectOperators,
       },
       [EntityReferenceFields.NAME]: {
         label: t('label.name'),
@@ -246,15 +276,7 @@ class JSONLogicSearchClassBase {
           }),
           useAsyncSearch: true,
         },
-        operators: [
-          'select_equals',
-          'select_not_equals',
-          'select_any_in',
-          'select_not_any_in',
-          'like',
-          'not_like',
-          'regexp',
-        ],
+        operators: this.defaultSelectOperators,
       },
       deleted: {
         label: t('label.deleted'),
@@ -280,14 +302,7 @@ class JSONLogicSearchClassBase {
         label: t('label.tag-plural'),
         type: 'select',
         mainWidgetProps: this.mainWidgetProps,
-        operators: [
-          'select_equals',
-          'select_not_equals',
-          'select_any_in',
-          'select_not_any_in',
-          'is_null',
-          'is_not_null',
-        ],
+        operators: this.defaultSelectOperators,
         fieldSettings: {
           asyncFetch: this.searchAutocomplete({
             searchIndex: SearchIndex.TAG,
@@ -312,6 +327,7 @@ class JSONLogicSearchClassBase {
   ): Fields {
     let configs: Fields = {};
     const configIndexMapping: Partial<Record<SearchIndex, Fields>> = {
+      [SearchIndex.TABLE]: this.tableEntityFields,
       [SearchIndex.GLOSSARY_TERM]: this.glossaryEntityFields,
     };
 
