@@ -127,7 +127,7 @@ public abstract class AbstractOmAppJobListener implements JobListener {
     // Push Update on WebSocket
     String webSocketChannelName =
         (String) jobExecutionContext.getJobDetail().getJobDataMap().get(WEBSOCKET_STATUS_CHANNEL);
-    if (nullOrEmpty(webSocketChannelName) && WebSocketManager.getInstance() != null) {
+    if (!nullOrEmpty(webSocketChannelName) && WebSocketManager.getInstance() != null) {
       WebSocketManager.getInstance()
           .broadCastMessageToAll(webSocketChannelName, JsonUtils.pojoToJson(runRecord));
     }
