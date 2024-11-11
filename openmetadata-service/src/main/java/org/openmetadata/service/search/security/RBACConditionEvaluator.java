@@ -40,19 +40,16 @@ public class RBACConditionEvaluator {
     List<OMQueryBuilder> allowQueries = new ArrayList<>();
     List<OMQueryBuilder> denyQueries = new ArrayList<>();
 
-    // Iterate over all policies
     for (Iterator<SubjectContext.PolicyContext> it =
             subjectContext.getPolicies(List.of(user.getEntityReference()));
         it.hasNext(); ) {
       SubjectContext.PolicyContext context = it.next();
 
-      // Iterate over all rules in the policy
       for (CompiledRule rule : context.getRules()) {
         boolean isDenyRule = rule.getEffect() == Rule.Effect.DENY;
         Set<MetadataOperation> ruleOperations = new HashSet<>(rule.getOperations());
         ruleOperations.retainAll(SEARCH_RELEVANT_OPS);
         if (ruleOperations.isEmpty()) {
-          // Skip this rule as it does not affect search results
           continue;
         }
 
@@ -62,10 +59,8 @@ public class RBACConditionEvaluator {
         }
 
         if (isDenyRule) {
-          // Collect DENY queries
           denyQueries.add(ruleQuery);
         } else {
-          // Collect ALLOW queries
           allowQueries.add(ruleQuery);
         }
       }
@@ -74,7 +69,6 @@ public class RBACConditionEvaluator {
     OMQueryBuilder finalQuery;
 
     if (!allowQueries.isEmpty()) {
-      // There are ALLOW policies
       OMQueryBuilder finalAllowQuery =
           (allowQueries.size() == 1)
               ? allowQueries.get(0)
@@ -95,7 +89,6 @@ public class RBACConditionEvaluator {
                 .mustNot(Collections.singletonList(finalDenyQuery));
       }
     } else if (!denyQueries.isEmpty()) {
-      // No ALLOW policies, but there are DENY policies
       OMQueryBuilder finalDenyQuery =
           (denyQueries.size() == 1)
               ? denyQueries.get(0)
@@ -107,7 +100,6 @@ public class RBACConditionEvaluator {
               .must(queryBuilderFactory.matchAllQuery())
               .mustNot(Collections.singletonList(finalDenyQuery));
     } else {
-      // No ALLOW or DENY policies, allow all access
       finalQuery = queryBuilderFactory.matchAllQuery();
     }
 
@@ -118,7 +110,6 @@ public class RBACConditionEvaluator {
     ConditionCollector ruleCollector = new ConditionCollector(queryBuilderFactory);
     spelContext.setVariable("user", user);
 
-    // Apply index filtering if resources are specified and not "All"
     if (!rule.getResources().isEmpty() && !rule.getResources().contains("All")) {
       OMQueryBuilder indexFilter = getIndexFilter(rule.getResources());
       ruleCollector.addMust(indexFilter);
@@ -196,7 +187,7 @@ public class RBACConditionEvaluator {
       } else {
         OMQueryBuilder subQuery = subCollector.buildFinalQuery();
         if (subQuery != null && !subQuery.isEmpty()) {
-          collector.addMustNot(subQuery); // Wrap subQuery in a List
+          collector.addMustNot(subQuery);
         }
       }
     } else if (node instanceof MethodReference) {

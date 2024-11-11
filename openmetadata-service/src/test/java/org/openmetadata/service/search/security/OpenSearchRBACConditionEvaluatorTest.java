@@ -69,19 +69,16 @@ class OpenSearchRBACConditionEvaluatorTest {
   void testOpenSearchSimpleRoleAndTagMatching() {
     setupMockPolicies("hasAnyRole('Admin') && matchAnyTag('Finance', 'Confidential')", "ALLOW");
 
-    // Mock user roles
     EntityReference role = new EntityReference();
     role.setName("Admin");
     when(mockUser.getRoles()).thenReturn(List.of(role));
 
-    // Use the OpenSearchQueryBuilder
     OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
     QueryBuilder openSearchQuery = ((OpenSearchQueryBuilder) finalQuery).build();
     String generatedQuery = openSearchQuery.toString();
 
     DocumentContext jsonContext = JsonPath.parse(generatedQuery);
 
-    // Assertions
     assertFieldExists(
         jsonContext, "$.bool.must[?(@.match_all)]", "match_all for hasAnyRole 'Admin'");
     assertFieldExists(
@@ -98,24 +95,20 @@ class OpenSearchRBACConditionEvaluatorTest {
   void testOpenSearchRoleAndDomainCheck() {
     setupMockPolicies("hasAnyRole('DataSteward') && hasDomain()", "ALLOW");
 
-    // Mock user roles
     EntityReference role = new EntityReference();
     role.setName("DataSteward");
     when(mockUser.getRoles()).thenReturn(List.of(role));
 
-    // Mock user domain
     EntityReference domain = new EntityReference();
     domain.setId(UUID.randomUUID());
     when(mockUser.getDomain()).thenReturn(domain);
 
-    // Use the OpenSearchQueryBuilder
     OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
     QueryBuilder openSearchQuery = ((OpenSearchQueryBuilder) finalQuery).build();
     String generatedQuery = openSearchQuery.toString();
 
     DocumentContext jsonContext = JsonPath.parse(generatedQuery);
 
-    // Assertions
     assertFieldExists(
         jsonContext, "$.bool.must[?(@.match_all)]", "match_all for hasAnyRole 'DataSteward'");
     assertFieldExists(
@@ -127,18 +120,14 @@ class OpenSearchRBACConditionEvaluatorTest {
   @Test
   void testOpenSearchNegationWithDomainAndOwnerChecks() {
     setupMockPolicies("!hasDomain() && isOwner()", "ALLOW");
-
-    // Mock user ownership
     when(mockUser.getId()).thenReturn(UUID.randomUUID());
 
-    // Use the OpenSearchQueryBuilder
     OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
     QueryBuilder openSearchQuery = ((OpenSearchQueryBuilder) finalQuery).build();
     String generatedQuery = openSearchQuery.toString();
 
     DocumentContext jsonContext = JsonPath.parse(generatedQuery);
 
-    // Assertions
     assertFieldExists(
         jsonContext,
         "$.bool.must_not[0].bool.must_not[?(@.exists.field=='domain.id')]",
@@ -156,7 +145,6 @@ class OpenSearchRBACConditionEvaluatorTest {
         "hasAnyRole('Admin') && matchAnyTag('Sensitive', 'Confidential') && hasDomain() && inAnyTeam('Analytics')",
         "ALLOW");
 
-    // Mock user roles, domain, and teams
     EntityReference role = new EntityReference();
     role.setName("Admin");
     when(mockUser.getRoles()).thenReturn(List.of(role));
@@ -170,7 +158,6 @@ class OpenSearchRBACConditionEvaluatorTest {
     team.setName("Analytics");
     when(mockUser.getTeams()).thenReturn(List.of(team));
 
-    // Use the OpenSearchQueryBuilder
     OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
     QueryBuilder openSearchQuery = ((OpenSearchQueryBuilder) finalQuery).build();
     String generatedQuery = openSearchQuery.toString();
@@ -186,7 +173,6 @@ class OpenSearchRBACConditionEvaluatorTest {
     assertFieldExists(
         jsonContext, "$.bool.must[?(@.match_all)]", "match_all for inAnyTeam 'Analytics'");
 
-    // Assertions for should clause (matchAnyTag)
     assertFieldExists(
         jsonContext,
         "$.bool.must[1].bool.should[?(@.term['tags.tagFQN'].value=='Sensitive')]",
@@ -196,7 +182,6 @@ class OpenSearchRBACConditionEvaluatorTest {
         "$.bool.must[1].bool.should[?(@.term['tags.tagFQN'].value=='Confidential')]",
         "Confidential tag");
 
-    // Ensure no match_none condition exists
     assertFieldDoesNotExist(jsonContext, "$.bool[?(@.match_none)]", "match_none should not exist");
   }
 }
