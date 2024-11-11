@@ -11,8 +11,14 @@
  *  limitations under the License.
  */
 import { expect, Page } from '@playwright/test';
+import { get } from 'lodash';
 import { SidebarItem } from '../constant/sidebar';
+import { DashboardClass } from '../support/entity/DashboardClass';
+import { EntityClass } from '../support/entity/EntityClass';
+import { TableClass } from '../support/entity/TableClass';
+import { TopicClass } from '../support/entity/TopicClass';
 import {
+  getApiContext,
   NAME_MIN_MAX_LENGTH_VALIDATION_ERROR,
   NAME_VALIDATION_ERROR,
   redirectToHomePage,
@@ -44,6 +50,80 @@ export const visitClassificationPage = async (
   await expect(page.locator('.activeCategory')).toContainText(
     classificationName
   );
+};
+
+export const addAssetsToTag = async (page: Page, assets: EntityClass[]) => {
+  await page.getByTestId('assets').click();
+  await page.getByTestId('data-classification-add-button').click();
+
+  await expect(page.getByRole('dialog')).toBeVisible();
+
+  for (const asset of assets) {
+    const name = get(asset, 'entityResponseData.name');
+    const fqn = get(asset, 'entityResponseData.fullyQualifiedName');
+
+    const searchRes = page.waitForResponse(
+      `/api/v1/search/query?q=${name}&index=all&from=0&size=25&*`
+    );
+    await page
+      .getByTestId('asset-selection-modal')
+      .getByTestId('searchbar')
+      .fill(name);
+    await searchRes;
+
+    await page.locator(`[data-testid="table-data-card_${fqn}"] input`).check();
+  }
+
+  const assetsAddRes = page.waitForResponse(`/api/v1/tags/*/assets/add`);
+  await page.getByTestId('save-btn').click();
+  await assetsAddRes;
+};
+
+export const removeAssetsFromTag = async (
+  page: Page,
+  assets: EntityClass[]
+) => {
+  for (const asset of assets) {
+    const fqn = get(asset, 'entityResponseData.fullyQualifiedName');
+    await page.locator(`[data-testid="table-data-card_${fqn}"] input`).check();
+  }
+
+  const assetsRemoveRes = page.waitForResponse(`/api/v1/tags/*/assets/remove`);
+
+  await page.getByTestId('delete-all-button').click();
+  await assetsRemoveRes;
+};
+
+export const checkAssetsCount = async (page: Page, count: number) => {
+  await expect(
+    page.getByTestId('assets').getByTestId('filter-count')
+  ).toContainText(count.toString());
+};
+
+export const setupAssetsForTag = async (page: Page) => {
+  const { afterAction, apiContext } = await getApiContext(page);
+  const table = new TableClass();
+  const topic = new TopicClass();
+  const dashboard = new DashboardClass();
+  await Promise.all([
+    table.create(apiContext),
+    topic.create(apiContext),
+    dashboard.create(apiContext),
+  ]);
+
+  const assetCleanup = async () => {
+    await Promise.all([
+      table.delete(apiContext),
+      topic.delete(apiContext),
+      dashboard.delete(apiContext),
+    ]);
+    await afterAction();
+  };
+
+  return {
+    assets: [table, topic, dashboard],
+    assetCleanup,
+  };
 };
 
 export async function submitForm(page: Page) {

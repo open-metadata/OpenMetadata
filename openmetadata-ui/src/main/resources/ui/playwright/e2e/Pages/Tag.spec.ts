@@ -18,10 +18,18 @@ import {
   getApiContext,
   redirectToHomePage,
 } from '../../utils/common';
+import {
+  addAssetsToTag,
+  checkAssetsCount,
+  removeAssetsFromTag,
+  setupAssetsForTag,
+} from '../../utils/tag';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
 test.describe('Tag page', () => {
+  test.slow(true);
+
   const classification = new ClassificationClass({
     provider: 'system',
     mutuallyExclusive: true,
@@ -210,33 +218,31 @@ test.describe('Tag page', () => {
     }
   });
 
-  test('Add Asset to a Tag', async ({ page }) => {
+  test('Add and Remove Assets', async ({ page }) => {
     await redirectToHomePage(page);
     const { apiContext, afterAction } = await getApiContext(page);
     const tag = new TagClass({
       classification: classification.data.name,
     });
+    const { assets } = await setupAssetsForTag(page);
     try {
       await tag.create(apiContext);
       const res = page.waitForResponse(`/api/v1/tags/name/*`);
       await tag.visitPage(page);
       await res;
-      await page.getByTestId('data-classification-add-button').click();
 
-      await expect(page.getByRole('dialog')).toBeVisible();
+      await test.step('Add Asset', async () => {
+        await addAssetsToTag(page, assets);
 
-      await page
-        .locator('#tabledatacard-aa1d01d8-42e6-4170-8a68-dbcf03905cea')
-        .getByRole('checkbox')
-        .click();
+        await expect(
+          page.locator('[role="dialog"].ant-modal')
+        ).not.toBeVisible();
+      });
 
-      const deleteTag = page.waitForResponse(`/api/v1/tags/*/assets/add`);
-      await page.getByTestId('save-btn').click();
-      deleteTag;
-
-      await page.getByRole('tab', { name: 'Assets' }).click();
-
-      await expect(page.getByTestId('entity-link')).toContainText('shopify');
+      await test.step('Delete Asset', async () => {
+        await removeAssetsFromTag(page, assets);
+        await checkAssetsCount(page, 0);
+      });
     } finally {
       await tag.delete(apiContext);
       await afterAction();
