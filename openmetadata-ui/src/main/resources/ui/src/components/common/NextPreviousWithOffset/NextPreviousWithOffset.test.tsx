@@ -53,7 +53,7 @@ describe('NextPreviousWithOffset', () => {
     render(<NextPreviousWithOffset {...props} />);
     fireEvent.click(screen.getByTestId('previous'));
 
-    expect(mockPagingHandler).toHaveBeenCalledWith({ offset: 10, page: 1 });
+    expect(mockPagingHandler).toHaveBeenCalledWith({ offset: 0, page: 1 });
   });
 
   it('should disable previous button on the first page', () => {

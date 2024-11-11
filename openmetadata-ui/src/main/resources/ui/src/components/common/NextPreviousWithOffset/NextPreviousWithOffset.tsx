@@ -17,7 +17,7 @@ import {
   DownOutlined,
 } from '@ant-design/icons';
 import { Button, Dropdown } from 'antd';
-import React, { useMemo } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   PAGE_SIZE_BASE,
@@ -44,19 +44,19 @@ const NextPreviousWithOffset = ({
     onShowSizeChange,
   } = (pagingProps ?? {}) as PagingProps;
 
-  const onNextHandler = () => {
+  const onNextHandler = useCallback(() => {
     pagingHandler({
       offset: currentPage * pageSize,
       page: currentPage + 1,
     });
-  };
+  }, [pagingHandler, currentPage, pageSize]);
 
-  const onPreviousHandler = () => {
+  const onPreviousHandler = useCallback(() => {
     pagingHandler({
-      offset: (currentPage - 1) * pageSize,
+      offset: (currentPage - 2) * pageSize,
       page: currentPage - 1,
     });
-  };
+  }, [pagingHandler, currentPage, pageSize]);
 
   const totalPages = useMemo(
     () => computeTotalPages(pageSize, paging.total),
