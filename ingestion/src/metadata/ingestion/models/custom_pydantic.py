@@ -18,6 +18,7 @@ be self-sufficient with only pydantic at import time.
 """
 import json
 import logging
+from functools import singledispatch
 from typing import Any, Dict, List, Literal, Optional, Union
 
 from pydantic import BaseModel as PydanticBaseModel
@@ -50,9 +51,17 @@ class BaseModel(PydanticBaseModel):
         cls, values
     ):  # pylint: disable=too-many-locals
         """
-        Parse the name field to ensure it is not empty.
+        Primary entry point to process values based on their class.
+        Uses singledispatch to dynamically call appropriate processing functions.
         """
 
+        from metadata.generated.schema.api.data.createChart import CreateChartRequest
+        from metadata.generated.schema.api.data.createDashboard import (
+            CreateDashboardRequest,
+        )
+        from metadata.generated.schema.api.data.createDashboardDataModel import (
+            CreateDashboardDataModelRequest,
+        )
         from metadata.generated.schema.api.data.createTable import CreateTableRequest
         from metadata.generated.schema.api.data.createTableProfile import (
             CreateTableProfileRequest,
@@ -64,6 +73,51 @@ class BaseModel(PydanticBaseModel):
         )
         from metadata.profiler.processor.core import ColumnProfile, ProfilerResponse
         from metadata.profiler.source.metadata import ProfilerSourceAndEntity
+        from metadata.utils.entity_link import CustomColumnName
+
+        @singledispatch
+        def validate_name_and_transform(_):
+            """Single dispatch function to process name and display name based on object type."""
+
+        @validate_name_and_transform.register
+        def _(obj: CreateTableRequest):
+            """Process CreateTableRequest type."""
+            process_table_and_columns(obj, is_create=True)
+
+        @validate_name_and_transform.register
+        def _(obj: CreateTableProfileRequest):
+            """Process CreateTableProfileRequest type."""
+            for column_profile in obj.columnProfile or []:
+                process_name_and_display_name(
+                    column_profile, is_create=True, has_root=False
+                )
+
+        @validate_name_and_transform.register
+        def _(obj: ProfilerResponse):
+            """Process ProfilerResponse type."""
+            process_table_and_columns(obj.table, is_create=True)
+            if obj.sample_data and obj.sample_data.data:
+                process_column_name(obj.sample_data.data.columns)
+
+        @validate_name_and_transform.register
+        def _(obj: Table):
+            """Process Table type."""
+            process_table_and_columns(obj, is_create=False)
+
+        @validate_name_and_transform.register
+        def _(obj: CustomColumnName):
+            """Process CustomColumnName type."""
+            obj.name = revert_separators(obj.name)
+
+        @validate_name_and_transform.register
+        def _(obj: ProfilerSourceAndEntity):
+            """Process ProfilerSourceAndEntity type."""
+            process_table_and_columns(obj.entity, is_create=False)
+
+        @validate_name_and_transform.register
+        def _(obj: CreateDashboardRequest):
+            """Process ProfilerSourceAndEntity type."""
+            process_table_and_columns(obj, is_create=False)
 
         def check_for_restricted_keywords(name_value: str) -> bool:
             return any(keyword in name_value for keyword in RESTRICTED_KEYWORDS)
@@ -118,7 +172,7 @@ class BaseModel(PydanticBaseModel):
                 values, is_create=is_create, has_root=has_root
             )
             # Column level
-            columns = values.columns
+            columns = values.columns if hasattr(values, "columns") else None
             if columns:
                 for column in columns:
                     process_name_and_display_name(
@@ -137,25 +191,28 @@ class BaseModel(PydanticBaseModel):
         if not values:
             return
 
-        class_name = values.__class__.__name__
         try:
-            if class_name.startswith("Create") or class_name in CREATE_ADJACENT_MODELS:
-                if isinstance(values, CreateTableRequest):
-                    process_table_and_columns(values, is_create=True)
-                elif isinstance(values, CreateTableProfileRequest):
-                    for column_profile in values.columnProfile or []:
-                        process_name_and_display_name(
-                            column_profile, is_create=True, has_root=False
-                        )
-                elif isinstance(values, ProfilerResponse):
-                    process_table_and_columns(values.table, is_create=True)
-                    if values.sample_data and values.sample_data.data:
-                        process_column_name(values=values.sample_data.data.columns)
-            else:
-                if isinstance(values, Table):
-                    process_table_and_columns(values, is_create=False)
-                elif isinstance(values, ProfilerSourceAndEntity):
-                    process_table_and_columns(values.entity, is_create=False)
+
+            validate_name_and_transform(values)
+            # if class_name.startswith("Create") or class_name in CREATE_ADJACENT_MODELS:
+            #     if isinstance(values, CreateTableRequest):
+            #         process_table_and_columns(values, is_create=True)
+            #     elif isinstance(values, CreateTableProfileRequest):
+            #         for column_profile in values.columnProfile or []:
+            #             validate_name_and_transform(
+            #                 column_profile, is_create=True, has_root=False
+            #             )
+            #     elif isinstance(values, ProfilerResponse):
+            #         process_table_and_columns(values.table, is_create=True)
+            #         if values.sample_data and values.sample_data.data:
+            #             process_column_name(values=values.sample_data.data.columns)
+            # else:
+            #     if isinstance(values, Table):
+            #         process_table_and_columns(values, is_create=False)
+            #     elif isinstance(values, CustomColumnName):
+            #         values.name = revert_separators(values.name)
+            #     elif isinstance(values, ProfilerSourceAndEntity):
+            #         process_table_and_columns(values.entity, is_create=False)
         except Exception as exc:
             logger.error("Exception while parsing special characters: %s", exc)
         return values

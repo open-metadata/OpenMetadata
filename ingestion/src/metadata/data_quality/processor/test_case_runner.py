@@ -17,7 +17,6 @@ from copy import deepcopy
 from typing import List, Optional
 
 from metadata.data_quality.api.models import (
-    CustomColumnName,
     TableAndTests,
     TestCaseDefinition,
     TestCaseResultResponse,
@@ -344,10 +343,9 @@ class TestCaseRunner(Processor):
             if test_definition.entityType != EntityType.COLUMN:
                 result.append(tc)
                 continue
-            column_name = CustomColumnName(
-                name=entity_link.get_decoded_column(tc.entityLink.root)
-            )
-            column = next(c for c in table.columns if c.name.root == column_name.name)
+            column_name = entity_link.get_decoded_column(tc.entityLink.root)
+
+            column = next(c for c in table.columns if c.name.root == column_name)
 
             if column.dataType not in test_definition.supportedDataTypes:
                 self.status.failed(

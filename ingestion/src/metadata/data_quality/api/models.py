@@ -69,7 +69,3 @@ class TestCaseResults(BaseModel):
     """Processor response with a list of computed Test Case Results"""
 
     test_results: Optional[List[TestCaseResultResponse]]
-
-
-class CustomColumnName(BaseModel):
-    name: str
