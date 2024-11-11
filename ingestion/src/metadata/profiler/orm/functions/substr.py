@@ -10,17 +10,23 @@
 #  limitations under the License.
 
 """
-Profiler for Snowflake
+Define Concat function
 """
-from metadata.ingestion.source.database.snowflake.profiler.system import (
-    SnowflakeSystemMetricsComputer,
-)
-from metadata.profiler.interface.sqlalchemy.snowflake.profiler_interface import (
-    SnowflakeProfilerInterface,
-)
-from metadata.profiler.metrics.system.system import SystemMetricsComputer
+# Keep SQA docs style defining custom constructs
+
+from sqlalchemy.ext.compiler import compiles
+from sqlalchemy.sql.functions import FunctionElement
+
+from metadata.profiler.metrics.core import CACHE
+from metadata.utils.logger import profiler_logger
+
+logger = profiler_logger()
 
 
-class SnowflakeProfiler(SnowflakeProfilerInterface):
-    def initialize_system_metrics_computer(self) -> SystemMetricsComputer:
-        return SnowflakeSystemMetricsComputer(session=self.session)
+class Substr(FunctionElement):
+    inherit_cache = CACHE
+
+
+@compiles(Substr)
+def _(element, compiler, **kw):
+    return f"SUBSTRING({compiler.process(element.clauses, **kw)})"
