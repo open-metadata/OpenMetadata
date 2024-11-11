@@ -155,7 +155,10 @@ class BaseColumnValuesToBeAtExpectedLocationValidator(BaseTestValidator):
             List[Dict]
         """
         geojson_property = "libgeo" if ref_type == "CITY" else "codgeo"
-        with resources.open_text("metadata.data_quality.data", "fr-cities.json") as f:
+
+        with resources.open_text(  # pylint: disable=deprecated-method
+            "metadata.data_quality.data", "fr-cities.json"
+        ) as f:
             data = json.load(f)
 
         # bring meters to coordinates degrees (e.g. 1000 meter = 0.01 degree)
