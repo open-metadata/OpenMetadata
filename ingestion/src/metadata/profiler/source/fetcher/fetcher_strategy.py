@@ -62,9 +62,7 @@ class FetcherStrategy(ABC):
         self.global_profiler_config = global_profiler_config
         self.status = status
 
-    def filter_classifications(
-        self, entities: Iterable[EntityInterfaceWithTags]
-    ) -> Iterable[EntityInterfaceWithTags]:
+    def filter_classifications(self, entity: EntityInterfaceWithTags) -> bool:
         """Given a list of entities, filter out entities that do not match the classification filter pattern
 
         Args:
@@ -77,32 +75,28 @@ class FetcherStrategy(ABC):
             self.source_config, "classificationFilterPattern", None
         )
         if not classification_filter_pattern:
-            return entities
+            return False
 
         use_fqn_for_filtering = getattr(self.source_config, "useFqnForFiltering", False)
 
-        filtered_entities = []
+        if not entity.tags:
+            # if we are not explicitly including entities with tags we'll add the ones without tags
+            if not classification_filter_pattern.includes:
+                return False
+            return True
 
-        for entity in entities:
-            if not entity.tags:
-                # if we are not explicitly including entities with tags we'll add the ones without tags
-                if not classification_filter_pattern.includes:
-                    filtered_entities.append(entity)
+        for tag in entity.tags:
+            tag_name = tag.tagFQN.root if use_fqn_for_filtering else tag.name
+            if not tag_name:
                 continue
-            for tag in entity.tags:
-                tag_name = tag.tagFQN.root if use_fqn_for_filtering else tag.name
-                if not tag_name:
-                    continue
-                if filter_by_classification(classification_filter_pattern, tag_name):
-                    self.status.filter(
-                        tag_name,
-                        f"Classification pattern not allowed for entity {entity.fullyQualifiedName.root}",
-                    )  # type: ignore
-                    break
-            else:
-                filtered_entities.append(entity)
+            if filter_by_classification(classification_filter_pattern, tag_name):
+                self.status.filter(
+                    tag_name,
+                    f"Classification pattern not allowed for entity {entity.fullyQualifiedName.root}",
+                )  # type: ignore
+                return True
 
-        return filtered_entities
+        return False
 
     @abstractmethod
     def fetch(self) -> Iterator[Either[ProfilerSourceAndEntity]]:
@@ -246,10 +240,8 @@ class DatabaseFetcherStrategy(FetcherStrategy):
                 not self.source_config.tableFilterPattern
                 or not self._filter_tables(table)
             )
+            and not self.filter_classifications(table)
         ]
-
-        if self.source_config.classificationFilterPattern:
-            tables = self.filter_classifications(tables)  # type: ignore
 
         return tables
 

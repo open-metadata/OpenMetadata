@@ -66,7 +66,6 @@ class OpenMetadataSourceExt(OpenMetadataSource):
     We do this here as well.
     """
 
-    # pylint: disable=super-init-not-called
     def __init__(
         self,
         config: OpenMetadataWorkflowConfig,
