@@ -49,6 +49,7 @@ const CustomNodeV1 = (props: NodeProps) => {
   } = useLineageProvider();
 
   const { label, isNewNode, node = {}, isRootNode } = data;
+
   const nodeType = isEditMode ? EntityLineageNodeType.DEFAULT : type;
   const isSelected = selectedNode === node;
   const { id, lineage, fullyQualifiedName } = node;
@@ -257,6 +258,7 @@ const CustomNodeV1 = (props: NodeProps) => {
       className={classNames(
         'lineage-node p-0',
         isSelected ? 'custom-node-header-active' : 'custom-node-header-normal',
+        { 'data-quality-failed-custom-node-header': node?.isDqTestFailure },
         { 'custom-node-header-tracing': isTraced }
       )}
       data-testid={`lineage-node-${fullyQualifiedName}`}>
