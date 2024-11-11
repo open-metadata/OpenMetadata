@@ -25,7 +25,7 @@ from metadata.ingestion.api.parser import parse_workflow_config_gracefully
 from metadata.ingestion.api.step import Step
 from metadata.ingestion.api.steps import Source
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.profiler.source.fetcher.entity_fecther import EntityFetcher
+from metadata.profiler.source.fetcher.entity_fetcher import EntityFetcher
 from metadata.profiler.source.model import ProfilerSourceAndEntity
 from metadata.utils.logger import profiler_logger
 
