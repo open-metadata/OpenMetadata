@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Set;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResultList;
 import org.openmetadata.schema.type.Include;
@@ -17,6 +18,28 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
   public static final String COLLECTION_PATH = "/v1/analytics/dataInsights/system/charts";
   private static final SearchClient searchClient = Entity.getSearchRepository().getSearchClient();
   public static final String TIMESTAMP_FIELD = "@timestamp";
+
+  public static final Set<String> dataAssetTypes =
+      Set.of(
+          "table",
+          "storedProcedure",
+          "databaseSchema",
+          "database",
+          "chart",
+          "dashboard",
+          "dashboardDataModel",
+          "pipeline",
+          "topic",
+          "container",
+          "searchIndex",
+          "mlmodel",
+          "dataProduct",
+          "glossaryTerm",
+          "tag",
+          "testCaseResult",
+          "testCaseResolutionStatus");
+
+  public static final String DI_SEARCH_INDEX_PREFIX = "di-data-assets";
 
   public static final String DI_SEARCH_INDEX = "di-data-assets-*";
 
