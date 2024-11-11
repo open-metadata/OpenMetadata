@@ -14,7 +14,7 @@ This class is responsible for creating instances of the RuntimeParameterSetter
 based on the test case.
 """
 
-from typing import Optional
+from typing import Dict, Set, Type
 
 from metadata.data_quality.validations.runtime_param_setter.param_setter import (
     RuntimeParameterSetter,
@@ -22,7 +22,18 @@ from metadata.data_quality.validations.runtime_param_setter.param_setter import 
 from metadata.data_quality.validations.runtime_param_setter.table_diff_params_setter import (
     TableDiffParamsSetter,
 )
+from metadata.data_quality.validations.table.sqlalchemy.tableDiff import (
+    TableDiffValidator,
+)
+from metadata.generated.schema.entity.data.table import Table
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.profiler.processor.sampler.sqlalchemy.sampler import SQASampler
+
+
+def validator_name(test_case_class: Type) -> str:
+    return (
+        test_case_class.__name__[0].lower() + test_case_class.__name__[1:]
+    ).removesuffix("Validator")
 
 
 class RuntimeParameterSetterFactory:
@@ -30,25 +41,25 @@ class RuntimeParameterSetterFactory:
 
     def __init__(self) -> None:
         """Set"""
-        self._setter_map = {
-            TableDiffParamsSetter: {"tableDiff"},
+        self._setter_map: Dict[str, Set[Type[RuntimeParameterSetter]]] = {
+            validator_name(TableDiffValidator): {TableDiffParamsSetter},
         }
 
-    def get_runtime_param_setter(
+    def get_runtime_param_setters(
         self,
         name: str,
         ometa: OpenMetadata,
         service_connection_config,
-        table_entity,
-        sampler,
-    ) -> Optional[RuntimeParameterSetter]:
+        table_entity: Table,
+        sampler: SQASampler,
+    ) -> Set[RuntimeParameterSetter]:
         """Get the runtime parameter setter"""
-        for setter_cls, validator_names in self._setter_map.items():
-            if name in validator_names:
-                return setter_cls(
-                    ometa,
-                    service_connection_config,
-                    table_entity,
-                    sampler,
-                )
-        return None
+        return {
+            setter(
+                ometa,
+                service_connection_config,
+                table_entity,
+                sampler,
+            )
+            for setter in self._setter_map.get(name)
+        }

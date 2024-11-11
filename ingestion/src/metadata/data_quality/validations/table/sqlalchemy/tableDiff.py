@@ -143,7 +143,7 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
     runtime_params: TableDiffRuntimeParameters
 
     def run_validation(self) -> TestCaseResult:
-        self.runtime_params = self.get_runtime_params()
+        self.runtime_params = self.get_runtime_parameters(TableDiffRuntimeParameters)
         try:
             self._validate_dialects()
             return self._run()
@@ -413,13 +413,6 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
                 * (self.runtime_params.table_profile_config.profileSample / row_count)
             )
         raise ValueError("Invalid profile sample type")
-
-    def get_runtime_params(self) -> TableDiffRuntimeParameters:
-        raw = self.get_test_case_param_value(
-            self.test_case.parameterValues, "runtimeParams", str
-        )
-        runtime_params = TableDiffRuntimeParameters.model_validate_json(raw)
-        return runtime_params
 
     def get_row_diff_test_case_result(
         self,

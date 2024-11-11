@@ -15,7 +15,7 @@ supporting sqlalchemy abstraction layer
 """
 
 from abc import ABC, abstractmethod
-from typing import Optional, Type
+from typing import Optional, Set, Type
 
 from metadata.data_quality.builders.i_validator_builder import IValidatorBuilder
 from metadata.data_quality.validations.base_test_handler import BaseTestValidator
@@ -97,9 +97,9 @@ class TestSuiteInterface(ABC):
         runtime_params_setter_fact: RuntimeParameterSetterFactory = (
             self._get_runtime_params_setter_fact()
         )  # type: ignore
-        runtime_params_setter: Optional[
+        runtime_params_setters: Set[
             RuntimeParameterSetter
-        ] = runtime_params_setter_fact.get_runtime_param_setter(
+        ] = runtime_params_setter_fact.get_runtime_param_setters(
             test_case.testDefinition.fullyQualifiedName,  # type: ignore
             self.ometa_client,
             self.service_connection_config,
@@ -113,7 +113,7 @@ class TestSuiteInterface(ABC):
         ).entityType.value
 
         validator_builder = self._get_validator_builder(test_case, entity_type)
-        validator_builder.set_runtime_params(runtime_params_setter)
+        validator_builder.set_runtime_params(runtime_params_setters)
         validator: BaseTestValidator = validator_builder.validator
         try:
             return validator.run_validation()
