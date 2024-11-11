@@ -240,7 +240,10 @@ class DatabaseFetcherStrategy(FetcherStrategy):
                 not self.source_config.tableFilterPattern
                 or not self._filter_tables(table)
             )
-            and not self.filter_classifications(table)
+            and (
+                not self.source_config.classificationFilterPattern
+                or not self.filter_classifications(table)
+            )
         ]
 
         return tables
