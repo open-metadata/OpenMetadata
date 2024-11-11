@@ -401,9 +401,9 @@ const TagPage = () => {
         key: 'overview',
         children: (
           <ResizablePanels
-            className="domain-height-with-resizable-panel"
+            className="tag-height-with-resizable-panel"
             firstPanel={{
-              className: 'domain-resizable-panel-container',
+              className: 'tag-resizable-panel-container',
               children: (
                 <div className="tag-overview-tab">
                   <Row className="p-md">
@@ -436,12 +436,12 @@ const TagPage = () => {
                   entityFqn={tagItem.fullyQualifiedName ?? ''}
                   entityId={tagItem.id ?? ''}
                   entityType={EntityType.TAG}
-                  hasPermission={tagPermissions.EditAll}
+                  hasPermission={editTagsPermission}
                 />
               ) : null,
               ...COMMON_RESIZABLE_PANEL_CONFIG.RIGHT_PANEL,
               className:
-                'entity-resizable-right-panel-container domain-resizable-panel-container',
+                'entity-resizable-right-panel-container tag-resizable-panel-container',
             }}
           />
         ),
@@ -458,9 +458,9 @@ const TagPage = () => {
         key: 'assets',
         children: (
           <ResizablePanels
-            className="domain-height-with-resizable-panel"
+            className="tag-height-with-resizable-panel"
             firstPanel={{
-              className: 'domain-resizable-panel-container',
+              className: 'tag-resizable-panel-container',
               children: (
                 <AssetsTabs
                   assetCount={assetCount}
@@ -486,7 +486,7 @@ const TagPage = () => {
               ),
               ...COMMON_RESIZABLE_PANEL_CONFIG.RIGHT_PANEL,
               className:
-                'entity-resizable-right-panel-container domain-resizable-panel-container',
+                'entity-resizable-right-panel-container tag-resizable-panel-container',
             }}
           />
         ),
@@ -502,6 +502,7 @@ const TagPage = () => {
     assetTabRef,
     handleAssetSave,
     isDescriptionEditable,
+    editTagsPermission,
     editDescriptionPermission,
   ]);
   const icon = useMemo(() => {
@@ -619,7 +620,7 @@ const TagPage = () => {
           <Tabs
             destroyInactiveTabPane
             activeKey={activeTab}
-            className="tag-tabs tag-tab-spacing"
+            className="tag-tabs"
             items={tabItems}
             onChange={activeTabHandler}
           />

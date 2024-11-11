@@ -75,6 +75,7 @@ import {
 import { searchQuery } from '../../../../rest/searchAPI';
 import { getTagByFqn, removeAssetsFromTags } from '../../../../rest/tagAPI';
 import { getAssetsPageQuickFilters } from '../../../../utils/AdvancedSearchUtils';
+import { getEntityTypeString } from '../../../../utils/Assets/AssetsUtils';
 import { Transi18next } from '../../../../utils/CommonUtils';
 import {
   getEntityName,
@@ -180,19 +181,6 @@ const AssetsTabs = forwardRef(
     >([]);
     const [filters, setFilters] = useState<ExploreQuickFilterField[]>([]);
     const [searchValue, setSearchValue] = useState('');
-
-    function getEntityTypeString(type: string) {
-      switch (type) {
-        case AssetsOfEntity.GLOSSARY:
-          return t('label.glossary-term-lowercase');
-        case AssetsOfEntity.DOMAIN:
-          return t('label.domain-lowercase');
-        case AssetsOfEntity.TAG:
-          return t('label.tag-lowercase');
-        default:
-          return t('label.data-product-lowercase');
-      }
-    }
 
     const entityTypeString = getEntityTypeString(type);
 
