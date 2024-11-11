@@ -1,7 +1,9 @@
 package org.openmetadata.service.apps.bundles.insights;
 
 import static org.openmetadata.service.apps.scheduler.AbstractOmAppJobListener.APP_RUN_STATS;
+import static org.openmetadata.service.apps.scheduler.AbstractOmAppJobListener.WEBSOCKET_STATUS_CHANNEL;
 import static org.openmetadata.service.apps.scheduler.AppScheduler.ON_DEMAND_JOB;
+import static org.openmetadata.service.socket.WebSocketManager.DATA_INSIGHTS_JOB_BROADCAST_CHANNEL;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getInitialStatsForEntities;
 
 import es.org.elasticsearch.client.RestClient;
@@ -428,8 +430,7 @@ public class DataInsightsApp extends AbstractNativeApplication {
     if (WebSocketManager.getInstance() != null) {
       WebSocketManager.getInstance()
           .broadCastMessageToAll(
-              WebSocketManager.DATA_INSIGHTS_JOB_BROADCAST_CHANNEL,
-              JsonUtils.pojoToJson(appRecord));
+              DATA_INSIGHTS_JOB_BROADCAST_CHANNEL, JsonUtils.pojoToJson(appRecord));
     }
 
     pushAppStatusUpdates(jobExecutionContext, appRecord, true);
@@ -439,6 +440,10 @@ public class DataInsightsApp extends AbstractNativeApplication {
     try {
       // store job details in Database
       jobExecutionContext.getJobDetail().getJobDataMap().put(APP_RUN_STATS, jobData.getStats());
+      jobExecutionContext
+          .getJobDetail()
+          .getJobDataMap()
+          .put(WEBSOCKET_STATUS_CHANNEL, DATA_INSIGHTS_JOB_BROADCAST_CHANNEL);
       // Update Record to db
       updateRecordToDbAndNotify(jobExecutionContext);
     } catch (Exception ex) {

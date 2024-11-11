@@ -40,7 +40,9 @@ import static org.openmetadata.service.Entity.USER;
 import static org.openmetadata.service.Entity.WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA;
 import static org.openmetadata.service.Entity.WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA;
 import static org.openmetadata.service.apps.scheduler.AbstractOmAppJobListener.APP_RUN_STATS;
+import static org.openmetadata.service.apps.scheduler.AbstractOmAppJobListener.WEBSOCKET_STATUS_CHANNEL;
 import static org.openmetadata.service.apps.scheduler.AppScheduler.ON_DEMAND_JOB;
+import static org.openmetadata.service.socket.WebSocketManager.SEARCH_INDEX_JOB_BROADCAST_CHANNEL;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.ENTITY_TYPE_KEY;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.isDataInsightIndex;
 
@@ -277,7 +279,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
     if (WebSocketManager.getInstance() != null) {
       WebSocketManager.getInstance()
           .broadCastMessageToAll(
-              WebSocketManager.SEARCH_INDEX_JOB_BROADCAST_CHANNEL, JsonUtils.pojoToJson(appRecord));
+              SEARCH_INDEX_JOB_BROADCAST_CHANNEL, JsonUtils.pojoToJson(appRecord));
       LOG.debug("Broad-casted job updates via WebSocket.");
     }
 
@@ -509,6 +511,10 @@ public class SearchIndexApp extends AbstractNativeApplication {
   private void sendUpdates(JobExecutionContext jobExecutionContext) {
     try {
       jobExecutionContext.getJobDetail().getJobDataMap().put(APP_RUN_STATS, jobData.getStats());
+      jobExecutionContext
+          .getJobDetail()
+          .getJobDataMap()
+          .put(WEBSOCKET_STATUS_CHANNEL, SEARCH_INDEX_JOB_BROADCAST_CHANNEL);
       updateRecordToDbAndNotify(jobExecutionContext);
     } catch (Exception ex) {
       LOG.error("Failed to send updated stats with WebSocket", ex);
