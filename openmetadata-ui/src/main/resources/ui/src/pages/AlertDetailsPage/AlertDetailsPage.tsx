@@ -229,7 +229,9 @@ function AlertDetailsPage({
       {
         label: t('label.recent-event-plural'),
         key: AlertDetailTabs.RECENT_EVENTS,
-        children: <AlertRecentEventsTab id={alertDetails?.id ?? ''} />,
+        children: isUndefined(alertDetails) ? null : (
+          <AlertRecentEventsTab alertDetails={alertDetails} />
+        ),
       },
     ],
     [alertDetails, viewPermission]
@@ -245,6 +247,10 @@ function AlertDetailsPage({
     },
     [history, fqn]
   );
+
+  const hideDeleteModal = useCallback(() => {
+    setShowDeleteModal(false);
+  }, []);
 
   // Always keep this useEffect at first
   useEffect(() => {
@@ -393,9 +399,7 @@ function AlertDetailsPage({
               entityName={getEntityName(alertDetails)}
               entityType={EntityType.SUBSCRIPTION}
               visible={showDeleteModal}
-              onCancel={() => {
-                setShowDeleteModal(false);
-              }}
+              onCancel={hideDeleteModal}
             />
           </div>
         ),

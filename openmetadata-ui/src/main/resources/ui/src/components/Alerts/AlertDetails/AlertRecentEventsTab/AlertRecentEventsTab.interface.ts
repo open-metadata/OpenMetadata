@@ -12,12 +12,20 @@
  */
 
 import { ChangeEvent } from '../../../../generated/events/api/typedEvent';
+import { EventSubscription } from '../../../../generated/events/eventSubscription';
 
 export interface AlertRecentEventsTabProps {
-  id: string;
+  alertDetails: EventSubscription;
 }
 
 export type AlertEventDetailsToDisplay = Pick<
   ChangeEvent,
-  'eventType' | 'entityId' | 'userName' | 'previousVersion' | 'currentVersion'
+  | 'eventType'
+  | 'entityId'
+  | 'userName'
+  | 'previousVersion'
+  | 'currentVersion'
+  | 'reason'
+  | 'source'
+  | 'failingSubscriptionId'
 >;

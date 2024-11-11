@@ -22,7 +22,7 @@ import {
   Typography,
 } from 'antd';
 import { AxiosError } from 'axios';
-import { isEmpty, startCase } from 'lodash';
+import { isEmpty, isUndefined, startCase } from 'lodash';
 import { MenuInfo } from 'rc-menu/lib/interface';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -39,10 +39,11 @@ import { getAlertEventsFromId } from '../../../../rest/alertsAPI';
 import {
   getAlertRecentEventsFilterOptions,
   getAlertStatusIcon,
-  getEventDetailsToDisplay,
+  getChangeEventDataFromTypedEvent,
   getLabelsForEventDetails,
 } from '../../../../utils/Alerts/AlertsUtil';
 import { formatDateTime } from '../../../../utils/date-time/DateTimeUtils';
+import { getEntityName } from '../../../../utils/EntityUtils';
 import searchClassBase from '../../../../utils/SearchClassBase';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -55,13 +56,21 @@ import {
 
 const { Panel } = Collapse;
 
-function AlertRecentEventsTab({ id }: AlertRecentEventsTabProps) {
+function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
   const { t } = useTranslation();
   const [filter, setFilter] = useState<AlertRecentEventFilters | Status>(
     AlertRecentEventFilters.ALL
   );
   const [alertRecentEvents, setAlertRecentEvents] = useState<TypedEvent[]>();
   const [loading, setLoading] = useState<boolean>(false);
+
+  const { id, alertName } = useMemo(
+    () => ({
+      id: alertDetails.id,
+      alertName: getEntityName(alertDetails),
+    }),
+    [alertDetails]
+  );
 
   const filterMenuItems = useMemo(
     () => getAlertRecentEventsFilterOptions(),
@@ -123,11 +132,13 @@ function AlertRecentEventsTab({ id }: AlertRecentEventsTabProps) {
     return (
       <Collapse
         className="recent-events-collapse"
+        data-testid="recent-events-list"
         defaultActiveKey={['1']}
         expandIconPosition="end">
         {alertRecentEvents?.map((typedEvent) => {
-          const eventData = typedEvent.data[0];
-          const eventDetailsToDisplay = getEventDetailsToDisplay(eventData);
+          // Get the change event data from the typedEvent object
+          const { changeEventData, changeEventDataToDisplay } =
+            getChangeEventDataFromTypedEvent(typedEvent);
 
           return (
             <Panel
@@ -136,65 +147,83 @@ function AlertRecentEventsTab({ id }: AlertRecentEventsTabProps) {
                   <Col>
                     <Row align="middle" gutter={[16, 16]}>
                       <Col>
+                        {/* Display icon for the status of the alert event */}
                         <Tooltip title={startCase(typedEvent.status)}>
                           {getAlertStatusIcon(typedEvent.status)}{' '}
                         </Tooltip>
                       </Col>
                       <Col>
-                        <Tooltip title={startCase(eventData.entityType)}>
+                        {/* Display icon for the asset the change event is related to */}
+                        <Tooltip title={startCase(changeEventData.entityType)}>
                           {searchClassBase.getEntityIcon(
-                            eventData.entityType ?? '',
+                            changeEventData.entityType ?? '',
                             'h-4 w-4'
                           )}
                         </Tooltip>
                       </Col>
                       <Col>
-                        <Typography.Text>{eventData.id}</Typography.Text>
+                        {/* Display the change event id */}
+                        <Typography.Text>{changeEventData.id}</Typography.Text>
                       </Col>
                     </Row>
                   </Col>
                   <Col>
+                    {/* Display the event timestamp */}
                     <Typography.Text className="text-grey-muted">
                       {formatDateTime(typedEvent.timestamp)}
                     </Typography.Text>
                   </Col>
                 </Row>
               }
-              key={`${eventData.id}-${eventData.timestamp}`}>
+              key={`${changeEventData.id}-${changeEventData.timestamp}`}>
               <Row gutter={[16, 16]}>
                 <Col>
                   <Row gutter={[16, 16]}>
-                    {Object.entries(eventDetailsToDisplay).map(
-                      ([key, value]) => (
-                        <Col key={key} span={8}>
-                          <Row gutter={[4, 4]}>
-                            <Col span={24}>
-                              <Typography.Text className="text-grey-muted">
-                                {`${getLabelsForEventDetails(
-                                  key as keyof AlertEventDetailsToDisplay
-                                )}:`}
-                              </Typography.Text>
-                            </Col>
-                            <Col span={24}>
-                              <Typography.Text className="font-medium">
-                                {value}
-                              </Typography.Text>
-                            </Col>
-                          </Row>
-                        </Col>
-                      )
+                    {Object.entries(changeEventDataToDisplay).map(
+                      ([key, value]) =>
+                        isUndefined(value) ? null : (
+                          <Col key={key} span={key === 'reason' ? 24 : 8}>
+                            <Row gutter={[4, 4]}>
+                              <Col span={24}>
+                                <Typography.Text className="text-grey-muted">
+                                  {`${getLabelsForEventDetails(
+                                    key as keyof AlertEventDetailsToDisplay
+                                  )}:`}
+                                </Typography.Text>
+                              </Col>
+                              <Col span={24}>
+                                <Typography.Text className="font-medium">
+                                  {value}
+                                </Typography.Text>
+                              </Col>
+                            </Row>
+                          </Col>
+                        )
                     )}
                   </Row>
                 </Col>
-                <Col span={24}>
-                  <SchemaEditor
-                    className="border"
-                    mode={{ name: CSMode.JAVASCRIPT }}
-                    options={{ readOnly: true }}
-                    showCopyButton={false}
-                    value={JSON.stringify(eventData)}
-                  />
-                </Col>
+                {!isEmpty(changeEventData.changeDescription) && (
+                  <>
+                    <Col span={24}>
+                      <Typography.Text className="font-medium">
+                        {`${t('label.change-entity', {
+                          entity: t('label.description'),
+                        })}:`}
+                      </Typography.Text>
+                    </Col>
+                    <Col span={24}>
+                      <SchemaEditor
+                        className="border"
+                        mode={{ name: CSMode.JAVASCRIPT }}
+                        options={{ readOnly: true }}
+                        showCopyButton={false}
+                        value={JSON.stringify(
+                          changeEventData.changeDescription
+                        )}
+                      />
+                    </Col>
+                  </>
+                )}
               </Row>
             </Panel>
           );
@@ -212,9 +241,18 @@ function AlertRecentEventsTab({ id }: AlertRecentEventsTabProps) {
       <Col span={24}>
         <Row justify="space-between">
           <Col>
-            <Typography.Text className="text-grey-muted">
-              {t('message.alert-recent-events-description')}
-            </Typography.Text>
+            <Row gutter={[8, 8]}>
+              <Col span={24}>
+                <Typography.Text className="font-medium">
+                  {`${t('label.description')}:`}
+                </Typography.Text>
+              </Col>
+              <Col span={24}>
+                <Typography.Text className="text-grey-muted">
+                  {t('message.alert-recent-events-description', { alertName })}
+                </Typography.Text>
+              </Col>
+            </Row>
           </Col>
           <Col>
             <Dropdown

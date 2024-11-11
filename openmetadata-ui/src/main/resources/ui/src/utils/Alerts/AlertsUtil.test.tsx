@@ -24,11 +24,7 @@ import { ReactComponent as WebhookIcon } from '../../assets/svg/webhook.svg';
 import { AlertEventDetailsToDisplay } from '../../components/Alerts/AlertDetails/AlertRecentEventsTab/AlertRecentEventsTab.interface';
 import { DESTINATION_DROPDOWN_TABS } from '../../constants/Alerts.constants';
 import { AlertRecentEventFilters } from '../../enums/Alerts.enum';
-import {
-  ChangeEvent,
-  EventType,
-  Status,
-} from '../../generated/events/api/typedEvent';
+import { EventType, Status } from '../../generated/events/api/typedEvent';
 import {
   SubscriptionCategory,
   SubscriptionType,
@@ -37,6 +33,10 @@ import {
   mockExternalDestinationOptions,
   mockNonTaskInternalDestinationOptions,
   mockTaskInternalDestinationOptions,
+  mockTypedEvent1,
+  mockTypedEvent2,
+  mockTypedEvent3,
+  mockTypedEvent4,
 } from '../../mocks/AlertUtil.mock';
 import { searchData } from '../../rest/miscAPI';
 import {
@@ -45,10 +45,10 @@ import {
   getAlertRecentEventsFilterOptions,
   getAlertsActionTypeIcon,
   getAlertStatusIcon,
+  getChangeEventDataFromTypedEvent,
   getConnectionTimeoutField,
   getDestinationConfigField,
   getDisplayNameForEntities,
-  getEventDetailsToDisplay,
   getFieldByArgumentType,
   getFilteredDestinationOptions,
   getFunctionDisplayName,
@@ -677,133 +677,72 @@ describe('getLabelsForEventDetails', () => {
   });
 });
 
-describe('getEventDetailsToDisplay', () => {
-  it('should return correct event details for a given change event', () => {
-    const changeEvent: ChangeEvent = {
-      eventType: EventType.EntityCreated,
-      entityId: '123',
-      userName: 'testUser',
-      previousVersion: 1.0,
-      currentVersion: 1.1,
-    };
+describe('getChangeEventDataFromTypedEvent', () => {
+  it('should return correct change event data for successful event', () => {
+    const { changeEventData, changeEventDataToDisplay } =
+      getChangeEventDataFromTypedEvent(mockTypedEvent1);
 
-    const result = getEventDetailsToDisplay(changeEvent);
-
-    expect(result).toStrictEqual({
+    expect(changeEventData).toStrictEqual(mockTypedEvent1.data[0]);
+    expect(changeEventDataToDisplay).toStrictEqual({
       eventType: EventType.EntityCreated,
-      entityId: '123',
-      userName: 'testUser',
-      previousVersion: 1.0,
-      currentVersion: 1.1,
+      entityId: 'entityId1',
+      userName: 'user1',
+      previousVersion: 0.1,
+      currentVersion: 0.2,
+      reason: undefined,
+      source: undefined,
+      failingSubscriptionId: undefined,
     });
   });
 
-  it('should return undefined for missing eventType', () => {
-    const changeEvent: ChangeEvent = {
-      entityId: '123',
-      userName: 'testUser',
-      previousVersion: 1.0,
-      currentVersion: 1.1,
-    };
+  it('should return correct change event data for failed event', () => {
+    const { changeEventData, changeEventDataToDisplay } =
+      getChangeEventDataFromTypedEvent(mockTypedEvent2);
 
-    const result = getEventDetailsToDisplay(changeEvent);
-
-    expect(result).toStrictEqual({
-      eventType: undefined,
-      entityId: '123',
-      userName: 'testUser',
-      previousVersion: 1.0,
-      currentVersion: 1.1,
+    expect(changeEventData).toStrictEqual(mockTypedEvent2.data[0].changeEvent);
+    expect(changeEventDataToDisplay).toStrictEqual({
+      eventType: EventType.EntityUpdated,
+      entityId: 'entityId2',
+      userName: 'user2',
+      previousVersion: 0.2,
+      currentVersion: 0.3,
+      reason: 'Some reason',
+      source: 'Some source',
+      failingSubscriptionId: 'subscriptionId1',
     });
   });
 
-  it('should return undefined for missing entityId', () => {
-    const changeEvent: ChangeEvent = {
-      eventType: EventType.EntityCreated,
-      userName: 'testUser',
-      previousVersion: 1.0,
-      currentVersion: 1.1,
-    };
+  it('should return correct change event data for unprocessed event', () => {
+    const { changeEventData, changeEventDataToDisplay } =
+      getChangeEventDataFromTypedEvent(mockTypedEvent3);
 
-    const result = getEventDetailsToDisplay(changeEvent);
-
-    expect(result).toStrictEqual({
-      eventType: EventType.EntityCreated,
-      entityId: undefined,
-      userName: 'testUser',
-      previousVersion: 1.0,
-      currentVersion: 1.1,
+    expect(changeEventData).toStrictEqual(mockTypedEvent3.data[0]);
+    expect(changeEventDataToDisplay).toStrictEqual({
+      eventType: EventType.EntityDeleted,
+      entityId: 'entityId3',
+      userName: 'user3',
+      previousVersion: 0.3,
+      currentVersion: 0.4,
+      reason: undefined,
+      source: undefined,
+      failingSubscriptionId: undefined,
     });
   });
 
-  it('should return undefined for missing userName', () => {
-    const changeEvent: ChangeEvent = {
+  it('should return correct change event data for unknown status', () => {
+    const { changeEventData, changeEventDataToDisplay } =
+      getChangeEventDataFromTypedEvent(mockTypedEvent4);
+
+    expect(changeEventData).toStrictEqual(mockTypedEvent4.data[0]);
+    expect(changeEventDataToDisplay).toStrictEqual({
       eventType: EventType.EntityCreated,
-      entityId: '123',
-      previousVersion: 1.0,
-      currentVersion: 1.1,
-    };
-
-    const result = getEventDetailsToDisplay(changeEvent);
-
-    expect(result).toStrictEqual({
-      eventType: EventType.EntityCreated,
-      entityId: '123',
-      userName: undefined,
-      previousVersion: 1.0,
-      currentVersion: 1.1,
-    });
-  });
-
-  it('should return undefined for missing previousVersion', () => {
-    const changeEvent: ChangeEvent = {
-      eventType: EventType.EntityCreated,
-      entityId: '123',
-      userName: 'testUser',
-      currentVersion: 1.1,
-    };
-
-    const result = getEventDetailsToDisplay(changeEvent);
-
-    expect(result).toStrictEqual({
-      eventType: EventType.EntityCreated,
-      entityId: '123',
-      userName: 'testUser',
-      previousVersion: undefined,
-      currentVersion: 1.1,
-    });
-  });
-
-  it('should return undefined for missing currentVersion', () => {
-    const changeEvent: ChangeEvent = {
-      eventType: EventType.EntityCreated,
-      entityId: '123',
-      userName: 'testUser',
-      previousVersion: 1.0,
-    };
-
-    const result = getEventDetailsToDisplay(changeEvent);
-
-    expect(result).toStrictEqual({
-      eventType: EventType.EntityCreated,
-      entityId: '123',
-      userName: 'testUser',
-      previousVersion: 1.0,
-      currentVersion: undefined,
-    });
-  });
-
-  it('should return all undefined for completely missing fields', () => {
-    const changeEvent = {} as ChangeEvent;
-
-    const result = getEventDetailsToDisplay(changeEvent);
-
-    expect(result).toStrictEqual({
-      eventType: undefined,
-      entityId: undefined,
-      userName: undefined,
-      previousVersion: undefined,
-      currentVersion: undefined,
+      entityId: 'entityId4',
+      userName: 'user4',
+      previousVersion: 0.4,
+      currentVersion: 0.5,
+      reason: undefined,
+      source: undefined,
+      failingSubscriptionId: undefined,
     });
   });
 });

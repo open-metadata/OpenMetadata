@@ -25,9 +25,18 @@ import {
 } from 'antd';
 import Form, { RuleObject } from 'antd/lib/form';
 import { AxiosError } from 'axios';
+import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import { compare, Operation } from 'fast-json-patch';
 import i18next, { t } from 'i18next';
-import { isEqual, isUndefined, map, omitBy, startCase, uniqBy } from 'lodash';
+import {
+  isEqual,
+  isUndefined,
+  map,
+  omitBy,
+  startCase,
+  trim,
+  uniqBy,
+} from 'lodash';
 import React from 'react';
 import { ReactComponent as AlertIcon } from '../../assets/svg/alert.svg';
 import { ReactComponent as AllActivityIcon } from '../../assets/svg/all-activity.svg';
@@ -48,12 +57,17 @@ import {
   EXTERNAL_CATEGORY_OPTIONS,
 } from '../../constants/Alerts.constants';
 import { PAGE_SIZE_LARGE } from '../../constants/constants';
+import { OPEN_METADATA } from '../../constants/Services.constant';
 import { AlertRecentEventFilters } from '../../enums/Alerts.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { StatusType } from '../../generated/entity/data/pipeline';
 import { PipelineState } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { CreateEventSubscription } from '../../generated/events/api/createEventSubscription';
-import { ChangeEvent, Status } from '../../generated/events/api/typedEvent';
+import {
+  ChangeEvent,
+  Status,
+  TypedEvent,
+} from '../../generated/events/api/typedEvent';
 import {
   EventFilterRule,
   EventSubscription,
@@ -811,6 +825,13 @@ export const getConditionalField = (
   );
 };
 
+export const getRandomizedAlertName = () => {
+  return `${OPEN_METADATA}_alert_${cryptoRandomString({
+    length: 9,
+    type: 'alphanumeric',
+  })}`;
+};
+
 export const handleAlertSave = async ({
   data,
   fqn,
@@ -826,7 +847,7 @@ export const handleAlertSave = async ({
     alert: CreateEventSubscription
   ) => Promise<EventSubscription>;
   updateAlertAPI: (id: string, data: Operation[]) => Promise<EventSubscription>;
-  afterSaveAction: () => Promise<void>;
+  afterSaveAction: (fqn: string) => Promise<void>;
   setInlineAlertDetails: (alertDetails?: InlineAlertProps | undefined) => void;
   fqn?: string;
 }) => {
@@ -844,15 +865,18 @@ export const handleAlertSave = async ({
         timeout: data.timeout,
       };
     });
+    let alertDetails;
+    const alertName = trim(initialData?.name ?? getRandomizedAlertName());
+    const alertDisplayName = trim(getEntityName(data));
 
     if (fqn && !isUndefined(initialData)) {
-      const { description, displayName, input, name, owners, resources } = data;
+      const { description, input, owners, resources } = data;
 
       const newAlertData: EventSubscription = {
         ...initialData,
         description,
-        displayName,
-        name,
+        displayName: alertDisplayName,
+        name: alertName,
         input: {
           actions: input?.actions ?? [],
           filters: input?.filters ?? [],
@@ -867,13 +891,16 @@ export const handleAlertSave = async ({
 
       const jsonPatch = compare(omitBy(initialData, isUndefined), newAlertData);
 
-      await updateAlertAPI(initialData.id, jsonPatch);
+      alertDetails = await updateAlertAPI(initialData.id, jsonPatch);
     } else {
       // Remove timeout from alert object since it's only for UI
       const { timeout, ...finalData } = data;
-      await createAlertAPI({
+
+      alertDetails = await createAlertAPI({
         ...finalData,
         destinations,
+        name: alertName,
+        displayName: alertDisplayName,
       });
     }
 
@@ -882,7 +909,7 @@ export const handleAlertSave = async ({
         entity: t('label.alert-plural'),
       })
     );
-    afterSaveAction();
+    afterSaveAction(alertDetails.fullyQualifiedName ?? '');
   } catch (error) {
     handleEntityCreationError({
       error: error as AxiosError,
@@ -1022,22 +1049,50 @@ export const getLabelsForEventDetails = (
       return t('label.previous-version');
     case 'currentVersion':
       return t('label.current-version');
+    case 'reason':
+      return t('label.reason');
+    case 'source':
+      return t('label.source');
+    case 'failingSubscriptionId':
+      return t('label.failing-subscription-id');
     default:
       return '';
   }
 };
 
-export const getEventDetailsToDisplay = (
-  changeEvent: ChangeEvent
-): AlertEventDetailsToDisplay => {
+export const getChangeEventDataFromTypedEvent = (
+  typedEvent: TypedEvent
+): {
+  changeEventData: ChangeEvent;
+  changeEventDataToDisplay: AlertEventDetailsToDisplay;
+} => {
+  let changeEventData = typedEvent.data[0];
+
+  // If the event is failed, the changeEventData object is nested inside the changeEventData object.
+  if (
+    typedEvent.status === Status.Failed &&
+    !isUndefined(changeEventData.changeEvent)
+  ) {
+    changeEventData = changeEventData.changeEvent;
+  }
+
   const { eventType, entityId, userName, previousVersion, currentVersion } =
-    changeEvent;
+    changeEventData;
+
+  // Extracting the reason, source, and failingSubscriptionId from the failed changeEventData object.
+  const { reason, source, failingSubscriptionId } = typedEvent.data[0];
 
   return {
-    eventType,
-    entityId,
-    userName,
-    previousVersion,
-    currentVersion,
+    changeEventData,
+    changeEventDataToDisplay: {
+      reason,
+      source,
+      failingSubscriptionId,
+      eventType,
+      entityId,
+      userName,
+      previousVersion,
+      currentVersion,
+    },
   };
 };

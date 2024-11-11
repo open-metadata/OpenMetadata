@@ -48,6 +48,7 @@ import {
   updateNotificationAlert,
 } from '../../rest/alertsAPI';
 import { handleAlertSave } from '../../utils/Alerts/AlertsUtil';
+import { getEntityName } from '../../utils/EntityUtils';
 import {
   getNotificationAlertDetailsPath,
   getSettingPath,
@@ -169,9 +170,9 @@ const AddNotificationPage = () => {
           initialData,
           createAlertAPI: createNotificationAlert,
           updateAlertAPI: updateNotificationAlert,
-          afterSaveAction: async () => {
+          afterSaveAction: async (fqn: string) => {
             !fqn && (await getResourceLimit('eventsubscription', true, true));
-            history.push(getNotificationAlertDetailsPath(data.name));
+            history.push(getNotificationAlertDetailsPath(fqn));
           },
           setInlineAlertDetails,
         });
@@ -245,6 +246,7 @@ const AddNotificationPage = () => {
                   form={form}
                   initialValues={{
                     ...alert,
+                    displayName: getEntityName(alert),
                     resources: alert?.filteringRules?.resources,
                   }}
                   validateMessages={VALIDATION_MESSAGES}
@@ -257,12 +259,9 @@ const AddNotificationPage = () => {
                         <Form.Item
                           label={t('label.name')}
                           labelCol={{ span: 24 }}
-                          name="name"
+                          name="displayName"
                           rules={NAME_FIELD_RULES}>
-                          <Input
-                            disabled={isEditMode}
-                            placeholder={t('label.name')}
-                          />
+                          <Input placeholder={t('label.name')} />
                         </Form.Item>
                       </Col>
                       <Col span={24}>

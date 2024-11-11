@@ -156,9 +156,9 @@ function AddObservabilityPage() {
           initialData,
           createAlertAPI: createObservabilityAlert,
           updateAlertAPI: updateObservabilityAlert,
-          afterSaveAction: async () => {
+          afterSaveAction: async (fqn: string) => {
             !fqn && (await getResourceLimit('eventsubscription', true, true));
-            history.push(getObservabilityAlertDetailsPath(data.name));
+            history.push(getObservabilityAlertDetailsPath(fqn));
           },
           setInlineAlertDetails,
         });
@@ -232,6 +232,7 @@ function AddObservabilityPage() {
                   form={form}
                   initialValues={{
                     ...alert,
+                    // displayName: getEntityName(alert),
                     resources: alert?.filteringRules?.resources,
                   }}
                   validateMessages={VALIDATION_MESSAGES}
@@ -241,12 +242,9 @@ function AddObservabilityPage() {
                       <Form.Item
                         label={t('label.name')}
                         labelCol={{ span: 24 }}
-                        name="name"
+                        name="displayName"
                         rules={NAME_FIELD_RULES}>
-                        <Input
-                          disabled={isEditMode}
-                          placeholder={t('label.name')}
-                        />
+                        <Input placeholder={t('label.name')} />
                       </Form.Item>
                     </Col>
                     <Col span={24}>
