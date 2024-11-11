@@ -48,6 +48,7 @@ import {
   pagingObject,
   ROUTES,
 } from '../../constants/constants';
+import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import {
   OPEN_METADATA,
   SERVICE_INGESTION_PIPELINE_TYPES,
@@ -113,11 +114,14 @@ import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import {
   getEditConnectionPath,
   getServiceVersionPath,
+  getSettingPath,
 } from '../../utils/RouterUtils';
 import {
   getCountLabel,
   getEntityTypeFromServiceCategory,
   getResourceEntityFromServiceCategory,
+  getServiceDisplayNameQueryFilter,
+  getServiceRouteFromServiceType,
   shouldTestConnection,
 } from '../../utils/ServiceUtils';
 import {
@@ -338,6 +342,9 @@ const ServiceDetailsPage: FunctionComponent = () => {
                 index < SERVICE_INGESTION_PIPELINE_TYPES.length - 1 ? 'OR' : ''
               }`
           ).join(' ')})`,
+          queryFilter: getServiceDisplayNameQueryFilter(
+            getEntityName(serviceDetails)
+          ),
         });
         const pipelines = res.hits.hits.map((hit) => hit._source);
         const total = res?.hits?.total.value ?? 0;
@@ -348,7 +355,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
         setIsIngestionPipelineLoading(false);
       }
     },
-    [ingestionPageSize, handleIngestionPagingChange]
+    [ingestionPageSize, handleIngestionPagingChange, serviceDetails]
   );
 
   const include = useMemo(
@@ -791,8 +798,15 @@ const ServiceDetailsPage: FunctionComponent = () => {
 
   const afterDeleteAction = useCallback(
     (isSoftDelete?: boolean, version?: number) =>
-      isSoftDelete ? handleToggleDelete(version) : history.goBack(),
-    [handleToggleDelete]
+      isSoftDelete
+        ? handleToggleDelete(version)
+        : history.push(
+            getSettingPath(
+              GlobalSettingsMenuCategory.SERVICES,
+              getServiceRouteFromServiceType(serviceCategory)
+            )
+          ),
+    [handleToggleDelete, serviceCategory]
   );
 
   const handleRestoreService = useCallback(async () => {

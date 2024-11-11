@@ -52,17 +52,21 @@ import org.jdbi.v3.sqlobject.customizer.BindMap;
 import org.jdbi.v3.sqlobject.customizer.Define;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
+import org.jdbi.v3.sqlobject.statement.UseRowMapper;
 import org.openmetadata.api.configuration.UiThemePreference;
 import org.openmetadata.schema.TokenInterface;
 import org.openmetadata.schema.analytics.ReportData;
 import org.openmetadata.schema.analytics.WebAnalyticEvent;
 import org.openmetadata.schema.api.configuration.LoginConfiguration;
 import org.openmetadata.schema.api.configuration.profiler.ProfilerConfiguration;
+import org.openmetadata.schema.api.lineage.LineageSettings;
+import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.auth.EmailVerificationToken;
 import org.openmetadata.schema.auth.PasswordResetToken;
 import org.openmetadata.schema.auth.PersonalAccessToken;
 import org.openmetadata.schema.auth.RefreshToken;
 import org.openmetadata.schema.auth.TokenType;
+import org.openmetadata.schema.configuration.AssetCertificationSettings;
 import org.openmetadata.schema.dataInsight.DataInsightChart;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
 import org.openmetadata.schema.dataInsight.kpi.Kpi;
@@ -97,6 +101,8 @@ import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.events.EventSubscription;
+import org.openmetadata.schema.entity.events.FailedEvent;
+import org.openmetadata.schema.entity.events.FailedEventResponse;
 import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.services.ApiService;
 import org.openmetadata.schema.entity.services.DashboardService;
@@ -118,6 +124,7 @@ import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestDefinition;
 import org.openmetadata.schema.tests.TestSuite;
+import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
@@ -134,12 +141,14 @@ import org.openmetadata.service.jdbi3.CollectionDAO.UsageDAO.UsageDetailsMapper;
 import org.openmetadata.service.jdbi3.FeedRepository.FilterType;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlQuery;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlUpdate;
+import org.openmetadata.service.resources.events.subscription.TypedEvent;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.resources.tags.TagLabelUtil;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.jdbi.BindFQN;
+import org.openmetadata.service.util.jdbi.BindListFQN;
 import org.openmetadata.service.util.jdbi.BindUUID;
 
 public interface CollectionDAO {
@@ -702,6 +711,15 @@ public interface CollectionDAO {
     @SqlQuery("SELECT json FROM entity_extension WHERE id = :id AND extension = :extension")
     String getExtension(@BindUUID("id") UUID id, @Bind("extension") String extension);
 
+    @SqlQuery(
+        "SELECT id, extension, json "
+            + "FROM entity_extension "
+            + "WHERE id IN (<ids>) AND extension LIKE CONCAT(:extensionPrefix, '.%') "
+            + "ORDER BY id, extension")
+    @RegisterRowMapper(ExtensionRecordWithIdMapper.class)
+    List<ExtensionRecordWithId> getExtensionsBatch(
+        @BindList("ids") List<String> ids, @Bind("extensionPrefix") String extensionPrefix);
+
     @RegisterRowMapper(ExtensionMapper.class)
     @SqlQuery(
         "SELECT extension, json FROM entity_extension WHERE id = :id AND extension "
@@ -744,10 +762,22 @@ public interface CollectionDAO {
 
   record ExtensionRecord(String extensionName, String extensionJson) {}
 
+  record ExtensionRecordWithId(UUID id, String extensionName, String extensionJson) {}
+
   class ExtensionMapper implements RowMapper<ExtensionRecord> {
     @Override
     public ExtensionRecord map(ResultSet rs, StatementContext ctx) throws SQLException {
       return new ExtensionRecord(rs.getString("extension"), rs.getString("json"));
+    }
+  }
+
+  class ExtensionRecordWithIdMapper implements RowMapper<ExtensionRecordWithId> {
+    @Override
+    public ExtensionRecordWithId map(ResultSet rs, StatementContext ctx) throws SQLException {
+      String id = rs.getString("id");
+      String extensionName = rs.getString("extension");
+      String extensionJson = rs.getString("json");
+      return new ExtensionRecordWithId(UUID.fromString(id), extensionName, extensionJson);
     }
   }
 
@@ -859,6 +889,21 @@ public interface CollectionDAO {
     }
 
     @SqlQuery(
+        "SELECT fromId, toId, fromEntity, toEntity, relation "
+            + "FROM entity_relationship "
+            + "WHERE fromId IN (<fromIds>) "
+            + "AND relation = :relation "
+            + "AND fromEntity = :fromEntityType "
+            + "AND toEntity = :toEntityType "
+            + "AND deleted = FALSE")
+    @UseRowMapper(RelationshipObjectMapper.class)
+    List<EntityRelationshipObject> findToBatch(
+        @BindList("fromIds") List<String> fromIds,
+        @Bind("relation") int relation,
+        @Bind("fromEntityType") String fromEntityType,
+        @Bind("toEntityType") String toEntityType);
+
+    @SqlQuery(
         "SELECT toId, toEntity, json FROM entity_relationship "
             + "WHERE fromId = :fromId AND fromEntity = :fromEntity AND relation = :relation AND toEntity = :toEntity")
     @RegisterRowMapper(ToRelationshipMapper.class)
@@ -898,6 +943,42 @@ public interface CollectionDAO {
         @Bind("fromEntity") String fromEntity);
 
     @SqlQuery(
+        "SELECT fromId, toId, fromEntity, toEntity, relation "
+            + "FROM entity_relationship "
+            + "WHERE toId IN (<toIds>) "
+            + "AND relation = :relation "
+            + "AND deleted = FALSE")
+    @UseRowMapper(RelationshipObjectMapper.class)
+    List<EntityRelationshipObject> findFromBatch(
+        @BindList("toIds") List<String> toIds, @Bind("relation") int relation);
+
+    @SqlQuery(
+        "SELECT fromId, toId, fromEntity, toEntity, relation "
+            + "FROM entity_relationship "
+            + "WHERE toId IN (<toIds>) "
+            + "AND relation = :relation "
+            + "AND fromEntity = :fromEntityType  "
+            + "AND deleted = FALSE")
+    @UseRowMapper(RelationshipObjectMapper.class)
+    List<CollectionDAO.EntityRelationshipObject> findFromBatch(
+        @BindList("toIds") List<String> toIds,
+        @Bind("relation") int relation,
+        @Bind("fromEntityType") String fromEntityType);
+
+    @SqlQuery(
+        "SELECT fromId, toId, fromEntity, toEntity, relation, json "
+            + "FROM entity_relationship "
+            + "WHERE toId IN (<toIds>) "
+            + "AND relation = :relation "
+            + "AND toEntity = :toEntityType "
+            + "AND deleted = FALSE")
+    @UseRowMapper(RelationshipObjectMapper.class)
+    List<EntityRelationshipObject> findFromBatch(
+        @BindList("toIds") List<String> toIds,
+        @Bind("toEntityType") String toEntityType,
+        @Bind("relation") int relation);
+
+    @SqlQuery(
         "SELECT fromId, fromEntity, json FROM entity_relationship "
             + "WHERE toId = :toId AND toEntity = :toEntity AND relation = :relation")
     @RegisterRowMapper(FromRelationshipMapper.class)
@@ -905,6 +986,21 @@ public interface CollectionDAO {
         @BindUUID("toId") UUID toId,
         @Bind("toEntity") String toEntity,
         @Bind("relation") int relation);
+
+    @SqlQuery(
+        "SELECT fromId, toId, fromEntity, toEntity, relation "
+            + "FROM entity_relationship "
+            + "WHERE toId IN (<toIds>) "
+            + "AND relation = :relation "
+            + "AND fromEntity = :fromEntityType "
+            + "AND toEntity = :toEntityType "
+            + "AND deleted = FALSE")
+    @UseRowMapper(RelationshipObjectMapper.class)
+    List<EntityRelationshipObject> findFromBatch(
+        @BindList("toIds") List<String> toIds,
+        @Bind("relation") int relation,
+        @Bind("fromEntityType") String fromEntityType,
+        @Bind("toEntityType") String toEntityType);
 
     @ConnectionAwareSqlQuery(
         value =
@@ -1998,18 +2094,74 @@ public interface CollectionDAO {
 
     @ConnectionAwareSqlUpdate(
         value =
-            "INSERT INTO consumers_dlq(id, extension, json) "
-                + "VALUES (:id, :extension, :json)"
-                + "ON DUPLICATE KEY UPDATE json = :json",
+            "INSERT INTO consumers_dlq(id, extension, json, source) "
+                + "VALUES (:id, :extension, :json, :source) "
+                + "ON DUPLICATE KEY UPDATE json = :json, source = :source",
         connectionType = MYSQL)
     @ConnectionAwareSqlUpdate(
         value =
-            "INSERT INTO consumers_dlq(id, extension, json) "
-                + "VALUES (:id, :extension, (:json :: jsonb)) ON CONFLICT (id, extension) "
-                + "DO UPDATE SET json = EXCLUDED.json",
+            "INSERT INTO consumers_dlq(id, extension, json, source) "
+                + "VALUES (:id, :extension, (:json :: jsonb), :source) "
+                + "ON CONFLICT (id, extension) "
+                + "DO UPDATE SET json = EXCLUDED.json, source = EXCLUDED.source",
         connectionType = POSTGRES)
     void upsertFailedEvent(
-        @Bind("id") String id, @Bind("extension") String extension, @Bind("json") String json);
+        @Bind("id") String id,
+        @Bind("extension") String extension,
+        @Bind("json") String json,
+        @Bind("source") String source);
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO successful_sent_change_events (id, change_event_id, event_subscription_id, json, timestamp) VALUES (:id, :change_event_id, :event_subscription_id, :json, :timestamp)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO successful_sent_change_events (id, change_event_id, event_subscription_id, json, timestamp) VALUES (:id, :change_event_id, :event_subscription_id, CAST(:json AS jsonb), :timestamp)",
+        connectionType = POSTGRES)
+    void insertSuccessfulChangeEvent(
+        @Bind("id") String id,
+        @Bind("change_event_id") String changeEventId,
+        @Bind("event_subscription_id") String eventSubscriptionId,
+        @Bind("json") String json,
+        @Bind("timestamp") long timestamp);
+
+    @SqlQuery(
+        "SELECT COUNT(*) FROM successful_sent_change_events WHERE event_subscription_id = :eventSubscriptionId")
+    long getSuccessfulRecordCount(@Bind("eventSubscriptionId") String eventSubscriptionId);
+
+    @SqlQuery(
+        "SELECT event_subscription_id FROM successful_sent_change_events "
+            + "GROUP BY event_subscription_id "
+            + "HAVING COUNT(*) >= :threshold")
+    List<String> findSubscriptionsAboveThreshold(@Bind("threshold") int threshold);
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "DELETE FROM successful_sent_change_events WHERE event_subscription_id = :eventSubscriptionId ORDER BY timestamp ASC LIMIT :limit",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "DELETE FROM successful_sent_change_events WHERE ctid IN (SELECT ctid FROM successful_sent_change_events WHERE event_subscription_id = :eventSubscriptionId ORDER BY timestamp ASC LIMIT :limit)",
+        connectionType = POSTGRES)
+    void deleteOldRecords(
+        @Bind("eventSubscriptionId") String eventSubscriptionId, @Bind("limit") long limit);
+
+    @SqlQuery(
+        "SELECT json FROM successful_sent_change_events WHERE event_subscription_id = :eventSubscriptionId ORDER BY timestamp DESC LIMIT :limit OFFSET :paginationOffset")
+    List<String> getSuccessfulChangeEventBySubscriptionId(
+        @Bind("eventSubscriptionId") String eventSubscriptionId,
+        @Bind("limit") int limit,
+        @Bind("paginationOffset") long paginationOffset);
+
+    @SqlUpdate(
+        "DELETE FROM successful_sent_change_events WHERE event_subscription_id = :eventSubscriptionId")
+    void deleteSuccessfulChangeEventBySubscriptionId(
+        @Bind("eventSubscriptionId") String eventSubscriptionId);
+
+    @SqlUpdate("DELETE FROM consumers_dlq WHERE id = :eventSubscriptionId")
+    void deleteFailedRecordsBySubscriptionId(
+        @Bind("eventSubscriptionId") String eventSubscriptionId);
   }
 
   interface ChartDAO extends EntityDAO<Chart> {
@@ -2523,6 +2675,25 @@ public interface CollectionDAO {
       return listAfter(
           getTableName(), filter.getQueryParams(), condition, condition, limit, afterName, afterId);
     }
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM table_entity "
+                + "WHERE JSON_SEARCH(JSON_EXTRACT(json, '$.tableConstraints[*].referredColumns'), "
+                + "'one', :fqn) IS NOT NULL",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json "
+                + "FROM table_entity "
+                + "WHERE EXISTS ("
+                + "    SELECT 1"
+                + "    FROM jsonb_array_elements(json->'tableConstraints') AS constraints"
+                + "    CROSS JOIN jsonb_array_elements_text(constraints->'referredColumns') AS referredColumn "
+                + "    WHERE referredColumn LIKE :fqn"
+                + ")",
+        connectionType = POSTGRES)
+    List<String> findRelatedTables(@Bind("fqn") String fqn);
   }
 
   interface StoredProcedureDAO extends EntityDAO<StoredProcedure> {
@@ -2876,6 +3047,15 @@ public interface CollectionDAO {
         "SELECT source, tagFQN,  labelType, state FROM tag_usage WHERE targetFQNHash = :targetFQNHash ORDER BY tagFQN")
     List<TagLabel> getTagsInternal(@BindFQN("targetFQNHash") String targetFQNHash);
 
+    @SqlQuery(
+        "SELECT targetFQNHash, source, tagFQN, labelType, state "
+            + "FROM tag_usage "
+            + "WHERE targetFQNHash IN (<targetFQNHashes>) "
+            + "ORDER BY targetFQNHash, tagFQN")
+    @UseRowMapper(TagLabelWithFQNHashMapper.class)
+    List<TagLabelWithFQNHash> getTagsInternalBatch(
+        @BindListFQN("targetFQNHashes") List<String> targetFQNHashes);
+
     @ConnectionAwareSqlQuery(
         value =
             "SELECT source, tagFQN, labelType, targetFQNHash, state, json "
@@ -3064,6 +3244,40 @@ public interface CollectionDAO {
           throw new IllegalArgumentException("Invalid source type " + source);
         }
         return Pair.of(r.getString("targetFQNHash"), label);
+      }
+    }
+
+    class TagLabelWithFQNHashMapper implements RowMapper<TagLabelWithFQNHash> {
+      @Override
+      public TagLabelWithFQNHash map(ResultSet rs, StatementContext ctx) throws SQLException {
+        TagLabelWithFQNHash tag = new TagLabelWithFQNHash();
+        tag.setTargetFQNHash(rs.getString("targetFQNHash"));
+        tag.setSource(rs.getInt("source"));
+        tag.setTagFQN(rs.getString("tagFQN"));
+        tag.setLabelType(rs.getInt("labelType"));
+        tag.setState(rs.getInt("state"));
+        return tag;
+      }
+    }
+
+    @Getter
+    @Setter
+    class TagLabelWithFQNHash {
+      private String targetFQNHash;
+      private int source;
+      private String tagFQN;
+      private int labelType;
+      private int state;
+
+      // Getters and Setters
+
+      public TagLabel toTagLabel() {
+        TagLabel tagLabel = new TagLabel();
+        tagLabel.setSource(TagLabel.TagSource.values()[this.source]);
+        tagLabel.setTagFQN(this.tagFQN);
+        tagLabel.setLabelType(TagLabel.LabelType.values()[this.labelType]);
+        tagLabel.setState(TagLabel.State.values()[this.state]);
+        return tagLabel;
       }
     }
 
@@ -3772,6 +3986,83 @@ public interface CollectionDAO {
   }
 
   interface ChangeEventDAO {
+    @SqlQuery(
+        "SELECT json FROM change_event ce where ce.offset > :offset ORDER BY ce.eventTime DESC LIMIT :limit OFFSET :paginationOffset")
+    List<String> listUnprocessedEvents(
+        @Bind("offset") long offset,
+        @Bind("limit") int limit,
+        @Bind("paginationOffset") int paginationOffset);
+
+    @SqlQuery(
+        "SELECT json, source FROM consumers_dlq WHERE id = :id ORDER BY timestamp DESC LIMIT :limit OFFSET :paginationOffset")
+    @RegisterRowMapper(FailedEventResponseMapper.class)
+    List<FailedEventResponse> listFailedEventsById(
+        @Bind("id") String id,
+        @Bind("limit") int limit,
+        @Bind("paginationOffset") int paginationOffset);
+
+    @SqlQuery("SELECT COUNT(*) FROM consumers_dlq WHERE id = :id")
+    long countFailedEvents(@Bind("id") String id);
+
+    @SqlQuery(
+        "SELECT json, source FROM consumers_dlq WHERE id = :id AND source = :source ORDER BY timestamp DESC LIMIT :limit OFFSET :paginationOffset")
+    @RegisterRowMapper(FailedEventResponseMapper.class)
+    List<FailedEventResponse> listFailedEventsByIdAndSource(
+        @Bind("id") String id,
+        @Bind("source") String source,
+        @Bind("limit") int limit,
+        @Bind("paginationOffset") int paginationOffset);
+
+    @SqlQuery(
+        "SELECT json, source FROM consumers_dlq ORDER BY timestamp DESC LIMIT :limit OFFSET :paginationOffset")
+    @RegisterRowMapper(FailedEventResponseMapper.class)
+    List<FailedEventResponse> listAllFailedEvents(
+        @Bind("limit") int limit, @Bind("paginationOffset") int paginationOffset);
+
+    @SqlQuery(
+        "SELECT json, source FROM consumers_dlq WHERE source = :source ORDER BY timestamp DESC LIMIT :limit OFFSET :paginationOffset")
+    @RegisterRowMapper(FailedEventResponseMapper.class)
+    List<FailedEventResponse> listAllFailedEventsBySource(
+        @Bind("source") String source,
+        @Bind("limit") int limit,
+        @Bind("paginationOffset") int paginationOffset);
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json, status, timestamp "
+                + "FROM ( "
+                + "    SELECT json, 'FAILED' AS status, timestamp "
+                + "    FROM consumers_dlq WHERE id = :id "
+                + "    UNION ALL "
+                + "    SELECT json, 'SUCCESSFUL' AS status, timestamp "
+                + "    FROM successful_sent_change_events WHERE event_subscription_id = :id "
+                + ") AS combined_events "
+                + "ORDER BY timestamp DESC "
+                + "LIMIT :limit OFFSET :paginationOffset",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json, status, timestamp "
+                + "FROM ( "
+                + "    SELECT json, 'failed' AS status, timestamp "
+                + "    FROM consumers_dlq WHERE id = :id "
+                + "    UNION ALL "
+                + "    SELECT json, 'successful' AS status, timestamp "
+                + "    FROM successful_sent_change_events WHERE event_subscription_id = :id "
+                + ") AS combined_events "
+                + "ORDER BY timestamp ASC "
+                + "LIMIT :limit OFFSET :paginationOffset",
+        connectionType = POSTGRES)
+    @RegisterRowMapper(EventResponseMapper.class)
+    List<TypedEvent> listAllEventsWithStatuses(
+        @Bind("id") String id,
+        @Bind("limit") int limit,
+        @Bind("paginationOffset") long paginationOffset);
+
+    @SqlQuery(
+        "SELECT CASE WHEN EXISTS (SELECT 1 FROM event_subscription_entity WHERE id = :id) THEN 1 ELSE 0 END AS record_exists")
+    int recordExists(@Bind("id") String id);
+
     @ConnectionAwareSqlUpdate(
         value = "INSERT INTO change_event (json) VALUES (:json)",
         connectionType = MYSQL)
@@ -3818,6 +4109,42 @@ public interface CollectionDAO {
         value = "SELECT MAX(\"offset\") FROM change_event",
         connectionType = POSTGRES)
     long getLatestOffset();
+  }
+
+  class FailedEventResponseMapper implements RowMapper<FailedEventResponse> {
+    @Override
+    public FailedEventResponse map(ResultSet rs, StatementContext ctx) throws SQLException {
+      FailedEventResponse response = new FailedEventResponse();
+      FailedEvent failedEvent = JsonUtils.readValue(rs.getString("json"), FailedEvent.class);
+      response.setFailingSubscriptionId(failedEvent.getFailingSubscriptionId());
+      response.setChangeEvent(failedEvent.getChangeEvent());
+      response.setReason(failedEvent.getReason());
+      response.setSource(rs.getString("source"));
+      response.setTimestamp(failedEvent.getTimestamp());
+      return response;
+    }
+  }
+
+  class EventResponseMapper implements RowMapper<TypedEvent> {
+    @Override
+    public TypedEvent map(ResultSet rs, StatementContext ctx) throws SQLException {
+      TypedEvent response = new TypedEvent();
+      String status = rs.getString("status").toLowerCase();
+
+      if (TypedEvent.Status.FAILED.value().equalsIgnoreCase(status)) {
+        FailedEvent failedEvent = JsonUtils.readValue(rs.getString("json"), FailedEvent.class);
+        response.setData(List.of(failedEvent));
+        response.setStatus(TypedEvent.Status.FAILED);
+      } else {
+        ChangeEvent changeEvent = JsonUtils.readValue(rs.getString("json"), ChangeEvent.class);
+        response.setData(List.of(changeEvent));
+        response.setStatus(TypedEvent.Status.fromValue(status));
+      }
+
+      long timestampMillis = rs.getLong("timestamp");
+      response.setTimestamp((double) timestampMillis);
+      return response;
+    }
   }
 
   interface TypeEntityDAO extends EntityDAO<Type> {
@@ -4776,6 +5103,10 @@ public interface CollectionDAO {
             case SLACK_APP_CONFIGURATION, SLACK_INSTALLER, SLACK_BOT, SLACK_STATE -> JsonUtils
                 .readValue(json, String.class);
             case PROFILER_CONFIGURATION -> JsonUtils.readValue(json, ProfilerConfiguration.class);
+            case SEARCH_SETTINGS -> JsonUtils.readValue(json, SearchSettings.class);
+            case ASSET_CERTIFICATION_SETTINGS -> JsonUtils.readValue(
+                json, AssetCertificationSettings.class);
+            case LINEAGE_SETTINGS -> JsonUtils.readValue(json, LineageSettings.class);
             default -> throw new IllegalArgumentException("Invalid Settings Type " + configType);
           };
       settings.setConfigValue(value);

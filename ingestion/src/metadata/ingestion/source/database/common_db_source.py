@@ -11,13 +11,14 @@
 """
 Generic source to build SQL connectors.
 """
+import copy
 import math
 import time
 import traceback
 from abc import ABC
 from concurrent.futures import ThreadPoolExecutor
 from copy import deepcopy
-from typing import Any, Iterable, List, Optional, Tuple, Union, cast
+from typing import Any, Dict, Iterable, List, Optional, Tuple, Union, cast
 
 from pydantic import BaseModel
 from sqlalchemy.engine import Connection
@@ -38,6 +39,7 @@ from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import (
+    Column,
     ConstraintType,
     Table,
     TableConstraint,
@@ -63,6 +65,7 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.connections.session import create_and_bind_thread_safe_session
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.models.ometa_lineage import OMetaLineageRequest
+from metadata.ingestion.models.patch_request import PatchedEntity, PatchRequest
 from metadata.ingestion.models.topology import Queue
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import (
@@ -75,6 +78,7 @@ from metadata.ingestion.source.database.sqlalchemy_source import SqlAlchemySourc
 from metadata.ingestion.source.database.stored_procedures_mixin import QueryByProcedure
 from metadata.ingestion.source.models import TableView
 from metadata.utils import fqn
+from metadata.utils.constraints import get_relationship_type
 from metadata.utils.db_utils import get_view_lineage
 from metadata.utils.execution_time_tracker import (
     ExecutionTimeTrackerContextMap,
@@ -86,6 +90,13 @@ from metadata.utils.logger import ingestion_logger
 from metadata.utils.ssl_manager import SSLManager, check_ssl_and_init
 
 logger = ingestion_logger()
+
+
+class ColumnAndReferredColumn(BaseModel):
+    table_name: str
+    schema_name: str
+    db_name: Optional[str]
+    column: Dict
 
 
 class TableNameAndType(BaseModel):
@@ -141,6 +152,7 @@ class CommonDbSourceService(
         self.database_source_state = set()
         self.context.get_global().table_views = []
         self.context.get_global().table_constrains = []
+        self.context.get_global().foreign_tables = []
         self.context.set_threads(self.source_config.threads)
         super().__init__()
 
@@ -518,7 +530,12 @@ class CommonDbSourceService(
             )
 
             table_constraints = self.update_table_constraints(
-                table_constraints, foreign_columns
+                schema_name=schema_name,
+                table_name=table_name,
+                db_name=self.context.get().database,
+                table_constraints=table_constraints,
+                foreign_columns=foreign_columns,
+                columns=columns,
             )
 
             description = (
@@ -577,7 +594,11 @@ class CommonDbSourceService(
             self.register_record(table_request=table_request)
 
             # Flag view as visited
-            if table_type == TableType.View and schema_definition:
+            if (
+                table_type
+                in (TableType.View, TableType.MaterializedView, TableType.SecureView)
+                and schema_definition
+            ):
                 table_view = TableView(
                     table_name=table_name,
                     schema_name=schema_name,
@@ -697,7 +718,74 @@ class CommonDbSourceService(
         else:
             yield from self._process_view_def_serial()
 
-    def _get_foreign_constraints(self, foreign_columns) -> List[TableConstraint]:
+    def _prepare_foreign_constraints(  # pylint: disable=too-many-arguments, too-many-locals
+        self,
+        supports_database: bool,
+        column: Dict,
+        table_name: str,
+        schema_name: str,
+        db_name: str,
+        columns: List[Column],
+        add_to_global: bool = True,
+    ):
+        """
+        Method to prepare the foreign constraints
+        """
+        referred_column_fqns = []
+        if supports_database:
+            database_name = column.get("referred_database")
+        else:
+            database_name = self.context.get().database
+        referred_table_fqn = fqn.build(
+            metadata=self.metadata,
+            entity_type=Table,
+            table_name=column.get("referred_table"),
+            schema_name=column.get("referred_schema"),
+            database_name=database_name,
+            service_name=self.context.get().database_service,
+        )
+        referred_table = self.metadata.get_by_name(entity=Table, fqn=referred_table_fqn)
+        if referred_table:
+            for referred_column in column.get("referred_columns"):
+                col_fqn = fqn._build(  # pylint: disable=protected-access
+                    referred_table_fqn, referred_column, quote=False
+                )
+                if col_fqn:
+                    referred_column_fqns.append(FullyQualifiedEntityName(col_fqn))
+        else:
+            if add_to_global:
+                column_and_referred_columns = ColumnAndReferredColumn(
+                    table_name=table_name,
+                    schema_name=schema_name,
+                    db_name=db_name,
+                    column=column,
+                )
+                self.context.get_global().foreign_tables.append(
+                    column_and_referred_columns
+                )
+            return None
+        relationship_type = None
+        if referred_table:
+            relationship_type = get_relationship_type(
+                column,  # sqlalchemy foreign column
+                referred_table.columns,  # referred table columns
+                columns,  # current table om columns
+            )
+        return TableConstraint(
+            constraintType=ConstraintType.FOREIGN_KEY,
+            columns=column.get("constrained_columns"),
+            referredColumns=referred_column_fqns,
+            relationshipType=relationship_type,
+        )
+
+    def _get_foreign_constraints(
+        self,
+        table_name,
+        schema_name,
+        db_name,
+        foreign_columns: List[Dict],
+        columns: List[Column],
+    ) -> List[TableConstraint]:
         """
         Search the referred table for foreign constraints
         and get referred column fqn
@@ -706,48 +794,31 @@ class CommonDbSourceService(
 
         foreign_constraints = []
         for column in foreign_columns:
-            referred_column_fqns = []
-            if supports_database:
-                database_name = column.get("referred_database")
-            else:
-                database_name = self.context.get().database
-            referred_table_fqn = fqn.build(
-                metadata=self.metadata,
-                entity_type=Table,
-                table_name=column.get("referred_table"),
-                schema_name=column.get("referred_schema"),
-                database_name=database_name,
-                service_name=self.context.get().database_service,
+            foreign_constraint = self._prepare_foreign_constraints(
+                supports_database, column, table_name, schema_name, db_name, columns
             )
-            if referred_table_fqn:
-                for referred_column in column.get("referred_columns"):
-                    col_fqn = fqn._build(
-                        referred_table_fqn, referred_column, quote=False
-                    )
-                    if col_fqn:
-                        referred_column_fqns.append(FullyQualifiedEntityName(col_fqn))
-            else:
-                # do not build partial foreign constraint. It will updated in next run.
-                continue
-            foreign_constraints.append(
-                TableConstraint(
-                    constraintType=ConstraintType.FOREIGN_KEY,
-                    columns=column.get("constrained_columns"),
-                    referredColumns=referred_column_fqns,
-                )
-            )
+            if foreign_constraint:
+                foreign_constraints.append(foreign_constraint)
 
         return foreign_constraints
 
     @calculate_execution_time()
     def update_table_constraints(
-        self, table_constraints, foreign_columns
+        self,
+        table_name,
+        schema_name,
+        db_name,
+        table_constraints,
+        foreign_columns,
+        columns,
     ) -> List[TableConstraint]:
         """
         From topology.
         process the table constraints of all tables
         """
-        foreign_table_constraints = self._get_foreign_constraints(foreign_columns)
+        foreign_table_constraints = self._get_foreign_constraints(
+            table_name, schema_name, db_name, foreign_columns, columns
+        )
         if foreign_table_constraints:
             if table_constraints:
                 table_constraints.extend(foreign_table_constraints)
@@ -816,3 +887,55 @@ class CommonDbSourceService(
         """
         By default the source url is not supported for
         """
+
+    def yield_table_constraints(self) -> Iterable[Either[PatchedEntity]]:
+        """
+        Process remaining table constraints by patching the table
+        """
+        supports_database = hasattr(self.service_connection, "supportsDatabase")
+
+        for foreign_table in self.context.get_global().foreign_tables or []:
+            try:
+                foreign_constraints = []
+                table_fqn = fqn.build(
+                    metadata=self.metadata,
+                    entity_type=Table,
+                    service_name=self.context.get().database_service,
+                    database_name=foreign_table.db_name,
+                    schema_name=foreign_table.schema_name,
+                    table_name=foreign_table.table_name,
+                )
+                table = self.metadata.get_by_name(entity=Table, fqn=table_fqn)
+                if table:
+                    foreign_constraint = self._prepare_foreign_constraints(
+                        supports_database,
+                        foreign_table.column,
+                        foreign_table.table_name,
+                        foreign_table.schema_name,
+                        foreign_table.db_name,
+                        table.columns,
+                        False,
+                    )
+                    if foreign_constraint:
+                        foreign_constraints.append(foreign_constraint)
+
+                # send the patch request
+                if foreign_constraints:
+                    new_entity = copy.deepcopy(table)
+                    new_entity.tableConstraints = (
+                        new_entity.tableConstraints or []
+                    ) + foreign_constraints
+                    patch_request = PatchRequest(
+                        original_entity=table,
+                        new_entity=new_entity,
+                        override_metadata=True,
+                    )
+                    yield Either(right=patch_request)
+            except Exception as exc:
+                yield Either(
+                    left=StackTraceError(
+                        name=str(foreign_table.table_name),
+                        error=f"Error to yield tableConstraints for {str(foreign_table.table_name)}: {exc}",
+                        stackTrace=traceback.format_exc(),
+                    )
+                )

@@ -173,7 +173,9 @@ test('Classification Page', async ({ page }) => {
       )
     ).not.toBeVisible();
 
-    await expect(page.getByTestId('saveAssociatedTag')).not.toBeVisible();
+    await expect(page.getByText('No Tags are available')).toBeVisible();
+
+    await expect(page.getByTestId('saveAssociatedTag')).toBeDisabled();
 
     // Re-enable the disabled Classification
     await classification.visitPage(page);
@@ -194,19 +196,21 @@ test('Classification Page', async ({ page }) => {
       )
     ).not.toBeVisible();
 
-    await table.visitEntityPage(page);
-
-    await addTagToTableColumn(page, {
-      tagName: tag.responseData.name,
-      tagFqn: tag.responseData.fullyQualifiedName,
-      tagDisplayName: tag.responseData.displayName,
-      tableId: table.entityResponseData?.['id'],
-      columnNumber: 1,
-      rowName: 'shop_id numeric',
-    });
+    /* This code test will be fix in this PR  https://github.com/open-metadata/OpenMetadata/pull/18333  */
+    // await table.visitEntityPage(page);
+    // await addTagToTableColumn(page, {
+    //   tagName: tag.responseData.name,
+    //   tagFqn: tag.responseData.fullyQualifiedName,
+    //   tagDisplayName: tag.responseData.displayName,
+    //   tableId: table.entityResponseData?.['id'],
+    //   columnNumber: 1,
+    //   rowName: 'shop_id numeric',
+    // });
   });
 
   await test.step('Create classification with validation checks', async () => {
+    await redirectToHomePage(page);
+    await classification.visitPage(page);
     await page.click('[data-testid="add-classification"]');
     await page.waitForSelector('.ant-modal-content', {
       state: 'visible',

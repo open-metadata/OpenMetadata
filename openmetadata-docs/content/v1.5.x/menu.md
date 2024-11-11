@@ -185,6 +185,10 @@ site_menu:
 
   - category: Deployment / How to enable AWS RDS IAM Auth
     url: /deployment/rds-iam-auth
+  - category: Deployment / How to enable Azure Database Auth
+    url: /deployment/azure-auth
+  - category: Deployment / Azure - Enable Passwordless Database Backend Connection
+    url: /deployment/azure-passwordless-auth
   - category: Deployment / Server Configuration Reference
     url: /deployment/configuration
   - category: Deployment / Database Connection Pooling
@@ -419,6 +423,10 @@ site_menu:
     url: /connectors/dashboard/domo-dashboard
   - category: Connectors / Dashboard / Domo Dashboard / Run Externally
     url: /connectors/dashboard/domo-dashboard/yaml
+  - category: Connectors / Dashboard / Lightdash
+    url: /connectors/dashboard/lightdash
+  - category: Connectors / Dashboard / Lightdash / Run Externally
+    url: /connectors/dashboard/lightdash/yaml
   - category: Connectors / Dashboard / Looker
     url: /connectors/dashboard/looker
   - category: Connectors / Dashboard / Looker / Run Externally
@@ -427,6 +435,10 @@ site_menu:
     url: /connectors/dashboard/metabase
   - category: Connectors / Dashboard / Metabase / Run Externally
     url: /connectors/dashboard/metabase/yaml
+  - category: Connectors / Dashboard / MicroStrategy
+    url: /connectors/dashboard/microstrategy
+  - category: Connectors / Dashboard / MicroStrategy / Run Externally
+    url: /connectors/dashboard/microstrategy/yaml
   - category: Connectors / Dashboard / Mode
     url: /connectors/dashboard/mode
   - category: Connectors / Dashboard / Mode / Run Externally
@@ -929,6 +941,8 @@ site_menu:
     url: /releases/supported
   - category: Releases / All Releases
     url: /releases/all-releases
+  - category: Releases / All Releases / 1.5.7 Release
+    url: /releases/all-releases/#1.5.7-release
   - category: Releases / All Releases / 1.5.6 Release
     url: /releases/all-releases/#1.5.6-release
   - category: Releases / All Releases / 1.5.5 Release

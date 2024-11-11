@@ -21,23 +21,28 @@ import threading
 import traceback
 from collections import defaultdict
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Type
 
 from sqlalchemy import Column, inspect, text
 from sqlalchemy.exc import DBAPIError, ProgrammingError, ResourceClosedError
 from sqlalchemy.orm import scoped_session
 
-from metadata.generated.schema.entity.data.table import CustomMetricProfile, TableData
+from metadata.generated.schema.entity.data.table import (
+    CustomMetricProfile,
+    SystemProfile,
+    TableData,
+)
 from metadata.generated.schema.tests.customMetric import CustomMetric
 from metadata.ingestion.connections.session import create_and_bind_thread_safe_session
 from metadata.mixins.sqalchemy.sqa_mixin import SQAInterfaceMixin
 from metadata.profiler.api.models import ThreadPoolMetrics
 from metadata.profiler.interface.profiler_interface import ProfilerInterface
-from metadata.profiler.metrics.core import MetricTypes
+from metadata.profiler.metrics.core import HybridMetric, MetricTypes
 from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.metrics.static.mean import Mean
 from metadata.profiler.metrics.static.stddev import StdDev
 from metadata.profiler.metrics.static.sum import Sum
+from metadata.profiler.metrics.system.system import System, SystemMetricsComputer
 from metadata.profiler.orm.functions.table_metric_computer import TableMetricComputer
 from metadata.profiler.orm.registry import Dialects
 from metadata.profiler.processor.metric_filter import MetricFilter
@@ -105,6 +110,13 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
 
         self._table = self._convert_table_to_orm_object(sqa_metadata)
         self.create_session()
+        self.system_metrics_computer = self.initialize_system_metrics_computer()
+
+    def initialize_system_metrics_computer(self) -> SystemMetricsComputer:
+        """Initialize system metrics computer. Override this if you want to use a metric source with
+        state or other dependencies.
+        """
+        return SystemMetricsComputer()
 
     def create_session(self):
         self.session_factory = self._session_factory()
@@ -174,7 +186,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
         session,
         *args,
         **kwargs,
-    ):
+    ) -> Optional[Dict[str, Any]]:
         """Given a list of metrics, compute the given results
         and returns the values
 
@@ -363,12 +375,11 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
 
     def _compute_system_metrics(
         self,
-        metrics: Metrics,
+        metrics: Type[System],
         runner: QueryRunner,
-        session,
         *args,
         **kwargs,
-    ):
+    ) -> List[SystemProfile]:
         """Get system metric for tables
 
         Args:
@@ -379,13 +390,8 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
         Returns:
             dictionnary of results
         """
-        try:
-            rows = metrics().sql(session, conn_config=self.service_connection_config)
-            return rows
-        except Exception as exc:
-            msg = f"Error trying to compute profile for {runner.table.__tablename__}: {exc}"
-            handle_query_exception(msg, exc, session)
-        return None
+        logger.debug(f"Computing system metrics for {runner.table.__tablename__}")
+        return self.system_metrics_computer.get_system_metrics(table=runner.table)
 
     def _create_thread_safe_sampler(
         self,
@@ -576,14 +582,19 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
             return None
 
     def get_hybrid_metrics(
-        self, column: Column, metric: Metrics, column_results: Dict, **kwargs
+        self,
+        column: Column,
+        metric: Type[HybridMetric],
+        column_results: Dict[str, Any],
+        **kwargs,
     ):
         """Given a list of metrics, compute the given results
         and returns the values
 
         Args:
             column: the column to compute the metrics against
-            metrics: list of metrics to compute
+            metric: metric to compute
+            column_results: results of the column
         Returns:
             dictionnary of results
         """

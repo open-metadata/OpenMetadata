@@ -290,7 +290,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
       try {
         entity = Entity.getEntityByName(Entity.USER, owner, "", ALL);
       } catch (Exception e) {
-        // If the owner is not a user, then we'll try to geta team
+        // If the owner is not a user, then we'll try to get a team
         entity = Entity.getEntityByName(Entity.TEAM, owner, "", ALL);
       }
       searchListFilter.addQueryParam("owners", entity.getId().toString());

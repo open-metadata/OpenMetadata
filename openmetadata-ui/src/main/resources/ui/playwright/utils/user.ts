@@ -429,15 +429,18 @@ export const permanentDeleteUser = async (
     );
     await page.click('[data-testid="show-deleted"]');
     await fetchDeletedUsers;
-
-    // Wait for the loader to disappear
-    await page.waitForSelector('[data-testid="loader"]', { state: 'hidden' });
   }
+
+  // Wait for the loader to disappear
+  await page.waitForSelector('[data-testid="loader"]', { state: 'hidden' });
 
   // Search the user
   const searchUserResponse = page.waitForResponse('/api/v1/search/query*');
   await page.fill('[data-testid="searchbar"]', username);
   await searchUserResponse;
+
+  // Wait for the loader to disappear
+  await page.waitForSelector('[data-testid="loader"]', { state: 'hidden' });
 
   // Click on delete user button
   await page.click(`[data-testid="delete-user-btn-${username}"]`);
@@ -580,7 +583,7 @@ export const checkDataConsumerPermissions = async (page: Page) => {
     ).not.toBeVisible();
   }
 
-  await page.click('[data-testid="lineage"] > .ant-space-item');
+  await page.click('[data-testid="lineage"]');
 
   await expect(page.locator('[data-testid="edit-lineage"]')).toBeDisabled();
 };
@@ -659,7 +662,7 @@ export const checkStewardPermissions = async (page: Page) => {
   await expect(page.locator('[data-testid="manage-button"]')).toBeVisible();
 
   // Click on lineage item
-  await page.click('[data-testid="lineage"] > .ant-space-item');
+  await page.click('[data-testid="lineage"]');
 
   // Check if edit lineage button is enabled
   await expect(page.locator('[data-testid="edit-lineage"]')).toBeEnabled();

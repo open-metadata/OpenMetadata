@@ -614,6 +614,9 @@ export const addCustomPropertiesForEntity = async ({
   // Correct name
   await page.fill('[data-testid="name"]', propertyName);
 
+  // displayName
+  await page.fill('[data-testid="display-name"]', propertyName);
+
   // Select custom type
   await page.locator('[id="root\\/propertyType"]').fill(customType);
   await page.getByTitle(`${customType}`, { exact: true }).click();
@@ -704,10 +707,18 @@ export const editCreatedProperty = async (
   }
 
   if (type === 'Table') {
-    await expect(page.getByText('Columns:pw-column1pw-column2')).toBeVisible();
+    await expect(
+      page
+        .locator(`[data-row-key="${propertyName}"]`)
+        .getByText('Columns:pw-column1pw-column2')
+    ).toBeVisible();
   }
 
   await editButton.click();
+
+  // displayName
+  await page.fill('[data-testid="display-name"]', '');
+  await page.fill('[data-testid="display-name"]', propertyName);
 
   await page.locator(descriptionBox).fill('');
   await page.locator(descriptionBox).fill('This is new description');

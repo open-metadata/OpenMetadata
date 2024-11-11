@@ -75,6 +75,7 @@
         "fields": {
           "keyword": {
             "type": "keyword",
+            "normalizer": "lowercase_normalizer",
             "ignore_above": 256
           },
           "ngram": {
@@ -99,6 +100,9 @@
         "type": "text"
       },
       "href": {
+        "type": "text"
+      },
+      "schemaDefinition": {
         "type": "text"
       },
       "sourceUrl": {
@@ -146,7 +150,8 @@
           "tags": {
             "properties": {
               "tagFQN": {
-                "type": "keyword"
+                "type": "keyword",
+                "normalizer": "lowercase_normalizer"
               },
               "labelType": {
                 "type": "keyword"
@@ -582,6 +587,9 @@
         }
       },
       "lineage": {
+        "type" : "object"
+      },
+      "entityRelationship": {
         "type" : "object"
       },
       "serviceType": {

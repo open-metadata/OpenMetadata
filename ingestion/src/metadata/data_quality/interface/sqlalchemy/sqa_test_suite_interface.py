@@ -52,6 +52,7 @@ class SQATestSuiteInterface(SQAInterfaceMixin, TestSuiteInterface):
         table_entity: Table = None,
         sqa_metadata=None,
     ):
+        super().__init__()
         self.ometa_client = ometa_client
         self.table_entity = table_entity
         self.service_connection_config = service_connection_config
