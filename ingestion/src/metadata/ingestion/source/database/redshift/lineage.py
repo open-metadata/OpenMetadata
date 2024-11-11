@@ -73,6 +73,7 @@ class RedshiftLineageSource(RedshiftQueryParserSource, LineageSource):
                     query_dict = dict(row)
                     try:
                         yield TableQuery(
+                            dialect=self.dialect.value,
                             query=query_dict["query_text"]
                             .replace("\\n", "\n")
                             .replace("\\r", ""),
