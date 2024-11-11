@@ -82,6 +82,7 @@ class PostgresLineageSource(PostgresQueryParserSource, LineageSource):
                     row = dict(row)
                     try:
                         yield TableQuery(
+                            dialect=self.dialect.value,
                             query=row["query_text"],
                             userName=row["usename"],
                             analysisDate=DateTime(datetime.now()),

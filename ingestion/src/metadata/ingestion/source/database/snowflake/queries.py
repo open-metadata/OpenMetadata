@@ -17,14 +17,14 @@ import textwrap
 SNOWFLAKE_SQL_STATEMENT = textwrap.dedent(
     """
     SELECT
-      query_type,
-      query_text,
-      user_name,
-      database_name,
-      schema_name,
-      start_time,
-      end_time,
-      total_elapsed_time duration
+      query_type "query_type",
+      query_text "query_text",
+      user_name "user_name",
+      database_name "database_name",
+      schema_name "schema_name",
+      start_time "start_time",
+      end_time "end_time",
+      total_elapsed_time "duration"
     from snowflake.account_usage.query_history
     WHERE query_text NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
     AND query_text NOT LIKE '/* {{"app": "dbt", %%}} */%%'

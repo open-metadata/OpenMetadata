@@ -135,6 +135,7 @@ class LineageSource(QueryParserSource, ABC):
                     query_dict = dict(row)
                     try:
                         yield TableQuery(
+                            dialect=self.dialect.value,
                             query=query_dict["query_text"],
                             databaseName=self.get_database_name(query_dict),
                             serviceName=self.config.serviceName,

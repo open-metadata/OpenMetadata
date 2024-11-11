@@ -23,6 +23,7 @@ from metadata.ingestion.api.steps import Source
 from metadata.ingestion.connections.test_connections import (
     raise_test_connection_exception,
 )
+from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_test_connection_fn
 from metadata.utils.helpers import get_start_and_end
@@ -43,6 +44,7 @@ class QueryParserSource(Source, ABC):
     """
 
     sql_stmt: str
+    dialect: str
     filters: str
     database_field: str
     schema_field: str
@@ -58,6 +60,8 @@ class QueryParserSource(Source, ABC):
         self.metadata = metadata
         self.service_name = self.config.serviceName
         self.service_connection = self.config.serviceConnection.root.config
+        connection_type = self.service_connection.type.value
+        self.dialect = ConnectionTypeDialectMapper.dialect_of(connection_type)
         self.source_config = self.config.sourceConfig.config
         self.start, self.end = get_start_and_end(self.source_config.queryLogDuration)
         self.engine = (

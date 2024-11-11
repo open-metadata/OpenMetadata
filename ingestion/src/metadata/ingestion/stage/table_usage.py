@@ -114,6 +114,7 @@ class TableUsageStage(Stage):
                     exclude_usage=record.exclude_usage,
                     users=users,
                     queryDate=record.date,
+                    dialect=record.dialect,
                     usedBy=used_by,
                     duration=record.duration,
                     service=record.serviceName,
@@ -128,6 +129,7 @@ class TableUsageStage(Stage):
                     users=users,
                     queryDate=record.date,
                     usedBy=used_by,
+                    dialect=record.dialect,
                     duration=record.duration,
                     service=record.serviceName,
                 )
