@@ -91,9 +91,9 @@ public class MSTeamsPublisher implements Destination<ChangeEvent> {
                   + CommonUtil.calculateHMAC(
                       webhook.getSecretKey(), JsonUtils.pojoToJson(teamsMessage));
           postWebhookMessage(
-              this, actionTarget.header(RestUtil.SIGNATURE_HEADER, hmac), teamsMessage);
+              this, actionTarget.header(RestUtil.SIGNATURE_HEADER, hmac), teamsMessage, false);
         } else {
-          postWebhookMessage(this, actionTarget, teamsMessage);
+          postWebhookMessage(this, actionTarget, teamsMessage, false);
         }
       }
     } catch (Exception e) {
@@ -118,9 +118,10 @@ public class MSTeamsPublisher implements Destination<ChangeEvent> {
               "sha256="
                   + CommonUtil.calculateHMAC(
                       webhook.getSecretKey(), JsonUtils.pojoToJson(teamsMessage));
-          postWebhookMessage(this, target.header(RestUtil.SIGNATURE_HEADER, hmac), teamsMessage);
+          postWebhookMessage(
+              this, target.header(RestUtil.SIGNATURE_HEADER, hmac), teamsMessage, true);
         } else {
-          postWebhookMessage(this, target, teamsMessage);
+          postWebhookMessage(this, target, teamsMessage, true);
         }
       }
     } catch (Exception e) {

@@ -213,11 +213,12 @@ public class EventSubscriptionScheduler {
         getEventSubscriptionFromScheduledJob(subscriptionId);
 
     if (eventSubscriptionOpt.isPresent()) {
-      return eventSubscriptionOpt.get().getDestinations().stream()
-          .filter(destination -> destination.getId().equals(destinationId))
-          .map(SubscriptionDestination::getStatusDetails)
-          .findFirst()
-          .orElse(null);
+      return (SubscriptionStatus)
+          eventSubscriptionOpt.get().getDestinations().stream()
+              .filter(destination -> destination.getId().equals(destinationId))
+              .map(SubscriptionDestination::getStatusDetails)
+              .findFirst()
+              .orElse(null);
     }
 
     EntityRepository<? extends EntityInterface> subscriptionRepository =

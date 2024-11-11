@@ -71,7 +71,7 @@ public class GenericPublisher implements Destination<ChangeEvent> {
     try {
       String json = JsonUtils.pojoToJson(event);
 
-      prepareAndSendMessage(json, getTarget());
+      prepareAndSendMessage(json, getTarget(), false);
 
       // Post to Generic Webhook with Actions
       List<Invocation.Builder> targets =
@@ -79,7 +79,7 @@ public class GenericPublisher implements Destination<ChangeEvent> {
               webhook, subscriptionDestination.getCategory(), WEBHOOK, client, event);
       String eventJson = JsonUtils.pojoToJson(event);
       for (Invocation.Builder actionTarget : targets) {
-        postWebhookMessage(this, actionTarget, eventJson);
+        postWebhookMessage(this, actionTarget, eventJson, false);
       }
     } catch (Exception ex) {
       handleException(attemptTime, event, ex);
@@ -90,13 +90,14 @@ public class GenericPublisher implements Destination<ChangeEvent> {
   public void sendTestMessage() throws EventPublisherException {
     long attemptTime = System.currentTimeMillis();
     try {
-      prepareAndSendMessage(TEST_MESSAGE_JSON, getTarget());
+      prepareAndSendMessage(TEST_MESSAGE_JSON, getTarget(), true);
     } catch (Exception ex) {
       handleException(attemptTime, ex);
     }
   }
 
-  private void prepareAndSendMessage(String json, Invocation.Builder target) {
+  private void prepareAndSendMessage(
+      String json, Invocation.Builder target, boolean testDestination) {
     if (!CommonUtil.nullOrEmpty(webhook.getEndpoint())) {
 
       // Add HMAC signature header if secret key is present
@@ -114,7 +115,7 @@ public class GenericPublisher implements Destination<ChangeEvent> {
       }
 
       Webhook.HttpMethod httpOperation = webhook.getHttpMethod();
-      postWebhookMessage(this, target, json, httpOperation);
+      postWebhookMessage(this, target, json, httpOperation, testDestination);
     }
   }
 

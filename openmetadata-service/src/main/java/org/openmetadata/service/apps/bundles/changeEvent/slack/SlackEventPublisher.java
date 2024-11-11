@@ -90,9 +90,10 @@ public class SlackEventPublisher implements Destination<ChangeEvent> {
       for (Invocation.Builder actionTarget : targets) {
         if (webhook.getSecretKey() != null && !webhook.getSecretKey().isEmpty()) {
           String hmac = "sha256=" + CommonUtil.calculateHMAC(webhook.getSecretKey(), json);
-          postWebhookMessage(this, actionTarget.header(RestUtil.SIGNATURE_HEADER, hmac), json);
+          postWebhookMessage(
+              this, actionTarget.header(RestUtil.SIGNATURE_HEADER, hmac), json, false);
         } else {
-          postWebhookMessage(this, actionTarget, json);
+          postWebhookMessage(this, actionTarget, json, false);
         }
       }
     } catch (Exception e) {
@@ -116,9 +117,9 @@ public class SlackEventPublisher implements Destination<ChangeEvent> {
       if (target != null) {
         if (webhook.getSecretKey() != null && !webhook.getSecretKey().isEmpty()) {
           String hmac = "sha256=" + CommonUtil.calculateHMAC(webhook.getSecretKey(), json);
-          postWebhookMessage(this, target.header(RestUtil.SIGNATURE_HEADER, hmac), json);
+          postWebhookMessage(this, target.header(RestUtil.SIGNATURE_HEADER, hmac), json, true);
         } else {
-          postWebhookMessage(this, target, json);
+          postWebhookMessage(this, target, json, true);
         }
       }
     } catch (Exception e) {

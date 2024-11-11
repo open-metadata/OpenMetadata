@@ -123,7 +123,14 @@
           "$ref": "#/definitions/subscriptionType"
         },
         "statusDetails": {
-          "$ref": "#/definitions/subscriptionStatus"
+          "oneOf": [
+            {
+              "$ref": "../events/subscriptionStatus.json"
+            },
+            {
+              "$ref": "../events/testDestinationStatus.json"
+            }
+          ]
         },
         "timeout": {
           "description": "Connection timeout in seconds. (Default 10s).",
@@ -164,40 +171,6 @@
         "awaitingRetry",
         "active"
       ]
-    },
-    "subscriptionStatus": {
-      "description": "Subscription Current Status",
-      "type": "object",
-      "javaType": "org.openmetadata.schema.entity.events.SubscriptionStatus",
-      "properties": {
-        "status": {
-          "$ref": "#/definitions/status"
-        },
-        "lastSuccessfulAt": {
-          "description": "Last non-successful callback time in UNIX UTC epoch time in milliseconds.",
-          "$ref": "../type/basic.json#/definitions/timestamp"
-        },
-        "lastFailedAt": {
-          "description": "Last non-successful callback time in UNIX UTC epoch time in milliseconds.",
-          "$ref": "../type/basic.json#/definitions/timestamp"
-        },
-        "lastFailedStatusCode": {
-          "description": "Last non-successful activity response code received during callback.",
-          "type": "integer"
-        },
-        "lastFailedReason": {
-          "description": "Last non-successful activity response reason received during callback.",
-          "type": "string"
-        },
-        "nextAttempt": {
-          "description": "Next retry will be done at this time in Unix epoch time milliseconds. Only valid is `status` is `awaitingRetry`.",
-          "$ref": "../type/basic.json#/definitions/timestamp"
-        },
-        "timestamp": {
-          "$ref": "../type/basic.json#/definitions/timestamp"
-        }
-      },
-      "additionalProperties": false
     },
     "filteringRules": {
       "description": "Filtering Rules for Event Subscription.",
