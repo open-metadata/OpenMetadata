@@ -40,7 +40,7 @@ class StoredStatisticsSource(Root):
         return set()
 
     def get_column_statistics(
-        self, metric: List[Metrics], schema: str, table_name: Table, column: str
+        self, metrics: List[Metrics], schema: str, table_name: Table, column: str
     ) -> dict:
         raise NotImplementedError(
             "You used a connector that does not support using statistics tables."

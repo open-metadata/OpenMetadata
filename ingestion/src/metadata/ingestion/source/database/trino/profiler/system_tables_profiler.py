@@ -1,3 +1,4 @@
+"""Trino profiler using statistics tables."""
 from datetime import datetime
 from decimal import Decimal
 from typing import Any, Dict, List, Optional, Set, Union
@@ -44,6 +45,8 @@ class TableStats(BaseModel):
 
 
 class TrinoStoredStatisticsSource(StoredStatisticsSource):
+    """Stored statistics source for Trino"""
+
     metric_stats_map: Dict[Metrics, str] = {
         Metrics.NULL_RATIO: "nulls_fractions",
         Metrics.DISTINCT_COUNT: "distinct_values_count",

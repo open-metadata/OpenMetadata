@@ -155,7 +155,6 @@ class BaseColumnValuesToBeAtExpectedLocationValidator(BaseTestValidator):
             List[Dict]
         """
         geojson_property = "libgeo" if ref_type == "CITY" else "codgeo"
-        # pylint: disable=deprecated-method
         with resources.open_text("metadata.data_quality.data", "fr-cities.json") as f:
             data = json.load(f)
 
