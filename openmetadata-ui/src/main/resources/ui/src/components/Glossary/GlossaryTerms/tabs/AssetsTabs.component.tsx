@@ -155,6 +155,7 @@ const AssetsTabs = forwardRef(
           AssetsOfEntity.DATA_PRODUCT,
           AssetsOfEntity.DOMAIN,
           AssetsOfEntity.GLOSSARY,
+          AssetsOfEntity.TAG,
         ].includes(type),
       [type]
     );

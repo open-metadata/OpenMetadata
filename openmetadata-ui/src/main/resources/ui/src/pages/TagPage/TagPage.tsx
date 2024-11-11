@@ -38,14 +38,17 @@ import { ReactComponent as EditIcon } from '../../assets/svg/edit-new.svg';
 import { ReactComponent as IconDelete } from '../../assets/svg/ic-delete.svg';
 import { ReactComponent as IconDropdown } from '../../assets/svg/menu.svg';
 import { ReactComponent as StyleIcon } from '../../assets/svg/style.svg';
+import { DomainLabel } from '../../components/common/DomainLabel/DomainLabel.component';
 import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
 import Loader from '../../components/common/Loader/Loader';
 import { ManageButtonItemLabel } from '../../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
+import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import StatusBadge from '../../components/common/StatusBadge/StatusBadge.component';
 import { StatusType } from '../../components/common/StatusBadge/StatusBadge.interface';
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import { AssetSelectionModal } from '../../components/DataAssets/AssetsSelectionModal/AssetSelectionModal';
 import { EntityHeader } from '../../components/Entity/EntityHeader/EntityHeader.component';
+import EntitySummaryPanel from '../../components/Explore/EntitySummaryPanel/EntitySummaryPanel.component';
 import { EntityDetailsObjectInterface } from '../../components/Explore/ExplorePage.interface';
 import AssetsTabs, {
   AssetsTabRef,
@@ -56,12 +59,13 @@ import EntityNameModal from '../../components/Modals/EntityNameModal/EntityNameM
 import StyleModal from '../../components/Modals/StyleModal/StyleModal.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { DE_ACTIVE_COLOR, ROUTES } from '../../constants/constants';
+import { COMMON_RESIZABLE_PANEL_CONFIG } from '../../constants/ResizablePanel.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
   ResourceEntity,
 } from '../../context/PermissionProvider/PermissionProvider.interface';
-import { EntityType } from '../../enums/entity.enum';
+import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { ProviderType, Tag } from '../../generated/entity/classification/tag';
 import { Style } from '../../generated/type/tagLabel';
@@ -128,12 +132,9 @@ const TagPage = () => {
       : [];
   }, [tagItem]);
 
-  const handleAssetClick = useCallback(
-    (asset?: EntityDetailsObjectInterface) => {
-      setPreviewAsset(asset);
-    },
-    []
-  );
+  const handleAssetClick = useCallback((asset) => {
+    setPreviewAsset(asset);
+  }, []);
 
   const { editTagsPermission, editDescriptionPermission } = useMemo(() => {
     if (tagItem) {
@@ -153,8 +154,6 @@ const TagPage = () => {
 
     return { editTagsPermission: false, editDescriptionPermission: false };
   }, [tagPermissions, tagItem?.deleted]);
-
-  const hasEditPermission = useMemo(() => !tagItem?.disabled, [tagItem]);
 
   const fetchCurrentTagPermission = async () => {
     if (!tagItem?.id) {
@@ -197,7 +196,9 @@ const TagPage = () => {
     try {
       setIsLoading(true);
       if (tagFqn) {
-        const response = await getTagByFqn(tagFqn);
+        const response = await getTagByFqn(tagFqn, {
+          fields: TabSpecificField.DOMAIN,
+        });
         setTagItem(response);
       }
     } catch (e) {
@@ -234,7 +235,7 @@ const TagPage = () => {
     }
   };
 
-  const onNameSave = async (obj: { displayName: string }) => {
+  const onNameSave = async (obj: Tag) => {
     if (tagItem) {
       const { displayName } = obj;
       let updatedDetails = cloneDeep(tagItem);
@@ -399,26 +400,50 @@ const TagPage = () => {
         label: <div data-testid="overview">{t('label.overview')}</div>,
         key: 'overview',
         children: (
-          <div className="tag-overview-tab">
-            <Row className="p-md">
-              <Col span={24}>
-                <DescriptionV1
-                  removeBlur
-                  description={tagItem?.description}
-                  entityFqn={tagItem?.fullyQualifiedName}
-                  entityName={getEntityName(tagItem)}
+          <ResizablePanels
+            className="domain-height-with-resizable-panel"
+            firstPanel={{
+              className: 'domain-resizable-panel-container',
+              children: (
+                <div className="tag-overview-tab">
+                  <Row className="p-md">
+                    <Col span={24}>
+                      <DescriptionV1
+                        removeBlur
+                        description={tagItem?.description}
+                        entityFqn={tagItem?.fullyQualifiedName}
+                        entityName={getEntityName(tagItem)}
+                        entityType={EntityType.TAG}
+                        hasEditAccess={editDescriptionPermission}
+                        isEdit={isDescriptionEditable}
+                        showActions={!tagItem?.deleted}
+                        showCommentsIcon={false}
+                        onCancel={() => setIsDescriptionEditable(false)}
+                        onDescriptionEdit={() => setIsDescriptionEditable(true)}
+                        onDescriptionUpdate={onDescriptionUpdate}
+                      />
+                    </Col>
+                  </Row>
+                </div>
+              ),
+              ...COMMON_RESIZABLE_PANEL_CONFIG.LEFT_PANEL,
+            }}
+            secondPanel={{
+              children: tagItem ? (
+                <DomainLabel
+                  showDomainHeading
+                  domain={tagItem.domain}
+                  entityFqn={tagItem.fullyQualifiedName ?? ''}
+                  entityId={tagItem.id ?? ''}
                   entityType={EntityType.TAG}
-                  hasEditAccess={editDescriptionPermission}
-                  isEdit={isDescriptionEditable}
-                  showActions={!tagItem?.deleted}
-                  showCommentsIcon={false}
-                  onCancel={() => setIsDescriptionEditable(false)}
-                  onDescriptionEdit={() => setIsDescriptionEditable(true)}
-                  onDescriptionUpdate={onDescriptionUpdate}
+                  hasPermission={tagPermissions.EditAll}
                 />
-              </Col>
-            </Row>
-          </div>
+              ) : null,
+              ...COMMON_RESIZABLE_PANEL_CONFIG.RIGHT_PANEL,
+              className:
+                'entity-resizable-right-panel-container domain-resizable-panel-container',
+            }}
+          />
         ),
       },
       {
@@ -432,16 +457,37 @@ const TagPage = () => {
         ),
         key: 'assets',
         children: (
-          <AssetsTabs
-            assetCount={assetCount}
-            entityFqn={tagItem?.fullyQualifiedName ?? ''}
-            isSummaryPanelOpen={Boolean(previewAsset)}
-            permissions={MOCK_TAG_PERMISSIONS}
-            ref={assetTabRef}
-            type={AssetsOfEntity.TAG}
-            onAddAsset={() => setAssetModalVisible(true)}
-            onAssetClick={handleAssetClick}
-            onRemoveAsset={handleAssetSave}
+          <ResizablePanels
+            className="domain-height-with-resizable-panel"
+            firstPanel={{
+              className: 'domain-resizable-panel-container',
+              children: (
+                <AssetsTabs
+                  assetCount={assetCount}
+                  entityFqn={tagItem?.fullyQualifiedName ?? ''}
+                  isSummaryPanelOpen={Boolean(previewAsset)}
+                  permissions={MOCK_TAG_PERMISSIONS}
+                  ref={assetTabRef}
+                  type={AssetsOfEntity.TAG}
+                  onAddAsset={() => setAssetModalVisible(true)}
+                  onAssetClick={handleAssetClick}
+                  onRemoveAsset={handleAssetSave}
+                />
+              ),
+              ...COMMON_RESIZABLE_PANEL_CONFIG.LEFT_PANEL,
+            }}
+            hideSecondPanel={!previewAsset}
+            secondPanel={{
+              children: previewAsset && (
+                <EntitySummaryPanel
+                  entityDetails={previewAsset}
+                  handleClosePanel={() => setPreviewAsset(undefined)}
+                />
+              ),
+              ...COMMON_RESIZABLE_PANEL_CONFIG.RIGHT_PANEL,
+              className:
+                'entity-resizable-right-panel-container domain-resizable-panel-container',
+            }}
           />
         ),
       },
@@ -450,6 +496,7 @@ const TagPage = () => {
     return items;
   }, [
     tagItem,
+    previewAsset,
     activeTab,
     assetCount,
     assetTabRef,
@@ -457,7 +504,6 @@ const TagPage = () => {
     isDescriptionEditable,
     editDescriptionPermission,
   ]);
-
   const icon = useMemo(() => {
     if (tagItem?.style?.iconURL) {
       return (
@@ -505,7 +551,7 @@ const TagPage = () => {
             <Col className="p-x-md" flex="auto">
               <EntityHeader
                 badge={
-                  !hasEditPermission && (
+                  !editTagsPermission && (
                     <Space>
                       <Divider className="m-x-xs h-6" type="vertical" />
                       <StatusBadge
@@ -524,7 +570,7 @@ const TagPage = () => {
                 titleColor={tagItem.style?.color ?? 'black'}
               />
             </Col>
-            {hasEditPermission && (
+            {editTagsPermission && (
               <Col className="p-x-md">
                 <div style={{ textAlign: 'right', display: 'flex' }}>
                   <Button
