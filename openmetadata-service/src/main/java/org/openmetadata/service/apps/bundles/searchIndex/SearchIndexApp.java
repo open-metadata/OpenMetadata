@@ -612,49 +612,58 @@ public class SearchIndexApp extends AbstractNativeApplication {
 
   private void processEntityType(String entityType)
       throws InterruptedException, ExecutionException {
-    int totalEntityRecords =
-        ((StepStats)
-                searchIndexStats.get().getEntityStats().getAdditionalProperties().get(entityType))
-            .getTotalRecords();
+    int totalEntityRecords = getTotalEntityRecords(entityType);
     if (totalEntityRecords > 0) {
       Source<?> source = createSource(entityType);
       int loadPerThread = calculateLoadPerThread(totalEntityRecords);
-      List<Future<?>> futures = new ArrayList<>();
-      for (int i = 0; i < loadPerThread; i++) {
-        int currentOffset = i * batchSize.get();
-        Future<?> future =
-            entityReaderExecutor.submit(
-                () -> {
-                  try {
-                    Object resultList =
-                        source.readWithCursor(RestUtil.encodeCursor(String.valueOf(currentOffset)));
-                    if (resultList != null) {
-                      List<?> entities = extractEntities(entityType, resultList);
-                      if (entities != null && !entities.isEmpty()) {
-                        LOG.info(
-                            "Creating Indexing Task for entityType: {}, current offset: {}",
-                            entityType,
-                            currentOffset);
-                        IndexingTask<?> task =
-                            new IndexingTask<>(entityType, entities, currentOffset);
-                        // Add the task to the queue
-                        taskQueue.put(task);
-                      }
-                    }
-                  } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    LOG.warn("Reader thread interrupted for entityType: {}", entityType);
-                  } catch (SearchIndexException e) {
-                    LOG.error("Error while reading source for entityType: {}", entityType, e);
-                  }
-                });
-        futures.add(future);
-      }
-
+      List<Future<?>> futures = submitReaderTasks(entityType, source, loadPerThread);
       for (Future<?> future : futures) {
         future.get();
       }
     }
+  }
+
+  private int getTotalEntityRecords(String entityType) {
+    return ((StepStats)
+            searchIndexStats.get().getEntityStats().getAdditionalProperties().get(entityType))
+        .getTotalRecords();
+  }
+
+  private List<Future<?>> submitReaderTasks(
+      String entityType, Source<?> source, int loadPerThread) {
+    List<Future<?>> futures = new ArrayList<>();
+    for (int i = 0; i < loadPerThread; i++) {
+      int currentOffset = i * batchSize.get();
+      Future<?> future =
+          entityReaderExecutor.submit(() -> processReadTask(entityType, source, currentOffset));
+      futures.add(future);
+    }
+    return futures;
+  }
+
+  private void processReadTask(String entityType, Source<?> source, int offset) {
+    try {
+      Object resultList = source.readWithCursor(RestUtil.encodeCursor(String.valueOf(offset)));
+      if (resultList != null) {
+        List<?> entities = extractEntities(entityType, resultList);
+        if (entities != null && !entities.isEmpty()) {
+          LOG.info(
+              "Creating Indexing Task for entityType: {}, current offset: {}", entityType, offset);
+          createIndexingTask(entityType, entities, offset);
+        }
+      }
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      LOG.warn("Reader thread interrupted for entityType: {}", entityType);
+    } catch (SearchIndexException e) {
+      LOG.error("Error while reading source for entityType: {}", entityType, e);
+    }
+  }
+
+  private void createIndexingTask(String entityType, List<?> entities, int offset)
+      throws InterruptedException {
+    IndexingTask<?> task = new IndexingTask<>(entityType, entities, offset);
+    taskQueue.put(task);
   }
 
   private synchronized int calculateLoadPerThread(int totalEntityRecords) {
