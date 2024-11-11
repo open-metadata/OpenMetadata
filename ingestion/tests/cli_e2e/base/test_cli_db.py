@@ -429,11 +429,12 @@ class CliDBBase(TestCase):
                     profile_type=SystemProfile,
                 ).entities
                 actual_profiles = sorted(
-                    actual_profiles, key=lambda x: (x.timestamp.root, x.operation.value)
+                    actual_profiles,
+                    key=lambda x: (-x.timestamp.root, x.operation.value),
                 )
                 expected_profile = sorted(
                     expected_profile,
-                    key=lambda x: (x.timestamp.root, x.operation.value),
+                    key=lambda x: (-x.timestamp.root, x.operation.value),
                 )
                 assert len(actual_profiles) >= len(expected_profile)
                 for expected, actual in zip(expected_profile, actual_profiles):

@@ -22,5 +22,5 @@ from metadata.profiler.metrics.system.system import SystemMetricsComputer
 
 
 class SnowflakeProfiler(SnowflakeProfilerInterface):
-    def initialize_system_metrics_computer(self, **kwargs) -> SystemMetricsComputer:
+    def initialize_system_metrics_computer(self) -> SystemMetricsComputer:
         return SnowflakeSystemMetricsComputer(session=self.session)
