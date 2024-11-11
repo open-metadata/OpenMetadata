@@ -323,6 +323,10 @@ class Profiler(Generic[TMetric]):
     def _prepare_table_metrics(self) -> List:
         """prepare table metrics"""
         metrics = []
+
+        if self.source_config and not self.source_config.computeTableMetrics:
+            return metrics
+
         table_metrics = [
             metric
             for metric in self.metric_filter.static_metrics
@@ -377,6 +381,9 @@ class Profiler(Generic[TMetric]):
     def _prepare_column_metrics(self) -> List:
         """prepare column metrics"""
         column_metrics_for_thread_pool = []
+        if self.source_config and not self.source_config.computeColumnMetrics:
+            return column_metrics_for_thread_pool
+
         columns = [
             column
             for column in self.columns

@@ -55,14 +55,16 @@ class ProfilerSourceFactory:
     @staticmethod
     def base() -> Type[ProfilerSourceInterface]:
         """Lazy loading of the base source"""
-        from metadata.profiler.source.base.profiler_source import ProfilerSource
+        from metadata.profiler.source.database.base.profiler_source import (
+            ProfilerSource,
+        )
 
         return ProfilerSource
 
     @staticmethod
     def bigquery() -> Type[ProfilerSourceInterface]:
         """Lazy loading of the BigQuery source"""
-        from metadata.profiler.source.bigquery.profiler_source import (
+        from metadata.profiler.source.database.bigquery.profiler_source import (
             BigQueryProfilerSource,
         )
 
@@ -71,7 +73,7 @@ class ProfilerSourceFactory:
     @staticmethod
     def databricks() -> Type[ProfilerSourceInterface]:
         """Lazy loading of the Databricks source"""
-        from metadata.profiler.source.databricks.profiler_source import (
+        from metadata.profiler.source.database.databricks.profiler_source import (
             DataBricksProfilerSource,
         )
 

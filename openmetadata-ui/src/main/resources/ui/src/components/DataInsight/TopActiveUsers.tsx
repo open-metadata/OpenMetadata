@@ -27,13 +27,13 @@ import {
   formatDateTimeWithTimezone,
   formatTimeDurationFromSeconds,
 } from '../../utils/date-time/DateTimeUtils';
+import { getColumnSorter } from '../../utils/EntityUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
 import Table from '../common/Table/Table';
 import PageHeader from '../PageHeader/PageHeader.component';
 import './data-insight-detail.less';
 import { EmptyGraphPlaceholder } from './EmptyGraphPlaceholder';
-import { getColumnSorter } from '../../utils/EntityUtils';
 
 interface Props {
   chartFilter: ChartFilter;

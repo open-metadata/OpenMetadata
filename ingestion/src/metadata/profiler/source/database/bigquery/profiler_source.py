@@ -27,7 +27,7 @@ from metadata.generated.schema.security.credentials.gcpValues import (
     MultipleProjectId,
     SingleProjectId,
 )
-from metadata.profiler.source.base.profiler_source import ProfilerSource
+from metadata.profiler.source.database.base.profiler_source import ProfilerSource
 
 
 class BigQueryProfilerSource(ProfilerSource):

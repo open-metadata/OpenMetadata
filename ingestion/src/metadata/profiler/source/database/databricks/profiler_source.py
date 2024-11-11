@@ -8,9 +8,10 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.profiler.source.base.profiler_source import ProfilerSource
+from metadata.profiler.source.database.base.profiler_source import ProfilerSource
 
 
+# pylint: disable=unused-argument
 def is_disconnect(self, e, connection, cursor):
     """is_disconnect method for the Databricks dialect"""
     if "Invalid SessionHandle: SessionHandle" in str(e):
@@ -33,8 +34,7 @@ class DataBricksProfilerSource(ProfilerSource):
 
     def set_is_disconnect(self):
         """Set the is_disconnect method for the Databricks dialect"""
-        from databricks.sqlalchemy import (
-            DatabricksDialect,  # pylint: disable=import-outside-toplevel
-        )
+        # pylint: disable=import-outside-toplevel
+        from databricks.sqlalchemy import DatabricksDialect
 
         DatabricksDialect.is_disconnect = is_disconnect

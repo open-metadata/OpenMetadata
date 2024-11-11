@@ -2417,6 +2417,7 @@ export const getColumnSorter = <T, K extends keyof T>(field: K) => {
     if (typeof aValue === 'string' && typeof bValue === 'string') {
       return aValue.localeCompare(bValue);
     }
+
     return 0;
   };
 };
