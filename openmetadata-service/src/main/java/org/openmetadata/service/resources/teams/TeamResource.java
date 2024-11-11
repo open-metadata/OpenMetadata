@@ -594,7 +594,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
   }
 
   @GET
-  @Path("/name/{name}/export")
+  @Path("/name/{name}/exportAsync")
   @Produces(MediaType.TEXT_PLAIN)
   @Valid
   @Operation(
@@ -609,8 +609,29 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
                     mediaType = "application/json",
                     schema = @Schema(implementation = CSVExportResponse.class)))
       })
-  public Response exportCsv(
+  public Response exportCsvAsync(
       @Context SecurityContext securityContext, @PathParam("name") String name) throws IOException {
+    return exportCsvInternalAsync(securityContext, name);
+  }
+
+  @GET
+  @Path("/name/{name}/export")
+  @Produces(MediaType.TEXT_PLAIN)
+  @Valid
+  @Operation(
+      operationId = "exportTeams",
+      summary = "Export teams in CSV format",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Exported csv with teams information",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = String.class)))
+      })
+  public String exportCsv(@Context SecurityContext securityContext, @PathParam("name") String name)
+      throws IOException {
     return exportCsvInternal(securityContext, name);
   }
 

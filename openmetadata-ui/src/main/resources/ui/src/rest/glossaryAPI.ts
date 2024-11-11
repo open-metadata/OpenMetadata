@@ -174,7 +174,7 @@ export const deleteGlossaryTerm = (id: string) => {
 
 export const exportGlossaryInCSVFormat = async (glossaryName: string) => {
   const response = await APIClient.get<CSVExportResponse>(
-    `/glossaries/name/${getEncodedFqn(glossaryName)}/export`
+    `/glossaries/name/${getEncodedFqn(glossaryName)}/exportAsync`
   );
 
   return response.data;

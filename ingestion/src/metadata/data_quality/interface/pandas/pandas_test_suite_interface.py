@@ -46,6 +46,7 @@ class PandasTestSuiteInterface(TestSuiteInterface, PandasInterfaceMixin):
         table_entity: Table = None,
         **kwargs,  # pylint: disable=unused-argument
     ):
+        super().__init__()
         self.table_entity = table_entity
 
         self.ometa_client = ometa_client

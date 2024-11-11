@@ -2,6 +2,7 @@ import sys
 from datetime import datetime
 
 import pytest
+from dirty_equals import IsApprox
 from pydantic import BaseModel
 from sqlalchemy import VARBINARY
 from sqlalchemy import Column as SQAColumn
@@ -15,7 +16,11 @@ from sqlalchemy.sql import sqltypes
 from _openmetadata_testutils.postgres.conftest import postgres_container
 from _openmetadata_testutils.pydantic.test_utils import assert_equal_pydantic_objects
 from metadata.data_quality.api.models import TestCaseDefinition
-from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.data.table import (
+    ProfileSampleType,
+    Table,
+    TableProfilerConfig,
+)
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.metadataIngestion.testSuitePipeline import (
     TestSuiteConfigType,
@@ -40,6 +45,7 @@ class TestParameters(BaseModel):
     test_case_defintion: TestCaseDefinition
     table2_fqn: str
     expected: TestCaseResult
+    table_profile_config: TableProfilerConfig = None
 
     def __init__(self, *args, **kwargs):
         if args:
@@ -72,6 +78,54 @@ class TestParameters(BaseModel):
                     testCaseStatus=TestCaseStatus.Success,
                     failedRows=0,
                     passedRows=599,
+                ),
+            ),
+            (
+                TestCaseDefinition(
+                    name="compare_same_tables_with_percentage_sample",
+                    testDefinitionName="tableDiff",
+                    computePassedFailedRowCount=True,
+                    parameterValues=[
+                        TestCaseParameterValue(
+                            name="keyColumns", value="['customer_id']"
+                        ),
+                    ],
+                ),
+                "POSTGRES_SERVICE.dvdrental.public.customer",
+                TestCaseResult.model_construct(
+                    timestamp=int(datetime.now().timestamp() * 1000),
+                    testCaseStatus=TestCaseStatus.Success,
+                    failedRows=0,
+                    # we use approximations becuase the sampling is not deterministic
+                    passedRows=IsApprox(59, delta=20),
+                ),
+                TableProfilerConfig(
+                    profileSampleType=ProfileSampleType.PERCENTAGE,
+                    profileSample=10,
+                ),
+            ),
+            (
+                TestCaseDefinition(
+                    name="compare_same_tables_with_row_sample",
+                    testDefinitionName="tableDiff",
+                    computePassedFailedRowCount=True,
+                    parameterValues=[
+                        TestCaseParameterValue(
+                            name="keyColumns", value="['customer_id']"
+                        ),
+                    ],
+                ),
+                "POSTGRES_SERVICE.dvdrental.public.customer",
+                TestCaseResult.model_construct(
+                    timestamp=int(datetime.now().timestamp() * 1000),
+                    testCaseStatus=TestCaseStatus.Success,
+                    failedRows=0,
+                    passedRows=IsApprox(10, delta=5),
+                ),
+                TableProfilerConfig(
+                    profileSampleType=ProfileSampleType.ROWS,
+                    # we use approximations becuase the sampling is not deterministic
+                    profileSample=10,
                 ),
             ),
             (
@@ -303,7 +357,7 @@ def test_happy_paths(
     cleanup_fqns,
 ):
     metadata = patched_metadata
-    table1 = metadata.get_by_name(
+    table1: Table = metadata.get_by_name(
         Table,
         f"{postgres_service.fullyQualifiedName.root}.dvdrental.public.customer",
         nullable=False,
@@ -328,6 +382,10 @@ def test_happy_paths(
             ),
         ]
     )
+    if parameters.table_profile_config:
+        metadata.create_or_update_table_profiler_config(
+            table1.fullyQualifiedName.root, parameters.table_profile_config
+        )
     workflow_config = {
         "source": {
             "type": TestSuiteConfigType.TestSuite.value,
@@ -347,6 +405,9 @@ def test_happy_paths(
         "workflowConfig": workflow_config,
     }
     run_workflow(TestSuiteWorkflow, workflow_config)
+    metadata.create_or_update_table_profiler_config(
+        table1.fullyQualifiedName.root, TableProfilerConfig()
+    )
     test_case_entity = metadata.get_by_name(
         TestCase,
         f"{table1.fullyQualifiedName.root}.{parameters.test_case_defintion.name}",

@@ -36,7 +36,7 @@
     "includeViews": {
       "description": "Optional configuration to turn off fetching metadata for views.",
       "type": "boolean",
-      "default": true,
+      "default": false,
       "title": "Include Views"
     },
     "useFqnForFiltering": {
@@ -56,6 +56,12 @@
       "type": "boolean",
       "default": true,
       "title": "Compute Metrics"
+    },
+    "useStatistics": {
+      "description": "Use system tables to extract metrics. Metrics that cannot be gathered from system tables will use the default methods. Using system tables can be faster but requires gathering statistics before running (for example using the ANALYZE procedure). More information can be found in the documentation: https://docs.openmetadata.org/latest/profler",
+      "type": "boolean",
+      "default": false,
+      "title": "Use Gathered Statistics"
     },
     "processPiiSensitive": {
       "description": "Optional configuration to automatically tag columns that might contain sensitive information",
