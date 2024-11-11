@@ -261,7 +261,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
     }
   }
 
-  public void updateRecordToDb(JobExecutionContext jobExecutionContext) {
+  public void updateRecordToDbAndNotify(JobExecutionContext jobExecutionContext) {
     AppRunRecord appRecord = getJobRecord(jobExecutionContext);
 
     appRecord.setStatus(AppRunRecord.Status.fromValue(jobData.getStatus().value()));
@@ -272,6 +272,13 @@ public class SearchIndexApp extends AbstractNativeApplication {
     if (jobData.getStats() != null) {
       appRecord.setSuccessContext(
           new SuccessContext().withAdditionalProperty("stats", jobData.getStats()));
+    }
+
+    if (WebSocketManager.getInstance() != null) {
+      WebSocketManager.getInstance()
+          .broadCastMessageToAll(
+              WebSocketManager.SEARCH_INDEX_JOB_BROADCAST_CHANNEL, JsonUtils.pojoToJson(appRecord));
+      LOG.debug("Broad-casted job updates via WebSocket.");
     }
 
     pushAppStatusUpdates(jobExecutionContext, appRecord, true);
@@ -502,13 +509,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
   private void sendUpdates(JobExecutionContext jobExecutionContext) {
     try {
       jobExecutionContext.getJobDetail().getJobDataMap().put(APP_RUN_STATS, jobData.getStats());
-      updateRecordToDb(jobExecutionContext);
-      if (WebSocketManager.getInstance() != null) {
-        WebSocketManager.getInstance()
-            .broadCastMessageToAll(
-                WebSocketManager.SEARCH_INDEX_JOB_BROADCAST_CHANNEL, JsonUtils.pojoToJson(jobData));
-        LOG.debug("Broad-casted job updates via WebSocket.");
-      }
+      updateRecordToDbAndNotify(jobExecutionContext);
     } catch (Exception ex) {
       LOG.error("Failed to send updated stats with WebSocket", ex);
     }
