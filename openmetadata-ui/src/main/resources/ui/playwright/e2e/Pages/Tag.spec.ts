@@ -227,7 +227,7 @@ test.describe('Tag page', () => {
 
       await page
         .locator('#tabledatacard-aa1d01d8-42e6-4170-8a68-dbcf03905cea')
-        .getByLabel('')
+        .getByRole('checkbox')
         .click();
 
       const deleteTag = page.waitForResponse(`/api/v1/tags/*/assets/add`);
