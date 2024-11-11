@@ -23,6 +23,7 @@ import jaJP from '../../locale/languages/ja-jp.json';
 import nlNL from '../../locale/languages/nl-nl.json';
 import prPR from '../../locale/languages/pr-pr.json';
 import ptBR from '../../locale/languages/pt-br.json';
+import ptPT from '../../locale/languages/pt-pt.json';
 import ruRU from '../../locale/languages/ru-ru.json';
 import zhCN from '../../locale/languages/zh-cn.json';
 
@@ -31,7 +32,8 @@ export enum SupportedLocales {
   Français = 'fr-FR',
   简体中文 = 'zh-CN',
   日本語 = 'ja-JP',
-  Português = 'pt-BR',
+  'Português (Brasil)' = 'pt-BR',
+  'Português (Portugal)' = 'pt-PT',
   Español = 'es-ES',
   Galego = 'gl-ES',
   Русский = 'ru-RU',
@@ -56,6 +58,7 @@ export const getInitOptions = (): InitOptions => {
       'zh-CN': { translation: zhCN },
       'ja-JP': { translation: jaJP },
       'pt-BR': { translation: ptBR },
+      'pt-PT': { translation: ptPT },
       'es-ES': { translation: esES },
       'gl-ES': { translation: glES },
       'ru-RU': { translation: ruRU },
@@ -84,9 +87,11 @@ export const getCurrentLocaleForConstrue = () => {
   // For cronstrue, we need to pass the locale in the format 'pt_BR' and not 'pt-BR'
   // for some selected languages
   if (
-    [SupportedLocales.Português, SupportedLocales.简体中文].includes(
-      i18next.resolvedLanguage as SupportedLocales
-    )
+    [
+      SupportedLocales['Português (Brasil)'],
+      SupportedLocales['Português (Portugal)'],
+      SupportedLocales.简体中文,
+    ].includes(i18next.resolvedLanguage as SupportedLocales)
   ) {
     return i18next.resolvedLanguage.replaceAll('-', '_');
   }
