@@ -458,6 +458,7 @@ public class SubscriptionUtil {
     long timestamp = System.currentTimeMillis();
 
     if (statusCode >= 300 && statusCode < 400) {
+      // 3xx response/redirection is not allowed for callback. Set the webhook state as in error
       handleStatus(
           destination,
           TestDestinationStatus.Status.FAILED,
@@ -473,6 +474,7 @@ public class SubscriptionUtil {
           true);
 
     } else if (statusCode >= 400 && statusCode < 600) {
+      // 4xx, 5xx response retry delivering events after timeout
       handleStatus(
           destination,
           TestDestinationStatus.Status.FAILED,
@@ -524,7 +526,7 @@ public class SubscriptionUtil {
     } else {
       if (isError) {
         destination.setErrorStatus(attemptTime, statusCode, statusInfo);
-      } else if (testStatus == TestDestinationStatus.Status.SUCCESS) {
+      } else if (statusCode == 200) {
         destination.setSuccessStatus(System.currentTimeMillis());
       } else {
         destination.setAwaitingRetry(attemptTime, statusCode, statusInfo);
