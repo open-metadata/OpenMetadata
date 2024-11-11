@@ -15,7 +15,10 @@ import React, { useEffect } from 'react';
 import { Edge } from 'reactflow';
 import { EdgeTypeEnum } from '../../components/Entity/EntityLineage/EntityLineage.interface';
 import { EntityType } from '../../enums/entity.enum';
-import { getLineageDataByFQN } from '../../rest/lineageAPI';
+import {
+  getDataQualityLineage,
+  getLineageDataByFQN,
+} from '../../rest/lineageAPI';
 import LineageProvider, { useLineageProvider } from './LineageProvider';
 
 const mockLocation = {
@@ -128,9 +131,16 @@ jest.mock(
     });
   }
 );
+let mockIsAlertSupported = false;
+jest.mock('../../utils/TableClassBase', () => ({
+  getAlertEnableStatus: jest
+    .fn()
+    .mockImplementation(() => mockIsAlertSupported),
+}));
 
 jest.mock('../../rest/lineageAPI', () => ({
   getLineageDataByFQN: jest.fn(),
+  getDataQualityLineage: jest.fn(),
 }));
 
 describe('LineageProvider', () => {
@@ -148,6 +158,38 @@ describe('LineageProvider', () => {
     });
 
     expect(getLineageDataByFQN).toHaveBeenCalled();
+    expect(getDataQualityLineage).not.toHaveBeenCalled();
+  });
+
+  it('getDataQualityLineage should be called if alert is supported', async () => {
+    mockIsAlertSupported = true;
+    (getLineageDataByFQN as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve({
+        nodes: [],
+        edges: [],
+      })
+    );
+    await act(async () => {
+      render(
+        <LineageProvider>
+          <DummyChildrenComponent />
+        </LineageProvider>
+      );
+    });
+
+    expect(getLineageDataByFQN).toHaveBeenCalledWith(
+      'table1',
+      'table',
+      { downstreamDepth: 1, nodesPerLayer: 50, upstreamDepth: 1 },
+      ''
+    );
+    expect(getDataQualityLineage).toHaveBeenCalledWith(
+      'table1',
+      { downstreamDepth: 1, nodesPerLayer: 50, upstreamDepth: 1 },
+      ''
+    );
+
+    mockIsAlertSupported = false;
   });
 
   it('should call loadChildNodesHandler', async () => {

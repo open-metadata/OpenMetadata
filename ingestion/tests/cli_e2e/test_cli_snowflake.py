@@ -268,17 +268,17 @@ class SnowflakeCliTest(CliCommonDB.TestSuite, SQACommonMethods):
                         rowsAffected=1,
                     ),
                     SystemProfile(
-                        timestamp=Timestamp(root=0),
+                        timestamp=Timestamp(root=1),
                         operation=DmlOperationType.INSERT,
                         rowsAffected=1,
                     ),
                     SystemProfile(
-                        timestamp=Timestamp(root=0),
+                        timestamp=Timestamp(root=2),
                         operation=DmlOperationType.UPDATE,
                         rowsAffected=1,
                     ),
                     SystemProfile(
-                        timestamp=Timestamp(root=0),
+                        timestamp=Timestamp(root=3),
                         operation=DmlOperationType.DELETE,
                         rowsAffected=1,
                     ),
