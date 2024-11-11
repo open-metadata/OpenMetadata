@@ -2162,6 +2162,36 @@ public interface CollectionDAO {
     @SqlUpdate("DELETE FROM consumers_dlq WHERE id = :eventSubscriptionId")
     void deleteFailedRecordsBySubscriptionId(
         @Bind("eventSubscriptionId") String eventSubscriptionId);
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT COUNT(*) FROM ( "
+                + "    SELECT json, 'FAILED' AS status, timestamp "
+                + "    FROM consumers_dlq WHERE id = :id "
+                + "    UNION ALL "
+                + "    SELECT json, 'SUCCESSFUL' AS status, timestamp "
+                + "    FROM successful_sent_change_events WHERE event_subscription_id = :id "
+                + ") AS combined_events",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT COUNT(*) FROM ( "
+                + "    SELECT json, 'failed' AS status, timestamp "
+                + "    FROM consumers_dlq WHERE id = :id "
+                + "    UNION ALL "
+                + "    SELECT json, 'successful' AS status, timestamp "
+                + "    FROM successful_sent_change_events WHERE event_subscription_id = :id "
+                + ") AS combined_events",
+        connectionType = POSTGRES)
+    int countAllEventsWithStatuses(@Bind("id") String id);
+
+    @SqlQuery("SELECT COUNT(*) FROM consumers_dlq WHERE id = :id")
+    int countFailedEventsById(@Bind("id") String id);
+
+    @SqlQuery(
+        "SELECT COUNT(*) FROM successful_sent_change_events WHERE event_subscription_id = :eventSubscriptionId")
+    int countSuccessfulEventsBySubscriptionId(
+        @Bind("eventSubscriptionId") String eventSubscriptionId);
   }
 
   interface ChartDAO extends EntityDAO<Chart> {
@@ -4058,6 +4088,9 @@ public interface CollectionDAO {
         @Bind("id") String id,
         @Bind("limit") int limit,
         @Bind("paginationOffset") long paginationOffset);
+
+    @SqlQuery("SELECT json FROM change_event ce where ce.offset > :offset")
+    List<String> listUnprocessedEvents(@Bind("offset") long offset);
 
     @SqlQuery(
         "SELECT CASE WHEN EXISTS (SELECT 1 FROM event_subscription_entity WHERE id = :id) THEN 1 ELSE 0 END AS record_exists")

@@ -121,7 +121,7 @@ public abstract class AbstractEventConsumer
             event.getId().toString(),
             eventSubscriptionId.toString(),
             JsonUtils.pojoToJson(event),
-            event.getTimestamp());
+            System.currentTimeMillis());
   }
 
   private EventSubscriptionOffset loadInitialOffset(JobExecutionContext context) {
