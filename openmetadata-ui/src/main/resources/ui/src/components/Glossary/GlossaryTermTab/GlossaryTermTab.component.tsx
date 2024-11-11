@@ -24,7 +24,11 @@ import {
   TableProps,
   Tooltip,
 } from 'antd';
-import { ColumnsType, ExpandableConfig } from 'antd/lib/table/interface';
+import {
+  ColumnsType,
+  ColumnType,
+  ExpandableConfig,
+} from 'antd/lib/table/interface';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
@@ -113,7 +117,21 @@ const GlossaryTermTab = ({
   const [isTableLoading, setIsTableLoading] = useState(false);
   const [isTableHovered, setIsTableHovered] = useState(false);
   const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
+  const [isStatusDropdownVisible, setIsStatusDropdownVisible] =
+    useState<boolean>(false);
+  const [tempStatusCheckedList, setTempStatusCheckedList] = useState<string[]>([
+    'Draft',
+  ]);
+  const [selectedStatus, setSelectedStatus] = useState<string[]>(['Approved']);
 
+  const statusOptions = useMemo(
+    () => [
+      { value: 'Approved', label: 'Approved' },
+      { value: 'Draft', label: 'Draft' },
+      { value: 'Rejected', label: 'Rejected' },
+    ],
+    []
+  );
   const glossaryTermStatus: Status | null = useMemo(() => {
     if (!isGlossary) {
       return (activeGlossary as GlossaryTerm).status ?? Status.Approved;
@@ -374,25 +392,51 @@ const GlossaryTermTab = ({
   );
 
   const handleCheckboxChange = useCallback(
-    (key: string, checked: boolean) => {
+    (key: string, checked: boolean, type: 'columns' | 'status') => {
+      const setCheckedList =
+        type === 'columns' ? setTempCheckedList : setTempStatusCheckedList;
+      const optionsToUse = type === 'columns' ? columns : statusOptions;
+
       if (key === 'all') {
         if (checked) {
-          setTempCheckedList([
+          setCheckedList([
             'all',
-            ...columns.map(({ key }) => key as string),
+            ...optionsToUse.map((option) => {
+              if (type === 'columns') {
+                const keyValue = String(
+                  (option as ColumnType<ModifiedGlossaryTerm>).key
+                );
+
+                return keyValue;
+              } else {
+                const value = (option as { value: string }).value ?? '';
+
+                return value;
+              }
+            }),
           ]);
         } else {
-          setTempCheckedList(['name']);
+          setCheckedList([type === 'columns' ? 'name' : 'Draft']);
         }
       } else {
-        setTempCheckedList((prev) => {
+        setCheckedList((prev: string[]) => {
           const newCheckedList = checked
             ? [...prev, key]
             : prev.filter((item) => item !== key);
           if (
-            options.every((opt: { value: string; label: string }) =>
-              newCheckedList.includes(opt.value)
-            )
+            optionsToUse.every((opt) => {
+              if (type === 'columns') {
+                const keyValue = String(
+                  (opt as ColumnType<ModifiedGlossaryTerm>).key
+                );
+
+                return newCheckedList.includes(keyValue);
+              } else {
+                const value = (opt as { value: string }).value ?? '';
+
+                return newCheckedList.includes(value);
+              }
+            })
           ) {
             return ['all', ...newCheckedList];
           }
@@ -401,7 +445,7 @@ const GlossaryTermTab = ({
         });
       }
     },
-    [columns, options]
+    [columns, statusOptions, setTempCheckedList, setTempStatusCheckedList]
   );
 
   const menu = useMemo(
@@ -426,7 +470,7 @@ const GlossaryTermTab = ({
                   style={{ marginLeft: '24px' }}
                   value="all"
                   onChange={(e) =>
-                    handleCheckboxChange('all', e.target.checked)
+                    handleCheckboxChange('all', e.target.checked, 'columns')
                   }>
                   {t('label.all')}
                 </Checkbox>
@@ -485,6 +529,87 @@ const GlossaryTermTab = ({
       handleCheckboxChange,
       handleColumnSelectionDropdownSave,
       handleColumnSelectionDropdownCancel,
+    ]
+  );
+  const handleStatusSelectionDropdownSave = () => {
+    setSelectedStatus(tempStatusCheckedList);
+    setIsStatusDropdownVisible(false);
+  };
+
+  const handleStatusSelectionDropdownCancel = () => {
+    setTempStatusCheckedList(selectedStatus);
+    setIsStatusDropdownVisible(false);
+  };
+  const statusDropdownMenu = useMemo(
+    () => ({
+      items: [
+        {
+          key: 'statusSelection',
+          label: (
+            <div className="status-selection-dropdown">
+              <Checkbox.Group
+                className="glossary-col-sel-checkbox-group"
+                value={tempStatusCheckedList}>
+                <Checkbox
+                  className="custom-glossary-col-sel-checkbox"
+                  key="all"
+                  style={{ marginLeft: '12px' }}
+                  value="all"
+                  onChange={(e) =>
+                    handleCheckboxChange('all', e.target.checked, 'status')
+                  }>
+                  {t('label.all')}
+                </Checkbox>
+                {statusOptions.map((option) => (
+                  <div key={option.value}>
+                    <Checkbox
+                      className="custom-glossary-col-sel-checkbox"
+                      value={option.value}
+                      onChange={(e) =>
+                        handleCheckboxChange(
+                          option.value,
+                          e.target.checked,
+                          'status'
+                        )
+                      }>
+                      {option.label}
+                    </Checkbox>
+                  </div>
+                ))}
+              </Checkbox.Group>
+            </div>
+          ),
+        },
+        {
+          key: 'divider',
+          type: 'divider',
+        },
+        {
+          key: 'actions',
+          label: (
+            <div style={{ textAlign: 'center' }}>
+              <Space>
+                <Button
+                  type="primary"
+                  onClick={handleStatusSelectionDropdownSave}>
+                  {t('label.save')}
+                </Button>
+                <Button
+                  type="default"
+                  onClick={handleStatusSelectionDropdownCancel}>
+                  {t('label.cancel')}
+                </Button>
+              </Space>
+            </div>
+          ),
+        },
+      ],
+    }),
+    [
+      tempStatusCheckedList,
+      statusOptions,
+      handleStatusSelectionDropdownSave,
+      handleStatusSelectionDropdownCancel,
     ]
   );
 
@@ -707,6 +832,24 @@ const GlossaryTermTab = ({
               {isAllExpanded ? t('label.collapse-all') : t('label.expand-all')}
             </Space>
           </Button>
+          <Dropdown
+            menu={statusDropdownMenu}
+            open={isStatusDropdownVisible}
+            trigger={['click']}
+            onOpenChange={setIsStatusDropdownVisible}>
+            <Button
+              style={{
+                backgroundColor: '#ffffff',
+                outline: '#b7b7b7',
+                color: '#3d3d3d',
+                marginRight: '12px',
+              }}>
+              <Space>
+                {t('label.status')}
+                <DownOutlined />
+              </Space>
+            </Button>
+          </Dropdown>
           <DndProvider backend={HTML5Backend}>
             <Dropdown
               className="mb-4 custom-dropdown-menu"
@@ -739,7 +882,9 @@ const GlossaryTermTab = ({
               })}
               columns={rearrangedColumns.filter((col) => !col.hidden)}
               components={TABLE_CONSTANTS}
-              dataSource={glossaryTerms}
+              dataSource={glossaryTerms.filter((term) =>
+                selectedStatus.includes(term.status as string)
+              )}
               expandable={expandableConfig}
               loading={isTableLoading}
               pagination={false}

@@ -20,7 +20,11 @@ interface DraggableMenuItemProps {
   index: number;
   moveDropdownMenuItem: (fromIndex: number, toIndex: number) => void;
   tempCheckedList: string[];
-  handleCheckboxChange: (value: string, checked: boolean) => void;
+  handleCheckboxChange: (
+    key: string,
+    checked: boolean,
+    type: 'columns' | 'status'
+  ) => void;
 }
 const DraggableMenuItem: React.FC<DraggableMenuItemProps> = ({
   option,
@@ -66,7 +70,9 @@ const DraggableMenuItem: React.FC<DraggableMenuItemProps> = ({
         className="custom-glossary-col-sel-checkbox"
         key={option.value}
         value={option.value}
-        onChange={(e) => handleCheckboxChange(option.value, e.target.checked)}>
+        onChange={(e) =>
+          handleCheckboxChange(option.value, e.target.checked, 'columns')
+        }>
         <p style={{ fontSize: '14px', lineHeight: '21px', color: '#757575' }}>
           {option.label}
         </p>
