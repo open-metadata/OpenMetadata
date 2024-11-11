@@ -490,7 +490,7 @@ public class TagResourceTest extends EntityResourceTest<Tag, CreateTag> {
     getTag.setDisabled(true);
     fieldUpdated(change1, "disabled", false, true);
     getTag =
-        patchEntityAndCheck(getTag, tagJson, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change);
+        patchEntityAndCheck(getTag, tagJson, ADMIN_AUTH_HEADERS, UpdateType.MINOR_UPDATE, change1);
 
     getTag = getEntity(getTag.getId(), ADMIN_AUTH_HEADERS);
     assertTrue(getTag.getDisabled(), "Tag should be disabled after update");
