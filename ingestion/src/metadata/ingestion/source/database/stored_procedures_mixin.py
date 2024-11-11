@@ -117,8 +117,6 @@ class StoredProcedureLineageMixin(ABC):
 
         for row in results:
             try:
-                print("*** " * 100)
-                print(dict(row))
                 query_by_procedure = QueryByProcedure.model_validate(dict(row))
                 procedure_name = (
                     query_by_procedure.procedure_name
