@@ -1,6 +1,7 @@
 package org.openmetadata.service.search.security;
 
 import java.util.*;
+import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.MetadataOperation;
@@ -36,19 +37,18 @@ public class RBACConditionEvaluator {
     User user = subjectContext.user();
     spelContext.setVariable("user", user);
 
-    List<OMQueryBuilder> policyQueries = new ArrayList<>();
+    List<OMQueryBuilder> allowQueries = new ArrayList<>();
+    List<OMQueryBuilder> denyQueries = new ArrayList<>();
 
+    // Iterate over all policies
     for (Iterator<SubjectContext.PolicyContext> it =
             subjectContext.getPolicies(List.of(user.getEntityReference()));
         it.hasNext(); ) {
       SubjectContext.PolicyContext context = it.next();
 
-      // For each policy, collect allow and deny queries
-      List<OMQueryBuilder> allowRuleQueries = new ArrayList<>();
-      List<OMQueryBuilder> denyRuleQueries = new ArrayList<>();
-
+      // Iterate over all rules in the policy
       for (CompiledRule rule : context.getRules()) {
-        boolean isDenyRule = rule.getEffect().toString().equalsIgnoreCase("DENY");
+        boolean isDenyRule = rule.getEffect() == Rule.Effect.DENY;
         Set<MetadataOperation> ruleOperations = new HashSet<>(rule.getOperations());
         ruleOperations.retainAll(SEARCH_RELEVANT_OPS);
         if (ruleOperations.isEmpty()) {
@@ -60,64 +60,55 @@ public class RBACConditionEvaluator {
         if (ruleQuery == null || ruleQuery.isEmpty()) {
           continue;
         }
+
         if (isDenyRule) {
-          denyRuleQueries.add(ruleQuery);
+          // Collect DENY queries
+          denyQueries.add(ruleQuery);
         } else {
-          allowRuleQueries.add(ruleQuery);
+          // Collect ALLOW queries
+          allowQueries.add(ruleQuery);
         }
-      }
-
-      // Build the policy query
-      OMQueryBuilder policyQuery = null;
-
-      if (!allowRuleQueries.isEmpty()) {
-        if (allowRuleQueries.size() == 1) {
-          policyQuery = allowRuleQueries.get(0);
-        } else {
-          policyQuery = queryBuilderFactory.boolQuery().should(allowRuleQueries);
-        }
-      }
-
-      if (!denyRuleQueries.isEmpty()) {
-        OMQueryBuilder denyQuery;
-        if (denyRuleQueries.size() == 1) {
-          denyQuery = denyRuleQueries.get(0);
-        } else {
-          denyQuery = queryBuilderFactory.boolQuery().should(denyRuleQueries);
-        }
-
-        if (policyQuery != null) {
-          // Combine allow and deny queries
-          OMQueryBuilder combinedPolicyQuery = queryBuilderFactory.boolQuery();
-          combinedPolicyQuery.must(policyQuery);
-          combinedPolicyQuery.mustNot(List.of(denyQuery)); // Wrap denyQuery in a List
-          policyQuery = combinedPolicyQuery;
-        } else {
-          // Only deny rules, create a query that matches all but the deny rules
-          policyQuery =
-              queryBuilderFactory
-                  .boolQuery()
-                  .must(queryBuilderFactory.matchAllQuery())
-                  .mustNot(List.of(denyQuery)); // Wrap denyQuery in a List
-        }
-      }
-
-      if (policyQuery != null && !policyQuery.isEmpty()) {
-        policyQueries.add(policyQuery);
       }
     }
 
-    // Combine all policy queries using should clauses
     OMQueryBuilder finalQuery;
-    if (!policyQueries.isEmpty()) {
-      if (policyQueries.size() == 1) {
-        finalQuery = policyQueries.get(0);
-      } else {
-        finalQuery = queryBuilderFactory.boolQuery().should(policyQueries);
+
+    if (!allowQueries.isEmpty()) {
+      // There are ALLOW policies
+      OMQueryBuilder finalAllowQuery =
+          (allowQueries.size() == 1)
+              ? allowQueries.get(0)
+              : queryBuilderFactory.boolQuery().should(allowQueries);
+
+      finalQuery = finalAllowQuery;
+
+      if (!denyQueries.isEmpty()) {
+        OMQueryBuilder finalDenyQuery =
+            (denyQueries.size() == 1)
+                ? denyQueries.get(0)
+                : queryBuilderFactory.boolQuery().should(denyQueries);
+
+        finalQuery =
+            queryBuilderFactory
+                .boolQuery()
+                .must(Collections.singletonList(finalAllowQuery))
+                .mustNot(Collections.singletonList(finalDenyQuery));
       }
+    } else if (!denyQueries.isEmpty()) {
+      // No ALLOW policies, but there are DENY policies
+      OMQueryBuilder finalDenyQuery =
+          (denyQueries.size() == 1)
+              ? denyQueries.get(0)
+              : queryBuilderFactory.boolQuery().should(denyQueries);
+
+      finalQuery =
+          queryBuilderFactory
+              .boolQuery()
+              .must(queryBuilderFactory.matchAllQuery())
+              .mustNot(Collections.singletonList(finalDenyQuery));
     } else {
-      // No policies grant access, deny all
-      finalQuery = queryBuilderFactory.matchNoneQuery();
+      // No ALLOW or DENY policies, allow all access
+      finalQuery = queryBuilderFactory.matchAllQuery();
     }
 
     return finalQuery;

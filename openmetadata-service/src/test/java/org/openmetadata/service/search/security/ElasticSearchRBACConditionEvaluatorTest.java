@@ -1077,7 +1077,7 @@ class ElasticSearchRBACConditionEvaluatorTest {
   @Test
   void testDenyAllOperationsOnTableResource() {
     setupMockPolicies(
-        List.of(""), "DENY", List.of(List.of("Table")), List.of(List.of(MetadataOperation.ALL)));
+        List.of(""), "DENY", List.of(List.of("table")), List.of(List.of(MetadataOperation.ALL)));
 
     UUID userId = UUID.randomUUID();
     when(mockUser.getId()).thenReturn(userId);
@@ -1325,12 +1325,12 @@ class ElasticSearchRBACConditionEvaluatorTest {
 
     assertFieldExists(
         jsonContext,
-        "$.bool.should[*].bool.must[?(@.terms._index && @.terms._index[?(@ == 'table' || @ == 'dashboard')])]",
+        "$.bool.must[0].bool.should[*].bool.must[?(@.terms._index && @.terms._index[?(@ == 'table' || @ == 'dashboard')])]",
         "Allow policy should include 'table' and 'dashboard' in should clause");
 
     assertFieldExists(
         jsonContext,
-        "$.bool.should[*].bool.must[?(@.terms._index && @.terms._index[?(@ == 'glossary' || @ == 'glossaryterm')])]",
+        "$.bool.must[0].bool.should[*].bool.must[?(@.terms._index && @.terms._index[?(@ == 'glossary' || @ == 'glossaryterm')])]",
         "Allow policy should include 'glossary' and 'glossaryTerm' in should clause");
 
     assertFieldExists(
