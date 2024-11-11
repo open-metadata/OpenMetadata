@@ -105,7 +105,7 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
       throws SearchIndexException {
     PaginatedEntitiesSource teamReader =
         new PaginatedEntitiesSource(TEAM, 10, List.of("name", "email", "users"));
-    while (!teamReader.isDone()) {
+    while (!teamReader.isDone().get()) {
       ResultList<Team> resultList = (ResultList<Team>) teamReader.readNext(null);
       for (Team team : resultList.getData()) {
         Set<String> emails = new HashSet<>();
