@@ -41,6 +41,7 @@ class AthenaLineageSource(AthenaQueryParserSource, LineageSource):
                     and query.Status.State.upper() == QUERY_SUCCESS_STATUS
                 ):
                     yield TableQuery(
+                        dialect=self.dialect.value,
                         query=query.Query,
                         serviceName=self.config.serviceName,
                     )

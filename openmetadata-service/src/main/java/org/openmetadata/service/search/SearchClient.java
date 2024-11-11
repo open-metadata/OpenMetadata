@@ -28,6 +28,7 @@ import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.models.IndexMapping;
 import org.openmetadata.service.search.security.RBACConditionEvaluator;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
+import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.SSLUtil;
 import os.org.opensearch.action.bulk.BulkRequest;
 import os.org.opensearch.action.bulk.BulkResponse;
@@ -204,7 +205,7 @@ public interface SearchClient {
    Used for listing knowledge page hierarchy for a given parent and page type, used in Elastic/Open SearchClientExtension
   */
   @SuppressWarnings("unused")
-  default Response listPageHierarchy(String parent, String pageType, int offset, int limit) {
+  default ResultList listPageHierarchy(String parent, String pageType, int offset, int limit) {
     throw new CustomExceptionMessage(
         Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
   }

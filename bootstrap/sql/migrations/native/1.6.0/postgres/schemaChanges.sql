@@ -1680,6 +1680,30 @@ ALTER TABLE consumers_dlq ADD COLUMN source VARCHAR(255);
 -- Create an index on the source column in the consumers_dlq table
 CREATE INDEX idx_consumers_dlq_source ON consumers_dlq (source);
 
+-- Data Insight charts: add metrics field
+UPDATE 
+  di_chart_entity 
+SET 
+  json = jsonb_set(
+    json #- '{chartDetails,formula}' #- '{chartDetails,filter}' #- '{chartDetails,function}' #- '{chartDetails,field}' #- '{chartDetails,treeFilter}',
+    '{chartDetails,metrics}', 
+    jsonb_build_array(
+      jsonb_strip_nulls(
+        jsonb_build_object(
+          'formula', json -> 'chartDetails' -> 'formula', 
+          'filter', json -> 'chartDetails' -> 'filter', 
+          'function', json -> 'chartDetails' -> 'function', 
+          'field', json -> 'chartDetails' -> 'field', 
+          'treeFilter', json -> 'chartDetails' -> 'treeFilter'
+        )
+      )
+    )
+  ) 
+WHERE 
+  json -> 'chartDetails' -> 'type' = '"LineChart"'
+  and  json -> 'chartDetails' -> 'metrics' is null;
+
+
 -- Rename 'offset' to 'currentOffset' and add 'startingOffset'
 UPDATE change_event_consumers
 SET json = jsonb_set(
@@ -1701,3 +1725,4 @@ CREATE TABLE IF NOT EXISTS successful_sent_change_events (
 
 -- Create an index on the event_subscription_id column in the successful_sent_change_events table
 CREATE INDEX idx_event_subscription_id ON successful_sent_change_events (event_subscription_id);
+

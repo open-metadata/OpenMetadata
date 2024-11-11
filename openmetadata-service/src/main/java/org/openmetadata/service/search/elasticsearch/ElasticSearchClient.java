@@ -177,6 +177,7 @@ import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.Elas
 import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchDailyActiveUsersAggregator;
 import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchDynamicChartAggregatorFactory;
 import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchDynamicChartAggregatorInterface;
+import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchLineChartAggregator;
 import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchMostActiveUsersAggregator;
 import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchMostViewedEntitiesAggregator;
 import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchPageViewsByEntitiesAggregator;
@@ -2362,26 +2363,39 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   @Override
-  public List<Map<String, String>> fetchDIChartFields() throws IOException {
-    // This function is being used for creating custom charts in Data Insights
+  public List<Map<String, String>> fetchDIChartFields() {
     List<Map<String, String>> fields = new ArrayList<>();
-    GetMappingsRequest request =
-        new GetMappingsRequest().indices(DataInsightSystemChartRepository.DI_SEARCH_INDEX);
+    for (String type : DataInsightSystemChartRepository.dataAssetTypes) {
+      // This function is being used for creating custom charts in Data Insights
+      try {
+        GetMappingsRequest request =
+            new GetMappingsRequest()
+                .indices(
+                    DataInsightSystemChartRepository.DI_SEARCH_INDEX_PREFIX
+                        + "-"
+                        + type.toLowerCase());
 
-    // Execute request
-    GetMappingsResponse response = client.indices().getMapping(request, RequestOptions.DEFAULT);
+        // Execute request
+        GetMappingsResponse response = client.indices().getMapping(request, RequestOptions.DEFAULT);
 
-    // Get mappings for the index
-    for (Map.Entry<String, MappingMetadata> entry : response.mappings().entrySet()) {
-      // Get fields for the index
-      Map<String, Object> indexFields = entry.getValue().sourceAsMap();
-      getFieldNames((Map<String, Object>) indexFields.get("properties"), "", fields);
+        // Get mappings for the index
+        for (Map.Entry<String, MappingMetadata> entry : response.mappings().entrySet()) {
+          // Get fields for the index
+          Map<String, Object> indexFields = entry.getValue().sourceAsMap();
+          getFieldNames((Map<String, Object>) indexFields.get("properties"), "", fields, type);
+        }
+      } catch (Exception exception) {
+        LOG.error(exception.getMessage());
+      }
     }
     return fields;
   }
 
   void getFieldNames(
-      @NotNull Map<String, Object> fields, String prefix, List<Map<String, String>> fieldList) {
+      @NotNull Map<String, Object> fields,
+      String prefix,
+      List<Map<String, String>> fieldList,
+      String entityType) {
     for (Map.Entry<String, Object> entry : fields.entrySet()) {
       String postfix = "";
       String type = (String) ((Map<String, Object>) entry.getValue()).get("type");
@@ -2396,13 +2410,17 @@ public class ElasticSearchClient implements SearchClient {
         Map<String, Object> subFields = (Map<String, Object>) entry.getValue();
         if (subFields.containsKey("properties")) {
           getFieldNames(
-              (Map<String, Object>) subFields.get("properties"), fieldName + ".", fieldList);
+              (Map<String, Object>) subFields.get("properties"),
+              fieldName + ".",
+              fieldList,
+              entityType);
         } else {
           if (fieldList.stream().noneMatch(e -> e.get("name").equals(fieldName))) {
             Map<String, String> map = new HashMap<>();
             map.put("name", fieldName);
             map.put("displayName", fieldNameOriginal);
             map.put("type", type);
+            map.put("entityType", entityType);
             fieldList.add(map);
           }
         }
@@ -2416,10 +2434,13 @@ public class ElasticSearchClient implements SearchClient {
         ElasticSearchDynamicChartAggregatorFactory.getAggregator(diChart);
     if (aggregator != null) {
       List<FormulaHolder> formulas = new ArrayList<>();
+      Map<String, ElasticSearchLineChartAggregator.MetricFormulaHolder> metricFormulaHolder =
+          new HashMap<>();
       es.org.elasticsearch.action.search.SearchRequest searchRequest =
-          aggregator.prepareSearchRequest(diChart, start, end, formulas);
+          aggregator.prepareSearchRequest(diChart, start, end, formulas, metricFormulaHolder);
       SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
-      return aggregator.processSearchResponse(diChart, searchResponse, formulas);
+      return aggregator.processSearchResponse(
+          diChart, searchResponse, formulas, metricFormulaHolder);
     }
     return null;
   }
