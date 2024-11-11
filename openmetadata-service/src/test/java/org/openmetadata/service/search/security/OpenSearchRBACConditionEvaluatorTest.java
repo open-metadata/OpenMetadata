@@ -85,10 +85,12 @@ class OpenSearchRBACConditionEvaluatorTest {
     assertFieldExists(
         jsonContext, "$.bool.must[?(@.match_all)]", "match_all for hasAnyRole 'Admin'");
     assertFieldExists(
-        jsonContext, "$.bool.should[?(@.term['tags.tagFQN'].value=='Finance')]", "Finance tag");
+        jsonContext,
+        "$.bool.must[1].bool.should[?(@.term['tags.tagFQN'].value=='Finance')]",
+        "Finance tag");
     assertFieldExists(
         jsonContext,
-        "$.bool.should[?(@.term['tags.tagFQN'].value=='Confidential')]",
+        "$.bool.must[1].bool.should[?(@.term['tags.tagFQN'].value=='Confidential')]",
         "Confidential tag");
   }
 
@@ -143,7 +145,7 @@ class OpenSearchRBACConditionEvaluatorTest {
         "must_not for hasDomain");
     assertFieldExists(
         jsonContext,
-        "$.bool.should[?(@.term['owners.id'].value=='" + mockUser.getId().toString() + "')]",
+        "$.bool.must[?(@.term['owners.id'].value=='" + mockUser.getId().toString() + "')]",
         "owner.id");
     assertFieldDoesNotExist(jsonContext, "$.bool[?(@.match_none)]", "match_none should not exist");
   }
@@ -186,10 +188,12 @@ class OpenSearchRBACConditionEvaluatorTest {
 
     // Assertions for should clause (matchAnyTag)
     assertFieldExists(
-        jsonContext, "$.bool.should[?(@.term['tags.tagFQN'].value=='Sensitive')]", "Sensitive tag");
+        jsonContext,
+        "$.bool.must[1].bool.should[?(@.term['tags.tagFQN'].value=='Sensitive')]",
+        "Sensitive tag");
     assertFieldExists(
         jsonContext,
-        "$.bool.should[?(@.term['tags.tagFQN'].value=='Confidential')]",
+        "$.bool.must[1].bool.should[?(@.term['tags.tagFQN'].value=='Confidential')]",
         "Confidential tag");
 
     // Ensure no match_none condition exists

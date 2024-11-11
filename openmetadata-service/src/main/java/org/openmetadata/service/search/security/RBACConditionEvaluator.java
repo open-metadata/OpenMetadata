@@ -36,14 +36,14 @@ public class RBACConditionEvaluator {
     User user = subjectContext.user();
     spelContext.setVariable("user", user);
 
-    ConditionCollector finalCollector = new ConditionCollector(queryBuilderFactory);
+    List<OMQueryBuilder> policyQueries = new ArrayList<>();
 
     for (Iterator<SubjectContext.PolicyContext> it =
             subjectContext.getPolicies(List.of(user.getEntityReference()));
         it.hasNext(); ) {
       SubjectContext.PolicyContext context = it.next();
 
-      ConditionCollector policyCollector = new ConditionCollector(queryBuilderFactory);
+      // For each policy, collect allow and deny queries
       List<OMQueryBuilder> allowRuleQueries = new ArrayList<>();
       List<OMQueryBuilder> denyRuleQueries = new ArrayList<>();
 
@@ -67,33 +67,60 @@ public class RBACConditionEvaluator {
         }
       }
 
-      if (!denyRuleQueries.isEmpty()) {
-        if (denyRuleQueries.size() == 1) {
-          policyCollector.addMustNot(denyRuleQueries.get(0));
-        } else {
-          OMQueryBuilder denyQuery = queryBuilderFactory.boolQuery().should(denyRuleQueries);
-          policyCollector.addMustNot(denyQuery);
-        }
-      }
+      // Build the policy query
+      OMQueryBuilder policyQuery = null;
 
       if (!allowRuleQueries.isEmpty()) {
         if (allowRuleQueries.size() == 1) {
-          policyCollector.addMust(allowRuleQueries.get(0));
+          policyQuery = allowRuleQueries.get(0);
         } else {
-          OMQueryBuilder allowQuery = queryBuilderFactory.boolQuery().should(allowRuleQueries);
-          policyCollector.addMust(allowQuery);
+          policyQuery = queryBuilderFactory.boolQuery().should(allowRuleQueries);
         }
-      } else {
-        policyCollector.addMust(queryBuilderFactory.matchAllQuery());
       }
 
-      OMQueryBuilder policyFinalQuery = policyCollector.buildFinalQuery();
-      if (policyFinalQuery != null && !policyFinalQuery.isEmpty()) {
-        finalCollector.addMust(policyFinalQuery);
+      if (!denyRuleQueries.isEmpty()) {
+        OMQueryBuilder denyQuery;
+        if (denyRuleQueries.size() == 1) {
+          denyQuery = denyRuleQueries.get(0);
+        } else {
+          denyQuery = queryBuilderFactory.boolQuery().should(denyRuleQueries);
+        }
+
+        if (policyQuery != null) {
+          // Combine allow and deny queries
+          OMQueryBuilder combinedPolicyQuery = queryBuilderFactory.boolQuery();
+          combinedPolicyQuery.must(policyQuery);
+          combinedPolicyQuery.mustNot(List.of(denyQuery)); // Wrap denyQuery in a List
+          policyQuery = combinedPolicyQuery;
+        } else {
+          // Only deny rules, create a query that matches all but the deny rules
+          policyQuery =
+              queryBuilderFactory
+                  .boolQuery()
+                  .must(queryBuilderFactory.matchAllQuery())
+                  .mustNot(List.of(denyQuery)); // Wrap denyQuery in a List
+        }
+      }
+
+      if (policyQuery != null && !policyQuery.isEmpty()) {
+        policyQueries.add(policyQuery);
       }
     }
 
-    return finalCollector.buildFinalQuery();
+    // Combine all policy queries using should clauses
+    OMQueryBuilder finalQuery;
+    if (!policyQueries.isEmpty()) {
+      if (policyQueries.size() == 1) {
+        finalQuery = policyQueries.get(0);
+      } else {
+        finalQuery = queryBuilderFactory.boolQuery().should(policyQueries);
+      }
+    } else {
+      // No policies grant access, deny all
+      finalQuery = queryBuilderFactory.matchNoneQuery();
+    }
+
+    return finalQuery;
   }
 
   private OMQueryBuilder buildRuleQuery(CompiledRule rule, User user) {
@@ -131,8 +158,8 @@ public class RBACConditionEvaluator {
       }
     } else if (node instanceof OpOr) {
       List<OMQueryBuilder> orQueries = new ArrayList<>();
-      boolean allMatchNothing = true;
       boolean hasTrueCondition = false;
+      boolean allMatchNothing = true;
 
       for (int i = 0; i < node.getChildCount(); i++) {
         ConditionCollector childCollector = new ConditionCollector(queryBuilderFactory);
@@ -144,7 +171,7 @@ public class RBACConditionEvaluator {
 
         if (childCollector.isMatchAllQuery()) {
           hasTrueCondition = true;
-          break;
+          break; // Short-circuit since one condition is always true
         }
 
         OMQueryBuilder childQuery = childCollector.buildFinalQuery();
@@ -155,13 +182,17 @@ public class RBACConditionEvaluator {
       }
 
       if (hasTrueCondition) {
+        // One of the OR conditions is always true; the entire OR condition is true
+        // No need to add any queries for this OR expression
+        // Optionally, you can add a match_all query to represent this
         collector.addMust(queryBuilderFactory.matchAllQuery());
       } else if (allMatchNothing) {
+        // All OR conditions are impossible; set matchNothing to true
         collector.setMatchNothing(true);
       } else {
-        for (OMQueryBuilder orQuery : orQueries) {
-          collector.addShould(orQuery);
-        }
+        // Combine the collected queries using a should clause
+        OMQueryBuilder orQuery = queryBuilderFactory.boolQuery().should(orQueries);
+        collector.addMust(orQuery);
       }
     } else if (node instanceof OperatorNot) {
       ConditionCollector subCollector = new ConditionCollector(queryBuilderFactory);
@@ -174,7 +205,7 @@ public class RBACConditionEvaluator {
       } else {
         OMQueryBuilder subQuery = subCollector.buildFinalQuery();
         if (subQuery != null && !subQuery.isEmpty()) {
-          collector.addMustNot(subQuery);
+          collector.addMustNot(subQuery); // Wrap subQuery in a List
         }
       }
     } else if (node instanceof MethodReference) {
@@ -220,10 +251,18 @@ public class RBACConditionEvaluator {
   }
 
   public void matchAnyTag(List<String> tags, ConditionCollector collector) {
+    List<OMQueryBuilder> tagQueries = new ArrayList<>();
     for (String tag : tags) {
       OMQueryBuilder tagQuery = queryBuilderFactory.termQuery("tags.tagFQN", tag);
-      collector.addShould(tagQuery);
+      tagQueries.add(tagQuery);
     }
+    OMQueryBuilder tagQueryCombined;
+    if (tagQueries.size() == 1) {
+      tagQueryCombined = tagQueries.get(0);
+    } else {
+      tagQueryCombined = queryBuilderFactory.boolQuery().should(tagQueries);
+    }
+    collector.addMust(tagQueryCombined);
   }
 
   public void matchAllTags(List<String> tags, ConditionCollector collector) {
@@ -243,14 +282,19 @@ public class RBACConditionEvaluator {
       }
     }
 
-    for (OMQueryBuilder ownerQuery : ownerQueries) {
-      collector.addShould(ownerQuery);
+    OMQueryBuilder ownerQuery;
+    if (ownerQueries.size() == 1) {
+      ownerQuery = ownerQueries.get(0);
+    } else {
+      ownerQuery = queryBuilderFactory.boolQuery().should(ownerQueries);
     }
+
+    collector.addMust(ownerQuery);
   }
 
   public void noOwner(ConditionCollector collector) {
     OMQueryBuilder existsQuery = queryBuilderFactory.existsQuery("owners.id");
-    collector.addMustNot(existsQuery);
+    collector.addMustNot(existsQuery); // Wrap existsQuery in a List
   }
 
   public void hasAnyRole(List<String> roles, ConditionCollector collector) {
@@ -274,7 +318,7 @@ public class RBACConditionEvaluator {
     User user = (User) spelContext.lookupVariable("user");
     if (user.getDomain() == null) {
       OMQueryBuilder existsQuery = queryBuilderFactory.existsQuery("domain.id");
-      collector.addMustNot(existsQuery);
+      collector.addMustNot(existsQuery); // Wrap existsQuery in a List
     } else {
       String userDomainId = user.getDomain().getId().toString();
       OMQueryBuilder domainQuery = queryBuilderFactory.termQuery("domain.id", userDomainId);
