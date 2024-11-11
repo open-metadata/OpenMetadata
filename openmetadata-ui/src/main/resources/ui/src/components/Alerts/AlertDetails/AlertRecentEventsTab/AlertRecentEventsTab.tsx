@@ -37,6 +37,7 @@ import {
 } from '../../../../generated/events/api/typedEvent';
 import { getAlertEventsFromId } from '../../../../rest/alertsAPI';
 import {
+  getAlertEventsFilterLabels,
   getAlertRecentEventsFilterOptions,
   getAlertStatusIcon,
   getChangeEventDataFromTypedEvent,
@@ -148,13 +149,17 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
                     <Row align="middle" gutter={[16, 16]}>
                       <Col>
                         {/* Display icon for the status of the alert event */}
-                        <Tooltip title={startCase(typedEvent.status)}>
+                        <Tooltip
+                          className="flex-center"
+                          title={startCase(typedEvent.status)}>
                           {getAlertStatusIcon(typedEvent.status)}{' '}
                         </Tooltip>
                       </Col>
                       <Col>
                         {/* Display icon for the asset the change event is related to */}
-                        <Tooltip title={startCase(changeEventData.entityType)}>
+                        <Tooltip
+                          className="flex-center"
+                          title={startCase(changeEventData.entityType)}>
                           {searchClassBase.getEntityIcon(
                             changeEventData.entityType ?? '',
                             'h-4 w-4'
@@ -266,8 +271,13 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
               <Button
                 className="flex-center"
                 data-testid="filter-button"
-                icon={<FilterIcon height={16} />}
-              />
+                icon={<FilterIcon height={16} />}>
+                {filter !== AlertRecentEventFilters.ALL && (
+                  <Typography.Text className="font-medium">{` : ${getAlertEventsFilterLabels(
+                    filter as AlertRecentEventFilters
+                  )}`}</Typography.Text>
+                )}
+              </Button>
             </Dropdown>
           </Col>
         </Row>

@@ -20,5 +20,4 @@ export enum AlertRecentEventFilters {
   ALL = 'all',
   SUCCESSFUL = 'successful',
   FAILED = 'failed',
-  UNPROCESSED = 'unprocessed',
 }

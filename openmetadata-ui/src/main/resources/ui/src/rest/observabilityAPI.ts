@@ -17,6 +17,7 @@ import { Operation } from 'fast-json-patch';
 import { PagingResponse } from 'Models';
 import axiosClient from '.';
 import { CreateEventSubscription } from '../generated/events/api/createEventSubscription';
+import { EventSubscriptionDiagnosticInfo } from '../generated/events/api/eventSubscriptionDiagnosticInfo';
 import { EventSubscription } from '../generated/events/eventSubscription';
 import { FilterResourceDescriptor } from '../generated/events/filterResourceDescriptor';
 import { Function } from '../generated/type/function';
@@ -103,6 +104,28 @@ export const getResourceFunctions = async () => {
   const response = await axiosClient.get<
     PagingResponse<FilterResourceDescriptor[]>
   >(`${BASE_URL}/observability/resources`);
+
+  return response.data;
+};
+
+export const getAlertEventsDiagnosticsInfo = async ({
+  fqn,
+  params,
+  listCountOnly = false,
+}: {
+  fqn: string;
+  params?: ListParams;
+  listCountOnly?: boolean;
+}) => {
+  const response = await axiosClient.get<EventSubscriptionDiagnosticInfo>(
+    `${BASE_URL}/name/${fqn}/diagnosticInfo`,
+    {
+      params: {
+        ...params,
+        listCountOnly,
+      },
+    }
+  );
 
   return response.data;
 };

@@ -19,6 +19,7 @@ import {
   MenuProps,
   Row,
   Select,
+  Skeleton,
   Switch,
   Tooltip,
   Typography,
@@ -37,7 +38,7 @@ import {
   trim,
   uniqBy,
 } from 'lodash';
-import React from 'react';
+import React, { Fragment } from 'react';
 import { ReactComponent as AlertIcon } from '../../assets/svg/alert.svg';
 import { ReactComponent as AllActivityIcon } from '../../assets/svg/all-activity.svg';
 import { ReactComponent as ClockIcon } from '../../assets/svg/clock.svg';
@@ -50,6 +51,7 @@ import { AlertEventDetailsToDisplay } from '../../components/Alerts/AlertDetails
 import TeamAndUserSelectItem from '../../components/Alerts/DestinationFormItem/TeamAndUserSelectItem/TeamAndUserSelectItem';
 import { AsyncSelect } from '../../components/common/AsyncSelect/AsyncSelect';
 import { InlineAlertProps } from '../../components/common/InlineAlert/InlineAlert.interface';
+import { ExtraInfoLabel } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import {
   DESTINATION_DROPDOWN_TABS,
   DESTINATION_SOURCE_ITEMS,
@@ -63,6 +65,7 @@ import { SearchIndex } from '../../enums/search.enum';
 import { StatusType } from '../../generated/entity/data/pipeline';
 import { PipelineState } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { CreateEventSubscription } from '../../generated/events/api/createEventSubscription';
+import { EventSubscriptionDiagnosticInfo } from '../../generated/events/api/eventSubscriptionDiagnosticInfo';
 import {
   ChangeEvent,
   Status,
@@ -998,8 +1001,6 @@ export const getAlertEventsFilterLabels = (status: AlertRecentEventFilters) => {
       return t('label.successful');
     case AlertRecentEventFilters.FAILED:
       return t('label.failed');
-    case AlertRecentEventFilters.UNPROCESSED:
-      return t('label.unprocessed');
     case AlertRecentEventFilters.ALL:
       return t('label.all');
     default:
@@ -1095,4 +1096,47 @@ export const getChangeEventDataFromTypedEvent = (
       currentVersion,
     },
   };
+};
+
+export const getAlertExtraInfo = (
+  alertEventCountsLoading: boolean,
+  alertEventCounts?: EventSubscriptionDiagnosticInfo
+) => {
+  if (alertEventCountsLoading) {
+    return (
+      <>
+        {Array(3)
+          .fill(null)
+          .map((_, id) => (
+            <Fragment key={id}>
+              <Divider className="self-center" type="vertical" />
+              <Skeleton.Button active className="extra-info-skeleton" />
+            </Fragment>
+          ))}
+      </>
+    );
+  }
+
+  return (
+    <>
+      <ExtraInfoLabel
+        label={t('label.total-entity', {
+          entity: t('label.event-plural'),
+        })}
+        value={alertEventCounts?.latestOffset ?? 0}
+      />
+      <ExtraInfoLabel
+        label={t('label.pending-entity', {
+          entity: t('label.event-plural'),
+        })}
+        value={alertEventCounts?.totalUnprocessedEventsCount ?? 0}
+      />
+      <ExtraInfoLabel
+        label={t('label.failed-entity', {
+          entity: t('label.event-plural'),
+        })}
+        value={alertEventCounts?.failedEventsCount ?? 0}
+      />
+    </>
+  );
 };

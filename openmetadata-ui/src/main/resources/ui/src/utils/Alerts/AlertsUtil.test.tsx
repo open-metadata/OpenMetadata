@@ -42,6 +42,7 @@ import { searchData } from '../../rest/miscAPI';
 import {
   getAlertActionTypeDisplayName,
   getAlertEventsFilterLabels,
+  getAlertExtraInfo,
   getAlertRecentEventsFilterOptions,
   getAlertsActionTypeIcon,
   getAlertStatusIcon,
@@ -55,6 +56,13 @@ import {
   getLabelsForEventDetails,
   listLengthValidator,
 } from './AlertsUtil';
+
+jest.mock('antd', () => ({
+  ...jest.requireActual('antd'),
+  Skeleton: {
+    Button: jest.fn().mockImplementation(() => <div>Skeleton.Button</div>),
+  },
+}));
 
 jest.mock('../../components/common/AsyncSelect/AsyncSelect', () => ({
   AsyncSelect: jest
@@ -574,14 +582,10 @@ describe('getAlertEventsFilterLabels', () => {
     const failedLabel = getAlertEventsFilterLabels(
       AlertRecentEventFilters.FAILED
     );
-    const unprocessedLabel = getAlertEventsFilterLabels(
-      AlertRecentEventFilters.UNPROCESSED
-    );
 
     expect(allLabel).toStrictEqual('label.all');
     expect(successLabel).toStrictEqual('label.successful');
     expect(failedLabel).toStrictEqual('label.failed');
-    expect(unprocessedLabel).toStrictEqual('label.unprocessed');
   });
 
   it('should return empty string for unknown filter', () => {
@@ -597,11 +601,10 @@ describe('getAlertRecentEventsFilterOptions', () => {
   it('should return correct options', () => {
     const options = getAlertRecentEventsFilterOptions();
 
-    expect(options).toHaveLength(4);
+    expect(options).toHaveLength(3);
     expect(options[0]?.key).toStrictEqual(AlertRecentEventFilters.ALL);
     expect(options[1]?.key).toStrictEqual(AlertRecentEventFilters.SUCCESSFUL);
     expect(options[2]?.key).toStrictEqual(AlertRecentEventFilters.FAILED);
-    expect(options[3]?.key).toStrictEqual(AlertRecentEventFilters.UNPROCESSED);
   });
 });
 
@@ -744,5 +747,47 @@ describe('getChangeEventDataFromTypedEvent', () => {
       source: undefined,
       failingSubscriptionId: undefined,
     });
+  });
+});
+
+describe('getAlertExtraInfo', () => {
+  it('should return skeletons when alertEventCountsLoading is true', () => {
+    const alertExtraInfo = getAlertExtraInfo(true);
+
+    render(alertExtraInfo);
+
+    const skeletons = screen.getAllByText('Skeleton.Button');
+
+    expect(skeletons).toHaveLength(3);
+  });
+
+  it('should return correct extra info when alertEventCountsLoading is false', () => {
+    const alertEventCounts = {
+      latestOffset: 100,
+      totalUnprocessedEventsCount: 5,
+      failedEventsCount: 2,
+    };
+
+    const alertExtraInfo = getAlertExtraInfo(false, alertEventCounts);
+
+    render(alertExtraInfo);
+
+    const totalEvents = screen.getByText('100');
+    const pendingEvents = screen.getByText('5');
+    const failedEvents = screen.getByText('2');
+
+    expect(totalEvents).toBeInTheDocument();
+    expect(pendingEvents).toBeInTheDocument();
+    expect(failedEvents).toBeInTheDocument();
+  });
+
+  it('should return zero values when alertEventCounts is undefined', () => {
+    const alertExtraInfo = getAlertExtraInfo(false);
+
+    render(alertExtraInfo);
+
+    const eventCounts = screen.getAllByText('0');
+
+    expect(eventCounts).toHaveLength(3);
   });
 });

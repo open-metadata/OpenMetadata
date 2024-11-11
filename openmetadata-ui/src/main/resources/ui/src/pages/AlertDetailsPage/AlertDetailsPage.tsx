@@ -38,7 +38,6 @@ import { OwnerLabel } from '../../components/common/OwnerLabel/OwnerLabel.compon
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import RichTextEditorPreviewer from '../../components/common/RichTextEditor/RichTextEditorPreviewer';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
-import { ExtraInfoLabel } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import EntityHeaderTitle from '../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
 import { ROUTES } from '../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
@@ -50,6 +49,7 @@ import {
 import { AlertDetailTabs } from '../../enums/Alerts.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
+import { EventSubscriptionDiagnosticInfo } from '../../generated/events/api/eventSubscriptionDiagnosticInfo';
 import {
   EntityReference,
   EventSubscription,
@@ -58,9 +58,11 @@ import {
 import { useFqn } from '../../hooks/useFqn';
 import { updateNotificationAlert } from '../../rest/alertsAPI';
 import {
+  getAlertEventsDiagnosticsInfo,
   getObservabilityAlertByFQN,
   updateObservabilityAlert,
 } from '../../rest/observabilityAPI';
+import { getAlertExtraInfo } from '../../utils/Alerts/AlertsUtil';
 import { getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import {
@@ -86,8 +88,11 @@ function AlertDetailsPage({
   const history = useHistory();
 
   const [alertDetails, setAlertDetails] = useState<EventSubscription>();
+  const [alertEventCounts, setAlertEventCounts] =
+    useState<EventSubscriptionDiagnosticInfo>();
   const [loadingCount, setLoadingCount] = useState(1);
   const [ownerLoading, setOwnerLoading] = useState(false);
+  const [alertEventCountsLoading, setAlertEventCountsLoading] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState<boolean>(false);
   const [alertPermission, setAlertPermission] = useState<OperationPermission>(
     DEFAULT_ENTITY_PERMISSION
@@ -141,6 +146,22 @@ function AlertDetailsPage({
       // Error handling
     } finally {
       setLoadingCount((count) => count - 1);
+    }
+  };
+
+  const fetchAlertEventDiagnosticCounts = async () => {
+    try {
+      setAlertEventCountsLoading(true);
+      const alertCounts = await getAlertEventsDiagnosticsInfo({
+        fqn,
+        listCountOnly: true,
+      });
+
+      setAlertEventCounts(alertCounts);
+    } catch (error) {
+      // Error handling
+    } finally {
+      setAlertEventCountsLoading(false);
     }
   };
 
@@ -260,8 +281,14 @@ function AlertDetailsPage({
   useEffect(() => {
     if (viewPermission) {
       fetchAlertDetails();
+      fetchAlertEventDiagnosticCounts();
     }
   }, [viewPermission]);
+
+  const extraInfo = useMemo(
+    () => getAlertExtraInfo(alertEventCountsLoading, alertEventCounts),
+    [alertEventCounts, alertEventCountsLoading]
+  );
 
   if (!loadingCount && !viewPermission) {
     return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
@@ -307,7 +334,7 @@ function AlertDetailsPage({
                           {ownerLoading ? (
                             <Skeleton.Button
                               active
-                              className="owner-skeleton"
+                              className="extra-info-skeleton"
                             />
                           ) : (
                             <OwnerLabel
@@ -316,18 +343,7 @@ function AlertDetailsPage({
                               onUpdate={onOwnerUpdate}
                             />
                           )}
-                          <ExtraInfoLabel
-                            label={t('label.total-entity', {
-                              entity: t('label.event-plural'),
-                            })}
-                            value={0}
-                          />
-                          <ExtraInfoLabel
-                            label={t('label.pending-entity', {
-                              entity: t('label.event-plural'),
-                            })}
-                            value={0}
-                          />
+                          {extraInfo}
                         </div>
                       </Col>
                     </Row>
