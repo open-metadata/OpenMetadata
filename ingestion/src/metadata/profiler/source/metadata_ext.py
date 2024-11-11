@@ -72,9 +72,7 @@ class OpenMetadataSourceExt(OpenMetadataSource):
         config: OpenMetadataWorkflowConfig,
         metadata: OpenMetadata,
     ):
-        self.config = config
-        self.metadata = metadata
-        self.test_connection()
+        super().__init__(config, metadata)
 
         # Init and type the source config
         self.service_connection = self.config.source.serviceConnection.root.config
