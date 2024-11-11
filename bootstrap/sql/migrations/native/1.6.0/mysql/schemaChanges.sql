@@ -81,3 +81,7 @@ CREATE TABLE IF NOT EXISTS successful_sent_change_events (
 -- Create an index on the event_subscription_id column in the successful_sent_change_events table
 CREATE INDEX idx_event_subscription_id ON successful_sent_change_events (event_subscription_id);
 
+-- Remove Override View Lineage
+UPDATE ingestion_pipeline_entity
+SET json = JSON_REMOVE(json, '$.sourceConfig.config.overrideViewLineage')
+WHERE JSON_EXTRACT(json, '$.pipelineType') = 'metadata';
