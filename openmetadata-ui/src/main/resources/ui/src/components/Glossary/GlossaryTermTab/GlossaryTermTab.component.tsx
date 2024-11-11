@@ -11,9 +11,19 @@
  *  limitations under the License.
  */
 
-import { FilterOutlined } from '@ant-design/icons';
+import { DownOutlined, FilterOutlined } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Button, Col, Modal, Row, Space, TableProps, Tooltip } from 'antd';
+import {
+  Button,
+  Checkbox,
+  Col,
+  Dropdown,
+  Modal,
+  Row,
+  Space,
+  TableProps,
+  Tooltip,
+} from 'antd';
 import { ColumnsType, ExpandableConfig } from 'antd/lib/table/interface';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -38,6 +48,7 @@ import StatusBadge from '../../../components/common/StatusBadge/StatusBadge.comp
 import {
   API_RES_MAX_SIZE,
   DE_ACTIVE_COLOR,
+  NO_DATA_PLACEHOLDER,
   TEXT_BODY_COLOR,
 } from '../../../constants/constants';
 import { GLOSSARIES_DOCS } from '../../../constants/docs.constants';
@@ -71,6 +82,8 @@ import { showErrorToast } from '../../../utils/ToastUtils';
 import { DraggableBodyRowProps } from '../../common/Draggable/DraggableBodyRowProps.interface';
 import Loader from '../../common/Loader/Loader';
 import Table from '../../common/Table/Table';
+import TagButton from '../../common/TagButton/TagButton.component';
+import DraggableMenuItem from '../GlossaryColumnsSelectionDropdown/DraggableMenuItem.component';
 import { ModifiedGlossary, useGlossaryStore } from '../useGlossary.store';
 import {
   GlossaryTermTabProps,
@@ -163,6 +176,35 @@ const GlossaryTermTab = ({
           ),
       },
       {
+        title: t('label.reviewer'),
+        dataIndex: 'reviewers',
+        key: 'reviewers',
+        width: '33%',
+        render: (reviewers: EntityReference[]) => (
+          <OwnerLabel owners={reviewers} />
+        ),
+      },
+      {
+        title: t('label.synonym-plural'),
+        dataIndex: 'synonyms',
+        key: 'synonyms',
+        width: '33%',
+        render: (synonyms: string[]) => {
+          return (
+            <div className="d-flex flex-wrap">
+              {synonyms?.map((synonym: string) => (
+                <TagButton
+                  className="glossary-synonym-tag"
+                  key={synonym}
+                  label={synonym}
+                />
+              ))}
+              {synonyms?.length === 0 && <div>{NO_DATA_PLACEHOLDER}</div>}
+            </div>
+          );
+        },
+      },
+      {
         title: t('label.owner-plural'),
         dataIndex: 'owners',
         key: 'owners',
@@ -248,6 +290,203 @@ const GlossaryTermTab = ({
 
     return data;
   }, [glossaryTerms, permissions]);
+
+  const listOfVisibleColumns = useMemo(() => {
+    return ['name', 'description', 'owners', 'status', 'new-term'];
+  }, [permissions]);
+
+  const defaultCheckedList = useMemo(() => {
+    return columns
+      .filter((column) => listOfVisibleColumns.includes(column.key as string))
+      .map((column) => column.key)
+      .filter((key): key is string => key !== undefined);
+  }, [columns, listOfVisibleColumns]);
+
+  const [checkedList, setCheckedList] = useState<string[]>(defaultCheckedList);
+  const [tempCheckedList, setTempCheckedList] = useState<string[]>([
+    ...checkedList,
+  ]);
+
+  const [isDropdownVisible, setIsDropdownVisible] = useState<boolean>(false);
+
+  const [options, setOptions] = useState<{ value: string; label: string }[]>(
+    columns
+      .map(({ key, title }) => ({
+        label: title as string,
+        value: key as string,
+      }))
+      .filter((col) => col.value !== 'name')
+  );
+
+  const newColumns = useMemo(() => {
+    return columns.map((item) => ({
+      ...item,
+      hidden: !checkedList.includes(item.key as string),
+    }));
+  }, [columns, checkedList]);
+
+  const rearrangedColumns = useMemo(
+    () =>
+      newColumns
+        .filter((column) => !column.hidden)
+        .sort((a, b) => {
+          const aIndex = options.findIndex(
+            (option: { value: string; label: string }) => option.value === a.key
+          );
+          const bIndex = options.findIndex(
+            (option: { value: string; label: string }) => option.value === b.key
+          );
+
+          return aIndex - bIndex;
+        }),
+    [newColumns]
+  );
+
+  const handleColumnSelectionDropdownSave = useCallback(() => {
+    setCheckedList(tempCheckedList);
+    setIsDropdownVisible(false);
+  }, [tempCheckedList]);
+
+  const handleColumnSelectionDropdownCancel = useCallback(() => {
+    setTempCheckedList(checkedList);
+    setIsDropdownVisible(false);
+  }, [checkedList]);
+
+  const moveDropdownMenuItem = useCallback(
+    (fromIndex: number, toIndex: number) => {
+      const updatedList = [...options];
+      const [movedItem] = updatedList.splice(fromIndex, 1);
+      updatedList.splice(toIndex, 0, movedItem);
+      setOptions(updatedList);
+      setTempCheckedList((prevCheckedList) => {
+        const updatedCheckedList = prevCheckedList.map((item) => {
+          const index = updatedList.findIndex(
+            (option) => option.value === item
+          );
+
+          return updatedList[index]?.value || item;
+        });
+
+        return updatedCheckedList;
+      });
+    },
+    [options]
+  );
+
+  const handleCheckboxChange = useCallback(
+    (key: string, checked: boolean) => {
+      if (key === 'all') {
+        if (checked) {
+          setTempCheckedList([
+            'all',
+            ...columns.map(({ key }) => key as string),
+          ]);
+        } else {
+          setTempCheckedList(['name']);
+        }
+      } else {
+        setTempCheckedList((prev) => {
+          const newCheckedList = checked
+            ? [...prev, key]
+            : prev.filter((item) => item !== key);
+          if (
+            options.every((opt: { value: string; label: string }) =>
+              newCheckedList.includes(opt.value)
+            )
+          ) {
+            return ['all', ...newCheckedList];
+          }
+
+          return newCheckedList.filter((item) => item !== 'all');
+        });
+      }
+    },
+    [columns, options]
+  );
+
+  const menu = useMemo(
+    () => ({
+      items: [
+        {
+          key: 'addColumn',
+          label: (
+            <div className="glossary-col-sel-dropdown-title">
+              {t('label.add-column')}
+              <Checkbox.Group
+                className="glossary-col-sel-checkbox-group"
+                value={tempCheckedList}>
+                <Checkbox
+                  checked={columns
+                    .filter((col) => col.key === 'name')
+                    .every(({ key }) =>
+                      tempCheckedList.includes(key as string)
+                    )}
+                  className="custom-glossary-col-sel-checkbox"
+                  key="all"
+                  style={{ marginLeft: '24px' }}
+                  value="all"
+                  onChange={(e) =>
+                    handleCheckboxChange('all', e.target.checked)
+                  }>
+                  {t('label.all')}
+                </Checkbox>
+                {options.map(
+                  (option: { value: string; label: string }, index: number) => (
+                    <div
+                      key={option.value}
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'flex-start',
+                        alignItems: 'center',
+                      }}>
+                      <DraggableMenuItem
+                        handleCheckboxChange={handleCheckboxChange}
+                        index={index}
+                        moveDropdownMenuItem={moveDropdownMenuItem}
+                        option={option}
+                        tempCheckedList={tempCheckedList}
+                      />
+                    </div>
+                  )
+                )}
+              </Checkbox.Group>
+            </div>
+          ),
+        },
+        {
+          key: 'divider',
+          type: 'divider',
+        },
+        {
+          key: 'actions',
+          label: (
+            <div style={{ textAlign: 'center' }}>
+              <Space>
+                <Button
+                  type="primary"
+                  onClick={handleColumnSelectionDropdownSave}>
+                  {t('label.save')}
+                </Button>
+                <Button
+                  type="default"
+                  onClick={handleColumnSelectionDropdownCancel}>
+                  {t('label.cancel')}
+                </Button>
+              </Space>
+            </div>
+          ),
+        },
+      ],
+    }),
+    [
+      tempCheckedList,
+      columns,
+      options,
+      handleCheckboxChange,
+      handleColumnSelectionDropdownSave,
+      handleColumnSelectionDropdownCancel,
+    ]
+  );
 
   const handleAddGlossaryTermClick = () => {
     onAddGlossaryTerm(
@@ -468,6 +707,27 @@ const GlossaryTermTab = ({
               {isAllExpanded ? t('label.collapse-all') : t('label.expand-all')}
             </Space>
           </Button>
+          <DndProvider backend={HTML5Backend}>
+            <Dropdown
+              className="mb-4 custom-dropdown-menu"
+              menu={menu}
+              open={isDropdownVisible}
+              trigger={['click']}
+              onOpenChange={setIsDropdownVisible}>
+              <Button
+                className="flex-center"
+                style={{
+                  backgroundColor: '#ffffff',
+                  outline: '#b7b7b7',
+                  color: '#3d3d3d',
+                }}>
+                <Space style={{ color: '#3d3d3d' }}>
+                  {t('label.column-plural')}
+                  <DownOutlined />
+                </Space>
+              </Button>
+            </Dropdown>
+          </DndProvider>
         </div>
 
         {glossaryTerms.length > 0 ? (
@@ -477,7 +737,7 @@ const GlossaryTermTab = ({
               className={classNames('drop-over-background', {
                 'drop-over-table': isTableHovered,
               })}
-              columns={columns}
+              columns={rearrangedColumns.filter((col) => !col.hidden)}
               components={TABLE_CONSTANTS}
               dataSource={glossaryTerms}
               expandable={expandableConfig}
