@@ -99,7 +99,8 @@
     },
     "batchSize": {
       "description": "Maximum number of events sent in a batch (Default 10).",
-      "type": "integer"
+      "type": "integer",
+      "default": 100
     },
     "payLoadSize": {
       "description": "Payload size in bytes depending on config.",

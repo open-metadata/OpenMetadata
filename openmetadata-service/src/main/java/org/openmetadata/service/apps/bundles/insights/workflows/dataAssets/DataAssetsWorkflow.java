@@ -147,7 +147,7 @@ public class DataAssetsWorkflow {
       contextData.put(DATA_STREAM_KEY, getDataStreamName(source.getEntityType()));
       contextData.put(ENTITY_TYPE_KEY, source.getEntityType());
 
-      while (!source.isDone()) {
+      while (!source.isDone().get()) {
         try {
           processEntity(source.readNext(null), contextData, source);
         } catch (SearchIndexException ex) {

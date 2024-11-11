@@ -303,6 +303,11 @@ public class OpenMetadataOperations implements Callable<Integer> {
               description = "Maximum number of retries for failed search requests.")
           int retries) {
     try {
+      LOG.info(
+          "Running Reindexing with Batch Size: {}, Payload Size: {}, Recreate-Index: {}",
+          batchSize,
+          payloadSize,
+          recreateIndexes);
       parseConfig();
       CollectionRegistry.initialize();
       ApplicationHandler.initialize(config);

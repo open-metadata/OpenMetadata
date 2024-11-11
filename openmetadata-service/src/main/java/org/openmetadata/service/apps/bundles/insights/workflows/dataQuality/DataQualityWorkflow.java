@@ -152,7 +152,7 @@ public class DataQualityWorkflow {
       deleteDataBeforeInserting(getIndexNameByType(source.getEntityType()));
       contextData.put(ENTITY_TYPE_KEY, entityType);
 
-      while (!source.isDone()) {
+      while (!source.isDone().get()) {
         try {
           processEntity(source.readNext(null), contextData, source);
         } catch (SearchIndexException ex) {

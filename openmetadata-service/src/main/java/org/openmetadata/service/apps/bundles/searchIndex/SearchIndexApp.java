@@ -44,6 +44,7 @@ import static org.openmetadata.service.apps.scheduler.AppScheduler.ON_DEMAND_JOB
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.ENTITY_TYPE_KEY;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.isDataInsightIndex;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -51,13 +52,15 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.exception.ExceptionUtils;
 import org.jetbrains.annotations.NotNull;
 import org.openmetadata.common.utils.CommonUtil;
@@ -85,6 +88,7 @@ import org.openmetadata.service.search.models.IndexMapping;
 import org.openmetadata.service.socket.WebSocketManager;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.workflows.interfaces.Source;
 import org.openmetadata.service.workflows.searchIndex.PaginatedEntitiesSource;
@@ -153,16 +157,17 @@ public class SearchIndexApp extends AbstractNativeApplication {
   private static final int DEFAULT_MAX_RETRIES = 1000;
   private static final int DEFAULT_TIMEOUT = 10000;
   private static final int MAX_CONSUMERS = 10;
-
   private BulkSink searchIndexSink;
 
   @Getter private EventPublisherJob jobData;
   private final Object jobDataLock = new Object();
   private volatile boolean stopped = false;
-
   private ExecutorService producerExecutor;
   private ExecutorService consumerExecutor;
+  private ExecutorService entityReaderExecutor;
   private final BlockingQueue<IndexingTask<?>> taskQueue = new LinkedBlockingQueue<>();
+  private final AtomicReference<Stats> searchIndexStats = new AtomicReference<>();
+  private final AtomicReference<Integer> batchSize = new AtomicReference<>(DEFAULT_BATCH_SIZE);
 
   public SearchIndexApp(CollectionDAO collectionDAO, SearchRepository searchRepository) {
     super(collectionDAO, searchRepository);
@@ -222,10 +227,12 @@ public class SearchIndexApp extends AbstractNativeApplication {
     cleanUpStaleJobsFromRuns();
 
     LOG.info("Executing Reindexing Job with JobData: {}", jobData);
+    batchSize.set(jobData.getBatchSize());
     jobData.setStatus(EventPublisherJob.Status.RUNNING);
 
     LOG.debug("Initializing job statistics.");
-    jobData.setStats(initializeTotalRecords(jobData.getEntities()));
+    searchIndexStats.set(initializeTotalRecords(jobData.getEntities()));
+    jobData.setStats(searchIndexStats.get());
     sendUpdates(jobExecutionContext);
 
     ElasticSearchConfiguration.SearchType searchType = searchRepository.getSearchType();
@@ -272,16 +279,13 @@ public class SearchIndexApp extends AbstractNativeApplication {
   }
 
   private void performReindex(JobExecutionContext jobExecutionContext) throws InterruptedException {
-    if (jobData.getStats() == null) {
-      jobData.setStats(new Stats());
-    }
-
     int numProducers = jobData.getEntities().size();
     int numConsumers = calculateNumberOfConsumers();
     LOG.info("Starting reindexing with {} producers and {} consumers.", numProducers, numConsumers);
 
     producerExecutor = Executors.newFixedThreadPool(numProducers);
     consumerExecutor = Executors.newFixedThreadPool(numConsumers);
+    entityReaderExecutor = Executors.newCachedThreadPool();
     CountDownLatch producerLatch = new CountDownLatch(numProducers);
 
     try {
@@ -319,6 +323,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
     } finally {
       shutdownExecutor(producerExecutor, "ProducerExecutor", 1, TimeUnit.HOURS);
       shutdownExecutor(consumerExecutor, "ConsumerExecutor", 20, TimeUnit.SECONDS);
+      shutdownExecutor(entityReaderExecutor, "ReaderExecutor", 20, TimeUnit.SECONDS);
     }
   }
 
@@ -329,7 +334,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
   private void consumeTasks(JobExecutionContext jobExecutionContext) throws InterruptedException {
     while (true) {
       IndexingTask<?> task = taskQueue.take();
-      LOG.debug(
+      LOG.info(
           "Consuming Indexing Task for entityType: {}, entity offset : {}",
           task.entityType(),
           task.currentEntityOffset());
@@ -588,16 +593,16 @@ public class SearchIndexApp extends AbstractNativeApplication {
 
     if (!TIME_SERIES_ENTITIES.contains(entityType)) {
       PaginatedEntitiesSource paginatedSource =
-          new PaginatedEntitiesSource(entityType, jobData.getBatchSize(), fields);
+          new PaginatedEntitiesSource(entityType, batchSize.get(), fields);
       if (!CommonUtil.nullOrEmpty(jobData.getAfterCursor())) {
-        paginatedSource.setCursor(jobData.getAfterCursor());
+        paginatedSource.getCursor().set(jobData.getAfterCursor());
       }
       source = paginatedSource;
     } else {
       PaginatedEntityTimeSeriesSource paginatedSource =
-          new PaginatedEntityTimeSeriesSource(entityType, jobData.getBatchSize(), fields);
+          new PaginatedEntityTimeSeriesSource(entityType, batchSize.get(), fields);
       if (!CommonUtil.nullOrEmpty(jobData.getAfterCursor())) {
-        paginatedSource.setCursor(jobData.getAfterCursor());
+        paginatedSource.getCursor().set(jobData.getAfterCursor());
       }
       source = paginatedSource;
     }
@@ -606,23 +611,58 @@ public class SearchIndexApp extends AbstractNativeApplication {
   }
 
   private void processEntityType(String entityType)
-      throws InterruptedException, SearchIndexException {
-    Source<?> source = createSource(entityType);
-    while (!source.isDone() && !stopped) {
-      Object resultList = source.readNext(null);
-      if (resultList == null) {
-        break;
+      throws InterruptedException, ExecutionException {
+    int totalEntityRecords =
+        ((StepStats)
+                searchIndexStats.get().getEntityStats().getAdditionalProperties().get(entityType))
+            .getTotalRecords();
+    if (totalEntityRecords > 0) {
+      Source<?> source = createSource(entityType);
+      int loadPerThread = calculateLoadPerThread(totalEntityRecords);
+      List<Future<?>> futures = new ArrayList<>();
+      for (int i = 0; i < loadPerThread; i++) {
+        int currentOffset = i * batchSize.get();
+        Future<?> future =
+            entityReaderExecutor.submit(
+                () -> {
+                  try {
+                    Object resultList =
+                        source.readWithCursor(RestUtil.encodeCursor(String.valueOf(currentOffset)));
+                    if (resultList != null) {
+                      List<?> entities = extractEntities(entityType, resultList);
+                      if (entities != null && !entities.isEmpty()) {
+                        LOG.info(
+                            "Creating Indexing Task for entityType: {}, current offset: {}",
+                            entityType,
+                            currentOffset);
+                        IndexingTask<?> task =
+                            new IndexingTask<>(entityType, entities, currentOffset);
+                        // Add the task to the queue
+                        taskQueue.put(task);
+                      }
+                    }
+                  } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    LOG.warn("Reader thread interrupted for entityType: {}", entityType);
+                  } catch (SearchIndexException e) {
+                    LOG.error("Error while reading source for entityType: {}", entityType, e);
+                  }
+                });
+        futures.add(future);
       }
 
-      List<?> entities = extractEntities(entityType, resultList);
-      if (entities != null && !entities.isEmpty()) {
-        LOG.debug(
-            "Creating Indexing Task for entityType: {}, current offset : {}",
-            entityType,
-            source.getCursor());
-        IndexingTask<?> task = new IndexingTask<>(entityType, entities, source.getCursor());
-        taskQueue.put(task);
+      for (Future<?> future : futures) {
+        future.get();
       }
+    }
+  }
+
+  private synchronized int calculateLoadPerThread(int totalEntityRecords) {
+    int mod = totalEntityRecords % batchSize.get();
+    if (mod == 0) {
+      return totalEntityRecords / batchSize.get();
+    } else {
+      return (totalEntityRecords / batchSize.get()) + 1;
     }
   }
 
@@ -635,8 +675,8 @@ public class SearchIndexApp extends AbstractNativeApplication {
     }
   }
 
-  private record IndexingTask<T>(String entityType, List<T> entities, String currentEntityOffset) {
+  private record IndexingTask<T>(String entityType, List<T> entities, int currentEntityOffset) {
     public static final IndexingTask<?> POISON_PILL =
-        new IndexingTask<>(null, Collections.emptyList(), StringUtils.EMPTY);
+        new IndexingTask<>(null, Collections.emptyList(), -1);
   }
 }
