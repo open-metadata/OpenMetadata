@@ -13,13 +13,18 @@ Profiler configuration helpers
 """
 from typing import Optional
 
-from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema, DatabaseSchemaProfilerConfig
-
-from metadata.generated.schema.entity.data.database import Database, DatabaseProfilerConfig
+from metadata.generated.schema.entity.data.database import (
+    Database,
+    DatabaseProfilerConfig,
+)
+from metadata.generated.schema.entity.data.databaseSchema import (
+    DatabaseSchema,
+    DatabaseSchemaProfilerConfig,
+)
 
 
 def get_database_profiler_config(
-        database_entity: Optional[Database],
+    database_entity: Optional[Database],
 ) -> Optional[DatabaseProfilerConfig]:
     if database_entity and database_entity.databaseProfilerConfig:
         return database_entity.databaseProfilerConfig

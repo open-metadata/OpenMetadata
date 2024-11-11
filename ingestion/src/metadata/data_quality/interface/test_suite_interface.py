@@ -31,9 +31,9 @@ from metadata.generated.schema.tests.basic import TestCaseResult
 from metadata.generated.schema.tests.testCase import TestCase
 from metadata.generated.schema.tests.testDefinition import TestDefinition
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.profiler.api.models import ProfileSampleConfig
+from metadata.sampler.config import get_partition_details
+from metadata.sampler.models import SampleConfig
 from metadata.utils.logger import test_suite_logger
-from metadata.utils.partition import get_partition_details
 
 logger = test_suite_logger()
 
@@ -139,10 +139,10 @@ class TestSuiteInterface(ABC):
 
         return None
 
-    def _get_profile_sample(self) -> Optional[ProfileSampleConfig]:
+    def _get_profile_sample(self) -> Optional[SampleConfig]:
         try:
             if self.table_entity.tableProfilerConfig.profileSample:
-                return ProfileSampleConfig(
+                return SampleConfig(
                     profile_sample=self.table_entity.tableProfilerConfig.profileSample,
                     profile_sample_type=self.table_entity.tableProfilerConfig.profileSampleType,
                 )

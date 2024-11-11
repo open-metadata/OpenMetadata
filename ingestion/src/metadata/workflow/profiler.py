@@ -68,15 +68,7 @@ class ProfilerWorkflow(IngestionWorkflow):
         profiler_processor = self._get_profiler_processor()
         sink = self._get_sink()
 
-        # Only instantiate the PII Processor on demand
-        source_config: DatabaseServiceProfilerPipeline = cast(
-            DatabaseServiceProfilerPipeline, self.config.source.sourceConfig.config
-        )
-        if source_config.processPiiSensitive:
-            pii_processor = self._get_pii_processor()
-            self.steps = (profiler_processor, pii_processor, sink)
-        else:
-            self.steps = (profiler_processor, sink)
+        self.steps = (profiler_processor, sink)
 
     def test_connection(self) -> None:
         service_config = self.config.source.serviceConnection.root.config
@@ -97,6 +89,3 @@ class ProfilerWorkflow(IngestionWorkflow):
 
     def _get_profiler_processor(self) -> Processor:
         return ProfilerProcessor.create(self.config.model_dump(), self.metadata)
-
-    def _get_pii_processor(self) -> Processor:
-        return PIIProcessor.create(self.config.model_dump(), self.metadata)

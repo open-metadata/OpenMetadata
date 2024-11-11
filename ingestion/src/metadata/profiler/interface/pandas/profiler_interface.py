@@ -22,14 +22,7 @@ from typing import Dict, List, Optional
 
 from sqlalchemy import Column
 
-from metadata.generated.schema.entity.data.table import (
-    CustomMetricProfile,
-    DataType,
-    TableData,
-)
-from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
-    DatalakeConnection,
-)
+from metadata.generated.schema.entity.data.table import CustomMetricProfile, DataType
 from metadata.generated.schema.tests.customMetric import CustomMetric
 from metadata.mixins.pandas.pandas_mixin import PandasInterfaceMixin
 from metadata.profiler.api.models import ThreadPoolMetrics
@@ -92,7 +85,6 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
             table=self.table_entity,
             profile_sample_config=profile_sample_config,
         )
-        self.sampler = self._get_sampler()
         self.complex_dataframe_sample = deepcopy(
             self.sampler.random_sample(is_sampled=True)
         )
@@ -128,21 +120,6 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
                 self.complex_dataframe_sample[index] = df
                 logger.warning(f"NaN/NoneType found in the Dataframe: {err}")
                 break
-
-    def _get_sampler(self):
-        """Get dataframe sampler from config"""
-        from metadata.profiler.processor.sampler.sampler_factory import (  # pylint: disable=import-outside-toplevel
-            sampler_factory_,
-        )
-
-        return sampler_factory_.create(
-            DatalakeConnection.__name__,
-            client=self.client._client,  # pylint: disable=W0212
-            table=self.dfs,
-            profile_sample_config=self.profile_sample_config,
-            partition_details=self.partition_details,
-            profile_sample_query=self.profile_query,
-        )
 
     def _compute_table_metrics(
         self,
@@ -325,18 +302,6 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
             self.status.scanned(metric_func.table.name.root)
             column = None
         return row, column, metric_func.metric_type.value
-
-    def fetch_sample_data(self, table, columns: SQALikeColumn) -> TableData:
-        """Fetch sample data from database
-
-        Args:
-            table: ORM declarative table
-
-        Returns:
-            TableData: sample table data
-        """
-        sampler = self._get_sampler()
-        return sampler.fetch_sample_data(columns)
 
     def get_composed_metrics(
         self, column: Column, metric: Metrics, column_results: Dict

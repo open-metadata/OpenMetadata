@@ -16,7 +16,6 @@ from enum import Enum
 from pydantic import BaseModel
 
 
-
 class TagType(Enum):
     SENSITIVE = "Sensitive"
     NONSENSITIVE = "NonSensitive"

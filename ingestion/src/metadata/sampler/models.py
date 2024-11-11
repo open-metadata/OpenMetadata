@@ -11,18 +11,24 @@
 """
 Sampling Models
 """
-from typing import Optional, List, Union
+from typing import List, Optional, Union
 
-from metadata.generated.schema.entity.services.connections.connectionBasicType import SampleDataStorageConfig
-
-from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from pydantic import Field
-
-from metadata.generated.schema.entity.data.table import TableData, Table, ProfileSampleType, SamplingMethodType, \
-    ColumnProfilerConfig, PartitionProfilerConfig
 from typing_extensions import Annotated
 
 from metadata.config.common import ConfigModel
+from metadata.generated.schema.entity.data.table import (
+    ColumnProfilerConfig,
+    PartitionProfilerConfig,
+    ProfileSampleType,
+    SamplingMethodType,
+    Table,
+    TableData,
+)
+from metadata.generated.schema.entity.services.connections.connectionBasicType import (
+    SampleDataStorageConfig,
+)
+from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.ingestion.models.custom_pydantic import BaseModel
 from metadata.ingestion.models.table_metadata import ColumnTag
 
@@ -67,8 +73,6 @@ class TableConfig(BaseProfileConfig):
 
 class DatabaseAndSchemaConfig(BaseProfileConfig):
     """schema profile config"""
-
-    # TODO: do we even need this now?
     sampleDataStorageConfig: Optional[SampleDataStorageConfig] = None
 
 

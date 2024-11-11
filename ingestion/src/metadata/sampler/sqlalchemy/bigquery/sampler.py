@@ -18,9 +18,9 @@ from sqlalchemy import Column
 from sqlalchemy.orm import Query
 
 from metadata.generated.schema.entity.data.table import ProfileSampleType, TableType
-from metadata.profiler.api.models import ProfileSampleConfig
 from metadata.profiler.processor.handle_partition import partition_filter_handler
-from metadata.profiler.processor.sampler.sqlalchemy.sampler import SQASampler
+from metadata.sampler.models import SampleConfig
+from metadata.sampler.sqlalchemy.sampler import SQASampler
 from metadata.utils.constants import SAMPLE_DATA_DEFAULT_COUNT
 
 
@@ -35,7 +35,7 @@ class BigQuerySampler(SQASampler):
         self,
         client,
         table,
-        profile_sample_config: Optional[ProfileSampleConfig] = None,
+        profile_sample_config: Optional[SampleConfig] = None,
         partition_details: Optional[Dict] = None,
         profile_sample_query: Optional[str] = None,
         sample_data_count: Optional[int] = SAMPLE_DATA_DEFAULT_COUNT,

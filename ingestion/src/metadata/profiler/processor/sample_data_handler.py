@@ -72,7 +72,11 @@ def _get_object_key(
     return file_name
 
 
-def upload_sample_data(data: TableData, entity: Table, sample_storage_config: Optional[DataStorageConfig] = None) -> None:
+def upload_sample_data(
+    data: TableData,
+    entity: Table,
+    sample_storage_config: Optional[DataStorageConfig] = None,
+) -> None:
     """
     Upload Sample data to storage config
     """

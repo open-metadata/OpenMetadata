@@ -110,9 +110,22 @@ def ometa_to_sqa_orm(
     `type` and passing SQLAlchemy `Base` class
     as the bases tuple for inheritance.
     """
+    _metadata = sqa_metadata_obj or Base.metadata
     table.serviceType = cast(
         databaseService.DatabaseServiceType, table.serviceType
     )  # satisfy mypy
+
+    orm_database_name = get_orm_database(table, metadata)
+    # SQLite does not support schemas
+    orm_schema_name = get_orm_schema(table, metadata) if table.serviceType != databaseService.DatabaseServiceType.SQLite else None
+    orm_name = f"{orm_database_name}_{orm_schema_name}_{table.name.root}".replace(
+        ".", "_"
+    )
+    orm_key = f"{orm_schema_name}.{table.name.root}" if orm_schema_name else table.name.root
+    visited = False
+    if orm_key in _metadata.tables:
+        visited = True
+
     cols = {
         (
             col.name.root + "_"
@@ -122,12 +135,6 @@ def ometa_to_sqa_orm(
         for idx, col in enumerate(table.columns)
     }
 
-    orm_database_name = get_orm_database(table, metadata)
-    orm_schema_name = get_orm_schema(table, metadata)
-    orm_name = f"{orm_database_name}_{orm_schema_name}_{table.name.root}".replace(
-        ".", "_"
-    )
-
     # Type takes positional arguments in the form of (name, bases, dict)
     orm = type(
         orm_name,  # Output class name
@@ -135,17 +142,14 @@ def ometa_to_sqa_orm(
         {
             "__tablename__": str(table.name.root),
             "__table_args__": {
-                # SQLite does not support schemas
-                "schema": orm_schema_name
-                if table.serviceType != databaseService.DatabaseServiceType.SQLite
-                else None,
+                "schema": orm_schema_name,
                 "extend_existing": True,  # Recreates the table ORM object if it already exists. Useful for testing
-                "quote": check_snowflake_case_sensitive(
+                **({"quote": check_snowflake_case_sensitive(
                     table.serviceType, table.name.root
-                ),
+                )} if not visited else {}),
             },
             **cols,
-            "metadata": sqa_metadata_obj or Base.metadata,
+            "metadata": _metadata,
         },
     )
 

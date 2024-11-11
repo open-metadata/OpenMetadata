@@ -26,13 +26,11 @@ from metadata.config.common import ConfigModel
 from metadata.generated.schema.api.data.createTableProfile import (
     CreateTableProfileRequest,
 )
-from metadata.generated.schema.entity.data.table import (
-    Table,
-)
+from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.tests.customMetric import CustomMetric
 from metadata.profiler.metrics.core import Metric, MetricTypes
 from metadata.profiler.processor.models import ProfilerDef
-from metadata.sampler.models import TableConfig, DatabaseAndSchemaConfig
+from metadata.sampler.models import DatabaseAndSchemaConfig, TableConfig
 from metadata.utils.sqa_like_column import SQALikeColumn
 
 

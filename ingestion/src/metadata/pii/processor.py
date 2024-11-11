@@ -40,7 +40,8 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.pii.constants import PII
 from metadata.pii.scanners.column_name_scanner import ColumnNameScanner
 from metadata.pii.scanners.ner_scanner import NERScanner
-from metadata.profiler.api.models import PIIResponse, ProfilerResponse
+from metadata.profiler.api.models import ProfilerResponse
+from metadata.sampler.models import SamplerResponse
 from metadata.utils.logger import profiler_logger
 
 logger = profiler_logger()
@@ -153,7 +154,7 @@ class PIIProcessor(Processor):
     def _run(
         self,
         record: ProfilerResponse,
-    ) -> Either[PIIResponse]:
+    ) -> Either[SamplerResponse]:
         """
         Main entrypoint for the scanner.
 

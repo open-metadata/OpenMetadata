@@ -104,7 +104,6 @@ class Profiler(Generic[TMetric]):
         self.exclude_columns = exclude_columns
         self._metrics = metrics
         self._profile_ts = Timestamp(int(datetime.now().timestamp() * 1000))
-        self.profile_sample_config = self.profiler_interface.profile_sample_config
 
         self.metric_filter = MetricFilter(
             metrics=self.metrics,
@@ -485,8 +484,6 @@ class Profiler(Generic[TMetric]):
             )
             self.compute_metrics()
 
-
-
         profile = self.get_profile()
         if self.source_config.computeMetrics:
             self._check_profile_and_handle(profile)
@@ -494,7 +491,6 @@ class Profiler(Generic[TMetric]):
         table_profile = ProfilerResponse(
             table=self.profiler_interface.table_entity,
             profile=profile,
-            sample_data=sample_data,
         )
 
         return table_profile
@@ -553,13 +549,13 @@ class Profiler(Generic[TMetric]):
                 createDateTime=raw_create_date,
                 sizeInByte=self._table_results.get("sizeInBytes"),
                 profileSample=(
-                    self.profile_sample_config.profile_sample
-                    if self.profile_sample_config
+                    self.profiler_interface.sampler.sample_config.profile_sample
+                    if self.profiler_interface.sampler.sample_config
                     else None
                 ),
                 profileSampleType=(
-                    self.profile_sample_config.profile_sample_type
-                    if self.profile_sample_config
+                    self.profiler_interface.sampler.sample_config.profile_sample_type
+                    if self.profiler_interface.sampler.sample_config
                     else None
                 ),
                 customMetrics=self._table_results.get("customMetrics"),

@@ -15,26 +15,40 @@ import traceback
 from abc import ABC, abstractmethod
 from typing import Dict, List, Optional, Union
 
-from metadata.generated.schema.entity.services.connections.connectionBasicType import DataStorageConfig
-
-
-from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline import DatabaseServiceProfilerPipeline
-
-from metadata.generated.schema.entity.data.database import DatabaseProfilerConfig
-
-from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchemaProfilerConfig
-from metadata.profiler.processor.sample_data_handler import upload_sample_data
-from metadata.sampler.models import SampleConfig
-
-from metadata.sampler.partition import get_partition_details
-from metadata.utils.execution_time_tracker import calculate_execution_time
-from metadata.utils.logger import sampler_logger
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from sqlalchemy import Column
 
-from metadata.generated.schema.entity.data.table import Table, TableData, PartitionProfilerConfig
-from metadata.profiler.api.models import TableConfig
+from metadata.generated.schema.entity.data.database import Database
+from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
+from metadata.generated.schema.entity.data.table import Table, TableData
+from metadata.generated.schema.entity.services.connections.connectionBasicType import (
+    DataStorageConfig,
+)
+from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
+    DatalakeConnection,
+)
+from metadata.generated.schema.entity.services.databaseService import (
+    DatabaseConnection,
+    DatabaseService,
+)
+from metadata.profiler.api.models import ProfilerProcessorConfig, TableConfig
+from metadata.profiler.config import (
+    get_database_profiler_config,
+    get_schema_profiler_config,
+)
+from metadata.profiler.processor.sample_data_handler import upload_sample_data
+from metadata.sampler.config import (
+    get_profile_query,
+    get_sample_data_count_config,
+    get_storage_config_for_table,
+)
+from metadata.sampler.models import SampleConfig
+from metadata.sampler.partition import get_partition_details
 from metadata.utils.constants import SAMPLE_DATA_DEFAULT_COUNT
+from metadata.utils.execution_time_tracker import calculate_execution_time
+from metadata.utils.logger import sampler_logger
 from metadata.utils.sqa_like_column import SQALikeColumn
+from metadata.utils.ssl_manager import get_ssl_connection
 
 logger = sampler_logger()
 
@@ -44,49 +58,96 @@ class SamplerInterface(ABC):
 
     def __init__(
         self,
-        client,
-        table: Table,
+        service_connection_config: Union[DatabaseConnection, DatalakeConnection],
+        ometa_client: OpenMetadata,
+        entity: Table,
         sample_config: Optional[SampleConfig] = None,
         partition_details: Optional[Dict] = None,
         profile_sample_query: Optional[str] = None,
         storage_config: DataStorageConfig = None,
         sample_data_count: Optional[int] = SAMPLE_DATA_DEFAULT_COUNT,
+        **kwargs,
     ):
-        self.profile_sample = None
-        self.profile_sample_type = None
-        if sample_config:
-            self.profile_sample = sample_config.profile_sample
-            self.profile_sample_type = sample_config.profile_sample_type
-        self.client = client
-        self.table = table
-        self._profile_sample_query = profile_sample_query
-        self.sample_limit = sample_data_count
+        self.ometa_client = ometa_client
         self._sample_rows = None
-        self._partition_details = partition_details
+        self.sample_config = sample_config
+
+        self.entity = entity
+        self.profile_sample_query = profile_sample_query
+        self.sample_limit = sample_data_count
+        self.partition_details = partition_details
         self.storage_config = storage_config
+
+        self.service_connection_config = service_connection_config
+        self.connection = get_ssl_connection(self.service_connection_config)
+        self.client = self.get_client()
 
     @classmethod
     def create(
         cls,
-        client,
-        table: Table,
+        service_connection_config: Union[DatabaseConnection, DatalakeConnection],
+        ometa_client: OpenMetadata,
+        entity: Table,
+        schema_entity: DatabaseSchema,
+        database_entity: Database,
+        db_service: DatabaseService,
+        table_config: TableConfig,
+        profiler_config: ProfilerProcessorConfig,
         sample_config: Optional[SampleConfig] = None,
-        partition_details: Optional[Dict] = None,
-        profile_sample_query: Optional[str] = None,
-        storage_config: DataStorageConfig = None,
-        sample_data_count: Optional[int] = SAMPLE_DATA_DEFAULT_COUNT,
+        default_sample_data_count: Optional[int] = SAMPLE_DATA_DEFAULT_COUNT,
+        **kwargs,
     ) -> "SamplerInterface":
         """Create sampler"""
 
+        schema_profiler_config = get_schema_profiler_config(schema_entity=schema_entity)
+        database_profiler_config = get_database_profiler_config(
+            database_entity=database_entity
+        )
+
+        storage_config = get_storage_config_for_table(
+            entity=entity,
+            schema_profiler_config=schema_profiler_config,
+            database_profiler_config=database_profiler_config,
+            db_service=db_service,
+            profiler_config=profiler_config,
+        )
+
+        sample_data_count = get_sample_data_count_config(
+            entity=entity,
+            schema_profiler_config=schema_profiler_config,
+            database_profiler_config=database_profiler_config,
+            entity_config=table_config,
+            default_sample_data_count=default_sample_data_count,
+        )
+
+        profile_sample_query = get_profile_query(
+            entity=entity, entity_config=table_config
+        )
+
+        partition_details = get_partition_details(entity=entity)
+
         return cls(
-            client=client,
-            table=table,
+            service_connection_config=service_connection_config,
+            ometa_client=ometa_client,
+            entity=entity,
             sample_config=sample_config,
             partition_details=partition_details,
             profile_sample_query=profile_sample_query,
             storage_config=storage_config,
             sample_data_count=sample_data_count,
+            **kwargs,
         )
+
+    @property
+    @abstractmethod
+    def table(self):
+        """Table object to run the sampling"""
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_client(self):
+        """Get client"""
+        raise NotImplementedError
 
     @abstractmethod
     def _rdn_sample_from_user_query(self):
@@ -127,17 +188,15 @@ class SamplerInterface(ABC):
                 f"{self.profiler_interface.table_entity.fullyQualifiedName.root}..."  # type: ignore
             )
             # TODO: GET COLUMNS?
-            table_data = self.fetch_sample_data(
-                self.table, self.columns
-            )
+            table_data = self.fetch_sample_data(self.columns)
             upload_sample_data(
-                data=table_data, entity=self.table, sample_storage_config=self.storage_config,
+                data=table_data,
+                entity=self.entity,
+                sample_storage_config=self.storage_config,
             )
             table_data.rows = table_data.rows[
-                              : min(
-                                  SAMPLE_DATA_DEFAULT_COUNT, self.sample_limit
-                              )
-                              ]
+                : min(SAMPLE_DATA_DEFAULT_COUNT, self.sample_limit)
+            ]
             return table_data
 
         except Exception as err:

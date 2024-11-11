@@ -17,27 +17,13 @@ supporting sqlalchemy abstraction layer
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional, Type, Union
 
-from metadata.profiler.config import get_schema_profiler_config, get_database_profiler_config
-from metadata.sampler.sampler_interface import SamplerInterface
 from sqlalchemy import Column
 
-from metadata.generated.schema.entity.data.database import (
-    Database,
-)
-from metadata.generated.schema.entity.data.databaseSchema import (
-    DatabaseSchema,
-)
-from metadata.generated.schema.entity.data.table import (
-    PartitionProfilerConfig,
-    SystemProfile,
-    Table,
-)
+from metadata.generated.schema.entity.data.table import SystemProfile, Table
 from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
     DatalakeConnection,
 )
-from metadata.generated.schema.entity.services.databaseService import (
-    DatabaseConnection,
-)
+from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
 )
@@ -47,14 +33,11 @@ from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline
 from metadata.generated.schema.tests.customMetric import CustomMetric
 from metadata.ingestion.api.status import Status
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.profiler.api.models import (
-    ProfileSampleConfig,
-    TableConfig,
-)
 from metadata.profiler.metrics.core import MetricTypes
 from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.metrics.system.system import System
 from metadata.profiler.processor.runner import QueryRunner
+from metadata.sampler.sampler_interface import SamplerInterface
 from metadata.utils.ssl_manager import get_ssl_connection
 
 
@@ -86,10 +69,8 @@ class ProfilerInterface(ABC):
         service_connection_config: Union[DatabaseConnection, DatalakeConnection],
         ometa_client: OpenMetadata,
         entity: Table,
-        profile_sample_config: Optional[ProfileSampleConfig],
         source_config: DatabaseServiceProfilerPipeline,
-        sample_query: Optional[str],
-        table_partition_config: Optional[PartitionProfilerConfig],
+        sampler: SamplerInterface,
         thread_count: int = 5,
         timeout_seconds: int = 43200,
         **kwargs,
@@ -108,11 +89,7 @@ class ProfilerInterface(ABC):
             self.status.entity = None
         else:
             self.status.entity = fqn.root if fqn else None
-        self.profile_sample_config = profile_sample_config
-        self.profile_query = sample_query
-        self.partition_details = (
-            table_partition_config if not self.profile_query else None
-        )
+        self.sampler = sampler
         self.timeout_seconds = timeout_seconds
 
         self._get_metric_fn = {
@@ -129,9 +106,6 @@ class ProfilerInterface(ABC):
     def create(
         cls,
         entity: Table,
-        database_schema: DatabaseSchema,
-        database: Database,
-        entity_config: Optional[TableConfig],
         source_config: DatabaseServiceProfilerPipeline,
         service_connection_config,
         sampler: SamplerInterface,
@@ -157,36 +131,13 @@ class ProfilerInterface(ABC):
         """
         thread_count = source_config.threadCount
         timeout_seconds = source_config.timeoutSeconds
-        database_profiler_config = get_database_profiler_config(
-            database_entity=database
-        )
-        schema_profiler_config = get_schema_profiler_config(
-            schema_entity=database_schema
-        )
-
-        if not sampler.get_profile_query(entity, entity_config):
-            profile_sample_config = sampler.get_profile_sample_config(
-                entity,
-                schema_profiler_config,
-                database_profiler_config,
-                entity_config,
-                source_config,
-            )
-            table_partition_config = sampler.get_partition_details(entity, entity_config)
-            sample_query = None
-        else:
-            sample_query = sampler.get_profile_query(entity, entity_config)
-            profile_sample_config = None
-            table_partition_config = None
 
         return cls(
             service_connection_config=service_connection_config,
             ometa_client=ometa_client,
             entity=entity,
-            profile_sample_config=profile_sample_config,
             source_config=source_config,
-            sample_query=sample_query,
-            table_partition_config=table_partition_config,
+            sampler=sampler,
             thread_count=thread_count,
             timeout_seconds=timeout_seconds,
             **kwargs,

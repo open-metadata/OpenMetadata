@@ -14,9 +14,10 @@ Base source for the profiler used to instantiate a profiler runner with
 its interface
 """
 from copy import deepcopy
-from typing import List, Optional, Tuple, Type, cast
+from typing import List, Optional, Tuple, cast
 
 from sqlalchemy import MetaData
+from sqlalchemy.orm import DeclarativeMeta
 
 from metadata.generated.schema.configuration.profilerConfiguration import (
     ProfilerConfiguration,
@@ -40,18 +41,19 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.profiler.api.models import ProfilerProcessorConfig, TableConfig
-from metadata.profiler.config import get_schema_profiler_config, get_database_profiler_config
 from metadata.profiler.interface.profiler_interface import ProfilerInterface
 from metadata.profiler.metrics.registry import Metrics
+from metadata.profiler.orm.converter.base import ometa_to_sqa_orm
 from metadata.profiler.processor.core import Profiler
 from metadata.profiler.processor.default import DefaultProfiler, get_default_metrics
 from metadata.profiler.source.profiler_source_interface import ProfilerSourceInterface
-from metadata.sampler.config import get_profile_query, get_sample_data_count_config
-from metadata.sampler.models import ProfileSampleConfig
+from metadata.sampler.models import SampleConfig
 from metadata.sampler.sampler_interface import SamplerInterface
-from metadata.utils.importer import import_from_module
 from metadata.utils.logger import profiler_logger
-from metadata.utils.service_spec.service_spec import BaseSpec, import_profiler_class, import_sampler_class
+from metadata.utils.service_spec.service_spec import (
+    import_profiler_class,
+    import_sampler_class,
+)
 
 NON_SQA_DATABASE_CONNECTIONS = (DatalakeConnection,)
 
@@ -99,6 +101,12 @@ class ProfilerSource(ProfilerSourceInterface):
         """Set sqlalchemy metadata"""
         if not isinstance(self.service_conn_config, NON_SQA_DATABASE_CONNECTIONS):
             return MetaData()
+        return None
+
+    def _build_table_orm(self, entity: Table) -> Optional[DeclarativeMeta]:
+        """Build the ORM table if needed for the sampler and profiler interfaces"""
+        if not isinstance(self.service_conn_config, NON_SQA_DATABASE_CONNECTIONS):
+            return ometa_to_sqa_orm(entity, self.ometa_client, self.sqa_metadata)
         return None
 
     @staticmethod
@@ -199,37 +207,32 @@ class ProfilerSource(ProfilerSourceInterface):
         sampler_class = import_sampler_class(
             ServiceType.Database, source_type=self.profiler_interface_type
         )
+        # This is shared between the sampler and profiler interfaces
+        _orm = self._build_table_orm(entity)
         sampler_interface: SamplerInterface = sampler_class.create(
-            table=entity,
-            sample_config=ProfileSampleConfig(
+            service_connection_config=self.service_conn_config,
+            ometa_client=self.ometa_client,
+            entity=entity,
+            schema_entity=schema_entity,
+            database_entity=database_entity,
+            db_service=db_service,
+            table_config=config,
+            profiler_config=profiler_config,
+            sample_config=SampleConfig(
                 profile_sample=self.source_config.profileSample,
                 profile_sample_type=self.source_config.profileSampleType,
                 sampling_method_type=self.source_config.samplingMethodType,
             ),
-            profile_sample_query=get_profile_query(entity=entity, entity_config=config),
-            storage_config=get_sample_data_count_config(
-                entity=entity,
-                schema_profiler_config=get_schema_profiler_config(
-                    schema_entity=schema_entity
-                ),
-                database_profiler_config=get_database_profiler_config(
-                    database_entity=database_entity
-                ),
-                entity_config=config,
-                source_config=self.source_config,
-            ),
-            sample_data_count=self.source_config.sampleDataCount,
+            default_sample_data_count=self.source_config.sampleDataCount,
+            orm_table=_orm,
         )
         profiler_interface: ProfilerInterface = profiler_class.create(
-            entity,
-            schema_entity,
-            database_entity,
-            config,
-            self.source_config,
-            self.service_conn_config,
+            entity=entity,
+            source_config=self.source_config,
+            service_connection_config=self.service_conn_config,
             sampler=sampler_interface,
-            self.ometa_client,
-            sqa_metadata=self.sqa_metadata,
+            ometa_client=self.ometa_client,
+            orm_table=_orm,
         )  # type: ignore
 
         self.interface = profiler_interface
