@@ -11,11 +11,9 @@
  *  limitations under the License.
  */
 
-import { PlusOutlined } from '@ant-design/icons';
-import { Button, Form, FormProps, Modal, Space, Typography } from 'antd';
+import { Form, FormProps, Modal, Typography } from 'antd';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { OwnerLabel } from '../../components/common/OwnerLabel/OwnerLabel.component';
 import { VALIDATION_MESSAGES } from '../../constants/constants';
 import {
   HEX_COLOR_CODE_REGEX,
@@ -27,10 +25,9 @@ import { useApplicationStore } from '../../hooks/useApplicationStore';
 import {
   FieldProp,
   FieldTypes,
-  FormItemLayout,
   HelperTextType,
 } from '../../interface/FormUtils.interface';
-import { generateFormFields, getField } from '../../utils/formUtils';
+import { generateFormFields } from '../../utils/formUtils';
 import { RenameFormProps } from './TagsPage.interface';
 
 const TagsForm = ({
@@ -230,31 +227,6 @@ const TagsForm = ({
       : []),
   ];
 
-  const ownerField: FieldProp = {
-    name: 'owners',
-    id: 'root/owner',
-    required: false,
-    label: t('label.owner-plural'),
-    type: FieldTypes.USER_TEAM_SELECT,
-    props: {
-      hasPermission: true,
-      children: (
-        <Button
-          data-testid="add-owner"
-          icon={<PlusOutlined style={{ color: 'white', fontSize: '12px' }} />}
-          size="small"
-          type="primary"
-        />
-      ),
-      multiple: { user: true, team: false },
-    },
-    formItemLayout: FormItemLayout.HORIZONTAL,
-    formItemProps: {
-      valuePropName: 'owners',
-      trigger: 'onUpdate',
-    },
-  };
-
   /*
   const handleSave = async (data: SubmitProps) => {
     try {
@@ -337,16 +309,6 @@ const TagsForm = ({
         validateMessages={VALIDATION_MESSAGES}
         onFinish={handleSave}>
         {generateFormFields(formFields)}
-
-        <div className="m-t-xss">
-          {isClassification && getField(ownerField)}
-
-          {Boolean(ownersList.length) && (
-            <Space wrap data-testid="owner-container" size={[8, 8]}>
-              <OwnerLabel owners={ownersList} />
-            </Space>
-          )}
-        </div>
       </Form>
     </Modal>
   );
