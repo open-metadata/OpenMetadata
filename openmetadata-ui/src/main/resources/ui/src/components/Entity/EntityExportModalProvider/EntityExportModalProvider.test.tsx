@@ -18,17 +18,14 @@ import {
 } from './EntityExportModalProvider.component';
 import { ExportData } from './EntityExportModalProvider.interface';
 
-const dummyTeamsCSV = `name*,displayName,description,teamType*,parents*,Owner,isJoinable,defaultRoles,policies
-access table only,access table only,,Group,Organization,,true,Only table,
-Engineering,,,BusinessUnit,Organization,,true,,
-Finance,,,BusinessUnit,Organization,,true,,
-Legal,,,BusinessUnit,Organization,,true,,
-Applications,,,Group,Engineering,,true,,
-`;
+const mockExportJob = {
+  jobId: '123456',
+  message: 'Export initiated successfyully',
+};
 
 const mockShowModal: ExportData = {
   name: 'test',
-  onExport: jest.fn().mockImplementation(() => Promise.resolve(dummyTeamsCSV)),
+  onExport: jest.fn().mockImplementation(() => Promise.resolve(mockExportJob)),
 };
 
 const ConsumerComponent = () => {
@@ -140,6 +137,7 @@ describe('EntityExportModalProvider component', () => {
     });
 
     expect(mockShowModal.onExport).toHaveBeenCalledWith(mockShowModal.name);
-    expect(screen.queryByTestId('export-entity-modal')).not.toBeInTheDocument();
+
+    expect(await screen.findByText(mockExportJob.message)).toBeInTheDocument();
   });
 });
