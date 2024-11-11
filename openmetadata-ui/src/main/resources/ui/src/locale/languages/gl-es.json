@@ -482,6 +482,7 @@
     "extension": "Extensión",
     "external": "Externo",
     "failed": "Fallado",
+    "failed-entity": "Failed {{entity}}",
     "failing-subscription-id": "Failing Subscription Id",
     "failure-comment": "Comentario do fallo",
     "failure-context": "Contexto do fallo",

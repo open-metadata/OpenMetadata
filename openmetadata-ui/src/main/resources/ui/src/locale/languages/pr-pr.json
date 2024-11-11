@@ -482,6 +482,7 @@
     "extension": "افزونه",
     "external": "خارجی",
     "failed": "ناموفق",
+    "failed-entity": "Failed {{entity}}",
     "failing-subscription-id": "Failing Subscription Id",
     "failure-comment": "نظر درباره شکست",
     "failure-context": "زمینه شکست",
