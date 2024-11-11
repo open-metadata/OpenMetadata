@@ -99,9 +99,7 @@ public class GChatPublisher implements Destination<ChangeEvent> {
   @Override
   public void sendTestMessage() throws EventPublisherException {
     try {
-      GChatMessage gchatMessage =
-          gChatMessageMessageDecorator.buildOutgoingTestMessage(
-              eventSubscription.getFullyQualifiedName());
+      GChatMessage gchatMessage = gChatMessageMessageDecorator.buildOutgoingTestMessage();
 
       if (target != null) {
         postWebhookMessage(this, target, gchatMessage);

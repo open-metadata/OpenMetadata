@@ -109,8 +109,7 @@ public class MSTeamsPublisher implements Destination<ChangeEvent> {
   @Override
   public void sendTestMessage() throws EventPublisherException {
     try {
-      TeamsMessage teamsMessage =
-          teamsMessageFormatter.buildOutgoingTestMessage(eventSubscription.getFullyQualifiedName());
+      TeamsMessage teamsMessage = teamsMessageFormatter.buildOutgoingTestMessage();
 
       if (target != null) {
         if (webhook.getSecretKey() != null && !webhook.getSecretKey().isEmpty()) {

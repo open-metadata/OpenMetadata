@@ -1334,8 +1334,7 @@ public class EventSubscriptionResource
       EventSubscriptionDestinationTestRequest request) {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.CREATE);
     authorizer.authorize(securityContext, operationContext, getResourceContext());
-    EventSubscription eventSubscription =
-        new EventSubscription().withFullyQualifiedName(request.getAlertName());
+    EventSubscription eventSubscription = new EventSubscription();
 
     List<SubscriptionDestination> resultDestinations = new ArrayList<>();
 

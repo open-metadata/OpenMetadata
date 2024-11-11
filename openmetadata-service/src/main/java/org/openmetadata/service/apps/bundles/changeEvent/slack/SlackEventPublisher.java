@@ -108,8 +108,7 @@ public class SlackEventPublisher implements Destination<ChangeEvent> {
   @Override
   public void sendTestMessage() throws EventPublisherException {
     try {
-      SlackMessage slackMessage =
-          slackMessageFormatter.buildOutgoingTestMessage(eventSubscription.getFullyQualifiedName());
+      SlackMessage slackMessage = slackMessageFormatter.buildOutgoingTestMessage();
 
       String json = JsonUtils.pojoToJsonIgnoreNull(slackMessage);
       json = convertCamelCaseToSnakeCase(json);
