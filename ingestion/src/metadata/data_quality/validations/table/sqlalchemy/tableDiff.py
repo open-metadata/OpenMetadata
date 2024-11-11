@@ -10,8 +10,11 @@
 #  limitations under the License.
 # pylint: disable=missing-module-docstring
 import logging
+import random
+import string
 import traceback
 from decimal import Decimal
+from functools import reduce
 from itertools import islice
 from typing import Dict, Iterable, List, Optional, Tuple, cast
 from urllib.parse import urlparse
@@ -22,6 +25,7 @@ from data_diff.diff_tables import DiffResultWrapper
 from data_diff.errors import DataDiffMismatchingKeyTypesError
 from data_diff.utils import ArithAlphanumeric, CaseInsensitiveDict
 from sqlalchemy import Column as SAColumn
+from sqlalchemy import literal, select
 
 from metadata.data_quality.validations import utils
 from metadata.data_quality.validations.base_test_handler import BaseTestValidator
@@ -29,15 +33,21 @@ from metadata.data_quality.validations.mixins.sqa_validator_mixin import (
     SQAValidatorMixin,
 )
 from metadata.data_quality.validations.models import TableDiffRuntimeParameters
-from metadata.generated.schema.entity.data.table import Column
+from metadata.generated.schema.entity.data.table import Column, ProfileSampleType
 from metadata.generated.schema.entity.services.connections.database.sapHanaConnection import (
     SapHanaScheme,
+)
+from metadata.generated.schema.entity.services.databaseService import (
+    DatabaseServiceType,
 )
 from metadata.generated.schema.tests.basic import (
     TestCaseResult,
     TestCaseStatus,
     TestResultValue,
 )
+from metadata.profiler.orm.converter.base import build_orm_col
+from metadata.profiler.orm.functions.md5 import MD5
+from metadata.profiler.orm.functions.substr import Substr
 from metadata.profiler.orm.registry import Dialects
 from metadata.utils.logger import test_suite_logger
 
@@ -55,6 +65,42 @@ SUPPORTED_DIALECTS = [
     Dialects.Trino,
     SapHanaScheme.hana.value,
 ]
+
+
+def compile_and_clauses(elements) -> str:
+    """Compile a list of elements into a string with 'and' clauses.
+
+    Args:
+        elements: A string or a list of strings or lists
+
+    Returns:
+        A string with 'and' clauses
+
+    Raises:
+        ValueError: If the input is not a string or a list
+
+    Examples:
+        >>> compile_and_clauses("a")
+        'a'
+        >>> compile_and_clauses(["a", "b"])
+        'a and b'
+        >>> compile_and_clauses([["a", "b"], "c"])
+        '(a and b) and c'
+    """
+    if isinstance(elements, str):
+        return elements
+    if isinstance(elements, list):
+        if len(elements) == 1:
+            return compile_and_clauses(elements[0])
+        return " and ".join(
+            (
+                f"({compile_and_clauses(e)})"
+                if isinstance(e, list)
+                else compile_and_clauses(e)
+            )
+            for e in elements
+        )
+    raise ValueError("Input must be a string or a list")
 
 
 class UnsupportedDialectError(Exception):
@@ -268,7 +314,105 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
 
     def get_where(self) -> Optional[str]:
         """Returns the where clause from the test case parameters or None if it is a blank string."""
-        return self.runtime_params.whereClause or None
+        runtime_where = self.runtime_params.whereClause
+        sample_where = self.sample_where_clause()
+        where = compile_and_clauses([c for c in [runtime_where, sample_where] if c])
+        return where if where else None
+
+    def sample_where_clause(self) -> Optional[str]:
+        """We use a where clause to sample the data for the diff. This is useful because with data diff
+        we do not have access to the underlying 'SELECT' statement. This method generates a where clause
+        that selects a random sample of the data based on the profile sample configuration.
+        The method uses the md5 hash of the key columns and a random salt to select a random sample of the data.
+        This ensures that the same data is selected from the two tables of the comparison.
+
+        Example:
+            -- Table 1 --  | -- Table 2 --
+            id | name      | id | name
+            1  | Alice     | 1  | Alice
+            2  | Bob       | 2  | Bob
+            3  | Charlie   | 3  | Charlie
+            4  | David     | 4  | Edward
+            5  | Edward    | 6  | Frank
+
+        If we want a sample of 20% of the data, the where clause will intend to select one of the rows
+        on Table 1 and the hash will ensure that the same row is selected on Table 2. We want to avoid selecting rows
+        with different ids because the comparison will not be sensible.
+        """
+        if (
+            self.runtime_params.table_profile_config is None
+            or self.runtime_params.table_profile_config.profileSample is None
+        ):
+            return None
+        if DatabaseServiceType.Mssql in [
+            self.runtime_params.table1.database_service_type,
+            self.runtime_params.table2.database_service_type,
+        ]:
+            raise ValueError(
+                "MSSQL does not support sampling in data diff.\n"
+                "You can request this feature here:\n"
+                "https://github.com/open-metadata/OpenMetadata/issues/new?labels=enhancement&projects=&template=feature_request.md"  # pylint: disable=line-too-long
+            )
+        nounce = self.calculate_nounce()
+        # SQL MD5 returns a 32 character hex string even with leading zeros so we need to
+        # pad the nounce to 8 characters in preserve lexical order.
+        # example: SELECT md5('j(R1wzR*y[^GxWJ5B>L{-HLETRD');
+        hex_nounce = hex(nounce)[2:].rjust(8, "0")
+        # TODO: using strings for this is sub-optimal. But using bytes buffers requires a by-database
+        # implementaiton. We can use this as default and add database specific implementations as the
+        # need arises.
+        salt = "".join(
+            random.choices(string.ascii_letters + string.digits, k=5)
+        )  # 1 / ~62^5 should be enough entropy. Use letters and digits to avoid messing with SQL syntax
+        sql_alchemy_columns = [
+            build_orm_col(
+                i, c, self.runtime_params.table1.database_service_type
+            )  # TODO: get from runtime params
+            for i, c in enumerate(self.runtime_params.table1.columns)
+            if c.name.root in self.runtime_params.keyColumns
+        ]
+        reduced_concat = reduce(
+            lambda c1, c2: c1.concat(c2), sql_alchemy_columns + [literal(salt)]
+        )
+        return str(
+            (
+                select()
+                .filter(
+                    Substr(
+                        MD5(reduced_concat),
+                        1,
+                        8,
+                    )
+                    < hex_nounce
+                )
+                .whereclause.compile(compile_kwargs={"literal_binds": True})
+            )
+        )
+
+    def calculate_nounce(self, max_nounce=2**32 - 1) -> int:
+        """Calculate the nounce based on the profile sample configuration. The nounce is
+        the sample fraction projected to a number on a scale of 0 to max_nounce"""
+        if (
+            self.runtime_params.table_profile_config.profileSampleType
+            == ProfileSampleType.PERCENTAGE
+        ):
+            return int(
+                max_nounce
+                * self.runtime_params.table_profile_config.profileSample
+                / 100
+            )
+        if (
+            self.runtime_params.table_profile_config.profileSampleType
+            == ProfileSampleType.ROWS
+        ):
+            row_count = self.get_row_count()
+            if row_count is None:
+                raise ValueError("Row count is required for ROWS profile sample type")
+            return int(
+                max_nounce
+                * (self.runtime_params.table_profile_config.profileSample / row_count)
+            )
+        raise ValueError("Invalid profile sample type")
 
     def get_runtime_params(self) -> TableDiffRuntimeParameters:
         raw = self.get_test_case_param_value(
@@ -470,3 +614,7 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
         return utils.get_bool_test_case_param(
             self.test_case.parameterValues, "caseSensitiveColumns"
         )
+
+    def get_row_count(self) -> Optional[int]:
+        self.runner._sample = None  # pylint: disable=protected-access
+        return self._compute_row_count(self.runner, None)

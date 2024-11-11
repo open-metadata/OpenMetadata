@@ -354,6 +354,7 @@ test = {
     "pytest==7.0.0",
     "pytest-cov",
     "pytest-order",
+    "dirty-equals",
     # install dbt dependency
     "dbt-artifacts-parser",
     "freezegun",
