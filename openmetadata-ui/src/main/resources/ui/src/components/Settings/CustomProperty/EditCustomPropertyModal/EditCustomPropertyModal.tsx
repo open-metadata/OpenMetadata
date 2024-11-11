@@ -33,6 +33,7 @@ export interface FormData {
   description: string;
   customPropertyConfig: string[];
   multiSelect?: boolean;
+  displayName?: string;
 }
 
 interface EditCustomPropertyModalProps {
@@ -71,6 +72,17 @@ const EditCustomPropertyModal: FC<EditCustomPropertyModalProps> = ({
   }, [customProperty]);
 
   const formFields: FieldProp[] = [
+    {
+      name: 'displayName',
+      id: 'root/displayName',
+      label: t('label.display-name'),
+      required: false,
+      placeholder: t('label.display-name'),
+      type: FieldTypes.TEXT,
+      props: {
+        'data-testid': 'display-name',
+      },
+    },
     {
       name: 'description',
       required: true,
@@ -164,12 +176,14 @@ const EditCustomPropertyModal: FC<EditCustomPropertyModalProps> = ({
         description: customProperty.description,
         customPropertyConfig: enumConfig?.values ?? [],
         multiSelect: Boolean(enumConfig?.multiSelect),
+        displayName: customProperty.displayName,
       };
     }
 
     return {
       description: customProperty.description,
       customPropertyConfig: customProperty.customPropertyConfig?.config,
+      displayName: customProperty.displayName,
     };
   }, [customProperty, hasEnumConfig]);
 

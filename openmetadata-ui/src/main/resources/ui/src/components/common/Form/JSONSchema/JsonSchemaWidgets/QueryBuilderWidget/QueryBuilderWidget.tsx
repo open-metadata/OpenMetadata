@@ -30,7 +30,10 @@ import { getExplorePath } from '../../../../../../constants/constants';
 import { EntityType } from '../../../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../../../enums/search.enum';
 import { searchQuery } from '../../../../../../rest/searchAPI';
-import { elasticSearchFormat } from '../../../../../../utils/QueryBuilderElasticsearchFormatUtils';
+import {
+  elasticSearchFormat,
+  elasticSearchFormatForJSONLogic,
+} from '../../../../../../utils/QueryBuilderElasticsearchFormatUtils';
 import {
   elasticsearchToJsonLogic,
   getJsonTreeFromQueryFilter,
@@ -126,7 +129,7 @@ const QueryBuilderWidget: FC<WidgetProps> = ({
 
       onChange(!isEmpty(data) ? JSON.stringify(qFilter) : '');
     } else {
-      const outputEs = elasticSearchFormat(nTree, config);
+      const outputEs = elasticSearchFormatForJSONLogic(nTree, config);
       if (outputEs) {
         const qFilter = {
           query: outputEs,

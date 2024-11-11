@@ -1,4 +1,5 @@
 import { DateRangeObject } from 'Models';
+import { LinkProps } from 'react-router-dom';
 import { TestCaseStatus } from '../../generated/tests/testCase';
 import { TestCaseResolutionStatusTypes } from '../../generated/tests/testCaseResolutionStatus';
 import { TestPlatform } from '../../generated/tests/testDefinition';
@@ -76,7 +77,7 @@ export interface DataStatisticWidgetProps {
   icon: SvgComponent;
   dataLabel: string;
   countValue: number;
-  redirectPath: string;
+  redirectPath: LinkProps['to'];
   linkLabel: string;
   isLoading?: boolean;
 }

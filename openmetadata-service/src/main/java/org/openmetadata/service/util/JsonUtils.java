@@ -15,6 +15,7 @@ package org.openmetadata.service.util;
 
 import static org.openmetadata.service.util.RestUtil.DATE_TIME_FORMAT;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.StreamReadFeature;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -113,6 +114,20 @@ public final class JsonUtils {
       return prettyPrint
           ? OBJECT_MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(o)
           : OBJECT_MAPPER.writeValueAsString(o);
+    } catch (JsonProcessingException e) {
+      throw new UnhandledServerException(FAILED_TO_PROCESS_JSON, e);
+    }
+  }
+
+  public static String pojoToJsonIgnoreNull(Object o) {
+    if (o == null) {
+      return null;
+    }
+    try {
+      ObjectMapper objectMapperIgnoreNull = OBJECT_MAPPER.copy();
+      objectMapperIgnoreNull.setSerializationInclusion(
+          JsonInclude.Include.NON_NULL); // Ignore null values
+      return objectMapperIgnoreNull.writeValueAsString(o);
     } catch (JsonProcessingException e) {
       throw new UnhandledServerException(FAILED_TO_PROCESS_JSON, e);
     }
@@ -517,14 +532,17 @@ public final class JsonUtils {
 
   public static <T> T extractValue(String jsonResponse, String... keys) {
     JsonNode jsonNode = JsonUtils.readTree(jsonResponse);
-
-    // Traverse the JSON structure using keys
     for (String key : keys) {
       jsonNode = jsonNode.path(key);
     }
-
-    // Extract the final value
-    return JsonUtils.treeToValue(jsonNode, (Class<T>) getValueClass(jsonNode));
+    if (jsonNode.isMissingNode() || jsonNode.isNull()) {
+      return null;
+    }
+    try {
+      return JsonUtils.treeToValue(jsonNode, (Class<T>) getValueClass(jsonNode));
+    } catch (Exception e) {
+      return null;
+    }
   }
 
   public static <T> T extractValue(JsonNode jsonNode, String... keys) {
