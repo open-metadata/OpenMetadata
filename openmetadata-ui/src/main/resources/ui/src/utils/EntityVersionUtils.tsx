@@ -44,7 +44,6 @@ import { NO_DATA_PLACEHOLDER } from '../constants/constants';
 import { EntityField } from '../constants/Feeds.constants';
 import { EntityType, TabSpecificField } from '../enums/entity.enum';
 import { EntityChangeOperations } from '../enums/VersionPage.enum';
-import { Classification } from '../generated/entity/classification/classification';
 import { Column as ContainerColumn } from '../generated/entity/data/container';
 import { Column as DataModelColumn } from '../generated/entity/data/dashboardDataModel';
 import { Column as TableColumn } from '../generated/entity/data/table';
