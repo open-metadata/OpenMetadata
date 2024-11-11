@@ -73,6 +73,7 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
     paging,
     handlePageChange,
     handlePageSizeChange,
+    showPagination,
   } = usePaging(PAGE_SIZE_BASE);
 
   const { id, alertName } = useMemo(
@@ -261,16 +262,18 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
             })}
           </Collapse>
         </Col>
-        <Col span={24}>
-          <NextPreviousWithOffset
-            currentPage={currentPage}
-            isLoading={loading}
-            pageSize={pageSize}
-            paging={paging}
-            pagingHandler={pagingHandler}
-            onShowSizeChange={handlePageSizeChange}
-          />
-        </Col>
+        {showPagination && (
+          <Col span={24}>
+            <NextPreviousWithOffset
+              currentPage={currentPage}
+              isLoading={loading}
+              pageSize={pageSize}
+              paging={paging}
+              pagingHandler={pagingHandler}
+              onShowSizeChange={handlePageSizeChange}
+            />
+          </Col>
+        )}
       </Row>
     );
   }, [
@@ -281,6 +284,7 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
     currentPage,
     pagingHandler,
     handlePageSizeChange,
+    showPagination,
   ]);
 
   useEffect(() => {
