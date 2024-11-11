@@ -201,6 +201,12 @@ public interface SearchClient {
         Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
   }
 
+  @SuppressWarnings("unused")
+  default ResultList searchPageHierarchy(String query, String pageType, int offset, int limit) {
+    throw new CustomExceptionMessage(
+        Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
+  }
+
   Map<String, Object> searchLineageInternal(
       String fqn,
       int upstreamDepth,
