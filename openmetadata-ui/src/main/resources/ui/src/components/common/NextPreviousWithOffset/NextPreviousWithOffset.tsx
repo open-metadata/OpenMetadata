@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2024 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -17,26 +17,27 @@ import {
   DownOutlined,
 } from '@ant-design/icons';
 import { Button, Dropdown } from 'antd';
-import React, { FC } from 'react';
+import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   PAGE_SIZE_BASE,
   PAGE_SIZE_LARGE,
   PAGE_SIZE_MEDIUM,
 } from '../../../constants/constants';
-import { CursorType } from '../../../enums/pagination.enum';
 import { computeTotalPages } from '../../../utils/PaginationUtils';
-import { NextPreviousProps, PagingProps } from './NextPrevious.interface';
+import {
+  NextPreviousWithOffsetProps,
+  PagingProps,
+} from './NextPreviousWithOffset.interface';
 
-const NextPrevious: FC<NextPreviousProps> = ({
+const NextPreviousWithOffset = ({
   paging,
   pagingHandler,
   pageSize,
-  isNumberBased = false,
   currentPage = 1,
   isLoading,
   ...pagingProps
-}: NextPreviousProps) => {
+}: NextPreviousWithOffsetProps) => {
   const { t } = useTranslation();
   const {
     pageSizeOptions = [PAGE_SIZE_BASE, PAGE_SIZE_MEDIUM, PAGE_SIZE_LARGE],
@@ -44,44 +45,27 @@ const NextPrevious: FC<NextPreviousProps> = ({
   } = (pagingProps ?? {}) as PagingProps;
 
   const onNextHandler = () => {
-    if (isNumberBased) {
-      pagingHandler({ currentPage: currentPage + 1 });
-    } else {
-      pagingHandler({
-        cursorType: CursorType.AFTER,
-        currentPage: currentPage + 1,
-      });
-    }
+    pagingHandler({
+      offset: currentPage * pageSize,
+      page: currentPage + 1,
+    });
   };
 
   const onPreviousHandler = () => {
-    if (isNumberBased) {
-      pagingHandler({ currentPage: currentPage - 1 });
-    } else {
-      pagingHandler({
-        cursorType: CursorType.BEFORE,
-        currentPage: currentPage - 1,
-      });
-    }
+    pagingHandler({
+      offset: (currentPage - 1) * pageSize,
+      page: currentPage - 1,
+    });
   };
 
-  const computePrevDisableState = () => {
-    if (isNumberBased) {
-      return currentPage === 1;
-    } else {
-      return paging.before ? false : true;
-    }
-  };
+  const totalPages = useMemo(
+    () => computeTotalPages(pageSize, paging.total),
+    [pageSize, paging.total]
+  );
 
-  const computeNextDisableState = () => {
-    if (isNumberBased) {
-      const totalPages = computeTotalPages(pageSize, paging.total);
-
-      return currentPage === totalPages;
-    } else {
-      return paging.after ? false : true;
-    }
-  };
+  const nextButtonDisabled = useMemo(() => {
+    return currentPage === totalPages;
+  }, [currentPage, totalPages]);
 
   return (
     <div className="flex-center gap-3" data-testid="pagination">
@@ -89,21 +73,20 @@ const NextPrevious: FC<NextPreviousProps> = ({
         ghost
         className="hover-button text-sm flex-center"
         data-testid="previous"
-        disabled={computePrevDisableState() || isLoading}
+        disabled={currentPage === 1 || isLoading}
         icon={<ArrowLeftOutlined />}
         type="primary"
         onClick={onPreviousHandler}>
         <span>{t('label.previous')}</span>
       </Button>
-      <span data-testid="page-indicator">{`${currentPage}/${computeTotalPages(
-        pageSize,
-        paging.total
-      )} ${t('label.page')}`}</span>
+      <span data-testid="page-indicator">{`${currentPage}/${totalPages} ${t(
+        'label.page'
+      )}`}</span>
       <Button
         ghost
         className="hover-button text-sm flex-center"
         data-testid="next"
-        disabled={computeNextDisableState() || isLoading}
+        disabled={nextButtonDisabled || isLoading}
         type="primary"
         onClick={onNextHandler}>
         <span> {t('label.next')}</span>
@@ -120,7 +103,9 @@ const NextPrevious: FC<NextPreviousProps> = ({
               onClick: () => onShowSizeChange(size),
             })),
           }}>
-          <Button onClick={(e) => e.preventDefault()}>
+          <Button
+            data-testid="page-size-change-button"
+            onClick={(e) => e.preventDefault()}>
             {`${pageSize} / ${t('label.page')}`}
             <DownOutlined />
           </Button>
@@ -130,4 +115,4 @@ const NextPrevious: FC<NextPreviousProps> = ({
   );
 };
 
-export default NextPrevious;
+export default NextPreviousWithOffset;

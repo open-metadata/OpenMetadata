@@ -35,6 +35,7 @@ import {
   Status,
   TypedEvent,
 } from '../../../../generated/events/api/typedEvent';
+import { usePaging } from '../../../../hooks/paging/usePaging';
 import { getAlertEventsFromId } from '../../../../rest/alertsAPI';
 import {
   getAlertEventsFilterLabels,
@@ -48,6 +49,8 @@ import { getEntityName } from '../../../../utils/EntityUtils';
 import searchClassBase from '../../../../utils/SearchClassBase';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import NextPreviousWithOffset from '../../../common/NextPreviousWithOffset/NextPreviousWithOffset';
+import { PagingHandlerParams } from '../../../common/NextPreviousWithOffset/NextPreviousWithOffset.interface';
 import SchemaEditor from '../../../Database/SchemaEditor/SchemaEditor';
 import './alert-recent-events-tab.less';
 import {
@@ -64,6 +67,13 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
   );
   const [alertRecentEvents, setAlertRecentEvents] = useState<TypedEvent[]>();
   const [loading, setLoading] = useState<boolean>(false);
+  const {
+    currentPage,
+    pageSize,
+    paging,
+    handlePageChange,
+    handlePageSizeChange,
+  } = usePaging(PAGE_SIZE_BASE);
 
   const { id, alertName } = useMemo(
     () => ({
@@ -83,25 +93,37 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
     [filter]
   );
 
-  const getAlertRecentEvents = useCallback(async () => {
-    try {
-      setLoading(true);
-      const response = await getAlertEventsFromId({
-        id,
-        params: {
-          ...(filter === AlertRecentEventFilters.ALL
-            ? { limit: PAGE_SIZE_BASE }
-            : { status: filter as Status, limit: PAGE_SIZE_BASE }),
-        },
-      });
+  const getAlertRecentEvents = useCallback(
+    async (paginationOffset = 0) => {
+      try {
+        setLoading(true);
+        const response = await getAlertEventsFromId({
+          id,
+          params: {
+            ...(filter === AlertRecentEventFilters.ALL
+              ? { limit: pageSize, paginationOffset }
+              : {
+                  status: filter as Status,
+                  limit: pageSize,
+                  paginationOffset,
+                }),
+          },
+        });
 
-      setAlertRecentEvents(response);
-    } catch (e) {
-      showErrorToast(e as AxiosError);
-    } finally {
-      setLoading(false);
-    }
-  }, [id, filter]);
+        setAlertRecentEvents(response);
+      } catch (e) {
+        showErrorToast(e as AxiosError);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [id, filter, pageSize]
+  );
+
+  const pagingHandler = ({ offset, page }: PagingHandlerParams) => {
+    handlePageChange(page);
+    getAlertRecentEvents(offset);
+  };
 
   const recentEventsList = useMemo(() => {
     if (loading) {
@@ -131,115 +153,139 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
     }
 
     return (
-      <Collapse
-        className="recent-events-collapse"
-        data-testid="recent-events-list"
-        defaultActiveKey={['1']}
-        expandIconPosition="end">
-        {alertRecentEvents?.map((typedEvent) => {
-          // Get the change event data from the typedEvent object
-          const { changeEventData, changeEventDataToDisplay } =
-            getChangeEventDataFromTypedEvent(typedEvent);
+      <Row gutter={[16, 16]}>
+        <Col span={24}>
+          <Collapse
+            className="recent-events-collapse"
+            data-testid="recent-events-list"
+            defaultActiveKey={['1']}
+            expandIconPosition="end">
+            {alertRecentEvents?.map((typedEvent) => {
+              // Get the change event data from the typedEvent object
+              const { changeEventData, changeEventDataToDisplay } =
+                getChangeEventDataFromTypedEvent(typedEvent);
 
-          return (
-            <Panel
-              header={
-                <Row justify="space-between">
-                  <Col>
-                    <Row align="middle" gutter={[16, 16]}>
+              return (
+                <Panel
+                  header={
+                    <Row justify="space-between">
                       <Col>
-                        {/* Display icon for the status of the alert event */}
-                        <Tooltip
-                          className="flex-center"
-                          title={startCase(typedEvent.status)}>
-                          {getAlertStatusIcon(typedEvent.status)}{' '}
-                        </Tooltip>
+                        <Row align="middle" gutter={[16, 16]}>
+                          <Col>
+                            {/* Display icon for the status of the alert event */}
+                            <Tooltip
+                              className="flex-center"
+                              title={startCase(typedEvent.status)}>
+                              {getAlertStatusIcon(typedEvent.status)}{' '}
+                            </Tooltip>
+                          </Col>
+                          <Col>
+                            {/* Display icon for the asset the change event is related to */}
+                            <Tooltip
+                              className="flex-center"
+                              title={startCase(changeEventData.entityType)}>
+                              {searchClassBase.getEntityIcon(
+                                changeEventData.entityType ?? '',
+                                'h-4 w-4'
+                              )}
+                            </Tooltip>
+                          </Col>
+                          <Col>
+                            {/* Display the change event id */}
+                            <Typography.Text>
+                              {changeEventData.id}
+                            </Typography.Text>
+                          </Col>
+                        </Row>
                       </Col>
                       <Col>
-                        {/* Display icon for the asset the change event is related to */}
-                        <Tooltip
-                          className="flex-center"
-                          title={startCase(changeEventData.entityType)}>
-                          {searchClassBase.getEntityIcon(
-                            changeEventData.entityType ?? '',
-                            'h-4 w-4'
-                          )}
-                        </Tooltip>
-                      </Col>
-                      <Col>
-                        {/* Display the change event id */}
-                        <Typography.Text>{changeEventData.id}</Typography.Text>
+                        {/* Display the event timestamp */}
+                        <Typography.Text className="text-grey-muted">
+                          {formatDateTime(typedEvent.timestamp)}
+                        </Typography.Text>
                       </Col>
                     </Row>
-                  </Col>
-                  <Col>
-                    {/* Display the event timestamp */}
-                    <Typography.Text className="text-grey-muted">
-                      {formatDateTime(typedEvent.timestamp)}
-                    </Typography.Text>
-                  </Col>
-                </Row>
-              }
-              key={`${changeEventData.id}-${changeEventData.timestamp}`}>
-              <Row gutter={[16, 16]}>
-                <Col>
+                  }
+                  key={`${changeEventData.id}-${changeEventData.timestamp}`}>
                   <Row gutter={[16, 16]}>
-                    {Object.entries(changeEventDataToDisplay).map(
-                      ([key, value]) =>
-                        isUndefined(value) ? null : (
-                          <Col key={key} span={key === 'reason' ? 24 : 8}>
-                            <Row gutter={[4, 4]}>
-                              <Col span={24}>
-                                <Typography.Text className="text-grey-muted">
-                                  {`${getLabelsForEventDetails(
-                                    key as keyof AlertEventDetailsToDisplay
-                                  )}:`}
-                                </Typography.Text>
+                    <Col>
+                      <Row gutter={[16, 16]}>
+                        {Object.entries(changeEventDataToDisplay).map(
+                          ([key, value]) =>
+                            isUndefined(value) ? null : (
+                              <Col key={key} span={key === 'reason' ? 24 : 8}>
+                                <Row gutter={[4, 4]}>
+                                  <Col span={24}>
+                                    <Typography.Text className="text-grey-muted">
+                                      {`${getLabelsForEventDetails(
+                                        key as keyof AlertEventDetailsToDisplay
+                                      )}:`}
+                                    </Typography.Text>
+                                  </Col>
+                                  <Col span={24}>
+                                    <Typography.Text className="font-medium">
+                                      {value}
+                                    </Typography.Text>
+                                  </Col>
+                                </Row>
                               </Col>
-                              <Col span={24}>
-                                <Typography.Text className="font-medium">
-                                  {value}
-                                </Typography.Text>
-                              </Col>
-                            </Row>
-                          </Col>
-                        )
+                            )
+                        )}
+                      </Row>
+                    </Col>
+                    {!isEmpty(changeEventData.changeDescription) && (
+                      <>
+                        <Col span={24}>
+                          <Typography.Text className="font-medium">
+                            {`${t('label.change-entity', {
+                              entity: t('label.description'),
+                            })}:`}
+                          </Typography.Text>
+                        </Col>
+                        <Col span={24}>
+                          <SchemaEditor
+                            className="border"
+                            mode={{ name: CSMode.JAVASCRIPT }}
+                            options={{ readOnly: true }}
+                            showCopyButton={false}
+                            value={JSON.stringify(
+                              changeEventData.changeDescription
+                            )}
+                          />
+                        </Col>
+                      </>
                     )}
                   </Row>
-                </Col>
-                {!isEmpty(changeEventData.changeDescription) && (
-                  <>
-                    <Col span={24}>
-                      <Typography.Text className="font-medium">
-                        {`${t('label.change-entity', {
-                          entity: t('label.description'),
-                        })}:`}
-                      </Typography.Text>
-                    </Col>
-                    <Col span={24}>
-                      <SchemaEditor
-                        className="border"
-                        mode={{ name: CSMode.JAVASCRIPT }}
-                        options={{ readOnly: true }}
-                        showCopyButton={false}
-                        value={JSON.stringify(
-                          changeEventData.changeDescription
-                        )}
-                      />
-                    </Col>
-                  </>
-                )}
-              </Row>
-            </Panel>
-          );
-        })}
-      </Collapse>
+                </Panel>
+              );
+            })}
+          </Collapse>
+        </Col>
+        <Col span={24}>
+          <NextPreviousWithOffset
+            currentPage={currentPage}
+            isLoading={loading}
+            pageSize={pageSize}
+            paging={paging}
+            pagingHandler={pagingHandler}
+            onShowSizeChange={handlePageSizeChange}
+          />
+        </Col>
+      </Row>
     );
-  }, [loading, filter, alertRecentEvents]);
+  }, [
+    loading,
+    filter,
+    alertRecentEvents,
+    pageSize,
+    currentPage,
+    pagingHandler,
+    handlePageSizeChange,
+  ]);
 
   useEffect(() => {
     getAlertRecentEvents();
-  }, [filter]);
+  }, [filter, pageSize]);
 
   return (
     <Row gutter={[16, 16]}>
