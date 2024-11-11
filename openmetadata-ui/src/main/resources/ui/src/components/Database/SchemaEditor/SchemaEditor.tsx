@@ -27,6 +27,8 @@ import { isUndefined } from 'lodash';
 import React, { useEffect, useState } from 'react';
 import { Controlled as CodeMirror } from 'react-codemirror2';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as ExitFullScreen } from '../../../assets/svg/exit-full-screen.svg';
+import { ReactComponent as FullScreen } from '../../../assets/svg/full-screen.svg';
 import { ReactComponent as CopyIcon } from '../../../assets/svg/icon-copy.svg';
 import { JSON_TAB_SIZE } from '../../../constants/constants';
 import { CSMode } from '../../../enums/codemirror.enum';
@@ -45,6 +47,7 @@ const SchemaEditor = ({
   options,
   editorClass,
   showCopyButton = true,
+  expandButtonProps,
   onChange,
 }: SchemaEditorProps) => {
   const { t } = useTranslation();
@@ -93,8 +96,26 @@ const SchemaEditor = ({
     <div
       className={classNames('relative', className)}
       data-testid="code-mirror-container">
-      {showCopyButton && (
-        <div className="query-editor-button">
+      <div className="query-editor-button">
+        {expandButtonProps && (
+          <Button
+            className="flex-center bg-white"
+            data-testid="query-expand-button"
+            icon={
+              expandButtonProps.isExpanded ? (
+                <Tooltip title={t('label.collapse')}>
+                  <ExitFullScreen height={16} width={16} />
+                </Tooltip>
+              ) : (
+                <Tooltip title={t('label.expand')}>
+                  <FullScreen height={16} width={16} />
+                </Tooltip>
+              )
+            }
+            onClick={expandButtonProps.onClick}
+          />
+        )}
+        {showCopyButton && (
           <Tooltip
             title={
               hasCopied ? t('label.copied') : t('message.copy-to-clipboard')
@@ -106,8 +127,8 @@ const SchemaEditor = ({
               onClick={onCopyToClipBoard}
             />
           </Tooltip>
-        </div>
-      )}
+        )}
+      </div>
 
       <CodeMirror
         className={editorClass}

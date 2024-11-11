@@ -95,4 +95,35 @@ describe('SchemaEditor component test', () => {
 
     expect(mockOnChange).toHaveBeenCalled();
   });
+
+  it('Expand button should visible if provided via props', async () => {
+    render(
+      <SchemaEditor
+        {...mockProps}
+        expandButtonProps={{ isExpanded: true, onClick: jest.fn() }}
+      />
+    );
+
+    expect(
+      await screen.findByTestId('query-expand-button')
+    ).toBeInTheDocument();
+  });
+
+  it('Expand button onClick should work', async () => {
+    const mockOnClick = jest.fn();
+    render(
+      <SchemaEditor
+        {...mockProps}
+        expandButtonProps={{ isExpanded: true, onClick: mockOnClick }}
+      />
+    );
+
+    const expandButton = await screen.findByTestId('query-expand-button');
+
+    expect(expandButton).toBeInTheDocument();
+
+    fireEvent.click(expandButton);
+
+    expect(mockOnClick).toHaveBeenCalled();
+  });
 });

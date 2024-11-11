@@ -23,6 +23,7 @@ import {
   Switch,
 } from 'antd';
 import { FormListProps, RuleRender } from 'antd/lib/form';
+import classNames from 'classnames';
 import 'codemirror/addon/fold/foldgutter.css';
 import { debounce, isUndefined } from 'lodash';
 import React, {
@@ -66,6 +67,11 @@ import { ParameterFormProps } from '../AddDataQualityTest.interface';
 
 const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
   const { t } = useTranslation();
+  const [isSqlEditorExpanded, setIsSqlEditorExpanded] = useState(false);
+
+  const handleSqlEditorExpandClick = () => {
+    setIsSqlEditorExpanded((pre) => !pre);
+  };
 
   const prepareForm = (
     data: TestCaseParameterDefinition,
@@ -152,7 +158,18 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
           } else if (data.name === 'sqlExpression') {
             Field = (
               <SchemaEditor
-                className="custom-query-editor query-editor-h-200"
+                className={classNames(
+                  'custom-query-editor custom-code-mirror-theme'
+                )}
+                editorClass={
+                  isSqlEditorExpanded
+                    ? 'full-screen-editor-height'
+                    : 'query-editor-h-200'
+                }
+                expandButtonProps={{
+                  onClick: handleSqlEditorExpandClick,
+                  isExpanded: isSqlEditorExpanded,
+                }}
                 mode={{ name: CSMode.SQL }}
                 showCopyButton={false}
               />
