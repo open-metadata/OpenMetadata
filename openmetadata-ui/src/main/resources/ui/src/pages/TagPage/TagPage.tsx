@@ -40,6 +40,7 @@ import { ReactComponent as IconDropdown } from '../../assets/svg/menu.svg';
 import { ReactComponent as StyleIcon } from '../../assets/svg/style.svg';
 import { DomainLabel } from '../../components/common/DomainLabel/DomainLabel.component';
 import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
+import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
 import { ManageButtonItemLabel } from '../../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
@@ -58,13 +59,19 @@ import EntityDeleteModal from '../../components/Modals/EntityDeleteModal/EntityD
 import EntityNameModal from '../../components/Modals/EntityNameModal/EntityNameModal.component';
 import StyleModal from '../../components/Modals/StyleModal/StyleModal.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import { DE_ACTIVE_COLOR, ROUTES } from '../../constants/constants';
+import {
+  BLACK_COLOR,
+  DE_ACTIVE_COLOR,
+  ROUTES,
+} from '../../constants/constants';
+import { TAGS_DOCS } from '../../constants/docs.constants';
 import { COMMON_RESIZABLE_PANEL_CONFIG } from '../../constants/ResizablePanel.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
   ResourceEntity,
 } from '../../context/PermissionProvider/PermissionProvider.interface';
+import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { ProviderType, Tag } from '../../generated/entity/classification/tag';
@@ -138,17 +145,16 @@ const TagPage = () => {
 
   const { editTagsPermission, editDescriptionPermission } = useMemo(() => {
     if (tagItem) {
+      const isEditable = !tagItem.disabled && !tagItem.deleted;
+
       return {
         editTagsPermission:
-          !tagItem.disabled &&
-          (tagPermissions.EditTags || tagPermissions.EditAll) &&
-          !tagItem.deleted,
+          isEditable && (tagPermissions.EditTags || tagPermissions.EditAll),
         editDescriptionPermission:
-          !tagItem.disabled &&
+          isEditable &&
           (tagPermissions.EditDescription ||
             tagPermissions.EditAll ||
-            tagPermissions.EditTags) &&
-          !tagItem.deleted,
+            tagPermissions.EditTags),
       };
     }
 
@@ -202,9 +208,7 @@ const TagPage = () => {
         setTagItem(response);
       }
     } catch (e) {
-      if (e instanceof AxiosError) {
-        showErrorToast(e);
-      }
+      showErrorToast(e as AxiosError);
     } finally {
       setIsLoading(false);
     }
@@ -299,6 +303,10 @@ const TagPage = () => {
       await handleTagDelete(tagItem.id);
       setIsDelete(false);
     }
+  };
+
+  const handleAddTagClick = () => {
+    history.push(ROUTES.TAGS);
   };
 
   const fetchClassificationTagAssets = async () => {
@@ -509,7 +517,7 @@ const TagPage = () => {
     if (tagItem?.style?.iconURL) {
       return (
         <img
-          alt={tagItem.name ?? 'Tag Icon'}
+          alt={tagItem.name ?? t('label.tag')}
           className="align-middle object-contain"
           data-testid="icon"
           height={36}
@@ -538,7 +546,16 @@ const TagPage = () => {
   }
 
   if (!tagItem) {
-    return null;
+    return (
+      <ErrorPlaceHolder
+        buttonId="add-tag"
+        className="mt-0-important"
+        doc={TAGS_DOCS}
+        heading={t('label.tag')}
+        type={ERROR_PLACEHOLDER_TYPE.NO_DATA}
+        onClick={handleAddTagClick}
+      />
+    );
   }
 
   return (
@@ -557,7 +574,7 @@ const TagPage = () => {
                       <Divider className="m-x-xs h-6" type="vertical" />
                       <StatusBadge
                         dataTestId="disabled"
-                        label="Disabled"
+                        label={t('label.disabled')}
                         status={StatusType.Stopped}
                       />
                     </Space>
@@ -567,13 +584,13 @@ const TagPage = () => {
                 entityData={tagItem}
                 entityType={EntityType.TAG}
                 icon={icon}
-                serviceName=""
-                titleColor={tagItem.style?.color ?? 'black'}
+                serviceName={tagItem.name}
+                titleColor={tagItem.style?.color ?? BLACK_COLOR}
               />
             </Col>
             {editTagsPermission && (
               <Col className="p-x-md">
-                <div style={{ textAlign: 'right', display: 'flex' }}>
+                <div className="d-flex self-end">
                   <Button
                     data-testid="data-classification-add-button"
                     type="primary"
