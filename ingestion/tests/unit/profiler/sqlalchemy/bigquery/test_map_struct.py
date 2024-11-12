@@ -15,11 +15,11 @@ Test we map correctly struct columns for BQ
 
 from metadata.generated.schema.entity.data.table import Column
 from metadata.profiler.orm.converter.common import CommonMapTypes
-from metadata.profiler.source.bigquery.type_mapper import bigquery_type_mapper
+from metadata.profiler.source.database.bigquery.type_mapper import bigquery_type_mapper
 
 
 def test_map_struct():
-    column = Column.parse_obj(
+    column = Column.model_validate(
         {
             "name": "col",
             "dataType": "STRUCT",

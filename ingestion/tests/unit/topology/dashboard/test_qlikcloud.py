@@ -72,7 +72,7 @@ mock_qlikcloud_config = {
 MOCK_DASHBOARD_SERVICE = DashboardService(
     id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb",
     name="qlikcloud_source_test",
-    fullyQualifiedName=FullyQualifiedEntityName(__root__="qlikcloud_source_test"),
+    fullyQualifiedName=FullyQualifiedEntityName("qlikcloud_source_test"),
     connection=DashboardConnection(),
     serviceType=DashboardServiceType.QlikCloud,
 )
@@ -92,7 +92,7 @@ EXPECTED_DASHBOARD = CreateDashboardRequest(
     sourceUrl="https://test/sense/app/14/overview",
     charts=[],
     tags=None,
-    owner=None,
+    owners=None,
     service="qlikcloud_source_test",
     extension=None,
 )
@@ -112,7 +112,7 @@ EXPECTED_CHARTS = [
         chartType="Other",
         sourceUrl="https://test/sense/app/14/sheet/9",
         tags=None,
-        owner=None,
+        owners=None,
         service="qlikcloud_source_test",
     ),
     CreateChartRequest(
@@ -121,7 +121,7 @@ EXPECTED_CHARTS = [
         chartType="Other",
         sourceUrl="https://test/sense/app/14/sheet/10",
         tags=None,
-        owner=None,
+        owners=None,
         service="qlikcloud_source_test",
         description="American car sales data",
     ),
@@ -157,17 +157,23 @@ class QlikCloudUnitTest(TestCase):
     """
 
     def __init__(self, methodName) -> None:
-        with patch.object(QlikCloudClient, "get_dashboards_list", return_value=None):
+        with patch.object(
+            QlikCloudClient, "get_dashboards_list", return_value=None
+        ), patch.object(
+            QlikCloudClient, "get_dashboards_list_test_conn", return_value=None
+        ):
             super().__init__(methodName)
             # test_connection.return_value = False
-            self.config = OpenMetadataWorkflowConfig.parse_obj(mock_qlikcloud_config)
+            self.config = OpenMetadataWorkflowConfig.model_validate(
+                mock_qlikcloud_config
+            )
             self.qlikcloud = QlikcloudSource.create(
                 mock_qlikcloud_config["source"],
                 OpenMetadata(self.config.workflowConfig.openMetadataServerConfig),
             )
             self.qlikcloud.context.get().__dict__[
                 "dashboard_service"
-            ] = MOCK_DASHBOARD_SERVICE.fullyQualifiedName.__root__
+            ] = MOCK_DASHBOARD_SERVICE.fullyQualifiedName.root
             self.qlikcloud.context.get().__dict__["project_name"] = None
 
     @pytest.mark.order(1)

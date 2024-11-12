@@ -33,7 +33,10 @@ describe('SearchIndexSummary component tests', () => {
   it('Component should render properly, when loaded in the Explore page.', async () => {
     await act(async () => {
       render(
-        <SearchIndexSummary entityDetails={mockSearchIndexEntityDetails} />
+        <SearchIndexSummary entityDetails={mockSearchIndexEntityDetails} />,
+        {
+          wrapper: MemoryRouter,
+        }
       );
     });
 
@@ -115,7 +118,10 @@ describe('SearchIndexSummary component tests', () => {
               },
             ],
           }}
-        />
+        />,
+        {
+          wrapper: MemoryRouter,
+        }
       );
     });
 
@@ -137,6 +143,7 @@ describe('SearchIndexSummary component tests', () => {
             ...mockSearchIndexEntityDetails,
             tags: [
               {
+                name: 'Tier1',
                 tagFQN: 'Tier.Tier1',
                 labelType: LabelType.Manual,
                 description: '',

@@ -12,7 +12,7 @@
 # pylint: disable=protected-access
 """Oracle source module"""
 import traceback
-from typing import Dict, Iterable, List, Optional
+from typing import Iterable, Optional
 
 from sqlalchemy.dialects.oracle.base import INTERVAL, OracleDialect, ischema_names
 from sqlalchemy.engine import Inspector
@@ -49,11 +49,11 @@ from metadata.ingestion.source.database.oracle.models import (
     OracleStoredProcedure,
 )
 from metadata.ingestion.source.database.oracle.queries import (
-    ORACLE_GET_STORED_PROCEDURE_QUERIES,
     ORACLE_GET_STORED_PROCEDURES,
 )
 from metadata.ingestion.source.database.oracle.utils import (
     _get_col_type,
+    _get_constraint_data,
     get_columns,
     get_mview_definition,
     get_mview_names,
@@ -61,13 +61,10 @@ from metadata.ingestion.source.database.oracle.utils import (
     get_table_comment,
     get_table_names,
     get_view_definition,
-)
-from metadata.ingestion.source.database.stored_procedures_mixin import (
-    QueryByProcedure,
-    StoredProcedureMixin,
+    get_view_names,
+    get_view_names_dialect,
 )
 from metadata.utils import fqn
-from metadata.utils.helpers import get_start_and_end
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import (
     get_all_table_comments,
@@ -97,12 +94,16 @@ OracleDialect.get_table_names = get_table_names
 Inspector.get_mview_names = get_mview_names
 Inspector.get_mview_definition = get_mview_definition
 OracleDialect.get_mview_names = get_mview_names_dialect
+Inspector.get_view_names = get_view_names
+OracleDialect.get_view_names = get_view_names_dialect
 
 Inspector.get_all_table_ddls = get_all_table_ddls
 Inspector.get_table_ddl = get_table_ddl
 
+OracleDialect._get_constraint_data = _get_constraint_data
 
-class OracleSource(StoredProcedureMixin, CommonDbSourceService):
+
+class OracleSource(CommonDbSourceService):
     """
     Implements the necessary methods to extract
     Database metadata from Oracle Source
@@ -112,8 +113,8 @@ class OracleSource(StoredProcedureMixin, CommonDbSourceService):
     def create(
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
     ):
-        config = WorkflowSource.parse_obj(config_dict)
-        connection: OracleConnection = config.serviceConnection.__root__.config
+        config = WorkflowSource.model_validate(config_dict)
+        connection: OracleConnection = config.serviceConnection.root.config
         if not isinstance(connection, OracleConnection):
             raise InvalidSourceException(
                 f"Expected OracleConnection, but got {connection}"
@@ -154,20 +155,23 @@ class OracleSource(StoredProcedureMixin, CommonDbSourceService):
                 schema_definition = inspector.get_table_ddl(
                     self.connection, table_name, schema_name
                 )
+                return (
+                    str(schema_definition).strip()
+                    if schema_definition is not None
+                    else None
+                )
 
-            else:
-                definition_fn = inspector.get_view_definition
-                if table_type == TableType.MaterializedView:
-                    definition_fn = inspector.get_mview_definition
+            definition_fn = inspector.get_view_definition
+            if table_type == TableType.MaterializedView:
+                definition_fn = inspector.get_mview_definition
 
-                schema_definition = definition_fn(table_name, schema_name)
+            schema_definition = definition_fn(table_name, schema_name)
 
-            schema_definition = (
-                str(schema_definition.strip())
+            return (
+                str(schema_definition).strip()
                 if schema_definition is not None
                 else None
             )
-            return schema_definition
 
         except NotImplementedError:
             logger.warning("Schema definition not implemented")
@@ -214,13 +218,13 @@ class OracleSource(StoredProcedureMixin, CommonDbSourceService):
 
         try:
             stored_procedure_request = CreateStoredProcedureRequest(
-                name=EntityName(__root__=stored_procedure.name),
+                name=EntityName(stored_procedure.name),
                 storedProcedureCode=StoredProcedureCode(
                     language=Language.SQL,
                     code=stored_procedure.definition,
                 ),
-                owner=self.metadata.get_reference_by_name(
-                    name=stored_procedure.owner.lower()
+                owners=self.metadata.get_reference_by_name(
+                    name=stored_procedure.owner.lower(), is_owner=True
                 ),
                 databaseSchema=fqn.build(
                     metadata=self.metadata,
@@ -240,18 +244,3 @@ class OracleSource(StoredProcedureMixin, CommonDbSourceService):
                     stackTrace=traceback.format_exc(),
                 )
             )
-
-    def get_stored_procedure_queries_dict(self) -> Dict[str, List[QueryByProcedure]]:
-        """
-        Return the dictionary associating stored procedures to the
-        queries they triggered
-        """
-        start, _ = get_start_and_end(self.source_config.queryLogDuration)
-        query = ORACLE_GET_STORED_PROCEDURE_QUERIES.format(
-            start_date=start,
-        )
-        queries_dict = self.procedure_queries_dict(
-            query=query,
-        )
-
-        return queries_dict

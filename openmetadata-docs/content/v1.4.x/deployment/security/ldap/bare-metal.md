@@ -14,7 +14,7 @@ The following configuration controls the auth mechanism for OpenMetadata. Update
 ```yaml
 authenticationConfiguration:
   provider: ${AUTHENTICATION_PROVIDER:-ldap}
-  publicKeyUrls: ${AUTHENTICATION_PUBLIC_KEYS:-[{your domain}/api/v1/config/jwks]} # Update with your Domain and Make sure this "/api/v1/config/jwks" is always configured to enable JWT tokens
+  publicKeyUrls: ${AUTHENTICATION_PUBLIC_KEYS:-[{your domain}/api/v1/system/config/jwks]} # Update with your Domain and Make sure this "/api/v1/system/config/jwks" is always configured to enable JWT tokens
   authority: ${AUTHENTICATION_AUTHORITY:-https://accounts.google.com}
   enableSelfSignup : ${AUTHENTICATION_ENABLE_SELF_SIGNUP:-false}
   ldapConfiguration:
@@ -143,12 +143,12 @@ This configuration controls the authorizer for OpenMetadata:
 ```yaml
 authorizerConfiguration:
   adminPrincipals: ${AUTHORIZER_ADMIN_PRINCIPALS:-[admin]}
-  principalDomain: ${AUTHORIZER_PRINCIPAL_DOMAIN:-"openmetadata.org"}
+  principalDomain: ${AUTHORIZER_PRINCIPAL_DOMAIN:-"open-metadata.org"}
 ```
 
 For the Ldap we need to set:
 
-- `adminPrincipals`: This is the list of admin Principal for the OpenMetadata , if mail in ldap is example@openmetadata.org, then if we want this user to be admin in the OM, we should add 'example', in this list.
+- `adminPrincipals`: This is the list of admin Principal for the OpenMetadata , if mail in ldap is example@open-metadata.org, then if we want this user to be admin in the OM, we should add 'example', in this list.
 - `principalDomain`: Company Domain.
 
 {% partial file="/v1.4/deployment/configure-ingestion.md" /%}

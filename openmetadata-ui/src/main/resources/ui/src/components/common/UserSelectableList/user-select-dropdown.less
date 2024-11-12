@@ -12,6 +12,8 @@
  */
 @import url('../../../styles/variables.less');
 
+@checkmark-icon-default: #e2e2e2;
+
 .selectable-list-item {
   &:hover {
     background-color: @grey-1;
@@ -19,7 +21,7 @@
 }
 
 .user-select-popover {
-  min-width: 275px;
+  min-width: 300px;
   .ant-popover-inner-content {
     padding: 0;
   }
@@ -35,5 +37,29 @@
   .ant-list-header,
   .ant-list-footer {
     padding: 12px;
+  }
+
+  .selectable-list-virtual-list {
+    padding: 8px;
+  }
+
+  .ant-list-vertical {
+    .selectable-list-item {
+      margin-bottom: 4px;
+      border-bottom: 0;
+      border-radius: 4px;
+      padding: 8px;
+      &.active {
+        background-color: @blue-5;
+      }
+    }
+  }
+}
+
+.selectable-list-item-checkmark.anticon {
+  color: @checkmark-icon-default;
+  font-size: 16px;
+  &.active {
+    color: @primary-color;
   }
 }

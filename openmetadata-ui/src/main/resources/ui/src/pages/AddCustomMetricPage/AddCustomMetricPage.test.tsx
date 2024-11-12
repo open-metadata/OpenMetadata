@@ -45,11 +45,13 @@ jest.mock(
 jest.mock('../../components/common/Loader/Loader', () => {
   return jest.fn().mockImplementation(() => <div>Loader</div>);
 });
+jest.mock('../../hooks/useCustomLocation/useCustomLocation', () => {
+  return jest.fn().mockImplementation(() => ({ search: '' }));
+});
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
   useParams: jest.fn().mockImplementation(() => mockUseParams),
   useHistory: jest.fn().mockReturnValue({ push: jest.fn() }),
-  useLocation: jest.fn().mockReturnValue({ search: '' }),
 }));
 jest.mock('../../rest/tableAPI', () => ({
   getTableDetailsByFQN: jest

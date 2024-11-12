@@ -124,7 +124,7 @@ When configuring, give repository access to `Only select repositories` and choos
 
 {% codeBlock fileName="filename.yaml" %}
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: looker
   serviceName: local_looker

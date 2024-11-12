@@ -13,6 +13,7 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { MOCK_TASK_ASSIGNEE } from '../../../mocks/Task.mock';
 import { postThread } from '../../../rest/feedsAPI';
 import RequestTag from './RequestTagPage';
 
@@ -20,12 +21,15 @@ const mockUseHistory = {
   push: jest.fn(),
   goBack: jest.fn(),
 };
+jest.mock('../../../hooks/useCustomLocation/useCustomLocation', () => {
+  return jest.fn().mockImplementation(() => ({
+    search: 'field=columns&value="address.street_name"',
+  }));
+});
+
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
   useParams: jest.fn().mockReturnValue({ entityType: 'table' }),
-  useLocation: jest
-    .fn()
-    .mockReturnValue({ search: 'field=columns&value="address.street_name"' }),
   useHistory: jest.fn().mockImplementation(() => mockUseHistory),
 }));
 jest.mock('../../../components/common/ResizablePanels/ResizablePanels', () =>
@@ -45,16 +49,22 @@ jest.mock('../../../utils/TasksUtils', () => ({
         name: 'dim_location',
         fullyQualifiedName: 'sample_data.ecommerce_db.shopify.dim_location',
         tableType: 'Regular',
-        owner: {
-          id: 'id1',
-          name: 'sample_data',
-          type: 'User',
-        },
+        owners: [
+          {
+            id: 'id1',
+            name: 'sample_data',
+            type: 'User',
+          },
+        ],
       });
     }),
   fetchOptions: jest.fn(),
   getBreadCrumbList: jest.fn().mockReturnValue([]),
   getTaskMessage: jest.fn().mockReturnValue('Task message'),
+  getTaskAssignee: jest.fn().mockReturnValue(MOCK_TASK_ASSIGNEE),
+  getTaskEntityFQN: jest
+    .fn()
+    .mockReturnValue('sample_data.ecommerce_db.shopify.dim_location'),
 }));
 jest.mock('../shared/Assignees', () =>
   jest.fn().mockImplementation(() => <div>Assignees.component</div>)

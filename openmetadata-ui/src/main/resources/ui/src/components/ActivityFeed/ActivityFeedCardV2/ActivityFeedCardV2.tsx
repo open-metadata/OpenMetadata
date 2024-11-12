@@ -102,6 +102,7 @@ const ActivityFeedCardV2 = ({
                 about={!isPost ? feed.about : undefined}
                 cardStyle={feed.cardStyle}
                 createdBy={post.from}
+                feed={feed}
                 fieldName={feed.feedInfo?.fieldName as EntityField}
                 fieldOperation={feed.fieldOperation}
                 isEntityFeed={isPost}

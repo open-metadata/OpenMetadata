@@ -24,21 +24,15 @@ import TagSelectForm from '../../../../components/Tag/TagsSelectForm/TagsSelectF
 import {
   DE_ACTIVE_COLOR,
   NO_DATA_PLACEHOLDER,
-  PAGE_SIZE,
 } from '../../../../constants/constants';
 import { EntityField } from '../../../../constants/Feeds.constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../../../constants/HelperTextUtil';
-import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../../../enums/entity.enum';
-import { SearchIndex } from '../../../../enums/search.enum';
 import { GlossaryTerm } from '../../../../generated/entity/data/glossaryTerm';
 import {
   ChangeDescription,
   EntityReference,
 } from '../../../../generated/entity/type';
-import { Paging } from '../../../../generated/type/paging';
-import { searchData } from '../../../../rest/miscAPI';
-import { formatSearchGlossaryTermResponse } from '../../../../utils/APIUtils';
 import {
   getEntityName,
   getEntityReferenceFromEntity,
@@ -49,26 +43,34 @@ import {
   getDiffByFieldName,
 } from '../../../../utils/EntityVersionUtils';
 import { VersionStatus } from '../../../../utils/EntityVersionUtils.interface';
-import { getEntityReferenceFromGlossary } from '../../../../utils/GlossaryUtils';
 import { getGlossaryPath } from '../../../../utils/RouterUtils';
+import { SelectOption } from '../../../common/AsyncSelectList/AsyncSelectList.interface';
 import TagButton from '../../../common/TagButton/TagButton.component';
+import { useGenericContext } from '../../../GenericProvider/GenericProvider';
 
-interface RelatedTermsProps {
-  isVersionView?: boolean;
-  permissions: OperationPermission;
-  glossaryTerm: GlossaryTerm;
-  onGlossaryTermUpdate: (data: GlossaryTerm) => Promise<void>;
-}
-
-const RelatedTerms = ({
-  isVersionView,
-  glossaryTerm,
-  permissions,
-  onGlossaryTermUpdate,
-}: RelatedTermsProps) => {
+const RelatedTerms = () => {
   const history = useHistory();
+  const {
+    data: glossaryTerm,
+    onUpdate,
+    isVersionView,
+    permissions,
+  } = useGenericContext<GlossaryTerm>();
+
   const [isIconVisible, setIsIconVisible] = useState<boolean>(true);
   const [selectedOption, setSelectedOption] = useState<EntityReference[]>([]);
+
+  const initialOptions = useMemo(() => {
+    return (
+      selectedOption.map((item) => {
+        return {
+          label: getEntityName(item),
+          value: item.fullyQualifiedName,
+          data: item,
+        };
+      }) ?? []
+    );
+  }, [selectedOption]);
 
   const handleRelatedTermClick = (fqn: string) => {
     history.push(getGlossaryPath(fqn));
@@ -97,48 +99,8 @@ const RelatedTerms = ({
       relatedTerms: newOptions,
     };
 
-    await onGlossaryTermUpdate(updatedGlossaryTerm);
+    await onUpdate(updatedGlossaryTerm);
     setIsIconVisible(true);
-  };
-
-  const fetchGlossaryTerms = async (
-    searchText = '',
-    page: number
-  ): Promise<{
-    data: {
-      label: string;
-      value: string;
-    }[];
-    paging: Paging;
-  }> => {
-    const res = await searchData(
-      searchText,
-      page,
-      PAGE_SIZE,
-      '',
-      '',
-      '',
-      SearchIndex.GLOSSARY_TERM
-    );
-
-    const termResult = formatSearchGlossaryTermResponse(
-      res.data.hits.hits
-    ).filter(
-      (item) => item.fullyQualifiedName !== glossaryTerm.fullyQualifiedName
-    );
-
-    const results = termResult.map(getEntityReferenceFromGlossary);
-
-    return {
-      data: results.map((item) => ({
-        data: item,
-        label: item.fullyQualifiedName ?? '',
-        value: item.fullyQualifiedName ?? '',
-      })),
-      paging: {
-        total: res.data.hits.total.value,
-      },
-    };
   };
 
   const formatOptions = (data: EntityReference[]) => {
@@ -302,10 +264,11 @@ const RelatedTerms = ({
           defaultValue={selectedOption.map(
             (item) => item.fullyQualifiedName ?? ''
           )}
-          fetchApi={fetchGlossaryTerms}
+          filterOptions={[glossaryTerm?.fullyQualifiedName ?? '']}
           placeholder={t('label.add-entity', {
             entity: t('label.related-term-plural'),
           })}
+          tagData={initialOptions as SelectOption[]}
           onCancel={handleCancel}
           onSubmit={handleRelatedTermsSave}
         />

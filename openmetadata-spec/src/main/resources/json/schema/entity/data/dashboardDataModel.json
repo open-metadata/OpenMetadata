@@ -15,16 +15,26 @@
       "$comment": "Data Model types supported.",
       "enum": [
         "TableauDataModel",
+        "TableauPublishedDatasource",
+        "TableauEmbeddedDatasource",
         "SupersetDataModel",
         "MetabaseDataModel",
         "LookMlView",
         "LookMlExplore",
         "PowerBIDataModel",
-        "QlikDataModel"
+        "QlikDataModel",
+        "QuickSightDataModel",
+        "SigmaDataModel"
       ],
       "javaEnums": [
         {
           "name": "TableauDataModel"
+        },
+        {
+          "name": "TableauPublishedDatasource"
+        },
+        {
+          "name": "TableauEmbeddedDatasource"
         },
         {
           "name": "SupersetDataModel"
@@ -43,6 +53,12 @@
         },
         {
           "name": "QlikDataModel"
+        },
+        {
+          "name": "QuickSightDataModel"
+        },
+        {
+          "name": "SigmaDataModel"
         }
       ]
     }
@@ -84,9 +100,9 @@
       "description": "Link to this data model entity.",
       "$ref": "../../type/basic.json#/definitions/href"
     },
-    "owner": {
-      "description": "Owner of this data model.",
-      "$ref": "../../type/entityReference.json",
+    "owners": {
+      "description": "Owners of this data model.",
+      "$ref": "../../type/entityReferenceList.json",
       "default": null
     },
     "dataProducts" : {
@@ -142,22 +158,30 @@
       "description": "Name of the project / workspace / collection in which the dataModel is contained",
       "type": "string"
     },
-    "domain" : {
+    "domain": {
       "description": "Domain the Dashboard Data Model belongs to. When not set, the Dashboard model inherits the domain from the dashboard service it belongs to.",
       "$ref": "../../type/entityReference.json"
     },
-    "votes" : {
+    "votes": {
+      "description": "Votes on the entity.",
       "$ref": "../../type/votes.json"
     },
     "lifeCycle": {
       "description": "Life Cycle properties of the entity",
       "$ref": "../../type/lifeCycle.json"
     },
+    "certification": {
+      "$ref": "../../type/assetCertification.json"
+    },
     "sourceHash": {
       "description": "Source hash of the entity",
       "type": "string",
       "minLength": 1,
       "maxLength": 32
+    },
+    "extension": {
+      "description": "Entity extension data with custom attributes added to the entity.",
+      "$ref": "../../type/basic.json#/definitions/entityExtension"
     }
   },
   "required": [

@@ -163,6 +163,10 @@ jest.mock('../../../common/AirflowMessageBanner/AirflowMessageBanner', () => {
     );
 });
 
+jest.mock('../../../../utils/CommonUtils', () => ({
+  Transi18next: jest.fn().mockReturnValue('message.airflow-host-ip-address'),
+}));
+
 jest.mock('../../../common/FormBuilder/FormBuilder', () =>
   forwardRef(
     jest.fn().mockImplementation(({ children, onSubmit, onCancel }) => (

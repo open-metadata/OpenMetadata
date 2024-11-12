@@ -21,6 +21,7 @@
         "GluePipeline",
         "Airbyte",
         "Fivetran",
+        "Flink",
         "Dagster",
         "Nifi",
         "DomoPipeline",
@@ -29,7 +30,11 @@
         "Spline",
         "Spark",
         "OpenLineage",
-        "KafkaConnect"
+        "KafkaConnect",
+        "DBTCloud",
+        "Matillion",
+        "Stitch",
+        "DataFactory"
       ],
       "javaEnums": [
         {
@@ -43,6 +48,9 @@
         },
         {
           "name": "Fivetran"
+        },
+        {
+          "name": "Flink"
         },
         {
           "name": "Dagster"
@@ -70,6 +78,18 @@
         },
         {
           "name": "KafkaConnect"
+        },
+        {
+          "name": "DBTCloud"
+        },
+        {
+          "name": "Matillion"
+        },
+        {
+          "name": "DataFactory"
+        },
+        {
+          "name": "Stitch"
         }
       ]
     },
@@ -97,6 +117,9 @@
               "$ref": "./connections/pipeline/fivetranConnection.json"
             },
             {
+              "$ref": "./connections/pipeline/flinkConnection.json"
+            },
+            {
               "$ref": "./connections/pipeline/dagsterConnection.json"
             },
             {
@@ -122,6 +145,18 @@
             },
             {
               "$ref": "./connections/pipeline/kafkaConnectConnection.json"
+            },
+            {
+              "$ref": "./connections/pipeline/dbtCloudConnection.json"
+            },
+            {
+              "$ref": "./connections/pipeline/matillionConnection.json"
+            },
+            {
+              "$ref": "./connections/pipeline/datafactoryConnection.json"
+            },
+            {
+              "$ref": "./connections/pipeline/stitchConnection.json"
             }
           ]
         }
@@ -185,9 +220,9 @@
     "connection": {
       "$ref": "#/definitions/pipelineConnection"
     },
-    "owner": {
-      "description": "Owner of this pipeline service.",
-      "$ref": "../../type/entityReference.json"
+    "owners": {
+      "description": "Owners of this pipeline service.",
+      "$ref": "../../type/entityReferenceList.json"
     },
     "href": {
       "description": "Link to the resource corresponding to this pipeline service.",

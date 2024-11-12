@@ -56,7 +56,7 @@ class S3FileSystem(IcebergFileSystemBase):
 
         unused_keys = []
 
-        for key, value in fs_config.dict().items():
+        for key, value in fs_config.model_dump().items():
             if key not in SUPPORTED_KEYS and value:
                 unused_keys.append(key)
 
@@ -67,7 +67,7 @@ class S3FileSystem(IcebergFileSystemBase):
             )
 
         return {
-            S3_ENDPOINT: fs_config.endPointURL,
+            S3_ENDPOINT: str(fs_config.endPointURL),
             S3_ACCESS_KEY_ID: fs_config.awsAccessKeyId,
             S3_SECRET_ACCESS_KEY: fs_config.awsSecretAccessKey.get_secret_value()
             if fs_config.awsSecretAccessKey

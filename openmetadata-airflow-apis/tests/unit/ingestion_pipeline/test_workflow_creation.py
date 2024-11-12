@@ -14,6 +14,7 @@ Validate metadata ingestion workflow generation
 """
 import json
 import uuid
+from datetime import datetime
 from unittest import TestCase
 from unittest.mock import patch
 
@@ -64,9 +65,9 @@ from metadata.generated.schema.metadataIngestion.workflow import SourceConfig
 from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
     OpenMetadataJWTClientConfig,
 )
+from metadata.generated.schema.type.basic import DateTime
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.parser import parse_workflow_config_gracefully
-from metadata.ingestion.models.encoders import show_secrets_encoder
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.workflow.data_quality import TestSuiteWorkflow
 from metadata.workflow.metadata import MetadataWorkflow
@@ -75,6 +76,9 @@ from metadata.workflow.profiler import ProfilerWorkflow
 
 def mock_set_ingestion_pipeline_status(self, state):
     return True
+
+
+START_DATE = DateTime(datetime.strptime("2022-06-10T15:06:47", "%Y-%m-%dT%H:%M:%S"))
 
 
 class OMetaServiceTest(TestCase):
@@ -190,17 +194,17 @@ class OMetaServiceTest(TestCase):
             sourceConfig=SourceConfig(config=DatabaseServiceMetadataPipeline()),
             openMetadataServerConnection=self.server_config,
             airflowConfig=AirflowConfig(
-                startDate="2022-06-10T15:06:47+00:00",
+                startDate=START_DATE,
             ),
             service=EntityReference(
                 id=self.service.id,
                 type="databaseService",
-                name=self.service.name.__root__,
+                name=self.service.name.root,
             ),
         )
 
         workflow_config = build_metadata_workflow_config(ingestion_pipeline)
-        config = json.loads(workflow_config.json(encoder=show_secrets_encoder))
+        config = json.loads(workflow_config.model_dump_json())
 
         parse_workflow_config_gracefully(config)
 
@@ -223,19 +227,19 @@ class OMetaServiceTest(TestCase):
             sourceConfig=SourceConfig(config=DatabaseServiceQueryUsagePipeline()),
             openMetadataServerConnection=self.server_config,
             airflowConfig=AirflowConfig(
-                startDate="2022-06-10T15:06:47+00:00",
+                startDate=START_DATE,
             ),
             service=EntityReference(
                 id=self.usage_service.id,
                 type="databaseService",
-                name=self.usage_service.name.__root__,
+                name=self.usage_service.name.root,
             ),
         )
 
         workflow_config = build_usage_workflow_config(ingestion_pipeline)
         self.assertIn("usage", workflow_config.source.type)
 
-        config = json.loads(workflow_config.json(encoder=show_secrets_encoder))
+        config = json.loads(workflow_config.model_dump_json())
 
         parse_workflow_config_gracefully(config)
 
@@ -258,19 +262,19 @@ class OMetaServiceTest(TestCase):
             sourceConfig=SourceConfig(config=DatabaseServiceQueryLineagePipeline()),
             openMetadataServerConnection=self.server_config,
             airflowConfig=AirflowConfig(
-                startDate="2022-06-10T15:06:47+00:00",
+                startDate=START_DATE,
             ),
             service=EntityReference(
                 id=self.usage_service.id,
                 type="databaseService",
-                name=self.usage_service.name.__root__,
+                name=self.usage_service.name.root,
             ),
         )
 
         workflow_config = build_lineage_workflow_config(ingestion_pipeline)
         self.assertIn("lineage", workflow_config.source.type)
 
-        config = json.loads(workflow_config.json(encoder=show_secrets_encoder))
+        config = json.loads(workflow_config.model_dump_json())
 
         parse_workflow_config_gracefully(config)
 
@@ -293,17 +297,17 @@ class OMetaServiceTest(TestCase):
             sourceConfig=SourceConfig(config=DatabaseServiceProfilerPipeline()),
             openMetadataServerConnection=self.server_config,
             airflowConfig=AirflowConfig(
-                startDate="2022-06-10T15:06:47+00:00",
+                startDate=START_DATE,
             ),
             service=EntityReference(
                 id=self.service.id,
                 type="databaseService",
-                name=self.service.name.__root__,
+                name=self.service.name.root,
             ),
         )
 
         workflow_config = build_profiler_workflow_config(ingestion_pipeline)
-        config = json.loads(workflow_config.json(encoder=show_secrets_encoder))
+        config = json.loads(workflow_config.model_dump_json())
 
         parse_workflow_config_gracefully(config)
 
@@ -326,12 +330,12 @@ class OMetaServiceTest(TestCase):
             sourceConfig=SourceConfig(
                 config=TestSuitePipeline(
                     type="TestSuite",
-                    entityFullyQualifiedName=self.service.name.__root__,
+                    entityFullyQualifiedName=self.service.name.root,
                 )
             ),
             openMetadataServerConnection=self.server_config,
             airflowConfig=AirflowConfig(
-                startDate="2022-06-10T15:06:47+00:00",
+                startDate=START_DATE,
             ),
             service=EntityReference(
                 id=uuid.uuid4(),
@@ -341,6 +345,6 @@ class OMetaServiceTest(TestCase):
         )
 
         workflow_config = build_test_suite_workflow_config(ingestion_pipeline)
-        config = json.loads(workflow_config.json(encoder=show_secrets_encoder))
+        config = json.loads(workflow_config.model_dump_json())
 
         parse_workflow_config_gracefully(config)

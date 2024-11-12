@@ -48,8 +48,8 @@ class MysqlSource(CommonDbSourceService):
     def create(
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
     ):
-        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection = cast(MysqlConnection, config.serviceConnection.__root__.config)
+        config: WorkflowSource = WorkflowSource.model_validate(config_dict)
+        connection = cast(MysqlConnection, config.serviceConnection.root.config)
         if not isinstance(connection, MysqlConnection):
             raise InvalidSourceException(
                 f"Expected MysqlConnection, but got {connection}"

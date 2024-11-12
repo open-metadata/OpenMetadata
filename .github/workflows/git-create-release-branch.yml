@@ -1,0 +1,33 @@
+name: Create Release Branches
+run-name: Create Release Branch ${{ inputs.release_branch_name }}
+on:
+  workflow_dispatch:
+    inputs:
+      release_branch_name:
+        description: "Github Release Branch Name"
+        required: true
+      base_branch_name:
+        description: "Base Branch for Release Branch"
+        required: true
+        default: "main"
+permissions:
+  contents: write
+jobs:
+  create-release-branch:
+    name: Create Release Branch ${{ inputs.release_branch_name }}
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout Repo
+      uses: actions/checkout@v4
+      with:
+        ref: ${{ inputs.base_branch_name }}
+    - name: Update application versions
+      run: |
+        make update_all RELEASE_VERSION=${{ inputs.release_branch_name }}
+    - name: Commit changes to ${{ inputs.release_branch_name }} branch
+      uses: EndBug/add-and-commit@v9
+      with:
+        default_author: github_actions
+        message: 'chore(release): Prepare Branch for `${{ inputs.release_branch_name }}`'
+        add: '.'
+        new_branch: ${{ inputs.release_branch_name }}

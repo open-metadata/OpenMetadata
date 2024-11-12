@@ -28,12 +28,19 @@ logger = profiler_logger()
 class MedianFn(FunctionElement):
     inherit_cache = CACHE
 
+    @staticmethod
+    def default_fn(elements, compiler, **kwargs):  # pylint: disable=unused-argument
+        col = compiler.process(elements.clauses.clauses[0])
+        percentile = elements.clauses.clauses[2].value
+        return "percentile_cont(%.2f) WITHIN GROUP (ORDER BY %s ASC)" % (
+            percentile,
+            col,
+        )
+
 
 @compiles(MedianFn)
-def _(elements, compiler, **kwargs):  # pylint: disable=unused-argument
-    col = compiler.process(elements.clauses.clauses[0])
-    percentile = elements.clauses.clauses[2].value
-    return "percentile_cont(%.2f) WITHIN GROUP (ORDER BY %s ASC)" % (percentile, col)
+def _(elements, compiler, **kwargs):
+    return MedianFn.default_fn(elements, compiler, **kwargs)
 
 
 @compiles(MedianFn, Dialects.BigQuery)

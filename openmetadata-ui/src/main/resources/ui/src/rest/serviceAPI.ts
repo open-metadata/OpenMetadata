@@ -20,6 +20,7 @@ import {
 } from 'Models';
 import { WILD_CARD_CHAR } from '../constants/char.constants';
 import { PAGE_SIZE } from '../constants/constants';
+import { TabSpecificField } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { EntityHistory } from '../generated/type/entityHistory';
 import { Include } from '../generated/type/include';
@@ -59,7 +60,7 @@ export const getServices = async ({
   const url = `/services/${serviceName}`;
 
   const params = {
-    fields: 'owner',
+    fields: TabSpecificField.OWNERS,
     limit,
     after,
     before,

@@ -16,7 +16,9 @@ import React, { Fragment } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { TooltipProps } from 'recharts';
+import { TABLE_FRESHNESS_KEY } from '../../../../constants/TestSuite.constant';
 import { Thread } from '../../../../generated/entity/feed/thread';
+import { formatTimeFromSeconds } from '../../../../utils/CommonUtils';
 import { formatDateTime } from '../../../../utils/date-time/DateTimeUtils';
 import { getTaskDetailPath } from '../../../../utils/TasksUtils';
 import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
@@ -27,7 +29,7 @@ const TestSummaryCustomTooltip = (
   const { t } = useTranslation();
   const { active, payload = [] } = props;
   const data = payload.length
-    ? entries(omit(payload[0].payload, ['name', 'incidentId']))
+    ? entries(omit(payload[0].payload, ['name', 'incidentId', 'boundArea']))
     : [];
 
   if (!active || payload.length === 0) {
@@ -63,7 +65,7 @@ const TestSummaryCustomTooltip = (
               {t('label.assignee')}
             </span>
             <span className="font-medium cursor-pointer" data-testid={key}>
-              <OwnerLabel owner={value.task.assignees[0]} />
+              <OwnerLabel owners={value.task.assignees} />
             </span>
           </li>
         </Fragment>
@@ -78,7 +80,10 @@ const TestSummaryCustomTooltip = (
           {startCase(key)}
         </span>
         <span className="font-medium" data-testid={key}>
-          {value}
+          {/* freshness will always be in seconds  */}
+          {key === TABLE_FRESHNESS_KEY && isNumber(value)
+            ? formatTimeFromSeconds(value)
+            : value}
         </span>
       </li>
     );

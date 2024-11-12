@@ -15,12 +15,13 @@ import { Form, FormProps, Input } from 'antd';
 import Modal from 'antd/lib/modal/Modal';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { isEmpty } from 'lodash';
+import { isArray, isEmpty, isEqual, pick } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ENTITY_NAME_REGEX } from '../../../constants/regex.constants';
+import { TABLE_DIFF } from '../../../constants/TestSuite.constant';
+import { TabSpecificField } from '../../../enums/entity.enum';
 import { Table } from '../../../generated/entity/data/table';
-import { TestCaseParameterValue } from '../../../generated/tests/testCase';
 import {
   TestDataType,
   TestDefinition,
@@ -30,6 +31,7 @@ import {
   FieldTypes,
   FormItemLayout,
 } from '../../../interface/FormUtils.interface';
+import testCaseClassBase from '../../../pages/IncidentManager/IncidentManagerDetailPage/TestCaseClassBase';
 import { getTableDetailsByFQN } from '../../../rest/tableAPI';
 import {
   getTestCaseByFqn,
@@ -37,9 +39,13 @@ import {
   updateTestCaseById,
 } from '../../../rest/testAPI';
 import { getNameFromFQN } from '../../../utils/CommonUtils';
-import { getColumnNameFromEntityLink } from '../../../utils/EntityUtils';
+import {
+  getColumnNameFromEntityLink,
+  getEntityName,
+} from '../../../utils/EntityUtils';
 import { getEntityFQN } from '../../../utils/FeedUtils';
 import { generateFormFields } from '../../../utils/formUtils';
+import { isValidJSONString } from '../../../utils/StringsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import Loader from '../../common/Loader/Loader';
 import RichTextEditor from '../../common/RichTextEditor/RichTextEditor';
@@ -97,34 +103,10 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
     return <></>;
   }, [selectedDefinition, table]);
 
-  const createTestCaseObj = (value: {
-    testName: string;
-    params: Record<string, string | { [key: string]: string }[]>;
-    testTypeId: string;
-  }) => {
-    const paramsValue = selectedDefinition?.parameterDefinition?.[0];
-
-    const parameterValues = Object.entries(value.params || {}).map(
-      ([key, value]) => ({
-        name: key,
-        value:
-          paramsValue?.dataType === TestDataType.Array
-            ? // need to send array as string formate
-              JSON.stringify(
-                (value as { value: string }[]).map((data) => data.value)
-              )
-            : value,
-      })
-    );
-
-    return parameterValues as TestCaseParameterValue[];
-  };
-
   const handleFormSubmit: FormProps['onFinish'] = async (value) => {
-    const parameterValues = createTestCaseObj(value);
     const updatedTestCase = {
       ...testCase,
-      parameterValues,
+      ...testCaseClassBase.getCreateTestCaseObject(value, selectedDefinition),
       description: showOnlyParameter
         ? testCase.description
         : isEmpty(value.description)
@@ -159,19 +141,32 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
   };
 
   const getParamsValue = (selectedDefinition: TestDefinition) => {
-    return testCase?.parameterValues?.reduce(
-      (acc, curr) => ({
-        ...acc,
-        [curr.name || '']:
-          selectedDefinition?.parameterDefinition?.[0]?.dataType ===
-          TestDataType.Array
-            ? (JSON.parse(curr.value || '[]') as string[]).map((val) => ({
+    return testCase?.parameterValues?.reduce((acc, curr) => {
+      const param = selectedDefinition?.parameterDefinition?.find(
+        (definition) => definition.name === curr.name
+      );
+
+      if (
+        param?.dataType === TestDataType.Array &&
+        isValidJSONString(curr.value)
+      ) {
+        const value = JSON.parse(curr.value || '[]');
+
+        return {
+          ...acc,
+          [curr.name || '']: isArray(value)
+            ? value.map((val) => ({
                 value: val,
               }))
-            : curr.value,
-      }),
-      {}
-    );
+            : value,
+        };
+      }
+
+      return {
+        ...acc,
+        [curr.name || '']: curr.value,
+      };
+    }, {});
   };
 
   const fetchTableDetails = async (fqn: string) => {
@@ -188,20 +183,28 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
     try {
       const testCaseDetails = await getTestCaseByFqn(
         testCase?.fullyQualifiedName ?? '',
-        { fields: ['testDefinition'] }
+        { fields: [TabSpecificField.TEST_DEFINITION] }
       );
       const definition = await getTestDefinitionById(
         testCaseDetails.testDefinition.id || ''
       );
+      if (testCaseDetails.testDefinition?.fullyQualifiedName === TABLE_DIFF) {
+        await fetchTableDetails(tableFqn);
+      }
+      const formValue = pick(testCase, [
+        'name',
+        'displayName',
+        'description',
+        'computePassedFailedRowCount',
+        'useDynamicAssertion',
+      ]);
+
       form.setFieldsValue({
-        name: testCase?.name,
-        testDefinition: testCaseDetails?.testDefinition?.name,
-        displayName: testCase?.displayName,
+        testDefinition: getEntityName(testCaseDetails?.testDefinition),
         params: getParamsValue(definition),
         table: getNameFromFQN(tableFqn),
         column: getColumnNameFromEntityLink(testCase?.entityLink),
-        computePassedFailedRowCount: testCase?.computePassedFailedRowCount,
-        description: testCase?.description,
+        ...formValue,
       });
       setSelectedDefinition(definition);
     } catch (error) {
@@ -216,7 +219,7 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
       fetchTestDefinitionById();
 
       const isContainsColumnName = testCase.parameterValues?.find(
-        (value) => value.name === 'columnName'
+        (value) => value.name === 'columnName' || value.name === 'column'
       );
 
       if (isContainsColumnName) {
@@ -240,7 +243,7 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
       okText={t('label.submit')}
       open={visible}
       title={`${t('label.edit')} ${testCase?.name}`}
-      width={600}
+      width={720}
       onCancel={onCancel}
       onOk={() => form.submit()}>
       {isLoading ? (
@@ -294,7 +297,23 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
             </>
           )}
 
-          {paramsField}
+          {generateFormFields(
+            testCaseClassBase.createFormAdditionalFields(
+              selectedDefinition?.supportsDynamicAssertion ?? false
+            )
+          )}
+          <Form.Item
+            noStyle
+            shouldUpdate={(prevValues, currentValues) => {
+              return !isEqual(
+                prevValues['useDynamicAssertion'],
+                currentValues['useDynamicAssertion']
+              );
+            }}>
+            {({ getFieldValue }) =>
+              getFieldValue('useDynamicAssertion') ? null : paramsField
+            }
+          </Form.Item>
 
           {!showOnlyParameter && (
             <>

@@ -57,11 +57,4 @@ Network Policies and Ingresses are optional manifests and disabled by default. T
     href="/deployment/kubernetes/on-prem" %}
     Deploy OpenMetadata in On Premises Kubernetes
   {% /inlineCallout %}
-  {% inlineCallout
-    color="violet-70"
-    icon="cloud"
-    bold="FAQs"
-    href="/deployment/kubernetes/faqs" %}
-    FAQs for common production scenarios
-  {% /inlineCallout %}
 {% /inlineCalloutContainer %}

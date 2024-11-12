@@ -21,6 +21,7 @@ import sqlalchemy
 from testcontainers.core.generic import DockerContainer
 from testcontainers.postgres import PostgresContainer
 
+from _openmetadata_testutils.postgres.conftest import postgres_container
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.entity.data.chart import Chart, ChartType
@@ -53,6 +54,7 @@ from metadata.generated.schema.type.basic import (
     SourceUrl,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.superset.api_source import SupersetAPISource
@@ -60,6 +62,7 @@ from metadata.ingestion.source.dashboard.superset.db_source import SupersetDBSou
 from metadata.ingestion.source.dashboard.superset.metadata import SupersetSource
 from metadata.ingestion.source.dashboard.superset.models import (
     FetchChart,
+    FetchColumn,
     FetchDashboard,
     SupersetChart,
     SupersetDashboardCount,
@@ -84,16 +87,18 @@ MOCK_DASHBOARD_DB = FetchDashboard(**mock_data["dashboard-db"])
 
 EXPECTED_DASH_SERVICE = DashboardService(
     id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb",
-    fullyQualifiedName=FullyQualifiedEntityName(__root__="test_supserset"),
+    fullyQualifiedName=FullyQualifiedEntityName("test_supserset"),
     name="test_supserset",
     connection=DashboardConnection(),
     serviceType=DashboardServiceType.Superset,
 )
-EXPECTED_USER = EntityReference(id="81af89aa-1bab-41aa-a567-5e68f78acdc0", type="user")
+EXPECTED_USER = EntityReferenceList(
+    root=[EntityReference(id="81af89aa-1bab-41aa-a567-5e68f78acdc0", type="user")]
+)
 
 MOCK_DB_MYSQL_SERVICE_1 = DatabaseService(
     id="c3eb265f-5445-4ad3-ba5e-797d3a307122",
-    fullyQualifiedName=FullyQualifiedEntityName(__root__="test_mysql"),
+    fullyQualifiedName=FullyQualifiedEntityName("test_mysql"),
     name="test_mysql",
     connection=DatabaseConnection(
         config=MysqlConnection(
@@ -107,7 +112,7 @@ MOCK_DB_MYSQL_SERVICE_1 = DatabaseService(
 
 MOCK_DB_MYSQL_SERVICE_2 = DatabaseService(
     id="c3eb265f-5445-4ad3-ba5e-797d3a307122",
-    fullyQualifiedName=FullyQualifiedEntityName(__root__="test_mysql"),
+    fullyQualifiedName=FullyQualifiedEntityName("test_mysql"),
     name="test_mysql",
     connection=DatabaseConnection(
         config=MysqlConnection(
@@ -132,7 +137,7 @@ MOCK_DASHBOARD_INPUT = {
 
 MOCK_DB_POSTGRES_SERVICE = DatabaseService(
     id="c3eb265f-5445-4ad3-ba5e-797d3a307122",
-    fullyQualifiedName=FullyQualifiedEntityName(__root__="test_postgres"),
+    fullyQualifiedName=FullyQualifiedEntityName("test_postgres"),
     name="test_postgres",
     connection=DatabaseConnection(
         config=PostgresConnection(
@@ -148,8 +153,8 @@ MOCK_DB_POSTGRES_SERVICE = DatabaseService(
 EXPECTED_CHART_ENTITY = [
     Chart(
         id=uuid.uuid4(),
-        name=37,
-        fullyQualifiedName=FullyQualifiedEntityName(__root__="test_supserset.37"),
+        name="37",
+        fullyQualifiedName=FullyQualifiedEntityName("test_supserset.37"),
         service=EntityReference(
             id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb", type="dashboardService"
         ),
@@ -157,29 +162,27 @@ EXPECTED_CHART_ENTITY = [
 ]
 
 EXPECTED_DASH = CreateDashboardRequest(
-    name=14,
+    name="14",
     displayName="My DASH",
     sourceUrl="https://my-superset.com/superset/dashboard/14/",
     charts=[chart.fullyQualifiedName for chart in EXPECTED_CHART_ENTITY],
     service=EXPECTED_DASH_SERVICE.fullyQualifiedName,
-    owner=EXPECTED_USER,
+    owners=EXPECTED_USER,
 )
 
 
 EXPECTED_API_DASHBOARD = CreateDashboardRequest(
-    name=EntityName(__root__="10"),
+    name=EntityName("10"),
     displayName="Unicode Test",
     description=None,
     dashboardType=DashboardType.Dashboard.value,
-    sourceUrl=SourceUrl(
-        __root__="http://localhost:54510/superset/dashboard/unicode-test/"
-    ),
+    sourceUrl=SourceUrl("http://localhost:54510/superset/dashboard/unicode-test/"),
     project=None,
     charts=[],
     dataModels=None,
     tags=None,
-    owner=None,
-    service=FullyQualifiedEntityName(__root__="test_supserset"),
+    owners=None,
+    service=FullyQualifiedEntityName("test_supserset"),
     extension=None,
     domain=None,
     dataProducts=None,
@@ -188,7 +191,7 @@ EXPECTED_API_DASHBOARD = CreateDashboardRequest(
 )
 
 EXPECTED_CHART = CreateChartRequest(
-    name=1,
+    name="1",
     displayName="Rural",
     description="desc",
     chartType=ChartType.Other.value,
@@ -196,19 +199,24 @@ EXPECTED_CHART = CreateChartRequest(
     service=EXPECTED_DASH_SERVICE.fullyQualifiedName,
 )
 EXPECTED_CHART_2 = CreateChartRequest(
-    name=EntityName(__root__="69"),
+    name=EntityName("69"),
     displayName="Unicode Cloud",
     description=None,
     chartType=ChartType.Other.value,
-    sourceUrl=SourceUrl(__root__="http://localhost:54510/explore/?slice_id=69"),
+    sourceUrl=SourceUrl("http://localhost:54510/explore/?slice_id=69"),
     tags=None,
-    owner=None,
-    service=FullyQualifiedEntityName(__root__="test_supserset"),
+    owners=None,
+    service=FullyQualifiedEntityName("test_supserset"),
     domain=None,
     dataProducts=None,
     lifeCycle=None,
     sourceHash=None,
 )
+MOCK_DATASOURCE = [
+    FetchColumn(
+        id=11, type="INT()", column_name="Population", table_name="sample_table"
+    )
+]
 
 # EXPECTED_ALL_CHARTS = {37: MOCK_CHART}
 # EXPECTED_ALL_CHARTS_DB = {37: MOCK_CHART_DB}
@@ -405,7 +413,9 @@ class SupersetUnitTest(TestCase):
                 },
             },
         }
-        self.config = OpenMetadataWorkflowConfig.parse_obj(MOCK_SUPERSET_API_CONFIG)
+        self.config = OpenMetadataWorkflowConfig.model_validate(
+            MOCK_SUPERSET_API_CONFIG
+        )
 
         self.superset_api: SupersetSource = SupersetSource.create(
             MOCK_SUPERSET_API_CONFIG["source"],
@@ -414,7 +424,7 @@ class SupersetUnitTest(TestCase):
         self.assertEqual(type(self.superset_api), SupersetAPISource)
         self.superset_api.context.get().__dict__[
             "dashboard_service"
-        ] = EXPECTED_DASH_SERVICE.fullyQualifiedName.__root__
+        ] = EXPECTED_DASH_SERVICE.fullyQualifiedName.root
 
         self.superset_db: SupersetSource = SupersetSource.create(
             MOCK_SUPERSET_DB_CONFIG["source"],
@@ -423,7 +433,7 @@ class SupersetUnitTest(TestCase):
         self.assertEqual(type(self.superset_db), SupersetDBSource)
         self.superset_db.context.get().__dict__[
             "dashboard_service"
-        ] = EXPECTED_DASH_SERVICE.fullyQualifiedName.__root__
+        ] = EXPECTED_DASH_SERVICE.fullyQualifiedName.root
 
     def test_create(self):
         """
@@ -473,6 +483,22 @@ class SupersetUnitTest(TestCase):
         )
         self.assertEqual(result, [69])
 
+    def test_datamodels_of_dashboard(self):
+        """
+        Mock the client and check that we get a list
+        """
+        self.superset_api.prepare()
+        result = self.superset_api.yield_datamodel(MOCK_DASHBOARD)
+        self.assertEqual(len(list(result)), 1)
+
+    def test_datamodels_of_db_dashboard(self):
+        """
+        Mock the db client and check that we get a list
+        """
+        self.superset_db.prepare()
+        result = self.superset_db.yield_datamodel(MOCK_DASHBOARD_DB)
+        self.assertEqual(len(list(result)), 1)
+
     def test_fetch_chart_db(self):
         """
         test fetch chart method of db source
@@ -488,19 +514,19 @@ class SupersetUnitTest(TestCase):
         # TEST API SOURCE
         dashboard = next(self.superset_api.yield_dashboard(MOCK_DASHBOARD)).right
         EXPECTED_API_DASHBOARD.sourceUrl = SourceUrl(
-            __root__=f"http://{superset_container.get_container_host_ip()}:{superset_container.get_exposed_port(8088)}{MOCK_DASHBOARD.url}"
+            f"http://{superset_container.get_container_host_ip()}:{superset_container.get_exposed_port(8088)}{MOCK_DASHBOARD.url}"
         )
         self.assertEqual(dashboard, EXPECTED_API_DASHBOARD)
 
         # TEST DB SOURCE
         self.superset_db.context.get().__dict__["charts"] = [
-            chart.name.__root__ for chart in EXPECTED_CHART_ENTITY
+            chart.name.root for chart in EXPECTED_CHART_ENTITY
         ]
         dashboard = next(self.superset_db.yield_dashboard(MOCK_DASHBOARD_DB)).right
         EXPECTED_DASH.sourceUrl = SourceUrl(
-            __root__=f"http://{superset_container.get_container_host_ip()}:{superset_container.get_exposed_port(8088)}/superset/dashboard/14/"
+            f"http://{superset_container.get_container_host_ip()}:{superset_container.get_exposed_port(8088)}/superset/dashboard/14/"
         )
-        EXPECTED_DASH.owner = dashboard.owner
+        EXPECTED_DASH.owners = dashboard.owners
         self.assertEqual(dashboard, EXPECTED_DASH)
 
     def test_yield_dashboard_chart(self):
@@ -510,7 +536,7 @@ class SupersetUnitTest(TestCase):
             self.superset_api.yield_dashboard_chart(MOCK_DASHBOARD)
         ).right
         EXPECTED_CHART_2.sourceUrl = SourceUrl(
-            __root__=f"http://{superset_container.get_container_host_ip()}:{superset_container.get_exposed_port(8088)}/explore/?slice_id={dashboard_chart.name.__root__}"
+            f"http://{superset_container.get_container_host_ip()}:{superset_container.get_exposed_port(8088)}/explore/?slice_id={dashboard_chart.name.root}"
         )
         EXPECTED_CHART_2.displayName = dashboard_chart.displayName
         EXPECTED_CHART_2.chartType = dashboard_chart.chartType
@@ -523,7 +549,7 @@ class SupersetUnitTest(TestCase):
             self.superset_db.yield_dashboard_chart(MOCK_DASHBOARD_DB)
         ).right
         EXPECTED_CHART.sourceUrl = SourceUrl(
-            __root__=f"http://{superset_container.get_container_host_ip()}:{superset_container.get_exposed_port(8088)}/explore/?slice_id=1"
+            f"http://{superset_container.get_container_host_ip()}:{superset_container.get_exposed_port(8088)}/explore/?slice_id=1"
         )
         self.assertEqual(dashboard_charts, EXPECTED_CHART)
 
@@ -582,3 +608,11 @@ class SupersetUnitTest(TestCase):
             ),
             "/app/superset_home/superset.db",
         )
+
+    def test_broken_column_type_in_datamodel(self):
+        """
+        Test column parsing with column containing () in datatype
+        """
+        self.superset_db.prepare()
+        parsed_datasource = self.superset_db.get_column_info(MOCK_DATASOURCE)
+        assert parsed_datasource[0].dataType.value == "INT"

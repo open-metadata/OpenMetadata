@@ -13,6 +13,13 @@ SQL Queries used during ingestion
 """
 
 import textwrap
+from typing import List
+
+from sqlalchemy import text
+from sqlalchemy.orm.session import Session
+
+from metadata.utils.profiler_utils import QueryResult
+from metadata.utils.time_utils import datetime_to_timestamp
 
 # Not able to use SYS_QUERY_HISTORY here. Few users not getting any results
 REDSHIFT_SQL_STATEMENT = textwrap.dedent(
@@ -222,11 +229,10 @@ SELECT datname FROM pg_database
 """
 
 REDSHIFT_TEST_GET_QUERIES = """
-(select 1 from pg_catalog.svv_table_info limit 1)
-UNION
-(select 1 from pg_catalog.stl_querytext limit 1)
-UNION
-(select 1 from pg_catalog.stl_query limit 1)
+SELECT 
+    has_table_privilege('svv_table_info', 'SELECT') as can_access_svv_table_info,
+    has_table_privilege('stl_querytext', 'SELECT') as can_access_stl_querytext,
+    has_table_privilege('stl_query', 'SELECT') as can_access_stl_query;
 """
 
 
@@ -237,7 +243,7 @@ REDSHIFT_TEST_PARTITION_DETAILS = "select * from SVV_TABLE_INFO limit 1"
 # hence we are appending "create view <schema>.<table> as " to select query
 # to generate the column level lineage
 REDSHIFT_GET_ALL_RELATIONS = """
-    SELECT
+    (SELECT
         c.relkind,
         n.oid as "schema_oid",
         n.nspname as "schema",
@@ -248,8 +254,7 @@ REDSHIFT_GET_ALL_RELATIONS = """
         AS "diststyle",
         c.relowner AS "owner_id",
         u.usename AS "owner_name",
-        TRIM(TRAILING ';' FROM
-        'create view ' || n.nspname || '.' || c.relname || ' as ' ||pg_catalog.pg_get_viewdef(c.oid, true))
+        CAST(pg_catalog.pg_get_viewdef(c.oid, true) AS TEXT)
         AS "view_definition",
         pg_catalog.array_to_string(c.relacl, '\n') AS "privileges"
     FROM pg_catalog.pg_class c
@@ -257,8 +262,9 @@ REDSHIFT_GET_ALL_RELATIONS = """
             JOIN pg_catalog.pg_user u ON u.usesysid = c.relowner
     WHERE c.relkind IN ('r', 'v', 'm', 'S', 'f')
         AND n.nspname !~ '^pg_' {schema_clause} {table_clause}
+        {limit_clause})
     UNION
-    SELECT
+    (SELECT
         'r' AS "relkind",
         s.esoid AS "schema_oid",
         s.schemaname AS "schema",
@@ -274,7 +280,8 @@ REDSHIFT_GET_ALL_RELATIONS = """
         JOIN svv_external_schemas s ON s.schemaname = t.schemaname
         JOIN pg_catalog.pg_user u ON u.usesysid = s.esowner
     where 1 {schema_clause} {table_clause}
-    ORDER BY "relkind", "schema_oid", "schema";
+    ORDER BY "relkind", "schema_oid", "schema"
+    {limit_clause});
     """
 
 
@@ -321,7 +328,7 @@ Q_HISTORY as (
         pid as query_session_id,
         starttime as query_start_time,
         endtime as query_end_time,
-        userid as query_user_name
+        b.usename as query_user_name
     from STL_QUERY q
     join pg_catalog.pg_user b
       on b.usesysid = q.userid
@@ -332,16 +339,16 @@ Q_HISTORY as (
       and userid <> 1
 )
 select
-    sp.procedure_text,
+    trim(sp.procedure_text) procedure_text,
     sp.procedure_start_time,
     sp.procedure_end_time,
-    q.query_text,
+    trim(q.query_text) query_text,
     q.query_type,
-    q.query_database_name,
+    trim(q.query_database_name) query_database_name,
     null as query_schema_name,
     q.query_start_time,
     q.query_end_time,
-    q.query_user_name
+    trim(q.query_user_name) query_user_name
 from SP_HISTORY sp
   join Q_HISTORY q
     on sp.procedure_session_id = q.query_session_id
@@ -375,3 +382,85 @@ WHERE status = 'success'
   and end_time >= '{start_date}'
 ORDER BY end_time DESC
 """
+
+
+STL_QUERY = """
+    with data as (
+        select
+            {alias}.*
+        from 
+            pg_catalog.stl_insert si
+            {join_type} join pg_catalog.stl_delete sd on si.query = sd.query
+        where 
+            {condition}
+    )
+	SELECT
+        SUM(data."rows") AS "rows",
+        sti."database",
+        sti."schema",
+        sti."table",
+        DATE_TRUNC('second', data.starttime) AS starttime
+    FROM
+        data
+        INNER JOIN  pg_catalog.svv_table_info sti ON data.tbl = sti.table_id
+    where
+        sti."database" = '{database}' AND
+       	sti."schema" = '{schema}' AND
+        "rows" != 0 AND
+        DATE(data.starttime) >= CURRENT_DATE - 1
+    GROUP BY 2,3,4,5
+    ORDER BY 5 DESC
+"""
+
+
+def get_query_results(
+    session: Session,
+    query,
+    operation,
+) -> List[QueryResult]:
+    """get query results either from cache or from the database
+
+    Args:
+        session (Session): session
+        query (_type_): query
+        operation (_type_): operation
+
+    Returns:
+        List[QueryResult]:
+    """
+    cursor = session.execute(text(query))
+    results = [
+        QueryResult(
+            database_name=row.database,
+            schema_name=row.schema,
+            table_name=row.table,
+            query_text=None,
+            query_type=operation,
+            start_time=row.starttime,
+            rows=row.rows,
+        )
+        for row in cursor
+    ]
+
+    return results
+
+
+def get_metric_result(ddls: List[QueryResult], table_name: str) -> List:
+    """Given query results, retur the metric result
+
+    Args:
+        ddls (List[QueryResult]): list of query results
+        table_name (str): table name
+
+    Returns:
+        List:
+    """
+    return [
+        {
+            "timestamp": datetime_to_timestamp(ddl.start_time, milliseconds=True),
+            "operation": ddl.query_type,
+            "rowsAffected": ddl.rows,
+        }
+        for ddl in ddls
+        if ddl.table_name == table_name
+    ]

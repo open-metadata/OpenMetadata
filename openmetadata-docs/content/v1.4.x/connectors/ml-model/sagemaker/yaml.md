@@ -177,7 +177,7 @@ Find more information about [Source Identity](https://docs.aws.amazon.com/STS/la
 {% codeBlock fileName="filename.yaml" %}
 
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: sagemaker
   serviceName: local_sagemaker

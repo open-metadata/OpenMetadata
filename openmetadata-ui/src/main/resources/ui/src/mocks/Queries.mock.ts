@@ -38,15 +38,17 @@ export const MOCK_QUERIES = [
       type: 'databaseService',
       fullyQualifiedName: 'redshift',
     },
-    owner: {
-      id: '471353cb-f925-4c4e-be6c-14da2c0b00ce',
-      type: 'user',
-      name: 'aaron_johnson0',
-      fullyQualifiedName: 'aaron_johnson0',
-      displayName: 'Aaron Johnson',
-      deleted: false,
-      href: 'http://localhost:8585/api/v1/users/471353cb-f925-4c4e-be6c-14da2c0b00ce',
-    },
+    owners: [
+      {
+        id: '471353cb-f925-4c4e-be6c-14da2c0b00ce',
+        type: 'user',
+        name: 'aaron_johnson0',
+        fullyQualifiedName: 'aaron_johnson0',
+        displayName: 'Aaron Johnson',
+        deleted: false,
+        href: 'http://localhost:8585/api/v1/users/471353cb-f925-4c4e-be6c-14da2c0b00ce',
+      },
+    ],
     votes: {
       upVotes: 1,
       downVotes: 1,

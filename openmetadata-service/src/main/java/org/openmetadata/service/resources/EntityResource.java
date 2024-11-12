@@ -1,5 +1,19 @@
+/*
+ *  Copyright 2021 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
 package org.openmetadata.service.resources;
 
+import static javax.ws.rs.client.Entity.entity;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.EventType.ENTITY_CREATED;
@@ -14,7 +28,9 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.UUID;
+import java.util.concurrent.ExecutorService;
 import javax.json.JsonPatch;
+import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
@@ -31,6 +47,7 @@ import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.security.Authorizer;
@@ -38,6 +55,8 @@ import org.openmetadata.service.security.policyevaluator.CreateResourceContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
+import org.openmetadata.service.util.AsyncService;
+import org.openmetadata.service.util.CSVExportResponse;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.RestUtil;
@@ -45,6 +64,7 @@ import org.openmetadata.service.util.RestUtil.DeleteResponse;
 import org.openmetadata.service.util.RestUtil.PatchResponse;
 import org.openmetadata.service.util.RestUtil.PutResponse;
 import org.openmetadata.service.util.ResultList;
+import org.openmetadata.service.util.WebsocketNotificationHandler;
 
 @Slf4j
 public abstract class EntityResource<T extends EntityInterface, K extends EntityRepository<T>> {
@@ -53,16 +73,18 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
   protected final Set<String> allowedFields;
   @Getter protected final K repository;
   protected final Authorizer authorizer;
+  protected final Limits limits;
   protected final Map<String, MetadataOperation> fieldsToViewOperations = new HashMap<>();
 
-  protected EntityResource(String entityType, Authorizer authorizer) {
+  protected EntityResource(String entityType, Authorizer authorizer, Limits limits) {
     this.entityType = entityType;
     this.repository = (K) Entity.getEntityRepository(entityType);
     this.entityClass = (Class<T>) Entity.getEntityClassFromType(entityType);
     allowedFields = repository.getAllowedFields();
     this.authorizer = authorizer;
+    this.limits = limits;
     addViewOperation(
-        "owner,followers,votes,tags,extension,domain,dataProducts,experts", VIEW_BASIC);
+        "owners,followers,votes,tags,extension,domain,dataProducts,experts", VIEW_BASIC);
     Entity.registerResourcePermissions(entityType, getEntitySpecificOperations());
   }
 
@@ -82,7 +104,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
   }
 
   protected T addHref(UriInfo uriInfo, T entity) {
-    Entity.withHref(uriInfo, entity.getOwner());
+    Entity.withHref(uriInfo, entity.getOwners());
     Entity.withHref(uriInfo, entity.getFollowers());
     Entity.withHref(uriInfo, entity.getExperts());
     Entity.withHref(uriInfo, entity.getReviewers());
@@ -112,6 +134,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     Fields fields = getFields(fieldsParam);
     OperationContext listOperationContext =
         new OperationContext(entityType, getViewOperations(fields));
+
     return listInternal(
         uriInfo,
         securityContext,
@@ -137,6 +160,10 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     RestUtil.validateCursors(before, after);
     authorizer.authorize(securityContext, operationContext, resourceContext);
 
+    // Add Domain Filter
+    EntityUtil.addDomainQueryParam(securityContext, filter);
+
+    // List
     ResultList<T> resultList;
     if (before != null) { // Reverse paging
       resultList = repository.listBefore(uriInfo, fields, filter, limitParam, before);
@@ -259,6 +286,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     OperationContext operationContext = new OperationContext(entityType, CREATE);
     CreateResourceContext<T> createResourceContext =
         new CreateResourceContext<>(entityType, entity);
+    limits.enforceLimits(securityContext, createResourceContext, operationContext);
     authorizer.authorize(securityContext, operationContext, createResourceContext);
     entity = addHref(uriInfo, repository.create(uriInfo, entity));
     return Response.created(entity.getHref()).entity(entity).build();
@@ -274,6 +302,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     if (operation == CREATE) {
       CreateResourceContext<T> createResourceContext =
           new CreateResourceContext<>(entityType, entity);
+      limits.enforceLimits(securityContext, createResourceContext, operationContext);
       authorizer.authorize(securityContext, operationContext, createResourceContext);
       entity = addHref(uriInfo, repository.create(uriInfo, entity));
       return new PutResponse<>(Response.Status.CREATED, entity, ENTITY_CREATED).toResponse();
@@ -315,6 +344,9 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     DeleteResponse<T> response =
         repository.delete(securityContext.getUserPrincipal().getName(), id, recursive, hardDelete);
     repository.deleteFromSearch(response.entity(), response.changeType());
+    if (hardDelete) {
+      limits.invalidateCache(entityType);
+    }
     addHref(uriInfo, response.entity());
     return response.toResponse();
   }
@@ -348,6 +380,28 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
         Entity.getEntityTypeFromObject(response.getEntity()),
         response.getEntity().getId());
     return response.toResponse();
+  }
+
+  public Response exportCsvInternalAsync(SecurityContext securityContext, String name) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.VIEW_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
+    String jobId = UUID.randomUUID().toString();
+    ExecutorService executorService = AsyncService.getInstance().getExecutorService();
+    executorService.submit(
+        () -> {
+          try {
+            String csvData =
+                repository.exportToCsv(name, securityContext.getUserPrincipal().getName());
+            WebsocketNotificationHandler.sendCsvExportCompleteNotification(
+                jobId, securityContext, csvData);
+          } catch (Exception e) {
+            WebsocketNotificationHandler.sendCsvExportFailedNotification(
+                jobId, securityContext, e.getMessage());
+          }
+        });
+    CSVExportResponse response = new CSVExportResponse(jobId, "Export initiated successfully.");
+    return Response.accepted().entity(response).type(MediaType.APPLICATION_JSON).build();
   }
 
   public String exportCsvInternal(SecurityContext securityContext, String name) throws IOException {
@@ -412,7 +466,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     for (String field : fields) {
       if (allowedFields.contains(field)) {
         fieldsToViewOperations.put(field, operation);
-      } else if (!"owner,followers,votes,tags,extension,domain,dataProducts,experts"
+      } else if (!"owners,followers,votes,tags,extension,domain,dataProducts,experts"
           .contains(field)) {
         // Some common fields for all the entities might be missing. Ignore it.
         throw new IllegalArgumentException(CatalogExceptionMessage.invalidField(field));

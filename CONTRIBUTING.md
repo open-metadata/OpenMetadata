@@ -10,4 +10,4 @@ Once joining our Slack we recommend Introducing yourself in the #introductions c
 
 If you need help getting started in contributing, you can reach out in the #support channel and ask if anyone would be available to get you up to speed or just answer some questions.  
 
-If you just have suggestions for how to improve OpenMetadata you can submit your feedback in #feature-requests
+If you just have suggestions for how to improve OpenMetadata you can submit your feedback in #feature-requests. If you have a fix or contribution in mind but need some guidance, please post in the #contributor channel with a description of the change before opening a new Github issue. 

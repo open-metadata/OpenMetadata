@@ -13,12 +13,18 @@
 Test database connectors with CLI
 """
 from abc import abstractmethod
-from typing import List, Optional
+from datetime import datetime
+from typing import List, Optional, Tuple
 from unittest import TestCase
 
 import pytest
+from pydantic import TypeAdapter
 
-from metadata.generated.schema.entity.data.table import Table
+from _openmetadata_testutils.pydantic.test_utils import assert_equal_pydantic_objects
+from metadata.data_quality.api.models import TestCaseDefinition
+from metadata.generated.schema.entity.data.table import SystemProfile, Table
+from metadata.generated.schema.tests.basic import TestCaseResult
+from metadata.generated.schema.tests.testCase import TestCase as OMTestCase
 from metadata.ingestion.api.status import Status
 
 from .e2e_types import E2EType
@@ -67,6 +73,7 @@ class CliDBBase(TestCase):
             result = self.run_command("profile")
             sink_status, source_status = self.retrieve_statuses(result)
             self.assert_for_table_with_profiler(source_status, sink_status)
+            self.system_profile_assertions()
 
         @pytest.mark.order(3)
         def test_delete_table_is_marked_as_deleted(self) -> None:
@@ -113,7 +120,7 @@ class CliDBBase(TestCase):
             """
             self.build_config_file(
                 E2EType.INGEST_DB_FILTER_SCHEMA,
-                {"excludes": self.get_includes_schemas()},
+                {"excludes": self.get_excludes_schemas()},
             )
             result = self.run_command()
             sink_status, source_status = self.retrieve_statuses(result)
@@ -208,6 +215,59 @@ class CliDBBase(TestCase):
                     sink_status,
                 )
 
+        @pytest.mark.order(12)
+        def test_data_quality(self) -> None:
+            """12. Test data quality for the connector"""
+            if self.get_data_quality_table() is None:
+                return
+            self.delete_table_and_view()
+            self.create_table_and_view()
+            self.build_config_file()
+            self.run_command()
+            table: Table = self.openmetadata.get_by_name(
+                Table, self.get_data_quality_table(), nullable=False
+            )
+            test_case_definitions = self.get_test_case_definitions()
+            self.build_config_file(
+                E2EType.DATA_QUALITY,
+                {
+                    "entity_fqn": table.fullyQualifiedName.root,
+                    "test_case_definitions": TypeAdapter(
+                        List[TestCaseDefinition]
+                    ).dump_python(test_case_definitions),
+                },
+            )
+            result = self.run_command("test")
+            try:
+                sink_status, source_status = self.retrieve_statuses(result)
+                self.assert_status_for_data_quality(source_status, sink_status)
+                test_case_entities = [
+                    self.openmetadata.get_by_name(
+                        OMTestCase,
+                        ".".join([table.fullyQualifiedName.root, tcd.name]),
+                        fields=["*"],
+                        nullable=False,
+                    )
+                    for tcd in test_case_definitions
+                ]
+                expected = self.get_expected_test_case_results()
+                try:
+                    for test_case, expected in zip(test_case_entities, expected):
+                        assert_equal_pydantic_objects(
+                            expected.model_copy(
+                                update={"timestamp": test_case.testCaseResult.timestamp}
+                            ),
+                            test_case.testCaseResult,
+                        )
+                finally:
+                    for tc in test_case_entities:
+                        self.openmetadata.delete(
+                            OMTestCase, tc.id, recursive=True, hard_delete=True
+                        )
+            except AssertionError:
+                print(result)
+                raise
+
         def retrieve_table(self, table_name_fqn: str) -> Table:
             return self.openmetadata.get_by_name(entity=Table, fqn=table_name_fqn)
 
@@ -297,6 +357,10 @@ class CliDBBase(TestCase):
         def get_includes_schemas() -> List[str]:
             raise NotImplementedError()
 
+        @classmethod
+        def get_excludes_schemas(cls) -> List[str]:
+            return cls.get_includes_schemas()
+
         @staticmethod
         @abstractmethod
         def get_includes_tables() -> List[str]:
@@ -342,3 +406,48 @@ class CliDBBase(TestCase):
                     "config": {"tableConfig": [config]},
                 }
             }
+
+        def get_data_quality_table(self):
+            return None
+
+        def get_test_case_definitions(self) -> List[TestCaseDefinition]:
+            pass
+
+        def get_expected_test_case_results(self) -> List[TestCaseResult]:
+            pass
+
+        def assert_status_for_data_quality(self, source_status, sink_status):
+            pass
+
+        def system_profile_assertions(self):
+            cases = self.get_system_profile_cases()
+            for table_fqn, expected_profile in cases:
+                actual_profiles = self.openmetadata.get_profile_data(
+                    table_fqn,
+                    start_ts=int((datetime.now().timestamp() - 600) * 1000),
+                    end_ts=int(datetime.now().timestamp() * 1000),
+                    profile_type=SystemProfile,
+                ).entities
+                actual_profiles = sorted(
+                    actual_profiles,
+                    key=lambda x: (-x.timestamp.root, x.operation.value),
+                )
+                expected_profile = sorted(
+                    expected_profile,
+                    key=lambda x: (-x.timestamp.root, x.operation.value),
+                )
+                assert len(actual_profiles) >= len(expected_profile)
+                for expected, actual in zip(expected_profile, actual_profiles):
+                    try:
+                        assert_equal_pydantic_objects(
+                            expected.model_copy(update={"timestamp": actual.timestamp}),
+                            actual,
+                        )
+                    except AssertionError as e:
+                        raise AssertionError(
+                            f"System metrics profile did not return exepcted results for table: {table_fqn}"
+                        ) from e
+
+        def get_system_profile_cases(self) -> List[Tuple[str, List[SystemProfile]]]:
+            """Return a list of tuples with the table fqn and the expected system profile"""
+            return []

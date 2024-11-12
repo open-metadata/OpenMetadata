@@ -14,8 +14,9 @@ import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button, Modal } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { isEqual, isUndefined, uniqueId, uniqWith } from 'lodash';
+import { isEqual, isUndefined, uniq, uniqueId, uniqWith } from 'lodash';
 import { LoadingState } from 'Models';
+import QueryString from 'qs';
 import React, {
   createContext,
   DragEvent,
@@ -59,7 +60,6 @@ import {
 import { SourceType } from '../../components/SearchedData/SearchedData.interface';
 import {
   ELEMENT_DELETE_STATE,
-  ZOOM_TRANSITION_DURATION,
   ZOOM_VALUE,
 } from '../../constants/Lineage.constants';
 import { mockDatasetData } from '../../constants/mockTourData.constants';
@@ -69,15 +69,24 @@ import {
   EntityType,
 } from '../../enums/entity.enum';
 import { AddLineage } from '../../generated/api/lineage/addLineage';
+import { LineageSettings } from '../../generated/configuration/lineageSettings';
+import { LineageLayer } from '../../generated/settings/settings';
 import {
   ColumnLineage,
   EntityReference,
   LineageDetails,
 } from '../../generated/type/entityLineage';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
+import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../hooks/useFqn';
-import { getLineageDataByFQN, updateLineageEdge } from '../../rest/lineageAPI';
+import {
+  getDataQualityLineage,
+  getLineageDataByFQN,
+  updateLineageEdge,
+} from '../../rest/lineageAPI';
 import {
   addLineageHandler,
+  centerNodePosition,
   createEdges,
   createNewEdge,
   createNodes,
@@ -101,11 +110,11 @@ import {
   removeLineageHandler,
 } from '../../utils/EntityLineageUtils';
 import { getEntityReferenceFromEntity } from '../../utils/EntityUtils';
+import tableClassBase from '../../utils/TableClassBase';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useTourProvider } from '../TourProvider/TourProvider';
 import {
   LineageContextType,
-  LineageLayerView,
   LineageProviderProps,
   UpstreamDownstreamData,
 } from './LineageProvider.interface';
@@ -114,9 +123,12 @@ export const LineageContext = createContext({} as LineageContextType);
 
 const LineageProvider = ({ children }: LineageProviderProps) => {
   const { t } = useTranslation();
-
   const { fqn: decodedFqn } = useFqn();
+  const location = useCustomLocation();
   const { isTourOpen, isTourPage } = useTourProvider();
+  const { appPreferences } = useApplicationStore();
+  const defaultLineageConfig = appPreferences?.lineageConfig as LineageSettings;
+  const isLineageSettingsLoaded = !isUndefined(defaultLineageConfig);
   const [reactFlowInstance, setReactFlowInstance] =
     useState<ReactFlowInstance>();
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
@@ -124,14 +136,11 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   const [selectedNode, setSelectedNode] = useState<SourceType>(
     {} as SourceType
   );
-  const [activeLayer, setActiveLayer] = useState<LineageLayerView[]>([
-    LineageLayerView.COLUMN,
-  ]);
+  const [activeLayer, setActiveLayer] = useState<LineageLayer[]>([]);
   const [activeNode, setActiveNode] = useState<Node>();
+  const [expandAllColumns, setExpandAllColumns] = useState(false);
   const [selectedColumn, setSelectedColumn] = useState<string>('');
   const [showAddEdgeModal, setShowAddEdgeModal] = useState<boolean>(false);
-  const [expandedNodes, setExpandedNodes] = useState<string[]>([]);
-  const [expandAllColumns, setExpandAllColumns] = useState(false);
   const [selectedEdge, setSelectedEdge] = useState<Edge>();
   const [entityLineage, setEntityLineage] = useState<EntityLineageResponse>({
     nodes: [],
@@ -158,6 +167,9 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   const [init, setInit] = useState(false);
   const [zoomValue, setZoomValue] = useState(ZOOM_VALUE);
   const [tracedNodes, setTracedNodes] = useState<string[]>([]);
+  const [columnsHavingLineage, setColumnsHavingLineage] = useState<string[]>(
+    []
+  );
   const [tracedColumns, setTracedColumns] = useState<string[]>([]);
   const [status, setStatus] = useState<LoadingState>('initial');
   const [newAddedNode, setNewAddedNode] = useState<Node>({} as Node);
@@ -175,6 +187,15 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   const [childMap, setChildMap] = useState<EntityReferenceChild>();
   const [paginationData, setPaginationData] = useState({});
   const { showModal } = useEntityExportModalProvider();
+
+  const lineageLayer = useMemo(() => {
+    const param = location.search;
+    const searchData = QueryString.parse(
+      param.startsWith('?') ? param.substring(1) : param
+    );
+
+    return searchData.layers as LineageLayer[] | undefined;
+  }, [location.search]);
 
   const initLineageChildMaps = useCallback(
     (
@@ -216,25 +237,63 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
           config,
           queryFilter
         );
+
+        const dqLineageResp =
+          entityType === EntityType.TABLE &&
+          tableClassBase.getAlertEnableStatus()
+            ? await getDataQualityLineage(fqn, config, queryFilter)
+            : { nodes: [], edges: [] };
+
         if (res) {
-          const { nodes = [], entity } = res;
+          const { nodes = [], entity, edges } = res;
           const allNodes = uniqWith(
             [...nodes, entity].filter(Boolean),
             isEqual
-          );
+          ).map((node) => {
+            return {
+              ...node,
+              isDqTestFailure:
+                dqLineageResp.nodes?.some((dqNode) => dqNode.id === node.id) ??
+                false,
+            };
+          });
+
+          const updatedEntity = {
+            ...entity,
+            isDqTestFailure:
+              dqLineageResp.nodes?.some((dqNode) => dqNode.id === entity.id) ??
+              false,
+          };
+
+          const updatedEdges = edges?.map((edge) => {
+            return {
+              ...edge,
+              isDqTestFailure:
+                dqLineageResp.edges?.some(
+                  (dqEdge) => dqEdge?.doc_id === edge?.doc_id
+                ) ?? false,
+            };
+          });
 
           if (
             entityType !== EntityType.PIPELINE &&
             entityType !== EntityType.STORED_PROCEDURE
           ) {
             const { map: childMapObj } = getChildMap(
-              { ...res, nodes: allNodes },
+              {
+                ...res,
+                nodes: allNodes,
+                edges: updatedEdges,
+                entity: updatedEntity,
+              },
               decodedFqn
             );
             setChildMap(childMapObj);
             const { nodes: newNodes, edges: newEdges } = getPaginatedChildMap(
               {
                 ...res,
+                entity: updatedEntity,
+                edges: updatedEdges,
                 nodes: allNodes,
               },
               childMapObj,
@@ -244,12 +303,14 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
 
             setEntityLineage({
               ...res,
+              entity: updatedEntity,
               nodes: newNodes,
-              edges: [...(res.edges ?? []), ...newEdges],
+              edges: [...(updatedEdges ?? []), ...newEdges],
             });
           } else {
             setEntityLineage({
               ...res,
+              entity: updatedEntity,
               nodes: allNodes,
             });
           }
@@ -375,7 +436,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     [nodes, edges]
   );
 
-  const onUpdateLayerView = useCallback((layers: LineageLayerView[]) => {
+  const onUpdateLayerView = useCallback((layers: LineageLayer[]) => {
     setActiveLayer(layers);
   }, []);
 
@@ -393,6 +454,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       );
 
       setTracedColumns(connectedColumnEdges);
+      setTracedNodes([]);
     },
     [nodes, edges]
   );
@@ -679,10 +741,6 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   }, []);
 
   const onInitReactFlow = (reactFlowInstance: ReactFlowInstance) => {
-    setTimeout(() => {
-      onLoad(reactFlowInstance);
-    }, 0);
-
     setReactFlowInstance(reactFlowInstance);
   };
 
@@ -701,39 +759,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   const toggleColumnView = useCallback(() => {
     const updatedVal = !expandAllColumns;
     setExpandAllColumns(updatedVal);
-    setNodes((prevNodes) => {
-      const updatedNode = prevNodes.map((node) => {
-        const nodeId = node.data.node.id;
-
-        // Update the expandedNodes state based on the toggle value
-        if (updatedVal && !expandedNodes.includes(nodeId)) {
-          setExpandedNodes((prevExpandedNodes) => [
-            ...prevExpandedNodes,
-            nodeId,
-          ]);
-        } else if (!updatedVal) {
-          setExpandedNodes((prevExpandedNodes) =>
-            prevExpandedNodes.filter((id) => id !== nodeId)
-          );
-        }
-
-        return node;
-      });
-
-      const { edge, node } = getLayoutedElements(
-        {
-          node: updatedNode,
-          edge: edges,
-        },
-        EntityLineageDirection.LEFT_RIGHT,
-        updatedVal
-      );
-
-      setEdges(edge);
-
-      return node;
-    });
-  }, [expandAllColumns, expandedNodes, edges]);
+  }, [expandAllColumns, edges]);
 
   const onRemove = useCallback(async () => {
     try {
@@ -1066,13 +1092,52 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   );
 
   const selectNode = (node: Node) => {
-    const { position } = node;
-    // moving selected node in center
-    reactFlowInstance?.setCenter(position.x, position.y, {
-      duration: ZOOM_TRANSITION_DURATION,
-      zoom: zoomValue,
-    });
+    centerNodePosition(node, reactFlowInstance);
   };
+
+  const repositionLayout = useCallback(
+    (activateNode = false) => {
+      const isColView = activeLayer.includes(LineageLayer.ColumnLevelLineage);
+      const { node, edge } = getLayoutedElements(
+        {
+          node: nodes,
+          edge: edges,
+        },
+        EntityLineageDirection.LEFT_RIGHT,
+        isColView,
+        isEditMode || expandAllColumns,
+        columnsHavingLineage
+      );
+
+      setNodes(node);
+      setEdges(edge);
+
+      const rootNode = node.find((n) => n.data.isRootNode);
+      if (!rootNode) {
+        if (activateNode && reactFlowInstance) {
+          onLoad(reactFlowInstance); // Call fitview in case of pipeline
+        }
+
+        return;
+      }
+
+      // Center the root node in the view
+      centerNodePosition(rootNode, reactFlowInstance);
+      if (activateNode) {
+        onNodeClick(rootNode);
+      }
+    },
+    [
+      reactFlowInstance,
+      activeLayer,
+      nodes,
+      edges,
+      onNodeClick,
+      columnsHavingLineage,
+      expandAllColumns,
+      isEditMode,
+    ]
+  );
 
   const redrawLineage = useCallback(
     (lineageData: EntityLineageResponse) => {
@@ -1087,15 +1152,17 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       const updatedNodes = createNodes(
         allNodes,
         lineageData.edges ?? [],
-        decodedFqn
+        decodedFqn,
+        activeLayer.includes(LineageLayer.ColumnLevelLineage)
       );
-      const updatedEdges = createEdges(
+      const { edges: updatedEdges, columnsHavingLineage } = createEdges(
         allNodes,
         lineageData.edges ?? [],
         decodedFqn
       );
       setNodes(updatedNodes);
       setEdges(updatedEdges);
+      setColumnsHavingLineage(columnsHavingLineage);
 
       // Get upstream downstream nodes and edges data
       const data = getUpstreamDownstreamNodesEdges(
@@ -1105,18 +1172,40 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       );
       setUpstreamDownstreamData(data);
 
-      if (activeNode) {
+      if (activeNode && !isEditMode) {
         selectNode(activeNode);
       }
     },
-    [decodedFqn, activeNode]
+    [decodedFqn, activeNode, activeLayer, isEditMode]
   );
 
   useEffect(() => {
-    if (decodedFqn && entityType) {
+    if (defaultLineageConfig) {
+      setLineageConfig({
+        upstreamDepth: defaultLineageConfig.upstreamDepth,
+        downstreamDepth: defaultLineageConfig.downstreamDepth,
+        nodesPerLayer: 50,
+      });
+
+      setActiveLayer(
+        defaultLineageConfig.lineageLayer === LineageLayer.EntityLineage
+          ? []
+          : [defaultLineageConfig.lineageLayer]
+      );
+    }
+  }, [defaultLineageConfig]);
+
+  useEffect(() => {
+    if (decodedFqn && entityType && isLineageSettingsLoaded) {
       fetchLineageData(decodedFqn, entityType, lineageConfig);
     }
-  }, [lineageConfig, decodedFqn, queryFilter, entityType]);
+  }, [
+    lineageConfig,
+    decodedFqn,
+    queryFilter,
+    entityType,
+    isLineageSettingsLoaded,
+  ]);
 
   useEffect(() => {
     if (!loading) {
@@ -1164,18 +1253,14 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   }, [isEditMode, deletePressed, backspacePressed, activeNode, selectedEdge]);
 
   useEffect(() => {
-    const { node, edge } = getLayoutedElements(
-      {
-        node: nodes,
-        edge: edges,
-      },
-      EntityLineageDirection.LEFT_RIGHT,
-      activeLayer.includes(LineageLayerView.COLUMN)
-    );
+    repositionLayout();
+  }, [activeLayer, expandAllColumns, isEditMode]);
 
-    setNodes(node);
-    setEdges(edge);
-  }, [activeLayer]);
+  useEffect(() => {
+    if (reactFlowInstance?.viewportInitialized) {
+      repositionLayout(true); // Activate the root node
+    }
+  }, [reactFlowInstance?.viewportInitialized]);
 
   const activityFeedContextValues = useMemo(() => {
     return {
@@ -1191,13 +1276,14 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       selectedColumn,
       zoomValue,
       status,
-      expandedNodes,
       tracedNodes,
       tracedColumns,
-      expandAllColumns,
       upstreamDownstreamData,
       init,
       activeLayer,
+      columnsHavingLineage,
+      expandAllColumns,
+      toggleColumnView,
       onInitReactFlow,
       onPaneClick,
       onConnect,
@@ -1210,7 +1296,6 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       onZoomUpdate,
       updateEntityType,
       onDrawerClose,
-      toggleColumnView,
       loadChildNodesHandler,
       fetchLineageData,
       removeNodeHandler,
@@ -1236,13 +1321,14 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     selectedColumn,
     zoomValue,
     status,
-    expandedNodes,
     tracedNodes,
     tracedColumns,
-    expandAllColumns,
     upstreamDownstreamData,
     init,
     activeLayer,
+    columnsHavingLineage,
+    expandAllColumns,
+    toggleColumnView,
     onInitReactFlow,
     onPaneClick,
     onConnect,
@@ -1257,7 +1343,6 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     updateEntityType,
     loadChildNodesHandler,
     fetchLineageData,
-    toggleColumnView,
     removeNodeHandler,
     onNodeClick,
     onEdgeClick,
@@ -1279,6 +1364,12 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       );
     }
   }, [isTourOpen, isTourPage]);
+
+  useEffect(() => {
+    if (lineageLayer) {
+      setActiveLayer((pre) => uniq([...lineageLayer, ...pre]));
+    }
+  }, [lineageLayer]);
 
   return (
     <LineageContext.Provider value={activityFeedContextValues}>
@@ -1331,6 +1422,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         )}
         {showAddEdgeModal && (
           <AddPipeLineModal
+            loading={loading}
             selectedEdge={selectedEdge}
             showAddEdgeModal={showAddEdgeModal}
             onModalCancel={handleModalCancel}

@@ -1,10 +1,14 @@
 #!/bin/bash
-# Example usage: find /path/to/docs/v1.4/ -type f | ./scripts/replace_version.sh v1.3 v1.4
+# Example usage: ./scripts/prepare_new_docs v1.3 v1.4
 
 OLD_VERION=$1
 NEW_VERSION=$2
 
-while IFS= read -r file
-do
-  sed -i '' -e 's/'$OLD_VERION'/'$NEW_VERSION'/g' "$file"
-done
+function replace_version {
+  while IFS= read -r file
+  do
+    sed -i '' -e 's/'$OLD_VERION'/'$NEW_VERSION'/g' "$file"
+  done
+}
+
+find openmetadata-docs/content/"$2.x"/ -type f | replace_version $1 $2

@@ -56,6 +56,7 @@ jest.mock('../../utils/BrowserNotificationUtils', () => ({
 jest.mock('../../utils/CommonUtils', () => ({
   refreshPage: jest.fn(),
   getEntityDetailLink: jest.fn(),
+  getNameFromFQN: jest.fn().mockImplementation((value) => value),
 }));
 jest.mock('../../utils/FeedUtils', () => ({
   getEntityFQN: jest.fn().mockReturnValue('entityFQN'),
@@ -97,10 +98,12 @@ jest.mock(
       ),
   })
 );
-jest.mock('react-router-dom', () => ({
-  useLocation: jest
+jest.mock('../../hooks/useCustomLocation/useCustomLocation', () => {
+  return jest
     .fn()
-    .mockReturnValue({ search: 'search', pathname: '/my-data' }),
+    .mockImplementation(() => ({ search: 'search', pathname: '/my-data' }));
+});
+jest.mock('react-router-dom', () => ({
   useHistory: jest.fn(),
 }));
 

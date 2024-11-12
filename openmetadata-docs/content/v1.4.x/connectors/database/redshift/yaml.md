@@ -23,6 +23,7 @@ Configure and schedule Redshift metadata and profiler workflows from the OpenMet
 - [Data Profiler](#data-profiler)
 - [Data Quality](#data-quality)
 - [dbt Integration](#dbt-integration)
+- [Enable Security](#securing-redshift-connection-with-ssl-in-openmetadata)
 
 {% partial file="/v1.4/connectors/external-ingestion-deployment.md" /%}
 
@@ -116,15 +117,33 @@ This is a sample config for Redshift:
 
 {% codeInfo srNumber=6 %}
 
-**Connection Options (Optional)**: Enter the details for any additional connection options that can be sent to Athena during the connection. These details must be added as Key-Value pairs.
+**Connection Options (Optional)**: Enter the details for any additional connection options that can be sent to database during the connection. These details must be added as Key-Value pairs.
 
 {% /codeInfo %}
 
 {% codeInfo srNumber=7 %}
 
-**Connection Arguments (Optional)**: Enter the details for any additional connection arguments such as security or protocol configs that can be sent to Athena during the connection. These details must be added as Key-Value pairs.
+**Connection Arguments (Optional)**: Enter the details for any additional connection arguments such as security or protocol configs that can be sent to database during the connection. These details must be added as Key-Value pairs.
 
 - In case you are using Single-Sign-On (SSO) for authentication, add the `authenticator` details in the Connection Arguments as a Key-Value pair as follows: `"authenticator" : "sso_login_url"`
+
+{% /codeInfo %}
+
+{% codeInfo srNumber=9 %}
+
+The sslConfig and sslMode are used to configure the SSL (Secure Sockets Layer) connection between your application and the Redshift server. Redshift will require only rootCertificate i.e caCertificate.
+
+**caCertificate**: This is the path to the CA (Certificate Authority) certificate file. This file is used to verify the server’s certificate.
+
+**sslMode**: This field controls whether a secure SSL/TLS connection will be negotiated with the server. There are several modes you can choose:
+
+disable: No SSL/TLS encryption will be used; the data sent over the network is not encrypted.
+allow: The driver will try to negotiate a non-SSL connection but if the server insists on SSL, it will switch to SSL.
+prefer (the default): The driver will try to negotiate an SSL connection but if the server does not support SSL, it will switch to a non-SSL connection.
+require: The driver will try to negotiate an SSL connection. If the server does not support SSL, the driver will not fall back to a non-SSL connection.
+verify-ca: The driver will negotiate an SSL connection and verify that the server certificate is issued by a trusted certificate authority (CA).
+verify-full: The driver will negotiate an SSL connection, verify that the server certificate is issued by a trusted CA and check that the server host name matches the one in the certificate.
+
 
 {% /codeInfo %}
 
@@ -132,7 +151,7 @@ This is a sample config for Redshift:
 
 {% codeBlock fileName="filename.yaml" %}
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: redshift
   serviceName: aws_redshift
@@ -154,6 +173,11 @@ source:
 ```
 ```yaml {% srNumber=5 %}
       # ingestAllDatabases: true
+```
+```yaml {% srNumber=9 %}
+      # sslConfig:
+            # caCertificate: "path/to/ca/certificate"
+      # sslMode: disable #allow prefer require verify-ca verify-full
 ```
 ```yaml {% srNumber=6 %}
       # connectionOptions:
@@ -184,6 +208,18 @@ source:
 {% partial file="/v1.4/connectors/yaml/data-profiler.md" variables={connector: "redshift"} /%}
 
 {% partial file="/v1.4/connectors/yaml/data-quality.md" /%}
+
+## Securing Redshift Connection with SSL in OpenMetadata
+
+To configure SSL for secure connections between OpenMetadata and a Redshift database, Redshift offers various SSL modes, each providing different levels of connection security.
+
+When running the ingestion process externally, specify the SSL mode to be used for the Redshift connection, such as `prefer`, `verify-ca`, `allow`, and others. Once you've chosen the SSL mode, provide the CA certificate for SSL validation (`caCertificate`). Only the CA certificate is required for SSL validation in Redshift.
+
+```yaml
+      sslMode: disable #allow prefer require verify-ca verify-full
+      sslConfig:
+            caCertificate: "/path/to/ca/certificate" 
+```
 
 ## dbt Integration
 

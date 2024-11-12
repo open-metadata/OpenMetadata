@@ -17,6 +17,8 @@ you will be able to get back to the previous version without any loss.
 
 You can learn more about how the migration process works [here](/deployment/upgrade/how-does-it-work).
 
+**During the upgrade, please note that the backup is only for safety and should not be used to restore data to a higher version**.
+
 {% /note %}
 
 Since version 1.4.0, **OpenMetadata encourages using the builtin-tools for creating logical backups of the metadata**:
@@ -91,7 +93,7 @@ After the migration is finished, you can revert this changes.
 - **Metadata Backup & Restore**: The Metadata Backup/Recovery has been deprecated, and no further support will be provided. Users are advised to use database-native tools to back up data and store it in their object store for recovery.
   You can check the [docs](/deployment/backup-restore-metadata) for more information.
 - **Metadata Docker CLI**: For the past releases, we have been updating the documentation to point users to directly run the docker quickstart
-  with the docker compose files in the release page ([docs](quick-start/local-docker-deployment)). In this release, we're completely removing the support for `metadata docker`.
+  with the docker compose files in the release page ([docs](/quick-start/local-docker-deployment)). In this release, we're completely removing the support for `metadata docker`.
 - **bootstrap_storage.sh**: We have deprecated `bootstrap/bootstrap_storage.sh` and replaced it with `bootstrap/openmetadata-ops.sh`. The documentation has been updated accordingly.
 
 

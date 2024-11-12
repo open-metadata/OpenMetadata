@@ -80,8 +80,7 @@ pipelineServiceClientConfiguration:
   hostIp: ${PIPELINE_SERVICE_CLIENT_HOST_IP:-""}
   verifySSL: ${PIPELINE_SERVICE_CLIENT_VERIFY_SSL:-"no-ssl"} # Possible values are "no-ssl", "ignore", "validate"
   sslConfig:
-    validate:
-      certificatePath: ${PIPELINE_SERVICE_CLIENT_SSL_CERT_PATH:-""} # Local path for the Pipeline Service Client
+    certificatePath: ${PIPELINE_SERVICE_CLIENT_SSL_CERT_PATH:-""} # Local path for the Pipeline Service Client
 
   # Default required parameters for Airflow as Pipeline Service Client
   parameters:
@@ -232,8 +231,7 @@ pipelineServiceClientConfiguration:
   hostIp: ${PIPELINE_SERVICE_CLIENT_HOST_IP:-""}
   verifySSL: ${PIPELINE_SERVICE_CLIENT_VERIFY_SSL:-"no-ssl"} # Possible values are "no-ssl", "ignore", "validate"
   sslConfig:
-    validate:
-      certificatePath: ${PIPELINE_SERVICE_CLIENT_SSL_CERT_PATH:-""} # Local path for the Pipeline Service Client
+    certificatePath: ${PIPELINE_SERVICE_CLIENT_SSL_CERT_PATH:-""} # Local path for the Pipeline Service Client
 
   # Default required parameters for Airflow as Pipeline Service Client
   parameters:

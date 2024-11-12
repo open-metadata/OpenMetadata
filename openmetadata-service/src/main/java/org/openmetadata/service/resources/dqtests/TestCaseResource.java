@@ -15,6 +15,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import javax.json.JsonPatch;
@@ -56,6 +57,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.Filter;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TestCaseRepository;
+import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
@@ -63,6 +65,7 @@ import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.mask.PIIMasker;
+import org.openmetadata.service.security.policyevaluator.CreateResourceContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
@@ -87,9 +90,9 @@ import org.openmetadata.service.util.ResultList;
 public class TestCaseResource extends EntityResource<TestCase, TestCaseRepository> {
   public static final String COLLECTION_PATH = "/v1/dataQuality/testCases";
 
-  static final String FIELDS = "owner,testSuite,testDefinition,testSuites,incidentId,domain";
+  static final String FIELDS = "owners,testSuite,testDefinition,testSuites,incidentId,domain,tags";
   static final String SEARCH_FIELDS_EXCLUDE =
-      "testPlatforms,table,database,databaseSchema,service,testSuite";
+      "testPlatforms,table,database,databaseSchema,service,testSuite,dataQualityDimension,testCaseType,originEntityFQN";
 
   @Override
   public TestCase addHref(UriInfo uriInfo, TestCase test) {
@@ -99,8 +102,8 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     return test;
   }
 
-  public TestCaseResource(Authorizer authorizer) {
-    super(Entity.TEST_CASE, authorizer);
+  public TestCaseResource(Authorizer authorizer, Limits limits) {
+    super(Entity.TEST_CASE, authorizer, limits);
   }
 
   @Override
@@ -316,6 +319,12 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
           String testPlatforms,
       @Parameter(
               description =
+                  "Filter for test case by data quality dimension (e.g. OpenMetadata, dbt, etc.)",
+              schema = @Schema(type = "string"))
+          @QueryParam("dataQualityDimension")
+          String dataQualityDimension,
+      @Parameter(
+              description =
                   "Parameter used to filter (inclusive) the test cases by the last execution timestamp (in milliseconds). Must be used in conjunction with `endTimestamp`",
               schema = @Schema(type = "long"))
           @QueryParam("startTimestamp")
@@ -352,12 +361,26 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
           @QueryParam("sortType")
           @DefaultValue("desc")
           String sortType,
+      @Parameter(
+              description = "Return only required fields in the response",
+              schema = @Schema(type = "string"))
+          @QueryParam("includeFields")
+          String includeFields,
       @Parameter(description = "domain filter to use in list", schema = @Schema(type = "string"))
           @QueryParam("domain")
           String domain,
       @Parameter(description = "owner filter to use in list", schema = @Schema(type = "string"))
           @QueryParam("owner")
           String owner,
+      @Parameter(description = "tags filter to use in list", schema = @Schema(type = "string"))
+          @QueryParam("tags")
+          String tags,
+      @Parameter(description = "tier filter to use in list", schema = @Schema(type = "string"))
+          @QueryParam("tier")
+          String tier,
+      @Parameter(description = "service filter to use in list", schema = @Schema(type = "string"))
+          @QueryParam("serviceName")
+          String serviceName,
       @Parameter(
               description = "search query term to use in list",
               schema = @Schema(type = "string"))
@@ -376,14 +399,19 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     searchListFilter.addQueryParam("testCaseStatus", status);
     searchListFilter.addQueryParam("testCaseType", type);
     searchListFilter.addQueryParam("testPlatforms", testPlatforms);
+    searchListFilter.addQueryParam("dataQualityDimension", dataQualityDimension);
     searchListFilter.addQueryParam("q", q);
     searchListFilter.addQueryParam("excludeFields", SEARCH_FIELDS_EXCLUDE);
+    searchListFilter.addQueryParam("includeFields", includeFields);
     searchListFilter.addQueryParam("domain", domain);
+    searchListFilter.addQueryParam("tags", tags);
+    searchListFilter.addQueryParam("tier", tier);
+    searchListFilter.addQueryParam("serviceName", serviceName);
     if (!nullOrEmpty(owner)) {
       EntityInterface entity;
-      StringBuffer owners = new StringBuffer();
+      StringBuilder owners = new StringBuilder();
       try {
-        User user = (User) Entity.getEntityByName(Entity.USER, owner, "teams", ALL);
+        User user = Entity.getEntityByName(Entity.USER, owner, "teams", ALL);
         owners.append(user.getId().toString());
         if (!nullOrEmpty(user.getTeams())) {
           owners
@@ -398,7 +426,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
         entity = Entity.getEntityByName(Entity.TEAM, owner, "", ALL);
         owners.append(entity.getId().toString());
       }
-      searchListFilter.addQueryParam("owner", owners.toString());
+      searchListFilter.addQueryParam("owners", owners.toString());
     }
 
     if (startTimestamp != null) {
@@ -612,6 +640,10 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
         new OperationContext(Entity.TABLE, MetadataOperation.EDIT_TESTS);
     ResourceContextInterface resourceContext =
         TestCaseResourceContext.builder().entityLink(entityLink).build();
+    limits.enforceLimits(
+        securityContext,
+        new CreateResourceContext<>(entityType, test),
+        new OperationContext(Entity.TEST_CASE, MetadataOperation.EDIT_TESTS));
     authorizer.authorize(securityContext, operationContext, resourceContext);
     repository.isTestSuiteExecutable(create.getTestSuite());
     test = addHref(uriInfo, repository.create(uriInfo, test));
@@ -696,7 +728,8 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
         new OperationContext(Entity.TABLE, MetadataOperation.EDIT_TESTS);
     authorizer.authorize(securityContext, operationContext, resourceContext);
     PatchResponse<TestCaseResult> patchResponse =
-        repository.patchTestCaseResults(fqn, timestamp, patch);
+        repository.patchTestCaseResults(
+            fqn, timestamp, patch, securityContext.getUserPrincipal().toString());
     return patchResponse.toResponse();
   }
 
@@ -795,6 +828,10 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
               schema = @Schema(type = "string"))
           @PathParam("fqn")
           String fqn) {
+    ResourceContextInterface resourceContext = TestCaseResourceContext.builder().name(fqn).build();
+    OperationContext operationContext =
+        new OperationContext(Entity.TABLE, MetadataOperation.EDIT_TESTS);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
     return deleteByName(uriInfo, securityContext, fqn, recursive, hardDelete);
   }
 
@@ -878,6 +915,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
       TestCase testCase = repository.findByName(fqn, Include.ALL);
       repository.deleteTestCaseFailedRowsSample(testCase.getId());
     }
+    RestUtil.validateTimestampMilliseconds(testCaseResult.getTimestamp());
     return repository
         .addTestCaseResult(
             securityContext.getUserPrincipal().getName(), uriInfo, fqn, testCaseResult)
@@ -983,16 +1021,18 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
       @Parameter(description = "Id of the test case", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id,
-      @Valid TableData tableData) {
+      @Valid TableData tableData,
+      @DefaultValue("true") @QueryParam("validate") boolean validate) {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_TESTS);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     TestCase testCase = repository.find(id, Include.NON_DELETED);
+    repository.setFields(testCase, new Fields(Set.of("testCaseResult")));
     if (testCase.getTestCaseResult() == null
         || !testCase.getTestCaseResult().getTestCaseStatus().equals(TestCaseStatus.Failed)) {
       throw new IllegalArgumentException("Failed rows can only be added to a failed test case.");
     }
-    return addHref(uriInfo, repository.addFailedRowsSample(testCase, tableData));
+    return addHref(uriInfo, repository.addFailedRowsSample(testCase, tableData, validate));
   }
 
   @PUT
@@ -1048,7 +1088,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     ResourceContext<?> resourceContext = getResourceContextById(id);
     TestCase testCase = repository.find(id, Include.NON_DELETED);
     authorizer.authorize(securityContext, operationContext, resourceContext);
-    boolean authorizePII = authorizer.authorizePII(securityContext, resourceContext.getOwner());
+    boolean authorizePII = authorizer.authorizePII(securityContext, resourceContext.getOwners());
     return repository.getSampleData(testCase, authorizePII);
   }
 
@@ -1125,7 +1165,8 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     return repository.addTestCasesToLogicalTestSuite(testSuite, testCaseIds).toResponse();
   }
 
-  private ResourceContextInterface getResourceContext(String entityLink, Filter filter) {
+  protected static ResourceContextInterface getResourceContext(
+      String entityLink, Filter<?> filter) {
     ResourceContextInterface resourceContext;
     if (entityLink != null) {
       EntityLink entityLinkParsed = EntityLink.parse(entityLink);
@@ -1146,6 +1187,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
         .withParameterValues(create.getParameterValues())
         .withEntityLink(create.getEntityLink())
         .withComputePassedFailedRowCount(create.getComputePassedFailedRowCount())
+        .withUseDynamicAssertion(create.getUseDynamicAssertion())
         .withEntityFQN(entityLink.getFullyQualifiedFieldValue())
         .withTestSuite(getEntityReference(Entity.TEST_SUITE, create.getTestSuite()))
         .withTestDefinition(getEntityReference(Entity.TEST_DEFINITION, create.getTestDefinition()));

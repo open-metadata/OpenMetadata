@@ -71,7 +71,7 @@ MOCK_PIPELINE_URL = f"{MOCK_SPLINE_UI_URL}/app/events/overview/{PIPELINE_ID}"
 MOCK_PIPELINE_SERVICE = PipelineService(
     id="85811038-099a-11ed-861d-0242ac120002",
     name="openlineage_source",
-    fullyQualifiedName=FullyQualifiedEntityName(__root__="openlineage_source"),
+    fullyQualifiedName=FullyQualifiedEntityName("openlineage_source"),
     connection=PipelineConnection(),
     serviceType=PipelineServiceType.Airflow,
 )
@@ -133,17 +133,15 @@ class OpenLineageUnitTest(unittest.TestCase):
     def __init__(self, methodName, test_connection) -> None:
         super().__init__(methodName)
         test_connection.return_value = False
-        config = OpenMetadataWorkflowConfig.parse_obj(MOCK_OL_CONFIG)
+        config = OpenMetadataWorkflowConfig.model_validate(MOCK_OL_CONFIG)
         self.open_lineage_source = OpenlineageSource.create(
             MOCK_OL_CONFIG["source"],
             config.workflowConfig.openMetadataServerConfig,
         )
-        self.open_lineage_source.context.__dict__[
-            "pipeline"
-        ] = MOCK_PIPELINE.name.__root__
+        self.open_lineage_source.context.__dict__["pipeline"] = MOCK_PIPELINE.name.root
         self.open_lineage_source.context.__dict__[
             "pipeline_service"
-        ] = MOCK_PIPELINE_SERVICE.name.__root__
+        ] = MOCK_PIPELINE_SERVICE.name.root
         self.open_lineage_source.source_config.lineageInformation = {
             "dbServiceNames": ["skun"]
         }
@@ -473,7 +471,7 @@ class OpenLineageUnitTest(unittest.TestCase):
             else:
                 # pipeline
                 z = Mock()
-                z.id.__root__ = "79fc8906-4a4a-45ab-9a54-9cc2d399e10e"
+                z.id.root = "79fc8906-4a4a-45ab-9a54-9cc2d399e10e"
                 return z
 
         def extract_lineage_details(pip_results):
@@ -482,14 +480,12 @@ class OpenLineageUnitTest(unittest.TestCase):
             for r in pip_results:
                 table_lineage.append(
                     (
-                        r.right.edge.fromEntity.id.__root__,
-                        r.right.edge.toEntity.id.__root__,
+                        r.right.edge.fromEntity.id.root,
+                        r.right.edge.toEntity.id.root,
                     )
                 )
                 for col in r.right.edge.lineageDetails.columnsLineage:
-                    col_lineage.append(
-                        (col.fromColumns[0].__root__, col.toColumn.__root__)
-                    )
+                    col_lineage.append((col.fromColumns[0].root, col.toColumn.root))
             return table_lineage, col_lineage
 
         # Set up the side effect for the mock entity FQN builder

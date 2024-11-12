@@ -15,8 +15,9 @@ import traceback
 from abc import ABC, abstractmethod
 from typing import Any, Iterable, List, Optional, Set, Tuple, Union
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy.engine import Inspector
+from typing_extensions import Annotated
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
@@ -51,12 +52,15 @@ from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.api.delete import delete_entity_from_source
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import Source
 from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
+from metadata.ingestion.connections.test_connections import (
+    raise_test_connection_exception,
+)
 from metadata.ingestion.models.life_cycle import OMetaLifeCycleData
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.models.topology import (
@@ -93,7 +97,9 @@ class DatabaseServiceTopology(ServiceTopology):
     data that has been produced by any parent node.
     """
 
-    root = TopologyNode(
+    root: Annotated[
+        TopologyNode, Field(description="Root node for the topology")
+    ] = TopologyNode(
         producer="get_services",
         stages=[
             NodeStage(
@@ -111,11 +117,13 @@ class DatabaseServiceTopology(ServiceTopology):
         # until we have finished ingesting all the metadata from the source.
         post_process=[
             "yield_view_lineage",
-            "yield_procedure_lineage_and_queries",
             "yield_external_table_lineage",
+            "yield_table_constraints",
         ],
     )
-    database = TopologyNode(
+    database: Annotated[
+        TopologyNode, Field(description="Database Node")
+    ] = TopologyNode(
         producer="get_database_names",
         stages=[
             NodeStage(
@@ -136,7 +144,9 @@ class DatabaseServiceTopology(ServiceTopology):
         ],
         children=["databaseSchema"],
     )
-    databaseSchema = TopologyNode(
+    databaseSchema: Annotated[
+        TopologyNode, Field(description="Database Schema Node")
+    ] = TopologyNode(
         producer="get_database_schema_names",
         stages=[
             NodeStage(
@@ -159,7 +169,9 @@ class DatabaseServiceTopology(ServiceTopology):
         post_process=["mark_tables_as_deleted", "mark_stored_procedures_as_deleted"],
         threads=True,
     )
-    table = TopologyNode(
+    table: Annotated[
+        TopologyNode, Field(description="Main table processing logic")
+    ] = TopologyNode(
         producer="get_tables_name_and_type",
         stages=[
             NodeStage(
@@ -183,7 +195,9 @@ class DatabaseServiceTopology(ServiceTopology):
             ),
         ],
     )
-    stored_procedure = TopologyNode(
+    stored_procedure: Annotated[
+        TopologyNode, Field(description="Stored Procedure Node")
+    ] = TopologyNode(
         producer="get_stored_procedures",
         stages=[
             NodeStage(
@@ -212,7 +226,7 @@ class DatabaseServiceSource(
     database_source_state: Set = set()
     stored_procedure_source_state: Set = set()
     # Big union of types we want to fetch dynamically
-    service_connection: DatabaseConnection.__fields__["config"].type_
+    service_connection: DatabaseConnection.model_fields["config"].annotation
 
     # When processing the database, the source will update the inspector if needed
     inspector: Inspector
@@ -254,7 +268,7 @@ class DatabaseServiceSource(
         """
 
     @abstractmethod
-    def get_tables_name_and_type(self) -> Optional[Iterable[Tuple[str, str]]]:
+    def get_tables_name_and_type(self) -> Optional[Iterable[Tuple[str, TableType]]]:
         """
         Prepares the table name to be sent to stage.
         Filtering happens here.
@@ -305,7 +319,7 @@ class DatabaseServiceSource(
         """
 
     def yield_table_tag_details(
-        self, table_name_and_type: str
+        self, table_name_and_type: Tuple[str, TableType]
     ) -> Iterable[Either[OMetaTagAndClassification]]:
         """
         From topology. To be run for each table
@@ -339,7 +353,13 @@ class DatabaseServiceSource(
         """
 
     def update_table_constraints(
-        self, table_constraints: List[TableConstraint], foreign_columns: []
+        self,
+        table_name,
+        schema_name,
+        db_name,
+        table_constraints: List[TableConstraint],
+        foreign_columns: [],
+        columns,
     ) -> List[TableConstraint]:
         """
         process the table constraints of all tables
@@ -387,11 +407,11 @@ class DatabaseServiceSource(
 
         tag_labels = []
         for tag_and_category in self.context.get().tags or []:
-            if tag_and_category.fqn and tag_and_category.fqn.__root__ == entity_fqn:
+            if tag_and_category.fqn and tag_and_category.fqn.root == entity_fqn:
                 tag_label = get_tag_label(
                     metadata=self.metadata,
-                    tag_name=tag_and_category.tag_request.name.__root__,
-                    classification_name=tag_and_category.classification_request.name.__root__,
+                    tag_name=tag_and_category.tag_request.name.root,
+                    classification_name=tag_and_category.classification_request.name.root,
                 )
                 if tag_label:
                     tag_labels.append(tag_label)
@@ -472,7 +492,7 @@ class DatabaseServiceSource(
             service_name=self.context.get().database_service,
             database_name=self.context.get().database,
             schema_name=self.context.get().database_schema,
-            table_name=table_request.name.__root__,
+            table_name=table_request.name.root,
             skip_es_search=True,
         )
 
@@ -490,7 +510,7 @@ class DatabaseServiceSource(
             service_name=self.context.get().database_service,
             database_name=self.context.get().database,
             schema_name=self.context.get().database_schema,
-            procedure_name=stored_proc_request.name.__root__,
+            procedure_name=stored_proc_request.name.root,
         )
 
         self.stored_procedure_source_state.add(table_fqn)
@@ -516,7 +536,7 @@ class DatabaseServiceSource(
             yield schema_fqn if return_fqn else schema_name
 
     @calculate_execution_time()
-    def get_owner_ref(self, table_name: str) -> Optional[EntityReference]:
+    def get_owner_ref(self, table_name: str) -> Optional[EntityReferenceList]:
         """
         Method to process the table owners
         """
@@ -525,11 +545,13 @@ class DatabaseServiceSource(
                 self.inspector, "get_table_owner"
             ):
                 owner_name = self.inspector.get_table_owner(
-                    connection=self.connection,  # pylint: disable=no-member.fetchall()
+                    connection=self.connection,  # pylint: disable=no-member
                     table_name=table_name,
                     schema=self.context.get().database_schema,
                 )
-                owner_ref = self.metadata.get_reference_by_name(name=owner_name)
+                owner_ref = self.metadata.get_reference_by_name(
+                    name=owner_name, is_owner=True
+                )
                 return owner_ref
         except Exception as exc:
             logger.debug(traceback.format_exc())
@@ -594,6 +616,14 @@ class DatabaseServiceSource(
         Process external table lineage
         """
 
+    def yield_table_constraints(self) -> Iterable[Either[AddLineageRequest]]:
+        """
+        Process remaining table constraints by patching the table
+        """
+
     def test_connection(self) -> None:
         test_connection_fn = get_test_connection_fn(self.service_connection)
-        test_connection_fn(self.metadata, self.connection_obj, self.service_connection)
+        result = test_connection_fn(
+            self.metadata, self.connection_obj, self.service_connection
+        )
+        raise_test_connection_exception(result)

@@ -34,7 +34,7 @@ import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
-import { EntityType } from '../../../enums/entity.enum';
+import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
 import { ProviderType } from '../../../generated/api/classification/createClassification';
 import { ChangeDescription } from '../../../generated/entity/classification/classification';
 import { Tag } from '../../../generated/entity/classification/tag';
@@ -113,7 +113,7 @@ const ClassificationDetails = forwardRef(
       setTags([]);
       try {
         const { data, paging: tagPaging } = await getTags({
-          fields: 'usageCount',
+          fields: TabSpecificField.USAGE_COUNT,
           parent: currentClassificationName,
           after: paging?.after,
           before: paging?.before,
@@ -194,7 +194,7 @@ const ClassificationDetails = forwardRef(
 
     const handleUpdateDisplayName = async (data: {
       name: string;
-      displayName: string;
+      displayName?: string;
     }) => {
       if (
         !isUndefined(currentClassification) &&
@@ -388,9 +388,9 @@ const ClassificationDetails = forwardRef(
     }));
 
     return (
-      <div className="p-x-md" data-testid="tags-container">
+      <div className="p-t-sm p-x-md" data-testid="tags-container">
         {currentClassification && (
-          <Row data-testid="header" wrap={false}>
+          <Row className="p-l-lg" data-testid="header" wrap={false}>
             <Col flex="auto">
               <EntityHeaderTitle
                 badge={
@@ -521,9 +521,10 @@ const ClassificationDetails = forwardRef(
             size="small"
           />
 
-          {showPagination && !isTagsLoading && (
+          {showPagination && (
             <NextPrevious
               currentPage={currentPage}
+              isLoading={isTagsLoading}
               pageSize={pageSize}
               paging={paging}
               pagingHandler={handleTagsPageChange}

@@ -27,6 +27,7 @@ from metadata.antlr.split_listener import FqnSplitListener
 from metadata.generated.antlr.FqnLexer import FqnLexer
 from metadata.generated.antlr.FqnParser import FqnParser
 from metadata.generated.schema.entity.classification.tag import Tag
+from metadata.generated.schema.entity.data.apiCollection import APICollection
 from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.container import Container
 from metadata.generated.schema.entity.data.dashboard import Dashboard
@@ -65,8 +66,8 @@ class SplitTestCaseFqn(BaseModel):
     database: str
     schema_: str = Field(alias="schema")
     table: str
-    column: Optional[str]
-    test_case: Optional[str]
+    column: Optional[str] = None
+    test_case: Optional[str] = None
 
 
 def split(str_: str) -> List[str]:
@@ -184,9 +185,9 @@ def _(
         fqn = _build(service_name, database_name, schema_name, table_name)
         return [fqn] if fetch_multiple_entities else fqn
     if entity and fetch_multiple_entities:
-        return [str(table.fullyQualifiedName.__root__) for table in entity]
+        return [str(table.fullyQualifiedName.root) for table in entity]
     if entity:
-        return str(entity.fullyQualifiedName.__root__)
+        return str(entity.fullyQualifiedName.root)
     return None
 
 
@@ -215,9 +216,9 @@ def _(
         fqn = _build(service_name, database_name, schema_name)
         return [fqn] if fetch_multiple_entities else fqn
     if entity and fetch_multiple_entities:
-        return [str(table.fullyQualifiedName.__root__) for table in entity]
+        return [str(table.fullyQualifiedName.root) for table in entity]
     if entity:
-        return str(entity.fullyQualifiedName.__root__)
+        return str(entity.fullyQualifiedName.root)
 
     return None
 
@@ -248,6 +249,20 @@ def _(
             f"Args should be informed, but got service=`{service_name}`, dashboard=`{dashboard_name}``"
         )
     return _build(service_name, dashboard_name)
+
+
+@fqn_build_registry.add(APICollection)
+def _(
+    _: Optional[OpenMetadata],  # ES Index not necessary for dashboard FQN building
+    *,
+    service_name: str,
+    api_collection_name: str,
+) -> str:
+    if not service_name or not api_collection_name:
+        raise FQNBuildingException(
+            f"Args should be informed, but got service=`{service_name}`, collection=`{api_collection_name}``"
+        )
+    return _build(service_name, api_collection_name)
 
 
 @fqn_build_registry.add(Chart)
@@ -290,16 +305,33 @@ def _(_: Optional[OpenMetadata], *, table_fqn: str) -> str:
 
 @fqn_build_registry.add(Topic)
 def _(
-    _: Optional[OpenMetadata],  # ES Index not necessary for Topic FQN building
+    metadata: Optional[OpenMetadata],
     *,
     service_name: str,
     topic_name: str,
-) -> str:
-    if not service_name or not topic_name:
+    skip_es_search: bool = True,
+) -> Optional[str]:
+    entity: Optional[Topic] = None
+
+    if not skip_es_search:
+        entity = search_topic_from_es(
+            metadata=metadata, service_name=service_name, topic_name=topic_name
+        )
+
+    # if entity not found in ES proceed to build FQN with database_name and schema_name
+    if not entity and service_name and topic_name:
+        fqn = _build(service_name, topic_name)
+        return fqn
+
+    if entity:
+        return str(entity.fullyQualifiedName.root)
+
+    if not all([service_name, topic_name]):
         raise FQNBuildingException(
             f"Args should be informed, but got service=`{service_name}`, topic=`{topic_name}``"
         )
-    return _build(service_name, topic_name)
+
+    return None
 
 
 @fqn_build_registry.add(Container)
@@ -422,8 +454,8 @@ def _(
     if not entity:
         return None
     if fetch_multiple_entities:
-        return [str(user.fullyQualifiedName.__root__) for user in entity]
-    return str(entity.fullyQualifiedName.__root__)
+        return [str(user.fullyQualifiedName.root) for user in entity]
+    return str(entity.fullyQualifiedName.root)
 
 
 @fqn_build_registry.add(Team)
@@ -452,8 +484,8 @@ def _(
     if not entity:
         return None
     if fetch_multiple_entities:
-        return [str(user.fullyQualifiedName.__root__) for user in entity]
-    return str(entity.fullyQualifiedName.__root__)
+        return [str(user.fullyQualifiedName.root) for user in entity]
+    return str(entity.fullyQualifiedName.root)
 
 
 @fqn_build_registry.add(TestCase)
@@ -678,6 +710,34 @@ def search_database_from_es(
 
     return get_entity_from_es_result(
         entity_list=es_result, fetch_multiple_entities=fetch_multiple_entities
+    )
+
+
+def search_topic_from_es(
+    metadata: OpenMetadata,
+    topic_name: str,
+    service_name: Optional[str],
+    fields: Optional[str] = None,
+):
+    """
+    Search Topic entity from ES
+    """
+
+    if not topic_name:
+        raise FQNBuildingException(
+            f"Topic Name should be informed, but got topic=`{topic_name}`"
+        )
+
+    fqn_search_string = _build(service_name or "*", topic_name)
+
+    es_result = metadata.es_search_from_fqn(
+        entity_type=Topic,
+        fqn_search_string=fqn_search_string,
+        fields=fields,
+    )
+
+    return get_entity_from_es_result(
+        entity_list=es_result, fetch_multiple_entities=False
     )
 
 

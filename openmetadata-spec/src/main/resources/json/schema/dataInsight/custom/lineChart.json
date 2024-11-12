@@ -1,0 +1,92 @@
+{
+    "$id": "https://open-metadata.org/schema/dataInsight/custom/lineChart.json",
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "LineChart",
+    "description": "Line Chart",
+    "type": "object",
+    "javaType": "org.openmetadata.schema.dataInsight.custom.LineChart",
+    "definitions": {
+        "metrics": {
+            "name": "Metrics",
+            "type": "object",
+            "javaType": "org.openmetadata.schema.dataInsight.custom.LineChartMetric",
+            "properties": {
+                "name": {
+                    "description": "Name of the metric for the data insight chart.",
+                    "type": "string"
+                },
+                "function": {
+                    "$ref": "dataInsightCustomChart.json#/definitions/function"
+                },
+                "field": {
+                    "description": "Filter field for the data insight chart.",
+                    "type": "string"
+                },
+                "filter": {
+                    "description": "Filter value for the data insight chart.",
+                    "type": "string"
+                },
+                "treeFilter": {
+                    "description": "Tree filter value for the data insight chart. Needed for UI to recreate advance filter tree.",
+                    "type": "string"
+                },
+                "formula": {
+                    "description": "Formula for the data insight chart calculation.",
+                    "type": "string"
+                }
+            }
+        }
+    },
+    "properties": {
+        "type": {
+            "description": "Type of the data insight chart.",
+            "type": "string",
+            "enum": [
+                "LineChart"
+            ],
+            "default": "LineChart"
+        },
+        "metrics": {
+            "description": "Metrics for the data insight chart.",
+            "type": "array",
+            "items": {
+                "$ref": "#/definitions/metrics"
+            }
+        },
+        "groupBy": {
+            "description": "Breakdown field for the data insight chart.",
+            "type": "string"
+        },
+        "includeGroups": {
+            "description": "List of groups to be included in the data insight chart when groupBy is specified.",
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "excludeGroups": {
+            "description": "List of groups to be excluded in the data insight chart when groupBy is specified.",
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "xAxisLabel": {
+            "description": "X-axis label for the data insight chart.",
+            "type": "string"
+        },
+        "yAxisLabel": {
+            "description": "Y-axis label for the data insight chart.",
+            "type": "string"
+        },
+        "kpiDetails": {
+            "$ref": "dataInsightCustomChart.json#/definitions/kpiDetails"
+        },
+        "xAxisField": {
+            "description": "X-axis field for the data insight chart.",
+            "type": "string",
+            "default": "@timestamp"
+        }
+    },
+    "additionalProperties": false
+}

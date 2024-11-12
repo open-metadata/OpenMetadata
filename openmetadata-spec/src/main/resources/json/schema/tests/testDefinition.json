@@ -104,6 +104,20 @@
           }
         }
       }
+    },
+    "dataQualityDimensions": {
+      "javaType": "org.openmetadata.schema.type.DataQualityDimensions",
+      "description": "This enum defines the dimension a test case belongs to.",
+      "type": "string",
+      "enum": [
+        "Completeness",
+        "Accuracy",
+        "Consistency",
+        "Validity",
+        "Uniqueness",
+        "Integrity",
+        "SQL"
+      ]
     }
   },
   "properties": {
@@ -148,9 +162,12 @@
         "$ref": "#/definitions/testCaseParameterDefinition"
       }
     },
-    "owner": {
-      "description": "Owner of this TestCase definition.",
-      "$ref": "../type/entityReference.json",
+    "dataQualityDimension": {
+      "$ref": "#/definitions/dataQualityDimensions"
+    },
+    "owners": {
+      "description": "Owners of this TestCase definition.",
+      "$ref": "../type/entityReferenceList.json",
       "default": null
     },
     "provider" : {
@@ -183,6 +200,15 @@
     },
     "supportsRowLevelPassedFailed": {
       "description": "When `true` indicates the test case supports row level passed/failed.",
+      "type": "boolean",
+      "default": false
+    },
+    "domain" : {
+      "description": "Domain the asset belongs to. When not set, the asset inherits the domain from the parent it belongs to.",
+      "$ref": "../type/entityReference.json"
+    },
+    "supportsDynamicAssertion": {
+      "description": "When `true` indicates the test case supports dynamic assertions.",
       "type": "boolean",
       "default": false
     }

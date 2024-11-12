@@ -192,7 +192,7 @@ const DatePickerMenu = ({
       open={isMenuOpen}
       trigger={['click']}
       onOpenChange={(value) => setIsMenuOpen(value)}>
-      <Button>
+      <Button data-testid="date-picker-menu">
         <Space align="center" size={8}>
           {selectedTimeRange}
           <DropdownIcon className="align-middle" height={14} width={14} />

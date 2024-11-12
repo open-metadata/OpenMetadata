@@ -111,7 +111,7 @@ By default, user info is extracted from the URL if present.
 {% codeInfo srNumber=8 %}
 
 **schemaRegistryConfig**: The accepted additional values for the Schema Registry configuration can be found in the
-following [link](https://docs.confluent.io/5.5.1/clients/confluent-kafka-python/index.html#confluent_kafka.schema_registry.SchemaRegistryClient).
+following [link](https://docs.confluent.io/platform/current/clients/confluent-kafka-python/html/index.html#schemaregistryclient).
 
 **Note:** To ingest the topic schema, `schemaRegistryURL` must be passed.
 
@@ -127,7 +127,7 @@ following [link](https://docs.confluent.io/5.5.1/clients/confluent-kafka-python/
 
 {% codeBlock fileName="filename.yaml" %}
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: redpanda
   serviceName: local_redpanda

@@ -19,6 +19,11 @@ import TableDataCardBody from './TableDataCardBody';
 jest.mock('../../common/RichTextEditor/RichTextEditorPreviewer', () => {
   return jest.fn().mockReturnValue(<p>RichTextEditorPreviewer</p>);
 });
+
+jest.mock('../../Tag/TagsViewer/TagsViewer', () => {
+  return jest.fn().mockReturnValue(<p>TagsViewer</p>);
+});
+
 jest.mock('../../common/EntitySummaryDetails/EntitySummaryDetails', () => {
   return jest
     .fn()

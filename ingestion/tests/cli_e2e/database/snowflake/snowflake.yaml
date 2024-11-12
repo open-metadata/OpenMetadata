@@ -19,6 +19,7 @@ source:
       includeViews: true
       includeStoredProcedures: false
       type: DatabaseMetadata
+      includeDDL: true
       schemaFilterPattern:
         excludes:
         - information_schema.*

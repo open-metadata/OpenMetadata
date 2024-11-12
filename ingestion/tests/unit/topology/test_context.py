@@ -33,8 +33,11 @@ from metadata.generated.schema.entity.data.table import (
     DataType,
     Table,
 )
-from metadata.generated.schema.entity.type import EntityName
-from metadata.generated.schema.type.basic import FullyQualifiedEntityName, Markdown
+from metadata.generated.schema.type.basic import (
+    EntityName,
+    FullyQualifiedEntityName,
+    Markdown,
+)
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.models.topology import NodeStage, TopologyContext
 from metadata.ingestion.source.database.database_service import DatabaseServiceTopology
@@ -126,12 +129,12 @@ class TopologyContextTest(TestCase):
         classification_and_tag = OMetaTagAndClassification(
             fqn=None,
             classification_request=CreateClassificationRequest(
-                name="my_classification",
-                description=Markdown(__root__="something"),
+                name=EntityName("my_classification"),
+                description=Markdown("something"),
             ),
             tag_request=CreateTagRequest(
-                name="my_tag",
-                description=Markdown(__root__="something"),
+                name=EntityName("my_tag"),
+                description=Markdown("something"),
             ),
         )
 
@@ -146,11 +149,9 @@ class TopologyContextTest(TestCase):
         context.update_context_name(
             stage=TABLE_STAGE,
             right=CreateTableRequest(
-                name=EntityName(__root__="table"),
-                databaseSchema=FullyQualifiedEntityName(__root__="schema"),
-                columns=[
-                    Column(name=ColumnName(__root__="id"), dataType=DataType.BIGINT)
-                ],
+                name=EntityName("table"),
+                databaseSchema=FullyQualifiedEntityName("schema"),
+                columns=[Column(name=ColumnName("id"), dataType=DataType.BIGINT)],
             ),
         )
 
@@ -162,8 +163,8 @@ class TopologyContextTest(TestCase):
         context.update_context_name(
             stage=PROCEDURES_STAGE,
             right=CreateStoredProcedureRequest(
-                name=EntityName(__root__="stored_proc"),
-                databaseSchema=FullyQualifiedEntityName(__root__="schema"),
+                name=EntityName("stored_proc"),
+                databaseSchema=FullyQualifiedEntityName("schema"),
                 storedProcedureCode=StoredProcedureCode(
                     language=Language.SQL,
                     code="SELECT * FROM AWESOME",

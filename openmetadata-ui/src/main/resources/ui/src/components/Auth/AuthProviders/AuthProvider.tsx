@@ -25,7 +25,6 @@ import {
   InternalAxiosRequestConfig,
 } from 'axios';
 import { CookieStorage } from 'cookie-storage';
-import { compare } from 'fast-json-patch';
 import { isEmpty, isNil, isNumber } from 'lodash';
 import Qs from 'qs';
 import React, {
@@ -38,13 +37,15 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useLocation } from 'react-router-dom';
+import { useHistory } from 'react-router-dom';
 import {
   DEFAULT_DOMAIN_VALUE,
+  ES_MAX_PAGE_SIZE,
   REDIRECT_PATHNAME,
   ROUTES,
 } from '../../../constants/constants';
 import { ClientErrors } from '../../../enums/Axios.enum';
+import { TabSpecificField } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import {
   AuthenticationConfiguration,
@@ -53,26 +54,28 @@ import {
 import { User } from '../../../generated/entity/teams/user';
 import { AuthProvider as AuthProviderEnum } from '../../../generated/settings/settings';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useDomainStore } from '../../../hooks/useDomainStore';
 import axiosClient from '../../../rest';
+import { getDomainList } from '../../../rest/domainAPI';
 import {
   fetchAuthenticationConfig,
   fetchAuthorizerConfig,
 } from '../../../rest/miscAPI';
-import { getLoggedInUser, updateUserDetail } from '../../../rest/userAPI';
+import { getLoggedInUser } from '../../../rest/userAPI';
+import TokenService from '../../../utils/Auth/TokenService/TokenServiceUtil';
 import {
   extractDetailsFromToken,
   getAuthConfig,
   getUrlPathnameExpiry,
   getUserManagerConfig,
   isProtectedRoute,
+  prepareUserProfileFromClaims,
 } from '../../../utils/AuthProvider.util';
+import { getPathNameFromWindowLocation } from '../../../utils/RouterUtils';
 import { escapeESReservedCharacters } from '../../../utils/StringsUtils';
 import { showErrorToast, showInfoToast } from '../../../utils/ToastUtils';
-import {
-  getUserDataFromOidc,
-  matchUserDetails,
-} from '../../../utils/UserDataUtils';
+import { checkIfUpdateRequired } from '../../../utils/UserDataUtils';
 import { resetWebAnalyticSession } from '../../../utils/WebAnalyticsUtils';
 import Loader from '../../common/Loader/Loader';
 import Auth0Authenticator from '../AppAuthenticators/Auth0Authenticator';
@@ -93,7 +96,14 @@ interface AuthProviderProps {
 
 const cookieStorage = new CookieStorage();
 
-const userAPIQueryFields = 'profile,teams,roles,personas,defaultPersona';
+const userAPIQueryFields = [
+  TabSpecificField.PROFILE,
+  TabSpecificField.TEAMS,
+  TabSpecificField.ROLES,
+  TabSpecificField.PERSONAS,
+  TabSpecificField.DEFAULT_PERSONA,
+  TabSpecificField.DOMAINS,
+];
 
 const isEmailVerifyField = 'isEmailVerified';
 
@@ -114,7 +124,11 @@ export const AuthProvider = ({
     setAuthConfig,
     setAuthorizerConfig,
     setIsSigningUp,
+    authorizerConfig,
+    jwtPrincipalClaims,
+    jwtPrincipalClaimsMapping,
     setJwtPrincipalClaims,
+    setJwtPrincipalClaimsMapping,
     removeRefreshToken,
     removeOidcToken,
     getOidcToken,
@@ -122,9 +136,10 @@ export const AuthProvider = ({
     isApplicationLoading,
     setApplicationLoading,
   } = useApplicationStore();
-  const { activeDomain } = useDomainStore();
+  const { updateDomains, updateDomainLoading } = useDomainStore();
+  const tokenService = useRef<TokenService>();
 
-  const location = useLocation();
+  const location = useCustomLocation();
   const history = useHistory();
   const { t } = useTranslation();
 
@@ -166,9 +181,28 @@ export const AuthProvider = ({
     setApplicationLoading(false);
   }, [timeoutId]);
 
-  const onRenewIdTokenHandler = () => {
-    return authenticatorRef.current?.renewIdToken();
-  };
+  useEffect(() => {
+    if (authenticatorRef.current?.renewIdToken) {
+      tokenService.current = new TokenService(
+        authenticatorRef.current?.renewIdToken
+      );
+    }
+  }, [authenticatorRef.current?.renewIdToken]);
+
+  const fetchDomainList = useCallback(async () => {
+    try {
+      updateDomainLoading(true);
+      const { data } = await getDomainList({
+        limit: ES_MAX_PAGE_SIZE,
+        fields: 'parent',
+      });
+      updateDomains(data);
+    } catch (error) {
+      // silent fail
+    } finally {
+      updateDomainLoading(false);
+    }
+  }, []);
 
   const handledVerifiedUser = () => {
     if (!isProtectedRoute(location.pathname)) {
@@ -210,6 +244,8 @@ export const AuthProvider = ({
       if (res) {
         setCurrentUser(res);
         setIsAuthenticated(true);
+        // Fetch domains at the start
+        await fetchDomainList();
       } else {
         resetUserDetails();
       }
@@ -229,37 +265,26 @@ export const AuthProvider = ({
     }
   };
 
-  const getUpdatedUser = async (updatedData: User, existingData: User) => {
-    // PUT method for users api only excepts below fields
-    const updatedUserData = { ...existingData, ...updatedData };
-    const jsonPatch = compare(existingData, updatedUserData);
-
-    try {
-      const res = await updateUserDetail(existingData.id, jsonPatch);
-      if (res) {
-        setCurrentUser({ ...existingData, ...res });
-      } else {
-        throw t('server.unexpected-response');
-      }
-    } catch (error) {
-      setCurrentUser(existingData);
-      showErrorToast(
-        error as AxiosError,
-        t('server.entity-updating-error', {
-          entity: t('label.admin-profile'),
-        })
-      );
-    }
-  };
-
   /**
    * Renew Id Token handler for all the SSOs.
    * This method will be called when the id token is about to expire.
    */
   const renewIdToken = async () => {
     try {
-      const onRenewIdTokenHandlerPromise = onRenewIdTokenHandler();
-      onRenewIdTokenHandlerPromise && (await onRenewIdTokenHandlerPromise);
+      if (!tokenService.current?.isTokenUpdateInProgress()) {
+        await tokenService.current?.refreshToken();
+      } else {
+        // wait for renewal to complete
+        const wait = new Promise((resolve) => {
+          setTimeout(() => {
+            return resolve(true);
+          }, 500);
+        });
+        await wait;
+
+        // should have updated token after renewal
+        return getOidcToken();
+      }
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error(
@@ -278,9 +303,11 @@ export const AuthProvider = ({
    * if it's not succeed then it will proceed for logout
    */
   const trySilentSignIn = async (forceLogout?: boolean) => {
-    const pathName = location.pathname;
+    const pathName = getPathNameFromWindowLocation();
     // Do not try silent sign in for SignIn or SignUp route
-    if ([ROUTES.SIGNIN, ROUTES.SIGNUP].includes(pathName)) {
+    if (
+      [ROUTES.SIGNIN, ROUTES.SIGNUP, ROUTES.SILENT_CALLBACK].includes(pathName)
+    ) {
       return;
     }
 
@@ -303,14 +330,6 @@ export const AuthProvider = ({
         resetUserDetails(forceLogout);
       }
     } catch (error) {
-      const err = error as AxiosError;
-      if (err.message.includes('Frame window timed out')) {
-        // Start expiry timer if silent signIn is timed out
-        // eslint-disable-next-line @typescript-eslint/no-use-before-define
-        startTokenExpiryTimer();
-
-        return;
-      }
       // reset user details if silent signIn fails
       resetUserDetails(forceLogout);
     }
@@ -325,8 +344,7 @@ export const AuthProvider = ({
   const startTokenExpiryTimer = () => {
     // Extract expiry
     const { isExpired, timeoutExpiry } = extractDetailsFromToken(
-      getOidcToken(),
-      clientType
+      getOidcToken()
     );
     const refreshToken = getRefreshToken();
 
@@ -364,43 +382,71 @@ export const AuthProvider = ({
     history.push(ROUTES.SIGNIN);
   };
 
-  const handleSuccessfulLogin = async (user: OidcUser) => {
-    setApplicationLoading(true);
-    setIsAuthenticated(true);
-    const fields =
-      authConfig?.provider === AuthProviderEnum.Basic
-        ? userAPIQueryFields + ',' + isEmailVerifyField
-        : userAPIQueryFields;
-    try {
-      const res = await getLoggedInUser({ fields });
-      if (res) {
-        const updatedUserData = getUserDataFromOidc(res, user);
-        if (!matchUserDetails(res, updatedUserData, ['email'])) {
-          getUpdatedUser(updatedUserData, res);
-        } else {
-          setCurrentUser(res);
-        }
+  const handleSuccessfulLogin = useCallback(
+    async (user: OidcUser) => {
+      setApplicationLoading(true);
+      setIsAuthenticated(true);
+      const fields =
+        authConfig?.provider === AuthProviderEnum.Basic
+          ? userAPIQueryFields + ',' + isEmailVerifyField
+          : userAPIQueryFields;
+      try {
+        const newUser = prepareUserProfileFromClaims({
+          user,
+          jwtPrincipalClaims,
+          principalDomain: authorizerConfig?.principalDomain ?? '',
+          jwtPrincipalClaimsMapping,
+          clientType,
+        });
 
-        handledVerifiedUser();
-        // Start expiry timer on successful login
-        startTokenExpiryTimer();
+        const res = await getLoggedInUser({ fields });
+        if (res) {
+          const userDetails = await checkIfUpdateRequired(res, newUser);
+          setCurrentUser(userDetails);
+
+          // Fetch domains at the start
+          await fetchDomainList();
+
+          handledVerifiedUser();
+          // Start expiry timer on successful login
+          startTokenExpiryTimer();
+        }
+      } catch (error) {
+        const err = error as AxiosError;
+        if (err?.response?.status === 404) {
+          if (!authConfig?.enableSelfSignup) {
+            resetUserDetails();
+            history.push(ROUTES.UNAUTHORISED);
+          } else {
+            setNewUserProfile(user.profile);
+            setCurrentUser({} as User);
+            setIsSigningUp(true);
+            history.push(ROUTES.SIGNUP);
+          }
+        } else {
+          // eslint-disable-next-line no-console
+          console.error(err);
+          showErrorToast(err);
+          resetUserDetails();
+          history.push(ROUTES.SIGNIN);
+        }
+      } finally {
+        setApplicationLoading(false);
       }
-    } catch (error) {
-      const err = error as AxiosError;
-      if (err && err.response && err.response.status === 404) {
-        setNewUserProfile(user.profile);
-        setCurrentUser({} as User);
-        setIsSigningUp(true);
-        history.push(ROUTES.SIGNUP);
-      } else {
-        // eslint-disable-next-line no-console
-        console.error(err);
-        history.push(ROUTES.SIGNIN);
-      }
-    } finally {
-      setApplicationLoading(false);
-    }
-  };
+    },
+    [
+      authConfig?.enableSelfSignup,
+      clientType,
+      authorizerConfig?.principalDomain,
+      jwtPrincipalClaims,
+      jwtPrincipalClaimsMapping,
+      setIsSigningUp,
+      setIsAuthenticated,
+      setApplicationLoading,
+      setCurrentUser,
+      setNewUserProfile,
+    ]
+  );
 
   const handleSuccessfulLogout = () => {
     resetUserDetails();
@@ -415,16 +461,21 @@ export const AuthProvider = ({
     }
   }, [location.pathname, storeRedirectPath]);
 
-  const updateAuthInstance = (configJson: AuthenticationConfiguration) => {
+  const updateAuthInstance = async (
+    configJson: AuthenticationConfiguration
+  ) => {
     const { provider, ...otherConfigs } = configJson;
     switch (provider) {
       case AuthProviderEnum.Azure:
         {
-          setMsalInstance(
-            new PublicClientApplication(
-              otherConfigs as unknown as Configuration
-            )
+          const instance = new PublicClientApplication(
+            otherConfigs as unknown as Configuration
           );
+
+          // Need to initialize the instance before setting it
+          await instance.initialize();
+
+          setMsalInstance(instance);
         }
 
         break;
@@ -434,13 +485,19 @@ export const AuthProvider = ({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const withDomainFilter = (config: InternalAxiosRequestConfig<any>) => {
     const isGetRequest = config.method === 'get';
+    const activeDomain = useDomainStore.getState().activeDomain;
     const hasActiveDomain = activeDomain !== DEFAULT_DOMAIN_VALUE;
-    const currentPath = window.location.pathname;
+    const currentPath = getPathNameFromWindowLocation();
+    const shouldNotIntercept = [
+      '/domain',
+      '/auth/logout',
+      '/auth/refresh',
+    ].reduce((prev, curr) => {
+      return prev || currentPath.startsWith(curr);
+    }, false);
 
     // Do not intercept requests from domains page or /auth endpoints
-    if (
-      ['/domain', '/auth/logout', '/auth/refresh'].indexOf(currentPath) > -1
-    ) {
+    if (shouldNotIntercept) {
       return config;
     }
 
@@ -544,6 +601,7 @@ export const AuthProvider = ({
         if (provider && Object.values(AuthProviderEnum).includes(provider)) {
           const configJson = getAuthConfig(authConfig);
           setJwtPrincipalClaims(authConfig.jwtPrincipalClaims);
+          setJwtPrincipalClaimsMapping(authConfig.jwtPrincipalClaimsMapping);
           setAuthConfig(configJson);
           setAuthorizerConfig(authorizerConfig);
           updateAuthInstance(configJson);
@@ -551,7 +609,12 @@ export const AuthProvider = ({
             handleStoreProtectedRedirectPath();
             setApplicationLoading(false);
           } else {
-            if (location.pathname !== ROUTES.AUTH_CALLBACK) {
+            // get the user details if token is present and route is not auth callback and saml callback
+            if (
+              ![ROUTES.AUTH_CALLBACK, ROUTES.SAML_CALLBACK].includes(
+                location.pathname
+              )
+            ) {
               getLoggedInUserDetails();
             }
           }
@@ -695,6 +758,17 @@ export const AuthProvider = ({
 
     return cleanup;
   }, []);
+
+  useEffect(() => {
+    setHelperFunctionsRef({
+      onLoginHandler,
+      onLogoutHandler,
+      handleSuccessfulLogin,
+      trySilentSignIn,
+      handleFailedLogin,
+      updateAxiosInterceptors: initializeAxiosInterceptors,
+    });
+  }, [handleSuccessfulLogin]);
 
   const isConfigLoading =
     !authConfig ||

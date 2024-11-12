@@ -44,7 +44,7 @@ from metadata.ingestion.source.dashboard.qliksense.models import (
 MOCK_DASHBOARD_SERVICE = DashboardService(
     id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb",
     name="qliksense_source_test",
-    fullyQualifiedName=FullyQualifiedEntityName(__root__="qliksense_source_test"),
+    fullyQualifiedName=FullyQualifiedEntityName("qliksense_source_test"),
     connection=DashboardConnection(),
     serviceType=DashboardServiceType.QlikSense,
 )
@@ -111,7 +111,7 @@ EXPECTED_DASHBOARD = CreateDashboardRequest(
     sourceUrl="https://test/sense/app/1/overview",
     charts=[],
     tags=None,
-    owner=None,
+    owners=None,
     service="qliksense_source_test",
     extension=None,
 )
@@ -123,7 +123,7 @@ EXPECTED_DASHBOARDS = [
         chartType="Other",
         sourceUrl="https://test/sense/app/1/sheet/11",
         tags=None,
-        owner=None,
+        owners=None,
         service="qliksense_source_test",
     ),
     CreateChartRequest(
@@ -132,7 +132,7 @@ EXPECTED_DASHBOARDS = [
         chartType="Other",
         sourceUrl="https://test/sense/app/1/sheet/12",
         tags=None,
-        owner=None,
+        owners=None,
         service="qliksense_source_test",
         description="dummy",
     ),
@@ -172,14 +172,16 @@ class QlikSenseUnitTest(TestCase):
         ):
             super().__init__(methodName)
             # test_connection.return_value = False
-            self.config = OpenMetadataWorkflowConfig.parse_obj(mock_qliksense_config)
+            self.config = OpenMetadataWorkflowConfig.model_validate(
+                mock_qliksense_config
+            )
             self.qliksense = QliksenseSource.create(
                 mock_qliksense_config["source"],
                 OpenMetadata(self.config.workflowConfig.openMetadataServerConfig),
             )
             self.qliksense.context.get().__dict__[
                 "dashboard_service"
-            ] = MOCK_DASHBOARD_SERVICE.fullyQualifiedName.__root__
+            ] = MOCK_DASHBOARD_SERVICE.fullyQualifiedName.root
             print(self.qliksense.topology)
             print(self.qliksense.context.get().__dict__)
 

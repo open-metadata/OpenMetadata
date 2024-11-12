@@ -179,7 +179,7 @@ Find more information about [Source Identity](https://docs.aws.amazon.com/STS/la
 {% codeBlock fileName="filename.yaml" %}
 
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: kinesis
   serviceName: local_kinesis

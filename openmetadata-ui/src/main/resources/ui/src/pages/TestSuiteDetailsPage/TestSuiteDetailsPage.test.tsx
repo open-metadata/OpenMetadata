@@ -129,7 +129,7 @@ describe('TestSuiteDetailsPage component', () => {
     });
 
     expect(mockGetTestSuiteByName).toHaveBeenCalledWith('testSuiteFQN', {
-      fields: 'owner',
+      fields: 'owners',
       include: 'all',
     });
   });

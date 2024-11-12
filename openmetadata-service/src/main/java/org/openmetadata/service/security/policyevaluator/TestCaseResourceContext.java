@@ -47,9 +47,9 @@ public class TestCaseResourceContext implements ResourceContextInterface {
   }
 
   @Override
-  public EntityReference getOwner() {
+  public List<EntityReference> getOwners() {
     resolveEntity();
-    return entity == null ? null : entity.getOwner();
+    return entity == null ? null : entity.getOwners();
   }
 
   @Override
@@ -61,6 +61,12 @@ public class TestCaseResourceContext implements ResourceContextInterface {
   @Override
   public EntityInterface getEntity() {
     return resolveEntity();
+  }
+
+  @Override
+  public EntityReference getDomain() {
+    resolveEntity();
+    return entity == null ? null : entity.getDomain();
   }
 
   private EntityInterface resolveEntity() {
@@ -80,8 +86,8 @@ public class TestCaseResourceContext implements ResourceContextInterface {
     EntityRepository<? extends EntityInterface> entityRepository =
         Entity.getEntityRepository(entityLink.getEntityType());
     String fields = "";
-    if (entityRepository.isSupportsOwner()) {
-      fields = EntityUtil.addField(fields, Entity.FIELD_OWNER);
+    if (entityRepository.isSupportsOwners()) {
+      fields = EntityUtil.addField(fields, Entity.FIELD_OWNERS);
     }
     if (entityRepository.isSupportsTags()) {
       fields = EntityUtil.addField(fields, Entity.FIELD_TAGS);

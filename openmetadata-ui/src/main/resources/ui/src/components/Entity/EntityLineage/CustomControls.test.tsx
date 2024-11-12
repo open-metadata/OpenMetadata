@@ -12,15 +12,14 @@
  */
 import { fireEvent, render } from '@testing-library/react';
 import React from 'react';
-import { LineageLayerView } from '../../../context/LineageProvider/LineageProvider.interface';
 import { LOADING_STATE } from '../../../enums/common.enum';
+import { LineageLayer } from '../../../generated/settings/settings';
 import { MOCK_LINEAGE_DATA } from '../../../mocks/Lineage.mock';
 import CustomControlsComponent from './CustomControls.component';
 
 const mockOnOptionSelect = jest.fn();
 const mockOnLineageConfigUpdate = jest.fn();
 const mockOnEditLineageClick = jest.fn();
-const mockOnExpandColumnClick = jest.fn();
 const mockHandleFullScreenViewClick = jest.fn();
 const mockOnExitFullScreenViewClick = jest.fn();
 const mockOnZoomHandler = jest.fn();
@@ -50,10 +49,9 @@ jest.mock('reactflow', () => ({
 
 jest.mock('../../../context/LineageProvider/LineageProvider', () => ({
   useLineageProvider: jest.fn().mockImplementation(() => ({
-    toggleColumnView: mockOnExpandColumnClick,
     onLineageEditClick: mockOnEditLineageClick,
     onExportClick: mockOnExportClick,
-    activeLayer: [LineageLayerView.COLUMN],
+    activeLayer: [LineageLayer.ColumnLevelLineage],
   })),
 }));
 

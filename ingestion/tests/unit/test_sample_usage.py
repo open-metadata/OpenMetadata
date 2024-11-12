@@ -13,6 +13,7 @@
 Query parser utils tests
 """
 import json
+import os.path
 from unittest import TestCase
 
 from metadata.workflow.usage import UsageWorkflow
@@ -78,7 +79,17 @@ class QueryParserTest(TestCase):
             "shopify.fact_sale": 3,
             "shopify.raw_customer": 10,
         }
-        workflow = UsageWorkflow.create(json.loads(config))
+        config_dict = json.loads(config)
+        config_dict["source"]["serviceConnection"]["config"]["connectionOptions"][
+            "sampleDataFolder"
+        ] = (
+            os.path.dirname(__file__)
+            + "/../../../"
+            + config_dict["source"]["serviceConnection"]["config"]["connectionOptions"][
+                "sampleDataFolder"
+            ]
+        )
+        workflow = UsageWorkflow.create(config_dict)
         workflow.execute()
         table_usage_map = {}
 

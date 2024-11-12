@@ -66,7 +66,7 @@ class MysqlUnitTest(TestCase):
     def __init__(self, methodName, test_connection) -> None:
         super().__init__(methodName)
         test_connection.return_value = False
-        self.config = OpenMetadataWorkflowConfig.parse_obj(mock_mysql_config)
+        self.config = OpenMetadataWorkflowConfig.model_validate(mock_mysql_config)
         self.mysql_source = MysqlSource.create(
             mock_mysql_config["source"],
             self.config.workflowConfig.openMetadataServerConfig,

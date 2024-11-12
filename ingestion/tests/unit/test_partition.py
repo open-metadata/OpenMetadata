@@ -31,27 +31,27 @@ from metadata.utils.partition import get_partition_details
 
 
 class MockTable(BaseModel):
-    tablePartition: Optional[TablePartition]
-    tableProfilerConfig: Optional[TableProfilerConfig]
-    serviceType = DatabaseServiceType.BigQuery
+    tablePartition: Optional[TablePartition] = None
+    tableProfilerConfig: Optional[TableProfilerConfig] = None
+    serviceType: DatabaseServiceType = DatabaseServiceType.BigQuery
 
     class Config:
         arbitrary_types_allowed = True
 
 
 class MockRedshiftTable(BaseModel):
-    tablePartition: Optional[TablePartition]
-    tableProfilerConfig: Optional[TableProfilerConfig]
-    serviceType = DatabaseServiceType.Redshift
+    tablePartition: Optional[TablePartition] = None
+    tableProfilerConfig: Optional[TableProfilerConfig] = None
+    serviceType: DatabaseServiceType = DatabaseServiceType.Redshift
 
     class Config:
         arbitrary_types_allowed = True
 
 
 class MockAthenaTable(BaseModel):
-    tablePartition: Optional[TablePartition]
-    tableProfilerConfig: Optional[TableProfilerConfig]
-    serviceType = DatabaseServiceType.Athena
+    tablePartition: Optional[TablePartition] = None
+    tableProfilerConfig: Optional[TableProfilerConfig] = None
+    serviceType: DatabaseServiceType = DatabaseServiceType.Athena
 
     class Config:
         arbitrary_types_allowed = True

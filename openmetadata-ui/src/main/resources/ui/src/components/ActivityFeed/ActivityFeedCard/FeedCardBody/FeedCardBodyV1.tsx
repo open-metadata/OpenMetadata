@@ -192,9 +192,9 @@ const FeedCardBodyV1 = ({
                 {showSchedule && (
                   <Typography.Text className="feed-body-schedule text-xs text-grey-muted">
                     {t('label.schedule')}{' '}
-                    {formatDateTime(announcement.startTime * 1000)}{' '}
+                    {formatDateTime(announcement.startTime)}{' '}
                     {t('label.to-lowercase')}{' '}
-                    {formatDateTime(announcement.endTime * 1000)}
+                    {formatDateTime(announcement.endTime)}
                   </Typography.Text>
                 )}
               </Col>

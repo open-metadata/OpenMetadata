@@ -81,8 +81,8 @@ class OpenlineageSource(PipelineServiceSource):
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
     ):
         """Create class instance"""
-        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: OpenLineageConnection = config.serviceConnection.__root__.config
+        config: WorkflowSource = WorkflowSource.model_validate(config_dict)
+        connection: OpenLineageConnection = config.serviceConnection.root.config
         if not isinstance(connection, OpenLineageConnection):
             raise InvalidSourceException(
                 f"Expected OpenLineageConnection, but got {connection}"
@@ -145,30 +145,6 @@ class OpenlineageSource(PipelineServiceSource):
                 return f"{schema_fqn}.{table_details.name}"
             except FQNNotFoundException:
                 return None
-
-    def _get_table_fqn_from_om(self, table_details: TableDetails) -> Optional[str]:
-        """
-        Based on partial schema and table names look for matching table object in open metadata.
-        :param schema: schema name
-        :param table: table name
-        :return: fully qualified name of a Table in Open Metadata
-        """
-        result = None
-        services = self.get_db_service_names()
-        for db_service in services:
-            result = fqn.build(
-                metadata=self.metadata,
-                entity_type=Table,
-                service_name=db_service,
-                database_name=None,
-                schema_name=table_details.schema,
-                table_name=table_details.name,
-            )
-        if not result:
-            raise FQNNotFoundException(
-                f"Table FQN not found for table: {table_details} within services: {services}"
-            )
-        return result
 
     def _get_schema_fqn_from_om(self, schema: str) -> Optional[str]:
         """
@@ -452,7 +428,7 @@ class OpenlineageSource(PipelineServiceSource):
                         ),
                         lineageDetails=LineageDetails(
                             pipeline=EntityReference(
-                                id=pipeline_entity.id.__root__,
+                                id=pipeline_entity.id.root,
                                 type="pipeline",
                             ),
                             description=f"Lineage extracted from OpenLineage job: {pipeline_details.job['name']}",

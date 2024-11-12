@@ -65,7 +65,7 @@ class greenplumUnitTest(TestCase):
     def __init__(self, methodName, test_connection) -> None:
         super().__init__(methodName)
         test_connection.return_value = False
-        self.config = OpenMetadataWorkflowConfig.parse_obj(mock_greenplum_config)
+        self.config = OpenMetadataWorkflowConfig.model_validate(mock_greenplum_config)
         self.greenplum_source = GreenplumSource.create(
             mock_greenplum_config["source"],
             self.config.workflowConfig.openMetadataServerConfig,

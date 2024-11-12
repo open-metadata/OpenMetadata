@@ -19,11 +19,12 @@ import { EdgeProps, getBezierPath } from 'reactflow';
 import { ReactComponent as FunctionIcon } from '../../../assets/svg/ic-function.svg';
 import { ReactComponent as IconTimesCircle } from '../../../assets/svg/ic-times-circle.svg';
 import { ReactComponent as PipelineIcon } from '../../../assets/svg/pipeline-grey.svg';
+import { RED_3 } from '../../../constants/Color.constants';
 import { FOREIGN_OBJECT_SIZE } from '../../../constants/Lineage.constants';
 import { useLineageProvider } from '../../../context/LineageProvider/LineageProvider';
-import { LineageLayerView } from '../../../context/LineageProvider/LineageProvider.interface';
 import { EntityType } from '../../../enums/entity.enum';
 import { StatusType } from '../../../generated/entity/data/pipeline';
+import { LineageLayer } from '../../../generated/settings/settings';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { getColumnSourceTargetHandles } from '../../../utils/EntityLineageUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
@@ -76,6 +77,7 @@ export const CustomEdge = ({
     isPipelineRootNode,
     ...rest
   } = data;
+
   const offset = 4;
 
   const { fromEntity, toEntity, pipeline, pipelineEntityType } =
@@ -138,27 +140,46 @@ export const CustomEdge = ({
       tracedNodes.includes(edge.fromEntity.id) &&
       tracedNodes.includes(edge.toEntity.id);
 
-    let isStrokeNeeded = isNodeTraced;
-
+    const isStrokeNeeded = isColumnLineage ? isColumnHighlighted : isNodeTraced;
+    let opacity = 1;
     if (isColumnLineage) {
-      isStrokeNeeded = isColumnHighlighted;
+      opacity =
+        tracedNodes.length === 0 &&
+        (tracedColumns.length === 0 || isColumnHighlighted)
+          ? 1
+          : 0.25;
+    } else {
+      opacity = tracedNodes.length === 0 || isStrokeNeeded ? 1 : 0.25;
+    }
+
+    let stroke = isStrokeNeeded ? theme.primaryColor : undefined;
+
+    if (edge?.isDqTestFailure) {
+      stroke = RED_3;
     }
 
     return {
       ...style,
       ...{
-        stroke: isStrokeNeeded ? theme.primaryColor : undefined,
+        stroke,
+        opacity,
       },
     };
-  }, [style, tracedNodes, edge, isColumnHighlighted, isColumnLineage]);
+  }, [
+    style,
+    tracedNodes,
+    edge,
+    isColumnHighlighted,
+    isColumnLineage,
+    tracedColumns,
+  ]);
 
   const isPipelineEdgeAllowed = (
     sourceType: EntityType,
     targetType: EntityType
   ) => {
     return (
-      [EntityType.TABLE, EntityType.TOPIC].indexOf(sourceType) > -1 &&
-      [EntityType.TABLE, EntityType.TOPIC].indexOf(targetType) > -1
+      sourceType !== EntityType.PIPELINE && targetType !== EntityType.PIPELINE
     );
   };
 
@@ -194,7 +215,7 @@ export const CustomEdge = ({
 
   const currentPipelineStatus = useMemo(() => {
     const isPipelineActiveNow = activeLayer.includes(
-      LineageLayerView.DATA_OBSERVARABILITY
+      LineageLayer.DataObservability
     );
     const pipelineData = pipeline?.pipelineStatus;
     if (pipelineData && isPipelineActiveNow) {
@@ -243,7 +264,6 @@ export const CustomEdge = ({
             />
           ) : (
             <EntityPopOverCard
-              defaultOpen={isPipelineRootNode}
               entityFQN={pipeline?.fullyQualifiedName}
               entityType={pipelineEntityType}
               extraInfo={

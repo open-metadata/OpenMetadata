@@ -48,13 +48,13 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.classification.CreateClassification;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.classification.Classification;
-import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ClassificationRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
@@ -84,8 +84,8 @@ public class ClassificationResource
     /* Required for serde */
   }
 
-  public ClassificationResource(Authorizer authorizer) {
-    super(Entity.CLASSIFICATION, authorizer);
+  public ClassificationResource(Authorizer authorizer, Limits limits) {
+    super(Entity.CLASSIFICATION, authorizer, limits);
   }
 
   @Override
@@ -439,7 +439,7 @@ public class ClassificationResource
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = Table.class)))
+                    schema = @Schema(implementation = Classification.class)))
       })
   public Response restore(
       @Context UriInfo uriInfo,

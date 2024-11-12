@@ -154,6 +154,41 @@
   }
 }
 
+.react-flow__node-default.selectable.selected,
+.react-flow__node-default.selectable:focus,
+.react-flow__node-default.selectable:focus-visible,
+.react-flow__node-input.selectable.selected,
+.react-flow__node-input.selectable:focus,
+.react-flow__node-input.selectable:focus-visible,
+.react-flow__node-output.selectable.selected,
+.react-flow__node-output.selectable:focus,
+.react-flow__node-output.selectable:focus-visible,
+.react-flow__node-group.selectable.selected,
+.react-flow__node-group.selectable:focus,
+.react-flow__node-group.selectable:focus-visible,
+.react-flow__node-load-more.selectable.selected,
+.react-flow__node-load-more.selectable:focus,
+.react-flow__node-load-more.selectable:focus-visible {
+  .data-quality-failed-custom-node-header {
+    &.lineage-node {
+      border-color: @red-3 !important;
+    }
+    .lineage-node-handle {
+      border-color: @red-3;
+      svg {
+        color: @red-3;
+      }
+    }
+    .label-container {
+      background: fade(@red-3, 10%);
+    }
+    .column-container {
+      background: fade(@red-3, 10%);
+      border-top: 1px solid @border-color;
+    }
+  }
+}
+
 .custom-node-header-active {
   .label-container {
     background: @primary-1;
@@ -161,6 +196,15 @@
   .column-container {
     background: @primary-1;
     border-top: 1px solid @border-color;
+  }
+}
+.data-quality-failed-custom-node-header.custom-node-header-active {
+  .label-container {
+    background: fade(@red-3, 10%);
+  }
+  .column-container {
+    background: fade(@red-3, 10%);
+    border-top: 1px solid @red-3;
   }
 }
 
@@ -214,4 +258,10 @@
   position: relative;
   background-color: @white;
   font-size: 12px;
+}
+
+.custom-node-deleted-icon {
+  border-radius: 4px;
+  border: 1px solid @error-color;
+  background-color: @white;
 }

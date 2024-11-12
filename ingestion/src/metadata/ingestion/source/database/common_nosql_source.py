@@ -42,6 +42,7 @@ from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.type.basic import EntityName, FullyQualifiedEntityName
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -73,7 +74,7 @@ class CommonNoSQLSource(DatabaseServiceSource, ABC):
             self.config.sourceConfig.config
         )
         self.metadata = metadata
-        self.service_connection = self.config.serviceConnection.__root__.config
+        self.service_connection = self.config.serviceConnection.root.config
         self.connection_obj = get_connection(self.service_connection)
         self.test_connection()
 
@@ -103,7 +104,7 @@ class CommonNoSQLSource(DatabaseServiceSource, ABC):
 
         yield Either(
             right=CreateDatabaseRequest(
-                name=database_name,
+                name=EntityName(database_name),
                 service=self.context.get().database_service,
                 sourceUrl=self.get_source_url(database_name=database_name),
             )
@@ -145,12 +146,14 @@ class CommonNoSQLSource(DatabaseServiceSource, ABC):
 
         yield Either(
             right=CreateDatabaseSchemaRequest(
-                name=schema_name,
-                database=fqn.build(
-                    metadata=self.metadata,
-                    entity_type=Database,
-                    service_name=self.context.get().database_service,
-                    database_name=self.context.get().database,
+                name=EntityName(schema_name),
+                database=FullyQualifiedEntityName(
+                    fqn.build(
+                        metadata=self.metadata,
+                        entity_type=Database,
+                        service_name=self.context.get().database_service,
+                        database_name=self.context.get().database,
+                    )
                 ),
                 sourceUrl=self.get_source_url(
                     database_name=self.context.get().database,
@@ -166,7 +169,7 @@ class CommonNoSQLSource(DatabaseServiceSource, ABC):
         need to be overridden by sources
         """
 
-    def get_tables_name_and_type(self) -> Optional[Iterable[Tuple[str, str]]]:
+    def get_tables_name_and_type(self) -> Optional[Iterable[Tuple[str, TableType]]]:
         """
         Handle table and views.
 
@@ -217,7 +220,7 @@ class CommonNoSQLSource(DatabaseServiceSource, ABC):
         return None
 
     def yield_table(
-        self, table_name_and_type: Tuple[str, str]
+        self, table_name_and_type: Tuple[str, TableType]
     ) -> Iterable[Either[CreateTableRequest]]:
         """
         From topology.
@@ -233,7 +236,7 @@ class CommonNoSQLSource(DatabaseServiceSource, ABC):
             column_parser = DataFrameColumnParser.create(df)
             columns = column_parser.get_columns()
             table_request = CreateTableRequest(
-                name=table_name,
+                name=EntityName(table_name),
                 tableType=table_type,
                 columns=columns,
                 tableConstraints=self.get_table_constraints(
@@ -241,12 +244,14 @@ class CommonNoSQLSource(DatabaseServiceSource, ABC):
                     table_name=table_name,
                     db_name=self.context.get().database,
                 ),
-                databaseSchema=fqn.build(
-                    metadata=self.metadata,
-                    entity_type=DatabaseSchema,
-                    service_name=self.context.get().database_service,
-                    database_name=self.context.get().database,
-                    schema_name=schema_name,
+                databaseSchema=FullyQualifiedEntityName(
+                    fqn.build(
+                        metadata=self.metadata,
+                        entity_type=DatabaseSchema,
+                        service_name=self.context.get().database_service,
+                        database_name=self.context.get().database,
+                        schema_name=schema_name,
+                    )
                 ),
                 sourceUrl=self.get_source_url(
                     database_name=self.context.get().database,

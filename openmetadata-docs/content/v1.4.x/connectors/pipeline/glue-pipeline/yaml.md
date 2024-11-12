@@ -110,13 +110,13 @@ This is a sample config for Glue:
 
 {% codeBlock fileName="filename.yaml" %}
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
-  type: glue
+  type: gluepipeline 
   serviceName: local_glue
   serviceConnection:
     config:
-      type: Glue
+      type: GluePipeline
       awsConfig:
 ```
 ```yaml {% srNumber=1 %}

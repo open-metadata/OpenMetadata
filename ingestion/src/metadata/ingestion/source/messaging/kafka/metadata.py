@@ -11,7 +11,7 @@
 """
 Kafka source ingestion
 """
-from typing import Optional
+from typing import Optional, cast
 
 from metadata.generated.schema.entity.services.connections.messaging.kafkaConnection import (
     KafkaConnection,
@@ -28,16 +28,15 @@ from metadata.utils.ssl_manager import SSLManager
 class KafkaSource(CommonBrokerSource):
     def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
         self.ssl_manager = None
-        service_connection = config.serviceConnection.__root__.config
+        service_connection = cast(KafkaConnection, config.serviceConnection.root.config)
         if service_connection.schemaRegistrySSL:
-
             self.ssl_manager = SSLManager(
-                ca=service_connection.schemaRegistrySSL.__root__.caCertificate,
-                key=service_connection.schemaRegistrySSL.__root__.sslKey,
-                cert=service_connection.schemaRegistrySSL.__root__.sslCertificate,
+                ca=service_connection.schemaRegistrySSL.root.caCertificate,
+                key=service_connection.schemaRegistrySSL.root.sslKey,
+                cert=service_connection.schemaRegistrySSL.root.sslCertificate,
             )
             service_connection = self.ssl_manager.setup_ssl(
-                config.serviceConnection.__root__.config.sslConfig
+                config.serviceConnection.root.config
             )
         super().__init__(config, metadata)
 
@@ -45,8 +44,8 @@ class KafkaSource(CommonBrokerSource):
     def create(
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
     ):
-        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: KafkaConnection = config.serviceConnection.__root__.config
+        config: WorkflowSource = WorkflowSource.model_validate(config_dict)
+        connection: KafkaConnection = config.serviceConnection.root.config
         if not isinstance(connection, KafkaConnection):
             raise InvalidSourceException(
                 f"Expected KafkaConnection, but got {connection}"

@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { EditorState } from '@tiptap/pm/state';
+import { Editor } from '@tiptap/react';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 
 export const getSelectedText = (state: EditorState) => {
@@ -81,4 +82,23 @@ export const isHTMLString = (content: string) => {
   } catch (e) {
     return false;
   }
+};
+
+/**
+ * Set the content of the editor
+ * @param editor The editor instance
+ * @param newContent The new content to set
+ */
+export const setEditorContent = (editor: Editor, newContent: string) => {
+  editor.commands.setContent(newContent);
+
+  // Update the editor state to reflect the new content
+  const newEditorState = EditorState.create({
+    doc: editor.state.doc,
+    plugins: editor.state.plugins,
+    schema: editor.state.schema,
+    selection: editor.state.selection,
+    storedMarks: editor.state.storedMarks,
+  });
+  editor.view.updateState(newEditorState);
 };

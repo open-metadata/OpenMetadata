@@ -32,13 +32,20 @@ def _(element, compiler, **kw):
     return f"SUM(CAST({proc} AS BIGINT))"
 
 
+@compiles(SumFn, Dialects.Redshift)
+def _(element, compiler, **kw):
+    """Cast to Decimal to address overflow error from summing 32-bit int in most database dialects"""
+    proc = compiler.process(element.clauses, **kw)
+    return f"SUM(CAST({proc} AS Decimal(38,0)))"
+
+
 @compiles(SumFn, Dialects.Athena)
 @compiles(SumFn, Dialects.Trino)
 @compiles(SumFn, Dialects.Presto)
 def _(element, compiler, **kw):
     """Cast to DECIMAL to address cannot cast nan to bigint"""
     proc = compiler.process(element.clauses, **kw)
-    return f"SUM(TRY_CAST({proc} AS DECIMAL))"
+    return f"COALESCE(SUM(CAST({proc} AS DECIMAL)),0)"
 
 
 @compiles(SumFn, Dialects.BigQuery)

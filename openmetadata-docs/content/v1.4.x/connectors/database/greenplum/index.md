@@ -18,10 +18,11 @@ Configure and schedule Greenplum metadata and profiler workflows from the OpenMe
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 - [Query Usage](/connectors/ingestion/workflows/usage)
-- [Data Profiler](/connectors/ingestion/workflows/profiler)
-- [Data Quality](/connectors/ingestion/workflows/data-quality)
+- [Data Profiler](/how-to-guides/data-quality-observability/profiler/workflow)
+- [Data Quality](/how-to-guides/data-quality-observability/quality/configure)
 - [Lineage](/connectors/ingestion/lineage)
 - [dbt Integration](/connectors/ingestion/workflows/dbt)
+- [Enable Security](#securing-greenplum-connection-with-ssl-in-openmetadata)
 
 {% partial file="/v1.4/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/greenplum/yaml"} /%}
 
@@ -110,6 +111,21 @@ Configure and schedule Greenplum metadata and profiler workflows from the OpenMe
     Find more information about [Source Identity](https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRole.html#:~:text=Required%3A%20No-,SourceIdentity,-The%20source%20identity).
 - **Host and Port**: Enter the fully qualified hostname and port number for your Greenplum deployment in the Host and Port field.
 
+
+**SSL Modes**
+
+There are a couple of types of SSL modes that Greenplum supports which can be added to ConnectionArguments, they are as follows:
+- **disable**: SSL is disabled and the connection is not encrypted.
+- **allow**: SSL is used if the server requires it.
+- **prefer**: SSL is used if the server supports it.
+- **require**: SSL is required.
+- **verify-ca**: SSL must be used and the server certificate must be verified.
+- **verify-full**: SSL must be used. The server certificate must be verified, and the server hostname must match the hostname attribute on the certificate.
+
+**SSL Configuration**
+
+In order to integrate SSL in the Metadata Ingestion Config, the user will have to add the SSL config under sslConfig which is placed in the source.
+
 {% partial file="/v1.4/connectors/database/advanced-configuration.md" /%}
 
 {% /extraContent %}
@@ -121,6 +137,24 @@ Configure and schedule Greenplum metadata and profiler workflows from the OpenMe
 {% partial file="/v1.4/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
+
+## Securing Greenplum Connection with SSL in OpenMetadata
+
+To establish secure connections between OpenMetadata and a Greenplum database, you can configure SSL using different SSL modes provided by Greenplum, each offering varying levels of security.
+
+Under `Advanced Config`, specify the SSL mode appropriate for your connection, such as `prefer`, `verify-ca`, `allow`, and others. After selecting the SSL mode, provide the CA certificate used for SSL validation (`caCertificate`). Note that Greenplum requires only the CA certificate for SSL validation.
+
+{% note %}
+
+For IAM authentication, it is recommended to choose the `allow` mode or another SSL mode that fits your specific requirements.
+
+{% /note %}
+
+{% image
+  src="/images/v1.4/connectors/ssl_connection.png"
+  alt="SSL Configuration"
+  height="450px"
+  caption="SSL Configuration" /%}
 
 {% partial file="/v1.4/connectors/troubleshooting.md" /%}
 

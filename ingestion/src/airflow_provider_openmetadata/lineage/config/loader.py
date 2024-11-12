@@ -90,7 +90,7 @@ def get_lineage_config() -> AirflowLineageConfig:
     if openmetadata_config_file:
         with open(openmetadata_config_file, encoding="utf-8") as config_file:
             config = json.load(config_file)
-            return AirflowLineageConfig.parse_obj(config)
+            return AirflowLineageConfig.model_validate(config)
 
     # If nothing is configured, raise
     raise ValueError("Missing lineage backend configuration")

@@ -209,6 +209,39 @@ public class LineageResource {
   }
 
   @GET
+  @Path("/getDataQualityLineage")
+  @Operation(
+      operationId = "searchDataQualityLineage",
+      summary = "Search Data Quality lineage",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "search response",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = SearchResponse.class)))
+      })
+  public Response searchDataQualityLineage(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "fqn") @QueryParam("fqn") String fqn,
+      @Parameter(description = "upstreamDepth") @QueryParam("upstreamDepth") int upstreamDepth,
+      @Parameter(
+              description =
+                  "Elasticsearch query that will be combined with the query_string query generator from the `query` argument")
+          @QueryParam("query_filter")
+          String queryFilter,
+      @Parameter(description = "Filter documents by deleted param. By default deleted is false")
+          @QueryParam("includeDeleted")
+          boolean deleted)
+      throws IOException {
+
+    return Entity.getSearchRepository()
+        .searchDataQualityLineage(fqn, upstreamDepth, queryFilter, deleted);
+  }
+
+  @GET
   @Path("/export")
   @Produces(MediaType.TEXT_PLAIN)
   @Operation(
@@ -437,6 +470,45 @@ public class LineageResource {
     return Response.status(Status.OK).build();
   }
 
+  @DELETE
+  @Path("/{entityType}/{entityId}/type/{lineageSource}")
+  @Operation(
+      operationId = "deleteLineageEdgeByType",
+      summary = "Delete a lineage edge by Type",
+      description =
+          "Delete a lineage edge with from entity as upstream node and to entity as downstream node by source of lineage",
+      responses = {
+        @ApiResponse(responseCode = "200"),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Entity for instance {entityFQN} is not found")
+      })
+  public Response deleteLineageByType(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Entity type of upstream entity of the edge",
+              required = true,
+              schema = @Schema(type = "string", example = "table, report, metrics, or dashboard"))
+          @PathParam("entityType")
+          String entityType,
+      @Parameter(description = "Entity ID", required = true, schema = @Schema(type = "string"))
+          @PathParam("entityId")
+          UUID entityId,
+      @Parameter(
+              description = "Lineage Type",
+              required = true,
+              schema = @Schema(type = "string", example = "ViewLineage"))
+          @PathParam("lineageSource")
+          String lineageSource) {
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(LINEAGE_FIELD, MetadataOperation.EDIT_LINEAGE),
+        new LineageResourceContext());
+    dao.deleteLineageBySource(entityId, entityType, lineageSource);
+    return Response.status(Status.OK).build();
+  }
+
   private EntityLineage addHref(UriInfo uriInfo, EntityLineage lineage) {
     Entity.withHref(uriInfo, lineage.getEntity());
     Entity.withHref(uriInfo, lineage.getNodes());
@@ -451,7 +523,7 @@ public class LineageResource {
     }
 
     @Override
-    public EntityReference getOwner() {
+    public List<EntityReference> getOwners() {
       return null;
     }
 
@@ -462,6 +534,11 @@ public class LineageResource {
 
     @Override
     public EntityInterface getEntity() {
+      return null;
+    }
+
+    @Override
+    public EntityReference getDomain() {
       return null;
     }
   }

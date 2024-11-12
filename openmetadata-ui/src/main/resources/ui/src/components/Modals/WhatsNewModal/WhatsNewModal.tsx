@@ -24,7 +24,7 @@ import { VersionIndicatorIcon } from '../VersionIndicatorIcon.component';
 import ChangeLogs from './ChangeLogs';
 import FeaturesCarousel from './FeaturesCarousel';
 import './whats-new-modal.less';
-import { COOKIE_VERSION, LATEST_VERSION_ID, WHATS_NEW } from './whatsNewData';
+import { COOKIE_VERSION, WHATS_NEW } from './whatsNewData';
 import { ToggleType, WhatsNewModalProps } from './WhatsNewModal.interface';
 
 const cookieStorage = new CookieStorage();
@@ -36,7 +36,7 @@ const WhatsNewModal: FunctionComponent<WhatsNewModalProps> = ({
 }: WhatsNewModalProps) => {
   const { theme } = useApplicationStore();
 
-  const [activeData, setActiveData] = useState(WHATS_NEW[LATEST_VERSION_ID]);
+  const [activeData, setActiveData] = useState(WHATS_NEW[WHATS_NEW.length - 1]); // latest version will be last in the array
   const [checkedValue, setCheckedValue] = useState<ToggleType>(
     ToggleType.FEATURES
   );

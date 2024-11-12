@@ -29,5 +29,7 @@
     }
   ],
   "supportsRowLevelPassedFailed": true,
-  "provider": "system"
+  "supportsDynamicAssertion": true,
+  "provider": "system",
+  "dataQualityDimension": "Accuracy"
 }

@@ -79,6 +79,10 @@
         "value": {
           "description": "test result value",
           "type": "string"
+        },
+        "predictedValue": {
+          "description": "predicted value",
+          "type": "string"
         }
       }
     },
@@ -105,8 +109,17 @@
     "testCaseResult": {
       "description": "Schema to capture test case result.",
       "javaType": "org.openmetadata.schema.tests.type.TestCaseResult",
+      "javaInterfaces": ["org.openmetadata.schema.EntityTimeSeriesInterface"],
       "type": "object",
       "properties": {
+        "id": {
+          "description": "Unique identifier of this failure instance",
+          "$ref": "../type/basic.json#/definitions/uuid"
+        },
+        "testCaseFQN": {
+          "description": "Fully qualified name of the test case.",
+          "$ref": "../type/basic.json#/definitions/fullyQualifiedEntityName"
+        },
         "timestamp": {
           "description": "Data one which test case result is taken.",
           "$ref": "../type/basic.json#/definitions/timestamp"
@@ -148,8 +161,25 @@
         "incidentId": {
           "description": "Incident State ID associated with this result. This association happens when the result is created, and will stay there even when the incident is resolved.",
           "$ref": "../type/basic.json#/definitions/uuid"
+        },
+        "maxBound": {
+          "description": "Upper bound limit for the test case result as defined in the test definition.",
+          "type": "number"
+        },
+        "minBound": {
+          "description": "Lower bound limit for the test case result as defined in the test definition.",
+          "type": "number"
+        },
+        "testCase": {
+          "description": "Test case that this result is for.",
+          "$ref": "../type/entityReference.json"
+        },
+        "testDefinition": {
+          "description": "Test definition that this result is for.",
+          "$ref": "../type/entityReference.json"
         }
-      }
+      },
+      "required": ["timestamp"]
     },
     "testSuiteExecutionFrequency": {
       "description": "How often the test case should run.",

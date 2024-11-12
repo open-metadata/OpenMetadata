@@ -9,7 +9,7 @@ import org.openmetadata.schema.type.Include;
 @Getter
 public abstract class Filter<T extends Filter<T>> {
   protected Include include;
-  protected final Map<String, String> queryParams = new HashMap<>();
+  @Getter protected final Map<String, String> queryParams = new HashMap<>();
 
   public T addQueryParam(String name, String value) {
     queryParams.put(name, value);

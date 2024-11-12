@@ -71,7 +71,7 @@ class OMetaModelMixinTest(TestCase):
         self.assertEqual(entity.name, entity_create.name)
         self.assertEqual(entity.algorithm, "DecisionTreeClassifier")
         self.assertEqual(
-            {feature.name.__root__ for feature in entity.mlFeatures},
+            {feature.name.root for feature in entity.mlFeatures},
             {
                 "sepal_length__cm_",
                 "sepal_width__cm_",

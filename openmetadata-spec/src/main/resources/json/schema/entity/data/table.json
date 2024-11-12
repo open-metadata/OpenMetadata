@@ -19,6 +19,14 @@
       ],
       "default": "PERCENTAGE"
     },
+    "samplingMethodType": {
+      "description": "Type of Sampling Method (BERNOULLI or SYSTEM)",
+      "type": "string",
+      "enum": [
+        "BERNOULLI",
+        "SYSTEM"
+      ]
+    },
     "tableType": {
       "javaType": "org.openmetadata.schema.type.TableType",
       "description": "This schema defines the type used for describing different types of tables.",
@@ -154,7 +162,9 @@
         "QUANTILE_STATE",
         "AGG_STATE",
         "BITMAP",
-        "UINT"
+        "UINT",
+        "BIT",
+        "MONEY"
       ]
     },
     "constraint": {
@@ -200,6 +210,15 @@
             "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
           },
           "default": null
+        },
+        "relationshipType": {
+          "type": "string",
+          "enum": [
+            "ONE_TO_ONE",
+            "ONE_TO_MANY",
+            "MANY_TO_ONE",
+            "MANY_TO_MANY"
+          ]
         }
       },
       "additionalProperties": false
@@ -532,6 +551,9 @@
             },
             {
               "$ref": "../../type/basic.json#/definitions/date"
+            },
+            {
+              "type": "string"
             }
           ]
         },
@@ -552,6 +574,9 @@
             },
             {
               "$ref": "../../type/basic.json#/definitions/date"
+            },
+            {
+              "type": "string"
             }
           ]
         },
@@ -736,6 +761,9 @@
           "type": "number",
           "default": null
         },
+        "samplingMethodType": {
+          "$ref": "#/definitions/samplingMethodType"
+        },
         "sampleDataCount": {
           "description": "Number of sample rows to ingest when 'Generate Sample Data' is enabled",
           "type": "integer",
@@ -766,6 +794,18 @@
         "partitioning": {
           "description": "Partitioning configuration",
           "$ref": "#/definitions/partitionProfilerConfig"
+        },
+        "computeTableMetrics": {
+          "description": "Option to turn on/off table metric computation. If enabled, profiler will compute table level metrics.",
+          "type": "boolean",
+          "default": true,
+          "title": "Compute Table Metrics"
+        },
+        "computeColumnMetrics": {
+          "description": "Option to turn on/off column metric computation. If enabled, profiler will compute column level metrics.",
+          "type": "boolean",
+          "default": true,
+          "title": "Compute Column Metrics"
         }
       }
     },
@@ -785,6 +825,9 @@
         },
         "profileSampleType": {
           "$ref": "#/definitions/profileSampleType"
+        },
+        "samplingMethodType": {
+          "$ref": "#/definitions/samplingMethodType"
         },
         "columnCount": {
           "description": "No.of columns in the table.",
@@ -867,9 +910,9 @@
             "type": "string"
           }
         },
-        "owner": {
-          "description": "Owner of this Model.",
-          "$ref": "../../type/entityReference.json",
+        "owners": {
+          "description": "Owners of this Table.",
+          "$ref": "../../type/entityReferenceList.json",
           "default": null
         },
         "tags": {
@@ -893,15 +936,14 @@
         }
       },
       "required": [
-        "modelType",
-        "sql"
+        "modelType"
       ],
       "additionalProperties": false
     },
     "fileFormat": {
       "description": "File format in case of file/datalake tables.",
       "type": "string",
-      "enum": ["csv", "tsv", "avro", "parquet", "json", "json.gz", "json.zip"]
+      "enum": ["csv", "tsv", "avro", "parquet", "json", "json.gz", "json.zip", "jsonl", "jsonl.gz", "jsonl.zip"]
     }
   },
   "properties": {
@@ -964,9 +1006,9 @@
     "tablePartition": {
       "$ref": "#/definitions/tablePartition"
     },
-    "owner": {
-      "description": "Owner of this table.",
-      "$ref": "../../type/entityReference.json",
+    "owners": {
+      "description": "Owners of this table.",
+      "$ref": "../../type/entityReferenceList.json",
       "default": null
     },
     "databaseSchema": {
@@ -988,6 +1030,11 @@
     "location": {
       "description": "Reference to the Location that contains this table.",
       "$ref": "../../type/entityReference.json"
+    },
+    "locationPath": {
+      "description": "Full storage path in case of external and managed tables.",
+      "type": "string",
+      "default": null
     },
     "schemaDefinition": {
       "description": "DDL for Tables and Views",
@@ -1067,7 +1114,7 @@
       "$ref": "../../type/basic.json#/definitions/sourceUrl"
     },
     "domain" : {
-      "description": "Domain the table belongs to. When not set, the table inherits the domain from the database schema it belongs to.",
+      "description": "Domain the asset belongs to. When not set, the asset inherits the domain from the parent it belongs to.",
       "$ref": "../../type/entityReference.json"
     },
     "dataProducts" : {
@@ -1079,11 +1126,15 @@
       "$ref" : "#/definitions/fileFormat"
     },
     "votes" : {
+      "description": "Votes on the entity.",
       "$ref": "../../type/votes.json"
     },
     "lifeCycle": {
       "description": "Life Cycle of the entity",
       "$ref": "../../type/lifeCycle.json"
+    },
+    "certification": {
+      "$ref": "../../type/assetCertification.json"
     },
     "sourceHash": {
       "description": "Source hash of the entity",

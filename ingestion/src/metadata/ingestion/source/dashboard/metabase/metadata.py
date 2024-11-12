@@ -33,6 +33,13 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.type.basic import (
+    EntityName,
+    FullyQualifiedEntityName,
+    Markdown,
+    SourceUrl,
+)
+from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper
@@ -70,8 +77,8 @@ class MetabaseSource(DashboardServiceSource):
     def create(
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
     ):
-        config = WorkflowSource.parse_obj(config_dict)
-        connection: MetabaseConnection = config.serviceConnection.__root__.config
+        config = WorkflowSource.model_validate(config_dict)
+        connection: MetabaseConnection = config.serviceConnection.root.config
         if not isinstance(connection, MetabaseConnection):
             raise InvalidSourceException(
                 f"Expected MetabaseConnection, but got {connection}"
@@ -102,7 +109,9 @@ class MetabaseSource(DashboardServiceSource):
         """
         return dashboard.name
 
-    def get_dashboard_details(self, dashboard: MetabaseDashboard) -> dict:
+    def get_dashboard_details(
+        self, dashboard: MetabaseDashboard
+    ) -> Optional[MetabaseDashboardDetails]:
         """
         Get Dashboard Details
         """
@@ -130,6 +139,24 @@ class MetabaseSource(DashboardServiceSource):
             )
         return None
 
+    def get_owner_ref(
+        self, dashboard_details: MetabaseDashboardDetails
+    ) -> Optional[EntityReferenceList]:
+        """
+        Get dashboard owner from email
+        """
+        try:
+            if dashboard_details.creator_id:
+                owner_details = self.client.get_user_details(
+                    dashboard_details.creator_id
+                )
+                if owner_details and owner_details.email:
+                    return self.metadata.get_reference_by_email(owner_details.email)
+        except Exception as err:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Could not fetch owner data due to {err}")
+        return None
+
     def yield_dashboard(
         self, dashboard_details: MetabaseDashboardDetails
     ) -> Iterable[Either[CreateDashboardRequest]]:
@@ -142,22 +169,26 @@ class MetabaseSource(DashboardServiceSource):
                 f"{replace_special_with(raw=dashboard_details.name.lower(), replacement='-')}"
             )
             dashboard_request = CreateDashboardRequest(
-                name=dashboard_details.id,
-                sourceUrl=dashboard_url,
+                name=EntityName(str(dashboard_details.id)),
+                sourceUrl=SourceUrl(dashboard_url),
                 displayName=dashboard_details.name,
-                description=dashboard_details.description,
+                description=Markdown(dashboard_details.description)
+                if dashboard_details.description
+                else None,
                 project=self.context.get().project_name,
                 charts=[
-                    fqn.build(
-                        self.metadata,
-                        entity_type=Chart,
-                        service_name=self.context.get().dashboard_service,
-                        chart_name=chart,
+                    FullyQualifiedEntityName(
+                        fqn.build(
+                            self.metadata,
+                            entity_type=Chart,
+                            service_name=self.context.get().dashboard_service,
+                            chart_name=chart,
+                        )
                     )
                     for chart in self.context.get().charts or []
                 ],
                 service=self.context.get().dashboard_service,
-                owner=self.get_owner_ref(dashboard_details=dashboard_details),
+                owners=self.get_owner_ref(dashboard_details=dashboard_details),
             )
             yield Either(right=dashboard_request)
             self.register_record(dashboard_request=dashboard_request)
@@ -197,11 +228,11 @@ class MetabaseSource(DashboardServiceSource):
                     continue
                 yield Either(
                     right=CreateChartRequest(
-                        name=chart_details.id,
+                        name=EntityName(chart_details.id),
                         displayName=chart_details.name,
                         description=chart_details.description,
                         chartType=get_standard_chart_type(chart_details.display).value,
-                        sourceUrl=chart_url,
+                        sourceUrl=SourceUrl(chart_url),
                         service=self.context.get().dashboard_service,
                     )
                 )

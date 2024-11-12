@@ -15,7 +15,8 @@ Base class for ingesting messaging services
 from abc import ABC, abstractmethod
 from typing import Any, Iterable, List, Optional, Set
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+from typing_extensions import Annotated
 
 from metadata.generated.schema.api.data.createTopic import CreateTopicRequest
 from metadata.generated.schema.entity.data.topic import Topic, TopicSampleData
@@ -33,6 +34,9 @@ from metadata.ingestion.api.delete import delete_entity_from_source
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import Source
 from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
+from metadata.ingestion.connections.test_connections import (
+    raise_test_connection_exception,
+)
 from metadata.ingestion.models.delete_entity import DeleteEntity
 from metadata.ingestion.models.topology import (
     NodeStage,
@@ -67,7 +71,9 @@ class MessagingServiceTopology(ServiceTopology):
     data that has been produced by any parent node.
     """
 
-    root = TopologyNode(
+    root: Annotated[
+        TopologyNode, Field(description="Root node for the topology")
+    ] = TopologyNode(
         producer="get_services",
         stages=[
             NodeStage(
@@ -82,7 +88,9 @@ class MessagingServiceTopology(ServiceTopology):
         children=["topic"],
         post_process=["mark_topics_as_deleted"],
     )
-    topic = TopologyNode(
+    topic: Annotated[
+        TopologyNode, Field(description="Topic Processing Node")
+    ] = TopologyNode(
         producer="get_topic",
         stages=[
             NodeStage(
@@ -111,7 +119,7 @@ class MessagingServiceSource(TopologyRunnerMixin, Source, ABC):
     source_config: MessagingServiceMetadataPipeline
     config: WorkflowSource
     # Big union of types we want to fetch dynamically
-    service_connection: MessagingConnection.__fields__["config"].type_
+    service_connection: MessagingConnection.model_fields["config"].annotation
 
     topology = MessagingServiceTopology()
     context = TopologyContextManager(topology)
@@ -128,7 +136,7 @@ class MessagingServiceSource(TopologyRunnerMixin, Source, ABC):
         self.source_config: MessagingServiceMetadataPipeline = (
             self.config.sourceConfig.config
         )
-        self.service_connection = self.config.serviceConnection.__root__.config
+        self.service_connection = self.config.serviceConnection.root.config
         self.connection = get_connection(self.service_connection)
 
         # Flag the connection for the test connection
@@ -193,7 +201,10 @@ class MessagingServiceSource(TopologyRunnerMixin, Source, ABC):
 
     def test_connection(self) -> None:
         test_connection_fn = get_test_connection_fn(self.service_connection)
-        test_connection_fn(self.metadata, self.connection_obj, self.service_connection)
+        result = test_connection_fn(
+            self.metadata, self.connection_obj, self.service_connection
+        )
+        raise_test_connection_exception(result)
 
     def mark_topics_as_deleted(self) -> Iterable[Either[DeleteEntity]]:
         """Method to mark the topics as deleted"""
@@ -213,8 +224,8 @@ class MessagingServiceSource(TopologyRunnerMixin, Source, ABC):
         topic_fqn = fqn.build(
             self.metadata,
             entity_type=Topic,
-            service_name=topic_request.service.__root__,
-            topic_name=topic_request.name.__root__,
+            service_name=topic_request.service.root,
+            topic_name=topic_request.name.root,
         )
 
         self.topic_source_state.add(topic_fqn)

@@ -13,6 +13,7 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
+import { ReactComponent as IconSuccessBadge } from '../../../../assets/svg/success-badge.svg';
 import {
   ScheduleTimeline,
   Status,
@@ -54,6 +55,16 @@ jest.mock('../../../common/Badge/Badge.component', () =>
     return <div data-testid="app-badge">{`${label}-AppBadge`}</div>;
   })
 );
+
+jest.mock('../../../../constants/constants', () => ({
+  ICON_DIMENSION: {
+    with: 14,
+    height: 14,
+  },
+  STATUS_ICON: {
+    success: IconSuccessBadge,
+  },
+}));
 
 const mockProps1 = {
   data: {
@@ -175,7 +186,7 @@ describe('AppLogsViewer component', () => {
     render(<AppLogsViewer {...mockProps1} />);
 
     expect(screen.getByText('label.status:')).toBeInTheDocument();
-    expect(screen.getByText('label.success')).toBeInTheDocument();
+    expect(screen.getByText('Success')).toBeInTheDocument();
     expect(screen.getByText('label.index-states:')).toBeInTheDocument();
     expect(screen.getAllByText('Badge')).toHaveLength(3);
     expect(screen.getByText('label.last-updated:')).toBeInTheDocument();

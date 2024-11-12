@@ -18,15 +18,15 @@ import React from 'react';
 import { ReactComponent as DataQualityIcon } from '../../../../assets/svg/ic-data-contract.svg';
 import { ReactComponent as Layers } from '../../../../assets/svg/ic-layers.svg';
 import { useLineageProvider } from '../../../../context/LineageProvider/LineageProvider';
-import { LineageLayerView } from '../../../../context/LineageProvider/LineageProvider.interface';
 import { EntityType } from '../../../../enums/entity.enum';
-import { getEntityIcon } from '../../../../utils/TableUtils';
+import { LineageLayer } from '../../../../generated/settings/settings';
+import searchClassBase from '../../../../utils/SearchClassBase';
 import './lineage-layers.less';
 
 const LineageLayers = () => {
-  const { activeLayer, onUpdateLayerView } = useLineageProvider();
+  const { activeLayer, onUpdateLayerView, isEditMode } = useLineageProvider();
 
-  const onButtonClick = (value: LineageLayerView) => {
+  const onButtonClick = (value: LineageLayer) => {
     const index = activeLayer.indexOf(value);
     if (index === -1) {
       onUpdateLayerView([...activeLayer, value]);
@@ -41,12 +41,13 @@ const LineageLayers = () => {
         <ButtonGroup>
           <Button
             className={classNames('lineage-layer-button h-15', {
-              active: activeLayer.includes(LineageLayerView.COLUMN),
+              active: activeLayer.includes(LineageLayer.ColumnLevelLineage),
             })}
-            onClick={() => onButtonClick(LineageLayerView.COLUMN)}>
+            data-testid="lineage-layer-column-btn"
+            onClick={() => onButtonClick(LineageLayer.ColumnLevelLineage)}>
             <div className="lineage-layer-btn">
               <div className="layer-icon">
-                {getEntityIcon(EntityType.TABLE)}
+                {searchClassBase.getEntityIcon(EntityType.TABLE)}
               </div>
               <Typography.Text className="text-xss">
                 {t('label.column')}
@@ -55,13 +56,10 @@ const LineageLayers = () => {
           </Button>
           <Button
             className={classNames('lineage-layer-button h-15', {
-              active: activeLayer.includes(
-                LineageLayerView.DATA_OBSERVARABILITY
-              ),
+              active: activeLayer.includes(LineageLayer.DataObservability),
             })}
-            onClick={() =>
-              onButtonClick(LineageLayerView.DATA_OBSERVARABILITY)
-            }>
+            data-testid="lineage-layer-observability-btn"
+            onClick={() => onButtonClick(LineageLayer.DataObservability)}>
             <div className="lineage-layer-btn">
               <div className="layer-icon">
                 <DataQualityIcon />
@@ -78,7 +76,9 @@ const LineageLayers = () => {
       trigger="click">
       <Button
         ghost
-        className="layers-btn h-15"
+        className={classNames('layers-btn h-15', {
+          'layers-btn-edit-mode': isEditMode,
+        })}
         data-testid="lineage-layer-btn"
         type="primary">
         <div className="lineage-layer-btn">

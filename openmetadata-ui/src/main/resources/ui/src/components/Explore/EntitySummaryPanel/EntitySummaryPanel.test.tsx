@@ -72,6 +72,14 @@ jest.mock('./MlModelSummary/MlModelSummary.component', () =>
     ))
 );
 
+jest.mock('./ChartSummary/ChartSummary.component', () =>
+  jest
+    .fn()
+    .mockImplementation(() => (
+      <div data-testid="ChartSummary">ChartSummary</div>
+    ))
+);
+
 jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockImplementation(() => ({ tab: 'table' })),
   Link: jest.fn().mockImplementation(({ children }) => <>{children}</>),
@@ -185,5 +193,25 @@ describe('EntitySummaryPanel component tests', () => {
     const mlModelSummary = screen.getByTestId('MlModelSummary');
 
     expect(mlModelSummary).toBeInTheDocument();
+  });
+
+  it('ChartSummary should render for chart data', async () => {
+    await act(async () => {
+      render(
+        <EntitySummaryPanel
+          entityDetails={{
+            details: {
+              ...mockMlModelEntityDetails,
+              entityType: EntityType.CHART,
+            },
+          }}
+          handleClosePanel={mockHandleClosePanel}
+        />
+      );
+    });
+
+    const chartSummary = screen.getByTestId('ChartSummary');
+
+    expect(chartSummary).toBeInTheDocument();
   });
 });

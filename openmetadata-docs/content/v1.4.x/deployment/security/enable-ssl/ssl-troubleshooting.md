@@ -69,8 +69,7 @@ Edit the `conf/openmetadata.yaml` file:
 pipelineServiceClientConfiguration:
   verifySSL: "validate"
   sslConfig:
-    validate:
-      certificatePath: "/path/to/certificate/in/airflow"
+    certificatePath: "/path/to/certificate/in/airflow"
 ```
 
 - In **K8s**:
@@ -129,7 +128,7 @@ workflowConfig:
   openMetadataServerConfig:
     verifySSL: validate
     sslConfig:
-      certificatePath: /local/path/to/certificate
+      caCertificate: /local/path/to/certificate
 ```
 
 - To ignore certificate validation:

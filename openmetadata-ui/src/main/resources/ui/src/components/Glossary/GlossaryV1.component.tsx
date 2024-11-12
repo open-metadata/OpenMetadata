@@ -25,11 +25,12 @@ import {
   OperationPermission,
   ResourceEntity,
 } from '../../context/PermissionProvider/PermissionProvider.interface';
-import { EntityAction } from '../../enums/entity.enum';
+import { EntityAction, EntityTabs } from '../../enums/entity.enum';
 import {
   CreateThread,
   ThreadType,
 } from '../../generated/api/feed/createThread';
+import { Glossary } from '../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
 import { VERSION_VIEW_GLOSSARY_PERMISSION } from '../../mocks/Glossary.mock';
 import { postThread } from '../../rest/feedsAPI';
@@ -53,7 +54,7 @@ import GlossaryTermsV1 from './GlossaryTerms/GlossaryTermsV1.component';
 import { GlossaryV1Props } from './GlossaryV1.interfaces';
 import './glossaryV1.less';
 import ImportGlossary from './ImportGlossary/ImportGlossary';
-import { useGlossaryStore } from './useGlossary.store';
+import { ModifiedGlossary, useGlossaryStore } from './useGlossary.store';
 
 const GlossaryV1 = ({
   isGlossaryActive,
@@ -96,7 +97,7 @@ const GlossaryV1 = ({
 
   const [editMode, setEditMode] = useState(false);
 
-  const { activeGlossary, updateActiveGlossary } = useGlossaryStore();
+  const { activeGlossary, setGlossaryChildTerms } = useGlossaryStore();
 
   const { id, fullyQualifiedName } = activeGlossary ?? {};
 
@@ -125,11 +126,11 @@ const GlossaryV1 = ({
       const { data } = await getFirstLevelGlossaryTerms(
         params?.glossary ?? params?.parent ?? ''
       );
-      updateActiveGlossary({
-        children: data.map((data) =>
-          data.childrenCount ?? 0 > 0 ? { ...data, children: [] } : data
-        ),
-      });
+      const children = data.map((data) =>
+        data.childrenCount ?? 0 > 0 ? { ...data, children: [] } : data
+      );
+
+      setGlossaryChildTerms(children as ModifiedGlossary[]);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -246,7 +247,7 @@ const GlossaryV1 = ({
       history.push(
         getGlossaryTermDetailsPath(
           selectedData.fullyQualifiedName || '',
-          'terms'
+          EntityTabs.TERMS
         )
       );
     }
@@ -257,9 +258,6 @@ const GlossaryV1 = ({
     try {
       await addGlossaryTerm({
         ...formData,
-        reviewers: formData.reviewers.map(
-          (item) => item.fullyQualifiedName || ''
-        ),
         glossary:
           activeGlossaryTerm?.glossary?.name ||
           (selectedData.fullyQualifiedName ?? ''),
@@ -301,7 +299,7 @@ const GlossaryV1 = ({
           references,
           mutuallyExclusive,
           reviewers,
-          owner,
+          owners,
           relatedTerms,
           style,
         } = formData || {};
@@ -314,7 +312,7 @@ const GlossaryV1 = ({
         newTermData.tags = tags;
         newTermData.mutuallyExclusive = mutuallyExclusive;
         newTermData.reviewers = reviewers;
-        newTermData.owner = owner;
+        newTermData.owners = owners;
         newTermData.references = references;
         newTermData.relatedTerms = relatedTerms?.map((term) => ({
           id: term,
@@ -325,6 +323,17 @@ const GlossaryV1 = ({
     } else {
       await handleGlossaryTermAdd(formData);
     }
+  };
+
+  const handleGlossaryUpdate = async (newGlossary: Glossary) => {
+    const jsonPatch = compare(selectedData, newGlossary);
+
+    const shouldRefreshTerms = jsonPatch.some((patch) =>
+      patch.path.startsWith('/owners')
+    );
+
+    await updateGlossary(newGlossary);
+    shouldRefreshTerms && loadGlossaryTerms(true);
   };
 
   useEffect(() => {
@@ -356,7 +365,7 @@ const GlossaryV1 = ({
             permissions={glossaryPermission}
             refreshGlossaryTerms={() => loadGlossaryTerms(true)}
             termsLoading={isTermsLoading}
-            updateGlossary={updateGlossary}
+            updateGlossary={handleGlossaryUpdate}
             updateVote={updateVote}
             onAddGlossaryTerm={(term) =>
               handleGlossaryTermModalAction(false, term ?? null)

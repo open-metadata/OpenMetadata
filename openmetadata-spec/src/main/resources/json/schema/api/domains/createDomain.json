@@ -36,9 +36,9 @@
       "description": "Fully qualified name of parent domain.",
       "type": "string"
     },
-    "owner": {
-      "description": "Owner of this Domain.",
-      "$ref": "../../type/entityReference.json",
+    "owners": {
+      "description": "Owners of this Domain.",
+      "$ref": "../../type/entityReferenceList.json",
       "default": null
     },
     "experts": {

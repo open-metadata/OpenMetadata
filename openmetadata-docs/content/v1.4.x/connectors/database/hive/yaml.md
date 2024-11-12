@@ -18,6 +18,7 @@ Configure and schedule Hive metadata and profiler workflows from the OpenMetadat
 - [Metadata Ingestion](#metadata-ingestion)
 - [Data Profiler](#data-profiler)
 - [Data Quality](#data-quality)
+- [Enable Security](#securing-hive-connection-with-ssl-in-openmetadata)
 - [dbt Integration](#dbt-integration)
 
 {% partial file="/v1.4/connectors/external-ingestion-deployment.md" /%}
@@ -118,13 +119,13 @@ You can also ingest the metadata using Postgres metastore. This step is optional
 
 {% codeInfo srNumber=5 %}
 
-**Connection Options (Optional)**: Enter the details for any additional connection options that can be sent to Athena during the connection. These details must be added as Key-Value pairs.
+**Connection Options (Optional)**: Enter the details for any additional connection options that can be sent to database during the connection. These details must be added as Key-Value pairs.
 
 {% /codeInfo %}
 
 {% codeInfo srNumber=6 %}
 
-**Connection Arguments (Optional)**: Enter the details for any additional connection arguments such as security or protocol configs that can be sent to Athena during the connection. These details must be added as Key-Value pairs.
+**Connection Arguments (Optional)**: Enter the details for any additional connection arguments such as security or protocol configs that can be sent to database during the connection. These details must be added as Key-Value pairs.
 
 - In case you are using Single-Sign-On (SSO) for authentication, add the `authenticator` details in the Connection Arguments as a Key-Value pair as follows: `"authenticator" : "sso_login_url"`
 
@@ -135,7 +136,7 @@ You can also ingest the metadata using Postgres metastore. This step is optional
 {% codeBlock fileName="filename.yaml" %}
 
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: hive
   serviceName: local_hive
@@ -200,6 +201,15 @@ source:
 {% partial file="/v1.4/connectors/yaml/data-profiler.md" variables={connector: "hive"} /%}
 
 {% partial file="/v1.4/connectors/yaml/data-quality.md" /%}
+
+## Securing Hive Connection with SSL in OpenMetadata
+
+To configure SSL for secure connections between OpenMetadata and a Hive database, you need to add `ssl_cert` as a key and the path to the CA certificate as its value under `connectionArguments`. Ensure that the certificate is accessible by the server. If you use a Docker or Kubernetes deployment, update the CA certificate in the Open Metadata server.
+
+```yaml
+    connectionArguments:
+        ssl_cert: /path/to/ca/cert
+```
 
 ## dbt Integration
 

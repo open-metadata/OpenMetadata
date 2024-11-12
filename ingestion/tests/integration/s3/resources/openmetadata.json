@@ -6,6 +6,13 @@
             "isPartitioned": false
         },
         {
+            "dataPath": "solved.png"
+        },
+        {
+            "dataPath": "docs_images",
+            "unstructuredFormats": ["png", "webp"]
+        },
+        {
             "dataPath": "transactions_separator",
             "structureFormat": "csv",
             "isPartitioned": false,

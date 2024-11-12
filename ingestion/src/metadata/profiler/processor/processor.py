@@ -30,7 +30,7 @@ from metadata.ingestion.api.steps import Processor
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.profiler.api.models import ProfilerProcessorConfig, ProfilerResponse
 from metadata.profiler.processor.core import Profiler
-from metadata.profiler.source.metadata import ProfilerSourceAndEntity
+from metadata.profiler.source.model import ProfilerSourceAndEntity
 
 
 class ProfilerProcessor(Processor):
@@ -43,8 +43,8 @@ class ProfilerProcessor(Processor):
         super().__init__()
 
         self.config = config
-        self.profiler_config = ProfilerProcessorConfig.parse_obj(
-            self.config.processor.dict().get("config")
+        self.profiler_config = ProfilerProcessorConfig.model_validate(
+            self.config.processor.model_dump().get("config")
         )
         self.source_config: DatabaseServiceProfilerPipeline = cast(
             DatabaseServiceProfilerPipeline, self.config.source.sourceConfig.config
@@ -64,8 +64,8 @@ class ProfilerProcessor(Processor):
         except Exception as exc:
             self.status.failed(
                 StackTraceError(
-                    name=record.entity.fullyQualifiedName.__root__,
-                    error=f"Unexpected exception processing entity {record.entity.fullyQualifiedName.__root__}: {exc}",
+                    name=record.entity.fullyQualifiedName.root,
+                    error=f"Unexpected exception processing entity {record.entity.fullyQualifiedName.root}: {exc}",
                     stackTrace=traceback.format_exc(),
                 )
             )

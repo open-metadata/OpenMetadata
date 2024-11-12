@@ -11,6 +11,7 @@
 """
 Helper functions to handle SQL lineage operations
 """
+import itertools
 import traceback
 from typing import Any, Iterable, List, Optional, Tuple
 
@@ -27,6 +28,7 @@ from metadata.generated.schema.type.entityLineage import (
 from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.models import Either
+from metadata.ingestion.lineage.masker import mask_query
 from metadata.ingestion.lineage.models import (
     Dialect,
     QueryParsingError,
@@ -50,8 +52,8 @@ def get_column_fqn(table_entity: Table, column: str) -> Optional[str]:
     if not table_entity:
         return None
     for tbl_column in table_entity.columns:
-        if column.lower() == tbl_column.name.__root__.lower():
-            return tbl_column.fullyQualifiedName.__root__
+        if column.lower() == tbl_column.name.root.lower():
+            return tbl_column.fullyQualifiedName.root
 
     return None
 
@@ -226,7 +228,7 @@ def get_column_lineage(
         # Select all
         if "*" in column_lineage_map.get(to_table_raw_name).get(from_table_raw_name)[0]:
             column_lineage_map[to_table_raw_name][from_table_raw_name] = [
-                (c.name.__root__, c.name.__root__) for c in from_entity.columns
+                (c.name.root, c.name.root) for c in from_entity.columns
             ]
 
         # Other cases
@@ -247,14 +249,26 @@ def _build_table_lineage(
     to_entity: Table,
     from_table_raw_name: str,
     to_table_raw_name: str,
-    query: str,
+    masked_query: str,
     column_lineage_map: dict,
     lineage_source: LineageSource = LineageSource.QueryLineage,
-) -> Iterable[Either[AddLineageRequest]]:
+) -> Either[AddLineageRequest]:
     """
     Prepare the lineage request generator
+
+    Args:
+        from_entity (Table): entity link comes from
+        to_entity (Table): entity to link to
+        from_table_raw_name (str): table entity raw name we link from
+        to_table_raw_name (str): table entity raw name we link to
+        query (str): query
+        column_lineage_map (dict): map of the column lineage
+        lineage_source (LineageSource): lineage source
+
+    Returns:
+        Either[AddLineageRequest] with the lineage request or an error
     """
-    if from_entity and to_entity:
+    try:
         col_lineage = get_column_lineage(
             to_entity=to_entity,
             to_table_raw_name=str(to_table_raw_name),
@@ -262,27 +276,35 @@ def _build_table_lineage(
             from_table_raw_name=str(from_table_raw_name),
             column_lineage_map=column_lineage_map,
         )
-        lineage_details = LineageDetails(sqlQuery=query, source=lineage_source)
+        lineage_details = LineageDetails(sqlQuery=masked_query, source=lineage_source)
         if col_lineage:
             lineage_details.columnsLineage = col_lineage
         lineage = AddLineageRequest(
             edge=EntitiesEdge(
                 fromEntity=EntityReference(
-                    id=from_entity.id.__root__,
+                    id=from_entity.id.root,
                     type="table",
                 ),
                 toEntity=EntityReference(
-                    id=to_entity.id.__root__,
+                    id=to_entity.id.root,
                     type="table",
                 ),
             )
         )
         if lineage_details:
             lineage.edge.lineageDetails = lineage_details
-        yield Either(right=lineage)
+        return Either(right=lineage)
+    except Exception as e:
+        return Either(
+            left=StackTraceError(
+                name="Lineage",
+                error=f"Error creating lineage for tables [{from_table_raw_name}] and [{to_table_raw_name}]: {e}",
+                stackTrace=traceback.format_exc(),
+            )
+        )
 
 
-# pylint: disable=too-many-arguments
+# pylint: disable=too-many-arguments,too-many-locals
 def _create_lineage_by_table_name(
     metadata: OpenMetadata,
     from_table: str,
@@ -290,7 +312,7 @@ def _create_lineage_by_table_name(
     service_name: str,
     database_name: Optional[str],
     schema_name: Optional[str],
-    query: str,
+    masked_query: str,
     column_lineage_map: dict,
     lineage_source: LineageSource = LineageSource.QueryLineage,
 ) -> Iterable[Either[AddLineageRequest]]:
@@ -315,14 +337,25 @@ def _create_lineage_by_table_name(
             table_name=to_table,
         )
 
-        for from_entity in from_table_entities or []:
-            for to_entity in to_table_entities or []:
-                yield from _build_table_lineage(
+        for table_name, entity in (
+            (from_table, from_table_entities),
+            (to_table, to_table_entities),
+        ):
+            if entity is None:
+                logger.debug(
+                    f"WARNING: Table entity [{table_name}] not found in OpenMetadata"
+                )
+
+        for from_entity, to_entity in itertools.product(
+            from_table_entities or [], to_table_entities or []
+        ):
+            if to_entity and from_entity:
+                yield _build_table_lineage(
                     to_entity=to_entity,
                     from_entity=from_entity,
                     to_table_raw_name=to_table,
                     from_table_raw_name=from_table,
-                    query=query,
+                    masked_query=masked_query,
                     column_lineage_map=column_lineage_map,
                     lineage_source=lineage_source,
                 )
@@ -385,9 +418,10 @@ def get_lineage_by_query(
     """
     column_lineage = {}
     query_parsing_failures = QueryParsingFailures()
+    masked_query = mask_query(query, dialect.value)
 
     try:
-        logger.debug(f"Running lineage with query: {query}")
+        logger.debug(f"Running lineage with query: {masked_query}")
         lineage_parser = LineageParser(query, dialect, timeout_seconds=timeout_seconds)
 
         raw_column_lineage = lineage_parser.column_lineage
@@ -402,7 +436,7 @@ def get_lineage_by_query(
                     service_name=service_name,
                     database_name=database_name,
                     schema_name=schema_name,
-                    query=query,
+                    masked_query=masked_query,
                     column_lineage_map=column_lineage,
                     lineage_source=lineage_source,
                 )
@@ -414,7 +448,7 @@ def get_lineage_by_query(
                     service_name=service_name,
                     database_name=database_name,
                     schema_name=schema_name,
-                    query=query,
+                    masked_query=masked_query,
                     column_lineage_map=column_lineage,
                     lineage_source=lineage_source,
                 )
@@ -428,14 +462,15 @@ def get_lineage_by_query(
                         service_name=service_name,
                         database_name=database_name,
                         schema_name=schema_name,
-                        query=query,
+                        masked_query=masked_query,
                         column_lineage_map=column_lineage,
                         lineage_source=lineage_source,
                     )
         if not lineage_parser.query_parsing_success:
             query_parsing_failures.add(
                 QueryParsingError(
-                    query=query, error=lineage_parser.query_parsing_failure_reason
+                    query=masked_query,
+                    error=lineage_parser.query_parsing_failure_reason,
                 )
             )
     except Exception as exc:
@@ -462,11 +497,12 @@ def get_lineage_via_table_entity(
     """Get lineage from table entity"""
     column_lineage = {}
     query_parsing_failures = QueryParsingFailures()
+    masked_query = mask_query(query, dialect.value)
 
     try:
-        logger.debug(f"Getting lineage via table entity using query: {query}")
+        logger.debug(f"Getting lineage via table entity using query: {masked_query}")
         lineage_parser = LineageParser(query, dialect, timeout_seconds=timeout_seconds)
-        to_table_name = table_entity.name.__root__
+        to_table_name = table_entity.name.root
 
         for from_table_name in lineage_parser.source_tables:
             yield from _create_lineage_by_table_name(
@@ -476,14 +512,15 @@ def get_lineage_via_table_entity(
                 service_name=service_name,
                 database_name=database_name,
                 schema_name=schema_name,
-                query=query,
+                masked_query=masked_query,
                 column_lineage_map=column_lineage,
                 lineage_source=lineage_source,
             ) or []
         if not lineage_parser.query_parsing_success:
             query_parsing_failures.add(
                 QueryParsingError(
-                    query=query, error=lineage_parser.query_parsing_failure_reason
+                    query=masked_query,
+                    error=lineage_parser.query_parsing_failure_reason,
                 )
             )
     except Exception as exc:  # pylint: disable=broad-except

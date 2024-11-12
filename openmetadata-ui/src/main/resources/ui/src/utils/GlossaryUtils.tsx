@@ -11,36 +11,34 @@
  *  limitations under the License.
  */
 
-import { Typography } from 'antd';
+import Icon from '@ant-design/icons';
+import { Tag, Tooltip, Typography } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
-import { isEmpty } from 'lodash';
+import classNames from 'classnames';
+import { isEmpty, isUndefined } from 'lodash';
 import React from 'react';
+import { ReactComponent as ExternalLinkIcon } from '../assets/svg/external-links.svg';
 import { StatusType } from '../components/common/StatusBadge/StatusBadge.interface';
 import { ModifiedGlossaryTerm } from '../components/Glossary/GlossaryTermTab/GlossaryTermTab.interface';
 import { ModifiedGlossary } from '../components/Glossary/useGlossary.store';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
+import {
+  ICON_DIMENSION,
+  SUCCESS_COLOR,
+  TEXT_BODY_COLOR,
+  TEXT_GREY_MUTED,
+} from '../constants/constants';
 import { EntityType } from '../enums/entity.enum';
 import { Glossary } from '../generated/entity/data/glossary';
-import { GlossaryTerm, Status } from '../generated/entity/data/glossaryTerm';
-import { EntityReference } from '../generated/type/entityReference';
+import {
+  GlossaryTerm,
+  Status,
+  TermReference,
+} from '../generated/entity/data/glossaryTerm';
 import { getEntityName } from './EntityUtils';
+import { VersionStatus } from './EntityVersionUtils.interface';
 import Fqn from './Fqn';
 import { getGlossaryPath } from './RouterUtils';
-
-export const getEntityReferenceFromGlossary = (
-  glossary: Glossary
-): EntityReference => {
-  return {
-    deleted: glossary.deleted,
-    href: glossary.href,
-    fullyQualifiedName: glossary.fullyQualifiedName ?? '',
-    id: glossary.id,
-    type: 'glossaryTerm',
-    description: glossary.description,
-    displayName: glossary.displayName,
-    name: glossary.name,
-  };
-};
 
 export const buildTree = (data: GlossaryTerm[]): GlossaryTerm[] => {
   const nodes: Record<string, GlossaryTerm> = {};
@@ -110,6 +108,22 @@ export const getQueryFilterToExcludeTerm = (fqn: string) => ({
     },
   },
 });
+
+export const getQueryFilterToIncludeApprovedTerm = () => {
+  return {
+    query: {
+      bool: {
+        must: [
+          {
+            term: {
+              status: Status.Approved,
+            },
+          },
+        ],
+      },
+    },
+  };
+};
 
 export const StatusClass = {
   [Status.Approved]: StatusType.Success,
@@ -194,6 +208,7 @@ export const convertGlossaryTermsToTreeOptions = (
     return {
       id: option.id,
       value: option.fullyQualifiedName,
+      name: option.name,
       title: (
         <Typography.Text ellipsis style={{ color: option?.style?.color }}>
           {getEntityName(option)}
@@ -263,4 +278,94 @@ export const findExpandableKeysForArray = (
   });
 
   return expandableKeys;
+};
+
+/**
+ * Filter out the tree node options based on the filter options.
+ *
+ * @param options - An array of Glossary objects.
+ * @param filterOptions - An array of FQN string to filter.
+ * @returns An array of filtered Glossary
+ */
+export const filterTreeNodeOptions = (
+  options: Glossary[],
+  filterOptions: string[]
+): Glossary[] => {
+  if (isEmpty(filterOptions)) {
+    return options;
+  }
+
+  const filterNodes = (
+    nodes: ModifiedGlossaryTerm[]
+  ): ModifiedGlossaryTerm[] => {
+    return nodes.reduce(
+      (acc: ModifiedGlossaryTerm[], node: ModifiedGlossaryTerm) => {
+        const isMatching = filterOptions.includes(
+          node.fullyQualifiedName ?? ''
+        );
+
+        const filteredChildren = !isUndefined(node.children)
+          ? filterNodes(node.children as unknown as ModifiedGlossaryTerm[])
+          : [];
+
+        if (!isMatching) {
+          acc.push({
+            ...node,
+            children: filteredChildren as GlossaryTerm[],
+          });
+        }
+
+        return acc;
+      },
+      []
+    );
+  };
+
+  return filterNodes(options as ModifiedGlossaryTerm[]);
+};
+
+export const renderReferenceElement = (
+  ref: TermReference,
+  versionStatus?: VersionStatus
+) => {
+  let iconColor: string;
+  let textClassName: string;
+  if (versionStatus?.added) {
+    iconColor = SUCCESS_COLOR;
+    textClassName = 'text-success';
+  } else if (versionStatus?.removed) {
+    iconColor = TEXT_GREY_MUTED;
+    textClassName = 'text-grey-muted';
+  } else {
+    iconColor = TEXT_BODY_COLOR;
+    textClassName = 'text-body';
+  }
+
+  return (
+    <Tag
+      className={classNames(
+        'm-r-xs m-t-xs d-flex items-center term-reference-tag bg-white',
+        { 'diff-added': versionStatus?.added },
+        { 'diff-removed ': versionStatus?.removed }
+      )}
+      key={ref.name}>
+      <Tooltip placement="bottomLeft" title={ref.name}>
+        <a
+          data-testid={`reference-link-${ref.name}`}
+          href={ref?.endpoint}
+          rel="noopener noreferrer"
+          target="_blank">
+          <div className="d-flex items-center">
+            <Icon
+              className="m-r-xss"
+              component={ExternalLinkIcon}
+              data-testid="external-link-icon"
+              style={{ ...ICON_DIMENSION, color: iconColor }}
+            />
+            <span className={textClassName}>{ref.name}</span>
+          </div>
+        </a>
+      </Tooltip>
+    </Tag>
+  );
 };

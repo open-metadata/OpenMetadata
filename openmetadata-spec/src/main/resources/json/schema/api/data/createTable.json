@@ -34,6 +34,11 @@
     "dataModel": {
       "$ref": "../../entity/data/table.json#/definitions/dataModel"
     },
+    "locationPath": {
+      "description": "Full storage path in case of external and managed tables.",
+      "type": "string",
+      "default": null
+    },
     "tableConstraints": {
       "type": "array",
       "items": {
@@ -47,9 +52,9 @@
     "tableProfilerConfig": {
       "$ref": "../../entity/data/table.json#/definitions/tableProfilerConfig"
     },
-    "owner": {
-      "description": "Owner of this entity",
-      "$ref": "../../type/entityReference.json",
+    "owners": {
+      "description": "Owners of this entity",
+      "$ref": "../../type/entityReferenceList.json",
       "default": null
     },
     "databaseSchema": {

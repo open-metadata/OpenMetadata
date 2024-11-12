@@ -49,7 +49,7 @@ export enum ResourceEntity {
   LOCATION = 'location',
   MESSAGING_SERVICE = 'messagingService',
   METADATA_SERVICE = 'metadataService',
-  METRICS = 'metrics',
+  METRIC = 'metric',
   ML_MODEL = 'mlmodel',
   ML_MODEL_SERVICE = 'mlmodelService',
   PIPELINE = 'pipeline',
@@ -80,6 +80,9 @@ export enum ResourceEntity {
   STORED_PROCEDURE = 'storedProcedure',
   APPLICATION = 'application',
   PERSONA = 'persona',
+  API_SERVICE = 'apiService',
+  API_COLLECTION = 'apiCollection',
+  API_ENDPOINT = 'apiEndpoint',
 }
 
 export interface PermissionContextType {

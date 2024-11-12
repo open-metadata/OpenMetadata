@@ -19,21 +19,20 @@ from abc import ABC, abstractmethod
 from typing import IO, Any, Optional
 
 import yaml
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class ConfigModel(BaseModel):
     """Class definition for config model"""
 
-    class Config:
-        extra = "forbid"
+    model_config = ConfigDict(extra="forbid")
 
 
 class DynamicTypedConfig(ConfigModel):
     """Class definition for Dynamic Typed Config"""
 
     type: str
-    config: Optional[Any]
+    config: Optional[Any] = None
 
 
 class WorkflowExecutionError(Exception):

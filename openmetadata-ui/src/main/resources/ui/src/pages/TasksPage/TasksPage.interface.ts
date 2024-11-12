@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+import { APICollection } from '../../generated/entity/data/apiCollection';
+import { APIEndpoint } from '../../generated/entity/data/apiEndpoint';
 import { Container } from '../../generated/entity/data/container';
 import { Dashboard } from '../../generated/entity/data/dashboard';
 import { DashboardDataModel } from '../../generated/entity/data/dashboardDataModel';
@@ -38,7 +40,9 @@ export type EntityData =
   | DashboardDataModel
   | SearchIndex
   | Glossary
-  | GlossaryTerm;
+  | GlossaryTerm
+  | APIEndpoint
+  | APICollection;
 
 export interface Option {
   label: string;
@@ -55,6 +59,7 @@ export interface Option {
 export interface TaskAction {
   label: string;
   key: string;
+  icon?: SvgComponent;
 }
 
 export enum TaskActionMode {
@@ -62,6 +67,7 @@ export enum TaskActionMode {
   EDIT = 'edit',
   RE_ASSIGN = 're-assign',
   RESOLVE = 'resolve',
+  CLOSE = 'close',
 }
 
 export enum TaskTabs {

@@ -23,6 +23,7 @@ from metadata.generated.schema.entity.data.query import Query
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.type.basic import Uuid
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.ingestion.lineage.masker import mask_query
 from metadata.ingestion.ometa.client import REST
 from metadata.ingestion.ometa.utils import model_str
 
@@ -41,10 +42,10 @@ class OMetaQueryMixin:
         return str(result.hexdigest())
 
     def _get_or_create_query(self, query: CreateQueryRequest) -> Optional[Query]:
-        query_hash = self._get_query_hash(query=query.query.__root__)
+        query_hash = self._get_query_hash(query=query.query.root)
         query_entity = self.get_by_name(entity=Query, fqn=query_hash)
         if query_entity is None:
-            resp = self.client.put(self.get_suffix(Query), data=query.json())
+            resp = self.client.put(self.get_suffix(Query), data=query.model_dump_json())
             if resp and resp.get("id"):
                 query_entity = Query(**resp)
         return query_entity
@@ -60,12 +61,15 @@ class OMetaQueryMixin:
         """
         for create_query in queries:
             if not create_query.exclude_usage:
+                create_query.query.root = mask_query(
+                    create_query.query.root, create_query.dialect
+                )
                 query = self._get_or_create_query(create_query)
                 if query:
                     # Add Query Usage
-                    table_ref = EntityReference(id=entity.id.__root__, type="table")
+                    table_ref = EntityReference(id=entity.id.root, type="table")
                     # convert object to json array string
-                    table_ref_json = "[" + table_ref.json() + "]"
+                    table_ref_json = "[" + table_ref.model_dump_json() + "]"
                     self.client.put(
                         f"{self.get_suffix(Query)}/{model_str(query.id)}/usage",
                         data=table_ref_json,

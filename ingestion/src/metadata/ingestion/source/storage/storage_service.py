@@ -14,6 +14,9 @@ Base class for ingesting Object Storage services
 from abc import ABC, abstractmethod
 from typing import Any, Iterable, List, Optional, Set
 
+from pydantic import Field
+from typing_extensions import Annotated
+
 from metadata.generated.schema.api.data.createContainer import CreateContainerRequest
 from metadata.generated.schema.entity.data.container import Container
 from metadata.generated.schema.entity.services.storageService import (
@@ -37,7 +40,11 @@ from metadata.ingestion.api.delete import delete_entity_from_source
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import Source
 from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
+from metadata.ingestion.connections.test_connections import (
+    raise_test_connection_exception,
+)
 from metadata.ingestion.models.delete_entity import DeleteEntity
+from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.models.topology import (
     NodeStage,
     ServiceTopology,
@@ -68,7 +75,14 @@ OPENMETADATA_TEMPLATE_FILE_NAME = "openmetadata.json"
 
 
 class StorageServiceTopology(ServiceTopology):
-    root = TopologyNode(
+    """
+    Defines the hierarchy in Messaging Services.
+    service -> container -> container -> container...
+    """
+
+    root: Annotated[
+        TopologyNode, Field(description="Root node for the topology")
+    ] = TopologyNode(
         producer="get_services",
         stages=[
             NodeStage(
@@ -84,9 +98,18 @@ class StorageServiceTopology(ServiceTopology):
         post_process=["mark_containers_as_deleted"],
     )
 
-    container = TopologyNode(
+    container: Annotated[
+        TopologyNode, Field(description="Container Processing Node")
+    ] = TopologyNode(
         producer="get_containers",
         stages=[
+            NodeStage(
+                type_=OMetaTagAndClassification,
+                context="tags",
+                processor="yield_tag_details",
+                nullable=True,
+                store_all_in_context=True,
+            ),
             NodeStage(
                 type_=Container,
                 context="container",
@@ -94,7 +117,7 @@ class StorageServiceTopology(ServiceTopology):
                 consumer=["objectstore_service"],
                 nullable=True,
                 use_cache=True,
-            )
+            ),
         ],
     )
 
@@ -109,7 +132,7 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
     config: WorkflowSource
     metadata: OpenMetadata
     # Big union of types we want to fetch dynamically
-    service_connection: StorageConnection.__fields__["config"].type_
+    service_connection: StorageConnection.model_fields["config"].annotation
 
     topology = StorageServiceTopology()
     context = TopologyContextManager(topology)
@@ -125,7 +148,7 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
         super().__init__()
         self.config = config
         self.metadata = metadata
-        self.service_connection = self.config.serviceConnection.__root__.config
+        self.service_connection = self.config.serviceConnection.root.config
         self.source_config: StorageServiceMetadataPipeline = (
             self.config.sourceConfig.config
         )
@@ -176,6 +199,22 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
     def prepare(self):
         """By default, nothing needs to be taken care of when loading the source"""
 
+    def yield_container_tags(
+        self, container_details: Any
+    ) -> Iterable[Either[OMetaTagAndClassification]]:
+        """
+        From topology. To be run for each container
+        """
+
+    def yield_tag_details(
+        self, container_details: Any
+    ) -> Iterable[Either[OMetaTagAndClassification]]:
+        """
+        From topology. To be run for each container
+        """
+        if self.source_config.includeTags:
+            yield from self.yield_container_tags(container_details) or []
+
     def register_record(self, container_request: CreateContainerRequest) -> None:
         """
         Mark the container record as scanned and update
@@ -184,7 +223,7 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
         parent_container = (
             self.metadata.get_by_id(
                 entity=Container, entity_id=container_request.parent.id
-            ).fullyQualifiedName.__root__
+            ).fullyQualifiedName.root
             if container_request.parent
             else None
         )
@@ -193,14 +232,17 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
             entity_type=Container,
             service_name=self.context.get().objectstore_service,
             parent_container=parent_container,
-            container_name=container_request.name.__root__,
+            container_name=fqn.quote_name(container_request.name.root),
         )
 
         self.container_source_state.add(container_fqn)
 
     def test_connection(self) -> None:
         test_connection_fn = get_test_connection_fn(self.service_connection)
-        test_connection_fn(self.metadata, self.connection_obj, self.service_connection)
+        result = test_connection_fn(
+            self.metadata, self.connection_obj, self.service_connection
+        )
+        raise_test_connection_exception(result)
 
     def mark_containers_as_deleted(self) -> Iterable[Either[DeleteEntity]]:
         """Method to mark the containers as deleted"""

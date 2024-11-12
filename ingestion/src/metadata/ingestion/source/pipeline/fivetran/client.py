@@ -12,12 +12,15 @@
 Client to interact with fivetran apis
 """
 import base64
-from typing import List
+from typing import List, Optional
+
+from requests import Response
 
 from metadata.generated.schema.entity.services.connections.pipeline.fivetranConnection import (
     FivetranConnection,
 )
 from metadata.ingestion.ometa.client import REST, ClientConfig
+from metadata.utils.helpers import clean_uri
 
 
 class FivetranClient:
@@ -34,7 +37,7 @@ class FivetranClient:
         )
 
         client_config: ClientConfig = ClientConfig(
-            base_url=self.config.hostPort,
+            base_url=clean_uri(str(self.config.hostPort)),
             api_version="v1",
             auth_header="Authorization",
             auth_token=lambda: (api_token[2:-1], 0),
@@ -44,8 +47,8 @@ class FivetranClient:
 
     def run_paginator(self, path: str) -> List[dict]:
         response = self.client.get(f"{path}?limit={self.config.limit}")
-        data = response["data"]
-        result = data["items"]
+        data = response.get("data")
+        result = data.get("items")
         while data.get("next_cursor"):
             response = self.client.get(
                 f"{path}?limit={self.config.limit}&cursor={data['next_cursor']}"
@@ -78,11 +81,22 @@ class FivetranClient:
         Method returns destination details
         """
         response = self.client.get(f"/destinations/{destination_id}")
-        return response["data"]
+        return response.get("data")
 
     def get_connector_schema_details(self, connector_id: str) -> dict:
         """
         Method returns destination details
         """
         response = self.client.get(f"/connectors/{connector_id}/schemas")
-        return response["data"]["schemas"]
+        return response.get("data", {}).get("schemas", [])
+
+    def get_connector_column_lineage(
+        self, connector_id: str, schema_name: str, table_name: str
+    ) -> dict:
+        """
+        Method returns destination details
+        """
+        response: Optional[Response] = self.client.get(
+            f"/connectors/{connector_id}/schemas/{schema_name}/tables/{table_name}/columns"
+        )
+        return response.get("data", {}).get("columns", [])

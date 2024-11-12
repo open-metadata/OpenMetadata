@@ -13,9 +13,10 @@
 
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.csv.CsvUtil.addExtension;
 import static org.openmetadata.csv.CsvUtil.addField;
 import static org.openmetadata.csv.CsvUtil.addGlossaryTerms;
-import static org.openmetadata.csv.CsvUtil.addOwner;
+import static org.openmetadata.csv.CsvUtil.addOwners;
 import static org.openmetadata.csv.CsvUtil.addTagLabels;
 import static org.openmetadata.csv.CsvUtil.addTagTiers;
 import static org.openmetadata.service.Entity.DATABASE_SCHEMA;
@@ -24,6 +25,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVPrinter;
@@ -67,6 +69,8 @@ public class DatabaseRepository extends EntityRepository<Database> {
         "",
         "");
     supportsSearch = true;
+    parent = true;
+    fieldFetchers.put("name", this::fetchAndSetService);
   }
 
   @Override
@@ -106,13 +110,26 @@ public class DatabaseRepository extends EntityRepository<Database> {
   }
 
   @Override
+  public void entityRelationshipReindex(Database original, Database updated) {
+    super.entityRelationshipReindex(original, updated);
+
+    // Update search indexes of assets and entity on database displayName change
+    if (!Objects.equals(original.getDisplayName(), updated.getDisplayName())) {
+      searchRepository
+          .getSearchClient()
+          .reindexAcrossIndices("database.fullyQualifiedName", original.getEntityReference());
+    }
+  }
+
+  @Override
   public String exportToCsv(String name, String user) throws IOException {
     Database database = getByName(null, name, Fields.EMPTY_FIELDS); // Validate database name
     DatabaseSchemaRepository repository =
         (DatabaseSchemaRepository) Entity.getEntityRepository(DATABASE_SCHEMA);
-    ListFilter filter = new ListFilter(Include.NON_DELETED).addQueryParam("database", name);
     List<DatabaseSchema> schemas =
-        repository.listAll(repository.getFields("owner,tags,domain"), filter);
+        repository.listAllForCSV(
+            repository.getFields("owners,tags,domain,extension"), database.getFullyQualifiedName());
+
     schemas.sort(Comparator.comparing(EntityInterface::getFullyQualifiedName));
     return new DatabaseCsv(database, user).exportCsv(schemas);
   }
@@ -211,6 +228,17 @@ public class DatabaseRepository extends EntityRepository<Database> {
     return database;
   }
 
+  private void fetchAndSetService(List<Database> entities, Fields fields) {
+    if (entities == null || entities.isEmpty() || (!fields.contains("name"))) {
+      return;
+    }
+
+    EntityReference service = getContainer(entities.get(0).getId());
+    for (Database database : entities) {
+      database.setService(service);
+    }
+  }
+
   public class DatabaseUpdater extends EntityUpdater {
     public DatabaseUpdater(Database original, Database updated, Operation operation) {
       super(original, updated, operation);
@@ -265,11 +293,12 @@ public class DatabaseRepository extends EntityRepository<Database> {
           .withName(csvRecord.get(0))
           .withDisplayName(csvRecord.get(1))
           .withDescription(csvRecord.get(2))
-          .withOwner(getOwner(printer, csvRecord, 3))
+          .withOwners(getOwners(printer, csvRecord, 3))
           .withTags(tagLabels)
           .withRetentionPeriod(csvRecord.get(7))
           .withSourceUrl(csvRecord.get(8))
-          .withDomain(getEntityReference(printer, csvRecord, 9, Entity.DOMAIN));
+          .withDomain(getEntityReference(printer, csvRecord, 9, Entity.DOMAIN))
+          .withExtension(getExtension(printer, csvRecord, 10));
       if (processRecord) {
         createEntity(printer, csvRecord, schema);
       }
@@ -282,7 +311,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
       addField(recordList, entity.getName());
       addField(recordList, entity.getDisplayName());
       addField(recordList, entity.getDescription());
-      addOwner(recordList, entity.getOwner());
+      addOwners(recordList, entity.getOwners());
       addTagLabels(recordList, entity.getTags());
       addGlossaryTerms(recordList, entity.getTags());
       addTagTiers(recordList, entity.getTags());
@@ -293,6 +322,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
               ? ""
               : entity.getDomain().getFullyQualifiedName();
       addField(recordList, domain);
+      addExtension(recordList, entity.getExtension());
       addRecord(csvFile, recordList);
     }
   }

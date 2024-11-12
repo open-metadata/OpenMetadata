@@ -54,7 +54,7 @@ public interface EntityInterface {
 
   ChangeDescription getChangeDescription();
 
-  default EntityReference getOwner() {
+  default List<EntityReference> getOwners() {
     return null;
   }
 
@@ -108,6 +108,10 @@ public interface EntityInterface {
     return null;
   }
 
+  default AssetCertification getCertification() {
+    return null;
+  }
+
   void setId(UUID id);
 
   void setDescription(String description);
@@ -134,7 +138,7 @@ public interface EntityInterface {
     /* no-op implementation to be overridden */
   }
 
-  default void setOwner(EntityReference owner) {
+  default void setOwners(List<EntityReference> owners) {
     /* no-op implementation to be overridden */
   }
 
@@ -175,6 +179,10 @@ public interface EntityInterface {
   }
 
   default void setLifeCycle(LifeCycle lifeCycle) {
+    /* no-op implementation to be overridden */
+  }
+
+  default void setCertification(AssetCertification certification) {
     /* no-op implementation to be overridden */
   }
 

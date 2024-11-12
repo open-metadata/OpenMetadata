@@ -69,6 +69,7 @@ import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.GlossaryRepository;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
@@ -89,7 +90,7 @@ import org.openmetadata.service.util.ResultList;
 public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryTermRepository> {
   public static final String COLLECTION_PATH = "v1/glossaryTerms/";
   static final String FIELDS =
-      "children,relatedTerms,reviewers,owner,tags,usageCount,domain,extension,childrenCount";
+      "children,relatedTerms,reviewers,owners,tags,usageCount,domain,extension,childrenCount";
 
   @Override
   public GlossaryTerm addHref(UriInfo uriInfo, GlossaryTerm term) {
@@ -100,8 +101,8 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
     return term;
   }
 
-  public GlossaryTermResource(Authorizer authorizer) {
-    super(Entity.GLOSSARY_TERM, authorizer);
+  public GlossaryTermResource(Authorizer authorizer, Limits limits) {
+    super(Entity.GLOSSARY_TERM, authorizer, limits);
   }
 
   @Override
@@ -270,8 +271,10 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = Glossary.class))),
-        @ApiResponse(responseCode = "404", description = "Glossary for instance {id} is not found")
+                    schema = @Schema(implementation = GlossaryTerm.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Glossary term for instance {id} is not found")
       })
   public GlossaryTerm get(
       @Context UriInfo uriInfo,
@@ -306,8 +309,10 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = Glossary.class))),
-        @ApiResponse(responseCode = "404", description = "Glossary for instance {fqn} is not found")
+                    schema = @Schema(implementation = GlossaryTerm.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Glossary term for instance {fqn} is not found")
       })
   public GlossaryTerm getByName(
       @Context UriInfo uriInfo,
@@ -364,14 +369,14 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "glossaries",
+            description = "The glossary term",
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = Glossary.class))),
+                    schema = @Schema(implementation = GlossaryTerm.class))),
         @ApiResponse(
             responseCode = "404",
-            description = "Glossary for instance {id} and version {version} is not found")
+            description = "Glossary term for instance {id} and version {version} is not found")
       })
   public GlossaryTerm getVersion(
       @Context UriInfo uriInfo,
@@ -686,7 +691,6 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
         .withParent(getEntityReference(Entity.GLOSSARY_TERM, create.getParent()))
         .withRelatedTerms(getEntityReferences(Entity.GLOSSARY_TERM, create.getRelatedTerms()))
         .withReferences(create.getReferences())
-        .withReviewers(getEntityReferences(Entity.USER, create.getReviewers()))
         .withProvider(create.getProvider())
         .withMutuallyExclusive(create.getMutuallyExclusive());
   }

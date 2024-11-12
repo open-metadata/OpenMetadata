@@ -20,7 +20,7 @@ authenticationConfiguration:
   providerName: "KeyCloak"
   publicKeyUrls:
     - "http://localhost:8081/auth/realms/data-sec/protocol/openid-connect/certs"
-    - "{your domain}/api/v1/config/jwks" # Update with your Domain and Make sure this "/api/v1/config/jwks" is always configured to enable JWT tokens
+    - "{your domain}/api/v1/system/config/jwks" # Update with your Domain and Make sure this "/api/v1/system/config/jwks" is always configured to enable JWT tokens
   authority: "http://localhost:8081/auth/realms/data-sec"
   clientId: "open-metadata"
   callbackUrl: "http://localhost:8585/callback"
@@ -29,6 +29,12 @@ authenticationConfiguration:
 Then, 
 - Update `authorizerConfiguration` to add login names of the admin users in `adminPrincipals` section as shown below.
 - Update the `principalDomain` to your company domain name.
+
+{% note %}
+
+Altering the order of claims in `jwtPrincipalClaims` may lead to problems when matching a user from a token with an existing user in the system. The mapping process relies on the specific order of claims, so changing it can result in inconsistencies or authentication failures, as the system cannot ensure correct user mapping with a new claim order.
+
+{% /note %}
 
 ```yaml
 authorizerConfiguration:

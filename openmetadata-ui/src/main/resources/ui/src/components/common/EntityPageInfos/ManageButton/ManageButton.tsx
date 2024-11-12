@@ -302,31 +302,39 @@ const ManageButton: FC<ManageButtonProps> = ({
         />
       )}
 
-      <Modal
-        centered
-        cancelButtonProps={{
-          type: 'link',
-        }}
-        className="reactive-modal"
-        closable={false}
-        confirmLoading={isEntityRestoring}
-        data-testid="restore-asset-modal"
-        maskClosable={false}
-        okText={t('label.restore')}
-        open={showReactiveModal}
-        title={t('label.restore-entity', {
-          entity: entityType,
-        })}
-        onCancel={() => {
-          setShowReactiveModal(false);
-        }}
-        onOk={handleRestore}>
-        <Typography.Text data-testid="restore-modal-body">
-          {t('message.are-you-want-to-restore', {
-            entity: entityName,
-          })}
-        </Typography.Text>
-      </Modal>
+      {showReactiveModal && (
+        // Used Button to stop click propagation event in the
+        // TeamDetailsV1 and User.component collapsible panel.
+        <Button
+          className="remove-button-default-styling"
+          onClick={(e) => e.stopPropagation()}>
+          <Modal
+            centered
+            cancelButtonProps={{
+              type: 'link',
+            }}
+            className="reactive-modal"
+            closable={false}
+            confirmLoading={isEntityRestoring}
+            data-testid="restore-asset-modal"
+            maskClosable={false}
+            okText={t('label.restore')}
+            open={showReactiveModal}
+            title={t('label.restore-entity', {
+              entity: entityType,
+            })}
+            onCancel={() => {
+              setShowReactiveModal(false);
+            }}
+            onOk={handleRestore}>
+            <Typography.Text data-testid="restore-modal-body">
+              {t('message.are-you-want-to-restore', {
+                entity: entityName,
+              })}
+            </Typography.Text>
+          </Modal>
+        </Button>
+      )}
     </>
   );
 };

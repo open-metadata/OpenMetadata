@@ -13,7 +13,7 @@
 Validator for table row inserted count to be between test case
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 from dateutil.relativedelta import relativedelta
 
@@ -47,7 +47,7 @@ class TableRowInsertedCountToBeBetweenValidator(
             "MONTH": relativedelta(months=range_interval),
             "YEAR": relativedelta(years=range_interval),
         }
-        utc_now = datetime.utcnow()
+        utc_now = datetime.now(timezone.utc)
         threshold_date = utc_now - interval_type_matching_table[range_type]
         if range_type == "HOUR":
             threshold_date = threshold_date.replace(minute=0, second=0, microsecond=0)

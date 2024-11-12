@@ -92,7 +92,7 @@ class MongoDB(NoSQLAdaptor):
 
     def item_count(self, table: Table) -> int:
         db = self.client[table.databaseSchema.name]
-        collection = db[table.name.__root__]
+        collection = db[table.name.root]
         return collection.count_documents({})
 
     def scan(
@@ -101,7 +101,7 @@ class MongoDB(NoSQLAdaptor):
         return self.execute(
             Query(
                 database=table.databaseSchema.name,
-                collection=table.name.__root__,
+                collection=table.name.root,
                 limit=limit,
             )
         )
@@ -116,7 +116,7 @@ class MongoDB(NoSQLAdaptor):
         return self.execute(
             Query(
                 database=table.databaseSchema.name,
-                collection=table.name.__root__,
+                collection=table.name.root,
                 filter=json_query,
             )
         )
@@ -143,7 +143,7 @@ class MongoDB(NoSQLAdaptor):
         row = self.execute(
             Aggregation(
                 database=table.databaseSchema.name,
-                collection=table.name.__root__,
+                collection=table.name.root,
                 column=column.name,
                 aggregations=aggregate_functions,
             )
@@ -163,16 +163,4 @@ class MongoDB(NoSQLAdaptor):
         return AggregationFunction.MIN
 
     def execute(self, query: Executable) -> List[Dict[str, any]]:
-        records = list(query.to_executable(self.client))
-        result = []
-        for r in records:
-            result.append({c: self._json_safe(r.get(c)) for c in r})
-        return result
-
-    @staticmethod
-    def _json_safe(data: any):
-        try:
-            json.dumps(data)
-            return data
-        except Exception:  # noqa
-            return str(data)
+        return list(query.to_executable(self.client))

@@ -126,7 +126,7 @@ The workflow is modeled around the following JSON Schema.
 
 {% codeBlock fileName="filename.yaml" %}
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: datalake
   serviceName: local_datalake
@@ -192,7 +192,7 @@ source:
 
 {% codeBlock fileName="filename.yaml" %}
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: datalake
   serviceName: local_datalake
@@ -256,7 +256,7 @@ source:
 
 {% codeBlock fileName="filename.yaml" %}
 
-```yaml
+```yaml {% isCodeBlock=true %}
 # Datalake with Azure 
 source:
   type: datalake

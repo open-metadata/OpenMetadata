@@ -10,6 +10,42 @@
       "type": "integer",
       "default": 100
     },
+    "payLoadSize": {
+      "title": "Payload Size",
+      "description": "Maximum number of events entities in a batch (Default 100).",
+      "type": "integer",
+      "default": 104857600
+    },
+    "numberOfThreads": {
+      "title": "Number of Threads",
+      "description": "Number of threads to use for reindexing",
+      "type": "integer",
+      "default": 5
+    },
+    "maxConcurrentRequests": {
+      "title": "Max Concurrent Requests",
+      "description": "Maximum number of concurrent requests to the search index",
+      "type": "integer",
+      "default": 100
+    },
+    "maxRetries": {
+      "title": "Max Retries",
+      "description": "Maximum number of retries for a failed request",
+      "type": "integer",
+      "default": 5
+    },
+    "initialBackoff": {
+      "title": "Initial Backoff Millis",
+      "description": "Initial backoff time in milliseconds",
+      "type": "integer",
+      "default": 1000
+    },
+    "maxBackoff": {
+      "title": "Max Backoff Millis",
+      "description": "Maximum backoff time in milliseconds",
+      "type": "integer",
+      "default": 10000
+    },
     "entities": {
       "title": "Entities",
       "description": "List of entities that you need to reindex",
@@ -52,53 +88,22 @@
           "domain",
           "storedProcedure",
           "dataProduct",
-          "testCaseResolutionStatus"
+          "testCaseResolutionStatus",
+          "testCaseResult",
+          "apiService",
+          "apiEndpoint",
+          "apiCollection",
+          "metric"
         ]
       },
-      "default": [
-        "table",
-        "dashboard",
-        "topic",
-        "pipeline",
-        "searchIndex",
-        "user",
-        "team",
-        "glossary",
-        "glossaryTerm",
-        "mlmodel",
-        "tag",
-        "classification",
-        "query",
-        "container",
-        "database",
-        "databaseSchema",
-        "testCase",
-        "testSuite",
-        "chart",
-        "dashboardDataModel",
-        "databaseService",
-        "messagingService",
-        "dashboardService",
-        "pipelineService",
-        "mlmodelService",
-        "storageService",
-        "metadataService",
-        "searchService",
-        "entityReportData",
-        "webAnalyticEntityViewReportData",
-        "webAnalyticUserActivityReportData",
-        "domain",
-        "storedProcedure",
-        "dataProduct",
-        "ingestionPipeline",
-        "testCaseResolutionStatus"
-      ],
+      "default": ["all"],
+      "uiFieldType": "treeSelect",
       "uniqueItems": true
     },
     "recreateIndex": {
       "title": "Recreate Indexes",
       "type": "boolean",
-      "default": true
+      "default": false
     },
     "searchIndexMappingLanguage": {
       "description": "Recreate Indexes with updated Language",

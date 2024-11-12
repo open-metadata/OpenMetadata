@@ -54,7 +54,7 @@ class TestRegistryNamesMatchTestDefinition(TestCase):
     """Test the names in the registry match that of the ones in the Test Definition"""
 
     metadata = OpenMetadata(
-        OpenMetadataConnection.parse_obj(
+        OpenMetadataConnection.model_validate(
             test_suite_config["workflowConfig"]["openMetadataServerConfig"]
         )
     )
@@ -63,7 +63,7 @@ class TestRegistryNamesMatchTestDefinition(TestCase):
         """test all the sqa names in the registry match the ones from the test definition"""
 
         test_definition_names = {
-            entity.name.__root__
+            entity.name.root
             for entity in self.metadata.list_all_entities(
                 entity=TestDefinition, params={"limit": "100"}
             )
@@ -82,7 +82,7 @@ class TestRegistryNamesMatchTestDefinition(TestCase):
         """test all the sqa names in the registry match the ones from the test definition"""
 
         test_definition_names = {
-            entity.name.__root__
+            entity.name.root
             for entity in self.metadata.list_all_entities(
                 entity=TestDefinition, params={"limit": "100"}
             )

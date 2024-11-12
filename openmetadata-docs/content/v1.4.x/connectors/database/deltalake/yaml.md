@@ -100,7 +100,7 @@ To update the `Derby` information. More information about this in a great [SO th
 
 - You can find all supported configurations [here](https://spark.apache.org/docs/latest/configuration.html)
 - If you need further information regarding the Hive metastore, you can find
-  it [here](https://spark.apache.org/docs/3.0.0-preview/sql-data-sources-hive-tables.html), and in The Internals of
+  it [here](https://spark.apache.org/docs/latest/sql-data-sources-hive-tables.html), and in The Internals of
   Spark SQL [book](https://jaceklaskowski.gitbooks.io/mastering-spark-sql/content/spark-sql-hive-metastore.html).
 
 
@@ -126,13 +126,13 @@ You will need to provide the driver to the ingestion image, and pass the `classp
 
 {% codeInfo srNumber=2 %}
 
-**Connection Options (Optional)**: Enter the details for any additional connection options that can be sent to Athena during the connection. These details must be added as Key-Value pairs.
+**Connection Options (Optional)**: Enter the details for any additional connection options that can be sent to database during the connection. These details must be added as Key-Value pairs.
 
 {% /codeInfo %}
 
 {% codeInfo srNumber=3 %}
 
-**Connection Arguments (Optional)**: Enter the details for any additional connection arguments such as security or protocol configs that can be sent to Athena during the connection. These details must be added as Key-Value pairs.
+**Connection Arguments (Optional)**: Enter the details for any additional connection arguments such as security or protocol configs that can be sent to database during the connection. These details must be added as Key-Value pairs.
 
 - In case you are using Single-Sign-On (SSO) for authentication, add the `authenticator` details in the Connection Arguments as a Key-Value pair as follows: `"authenticator" : "sso_login_url"`
 
@@ -142,7 +142,7 @@ You will need to provide the driver to the ingestion image, and pass the `classp
 
 {% codeBlock fileName="filename.yaml" %}
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: deltalake
   serviceName: "<service name>"

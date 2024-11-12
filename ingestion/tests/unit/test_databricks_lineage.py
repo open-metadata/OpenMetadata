@@ -21,6 +21,7 @@ from unittest.mock import patch
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
+from metadata.generated.schema.type.basic import DateTime
 from metadata.generated.schema.type.tableQuery import TableQuery
 from metadata.ingestion.source.database.databricks.lineage import (
     DatabricksLineageSource,
@@ -33,41 +34,45 @@ with open(mock_file_path, encoding="utf-8") as file:
 
 EXPECTED_DATABRICKS_DETAILS = [
     TableQuery(
+        dialect="databricks",
         query=' /* {"app": "OpenMetadata", "version": "0.13.0.dev0"} */\nSHOW TABLES IN `test`',
         userName="vijay@getcollate.io",
         startTime="1665566128192",
         endTime="1665566128329",
-        analysisDate=datetime.now(),
+        analysisDate=DateTime(datetime.now()),
         aborted=None,
         serviceName="local_databricks1",
         databaseSchema=None,
     ),
     TableQuery(
+        dialect="databricks",
         query=' /* {"app": "OpenMetadata", "version": "0.13.0.dev0"} */\nSHOW TABLES IN `test`',
         userName="vijay@getcollate.io",
         startTime="1665566127416",
         endTime="1665566127568",
-        analysisDate=datetime.now(),
+        analysisDate=DateTime(datetime.now()),
         aborted=None,
         serviceName="local_databricks1",
         databaseSchema=None,
     ),
     TableQuery(
+        dialect="databricks",
         query=' /* {"app": "OpenMetadata", "version": "0.13.0.dev0"} */\nSHOW TABLES IN `default`',
         userName="vijay@getcollate.io",
         startTime="1665566125414",
         endTime="1665566125579",
-        analysisDate=datetime.now(),
+        analysisDate=DateTime(datetime.now()),
         aborted=None,
         serviceName="local_databricks1",
         databaseSchema=None,
     ),
     TableQuery(
+        dialect="databricks",
         query=' /* {"app": "OpenMetadata", "version": "0.13.0.dev0"} */\nDESCRIBE default.view3',
         userName="vijay@getcollate.io",
         startTime="1665566124428",
         endTime="1665566124730",
-        analysisDate=datetime.now(),
+        analysisDate=DateTime(datetime.now()),
         aborted=None,
         serviceName="local_databricks1",
         databaseSchema=None,
@@ -121,7 +126,7 @@ class DatabricksLineageTests(TestCase):
 
     def __init__(self, methodName) -> None:
         super().__init__(methodName)
-        config = OpenMetadataWorkflowConfig.parse_obj(mock_databricks_config)
+        config = OpenMetadataWorkflowConfig.model_validate(mock_databricks_config)
 
         self.databricks = DatabricksLineageSource.create(
             mock_databricks_config["source"],

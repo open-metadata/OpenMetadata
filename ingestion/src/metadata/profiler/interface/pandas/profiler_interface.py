@@ -17,7 +17,7 @@ supporting sqlalchemy abstraction layer
 import traceback
 from collections import defaultdict
 from copy import deepcopy
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Dict, List, Optional
 
 from sqlalchemy import Column
@@ -88,7 +88,7 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
         self.client = self.connection.client
         self.dfs = self.return_ometa_dataframes_sampled(
             service_connection_config=self.service_connection_config,
-            client=self.client,
+            client=self.client._client,
             table=self.table_entity,
             profile_sample_config=profile_sample_config,
         )
@@ -137,7 +137,7 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
 
         return sampler_factory_.create(
             DatalakeConnection.__name__,
-            client=self.client,
+            client=self.client._client,  # pylint: disable=W0212
             table=self.dfs,
             profile_sample_config=self.profile_sample_config,
             partition_details=self.partition_details,
@@ -287,7 +287,7 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
                     if len(df.query(metric.expression).index)
                 )
                 custom_metrics.append(
-                    CustomMetricProfile(name=metric.name.__root__, value=row)
+                    CustomMetricProfile(name=metric.name.root, value=row)
                 )
 
             except Exception as exc:
@@ -303,7 +303,7 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
         metric_func: ThreadPoolMetrics,
     ):
         """Run metrics in processor worker"""
-        logger.debug(f"Running profiler for {metric_func.table.name.__root__}")
+        logger.debug(f"Running profiler for {metric_func.table.name.root}")
         try:
             row = None
             if self.complex_dataframe_sample:
@@ -320,9 +320,9 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
             row = None
         if metric_func.column is not None:
             column = metric_func.column.name
-            self.status.scanned(f"{metric_func.table.name.__root__}.{column}")
+            self.status.scanned(f"{metric_func.table.name.root}.{column}")
         else:
-            self.status.scanned(metric_func.table.name.__root__)
+            self.status.scanned(metric_func.table.name.root)
             column = None
         return row, column, metric_func.metric_type.value
 
@@ -403,9 +403,7 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
                         profile_results["columns"][column].update(
                             {
                                 "name": column,
-                                "timestamp": int(
-                                    datetime.now(tz=timezone.utc).timestamp() * 1000
-                                ),
+                                "timestamp": int(datetime.now().timestamp() * 1000),
                                 **profile,
                             }
                         )

@@ -165,6 +165,9 @@ jest.mock('../../../utils/TableTags/TableTags.utils', () => ({
 
 jest.mock('../../../utils/EntityUtils', () => ({
   getEntityName: jest.fn().mockReturnValue('testEntityName'),
+  getColumnSorter: jest.fn().mockImplementation(() => {
+    return () => 1;
+  }),
 }));
 
 jest.mock('../../common/CustomPropertyTable/CustomPropertyTable', () => ({
@@ -226,6 +229,10 @@ jest.mock('../../Database/TableTags/TableTags.component', () =>
       <div data-testid="table-tag-container">Table Tag Container</div>
     ))
 );
+
+jest.mock('../../../hoc/LimitWrapper', () => {
+  return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
+});
 
 describe('Test PipelineDetails component', () => {
   it('Checks if the PipelineDetails component has all the proper components rendered', async () => {

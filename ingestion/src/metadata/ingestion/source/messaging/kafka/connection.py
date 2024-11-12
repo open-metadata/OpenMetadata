@@ -29,8 +29,12 @@ from metadata.generated.schema.entity.services.connections.messaging.kafkaConnec
 from metadata.generated.schema.entity.services.connections.messaging.redpandaConnection import (
     RedpandaConnection,
 )
+from metadata.generated.schema.entity.services.connections.testConnectionResult import (
+    TestConnectionResult,
+)
 from metadata.ingestion.connections.test_connections import test_connection_steps
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.utils.constants import THREE_MIN
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -95,7 +99,7 @@ def get_connection(
     schema_registry_client = None
     consumer_client = None
     if connection.schemaRegistryURL:
-        schema_registry_config["url"] = connection.schemaRegistryURL
+        schema_registry_config["url"] = str(connection.schemaRegistryURL)
         schema_registry_client = SchemaRegistryClient(schema_registry_config)
         consumer_config["bootstrap.servers"] = connection.bootstrapServers
         if "group.id" not in consumer_config:
@@ -120,7 +124,8 @@ def test_connection(
     client: KafkaClient,
     service_connection: Union[KafkaConnection, RedpandaConnection],
     automation_workflow: Optional[AutomationWorkflow] = None,
-) -> None:
+    timeout_seconds: Optional[int] = THREE_MIN,
+) -> TestConnectionResult:
     """
     Test connection. This can be executed either as part
     of a metadata workflow or during an Automation Workflow
@@ -149,9 +154,10 @@ def test_connection(
         "CheckSchemaRegistry": schema_registry_test,
     }
 
-    test_connection_steps(
+    return test_connection_steps(
         metadata=metadata,
         test_fn=test_fn,
         service_type=service_connection.type.value,
         automation_workflow=automation_workflow,
+        timeout_seconds=timeout_seconds,
     )

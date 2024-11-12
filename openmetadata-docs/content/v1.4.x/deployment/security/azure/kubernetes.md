@@ -24,11 +24,17 @@ openmetadata:
     authentication:
       provider: "azure"
       publicKeys:
-      - "{your domain}/api/v1/config/jwks" # Update with your Domain and Make sure this "/api/v1/config/jwks" is always configured to enable JWT tokens
+      - "{your domain}/api/v1/system/config/jwks" # Update with your Domain and Make sure this "/api/v1/system/config/jwks" is always configured to enable JWT tokens
       - "https://login.microsoftonline.com/common/discovery/keys"
       authority: "https://login.microsoftonline.com/{Tenant ID}"
       clientId: "{Client ID}" # Azure Application
       callbackUrl: "http://localhost:8585/callback"
 ```
+
+{% note %}
+
+Altering the order of claims in `jwtPrincipalClaims` may lead to problems when matching a user from a token with an existing user in the system. The mapping process relies on the specific order of claims, so changing it can result in inconsistencies or authentication failures, as the system cannot ensure correct user mapping with a new claim order.
+
+{% /note %}
 
 {% partial file="/v1.4/deployment/configure-ingestion.md" /%}

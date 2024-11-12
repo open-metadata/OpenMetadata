@@ -14,6 +14,7 @@
 package org.openmetadata.service.workflows.searchIndex;
 
 import static org.openmetadata.service.apps.bundles.searchIndex.SearchIndexApp.TIME_SERIES_ENTITIES;
+import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -24,12 +25,13 @@ import java.util.Set;
 import java.util.UUID;
 import javax.ws.rs.core.Response;
 import lombok.SneakyThrows;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.system.EntityError;
+import org.openmetadata.schema.system.Stats;
 import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.EntityTimeSeriesRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -38,6 +40,7 @@ import org.openmetadata.service.util.JsonUtils;
 import os.org.opensearch.action.bulk.BulkItemResponse;
 import os.org.opensearch.action.bulk.BulkResponse;
 
+@Slf4j
 public class ReindexingUtil {
   private ReindexingUtil() {
     /*unused*/
@@ -45,6 +48,7 @@ public class ReindexingUtil {
 
   public static final String ENTITY_TYPE_KEY = "entityType";
   public static final String ENTITY_NAME_LIST_KEY = "entityNameList";
+  public static final String TIMESTAMP_KEY = "@timestamp";
 
   public static void getUpdatedStats(StepStats stats, int currentSuccess, int currentFailed) {
     stats.setSuccessRecords(stats.getSuccessRecords() + currentSuccess);
@@ -55,25 +59,40 @@ public class ReindexingUtil {
     return Entity.getSearchRepository().getDataInsightReports().contains(entityType);
   }
 
-  public static int getTotalRequestToProcess(Set<String> entities, CollectionDAO dao) {
+  public static Stats getInitialStatsForEntities(Set<String> entities) {
+    Stats initialStats = new Stats();
+    StepStats entityLevelStat = new StepStats();
     int total = 0;
+
     for (String entityType : entities) {
-      if (!TIME_SERIES_ENTITIES.contains(entityType)) {
-        EntityRepository<?> repository = Entity.getEntityRepository(entityType);
-        total += repository.getDao().listTotalCount();
-      } else {
-        EntityTimeSeriesRepository<?> repository;
-        ListFilter listFilter = new ListFilter(null);
-        if (isDataInsightIndex(entityType)) {
-          listFilter.addQueryParam("entityFQNHash", entityType);
-          repository = Entity.getEntityTimeSeriesRepository(Entity.ENTITY_REPORT_DATA);
+      try {
+        if (!TIME_SERIES_ENTITIES.contains(entityType)) {
+          EntityRepository<?> repository = Entity.getEntityRepository(entityType);
+          int entityCount = repository.getDao().listTotalCount();
+          total += entityCount;
+          entityLevelStat.withAdditionalProperty(
+              entityType, new StepStats().withTotalRecords(entityCount));
         } else {
-          repository = Entity.getEntityTimeSeriesRepository(entityType);
+          EntityTimeSeriesRepository<?> repository;
+          ListFilter listFilter = new ListFilter(null);
+          if (isDataInsightIndex(entityType)) {
+            listFilter.addQueryParam("entityFQNHash", entityType);
+            repository = Entity.getEntityTimeSeriesRepository(Entity.ENTITY_REPORT_DATA);
+          } else {
+            repository = Entity.getEntityTimeSeriesRepository(entityType);
+          }
+          int entityCount = repository.getTimeSeriesDao().listCount(listFilter);
+          total += entityCount;
+          entityLevelStat.withAdditionalProperty(
+              entityType, new StepStats().withTotalRecords(entityCount));
         }
-        total += repository.getTimeSeriesDao().listCount(listFilter);
+      } catch (Exception e) {
+        LOG.debug("Error while getting total entities to index", e);
       }
     }
-    return total;
+    initialStats.setJobStats(new StepStats().withTotalRecords(total));
+    initialStats.setEntityStats(entityLevelStat);
+    return initialStats;
   }
 
   public static int getSuccessFromBulkResponse(BulkResponse response) {
@@ -130,7 +149,9 @@ public class ReindexingUtil {
     String key = "_source";
     SearchRequest searchRequest =
         new SearchRequest.ElasticSearchRequestBuilder(
-                String.format("(%s:\"%s\")", matchingKey, sourceFqn), 100, "all")
+                String.format("(%s:\"%s\")", matchingKey, sourceFqn),
+                100,
+                Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS))
             .from(from)
             .fetchSource(true)
             .trackTotalHits(false)
@@ -140,7 +161,7 @@ public class ReindexingUtil {
             .includeSourceFields(new ArrayList<>())
             .build();
     List<EntityReference> entities = new ArrayList<>();
-    Response response = Entity.getSearchRepository().search(searchRequest);
+    Response response = Entity.getSearchRepository().search(searchRequest, null);
     String json = (String) response.getEntity();
 
     for (Iterator<JsonNode> it =
@@ -160,5 +181,9 @@ public class ReindexingUtil {
     }
 
     return entities;
+  }
+
+  public static String escapeDoubleQuotes(String str) {
+    return str.replace("\"", "\\\"");
   }
 }

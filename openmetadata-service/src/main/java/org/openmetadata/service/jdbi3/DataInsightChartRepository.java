@@ -38,7 +38,7 @@ public class DataInsightChartRepository extends EntityRepository<DataInsightChar
   public static final String DATA_VIEWS = "data.views";
   public static final String ENTITY_FQN = "entityFqn";
   public static final String DATA_ENTITY_FQN = "data.entityFqn";
-  public static final String OWNER = "owner";
+  public static final String OWNER = "owners";
   public static final String DATA_OWNER = "data.owner";
   public static final String USER_NAME = "userName";
   public static final String TEAM = "team";

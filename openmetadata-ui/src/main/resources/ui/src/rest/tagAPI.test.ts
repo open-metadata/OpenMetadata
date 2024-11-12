@@ -75,7 +75,10 @@ describe('API functions should work properly', () => {
 
   it('createClassification function should work properly', async () => {
     const mockPostData = { name: 'testCategory' } as Classification;
-    const result = await createClassification(mockPostData);
+    const result = await createClassification({
+      ...mockPostData,
+      domain: undefined,
+    });
 
     expect(result).toEqual({
       url: `post_request/classifications`,
@@ -85,7 +88,7 @@ describe('API functions should work properly', () => {
 
   it('createTag function should work properly', async () => {
     const mockPostData = { name: 'newTag' } as Classification;
-    const result = await createTag(mockPostData);
+    const result = await createTag({ ...mockPostData, domain: undefined });
 
     expect(result).toEqual({
       url: `post_request/tags`,

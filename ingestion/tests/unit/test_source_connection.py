@@ -42,6 +42,12 @@ from metadata.generated.schema.entity.services.connections.database.druidConnect
     DruidConnection,
     DruidScheme,
 )
+from metadata.generated.schema.entity.services.connections.database.exasolConnection import (
+    ExasolConnection,
+    ExasolScheme,
+    ExasolType,
+    Tls,
+)
 from metadata.generated.schema.entity.services.connections.database.hiveConnection import (
     HiveConnection,
     HiveScheme,
@@ -1235,3 +1241,61 @@ class SourceConnectionTest(TestCase):
             ),
         )
         assert get_connection_url(oracle_conn_obj) == expected_url
+
+    def test_exasol_url(self):
+        from metadata.ingestion.source.database.exasol.connection import (
+            get_connection_url,
+        )
+
+        def generate_test_data(
+            username="admin", password="password", port=8563, hostname="localhost"
+        ):
+            from collections import namedtuple
+
+            TestData = namedtuple("TestData", ["comment", "kwargs", "expected"])
+            host_port = f"{hostname}:{port}"
+
+            yield from (
+                TestData(
+                    comment="Testing default parameters",
+                    kwargs={
+                        "username": username,
+                        "password": password,
+                        "hostPort": host_port,
+                        "tls": Tls.validate_certificate,
+                    },
+                    expected="exa+websocket://admin:password@localhost:8563",
+                ),
+                TestData(
+                    comment="Testing the manual setting of parameters",
+                    kwargs={
+                        "type": ExasolType.Exasol,
+                        "scheme": ExasolScheme.exa_websocket,
+                        "username": username,
+                        "password": password,
+                        "hostPort": host_port,
+                        "tls": Tls.ignore_certificate,
+                    },
+                    expected="exa+websocket://admin:password@localhost:8563?SSLCertificate=SSL_VERIFY_NONE",
+                ),
+                TestData(
+                    comment="Testing disabling TLS completely",
+                    kwargs={
+                        "type": ExasolType.Exasol,
+                        "scheme": ExasolScheme.exa_websocket,
+                        "username": username,
+                        "password": password,
+                        "hostPort": host_port,
+                        "tls": Tls.disable_tls,
+                    },
+                    expected="exa+websocket://admin:password@localhost:8563?SSLCertificate=SSL_VERIFY_NONE&ENCRYPTION=no",
+                ),
+            )
+
+        # execute test cases
+        for data in generate_test_data():
+            with self.subTest(kwargs=data.kwargs, expected=data.expected):
+                connection = ExasolConnection(**data.kwargs)
+                actual = get_connection_url(connection)
+                expected = data.expected
+                assert actual == expected

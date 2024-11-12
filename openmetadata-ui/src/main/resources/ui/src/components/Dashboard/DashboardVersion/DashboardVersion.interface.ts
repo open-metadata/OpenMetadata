@@ -21,7 +21,7 @@ export interface DashboardVersionProp {
   version: string;
   currentVersionData: Dashboard;
   isVersionLoading: boolean;
-  owner: Dashboard['owner'];
+  owners: Dashboard['owners'];
   domain: Dashboard['domain'];
   dataProducts: Dashboard['dataProducts'];
   tier: TagLabel;

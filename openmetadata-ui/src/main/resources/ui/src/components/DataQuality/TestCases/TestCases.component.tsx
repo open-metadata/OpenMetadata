@@ -30,67 +30,76 @@ import {
   debounce,
   entries,
   isEmpty,
-  isEqual,
   isUndefined,
-  omit,
-  omitBy,
   startCase,
+  uniq,
 } from 'lodash';
 import QueryString from 'qs';
-import React, {
-  ReactNode,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useLocation, useParams } from 'react-router-dom';
+import { useHistory } from 'react-router-dom';
 import { WILD_CARD_CHAR } from '../../../constants/char.constants';
 import {
   INITIAL_PAGING_VALUE,
   PAGE_SIZE,
   PAGE_SIZE_BASE,
+  PAGE_SIZE_LARGE,
+  TIER_CATEGORY,
 } from '../../../constants/constants';
 import {
+  DEFAULT_SORT_ORDER,
   TEST_CASE_FILTERS,
   TEST_CASE_PLATFORM_OPTION,
   TEST_CASE_STATUS_OPTION,
   TEST_CASE_TYPE_OPTION,
 } from '../../../constants/profiler.constant';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
-import { ERROR_PLACEHOLDER_TYPE, SORT_ORDER } from '../../../enums/common.enum';
+import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
+import { TabSpecificField } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { TestCase } from '../../../generated/tests/testCase';
 import { usePaging } from '../../../hooks/paging/usePaging';
+import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { DataQualityPageTabs } from '../../../pages/DataQuality/DataQualityPage.interface';
+import { useDataQualityProvider } from '../../../pages/DataQuality/DataQualityProvider';
 import { searchQuery } from '../../../rest/searchAPI';
+import { getTags } from '../../../rest/tagAPI';
 import {
   getListTestCaseBySearch,
   ListTestCaseParamsBySearch,
 } from '../../../rest/testAPI';
-import { buildTestCaseParams } from '../../../utils/DataQuality/DataQualityUtils';
+import { getTestCaseFiltersValue } from '../../../utils/DataQuality/DataQualityUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getDataQualityPagePath } from '../../../utils/RouterUtils';
-import { generateEntityLink } from '../../../utils/TableUtils';
+import tagClassBase from '../../../utils/TagClassBase';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import DatePickerMenu from '../../common/DatePickerMenu/DatePickerMenu.component';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
 import Searchbar from '../../common/SearchBarComponent/SearchBar.component';
 import DataQualityTab from '../../Database/Profiler/DataQualityTab/DataQualityTab';
-import { DataQualitySearchParams } from '../DataQuality.interface';
+import { TestCaseSearchParams } from '../DataQuality.interface';
+import { SummaryPanel } from '../SummaryPannel/SummaryPanel.component';
 
-export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
+export const TestCases = () => {
   const [form] = useForm();
   const history = useHistory();
-  const location = useLocation();
+  const location = useCustomLocation();
   const { t } = useTranslation();
-  const { tab } = useParams<{ tab: DataQualityPageTabs }>();
   const { permissions } = usePermissionProvider();
+  const {
+    isTestCaseSummaryLoading,
+    testCaseSummary,
+    activeTab: tab,
+  } = useDataQualityProvider();
   const { testCase: testCasePermission } = permissions;
   const [tableOptions, setTableOptions] = useState<DefaultOptionType[]>([]);
-  const [isTableLoading, setIsTableLoading] = useState(false);
+  const [isOptionsLoading, setIsOptionsLoading] = useState(false);
+  const [tagOptions, setTagOptions] = useState<DefaultOptionType[]>([]);
+  const [tierOptions, setTierOptions] = useState<DefaultOptionType[]>([]);
+  const [serviceOptions, setServiceOptions] = useState<DefaultOptionType[]>([]);
+  const [sortOptions, setSortOptions] =
+    useState<ListTestCaseParamsBySearch>(DEFAULT_SORT_ORDER);
 
   const params = useMemo(() => {
     const search = location.search;
@@ -99,13 +108,12 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
       search.startsWith('?') ? search.substring(1) : search
     );
 
-    return params as DataQualitySearchParams;
-  }, [location]);
+    return params as TestCaseSearchParams;
+  }, [location.search]);
   const { searchValue = '' } = params;
 
   const [testCase, setTestCase] = useState<TestCase[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [filters, setFilters] = useState<ListTestCaseParamsBySearch>({});
   const [selectedFilter, setSelectedFilter] = useState<string[]>([
     TEST_CASE_FILTERS.status,
     TEST_CASE_FILTERS.type,
@@ -121,12 +129,12 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
     showPagination,
   } = usePaging(PAGE_SIZE);
 
-  const handleSearchParam = (
-    value: string | boolean,
-    key: keyof DataQualitySearchParams
+  const handleSearchParam = <K extends keyof TestCaseSearchParams>(
+    key: K,
+    value?: TestCaseSearchParams[K]
   ) => {
     history.push({
-      search: QueryString.stringify({ ...params, [key]: value }),
+      search: QueryString.stringify({ ...params, [key]: value || undefined }),
     });
   };
 
@@ -144,22 +152,32 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
 
   const fetchTestCases = async (
     currentPage = INITIAL_PAGING_VALUE,
-    params?: ListTestCaseParamsBySearch
+    filters?: string[],
+    apiParams?: ListTestCaseParamsBySearch
   ) => {
+    const updatedParams = getTestCaseFiltersValue(
+      params,
+      filters ?? selectedFilter
+    );
+
     setIsLoading(true);
     try {
       const { data, paging } = await getListTestCaseBySearch({
-        ...params,
+        ...updatedParams,
+        ...sortOptions,
+        ...apiParams,
         testCaseStatus: isEmpty(params?.testCaseStatus)
           ? undefined
           : params?.testCaseStatus,
         limit: pageSize,
         includeAllTests: true,
-        fields: 'testCaseResult,testSuite,incidentId',
+        fields: [
+          TabSpecificField.TEST_CASE_RESULT,
+          TabSpecificField.TESTSUITE,
+          TabSpecificField.INCIDENT_ID,
+        ],
         q: searchValue ? `*${searchValue}*` : undefined,
         offset: (currentPage - 1) * pageSize,
-        sortType: SORT_ORDER.DESC,
-        sortField: 'testCaseResult.timestamp',
       });
       setTestCase(data);
       handlePagingChange(paging);
@@ -169,6 +187,16 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const sortTestCase = async (apiParams?: TestCaseSearchParams) => {
+    const updatedValue = uniq([...selectedFilter, ...Object.keys(params)]);
+    await fetchTestCases(
+      INITIAL_PAGING_VALUE,
+      updatedValue,
+      apiParams ?? DEFAULT_SORT_ORDER
+    );
+    setSortOptions(apiParams ?? DEFAULT_SORT_ORDER);
   };
 
   const handleStatusSubmit = (testCase: TestCase) => {
@@ -186,65 +214,86 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
   };
 
   const handlePagingClick = ({ currentPage }: PagingHandlerParams) => {
-    fetchTestCases(currentPage, filters);
+    fetchTestCases(currentPage);
   };
 
-  const handleFilterChange: FormProps['onValuesChange'] = (_, values) => {
-    const { lastRunRange, tableFqn } = values;
-    const startTimestamp = lastRunRange?.startTs;
-    const endTimestamp = lastRunRange?.endTs;
-    const entityLink = tableFqn ? generateEntityLink(tableFqn) : undefined;
-    const params = {
-      ...omit(values, ['lastRunRange', 'tableFqn']),
-      startTimestamp,
-      endTimestamp,
-      entityLink,
-    };
-    const updatedParams = omitBy(
-      buildTestCaseParams(params, selectedFilter),
-      isUndefined
-    );
-    if (!isEqual(filters, updatedParams)) {
-      fetchTestCases(INITIAL_PAGING_VALUE, updatedParams);
-    }
-
-    setFilters(updatedParams);
-  };
-
-  const handleMenuClick = ({ key }: { key: string }) => {
-    setSelectedFilter((prevSelected) => {
-      if (prevSelected.includes(key)) {
-        const updatedValue = prevSelected.filter(
-          (selected) => selected !== key
-        );
-        const updatedFilters = omitBy(
-          buildTestCaseParams(filters, updatedValue),
-          isUndefined
-        );
-        form.setFieldsValue({ [key]: undefined });
-        if (!isEqual(filters, updatedFilters)) {
-          fetchTestCases(INITIAL_PAGING_VALUE, updatedFilters);
-        }
-        setFilters(updatedFilters);
-
-        return updatedValue;
+  const handleFilterChange: FormProps<TestCaseSearchParams>['onValuesChange'] =
+    (value?: TestCaseSearchParams) => {
+      if (!isUndefined(value)) {
+        const [data] = Object.entries(value);
+        handleSearchParam(data[0] as keyof TestCaseSearchParams, data[1]);
       }
+    };
 
-      return [...prevSelected, key];
-    });
+  const fetchTierOptions = async () => {
+    try {
+      setIsOptionsLoading(true);
+      const { data } = await getTags({
+        parent: 'Tier',
+        limit: PAGE_SIZE_LARGE,
+      });
+
+      const options = data.map((hit) => {
+        return {
+          label: (
+            <Space
+              data-testid={hit.fullyQualifiedName}
+              direction="vertical"
+              size={0}>
+              <Typography.Text className="text-xs text-grey-muted">
+                {hit.fullyQualifiedName}
+              </Typography.Text>
+              <Typography.Text className="text-sm">
+                {getEntityName(hit)}
+              </Typography.Text>
+            </Space>
+          ),
+          value: hit.fullyQualifiedName,
+        };
+      });
+
+      setTierOptions(options);
+    } catch (error) {
+      setTierOptions([]);
+    } finally {
+      setIsOptionsLoading(false);
+    }
   };
 
-  const filterMenu: ItemType[] = useMemo(() => {
-    return entries(TEST_CASE_FILTERS).map(([name, filter]) => ({
-      key: filter,
-      label: startCase(name),
-      value: filter,
-      onClick: handleMenuClick,
-    }));
-  }, [filters]);
+  const fetchTagOptions = async (search?: string) => {
+    setIsOptionsLoading(true);
+    try {
+      const { data } = await tagClassBase.getTags(search ?? '', 1);
+
+      const options = data
+        .filter(
+          ({ data: { classification } }) =>
+            classification?.name !== TIER_CATEGORY
+        )
+        .map(({ label, value }) => {
+          return {
+            label: (
+              <Space data-testid={value} direction="vertical" size={0}>
+                <Typography.Text className="text-xs text-grey-muted">
+                  {value}
+                </Typography.Text>
+                <Typography.Text className="text-sm">{label}</Typography.Text>
+              </Space>
+            ),
+            value: value,
+          };
+        });
+
+      setTagOptions(options);
+    } catch (error) {
+      setTagOptions([]);
+    } finally {
+      setIsOptionsLoading(false);
+    }
+  };
 
   const fetchTableData = async (search = WILD_CARD_CHAR) => {
-    setIsTableLoading(true);
+    setIsOptionsLoading(true);
     try {
       const response = await searchQuery({
         query: `*${search}*`,
@@ -277,27 +326,136 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
     } catch (error) {
       setTableOptions([]);
     } finally {
-      setIsTableLoading(false);
+      setIsOptionsLoading(false);
     }
   };
+
+  const fetchServiceOptions = async (search = WILD_CARD_CHAR) => {
+    setIsOptionsLoading(true);
+    try {
+      const response = await searchQuery({
+        query: `*${search}*`,
+        pageNumber: 1,
+        pageSize: PAGE_SIZE_BASE,
+        searchIndex: SearchIndex.DATABASE_SERVICE,
+        fetchSource: true,
+        includeFields: ['name', 'fullyQualifiedName', 'displayName'],
+      });
+
+      const options = response.hits.hits.map((hit) => {
+        return {
+          label: (
+            <Space
+              data-testid={hit._source.fullyQualifiedName}
+              direction="vertical"
+              size={0}>
+              <Typography.Text className="text-xs text-grey-muted">
+                {hit._source.fullyQualifiedName}
+              </Typography.Text>
+              <Typography.Text className="text-sm">
+                {getEntityName(hit._source)}
+              </Typography.Text>
+            </Space>
+          ),
+          value: hit._source.fullyQualifiedName,
+        };
+      });
+      setServiceOptions(options);
+    } catch (error) {
+      setServiceOptions([]);
+    } finally {
+      setIsOptionsLoading(false);
+    }
+  };
+
+  const getInitialOptions = (key: string, isLengthCheck = false) => {
+    switch (key) {
+      case TEST_CASE_FILTERS.tier:
+        (isEmpty(tierOptions) || !isLengthCheck) && fetchTierOptions();
+
+        break;
+      case TEST_CASE_FILTERS.table:
+        (isEmpty(tableOptions) || !isLengthCheck) && fetchTableData();
+
+        break;
+      case TEST_CASE_FILTERS.tags:
+        (isEmpty(tagOptions) || !isLengthCheck) && fetchTagOptions();
+
+        break;
+      case TEST_CASE_FILTERS.service:
+        (isEmpty(serviceOptions) || !isLengthCheck) && fetchServiceOptions();
+
+        break;
+
+      default:
+        break;
+    }
+  };
+
+  const handleMenuClick = ({ key }: { key: string }) => {
+    setSelectedFilter((prevSelected) => {
+      if (prevSelected.includes(key)) {
+        const updatedValue = prevSelected.filter(
+          (selected) => selected !== key
+        );
+        form.setFieldsValue({ [key]: undefined });
+
+        return updatedValue;
+      }
+
+      return uniq([...prevSelected, key]);
+    });
+    // Fetch options based on the selected filter
+    getInitialOptions(key);
+    handleSearchParam(key as keyof TestCaseSearchParams, undefined);
+  };
+
+  const filterMenu: ItemType[] = useMemo(() => {
+    return entries(TEST_CASE_FILTERS).map(([name, filter]) => ({
+      key: filter,
+      label: startCase(name),
+      value: filter,
+      onClick: handleMenuClick,
+    }));
+  }, []);
 
   const debounceFetchTableData = useCallback(debounce(fetchTableData, 1000), [
     fetchTableData,
   ]);
 
-  useEffect(() => {
-    if (testCasePermission?.ViewAll || testCasePermission?.ViewBasic) {
-      if (tab === DataQualityPageTabs.TEST_CASES) {
-        fetchTestCases(INITIAL_PAGING_VALUE, filters);
+  const debounceFetchTagOptions = useCallback(debounce(fetchTagOptions, 1000), [
+    fetchTagOptions,
+  ]);
+
+  const debounceFetchServiceOptions = useCallback(
+    debounce(fetchServiceOptions, 1000),
+    [fetchServiceOptions]
+  );
+
+  const getTestCases = () => {
+    if (!isEmpty(params)) {
+      const updatedValue = uniq([...selectedFilter, ...Object.keys(params)]);
+      for (const key of updatedValue) {
+        getInitialOptions(key, true);
       }
+      setSelectedFilter(updatedValue);
+      fetchTestCases(INITIAL_PAGING_VALUE, updatedValue);
+      form.setFieldsValue(params);
+    } else {
+      fetchTestCases(INITIAL_PAGING_VALUE);
+    }
+  };
+
+  useEffect(() => {
+    if (
+      (testCasePermission?.ViewAll || testCasePermission?.ViewBasic) &&
+      tab === DataQualityPageTabs.TEST_CASES
+    ) {
+      getTestCases();
     } else {
       setIsLoading(false);
     }
-  }, [tab, searchValue, testCasePermission, pageSize]);
-
-  useEffect(() => {
-    fetchTableData();
-  }, []);
+  }, [tab, testCasePermission, pageSize, params]);
 
   const pagingData = useMemo(
     () => ({
@@ -316,14 +474,10 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
   }
 
   return (
-    <Row
-      className="p-x-lg p-t-md"
-      data-testid="test-case-container"
-      gutter={[16, 16]}>
+    <Row className="p-x-md" data-testid="test-case-container" gutter={[16, 16]}>
       <Col span={24}>
-        <Form
+        <Form<TestCaseSearchParams>
           form={form}
-          initialValues={filters}
           layout="horizontal"
           onValuesChange={handleFilterChange}>
           <Space wrap align="center" className="w-full" size={16}>
@@ -334,7 +488,7 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
                   entity: t('label.test-case-lowercase'),
                 })}
                 searchValue={searchValue}
-                onSearch={(value) => handleSearchParam(value, 'searchValue')}
+                onSearch={(value) => handleSearchParam('searchValue', value)}
               />
             </Form.Item>
             <Form.Item noStyle name="selectedFilters">
@@ -363,7 +517,7 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
                   allowClear
                   showSearch
                   data-testid="table-select-filter"
-                  loading={isTableLoading}
+                  loading={isOptionsLoading}
                   options={tableOptions}
                   placeholder={t('label.table')}
                   onSearch={debounceFetchTableData}
@@ -420,10 +574,62 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
                 <DatePickerMenu showSelectedCustomRange />
               </Form.Item>
             )}
+            {selectedFilter.includes(TEST_CASE_FILTERS.tags) && (
+              <Form.Item
+                className="m-0 w-80"
+                label={t('label.tag-plural')}
+                name="tags">
+                <Select
+                  allowClear
+                  showSearch
+                  data-testid="tags-select-filter"
+                  loading={isOptionsLoading}
+                  mode="multiple"
+                  options={tagOptions}
+                  placeholder={t('label.tag-plural')}
+                  onSearch={debounceFetchTagOptions}
+                />
+              </Form.Item>
+            )}
+            {selectedFilter.includes(TEST_CASE_FILTERS.tier) && (
+              <Form.Item
+                className="m-0 w-40"
+                label={t('label.tier')}
+                name="tier">
+                <Select
+                  allowClear
+                  showSearch
+                  data-testid="tier-select-filter"
+                  options={tierOptions}
+                  placeholder={t('label.tier')}
+                />
+              </Form.Item>
+            )}
+            {selectedFilter.includes(TEST_CASE_FILTERS.service) && (
+              <Form.Item
+                className="m-0 w-80"
+                label={t('label.service')}
+                name="serviceName">
+                <Select
+                  allowClear
+                  showSearch
+                  data-testid="service-select-filter"
+                  loading={isOptionsLoading}
+                  options={serviceOptions}
+                  placeholder={t('label.service')}
+                  onSearch={debounceFetchServiceOptions}
+                />
+              </Form.Item>
+            )}
           </Space>
         </Form>
       </Col>
-      <Col span={24}>{summaryPanel}</Col>
+      <Col span={24}>
+        <SummaryPanel
+          isLoading={isTestCaseSummaryLoading}
+          testSummary={testCaseSummary}
+        />
+      </Col>
       <Col span={24}>
         <DataQualityTab
           afterDeleteAction={fetchTestCases}
@@ -433,6 +639,7 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
               url: getDataQualityPagePath(DataQualityPageTabs.TEST_CASES),
             },
           ]}
+          fetchTestCases={sortTestCase}
           isLoading={isLoading}
           pagingData={pagingData}
           showPagination={showPagination}

@@ -43,6 +43,7 @@ import {
 import { GLOSSARIES_DOCS } from '../../../constants/docs.constants';
 import { TABLE_CONSTANTS } from '../../../constants/Teams.constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
+import { TabSpecificField } from '../../../enums/entity.enum';
 import {
   EntityReference,
   GlossaryTerm,
@@ -86,11 +87,12 @@ const GlossaryTermTab = ({
   onEditGlossaryTerm,
   className,
 }: GlossaryTermTabProps) => {
-  const { activeGlossary, updateActiveGlossary } = useGlossaryStore();
+  const { activeGlossary, glossaryChildTerms, setGlossaryChildTerms } =
+    useGlossaryStore();
   const { theme } = useApplicationStore();
   const { t } = useTranslation();
 
-  const glossaryTerms = activeGlossary?.children as ModifiedGlossaryTerm[];
+  const glossaryTerms = (glossaryChildTerms as ModifiedGlossaryTerm[]) ?? [];
 
   const [movedGlossaryTerm, setMovedGlossaryTerm] =
     useState<MoveGlossaryTermType>();
@@ -161,11 +163,11 @@ const GlossaryTermTab = ({
           ),
       },
       {
-        title: t('label.owner'),
-        dataIndex: 'owner',
-        key: 'owner',
-        width: '15%',
-        render: (owner: EntityReference) => <OwnerLabel owner={owner} />,
+        title: t('label.owner-plural'),
+        dataIndex: 'owners',
+        key: 'owners',
+        width: '17%',
+        render: (owners: EntityReference[]) => <OwnerLabel owners={owners} />,
       },
       {
         title: t('label.status'),
@@ -198,7 +200,7 @@ const GlossaryTermTab = ({
       data.push({
         title: t('label.action-plural'),
         key: 'new-term',
-        width: '12%',
+        width: '10%',
         render: (_, record) => {
           const status = record.status ?? Status.Approved;
           const allowAddTerm = status === Status.Approved;
@@ -293,7 +295,7 @@ const GlossaryTermTab = ({
 
             (item as ModifiedGlossary).children = data;
 
-            updateActiveGlossary({ children: terms });
+            setGlossaryChildTerms(terms as ModifiedGlossary[]);
 
             children = data;
           }
@@ -312,7 +314,7 @@ const GlossaryTermTab = ({
         return <Loader />;
       },
     }),
-    [glossaryTerms, updateActiveGlossary, expandedRowKeys]
+    [glossaryTerms, setGlossaryChildTerms, expandedRowKeys]
   );
 
   const handleMoveRow = useCallback(
@@ -388,14 +390,17 @@ const GlossaryTermTab = ({
 
   const fetchAllTerms = async () => {
     setIsTableLoading(true);
+    const key = isGlossary ? 'glossary' : 'parent';
     const { data } = await getGlossaryTerms({
-      glossary: activeGlossary?.id || '',
+      [key]: activeGlossary?.id || '',
       limit: API_RES_MAX_SIZE,
-      fields: 'children,owner,parent',
+      fields: [
+        TabSpecificField.OWNERS,
+        TabSpecificField.PARENT,
+        TabSpecificField.CHILDREN,
+      ],
     });
-    updateActiveGlossary({
-      children: buildTree(data) as ModifiedGlossary['children'],
-    });
+    setGlossaryChildTerms(buildTree(data) as ModifiedGlossary[]);
     const keys = data.reduce((prev, curr) => {
       if (curr.children?.length) {
         prev.push(curr.fullyQualifiedName ?? '');
