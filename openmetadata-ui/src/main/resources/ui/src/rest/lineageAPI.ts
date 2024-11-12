@@ -22,6 +22,12 @@ export const updateLineageEdge = async (edge: AddLineage) => {
   return response.data;
 };
 
+export const getExportAsyncLineage = async () => {
+  const response = await APIClient.get(`/lineage/exportAsync`);
+
+  return response.data;
+};
+
 export const getLineageDataByFQN = async (
   fqn: string,
   entityType: string,
