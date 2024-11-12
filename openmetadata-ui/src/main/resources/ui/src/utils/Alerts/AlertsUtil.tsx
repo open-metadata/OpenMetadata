@@ -12,6 +12,11 @@
  */
 
 import {
+  CheckCircleOutlined,
+  ExclamationCircleOutlined,
+} from '@ant-design/icons';
+import {
+  AlertProps,
   Checkbox,
   Col,
   Divider,
@@ -78,9 +83,13 @@ import {
   SubscriptionCategory,
   SubscriptionType,
 } from '../../generated/events/eventSubscription';
+import { Status as DestinationStatus } from '../../generated/events/testDestinationStatus';
 import { TestCaseStatus } from '../../generated/tests/testCase';
 import { EventType } from '../../generated/type/changeEvent';
-import { ModifiedCreateEventSubscription } from '../../pages/AddObservabilityPage/AddObservabilityPage.interface';
+import {
+  ModifiedCreateEventSubscription,
+  ModifiedDestination,
+} from '../../pages/AddObservabilityPage/AddObservabilityPage.interface';
 import { searchData } from '../../rest/miscAPI';
 import { getEntityName, getEntityNameLabel } from '../EntityUtils';
 import { handleEntityCreationError } from '../formUtils';
@@ -835,6 +844,18 @@ export const getRandomizedAlertName = () => {
   })}`;
 };
 
+export const getFormattedDestinations = (
+  destinations?: ModifiedDestination[]
+) => {
+  const formattedDestinations = destinations?.map((destination) => {
+    const { destinationType, ...otherData } = destination;
+
+    return otherData;
+  });
+
+  return formattedDestinations;
+};
+
 export const handleAlertSave = async ({
   data,
   fqn,
@@ -1139,4 +1160,30 @@ export const getAlertExtraInfo = (
       />
     </>
   );
+};
+
+export const getDestinationStatusAlertData = (destinationStatus?: string) => {
+  const statusLabel =
+    destinationStatus === DestinationStatus.Success
+      ? t('label.success')
+      : t('label.failed');
+  const alertType: AlertProps['type'] =
+    destinationStatus === DestinationStatus.Success ? 'success' : 'error';
+  const alertClassName =
+    destinationStatus === DestinationStatus.Success
+      ? 'destination-success-status'
+      : 'destination-error-status';
+  const alertIcon =
+    destinationStatus === DestinationStatus.Success ? (
+      <CheckCircleOutlined height={14} />
+    ) : (
+      <ExclamationCircleOutlined height={14} />
+    );
+
+  return {
+    alertClassName,
+    alertType,
+    statusLabel,
+    alertIcon,
+  };
 };

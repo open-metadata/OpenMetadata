@@ -11,26 +11,91 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Divider, Form, Row } from 'antd';
-import { isEmpty, isNil } from 'lodash';
-import React, { Fragment } from 'react';
+import { Button, Col, Divider, Form, Row, Tooltip } from 'antd';
+import { AxiosError } from 'axios';
+import { isEmpty, isNil, isUndefined } from 'lodash';
+import React, { Fragment, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import FormCardSection from '../../../components/common/FormCardSection/FormCardSection';
-import { CreateEventSubscription } from '../../../generated/events/api/createEventSubscription';
+import { EXTERNAL_CATEGORY_OPTIONS } from '../../../constants/Alerts.constants';
+import {
+  CreateEventSubscription,
+  SubscriptionCategory,
+} from '../../../generated/events/api/createEventSubscription';
+import { Destination } from '../../../generated/events/eventSubscription';
+import { testAlertDestination } from '../../../rest/alertsAPI';
 import {
   getConnectionTimeoutField,
+  getFormattedDestinations,
   listLengthValidator,
 } from '../../../utils/Alerts/AlertsUtil';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import './destination-form-item.less';
 import DestinationSelectItem from './DestinationSelectItem/DestinationSelectItem';
 
 function DestinationFormItem() {
   const { t } = useTranslation();
   const form = Form.useFormInstance();
+  const [destinationsWithStatus, setDestinationsWithStatus] =
+    useState<Destination[]>();
+  const [isDestinationStatusLoading, setIsDestinationStatusLoading] =
+    useState<boolean>(false);
 
   const [selectedSource] =
     Form.useWatch<CreateEventSubscription['resources']>(['resources'], form) ??
     [];
+  const destinations =
+    Form.useWatch<CreateEventSubscription['destinations']>(
+      ['destinations'],
+      form
+    ) ?? [];
+
+  const handleTestDestinationClick = async () => {
+    try {
+      setIsDestinationStatusLoading(true);
+      const destinations = form.getFieldValue('destinations');
+      const formattedDestinations = getFormattedDestinations(destinations);
+      if (!isUndefined(formattedDestinations)) {
+        const externalDestinations = formattedDestinations.filter(
+          (destination) =>
+            destination.category === SubscriptionCategory.External
+        );
+
+        const results = await testAlertDestination({
+          destinations: externalDestinations,
+        });
+
+        setDestinationsWithStatus(results);
+      }
+    } catch (e) {
+      showErrorToast(e as AxiosError);
+    } finally {
+      setIsDestinationStatusLoading(false);
+    }
+  };
+
+  const isExternalDestinationSelected = useMemo(
+    () =>
+      destinations.some((destination) => {
+        const externalDestinationTypes = EXTERNAL_CATEGORY_OPTIONS.map(
+          (option) => option.value
+        );
+
+        return (
+          destination.category === SubscriptionCategory.External &&
+          externalDestinationTypes.includes(destination.type)
+        );
+      }),
+    [destinations]
+  );
+
+  const disableTestDestinationButton = useMemo(
+    () =>
+      isEmpty(selectedSource) ||
+      isNil(selectedSource) ||
+      !isExternalDestinationSelected,
+    [selectedSource, isExternalDestinationSelected]
+  );
 
   return (
     <FormCardSection
@@ -47,13 +112,16 @@ function DestinationFormItem() {
         {(fields, { add, remove }, { errors }) => {
           return (
             <Row
+              className="destination-list"
               data-testid="destination-list"
               gutter={[16, 16]}
               key="destinations">
               {fields.map(({ key, name }, index) => (
                 <Fragment key={key}>
                   <DestinationSelectItem
+                    destinationsWithStatus={destinationsWithStatus}
                     id={name}
+                    isDestinationStatusLoading={isDestinationStatusLoading}
                     remove={remove}
                     selectorKey={key}
                   />
@@ -66,15 +134,35 @@ function DestinationFormItem() {
               ))}
 
               <Col span={24}>
-                <Button
-                  data-testid="add-destination-button"
-                  disabled={isEmpty(selectedSource) || isNil(selectedSource)}
-                  type="primary"
-                  onClick={() => add({})}>
-                  {t('label.add-entity', {
-                    entity: t('label.destination'),
-                  })}
-                </Button>
+                <Row gutter={[16, 16]}>
+                  <Col>
+                    <Button
+                      data-testid="add-destination-button"
+                      disabled={
+                        isEmpty(selectedSource) || isNil(selectedSource)
+                      }
+                      type="primary"
+                      onClick={() => add({})}>
+                      {t('label.add-entity', {
+                        entity: t('label.destination'),
+                      })}
+                    </Button>
+                  </Col>
+                  <Col>
+                    <Tooltip
+                      placement="right"
+                      title={t('message.external-destination-selection')}>
+                      <Button
+                        data-testid="test-destination-button"
+                        disabled={disableTestDestinationButton}
+                        onClick={handleTestDestinationClick}>
+                        {t('label.test-entity', {
+                          entity: t('label.destination-plural'),
+                        })}
+                      </Button>
+                    </Tooltip>
+                  </Col>
+                </Row>
               </Col>
 
               <Col span={24}>

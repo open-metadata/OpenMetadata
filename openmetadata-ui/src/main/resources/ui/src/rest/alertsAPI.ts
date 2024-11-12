@@ -17,6 +17,7 @@ import { Operation } from 'fast-json-patch';
 import { PagingResponse } from 'Models';
 import axiosClient from '.';
 import { CreateEventSubscription } from '../generated/events/api/createEventSubscription';
+import { Destination } from '../generated/events/api/testEventSubscriptionDestination';
 import {
   Status as TypedEventStatus,
   TypedEvent,
@@ -143,6 +144,21 @@ export const getAlertEventsFromId = async ({
     `${BASE_URL}/id/${id}/listEvents`,
     {
       params,
+    }
+  );
+
+  return response.data;
+};
+
+export const testAlertDestination = async ({
+  destinations,
+}: {
+  destinations: Destination[];
+}) => {
+  const response = await axiosClient.post<Destination[]>(
+    `${BASE_URL}/testDestination`,
+    {
+      destinations,
     }
   );
 

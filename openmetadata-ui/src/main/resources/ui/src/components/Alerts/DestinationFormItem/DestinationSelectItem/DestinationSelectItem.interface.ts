@@ -11,8 +11,12 @@
  *  limitations under the License.
  */
 
+import { Destination } from '../../../../generated/events/eventSubscription';
+
 export interface DestinationSelectItemProps {
   selectorKey: number;
   id: number;
   remove: (index: number | number[]) => void;
+  destinationsWithStatus?: Destination[];
+  isDestinationStatusLoading: boolean;
 }
