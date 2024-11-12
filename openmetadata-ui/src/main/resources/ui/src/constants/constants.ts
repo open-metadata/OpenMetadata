@@ -269,7 +269,7 @@ export const ROUTES = {
 
   SETTINGS_EDIT_CUSTOM_LOGIN_CONFIG: `/settings/OpenMetadata/loginConfiguration/edit-custom-login-configuration`,
 
-  CUSTOMIZE_PAGE: `/customize-page/:fqn/:pageFqn`,
+  CUSTOMIZE_PAGE: `/customize-page/${PLACEHOLDER_ROUTE_FQN}/:pageFqn`,
 
   ADD_CUSTOM_METRIC: `/add-custom-metric/${PLACEHOLDER_DASHBOARD_TYPE}/${PLACEHOLDER_ROUTE_FQN}`,
 
@@ -296,6 +296,8 @@ export const SOCKET_EVENTS = {
   MENTION_CHANNEL: 'mentionChannel',
   JOB_STATUS: 'jobStatus',
   CSV_EXPORT_CHANNEL: 'csvExportChannel',
+  SEARCH_INDEX_JOB_BROADCAST_CHANNEL: 'searchIndexJobStatus',
+  DATA_INSIGHTS_JOB_BROADCAST_CHANNEL: 'dataInsightsJobStatus',
 };
 
 export const IN_PAGE_SEARCH_ROUTES: Record<string, Array<string>> = {

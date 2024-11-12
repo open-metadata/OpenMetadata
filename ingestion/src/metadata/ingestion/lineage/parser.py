@@ -26,6 +26,7 @@ from collate_sqllineage.runner import LineageRunner
 from sqlparse.sql import Comparison, Identifier, Parenthesis, Statement
 
 from metadata.generated.schema.type.tableUsageCount import TableColumn, TableColumnJoin
+from metadata.ingestion.lineage.masker import mask_query
 from metadata.ingestion.lineage.models import Dialect
 from metadata.utils.helpers import (
     find_in_iter,
@@ -69,7 +70,10 @@ class LineageParser:
         self.query = query
         self.query_parsing_success = True
         self.query_parsing_failure_reason = None
+        self.dialect = dialect
+        self._masked_query = mask_query(self.query, dialect.value)
         self._clean_query = self.clean_raw_query(query)
+        self._masked_clean_query = mask_query(self._clean_query, dialect.value)
         self.parser = self._evaluate_best_parser(
             self._clean_query, dialect=dialect, timeout_seconds=timeout_seconds
         )
@@ -91,7 +95,7 @@ class LineageParser:
         except SQLLineageException as exc:
             logger.debug(traceback.format_exc())
             logger.warning(
-                f"Cannot extract source table information from query [{self.query}]: {exc}"
+                f"Cannot extract source table information from query [{self._masked_query}]: {exc}"
             )
             return None
 
@@ -333,7 +337,9 @@ class LineageParser:
                     logger.warning(
                         f"Can't extract table names when parsing JOIN information from {comparison}"
                     )
-                    logger.debug(f"Query: {sql_statement}")
+                    logger.debug(
+                        f"Query: {mask_query(sql_statement, self.dialect.value)}"
+                    )
                     continue
 
                 left_table_column = TableColumn(table=table_left, column=column_left)
@@ -430,14 +436,18 @@ class LineageParser:
                 f"Lineage with SqlFluff failed for the [{dialect.value}]. "
                 f"Parser has been running for more than {timeout_seconds} seconds."
             )
-            logger.debug(f"{self.query_parsing_failure_reason}] query: [{query}]")
+            logger.debug(
+                f"{self.query_parsing_failure_reason}] query: [{self._masked_clean_query}]"
+            )
             lr_sqlfluff = None
         except Exception:
             self.query_parsing_success = False
             self.query_parsing_failure_reason = (
                 f"Lineage with SqlFluff failed for the [{dialect.value}]"
             )
-            logger.debug(f"{self.query_parsing_failure_reason} query: [{query}]")
+            logger.debug(
+                f"{self.query_parsing_failure_reason} query: [{self._masked_clean_query}]"
+            )
             lr_sqlfluff = None
 
         lr_sqlparser = LineageRunner(query)
@@ -461,7 +471,9 @@ class LineageParser:
                     "Lineage computed with SqlFluff did not perform as expected "
                     f"for the [{dialect.value}]"
                 )
-                logger.debug(f"{self.query_parsing_failure_reason} query: [{query}]")
+                logger.debug(
+                    f"{self.query_parsing_failure_reason} query: [{self._masked_clean_query}]"
+                )
                 return lr_sqlparser
             return lr_sqlfluff
         return lr_sqlparser
