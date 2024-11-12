@@ -207,6 +207,8 @@ public class EventSubscriptionScheduler {
     Entity.getCollectionDAO()
         .eventSubscriptionDAO()
         .deleteFailedRecordsBySubscriptionId(id.toString());
+
+    Entity.getCollectionDAO().eventSubscriptionDAO().deleteAlertMetrics(id.toString());
   }
 
   public SubscriptionStatus getStatusForEventSubscription(UUID subscriptionId, UUID destinationId) {

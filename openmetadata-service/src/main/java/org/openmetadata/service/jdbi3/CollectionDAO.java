@@ -2163,6 +2163,9 @@ public interface CollectionDAO {
     void deleteFailedRecordsBySubscriptionId(
         @Bind("eventSubscriptionId") String eventSubscriptionId);
 
+    @SqlUpdate("DELETE from change_event_consumers cec where id = :eventSubscriptionId;")
+    void deleteAlertMetrics(@Bind("eventSubscriptionId") String eventSubscriptionId);
+
     @ConnectionAwareSqlQuery(
         value =
             "SELECT COUNT(*) FROM ( "
