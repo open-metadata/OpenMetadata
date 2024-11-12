@@ -1,5 +1,6 @@
 package org.openmetadata.service.apps.bundles.searchIndex;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.API_COLLCECTION;
 import static org.openmetadata.service.Entity.API_ENDPOINT;
 import static org.openmetadata.service.Entity.API_SERVICE;
@@ -46,7 +47,6 @@ import static org.openmetadata.service.socket.WebSocketManager.SEARCH_INDEX_JOB_
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.ENTITY_TYPE_KEY;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.isDataInsightIndex;
 
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -62,7 +62,6 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang.exception.ExceptionUtils;
 import org.jetbrains.annotations.NotNull;
-import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.EntityTimeSeriesInterface;
 import org.openmetadata.schema.analytics.ReportData;
@@ -292,7 +291,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
       LOG.error("Error during reindexing process.", e);
       throw e;
     } finally {
-      shutdownExecutor(producerExecutor, "ReaderExecutor", 20, TimeUnit.SECONDS);
+      shutdownExecutor(producerExecutor, "ReaderExecutor", 1, TimeUnit.MINUTES);
       shutdownExecutor(consumerExecutor, "ConsumerExecutor", 20, TimeUnit.SECONDS);
     }
   }
@@ -551,29 +550,42 @@ public class SearchIndexApp extends AbstractNativeApplication {
 
   private void processTask(IndexingTask<?> task, JobExecutionContext jobExecutionContext) {
     String entityType = task.entityType();
-    List<?> entities = task.entities();
+    ResultList<?> entities = task.entities();
     Map<String, Object> contextData = new HashMap<>();
     contextData.put(ENTITY_TYPE_KEY, entityType);
 
     try {
       if (!TIME_SERIES_ENTITIES.contains(entityType)) {
         @SuppressWarnings("unchecked")
-        List<EntityInterface> entityList = (List<EntityInterface>) entities;
+        List<EntityInterface> entityList = (List<EntityInterface>) entities.getData();
         searchIndexSink.write(entityList, contextData);
       } else {
         @SuppressWarnings("unchecked")
-        List<EntityTimeSeriesInterface> entityList = (List<EntityTimeSeriesInterface>) entities;
+        List<EntityTimeSeriesInterface> entityList =
+            (List<EntityTimeSeriesInterface>) entities.getData();
         searchIndexSink.write(entityList, contextData);
       }
 
       // After successful write, create a new StepStats for the current batch
       StepStats currentEntityStats = new StepStats();
-      currentEntityStats.setSuccessRecords(entities.size());
-      currentEntityStats.setFailedRecords(0);
+      currentEntityStats.setSuccessRecords(entities.getData().size());
+      currentEntityStats.setFailedRecords(entities.getErrors().size());
       // Do NOT set Total Records here
 
       // Update statistics in a thread-safe manner
       synchronized (jobDataLock) {
+        if (!entities.getErrors().isEmpty()) {
+          jobData.setStatus(EventPublisherJob.Status.ACTIVE_ERROR);
+          jobData.setFailure(
+              new IndexingError()
+                  .withErrorSource(IndexingError.ErrorSource.READER)
+                  .withSubmittedCount(batchSize.get())
+                  .withSuccessCount(entities.getData().size())
+                  .withFailedCount(entities.getErrors().size())
+                  .withMessage(
+                      "Issues in Reading A Batch For Entities. Check Errors Corresponding to Entities.")
+                  .withFailedEntities(entities.getErrors()));
+        }
         updateStats(entityType, currentEntityStats);
       }
 
@@ -587,7 +599,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
 
         StepStats failedEntityStats = new StepStats();
         failedEntityStats.setSuccessRecords(0);
-        failedEntityStats.setFailedRecords(entities.size());
+        failedEntityStats.setFailedRecords(entities.getData().size());
         updateStats(entityType, failedEntityStats);
       }
       LOG.error("Unexpected error during processing task for entity {}", entityType, e);
@@ -604,14 +616,14 @@ public class SearchIndexApp extends AbstractNativeApplication {
     if (!TIME_SERIES_ENTITIES.contains(entityType)) {
       PaginatedEntitiesSource paginatedSource =
           new PaginatedEntitiesSource(entityType, batchSize.get(), fields);
-      if (!CommonUtil.nullOrEmpty(jobData.getAfterCursor())) {
+      if (!nullOrEmpty(jobData.getAfterCursor())) {
         paginatedSource.getCursor().set(jobData.getAfterCursor());
       }
       source = paginatedSource;
     } else {
       PaginatedEntityTimeSeriesSource paginatedSource =
           new PaginatedEntityTimeSeriesSource(entityType, batchSize.get(), fields);
-      if (!CommonUtil.nullOrEmpty(jobData.getAfterCursor())) {
+      if (!nullOrEmpty(jobData.getAfterCursor())) {
         paginatedSource.getCursor().set(jobData.getAfterCursor());
       }
       source = paginatedSource;
@@ -640,8 +652,8 @@ public class SearchIndexApp extends AbstractNativeApplication {
     try {
       Object resultList = source.readWithCursor(RestUtil.encodeCursor(String.valueOf(offset)));
       if (resultList != null) {
-        List<?> entities = extractEntities(entityType, resultList);
-        if (entities != null && !entities.isEmpty()) {
+        ResultList<?> entities = extractEntities(entityType, resultList);
+        if (!nullOrEmpty(entities.getData())) {
           LOG.info(
               "Creating Indexing Task for entityType: {}, current offset: {}", entityType, offset);
           createIndexingTask(entityType, entities, offset);
@@ -652,10 +664,23 @@ public class SearchIndexApp extends AbstractNativeApplication {
       LOG.warn("Reader thread interrupted for entityType: {}", entityType);
     } catch (SearchIndexException e) {
       LOG.error("Error while reading source for entityType: {}", entityType, e);
+      synchronized (jobDataLock) {
+        jobData.setStatus(EventPublisherJob.Status.ACTIVE_ERROR);
+        jobData.setFailure(e.getIndexingError());
+        int remainingRecords = getRemainingRecordsToProcess(entityType);
+        if (remainingRecords - batchSize.get() <= 0) {
+          updateStats(
+              entityType,
+              new StepStats().withSuccessRecords(0).withFailedRecords(remainingRecords));
+        } else {
+          updateStats(
+              entityType, new StepStats().withSuccessRecords(0).withFailedRecords(batchSize.get()));
+        }
+      }
     }
   }
 
-  private void createIndexingTask(String entityType, List<?> entities, int offset)
+  private void createIndexingTask(String entityType, ResultList<?> entities, int offset)
       throws InterruptedException {
     IndexingTask<?> task = new IndexingTask<>(entityType, entities, offset);
     taskQueue.put(task);
@@ -671,16 +696,26 @@ public class SearchIndexApp extends AbstractNativeApplication {
   }
 
   @SuppressWarnings("unchecked")
-  private List<?> extractEntities(String entityType, Object resultList) {
+  private ResultList<?> extractEntities(String entityType, Object resultList) {
     if (!TIME_SERIES_ENTITIES.contains(entityType)) {
-      return ((ResultList<? extends EntityInterface>) resultList).getData();
+      return ((ResultList<? extends EntityInterface>) resultList);
     } else {
-      return ((ResultList<? extends EntityTimeSeriesInterface>) resultList).getData();
+      return ((ResultList<? extends EntityTimeSeriesInterface>) resultList);
     }
   }
 
-  private record IndexingTask<T>(String entityType, List<T> entities, int currentEntityOffset) {
+  private synchronized int getRemainingRecordsToProcess(String entityType) {
+    StepStats entityStats =
+        ((StepStats)
+            searchIndexStats.get().getEntityStats().getAdditionalProperties().get(entityType));
+    return entityStats.getTotalRecords()
+        - entityStats.getFailedRecords()
+        - entityStats.getSuccessRecords();
+  }
+
+  private record IndexingTask<T>(
+      String entityType, ResultList<T> entities, int currentEntityOffset) {
     public static final IndexingTask<?> POISON_PILL =
-        new IndexingTask<>(null, Collections.emptyList(), -1);
+        new IndexingTask<>(null, new ResultList<>(), -1);
   }
 }
