@@ -41,15 +41,15 @@ To integrate MicroStrategy, ensure you are using OpenMetadata version 1.2.x or h
 
 #### Connection Details
 
-- **Username**: Username to connect to Mstr, e.g., user@organization.com. This user should have access to relevant dashboards and charts in Mstr to fetch the metadata.
+- **Username**: Username to connect to MicroStrategy, e.g., user@organization.com. This user should have access to relevant dashboards and charts in MicroStrategy to fetch the metadata.
 
-- **Password**: Password of the user account to connect with Mstr.
+- **Password**: Password of the user account to connect with MicroStrategy.
 
-- **Host Port**: This parameter specifies the host and port of the Mstr instance. This should be specified as a URI string in the format http://hostname:port or https://hostname:port.
+- **Host Port**: This parameter specifies the host and port of the MicroStrategy instance. This should be specified as a URI string in the format http://hostname:port or https://hostname:port.
 
 For example, you might set it to https://org.mstr.com:3000.
 
-- **Project Name**: The name of the project within Mstr that OpenMetadata will connect to, linking to the relevant dashboards and reports for metadata retrieval.
+- **Project Name**: The name of the project within MicroStrategy that OpenMetadata will connect to, linking to the relevant dashboards and reports for metadata retrieval.
 
 {% /extraContent %}
 

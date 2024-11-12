@@ -9,7 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """
-MSTR Models
+MicroStrategy Models
 """
 from datetime import datetime
 from typing import List, Optional
@@ -17,18 +17,18 @@ from typing import List, Optional
 from pydantic import BaseModel
 
 
-class MstrOwner(BaseModel):
+class MicroStrategyOwner(BaseModel):
     """
-    MSTR owner model
+    MicroStrategy owner model
     """
 
     name: str
     id: str
 
 
-class MstrProject(BaseModel):
+class MicroStrategyProject(BaseModel):
     """
-    MSTR project model
+    MicroStrategy project model
     """
 
     acg: int
@@ -39,16 +39,16 @@ class MstrProject(BaseModel):
     description: str
     dateCreated: datetime
     dateModified: datetime
-    owner: MstrOwner
+    owner: MicroStrategyOwner
 
 
-class MstrProjectList(BaseModel):
-    projects: Optional[List[MstrProject]] = None
+class MicroStrategyProjectList(BaseModel):
+    projects: Optional[List[MicroStrategyProject]] = None
 
 
-class MstrSearchResult(BaseModel):
+class MicroStrategySearchResult(BaseModel):
     """
-    Mstr Search Results model
+    MicroStrategy Search Results model
     """
 
     name: str
@@ -60,7 +60,7 @@ class MstrSearchResult(BaseModel):
     dateModified: str
     version: str
     acg: int
-    owner: MstrOwner
+    owner: MicroStrategyOwner
     extType: int
     viewMedia: int
     certifiedInfo: dict
@@ -68,13 +68,13 @@ class MstrSearchResult(BaseModel):
     projectId: str
 
 
-class MstrSearchResultList(BaseModel):
-    results: Optional[List[MstrSearchResult]]
+class MicroStrategySearchResultList(BaseModel):
+    results: Optional[List[MicroStrategySearchResult]]
 
 
-class MstrDashboard(BaseModel):
+class MicroStrategyDashboard(BaseModel):
     """
-    Mstr Dashboard model
+    MicroStrategy Dashboard model
     """
 
     name: str
@@ -86,7 +86,7 @@ class MstrDashboard(BaseModel):
     dateModified: str
     version: str
     acg: int
-    owner: MstrOwner
+    owner: MicroStrategyOwner
     extType: int
     viewMedia: int
     certifiedInfo: dict
@@ -95,50 +95,50 @@ class MstrDashboard(BaseModel):
     projectName: str
 
 
-class MstrDashboardList(BaseModel):
-    dashboards: Optional[List[MstrDashboard]] = None
+class MicroStrategyDashboardList(BaseModel):
+    dashboards: Optional[List[MicroStrategyDashboard]] = None
 
 
-class MstrAttribute(BaseModel):
+class MicroStrategyAttribute(BaseModel):
     id: str
     type: int
     name: str
 
 
-class MstrMetric(BaseModel):
+class MicroStrategyMetric(BaseModel):
     id: str
     type: int
     name: str
 
 
-class MstrVisualization(BaseModel):
+class MicroStrategyVisualization(BaseModel):
     key: str
     name: str
     visualizationType: str
 
 
-class MstrPage(BaseModel):
+class MicroStrategyPage(BaseModel):
     key: str
     name: str
-    visualizations: List[MstrVisualization]
+    visualizations: List[MicroStrategyVisualization]
 
 
-class MstrChapter(BaseModel):
+class MicroStrategyChapter(BaseModel):
     key: str
     name: str
-    pages: List[MstrPage]
+    pages: List[MicroStrategyPage]
 
 
-class MstrAvailableObject(BaseModel):
+class MicroStrategyAvailableObject(BaseModel):
     id: str
     name: str
     type: str
 
 
-class MstrDashboardDetails(BaseModel):
+class MicroStrategyDashboardDetails(BaseModel):
     id: str
     name: str
     projectId: str
     projectName: str
     currentChapter: str
-    chapters: List[MstrChapter]
+    chapters: List[MicroStrategyChapter]

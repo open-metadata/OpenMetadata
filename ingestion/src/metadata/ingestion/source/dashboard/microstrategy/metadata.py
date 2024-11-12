@@ -8,7 +8,7 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-"""Mstr source module"""
+"""MicroStrategy source module"""
 import traceback
 from typing import Iterable, List, Optional
 
@@ -16,8 +16,8 @@ from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.chart import Chart
-from metadata.generated.schema.entity.services.connections.dashboard.mstrConnection import (
-    MstrConnection,
+from metadata.generated.schema.entity.services.connections.dashboard.microStrategyConnection import (
+    MicroStrategyConnection,
 )
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
@@ -34,10 +34,10 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
-from metadata.ingestion.source.dashboard.mstr.models import (
-    MstrDashboard,
-    MstrDashboardDetails,
-    MstrPage,
+from metadata.ingestion.source.dashboard.microstrategy.models import (
+    MicroStrategyDashboard,
+    MicroStrategyDashboardDetails,
+    MicroStrategyPage,
 )
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_chart
@@ -47,9 +47,9 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 
-class MstrSource(DashboardServiceSource):
+class MicrostrategySource(DashboardServiceSource):
     """
-    MSTR Source Class
+    MicroStrategy Source Class
     """
 
     @classmethod
@@ -60,14 +60,14 @@ class MstrSource(DashboardServiceSource):
         pipeline_name: Optional[str] = None,
     ):
         config = WorkflowSource.model_validate(config_dict)
-        connection: MstrConnection = config.serviceConnection.root.config
-        if not isinstance(connection, MstrConnection):
+        connection: MicroStrategyConnection = config.serviceConnection.root.config
+        if not isinstance(connection, MicroStrategyConnection):
             raise InvalidSourceException(
-                f"Expected MstrConnection, but got {connection}"
+                f"Expected MicroStrategyConnection, but got {connection}"
             )
         return cls(config, metadata)
 
-    def get_dashboards_list(self) -> Optional[List[MstrDashboard]]:
+    def get_dashboards_list(self) -> Optional[List[MicroStrategyDashboard]]:
         """
         Get List of all dashboards
         """
@@ -85,13 +85,15 @@ class MstrSource(DashboardServiceSource):
 
         return dashboards
 
-    def get_dashboard_name(self, dashboard: MstrDashboard) -> str:
+    def get_dashboard_name(self, dashboard: MicroStrategyDashboard) -> str:
         """
         Get Dashboard Name
         """
         return dashboard.name
 
-    def get_dashboard_details(self, dashboard: MstrDashboard) -> MstrDashboardDetails:
+    def get_dashboard_details(
+        self, dashboard: MicroStrategyDashboard
+    ) -> MicroStrategyDashboardDetails:
         """
         Get Dashboard Details
         """
@@ -101,7 +103,7 @@ class MstrSource(DashboardServiceSource):
         return dashboard_details
 
     def yield_dashboard(
-        self, dashboard_details: MstrDashboardDetails
+        self, dashboard_details: MicroStrategyDashboardDetails
     ) -> Iterable[Either[CreateDashboardRequest]]:
         """
         Method to Get Dashboard Entity
@@ -142,12 +144,12 @@ class MstrSource(DashboardServiceSource):
             )
 
     def yield_dashboard_lineage_details(
-        self, dashboard_details: MstrDashboardDetails, db_service_name: str
+        self, dashboard_details: MicroStrategyDashboardDetails, db_service_name: str
     ) -> Optional[Iterable[AddLineageRequest]]:
         """Not Implemented"""
 
     def yield_dashboard_chart(
-        self, dashboard_details: MstrDashboardDetails
+        self, dashboard_details: MicroStrategyDashboardDetails
     ) -> Optional[Iterable[CreateChartRequest]]:
         """Get chart method
 
@@ -166,7 +168,7 @@ class MstrSource(DashboardServiceSource):
             logger.warning(f"Error creating dashboard: {exc}")
 
     def _yield_chart_from_visualization(
-        self, page: MstrPage
+        self, page: MicroStrategyPage
     ) -> Iterable[Either[CreateChartRequest]]:
         for chart in page.visualizations:
             try:

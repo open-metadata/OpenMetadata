@@ -9,7 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """
-REST Auth & Client for Mstr
+REST Auth & Client for MicroStrategy
 """
 import traceback
 from typing import List, Optional
@@ -17,18 +17,18 @@ from typing import List, Optional
 import requests
 from mstr.requests import MSTRRESTSession
 
-from metadata.generated.schema.entity.services.connections.dashboard.mstrConnection import (
-    MstrConnection,
+from metadata.generated.schema.entity.services.connections.dashboard.microStrategyConnection import (
+    MicroStrategyConnection,
 )
 from metadata.ingestion.connections.test_connections import SourceConnectionException
-from metadata.ingestion.source.dashboard.mstr.models import (
-    MstrDashboard,
-    MstrDashboardDetails,
-    MstrDashboardList,
-    MstrProject,
-    MstrProjectList,
-    MstrSearchResult,
-    MstrSearchResultList,
+from metadata.ingestion.source.dashboard.microstrategy.models import (
+    MicroStrategyDashboard,
+    MicroStrategyDashboardDetails,
+    MicroStrategyDashboardList,
+    MicroStrategyProject,
+    MicroStrategyProjectList,
+    MicroStrategySearchResult,
+    MicroStrategySearchResultList,
 )
 from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import ingestion_logger
@@ -38,7 +38,7 @@ logger = ingestion_logger()
 API_VERSION = "MicroStrategyLibrary/api"
 
 
-class MSTRClient:
+class MicroStrategyClient:
     """
     Client Handling API communication with Metabase
     """
@@ -58,7 +58,7 @@ class MSTRClient:
             return session
 
         except KeyError as exe:
-            msg = "Failed to fetch mstr session, please validate credentials"
+            msg = "Failed to fetch MicroStrategy session, please validate credentials"
             raise SourceConnectionException(msg) from exe
 
         except Exception as exc:
@@ -67,7 +67,7 @@ class MSTRClient:
 
     def __init__(
         self,
-        config: MstrConnection,
+        config: MicroStrategyConnection,
     ):
         self.config = config
         self.session = self._get_mstr_session()
@@ -75,7 +75,7 @@ class MSTRClient:
     def is_project_name(self) -> bool:
         return bool(self.config.projectName)
 
-    def get_projects_list(self) -> List[MstrProject]:
+    def get_projects_list(self) -> List[MicroStrategyProject]:
         """
         Get List of all projects
         """
@@ -87,7 +87,7 @@ class MSTRClient:
             if not resp_projects.ok:
                 raise requests.ConnectionError()
 
-            project_list = MstrProjectList(projects=resp_projects.json())
+            project_list = MicroStrategyProjectList(projects=resp_projects.json())
             return project_list.projects
 
         except Exception as exc:
@@ -96,7 +96,7 @@ class MSTRClient:
 
         return []
 
-    def get_project_by_name(self) -> Optional[MstrProject]:
+    def get_project_by_name(self) -> Optional[MicroStrategyProject]:
         """
         Get Project By Name
         """
@@ -109,7 +109,7 @@ class MSTRClient:
             if not resp_projects.ok:
                 raise requests.ConnectionError()
 
-            project = MstrProject(**resp_projects.json())
+            project = MicroStrategyProject(**resp_projects.json())
             return project
 
         except Exception:
@@ -120,7 +120,7 @@ class MSTRClient:
 
     def get_search_results_list(
         self, project_id, object_type
-    ) -> List[MstrSearchResult]:
+    ) -> List[MicroStrategySearchResult]:
         """
         Get Search Results
         """
@@ -147,7 +147,7 @@ class MSTRClient:
             for resp_result in resp_results.json()["result"]:
                 results.append(resp_result)
 
-            results_list = MstrSearchResultList(results=results)
+            results_list = MicroStrategySearchResultList(results=results)
             return results_list.results
 
         except Exception:
@@ -156,7 +156,9 @@ class MSTRClient:
 
         return []
 
-    def get_dashboards_list(self, project_id, project_name) -> List[MstrDashboard]:
+    def get_dashboards_list(
+        self, project_id, project_name
+    ) -> List[MicroStrategyDashboard]:
         """
         Get Dashboard
         """
@@ -168,10 +170,12 @@ class MSTRClient:
             dashboards = []
             for result in results:
                 dashboards.append(
-                    MstrDashboard(projectName=project_name, **result.model_dump())
+                    MicroStrategyDashboard(
+                        projectName=project_name, **result.model_dump()
+                    )
                 )
 
-            dashboards_list = MstrDashboardList(dashboards=dashboards)
+            dashboards_list = MicroStrategyDashboardList(dashboards=dashboards)
             return dashboards_list.dashboards
 
         except Exception:
@@ -182,7 +186,7 @@ class MSTRClient:
 
     def get_dashboard_details(
         self, project_id, project_name, dashboard_id
-    ) -> Optional[MstrDashboardDetails]:
+    ) -> Optional[MicroStrategyDashboardDetails]:
         """
         Get Dashboard Details
         """
@@ -198,7 +202,7 @@ class MSTRClient:
             if not resp_dashboard.ok:
                 raise requests.ConnectionError()
 
-            return MstrDashboardDetails(
+            return MicroStrategyDashboardDetails(
                 projectId=project_id, projectName=project_name, **resp_dashboard.json()
             )
 
