@@ -319,9 +319,9 @@ const GlossaryTermTab = ({
 
   const [selectedColumns, setSelectedColumns] =
     useState<string[]>(defaultCheckedList);
-  const [columnDropdownSelections, setTempCheckedList] = useState<string[]>([
-    ...selectedColumns,
-  ]);
+  const [columnDropdownSelections, setColumnDropdownSelections] = useState<
+    string[]
+  >([...selectedColumns]);
 
   const [isDropdownVisible, setIsDropdownVisible] = useState<boolean>(false);
 
@@ -365,13 +365,13 @@ const GlossaryTermTab = ({
   }, [columnDropdownSelections]);
 
   const handleColumnSelectionDropdownCancel = useCallback(() => {
-    setTempCheckedList(selectedColumns);
+    setColumnDropdownSelections(selectedColumns);
     setIsDropdownVisible(false);
   }, [selectedColumns]);
 
   const handleMoveItem = (updatedList: { value: string; label: string }[]) => {
     setOptions(updatedList);
-    setTempCheckedList((prevCheckedList) => {
+    setColumnDropdownSelections((prevCheckedList) => {
       const updatedCheckedList = prevCheckedList.map((item) => {
         const index = updatedList.findIndex((option) => option.value === item);
 
@@ -384,7 +384,9 @@ const GlossaryTermTab = ({
   const handleCheckboxChange = useCallback(
     (key: string, checked: boolean, type: 'columns' | 'status') => {
       const setCheckedList =
-        type === 'columns' ? setTempCheckedList : setStatusDropdownSelections;
+        type === 'columns'
+          ? setColumnDropdownSelections
+          : setStatusDropdownSelections;
 
       const optionsToUse =
         type === 'columns'
@@ -428,7 +430,12 @@ const GlossaryTermTab = ({
         });
       }
     },
-    [columns, statusOptions, setTempCheckedList, setStatusDropdownSelections]
+    [
+      columns,
+      statusOptions,
+      setColumnDropdownSelections,
+      setStatusDropdownSelections,
+    ]
   );
 
   const menu = useMemo(
