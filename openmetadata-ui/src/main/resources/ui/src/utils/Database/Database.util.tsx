@@ -16,7 +16,7 @@ import { t } from 'i18next';
 import { isUndefined, toLower } from 'lodash';
 import React from 'react';
 import { Link } from 'react-router-dom';
-import UserPopOverCard from '../../components/common/PopOverCard/UserPopOverCard';
+import { OwnerLabel } from '../../components/common/OwnerLabel/OwnerLabel.component';
 import RichTextEditorPreviewer from '../../components/common/RichTextEditor/RichTextEditorPreviewer';
 import {
   getEntityDetailsPath,
@@ -28,7 +28,6 @@ import {
   EntityType,
   TabSpecificField,
 } from '../../enums/entity.enum';
-import { OwnerType } from '../../enums/user.enum';
 import { DatabaseSchema } from '../../generated/entity/data/databaseSchema';
 import { EntityReference } from '../../generated/entity/type';
 import { UsageDetails } from '../../generated/type/entityUsage';
@@ -105,17 +104,7 @@ export const schemaTableColumns: ColumnsType<DatabaseSchema> = [
 
     render: (owners: EntityReference[]) =>
       !isUndefined(owners) && owners.length > 0 ? (
-        owners.map((owner: EntityReference) => (
-          <UserPopOverCard
-            showUserName
-            data-testid="owner-data"
-            displayName={owner.displayName}
-            key={owner.id}
-            profileWidth={20}
-            type={owner.type as OwnerType}
-            userName={owner.name ?? ''}
-          />
-        ))
+        <OwnerLabel owners={owners} />
       ) : (
         <Typography.Text data-testid="no-owner-text">
           {NO_DATA_PLACEHOLDER}
