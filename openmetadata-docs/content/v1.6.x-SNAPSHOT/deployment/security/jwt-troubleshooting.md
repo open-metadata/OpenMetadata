@@ -45,3 +45,9 @@ You can validate that in [jwt.io](https://jwt.io/). if there's something wrong o
   alt="jwt.io"
   caption="jwt.io tool for validating JWT claims"
  /%}
+
+### Resolving the "Failed in filtering request: Not Authorized! Token not present" Error
+
+If you encounter the error message **"Failed in filtering request: Not Authorized! Token not present"**, verify the **`enableSecureSocketConnection`** environment setting.
+
+Ensure that **`enableSecureSocketConnection: ${AUTHORIZER_ENABLE_SECURE_SOCKET:-false}`** is set to `false` if it is currently set to `true`.
