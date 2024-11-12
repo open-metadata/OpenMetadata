@@ -381,11 +381,10 @@
       "descriptionStatus": {
         "type": "keyword"
       },
-      ,
       "certification": {
         "type": "object",
         "properties": {
-          "tabLabel": {
+          "tagLabel": {
             "type": "object",
             "properties": {
               "tagFQN": {
