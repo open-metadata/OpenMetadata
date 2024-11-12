@@ -583,6 +583,7 @@
     "homepage": "Homepage",
     "hour": "Uur",
     "http-config-source": "HTTP Configuratiebron",
+    "http-method": "HTTP Method",
     "hyper-parameter-plural": "Hyperparameters",
     "icon-url": "Pictogram URL",
     "image-repository": "Afbeeldingenrepository",

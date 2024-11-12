@@ -583,6 +583,7 @@
     "homepage": "Homepage",
     "hour": "Heure",
     "http-config-source": "Source de Configuration HTTP",
+    "http-method": "HTTP Method",
     "hyper-parameter-plural": "Hyperparamètres",
     "icon-url": "Icon URL",
     "image-repository": "Répertoire d'Images",

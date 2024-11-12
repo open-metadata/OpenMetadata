@@ -583,6 +583,7 @@
     "homepage": "Homepage",
     "hour": "小时",
     "http-config-source": "HTTP 配置源",
+    "http-method": "HTTP Method",
     "hyper-parameter-plural": "超参数",
     "icon-url": "Icon URL",
     "image-repository": "图像仓库",

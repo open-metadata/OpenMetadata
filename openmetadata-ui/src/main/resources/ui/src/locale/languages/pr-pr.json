@@ -583,6 +583,7 @@
     "homepage": "Homepage",
     "hour": "ساعت",
     "http-config-source": "منبع پیکربندی HTTP",
+    "http-method": "HTTP Method",
     "hyper-parameter-plural": "پارامترهای ابر",
     "icon-url": "آیکون URL",
     "image-repository": "مخزن تصویر",
