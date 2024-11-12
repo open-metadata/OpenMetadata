@@ -87,7 +87,7 @@ export const WEB_SUMMARY_LIST = [
     id: DataInsightChartType.PageViewsByEntities,
   },
   {
-    label: i18n.t('label.daily-active-users-on-the-platform'),
+    label: i18n.t('label.average-daily-active-users-on-the-platform'),
     latest: 0,
     id: DataInsightChartType.DailyActiveUsers,
   },
