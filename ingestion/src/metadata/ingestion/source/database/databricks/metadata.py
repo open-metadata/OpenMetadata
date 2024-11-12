@@ -324,7 +324,6 @@ def get_table_type(connection, database, schema, table):
                 database_name=database, schema_name=schema, table_name=table
             )
         else:
-            # schema = f"`{schema}`" if "-" in schema else schema
             schema = validate_schema(schema=schema)
             query = f"DESCRIBE TABLE EXTENDED {schema}.{table}"
         rows = connection.execute(query)
@@ -684,7 +683,6 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
     ) -> str:
         description = None
         try:
-            # schema_name=f"`{schema_name}`" if "-" in schema_name else schema_name
             schema_name = validate_schema(schema=schema_name)
             cursor = self.connection.execute(
                 DATABRICKS_GET_TABLE_COMMENTS.format(
@@ -733,9 +731,6 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
         Method to process the table owners
         """
         try:
-            # schema = self.context.get().database_schema
-            # schema = f"`{schema}`" if "-" in schema else schema
-
             query = DATABRICKS_GET_TABLE_COMMENTS.format(
                 database_name=self.context.get().database,
                 schema_name=validate_schema(schema=self.context.get().database_schema),
