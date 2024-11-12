@@ -84,7 +84,7 @@ public class GChatPublisher implements Destination<ChangeEvent> {
         targets.add(target);
       }
       for (Invocation.Builder actionTarget : targets) {
-        postWebhookMessage(this, actionTarget, gchatMessage);
+        postWebhookMessage(this, actionTarget, gchatMessage, false);
       }
     } catch (Exception e) {
       String message =
@@ -102,7 +102,7 @@ public class GChatPublisher implements Destination<ChangeEvent> {
       GChatMessage gchatMessage = gChatMessageMessageDecorator.buildOutgoingTestMessage();
 
       if (target != null) {
-        postWebhookMessage(this, target, gchatMessage);
+        postWebhookMessage(this, target, gchatMessage, true);
       }
     } catch (Exception e) {
       String message =

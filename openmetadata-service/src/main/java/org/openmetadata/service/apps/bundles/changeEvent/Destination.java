@@ -17,9 +17,12 @@ import static org.openmetadata.schema.entity.events.SubscriptionStatus.Status.AC
 import static org.openmetadata.schema.entity.events.SubscriptionStatus.Status.AWAITING_RETRY;
 import static org.openmetadata.schema.entity.events.SubscriptionStatus.Status.FAILED;
 
+import java.util.List;
+import java.util.Map;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.entity.events.SubscriptionStatus;
+import org.openmetadata.schema.entity.events.TestDestinationStatus;
 import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.events.subscription.AlertUtil;
 
@@ -60,6 +63,31 @@ public interface Destination<T> {
     SubscriptionStatus subStatus =
         AlertUtil.buildSubscriptionStatus(
             status, null, attemptTime, statusCode, reason, timestamp, attemptTime);
+    getSubscriptionDestination().setStatusDetails(subStatus);
+  }
+
+  default void setStatusForTestDestination(
+      TestDestinationStatus.Status status,
+      Integer statusCode,
+      String statusInfo,
+      Map<String, List<String>> headers,
+      String entity,
+      String mediaType,
+      String location,
+      Long timestamp) {
+
+    TestDestinationStatus subStatus =
+        AlertUtil.buildTestDestinationStatus(
+            status,
+            statusInfo,
+            statusCode,
+            statusInfo,
+            headers,
+            entity,
+            mediaType,
+            location,
+            timestamp);
+
     getSubscriptionDestination().setStatusDetails(subStatus);
   }
 }

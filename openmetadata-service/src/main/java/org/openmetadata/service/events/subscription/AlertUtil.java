@@ -20,6 +20,7 @@ import static org.openmetadata.service.Entity.THREAD;
 import static org.openmetadata.service.apps.bundles.changeEvent.AbstractEventConsumer.OFFSET_EXTENSION;
 import static org.openmetadata.service.security.policyevaluator.CompiledRule.parseExpression;
 
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -39,6 +40,7 @@ import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.EventSubscriptionOffset;
 import org.openmetadata.schema.entity.events.FilteringRules;
 import org.openmetadata.schema.entity.events.SubscriptionStatus;
+import org.openmetadata.schema.entity.events.TestDestinationStatus;
 import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.service.Entity;
@@ -174,6 +176,28 @@ public final class AlertUtil {
         .withLastFailedReason(reason)
         .withNextAttempt(nextAttempt)
         .withTimestamp(timeStamp);
+  }
+
+  public static TestDestinationStatus buildTestDestinationStatus(
+      TestDestinationStatus.Status status,
+      String reason,
+      Integer statusCode,
+      String statusInfo,
+      Map<String, List<String>> headers,
+      String entity,
+      String mediaType,
+      String location,
+      Long timestamp) {
+    return new TestDestinationStatus()
+        .withStatus(status)
+        .withReason(reason)
+        .withStatusCode(statusCode)
+        .withStatusInfo(statusInfo)
+        .withHeaders(headers)
+        .withEntity(entity)
+        .withMediaType(mediaType)
+        .withLocation(URI.create(location))
+        .withTimestamp(timestamp);
   }
 
   public static Map<ChangeEvent, Set<UUID>> getFilteredEvents(
