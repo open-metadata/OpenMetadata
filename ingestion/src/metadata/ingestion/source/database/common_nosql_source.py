@@ -20,12 +20,10 @@ from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequ
 from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
 )
-from metadata.generated.schema.api.data.createQuery import CreateQueryRequest
 from metadata.generated.schema.api.data.createStoredProcedure import (
     CreateStoredProcedureRequest,
 )
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
-from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import (
@@ -272,12 +270,6 @@ class CommonNoSQLSource(DatabaseServiceSource, ABC):
                 )
             )
 
-    def yield_view_lineage(self) -> Iterable[Either[AddLineageRequest]]:
-        """
-        views are not supported with NoSQL
-        """
-        yield from []
-
     def yield_tag(
         self, schema_name: str
     ) -> Iterable[Either[OMetaTagAndClassification]]:
@@ -295,12 +287,6 @@ class CommonNoSQLSource(DatabaseServiceSource, ABC):
 
     def get_stored_procedure_queries(self) -> Iterable[QueryByProcedure]:
         """Not Implemented"""
-
-    def yield_procedure_lineage_and_queries(
-        self,
-    ) -> Iterable[Either[Union[AddLineageRequest, CreateQueryRequest]]]:
-        """Not Implemented"""
-        yield from []
 
     def get_source_url(
         self,
