@@ -61,6 +61,7 @@ class Elements(BaseModel):
     elementId: str
     name: Optional[str] = None
     vizualizationType: Optional[str] = None
+    columns: Optional[List[str]] = []
 
 
 class ElementsResponse(BaseModel):
