@@ -197,7 +197,7 @@ class DatalakeSampleTest(TestCase):
             table_partition_config=None,
         )
 
-        random_sample = datalake_profiler_interface._get_sampler().random_sample()
+        random_sample = datalake_profiler_interface.sampler.random_sample()
         res = sum(len(r) for r in random_sample)
         assert res < 5
 

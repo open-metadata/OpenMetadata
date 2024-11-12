@@ -11,11 +11,7 @@
 """
 Workflow definition for the profiler
 """
-from typing import cast
 
-from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline import (
-    DatabaseServiceProfilerPipeline,
-)
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
@@ -24,7 +20,6 @@ from metadata.ingestion.connections.test_connections import (
     raise_test_connection_exception,
 )
 from metadata.ingestion.source.connections import get_test_connection_fn
-from metadata.pii.processor import PIIProcessor
 from metadata.profiler.processor.processor import ProfilerProcessor
 from metadata.profiler.source.metadata import OpenMetadataSource
 from metadata.profiler.source.metadata_ext import OpenMetadataSourceExt

@@ -83,13 +83,13 @@ class BigQuerySampler(SQASampler):
         """get query for sample data"""
         # TABLESAMPLE SYSTEM is not supported for views
         if (
-            self.profile_sample_type == ProfileSampleType.PERCENTAGE
+            self.sample_config.profile_sample_type == ProfileSampleType.PERCENTAGE
             and self.table_type != TableType.View
         ):
             return (
                 self._base_sample_query(column)
                 .suffix_with(
-                    f"TABLESAMPLE SYSTEM ({self.profile_sample or 100} PERCENT)",
+                    f"TABLESAMPLE SYSTEM ({self.sample_config.profile_sample or 100} PERCENT)",
                 )
                 .cte(f"{self.table.__tablename__}_sample")
             )

@@ -6,6 +6,7 @@ from typing import Optional, Type, cast
 
 from pydantic import model_validator
 
+from metadata.data_quality.interface.test_suite_interface import TestSuiteInterface
 from metadata.generated.schema.entity.services.serviceType import ServiceType
 from metadata.ingestion.api.steps import Source
 from metadata.ingestion.models.custom_pydantic import BaseModel
@@ -45,6 +46,7 @@ class BaseSpec(BaseModel):
     """
 
     profiler_class: Optional[str] = None
+    test_suite_class: Optional[str] = None
     metadata_source_class: str
     lineage_source_class: Optional[str] = None
     usage_source_class: Optional[str] = None
@@ -107,6 +109,13 @@ def import_profiler_class(
 ) -> Type[ProfilerInterface]:
     class_path = BaseSpec.get_for_source(service_type, source_type).profiler_class
     return cast(Type[ProfilerInterface], import_from_module(class_path))
+
+
+def import_test_suite_class(
+    service_type: ServiceType, source_type: str
+) -> Type[TestSuiteInterface]:
+    class_path = BaseSpec.get_for_source(service_type, source_type).test_suite_class
+    return cast(Type[TestSuiteInterface], import_from_module(class_path))
 
 
 def import_sampler_class(

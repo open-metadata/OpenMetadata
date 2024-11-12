@@ -25,37 +25,50 @@ from metadata.generated.schema.entity.data.table import (
     ProfileSampleType,
     TableData,
 )
-from metadata.profiler.processor.sampler.sampler_interface import SamplerInterface
+from metadata.mixins.pandas.pandas_mixin import PandasInterfaceMixin
+from metadata.sampler.sampler_interface import SamplerInterface
 from metadata.utils.sqa_like_column import SQALikeColumn
 
 
-class DatalakeSampler(SamplerInterface):
+class DatalakeSampler(SamplerInterface, PandasInterfaceMixin):
     """
     Generates a sample of the data to not
     run the query in the whole table.
     """
 
+    @property
+    def table(self):
+        return self.return_ometa_dataframes_sampled(
+            service_connection_config=self.service_connection_config,
+            client=self.client._client,
+            table=self.entity,
+            profile_sample_config=self.sample_config.profile_sample,
+        )
+
+    def get_client(self):
+        return self.connection.client
+
     def _partitioned_table(self):
         """Get partitioned table"""
-        self._partition_details = cast(PartitionProfilerConfig, self._partition_details)
-        partition_field = self._partition_details.partitionColumnName
+        self.partition_details = cast(PartitionProfilerConfig, self.partition_details)
+        partition_field = self.partition_details.partitionColumnName
         if (
-            self._partition_details.partitionIntervalType
+            self.partition_details.partitionIntervalType
             == PartitionIntervalTypes.COLUMN_VALUE
         ):
             return [
-                df[df[partition_field].isin(self._partition_details.partitionValues)]
+                df[df[partition_field].isin(self.partition_details.partitionValues)]
                 for df in self.table
             ]
         if (
-            self._partition_details.partitionIntervalType
+            self.partition_details.partitionIntervalType
             == PartitionIntervalTypes.INTEGER_RANGE
         ):
             return [
                 df[
                     df[partition_field].between(
-                        self._partition_details.partitionIntegerRangeStart,
-                        self._partition_details.partitionIntegerRangeEnd,
+                        self.partition_details.partitionIntegerRangeStart,
+                        self.partition_details.partitionIntegerRangeEnd,
                     )
                 ]
                 for df in self.table
@@ -64,8 +77,8 @@ class DatalakeSampler(SamplerInterface):
             df[
                 df[partition_field]
                 >= TableRowInsertedCountToBeBetweenValidator._get_threshold_date(  # pylint: disable=protected-access
-                    self._partition_details.partitionIntervalUnit.value,
-                    self._partition_details.partitionInterval,
+                    self.partition_details.partitionIntervalUnit.value,
+                    self.partition_details.partitionInterval,
                 )
             ]
             for df in self.table
@@ -78,7 +91,7 @@ class DatalakeSampler(SamplerInterface):
 
     def _rdn_sample_from_user_query(self):
         """Generate sample from user query"""
-        return [df.query(self._profile_sample_query) for df in self.table]
+        return [df.query(self.sample_query) for df in self.table]
 
     def _get_sampled_dataframe(self):
         """
@@ -86,13 +99,13 @@ class DatalakeSampler(SamplerInterface):
         """
         random.shuffle(self.table)  # we'll shuffle the list of dataframes
         # sampling data based on profiler config (if any)
-        if self.profile_sample_type == ProfileSampleType.PERCENTAGE:
+        if self.sample_config.profile_sample_type == ProfileSampleType.PERCENTAGE:
             try:
-                profile_sample = self.profile_sample / 100
+                profile_sample = self.sample_config.profile_sample / 100
             except TypeError:
                 # if the profile sample is not a number or is None
                 # we'll set it to 100
-                profile_sample = self.profile_sample = 100
+                profile_sample = self.sample_config.profile_sample = 100
             return [
                 df.sample(
                     frac=profile_sample,
@@ -103,7 +116,9 @@ class DatalakeSampler(SamplerInterface):
             ]
 
         # we'll distribute the sample size equally among the dataframes
-        sample_rows_per_chunk: int = math.floor(self.profile_sample / len(self.table))
+        sample_rows_per_chunk: int = math.floor(
+            self.sample_config.profile_sample / len(self.table)
+        )
         num_rows = sum(len(df) for df in self.table)
 
         # if we have less rows than the sample size
@@ -142,13 +157,13 @@ class DatalakeSampler(SamplerInterface):
         Returns:
             List[DataFrame]
         """
-        if self._profile_sample_query:
+        if self.sample_query:
             return self._rdn_sample_from_user_query()
 
-        if self._partition_details:
+        if self.partition_details:
             self.table = self._partitioned_table()
 
-        if not self.profile_sample or is_sampled:
+        if not self.sample_config.profile_sample or is_sampled:
             return self.table
         return self._get_sampled_dataframe()
 
@@ -163,7 +178,7 @@ class DatalakeSampler(SamplerInterface):
         Returns:
             TableData:
         """
-        if self._profile_sample_query:
+        if self.sample_query:
             return self._fetch_sample_data_from_user_query()
 
         cols, rows = self.get_col_row(data_frame=self.table, columns=columns)

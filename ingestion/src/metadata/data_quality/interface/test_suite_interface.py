@@ -31,8 +31,7 @@ from metadata.generated.schema.tests.basic import TestCaseResult
 from metadata.generated.schema.tests.testCase import TestCase
 from metadata.generated.schema.tests.testDefinition import TestDefinition
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.sampler.config import get_partition_details
-from metadata.sampler.models import SampleConfig
+from metadata.sampler.sampler_interface import SamplerInterface
 from metadata.utils.logger import test_suite_logger
 
 logger = test_suite_logger()
@@ -43,27 +42,39 @@ class TestSuiteInterface(ABC):
 
     runtime_params_setter_fact = RuntimeParameterSetterFactory
 
-    @abstractmethod
     def __init__(
         self,
         service_connection_config: DatabaseConnection,
         ometa_client: OpenMetadata,
+        sampler: SamplerInterface,
         table_entity: Table,
+        *args,
+        **kwargs,
     ):
         """Required attribute for the interface"""
         self.ometa_client = ometa_client
         self.service_connection_config = service_connection_config
         self.table_entity = table_entity
+        self.sampler = sampler
 
-    @property
-    def sampler(self):
-        """Get the sampler object
-
-        Note: Overriden in the implementation class. This should be removed from the interface. It has been
-        implemented as the RuntimeParameterSetter takes the sampler as an argument, though we may want to
-        remove that dependency.
-        """
-        return None
+    @classmethod
+    def create(
+        cls,
+        service_connection_config: DatabaseConnection,
+        ometa_client: OpenMetadata,
+        sampler: SamplerInterface,
+        table_entity: Table,
+        *args,
+        **kwargs,
+    ):
+        return cls(
+            service_connection_config,
+            ometa_client,
+            sampler,
+            table_entity,
+            *args,
+            **kwargs,
+        )
 
     @abstractmethod
     def _get_validator_builder(
@@ -128,37 +139,10 @@ class TestSuiteInterface(ABC):
             )
             raise RuntimeError(err)
 
-    def _get_sample_query(self) -> Optional[str]:
-        """Get the sampling query for the data quality tests
-
-        Args:
-            entity (Table): _description_
-        """
-        if self.table_entity.tableProfilerConfig:
-            return self.table_entity.tableProfilerConfig.profileQuery
-
-        return None
-
-    def _get_profile_sample(self) -> Optional[SampleConfig]:
-        try:
-            if self.table_entity.tableProfilerConfig.profileSample:
-                return SampleConfig(
-                    profile_sample=self.table_entity.tableProfilerConfig.profileSample,
-                    profile_sample_type=self.table_entity.tableProfilerConfig.profileSampleType,
-                )
-        except AttributeError:
-            # if tableProfilerConfig is None it will indicate that the table has not profiler config
-            # hence we can return None
-            return None
-        return None
-
     def _get_table_config(self):
         """Get the sampling configuration for the data quality tests"""
-        sample_query = self._get_sample_query()
-        sample_config = None
-        partition_config = None
-        if not sample_query:
-            sample_config = self._get_profile_sample()
-            partition_config = get_partition_details(self.table_entity)
-
-        return sample_query, sample_config, partition_config
+        return (
+            self.sampler.sample_query,
+            self.sampler.sample_config,
+            self.sampler.partition_details,
+        )

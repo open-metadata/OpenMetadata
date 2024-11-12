@@ -23,18 +23,21 @@ from collections import defaultdict
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Type, Union
 
-from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline import DatabaseServiceProfilerPipeline
-
-from metadata.generated.schema.entity.services.connections.database.datalakeConnection import DatalakeConnection
-
-from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
 from sqlalchemy import Column, inspect, text
 from sqlalchemy.exc import DBAPIError, ProgrammingError, ResourceClosedError
-from sqlalchemy.orm import scoped_session, DeclarativeMeta
+from sqlalchemy.orm import DeclarativeMeta, scoped_session
 
 from metadata.generated.schema.entity.data.table import (
     CustomMetricProfile,
-    SystemProfile, Table,
+    SystemProfile,
+    Table,
+)
+from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
+    DatalakeConnection,
+)
+from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
+from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline import (
+    DatabaseServiceProfilerPipeline,
 )
 from metadata.generated.schema.tests.customMetric import CustomMetric
 from metadata.ingestion.connections.session import create_and_bind_thread_safe_session
@@ -53,7 +56,6 @@ from metadata.profiler.orm.registry import Dialects
 from metadata.profiler.processor.metric_filter import MetricFilter
 from metadata.profiler.processor.runner import QueryRunner
 from metadata.sampler.sampler_interface import SamplerInterface
-from metadata.utils.constants import SAMPLE_DATA_DEFAULT_COUNT
 from metadata.utils.custom_thread_pool import CustomThreadPoolExecutor
 from metadata.utils.helpers import is_safe_sql_query
 from metadata.utils.logger import profiler_interface_registry_logger
@@ -387,7 +389,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
                 table=table,
                 sample=sample,
                 partition_details=self.sampler.partition_details,
-                profile_sample_query=self.sampler.profile_sample_query,
+                profile_sample_query=self.sampler.sample_query,
             )
             return thread_local.runner
         thread_local.runner._sample = sample  # pylint: disable=protected-access

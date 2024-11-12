@@ -15,7 +15,6 @@ import traceback
 from abc import ABC, abstractmethod
 from typing import Dict, List, Optional, Union
 
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from sqlalchemy import Column
 
 from metadata.generated.schema.entity.data.database import Database
@@ -27,21 +26,11 @@ from metadata.generated.schema.entity.services.connections.connectionBasicType i
 from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
     DatalakeConnection,
 )
-from metadata.generated.schema.entity.services.databaseService import (
-    DatabaseConnection,
-    DatabaseService,
-)
-from metadata.profiler.api.models import ProfilerProcessorConfig, TableConfig
-from metadata.profiler.config import (
-    get_database_profiler_config,
-    get_schema_profiler_config,
-)
+from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.profiler.api.models import TableConfig
 from metadata.profiler.processor.sample_data_handler import upload_sample_data
-from metadata.sampler.config import (
-    get_profile_query,
-    get_sample_data_count_config,
-    get_storage_config_for_table,
-)
+from metadata.sampler.config import get_sample_data_count_config, get_sample_query
 from metadata.sampler.models import SampleConfig
 from metadata.sampler.partition import get_partition_details
 from metadata.utils.constants import SAMPLE_DATA_DEFAULT_COUNT
@@ -63,7 +52,7 @@ class SamplerInterface(ABC):
         entity: Table,
         sample_config: Optional[SampleConfig] = None,
         partition_details: Optional[Dict] = None,
-        profile_sample_query: Optional[str] = None,
+        sample_query: Optional[str] = None,
         storage_config: DataStorageConfig = None,
         sample_data_count: Optional[int] = SAMPLE_DATA_DEFAULT_COUNT,
         **kwargs,
@@ -73,7 +62,7 @@ class SamplerInterface(ABC):
         self.sample_config = sample_config
 
         self.entity = entity
-        self.profile_sample_query = profile_sample_query
+        self.sample_query = sample_query
         self.sample_limit = sample_data_count
         self.partition_details = partition_details
         self.storage_config = storage_config
@@ -90,39 +79,23 @@ class SamplerInterface(ABC):
         entity: Table,
         schema_entity: DatabaseSchema,
         database_entity: Database,
-        db_service: DatabaseService,
-        table_config: TableConfig,
-        profiler_config: ProfilerProcessorConfig,
+        table_config: Optional[TableConfig] = None,
+        storage_config: Optional[DataStorageConfig] = None,
         sample_config: Optional[SampleConfig] = None,
         default_sample_data_count: Optional[int] = SAMPLE_DATA_DEFAULT_COUNT,
         **kwargs,
     ) -> "SamplerInterface":
         """Create sampler"""
 
-        schema_profiler_config = get_schema_profiler_config(schema_entity=schema_entity)
-        database_profiler_config = get_database_profiler_config(
-            database_entity=database_entity
-        )
-
-        storage_config = get_storage_config_for_table(
-            entity=entity,
-            schema_profiler_config=schema_profiler_config,
-            database_profiler_config=database_profiler_config,
-            db_service=db_service,
-            profiler_config=profiler_config,
-        )
-
         sample_data_count = get_sample_data_count_config(
             entity=entity,
-            schema_profiler_config=schema_profiler_config,
-            database_profiler_config=database_profiler_config,
+            schema_entity=schema_entity,
+            database_entity=database_entity,
             entity_config=table_config,
             default_sample_data_count=default_sample_data_count,
         )
 
-        profile_sample_query = get_profile_query(
-            entity=entity, entity_config=table_config
-        )
+        sample_query = get_sample_query(entity=entity, entity_config=table_config)
 
         partition_details = get_partition_details(entity=entity)
 
@@ -132,7 +105,7 @@ class SamplerInterface(ABC):
             entity=entity,
             sample_config=sample_config,
             partition_details=partition_details,
-            profile_sample_query=profile_sample_query,
+            sample_query=sample_query,
             storage_config=storage_config,
             sample_data_count=sample_data_count,
             **kwargs,
@@ -160,7 +133,7 @@ class SamplerInterface(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def random_sample(self):
+    def random_sample(self, **kwargs):
         """Get random sample"""
         raise NotImplementedError
 
@@ -187,13 +160,14 @@ class SamplerInterface(ABC):
                 "Fetching sample data for "
                 f"{self.profiler_interface.table_entity.fullyQualifiedName.root}..."  # type: ignore
             )
-            # TODO: GET COLUMNS?
             table_data = self.fetch_sample_data(self.columns)
-            upload_sample_data(
-                data=table_data,
-                entity=self.entity,
-                sample_storage_config=self.storage_config,
-            )
+            # Only store the data if configured to do so
+            if self.storage_config:
+                upload_sample_data(
+                    data=table_data,
+                    entity=self.entity,
+                    sample_storage_config=self.storage_config,
+                )
             table_data.rows = table_data.rows[
                 : min(SAMPLE_DATA_DEFAULT_COUNT, self.sample_limit)
             ]

@@ -13,8 +13,12 @@ Sampler configuration helpers
 """
 from typing import Optional, Union
 
-from metadata.generated.schema.entity.data.database import DatabaseProfilerConfig
+from metadata.generated.schema.entity.data.database import (
+    Database,
+    DatabaseProfilerConfig,
+)
 from metadata.generated.schema.entity.data.databaseSchema import (
+    DatabaseSchema,
     DatabaseSchemaProfilerConfig,
 )
 from metadata.generated.schema.entity.data.table import PartitionProfilerConfig, Table
@@ -28,6 +32,10 @@ from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline
 from metadata.profiler.api.models import (
     DatabaseAndSchemaConfig,
     ProfilerProcessorConfig,
+)
+from metadata.profiler.config import (
+    get_database_profiler_config,
+    get_schema_profiler_config,
 )
 from metadata.sampler.models import SampleConfig, TableConfig
 
@@ -51,12 +59,17 @@ def get_sample_storage_config(
 
 def get_storage_config_for_table(
     entity: Table,
-    schema_profiler_config: Optional[DatabaseSchemaProfilerConfig],
-    database_profiler_config: Optional[DatabaseProfilerConfig],
+    schema_entity: DatabaseSchema,
+    database_entity: Database,
     db_service: Optional[DatabaseService],
     profiler_config: ProfilerProcessorConfig,
 ) -> Optional[DataStorageConfig]:
     """Get storage config for a specific entity"""
+    schema_profiler_config = get_schema_profiler_config(schema_entity=schema_entity)
+    database_profiler_config = get_database_profiler_config(
+        database_entity=database_entity
+    )
+
     for schema_config in profiler_config.schemaConfig:
         if (
             schema_config.fullyQualifiedName.root
@@ -134,7 +147,7 @@ def get_partition_details(
     return get_partition_details(entity)
 
 
-def get_profile_query(
+def get_sample_query(
     entity: Table, entity_config: Optional[TableConfig]
 ) -> Optional[str]:
     """get profile query for sampling
@@ -157,8 +170,8 @@ def get_profile_query(
 
 def get_sample_data_count_config(
     entity: Table,
-    schema_profiler_config: Optional[DatabaseSchemaProfilerConfig],
-    database_profiler_config: Optional[DatabaseProfilerConfig],
+    schema_entity: DatabaseSchema,
+    database_entity: Database,
     entity_config: Optional[TableConfig],
     default_sample_data_count: int,
 ) -> Optional[int]:
@@ -169,6 +182,10 @@ def get_sample_data_count_config(
     Returns:
         Optional[int]: int
     """
+    schema_profiler_config = get_schema_profiler_config(schema_entity=schema_entity)
+    database_profiler_config = get_database_profiler_config(
+        database_entity=database_entity
+    )
 
     for config in (
         entity_config,

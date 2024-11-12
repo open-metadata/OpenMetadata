@@ -73,6 +73,7 @@ class TableConfig(BaseProfileConfig):
 
 class DatabaseAndSchemaConfig(BaseProfileConfig):
     """schema profile config"""
+
     sampleDataStorageConfig: Optional[SampleDataStorageConfig] = None
 
 

@@ -59,15 +59,15 @@ class SnowflakeSampler(SQASampler):
     def get_sample_query(self, *, column=None) -> CTE:
         """get query for sample data"""
         # TABLESAMPLE SYSTEM is not supported for views
-        self.table = cast(Table, self.table)
+        self._table = cast(Table, self.table)
 
-        if self.profile_sample_type == ProfileSampleType.PERCENTAGE:
+        if self.sample_config.profile_sample_type == ProfileSampleType.PERCENTAGE:
             rnd = (
                 self._base_sample_query(
                     column,
                 )
                 .suffix_with(
-                    f"SAMPLE {self.sampling_method_type.value} ({self.profile_sample or 100})",
+                    f"SAMPLE {self.sampling_method_type.value} ({self.sample_config.profile_sample or 100})",
                 )
                 .cte(f"{self.table.__tablename__}_rnd")
             )
@@ -77,7 +77,7 @@ class SnowflakeSampler(SQASampler):
         return (
             self._base_sample_query(column)
             .suffix_with(
-                f"TABLESAMPLE ({self.profile_sample or 100} ROWS)",
+                f"TABLESAMPLE ({self.sample_config.profile_sample or 100} ROWS)",
             )
             .cte(f"{self.table.__tablename__}_sample")
         )

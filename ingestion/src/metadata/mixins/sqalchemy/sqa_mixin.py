@@ -15,10 +15,9 @@ supporting sqlalchemy abstraction layer
 """
 
 
-from typing import List, Optional
+from typing import List
 
-from sqlalchemy import Column, MetaData, inspect
-from sqlalchemy.orm import DeclarativeMeta
+from sqlalchemy import Column, inspect
 
 from metadata.generated.schema.entity.services.connections.database.databricksConnection import (
     DatabricksConnection,

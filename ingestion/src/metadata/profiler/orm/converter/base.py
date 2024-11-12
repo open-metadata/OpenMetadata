@@ -117,14 +117,14 @@ def ometa_to_sqa_orm(
 
     orm_database_name = get_orm_database(table, metadata)
     # SQLite does not support schemas
-    orm_schema_name = get_orm_schema(table, metadata) if table.serviceType != databaseService.DatabaseServiceType.SQLite else None
+    orm_schema_name = (
+        get_orm_schema(table, metadata)
+        if table.serviceType != databaseService.DatabaseServiceType.SQLite
+        else None
+    )
     orm_name = f"{orm_database_name}_{orm_schema_name}_{table.name.root}".replace(
         ".", "_"
     )
-    orm_key = f"{orm_schema_name}.{table.name.root}" if orm_schema_name else table.name.root
-    visited = False
-    if orm_key in _metadata.tables:
-        visited = True
 
     cols = {
         (
@@ -144,9 +144,9 @@ def ometa_to_sqa_orm(
             "__table_args__": {
                 "schema": orm_schema_name,
                 "extend_existing": True,  # Recreates the table ORM object if it already exists. Useful for testing
-                **({"quote": check_snowflake_case_sensitive(
+                "quote": check_snowflake_case_sensitive(
                     table.serviceType, table.name.root
-                )} if not visited else {}),
+                ),
             },
             **cols,
             "metadata": _metadata,

@@ -27,7 +27,6 @@ from metadata.generated.schema.entity.data.table import (
     TableData,
 )
 from metadata.ingestion.connections.session import create_and_bind_thread_safe_session
-from metadata.profiler.orm.converter.base import ometa_to_sqa_orm
 from metadata.profiler.orm.functions.modulo import ModuloFn
 from metadata.profiler.orm.functions.random_num import RandomNumFn
 from metadata.profiler.processor.handle_partition import partition_filter_handler
@@ -106,9 +105,9 @@ class SQASampler(SamplerInterface):
                 (ModuloFn(RandomNumFn(), 100)).label(RANDOM_LABEL),
             ).cte(f"{self.table.__tablename__}_rnd")
             session_query = self.client.query(rnd)
-            return session_query.where(rnd.c.random <= self.sample_config.profile_sample).cte(
-                f"{self.table.__tablename__}_sample"
-            )
+            return session_query.where(
+                rnd.c.random <= self.sample_config.profile_sample
+            ).cte(f"{self.table.__tablename__}_sample")
 
         table_query = self.client.query(self.table)
         session_query = self._base_sample_query(
@@ -126,10 +125,13 @@ class SQASampler(SamplerInterface):
         Either return a sampled CTE of table, or
         the full table if no sampling is required.
         """
-        if self.profile_sample_query:
+        if self.sample_query:
             return self._rdn_sample_from_user_query()
 
-        if not self.sample_config.profile_sample or int(self.sample_config.profile_sample) == 100:
+        if (
+            not self.sample_config.profile_sample
+            or int(self.sample_config.profile_sample) == 100
+        ):
             if self.partition_details:
                 return self._partitioned_table()
 
@@ -150,7 +152,7 @@ class SQASampler(SamplerInterface):
         Returns:
             TableData to be added to the Table Entity
         """
-        if self.profile_sample_query:
+        if self.sample_query:
             return self._fetch_sample_data_from_user_query()
 
         # Add new RandomNumFn column
@@ -191,12 +193,10 @@ class SQASampler(SamplerInterface):
 
     def _fetch_sample_data_from_user_query(self) -> TableData:
         """Returns a table data object using results from query execution"""
-        if not is_safe_sql_query(self.profile_sample_query):
-            raise RuntimeError(
-                f"SQL expression is not safe\n\n{self.profile_sample_query}"
-            )
+        if not is_safe_sql_query(self.sample_query):
+            raise RuntimeError(f"SQL expression is not safe\n\n{self.sample_query}")
 
-        rnd = self.client.execute(f"{self.profile_sample_query}")
+        rnd = self.client.execute(f"{self.sample_query}")
         try:
             columns = [col.name for col in rnd.cursor.description]
         except AttributeError:
@@ -208,13 +208,11 @@ class SQASampler(SamplerInterface):
 
     def _rdn_sample_from_user_query(self) -> Query:
         """Returns sql alchemy object to use when running profiling"""
-        if not is_safe_sql_query(self.profile_sample_query):
-            raise RuntimeError(
-                f"SQL expression is not safe\n\n{self.profile_sample_query}"
-            )
+        if not is_safe_sql_query(self.sample_query):
+            raise RuntimeError(f"SQL expression is not safe\n\n{self.sample_query}")
 
         return self.client.query(self.table).from_statement(
-            text(f"{self.profile_sample_query}")
+            text(f"{self.sample_query}")
         )
 
     def _partitioned_table(self) -> Query:

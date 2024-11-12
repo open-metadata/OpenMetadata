@@ -1,14 +1,26 @@
 from typing import Dict, List, Optional, Tuple
 
 from metadata.generated.schema.entity.data.table import ProfileSampleType, TableData
+from metadata.profiler.adaptors.factory import factory
 from metadata.profiler.adaptors.nosql_adaptor import NoSQLAdaptor
-from metadata.profiler.processor.sampler.sampler_interface import SamplerInterface
+from metadata.sampler.sampler_interface import SamplerInterface
 from metadata.utils.constants import SAMPLE_DATA_DEFAULT_COUNT
 from metadata.utils.sqa_like_column import SQALikeColumn
 
 
 class NoSQLSampler(SamplerInterface):
+
     client: NoSQLAdaptor
+
+    @property
+    def table(self):
+        return self.table
+
+    def get_client(self):
+        return factory.create(
+            self.service_connection_config.__class__.__name__,
+            client=self.connection,
+        )
 
     def _rdn_sample_from_user_query(self) -> List[Dict[str, any]]:
         """
@@ -16,7 +28,7 @@ class NoSQLSampler(SamplerInterface):
         """
         limit = self._get_limit()
         return self.client.query(
-            self.table, self.table.columns, self._profile_sample_query, limit
+            self.table, self.table.columns, self.sample_query, limit
         )
 
     def _fetch_sample_data_from_user_query(self) -> TableData:
@@ -38,7 +50,7 @@ class NoSQLSampler(SamplerInterface):
         pass
 
     def fetch_sample_data(self, columns: List[SQALikeColumn]) -> TableData:
-        if self._profile_sample_query:
+        if self.sample_query:
             return self._fetch_sample_data_from_user_query()
         return self._fetch_sample_data(columns)
 
@@ -56,10 +68,10 @@ class NoSQLSampler(SamplerInterface):
 
     def _get_limit(self) -> Optional[int]:
         num_rows = self.client.item_count(self.table)
-        if self.profile_sample_type == ProfileSampleType.PERCENTAGE:
-            limit = num_rows * (self.profile_sample / 100)
-        elif self.profile_sample_type == ProfileSampleType.ROWS:
-            limit = self.profile_sample
+        if self.sample_config.profile_sample_type == ProfileSampleType.PERCENTAGE:
+            limit = num_rows * (self.sample_config.profile_sample / 100)
+        elif self.sample_config.profile_sample_type == ProfileSampleType.ROWS:
+            limit = self.sample_config.profile_sample
         else:
             limit = SAMPLE_DATA_DEFAULT_COUNT
         return limit
