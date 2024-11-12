@@ -556,6 +556,17 @@ export const getClassificationDetailsPath = (classificationFqn: string) => {
   return path;
 };
 
+export const getClassificationTagPath = (tagFqn: string, tab?: string) => {
+  let path = tab ? ROUTES.TAG_ITEM_WITH_TAB : ROUTES.TAG_ITEM;
+
+  if (tab) {
+    path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
+  }
+  path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(tagFqn));
+
+  return path;
+};
+
 export const getClassificationVersionsPath = (
   classificationFqn: string,
   version: string
