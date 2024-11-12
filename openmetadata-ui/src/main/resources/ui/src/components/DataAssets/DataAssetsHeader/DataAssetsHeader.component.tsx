@@ -350,7 +350,7 @@ export const DataAssetsHeader = ({
         editOwnerPermission:
           (permissions.EditAll || permissions.EditOwners) && !dataAsset.deleted,
         editTierPermission:
-          (permissions.EditAll || permissions.EditTags) && !dataAsset.deleted,
+          (permissions.EditAll || permissions.EditTier) && !dataAsset.deleted,
       }),
       [permissions, dataAsset]
     );
