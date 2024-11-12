@@ -457,80 +457,49 @@ public class SubscriptionUtil {
         response.getLocation() != null ? response.getLocation().toString() : StringUtils.EMPTY;
     long timestamp = System.currentTimeMillis();
 
-    if (statusCode >= 300 && statusCode < 400) {
-      // 3xx response/redirection is not allowed for callback. Set the webhook state as in error
-      handleStatus(
-          destination,
-          TestDestinationStatus.Status.FAILED,
-          flagTestDestination,
-          attemptTime,
-          statusCode,
-          statusInfo,
-          headers,
-          entity,
-          mediaType,
-          location,
-          timestamp,
-          true);
-
-    } else if (statusCode >= 400 && statusCode < 600) {
-      // 4xx, 5xx response retry delivering events after timeout
-      handleStatus(
-          destination,
-          TestDestinationStatus.Status.FAILED,
-          flagTestDestination,
-          attemptTime,
-          statusCode,
-          statusInfo,
-          headers,
-          entity,
-          mediaType,
-          location,
-          timestamp,
-          false);
-
-    } else if (statusCode == 200) {
-      handleStatus(
-          destination,
-          TestDestinationStatus.Status.SUCCESS,
-          flagTestDestination,
-          attemptTime,
-          statusCode,
-          statusInfo,
-          headers,
-          entity,
-          mediaType,
-          location,
-          timestamp,
-          false);
+    if (flagTestDestination) {
+      handleTestDestinationStatus(
+          destination, statusCode, statusInfo, headers, entity, mediaType, location, timestamp);
+    } else {
+      boolean isError = statusCode >= 300; // any non-2xx status as an error
+      handleStatus(destination, attemptTime, statusCode, statusInfo, isError);
     }
   }
 
-  private static void handleStatus(
+  private static void handleTestDestinationStatus(
       Destination<ChangeEvent> destination,
-      TestDestinationStatus.Status testStatus,
-      boolean flagTestDestination,
-      long attemptTime,
       int statusCode,
       String statusInfo,
       Map<String, List<String>> headers,
       String entity,
       String mediaType,
       String location,
-      long timestamp,
+      long timestamp) {
+
+    TestDestinationStatus.Status testStatus =
+        (statusCode == 200)
+            ? TestDestinationStatus.Status.SUCCESS
+            : TestDestinationStatus.Status.FAILED;
+
+    destination.setStatusForTestDestination(
+        testStatus, statusCode, statusInfo, headers, entity, mediaType, location, timestamp);
+  }
+
+  private static void handleStatus(
+      Destination<ChangeEvent> destination,
+      long attemptTime,
+      int statusCode,
+      String statusInfo,
       boolean isError) {
 
-    if (flagTestDestination) {
-      destination.setStatusForTestDestination(
-          testStatus, statusCode, statusInfo, headers, entity, mediaType, location, timestamp);
+    if (isError) {
+      // 3xx response/redirection is not allowed for callback. Set the webhook state as in error
+      destination.setErrorStatus(attemptTime, statusCode, statusInfo);
+    } else if (statusCode == 200) {
+      destination.setSuccessStatus(System.currentTimeMillis());
     } else {
-      if (isError) {
-        destination.setErrorStatus(attemptTime, statusCode, statusInfo);
-      } else if (statusCode == 200) {
-        destination.setSuccessStatus(System.currentTimeMillis());
-      } else {
-        destination.setAwaitingRetry(attemptTime, statusCode, statusInfo);
-      }
+      // 4xx, 5xx response retry delivering events after timeout
+      destination.setAwaitingRetry(attemptTime, statusCode, statusInfo);
     }
   }
 
