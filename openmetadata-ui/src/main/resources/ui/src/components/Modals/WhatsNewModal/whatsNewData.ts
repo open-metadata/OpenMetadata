@@ -1129,7 +1129,7 @@ To continue pursuing this objective, the application was completely refactored t
   {
     id: 53,
     version: 'v1.5.11',
-    description: 'Released on 7th November 2024.',
+    description: 'Released on 12th November 2024.',
     features: [],
     changeLogs: {
       Improvements: `- **Improvement**: Parallelize the search indexing process.
@@ -1142,6 +1142,8 @@ To continue pursuing this objective, the application was completely refactored t
 - **Improvement**: Added support for lineage default depth settings.
 - **Fix**: Materialised View Lineage.
 - **Improvement**: Add PowerBI Report Server Connector ${CollateIconWithLinkMD}
+- **Improvement**: Mask SQL Queries in Usage & Lineage Workflow.
+- **Fix**: Sample data overlapping issue.
 `,
     },
   },
