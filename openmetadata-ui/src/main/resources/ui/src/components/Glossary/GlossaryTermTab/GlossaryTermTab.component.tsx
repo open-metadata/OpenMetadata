@@ -117,11 +117,8 @@ const GlossaryTermTab = ({
   const [isStatusDropdownVisible, setIsStatusDropdownVisible] =
     useState<boolean>(false);
   const statusOptions = useMemo(
-    () => [
-      { value: 'Approved', label: 'Approved' },
-      { value: 'Draft', label: 'Draft' },
-      { value: 'Rejected', label: 'Rejected' },
-    ],
+    () =>
+      Object.values(Status).map((status) => ({ value: status, label: status })),
     []
   );
   const [statusDropdownSelection, setStatusDropdownSelections] = useState<
@@ -455,9 +452,8 @@ const GlossaryTermTab = ({
                     .every(({ key }) =>
                       columnDropdownSelections.includes(key as string)
                     )}
-                  className="custom-glossary-col-sel-checkbox"
+                  className="custom-glossary-col-sel-checkbox m-l-lg"
                   key="all"
-                  style={{ marginLeft: '24px' }}
                   value="all"
                   onChange={(e) =>
                     handleCheckboxChange('all', e.target.checked, 'columns')
@@ -467,12 +463,8 @@ const GlossaryTermTab = ({
                 {options.map(
                   (option: { value: string; label: string }, index: number) => (
                     <div
-                      key={option.value}
-                      style={{
-                        display: 'flex',
-                        justifyContent: 'flex-start',
-                        alignItems: 'center',
-                      }}>
+                      className="d-flex justify-start items-center"
+                      key={option.value}>
                       <DraggableMenuItem
                         index={index}
                         option={option}
@@ -495,7 +487,7 @@ const GlossaryTermTab = ({
         {
           key: 'actions',
           label: (
-            <div style={{ textAlign: 'center' }}>
+            <div className="flex-center">
               <Space>
                 <Button
                   type="primary"
@@ -544,7 +536,6 @@ const GlossaryTermTab = ({
                 <Checkbox
                   className="custom-glossary-col-sel-checkbox"
                   key="all"
-                  style={{ marginLeft: '12px' }}
                   value="all"
                   onChange={(e) =>
                     handleCheckboxChange('all', e.target.checked, 'status')
@@ -578,7 +569,7 @@ const GlossaryTermTab = ({
         {
           key: 'actions',
           label: (
-            <div style={{ textAlign: 'center' }}>
+            <div className="flex-center">
               <Space>
                 <Button
                   type="primary"
@@ -824,18 +815,19 @@ const GlossaryTermTab = ({
             </Space>
           </Button>
           <Dropdown
-            getPopupContainer={(trigger) => trigger.parentNode as HTMLElement}
+            className="custom-glossary-dropdown-menu"
+            getPopupContainer={(trigger) => {
+              const customContainer = trigger.closest(
+                '.custom-glossary-dropdown-menu'
+              );
+
+              return customContainer as HTMLElement;
+            }}
             menu={statusDropdownMenu}
             open={isStatusDropdownVisible}
             trigger={['click']}
             onOpenChange={setIsStatusDropdownVisible}>
-            <Button
-              style={{
-                backgroundColor: '#ffffff',
-                outline: '#b7b7b7',
-                color: '#3d3d3d',
-                marginRight: '12px',
-              }}>
+            <Button className="custom-status-dropdown-btn m-r-sm">
               <Space>
                 {t('label.status')}
                 <DownOutlined />
@@ -844,20 +836,20 @@ const GlossaryTermTab = ({
           </Dropdown>
           <DndProvider backend={HTML5Backend}>
             <Dropdown
-              className="mb-4 custom-dropdown-menu"
-              getPopupContainer={(trigger) => trigger.parentNode as HTMLElement}
+              className="mb-4 custom-glossary-dropdown-menu"
+              getPopupContainer={(trigger) => {
+                const customContainer = trigger.closest(
+                  '.custom-glossary-dropdown-menu'
+                );
+
+                return customContainer as HTMLElement;
+              }}
               menu={menu}
               open={isDropdownVisible}
               trigger={['click']}
               onOpenChange={setIsDropdownVisible}>
-              <Button
-                className="flex-center"
-                style={{
-                  backgroundColor: '#ffffff',
-                  outline: '#b7b7b7',
-                  color: '#3d3d3d',
-                }}>
-                <Space style={{ color: '#3d3d3d' }}>
+              <Button className="custom-status-dropdown-btn m-r-xs">
+                <Space>
                   {t('label.column-plural')}
                   <DownOutlined />
                 </Space>

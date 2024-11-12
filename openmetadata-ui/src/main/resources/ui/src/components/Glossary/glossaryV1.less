@@ -93,51 +93,50 @@
 
 .custom-glossary-col-sel-checkbox {
   font-size: 16px;
-  margin-left: 12px;
-  color: #868686;
+  color: @grey-3;
   width: 100%;
 
   .ant-checkbox-inner {
     width: 20px;
     height: 20px;
-    background-color: #fff;
-    border-color: #757575;
+    background-color: @white;
+    border-color: @grey-4;
 
     &::after {
       width: 6px;
       height: 10px;
-      border-color: #361a8f;
+      border-color: @purple-2;
       border-width: 0 2px 2px 0;
     }
   }
 
   .ant-checkbox-checked .ant-checkbox-inner {
-    background-color: #fff;
-    border-color: #757575;
+    background-color: @white;
+    border-color: @grey-4;
   }
 
   .ant-checkbox-wrapper:hover .ant-checkbox-inner,
   .ant-checkbox:hover .ant-checkbox-inner,
   .ant-checkbox-input:focus + .ant-checkbox-inner {
-    border-color: #757575;
+    border-color: @grey-4;
   }
 }
 
-.ant-dropdown-menu-item:hover {
-  background-color: #ffffff !important;
-  color: inherit !important;
-}
+.custom-glossary-dropdown-menu {
+  .ant-dropdown-menu {
+    background-color: @white;
+    border-color: @grey-4;
+  }
 
-.ant-dropdown-menu {
-  background-color: #ffffff !important;
-  border-color: #b7b7b7 !important;
+  .ant-dropdown-menu-item:hover {
+    background-color: @white;
+    color: inherit;
+  }
 }
-
 .glossary-col-sel-dropdown-title {
-  font-family: 'Poppins';
   font-size: 14px;
   line-height: 21px;
-  color: #757575;
+  color: @grey-4;
 }
 
 .glossary-col-sel-checkbox-group {
@@ -145,8 +144,8 @@
   flex-direction: column;
   padding: 6px;
   margin: 0px 8px;
-  background-color: #ffffff;
-  border-color: #b7b7b7;
+  background-color: @white;
+  border-color: @grey-3;
 }
 
 .draggable-menu-item {
@@ -159,5 +158,11 @@
 .glossary-dropdown-label {
   font-size: 14px;
   line-height: 21px;
-  color: #757575;
+  color: @grey-4;
+}
+
+.custom-status-dropdown-btn {
+  background-color: @white;
+  outline: 1px solid @grey-2;
+  color: @black;
 }

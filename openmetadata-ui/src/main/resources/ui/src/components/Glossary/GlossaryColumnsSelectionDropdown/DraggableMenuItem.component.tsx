@@ -70,7 +70,7 @@ const DraggableMenuItem: React.FC<DraggableMenuItemProps> = ({
       <ColumnDragIcon height={16} width={16} />
       <Checkbox
         checked={selectedOptions.includes(option.value)}
-        className="custom-glossary-col-sel-checkbox"
+        className="custom-glossary-col-sel-checkbox m-l-sm"
         key={option.value}
         value={option.value}
         onChange={(e) => onSelect(option.value, e.target.checked, 'columns')}>
