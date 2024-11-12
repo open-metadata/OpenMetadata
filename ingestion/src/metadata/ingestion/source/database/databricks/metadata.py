@@ -110,9 +110,14 @@ _type_map.update(
     }
 )
 
+def validate_schema(schema):
+    # Adds back quotes(``) if hyphen(-) in schema name 
+    return f"`{schema}`" if "-" in schema else schema
+
 
 def _get_column_rows(self, connection, table_name, schema):
     # get columns and strip whitespace
+    schema = validate_schema(schema=schema)
     table_columns = self._get_table_columns(  # pylint: disable=protected-access
         connection, table_name, schema
     )
@@ -319,6 +324,8 @@ def get_table_type(connection, database, schema, table):
                 database_name=database, schema_name=schema, table_name=table
             )
         else:
+            # schema = f"`{schema}`" if "-" in schema else schema
+            schema = validate_schema(schema=schema)
             query = f"DESCRIBE TABLE EXTENDED {schema}.{table}"
         rows = connection.execute(query)
         for row in rows:
@@ -677,6 +684,8 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
     ) -> str:
         description = None
         try:
+            # schema_name=f"`{schema_name}`" if "-" in schema_name else schema_name
+            schema_name = validate_schema(schema=schema_name)
             cursor = self.connection.execute(
                 DATABRICKS_GET_TABLE_COMMENTS.format(
                     database_name=self.context.get().database,
@@ -724,9 +733,12 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
         Method to process the table owners
         """
         try:
+            # schema = self.context.get().database_schema
+            # schema = f"`{schema}`" if "-" in schema else schema
+
             query = DATABRICKS_GET_TABLE_COMMENTS.format(
                 database_name=self.context.get().database,
-                schema_name=self.context.get().database_schema,
+                schema_name=validate_schema(schema=self.context.get().database_schema),
                 table_name=table_name,
             )
             result = self.connection.engine.execute(query)
