@@ -22,7 +22,7 @@ QUOTE
     ;
 
 NON_RESERVED
-    : ~[".]
+    : ~[.]
     ;
 
 RESERVED

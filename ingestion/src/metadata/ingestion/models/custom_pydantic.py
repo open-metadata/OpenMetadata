@@ -55,12 +55,8 @@ class BaseModel(PydanticBaseModel):
         Uses singledispatch to dynamically call appropriate processing functions.
         """
 
-        from metadata.generated.schema.api.data.createChart import CreateChartRequest
         from metadata.generated.schema.api.data.createDashboard import (
             CreateDashboardRequest,
-        )
-        from metadata.generated.schema.api.data.createDashboardDataModel import (
-            CreateDashboardDataModelRequest,
         )
         from metadata.generated.schema.api.data.createTable import CreateTableRequest
         from metadata.generated.schema.api.data.createTableProfile import (

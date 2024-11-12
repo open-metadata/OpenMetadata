@@ -34,6 +34,10 @@ from metadata.utils.entity_link import get_decoded_column, get_table_or_column_f
             "<#E::table::rds.dev.dbt_jaffle.column_w_space::columns::随机的>",
             "随机的",
         ),
+        (
+            "<#E::table::rds.dev.dbt_jaffle.column_w_space::columns::test__reserved__colon____reserved__arrow__test>",
+            "test::>test",
+        ),
     ],
 )
 def test_get_decoded_column(entity_link, expected):
@@ -93,6 +97,11 @@ def test_get_decoded_column(entity_link, expected):
             "<#E::dashboard::rds.dev.dbt_jaffle>.customers>",
             "rds.dev.dbt_jaffle>.customers",
             id="valid_entity_link10",
+        ),
+        pytest.param(
+            '<#E::dashboard::"rds.dev.dbt_jaffle.customers">',
+            '"rds.dev.dbt_jaffle.customers"',
+            id="valid_entity_link11",
         ),
     ],
 )

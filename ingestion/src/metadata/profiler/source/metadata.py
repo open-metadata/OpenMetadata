@@ -13,11 +13,6 @@ OpenMetadata source for the profiler
 """
 from typing import Iterable, List, Optional, cast
 
-from pydantic import ConfigDict
-
-from metadata.generated.schema.entity.data.database import Database
-from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
-from metadata.generated.schema.entity.data.table import Table, TableType
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline import (
     DatabaseServiceProfilerPipeline,
@@ -29,7 +24,6 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.parser import parse_workflow_config_gracefully
 from metadata.ingestion.api.step import Step
 from metadata.ingestion.api.steps import Source
-from metadata.ingestion.models.custom_pydantic import BaseModel
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.profiler.source.fetcher.entity_fetcher import EntityFetcher
 from metadata.profiler.source.model import ProfilerSourceAndEntity

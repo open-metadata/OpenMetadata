@@ -159,7 +159,12 @@ public class FullyQualifiedName {
     String unquotedName = matcher.group(4);
     if (!unquotedName.contains("\"")) {
       return unquotedName.contains(".") ? "\"" + name + "\"" : unquotedName;
+    } else if (unquotedName.contains("\"") && unquotedName.contains(" ")) {
+      return unquotedName.replace("\"", "\\\"");
     }
+
+    // Allow names with quotes and space
+
     throw new IllegalArgumentException(CatalogExceptionMessage.invalidName(name));
   }
 
