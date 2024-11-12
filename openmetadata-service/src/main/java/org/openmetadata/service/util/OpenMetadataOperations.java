@@ -264,28 +264,67 @@ public class OpenMetadataOperations implements Callable<Integer> {
   public Integer reIndex(
       @Option(
               names = {"-b", "--batch-size"},
-              defaultValue = "100")
+              defaultValue = "100",
+              description = "Number of records to process in each batch.")
           int batchSize,
       @Option(
               names = {"-p", "--payload-size"},
-              defaultValue = "104857600")
+              defaultValue = "104857600",
+              description = "Maximum size of the payload in bytes.")
           long payloadSize,
       @Option(
               names = {"--recreate-indexes"},
-              defaultValue = "true")
-          boolean recreateIndexes) {
+              defaultValue = "true",
+              description = "Flag to determine if indexes should be recreated.")
+          boolean recreateIndexes,
+      @Option(
+              names = {"--num-threads"},
+              defaultValue = "10",
+              description = "Number of threads to use for processing.")
+          int numThreads,
+      @Option(
+              names = {"--back-off"},
+              defaultValue = "1000",
+              description = "Back-off time in milliseconds for retries.")
+          int backOff,
+      @Option(
+              names = {"--max-back-off"},
+              defaultValue = "10000",
+              description = "Max Back-off time in milliseconds for retries.")
+          int maxBackOff,
+      @Option(
+              names = {"--max-requests"},
+              defaultValue = "100",
+              description = "Maximum number of concurrent search requests.")
+          int maxRequests,
+      @Option(
+              names = {"--retries"},
+              defaultValue = "3",
+              description = "Maximum number of retries for failed search requests.")
+          int retries) {
     try {
+      LOG.info(
+          "Running Reindexing with Batch Size: {}, Payload Size: {}, Recreate-Index: {}",
+          batchSize,
+          payloadSize,
+          recreateIndexes);
       parseConfig();
       CollectionRegistry.initialize();
       ApplicationHandler.initialize(config);
-      // load seed data so that repositories are initialized
       CollectionRegistry.getInstance().loadSeedData(jdbi, config, null, null, null, true);
       ApplicationHandler.initialize(config);
-      // creates the default search index application
       AppScheduler.initialize(config, collectionDAO, searchRepository);
-
       String appName = "SearchIndexingApplication";
-      return executeSearchReindexApp(appName, batchSize, payloadSize, recreateIndexes);
+      return executeSearchReindexApp(
+          appName,
+          batchSize,
+          payloadSize,
+          recreateIndexes,
+          numThreads,
+          backOff,
+          maxBackOff,
+          maxRequests,
+          retries);
     } catch (Exception e) {
       LOG.error("Failed to reindex due to ", e);
       return 1;
@@ -293,7 +332,15 @@ public class OpenMetadataOperations implements Callable<Integer> {
   }
 
   private int executeSearchReindexApp(
-      String appName, int batchSize, long payloadSize, boolean recreateIndexes) {
+      String appName,
+      int batchSize,
+      long payloadSize,
+      boolean recreateIndexes,
+      int numThreads,
+      int backOff,
+      int maxBackOff,
+      int maxRequests,
+      int retries) {
     AppRepository appRepository = (AppRepository) Entity.getEntityRepository(Entity.APPLICATION);
     App originalSearchIndexApp =
         appRepository.getByName(null, appName, appRepository.getFields("id"));
@@ -307,9 +354,14 @@ public class OpenMetadataOperations implements Callable<Integer> {
         .withBatchSize(batchSize)
         .withPayLoadSize(payloadSize)
         .withRecreateIndex(recreateIndexes)
+        .withNumberOfThreads(numThreads)
+        .withInitialBackoff(backOff)
+        .withMaxBackoff(maxBackOff)
+        .withMaxConcurrentRequests(maxRequests)
+        .withMaxRetries(retries)
         .withEntities(Set.of("all"));
 
-    // Update the search index app with the new batch size, payload size and recreate index flag
+    // Update the search index app with the new configurations
     App updatedSearchIndexApp = JsonUtils.deepCopy(originalSearchIndexApp, App.class);
     updatedSearchIndexApp.withAppConfiguration(updatedJob);
     JsonPatch patch = JsonUtils.getJsonPatch(originalSearchIndexApp, updatedSearchIndexApp);
@@ -322,7 +374,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
 
     int result = waitAndReturnReindexingAppStatus(updatedSearchIndexApp, currentTime);
 
-    // Repatch with original
+    // Re-patch with original configuration
     JsonPatch repatch = JsonUtils.getJsonPatch(updatedSearchIndexApp, originalSearchIndexApp);
     appRepository.patch(null, originalSearchIndexApp.getId(), "admin", repatch);
 
@@ -543,8 +595,6 @@ public class OpenMetadataOperations implements Callable<Integer> {
     String user = dataSourceFactory.getUser();
     String password = dataSourceFactory.getPassword();
     LOG.info("JDBC URL: {}", jdbcUrl);
-    LOG.info("User: {}", user);
-    LOG.info("Password: {}", password);
     assert user != null && password != null;
 
     String flywayRootPath = config.getMigrationConfiguration().getFlywayPath();

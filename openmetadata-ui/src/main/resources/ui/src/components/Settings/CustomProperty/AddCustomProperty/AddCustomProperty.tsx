@@ -283,6 +283,17 @@ const AddCustomProperty = () => {
       ],
     },
     {
+      name: 'displayName',
+      id: 'root/displayName',
+      label: t('label.display-name'),
+      required: false,
+      placeholder: t('label.display-name'),
+      type: FieldTypes.TEXT,
+      props: {
+        'data-testid': 'display-name',
+      },
+    },
+    {
       name: 'propertyType',
       required: true,
       label: t('label.type'),

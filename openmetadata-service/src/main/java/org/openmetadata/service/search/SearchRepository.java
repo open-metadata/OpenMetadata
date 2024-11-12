@@ -81,9 +81,9 @@ import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 @Slf4j
 public class SearchRepository {
 
-  @Getter private final SearchClient searchClient;
+  private volatile SearchClient searchClient;
 
-  private Map<String, IndexMapping> entityIndexMap;
+  @Getter private Map<String, IndexMapping> entityIndexMap;
 
   private final String language;
 
@@ -122,6 +122,17 @@ public class SearchRepository {
             : "en";
     clusterAlias = config != null ? config.getClusterAlias() : "";
     loadIndexMappings();
+  }
+
+  public SearchClient getSearchClient() {
+    if (searchClient == null) {
+      synchronized (SearchRepository.class) {
+        if (searchClient == null) {
+          searchClient = buildSearchClient(elasticSearchConfiguration);
+        }
+      }
+    }
+    return searchClient;
   }
 
   private void loadIndexMappings() {
@@ -460,6 +471,7 @@ public class SearchRepository {
               }
               fieldData.put("deletedOwners", inheritedOwners);
               scriptTxt.append(REMOVE_OWNERS_SCRIPT);
+              scriptTxt.append(" ");
             } else {
               EntityReference entityReference =
                   JsonUtils.readValue(field.getOldValue().toString(), EntityReference.class);
@@ -470,6 +482,7 @@ public class SearchRepository {
                       field.getName(),
                       field.getName()));
               fieldData.put(field.getName(), JsonUtils.getMap(entityReference));
+              scriptTxt.append(" ");
             }
           } catch (UnhandledServerException e) {
             scriptTxt.append(String.format(REMOVE_PROPAGATED_FIELD_SCRIPT, field.getName()));
@@ -502,6 +515,7 @@ public class SearchRepository {
                   String.format(PROPAGATE_FIELD_SCRIPT, field.getName(), field.getNewValue()));
             }
           }
+          scriptTxt.append(" ");
         }
       }
       for (FieldChange field : changeDescription.getFieldsAdded()) {
@@ -528,9 +542,11 @@ public class SearchRepository {
                       field.getName()));
               fieldData.put(field.getName(), entityReference);
             }
+            scriptTxt.append(" ");
           } catch (UnhandledServerException e) {
             scriptTxt.append(
                 String.format(PROPAGATE_FIELD_SCRIPT, field.getName(), field.getNewValue()));
+            scriptTxt.append(" ");
           }
         }
       }
