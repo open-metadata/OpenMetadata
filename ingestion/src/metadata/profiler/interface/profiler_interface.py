@@ -39,7 +39,6 @@ from metadata.profiler.metrics.system.system import System
 from metadata.profiler.processor.runner import QueryRunner
 from metadata.sampler.sampler_interface import SamplerInterface
 from metadata.utils.collaborative_super import Root
-from metadata.utils.constants import SAMPLE_DATA_DEFAULT_COUNT
 from metadata.utils.ssl_manager import get_ssl_connection
 
 
@@ -112,11 +111,6 @@ class ProfilerInterface(Root, ABC):
             timeout_seconds=timeout_seconds,
             **kwargs,
         )
-
-    @abstractmethod
-    def _get_sampler(self):
-        """Get the sampler"""
-        raise NotImplementedError
 
     # pylint: disable=too-many-locals
     @classmethod
