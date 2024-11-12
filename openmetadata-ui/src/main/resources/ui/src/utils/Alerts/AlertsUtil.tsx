@@ -26,6 +26,7 @@ import {
   Divider,
   Input,
   MenuProps,
+  Radio,
   Row,
   Select,
   Skeleton,
@@ -39,6 +40,7 @@ import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import { compare, Operation } from 'fast-json-patch';
 import i18next, { t } from 'i18next';
 import {
+  isEmpty,
   isEqual,
   isUndefined,
   map,
@@ -84,6 +86,7 @@ import {
 import {
   EventFilterRule,
   EventSubscription,
+  HTTPMethod,
   InputType,
   SubscriptionCategory,
   SubscriptionType,
@@ -522,6 +525,25 @@ export const getDestinationConfigField = (
                           </Row>
                         )}
                       </Form.List>
+                    </Col>
+                    <Col data-testid="http-method" span={24}>
+                      <Form.Item
+                        label={
+                          <Typography.Text>{`${t(
+                            'label.http-method'
+                          )}:`}</Typography.Text>
+                        }
+                        labelCol={{ span: 24 }}
+                        name={[fieldName, 'config', 'httpMethod']}>
+                        <Radio.Group
+                          data-testid={`http-method-${fieldName}`}
+                          defaultValue={HTTPMethod.Post}
+                          options={[
+                            { label: HTTPMethod.Post, value: HTTPMethod.Post },
+                            { label: HTTPMethod.Put, value: HTTPMethod.Put },
+                          ]}
+                        />
+                      </Form.Item>
                     </Col>
                   </Row>
                 </Collapse.Panel>
@@ -988,10 +1010,12 @@ export const getConfigHeaderObjectFromArray = (
  * to render Form.List
  */
 export const getConfigHeaderArrayFromObject = (headers?: Webhook['headers']) =>
-  Object.entries(headers ?? {}).map(([key, value]) => ({
-    key,
-    value,
-  }));
+  isUndefined(headers)
+    ? headers
+    : Object.entries(headers).map(([key, value]) => ({
+        key,
+        value,
+      }));
 
 export const getFormattedDestinations = (
   destinations?: ModifiedDestination[]
@@ -999,11 +1023,13 @@ export const getFormattedDestinations = (
   const formattedDestinations = destinations?.map((destination) => {
     const { destinationType, config, ...otherData } = destination;
 
+    const headers = getConfigHeaderObjectFromArray(config?.headers);
+
     return {
       ...otherData,
       config: {
         ...config,
-        headers: getConfigHeaderObjectFromArray(config?.headers),
+        headers: isEmpty(headers) ? undefined : headers,
       },
     };
   });
