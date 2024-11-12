@@ -2169,13 +2169,7 @@ public class OpenSearchClient implements SearchClient {
 
   /** */
   @Override
-  public void close() {
-    try {
-      this.client.close();
-    } catch (Exception e) {
-      LOG.error("Failed to close open search", e);
-    }
-  }
+  public void close() {}
 
   @Override
   public BulkResponse bulk(BulkRequest data, RequestOptions options) throws IOException {

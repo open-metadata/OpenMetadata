@@ -2176,13 +2176,7 @@ public class ElasticSearchClient implements SearchClient {
 
   /** */
   @Override
-  public void close() {
-    try {
-      this.client.close();
-    } catch (Exception e) {
-      LOG.error("Failed to close elastic search", e);
-    }
-  }
+  public void close() {}
 
   @SneakyThrows
   private void deleteEntityFromElasticSearch(DeleteRequest deleteRequest) {
