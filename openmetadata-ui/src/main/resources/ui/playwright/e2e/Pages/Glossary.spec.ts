@@ -108,7 +108,7 @@ test.describe('Glossary tests', () => {
       async () => {
         await redirectToHomePage(page1);
         // wait for 15 seconds as the flowable which creates task is triggered every 10 seconds
-        await page1.waitForTimeout(10000);
+        await page1.waitForTimeout(15000);
         await sidebarClick(page1, SidebarItem.GLOSSARY);
         await selectActiveGlossary(page1, glossary1.data.name);
 
@@ -160,7 +160,7 @@ test.describe('Glossary tests', () => {
       'Approve Glossary Term from Glossary Listing for reviewer team',
       async () => {
         await redirectToHomePage(page1);
-        // wait for 10 seconds as the flowable which creates task is triggered every 10 seconds
+        // wait for 15 seconds as the flowable which creates task is triggered every 10 seconds
         await page1.waitForTimeout(15000);
         await sidebarClick(page1, SidebarItem.GLOSSARY);
         await selectActiveGlossary(page1, glossary2.data.name);
