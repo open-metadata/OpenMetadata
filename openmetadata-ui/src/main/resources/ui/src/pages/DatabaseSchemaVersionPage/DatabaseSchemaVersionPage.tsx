@@ -14,7 +14,6 @@
 import { Col, Row, Space, Tabs, TabsProps } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, toString } from 'lodash';
-import { PagingResponse } from 'Models';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
@@ -33,6 +32,7 @@ import {
   getEntityDetailsPath,
   getVersionPath,
   INITIAL_PAGING_VALUE,
+  PAGE_SIZE,
 } from '../../constants/constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
@@ -47,6 +47,7 @@ import { ChangeDescription } from '../../generated/entity/type';
 import { EntityHistory } from '../../generated/type/entityHistory';
 import { Include } from '../../generated/type/include';
 import { TagSource } from '../../generated/type/tagLabel';
+import { usePaging } from '../../hooks/paging/usePaging';
 import { useFqn } from '../../hooks/useFqn';
 import SchemaTablesTab from '../../pages/DatabaseSchemaPage/SchemaTablesTab';
 import {
@@ -72,11 +73,13 @@ function DatabaseSchemaVersionPage() {
     tab: EntityTabs;
   }>();
   const { fqn: decodedEntityFQN } = useFqn();
+
+  const pagingInfo = usePaging(PAGE_SIZE);
+
+  const { paging, pageSize, handlePageChange, handlePagingChange } = pagingInfo;
+
   const [currentPage, setCurrentPage] = useState(INITIAL_PAGING_VALUE);
-  const [tableData, setTableData] = useState<PagingResponse<Table[]>>({
-    data: [],
-    paging: { total: 0 },
-  });
+  const [tableData, setTableData] = useState<Array<Table>>([]);
   const [servicePermissions, setServicePermissions] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -173,7 +176,8 @@ function DatabaseSchemaVersionPage() {
           ...params,
           databaseSchema: decodedEntityFQN,
         });
-        setTableData(res);
+        setTableData(res.data);
+        handlePagingChange(res.paging);
       } finally {
         setIsTableDataLoading(false);
       }
@@ -189,11 +193,11 @@ function DatabaseSchemaVersionPage() {
   const tablePaginationHandler = useCallback(
     ({ cursorType, currentPage }: PagingHandlerParams) => {
       if (cursorType) {
-        getSchemaTables({ [cursorType]: tableData.paging[cursorType] });
+        getSchemaTables({ [cursorType]: paging[cursorType] });
       }
       setCurrentPage(currentPage);
     },
-    [tableData, getSchemaTables]
+    [paging, getSchemaTables, handlePageChange]
   );
 
   const { versionHandler, backHandler } = useMemo(
@@ -247,6 +251,7 @@ function DatabaseSchemaVersionPage() {
                 currentTablesPage={currentPage}
                 databaseSchemaDetails={currentVersionData}
                 description={description}
+                pagingInfo={pagingInfo}
                 tableData={tableData}
                 tableDataLoading={isTableDataLoading}
                 tablePaginationHandler={tablePaginationHandler}
@@ -401,9 +406,9 @@ function DatabaseSchemaVersionPage() {
 
   useEffect(() => {
     if (!isEmpty(currentVersionData)) {
-      getSchemaTables();
+      getSchemaTables({ limit: pageSize });
     }
-  }, [currentVersionData]);
+  }, [currentVersionData, pageSize]);
 
   return (
     <PageLayoutV1

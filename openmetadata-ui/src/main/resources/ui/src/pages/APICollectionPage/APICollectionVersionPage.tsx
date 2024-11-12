@@ -15,7 +15,6 @@ import { Col, Row, Space, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isUndefined, toString } from 'lodash';
-import { PagingResponse } from 'Models';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
@@ -34,6 +33,7 @@ import {
   getEntityDetailsPath,
   getVersionPath,
   INITIAL_PAGING_VALUE,
+  PAGE_SIZE,
 } from '../../constants/constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
@@ -52,6 +52,7 @@ import { ChangeDescription } from '../../generated/entity/type';
 import { EntityHistory } from '../../generated/type/entityHistory';
 import { Include } from '../../generated/type/include';
 import { TagSource } from '../../generated/type/tagLabel';
+import { usePaging } from '../../hooks/paging/usePaging';
 import { useFqn } from '../../hooks/useFqn';
 import {
   getApiCollectionByFQN,
@@ -83,6 +84,10 @@ const APICollectionVersionPage = () => {
 
   const { fqn: decodedEntityFQN } = useFqn();
 
+  const pagingInfo = usePaging(PAGE_SIZE);
+
+  const { paging, pageSize, handlePageChange, handlePagingChange } = pagingInfo;
+
   const [collectionPermissions, setCollectionPermissions] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -99,12 +104,7 @@ const APICollectionVersionPage = () => {
 
   const [apiEndpointsLoading, setAPIEndpointsLoading] = useState<boolean>(true);
 
-  const [apiEndpoints, setAPIEndpoints] = useState<
-    PagingResponse<APIEndpoint[]>
-  >({
-    data: [],
-    paging: { total: 0 },
-  });
+  const [apiEndpoints, setAPIEndpoints] = useState<Array<APIEndpoint>>([]);
 
   const [currentEndpointsPage, setCurrentEndpointsPage] =
     useState<number>(INITIAL_PAGING_VALUE);
@@ -182,7 +182,8 @@ const APICollectionVersionPage = () => {
           service: collection?.service?.fullyQualifiedName ?? '',
           include: Include.All,
         });
-        setAPIEndpoints(res);
+        setAPIEndpoints(res.data);
+        handlePagingChange(res.paging);
       } catch (err) {
         showErrorToast(err as AxiosError);
       } finally {
@@ -203,13 +204,15 @@ const APICollectionVersionPage = () => {
           );
 
           setCurrentVersionData(response);
-          await getAPICollectionEndpoints();
+          await getAPICollectionEndpoints({
+            paging: { limit: pageSize },
+          });
         }
       } finally {
         setIsVersionDataLoading(false);
       }
     },
-    [viewVersionPermission, version, getAPICollectionEndpoints]
+    [viewVersionPermission, version, getAPICollectionEndpoints, pageSize]
   );
 
   const handleTabChange = (activeKey: string) => {
@@ -228,13 +231,13 @@ const APICollectionVersionPage = () => {
       if (cursorType) {
         getAPICollectionEndpoints({
           paging: {
-            [cursorType]: apiEndpoints.paging[cursorType],
+            [cursorType]: paging[cursorType],
           },
         });
       }
       setCurrentEndpointsPage(currentPage);
     },
-    [apiEndpoints, getAPICollectionEndpoints]
+    [paging, getAPICollectionEndpoints, handlePageChange]
   );
 
   const { versionHandler, backHandler } = useMemo(
@@ -268,7 +271,7 @@ const APICollectionVersionPage = () => {
       {
         label: (
           <TabsLabel
-            count={apiEndpoints.paging.total}
+            count={paging.total}
             id={EntityTabs.API_ENDPOINT}
             isActive={tab === EntityTabs.API_ENDPOINT}
             name={t('label.endpoint-plural')}
@@ -286,6 +289,7 @@ const APICollectionVersionPage = () => {
                 currentEndpointsPage={currentEndpointsPage}
                 description={description}
                 endpointPaginationHandler={endpointPaginationHandler}
+                pagingInfo={pagingInfo}
               />
             </Col>
             <Col
@@ -432,7 +436,7 @@ const APICollectionVersionPage = () => {
     if (!isUndefined(collection)) {
       fetchCurrentVersionData(collection);
     }
-  }, [version, collection]);
+  }, [version, collection, pageSize]);
 
   return (
     <PageLayoutV1
