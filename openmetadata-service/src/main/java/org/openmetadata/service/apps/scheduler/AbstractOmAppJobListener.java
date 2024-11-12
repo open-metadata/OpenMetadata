@@ -1,5 +1,6 @@
 package org.openmetadata.service.apps.scheduler;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.apps.scheduler.AppScheduler.APP_NAME;
 
 import java.util.HashMap;
@@ -15,6 +16,7 @@ import org.openmetadata.schema.entity.app.SuccessContext;
 import org.openmetadata.service.apps.ApplicationHandler;
 import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.socket.WebSocketManager;
 import org.openmetadata.service.util.JsonUtils;
 import org.quartz.JobDataMap;
 import org.quartz.JobExecutionContext;
@@ -26,6 +28,8 @@ public abstract class AbstractOmAppJobListener implements JobListener {
   private final CollectionDAO collectionDAO;
   private final AppRepository repository;
   private static final String SCHEDULED_APP_RUN_EXTENSION = "AppScheduleRun";
+  public static final String WEBSOCKET_STATUS_CHANNEL = "WebsocketStatusUpdateExtension";
+
   public static final String APP_RUN_STATS = "AppRunStats";
   public static final String JOB_LISTENER_NAME = "OM_JOB_LISTENER";
 
@@ -118,6 +122,14 @@ public abstract class AbstractOmAppJobListener implements JobListener {
         context.withAdditionalProperty("failure", failure);
       }
       runRecord.setFailureContext(context);
+    }
+
+    // Push Update on WebSocket
+    String webSocketChannelName =
+        (String) jobExecutionContext.getJobDetail().getJobDataMap().get(WEBSOCKET_STATUS_CHANNEL);
+    if (!nullOrEmpty(webSocketChannelName) && WebSocketManager.getInstance() != null) {
+      WebSocketManager.getInstance()
+          .broadCastMessageToAll(webSocketChannelName, JsonUtils.pojoToJson(runRecord));
     }
 
     // Update App Run Record

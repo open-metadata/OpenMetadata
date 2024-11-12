@@ -1,3 +1,16 @@
+#  Copyright 2021 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+"""
+System table profiler
+"""
 from datetime import datetime
 from decimal import Decimal
 from typing import Any, Dict, List, Optional, Set, Union
@@ -33,6 +46,11 @@ class ColumnStats(BaseModel):
     @field_validator("data_size", mode="before")
     @classmethod
     def data_size_validator(cls, value):
+        """Data size validator
+
+        Args:
+            value: value
+        """
         if value is None:
             return None
         return int(value)
@@ -44,6 +62,8 @@ class TableStats(BaseModel):
 
 
 class TrinoStoredStatisticsSource(StoredStatisticsSource):
+    """Trino system profile source"""
+
     metric_stats_map: Dict[Metrics, str] = {
         Metrics.NULL_RATIO: "nulls_fractions",
         Metrics.DISTINCT_COUNT: "distinct_values_count",
@@ -66,7 +86,7 @@ class TrinoStoredStatisticsSource(StoredStatisticsSource):
         self.stats_cache = LRUCache(capacity=LRU_CACHE_SIZE)
 
     def get_column_statistics(
-        self, metrics: List[Metric], schema: str, table_name: Table, column: str
+        self, metric: List[Metric], schema: str, table_name: Table, column: str
     ) -> Dict[str, Any]:
         table_stats = self._get_cached_stats(schema, table_name)
         try:
@@ -77,7 +97,7 @@ class TrinoStoredStatisticsSource(StoredStatisticsSource):
             )
         result = {
             m.name(): getattr(column_stats, self.metric_stats_by_name[m.name()])
-            for m in metrics
+            for m in metric
         }
         result.update(self.get_hybrid_statistics(table_stats, column_stats))
         self.warn_for_missing_stats(schema, table_name, column_stats)

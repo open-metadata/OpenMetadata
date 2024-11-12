@@ -3,6 +3,7 @@ package org.openmetadata.service.search.opensearch.dataInsightAggregator;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import org.jetbrains.annotations.NotNull;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
@@ -25,7 +26,11 @@ import os.org.opensearch.search.builder.SearchSourceBuilder;
 
 public class OpenSearchSummaryCardAggregator implements OpenSearchDynamicChartAggregatorInterface {
   public SearchRequest prepareSearchRequest(
-      @NotNull DataInsightCustomChart diChart, long start, long end, List<FormulaHolder> formulas)
+      @NotNull DataInsightCustomChart diChart,
+      long start,
+      long end,
+      List<FormulaHolder> formulas,
+      Map metricHolder)
       throws IOException {
 
     SummaryCard summaryCard = JsonUtils.convertValue(diChart.getChartDetails(), SummaryCard.class);
@@ -57,7 +62,8 @@ public class OpenSearchSummaryCardAggregator implements OpenSearchDynamicChartAg
   public DataInsightCustomChartResultList processSearchResponse(
       @NotNull DataInsightCustomChart diChart,
       SearchResponse searchResponse,
-      List<FormulaHolder> formulas) {
+      List<FormulaHolder> formulas,
+      Map metricHolder) {
     DataInsightCustomChartResultList resultList = new DataInsightCustomChartResultList();
     SummaryCard summaryCard = JsonUtils.convertValue(diChart.getChartDetails(), SummaryCard.class);
     List<Aggregation> aggregationList =
@@ -65,7 +71,7 @@ public class OpenSearchSummaryCardAggregator implements OpenSearchDynamicChartAg
             .orElse(new Aggregations(new ArrayList<>()))
             .asList();
     List<DataInsightCustomChartResult> results =
-        processAggregations(aggregationList, summaryCard.getFormula(), null, formulas);
+        processAggregations(aggregationList, summaryCard.getFormula(), null, formulas, null);
 
     List<DataInsightCustomChartResult> finalResults = new ArrayList<>();
     for (int i = results.size() - 1; i >= 0; i--) {
