@@ -22,6 +22,7 @@ import {
   isString,
   isUndefined,
   last,
+  meanBy,
   round,
   startCase,
   sumBy,
@@ -373,14 +374,16 @@ export const getWebChartSummary = (
 
     const { chartType, data } = chartData;
 
+    let latest;
+    if (chartType === DataInsightChartType.DailyActiveUsers) {
+      latest = round(meanBy(data, 'activeUsers'));
+    } else {
+      latest = sumBy(data, 'pageViews');
+    }
+
     updatedSummary.push({
       ...summary,
-      latest: sumBy(
-        data,
-        chartType === DataInsightChartType.DailyActiveUsers
-          ? 'activeUsers'
-          : 'pageViews'
-      ),
+      latest: latest,
     });
   }
 
