@@ -11,28 +11,35 @@
  *  limitations under the License.
  */
 import { Checkbox } from 'antd';
-import React from 'react';
+import React, { useCallback } from 'react';
 import { useDrag, useDrop } from 'react-dnd';
 import { ReactComponent as ColumnDragIcon } from '../../../assets/svg/menu-duo.svg';
 
 interface DraggableMenuItemProps {
   option: { value: string; label: string };
   index: number;
-  moveDropdownMenuItem: (fromIndex: number, toIndex: number) => void;
-  tempCheckedList: string[];
-  handleCheckboxChange: (
-    key: string,
-    checked: boolean,
-    type: 'columns' | 'status'
-  ) => void;
+  options: { value: string; label: string }[];
+  onMoveItem: (updatedList: { value: string; label: string }[]) => void;
+  selectedOptions: string[];
+  onSelect: (key: string, checked: boolean, type: 'columns' | 'status') => void;
 }
 const DraggableMenuItem: React.FC<DraggableMenuItemProps> = ({
   option,
   index,
-  moveDropdownMenuItem,
-  tempCheckedList,
-  handleCheckboxChange,
+  options,
+  onMoveItem,
+  selectedOptions,
+  onSelect,
 }) => {
+  const moveDropdownMenuItem = useCallback(
+    (fromIndex: number, toIndex: number) => {
+      const updatedList = [...options];
+      const [movedItem] = updatedList.splice(fromIndex, 1);
+      updatedList.splice(toIndex, 0, movedItem);
+      onMoveItem(updatedList);
+    },
+    [options, onMoveItem]
+  );
   const [{ isDragging }, drag] = useDrag({
     type: 'CHECKBOX',
     item: { index },
@@ -53,29 +60,21 @@ const DraggableMenuItem: React.FC<DraggableMenuItemProps> = ({
 
   return (
     <div
+      className="draggable-menu-item"
       ref={(node) => {
         drag(drop(node));
       }}
       style={{
-        display: 'flex',
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        width: '100%',
         opacity: isDragging ? 0.8 : 1,
       }}>
       <ColumnDragIcon height={16} width={16} />
       <Checkbox
-        checked={tempCheckedList.includes(option.value)}
+        checked={selectedOptions.includes(option.value)}
         className="custom-glossary-col-sel-checkbox"
         key={option.value}
         value={option.value}
-        onChange={(e) =>
-          handleCheckboxChange(option.value, e.target.checked, 'columns')
-        }>
-        <p style={{ fontSize: '14px', lineHeight: '21px', color: '#757575' }}>
-          {option.label}
-        </p>
+        onChange={(e) => onSelect(option.value, e.target.checked, 'columns')}>
+        <p className="glossary-dropdown-label">{option.label}</p>
       </Checkbox>
     </div>
   );
