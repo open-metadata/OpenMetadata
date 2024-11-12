@@ -38,6 +38,8 @@ from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.metrics.system.system import System
 from metadata.profiler.processor.runner import QueryRunner
 from metadata.sampler.sampler_interface import SamplerInterface
+from metadata.utils.collaborative_super import Root
+from metadata.utils.constants import SAMPLE_DATA_DEFAULT_COUNT
 from metadata.utils.ssl_manager import get_ssl_connection
 
 
@@ -60,11 +62,10 @@ class ProfilerProcessorStatus(Status):
 
 
 # pylint: disable=too-many-instance-attributes
-class ProfilerInterface(ABC):
+class ProfilerInterface(Root, ABC):
     """Protocol interface for the profiler processor"""
 
-    # pylint: disable=too-many-arguments,unused-argument
-    def __init__(
+    def __init__(  # pylint: disable=too-many-arguments
         self,
         service_connection_config: Union[DatabaseConnection, DatalakeConnection],
         ometa_client: OpenMetadata,
@@ -100,6 +101,22 @@ class ProfilerInterface(ABC):
             MetricTypes.System.value: self._compute_system_metrics,
             MetricTypes.Custom.value: self._compute_custom_metrics,
         }
+
+        super().__init__(
+            service_connection_config=service_connection_config,
+            ometa_client=ometa_client,
+            entity=entity,
+            source_config=source_config,
+            sampler=sampler,
+            thread_count=thread_count,
+            timeout_seconds=timeout_seconds,
+            **kwargs,
+        )
+
+    @abstractmethod
+    def _get_sampler(self):
+        """Get the sampler"""
+        raise NotImplementedError
 
     # pylint: disable=too-many-locals
     @classmethod

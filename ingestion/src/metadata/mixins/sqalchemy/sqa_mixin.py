@@ -32,9 +32,11 @@ from metadata.ingestion.source.connections import get_connection
 from metadata.ingestion.source.database.snowflake.queries import (
     SNOWFLAKE_SESSION_TAG_QUERY,
 )
+from metadata.profiler.orm.converter.base import ometa_to_sqa_orm
+from metadata.utils.collaborative_super import Root
 
 
-class SQAInterfaceMixin:
+class SQAInterfaceMixin(Root):
     """SQLAlchemy interface mixin grouping shared methods between sequential and threaded executor"""
 
     def _get_engine(self):

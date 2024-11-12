@@ -37,8 +37,15 @@ class Column(BaseModel):
     Comment: Optional[str] = None
 
 
+class SerializationDetails(BaseModel):
+    SerializationLibrary: Optional[str] = None
+    Parameters: Optional[dict] = {}
+
+
 class StorageDetails(BaseModel):
     Columns: Optional[List[Column]] = []
+    Location: Optional[str] = None
+    SerdeInfo: Optional[SerializationDetails] = SerializationDetails()
 
 
 class GlueTable(BaseModel):

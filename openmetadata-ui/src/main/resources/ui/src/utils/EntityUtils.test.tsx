@@ -19,6 +19,7 @@ import { MOCK_TABLE, MOCK_TIER_DATA } from '../mocks/TableData.mock';
 import {
   columnSorter,
   getBreadcrumbForTestSuite,
+  getColumnSorter,
   getEntityLinkFromType,
   getEntityOverview,
   highlightEntityNameAndDescription,
@@ -159,6 +160,42 @@ describe('EntityUtils unit tests', () => {
       expect(result).toContain('0th label.pctile-lowercase');
       expect(result).toContain('4');
       expect(result).toContain('14567');
+    });
+  });
+
+  describe('getColumnSorter', () => {
+    type TestType = { name: string };
+
+    it('should return -1 if the 1st value should be before 2nd value', () => {
+      const sorter = getColumnSorter<TestType, 'name'>('name');
+      const item1 = { name: 'abc' };
+      const item2 = { name: 'xyz' };
+
+      expect(sorter(item1, item2)).toBe(-1);
+    });
+
+    it('should return 0 when both values are the same', () => {
+      const sorter = getColumnSorter<TestType, 'name'>('name');
+      const item1 = { name: 'abc' };
+      const item2 = { name: 'abc' };
+
+      expect(sorter(item1, item2)).toBe(0);
+    });
+
+    it('should return 1 if the 1st value should be after 2nd value', () => {
+      const sorter = getColumnSorter<TestType, 'name'>('name');
+      const item1 = { name: 'abc' };
+      const item2 = { name: 'xyz' };
+
+      expect(sorter(item2, item1)).toBe(1);
+    });
+
+    it('should return 1 if the 1st value should be after 2nd value for alphanumeric values', () => {
+      const sorter = getColumnSorter<TestType, 'name'>('name');
+      const item1 = { name: 'abc10' };
+      const item2 = { name: 'abc20' };
+
+      expect(sorter(item2, item1)).toBe(1);
     });
   });
 });

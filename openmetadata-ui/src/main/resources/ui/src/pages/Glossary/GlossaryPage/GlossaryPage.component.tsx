@@ -279,6 +279,11 @@ const GlossaryPage = () => {
       if (isEmpty(jsonPatch)) {
         return;
       }
+
+      const shouldRefreshTerms = jsonPatch.some((patch) =>
+        patch.path.startsWith('/owners')
+      );
+
       try {
         const response = await patchGlossaryTerm(activeGlossary?.id, jsonPatch);
         if (response) {
@@ -287,6 +292,7 @@ const GlossaryPage = () => {
             history.push(getGlossaryPath(response.fullyQualifiedName));
             fetchGlossaryList();
           }
+          shouldRefreshTerms && fetchGlossaryTermDetails();
         } else {
           throw t('server.entity-updating-error', {
             entity: t('label.glossary-term'),

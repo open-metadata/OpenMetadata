@@ -19,7 +19,9 @@ from metadata.data_quality.builders.pandas_validator_builder import (
 )
 from metadata.data_quality.interface.test_suite_interface import TestSuiteInterface
 from metadata.generated.schema.entity.data.table import Table
-from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
+from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
+    DatalakeConnection,
+)
 from metadata.generated.schema.tests.testCase import TestCase
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.mixins.pandas.pandas_mixin import PandasInterfaceMixin
@@ -38,7 +40,7 @@ class PandasTestSuiteInterface(TestSuiteInterface, PandasInterfaceMixin):
 
     def __init__(
         self,
-        service_connection_config: DatabaseConnection,
+        service_connection_config: DatalakeConnection,
         ometa_client: OpenMetadata,
         sampler: SamplerInterface,
         table_entity: Table,

@@ -229,6 +229,10 @@ site_menu:
     url: /connectors/dashboard/domo-dashboard
   - category: Connectors / Dashboard / Domo Dashboard / Run Externally
     url: /connectors/dashboard/domo-dashboard/yaml
+  - category: Connectors / Dashboard / Lightdash
+    url: /connectors/dashboard/lightdash
+  - category: Connectors / Dashboard / Lightdash / Run Externally
+    url: /connectors/dashboard/lightdash/yaml
   - category: Connectors / Dashboard / Looker
     url: /connectors/dashboard/looker
   - category: Connectors / Dashboard / Looker / Run Externally
@@ -237,6 +241,10 @@ site_menu:
     url: /connectors/dashboard/metabase
   - category: Connectors / Dashboard / Metabase / Run Externally
     url: /connectors/dashboard/metabase/yaml
+  - category: Connectors / Dashboard / MicroStrategy
+    url: /connectors/dashboard/microstrategy
+  - category: Connectors / Dashboard / MicroStrategy / Run Externally
+    url: /connectors/dashboard/microstrategy/yaml
   - category: Connectors / Dashboard / Mode
     url: /connectors/dashboard/mode
   - category: Connectors / Dashboard / Mode / Run Externally
@@ -247,6 +255,10 @@ site_menu:
     url: /connectors/dashboard/powerbi/yaml
   - category: Connectors / Dashboard / PowerBI / Lineage from pbit files
     url: /connectors/dashboard/powerbi/powerbi-pbit-lineage
+  - category: Connectors / Dashboard / PowerBI Report Server
+    url: /connectors/dashboard/powerbireportserver
+  - category: Connectors / Dashboard / PowerBI Report Server / Run Externally
+    url: /connectors/dashboard/powerbireportserver/yaml
   - category: Connectors / Dashboard / Qlik Sense
     url: /connectors/dashboard/qliksense
   - category: Connectors / Dashboard / Qlik Sense / Run Externally
@@ -663,6 +675,12 @@ site_menu:
   - category: How-to Guides / Data Quality and Observability / Incident Manager / Root Cause Analysis
     url: /how-to-guides/data-quality-observability/incident-manager/root-cause-analysis
     isCollateOnly: true
+  - category: How-to Guides / Data Quality and Observability / Anomaly Detection
+    url: /how-to-guides/data-quality-observability/anomaly-detection
+    isCollateOnly: true
+  - category: How-to Guides / Data Quality and Observability / Anomaly Detection / Steps to Set Up Anomaly Detection
+    url: /how-to-guides/data-quality-observability/anomaly-detection/setting-up
+    isCollateOnly: true
 
   - category: How-to Guides / Data Lineage
     url: /how-to-guides/data-lineage
@@ -866,8 +884,6 @@ site_menu:
   - category: Releases / All Releases / 0.4.0 Release
     url: /releases/all-releases/#0.4.0-release
 
-  - category: Roadmap
-    url: /roadmap
 
   - category: Main Concepts
     url: /main-concepts

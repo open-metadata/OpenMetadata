@@ -619,6 +619,7 @@ Tests applied on top of Column metrics. Here is the list of all column tests:
 - [Column Value Median to Be Between](#column-value-median-to-be-between)
 - [Column Values Sum to Be Between](#column-values-sum-to-be-between)
 - [Column Values Standard Deviation to Be Between](#column-values-standard-deviation-to-be-between)
+- [Column Values To Be At Expected Location](#column-values-to-be-at-expected-location)
 
 ### Column Values to Be Unique
 Makes sure that there are no duplicate values in a given column.
@@ -1500,4 +1501,71 @@ Accuracy
         }
     ]
 }
+```
+
+### Column Values To Be At Expected Location
+Validate the reference value for a column is a the expected geographic location
+> Data will be temporarely stored in memory while the test case is running to validate the location. Not data will be permanently stored.
+> France is the only supported location at this time. To add any additional location please reach out to the team in our slack support channel
+
+**Dimension**:
+Accuracy
+
+**Properties**
+
+* `locationReferenceType`: the type of location refernce `CITY` or `POSTAL_CODE`
+* `longitudeColumnName`: longitude column name
+* `latitudeColumnName`: latitude column name
+* `radius`: radius in meter from which the location can be from the expected lat/long -- acts as a buffer
+
+**Behavior**
+
+| Condition      | Status |
+| ----------- | ----------- |
+|column values lat/long is **within** the polygon of the column reference (+/- radius) |Success ✅|
+|column values lat/long is **outside** the polygon of the column reference (+/- radius)|Failed ❌|
+
+**YAML Config**
+
+```yaml
+- name: ExpectedGeoLocation
+  testDefinitionName: ColumnValuesToBeAtExpectedLocation
+  columnName: "Code Insee"
+  parameterValues:
+    - name: locationReferenceType
+      value: POSTAL_CODE
+    - name: longitudeColumnName
+      value: "Coordonnée Y"
+    - name: latitudeColumnName
+      value: "Coordonnée X"
+    - name: radius
+      value: "1000"
+```
+
+**JSON Config**
+
+```json
+  {
+    "name": "ExpectedGeoLocation",
+    "testDefinitionName": "ColumnValuesToBeAtExpectedLocation",
+    "columnName": "Code Insee",
+    "parameterValues": [
+      {
+        "name": "locationReferenceType",
+        "value": "POSTAL_CODE"
+      },
+      {
+        "name": "longitudeColumnName",
+        "value": "Coordonnée Y"
+      },
+      {
+        "name": "latitudeColumnName",
+        "value": "Coordonnée X"
+      },
+      {
+        "name": "radius",
+        "value": "1000"
+      }
+    ]
+  }
 ```
