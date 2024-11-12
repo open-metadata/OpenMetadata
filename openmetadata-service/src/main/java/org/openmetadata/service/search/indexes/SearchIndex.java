@@ -99,7 +99,8 @@ public interface SearchIndex {
             entity.getFullyQualifiedName(),
             suggest.stream().map(SearchSuggest::getInput).toList()));
     map.put("deleted", entity.getDeleted() != null && entity.getDeleted());
-    map.put("certification", getAssetCertification(entity));
+
+    Optional.ofNullable(entity.getCertification()).ifPresent(assetCertification -> map.put("certification", assetCertification));
     return map;
   }
 
@@ -142,12 +143,6 @@ public interface SearchIndex {
             ? cloneEntity.getName()
             : cloneEntity.getDisplayName());
     return cloneEntity;
-  }
-
-  default TagLabel getAssetCertification(EntityInterface entity) {
-    return Optional.ofNullable(entity.getCertification())
-        .map(AssetCertification::getTagLabel)
-        .orElse(null);
   }
 
   default String getDescriptionStatus(EntityInterface entity) {
