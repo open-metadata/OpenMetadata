@@ -620,6 +620,9 @@
       },
       "descriptionStatus": {
         "type": "keyword"
+      },
+      "columnDescriptionStatus": {
+        "type": "keyword"
       }
     }
   }

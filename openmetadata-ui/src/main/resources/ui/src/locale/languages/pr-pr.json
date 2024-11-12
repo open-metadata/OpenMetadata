@@ -181,6 +181,7 @@
     "collection-plural": "مجموعه‌ها",
     "color": "رنگ",
     "column": "ستون",
+    "column-description": "Column Description",
     "column-entity": "ستون {{entity}}",
     "column-level-lineage": "Column Level Lineage",
     "column-lowercase": "ستون",

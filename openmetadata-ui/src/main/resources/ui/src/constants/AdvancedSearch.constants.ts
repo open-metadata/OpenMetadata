@@ -91,6 +91,10 @@ export const TABLE_DROPDOWN_ITEMS = [
     label: t('label.table-type'),
     key: EntityFields.TABLE_TYPE,
   },
+  {
+    label: t('label.column-description'),
+    key: EntityFields.COLUMN_DESCRIPTION_STATUS,
+  },
 ];
 
 export const DASHBOARD_DROPDOWN_ITEMS = [

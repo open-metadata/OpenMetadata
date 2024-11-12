@@ -181,6 +181,7 @@
     "collection-plural": "Collections",
     "color": "颜色",
     "column": "列",
+    "column-description": "Column Description",
     "column-entity": "列{{entity}}",
     "column-level-lineage": "Column Level Lineage",
     "column-lowercase": "列",
