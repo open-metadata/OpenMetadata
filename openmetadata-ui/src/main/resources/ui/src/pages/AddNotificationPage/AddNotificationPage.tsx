@@ -47,7 +47,10 @@ import {
   getResourceFunctions,
   updateNotificationAlert,
 } from '../../rest/alertsAPI';
-import { handleAlertSave } from '../../utils/Alerts/AlertsUtil';
+import {
+  getConfigHeaderArrayFromObject,
+  handleAlertSave,
+} from '../../utils/Alerts/AlertsUtil';
 import { getEntityName } from '../../utils/EntityUtils';
 import {
   getNotificationAlertDetailsPath,
@@ -117,6 +120,12 @@ const AddNotificationPage = () => {
             destinationType: isExternalDestination
               ? destination.type
               : destination.category,
+            config: {
+              ...destination.config,
+              headers: getConfigHeaderArrayFromObject(
+                destination.config?.headers
+              ),
+            },
           };
         }),
       };

@@ -13,12 +13,16 @@
 
 import {
   CheckCircleOutlined,
+  CloseOutlined,
   ExclamationCircleOutlined,
+  PlusOutlined,
 } from '@ant-design/icons';
 import {
   AlertProps,
+  Button,
   Checkbox,
   Col,
+  Collapse,
   Divider,
   Input,
   MenuProps,
@@ -47,6 +51,7 @@ import React, { Fragment } from 'react';
 import { ReactComponent as AlertIcon } from '../../assets/svg/alert.svg';
 import { ReactComponent as AllActivityIcon } from '../../assets/svg/all-activity.svg';
 import { ReactComponent as ClockIcon } from '../../assets/svg/clock.svg';
+import { ReactComponent as ConfigIcon } from '../../assets/svg/configuration-icon.svg';
 import { ReactComponent as CheckIcon } from '../../assets/svg/ic-check.svg';
 import { ReactComponent as MailIcon } from '../../assets/svg/ic-mail.svg';
 import { ReactComponent as MSTeamsIcon } from '../../assets/svg/ms-teams.svg';
@@ -82,6 +87,7 @@ import {
   InputType,
   SubscriptionCategory,
   SubscriptionType,
+  Webhook,
 } from '../../generated/events/eventSubscription';
 import { Status as DestinationStatus } from '../../generated/events/testDestinationStatus';
 import { TestCaseStatus } from '../../generated/tests/testCase';
@@ -392,20 +398,134 @@ export const getDestinationConfigField = (
           </Col>
           {type === SubscriptionType.Webhook && (
             <Col span={24}>
-              <Row align="middle">
-                <Col span={7}>{t('label.secret-key')}</Col>
-                <Col span={1}>:</Col>
-                <Col data-testid="secret-key" span={16}>
-                  <Form.Item name={[fieldName, 'config', 'secretKey']}>
-                    <Input.Password
-                      data-testid={`secret-key-input-${fieldName}`}
-                      placeholder={`${t('label.secret-key')} (${t(
-                        'label.optional'
-                      )})`}
-                    />
-                  </Form.Item>
-                </Col>
-              </Row>
+              <Collapse
+                className="webhook-config-collapse"
+                expandIconPosition="end">
+                <Collapse.Panel
+                  header={
+                    <Row align="middle" gutter={[8, 8]}>
+                      <Col>
+                        <ConfigIcon className="configuration-icon" />
+                      </Col>
+                      <Col>
+                        <Typography.Text>
+                          {t('label.advanced-configuration')}
+                        </Typography.Text>
+                      </Col>
+                    </Row>
+                  }
+                  key={`advanced-configuration-${fieldName}`}>
+                  <Row align="middle" gutter={[8, 8]}>
+                    <Col data-testid="secret-key" span={24}>
+                      <Form.Item
+                        label={
+                          <Typography.Text>{`${t(
+                            'label.secret-key'
+                          )}:`}</Typography.Text>
+                        }
+                        labelCol={{ span: 24 }}
+                        name={[fieldName, 'config', 'secretKey']}>
+                        <Input.Password
+                          data-testid={`secret-key-input-${fieldName}`}
+                          placeholder={`${t('label.secret-key')} (${t(
+                            'label.optional'
+                          )})`}
+                        />
+                      </Form.Item>
+                    </Col>
+                    <Col span={24}>
+                      <Form.List name={[fieldName, 'config', 'headers']}>
+                        {(fields, { add, remove }, { errors }) => (
+                          <Row
+                            data-testid={`webhook-${fieldName}-headers-list`}
+                            gutter={[8, 8]}
+                            key="headers">
+                            <Col span={24}>
+                              <Row align="middle" justify="space-between">
+                                <Col>
+                                  <Typography.Text>
+                                    {`${t('label.header-plural')}:`}
+                                  </Typography.Text>
+                                </Col>
+                                <Col>
+                                  <Col>
+                                    <Button
+                                      icon={<PlusOutlined />}
+                                      type="primary"
+                                      onClick={() => add({})}
+                                    />
+                                  </Col>
+                                </Col>
+                              </Row>
+                            </Col>
+                            {fields.map(({ key, name }) => (
+                              <Col key={key} span={24}>
+                                <div className="flex gap-4">
+                                  <div className="flex-1 w-min-0">
+                                    <Row gutter={[8, 8]}>
+                                      <Col span={12}>
+                                        <Form.Item
+                                          required
+                                          name={[name, 'key']}
+                                          rules={[
+                                            {
+                                              required: true,
+                                              message: t(
+                                                'message.field-text-is-required',
+                                                {
+                                                  fieldText: t('label.key'),
+                                                }
+                                              ),
+                                            },
+                                          ]}>
+                                          <Input
+                                            data-testid={`header-key-input-${name}`}
+                                            placeholder={t('label.key')}
+                                          />
+                                        </Form.Item>
+                                      </Col>
+                                      <Col span={12}>
+                                        <Form.Item
+                                          required
+                                          name={[name, 'value']}
+                                          rules={[
+                                            {
+                                              required: true,
+                                              message: t(
+                                                'message.field-text-is-required',
+                                                {
+                                                  fieldText: t('label.value'),
+                                                }
+                                              ),
+                                            },
+                                          ]}>
+                                          <Input
+                                            data-testid={`header-value-input-${name}`}
+                                            placeholder={t('label.value')}
+                                          />
+                                        </Form.Item>
+                                      </Col>
+                                    </Row>
+                                  </div>
+
+                                  <Button
+                                    icon={<CloseOutlined />}
+                                    onClick={() => remove(name)}
+                                  />
+                                </div>
+                              </Col>
+                            ))}
+
+                            <Col span={24}>
+                              <Form.ErrorList errors={errors} />
+                            </Col>
+                          </Row>
+                        )}
+                      </Form.List>
+                    </Col>
+                  </Row>
+                </Collapse.Panel>
+              </Collapse>
             </Col>
           )}
         </>
@@ -844,13 +964,48 @@ export const getRandomizedAlertName = () => {
   })}`;
 };
 
+/**
+ * @description Function to get header object of webhook config from the form data
+ * Since the form data is in the form of { key: string, value: string }[]
+ */
+export const getConfigHeaderObjectFromArray = (
+  headers?: {
+    key: string;
+    value: string;
+  }[]
+) =>
+  headers?.reduce(
+    (prev, curr) => ({
+      ...prev,
+      [curr.key]: curr.value,
+    }),
+    {} as { [key: string]: string }
+  );
+
+/**
+ * @description Function to get header webhook config converted from an object
+ * in the form of { key: string, value: string }[]
+ * to render Form.List
+ */
+export const getConfigHeaderArrayFromObject = (headers?: Webhook['headers']) =>
+  Object.entries(headers ?? {}).map(([key, value]) => ({
+    key,
+    value,
+  }));
+
 export const getFormattedDestinations = (
   destinations?: ModifiedDestination[]
 ) => {
   const formattedDestinations = destinations?.map((destination) => {
-    const { destinationType, ...otherData } = destination;
+    const { destinationType, config, ...otherData } = destination;
 
-    return otherData;
+    return {
+      ...otherData,
+      config: {
+        ...config,
+        headers: getConfigHeaderObjectFromArray(config?.headers),
+      },
+    };
   });
 
   return formattedDestinations;
@@ -884,7 +1039,10 @@ export const handleAlertSave = async ({
       return {
         ...(initialDestination ?? {}),
         type: d.type,
-        config: d.config,
+        config: {
+          ...d.config,
+          headers: getConfigHeaderObjectFromArray(d.config?.headers),
+        },
         category: d.category,
         timeout: data.timeout,
       };

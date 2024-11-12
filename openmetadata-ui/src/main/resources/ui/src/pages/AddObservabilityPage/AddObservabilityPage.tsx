@@ -45,7 +45,10 @@ import {
   getResourceFunctions,
   updateObservabilityAlert,
 } from '../../rest/observabilityAPI';
-import { handleAlertSave } from '../../utils/Alerts/AlertsUtil';
+import {
+  getConfigHeaderArrayFromObject,
+  handleAlertSave,
+} from '../../utils/Alerts/AlertsUtil';
 import { getObservabilityAlertDetailsPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import {
@@ -89,6 +92,12 @@ function AddObservabilityPage() {
             destinationType: isExternalDestination
               ? destination.type
               : destination.category,
+            config: {
+              ...destination.config,
+              headers: getConfigHeaderArrayFromObject(
+                destination.config?.headers
+              ),
+            },
           };
         }),
       };

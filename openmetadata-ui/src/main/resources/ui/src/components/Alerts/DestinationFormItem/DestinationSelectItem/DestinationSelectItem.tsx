@@ -45,6 +45,7 @@ import {
 import { useFqn } from '../../../../hooks/useFqn';
 import { ModifiedDestination } from '../../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
 import {
+  getConfigHeaderArrayFromObject,
   getDestinationConfigField,
   getDestinationStatusAlertData,
   getFilteredDestinationOptions,
@@ -81,7 +82,12 @@ function DestinationSelectItem({
         {
           type: destination.type,
           category: destination.category,
-          config: destination.config,
+          config: {
+            ...destination.config,
+            headers: getConfigHeaderArrayFromObject(
+              destination?.config?.headers
+            ),
+          },
         }
       )
     );
