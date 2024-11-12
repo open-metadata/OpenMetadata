@@ -374,10 +374,11 @@ export const getWebChartSummary = (
 
     const { chartType, data } = chartData;
 
+    let latest;
     if (chartType === DataInsightChartType.DailyActiveUsers) {
-      const latest = round(meanBy(data, 'activeUsers'));
+      latest = round(meanBy(data, 'activeUsers'));
     } else {
-      const latest = sumBy(data, 'pageViews');
+      latest = sumBy(data, 'pageViews');
     }
 
     updatedSummary.push({
