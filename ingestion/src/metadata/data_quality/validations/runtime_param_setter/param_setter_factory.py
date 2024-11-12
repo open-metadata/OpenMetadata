@@ -61,5 +61,5 @@ class RuntimeParameterSetterFactory:
                 table_entity,
                 sampler,
             )
-            for setter in self._setter_map.get(name)
+            for setter in self._setter_map.get(name, set())
         }
