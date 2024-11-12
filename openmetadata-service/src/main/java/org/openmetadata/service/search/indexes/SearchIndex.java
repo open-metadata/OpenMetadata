@@ -24,13 +24,11 @@ import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.Table;
-import org.openmetadata.schema.type.AssetCertification;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.LineageDetails;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TableConstraint;
-import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -100,7 +98,8 @@ public interface SearchIndex {
             suggest.stream().map(SearchSuggest::getInput).toList()));
     map.put("deleted", entity.getDeleted() != null && entity.getDeleted());
 
-    Optional.ofNullable(entity.getCertification()).ifPresent(assetCertification -> map.put("certification", assetCertification));
+    Optional.ofNullable(entity.getCertification())
+        .ifPresent(assetCertification -> map.put("certification", assetCertification));
     return map;
   }
 
