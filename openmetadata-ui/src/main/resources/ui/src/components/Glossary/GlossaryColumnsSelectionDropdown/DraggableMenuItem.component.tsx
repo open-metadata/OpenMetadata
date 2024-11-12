@@ -60,12 +60,9 @@ const DraggableMenuItem: React.FC<DraggableMenuItemProps> = ({
 
   return (
     <div
-      className="draggable-menu-item"
+      className={`draggable-menu-item ${isDragging ? 'dragging' : ''}`}
       ref={(node) => {
         drag(drop(node));
-      }}
-      style={{
-        opacity: isDragging ? 0.8 : 1,
       }}>
       <ColumnDragIcon height={16} width={16} />
       <Checkbox
