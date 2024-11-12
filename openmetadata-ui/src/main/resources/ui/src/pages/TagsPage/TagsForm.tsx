@@ -12,7 +12,7 @@
  */
 
 import { PlusOutlined } from '@ant-design/icons';
-import { Button, Form, FormProps, Modal, Space, Typography } from 'antd';
+import { Button, Form, Modal, Space, Typography } from 'antd';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { OwnerLabel } from '../../components/common/OwnerLabel/OwnerLabel.component';
@@ -23,15 +23,14 @@ import {
 } from '../../constants/regex.constants';
 import { DEFAULT_FORM_VALUE } from '../../constants/Tags.constant';
 import { EntityReference } from '../../generated/entity/type';
-import { useApplicationStore } from '../../hooks/useApplicationStore';
 import {
   FieldProp,
   FieldTypes,
   FormItemLayout,
   HelperTextType,
 } from '../../interface/FormUtils.interface';
-import { generateFormFields, getField } from '../../utils/formUtils';
-import { RenameFormProps } from './TagsPage.interface';
+import { generateFormFields } from '../../utils/formUtils';
+import { RenameFormProps, SubmitProps } from './TagsPage.interface';
 
 const TagsForm = ({
   visible,
@@ -50,14 +49,6 @@ const TagsForm = ({
   const { t } = useTranslation();
   const [form] = Form.useForm();
   const [saving, setSaving] = useState(false);
-  const { currentUser } = useApplicationStore();
-  const selectedOwners =
-    Form.useWatch<EntityReference | EntityReference[]>('owners', form) ?? [];
-
-  const ownersList = Array.isArray(selectedOwners)
-    ? selectedOwners
-    : [selectedOwners];
-
   const isMutuallyExclusive = Form.useWatch<boolean | undefined>(
     'mutuallyExclusive',
     form
@@ -228,34 +219,40 @@ const TagsForm = ({
           },
         ] as FieldProp[])
       : []),
+    ...(isClassification
+      ? ([
+          {
+            name: 'owners',
+            id: 'root/owner',
+            required: false,
+            label: t('label.owner-plural'),
+            type: FieldTypes.USER_TEAM_SELECT,
+            props: {
+              hasPermission: true,
+              children: (
+                <Button
+                  data-testid="add-owner"
+                  icon={
+                    <PlusOutlined
+                      style={{ color: 'white', fontSize: '12px' }}
+                    />
+                  }
+                  size="small"
+                  type="primary"
+                />
+              ),
+              multiple: { user: true, team: false },
+            },
+            formItemLayout: FormItemLayout.HORIZONTAL,
+            formItemProps: {
+              valuePropName: 'owners',
+              trigger: 'onUpdate',
+            },
+          },
+        ] as FieldProp[])
+      : []),
   ];
 
-  const ownerField: FieldProp = {
-    name: 'owners',
-    id: 'root/owner',
-    required: false,
-    label: t('label.owner-plural'),
-    type: FieldTypes.USER_TEAM_SELECT,
-    props: {
-      hasPermission: true,
-      children: (
-        <Button
-          data-testid="add-owner"
-          icon={<PlusOutlined style={{ color: 'white', fontSize: '12px' }} />}
-          size="small"
-          type="primary"
-        />
-      ),
-      multiple: { user: true, team: false },
-    },
-    formItemLayout: FormItemLayout.HORIZONTAL,
-    formItemProps: {
-      valuePropName: 'owners',
-      trigger: 'onUpdate',
-    },
-  };
-
-  /*
   const handleSave = async (data: SubmitProps) => {
     try {
       setSaving(true);
@@ -267,45 +264,13 @@ const TagsForm = ({
       setSaving(false);
     }
   };
-*/
 
-  const handleSave: FormProps['onFinish'] = async (formObj) => {
-    const {
-      name,
-      displayName = '',
-      description = '',
-      disabled = false,
-      mutuallyExclusive = false,
-    } = formObj;
+  const selectedOwners =
+    Form.useWatch<EntityReference | EntityReference[]>('owners', form) ?? [];
 
-    const selectedOwners =
-      ownersList.length > 0
-        ? ownersList
-        : [
-            {
-              id: currentUser?.id ?? '',
-              type: 'user',
-            },
-          ];
-
-    const data = {
-      name: name.trim(),
-      displayName: displayName?.trim(),
-      description: description,
-      disabled,
-      mutuallyExclusive,
-      owners: selectedOwners,
-    };
-    try {
-      setSaving(true);
-      await onSubmit(data);
-      form.setFieldsValue(DEFAULT_FORM_VALUE);
-    } catch {
-      // Parent will handle the error
-    } finally {
-      setSaving(false);
-    }
-  };
+  const ownersList = Array.isArray(selectedOwners)
+    ? selectedOwners
+    : [selectedOwners];
 
   return (
     <Modal
@@ -339,10 +304,7 @@ const TagsForm = ({
         validateMessages={VALIDATION_MESSAGES}
         onFinish={handleSave}>
         {generateFormFields(formFields)}
-
         <div className="m-t-xss">
-          {isClassification && getField(ownerField)}
-
           {Boolean(ownersList.length) && (
             <Space wrap data-testid="owner-container" size={[8, 8]}>
               <OwnerLabel owners={ownersList} />
