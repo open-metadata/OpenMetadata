@@ -461,7 +461,7 @@ public class SubscriptionUtil {
       handleTestDestinationStatus(
           destination, statusCode, statusInfo, headers, entity, mediaType, location, timestamp);
     } else {
-      boolean isError = statusCode >= 300; // any non-2xx status as an error
+      boolean isError = statusCode >= 300 && statusCode < 400;
       handleStatus(destination, attemptTime, statusCode, statusInfo, isError);
     }
   }
