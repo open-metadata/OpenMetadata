@@ -19,6 +19,11 @@ src="/images/v1.5/how-to-guides/governance/glossary1.png"
 alt="Add a New Glossary"
 caption="Add a New Glossary"
 /%}
+{% image
+src="/images/v1.5/how-to-guides/governance/glossary1.1.png"
+alt="Add a New Glossary"
+caption="Add a New Glossary"
+/%}
 
 - Add the Name*, Display Name, Description*, Tags, Owner, and Reviewer details for the glossary. The * marked fields are required fields.
 
