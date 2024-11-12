@@ -569,6 +569,7 @@
     "granularity": "Granularidade",
     "group": "Grupo",
     "has-been-action-type-lowercase": "foi {{actionType}}",
+    "header-plural": "Headers",
     "health-check": "Verificación de saúde",
     "health-lowercase": "health",
     "healthy": "Healthy",

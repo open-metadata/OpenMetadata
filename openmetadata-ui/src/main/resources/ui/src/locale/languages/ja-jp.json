@@ -569,6 +569,7 @@
     "granularity": "Granularity",
     "group": "グループ",
     "has-been-action-type-lowercase": "has been {{actionType}}",
+    "header-plural": "Headers",
     "health-check": "Health Check",
     "health-lowercase": "health",
     "healthy": "Healthy",

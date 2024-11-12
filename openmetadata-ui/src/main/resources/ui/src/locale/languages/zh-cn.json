@@ -569,6 +569,7 @@
     "granularity": "Granularity",
     "group": "组",
     "has-been-action-type-lowercase": "已被{{actionType}}",
+    "header-plural": "Headers",
     "health-check": "健康检查",
     "health-lowercase": "health",
     "healthy": "Healthy",

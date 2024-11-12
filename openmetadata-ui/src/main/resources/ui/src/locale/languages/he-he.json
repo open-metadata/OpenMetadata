@@ -569,6 +569,7 @@
     "granularity": "Granularity",
     "group": "קבוצה",
     "has-been-action-type-lowercase": "{{actionType}} נעשה",
+    "header-plural": "Headers",
     "health-check": "Health Check",
     "health-lowercase": "health",
     "healthy": "Healthy",

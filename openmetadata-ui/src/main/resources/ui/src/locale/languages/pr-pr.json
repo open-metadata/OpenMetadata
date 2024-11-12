@@ -569,6 +569,7 @@
     "granularity": "دقت",
     "group": "گروه",
     "has-been-action-type-lowercase": "{{actionType}} شده است",
+    "header-plural": "Headers",
     "health-check": "بررسی سلامت",
     "health-lowercase": "health",
     "healthy": "Healthy",
