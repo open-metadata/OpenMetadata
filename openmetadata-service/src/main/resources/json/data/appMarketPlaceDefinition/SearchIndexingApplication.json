@@ -60,6 +60,12 @@
     "recreateIndex": false,
     "batchSize": "100",
     "payLoadSize": 104857600,
+    "producerThreads": 10,
+    "consumerThreads": 10,
+    "maxConcurrentRequests": 100,
+    "maxRetries": 3,
+    "initialBackoff": 1000,
+    "maxBackoff": 10000,
     "searchIndexMappingLanguage": "EN"
   }
 }

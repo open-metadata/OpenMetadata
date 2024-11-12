@@ -278,10 +278,15 @@ public class OpenMetadataOperations implements Callable<Integer> {
               description = "Flag to determine if indexes should be recreated.")
           boolean recreateIndexes,
       @Option(
-              names = {"--num-threads"},
+              names = {"--producer-threads"},
               defaultValue = "10",
               description = "Number of threads to use for processing.")
-          int numThreads,
+          int producerThreads,
+      @Option(
+              names = {"--consumer-threads"},
+              defaultValue = "10",
+              description = "Number of threads to use for processing.")
+          int consumerThreads,
       @Option(
               names = {"--back-off"},
               defaultValue = "1000",
@@ -320,7 +325,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
           batchSize,
           payloadSize,
           recreateIndexes,
-          numThreads,
+          producerThreads,
+          consumerThreads,
           backOff,
           maxBackOff,
           maxRequests,
@@ -336,7 +342,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
       int batchSize,
       long payloadSize,
       boolean recreateIndexes,
-      int numThreads,
+      int producerThreads,
+      int consumerThreads,
       int backOff,
       int maxBackOff,
       int maxRequests,
@@ -354,7 +361,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
         .withBatchSize(batchSize)
         .withPayLoadSize(payloadSize)
         .withRecreateIndex(recreateIndexes)
-        .withNumberOfThreads(numThreads)
+        .withProducerThreads(producerThreads)
+        .withConsumerThreads(consumerThreads)
         .withInitialBackoff(backOff)
         .withMaxBackoff(maxBackOff)
         .withMaxConcurrentRequests(maxRequests)
