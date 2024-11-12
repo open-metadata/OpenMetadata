@@ -74,6 +74,7 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
     handlePageChange,
     handlePageSizeChange,
     showPagination,
+    handlePagingChange,
   } = usePaging(PAGE_SIZE_BASE);
 
   const { id, alertName } = useMemo(
@@ -98,7 +99,7 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
     async (paginationOffset = 0) => {
       try {
         setLoading(true);
-        const response = await getAlertEventsFromId({
+        const { data, paging } = await getAlertEventsFromId({
           id,
           params: {
             ...(filter === AlertRecentEventFilters.ALL
@@ -111,18 +112,20 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
           },
         });
 
-        setAlertRecentEvents(response);
+        setAlertRecentEvents(data);
+        handlePagingChange(paging);
       } catch (e) {
         showErrorToast(e as AxiosError);
       } finally {
         setLoading(false);
       }
     },
-    [id, filter, pageSize]
+    [id, filter, pageSize, handlePagingChange]
   );
 
   const pagingHandler = ({ offset, page }: PagingHandlerParams) => {
     handlePageChange(page);
+    handlePagingChange({ ...paging, offset });
     getAlertRecentEvents(offset);
   };
 
