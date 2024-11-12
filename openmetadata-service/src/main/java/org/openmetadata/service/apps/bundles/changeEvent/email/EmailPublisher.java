@@ -23,6 +23,7 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.openmetadata.schema.alert.type.EmailAlertConfig;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
+import org.openmetadata.schema.entity.events.TestDestinationStatus;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.changeEvent.Destination;
@@ -89,8 +90,11 @@ public class EmailPublisher implements Destination<ChangeEvent> {
         EmailUtil.sendTestEmail(email, false);
       }
       setSuccessStatus(System.currentTimeMillis());
+      this.setStatusForTestDestination(
+          TestDestinationStatus.Status.SUCCESS, 200, System.currentTimeMillis());
     } catch (Exception e) {
-      setErrorStatus(System.currentTimeMillis(), 500, e.getMessage());
+      this.setStatusForTestDestination(
+          TestDestinationStatus.Status.FAILED, 500, System.currentTimeMillis());
       String message = CatalogExceptionMessage.eventPublisherFailedToPublish(EMAIL, e.getMessage());
       LOG.error(message);
       throw new EventPublisherException(message);

@@ -67,6 +67,13 @@ public interface Destination<T> {
   }
 
   default void setStatusForTestDestination(
+      TestDestinationStatus.Status status, Integer statusCode, Long timestamp) {
+    TestDestinationStatus subStatus =
+        AlertUtil.buildTestDestinationStatus(status, statusCode, timestamp);
+    getSubscriptionDestination().setStatusDetails(subStatus);
+  }
+
+  default void setStatusForTestDestination(
       TestDestinationStatus.Status status,
       Integer statusCode,
       String statusInfo,
