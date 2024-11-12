@@ -794,6 +794,18 @@
         "partitioning": {
           "description": "Partitioning configuration",
           "$ref": "#/definitions/partitionProfilerConfig"
+        },
+        "computeTableMetrics": {
+          "description": "Option to turn on/off table metric computation. If enabled, profiler will compute table level metrics.",
+          "type": "boolean",
+          "default": true,
+          "title": "Compute Table Metrics"
+        },
+        "computeColumnMetrics": {
+          "description": "Option to turn on/off column metric computation. If enabled, profiler will compute column level metrics.",
+          "type": "boolean",
+          "default": true,
+          "title": "Compute Column Metrics"
         }
       }
     },
@@ -1120,6 +1132,9 @@
     "lifeCycle": {
       "description": "Life Cycle of the entity",
       "$ref": "../../type/lifeCycle.json"
+    },
+    "certification": {
+      "$ref": "../../type/assetCertification.json"
     },
     "sourceHash": {
       "description": "Source hash of the entity",

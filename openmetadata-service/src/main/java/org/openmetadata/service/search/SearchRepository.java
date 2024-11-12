@@ -81,9 +81,9 @@ import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 @Slf4j
 public class SearchRepository {
 
-  @Getter private final SearchClient searchClient;
+  private volatile SearchClient searchClient;
 
-  private Map<String, IndexMapping> entityIndexMap;
+  @Getter private Map<String, IndexMapping> entityIndexMap;
 
   private final String language;
 
@@ -122,6 +122,17 @@ public class SearchRepository {
             : "en";
     clusterAlias = config != null ? config.getClusterAlias() : "";
     loadIndexMappings();
+  }
+
+  public SearchClient getSearchClient() {
+    if (searchClient == null) {
+      synchronized (SearchRepository.class) {
+        if (searchClient == null) {
+          searchClient = buildSearchClient(elasticSearchConfiguration);
+        }
+      }
+    }
+    return searchClient;
   }
 
   private void loadIndexMappings() {
@@ -449,7 +460,7 @@ public class SearchRepository {
     Map<String, Object> fieldData = new HashMap<>();
 
     if (changeDescription != null) {
-      for (FieldChange field : changeDescription.getFieldsAdded()) {
+      for (FieldChange field : changeDescription.getFieldsDeleted()) {
         if (inheritableFields.contains(field.getName())) {
           try {
             if (field.getName().equals(FIELD_OWNERS)) {
@@ -458,24 +469,23 @@ public class SearchRepository {
               for (EntityReference inheritedOwner : inheritedOwners) {
                 inheritedOwner.setInherited(true);
               }
-              fieldData.put("updatedOwners", inheritedOwners);
-              scriptTxt.append(ADD_OWNERS_SCRIPT);
+              fieldData.put("deletedOwners", inheritedOwners);
+              scriptTxt.append(REMOVE_OWNERS_SCRIPT);
+              scriptTxt.append(" ");
             } else {
               EntityReference entityReference =
-                  JsonUtils.readValue(field.getNewValue().toString(), EntityReference.class);
+                  JsonUtils.readValue(field.getOldValue().toString(), EntityReference.class);
               scriptTxt.append(
                   String.format(
-                      PROPAGATE_ENTITY_REFERENCE_FIELD_SCRIPT,
-                      field.getName(),
-                      field.getName(),
+                      REMOVE_PROPAGATED_ENTITY_REFERENCE_FIELD_SCRIPT,
                       field.getName(),
                       field.getName(),
                       field.getName()));
-              fieldData.put(field.getName(), entityReference);
+              fieldData.put(field.getName(), JsonUtils.getMap(entityReference));
+              scriptTxt.append(" ");
             }
           } catch (UnhandledServerException e) {
-            scriptTxt.append(
-                String.format(PROPAGATE_FIELD_SCRIPT, field.getName(), field.getNewValue()));
+            scriptTxt.append(String.format(REMOVE_PROPAGATED_FIELD_SCRIPT, field.getName()));
           }
         }
       }
@@ -505,9 +515,10 @@ public class SearchRepository {
                   String.format(PROPAGATE_FIELD_SCRIPT, field.getName(), field.getNewValue()));
             }
           }
+          scriptTxt.append(" ");
         }
       }
-      for (FieldChange field : changeDescription.getFieldsDeleted()) {
+      for (FieldChange field : changeDescription.getFieldsAdded()) {
         if (inheritableFields.contains(field.getName())) {
           try {
             if (field.getName().equals(FIELD_OWNERS)) {
@@ -516,21 +527,26 @@ public class SearchRepository {
               for (EntityReference inheritedOwner : inheritedOwners) {
                 inheritedOwner.setInherited(true);
               }
-              fieldData.put("deletedOwners", inheritedOwners);
-              scriptTxt.append(REMOVE_OWNERS_SCRIPT);
+              fieldData.put("updatedOwners", inheritedOwners);
+              scriptTxt.append(ADD_OWNERS_SCRIPT);
             } else {
               EntityReference entityReference =
-                  JsonUtils.readValue(field.getOldValue().toString(), EntityReference.class);
+                  JsonUtils.readValue(field.getNewValue().toString(), EntityReference.class);
               scriptTxt.append(
                   String.format(
-                      REMOVE_PROPAGATED_ENTITY_REFERENCE_FIELD_SCRIPT,
+                      PROPAGATE_ENTITY_REFERENCE_FIELD_SCRIPT,
+                      field.getName(),
+                      field.getName(),
                       field.getName(),
                       field.getName(),
                       field.getName()));
-              fieldData.put(field.getName(), JsonUtils.getMap(entityReference));
+              fieldData.put(field.getName(), entityReference);
             }
+            scriptTxt.append(" ");
           } catch (UnhandledServerException e) {
-            scriptTxt.append(String.format(REMOVE_PROPAGATED_FIELD_SCRIPT, field.getName()));
+            scriptTxt.append(
+                String.format(PROPAGATE_FIELD_SCRIPT, field.getName(), field.getNewValue()));
+            scriptTxt.append(" ");
           }
         }
       }

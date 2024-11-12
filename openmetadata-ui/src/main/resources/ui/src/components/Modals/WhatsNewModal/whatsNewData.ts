@@ -17,7 +17,7 @@ import incidentManagerSampleData from '../../../assets/img/incidentManagerSample
 import profilerConfigPage from '../../../assets/img/profilerConfigPage.png';
 import collateIcon from '../../../assets/svg/ic-collate.svg';
 
-export const COOKIE_VERSION = 'VERSION_1_5_9'; // To be changed with each release.
+export const COOKIE_VERSION = 'VERSION_1_5_11'; // To be changed with each release.
 
 // for youtube video make isImage = false and path = {video embed id}
 // embed:- youtube video => share => click on embed and take {url with id} from it
@@ -1110,6 +1110,35 @@ To continue pursuing this objective, the application was completely refactored t
 - **Minor**: Add Query Builder widget.
 - **Fix**: Revamp MetaPilot as Collate AI and add limits ${CollateIconWithLinkMD}
 - **Fix**: Implemented a fix on EntityLink for names with brackets.
+`,
+    },
+  },
+  {
+    id: 52,
+    version: 'v1.5.10',
+    description: 'Released on 31st October 2024.',
+    features: [],
+    changeLogs: {
+      Improvements: `- **Fix**: Encoding issue for teams search query.
+- **Fix**: Disable empty rule for query builder widget.
+- **Fix**: Unable to add more enum values for enum cp.
+- **Fix**: Navigate to listing for deleting a service.
+`,
+    },
+  },
+  {
+    id: 53,
+    version: 'v1.5.11',
+    description: 'Released on 6th November 2024.',
+    features: [],
+    changeLogs: {
+      Improvements: `- **Improvement**: Parallelize the search indexing process.
+- **Fix**: Return s3 endpoint as str() instead of Url.
+- **Improvement**: Databricks query run optimisation.
+- **Fix**: Make Export CSV Async API, websocket to push data back.
+- **Fix**: Airflow dependency.
+- **Improvement**: Add Column Value to be At Expected Location Test.
+- **Fix**: User count doesn't update on adding to the team while using search.
 `,
     },
   },

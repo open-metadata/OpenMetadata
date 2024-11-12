@@ -15,7 +15,7 @@ import javax.net.ssl.SSLContext;
 import javax.ws.rs.core.Response;
 import lombok.Getter;
 import org.apache.commons.lang3.tuple.Pair;
-import org.openmetadata.schema.api.searcg.SearchSettings;
+import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResultList;
@@ -28,6 +28,7 @@ import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.models.IndexMapping;
 import org.openmetadata.service.search.security.RBACConditionEvaluator;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
+import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.SSLUtil;
 import os.org.opensearch.action.bulk.BulkRequest;
 import os.org.opensearch.action.bulk.BulkResponse;
@@ -195,7 +196,13 @@ public interface SearchClient {
    Used for listing knowledge page hierarchy for a given parent and page type, used in Elastic/Open SearchClientExtension
   */
   @SuppressWarnings("unused")
-  default Response listPageHierarchy(String parent, String pageType) {
+  default ResultList listPageHierarchy(String parent, String pageType, int offset, int limit) {
+    throw new CustomExceptionMessage(
+        Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
+  }
+
+  @SuppressWarnings("unused")
+  default ResultList searchPageHierarchy(String query, String pageType, int offset, int limit) {
     throw new CustomExceptionMessage(
         Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
   }

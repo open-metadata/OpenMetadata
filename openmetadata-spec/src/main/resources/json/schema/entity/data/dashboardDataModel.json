@@ -23,7 +23,8 @@
         "LookMlExplore",
         "PowerBIDataModel",
         "QlikDataModel",
-        "QuickSightDataModel"
+        "QuickSightDataModel",
+        "SigmaDataModel"
       ],
       "javaEnums": [
         {
@@ -55,6 +56,9 @@
         },
         {
           "name": "QuickSightDataModel"
+        },
+        {
+          "name": "SigmaDataModel"
         }
       ]
     }
@@ -165,6 +169,9 @@
     "lifeCycle": {
       "description": "Life Cycle properties of the entity",
       "$ref": "../../type/lifeCycle.json"
+    },
+    "certification": {
+      "$ref": "../../type/assetCertification.json"
     },
     "sourceHash": {
       "description": "Source hash of the entity",

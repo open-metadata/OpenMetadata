@@ -90,6 +90,8 @@ import { ActivityFeedTabs } from '../ActivityFeed/ActivityFeedTab/ActivityFeedTa
 import SearchOptions from '../AppBar/SearchOptions';
 import Suggestions from '../AppBar/Suggestions';
 import CmdKIcon from '../common/CmdKIcon/CmdKIcon.component';
+import { useEntityExportModalProvider } from '../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
+import { CSVExportWebsocketResponse } from '../Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
 import WhatsNewModal from '../Modals/WhatsNewModal/WhatsNewModal';
 import NotificationBox from '../NotificationBox/NotificationBox.component';
 import { UserProfileIcon } from '../Settings/Users/UserProfileIcon/UserProfileIcon.component';
@@ -110,6 +112,7 @@ const NavBar = ({
   handleOnClick,
   handleClear,
 }: NavBarProps) => {
+  const { onUpdateCSVExportJob } = useEntityExportModalProvider();
   const { searchCriteria, updateSearchCriteria } = useApplicationStore();
   const searchContainerRef = useRef<HTMLDivElement>(null);
   const Logo = useMemo(() => brandImageClassBase.getMonogram().src, []);
@@ -349,11 +352,22 @@ const NavBar = ({
           );
         }
       });
+
+      socket.on(SOCKET_EVENTS.CSV_EXPORT_CHANNEL, (exportResponse) => {
+        if (exportResponse) {
+          const exportResponseData = JSON.parse(
+            exportResponse
+          ) as CSVExportWebsocketResponse;
+
+          onUpdateCSVExportJob(exportResponseData);
+        }
+      });
     }
 
     return () => {
       socket && socket.off(SOCKET_EVENTS.TASK_CHANNEL);
       socket && socket.off(SOCKET_EVENTS.MENTION_CHANNEL);
+      socket && socket.off(SOCKET_EVENTS.CSV_EXPORT_CHANNEL);
     };
   }, [socket]);
 

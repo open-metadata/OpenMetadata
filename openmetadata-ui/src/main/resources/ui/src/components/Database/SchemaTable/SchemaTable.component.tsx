@@ -53,6 +53,7 @@ import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useFqn } from '../../../hooks/useFqn';
 import { getPartialNameFromTableFQN } from '../../../utils/CommonUtils';
 import {
+  getColumnSorter,
   getEntityName,
   getFrequentlyJoinedColumns,
   searchInColumns,
@@ -361,6 +362,7 @@ const SchemaTable = ({
         accessor: 'name',
         width: 200,
         fixed: 'left',
+        sorter: getColumnSorter<Column, 'name'>('name'),
         render: (name: Column['name'], record: Column) => {
           const { displayName } = record;
 
@@ -390,11 +392,7 @@ const SchemaTable = ({
               {(tablePermissions?.EditAll ||
                 tablePermissions?.EditDisplayName) &&
                 !isReadOnly && (
-                  <Tooltip
-                    placement="right"
-                    title={t('label.edit-entity', {
-                      entity: t('label.column'),
-                    })}>
+                  <Tooltip placement="right" title={t('label.edit')}>
                     <Button
                       className="cursor-pointer hover-cell-icon w-fit-content"
                       data-testid="edit-displayName-button"
@@ -540,6 +538,11 @@ const SchemaTable = ({
       <Select
         data-testid="constraint-type-select"
         options={COLUMN_CONSTRAINT_TYPE_OPTIONS}
+        placeholder={t('label.select-entity', {
+          entity: t('label.entity-type-plural', {
+            entity: t('label.constraint'),
+          }),
+        })}
       />
     </Form.Item>
   );

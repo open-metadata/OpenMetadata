@@ -372,6 +372,12 @@ site_menu:
     url: /connectors/database/sap-hana
   - category: Connectors / Database / SAP Hana / Run Externally
     url: /connectors/database/sap-hana/yaml
+  - category: Connectors / Database / SAP ERP
+    url: /connectors/database/sap-erp
+  - category: Connectors / Database / SAP ERP / Run Externally
+    url: /connectors/database/sap-erp/yaml
+  - category: Connectors / Database / SAP ERP / Setup SAP ERP APIs
+    url: /connectors/database/sap-erp/setup-sap-apis
   - category: Connectors / Database / SAS
     url: /connectors/database/sas
   - category: Connectors / Database / SAS / Run Externally
@@ -421,6 +427,10 @@ site_menu:
     url: /connectors/dashboard/domo-dashboard
   - category: Connectors / Dashboard / Domo Dashboard / Run Externally
     url: /connectors/dashboard/domo-dashboard/yaml
+  - category: Connectors / Dashboard / Lightdash
+    url: /connectors/dashboard/lightdash
+  - category: Connectors / Dashboard / Lightdash / Run Externally
+    url: /connectors/dashboard/lightdash/yaml
   - category: Connectors / Dashboard / Looker
     url: /connectors/dashboard/looker
   - category: Connectors / Dashboard / Looker / Run Externally
@@ -429,6 +439,10 @@ site_menu:
     url: /connectors/dashboard/metabase
   - category: Connectors / Dashboard / Metabase / Run Externally
     url: /connectors/dashboard/metabase/yaml
+  - category: Connectors / Dashboard / MicroStrategy
+    url: /connectors/dashboard/microstrategy
+  - category: Connectors / Dashboard / MicroStrategy / Run Externally
+    url: /connectors/dashboard/microstrategy/yaml
   - category: Connectors / Dashboard / Sigma
     url: /connectors/dashboard/sigma
   - category: Connectors / Dashboard / Sigma / Run Externally

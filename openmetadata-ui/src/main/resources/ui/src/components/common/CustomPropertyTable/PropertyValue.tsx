@@ -212,7 +212,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
       case 'markdown': {
         const header = t('label.edit-entity-name', {
           entityType: t('label.property'),
-          entityName: propertyName,
+          entityName: getEntityName(property),
         });
 
         return (
@@ -243,6 +243,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
 
         return (
           <InlineEdit
+            className="custom-property-inline-edit-container"
             isLoading={isLoading}
             saveButtonProps={{
               disabled: isLoading,
@@ -286,6 +287,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
 
         return (
           <InlineEdit
+            className="custom-property-inline-edit-container"
             isLoading={isLoading}
             saveButtonProps={{
               disabled: isLoading,
@@ -329,6 +331,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
 
         return (
           <InlineEdit
+            className="custom-property-inline-edit-container"
             isLoading={isLoading}
             saveButtonProps={{
               disabled: isLoading,
@@ -368,6 +371,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
 
         return (
           <InlineEdit
+            className="custom-property-inline-edit-container"
             isLoading={isLoading}
             saveButtonProps={{
               disabled: isLoading,
@@ -413,6 +417,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
 
         return (
           <InlineEdit
+            className="custom-property-inline-edit-container"
             isLoading={isLoading}
             saveButtonProps={{
               disabled: isLoading,
@@ -463,6 +468,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
 
         return (
           <InlineEdit
+            className="custom-property-inline-edit-container"
             isLoading={isLoading}
             saveButtonProps={{
               disabled: isLoading,
@@ -536,6 +542,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
 
         return (
           <InlineEdit
+            className="custom-property-inline-edit-container"
             isLoading={isLoading}
             saveButtonProps={{
               disabled: isLoading,
@@ -572,7 +579,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
 
         return (
           <InlineEdit
-            className="sql-query-custom-property"
+            className="custom-property-inline-edit-container sql-query-custom-property"
             isLoading={isLoading}
             saveButtonProps={{
               disabled: isLoading,
@@ -645,6 +652,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
 
         return (
           <InlineEdit
+            className="custom-property-inline-edit-container"
             isLoading={isLoading}
             saveButtonProps={{
               disabled: isLoading,
@@ -992,7 +1000,9 @@ export const PropertyValue: FC<PropertyValueProps> = ({
             {hasEditPermissions && !showInput && (
               <Tooltip
                 placement="left"
-                title={t('label.edit-entity', { entity: propertyName })}>
+                title={t('label.edit-entity', {
+                  entity: getEntityName(property),
+                })}>
                 <Icon
                   component={EditIconComponent}
                   data-testid={`edit-icon${

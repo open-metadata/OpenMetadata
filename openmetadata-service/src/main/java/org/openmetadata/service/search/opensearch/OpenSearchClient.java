@@ -23,6 +23,7 @@ import static org.openmetadata.service.search.EntityBuilderConstant.ES_TAG_FQN_F
 import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_COLUMN_NAMES;
 import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_DISPLAY_NAME_NGRAM;
 import static org.openmetadata.service.search.EntityBuilderConstant.MAX_AGGREGATE_SIZE;
+import static org.openmetadata.service.search.EntityBuilderConstant.MAX_ANALYZED_OFFSET;
 import static org.openmetadata.service.search.EntityBuilderConstant.MAX_RESULT_HITS;
 import static org.openmetadata.service.search.EntityBuilderConstant.OWNER_DISPLAY_NAME_KEYWORD;
 import static org.openmetadata.service.search.EntityBuilderConstant.POST_TAG;
@@ -116,6 +117,7 @@ import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSear
 import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchDailyActiveUsersAggregator;
 import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchDynamicChartAggregatorFactory;
 import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchDynamicChartAggregatorInterface;
+import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchLineChartAggregator;
 import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchMostActiveUsersAggregator;
 import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchMostViewedEntitiesAggregator;
 import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchPageViewsByEntitiesAggregator;
@@ -1274,6 +1276,7 @@ public class OpenSearchClient implements SearchClient {
     }
     hb.preTags(PRE_TAG);
     hb.postTags(POST_TAG);
+    hb.maxAnalyzerOffset(MAX_ANALYZED_OFFSET);
     return hb;
   }
 
@@ -2103,13 +2106,7 @@ public class OpenSearchClient implements SearchClient {
 
   /** */
   @Override
-  public void close() {
-    try {
-      this.client.close();
-    } catch (Exception e) {
-      LOG.error("Failed to close open search", e);
-    }
-  }
+  public void close() {}
 
   @Override
   public BulkResponse bulk(BulkRequest data, RequestOptions options) throws IOException {
@@ -2259,26 +2256,39 @@ public class OpenSearchClient implements SearchClient {
   }
 
   @Override
-  public List<Map<String, String>> fetchDIChartFields() throws IOException {
-    // This function is being used for creating custom charts in Data Insights
+  public List<Map<String, String>> fetchDIChartFields() {
     List<Map<String, String>> fields = new ArrayList<>();
-    GetMappingsRequest request =
-        new GetMappingsRequest().indices(DataInsightSystemChartRepository.DI_SEARCH_INDEX);
+    for (String type : DataInsightSystemChartRepository.dataAssetTypes) {
+      // This function is being used for creating custom charts in Data Insights
+      try {
+        GetMappingsRequest request =
+            new GetMappingsRequest()
+                .indices(
+                    DataInsightSystemChartRepository.DI_SEARCH_INDEX_PREFIX
+                        + "-"
+                        + type.toLowerCase());
 
-    // Execute request
-    GetMappingsResponse response = client.indices().getMapping(request, RequestOptions.DEFAULT);
+        // Execute request
+        GetMappingsResponse response = client.indices().getMapping(request, RequestOptions.DEFAULT);
 
-    // Get mappings for the index
-    for (Map.Entry<String, MappingMetadata> entry : response.mappings().entrySet()) {
-      // Get fields for the index
-      Map<String, Object> indexFields = entry.getValue().sourceAsMap();
-      getFieldNames((Map<String, Object>) indexFields.get("properties"), "", fields);
+        // Get mappings for the index
+        for (Map.Entry<String, MappingMetadata> entry : response.mappings().entrySet()) {
+          // Get fields for the index
+          Map<String, Object> indexFields = entry.getValue().sourceAsMap();
+          getFieldNames((Map<String, Object>) indexFields.get("properties"), "", fields, type);
+        }
+      } catch (Exception exception) {
+        LOG.error(exception.getMessage());
+      }
     }
     return fields;
   }
 
   void getFieldNames(
-      @NotNull Map<String, Object> fields, String prefix, List<Map<String, String>> fieldList) {
+      @NotNull Map<String, Object> fields,
+      String prefix,
+      List<Map<String, String>> fieldList,
+      String entityType) {
     for (Map.Entry<String, Object> entry : fields.entrySet()) {
       String postfix = "";
       String type = (String) ((Map<String, Object>) entry.getValue()).get("type");
@@ -2293,13 +2303,17 @@ public class OpenSearchClient implements SearchClient {
         Map<String, Object> subFields = (Map<String, Object>) entry.getValue();
         if (subFields.containsKey("properties")) {
           getFieldNames(
-              (Map<String, Object>) subFields.get("properties"), fieldName + ".", fieldList);
+              (Map<String, Object>) subFields.get("properties"),
+              fieldName + ".",
+              fieldList,
+              entityType);
         } else {
           if (fieldList.stream().noneMatch(e -> e.get("name").equals(fieldName))) {
             Map<String, String> map = new HashMap<>();
             map.put("name", fieldName);
             map.put("displayName", fieldNameOriginal);
             map.put("type", type);
+            map.put("entityType", entityType);
             fieldList.add(map);
           }
         }
@@ -2313,10 +2327,13 @@ public class OpenSearchClient implements SearchClient {
         OpenSearchDynamicChartAggregatorFactory.getAggregator(diChart);
     if (aggregator != null) {
       List<FormulaHolder> formulas = new ArrayList<>();
+      Map<String, OpenSearchLineChartAggregator.MetricFormulaHolder> metricFormulaHolder =
+          new HashMap<>();
       os.org.opensearch.action.search.SearchRequest searchRequest =
-          aggregator.prepareSearchRequest(diChart, start, end, formulas);
+          aggregator.prepareSearchRequest(diChart, start, end, formulas, metricFormulaHolder);
       SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
-      return aggregator.processSearchResponse(diChart, searchResponse, formulas);
+      return aggregator.processSearchResponse(
+          diChart, searchResponse, formulas, metricFormulaHolder);
     }
     return null;
   }
