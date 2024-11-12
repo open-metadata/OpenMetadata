@@ -80,8 +80,8 @@ import { useApplicationStore } from '../../hooks/useApplicationStore';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../hooks/useFqn';
 import {
+  exportLineageAsync,
   getDataQualityLineage,
-  getExportAsyncLineage,
   getLineageDataByFQN,
   updateLineageEdge,
 } from '../../rest/lineageAPI';
@@ -338,11 +338,14 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
 
   const exportLineageData = useCallback(
     async (_: string) => {
-      const exportResult = await getExportAsyncLineage();
-
-      return exportResult;
+      return exportLineageAsync(
+        decodedFqn,
+        entityType,
+        lineageConfig,
+        queryFilter
+      );
     },
-    [entityType, decodedFqn, entityLineage]
+    [entityType, decodedFqn, lineageConfig, queryFilter]
   );
 
   const onExportClick = useCallback(() => {
@@ -352,7 +355,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         onExport: exportLineageData,
       });
     }
-  }, [entityType, decodedFqn, entityLineage]);
+  }, [entityType, decodedFqn, lineageConfig, queryFilter]);
 
   const loadChildNodesHandler = useCallback(
     async (node: SourceType, direction: EdgeTypeEnum) => {
