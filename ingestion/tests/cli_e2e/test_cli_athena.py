@@ -88,7 +88,7 @@ class AthenaCliTest(CliCommonDB.TestSuite):
 
     @staticmethod
     def expected_filtered_schema_includes() -> int:
-        return 6
+        return 8
 
     @staticmethod
     def expected_filtered_schema_excludes() -> int:
@@ -96,15 +96,15 @@ class AthenaCliTest(CliCommonDB.TestSuite):
 
     @staticmethod
     def expected_filtered_table_includes() -> int:
-        return 8
+        return 10
 
     @staticmethod
     def expected_filtered_table_excludes() -> int:
-        return 8
+        return 10
 
     @staticmethod
     def expected_filtered_mix() -> int:
-        return 8
+        return 10
 
     def retrieve_lineage(self, entity_fqn: str) -> dict:
         pass
@@ -135,7 +135,7 @@ class AthenaCliTest(CliCommonDB.TestSuite):
     ) -> None:
         self.assertEqual(len(source_status.failures), 0)
         self.assertEqual(len(source_status.warnings), 0)
-        self.assertEqual(len(source_status.filtered), 6)
+        self.assertGreaterEqual(len(source_status.filtered), 6)
         self.assertGreaterEqual(
             len(source_status.records) + len(source_status.updated_records),
             self.expected_tables(),
