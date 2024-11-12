@@ -159,6 +159,6 @@
       }
     }
   },
-  "required": ["name", "service"],
+  "required": ["id", "name", "service"],
   "additionalProperties": false
 }
