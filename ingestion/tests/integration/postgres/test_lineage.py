@@ -55,6 +55,7 @@ def test_native_lineage(
 ):
     ingestion_config["source"]["sourceConfig"]["config"].update(source_config)
     run_workflow(MetadataWorkflow, ingestion_config)
+    run_workflow(MetadataWorkflow, native_lineage_config)
     film_actor_edges = metadata.get_lineage_by_name(
         Table, f"{db_service.fullyQualifiedName.root}.dvdrental.public.film_actor"
     )
@@ -96,9 +97,7 @@ def test_log_lineage(
     workflow = run_workflow(
         MetadataWorkflow, log_lineage_config, raise_from_status=False
     )
-    assert len(workflow.source.status.failures) == 2
-    for failure in workflow.source.status.failures:
-        assert "Table entity not found" in failure.error
+    assert len(workflow.source.status.failures) == 0
     customer_table: Table = metadata.get_by_name(
         Table,
         f"{db_service.fullyQualifiedName.root}.dvdrental.public.customer",
