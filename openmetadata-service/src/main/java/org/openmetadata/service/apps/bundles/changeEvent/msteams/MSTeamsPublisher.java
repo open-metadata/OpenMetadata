@@ -76,8 +76,7 @@ public class MSTeamsPublisher implements Destination<ChangeEvent> {
   public void sendMessage(ChangeEvent event) throws EventPublisherException {
     try {
       TeamsMessage teamsMessage =
-          teamsMessageFormatter.buildOutgoingMessage(
-              eventSubscription.getFullyQualifiedName(), event);
+          teamsMessageFormatter.buildOutgoingMessage(eventSubscription.getDisplayName(), event);
       List<Invocation.Builder> targets =
           getTargetsForWebhookAlert(
               webhook, subscriptionDestination.getCategory(), MS_TEAMS, client, event);

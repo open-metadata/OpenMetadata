@@ -63,10 +63,9 @@ public class EmailPublisher implements Destination<ChangeEvent> {
       Set<String> receivers =
           getTargetsForAlert(emailAlertConfig, subscriptionDestination.getCategory(), EMAIL, event);
       EmailMessage emailMessage =
-          emailDecorator.buildOutgoingMessage(eventSubscription.getFullyQualifiedName(), event);
+          emailDecorator.buildOutgoingMessage(eventSubscription.getDisplayName(), event);
       for (String email : receivers) {
-        EmailUtil.sendChangeEventMail(
-            eventSubscription.getFullyQualifiedName(), email, emailMessage);
+        EmailUtil.sendChangeEventMail(eventSubscription.getDisplayName(), email, emailMessage);
       }
       setSuccessStatus(System.currentTimeMillis());
     } catch (Exception e) {
