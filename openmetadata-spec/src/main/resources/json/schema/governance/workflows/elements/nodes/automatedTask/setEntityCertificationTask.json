@@ -33,7 +33,19 @@
       "type": "object",
       "properties": {
         "certification": {
-          "type": "string"
+          "type": "string",
+          "enum": [
+            "",
+            "Certification.Gold",
+            "Certification.Silver",
+            "Certification.Bronze"
+          ],
+          "enumNames": [
+            "None",
+            "Gold",
+            "Silver",
+            "Bronze"
+          ]
         }
       },
       "required": ["certification"],
