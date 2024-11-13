@@ -34,7 +34,9 @@ public class SetEntityCertificationTask implements NodeInterface {
 
     ServiceTask setEntityCertification =
         getSetEntityCertificationServiceTask(
-            subProcessId, (CertificationConfiguration.CertificationEnum) nodeDefinition.getConfig().getCertification());
+            subProcessId,
+            (CertificationConfiguration.CertificationEnum)
+                nodeDefinition.getConfig().getCertification());
 
     EndEvent endEvent =
         new EndEventBuilder().id(getFlowableElementId(subProcessId, "endEvent")).build();
@@ -56,7 +58,10 @@ public class SetEntityCertificationTask implements NodeInterface {
     FieldExtension certificationExpr =
         new FieldExtensionBuilder()
             .fieldName("certificationExpr")
-            .fieldValue(Optional.ofNullable(certification).map(CertificationConfiguration.CertificationEnum::value).orElse(""))
+            .fieldValue(
+                Optional.ofNullable(certification)
+                    .map(CertificationConfiguration.CertificationEnum::value)
+                    .orElse(""))
             .build();
 
     ServiceTask serviceTask =
