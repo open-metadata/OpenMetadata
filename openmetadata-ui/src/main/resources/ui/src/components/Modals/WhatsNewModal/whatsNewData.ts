@@ -1129,7 +1129,7 @@ To continue pursuing this objective, the application was completely refactored t
   {
     id: 53,
     version: 'v1.5.11',
-    description: 'Released on 12th November 2024.',
+    description: 'Released on 13th November 2024.',
     features: [],
     changeLogs: {
       Improvements: `- **Improvement**: Parallelize the search indexing process.
