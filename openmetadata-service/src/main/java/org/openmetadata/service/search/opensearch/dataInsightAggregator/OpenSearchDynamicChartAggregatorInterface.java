@@ -316,7 +316,8 @@ public interface OpenSearchDynamicChartAggregatorInterface {
       return new DataInsightCustomChartResult()
           .withCount(value)
           .withDay(Double.valueOf(key))
-          .withGroup(group);
+          .withGroup(group)
+          .withMetric(metric);
     return new DataInsightCustomChartResult()
         .withCount(value)
         .withGroup(group)
