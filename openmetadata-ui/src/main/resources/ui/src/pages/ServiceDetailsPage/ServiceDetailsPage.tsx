@@ -179,8 +179,13 @@ const ServiceDetailsPage: FunctionComponent = () => {
     handlePagingChange: handleIngestionPagingChange,
   } = ingestionPagingInfo;
 
-  const { paging, currentPage, handlePageChange, handlePagingChange } =
-    pagingInfo;
+  const {
+    paging,
+    pageSize: databasePageSize,
+    currentPage,
+    handlePageChange,
+    handlePagingChange,
+  } = pagingInfo;
 
   const [serviceDetails, setServiceDetails] = useState<ServicesType>(
     {} as ServicesType
@@ -848,8 +853,8 @@ const ServiceDetailsPage: FunctionComponent = () => {
 
   useEffect(() => {
     handlePageChange(INITIAL_PAGING_VALUE);
-    getOtherDetails();
-  }, [activeTab, showDeleted, deleted]);
+    getOtherDetails({ limit: databasePageSize });
+  }, [activeTab, showDeleted, deleted, databasePageSize]);
 
   useEffect(() => {
     // fetch count for data modal tab, its need only when its dashboard page and data modal tab is not active
@@ -1014,6 +1019,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
             isServiceLoading={isServiceLoading}
             paging={paging}
             pagingHandler={pagingHandler}
+            pagingInfo={pagingInfo}
             saveUpdatedServiceData={saveUpdatedServiceData}
             serviceDetails={serviceDetails}
             serviceName={serviceCategory}
