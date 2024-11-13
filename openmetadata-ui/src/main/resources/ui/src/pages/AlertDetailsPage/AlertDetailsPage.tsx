@@ -49,7 +49,7 @@ import {
 import { AlertDetailTabs } from '../../enums/Alerts.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
-import { EventSubscriptionDiagnosticInfo } from '../../generated/events/api/eventSubscriptionDiagnosticInfo';
+import { EventsRecord } from '../../generated/events/api/eventsRecord';
 import {
   EntityReference,
   EventSubscription,
@@ -88,8 +88,7 @@ function AlertDetailsPage({
   const history = useHistory();
 
   const [alertDetails, setAlertDetails] = useState<EventSubscription>();
-  const [alertEventCounts, setAlertEventCounts] =
-    useState<EventSubscriptionDiagnosticInfo>();
+  const [alertEventCounts, setAlertEventCounts] = useState<EventsRecord>();
   const [loadingCount, setLoadingCount] = useState(1);
   const [ownerLoading, setOwnerLoading] = useState(false);
   const [alertEventCountsLoading, setAlertEventCountsLoading] = useState(false);

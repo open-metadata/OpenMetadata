@@ -16,7 +16,10 @@ import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { useFqn } from '../../hooks/useFqn';
-import { mockAlertDetails } from '../../mocks/Alerts.mock';
+import {
+  mockAlertDetails,
+  mockAlertEventDiagnosticCounts,
+} from '../../mocks/Alerts.mock';
 import { ENTITY_PERMISSIONS } from '../../mocks/Permissions.mock';
 import * as AlertsAPIs from '../../rest/alertsAPI';
 import * as ObservabilityAPIs from '../../rest/observabilityAPI';
@@ -47,6 +50,9 @@ jest.mock('../../rest/observabilityAPI', () => ({
   updateObservabilityAlert: jest
     .fn()
     .mockImplementation(() => Promise.resolve(mockAlertDetails)),
+  getAlertEventsDiagnosticsInfo: jest
+    .fn()
+    .mockImplementation(() => Promise.resolve(mockAlertEventDiagnosticCounts)),
 }));
 
 jest.mock('../../rest/alertsAPI', () => ({

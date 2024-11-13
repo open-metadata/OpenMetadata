@@ -299,3 +299,10 @@ export const MOCK_ALERT_RECENT_EVENTS: TypedEvent[] = [
     timestamp: 1730871300743,
   },
 ];
+
+export const mockAlertEventDiagnosticCounts = {
+  totalEventsCount: 13,
+  pendingEventsCount: 3,
+  successfulEventsCount: 9,
+  failedEventsCount: 1,
+};

@@ -17,7 +17,7 @@ import { Operation } from 'fast-json-patch';
 import { PagingResponse } from 'Models';
 import axiosClient from '.';
 import { CreateEventSubscription } from '../generated/events/api/createEventSubscription';
-import { EventSubscriptionDiagnosticInfo } from '../generated/events/api/eventSubscriptionDiagnosticInfo';
+import { EventsRecord } from '../generated/events/api/eventsRecord';
 import { EventSubscription } from '../generated/events/eventSubscription';
 import { FilterResourceDescriptor } from '../generated/events/filterResourceDescriptor';
 import { Function } from '../generated/type/function';
@@ -117,8 +117,8 @@ export const getAlertEventsDiagnosticsInfo = async ({
   params?: ListParams;
   listCountOnly?: boolean;
 }) => {
-  const response = await axiosClient.get<EventSubscriptionDiagnosticInfo>(
-    `${BASE_URL}/name/${fqn}/diagnosticInfo`,
+  const response = await axiosClient.get<EventsRecord>(
+    `${BASE_URL}/name/${fqn}/eventsRecord`,
     {
       params: {
         ...params,

@@ -77,7 +77,7 @@ import { SearchIndex } from '../../enums/search.enum';
 import { StatusType } from '../../generated/entity/data/pipeline';
 import { PipelineState } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { CreateEventSubscription } from '../../generated/events/api/createEventSubscription';
-import { EventSubscriptionDiagnosticInfo } from '../../generated/events/api/eventSubscriptionDiagnosticInfo';
+import { EventsRecord } from '../../generated/events/api/eventsRecord';
 import {
   ChangeEvent,
   Status,
@@ -1305,7 +1305,7 @@ export const getChangeEventDataFromTypedEvent = (
 
 export const getAlertExtraInfo = (
   alertEventCountsLoading: boolean,
-  alertEventCounts?: EventSubscriptionDiagnosticInfo
+  alertEventCounts?: EventsRecord
 ) => {
   if (alertEventCountsLoading) {
     return (
@@ -1328,13 +1328,13 @@ export const getAlertExtraInfo = (
         label={t('label.total-entity', {
           entity: t('label.event-plural'),
         })}
-        value={alertEventCounts?.latestOffset ?? 0}
+        value={alertEventCounts?.totalEventsCount ?? 0}
       />
       <ExtraInfoLabel
         label={t('label.pending-entity', {
           entity: t('label.event-plural'),
         })}
-        value={alertEventCounts?.totalUnprocessedEventsCount ?? 0}
+        value={alertEventCounts?.pendingEventsCount ?? 0}
       />
       <ExtraInfoLabel
         label={t('label.failed-entity', {
