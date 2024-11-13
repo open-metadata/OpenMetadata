@@ -78,6 +78,10 @@ class QuicksightCliTest(CliCommonDashboard.TestSuite):
     def assert_for_vanilla_ingestion(
         self, source_status: Status, sink_status: Status
     ) -> None:
+        """
+        We are overriding this method because of diff.
+        of 1 in source and sink records
+        """
         self.assertTrue(len(source_status.failures) == 0)
         self.assertTrue(len(source_status.warnings) == 0)
         self.assertTrue(len(source_status.filtered) == 0)
