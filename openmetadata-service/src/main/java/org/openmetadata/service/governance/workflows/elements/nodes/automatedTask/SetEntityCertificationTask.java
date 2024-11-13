@@ -11,6 +11,7 @@ import org.flowable.bpmn.model.SequenceFlow;
 import org.flowable.bpmn.model.ServiceTask;
 import org.flowable.bpmn.model.StartEvent;
 import org.flowable.bpmn.model.SubProcess;
+import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.CertificationConfiguration;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.SetEntityCertificationTaskDefinition;
 import org.openmetadata.service.governance.workflows.elements.NodeInterface;
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.impl.SetEntityCertificationImpl;
@@ -33,7 +34,7 @@ public class SetEntityCertificationTask implements NodeInterface {
 
     ServiceTask setEntityCertification =
         getSetEntityCertificationServiceTask(
-            subProcessId, nodeDefinition.getConfig().getCertification());
+            subProcessId, (CertificationConfiguration.CertificationEnum) nodeDefinition.getConfig().getCertification());
 
     EndEvent endEvent =
         new EndEventBuilder().id(getFlowableElementId(subProcessId, "endEvent")).build();
@@ -51,11 +52,11 @@ public class SetEntityCertificationTask implements NodeInterface {
   }
 
   private ServiceTask getSetEntityCertificationServiceTask(
-      String subProcessId, String certification) {
+      String subProcessId, CertificationConfiguration.CertificationEnum certification) {
     FieldExtension certificationExpr =
         new FieldExtensionBuilder()
             .fieldName("certificationExpr")
-            .fieldValue(Optional.ofNullable(certification).orElse(""))
+            .fieldValue(Optional.ofNullable(certification).map(CertificationConfiguration.CertificationEnum::value).orElse(""))
             .build();
 
     ServiceTask serviceTask =
