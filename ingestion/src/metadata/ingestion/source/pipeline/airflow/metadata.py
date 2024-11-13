@@ -157,13 +157,20 @@ class AirflowSource(PipelineServiceSource):
         return task
 
     def get_all_tags(self, dag_id: str) -> List[str]:
-        tag_query = (
-            self.session.query(DagTag.name)
-            .filter(DagTag.dag_id == dag_id)
-            .distinct()
-            .all()
-        )
-        return [tag[0] for tag in tag_query]
+        try:
+            tag_query = (
+                self.session.query(DagTag.name)
+                .filter(DagTag.dag_id == dag_id)
+                .distinct()
+                .all()
+            )
+            return [tag[0] for tag in tag_query]
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Could not extract tags details due to {exc}"
+            )
+        return []
 
     def yield_tag(
         self, pipeline_details: AirflowDagDetails
