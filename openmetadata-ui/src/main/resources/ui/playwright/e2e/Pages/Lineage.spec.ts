@@ -357,7 +357,7 @@ test('Verify function data in edge drawer', async ({ browser }) => {
 
     await page.locator('.edge-info-drawer').isVisible();
 
-    await expect(await page.locator('[data-testid="Function"]')).toContainText(
+    await expect(page.locator('[data-testid="Function"]')).toContainText(
       'count'
     );
   } finally {
@@ -384,13 +384,6 @@ test('Verify global lineage config', async ({ browser }) => {
     await addPipelineBetweenNodes(page, table, topic);
     await addPipelineBetweenNodes(page, topic, dashboard);
     await addPipelineBetweenNodes(page, dashboard, mlModel);
-
-    await topic.visitEntityPage(page);
-    await visitLineageTab(page);
-
-    await verifyNodePresent(page, table);
-    await verifyNodePresent(page, dashboard);
-    await verifyNodePresent(page, mlModel);
 
     await settingClick(page, GlobalSettingOptions.LINEAGE_CONFIG);
     await fillLineageConfigForm(page, {
@@ -420,6 +413,13 @@ test('Verify global lineage config', async ({ browser }) => {
       downstreamDepth: 2,
       layer: 'Entity Lineage',
     });
+
+    await topic.visitEntityPage(page);
+    await visitLineageTab(page);
+
+    await verifyNodePresent(page, table);
+    await verifyNodePresent(page, dashboard);
+    await verifyNodePresent(page, mlModel);
   } finally {
     await table.delete(apiContext);
     await topic.delete(apiContext);
