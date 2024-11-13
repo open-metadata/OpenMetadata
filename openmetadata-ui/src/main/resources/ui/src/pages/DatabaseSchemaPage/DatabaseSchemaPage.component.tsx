@@ -94,7 +94,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const pagingInfo = usePaging(PAGE_SIZE);
 
-  const { paging, pageSize, handlePageChange, handlePagingChange } = pagingInfo;
+  const { paging, pageSize, handlePagingChange } = pagingInfo;
 
   const { tab: activeTab = EntityTabs.TABLE } =
     useParams<{ tab: EntityTabs }>();
@@ -459,7 +459,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       }
       setCurrentTablesPage(currentPage);
     },
-    [paging, getSchemaTables, handlePageChange]
+    [paging, getSchemaTables]
   );
 
   const versionHandler = useCallback(() => {

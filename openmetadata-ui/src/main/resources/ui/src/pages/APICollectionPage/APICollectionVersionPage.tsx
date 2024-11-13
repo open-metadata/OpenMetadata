@@ -86,7 +86,7 @@ const APICollectionVersionPage = () => {
 
   const pagingInfo = usePaging(PAGE_SIZE);
 
-  const { paging, pageSize, handlePageChange, handlePagingChange } = pagingInfo;
+  const { paging, pageSize, handlePagingChange } = pagingInfo;
 
   const [collectionPermissions, setCollectionPermissions] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
@@ -237,7 +237,7 @@ const APICollectionVersionPage = () => {
       }
       setCurrentEndpointsPage(currentPage);
     },
-    [paging, getAPICollectionEndpoints, handlePageChange]
+    [paging, getAPICollectionEndpoints]
   );
 
   const { versionHandler, backHandler } = useMemo(

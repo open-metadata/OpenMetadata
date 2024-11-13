@@ -76,7 +76,7 @@ function DatabaseSchemaVersionPage() {
 
   const pagingInfo = usePaging(PAGE_SIZE);
 
-  const { paging, pageSize, handlePageChange, handlePagingChange } = pagingInfo;
+  const { paging, pageSize, handlePagingChange } = pagingInfo;
 
   const [currentPage, setCurrentPage] = useState(INITIAL_PAGING_VALUE);
   const [tableData, setTableData] = useState<Array<Table>>([]);
@@ -197,7 +197,7 @@ function DatabaseSchemaVersionPage() {
       }
       setCurrentPage(currentPage);
     },
-    [paging, getSchemaTables, handlePageChange]
+    [paging, getSchemaTables]
   );
 
   const { versionHandler, backHandler } = useMemo(

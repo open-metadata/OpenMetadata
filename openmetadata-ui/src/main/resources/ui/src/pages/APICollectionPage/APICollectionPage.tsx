@@ -103,7 +103,7 @@ const APICollectionPage: FunctionComponent = () => {
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const pagingInfo = usePaging(PAGE_SIZE);
 
-  const { paging, pageSize, handlePageChange, handlePagingChange } = pagingInfo;
+  const { paging, pageSize, handlePagingChange } = pagingInfo;
 
   const { tab: activeTab = EntityTabs.API_ENDPOINT } =
     useParams<{ tab: EntityTabs }>();
@@ -461,7 +461,7 @@ const APICollectionPage: FunctionComponent = () => {
       }
       setCurrentEndpointsPage(currentPage);
     },
-    [paging, getAPICollectionEndpoints, handlePageChange]
+    [paging, getAPICollectionEndpoints]
   );
 
   const versionHandler = useCallback(() => {
