@@ -8,6 +8,33 @@
   ],
   "javaType": "org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.SetEntityCertificationTaskDefinition",
   "type": "object",
+  "definitions": {
+    "certificationEnum": {
+      "type": "string",
+      "enum": [
+        "",
+        "Certification.Gold",
+        "Certification.Silver",
+        "Certification.Bronze"
+      ],
+      "enumNames": [
+        "None",
+        "Gold",
+        "Silver",
+        "Bronze"
+      ]
+    },
+    "certificationConfiguration": {
+      "type": "object",
+      "properties": {
+        "certification": {
+          "$ref": "#/definitions/certificationEnum"
+        }
+      },
+      "required": ["certification"],
+      "additionalProperties": false
+    }
+  },
   "properties": {
     "type": {
       "type": "string",
@@ -30,14 +57,7 @@
       "$ref": "../../../../../type/basic.json#/definitions/markdown"
     },
     "config": {
-      "type": "object",
-      "properties": {
-        "certification": {
-          "type": "string"
-        }
-      },
-      "required": ["certification"],
-      "additionalProperties": false
+      "$ref": "#/definitions/certificationConfiguration"
     },
     "input": {
       "type": "array",

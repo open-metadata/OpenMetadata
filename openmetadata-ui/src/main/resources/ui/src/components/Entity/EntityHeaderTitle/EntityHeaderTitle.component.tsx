@@ -88,7 +88,7 @@ const EntityHeaderTitle = ({
       {certification && (
         <Col className="text-xs">
           <div className="d-flex items-center">
-            <Divider className="m-x-xs h-6" type="vertical" />
+            <Divider className="m-x-xs h-6 m-r-sm" type="vertical" />
             <CertificationTag certification={certification} />
           </div>
         </Col>
