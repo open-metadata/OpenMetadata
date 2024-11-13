@@ -26,7 +26,7 @@
       "title": "Number of Consumer Threads",
       "description": "Number of threads to use for reindexing",
       "type": "integer",
-      "default": 5
+      "default": 1
     },
     "maxConcurrentRequests": {
       "title": "Max Concurrent Requests",
