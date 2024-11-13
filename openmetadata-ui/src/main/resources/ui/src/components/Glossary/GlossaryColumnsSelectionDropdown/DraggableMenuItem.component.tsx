@@ -65,7 +65,7 @@ const DraggableMenuItem: React.FC<DraggableMenuItemProps> = ({
         drag(drop(node));
       }}>
       <ColumnDragIcon
-        className="glossary-col-dropdown-drag-icon m-l-xs"
+        className="glossary-col-dropdown-drag-icon m-l-xs m-t-xs"
         height={16}
         width={16}
       />
