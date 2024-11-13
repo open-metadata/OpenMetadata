@@ -139,7 +139,7 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
     DatabaseService databaseService =
         databaseServiceResourceTest.createEntity(
             databaseServiceResourceTest
-                .createRequest("DI_Test_Snowflake")
+                .createRequest("DI Test Snowflake")
                 .withServiceType(CreateDatabaseService.DatabaseServiceType.Snowflake),
             ADMIN_AUTH_HEADERS);
 
