@@ -24,9 +24,8 @@ import sqlalchemy.types
 from data_diff.diff_tables import DiffResultWrapper
 from data_diff.errors import DataDiffMismatchingKeyTypesError
 from data_diff.utils import ArithAlphanumeric, CaseInsensitiveDict
-from sqlalchemy import Column as SAColumn, create_engine
-from sqlalchemy import literal, select
-from sqlalchemy.engine import default
+from sqlalchemy import Column as SAColumn
+from sqlalchemy import create_engine, literal, select
 
 from metadata.data_quality.validations import utils
 from metadata.data_quality.validations.base_test_handler import BaseTestValidator

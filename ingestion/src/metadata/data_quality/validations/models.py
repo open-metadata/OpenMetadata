@@ -4,11 +4,7 @@ from typing import List, Optional
 
 from pydantic import BaseModel
 
-from metadata.generated.schema.entity.data.table import (
-    Column,
-    TableProfilerConfig,
-    ColumnName,
-)
+from metadata.generated.schema.entity.data.table import Column, TableProfilerConfig
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
