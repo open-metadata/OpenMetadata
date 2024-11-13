@@ -54,6 +54,7 @@ test.describe('Notification Alert Flow', () => {
     alertDetails: {
       id: '',
       name: '',
+      displayName: '',
       description: '',
       filteringRules: { resources: [] },
       input: { filters: [], actions: [] },
@@ -191,7 +192,7 @@ test.describe('Notification Alert Flow', () => {
         const updateAlert = page.waitForResponse(
           (response) =>
             response.url().includes('/api/v1/events/subscriptions') &&
-            response.request().method() === 'PUT' &&
+            response.request().method() === 'PATCH' &&
             response.status() === 200
         );
         await page.click('[data-testid="save-button"]');
@@ -300,7 +301,7 @@ test.describe('Notification Alert Flow', () => {
         const updateAlert = page.waitForResponse(
           (response) =>
             response.url().includes('/api/v1/events/subscriptions') &&
-            response.request().method() === 'PUT' &&
+            response.request().method() === 'PATCH' &&
             response.status() === 200
         );
         await page.click('[data-testid="save-button"]');
@@ -404,7 +405,7 @@ test.describe('Notification Alert Flow', () => {
       const updateAlert = page.waitForResponse(
         (response) =>
           response.url().includes('/api/v1/events/subscriptions') &&
-          response.request().method() === 'PUT' &&
+          response.request().method() === 'PATCH' &&
           response.status() === 200
       );
       await page.click('[data-testid="save-button"]');
