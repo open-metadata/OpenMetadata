@@ -170,9 +170,8 @@ class AirflowSource(PipelineServiceSource):
             logger.warning(f"Could not extract tags details due to {exc}")
         return []
 
-    def yield_tag(
-        self, pipeline_details: AirflowDagDetails
-    ) -> Iterable[Either[OMetaTagAndClassification]]:
+    def yield_tag(self, *args, **_) -> Iterable[Either[OMetaTagAndClassification]]:
+        pipeline_details = args[0]
         yield from get_ometa_tag_and_classification(
             tags=self.get_all_tags(dag_id=pipeline_details.dag_id),
             classification_name=AIRFLOW_TAG_CATEGORY,
