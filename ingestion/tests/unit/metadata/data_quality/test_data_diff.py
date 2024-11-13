@@ -19,6 +19,7 @@ from metadata.generated.schema.entity.data.table import (
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
+from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
 
 
 @pytest.mark.parametrize(
@@ -61,12 +62,18 @@ def test_compile_and_clauses(elements, expected):
                         }
                     ),
                     "table2": TableParameter.model_construct(
-                        **{"database_service_type": DatabaseServiceType.Postgres}
+                        **{
+                            "database_service_type": DatabaseServiceType.Postgres,
+                            "columns": [
+                                Column(name="id", dataType=DataType.STRING),
+                                Column(name="name", dataType=DataType.STRING),
+                            ],
+                        }
                     ),
                     "keyColumns": ["id"],
                 }
             ),
-            "SUBSTRING(MD5(id || 'a'), 1, 8) < '19999999'",
+            ("SUBSTRING(MD5(id || 'a'), 1, 8) < '19999999'",) * 2,
         ),
         (
             TableDiffRuntimeParameters.model_construct(
@@ -86,12 +93,18 @@ def test_compile_and_clauses(elements, expected):
                         }
                     ),
                     "table2": TableParameter.model_construct(
-                        **{"database_service_type": DatabaseServiceType.Postgres}
+                        **{
+                            "database_service_type": DatabaseServiceType.Postgres,
+                            "columns": [
+                                Column(name="id", dataType=DataType.STRING),
+                                Column(name="name", dataType=DataType.STRING),
+                            ],
+                        }
                     ),
                     "keyColumns": ["id"],
                 }
             ),
-            "SUBSTRING(MD5(id || 'a'), 1, 8) < '33333333'",
+            ("SUBSTRING(MD5(id || 'a'), 1, 8) < '33333333'",) * 2,
         ),
         (
             TableDiffRuntimeParameters.model_construct(
@@ -111,12 +124,18 @@ def test_compile_and_clauses(elements, expected):
                         }
                     ),
                     "table2": TableParameter.model_construct(
-                        **{"database_service_type": DatabaseServiceType.Postgres}
+                        **{
+                            "database_service_type": DatabaseServiceType.Postgres,
+                            "columns": [
+                                Column(name="id", dataType=DataType.STRING),
+                                Column(name="name", dataType=DataType.STRING),
+                            ],
+                        }
                     ),
                     "keyColumns": ["id", "name"],
                 }
             ),
-            "SUBSTRING(MD5(id || name || 'a'), 1, 8) < '19999999'",
+            ("SUBSTRING(MD5(id || name || 'a'), 1, 8) < '19999999'",) * 2,
         ),
         (
             TableDiffRuntimeParameters.model_construct(
@@ -136,12 +155,51 @@ def test_compile_and_clauses(elements, expected):
                         }
                     ),
                     "table2": TableParameter.model_construct(
-                        **{"database_service_type": DatabaseServiceType.Postgres}
+                        **{
+                            "database_service_type": DatabaseServiceType.Postgres,
+                            "columns": [
+                                Column(name="id", dataType=DataType.STRING),
+                                Column(name="name", dataType=DataType.STRING),
+                            ],
+                        },
                     ),
                     "keyColumns": ["id", "name"],
                 }
             ),
-            "SUBSTRING(MD5(id || name || 'a'), 1, 8) < '0083126e'",
+            ("SUBSTRING(MD5(id || name || 'a'), 1, 8) < '0083126e'",) * 2,
+        ),
+        (
+            TableDiffRuntimeParameters.model_construct(
+                **{
+                    "table_profile_config": TableProfilerConfig(
+                        profileSampleType=ProfileSampleType.ROWS,
+                        profileSample=20,
+                    ),
+                    "table1": TableParameter.model_construct(
+                        **{
+                            "database_service_type": DatabaseServiceType.Postgres,
+                            "columns": [
+                                Column(name="id", dataType=DataType.STRING),
+                                Column(name="name", dataType=DataType.STRING),
+                            ],
+                        }
+                    ),
+                    "table2": TableParameter.model_construct(
+                        **{
+                            "database_service_type": DatabaseServiceType.Postgres,
+                            "columns": [
+                                Column(name="ID", dataType=DataType.STRING),
+                                Column(name="name", dataType=DataType.STRING),
+                            ],
+                        },
+                    ),
+                    "keyColumns": ["id"],
+                }
+            ),
+            (
+                "SUBSTRING(MD5(id || 'a'), 1, 8) < '0083126e'",
+                "SUBSTRING(MD5(\"ID\" || 'a'), 1, 8) < '0083126e'",
+            ),
         ),
         (
             TableDiffRuntimeParameters.model_construct(
@@ -157,17 +215,31 @@ def test_compile_and_clauses(elements, expected):
                         }
                     ),
                     "table2": TableParameter.model_construct(
-                        **{"database_service_type": DatabaseServiceType.Postgres}
+                        **{
+                            "database_service_type": DatabaseServiceType.Postgres,
+                            "columns": [
+                                Column(name="id", dataType=DataType.STRING),
+                                Column(name="name", dataType=DataType.STRING),
+                            ],
+                        },
                     ),
-                    "keyColumns": ["id", "name"],
+                    "keyColumns": ["id"],
                 }
             ),
-            None,
+            (None, None),
         ),
     ],
 )
 def test_sample_where_clauses(config, expected):
-    validator = TableDiffValidator(None, None, None)
+    validator = TableDiffValidator(
+        None,
+        TestCase.model_construct(
+            parameterValues=[
+                TestCaseParameterValue(name="caseSensitiveColumns", value="false")
+            ]
+        ),
+        None,
+    )
     validator.runtime_params = config
     if (
         config.table_profile_config
