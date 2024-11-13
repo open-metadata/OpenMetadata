@@ -18,7 +18,6 @@ be self-sufficient with only pydantic at import time.
 """
 import json
 import logging
-from functools import singledispatch
 from typing import Any, Dict, List, Literal, Optional, Union
 
 from pydantic import BaseModel as PydanticBaseModel
@@ -50,70 +49,6 @@ class BaseModel(PydanticBaseModel):
     def parse_name(  # pylint: disable=inconsistent-return-statements
         cls, values
     ):  # pylint: disable=too-many-locals
-        """
-        Primary entry point to process values based on their class.
-        Uses singledispatch to dynamically call appropriate processing functions.
-        """
-
-        from metadata.generated.schema.api.data.createDashboard import (
-            CreateDashboardRequest,
-        )
-        from metadata.generated.schema.api.data.createTable import CreateTableRequest
-        from metadata.generated.schema.api.data.createTableProfile import (
-            CreateTableProfileRequest,
-        )
-        from metadata.generated.schema.entity.data.table import (
-            Column,
-            Table,
-            TableConstraint,
-        )
-        from metadata.profiler.processor.core import ColumnProfile, ProfilerResponse
-        from metadata.profiler.source.metadata import ProfilerSourceAndEntity
-        from metadata.utils.entity_link import CustomColumnName
-
-        @singledispatch
-        def validate_name_and_transform(_):
-            """Single dispatch function to process name and display name based on object type."""
-
-        @validate_name_and_transform.register
-        def _(obj: CreateTableRequest):
-            """Process CreateTableRequest type."""
-            process_table_and_columns(obj, is_create=True)
-
-        @validate_name_and_transform.register
-        def _(obj: CreateTableProfileRequest):
-            """Process CreateTableProfileRequest type."""
-            for column_profile in obj.columnProfile or []:
-                process_name_and_display_name(
-                    column_profile, is_create=True, has_root=False
-                )
-
-        @validate_name_and_transform.register
-        def _(obj: ProfilerResponse):
-            """Process ProfilerResponse type."""
-            process_table_and_columns(obj.table, is_create=True)
-            if obj.sample_data and obj.sample_data.data:
-                process_column_name(obj.sample_data.data.columns)
-
-        @validate_name_and_transform.register
-        def _(obj: Table):
-            """Process Table type."""
-            process_table_and_columns(obj, is_create=False)
-
-        @validate_name_and_transform.register
-        def _(obj: CustomColumnName):
-            """Process CustomColumnName type."""
-            obj.name = revert_separators(obj.name)
-
-        @validate_name_and_transform.register
-        def _(obj: ProfilerSourceAndEntity):
-            """Process ProfilerSourceAndEntity type."""
-            process_table_and_columns(obj.entity, is_create=False)
-
-        @validate_name_and_transform.register
-        def _(obj: CreateDashboardRequest):
-            """Process ProfilerSourceAndEntity type."""
-            process_table_and_columns(obj, is_create=False)
 
         def check_for_restricted_keywords(name_value: str) -> bool:
             return any(keyword in name_value for keyword in RESTRICTED_KEYWORDS)
@@ -310,3 +245,41 @@ def ignore_type_decoder(type_: Any) -> None:
     BaseModel.model_config[JSON_ENCODERS][type_] = {
         lambda v: v.decode("utf-8", "ignore")
     }
+
+
+def check_for_restricted_keywords(name_value: str) -> bool:
+    return any(keyword in name_value for keyword in RESTRICTED_KEYWORDS)
+
+
+def check_for_reserved_keywords(name_value: str) -> bool:
+    return any(
+        keyword in name_value
+        for keyword in [RESERVED_COLON_KEYWORD, RESERVED_ARROW_KEYWORD]
+    )
+
+
+def replace_separators(value):
+    return value.replace("::", RESERVED_COLON_KEYWORD).replace(
+        ">", RESERVED_ARROW_KEYWORD
+    )
+
+
+ENTITY_NAME_FIELDS = ["EntityName"]
+
+
+def validate_name_and_transform(values: Union[BaseModel, str]) -> Any:
+    """
+    Validate the name and transform it to the reserved keyword if it contains restricted keywords.
+    """
+    if isinstance(values, str):
+        return replace_separators(values)
+    elif hasattr(values, "root") and isinstance(values.root, str):
+        values.root = validate_name_and_transform(values.root)
+    elif isinstance(values, BaseModel):
+        fields = type(values).model_fields
+        for name, details in fields.items():
+            if details.annotation.__name__ in ENTITY_NAME_FIELDS:
+                setattr(
+                    values, name, validate_name_and_transform(getattr(values, name))
+                )
+    return values
