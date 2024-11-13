@@ -55,8 +55,7 @@ SET
       )
       as demo) ) ) 
    WHERE
-      JSON_EXTRACT(json, '$.chartDetails.type') = 'LineChart'
-      and JSON_EXTRACT(json, '$.chartDetails.metrics') is NULL;
+      JSON_EXTRACT(json, '$.chartDetails.metrics') is NULL;
 
 -- Rename 'offset' to 'currentOffset' and add 'startingOffset'
 UPDATE change_event_consumers
