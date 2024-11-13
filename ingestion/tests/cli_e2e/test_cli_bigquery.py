@@ -137,13 +137,13 @@ class BigqueryCliTest(CliCommonDB.TestSuite, SQACommonMethods):
                 [
                     SystemProfile(
                         timestamp=Timestamp(root=0),
-                        operation=DmlOperationType.UPDATE,
-                        rowsAffected=1,
-                    ),
-                    SystemProfile(
-                        timestamp=Timestamp(root=0),
                         operation=DmlOperationType.INSERT,
                         rowsAffected=2,
+                    ),
+                    SystemProfile(
+                        timestamp=Timestamp(root=1),
+                        operation=DmlOperationType.UPDATE,
+                        rowsAffected=1,
                     ),
                 ],
             )
