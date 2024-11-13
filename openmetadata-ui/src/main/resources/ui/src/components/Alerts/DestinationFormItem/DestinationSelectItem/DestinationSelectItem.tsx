@@ -79,7 +79,7 @@ function DestinationSelectItem({
 
     const currentDestination = destinationsWithStatus?.find((destination) =>
       isEqual(
-        { type, category, config },
+        { type, category, config: omitBy(config, isUndefined) },
         {
           type: destination.type,
           category: destination.category,
