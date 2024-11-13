@@ -440,7 +440,7 @@ export function elasticSearchFormatForJSONLogic(tree, config) {
         children,
         conjunction,
         properties,
-        elasticSearchFormat,
+        elasticSearchFormatForJSONLogic,
         config
       );
     }
