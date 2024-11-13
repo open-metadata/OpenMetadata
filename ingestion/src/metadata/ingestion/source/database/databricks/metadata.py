@@ -111,8 +111,10 @@ _type_map.update(
         "binary": create_sqlalchemy_type("BINARY"),
     }
 )
+
+
 def validate_schema(schema):
-    # Adds back quotes(``) if hyphen(-) in schema name 
+    # Adds back quotes(``) if hyphen(-) in schema name
     return f"`{schema}`" if "-" in schema else schema
 
 
