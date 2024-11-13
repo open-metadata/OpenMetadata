@@ -13,7 +13,7 @@ Module that defines the RuntimeParameterFactory class.
 This class is responsible for creating instances of the RuntimeParameterSetter 
 based on the test case.
 """
-
+import sys
 from typing import Dict, Set, Type
 
 from metadata.data_quality.validations.runtime_param_setter.param_setter import (
@@ -30,10 +30,27 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.profiler.processor.sampler.sqlalchemy.sampler import SQASampler
 
 
+def removesuffix(s: str, suffix: str) -> str:
+    """A custom implementation of removesuffix for python versions < 3.9
+
+    Args:
+        s (str): The string to remove the suffix from
+        suffix (str): The suffix to remove
+
+    Returns:
+        str: The string with the suffix removed
+    """
+    if sys.version_info >= (3, 9):
+        return s.removesuffix(suffix)
+    if s.endswith(suffix):
+        return s[: -len(suffix)]
+    return s
+
+
 def validator_name(test_case_class: Type) -> str:
-    return (
-        test_case_class.__name__[0].lower() + test_case_class.__name__[1:]
-    ).removesuffix("Validator")
+    return removesuffix(
+        test_case_class.__name__[0].lower() + test_case_class.__name__[1:], "Validator"
+    )
 
 
 class RuntimeParameterSetterFactory:
