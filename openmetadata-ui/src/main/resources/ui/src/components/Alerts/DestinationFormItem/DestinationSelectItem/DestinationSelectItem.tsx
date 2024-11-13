@@ -23,7 +23,7 @@ import {
   Tabs,
   Typography,
 } from 'antd';
-import { isEmpty, isEqual, isUndefined, map } from 'lodash';
+import { isEmpty, isEqual, isUndefined, map, omitBy } from 'lodash';
 import React, {
   ReactElement,
   useCallback,
@@ -83,12 +83,15 @@ function DestinationSelectItem({
         {
           type: destination.type,
           category: destination.category,
-          config: {
-            ...destination.config,
-            headers: getConfigHeaderArrayFromObject(
-              destination?.config?.headers
-            ),
-          },
+          config: omitBy(
+            {
+              ...destination.config,
+              headers: getConfigHeaderArrayFromObject(
+                destination?.config?.headers
+              ),
+            },
+            isUndefined
+          ),
         }
       )
     );
