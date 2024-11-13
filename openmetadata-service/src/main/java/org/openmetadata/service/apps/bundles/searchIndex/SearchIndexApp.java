@@ -56,8 +56,8 @@ import java.util.Set;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import lombok.Getter;
@@ -161,7 +161,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
   private volatile boolean stopped = false;
   private ExecutorService consumerExecutor;
   private ExecutorService producerExecutor;
-  private final BlockingQueue<IndexingTask<?>> taskQueue = new LinkedBlockingQueue<>();
+  private BlockingQueue<IndexingTask<?>> taskQueue = new LinkedBlockingQueue<>(100);
   private final AtomicReference<Stats> searchIndexStats = new AtomicReference<>();
   private final AtomicReference<Integer> batchSize = new AtomicReference<>(5);
 
@@ -286,8 +286,21 @@ public class SearchIndexApp extends AbstractNativeApplication {
     int numConsumers = jobData.getConsumerThreads();
     LOG.info("Starting reindexing with {} producers and {} consumers.", numProducers, numConsumers);
 
-    consumerExecutor = Executors.newFixedThreadPool(numConsumers);
-    producerExecutor = Executors.newFixedThreadPool(numProducers);
+    taskQueue = new LinkedBlockingQueue<>(jobData.getQueueSize());
+    consumerExecutor =
+        new ThreadPoolExecutor(
+            numConsumers,
+            numConsumers,
+            0L,
+            TimeUnit.MILLISECONDS,
+            new LinkedBlockingQueue<>(jobData.getQueueSize()));
+    producerExecutor =
+        new ThreadPoolExecutor(
+            numProducers,
+            numProducers,
+            0L,
+            TimeUnit.MILLISECONDS,
+            new LinkedBlockingQueue<>(jobData.getQueueSize()));
 
     try {
       processEntityReindex(jobExecutionContext);

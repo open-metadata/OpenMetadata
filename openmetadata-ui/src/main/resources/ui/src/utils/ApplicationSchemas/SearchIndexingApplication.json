@@ -28,6 +28,12 @@
       "type": "integer",
       "default": 1
     },
+    "queueSize": {
+      "title": "Queue Size to use.",
+      "description": "Queue Size to user internally for reindexing.",
+      "type": "integer",
+      "default": 100
+    },
     "maxConcurrentRequests": {
       "title": "Max Concurrent Requests",
       "description": "Maximum number of concurrent requests to the search index",
