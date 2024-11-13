@@ -2554,7 +2554,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
                     ((LinkedHashMap<String, Object>) hit.get("_source"))
                         .get("name")
                         .equals(createWithNullDescription.getName())));
-    assertTrue(
+    assertFalse(
         hitsList.stream()
             .anyMatch(
                 hit ->
