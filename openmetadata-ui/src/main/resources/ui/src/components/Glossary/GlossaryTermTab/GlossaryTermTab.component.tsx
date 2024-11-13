@@ -827,7 +827,9 @@ const GlossaryTermTab = ({
             open={isStatusDropdownVisible}
             trigger={['click']}
             onOpenChange={setIsStatusDropdownVisible}>
-            <Button className="custom-status-dropdown-btn m-r-sm">
+            <Button
+              className="custom-status-dropdown-btn m-r-sm"
+              data-testid="glossary-status-dropdown">
               <Space>
                 {t('label.status')}
                 <DownOutlined />
@@ -848,7 +850,9 @@ const GlossaryTermTab = ({
               open={isDropdownVisible}
               trigger={['click']}
               onOpenChange={setIsDropdownVisible}>
-              <Button className="custom-status-dropdown-btn m-r-xs">
+              <Button
+                className="custom-status-dropdown-btn m-r-xs"
+                data-testid="glossary-column-dropdown">
                 <Space>
                   {t('label.column-plural')}
                   <DownOutlined />
@@ -867,6 +871,7 @@ const GlossaryTermTab = ({
               })}
               columns={rearrangedColumns.filter((col) => !col.hidden)}
               components={TABLE_CONSTANTS}
+              data-testid="glossary-terms-table"
               dataSource={glossaryTerms.filter((term) =>
                 selectedStatus.includes(term.status as string)
               )}

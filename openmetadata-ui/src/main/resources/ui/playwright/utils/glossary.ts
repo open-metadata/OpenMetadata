@@ -1002,3 +1002,109 @@ export const approveTagsTask = async (
 
   await expect(tagVisibility).toBe(true);
 };
+
+export async function openColumnDropdown(page: Page): Promise<void> {
+  const dropdownButton = page.getByTestId('glossary-column-dropdown');
+
+  await expect(dropdownButton).toBeVisible();
+
+  await dropdownButton.click();
+}
+
+export async function selectColumns(
+  page: Page,
+  checkboxLabels: string[]
+): Promise<void> {
+  for (const label of checkboxLabels) {
+    const checkbox = page.locator('.glossary-dropdown-label', {
+      hasText: label,
+    });
+    await checkbox.click();
+  }
+}
+
+export async function deselectColumns(
+  page: Page,
+  checkboxLabels: string[]
+): Promise<void> {
+  for (const label of checkboxLabels) {
+    const checkbox = page.locator('.glossary-dropdown-label', {
+      hasText: label,
+    });
+    await checkbox.click();
+  }
+}
+
+export async function clickSaveButton(page: Page): Promise<void> {
+  const saveButton = page.locator('.ant-btn-primary', {
+    hasText: 'Save',
+  });
+  await saveButton.click();
+}
+
+export async function verifyColumnsVisibility(
+  page: Page,
+  checkboxLabels: string[],
+  shouldBeVisible: boolean
+): Promise<void> {
+  const glossaryTermsTable = page.getByTestId('glossary-terms-table');
+
+  await expect(glossaryTermsTable).toBeVisible();
+
+  for (const label of checkboxLabels) {
+    const termsColumnHeader = glossaryTermsTable.locator('th', {
+      hasText: label,
+    });
+    if (shouldBeVisible) {
+      await expect(termsColumnHeader).toBeVisible();
+    } else {
+      await expect(termsColumnHeader).toBeHidden();
+    }
+  }
+}
+
+export async function toggleAllColumnsSelection(
+  page: Page,
+  isSelected: boolean
+): Promise<void> {
+  const dropdownButton = page.getByTestId('glossary-column-dropdown');
+
+  await expect(dropdownButton).toBeVisible();
+
+  await dropdownButton.click();
+
+  const checkboxLabel = 'All';
+  const checkbox = page.locator('.custom-glossary-col-sel-checkbox', {
+    hasText: checkboxLabel,
+  });
+  if (isSelected) {
+    await checkbox.click();
+  }
+  await clickSaveButton(page);
+}
+
+export async function verifyAllColumns(
+  page: Page,
+  tableColumns: string[],
+  shouldBeVisible: boolean
+): Promise<void> {
+  const glossaryTermsTable = page.getByTestId('glossary-terms-table');
+
+  await expect(glossaryTermsTable).toBeVisible();
+
+  for (const columnHeader of tableColumns) {
+    const termsColumnHeader = glossaryTermsTable.locator('th', {
+      hasText: columnHeader,
+    });
+
+    if (shouldBeVisible) {
+      await expect(termsColumnHeader).toBeVisible();
+    } else {
+      if (columnHeader !== 'TERMS') {
+        await expect(termsColumnHeader).not.toBeVisible();
+      } else {
+        await expect(termsColumnHeader).toBeVisible();
+      }
+    }
+  }
+}
