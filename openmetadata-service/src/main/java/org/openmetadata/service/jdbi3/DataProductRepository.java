@@ -24,7 +24,6 @@ import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
-import org.openmetadata.schema.BulkAssetsRequestInterface;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.type.EntityReference;
@@ -99,19 +98,14 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     return new DataProductUpdater(original, updated, operation);
   }
 
-  public BulkOperationResult bulkAddAssets(String domainName, BulkAssetsRequestInterface request) {
-    BulkAssets bulkAssetsRequest = (BulkAssets) request;
+  public BulkOperationResult bulkAddAssets(String domainName, BulkAssets request) {
     DataProduct dataProduct = getByName(null, domainName, getFields("id"));
-    return bulkAssetsOperation(
-        dataProduct.getId(), DATA_PRODUCT, Relationship.HAS, bulkAssetsRequest, true);
+    return bulkAssetsOperation(dataProduct.getId(), DATA_PRODUCT, Relationship.HAS, request, true);
   }
 
-  public BulkOperationResult bulkRemoveAssets(
-      String domainName, BulkAssetsRequestInterface request) {
-    BulkAssets bulkAssetsRequest = (BulkAssets) request;
+  public BulkOperationResult bulkRemoveAssets(String domainName, BulkAssets request) {
     DataProduct dataProduct = getByName(null, domainName, getFields("id"));
-    return bulkAssetsOperation(
-        dataProduct.getId(), DATA_PRODUCT, Relationship.HAS, bulkAssetsRequest, false);
+    return bulkAssetsOperation(dataProduct.getId(), DATA_PRODUCT, Relationship.HAS, request, false);
   }
 
   @Override

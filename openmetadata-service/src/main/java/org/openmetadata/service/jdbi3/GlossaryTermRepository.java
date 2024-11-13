@@ -58,7 +58,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.common.utils.CommonUtil;
-import org.openmetadata.schema.BulkAssetsRequestInterface;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.AddGlossaryToAssetsRequest;
 import org.openmetadata.schema.api.data.TermReference;
@@ -266,23 +265,21 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     }
   }
 
-  @Override
-  public BulkOperationResult bulkAddAndValidateGlossaryTagsToAssets(
-      UUID glossaryTermId, BulkAssetsRequestInterface request) {
-    AddGlossaryToAssetsRequest addGlossaryToAssetsRequest = (AddGlossaryToAssetsRequest) request;
-    boolean dryRun = Boolean.TRUE.equals(addGlossaryToAssetsRequest.getDryRun());
+  public BulkOperationResult bulkAddAndValidateGlossaryToAssets(
+      UUID glossaryTermId, AddGlossaryToAssetsRequest request) {
+    boolean dryRun = Boolean.TRUE.equals(request.getDryRun());
 
     GlossaryTerm term = this.get(null, glossaryTermId, getFields("id,tags"));
 
     // Check if the tags are mutually exclusive for the glossary
-    checkMutuallyExclusive(addGlossaryToAssetsRequest.getGlossaryTags());
+    checkMutuallyExclusive(request.getGlossaryTags());
 
     BulkOperationResult result = new BulkOperationResult().withDryRun(dryRun);
     List<BulkResponse> failures = new ArrayList<>();
     List<BulkResponse> success = new ArrayList<>();
 
     if (dryRun
-        && (CommonUtil.nullOrEmpty(addGlossaryToAssetsRequest.getGlossaryTags())
+        && (CommonUtil.nullOrEmpty(request.getGlossaryTags())
             || CommonUtil.nullOrEmpty(request.getAssets()))) {
       // Nothing to Validate
       return result
@@ -314,7 +311,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
             asset.getFullyQualifiedName(),
             FullyQualifiedName.buildHash(asset.getFullyQualifiedName()),
             allAssetTags,
-            addGlossaryToAssetsRequest.getGlossaryTags(),
+            request.getGlossaryTags(),
             false);
         success.add(new BulkResponse().withRequest(ref));
         result.setNumberOfRowsPassed(result.getNumberOfRowsPassed() + 1);
@@ -337,14 +334,11 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     // Apply the tags of glossary to the glossary term
     if (!dryRun
         && CommonUtil.nullOrEmpty(result.getFailedRequest())
-        && (!(term.getTags().isEmpty()
-            && addGlossaryToAssetsRequest.getGlossaryTags().isEmpty()))) {
+        && (!(term.getTags().isEmpty() && request.getGlossaryTags().isEmpty()))) {
       // Remove current entity tags in the database. It will be added back later from the merged tag
       // list.
       daoCollection.tagUsageDAO().deleteTagsByTarget(term.getFullyQualifiedName());
-      applyTags(
-          getUniqueTags(addGlossaryToAssetsRequest.getGlossaryTags()),
-          term.getFullyQualifiedName());
+      applyTags(getUniqueTags(request.getGlossaryTags()), term.getFullyQualifiedName());
 
       searchRepository.updateEntity(term.getEntityReference());
     }
@@ -491,8 +485,8 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     return new HashMap<>();
   }
 
-  public BulkOperationResult bulkRemoveAndValidateGlossaryTagsToAssets(
-      UUID glossaryTermId, BulkAssetsRequestInterface request) {
+  public BulkOperationResult bulkRemoveGlossaryToAssets(
+      UUID glossaryTermId, AddGlossaryToAssetsRequest request) {
     GlossaryTerm term = this.get(null, glossaryTermId, getFields("id,tags"));
 
     BulkOperationResult result =

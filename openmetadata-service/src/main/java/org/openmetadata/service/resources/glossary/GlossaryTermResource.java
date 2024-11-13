@@ -546,7 +546,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
       @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
       @Valid AddGlossaryToAssetsRequest request) {
-    return bulkAddToAssetsAsync(securityContext, id, request);
+    return Response.ok().entity(repository.bulkAddAndValidateGlossaryToAssets(id, request)).build();
   }
 
   @PUT
@@ -596,7 +596,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
       @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
       @Valid AddGlossaryToAssetsRequest request) {
-    return bulkRemoveFromAssetsAsync(securityContext, id, request);
+    return Response.ok().entity(repository.bulkRemoveGlossaryToAssets(id, request)).build();
   }
 
   @DELETE

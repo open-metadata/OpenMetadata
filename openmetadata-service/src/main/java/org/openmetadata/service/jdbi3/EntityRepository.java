@@ -2512,25 +2512,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
-  public BulkOperationResult bulkAddAssets(String entityName, BulkAssetsRequestInterface request) {
-    throw new UnsupportedOperationException("Bulk Add Assets operation not supported");
-  }
-
-  public BulkOperationResult bulkRemoveAssets(
-      String entityName, BulkAssetsRequestInterface request) {
-    throw new UnsupportedOperationException("Bulk Remove Assets operation not supported");
-  }
-
-  public BulkOperationResult bulkAddAndValidateGlossaryTagsToAssets(
+  public BulkOperationResult bulkAddAndValidateTagsToAssets(
       UUID glossaryTermId, BulkAssetsRequestInterface request) {
-    throw new UnsupportedOperationException(
-        "Bulk Add glossary/tags to Asset operation not supported");
+    throw new UnsupportedOperationException("Bulk Add tags to Asset operation not supported");
   }
 
-  public BulkOperationResult bulkRemoveAndValidateGlossaryTagsToAssets(
+  public BulkOperationResult bulkRemoveAndValidateTagsToAssets(
       UUID glossaryTermId, BulkAssetsRequestInterface request) {
-    throw new UnsupportedOperationException(
-        "Bulk Remove glossary/tags to Asset operation not supported");
+    throw new UnsupportedOperationException("Bulk Remove tags to Asset operation not supported");
   }
 
   public enum Operation {

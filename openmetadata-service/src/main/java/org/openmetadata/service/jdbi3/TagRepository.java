@@ -124,7 +124,7 @@ public class TagRepository extends EntityRepository<Tag> {
   }
 
   @Override
-  public BulkOperationResult bulkAddAndValidateGlossaryTagsToAssets(
+  public BulkOperationResult bulkAddAndValidateTagsToAssets(
       UUID classificationTagId, BulkAssetsRequestInterface request) {
     AddTagToAssetsRequest addTagToAssetsRequest = (AddTagToAssetsRequest) request;
     boolean dryRun = Boolean.TRUE.equals(addTagToAssetsRequest.getDryRun());
@@ -202,7 +202,7 @@ public class TagRepository extends EntityRepository<Tag> {
   }
 
   @Override
-  public BulkOperationResult bulkRemoveAndValidateGlossaryTagsToAssets(
+  public BulkOperationResult bulkRemoveAndValidateTagsToAssets(
       UUID classificationTagId, BulkAssetsRequestInterface request) {
     Tag tag = this.get(null, classificationTagId, getFields("id"));
 

@@ -73,7 +73,6 @@ public class WebsocketNotificationHandler {
     BulkAssetsOperationMessage message =
         new BulkAssetsOperationMessage(jobId, "COMPLETED", result, null);
     String jsonMessage = JsonUtils.pojoToJson(message);
-    LOG.info("Sending Bulk Assets Notification: {}", jsonMessage);
     UUID userId = getUserIdFromSecurityContext(securityContext);
     WebSocketManager.getInstance()
         .sendToOne(userId, WebSocketManager.BULK_ASSETS_CHANNEL, jsonMessage);

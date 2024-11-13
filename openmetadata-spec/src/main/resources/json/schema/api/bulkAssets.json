@@ -5,7 +5,6 @@
   "description": "Represents schema for adding bulk relationships to an entity.",
   "type": "object",
   "javaType": "org.openmetadata.schema.type.api.BulkAssets",
-  "javaInterfaces": ["org.openmetadata.schema.BulkAssetsRequestInterface"],
   "properties": {
     "assets": {
       "description": "List of assets to be created against which the glossary needs to be added.",

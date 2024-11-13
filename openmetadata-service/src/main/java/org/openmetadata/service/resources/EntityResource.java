@@ -407,53 +407,6 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     return Response.accepted().entity(response).type(MediaType.APPLICATION_JSON).build();
   }
 
-  public Response bulkAddAssetsAsync(
-      SecurityContext securityContext, String entityName, BulkAssetsRequestInterface request) {
-    OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
-    authorizer.authorize(securityContext, operationContext, getResourceContextByName(entityName));
-    String jobId = UUID.randomUUID().toString();
-    ExecutorService executorService = AsyncService.getInstance().getExecutorService();
-    executorService.submit(
-        () -> {
-          try {
-            BulkOperationResult result = repository.bulkAddAssets(entityName, request);
-            WebsocketNotificationHandler.bulkAssetsOperationCompleteNotification(
-                jobId, securityContext, result);
-          } catch (Exception e) {
-            WebsocketNotificationHandler.bulkAssetsOperationFailedNotification(
-                jobId, securityContext, e.getMessage());
-          }
-        });
-    BulkAssetsOperationResponse response =
-        new BulkAssetsOperationResponse(jobId, "Bulk Add Assets operation initiated successfully.");
-    return Response.ok().entity(response).type(MediaType.APPLICATION_JSON).build();
-  }
-
-  public Response bulkRemoveAssetsAsync(
-      SecurityContext securityContext, String entityName, BulkAssetsRequestInterface request) {
-    OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
-    authorizer.authorize(securityContext, operationContext, getResourceContextByName(entityName));
-    String jobId = UUID.randomUUID().toString();
-    ExecutorService executorService = AsyncService.getInstance().getExecutorService();
-    executorService.submit(
-        () -> {
-          try {
-            BulkOperationResult result = repository.bulkRemoveAssets(entityName, request);
-            WebsocketNotificationHandler.bulkAssetsOperationCompleteNotification(
-                jobId, securityContext, result);
-          } catch (Exception e) {
-            WebsocketNotificationHandler.bulkAssetsOperationFailedNotification(
-                jobId, securityContext, e.getMessage());
-          }
-        });
-    BulkAssetsOperationResponse response =
-        new BulkAssetsOperationResponse(
-            jobId, "Bulk Remove Assets operation initiated successfully.");
-    return Response.ok().entity(response).type(MediaType.APPLICATION_JSON).build();
-  }
-
   public Response bulkAddToAssetsAsync(
       SecurityContext securityContext, UUID entityId, BulkAssetsRequestInterface request) {
     OperationContext operationContext =
@@ -465,7 +418,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
         () -> {
           try {
             BulkOperationResult result =
-                repository.bulkAddAndValidateGlossaryTagsToAssets(entityId, request);
+                repository.bulkAddAndValidateTagsToAssets(entityId, request);
             WebsocketNotificationHandler.bulkAssetsOperationCompleteNotification(
                 jobId, securityContext, result);
           } catch (Exception e) {
@@ -475,7 +428,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
         });
     BulkAssetsOperationResponse response =
         new BulkAssetsOperationResponse(
-            jobId, "Bulk Add glossary/tags to Asset operation initiated successfully.");
+            jobId, "Bulk Add tags to Asset operation initiated successfully.");
     return Response.ok().entity(response).type(MediaType.APPLICATION_JSON).build();
   }
 
@@ -490,7 +443,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
         () -> {
           try {
             BulkOperationResult result =
-                repository.bulkRemoveAndValidateGlossaryTagsToAssets(entityId, request);
+                repository.bulkRemoveAndValidateTagsToAssets(entityId, request);
             WebsocketNotificationHandler.bulkAssetsOperationCompleteNotification(
                 jobId, securityContext, result);
           } catch (Exception e) {
@@ -500,7 +453,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
         });
     BulkAssetsOperationResponse response =
         new BulkAssetsOperationResponse(
-            jobId, "Bulk Remove glossary/tags to Asset operation initiated successfully.");
+            jobId, "Bulk Remove tags to Asset operation initiated successfully.");
     return Response.ok().entity(response).type(MediaType.APPLICATION_JSON).build();
   }
 
