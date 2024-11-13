@@ -264,15 +264,23 @@ def replace_separators(value):
     )
 
 
-ENTITY_NAME_FIELDS = ["EntityName"]
+ENTITY_NAME_FIELDS = ["EntityName", "CustomColumnName"]
 
+
+def revert_separators(value):
+    return value.replace(RESERVED_COLON_KEYWORD, "::").replace(
+        RESERVED_ARROW_KEYWORD, ">"
+    )
 
 def validate_name_and_transform(values: Union[BaseModel, str]) -> Any:
     """
     Validate the name and transform it to the reserved keyword if it contains restricted keywords.
     """
     if isinstance(values, str):
-        return replace_separators(values)
+        return revert_separators(values)
+    elif isinstance(values, BaseModel) and type(values).__name__ in ENTITY_NAME_FIELDS:
+        for name, details in type(values).model_fields.items():
+            setattr(values, name, validate_name_and_transform(getattr(values, name)))
     elif hasattr(values, "root") and isinstance(values.root, str):
         values.root = validate_name_and_transform(values.root)
     elif isinstance(values, BaseModel):
