@@ -1144,6 +1144,7 @@ To continue pursuing this objective, the application was completely refactored t
 - **Improvement**: Add PowerBI Report Server Connector ${CollateIconWithLinkMD}
 - **Improvement**: Mask SQL Queries in Usage & Lineage Workflow.
 - **Fix**: Sample data overlapping issue.
+- **Fix**: Checkmark saves wrong custom property field 
 `,
     },
   },
