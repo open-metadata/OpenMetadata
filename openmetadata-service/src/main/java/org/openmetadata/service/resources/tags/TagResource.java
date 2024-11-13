@@ -528,7 +528,7 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
       @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
       @Valid AddTagToAssetsRequest request) {
-    return Response.ok().entity(repository.bulkAddAndValidateTagToAssets(id, request)).build();
+    return bulkAddToAssetsAsync(securityContext, id, request);
   }
 
   @PUT
@@ -553,7 +553,7 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
       @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
       @Valid AddTagToAssetsRequest request) {
-    return Response.ok().entity(repository.bulkRemoveTagToAssets(id, request)).build();
+    return bulkRemoveFromAssetsAsync(securityContext, id, request);
   }
 
   @Override

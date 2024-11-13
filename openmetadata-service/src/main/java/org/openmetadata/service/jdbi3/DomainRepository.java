@@ -21,6 +21,7 @@ import static org.openmetadata.service.Entity.FIELD_ASSETS;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
+import org.openmetadata.schema.BulkAssetsRequestInterface;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.type.EntityReference;
@@ -99,14 +100,17 @@ public class DomainRepository extends EntityRepository<Domain> {
     return findTo(entity.getId(), DOMAIN, Relationship.HAS, null);
   }
 
-  public BulkOperationResult bulkAddAssets(String domainName, BulkAssets request) {
+  public BulkOperationResult bulkAddAssets(String domainName, BulkAssetsRequestInterface request) {
+    BulkAssets bulkAssetsRequest = (BulkAssets) request;
     Domain domain = getByName(null, domainName, getFields("id"));
-    return bulkAssetsOperation(domain.getId(), DOMAIN, Relationship.HAS, request, true);
+    return bulkAssetsOperation(domain.getId(), DOMAIN, Relationship.HAS, bulkAssetsRequest, true);
   }
 
-  public BulkOperationResult bulkRemoveAssets(String domainName, BulkAssets request) {
+  public BulkOperationResult bulkRemoveAssets(
+      String domainName, BulkAssetsRequestInterface request) {
+    BulkAssets bulkAssetsRequest = (BulkAssets) request;
     Domain domain = getByName(null, domainName, getFields("id"));
-    return bulkAssetsOperation(domain.getId(), DOMAIN, Relationship.HAS, request, false);
+    return bulkAssetsOperation(domain.getId(), DOMAIN, Relationship.HAS, bulkAssetsRequest, false);
   }
 
   @Override

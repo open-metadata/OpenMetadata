@@ -32,6 +32,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.schema.BulkAssetsRequestInterface;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.AddTagToAssetsRequest;
 import org.openmetadata.schema.entity.classification.Classification;
@@ -122,9 +123,11 @@ public class TagRepository extends EntityRepository<Tag> {
     }
   }
 
-  public BulkOperationResult bulkAddAndValidateTagToAssets(
-      UUID classificationTagId, AddTagToAssetsRequest request) {
-    boolean dryRun = Boolean.TRUE.equals(request.getDryRun());
+  @Override
+  public BulkOperationResult bulkAddAndValidateGlossaryTagsToAssets(
+      UUID classificationTagId, BulkAssetsRequestInterface request) {
+    AddTagToAssetsRequest addTagToAssetsRequest = (AddTagToAssetsRequest) request;
+    boolean dryRun = Boolean.TRUE.equals(addTagToAssetsRequest.getDryRun());
 
     Tag tag = this.get(null, classificationTagId, getFields("id"));
 
@@ -198,8 +201,9 @@ public class TagRepository extends EntityRepository<Tag> {
     return result;
   }
 
-  public BulkOperationResult bulkRemoveTagToAssets(
-      UUID classificationTagId, AddTagToAssetsRequest request) {
+  @Override
+  public BulkOperationResult bulkRemoveAndValidateGlossaryTagsToAssets(
+      UUID classificationTagId, BulkAssetsRequestInterface request) {
     Tag tag = this.get(null, classificationTagId, getFields("id"));
 
     BulkOperationResult result =

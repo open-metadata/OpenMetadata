@@ -119,6 +119,7 @@ import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.schema.BulkAssetsRequestInterface;
 import org.openmetadata.schema.CreateEntity;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.VoteRequest;
@@ -2509,6 +2510,27 @@ public abstract class EntityRepository<T extends EntityInterface> {
         validateColumnTags(column.getChildren());
       }
     }
+  }
+
+  public BulkOperationResult bulkAddAssets(String entityName, BulkAssetsRequestInterface request) {
+    throw new UnsupportedOperationException("Bulk Add Assets operation not supported");
+  }
+
+  public BulkOperationResult bulkRemoveAssets(
+      String entityName, BulkAssetsRequestInterface request) {
+    throw new UnsupportedOperationException("Bulk Remove Assets operation not supported");
+  }
+
+  public BulkOperationResult bulkAddAndValidateGlossaryTagsToAssets(
+      UUID glossaryTermId, BulkAssetsRequestInterface request) {
+    throw new UnsupportedOperationException(
+        "Bulk Add glossary/tags to Asset operation not supported");
+  }
+
+  public BulkOperationResult bulkRemoveAndValidateGlossaryTagsToAssets(
+      UUID glossaryTermId, BulkAssetsRequestInterface request) {
+    throw new UnsupportedOperationException(
+        "Bulk Remove glossary/tags to Asset operation not supported");
   }
 
   public enum Operation {

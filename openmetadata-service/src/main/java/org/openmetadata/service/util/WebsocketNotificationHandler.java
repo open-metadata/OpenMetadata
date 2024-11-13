@@ -34,6 +34,7 @@ import org.openmetadata.schema.type.AnnouncementDetails;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Post;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.resources.feeds.MessageParser;
@@ -65,6 +66,26 @@ public class WebsocketNotificationHandler {
     UUID userId = getUserIdFromSecurityContext(securityContext);
     WebSocketManager.getInstance()
         .sendToOne(userId, WebSocketManager.CSV_EXPORT_CHANNEL, jsonMessage);
+  }
+
+  public static void bulkAssetsOperationCompleteNotification(
+      String jobId, SecurityContext securityContext, BulkOperationResult result) {
+    BulkAssetsOperationMessage message =
+        new BulkAssetsOperationMessage(jobId, "COMPLETED", result, null);
+    String jsonMessage = JsonUtils.pojoToJson(message);
+    LOG.info("Sending Bulk Assets Notification: {}", jsonMessage);
+    UUID userId = getUserIdFromSecurityContext(securityContext);
+    WebSocketManager.getInstance()
+        .sendToOne(userId, WebSocketManager.BULK_ASSETS_CHANNEL, jsonMessage);
+  }
+
+  public static void bulkAssetsOperationFailedNotification(
+      String jobId, SecurityContext securityContext, String errorMessage) {
+    CSVExportMessage message = new CSVExportMessage(jobId, "FAILED", null, errorMessage);
+    String jsonMessage = JsonUtils.pojoToJson(message);
+    UUID userId = getUserIdFromSecurityContext(securityContext);
+    WebSocketManager.getInstance()
+        .sendToOne(userId, WebSocketManager.BULK_ASSETS_CHANNEL, jsonMessage);
   }
 
   private void handleNotifications(ContainerResponseContext responseContext) {

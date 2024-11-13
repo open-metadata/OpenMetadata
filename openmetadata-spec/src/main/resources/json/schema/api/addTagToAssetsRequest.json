@@ -5,6 +5,7 @@
   "description": "Create Request for adding a tag to assets",
   "type": "object",
   "javaType": "org.openmetadata.schema.api.AddTagToAssetsRequest",
+  "javaInterfaces": ["org.openmetadata.schema.BulkAssetsRequestInterface"],
   "properties": {
     "operation": {
       "description": "Operation to be performed",

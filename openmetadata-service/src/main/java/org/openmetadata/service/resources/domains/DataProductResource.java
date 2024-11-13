@@ -336,7 +336,7 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
           @PathParam("name")
           String name,
       @Valid BulkAssets request) {
-    return Response.ok().entity(repository.bulkAddAssets(name, request)).build();
+    return bulkAddAssetsAsync(securityContext, name, request);
   }
 
   @PUT
@@ -355,14 +355,14 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
                     schema = @Schema(implementation = ChangeEvent.class))),
         @ApiResponse(responseCode = "404", description = "model for instance {id} is not found")
       })
-  public Response bulkRemoveGlossaryFromAssets(
+  public Response bulkRemoveAssets(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Name of the Data Product", schema = @Schema(type = "string"))
           @PathParam("name")
           String name,
       @Valid BulkAssets request) {
-    return Response.ok().entity(repository.bulkRemoveAssets(name, request)).build();
+    return bulkRemoveAssetsAsync(securityContext, name, request);
   }
 
   @PATCH

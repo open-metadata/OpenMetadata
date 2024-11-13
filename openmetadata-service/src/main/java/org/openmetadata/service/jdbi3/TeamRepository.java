@@ -60,6 +60,7 @@ import org.apache.commons.csv.CSVRecord;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.csv.EntityCsv;
+import org.openmetadata.schema.BulkAssetsRequestInterface;
 import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.TeamHierarchy;
@@ -171,7 +172,8 @@ public class TeamRepository extends EntityRepository<Team> {
     validatePolicies(team.getPolicies());
   }
 
-  public BulkOperationResult bulkAddAssets(String domainName, BulkAssets request) {
+  public BulkOperationResult bulkAddAssets(String domainName, BulkAssetsRequestInterface request) {
+    BulkAssets bulkAssetsRequest = (BulkAssets) request;
     Team team = getByName(null, domainName, getFields("id"));
 
     // Validate all to be users
@@ -183,16 +185,18 @@ public class TeamRepository extends EntityRepository<Team> {
       }
     }
 
-    return bulkAssetsOperation(team.getId(), TEAM, Relationship.HAS, request, true);
+    return bulkAssetsOperation(team.getId(), TEAM, Relationship.HAS, bulkAssetsRequest, true);
   }
 
-  public BulkOperationResult bulkRemoveAssets(String domainName, BulkAssets request) {
+  public BulkOperationResult bulkRemoveAssets(
+      String domainName, BulkAssetsRequestInterface request) {
+    BulkAssets bulkAssetsRequest = (BulkAssets) request;
     Team team = getByName(null, domainName, getFields("id"));
 
     // Validate all to be users
     validateAllRefUsers(request.getAssets());
 
-    return bulkAssetsOperation(team.getId(), TEAM, Relationship.HAS, request, false);
+    return bulkAssetsOperation(team.getId(), TEAM, Relationship.HAS, bulkAssetsRequest, false);
   }
 
   private void validateAllRefUsers(List<EntityReference> refs) {

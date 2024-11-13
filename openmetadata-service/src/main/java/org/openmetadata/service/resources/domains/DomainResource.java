@@ -313,7 +313,7 @@ public class DomainResource extends EntityResource<Domain, DomainRepository> {
           @PathParam("name")
           String name,
       @Valid BulkAssets request) {
-    return Response.ok().entity(repository.bulkAddAssets(name, request)).build();
+    return bulkAddAssetsAsync(securityContext, name, request);
   }
 
   @PUT
@@ -339,7 +339,7 @@ public class DomainResource extends EntityResource<Domain, DomainRepository> {
           @PathParam("name")
           String name,
       @Valid BulkAssets request) {
-    return Response.ok().entity(repository.bulkRemoveAssets(name, request)).build();
+    return bulkRemoveAssetsAsync(securityContext, name, request);
   }
 
   @PATCH
