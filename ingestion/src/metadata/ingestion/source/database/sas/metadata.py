@@ -19,7 +19,7 @@ import json
 import re
 import traceback
 from datetime import datetime, timezone
-from typing import Any, Iterable, Optional, Tuple, Union
+from typing import Any, Iterable, Optional, Tuple
 
 from requests.exceptions import HTTPError
 
@@ -28,7 +28,6 @@ from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequ
 from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
 )
-from metadata.generated.schema.api.data.createQuery import CreateQueryRequest
 from metadata.generated.schema.api.data.createStoredProcedure import (
     CreateStoredProcedureRequest,
 )
@@ -881,9 +880,6 @@ class SasSource(
     ) -> Iterable[Either[OMetaTagAndClassification]]:
         """No tags to send"""
 
-    def yield_view_lineage(self) -> Iterable[Either[AddLineageRequest]]:
-        yield from []
-
     def get_tables_name_and_type(self) -> Optional[Iterable[Tuple[str, list]]]:
         """Not implemented"""
 
@@ -899,11 +895,6 @@ class SasSource(
         self, stored_procedure: Any
     ) -> Iterable[Either[CreateStoredProcedureRequest]]:
         """Not implemented"""
-
-    def yield_procedure_lineage_and_queries(
-        self,
-    ) -> Iterable[Either[Union[AddLineageRequest, CreateQueryRequest]]]:
-        yield from []
 
     def close(self) -> None:
         pass
