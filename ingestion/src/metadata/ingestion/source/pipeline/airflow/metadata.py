@@ -167,9 +167,7 @@ class AirflowSource(PipelineServiceSource):
             return [tag[0] for tag in tag_query]
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Could not extract tags details due to {exc}"
-            )
+            logger.warning(f"Could not extract tags details due to {exc}")
         return []
 
     def yield_tag(
@@ -179,7 +177,7 @@ class AirflowSource(PipelineServiceSource):
             tags=self.get_all_tags(dag_id=pipeline_details.dag_id),
             classification_name=AIRFLOW_TAG_CATEGORY,
             tag_description="Airflow Tag",
-            classification_description="Tags associated with airflow entities",
+            classification_description="Tags associated with airflow entities.",
             include_tags=self.source_config.includeTags,
         )
 
