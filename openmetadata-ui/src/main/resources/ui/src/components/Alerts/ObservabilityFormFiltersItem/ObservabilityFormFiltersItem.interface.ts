@@ -15,4 +15,5 @@ import { EventFilterRule } from '../../../generated/events/eventSubscription';
 
 export interface ObservabilityFormFiltersItemProps {
   supportedFilters?: EventFilterRule[];
+  isViewMode?: boolean;
 }

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Form, Input, Row, Typography } from 'antd';
+import { Button, Col, Divider, Form, Input, Row, Typography } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { isEmpty, isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -34,7 +34,6 @@ import {
   AlertType,
   EventSubscription,
   ProviderType,
-  SubscriptionCategory,
 } from '../../generated/events/eventSubscription';
 import { FilterResourceDescriptor } from '../../generated/events/filterResourceDescriptor';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
@@ -46,9 +45,10 @@ import {
   updateObservabilityAlert,
 } from '../../rest/observabilityAPI';
 import {
-  getConfigHeaderArrayFromObject,
+  getModifiedAlertDataForForm,
   handleAlertSave,
 } from '../../utils/Alerts/AlertsUtil';
+import { getEntityName } from '../../utils/EntityUtils';
 import { getObservabilityAlertDetailsPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import {
@@ -80,27 +80,7 @@ function AddObservabilityPage() {
       setFetching((prev) => prev + 1);
 
       const observabilityAlert = await getObservabilityAlertByFQN(fqn);
-      const modifiedAlertData: ModifiedEventSubscription = {
-        ...observabilityAlert,
-        timeout: observabilityAlert.destinations[0].timeout ?? 10,
-        destinations: observabilityAlert.destinations.map((destination) => {
-          const isExternalDestination =
-            destination.category === SubscriptionCategory.External;
-
-          return {
-            ...destination,
-            destinationType: isExternalDestination
-              ? destination.type
-              : destination.category,
-            config: {
-              ...destination.config,
-              headers: getConfigHeaderArrayFromObject(
-                destination.config?.headers
-              ),
-            },
-          };
-        }),
-      };
+      const modifiedAlertData = getModifiedAlertDataForForm(observabilityAlert);
 
       setInitialData(observabilityAlert);
       setAlert(modifiedAlertData);
@@ -241,7 +221,7 @@ function AddObservabilityPage() {
                   form={form}
                   initialValues={{
                     ...alert,
-                    // displayName: getEntityName(alert),
+                    displayName: getEntityName(alert),
                     resources: alert?.filteringRules?.resources,
                   }}
                   validateMessages={VALIDATION_MESSAGES}
@@ -271,22 +251,44 @@ function AddObservabilityPage() {
                       </Form.Item>
                     </Col>
                     <Col span={24}>
-                      <AlertFormSourceItem filterResources={filterResources} />
+                      <Row justify="center">
+                        <Col span={24}>
+                          <AlertFormSourceItem
+                            filterResources={filterResources}
+                          />
+                        </Col>
+                        {shouldShowFiltersSection && (
+                          <>
+                            <Col>
+                              <Divider dashed type="vertical" />
+                            </Col>
+                            <Col span={24}>
+                              <ObservabilityFormFiltersItem
+                                supportedFilters={supportedFilters}
+                              />
+                            </Col>
+                          </>
+                        )}
+                        {shouldShowActionsSection && (
+                          <>
+                            <Col>
+                              <Divider dashed type="vertical" />
+                            </Col>
+                            <Col span={24}>
+                              <ObservabilityFormTriggerItem
+                                supportedTriggers={supportedTriggers}
+                              />
+                            </Col>
+                          </>
+                        )}
+                        <Col>
+                          <Divider dashed type="vertical" />
+                        </Col>
+                        <Col span={24}>
+                          <DestinationFormItem />
+                        </Col>
+                      </Row>
                     </Col>
-                    {shouldShowFiltersSection && (
-                      <Col span={24}>
-                        <ObservabilityFormFiltersItem
-                          supportedFilters={supportedFilters}
-                        />
-                      </Col>
-                    )}
-                    {shouldShowActionsSection && (
-                      <Col span={24}>
-                        <ObservabilityFormTriggerItem
-                          supportedTriggers={supportedTriggers}
-                        />
-                      </Col>
-                    )}
                     <Form.Item
                       hidden
                       initialValue={AlertType.Observability}
@@ -297,9 +299,6 @@ function AddObservabilityPage() {
                       initialValue={ProviderType.User}
                       name="provider"
                     />
-                    <Col span={24}>
-                      <DestinationFormItem />
-                    </Col>
 
                     {!isUndefined(inlineAlertDetails) && (
                       <Col span={24}>

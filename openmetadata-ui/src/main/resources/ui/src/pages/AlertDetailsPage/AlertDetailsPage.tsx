@@ -243,7 +243,10 @@ function AlertDetailsPage({
         children: isUndefined(alertDetails) ? (
           <ErrorPlaceHolder className="m-0" />
         ) : (
-          <AlertConfigDetails alertDetails={alertDetails} />
+          <AlertConfigDetails
+            alertDetails={alertDetails}
+            isNotificationAlert={isNotificationAlert}
+          />
         ),
       },
       {

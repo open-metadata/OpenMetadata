@@ -19,4 +19,5 @@ export interface DestinationSelectItemProps {
   remove: (index: number | number[]) => void;
   destinationsWithStatus?: Destination[];
   isDestinationStatusLoading: boolean;
+  isViewMode?: boolean;
 }

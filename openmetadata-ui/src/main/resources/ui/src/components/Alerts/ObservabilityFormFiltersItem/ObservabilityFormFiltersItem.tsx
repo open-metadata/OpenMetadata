@@ -30,6 +30,7 @@ import { ObservabilityFormFiltersItemProps } from './ObservabilityFormFiltersIte
 
 function ObservabilityFormFiltersItem({
   supportedFilters,
+  isViewMode = false,
 }: Readonly<ObservabilityFormFiltersItemProps>) {
   const { t } = useTranslation();
 
@@ -56,7 +57,7 @@ function ObservabilityFormFiltersItem({
       <Form.List name={['input', 'filters']}>
         {(fields, { add, remove }, { errors }) => {
           const showAddFilterButton =
-            fields.length < (supportedFilters?.length ?? 1);
+            fields.length < (supportedFilters?.length ?? 1) && !isViewMode;
 
           return (
             <Row data-testid="filters-list" gutter={[16, 16]} key="filters">
@@ -66,9 +67,7 @@ function ObservabilityFormFiltersItem({
                   Effect.Include;
 
                 const showConditionalFields =
-                  !isNil(supportedFilters) &&
-                  !isEmpty(selectedFilters) &&
-                  selectedFilters[name];
+                  !isEmpty(selectedFilters) && selectedFilters[name];
 
                 return (
                   <Col
@@ -115,11 +114,13 @@ function ObservabilityFormFiltersItem({
                         </Row>
                       </div>
 
-                      <Button
-                        data-testid={`remove-filter-${name}`}
-                        icon={<CloseOutlined />}
-                        onClick={() => remove(name)}
-                      />
+                      {!isViewMode && (
+                        <Button
+                          data-testid={`remove-filter-${name}`}
+                          icon={<CloseOutlined />}
+                          onClick={() => remove(name)}
+                        />
+                      )}
                     </div>
                     <Form.Item
                       label={

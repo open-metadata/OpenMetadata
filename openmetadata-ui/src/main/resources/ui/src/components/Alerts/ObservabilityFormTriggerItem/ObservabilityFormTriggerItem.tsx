@@ -30,6 +30,7 @@ import { ObservabilityFormTriggerItemProps } from './ObservabilityFormTriggerIte
 
 function ObservabilityFormTriggerItem({
   supportedTriggers,
+  isViewMode = false,
 }: Readonly<ObservabilityFormTriggerItemProps>) {
   const { t } = useTranslation();
   const form = Form.useFormInstance();
@@ -55,7 +56,7 @@ function ObservabilityFormTriggerItem({
       <Form.List name={['input', 'actions']}>
         {(fields, { add, remove }, { errors }) => {
           const showAddTriggerButton =
-            fields.length < (supportedTriggers?.length ?? 1);
+            fields.length < (supportedTriggers?.length ?? 1) && !isViewMode;
 
           return (
             <Row data-testid="triggers-list" gutter={[16, 16]} key="triggers">
@@ -65,9 +66,8 @@ function ObservabilityFormTriggerItem({
                   Effect.Include;
 
                 const showConditionalFields =
-                  !isNil(supportedTriggers) &&
                   !isEmpty(selectedTriggers) &&
-                  selectedTriggers[name];
+                  !isEmpty(selectedTriggers[name]);
 
                 return (
                   <Col
@@ -113,13 +113,13 @@ function ObservabilityFormTriggerItem({
                             )}
                         </Row>
                       </div>
-                      <div>
+                      {!isViewMode && (
                         <Button
                           data-testid={`remove-trigger-${name}`}
                           icon={<CloseOutlined />}
                           onClick={() => remove(name)}
                         />
-                      </div>
+                      )}
                     </div>
                     <Form.Item
                       label={

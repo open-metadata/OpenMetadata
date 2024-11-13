@@ -15,4 +15,5 @@ import { EventSubscription } from '../../../../generated/events/eventSubscriptio
 
 export interface AlertConfigDetailsProps {
   alertDetails: EventSubscription;
+  isNotificationAlert?: boolean;
 }

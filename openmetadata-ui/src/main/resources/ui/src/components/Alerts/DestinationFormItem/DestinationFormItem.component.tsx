@@ -31,9 +31,10 @@ import {
 } from '../../../utils/Alerts/AlertsUtil';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import './destination-form-item.less';
+import { DestinationFormItemProps } from './DestinationFormItem.interface';
 import DestinationSelectItem from './DestinationSelectItem/DestinationSelectItem';
 
-function DestinationFormItem() {
+function DestinationFormItem({ isViewMode = false }: DestinationFormItemProps) {
   const { t } = useTranslation();
   const form = Form.useFormInstance();
   const [destinationsWithStatus, setDestinationsWithStatus] =
@@ -122,6 +123,7 @@ function DestinationFormItem() {
                     destinationsWithStatus={destinationsWithStatus}
                     id={name}
                     isDestinationStatusLoading={isDestinationStatusLoading}
+                    isViewMode={isViewMode}
                     remove={remove}
                     selectorKey={key}
                   />
@@ -133,37 +135,39 @@ function DestinationFormItem() {
                 </Fragment>
               ))}
 
-              <Col span={24}>
-                <Row gutter={[16, 16]}>
-                  <Col>
-                    <Button
-                      data-testid="add-destination-button"
-                      disabled={
-                        isEmpty(selectedSource) || isNil(selectedSource)
-                      }
-                      type="primary"
-                      onClick={() => add({})}>
-                      {t('label.add-entity', {
-                        entity: t('label.destination'),
-                      })}
-                    </Button>
-                  </Col>
-                  <Col>
-                    <Tooltip
-                      placement="right"
-                      title={t('message.external-destination-selection')}>
+              {!isViewMode && (
+                <Col span={24}>
+                  <Row gutter={[16, 16]}>
+                    <Col>
                       <Button
-                        data-testid="test-destination-button"
-                        disabled={disableTestDestinationButton}
-                        onClick={handleTestDestinationClick}>
-                        {t('label.test-entity', {
-                          entity: t('label.destination-plural'),
+                        data-testid="add-destination-button"
+                        disabled={
+                          isEmpty(selectedSource) || isNil(selectedSource)
+                        }
+                        type="primary"
+                        onClick={() => add({})}>
+                        {t('label.add-entity', {
+                          entity: t('label.destination'),
                         })}
                       </Button>
-                    </Tooltip>
-                  </Col>
-                </Row>
-              </Col>
+                    </Col>
+                    <Col>
+                      <Tooltip
+                        placement="right"
+                        title={t('message.external-destination-selection')}>
+                        <Button
+                          data-testid="test-destination-button"
+                          disabled={disableTestDestinationButton}
+                          onClick={handleTestDestinationClick}>
+                          {t('label.test-entity', {
+                            entity: t('label.destination-plural'),
+                          })}
+                        </Button>
+                      </Tooltip>
+                    </Col>
+                  </Row>
+                </Col>
+              )}
 
               <Col span={24}>
                 <Form.ErrorList errors={errors} />

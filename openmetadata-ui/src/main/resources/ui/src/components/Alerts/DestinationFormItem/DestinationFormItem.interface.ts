@@ -11,9 +11,6 @@
  *  limitations under the License.
  */
 
-import { EventFilterRule } from '../../../generated/events/eventSubscription';
-
-export interface ObservabilityFormTriggerItemProps {
-  supportedTriggers?: EventFilterRule[];
+export interface DestinationFormItemProps {
   isViewMode?: boolean;
 }

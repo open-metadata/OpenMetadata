@@ -11,236 +11,124 @@
  *  limitations under the License.
  */
 
-import { Col, Divider, Row, Tag, Tooltip, Typography } from 'antd';
-import { isEmpty, isNil, startCase } from 'lodash';
-import React, { Fragment, useMemo } from 'react';
+import { Col, Divider, Form, Row } from 'antd';
+import { useForm } from 'antd/lib/form/Form';
+import { isEmpty } from 'lodash';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  ArgumentsInput,
-  SubscriptionType,
-} from '../../../../generated/events/eventSubscription';
-import searchClassBase from '../../../../utils/SearchClassBase';
-import FormCardSection from '../../../common/FormCardSection/FormCardSection';
+import { FilterResourceDescriptor } from '../../../../generated/events/filterResourceDescriptor';
+import { ModifiedCreateEventSubscription } from '../../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
+import { getResourceFunctions as getNotificationResourceFunctions } from '../../../../rest/alertsAPI';
+import { getResourceFunctions } from '../../../../rest/observabilityAPI';
+import { getModifiedAlertDataForForm } from '../../../../utils/Alerts/AlertsUtil';
+import Fqn from '../../../../utils/Fqn';
+import { showErrorToast } from '../../../../utils/ToastUtils';
+import Loader from '../../../common/Loader/Loader';
+import AlertFormSourceItem from '../../AlertFormSourceItem/AlertFormSourceItem';
+import DestinationFormItem from '../../DestinationFormItem/DestinationFormItem.component';
+import ObservabilityFormFiltersItem from '../../ObservabilityFormFiltersItem/ObservabilityFormFiltersItem';
+import ObservabilityFormTriggerItem from '../../ObservabilityFormTriggerItem/ObservabilityFormTriggerItem';
+import './alert-config-details.less';
 import { AlertConfigDetailsProps } from './AlertConfigDetails.interface';
 
-function AlertConfigDetails({ alertDetails }: AlertConfigDetailsProps) {
+function AlertConfigDetails({
+  alertDetails,
+  isNotificationAlert,
+}: AlertConfigDetailsProps) {
   const { t } = useTranslation();
+  const [form] = useForm<ModifiedCreateEventSubscription>();
+  const modifiedAlertData = getModifiedAlertDataForForm(alertDetails);
+  const [fetching, setFetching] = useState<number>(0);
+  const [filterResources, setFilterResources] = useState<
+    FilterResourceDescriptor[]
+  >([]);
 
-  const { resource, filters, actions, destinations } = useMemo(
+  const { supportedFilters, supportedTriggers } = useMemo(
     () => ({
-      resource: alertDetails?.filteringRules?.resources[0],
-      filters: alertDetails?.input?.filters,
-      actions: alertDetails?.input?.actions,
-      destinations: alertDetails?.destinations,
+      supportedFilters: filterResources.find(
+        (resource) =>
+          resource.name === alertDetails.filteringRules?.resources[0]
+      )?.supportedFilters,
+      supportedTriggers: filterResources.find(
+        (resource) =>
+          resource.name === alertDetails.filteringRules?.resources[0]
+      )?.supportedActions,
     }),
-    [alertDetails]
+    [filterResources, alertDetails]
   );
 
-  const getFilterDetails = (isFilter: boolean, filters?: ArgumentsInput[]) => (
-    <div className="p-md">
-      {filters?.map((filterDetails, index) => (
-        <Fragment key={filterDetails.name}>
-          <Row data-testid={`filter-${filterDetails.name}`} gutter={[0, 8]}>
-            <Col className="font-medium" span={3}>
-              {t('label.effect')}
-            </Col>
-            <Col span={1}>:</Col>
-            <Col data-testid="effect-value" span={20}>
-              {startCase(filterDetails.effect)}
-            </Col>
-            <Col className="font-medium" span={3}>
-              {t('label.entity-name', {
-                entity: isFilter ? t('label.filter') : t('label.action'),
-              })}
-            </Col>
-            <Col span={1}>:</Col>
-            <Col data-testid="filter-name" span={20}>
-              {startCase(filterDetails.name)}
-            </Col>
-            {!isEmpty(filterDetails.arguments) && (
-              <>
-                <Col className="font-medium" span={3}>
-                  {t('label.argument-plural')}
-                </Col>
-                <Col span={1}>:</Col>
-                <Col
-                  className="border rounded-4 p-sm"
-                  data-testid="arguments-container"
-                  span={20}>
-                  {filterDetails.arguments?.map((argument) => (
-                    <Row
-                      data-testid={`argument-container-${argument.name}`}
-                      gutter={[0, 8]}
-                      key={argument.name}>
-                      <Col className="font-medium" span={24}>
-                        <Typography.Text data-testid="argument-name">
-                          {argument.name}
-                        </Typography.Text>
-                      </Col>
-                      <Col span={24}>
-                        {argument.input?.map((inputItem) => (
-                          <Tooltip key={inputItem} title={inputItem}>
-                            <Tag
-                              className="m-b-xs w-max-full"
-                              data-testid="argument-value">
-                              <Typography.Text ellipsis>
-                                {inputItem}
-                              </Typography.Text>
-                            </Tag>
-                          </Tooltip>
-                        ))}
-                      </Col>
-                    </Row>
-                  ))}
-                </Col>
-              </>
-            )}
-          </Row>
-          {index < filters.length - 1 && <Divider className="m-y-sm" />}
-        </Fragment>
-      ))}
-    </div>
-  );
+  const fetchFunctions = useCallback(async () => {
+    try {
+      setFetching((prev) => prev + 1);
+      const filterResources = await (isNotificationAlert
+        ? getNotificationResourceFunctions()
+        : getResourceFunctions());
 
-  const destinationDetails = useMemo(
-    () => (
-      <div className="p-md">
-        <Row gutter={[0, 8]}>
-          <Col className="font-medium" span={3}>
-            {`${t('label.connection-timeout')} (${t('label.second-plural')})`}
-          </Col>
-          <Col span={1}>:</Col>
-          <Col data-testid="connection-timeout" span={20}>
-            {destinations?.[0].timeout}
-          </Col>
-        </Row>
-        <Divider className="m-y-sm" />
-        {destinations?.map((destination, index) => (
-          <Fragment key={`${destination.category}-${destination.type}`}>
-            <Row
-              data-testid={`destination-${destination.category}`}
-              gutter={[0, 8]}>
-              <Col className="font-medium" span={3}>
-                {t('label.category')}
-              </Col>
-              <Col span={1}>:</Col>
-              <Col data-testid="category-value" span={20}>
-                {startCase(destination.category)}
-              </Col>
-              <Col className="font-medium" span={3}>
-                {t('label.type')}
-              </Col>
-              <Col span={1}>:</Col>
-              <Col data-testid="destination-type" span={20}>
-                {startCase(destination.type)}
-              </Col>
-              {destination.type === SubscriptionType.Webhook &&
-                destination.config?.secretKey && (
-                  <>
-                    <Col className="font-medium" span={3}>
-                      {t('label.secret-key')}
-                    </Col>
-                    <Col span={1}>:</Col>
-                    <Col data-testid="secret-key" span={20}>
-                      {destination.config.secretKey}
-                    </Col>
-                  </>
-                )}
-              {!isEmpty(destination.config?.receivers) &&
-                !isNil(destination.config?.receivers) && (
-                  <>
-                    <Col className="font-medium" span={3}>
-                      {t('label.config')}
-                    </Col>
-                    <Col span={1}>:</Col>
-                    <Col className="border rounded-4 p-sm" span={20}>
-                      <Row gutter={[0, 8]}>
-                        {destination.config?.receivers && (
-                          <>
-                            <Col className="font-medium" span={24}>
-                              <Typography.Text>
-                                {t('label.receiver-plural')}
-                              </Typography.Text>
-                            </Col>
-                            <Col data-testid="receivers-value" span={24}>
-                              {destination.config?.receivers?.map(
-                                (receiver) => (
-                                  <Tooltip key={receiver} title={receiver}>
-                                    <Tag
-                                      className="m-b-xs w-max-full"
-                                      data-testid={`receiver-${receiver}`}>
-                                      <Typography.Text ellipsis>
-                                        {receiver}
-                                      </Typography.Text>
-                                    </Tag>
-                                  </Tooltip>
-                                )
-                              )}
-                            </Col>
-                          </>
-                        )}
-                      </Row>
-                    </Col>
-                  </>
-                )}
-            </Row>
-            {index < destinations.length - 1 && <Divider className="m-y-sm" />}
-          </Fragment>
-        ))}
-      </div>
-    ),
-    [destinations]
-  );
+      setFilterResources(filterResources.data);
+    } catch (error) {
+      showErrorToast(
+        t('server.entity-fetch-error', { entity: t('label.config') })
+      );
+    } finally {
+      setFetching((prev) => prev - 1);
+    }
+  }, [isNotificationAlert]);
 
-  const resourceIcon = useMemo(
-    () => searchClassBase.getEntityIcon(resource ?? ''),
-    [resource]
-  );
+  useEffect(() => {
+    fetchFunctions();
+  }, [Fqn]);
+
+  if (fetching) {
+    return <Loader />;
+  }
 
   return (
-    <Row gutter={[16, 16]}>
-      <Col span={24}>
-        <FormCardSection
-          childrenContainerClassName="bg-white p-y-xs p-x-sm border rounded-4"
-          heading={t('label.source')}
-          subHeading={t('message.alerts-source-description')}>
-          <div className="d-flex items-center gap-2 m-l-sm">
-            {resourceIcon && (
-              <div className="d-flex h-4 w-4">{resourceIcon}</div>
-            )}
-            <span data-testid="resource-name">{startCase(resource)}</span>
-          </div>
-        </FormCardSection>
-      </Col>
-      {!isEmpty(filters) && !isNil(filters) && (
+    <Form<ModifiedCreateEventSubscription>
+      disabled
+      className="alert-config-details"
+      form={form}
+      initialValues={{
+        ...modifiedAlertData,
+        resources: modifiedAlertData?.filteringRules?.resources,
+      }}>
+      <Row justify="center">
         <Col span={24}>
-          <FormCardSection
-            childrenContainerClassName="bg-white p-y-xs p-x-sm border rounded-4"
-            heading={t('label.filter-plural')}
-            subHeading={t('message.alerts-filter-description')}>
-            {getFilterDetails(true, filters)}
-          </FormCardSection>
+          <AlertFormSourceItem />
         </Col>
-      )}
-      {!isEmpty(actions) && !isNil(actions) && (
+        {!isEmpty(modifiedAlertData.input?.filters) && (
+          <>
+            <Col>
+              <Divider dashed type="vertical" />
+            </Col>
+            <Col span={24}>
+              <ObservabilityFormFiltersItem
+                isViewMode
+                supportedFilters={supportedFilters}
+              />
+            </Col>
+          </>
+        )}
+        {!isEmpty(modifiedAlertData.input?.actions) && (
+          <>
+            <Col>
+              <Divider dashed type="vertical" />
+            </Col>
+            <Col span={24}>
+              <ObservabilityFormTriggerItem
+                isViewMode
+                supportedTriggers={supportedTriggers}
+              />
+            </Col>
+          </>
+        )}
+        <Col>
+          <Divider dashed type="vertical" />
+        </Col>
         <Col span={24}>
-          <FormCardSection
-            childrenContainerClassName="bg-white p-y-xs p-x-sm border rounded-4"
-            heading={t('label.trigger')}
-            subHeading={t('message.alerts-trigger-description')}>
-            {getFilterDetails(false, actions)}
-          </FormCardSection>
+          <DestinationFormItem isViewMode />
         </Col>
-      )}
-      <Col span={24}>
-        <FormCardSection
-          childrenContainerClassName="bg-white p-y-xs p-x-sm border rounded-4"
-          heading={t('label.destination')}
-          subHeading={t('message.alerts-destination-description')}>
-          {destinationDetails}
-        </FormCardSection>
-      </Col>
-    </Row>
+      </Row>
+    </Form>
   );
 }
 

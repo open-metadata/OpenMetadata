@@ -98,6 +98,7 @@ import { EventType } from '../../generated/type/changeEvent';
 import {
   ModifiedCreateEventSubscription,
   ModifiedDestination,
+  ModifiedEventSubscription,
 } from '../../pages/AddObservabilityPage/AddObservabilityPage.interface';
 import { searchData } from '../../rest/miscAPI';
 import { getEntityName, getEntityNameLabel } from '../EntityUtils';
@@ -1369,5 +1370,29 @@ export const getDestinationStatusAlertData = (destinationStatus?: string) => {
     alertType,
     statusLabel,
     alertIcon,
+  };
+};
+
+export const getModifiedAlertDataForForm = (
+  alertData: EventSubscription
+): ModifiedEventSubscription => {
+  return {
+    ...alertData,
+    timeout: alertData.destinations[0].timeout ?? 10,
+    destinations: alertData.destinations.map((destination) => {
+      const isExternalDestination =
+        destination.category === SubscriptionCategory.External;
+
+      return {
+        ...destination,
+        destinationType: isExternalDestination
+          ? destination.type
+          : destination.category,
+        config: {
+          ...destination.config,
+          headers: getConfigHeaderArrayFromObject(destination.config?.headers),
+        },
+      };
+    }),
   };
 };

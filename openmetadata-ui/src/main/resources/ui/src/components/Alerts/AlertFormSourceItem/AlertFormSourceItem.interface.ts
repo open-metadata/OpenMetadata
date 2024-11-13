@@ -14,5 +14,5 @@
 import { FilterResourceDescriptor } from '../../../generated/events/filterResourceDescriptor';
 
 export interface AlertFormSourceItemProps {
-  filterResources: FilterResourceDescriptor[];
+  filterResources?: FilterResourceDescriptor[];
 }

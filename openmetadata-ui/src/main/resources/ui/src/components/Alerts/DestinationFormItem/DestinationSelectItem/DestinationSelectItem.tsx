@@ -60,6 +60,7 @@ function DestinationSelectItem({
   remove,
   destinationsWithStatus,
   isDestinationStatusLoading,
+  isViewMode = false,
 }: Readonly<DestinationSelectItemProps>) {
   const { t } = useTranslation();
   const form = Form.useFormInstance();
@@ -359,11 +360,13 @@ function DestinationSelectItem({
           </Row>
         </div>
 
-        <Button
-          data-testid={`remove-destination-${id}`}
-          icon={<CloseOutlined />}
-          onClick={() => remove(id)}
-        />
+        {!isViewMode && (
+          <Button
+            data-testid={`remove-destination-${id}`}
+            icon={<CloseOutlined />}
+            onClick={() => remove(id)}
+          />
+        )}
       </div>
     </Col>
   );
