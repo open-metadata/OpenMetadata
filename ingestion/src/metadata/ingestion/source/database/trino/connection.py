@@ -87,19 +87,19 @@ def get_connection_args(connection: TrinoConnection):
         connection.connectionArguments.root["http_session"] = session
 
     if isinstance(connection.authType, basicAuth.BasicAuth):
-        connection.connectionArguments.__root__["auth"] = BasicAuthentication(
+        connection.connectionArguments.root["auth"] = BasicAuthentication(
             connection.username,
             connection.authType.password.get_secret_value()
             if connection.authType.password
             else None,
         )
-        connection.connectionArguments.__root__["http_scheme"] = "https"
+        connection.connectionArguments.root["http_scheme"] = "https"
 
     elif isinstance(connection.authType, jwtAuth.JwtAuth):
-        connection.connectionArguments.__root__["auth"] = JWTAuthentication(
+        connection.connectionArguments.root["auth"] = JWTAuthentication(
             connection.authType.jwt.get_secret_value()
         )
-        connection.connectionArguments.__root__["http_scheme"] = "https"
+        connection.connectionArguments.root["http_scheme"] = "https"
 
     elif hasattr(connection.authType, "azureConfig"):
         if not connection.authType.azureConfig.scopes:
@@ -113,17 +113,17 @@ def get_connection_args(connection: TrinoConnection):
             *connection.authType.azureConfig.scopes.split(",")
         )
 
-        connection.connectionArguments.__root__["auth"] = JWTAuthentication(
+        connection.connectionArguments.root["auth"] = JWTAuthentication(
             access_token_obj.token
         )
-        connection.connectionArguments.__root__["http_scheme"] = "https"
+        connection.connectionArguments.root["http_scheme"] = "https"
 
     elif (
         connection.authType
         == noConfigAuthenticationTypes.NoConfigAuthenticationTypes.OAuth2
     ):
-        connection.connectionArguments.__root__["auth"] = OAuth2Authentication()
-        connection.connectionArguments.__root__["http_scheme"] = "https"
+        connection.connectionArguments.root["auth"] = OAuth2Authentication()
+        connection.connectionArguments.root["http_scheme"] = "https"
 
     return get_connection_args_common(connection)
 
