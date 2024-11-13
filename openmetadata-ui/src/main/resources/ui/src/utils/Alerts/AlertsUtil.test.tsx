@@ -204,9 +204,9 @@ describe('AlertsUtil tests', () => {
     );
 
     [resultTask, resultTable].forEach((results) => {
-      expect(results).toHaveLength(5);
+      expect(results).toHaveLength(6);
 
-      results.map((result) =>
+      results.forEach((result) =>
         expect(
           mockExternalDestinationOptions.includes(
             result.value as Exclude<

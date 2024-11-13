@@ -78,7 +78,7 @@
     "alertType": {
       "description": "Type of Alerts supported.",
       "type": "string",
-      "enum": ["Notification", "Observability", "ActivityFeed"],
+      "enum": ["Notification", "Observability", "ActivityFeed", "GovernanceWorkflowChangeEvent"],
       "default": "Notification"
     },
     "subscriptionCategory": {
@@ -104,7 +104,8 @@
         "MsTeams",
         "GChat",
         "Email",
-        "ActivityFeed"
+        "ActivityFeed",
+        "GovernanceWorkflowChangeEvent"
       ]
     },
     "destination": {

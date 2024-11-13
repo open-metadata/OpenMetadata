@@ -130,6 +130,7 @@ export const StatusClass = {
   [Status.Draft]: StatusType.Warning,
   [Status.Rejected]: StatusType.Failure,
   [Status.Deprecated]: StatusType.Warning,
+  [Status.InReview]: StatusType.Running,
 };
 
 export const StatusFilters = Object.values(Status)

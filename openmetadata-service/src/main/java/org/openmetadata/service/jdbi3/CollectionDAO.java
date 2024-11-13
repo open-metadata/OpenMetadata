@@ -119,6 +119,7 @@ import org.openmetadata.schema.entity.teams.Persona;
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.tests.TestCase;
@@ -364,6 +365,15 @@ public interface CollectionDAO {
 
   @CreateSqlObject
   APIEndpointDAO apiEndpointDAO();
+
+  @CreateSqlObject
+  WorkflowDefinitionDAO workflowDefinitionDAO();
+
+  @CreateSqlObject
+  WorkflowInstanceTimeSeriesDAO workflowInstanceTimeSeriesDAO();
+
+  @CreateSqlObject
+  WorkflowInstanceStateTimeSeriesDAO workflowInstanceStateTimeSeriesDAO();
 
   interface DashboardDAO extends EntityDAO<Dashboard> {
     @Override
@@ -5690,6 +5700,37 @@ public interface CollectionDAO {
     @Override
     default String getNameHashColumn() {
       return "fqnHash";
+    }
+  }
+
+  interface WorkflowDefinitionDAO extends EntityDAO<WorkflowDefinition> {
+    @Override
+    default String getTableName() {
+      return "workflow_definition_entity";
+    }
+
+    @Override
+    default Class<WorkflowDefinition> getEntityClass() {
+      return WorkflowDefinition.class;
+    }
+
+    @Override
+    default String getNameHashColumn() {
+      return "fqnHash";
+    }
+  }
+
+  interface WorkflowInstanceTimeSeriesDAO extends EntityTimeSeriesDAO {
+    @Override
+    default String getTimeSeriesTableName() {
+      return "workflow_instance_time_series";
+    }
+  }
+
+  interface WorkflowInstanceStateTimeSeriesDAO extends EntityTimeSeriesDAO {
+    @Override
+    default String getTimeSeriesTableName() {
+      return "workflow_instance_state_time_series";
     }
   }
 }

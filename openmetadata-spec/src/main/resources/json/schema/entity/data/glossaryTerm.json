@@ -25,7 +25,7 @@
     },
     "status": {
       "type": "string",
-      "enum": ["Draft", "Approved", "Deprecated", "Rejected"]
+      "enum": ["Draft", "In Review", "Approved", "Deprecated", "Rejected"]
     }
   },
   "properties": {
