@@ -64,7 +64,11 @@ const DraggableMenuItem: React.FC<DraggableMenuItemProps> = ({
       ref={(node) => {
         drag(drop(node));
       }}>
-      <ColumnDragIcon height={16} width={16} />
+      <ColumnDragIcon
+        className="glossary-col-dropdown-drag-icon m-l-xs"
+        height={16}
+        width={16}
+      />
       <Checkbox
         checked={selectedOptions.includes(option.value)}
         className="custom-glossary-col-sel-checkbox m-l-sm"

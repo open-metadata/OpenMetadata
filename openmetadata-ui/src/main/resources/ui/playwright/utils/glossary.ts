@@ -1108,3 +1108,46 @@ export async function verifyAllColumns(
     }
   }
 }
+export const filterStatus = async (
+  page: Page,
+  statusLabels: string[],
+  expectedStatus: string[]
+): Promise<void> => {
+  const dropdownButton = page.getByTestId('glossary-status-dropdown');
+  await dropdownButton.click();
+
+  for (const label of statusLabels) {
+    const checkbox = page.locator('.glossary-dropdown-label', {
+      hasText: label,
+    });
+    await checkbox.click();
+  }
+
+  const saveButton = page.locator('.ant-btn-primary', {
+    hasText: 'Save',
+  });
+  await saveButton.click();
+
+  const glossaryTermsTable = page.getByTestId('glossary-terms-table');
+  const rows = glossaryTermsTable.locator('tbody tr');
+  const statusColumnIndex = 3;
+
+  for (let i = 0; i < (await rows.count()); i++) {
+    const statusCell = rows
+      .nth(i)
+      .locator(`td:nth-child(${statusColumnIndex + 1})`);
+    const statusText = await statusCell.textContent();
+
+    expect(expectedStatus).toContain(statusText);
+  }
+};
+
+export const dragAndDropColumn = async (
+  page: Page,
+  dragColumn: string,
+  dropColumn: string
+) => {
+  await page
+    .locator('.draggable-menu-item', { hasText: dragColumn })
+    .dragTo(page.locator('.draggable-menu-item', { hasText: dropColumn }));
+};

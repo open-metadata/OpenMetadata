@@ -442,7 +442,7 @@ const GlossaryTermTab = ({
           key: 'addColumn',
           label: (
             <div className="glossary-col-sel-dropdown-title">
-              {t('label.add-column')}
+              <p className="m-l-md">{t('label.add-column')}</p>
               <Checkbox.Group
                 className="glossary-col-sel-checkbox-group"
                 value={columnDropdownSelections}>
@@ -452,7 +452,7 @@ const GlossaryTermTab = ({
                     .every(({ key }) =>
                       columnDropdownSelections.includes(key as string)
                     )}
-                  className="custom-glossary-col-sel-checkbox m-l-lg"
+                  className="custom-glossary-col-sel-checkbox m-l-lg p-l-md"
                   key="all"
                   value="all"
                   onChange={(e) =>
@@ -815,10 +815,10 @@ const GlossaryTermTab = ({
             </Space>
           </Button>
           <Dropdown
-            className="custom-glossary-dropdown-menu"
+            className="custom-glossary-dropdown-menu status-dropdown"
             getPopupContainer={(trigger) => {
               const customContainer = trigger.closest(
-                '.custom-glossary-dropdown-menu'
+                '.custom-glossary-dropdown-menu.status-dropdown'
               );
 
               return customContainer as HTMLElement;
