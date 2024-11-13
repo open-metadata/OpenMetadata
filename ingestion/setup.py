@@ -33,7 +33,7 @@ VERSIONS = {
     "neo4j": "neo4j~=5.3.0",
     "pandas": "pandas~=2.0.0",
     "pyarrow": "pyarrow~=16.0",
-    "pydantic": "pydantic~=2.0",
+    "pydantic": "pydantic~=2.0,>=2.7.0",
     "pydomo": "pydomo~=0.3",
     "pymysql": "pymysql~=1.0",
     "pyodbc": "pyodbc>=4.0.35,<5",
@@ -354,6 +354,7 @@ test = {
     "pytest==7.0.0",
     "pytest-cov",
     "pytest-order",
+    "dirty-equals",
     # install dbt dependency
     "dbt-artifacts-parser",
     "freezegun",

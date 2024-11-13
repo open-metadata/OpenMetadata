@@ -18,6 +18,11 @@
       "$ref": "#/definitions/profilerConfigType",
       "default": "Profiler"
     },
+    "classificationFilterPattern": {
+      "description": "Regex to only compute metrics for table that matches the given tag, tiers, gloassary pattern.",
+      "$ref": "../type/filterPattern.json#/definitions/filterPattern",
+      "title": "Classification Filter Pattern"
+    },
     "schemaFilterPattern": {
       "description": "Regex to only fetch tables or databases that matches the pattern.",
       "$ref": "../type/filterPattern.json#/definitions/filterPattern",
@@ -56,6 +61,18 @@
       "type": "boolean",
       "default": true,
       "title": "Compute Metrics"
+    },
+    "computeTableMetrics": {
+      "description": "Option to turn on/off table metric computation. If enabled, profiler will compute table level metrics.",
+      "type": "boolean",
+      "default": true,
+      "title": "Compute Table Metrics"
+    },
+    "computeColumnMetrics": {
+      "description": "Option to turn on/off column metric computation. If enabled, profiler will compute column level metrics.",
+      "type": "boolean",
+      "default": true,
+      "title": "Compute Column Metrics"
     },
     "useStatistics": {
       "description": "Use system tables to extract metrics. Metrics that cannot be gathered from system tables will use the default methods. Using system tables can be faster but requires gathering statistics before running (for example using the ANALYZE procedure). More information can be found in the documentation: https://docs.openmetadata.org/latest/profler",

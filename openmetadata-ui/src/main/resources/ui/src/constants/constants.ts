@@ -298,6 +298,8 @@ export const SOCKET_EVENTS = {
   MENTION_CHANNEL: 'mentionChannel',
   JOB_STATUS: 'jobStatus',
   CSV_EXPORT_CHANNEL: 'csvExportChannel',
+  SEARCH_INDEX_JOB_BROADCAST_CHANNEL: 'searchIndexJobStatus',
+  DATA_INSIGHTS_JOB_BROADCAST_CHANNEL: 'dataInsightsJobStatus',
 };
 
 export const IN_PAGE_SEARCH_ROUTES: Record<string, Array<string>> = {

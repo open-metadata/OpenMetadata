@@ -28,6 +28,7 @@ import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.models.IndexMapping;
 import org.openmetadata.service.search.security.RBACConditionEvaluator;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
+import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.SSLUtil;
 import os.org.opensearch.action.bulk.BulkRequest;
 import os.org.opensearch.action.bulk.BulkResponse;
@@ -169,6 +170,15 @@ public interface SearchClient {
       String q)
       throws IOException;
 
+  SearchResultListMapper listWithDeepPagination(
+      String index,
+      String query,
+      String filter,
+      SearchSortFilter searchSortFilter,
+      int size,
+      Object[] searchAfter)
+      throws IOException;
+
   Response searchBySourceUrl(String sourceUrl) throws IOException;
 
   Response searchLineage(
@@ -195,7 +205,13 @@ public interface SearchClient {
    Used for listing knowledge page hierarchy for a given parent and page type, used in Elastic/Open SearchClientExtension
   */
   @SuppressWarnings("unused")
-  default Response listPageHierarchy(String parent, String pageType, int offset, int limit) {
+  default ResultList listPageHierarchy(String parent, String pageType, int offset, int limit) {
+    throw new CustomExceptionMessage(
+        Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
+  }
+
+  @SuppressWarnings("unused")
+  default ResultList searchPageHierarchy(String query, String pageType, int offset, int limit) {
     throw new CustomExceptionMessage(
         Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
   }
@@ -306,10 +322,18 @@ public interface SearchClient {
   class SearchResultListMapper {
     public List<Map<String, Object>> results;
     public long total;
+    public Object[] lastHitSortValues;
 
     public SearchResultListMapper(List<Map<String, Object>> results, long total) {
       this.results = results;
       this.total = total;
+    }
+
+    public SearchResultListMapper(
+        List<Map<String, Object>> results, long total, Object[] lastHitSortValues) {
+      this.results = results;
+      this.total = total;
+      this.lastHitSortValues = lastHitSortValues;
     }
   }
 

@@ -650,11 +650,11 @@ public class EventSubscriptionResource
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(
-              description = "Status of events to retrieve (failed, successful, unprocessed)",
+              description = "Status of events to retrieve (failed, successful)",
               schema =
                   @Schema(
                       type = "string",
-                      allowableValues = {"failed", "successful", "unprocessed"}))
+                      allowableValues = {"failed", "successful"}))
           @QueryParam("status")
           String statusParam,
       @Parameter(description = "ID of the alert or destination", schema = @Schema(type = "UUID"))
@@ -684,8 +684,7 @@ public class EventSubscriptionResource
           status = TypedEvent.Status.fromValue(statusParam);
         } catch (IllegalArgumentException e) {
           throw new WebApplicationException(
-              "Invalid status. Must be 'failed', 'successful', or 'unprocessed'.",
-              Response.Status.BAD_REQUEST);
+              "Invalid status. Must be 'failed' or 'successful'.", Response.Status.BAD_REQUEST);
         }
       }
 
@@ -718,9 +717,6 @@ public class EventSubscriptionResource
       case SUCCESSFUL -> events =
           EventSubscriptionScheduler.getInstance()
               .getSuccessfullySentChangeEventsForAlert(id, limit, paginationOffset);
-      case UNPROCESSED -> events =
-          EventSubscriptionScheduler.getInstance()
-              .getRelevantUnprocessedEvents(id, limit, paginationOffset);
       default -> throw new IllegalArgumentException("Unknown event status: " + status);
     }
 
@@ -782,7 +778,11 @@ public class EventSubscriptionResource
           int paginationOffset,
       @Parameter(description = "UUID of the Event Subscription", schema = @Schema(type = "UUID"))
           @PathParam("subscriptionId")
-          UUID subscriptionId) {
+          UUID subscriptionId,
+      @Parameter(description = "Return only count if true")
+          @QueryParam("listCountOnly")
+          @DefaultValue("false")
+          boolean listCountOnly) {
     authorizer.authorizeAdmin(securityContext);
     try {
       if (!EventSubscriptionScheduler.getInstance().doesRecordExist(subscriptionId)) {
@@ -793,7 +793,8 @@ public class EventSubscriptionResource
 
       EventSubscriptionDiagnosticInfo diagnosticInfo =
           EventSubscriptionScheduler.getInstance()
-              .getEventSubscriptionDiagnosticInfo(subscriptionId, limit, paginationOffset);
+              .getEventSubscriptionDiagnosticInfo(
+                  subscriptionId, limit, paginationOffset, listCountOnly);
 
       return Response.ok().entity(diagnosticInfo).build();
     } catch (Exception e) {
@@ -840,7 +841,11 @@ public class EventSubscriptionResource
           int paginationOffset,
       @Parameter(description = "Name of the Event Subscription", schema = @Schema(type = "string"))
           @PathParam("subscriptionName")
-          String subscriptionName) {
+          String subscriptionName,
+      @Parameter(description = "Return only count if true")
+          @QueryParam("listCountOnly")
+          @DefaultValue("false")
+          boolean listCountOnly) {
     authorizer.authorizeAdmin(securityContext);
     try {
       EventSubscription subscription =
@@ -854,7 +859,8 @@ public class EventSubscriptionResource
 
       EventSubscriptionDiagnosticInfo diagnosticInfo =
           EventSubscriptionScheduler.getInstance()
-              .getEventSubscriptionDiagnosticInfo(subscription.getId(), limit, paginationOffset);
+              .getEventSubscriptionDiagnosticInfo(
+                  subscription.getId(), limit, paginationOffset, listCountOnly);
 
       return Response.ok().entity(diagnosticInfo).build();
     } catch (Exception e) {

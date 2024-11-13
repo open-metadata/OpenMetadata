@@ -117,6 +117,7 @@ import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSear
 import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchDailyActiveUsersAggregator;
 import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchDynamicChartAggregatorFactory;
 import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchDynamicChartAggregatorInterface;
+import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchLineChartAggregator;
 import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchMostActiveUsersAggregator;
 import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchMostViewedEntitiesAggregator;
 import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchPageViewsByEntitiesAggregator;
@@ -653,6 +654,65 @@ public class OpenSearchClient implements SearchClient {
     searchSourceBuilder.timeout(new TimeValue(30, TimeUnit.SECONDS));
     searchSourceBuilder.from(offset);
     searchSourceBuilder.size(limit);
+    if (searchSortFilter.isSorted()) {
+      FieldSortBuilder fieldSortBuilder =
+          SortBuilders.fieldSort(searchSortFilter.getSortField())
+              .order(SortOrder.fromString(searchSortFilter.getSortType()));
+      if (searchSortFilter.isNested()) {
+        NestedSortBuilder nestedSortBuilder =
+            new NestedSortBuilder(searchSortFilter.getSortNestedPath());
+        fieldSortBuilder.setNestedSort(nestedSortBuilder);
+        fieldSortBuilder.sortMode(
+            SortMode.valueOf(searchSortFilter.getSortNestedMode().toUpperCase()));
+      }
+      searchSourceBuilder.sort(fieldSortBuilder);
+    }
+    try {
+      SearchResponse response =
+          client.search(
+              new os.org.opensearch.action.search.SearchRequest(index).source(searchSourceBuilder),
+              RequestOptions.DEFAULT);
+      SearchHits searchHits = response.getHits();
+      SearchHit[] hits = searchHits.getHits();
+      Arrays.stream(hits).forEach(hit -> results.add(hit.getSourceAsMap()));
+      return new SearchResultListMapper(results, searchHits.getTotalHits().value);
+    } catch (OpenSearchStatusException e) {
+      if (e.status() == RestStatus.NOT_FOUND) {
+        throw new SearchIndexNotFoundException(String.format("Failed to to find index %s", index));
+      } else {
+        throw new SearchException(String.format("Search failed due to %s", e.getDetailedMessage()));
+      }
+    }
+  }
+
+  @Override
+  public SearchResultListMapper listWithDeepPagination(
+      String index,
+      String query,
+      String filter,
+      SearchSortFilter searchSortFilter,
+      int size,
+      Object[] searchAfter)
+      throws IOException {
+    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+    if (!nullOrEmpty(query)) {
+      searchSourceBuilder = getSearchSourceBuilder(index, query, 0, size);
+    }
+
+    List<Map<String, Object>> results = new ArrayList<>();
+
+    if (Optional.ofNullable(filter).isPresent()) {
+      getSearchFilter(filter, searchSourceBuilder, !nullOrEmpty(query));
+    }
+
+    searchSourceBuilder.timeout(new TimeValue(30, TimeUnit.SECONDS));
+    searchSourceBuilder.from(0);
+    searchSourceBuilder.size(size);
+
+    if (Optional.ofNullable(searchAfter).isPresent()) {
+      searchSourceBuilder.searchAfter(searchAfter);
+    }
+
     if (searchSortFilter.isSorted()) {
       FieldSortBuilder fieldSortBuilder =
           SortBuilders.fieldSort(searchSortFilter.getSortField())
@@ -1774,6 +1834,10 @@ public class OpenSearchClient implements SearchClient {
         .aggregation(
             AggregationBuilders.terms("tier.tagFQN").field("tier.tagFQN").size(MAX_AGGREGATE_SIZE))
         .aggregation(
+            AggregationBuilders.terms("certification.tagLabel.tagFQN")
+                .field("certification.tagLabel.tagFQN")
+                .size(MAX_AGGREGATE_SIZE))
+        .aggregation(
             AggregationBuilders.terms(OWNER_DISPLAY_NAME_KEYWORD)
                 .field(OWNER_DISPLAY_NAME_KEYWORD)
                 .size(MAX_AGGREGATE_SIZE))
@@ -2105,13 +2169,7 @@ public class OpenSearchClient implements SearchClient {
 
   /** */
   @Override
-  public void close() {
-    try {
-      this.client.close();
-    } catch (Exception e) {
-      LOG.error("Failed to close open search", e);
-    }
-  }
+  public void close() {}
 
   @Override
   public BulkResponse bulk(BulkRequest data, RequestOptions options) throws IOException {
@@ -2261,26 +2319,39 @@ public class OpenSearchClient implements SearchClient {
   }
 
   @Override
-  public List<Map<String, String>> fetchDIChartFields() throws IOException {
-    // This function is being used for creating custom charts in Data Insights
+  public List<Map<String, String>> fetchDIChartFields() {
     List<Map<String, String>> fields = new ArrayList<>();
-    GetMappingsRequest request =
-        new GetMappingsRequest().indices(DataInsightSystemChartRepository.DI_SEARCH_INDEX);
+    for (String type : DataInsightSystemChartRepository.dataAssetTypes) {
+      // This function is being used for creating custom charts in Data Insights
+      try {
+        GetMappingsRequest request =
+            new GetMappingsRequest()
+                .indices(
+                    DataInsightSystemChartRepository.DI_SEARCH_INDEX_PREFIX
+                        + "-"
+                        + type.toLowerCase());
 
-    // Execute request
-    GetMappingsResponse response = client.indices().getMapping(request, RequestOptions.DEFAULT);
+        // Execute request
+        GetMappingsResponse response = client.indices().getMapping(request, RequestOptions.DEFAULT);
 
-    // Get mappings for the index
-    for (Map.Entry<String, MappingMetadata> entry : response.mappings().entrySet()) {
-      // Get fields for the index
-      Map<String, Object> indexFields = entry.getValue().sourceAsMap();
-      getFieldNames((Map<String, Object>) indexFields.get("properties"), "", fields);
+        // Get mappings for the index
+        for (Map.Entry<String, MappingMetadata> entry : response.mappings().entrySet()) {
+          // Get fields for the index
+          Map<String, Object> indexFields = entry.getValue().sourceAsMap();
+          getFieldNames((Map<String, Object>) indexFields.get("properties"), "", fields, type);
+        }
+      } catch (Exception exception) {
+        LOG.error(exception.getMessage());
+      }
     }
     return fields;
   }
 
   void getFieldNames(
-      @NotNull Map<String, Object> fields, String prefix, List<Map<String, String>> fieldList) {
+      @NotNull Map<String, Object> fields,
+      String prefix,
+      List<Map<String, String>> fieldList,
+      String entityType) {
     for (Map.Entry<String, Object> entry : fields.entrySet()) {
       String postfix = "";
       String type = (String) ((Map<String, Object>) entry.getValue()).get("type");
@@ -2295,13 +2366,17 @@ public class OpenSearchClient implements SearchClient {
         Map<String, Object> subFields = (Map<String, Object>) entry.getValue();
         if (subFields.containsKey("properties")) {
           getFieldNames(
-              (Map<String, Object>) subFields.get("properties"), fieldName + ".", fieldList);
+              (Map<String, Object>) subFields.get("properties"),
+              fieldName + ".",
+              fieldList,
+              entityType);
         } else {
           if (fieldList.stream().noneMatch(e -> e.get("name").equals(fieldName))) {
             Map<String, String> map = new HashMap<>();
             map.put("name", fieldName);
             map.put("displayName", fieldNameOriginal);
             map.put("type", type);
+            map.put("entityType", entityType);
             fieldList.add(map);
           }
         }
@@ -2315,10 +2390,13 @@ public class OpenSearchClient implements SearchClient {
         OpenSearchDynamicChartAggregatorFactory.getAggregator(diChart);
     if (aggregator != null) {
       List<FormulaHolder> formulas = new ArrayList<>();
+      Map<String, OpenSearchLineChartAggregator.MetricFormulaHolder> metricFormulaHolder =
+          new HashMap<>();
       os.org.opensearch.action.search.SearchRequest searchRequest =
-          aggregator.prepareSearchRequest(diChart, start, end, formulas);
+          aggregator.prepareSearchRequest(diChart, start, end, formulas, metricFormulaHolder);
       SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
-      return aggregator.processSearchResponse(diChart, searchResponse, formulas);
+      return aggregator.processSearchResponse(
+          diChart, searchResponse, formulas, metricFormulaHolder);
     }
     return null;
   }
