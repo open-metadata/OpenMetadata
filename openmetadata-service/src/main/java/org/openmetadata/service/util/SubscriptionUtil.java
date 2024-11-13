@@ -39,6 +39,7 @@ import org.apache.commons.lang.StringUtils;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.SubscriptionAction;
+import org.openmetadata.schema.entity.events.StatusContext;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.entity.events.TestDestinationStatus;
 import org.openmetadata.schema.entity.feed.Thread;
@@ -418,24 +419,17 @@ public class SubscriptionUtil {
   }
 
   public static void postWebhookMessage(
-      Destination<ChangeEvent> destination,
-      Invocation.Builder target,
-      Object message,
-      boolean flagTestDestination) {
-    postWebhookMessage(destination, target, message, Webhook.HttpMethod.POST, flagTestDestination);
+      Destination<ChangeEvent> destination, Invocation.Builder target, Object message) {
+    postWebhookMessage(destination, target, message, Webhook.HttpMethod.POST);
   }
 
   public static void postWebhookMessage(
       Destination<ChangeEvent> destination,
       Invocation.Builder target,
       Object message,
-      Webhook.HttpMethod httpMethod,
-      boolean flagTestDestination) {
-
+      Webhook.HttpMethod httpMethod) {
     long attemptTime = System.currentTimeMillis();
-    Response response;
-
-    response =
+    Response response =
         (httpMethod == Webhook.HttpMethod.PUT)
             ? target.put(javax.ws.rs.client.Entity.entity(message, MediaType.APPLICATION_JSON_TYPE))
             : target.post(
@@ -447,52 +441,46 @@ public class SubscriptionUtil {
         destination.getSubscriptionDestination().getId(),
         response.getStatusInfo());
 
-    int statusCode = response.getStatus();
-    String statusInfo = response.getStatusInfo().getReasonPhrase();
-    Map<String, List<String>> headers = response.getStringHeaders();
-    String entity = response.hasEntity() ? response.readEntity(String.class) : StringUtils.EMPTY;
-    String mediaType =
-        response.getMediaType() != null ? response.getMediaType().toString() : StringUtils.EMPTY;
-    String location =
-        response.getLocation() != null ? response.getLocation().toString() : StringUtils.EMPTY;
-    long timestamp = System.currentTimeMillis();
+    StatusContext statusContext = createStatusContext(response);
+    handleStatus(destination, attemptTime, statusContext);
+  }
 
-    if (flagTestDestination) {
-      handleTestDestinationStatus(
-          destination, statusCode, statusInfo, headers, entity, mediaType, location, timestamp);
-    } else {
-      boolean isError = statusCode >= 300 && statusCode < 400;
-      handleStatus(destination, attemptTime, statusCode, statusInfo, isError);
-    }
+  public static void deliverTestWebhookMessage(
+      Destination<ChangeEvent> destination, Invocation.Builder target, Object message) {
+    deliverTestWebhookMessage(destination, target, message, Webhook.HttpMethod.POST);
+  }
+
+  public static void deliverTestWebhookMessage(
+      Destination<ChangeEvent> destination,
+      Invocation.Builder target,
+      Object message,
+      Webhook.HttpMethod httpMethod) {
+    Response response =
+        (httpMethod == Webhook.HttpMethod.PUT)
+            ? target.put(javax.ws.rs.client.Entity.entity(message, MediaType.APPLICATION_JSON_TYPE))
+            : target.post(
+                javax.ws.rs.client.Entity.entity(message, MediaType.APPLICATION_JSON_TYPE));
+
+    StatusContext statusContext = createStatusContext(response);
+    handleTestDestinationStatus(destination, statusContext);
   }
 
   private static void handleTestDestinationStatus(
-      Destination<ChangeEvent> destination,
-      int statusCode,
-      String statusInfo,
-      Map<String, List<String>> headers,
-      String entity,
-      String mediaType,
-      String location,
-      long timestamp) {
-
+      Destination<ChangeEvent> destination, StatusContext statusContext) {
     TestDestinationStatus.Status testStatus =
-        (statusCode == 200)
+        (statusContext.getStatusCode() == 200)
             ? TestDestinationStatus.Status.SUCCESS
             : TestDestinationStatus.Status.FAILED;
 
-    destination.setStatusForTestDestination(
-        testStatus, statusCode, statusInfo, headers, entity, mediaType, location, timestamp);
+    destination.setStatusForTestDestination(testStatus, statusContext);
   }
 
   private static void handleStatus(
-      Destination<ChangeEvent> destination,
-      long attemptTime,
-      int statusCode,
-      String statusInfo,
-      boolean isError) {
+      Destination<ChangeEvent> destination, long attemptTime, StatusContext statusContext) {
+    int statusCode = statusContext.getStatusCode();
+    String statusInfo = statusContext.getStatusInfo();
 
-    if (isError) {
+    if (statusCode >= 300 && statusCode < 400) {
       // 3xx response/redirection is not allowed for callback. Set the webhook state as in error
       destination.setErrorStatus(attemptTime, statusCode, statusInfo);
     } else if (statusCode == 200) {
@@ -501,6 +489,21 @@ public class SubscriptionUtil {
       // 4xx, 5xx response retry delivering events after timeout
       destination.setAwaitingRetry(attemptTime, statusCode, statusInfo);
     }
+  }
+
+  private static StatusContext createStatusContext(Response response) {
+    return new StatusContext()
+        .withStatusCode(response.getStatus())
+        .withStatusInfo(response.getStatusInfo().getReasonPhrase())
+        .withHeaders(response.getStringHeaders())
+        .withEntity(response.hasEntity() ? response.readEntity(String.class) : StringUtils.EMPTY)
+        .withMediaType(
+            response.getMediaType() != null
+                ? response.getMediaType().toString()
+                : StringUtils.EMPTY)
+        .withLocation(
+            response.getLocation() != null ? response.getLocation().toString() : StringUtils.EMPTY)
+        .withTimestamp(System.currentTimeMillis());
   }
 
   public static Client getClient(int connectTimeout, int readTimeout) {

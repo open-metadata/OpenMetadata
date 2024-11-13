@@ -15,6 +15,7 @@ package org.openmetadata.service.apps.bundles.changeEvent.msteams;
 
 import static org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionType.MS_TEAMS;
 import static org.openmetadata.service.util.SubscriptionUtil.appendHeadersToTarget;
+import static org.openmetadata.service.util.SubscriptionUtil.deliverTestWebhookMessage;
 import static org.openmetadata.service.util.SubscriptionUtil.getClient;
 import static org.openmetadata.service.util.SubscriptionUtil.getTargetsForWebhookAlert;
 import static org.openmetadata.service.util.SubscriptionUtil.postWebhookMessage;
@@ -90,9 +91,9 @@ public class MSTeamsPublisher implements Destination<ChangeEvent> {
                   + CommonUtil.calculateHMAC(
                       webhook.getSecretKey(), JsonUtils.pojoToJson(teamsMessage));
           postWebhookMessage(
-              this, actionTarget.header(RestUtil.SIGNATURE_HEADER, hmac), teamsMessage, false);
+              this, actionTarget.header(RestUtil.SIGNATURE_HEADER, hmac), teamsMessage);
         } else {
-          postWebhookMessage(this, actionTarget, teamsMessage, false);
+          postWebhookMessage(this, actionTarget, teamsMessage);
         }
       }
     } catch (Exception e) {
@@ -116,10 +117,10 @@ public class MSTeamsPublisher implements Destination<ChangeEvent> {
               "sha256="
                   + CommonUtil.calculateHMAC(
                       webhook.getSecretKey(), JsonUtils.pojoToJson(teamsMessage));
-          postWebhookMessage(
-              this, target.header(RestUtil.SIGNATURE_HEADER, hmac), teamsMessage, true);
+          deliverTestWebhookMessage(
+              this, target.header(RestUtil.SIGNATURE_HEADER, hmac), teamsMessage);
         } else {
-          postWebhookMessage(this, target, teamsMessage, true);
+          deliverTestWebhookMessage(this, target, teamsMessage);
         }
       }
     } catch (Exception e) {

@@ -17,9 +17,8 @@ import static org.openmetadata.schema.entity.events.SubscriptionStatus.Status.AC
 import static org.openmetadata.schema.entity.events.SubscriptionStatus.Status.AWAITING_RETRY;
 import static org.openmetadata.schema.entity.events.SubscriptionStatus.Status.FAILED;
 
-import java.util.List;
-import java.util.Map;
 import org.openmetadata.schema.entity.events.EventSubscription;
+import org.openmetadata.schema.entity.events.StatusContext;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.entity.events.SubscriptionStatus;
 import org.openmetadata.schema.entity.events.TestDestinationStatus;
@@ -67,34 +66,15 @@ public interface Destination<T> {
   }
 
   default void setStatusForTestDestination(
-      TestDestinationStatus.Status status, Integer statusCode, Long timestamp) {
-    TestDestinationStatus subStatus =
-        AlertUtil.buildTestDestinationStatus(status, statusCode, timestamp);
+      TestDestinationStatus.Status status, StatusContext statusContext) {
+    TestDestinationStatus subStatus = AlertUtil.buildTestDestinationStatus(status, statusContext);
     getSubscriptionDestination().setStatusDetails(subStatus);
   }
 
   default void setStatusForTestDestination(
-      TestDestinationStatus.Status status,
-      Integer statusCode,
-      String statusInfo,
-      Map<String, List<String>> headers,
-      String entity,
-      String mediaType,
-      String location,
-      Long timestamp) {
-
+      TestDestinationStatus.Status status, Integer statusCode, Long timestamp) {
     TestDestinationStatus subStatus =
-        AlertUtil.buildTestDestinationStatus(
-            status,
-            statusInfo,
-            statusCode,
-            statusInfo,
-            headers,
-            entity,
-            mediaType,
-            location,
-            timestamp);
-
+        AlertUtil.buildTestDestinationStatus(status, statusCode, timestamp);
     getSubscriptionDestination().setStatusDetails(subStatus);
   }
 }

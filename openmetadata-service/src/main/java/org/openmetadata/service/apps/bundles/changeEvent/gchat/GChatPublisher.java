@@ -14,6 +14,7 @@
 package org.openmetadata.service.apps.bundles.changeEvent.gchat;
 
 import static org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionType.G_CHAT;
+import static org.openmetadata.service.util.SubscriptionUtil.deliverTestWebhookMessage;
 import static org.openmetadata.service.util.SubscriptionUtil.getClient;
 import static org.openmetadata.service.util.SubscriptionUtil.getTargetsForWebhookAlert;
 import static org.openmetadata.service.util.SubscriptionUtil.postWebhookMessage;
@@ -73,6 +74,7 @@ public class GChatPublisher implements Destination<ChangeEvent> {
 
   @Override
   public void sendMessage(ChangeEvent event) throws EventPublisherException {
+
     try {
       GChatMessage gchatMessage =
           gChatMessageMessageDecorator.buildOutgoingMessage(
@@ -84,7 +86,7 @@ public class GChatPublisher implements Destination<ChangeEvent> {
         targets.add(target);
       }
       for (Invocation.Builder actionTarget : targets) {
-        postWebhookMessage(this, actionTarget, gchatMessage, false);
+        postWebhookMessage(this, actionTarget, gchatMessage);
       }
     } catch (Exception e) {
       String message =
@@ -102,7 +104,7 @@ public class GChatPublisher implements Destination<ChangeEvent> {
       GChatMessage gchatMessage = gChatMessageMessageDecorator.buildOutgoingTestMessage();
 
       if (target != null) {
-        postWebhookMessage(this, target, gchatMessage, true);
+        deliverTestWebhookMessage(this, target, gchatMessage);
       }
     } catch (Exception e) {
       String message =

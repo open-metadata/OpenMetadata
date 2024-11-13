@@ -39,6 +39,7 @@ import org.openmetadata.schema.entity.events.EventFilterRule;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.EventSubscriptionOffset;
 import org.openmetadata.schema.entity.events.FilteringRules;
+import org.openmetadata.schema.entity.events.StatusContext;
 import org.openmetadata.schema.entity.events.SubscriptionStatus;
 import org.openmetadata.schema.entity.events.TestDestinationStatus;
 import org.openmetadata.schema.entity.feed.Thread;
@@ -187,25 +188,17 @@ public final class AlertUtil {
   }
 
   public static TestDestinationStatus buildTestDestinationStatus(
-      TestDestinationStatus.Status status,
-      String reason,
-      Integer statusCode,
-      String statusInfo,
-      Map<String, List<String>> headers,
-      String entity,
-      String mediaType,
-      String location,
-      Long timestamp) {
+      TestDestinationStatus.Status status, StatusContext statusContext) {
     return new TestDestinationStatus()
         .withStatus(status)
-        .withReason(reason)
-        .withStatusCode(statusCode)
-        .withStatusInfo(statusInfo)
-        .withHeaders(headers)
-        .withEntity(entity)
-        .withMediaType(mediaType)
-        .withLocation(URI.create(location))
-        .withTimestamp(timestamp);
+        .withReason(statusContext.getStatusInfo())
+        .withStatusCode(statusContext.getStatusCode())
+        .withStatusInfo(statusContext.getStatusInfo())
+        .withHeaders(statusContext.getHeaders())
+        .withEntity(statusContext.getEntity())
+        .withMediaType(statusContext.getMediaType())
+        .withLocation(URI.create(statusContext.getLocation()))
+        .withTimestamp(statusContext.getTimestamp());
   }
 
   public static Map<ChangeEvent, Set<UUID>> getFilteredEvents(

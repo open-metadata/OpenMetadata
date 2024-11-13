@@ -15,6 +15,7 @@ package org.openmetadata.service.apps.bundles.changeEvent.slack;
 
 import static org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionType.SLACK;
 import static org.openmetadata.service.util.SubscriptionUtil.appendHeadersToTarget;
+import static org.openmetadata.service.util.SubscriptionUtil.deliverTestWebhookMessage;
 import static org.openmetadata.service.util.SubscriptionUtil.getClient;
 import static org.openmetadata.service.util.SubscriptionUtil.getTargetsForWebhookAlert;
 import static org.openmetadata.service.util.SubscriptionUtil.postWebhookMessage;
@@ -89,10 +90,9 @@ public class SlackEventPublisher implements Destination<ChangeEvent> {
       for (Invocation.Builder actionTarget : targets) {
         if (webhook.getSecretKey() != null && !webhook.getSecretKey().isEmpty()) {
           String hmac = "sha256=" + CommonUtil.calculateHMAC(webhook.getSecretKey(), json);
-          postWebhookMessage(
-              this, actionTarget.header(RestUtil.SIGNATURE_HEADER, hmac), json, false);
+          postWebhookMessage(this, actionTarget.header(RestUtil.SIGNATURE_HEADER, hmac), json);
         } else {
-          postWebhookMessage(this, actionTarget, json, false);
+          postWebhookMessage(this, actionTarget, json);
         }
       }
     } catch (Exception e) {
@@ -113,11 +113,11 @@ public class SlackEventPublisher implements Destination<ChangeEvent> {
       String json = JsonUtils.pojoToJsonIgnoreNull(slackMessage);
       json = convertCamelCaseToSnakeCase(json);
       if (target != null) {
-        if (webhook.getSecretKey() != null && !webhook.getSecretKey().isEmpty()) {
+        if (!CommonUtil.nullOrEmpty(webhook.getSecretKey())) {
           String hmac = "sha256=" + CommonUtil.calculateHMAC(webhook.getSecretKey(), json);
-          postWebhookMessage(this, target.header(RestUtil.SIGNATURE_HEADER, hmac), json, true);
+          deliverTestWebhookMessage(this, target.header(RestUtil.SIGNATURE_HEADER, hmac), json);
         } else {
-          postWebhookMessage(this, target, json, true);
+          deliverTestWebhookMessage(this, target, json);
         }
       }
     } catch (Exception e) {
