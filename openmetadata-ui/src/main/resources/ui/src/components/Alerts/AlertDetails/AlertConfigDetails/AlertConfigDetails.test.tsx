@@ -11,41 +11,112 @@
  *  limitations under the License.
  */
 
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import React from 'react';
 import { mockAlertDetails } from '../../../../mocks/Alerts.mock';
+import { MOCK_FILTER_RESOURCES } from '../../../../test/unit/mocks/observability.mock';
 import AlertConfigDetails from './AlertConfigDetails';
 
+jest.mock('../../../../rest/observabilityAPI', () => ({
+  getResourceFunctions: jest.fn().mockImplementation(() => ({
+    data: MOCK_FILTER_RESOURCES,
+  })),
+}));
+
+jest.mock('../../../../rest/alertsAPI', () => ({
+  getResourceFunctions: jest.fn().mockImplementation(() => ({
+    data: MOCK_FILTER_RESOURCES,
+  })),
+}));
+
+jest.mock('../../../common/Loader/Loader', () =>
+  jest.fn().mockImplementation(() => <div>Loader</div>)
+);
+
+jest.mock('../../AlertFormSourceItem/AlertFormSourceItem', () =>
+  jest.fn().mockImplementation(() => <div>AlertFormSourceItem</div>)
+);
+
+jest.mock(
+  '../../ObservabilityFormFiltersItem/ObservabilityFormFiltersItem',
+  () =>
+    jest.fn().mockImplementation(() => <div>ObservabilityFormFiltersItem</div>)
+);
+
+jest.mock(
+  '../../ObservabilityFormTriggerItem/ObservabilityFormTriggerItem',
+  () =>
+    jest.fn().mockImplementation(() => <div>ObservabilityFormTriggerItem</div>)
+);
+
+jest.mock('../../DestinationFormItem/DestinationFormItem.component', () =>
+  jest.fn().mockImplementation(() => <div>DestinationFormItem</div>)
+);
+
 describe('AlertConfigDetails', () => {
-  it('should render source details properly', () => {
-    render(<AlertConfigDetails alertDetails={mockAlertDetails} />);
+  it('should render the component', async () => {
+    await act(async () => {
+      render(
+        <AlertConfigDetails
+          alertDetails={mockAlertDetails}
+          isNotificationAlert={false}
+        />
+      );
+    });
 
-    expect(screen.getByTestId('resource-name')).toHaveTextContent('Table');
+    expect(screen.getByText('AlertFormSourceItem')).toBeInTheDocument();
+    expect(screen.getByText('DestinationFormItem')).toBeInTheDocument();
   });
 
-  it('should render filter details properly', () => {
-    render(<AlertConfigDetails alertDetails={mockAlertDetails} />);
+  it('should render ObservabilityFormFiltersItem when filters are present', async () => {
+    const alertDetailsWithFilters = {
+      ...mockAlertDetails,
+      input: { filters: [{ name: 'filter1' }] },
+    };
+    await act(async () => {
+      render(
+        <AlertConfigDetails
+          alertDetails={alertDetailsWithFilters}
+          isNotificationAlert={false}
+        />
+      );
+    });
 
-    expect(screen.getByTestId('filter-filterByEventType')).toBeInTheDocument();
     expect(
-      screen.getByTestId('filter-filterByGeneralMetadataEvents')
+      screen.getByText('ObservabilityFormFiltersItem')
     ).toBeInTheDocument();
-    expect(screen.getByTestId('filter-filterByOwnerName')).toBeInTheDocument();
   });
 
-  it('should render action details properly', () => {
-    render(<AlertConfigDetails alertDetails={mockAlertDetails} />);
+  it('should render ObservabilityFormTriggerItem when actions are present', async () => {
+    const alertDetailsWithActions = {
+      ...mockAlertDetails,
+      input: { actions: [{ name: 'action1' }] },
+    };
+    await act(async () => {
+      render(
+        <AlertConfigDetails
+          alertDetails={alertDetailsWithActions}
+          isNotificationAlert={false}
+        />
+      );
+    });
 
     expect(
-      screen.getByTestId('filter-GetTestCaseStatusUpdates')
+      screen.getByText('ObservabilityFormTriggerItem')
     ).toBeInTheDocument();
   });
 
-  it('should render destination details properly', () => {
-    render(<AlertConfigDetails alertDetails={mockAlertDetails} />);
+  it('should show loader when fetching data', async () => {
+    jest.spyOn(React, 'useState').mockImplementationOnce(() => [1, jest.fn()]);
+    await act(async () => {
+      render(
+        <AlertConfigDetails
+          alertDetails={mockAlertDetails}
+          isNotificationAlert={false}
+        />
+      );
 
-    expect(screen.getByTestId('destination-Admins')).toBeInTheDocument();
-    expect(screen.getByTestId('destination-Teams')).toBeInTheDocument();
-    expect(screen.getByTestId('destination-External')).toBeInTheDocument();
+      expect(screen.getByText('Loader')).toBeInTheDocument();
+    });
   });
 });

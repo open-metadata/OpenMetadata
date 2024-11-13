@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
 import { ReactComponent as AlertIcon } from '../../assets/svg/alert.svg';
@@ -538,24 +538,32 @@ describe('getFieldByArgumentType tests', () => {
     expect(selectDiv).toBeNull();
   });
 
-  it('getDestinationConfigField should return secretKey field for webhook type', () => {
+  it('getDestinationConfigField should return advanced configurations for webhook type', async () => {
     const field = getDestinationConfigField(SubscriptionType.Webhook, 4) ?? (
       <></>
     );
 
     render(field);
 
-    const secretKeyInput = screen.getByTestId('secret-key-input-4');
+    const secretKeyInput = screen.getByText('label.advanced-configuration');
 
     expect(secretKeyInput).toBeInTheDocument();
+
+    fireEvent.click(secretKeyInput);
+
+    expect(await screen.findByTestId('secret-key')).toBeInTheDocument();
+    expect(
+      await screen.findByTestId('webhook-4-headers-list')
+    ).toBeInTheDocument();
+    expect(await screen.findByTestId('http-method-4')).toBeInTheDocument();
   });
 
-  it('getDestinationConfigField should not return secretKey field for or other type', () => {
+  it('getDestinationConfigField should not return advanced configurations for other type', () => {
     const field = getDestinationConfigField(SubscriptionType.Email, 4) ?? <></>;
 
     render(field);
 
-    const secretKeyInput = screen.queryByTestId('secret-key-input-4');
+    const secretKeyInput = screen.queryByText('label.advanced-configuration');
 
     expect(secretKeyInput).toBeNull();
   });
@@ -763,8 +771,8 @@ describe('getAlertExtraInfo', () => {
 
   it('should return correct extra info when alertEventCountsLoading is false', () => {
     const alertEventCounts = {
-      latestOffset: 100,
-      totalUnprocessedEventsCount: 5,
+      totalEventsCount: 100,
+      pendingEventsCount: 5,
       failedEventsCount: 2,
     };
 

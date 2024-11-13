@@ -170,7 +170,7 @@ describe('AlertDetailsPage', () => {
     expect(screen.getByText('TitleBreadcrumb')).toBeInTheDocument();
     expect(screen.getByText('EntityHeaderTitle')).toBeInTheDocument();
     expect(screen.getByText('OwnerLabel')).toBeInTheDocument();
-    expect(screen.getAllByText('ExtraInfoLabel')).toHaveLength(2);
+    expect(screen.getAllByText('ExtraInfoLabel')).toHaveLength(3);
     expect(screen.getByTestId('edit-button')).toBeInTheDocument();
     expect(screen.getByTestId('delete-button')).toBeInTheDocument();
     expect(screen.getByText('label.configuration')).toBeInTheDocument();
