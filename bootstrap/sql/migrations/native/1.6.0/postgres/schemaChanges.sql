@@ -34,8 +34,7 @@ SET
     )
   ) 
 WHERE 
-  json -> 'chartDetails' -> 'type' = '"LineChart"'
-  and  json -> 'chartDetails' -> 'metrics' is null;
+  json -> 'chartDetails' -> 'metrics' is null;
 
 
 -- Rename 'offset' to 'currentOffset' and add 'startingOffset'

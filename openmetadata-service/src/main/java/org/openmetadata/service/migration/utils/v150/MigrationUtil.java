@@ -18,6 +18,7 @@ import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
 import org.openmetadata.schema.dataInsight.custom.LineChart;
 import org.openmetadata.schema.dataInsight.custom.LineChartMetric;
 import org.openmetadata.schema.dataInsight.custom.SummaryCard;
+import org.openmetadata.schema.dataInsight.custom.SummaryChartMetric;
 import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.tests.TestDefinition;
@@ -355,30 +356,45 @@ public class MigrationUtil {
     // total data assets summary card
     createChart(
         "total_data_assets_summary_card",
-        new SummaryCard().withFormula("count(k='id.keyword')").withFilter(exclude_tags_filter));
+        new SummaryCard()
+            .withMetrics(
+                List.of(
+                    new SummaryChartMetric()
+                        .withFormula("count(k='id.keyword')")
+                        .withFilter(exclude_tags_filter))));
 
     // data assets with description summary card
     createChart(
         "data_assets_with_description_summary_card",
         new SummaryCard()
-            .withFormula("(count(k='id.keyword',q='hasDescription: 1')/count(k='id.keyword'))*100")
-            .withFilter(exclude_tags_filter));
+            .withMetrics(
+                List.of(
+                    new SummaryChartMetric()
+                        .withFormula(
+                            "(count(k='id.keyword',q='hasDescription: 1')/count(k='id.keyword'))*100")
+                        .withFilter(exclude_tags_filter))));
 
     // data assets with owner summary card
     createChart(
         "data_assets_with_owner_summary_card",
         new SummaryCard()
-            .withFormula(
-                "(count(k='id.keyword',q='owners.name.keyword: *')/count(k='id.keyword'))*100")
-            .withFilter(exclude_tags_filter));
+            .withMetrics(
+                List.of(
+                    new SummaryChartMetric()
+                        .withFormula(
+                            "(count(k='id.keyword',q='owners.name.keyword: *')/count(k='id.keyword'))*100")
+                        .withFilter(exclude_tags_filter))));
 
     // total data assets with tier summary card
     createChart(
         "total_data_assets_with_tier_summary_card",
         new SummaryCard()
-            .withFormula(
-                "(count(k='id.keyword',q='NOT tier.keyword:\"NoTier\"')/count(k='id.keyword'))*100")
-            .withFilter(exclude_tags_filter));
+            .withMetrics(
+                List.of(
+                    new SummaryChartMetric()
+                        .withFormula(
+                            "(count(k='id.keyword',q='NOT tier.keyword:\"NoTier\"')/count(k='id.keyword'))*100")
+                        .withFilter(exclude_tags_filter))));
 
     // percentage of Data Asset with Description KPI
     createChart(

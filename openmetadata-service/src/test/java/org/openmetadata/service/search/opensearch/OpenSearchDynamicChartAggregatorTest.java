@@ -90,9 +90,11 @@ public class OpenSearchDynamicChartAggregatorTest extends OpenMetadataApplicatio
     String cardString1 =
         "{\"size\":0,\"query\":{\"range\":{\"@timestamp\":{\"from\":1721082271000,\"to\":1721592271000,\"include_lower\":true,\"include_upper\":true,\"boost\":1.0}}},\"aggregations\":{\"1\":{\"date_histogram\":{\"field\":\"@timestamp\",\"calendar_interval\":\"1d\",\"offset\":0,\"order\":{\"_key\":\"asc\"},\"keyed\":false,\"min_doc_count\":0},\"aggregations\":{\"id.keyword0\":{\"value_count\":{\"field\":\"id.keyword\"}}}}}}\n";
     Map<String, Object> summaryCard1 = new LinkedHashMap<>();
+    Map<String, Object> metricMapSummary = new LinkedHashMap<>();
     summaryCard1.put("type", "SummaryCard");
-    summaryCard1.put("field", "id.keyword");
-    summaryCard1.put("function", "count");
+    metricMapSummary.put("field", "id.keyword");
+    metricMapSummary.put("function", "count");
+    summaryCard1.put("metrics", List.of(metricMapSummary));
     assertTrue(compareRequest(cardString1, summaryCard1));
 
     String lineString =
@@ -140,12 +142,16 @@ public class OpenSearchDynamicChartAggregatorTest extends OpenMetadataApplicatio
         "{\"size\":0,\"query\":{\"range\":{\"@timestamp\":{\"from\":1721082271000,\"to\":1721592271000,\"include_lower\":true,\"include_upper\":true,\"boost\":1.0}}},\"aggregations\":{\"1\":{\"date_histogram\":{\"field\":\"@timestamp\",\"calendar_interval\":\"1d\",\"offset\":0,\"order\":{\"_key\":\"asc\"},\"keyed\":false,\"min_doc_count\":0},\"aggregations\":{\"id.keyword0\":{\"value_count\":{\"field\":\"id.keyword\"}}}}}}";
     Map<String, Object> summaryCard = new LinkedHashMap<>();
     summaryCard.put("type", "SummaryCard");
-    summaryCard.put("formula", "count(k='id.keyword')");
+    Map<String, Object> metricMapSummary = new LinkedHashMap<>();
+    metricMapSummary.put("formula", "count(k='id.keyword')");
+    summaryCard.put("metrics", List.of(metricMapSummary));
     assertTrue(compareRequest(cardString, summaryCard));
 
     Map<String, Object> summaryCard1 = new LinkedHashMap<>();
     summaryCard1.put("type", "SummaryCard");
-    summaryCard1.put("formula", "count()");
+    Map<String, Object> metricMapSummary1 = new LinkedHashMap<>();
+    metricMapSummary1.put("formula", "count()");
+    summaryCard1.put("metrics", List.of(metricMapSummary1));
     assertTrue(compareRequest(cardString, summaryCard1));
 
     String lineString =
@@ -239,8 +245,10 @@ public class OpenSearchDynamicChartAggregatorTest extends OpenMetadataApplicatio
         "{\"size\":0,\"query\":{\"range\":{\"@timestamp\":{\"from\":1721082271000,\"to\":1721592271000,\"include_lower\":true,\"include_upper\":true,\"boost\":1.0}}},\"aggregations\":{\"1\":{\"date_histogram\":{\"field\":\"@timestamp\",\"calendar_interval\":\"1d\",\"offset\":0,\"order\":{\"_key\":\"asc\"},\"keyed\":false,\"min_doc_count\":0},\"aggregations\":{\"version0\":{\"sum\":{\"field\":\"version\"}}}}}}";
     Map<String, Object> summaryCard = new LinkedHashMap<>();
     summaryCard.put("type", "SummaryCard");
-    summaryCard.put("field", "version");
-    summaryCard.put("function", "sum");
+    Map<String, Object> metricMapSummary1 = new LinkedHashMap<>();
+    metricMapSummary1.put("field", "version");
+    metricMapSummary1.put("function", "sum");
+    summaryCard.put("metrics", List.of(metricMapSummary1));
     assertTrue(compareRequest(cardString, summaryCard));
 
     String lineString =
@@ -285,8 +293,10 @@ public class OpenSearchDynamicChartAggregatorTest extends OpenMetadataApplicatio
         "{\"size\":0,\"query\":{\"range\":{\"@timestamp\":{\"from\":1721082271000,\"to\":1721592271000,\"include_lower\":true,\"include_upper\":true,\"boost\":1.0}}},\"aggregations\":{\"1\":{\"date_histogram\":{\"field\":\"@timestamp\",\"calendar_interval\":\"1d\",\"offset\":0,\"order\":{\"_key\":\"asc\"},\"keyed\":false,\"min_doc_count\":0},\"aggregations\":{\"version0\":{\"avg\":{\"field\":\"version\"}}}}}}";
     Map<String, Object> summaryCard = new LinkedHashMap<>();
     summaryCard.put("type", "SummaryCard");
-    summaryCard.put("field", "version");
-    summaryCard.put("function", "avg");
+    Map<String, Object> metricMapSummary1 = new LinkedHashMap<>();
+    metricMapSummary1.put("field", "version");
+    metricMapSummary1.put("function", "avg");
+    summaryCard.put("metrics", List.of(metricMapSummary1));
     assertTrue(compareRequest(cardString, summaryCard));
 
     String lineString =
@@ -330,8 +340,10 @@ public class OpenSearchDynamicChartAggregatorTest extends OpenMetadataApplicatio
         "{\"size\":0,\"query\":{\"range\":{\"@timestamp\":{\"from\":1721082271000,\"to\":1721592271000,\"include_lower\":true,\"include_upper\":true,\"boost\":1.0}}},\"aggregations\":{\"1\":{\"date_histogram\":{\"field\":\"@timestamp\",\"calendar_interval\":\"1d\",\"offset\":0,\"order\":{\"_key\":\"asc\"},\"keyed\":false,\"min_doc_count\":0},\"aggregations\":{\"version0\":{\"min\":{\"field\":\"version\"}}}}}}";
     Map<String, Object> summaryCard = new LinkedHashMap<>();
     summaryCard.put("type", "SummaryCard");
-    summaryCard.put("field", "version");
-    summaryCard.put("function", "min");
+    Map<String, Object> metricMapSummary1 = new LinkedHashMap<>();
+    metricMapSummary1.put("field", "version");
+    metricMapSummary1.put("function", "min");
+    summaryCard.put("metrics", List.of(metricMapSummary1));
     assertTrue(compareRequest(cardString, summaryCard));
 
     String lineString =
@@ -375,8 +387,10 @@ public class OpenSearchDynamicChartAggregatorTest extends OpenMetadataApplicatio
         "{\"size\":0,\"query\":{\"range\":{\"@timestamp\":{\"from\":1721082271000,\"to\":1721592271000,\"include_lower\":true,\"include_upper\":true,\"boost\":1.0}}},\"aggregations\":{\"1\":{\"date_histogram\":{\"field\":\"@timestamp\",\"calendar_interval\":\"1d\",\"offset\":0,\"order\":{\"_key\":\"asc\"},\"keyed\":false,\"min_doc_count\":0},\"aggregations\":{\"version0\":{\"max\":{\"field\":\"version\"}}}}}}";
     Map<String, Object> summaryCard = new LinkedHashMap<>();
     summaryCard.put("type", "SummaryCard");
-    summaryCard.put("field", "version");
-    summaryCard.put("function", "max");
+    Map<String, Object> metricMapSummary1 = new LinkedHashMap<>();
+    metricMapSummary1.put("field", "version");
+    metricMapSummary1.put("function", "max");
+    summaryCard.put("metrics", List.of(metricMapSummary1));
     assertTrue(compareRequest(cardString, summaryCard));
 
     String lineString =
@@ -509,15 +523,19 @@ public class OpenSearchDynamicChartAggregatorTest extends OpenMetadataApplicatio
         "{\"took\":26,\"timed_out\":false,\"_shards\":{\"total\":1,\"successful\":1,\"skipped\":0,\"failed\":0},\"hits\":{\"total\":{\"value\":132,\"relation\":\"eq\"},\"max_score\":null,\"hits\":[]},\"aggregations\":{\"date_histogram#1\":{\"buckets\":[{\"key_as_string\":\"2024-07-21T00:00:00.000Z\",\"key\":1721520000000,\"doc_count\":54,\"value_count#id.keyword0\":{\"value\":54}},{\"key_as_string\":\"2024-07-22T00:00:00.000Z\",\"key\":1721606400000,\"doc_count\":78,\"value_count#id.keyword0\":{\"value\":78}},{\"key_as_string\":\"2024-07-23T00:00:00.000Z\",\"key\":1721607000000,\"doc_count\":78}]}}}";
     Map<String, Object> summaryCard = new LinkedHashMap<>();
     summaryCard.put("type", "SummaryCard");
-    summaryCard.put("formula", "count(k='id.keyword')");
+    Map<String, Object> metricMapSummary1 = new LinkedHashMap<>();
+    metricMapSummary1.put("formula", "count(k='id.keyword')");
+    summaryCard.put("metrics", List.of(metricMapSummary1));
     List<DataInsightCustomChartResult> resultList = new ArrayList<>();
     resultList.add(new DataInsightCustomChartResult().withCount(78d).withDay(1721606400000d));
     assertTrue(compareResponse(sampleResponse1, summaryCard, "count(k='id.keyword')", resultList));
 
     Map<String, Object> summaryCardFunc = new LinkedHashMap<>();
     summaryCardFunc.put("type", "SummaryCard");
-    summaryCardFunc.put("function", "count");
-    summaryCardFunc.put("field", "id.keyword");
+    Map<String, Object> metricMapSummary2 = new LinkedHashMap<>();
+    metricMapSummary2.put("function", "count");
+    metricMapSummary2.put("field", "id.keyword");
+    summaryCardFunc.put("metrics", List.of(metricMapSummary2));
     assertTrue(compareResponse(sampleResponse1, summaryCardFunc, null, resultList));
 
     Map<String, Object> lineChart = new LinkedHashMap<>();
