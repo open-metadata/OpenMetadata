@@ -78,7 +78,7 @@ public class GChatPublisher implements Destination<ChangeEvent> {
     try {
       GChatMessage gchatMessage =
           gChatMessageMessageDecorator.buildOutgoingMessage(
-              eventSubscription.getDisplayName(), event);
+              getDisplayNameOrFqn(eventSubscription), event);
       List<Invocation.Builder> targets =
           getTargetsForWebhookAlert(
               webhook, subscriptionDestination.getCategory(), G_CHAT, client, event);
