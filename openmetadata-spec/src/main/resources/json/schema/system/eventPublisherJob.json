@@ -112,13 +112,13 @@
       "title": "Number of Producer Threads to use",
       "description": "Number of producer threads to use for reindexing",
       "type": "integer",
-      "default": 10
+      "default": 1
     },
     "consumerThreads": {
       "title": "Number of Consumer Threads to use",
       "description": "Number of consumer threads to use for reindexing",
       "type": "integer",
-      "default": 10
+      "default": 1
     },
     "maxConcurrentRequests": {
       "title": "Max Concurrent Requests",

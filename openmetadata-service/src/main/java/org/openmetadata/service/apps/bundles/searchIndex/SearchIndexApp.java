@@ -13,12 +13,14 @@ import static org.openmetadata.service.Entity.DASHBOARD_SERVICE;
 import static org.openmetadata.service.Entity.DATABASE;
 import static org.openmetadata.service.Entity.DATABASE_SCHEMA;
 import static org.openmetadata.service.Entity.DATABASE_SERVICE;
+import static org.openmetadata.service.Entity.DATA_PRODUCT;
 import static org.openmetadata.service.Entity.DOMAIN;
 import static org.openmetadata.service.Entity.ENTITY_REPORT_DATA;
 import static org.openmetadata.service.Entity.GLOSSARY;
 import static org.openmetadata.service.Entity.GLOSSARY_TERM;
 import static org.openmetadata.service.Entity.INGESTION_PIPELINE;
 import static org.openmetadata.service.Entity.MESSAGING_SERVICE;
+import static org.openmetadata.service.Entity.METADATA_SERVICE;
 import static org.openmetadata.service.Entity.METRIC;
 import static org.openmetadata.service.Entity.MLMODEL;
 import static org.openmetadata.service.Entity.MLMODEL_SERVICE;
@@ -125,13 +127,15 @@ public class SearchIndexApp extends AbstractNativeApplication {
           DASHBOARD_SERVICE,
           PIPELINE_SERVICE,
           MLMODEL_SERVICE,
+          STORAGE_SERVICE,
+          METADATA_SERVICE,
           SEARCH_SERVICE,
           ENTITY_REPORT_DATA,
           WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA,
           WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA,
           DOMAIN,
           STORED_PROCEDURE,
-          STORAGE_SERVICE,
+          DATA_PRODUCT,
           TEST_CASE_RESOLUTION_STATUS,
           TEST_CASE_RESULT,
           API_SERVICE,
