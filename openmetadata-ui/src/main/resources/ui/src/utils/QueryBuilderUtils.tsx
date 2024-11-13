@@ -15,7 +15,7 @@ import { Button } from 'antd';
 import { t } from 'i18next';
 import { isUndefined } from 'lodash';
 import React from 'react';
-import { RenderSettings } from 'react-awesome-query-builder';
+import { Fields, RenderSettings } from 'react-awesome-query-builder';
 import {
   EsBoolQuery,
   EsExistsQuery,
@@ -43,14 +43,20 @@ export const getSelectEqualsNotEqualsProperties = (
         value: [value],
         valueSrc: ['value'],
         operatorOptions: null,
-        valueType: ['select'],
-        asyncListValues: [
-          {
-            key: value,
-            value,
-            children: value,
-          },
-        ],
+        valueType: Array.isArray(value) ? ['multiselect'] : ['select'],
+        asyncListValues: Array.isArray(value)
+          ? value.map((valueItem) => ({
+              key: valueItem,
+              value: valueItem,
+              children: valueItem,
+            }))
+          : [
+              {
+                key: value,
+                value,
+                children: value,
+              },
+            ],
       },
       id,
       path: [...parentPath, id],
@@ -191,15 +197,17 @@ export const getJsonTreePropertyFromQueryFilter = (
           ),
         };
       } else if (
-        !isUndefined((curr.bool?.must_not as QueryFieldInterface).term)
+        !isUndefined((curr.bool?.must_not as QueryFieldInterface)?.term)
       ) {
+        const value = Object.values((curr.bool?.must_not as EsTerm)?.term)[0];
+
         return {
           ...acc,
           ...getSelectEqualsNotEqualsProperties(
             parentPath,
             Object.keys((curr.bool?.must_not as EsTerm)?.term)[0],
-            Object.values((curr.bool?.must_not as EsTerm)?.term)[0] as string,
-            'select_not_equals'
+            value as string,
+            Array.isArray(value) ? 'select_not_any_in' : 'select_not_equals'
           ),
         };
       } else if (
@@ -329,6 +337,15 @@ export const renderQueryBuilderFilterButtons: RenderSettings['renderButton'] = (
         onClick={props?.onClick}
       />
     );
+  } else if (type === 'delRuleGroup') {
+    return (
+      <Button
+        className="action action--DELETE-GROUP"
+        data-testid="delete-group-condition-button"
+        icon={<CloseOutlined />}
+        onClick={props?.onClick}
+      />
+    );
   } else if (type === 'addRule') {
     return (
       <Button
@@ -344,4 +361,288 @@ export const renderQueryBuilderFilterButtons: RenderSettings['renderButton'] = (
   }
 
   return <></>;
+};
+
+interface ElasticsearchQuery {
+  bool?: {
+    must?: ElasticsearchQuery[];
+    should?: ElasticsearchQuery[];
+    filter?: ElasticsearchQuery[];
+    must_not?: ElasticsearchQuery | ElasticsearchQuery[];
+  };
+  term?: {
+    [key: string]: string;
+  };
+  exists?: {
+    field: string;
+  };
+  wildcard?: {
+    [key: string]: Record<string, string>;
+  };
+}
+
+interface JsonLogic {
+  [key: string]: any;
+}
+
+const flattenAndClauses = (clauses: JsonLogic[]): JsonLogic[] => {
+  return clauses.reduce((acc: JsonLogic[], clause) => {
+    if (clause.and) {
+      return acc.concat(flattenAndClauses(clause.and));
+    }
+
+    return acc.concat(clause);
+  }, []);
+};
+
+export const elasticsearchToJsonLogic = (
+  query: ElasticsearchQuery
+): JsonLogic => {
+  if (query.bool) {
+    const boolQuery = query.bool;
+    const jsonLogic: JsonLogic = {};
+
+    if (boolQuery.must) {
+      const mustClauses = boolQuery.must.map(elasticsearchToJsonLogic);
+      jsonLogic.and = flattenAndClauses(mustClauses);
+    }
+
+    if (boolQuery.should) {
+      jsonLogic.or = boolQuery.should.map(elasticsearchToJsonLogic);
+    }
+
+    if (boolQuery.filter) {
+      const filterClauses = boolQuery.filter.map(elasticsearchToJsonLogic);
+      jsonLogic.and = (jsonLogic.and || []).concat(
+        flattenAndClauses(filterClauses)
+      );
+    }
+
+    if (boolQuery.must_not) {
+      const mustNotArray = Array.isArray(boolQuery.must_not)
+        ? boolQuery.must_not
+        : [boolQuery.must_not];
+
+      const mustNotClauses = mustNotArray.map((q) => ({
+        '!': elasticsearchToJsonLogic(q),
+      }));
+
+      jsonLogic.and = (jsonLogic.and || []).concat(
+        flattenAndClauses(mustNotClauses)
+      );
+    }
+
+    return jsonLogic;
+  }
+
+  if (query.term) {
+    const termQuery = query.term;
+    const field = Object.keys(termQuery)[0];
+    const value = termQuery[field];
+    const op = Array.isArray(value) ? 'in' : '==';
+    if (field.includes('.')) {
+      const [parentField, childField] = field.split('.');
+
+      return {
+        some: [
+          { var: parentField },
+          {
+            [op]: [{ var: childField }, value],
+          },
+        ],
+      };
+    }
+
+    return {
+      '==': [{ var: field }, value],
+    };
+  }
+
+  if (query.exists) {
+    const existsQuery = query.exists;
+    const field = existsQuery.field;
+
+    if (field.includes('.')) {
+      const [parentField] = field.split('.');
+
+      return {
+        '!!': { var: parentField },
+      };
+    }
+
+    return {
+      '!!': { var: field },
+    };
+  }
+
+  if (query.wildcard) {
+    const wildcardQuery = query.wildcard;
+    const field = Object.keys(wildcardQuery)[0];
+    // const value = field.value;
+    const value = wildcardQuery[field].value;
+
+    if (field.includes('.')) {
+      // use in operator for wildcards
+      const [parentField, childField] = field.split('.');
+
+      return {
+        some: [
+          { var: parentField },
+          {
+            in: [{ var: childField }, value],
+          },
+        ],
+      };
+    } else {
+      return {
+        in: [{ var: field }, value],
+      };
+    }
+  }
+
+  throw new Error('Unsupported query format');
+};
+
+const getNestedFieldKey = (configFields: Fields, searchKey: string) => {
+  const searchPattern = `${searchKey}.`;
+  for (const key in configFields) {
+    if (key.startsWith(searchPattern)) {
+      return key;
+    }
+  }
+
+  return null;
+};
+
+export const jsonLogicToElasticsearch = (
+  logic: JsonLogic,
+  configFields: Fields,
+  parentField?: string
+): ElasticsearchQuery => {
+  if (logic.and) {
+    return {
+      bool: {
+        must: [
+          {
+            bool: {
+              must: logic.and.map((item: JsonLogic) =>
+                jsonLogicToElasticsearch(item, configFields)
+              ),
+            },
+          },
+        ],
+      },
+    };
+  }
+
+  if (logic.or) {
+    return {
+      bool: {
+        should: logic.or.map((item: JsonLogic) =>
+          jsonLogicToElasticsearch(item, configFields)
+        ),
+      },
+    };
+  }
+
+  if (logic['!']) {
+    return {
+      bool: {
+        must_not: jsonLogicToElasticsearch(logic['!'], configFields),
+      },
+    };
+  }
+
+  if (logic['==']) {
+    const [field, value] = logic['=='];
+    const fieldVar = parentField ? `${parentField}.${field.var}` : field.var;
+    if (typeof field === 'object' && field.var && field.var.includes('.')) {
+      return {
+        bool: {
+          must: [
+            {
+              term: {
+                [fieldVar]: value,
+              },
+            },
+          ],
+        },
+      };
+    }
+
+    return {
+      term: {
+        [fieldVar]: value,
+      },
+    };
+  }
+
+  if (logic['!=']) {
+    const [field, value] = logic['!='];
+    const fieldVar = parentField ? `${parentField}.${field.var}` : field.var;
+    if (typeof field === 'object' && field.var && field.var.includes('.')) {
+      return {
+        bool: {
+          must_not: [
+            {
+              term: {
+                [fieldVar]: value,
+              },
+            },
+          ],
+        },
+      };
+    }
+
+    return {
+      bool: {
+        must_not: [
+          {
+            term: {
+              [fieldVar]: value,
+            },
+          },
+        ],
+      },
+    };
+  }
+
+  if (logic['!!']) {
+    const field = Array.isArray(logic['!!'])
+      ? logic['!!'][0].var
+      : logic['!!'].var;
+    const fieldVal = getNestedFieldKey(configFields, field);
+
+    return {
+      exists: {
+        field: fieldVal || field,
+      },
+    };
+  }
+
+  if (logic.some) {
+    const [arrayField, condition] = logic.some;
+    if (typeof arrayField === 'object' && arrayField.var) {
+      const conditionQuery = jsonLogicToElasticsearch(
+        condition,
+        configFields,
+        arrayField.var
+      );
+
+      return conditionQuery;
+    }
+  }
+
+  if (logic.in) {
+    const [field, value] = logic.in;
+    const fieldVar = parentField ? `${parentField}.${field.var}` : field.var;
+
+    return {
+      term: {
+        [fieldVar]: value,
+      },
+    };
+  }
+
+  throw new Error('Unsupported JSON Logic format');
 };

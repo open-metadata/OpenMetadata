@@ -216,6 +216,7 @@ public final class Entity {
   public static final String THREAD = "THREAD";
   public static final String SUGGESTION = "SUGGESTION";
   public static final String WORKFLOW = "workflow";
+  public static final String WORKFLOW_DEFINITION = "workflowDefinition";
 
   //
   // Time series entities
@@ -229,6 +230,8 @@ public final class Entity {
   public static final String RAW_COST_ANALYSIS_REPORT_DATA = "rawCostAnalysisReportData";
   public static final String AGGREGATED_COST_ANALYSIS_REPORT_DATA =
       "aggregatedCostAnalysisReportData";
+  public static final String WORKFLOW_INSTANCE = "workflowInstance";
+  public static final String WORKFLOW_INSTANCE_STATE = "workflowInstanceState";
 
   //
   // Reserved names in OpenMetadata

@@ -78,6 +78,7 @@ const ScheduleInterval = <T,>({
   buttonProps,
   defaultSchedule,
   topChildren,
+  showActionButtons = true,
 }: ScheduleIntervalProps<T>) => {
   const { t } = useTranslation();
   // Since includePeriodOptions can limit the schedule options
@@ -183,7 +184,7 @@ const ScheduleInterval = <T,>({
   const handleFormSubmit: FormProps['onFinish'] = useCallback(
     (data: WorkflowExtraConfig & T) => {
       // Remove cron if it is empty
-      onDeploy(data);
+      onDeploy?.(data);
     },
     [onDeploy]
   );
@@ -408,33 +409,35 @@ const ScheduleInterval = <T,>({
 
         {children && <Col span={24}>{children}</Col>}
 
-        <Col className="d-flex justify-end" span={24}>
-          <Button
-            className="m-r-xs"
-            data-testid="back-button"
-            type="link"
-            onClick={onBack}>
-            <span>{buttonProps?.cancelText ?? t('label.back')}</span>
-          </Button>
+        {showActionButtons && (
+          <Col className="d-flex justify-end" span={24}>
+            <Button
+              className="m-r-xs"
+              data-testid="back-button"
+              type="link"
+              onClick={onBack}>
+              <span>{buttonProps?.cancelText ?? t('label.back')}</span>
+            </Button>
 
-          {status === 'success' ? (
-            <Button
-              disabled
-              className="w-16 opacity-100 p-x-md p-y-xxs"
-              type="primary">
-              <CheckOutlined />
-            </Button>
-          ) : (
-            <Button
-              className="font-medium p-x-md p-y-xxs h-auto rounded-6"
-              data-testid="deploy-button"
-              htmlType="submit"
-              loading={status === LOADING_STATE.WAITING}
-              type="primary">
-              {buttonProps?.okText ?? t('label.submit')}
-            </Button>
-          )}
-        </Col>
+            {status === 'success' ? (
+              <Button
+                disabled
+                className="w-16 opacity-100 p-x-md p-y-xxs"
+                type="primary">
+                <CheckOutlined />
+              </Button>
+            ) : (
+              <Button
+                className="font-medium p-x-md p-y-xxs h-auto rounded-6"
+                data-testid="deploy-button"
+                htmlType="submit"
+                loading={status === LOADING_STATE.WAITING}
+                type="primary">
+                {buttonProps?.okText ?? t('label.submit')}
+              </Button>
+            )}
+          </Col>
+        )}
       </Row>
     </Form>
   );

@@ -337,6 +337,12 @@ export const TaskTab = ({
       );
   };
 
+  const onGlossaryTaskResolve = (status = 'approved') => {
+    const newValue = isTaskGlossaryApproval ? status : taskDetails?.suggestion;
+    const data = { newValue: newValue };
+    updateTaskData(data as TaskDetails);
+  };
+
   const onTaskResolve = () => {
     if (!isTaskGlossaryApproval && isEmpty(taskDetails?.suggestion)) {
       showErrorToast(
@@ -548,7 +554,7 @@ export const TaskTab = ({
         break;
 
       case TaskActionMode.CLOSE:
-        onTaskReject();
+        onGlossaryTaskResolve('rejected');
 
         break;
     }

@@ -654,6 +654,18 @@
       <artifactId>jakarta.activation</artifactId>
       <version>2.0.1</version>
     </dependency>
+    <!-- Governance Workflows -->
+    <dependency>
+      <groupId>org.flowable</groupId>
+      <artifactId>flowable-engine</artifactId>
+      <version>7.0.1</version>
+    </dependency>
+    <dependency>
+      <groupId>io.github.jamsesso</groupId>
+      <artifactId>json-logic-java</artifactId>
+      <version>1.0.7</version>
+    </dependency>
+    <!-- ################ -->
     <dependency>
       <groupId>com.microsoft.azure</groupId>
       <artifactId>msal4j</artifactId>
