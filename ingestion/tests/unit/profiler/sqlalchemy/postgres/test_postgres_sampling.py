@@ -2,7 +2,6 @@ from unittest import TestCase
 from unittest.mock import patch
 from uuid import uuid4
 
-from metadata.profiler.processor.sampler.sqlalchemy.postgres.sampler import PostgresSampler
 from sqlalchemy import Column, Integer
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.sql.selectable import CTE
@@ -14,16 +13,20 @@ from metadata.generated.schema.entity.data.table import (
     ProfileSampleType,
     Table,
 )
+from metadata.generated.schema.entity.services.connections.database.postgresConnection import (
+    PostgresConnection,
+)
 from metadata.profiler.api.models import ProfileSampleConfig, SamplingMethodType
 from metadata.profiler.interface.sqlalchemy.profiler_interface import (
     SQAProfilerInterface,
 )
-from metadata.profiler.orm.functions.table_metric_computer import TableType
+from metadata.profiler.processor.sampler.sqlalchemy.postgres.sampler import (
+    PostgresSampler,
+)
 from metadata.utils.partition import PartitionIntervalTypes, PartitionProfilerConfig
 
-from metadata.generated.schema.entity.services.connections.database.postgresConnection import PostgresConnection
-
 Base = declarative_base()
+
 
 class User(Base):
     __tablename__ = "users"
@@ -95,9 +98,7 @@ class SampleTest(TestCase):
                 ),
             )
             query: CTE = sampler.get_sample_query()
-        expected_query = (
-            f"SELECT users_1.id \nFROM users AS users_1 TABLESAMPLE {sampling_method_type.value}(50.0)"
-        )
+        expected_query = f"SELECT users_1.id \nFROM users AS users_1 TABLESAMPLE {sampling_method_type.value}(50.0)"
         assert (
             expected_query.casefold()
             == str(query.compile(compile_kwargs={"literal_binds": True})).casefold()
