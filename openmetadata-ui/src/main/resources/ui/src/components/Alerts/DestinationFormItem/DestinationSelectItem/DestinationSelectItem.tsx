@@ -11,9 +11,19 @@
  *  limitations under the License.
  */
 
-import { CloseOutlined } from '@ant-design/icons';
-import { Alert, Button, Col, Form, Row, Select, Tabs, Typography } from 'antd';
-import { isEmpty, isUndefined, map } from 'lodash';
+import { CloseOutlined, InfoCircleOutlined } from '@ant-design/icons';
+import {
+  Alert,
+  Button,
+  Col,
+  Form,
+  Row,
+  Select,
+  Skeleton,
+  Tabs,
+  Typography,
+} from 'antd';
+import { isEmpty, isEqual, isUndefined, map, omitBy } from 'lodash';
 import React, {
   ReactElement,
   useCallback,
@@ -28,21 +38,29 @@ import {
 } from '../../../../constants/Alerts.constants';
 import { WHITE_COLOR } from '../../../../constants/constants';
 import { CreateEventSubscription } from '../../../../generated/events/api/createEventSubscription';
-import { SubscriptionCategory } from '../../../../generated/events/eventSubscription';
-import { useFqn } from '../../../../hooks/useFqn';
 import {
+  Destination,
+  SubscriptionCategory,
+} from '../../../../generated/events/eventSubscription';
+import { useFqn } from '../../../../hooks/useFqn';
+import { ModifiedDestination } from '../../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
+import {
+  getConfigHeaderArrayFromObject,
   getDestinationConfigField,
+  getDestinationStatusAlertData,
   getFilteredDestinationOptions,
   getSubscriptionTypeOptions,
 } from '../../../../utils/Alerts/AlertsUtil';
 import { checkIfDestinationIsInternal } from '../../../../utils/ObservabilityUtils';
-import { ModifiedDestination } from '../../AddObservabilityPage.interface';
 import { DestinationSelectItemProps } from './DestinationSelectItem.interface';
 
 function DestinationSelectItem({
   selectorKey,
   id,
   remove,
+  destinationsWithStatus,
+  isDestinationStatusLoading,
+  isViewMode = false,
 }: Readonly<DestinationSelectItemProps>) {
   const { t } = useTranslation();
   const form = Form.useFormInstance();
@@ -52,6 +70,38 @@ function DestinationSelectItem({
   );
   const [destinationOptions, setDestinationOptions] = useState(
     DESTINATION_SOURCE_ITEMS.internal
+  );
+  const destinationItem =
+    Form.useWatch<Destination>(['destinations', id], form) ?? [];
+
+  const destinationStatusDetails = useMemo(() => {
+    const { type, category, config } = destinationItem;
+
+    const currentDestination = destinationsWithStatus?.find((destination) =>
+      isEqual(
+        { type, category, config: omitBy(config, isUndefined) },
+        {
+          type: destination.type,
+          category: destination.category,
+          config: omitBy(
+            {
+              ...destination.config,
+              headers: getConfigHeaderArrayFromObject(
+                destination?.config?.headers
+              ),
+            },
+            isUndefined
+          ),
+        }
+      )
+    );
+
+    return currentDestination?.statusDetails;
+  }, [destinationItem, destinationsWithStatus]);
+
+  const { alertClassName, alertType, statusLabel, alertIcon } = useMemo(
+    () => getDestinationStatusAlertData(destinationStatusDetails?.status),
+    [destinationStatusDetails]
   );
 
   // Selected destinations list
@@ -233,56 +283,93 @@ function DestinationSelectItem({
                 id
               )}
             {destinationType && checkIfDestinationIsInternal(destinationType) && (
-              <Col span={24}>
-                <Form.Item
-                  required
-                  extra={
-                    destinationType &&
-                    subscriptionType && (
-                      <Alert
-                        closable
-                        className="m-t-sm"
-                        message={
-                          <Typography.Text className="font-medium text-sm">
-                            {t('message.destination-selection-warning', {
-                              subscriptionCategory: destinationType,
-                              subscriptionType,
-                            })}
-                          </Typography.Text>
-                        }
-                        type="warning"
-                      />
-                    )
-                  }
-                  name={[id, 'type']}
-                  rules={[
-                    {
-                      required: true,
-                      message: t('message.field-text-is-required', {
-                        fieldText: t('label.field'),
-                      }),
-                    },
-                  ]}>
-                  <Select
-                    className="w-full"
-                    data-testid={`destination-type-select-${id}`}
-                    options={getSubscriptionTypeOptions(destinationType)}
-                    placeholder={t('label.select-field', {
-                      field: t('label.destination'),
-                    })}
-                    popupClassName="select-options-container"
-                  />
-                </Form.Item>
-              </Col>
+              <>
+                <Col span={24}>
+                  <Form.Item
+                    required
+                    name={[id, 'type']}
+                    rules={[
+                      {
+                        required: true,
+                        message: t('message.field-text-is-required', {
+                          fieldText: t('label.field'),
+                        }),
+                      },
+                    ]}>
+                    <Select
+                      className="w-full"
+                      data-testid={`destination-type-select-${id}`}
+                      options={getSubscriptionTypeOptions(destinationType)}
+                      placeholder={t('label.select-field', {
+                        field: t('label.destination'),
+                      })}
+                      popupClassName="select-options-container"
+                    />
+                  </Form.Item>
+                </Col>
+                {destinationType && subscriptionType && (
+                  <Col span={24}>
+                    <Alert
+                      closable
+                      showIcon
+                      className="destination-warning-status"
+                      icon={<InfoCircleOutlined height={14} />}
+                      message={
+                        <Typography.Text className="text-sm">
+                          {t('message.destination-selection-warning', {
+                            subscriptionCategory: destinationType,
+                            subscriptionType,
+                          })}
+                        </Typography.Text>
+                      }
+                      type="warning"
+                    />
+                  </Col>
+                )}
+              </>
             )}
+            {isDestinationStatusLoading &&
+              destinationItem.category === SubscriptionCategory.External && (
+                <Col span={24}>
+                  <Skeleton
+                    active
+                    className="destination-status-skeleton"
+                    paragraph={false}
+                  />
+                </Col>
+              )}
+            {!isDestinationStatusLoading &&
+              !isUndefined(destinationStatusDetails) && (
+                <Col span={24}>
+                  <Alert
+                    closable
+                    showIcon
+                    className={alertClassName}
+                    icon={alertIcon}
+                    message={
+                      <>
+                        <Typography.Text className="text-sm">
+                          {`${t('label.status')}:`}
+                        </Typography.Text>
+                        <Typography.Text className="font-medium text-sm m-l-xss">
+                          {statusLabel}
+                        </Typography.Text>
+                      </>
+                    }
+                    type={alertType}
+                  />
+                </Col>
+              )}
           </Row>
         </div>
 
-        <Button
-          data-testid={`remove-destination-${id}`}
-          icon={<CloseOutlined />}
-          onClick={() => remove(id)}
-        />
+        {!isViewMode && (
+          <Button
+            data-testid={`remove-destination-${id}`}
+            icon={<CloseOutlined />}
+            onClick={() => remove(id)}
+          />
+        )}
       </div>
     </Col>
   );
