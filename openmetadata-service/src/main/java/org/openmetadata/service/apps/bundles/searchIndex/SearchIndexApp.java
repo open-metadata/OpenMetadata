@@ -49,8 +49,6 @@ import static org.openmetadata.service.socket.WebSocketManager.SEARCH_INDEX_JOB_
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.ENTITY_TYPE_KEY;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.isDataInsightIndex;
 
-import java.text.SimpleDateFormat;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -345,27 +343,20 @@ public class SearchIndexApp extends AbstractNativeApplication {
               if (totalEntityRecords > 0) {
                 for (int i = 0; i < noOfThreads; i++) {
                   LOG.debug(
-                      "[{}] Submitting producer task current queue size: {}",
-                      Thread.currentThread().getName(),
-                      producerQueue.size());
+                      "Submitting producer task current queue size: {}", producerQueue.size());
                   int currentOffset = i * batchSize.get();
                   producerExecutor.submit(
                       () -> {
                         try {
                           LOG.debug(
-                              "[{}] Running Task for CurrentOffset: {},  Producer Latch Down, Current : {}, Current Time: {}",
-                              Thread.currentThread().getName(),
+                              "Running Task for CurrentOffset: {},  Producer Latch Down, Current : {}",
                               currentOffset,
-                              producerLatch.getCount(),
-                              getCurrentTime());
+                              producerLatch.getCount());
                           processReadTask(entityType, source, currentOffset);
                         } catch (Exception e) {
                           LOG.error("Error processing entity type {}", entityType, e);
                         } finally {
-                          LOG.debug(
-                              "Producer Latch Down, Current : {}, Current Time: {}",
-                              producerLatch.getCount(),
-                              getCurrentTime());
+                          LOG.debug("Producer Latch Down, Current : {}", producerLatch.getCount());
                           producerLatch.countDown();
                         }
                       });
@@ -376,12 +367,6 @@ public class SearchIndexApp extends AbstractNativeApplication {
             }
           });
     }
-  }
-
-  private String getCurrentTime() {
-    // Format it as a human-readable string
-    SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
-    return formatter.format(new Date(System.currentTimeMillis()));
   }
 
   private void submitConsumerTask(JobExecutionContext jobExecutionContext) {
@@ -402,8 +387,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
     while (true) {
       IndexingTask<?> task = taskQueue.take();
       LOG.info(
-          "[{}] Consuming Indexing Task for entityType: {}, entity offset : {}",
-          Thread.currentThread().getName(),
+          "Consuming Indexing Task for entityType: {}, entity offset : {}",
           task.entityType(),
           task.currentEntityOffset());
       if (task == IndexingTask.POISON_PILL) {
@@ -709,11 +693,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
   private void processReadTask(String entityType, Source<?> source, int offset) {
     try {
       Object resultList = source.readWithCursor(RestUtil.encodeCursor(String.valueOf(offset)));
-      LOG.info(
-          "[{}] Read Entities with CurrentOffset: {}, CurrentTime : {}",
-          Thread.currentThread().getName(),
-          offset,
-          getCurrentTime());
+      LOG.info("Read Entities with CurrentOffset: {}", offset);
       if (resultList != null) {
         ResultList<?> entities = extractEntities(entityType, resultList);
         if (!nullOrEmpty(entities.getData())) {
