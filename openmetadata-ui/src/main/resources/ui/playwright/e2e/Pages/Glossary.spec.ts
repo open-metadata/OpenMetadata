@@ -43,18 +43,27 @@ import {
   approveTagsTask,
   assignTagToGlossaryTerm,
   changeTermHierarchyFromModal,
+  clickSaveButton,
   confirmationDragAndDropGlossary,
   createDescriptionTaskForGlossary,
   createGlossary,
   createGlossaryTerms,
   createTagTaskForGlossary,
   deleteGlossaryOrGlossaryTerm,
+  deselectColumns,
+  dragAndDropColumn,
   dragAndDropTerm,
+  filterStatus,
   goToAssetsTab,
+  openColumnDropdown,
   renameGlossaryTerm,
   selectActiveGlossary,
   selectActiveGlossaryTerm,
+  selectColumns,
+  toggleAllColumnsSelection,
   validateGlossaryTerm,
+  verifyAllColumns,
+  verifyColumnsVisibility,
   verifyGlossaryDetails,
   verifyGlossaryTermAssets,
 } from '../../utils/glossary';
@@ -919,6 +928,141 @@ test.describe('Glossary tests', () => {
       await glossaryTerm3.delete(apiContext);
       await glossaryTerm2.delete(apiContext);
       await glossaryTerm1.delete(apiContext);
+      await glossary1.delete(apiContext);
+      await afterAction();
+    }
+  });
+
+  test('Column selection and visibility for Glossary Terms table', async ({
+    browser,
+  }) => {
+    const { page, afterAction, apiContext } = await performAdminLogin(browser);
+    const glossary1 = new Glossary();
+    const glossaryTerm1 = new GlossaryTerm(glossary1);
+    const glossaryTerm2 = new GlossaryTerm(glossary1);
+    glossary1.data.terms = [glossaryTerm1, glossaryTerm2];
+
+    try {
+      await glossary1.create(apiContext);
+      await glossaryTerm1.create(apiContext);
+      await glossaryTerm2.create(apiContext);
+      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await selectActiveGlossary(page, glossary1.data.displayName);
+
+      await test.step(
+        'Open column dropdown and select columns and check if they are visible',
+        async () => {
+          await openColumnDropdown(page);
+          const checkboxLabels = ['Reviewer', 'Synonyms'];
+          await selectColumns(page, checkboxLabels);
+          await clickSaveButton(page);
+          await verifyColumnsVisibility(page, checkboxLabels, true);
+        }
+      );
+
+      await test.step(
+        'Open column dropdown and deselect columns and check if they are hidden',
+        async () => {
+          await openColumnDropdown(page);
+          const checkboxLabels = ['Reviewer', 'Owners'];
+          await deselectColumns(page, checkboxLabels);
+          await clickSaveButton(page);
+          await verifyColumnsVisibility(page, checkboxLabels, false);
+        }
+      );
+
+      await test.step('All columns selection', async () => {
+        await toggleAllColumnsSelection(page, true);
+        const tableColumns = [
+          'TERMS',
+          'DESCRIPTION',
+          'REVIEWER',
+          'SYNONYMS',
+          'OWNERS',
+          'STATUS',
+          'ACTIONS',
+        ];
+        await verifyAllColumns(page, tableColumns, true);
+      });
+    } finally {
+      await glossaryTerm1.delete(apiContext);
+      await glossaryTerm2.delete(apiContext);
+      await glossary1.delete(apiContext);
+      await afterAction();
+    }
+  });
+
+  test('Glossary Terms Table Status filtering', async ({ browser }) => {
+    const { page, afterAction, apiContext } = await performAdminLogin(browser);
+    const glossary1 = new Glossary();
+    const glossaryTerm1 = new GlossaryTerm(glossary1);
+    const glossaryTerm2 = new GlossaryTerm(glossary1);
+    glossary1.data.terms = [glossaryTerm1, glossaryTerm2];
+
+    try {
+      await glossary1.create(apiContext);
+      await glossaryTerm1.create(apiContext);
+      await glossaryTerm2.create(apiContext);
+      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await selectActiveGlossary(page, glossary1.data.displayName);
+
+      await test.step(
+        'Deselect status and check if the table has filtered rows',
+        async () => {
+          await filterStatus(page, ['Draft'], ['Approved']);
+        }
+      );
+
+      await test.step(
+        'Re-select the status and check if it appears again',
+        async () => {
+          await filterStatus(page, ['Draft'], ['Draft', 'Approved']);
+        }
+      );
+    } finally {
+      await glossaryTerm1.delete(apiContext);
+      await glossaryTerm2.delete(apiContext);
+      await glossary1.delete(apiContext);
+      await afterAction();
+    }
+  });
+
+  test('Column dropdown drag-and-drop functionality for Glossary Terms table', async ({
+    browser,
+  }) => {
+    const { page, afterAction, apiContext } = await performAdminLogin(browser);
+    const glossary1 = new Glossary();
+    const glossaryTerm1 = new GlossaryTerm(glossary1);
+    const glossaryTerm2 = new GlossaryTerm(glossary1);
+    glossary1.data.terms = [glossaryTerm1, glossaryTerm2];
+
+    try {
+      await glossary1.create(apiContext);
+      await glossaryTerm1.create(apiContext);
+      await glossaryTerm2.create(apiContext);
+      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await selectActiveGlossary(page, glossary1.data.displayName);
+      await openColumnDropdown(page);
+      const dragColumn = 'Owners';
+      const dropColumn = 'Status';
+      await dragAndDropColumn(page, dragColumn, dropColumn);
+      const saveButton = page.locator('.ant-btn-primary', {
+        hasText: 'Save',
+      });
+      await saveButton.click();
+      const columnHeaders = await page.locator('thead th');
+      const columnText = await columnHeaders.allTextContents();
+
+      expect(columnText).toEqual([
+        'Terms',
+        'Description',
+        'Status',
+        'Owners',
+        'Actions',
+      ]);
+    } finally {
+      await glossaryTerm1.delete(apiContext);
+      await glossaryTerm2.delete(apiContext);
       await glossary1.delete(apiContext);
       await afterAction();
     }
