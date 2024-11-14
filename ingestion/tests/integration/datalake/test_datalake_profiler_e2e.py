@@ -110,9 +110,12 @@ class TestDatalakeProfilerTestE2E:
             nullable=False,
         )
 
-        profile = metadata.get_latest_table_profile(table.fullyQualifiedName).profile
+        profile = metadata.get_latest_table_profile(table.fullyQualifiedName)
+        table_profile = profile.profile
+        column_profile = profile.columns[0].profile
 
-        assert profile.rowCount == 1.0
+        assert table_profile.rowCount == 3.0
+        assert column_profile.valuesCount == 1.0
 
     def test_datetime_partitioned_datalake_profiler_workflow(
         self, ingestion_config, metadata
@@ -154,9 +157,12 @@ class TestDatalakeProfilerTestE2E:
             fields=["tableProfilerConfig"],
         )
 
-        profile = metadata.get_latest_table_profile(table.fullyQualifiedName).profile
+        profile = metadata.get_latest_table_profile(table.fullyQualifiedName)
+        table_profile = profile.profile
+        column_profile = profile.columns[0].profile
 
-        assert profile.rowCount == 2.0
+        assert table_profile.rowCount == 3.0
+        assert column_profile.valuesCount == 2.0
 
     def test_integer_range_partitioned_datalake_profiler_workflow(
         self, ingestion_config, metadata
@@ -199,9 +205,12 @@ class TestDatalakeProfilerTestE2E:
             fields=["tableProfilerConfig"],
         )
 
-        profile = metadata.get_latest_table_profile(table.fullyQualifiedName).profile
+        profile = metadata.get_latest_table_profile(table.fullyQualifiedName)
+        table_profile = profile.profile
+        column_profile = profile.columns[0].profile
 
-        assert profile.rowCount == 2.0
+        assert table_profile.rowCount == 3.0
+        assert column_profile.valuesCount == 2.0
 
     def test_datalake_profiler_workflow_with_custom_profiler_config(
         self, metadata, ingestion_config

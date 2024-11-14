@@ -14,12 +14,12 @@ for the profiler
 """
 from typing import Dict, Optional
 
-from sqlalchemy import Column
+from sqlalchemy import Column, text
 from sqlalchemy.orm import Query
 
 from metadata.generated.schema.entity.data.table import ProfileSampleType, TableType
 from metadata.profiler.api.models import ProfileSampleConfig
-from metadata.profiler.processor.handle_partition import partition_filter_handler
+from metadata.profiler.orm.functions.table_metric_computer import Table
 from metadata.profiler.processor.sampler.sqlalchemy.sampler import SQASampler
 from metadata.utils.constants import SAMPLE_DATA_DEFAULT_COUNT
 
@@ -51,6 +51,20 @@ class BigQuerySampler(SQASampler):
         )
         self.table_type: TableType = table_type
 
+    def set_tablesample(self, selectable: Table):
+        """Set the TABLESAMPLE clause for BigQuery
+
+        Args:
+            selectable (Table): Table object
+        """
+        if (
+            self.profile_sample_type == ProfileSampleType.PERCENTAGE
+            and self.table_type != TableType.View
+        ):
+            return selectable.tablesample(text(f"{self.profile_sample or 100} PERCENT"))
+
+        return selectable
+
     def _base_sample_query(self, column: Optional[Column], label=None):
         """Base query for sampling
 
@@ -78,7 +92,6 @@ class BigQuerySampler(SQASampler):
 
         return super()._base_sample_query(column, label=label)
 
-    @partition_filter_handler(build_sample=True)
     def get_sample_query(self, *, column=None) -> Query:
         """get query for sample data"""
         # TABLESAMPLE SYSTEM is not supported for views
@@ -86,12 +99,8 @@ class BigQuerySampler(SQASampler):
             self.profile_sample_type == ProfileSampleType.PERCENTAGE
             and self.table_type != TableType.View
         ):
-            return (
-                self._base_sample_query(column)
-                .suffix_with(
-                    f"TABLESAMPLE SYSTEM ({self.profile_sample or 100} PERCENT)",
-                )
-                .cte(f"{self.table.__tablename__}_sample")
+            return self._base_sample_query(column).cte(
+                f"{self.table.__tablename__}_sample"
             )
 
         return super().get_sample_query(column=column)

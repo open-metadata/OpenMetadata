@@ -18,27 +18,20 @@ from typing import List, Optional, Union, cast
 from sqlalchemy import Column, inspect, text
 from sqlalchemy.orm import DeclarativeMeta, Query, aliased
 from sqlalchemy.orm.util import AliasedClass
+from sqlalchemy.schema import Table
 from sqlalchemy.sql.sqltypes import Enum
 
 from metadata.generated.schema.entity.data.table import (
-    PartitionIntervalTypes,
     PartitionProfilerConfig,
     ProfileSampleType,
     TableData,
 )
 from metadata.profiler.orm.functions.modulo import ModuloFn
 from metadata.profiler.orm.functions.random_num import RandomNumFn
-from metadata.profiler.processor.handle_partition import partition_filter_handler
+from metadata.profiler.processor.handle_partition import build_partition_predicate
 from metadata.profiler.processor.sampler.sampler_interface import SamplerInterface
 from metadata.utils.helpers import is_safe_sql_query
 from metadata.utils.logger import profiler_interface_registry_logger
-from metadata.utils.sqa_utils import (
-    build_query_filter,
-    dispatch_to_date_or_datetime,
-    get_integer_range_filter,
-    get_partition_col_type,
-    get_value_filter,
-)
 
 logger = profiler_interface_registry_logger()
 
@@ -67,6 +60,14 @@ class SQASampler(SamplerInterface):
     run the query in the whole table.
     """
 
+    def set_tablesample(self, selectable: Table):
+        """Set the tablesample for the table. To be implemented by the child SQA sampler class
+
+        Args:
+            selectable (Table): a selectable table
+        """
+        return selectable
+
     def _base_sample_query(self, column: Optional[Column], label=None):
         """Base query for sampling
 
@@ -77,12 +78,17 @@ class SQASampler(SamplerInterface):
         Returns:
         """
         # only sample the column if we are computing a column metric to limit the amount of data scaned
-        entity = self.table if column is None else column
+        selectable = self.set_tablesample(self.table.__table__)
+        entity = selectable if column is None else selectable.c.get(column.key)
         if label is not None:
-            return self.client.query(entity, label)
-        return self.client.query(entity)
+            query = self.client.query(entity, label)
+        else:
+            query = self.client.query(entity)
 
-    @partition_filter_handler(build_sample=True)
+        if self._partition_details:
+            query = self.get_partitioned_query(query)
+        return query
+
     def get_sample_query(self, *, column=None) -> Query:
         """get query for sample data"""
         if self.profile_sample_type == ProfileSampleType.PERCENTAGE:
@@ -106,7 +112,9 @@ class SQASampler(SamplerInterface):
             .cte(f"{self.table.__tablename__}_rnd")
         )
 
-    def random_sample(self, ccolumn=None) -> Union[DeclarativeMeta, AliasedClass]:
+    def get_dataset(
+        self, columns: Optional[List] = None
+    ) -> Union[DeclarativeMeta, AliasedClass]:
         """
         Either return a sampled CTE of table, or
         the full table if no sampling is required.
@@ -114,14 +122,17 @@ class SQASampler(SamplerInterface):
         if self._profile_sample_query:
             return self._rdn_sample_from_user_query()
 
-        if not self.profile_sample or int(self.profile_sample) == 100:
+        if not self.profile_sample or (
+            int(self.profile_sample) == 100
+            and self.profile_sample_type == ProfileSampleType.PERCENTAGE
+        ):
             if self._partition_details:
                 return self._partitioned_table()
 
             return self.table
 
         # Add new RandomNumFn column
-        sampled = self.get_sample_query(column=ccolumn)
+        sampled = self.get_sample_query(column=columns)
 
         # Assign as an alias
         return aliased(self.table, sampled)
@@ -204,54 +215,17 @@ class SQASampler(SamplerInterface):
 
     def _partitioned_table(self) -> Query:
         """Return the Query object for partitioned tables"""
-        return aliased(self.get_partitioned_query().subquery())
+        return aliased(self.table, self.get_partitioned_query().subquery())
 
-    def get_partitioned_query(self) -> Query:
+    def get_partitioned_query(self, query=None) -> Query:
         """Return the partitioned query"""
         self._partition_details = cast(
             PartitionProfilerConfig, self._partition_details
         )  # satisfying type checker
-        partition_field = self._partition_details.partitionColumnName
-
-        type_ = get_partition_col_type(
-            partition_field,
+        partition_filter = build_partition_predicate(
+            self._partition_details,
             self.table.__table__.c,
         )
-
-        if (
-            self._partition_details.partitionIntervalType
-            == PartitionIntervalTypes.COLUMN_VALUE
-        ):
-            return self.client.query(self.table).filter(
-                get_value_filter(
-                    Column(partition_field),
-                    self._partition_details.partitionValues,
-                )
-            )
-        if (
-            self._partition_details.partitionIntervalType
-            == PartitionIntervalTypes.INTEGER_RANGE
-        ):
-            return self.client.query(self.table).filter(
-                get_integer_range_filter(
-                    Column(partition_field),
-                    self._partition_details.partitionIntegerRangeStart,
-                    self._partition_details.partitionIntegerRangeEnd,
-                )
-            )
-        return self.client.query(self.table).filter(
-            build_query_filter(
-                [
-                    (
-                        Column(partition_field),
-                        "ge",
-                        dispatch_to_date_or_datetime(
-                            self._partition_details.partitionInterval,
-                            text(self._partition_details.partitionIntervalUnit.value),
-                            type_,
-                        ),
-                    )
-                ],
-                False,
-            )
-        )
+        if query is not None:
+            return query.filter(partition_filter)
+        return self.client.query(self.table).filter(partition_filter)
