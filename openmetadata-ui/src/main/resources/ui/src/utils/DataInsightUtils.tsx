@@ -152,7 +152,11 @@ export const CustomTooltip = (props: DataInsightChartTooltipProps) => {
   } = props;
 
   if (active && payload && payload.length) {
-    const timestamp = dateTimeFormatter(payload[0].payload[timeStampKey] || 0);
+    // we need to check if the xAxis is a date or not.
+    const timestamp =
+      timeStampKey === 'term'
+        ? payload[0].payload[timeStampKey]
+        : dateTimeFormatter(payload[0].payload[timeStampKey] || 0);
     const payloadValue = uniqBy(payload, 'dataKey');
 
     return (
