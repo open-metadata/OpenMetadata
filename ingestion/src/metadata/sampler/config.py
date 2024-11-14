@@ -11,7 +11,7 @@
 """
 Sampler configuration helpers
 """
-from typing import Optional, Union
+from typing import Any, Dict, Optional, Union
 
 from metadata.generated.schema.entity.data.database import (
     Database,
@@ -29,15 +29,12 @@ from metadata.generated.schema.entity.services.databaseService import DatabaseSe
 from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline import (
     DatabaseServiceProfilerPipeline,
 )
-from metadata.profiler.api.models import (
-    DatabaseAndSchemaConfig,
-    ProfilerProcessorConfig,
-)
+from metadata.profiler.api.models import ProfilerProcessorConfig
 from metadata.profiler.config import (
     get_database_profiler_config,
     get_schema_profiler_config,
 )
-from metadata.sampler.models import SampleConfig, TableConfig
+from metadata.sampler.models import DatabaseAndSchemaConfig, SampleConfig, TableConfig
 
 
 def get_sample_storage_config(
@@ -46,7 +43,7 @@ def get_sample_storage_config(
         DatabaseProfilerConfig,
         DatabaseAndSchemaConfig,
     ],
-) -> Optional[DataStorageConfig]:
+) -> Optional[Union[DataStorageConfig, Dict[str, Any]]]:
     """Get sample storage config"""
     if (
         config
@@ -63,33 +60,35 @@ def get_storage_config_for_table(
     database_entity: Database,
     db_service: Optional[DatabaseService],
     profiler_config: ProfilerProcessorConfig,
-) -> Optional[DataStorageConfig]:
+) -> Optional[Union[DataStorageConfig, Dict[str, Any]]]:
     """Get storage config for a specific entity"""
     schema_profiler_config = get_schema_profiler_config(schema_entity=schema_entity)
     database_profiler_config = get_database_profiler_config(
         database_entity=database_entity
     )
 
-    for schema_config in profiler_config.schemaConfig:
+    for schema_config in profiler_config.schemaConfig or []:
         if (
-            schema_config.fullyQualifiedName.root
+            entity.databaseSchema
+            and schema_config.fullyQualifiedName.root
             == entity.databaseSchema.fullyQualifiedName
             and get_sample_storage_config(schema_config)
         ):
             return get_sample_storage_config(schema_config)
 
-    for database_config in profiler_config.databaseConfig:
+    for database_config in profiler_config.databaseConfig or []:
         if (
-            database_config.fullyQualifiedName.root
+            entity.database
+            and database_config.fullyQualifiedName.root
             == entity.database.fullyQualifiedName
             and get_sample_storage_config(database_config)
         ):
             return get_sample_storage_config(database_config)
 
-    if get_sample_storage_config(schema_profiler_config):
+    if schema_profiler_config and get_sample_storage_config(schema_profiler_config):
         return get_sample_storage_config(schema_profiler_config)
 
-    if get_sample_storage_config(database_profiler_config):
+    if database_profiler_config and get_sample_storage_config(database_profiler_config):
         return get_sample_storage_config(database_profiler_config)
 
     try:

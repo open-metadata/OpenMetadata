@@ -114,11 +114,10 @@ ignore-paths = [
     "ingestion/src/metadata/utils/datalake/datalake_utils.py",
     "ingestion/src/metadata/great_expectations/action.py",
     "ingestion/src/metadata/profiler/interface/nosql/profiler_interface.py",
-    "ingestion/src/metadata/profiler/processor/sampler/nosql/sampler.py",
     ".*/src/metadata/ingestion/source/.*/service_spec.py",
     "ingestion/src/metadata/profiler/metrics",
     "ingestion/src/metadata/profiler/source/databricks",
-    
+
     # metadata ingestion sources
     "ingestion/src/metadata/ingestion/source/api/rest/connection.py",
     "ingestion/src/metadata/ingestion/source/api/rest/metadata.py",
@@ -262,6 +261,7 @@ ignore = [
   "src/metadata/parsers/*",
   "src/metadata/pii/*",
   "src/metadata/profiler/*",
+  "src/metadata/sampler/*",
   "src/metadata/readers/*",
   "src/metadata/timer/*",
   "src/metadata/utils/*",
