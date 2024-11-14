@@ -80,6 +80,12 @@
       "type": "integer",
       "default": 10000
     },
+    "queueSize": {
+      "title": "Queue Size to use.",
+      "description": "Queue Size to user internally for reindexing.",
+      "type": "integer",
+      "default": 100
+    },
     "searchIndexMappingLanguage": {
       "description": "Recreate Indexes with updated Language",
       "$ref": "../../../../configuration/elasticSearchConfiguration.json#/definitions/searchIndexMappingLanguage"
