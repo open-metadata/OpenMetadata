@@ -92,16 +92,19 @@ export const restoreTeam = async (id: string) => {
 
 export const exportTeam = async (teamName: string) => {
   const response = await APIClient.get<CSVExportResponse>(
-    `/teams/name/${getEncodedFqn(teamName)}/export`
+    `/teams/name/${getEncodedFqn(teamName)}/exportAsync`
   );
 
   return response.data;
 };
 
 export const exportUserOfTeam = async (team: string) => {
-  const response = await APIClient.get<CSVExportResponse>(`/users/export`, {
-    params: { team },
-  });
+  const response = await APIClient.get<CSVExportResponse>(
+    `/users/exportAsync`,
+    {
+      params: { team },
+    }
+  );
 
   return response.data;
 };

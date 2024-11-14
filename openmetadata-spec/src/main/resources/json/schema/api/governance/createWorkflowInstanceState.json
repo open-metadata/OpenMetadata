@@ -1,0 +1,16 @@
+{
+  "$id": "https://open-metadata.org/schema/api/governance/createWorkflowInstanceState.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CreateWorkflowInstanceStateRequest",
+  "description": "Create Workflow Instance State Request",
+  "javaType": "org.openmetadata.schema.api.governance.CreateWorkflowInstanceState",
+  "type": "object",
+  "properties": {
+    "workflowDefinitionReference": {
+      "description": "Workflow Definition reference FQN",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    }
+  },
+  "required": ["workflowDefinitionReference"],
+  "additionalProperties": false
+}

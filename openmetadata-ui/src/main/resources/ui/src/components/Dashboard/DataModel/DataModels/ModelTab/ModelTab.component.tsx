@@ -20,7 +20,10 @@ import { EntityType } from '../../../../../enums/entity.enum';
 import { Column } from '../../../../../generated/entity/data/dashboardDataModel';
 import { TagLabel, TagSource } from '../../../../../generated/type/tagLabel';
 import { updateDataModelColumnDescription } from '../../../../../utils/DataModelsUtils';
-import { getEntityName } from '../../../../../utils/EntityUtils';
+import {
+  getColumnSorter,
+  getEntityName,
+} from '../../../../../utils/EntityUtils';
 import {
   getAllTags,
   searchTagInData,
@@ -93,6 +96,7 @@ const ModelTab = ({
         key: 'name',
         width: 250,
         fixed: 'left',
+        sorter: getColumnSorter<Column, 'name'>('name'),
         render: (_, record) => (
           <Typography.Text>{getEntityName(record)}</Typography.Text>
         ),

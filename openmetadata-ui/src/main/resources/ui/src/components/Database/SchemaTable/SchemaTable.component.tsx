@@ -53,6 +53,7 @@ import { useFqn } from '../../../hooks/useFqn';
 import { getTestCaseExecutionSummary } from '../../../rest/testAPI';
 import { getPartialNameFromTableFQN } from '../../../utils/CommonUtils';
 import {
+  getColumnSorter,
   getEntityName,
   getFrequentlyJoinedColumns,
   searchInColumns,
@@ -351,6 +352,7 @@ const SchemaTable = ({
         accessor: 'name',
         width: 200,
         fixed: 'left',
+        sorter: getColumnSorter<Column, 'name'>('name'),
         render: (name: Column['name'], record: Column) => {
           const { displayName } = record;
 
