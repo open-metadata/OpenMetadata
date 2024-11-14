@@ -12,6 +12,7 @@
 """
 Test Quicksight connector with CLI
 """
+from logging import Logger
 from typing import List
 
 from metadata.ingestion.api.status import Status
@@ -85,7 +86,11 @@ class QuicksightCliTest(CliCommonDashboard.TestSuite):
         self.assertTrue(len(source_status.failures) == 0)
         self.assertTrue(len(source_status.warnings) == 0)
         self.assertTrue(len(source_status.filtered) == 0)
-        print("SOURCE STATUS\n", source_status.records, source_status.updated_records)
+        Logger.log(
+            "\nSOURCE STATUS\n %s, updated=%s",
+            source_status.records,
+            source_status.updated_records,
+        )
         self.assertEqual(
             (len(source_status.records) + len(source_status.updated_records)),
             self.expected_dashboards_and_charts_after_patch()
@@ -97,8 +102,8 @@ class QuicksightCliTest(CliCommonDashboard.TestSuite):
         self.assertTrue(len(sink_status.failures) == 0)
         self.assertTrue(len(sink_status.warnings) == 0)
         # We are getting here diff of 1 element in case of the service ingested.
-        print(
-            "-------------\nSINK STATUS\n",
+        Logger.log(
+            "\nSINK STATUS\n %s, updated=%s",
             sink_status.records,
             sink_status.updated_records,
         )
