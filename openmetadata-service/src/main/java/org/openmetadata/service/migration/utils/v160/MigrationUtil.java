@@ -2,6 +2,7 @@ package org.openmetadata.service.migration.utils.v160;
 
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 
+import java.util.Arrays;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
@@ -52,48 +53,64 @@ public class MigrationUtil {
   }
 
   public static void addEditGlossaryTermsToDataConsumerPolicy(CollectionDAO collectionDAO) {
+    List<MetadataOperation> operationsToAdd =
+        Arrays.asList(
+            MetadataOperation.EDIT_GLOSSARY_TERMS,
+            MetadataOperation.EDIT_TIER,
+            MetadataOperation.EDIT_TAGS);
+    addOperationsToPolicyRule(
+        "DataConsumerPolicy", "DataConsumerPolicy-EditRule", operationsToAdd, collectionDAO);
+    addOperationsToPolicyRule(
+        "DataStewardPolicy", "DataStewardPolicy-EditRule", operationsToAdd, collectionDAO);
+  }
+
+  public static void addOperationsToPolicyRule(
+      String policyName,
+      String ruleName,
+      List<MetadataOperation> operationsToAdd,
+      CollectionDAO collectionDAO) {
     PolicyRepository repository = (PolicyRepository) Entity.getEntityRepository(Entity.POLICY);
     try {
-      Policy dataConsumerPolicy = repository.findByName("DataConsumerPolicy", Include.NON_DELETED);
-      if (dataConsumerPolicy.getRules() == null) {
-        LOG.warn("DataConsumerPolicy has no rules defined.");
+      Policy policy = repository.findByName(policyName, Include.NON_DELETED);
+      if (policy.getRules() == null) {
+        LOG.warn("{} has no rules defined.", policyName);
         return;
       }
 
-      Rule dataConsumerEditRule =
-          dataConsumerPolicy.getRules().stream()
-              .filter(rule -> "DataConsumerPolicy-EditRule".equals(rule.getName()))
+      Rule editRule =
+          policy.getRules().stream()
+              .filter(rule -> ruleName.equals(rule.getName()))
               .findFirst()
               .orElse(null);
 
-      if (dataConsumerEditRule == null || dataConsumerEditRule.getOperations() == null) {
-        LOG.warn("DataConsumerPolicy-EditRule not found or has no operations.");
+      if (editRule == null || editRule.getOperations() == null) {
+        LOG.warn("{} not found or has no operations.", ruleName);
         return;
       }
 
-      List<MetadataOperation> operations = dataConsumerEditRule.getOperations();
+      List<MetadataOperation> existingOperations = editRule.getOperations();
       boolean updatedRequired = false;
 
-      if (!operations.contains(MetadataOperation.EDIT_GLOSSARY_TERMS)) {
-        operations.add(MetadataOperation.EDIT_GLOSSARY_TERMS);
-        updatedRequired = true;
-      }
-
-      if (!operations.contains(MetadataOperation.EDIT_TIER)) {
-        operations.add(MetadataOperation.EDIT_TIER);
-        updatedRequired = true;
+      for (MetadataOperation op : operationsToAdd) {
+        if (!existingOperations.contains(op)) {
+          existingOperations.add(op);
+          updatedRequired = true;
+          LOG.info("Added operation {} to rule {}", op, ruleName);
+        }
       }
 
       if (updatedRequired) {
         collectionDAO
             .policyDAO()
-            .update(
-                dataConsumerPolicy.getId(),
-                dataConsumerPolicy.getFullyQualifiedName(),
-                JsonUtils.pojoToJson(dataConsumerPolicy));
+            .update(policy.getId(), policy.getFullyQualifiedName(), JsonUtils.pojoToJson(policy));
+        LOG.info("Updated policy {} with new operations.", policyName);
+      } else {
+        LOG.info("No updates required for policy {}.", policyName);
       }
     } catch (EntityNotFoundException ex) {
-      LOG.warn("DataConsumerPolicy not found, skipping updates.");
+      LOG.warn("{} not found, skipping updates.", policyName);
+    } catch (Exception ex) {
+      LOG.error("Error updating policy {}: {}", policyName, ex.getMessage());
     }
   }
 
