@@ -33,7 +33,7 @@ T = TypeVar("T", bound=BaseModel)
 
 
 class CustomColumnName(BaseModel):
-    name: str
+    root: str
 
 
 class EntityLinkBuildingException(Exception):
@@ -74,8 +74,8 @@ def get_decoded_column(entity_link: str) -> str:
     """
 
     return CustomColumnName(
-        name=unquote_plus(entity_link.split("::")[-1].replace(">", ""))
-    ).name
+        root=unquote_plus(entity_link.split("::")[-1].replace(">", ""))
+    ).root
 
 
 def get_table_fqn(entity_link: str) -> str:
