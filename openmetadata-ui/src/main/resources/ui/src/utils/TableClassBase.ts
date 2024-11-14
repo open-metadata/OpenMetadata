@@ -57,6 +57,7 @@ export interface TableDetailPageTabProps {
   fetchTableDetails: () => Promise<void>;
   onExtensionUpdate: (updatedData: Table) => Promise<void>;
   handleFeedCount: (data: FeedCounts) => void;
+  labelMap?: Record<EntityTabs, string>;
 }
 
 class TableClassBase {

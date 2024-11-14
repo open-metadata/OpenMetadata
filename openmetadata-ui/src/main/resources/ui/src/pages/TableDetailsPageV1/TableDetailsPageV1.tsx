@@ -86,7 +86,10 @@ import { defaultFields } from '../../utils/DatasetDetailsUtils';
 import EntityLink from '../../utils/EntityLink';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../utils/EntityUtils';
-import { getGlossaryTermDetailTabs } from '../../utils/GlossaryTerm/GlossaryTermUtil';
+import {
+  getGlossaryTermDetailTabs,
+  getTabLabelMap,
+} from '../../utils/GlossaryTerm/GlossaryTermUtil';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import tableClassBase from '../../utils/TableClassBase';
 import {
@@ -484,7 +487,7 @@ const TableDetailsPageV1: React.FC = () => {
   const schemaTab = useMemo(() => <TableSchemaTab />, []);
 
   const tabs = useMemo(() => {
-    // const tabLabelMap = getTabLabelMap(customizedPage?.tabs);
+    const tabLabelMap = getTabLabelMap(customizedPage?.tabs);
 
     const tabs = tableClassBase.getTableDetailPageTabs({
       schemaTab,
@@ -507,6 +510,7 @@ const TableDetailsPageV1: React.FC = () => {
       fetchTableDetails,
       testCaseSummary,
       isViewTableType,
+      labelMap: tabLabelMap,
     });
 
     return getGlossaryTermDetailTabs(

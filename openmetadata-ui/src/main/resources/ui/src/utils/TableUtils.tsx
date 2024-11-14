@@ -742,10 +742,16 @@ export const getTableDetailPageBaseTabs = ({
   fetchTableDetails,
   testCaseSummary,
   isViewTableType,
+  labelMap,
 }: TableDetailPageTabProps): TabProps[] => {
   return [
     {
-      label: <TabsLabel id={EntityTabs.SCHEMA} name={t('label.schema')} />,
+      label: (
+        <TabsLabel
+          id={EntityTabs.SCHEMA}
+          name={get(labelMap, EntityTabs.SCHEMA, t('label.schema'))}
+        />
+      ),
       key: EntityTabs.SCHEMA,
       children: schemaTab,
     },
@@ -755,7 +761,11 @@ export const getTableDetailPageBaseTabs = ({
           count={totalFeedCount}
           id={EntityTabs.ACTIVITY_FEED}
           isActive={activeTab === EntityTabs.ACTIVITY_FEED}
-          name={t('label.activity-feed-and-task-plural')}
+          name={get(
+            labelMap,
+            EntityTabs.ACTIVITY_FEED,
+            t('label.activity-feed-and-task-plural')
+          )}
         />
       ),
       key: EntityTabs.ACTIVITY_FEED,
@@ -775,7 +785,10 @@ export const getTableDetailPageBaseTabs = ({
     },
     {
       label: (
-        <TabsLabel id={EntityTabs.SAMPLE_DATA} name={t('label.sample-data')} />
+        <TabsLabel
+          id={EntityTabs.SAMPLE_DATA}
+          name={get(labelMap, EntityTabs.SAMPLE_DATA, t('label.sample-data'))}
+        />
       ),
 
       key: EntityTabs.SAMPLE_DATA,
@@ -797,7 +810,11 @@ export const getTableDetailPageBaseTabs = ({
           count={queryCount}
           id={EntityTabs.TABLE_QUERIES}
           isActive={activeTab === EntityTabs.TABLE_QUERIES}
-          name={t('label.query-plural')}
+          name={get(
+            labelMap,
+            EntityTabs.TABLE_QUERIES,
+            t('label.query-plural')
+          )}
         />
       ),
       key: EntityTabs.TABLE_QUERIES,
@@ -814,7 +831,11 @@ export const getTableDetailPageBaseTabs = ({
       label: (
         <TabsLabel
           id={EntityTabs.PROFILER}
-          name={t('label.profiler-amp-data-quality')}
+          name={get(
+            labelMap,
+            EntityTabs.PROFILER,
+            t('label.profiler-amp-data-quality')
+          )}
         />
       ),
       key: EntityTabs.PROFILER,
@@ -833,7 +854,7 @@ export const getTableDetailPageBaseTabs = ({
       label: (
         <TabsLabel
           id={EntityTabs.INCIDENTS}
-          name={t('label.incident-plural')}
+          name={get(labelMap, EntityTabs.INCIDENTS, t('label.incident-plural'))}
         />
       ),
       key: EntityTabs.INCIDENTS,
@@ -850,7 +871,12 @@ export const getTableDetailPageBaseTabs = ({
         ),
     },
     {
-      label: <TabsLabel id={EntityTabs.LINEAGE} name={t('label.lineage')} />,
+      label: (
+        <TabsLabel
+          id={EntityTabs.LINEAGE}
+          name={get(labelMap, EntityTabs.LINEAGE, t('label.lineage'))}
+        />
+      ),
       key: EntityTabs.LINEAGE,
       children: (
         <LineageProvider>
@@ -864,7 +890,12 @@ export const getTableDetailPageBaseTabs = ({
       ),
     },
     {
-      label: <TabsLabel id={EntityTabs.DBT} name={t('label.dbt-lowercase')} />,
+      label: (
+        <TabsLabel
+          id={EntityTabs.DBT}
+          name={get(labelMap, EntityTabs.DBT, t('label.dbt-lowercase'))}
+        />
+      ),
       isHidden: !(
         tableDetails?.dataModel?.sql || tableDetails?.dataModel?.rawSql
       ),
@@ -894,11 +925,13 @@ export const getTableDetailPageBaseTabs = ({
               ? EntityTabs.VIEW_DEFINITION
               : EntityTabs.SCHEMA_DEFINITION
           }
-          name={
+          name={get(
+            labelMap,
+            EntityTabs.VIEW_DEFINITION,
             isViewTableType
               ? t('label.view-definition')
               : t('label.schema-definition')
-          }
+          )}
         />
       ),
       isHidden: isUndefined(tableDetails?.schemaDefinition),
@@ -909,7 +942,11 @@ export const getTableDetailPageBaseTabs = ({
       label: (
         <TabsLabel
           id={EntityTabs.CUSTOM_PROPERTIES}
-          name={t('label.custom-property-plural')}
+          name={get(
+            labelMap,
+            EntityTabs.CUSTOM_PROPERTIES,
+            t('label.custom-property-plural')
+          )}
         />
       ),
       key: EntityTabs.CUSTOM_PROPERTIES,
