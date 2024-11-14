@@ -135,14 +135,19 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
             sampler_factory_,
         )
 
-        return cast("DatalakeSampler",sampler_factory_.create(
-            DatalakeConnection.__name__,
-            client=self.client._client,  # pylint: disable=W0212
-            table=deepcopy(self.dfs), # deep copy to avoid changing the original data
-            profile_sample_config=self.profile_sample_config,
-            partition_details=self.partition_details,
-            profile_sample_query=self.profile_query,
-        ))
+        return cast(
+            "DatalakeSampler",
+            sampler_factory_.create(
+                DatalakeConnection.__name__,
+                client=self.client._client,  # pylint: disable=W0212
+                table=deepcopy(
+                    self.dfs
+                ),  # deep copy to avoid changing the original data
+                profile_sample_config=self.profile_sample_config,
+                partition_details=self.partition_details,
+                profile_sample_query=self.profile_query,
+            ),
+        )
 
     def _compute_table_metrics(
         self,

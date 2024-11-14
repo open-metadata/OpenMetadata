@@ -57,7 +57,9 @@ class TestDataQuality:
         )
         assert test_case is not None
         if failed_rows:
-            assert test_case.testCaseResult.failedRows == pytest.approx(failed_rows, abs=1)
+            assert test_case.testCaseResult.failedRows == pytest.approx(
+                failed_rows, abs=1
+            )
 
     @pytest.mark.parametrize(
         "test_case_name,expected_status,failed_rows",
@@ -67,7 +69,12 @@ class TestDataQuality:
         ],
     )
     def test_data_quality_with_partition(
-        self, run_partitioned_test_suite_workflow, metadata, test_case_name, expected_status, failed_rows
+        self,
+        run_partitioned_test_suite_workflow,
+        metadata,
+        test_case_name,
+        expected_status,
+        failed_rows,
     ):
         test_cases: List[TestCase] = metadata.list_entities(
             TestCase, fields=["*"], skip_on_failure=True

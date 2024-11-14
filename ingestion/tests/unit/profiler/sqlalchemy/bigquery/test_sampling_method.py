@@ -2,11 +2,6 @@ from unittest import TestCase
 from unittest.mock import patch
 from uuid import uuid4
 
-from metadata.generated.schema.security.credentials.gcpCredentials import GCPCredentials
-from metadata.generated.schema.security.credentials.gcpValues import GcpCredentialsValues
-from metadata.profiler.orm.functions.table_metric_computer import TableType
-from metadata.profiler.processor.sampler.sqlalchemy.bigquery.sampler import BigQuerySampler
-from metadata.utils.partition import PartitionIntervalTypes, PartitionProfilerConfig
 from sqlalchemy import Column, Integer
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.sql.selectable import CTE
@@ -18,12 +13,22 @@ from metadata.generated.schema.entity.data.table import (
     ProfileSampleType,
     Table,
 )
+from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
+    BigQueryConnection,
+)
+from metadata.generated.schema.security.credentials.gcpCredentials import GCPCredentials
+from metadata.generated.schema.security.credentials.gcpValues import (
+    GcpCredentialsValues,
+)
 from metadata.profiler.api.models import ProfileSampleConfig
 from metadata.profiler.interface.sqlalchemy.profiler_interface import (
     SQAProfilerInterface,
 )
-
-from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import BigQueryConnection
+from metadata.profiler.orm.functions.table_metric_computer import TableType
+from metadata.profiler.processor.sampler.sqlalchemy.bigquery.sampler import (
+    BigQuerySampler,
+)
+from metadata.utils.partition import PartitionIntervalTypes, PartitionProfilerConfig
 
 Base = declarative_base()
 
@@ -100,7 +105,10 @@ class SampleTest(TestCase):
         expected_query = (
             "SELECT users_1.id \nFROM users AS users_1 TABLESAMPLE system(50.0 PERCENT)"
         )
-        assert expected_query.casefold() == str(query.compile(compile_kwargs={"literal_binds":True})).casefold()
+        assert (
+            expected_query.casefold()
+            == str(query.compile(compile_kwargs={"literal_binds": True})).casefold()
+        )
 
     def test_sampling_for_views(self):
         """
@@ -120,7 +128,10 @@ class SampleTest(TestCase):
             "FROM users)\n SELECT users_rnd.id, users_rnd.random \n"
             "FROM users_rnd \nWHERE users_rnd.random <= 50.0"
         )
-        assert expected_query.casefold() == str(query.compile(compile_kwargs={"literal_binds":True})).casefold()
+        assert (
+            expected_query.casefold()
+            == str(query.compile(compile_kwargs={"literal_binds": True})).casefold()
+        )
 
     def test_sampling_view_with_partition(self):
         """
@@ -146,7 +157,10 @@ class SampleTest(TestCase):
             "FROM users \nWHERE id in ('1', '2'))\n SELECT users_rnd.id, users_rnd.random \n"
             "FROM users_rnd \nWHERE users_rnd.random <= 50.0"
         )
-        assert expected_query.casefold() == str(query.compile(compile_kwargs={"literal_binds":True})).casefold()
+        assert (
+            expected_query.casefold()
+            == str(query.compile(compile_kwargs={"literal_binds": True})).casefold()
+        )
 
     def test_sampling_with_partition(self):
         """
@@ -170,4 +184,7 @@ class SampleTest(TestCase):
             "SELECT users_1.id \nFROM users AS users_1 "
             "TABLESAMPLE system(50.0 PERCENT) \nWHERE id IN ('1', '2')"
         )
-        assert expected_query.casefold() == str(query.compile(compile_kwargs={"literal_binds":True})).casefold()
+        assert (
+            expected_query.casefold()
+            == str(query.compile(compile_kwargs={"literal_binds": True})).casefold()
+        )

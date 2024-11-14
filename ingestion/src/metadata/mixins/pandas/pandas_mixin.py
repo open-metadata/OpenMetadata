@@ -13,7 +13,6 @@
 Interfaces with database for all database engine
 supporting sqlalchemy abstraction layer
 """
-import math
 import random
 from typing import cast
 
@@ -23,7 +22,6 @@ from metadata.data_quality.validations.table.pandas.tableRowInsertedCountToBeBet
 from metadata.generated.schema.entity.data.table import (
     PartitionIntervalTypes,
     PartitionProfilerConfig,
-    ProfileSampleType,
 )
 from metadata.readers.dataframe.models import DatalakeTableSchemaWrapper
 from metadata.utils.datalake.datalake_utils import fetch_dataframe
@@ -81,9 +79,7 @@ class PandasInterfaceMixin:
             for df in dfs
         ]
 
-    def get_dataframes(
-        self, service_connection_config, client, table
-    ):
+    def get_dataframes(self, service_connection_config, client, table):
         """
         returns sampled ometa dataframes
         """

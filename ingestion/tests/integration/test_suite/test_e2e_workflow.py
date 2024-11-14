@@ -34,9 +34,9 @@ from metadata.generated.schema.entity.data.table import (
     Column,
     DataType,
     PartitionIntervalTypes,
+    PartitionProfilerConfig,
     ProfileSampleType,
     TableProfilerConfig,
-    PartitionProfilerConfig
 )
 from metadata.generated.schema.entity.services.connections.database.sqliteConnection import (
     SQLiteConnection,
@@ -305,22 +305,19 @@ class TestE2EWorkflow(unittest.TestCase):
                 assert data_test_case_result_2
                 assert data_test_case_result_2[0]["testCaseStatus"] == status
 
-
     def test_e2e_cli_sampled_workflow(self):
         """test cli workflow e2e"""
         fqn = "test_suite_service_test.test_suite_database.test_suite_database_schema.users"
 
         test_suite_config["source"]["sourceConfig"]["config"].update(
-            {
-                "entityFullyQualifiedName": fqn
-            }
+            {"entityFullyQualifiedName": fqn}
         )
         self.metadata.create_or_update_table_profiler_config(
             fqn=fqn,
             table_profiler_config=TableProfilerConfig(
                 profileSampleType=ProfileSampleType.PERCENTAGE,
                 profileSample=50.0,
-            )
+            ),
         )
 
         workflow = TestSuiteWorkflow.create(test_suite_config)
@@ -345,20 +342,16 @@ class TestE2EWorkflow(unittest.TestCase):
             f"/dataQuality/testCases/test_suite_service_test.test_suite_database.test_suite_database_schema.users"
             ".my_test_case/testCaseResult",
             data={
-                "startTs": int((datetime.now() - timedelta(days=3)).timestamp())
-                * 1000,
-                "endTs": int((datetime.now() + timedelta(days=3)).timestamp())
-                * 1000,
+                "startTs": int((datetime.now() - timedelta(days=3)).timestamp()) * 1000,
+                "endTs": int((datetime.now() + timedelta(days=3)).timestamp()) * 1000,
             },
         )
         test_case_result_2 = self.metadata.client.get(
             f"/dataQuality/testCases/test_suite_service_test.test_suite_database.test_suite_database_schema.users"
             ".id.table_column_to_be_not_null/testCaseResult",
             data={
-                "startTs": int((datetime.now() - timedelta(days=3)).timestamp())
-                * 1000,
-                "endTs": int((datetime.now() + timedelta(days=3)).timestamp())
-                * 1000,
+                "startTs": int((datetime.now() - timedelta(days=3)).timestamp()) * 1000,
+                "endTs": int((datetime.now() + timedelta(days=3)).timestamp()) * 1000,
             },
         )
 
@@ -371,15 +364,12 @@ class TestE2EWorkflow(unittest.TestCase):
         assert data_test_case_result_2[0]["testCaseStatus"] == "Success"
         self.assertAlmostEqual(data_test_case_result_2[0]["passedRows"], 15, delta=3)
 
-
     def test_e2e_cli_partitioned_workflow(self):
         """test cli workflow e2e"""
         fqn = "test_suite_service_test.test_suite_database.test_suite_database_schema.users"
 
         test_suite_config["source"]["sourceConfig"]["config"].update(
-            {
-                "entityFullyQualifiedName": fqn
-            }
+            {"entityFullyQualifiedName": fqn}
         )
         self.metadata.create_or_update_table_profiler_config(
             fqn=fqn,
@@ -391,8 +381,8 @@ class TestE2EWorkflow(unittest.TestCase):
                     partitionIntervalType=PartitionIntervalTypes.COLUMN_VALUE,
                     partitionValues=["John"],
                     partitionColumnName="name",
-                )
-            )
+                ),
+            ),
         )
 
         workflow = TestSuiteWorkflow.create(test_suite_config)
@@ -417,20 +407,16 @@ class TestE2EWorkflow(unittest.TestCase):
             f"/dataQuality/testCases/test_suite_service_test.test_suite_database.test_suite_database_schema.users"
             ".my_test_case/testCaseResult",
             data={
-                "startTs": int((datetime.now() - timedelta(days=3)).timestamp())
-                * 1000,
-                "endTs": int((datetime.now() + timedelta(days=3)).timestamp())
-                * 1000,
+                "startTs": int((datetime.now() - timedelta(days=3)).timestamp()) * 1000,
+                "endTs": int((datetime.now() + timedelta(days=3)).timestamp()) * 1000,
             },
         )
         test_case_result_2 = self.metadata.client.get(
             f"/dataQuality/testCases/test_suite_service_test.test_suite_database.test_suite_database_schema.users"
             ".id.table_column_to_be_not_null/testCaseResult",
             data={
-                "startTs": int((datetime.now() - timedelta(days=3)).timestamp())
-                * 1000,
-                "endTs": int((datetime.now() + timedelta(days=3)).timestamp())
-                * 1000,
+                "startTs": int((datetime.now() - timedelta(days=3)).timestamp()) * 1000,
+                "endTs": int((datetime.now() + timedelta(days=3)).timestamp()) * 1000,
             },
         )
 

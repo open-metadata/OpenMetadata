@@ -2,7 +2,6 @@ from unittest import TestCase
 from unittest.mock import patch
 from uuid import uuid4
 
-from metadata.utils.partition import PartitionIntervalTypes, PartitionProfilerConfig
 from sqlalchemy import Column, Integer
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.sql.selectable import CTE
@@ -25,6 +24,7 @@ from metadata.profiler.interface.sqlalchemy.profiler_interface import (
 from metadata.profiler.processor.sampler.sqlalchemy.snowflake.sampler import (
     SnowflakeSampler,
 )
+from metadata.utils.partition import PartitionIntervalTypes, PartitionProfilerConfig
 
 Base = declarative_base()
 
@@ -75,7 +75,10 @@ class SampleTest(TestCase):
             "FROM users AS users_1 TABLESAMPLE bernoulli(50.0))\n "
             "SELECT users_rnd.id \nFROM users_rnd"
         )
-        assert expected_query.casefold() == str(query.compile(compile_kwargs={"literal_binds":True})).casefold()
+        assert (
+            expected_query.casefold()
+            == str(query.compile(compile_kwargs={"literal_binds": True})).casefold()
+        )
 
     def test_specify_sampling_method_type(self):
         """
@@ -100,7 +103,10 @@ class SampleTest(TestCase):
                 f"FROM users AS users_1 TABLESAMPLE {sampling_method_type.value}(50.0))\n "
                 "SELECT users_rnd.id \nFROM users_rnd"
             )
-            assert expected_query.casefold() == str(query.compile(compile_kwargs={"literal_binds":True})).casefold()
+            assert (
+                expected_query.casefold()
+                == str(query.compile(compile_kwargs={"literal_binds": True})).casefold()
+            )
 
     def test_row_sampling(self):
         """
@@ -119,7 +125,10 @@ class SampleTest(TestCase):
             "\nFROM users AS users_1 TABLESAMPLE ROW(50 ROWS))\n "
             "SELECT users_rnd.id \nFROM users_rnd"
         )
-        assert expected_query.casefold() == str(query.compile(compile_kwargs={"literal_binds":True})).casefold()
+        assert (
+            expected_query.casefold()
+            == str(query.compile(compile_kwargs={"literal_binds": True})).casefold()
+        )
 
     def test_sampling_with_partition(self):
         """
@@ -145,4 +154,7 @@ class SampleTest(TestCase):
             "FROM users AS users_1 TABLESAMPLE bernoulli(50.0) "
             "\nWHERE id IN ('1', '2'))\n SELECT users_rnd.id \nFROM users_rnd"
         )
-        assert expected_query.casefold() == str(query.compile(compile_kwargs={"literal_binds":True})).casefold()
+        assert (
+            expected_query.casefold()
+            == str(query.compile(compile_kwargs={"literal_binds": True})).casefold()
+        )

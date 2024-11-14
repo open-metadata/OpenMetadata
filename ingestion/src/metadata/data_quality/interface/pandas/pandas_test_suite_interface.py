@@ -30,6 +30,7 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection
 from metadata.mixins.pandas.pandas_mixin import PandasInterfaceMixin
 from metadata.utils.logger import test_suite_logger
+
 if TYPE_CHECKING:
     from metadata.profiler.processor.sampler.pandas.sampler import DatalakeSampler
 
@@ -56,7 +57,9 @@ class PandasTestSuiteInterface(TestSuiteInterface, PandasInterfaceMixin):
 
         self.ometa_client = ometa_client
         self.service_connection_config = service_connection_config
-        self.client = get_connection(self.service_connection_config).client._client  # pylint: disable=W0212
+        self.client = get_connection(
+            self.service_connection_config
+        ).client._client  # pylint: disable=W0212
 
         (
             self.sample_query,
@@ -87,11 +90,16 @@ class PandasTestSuiteInterface(TestSuiteInterface, PandasInterfaceMixin):
             sampler_factory_,
         )
 
-        return cast("DatalakeSampler",sampler_factory_.create(
-            DatalakeConnection.__name__,
-            client=self.client,  # pylint: disable=W0212
-            table=deepcopy(self.dfs), # deep copy to avoid changing the original data
-            profile_sample_config=self.profile_sample_config,
-            partition_details=self.partition_details,
-            profile_sample_query=self.sample_query,
-        ))
+        return cast(
+            "DatalakeSampler",
+            sampler_factory_.create(
+                DatalakeConnection.__name__,
+                client=self.client,  # pylint: disable=W0212
+                table=deepcopy(
+                    self.dfs
+                ),  # deep copy to avoid changing the original data
+                profile_sample_config=self.profile_sample_config,
+                partition_details=self.partition_details,
+                profile_sample_query=self.sample_query,
+            ),
+        )

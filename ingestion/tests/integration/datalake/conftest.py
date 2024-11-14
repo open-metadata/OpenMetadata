@@ -14,11 +14,15 @@
 import os
 from copy import deepcopy
 
-from metadata.generated.schema.entity.data.table import PartitionIntervalTypes, ProfileSampleType, TableProfilerConfig
-from metadata.utils.partition import PartitionProfilerConfig
 import pytest
 
+from metadata.generated.schema.entity.data.table import (
+    PartitionIntervalTypes,
+    ProfileSampleType,
+    TableProfilerConfig,
+)
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.utils.partition import PartitionProfilerConfig
 from metadata.workflow.data_quality import TestSuiteWorkflow
 from metadata.workflow.metadata import MetadataWorkflow
 from metadata.workflow.profiler import ProfilerWorkflow
@@ -198,6 +202,7 @@ def run_test_suite_workflow(run_ingestion, ingestion_config):
     ingestion_workflow.raise_from_status()
     ingestion_workflow.stop()
 
+
 @pytest.fixture(scope="class")
 def run_sampled_test_suite_workflow(metadata, run_ingestion, ingestion_config):
     metadata.create_or_update_table_profiler_config(
@@ -205,8 +210,8 @@ def run_sampled_test_suite_workflow(metadata, run_ingestion, ingestion_config):
         table_profiler_config=TableProfilerConfig(
             profileSampleType=ProfileSampleType.PERCENTAGE,
             profileSample=50.0,
-            partitioning=None
-        )
+            partitioning=None,
+        ),
     )
     workflow_config = deepcopy(DATA_QUALITY_CONFIG)
     workflow_config["source"]["serviceConnection"] = ingestion_config["source"][
@@ -221,8 +226,9 @@ def run_sampled_test_suite_workflow(metadata, run_ingestion, ingestion_config):
         table_profiler_config=TableProfilerConfig(
             profileSampleType=ProfileSampleType.PERCENTAGE,
             profileSample=100.0,
-        )
+        ),
     )
+
 
 @pytest.fixture(scope="class")
 def run_partitioned_test_suite_workflow(metadata, run_ingestion, ingestion_config):
@@ -235,7 +241,7 @@ def run_partitioned_test_suite_workflow(metadata, run_ingestion, ingestion_confi
                 partitionValues=["Los Angeles"],
                 partitionColumnName="city",
             )
-        )
+        ),
     )
     workflow_config = deepcopy(DATA_QUALITY_CONFIG)
     workflow_config["source"]["serviceConnection"] = ingestion_config["source"][
@@ -247,10 +253,9 @@ def run_partitioned_test_suite_workflow(metadata, run_ingestion, ingestion_confi
     ingestion_workflow.stop()
     metadata.create_or_update_table_profiler_config(
         fqn='datalake_for_integration_tests.default.my-bucket."users.csv"',
-        table_profiler_config=TableProfilerConfig(
-            partitioning=None
-        )
+        table_profiler_config=TableProfilerConfig(partitioning=None),
     )
+
 
 @pytest.fixture(scope="class")
 def profiler_workflow_config(ingestion_config, workflow_config):
