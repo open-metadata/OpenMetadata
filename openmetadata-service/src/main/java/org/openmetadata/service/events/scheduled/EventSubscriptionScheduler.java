@@ -29,6 +29,7 @@ import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.events.EventSubscriptionDiagnosticInfo;
+import org.openmetadata.schema.api.events.EventsRecord;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.EventSubscriptionOffset;
 import org.openmetadata.schema.entity.events.FailedEventResponse;
@@ -206,6 +207,8 @@ public class EventSubscriptionScheduler {
     Entity.getCollectionDAO()
         .eventSubscriptionDAO()
         .deleteFailedRecordsBySubscriptionId(id.toString());
+
+    Entity.getCollectionDAO().eventSubscriptionDAO().deleteAlertMetrics(id.toString());
   }
 
   public SubscriptionStatus getStatusForEventSubscription(UUID subscriptionId, UUID destinationId) {
@@ -213,11 +216,12 @@ public class EventSubscriptionScheduler {
         getEventSubscriptionFromScheduledJob(subscriptionId);
 
     if (eventSubscriptionOpt.isPresent()) {
-      return eventSubscriptionOpt.get().getDestinations().stream()
-          .filter(destination -> destination.getId().equals(destinationId))
-          .map(SubscriptionDestination::getStatusDetails)
-          .findFirst()
-          .orElse(null);
+      return (SubscriptionStatus)
+          eventSubscriptionOpt.get().getDestinations().stream()
+              .filter(destination -> destination.getId().equals(destinationId))
+              .map(SubscriptionDestination::getStatusDetails)
+              .findFirst()
+              .orElse(null);
     }
 
     EntityRepository<? extends EntityInterface> subscriptionRepository =
@@ -262,6 +266,44 @@ public class EventSubscriptionScheduler {
     return eventSubscription.getDestinations();
   }
 
+  public EventsRecord getEventSubscriptionEventsRecord(UUID subscriptionId) {
+    long failedEventsCount =
+        Entity.getCollectionDAO().changeEventDAO().countFailedEvents(subscriptionId.toString());
+
+    long successfulEventsCount =
+        Entity.getCollectionDAO()
+            .eventSubscriptionDAO()
+            .getSuccessfulRecordCount(subscriptionId.toString());
+
+    long unprocessedEventsCount = getRelevantUnprocessedEvents(subscriptionId);
+    long totalEventsCount = failedEventsCount + successfulEventsCount + unprocessedEventsCount;
+
+    return new EventsRecord()
+        .withTotalEventsCount(totalEventsCount)
+        .withFailedEventsCount(failedEventsCount)
+        .withPendingEventsCount(unprocessedEventsCount)
+        .withSuccessfulEventsCount(successfulEventsCount);
+  }
+
+  public long getRelevantUnprocessedEvents(UUID subscriptionId) {
+    long offset =
+        getEventSubscriptionOffset(subscriptionId)
+            .map(EventSubscriptionOffset::getCurrentOffset)
+            .orElse(Entity.getCollectionDAO().changeEventDAO().getLatestOffset());
+
+    return Entity.getCollectionDAO().changeEventDAO().listUnprocessedEvents(offset).parallelStream()
+        .map(
+            eventJson -> {
+              ChangeEvent event = JsonUtils.readValue(eventJson, ChangeEvent.class);
+              return AlertUtil.checkIfChangeEventIsAllowed(
+                      event, getEventSubscription(subscriptionId).getFilteringRules())
+                  ? event
+                  : null;
+            })
+        .filter(Objects::nonNull) // Remove null entries (events that did not pass filtering)
+        .count();
+  }
+
   public EventSubscriptionDiagnosticInfo getEventSubscriptionDiagnosticInfo(
       UUID subscriptionId, int limit, int paginationOffset, boolean listCountOnly) {
     Optional<EventSubscriptionOffset> eventSubscriptionOffsetOptional =
@@ -284,6 +326,10 @@ public class EventSubscriptionScheduler {
 
     boolean hasProcessedAllEvents = checkIfPublisherPublishedAllEvents(subscriptionId);
 
+    List<ChangeEvent> unprocessedEvents =
+        Optional.ofNullable(getRelevantUnprocessedEvents(subscriptionId, limit, paginationOffset))
+            .orElse(Collections.emptyList());
+
     if (listCountOnly) {
       return new EventSubscriptionDiagnosticInfo()
           .withLatestOffset(latestOffset)
@@ -293,13 +339,10 @@ public class EventSubscriptionScheduler {
           .withSuccessfulEventsCount(successfulEventsCount)
           .withFailedEventsCount(failedEventsCount)
           .withTotalUnprocessedEventsCount(totalUnprocessedEventCount)
+          .withRelevantUnprocessedEventsCount((long) unprocessedEvents.size())
           .withRelevantUnprocessedEventsList(null)
           .withTotalUnprocessedEventsList(null);
     }
-
-    List<ChangeEvent> unprocessedEvents =
-        Optional.ofNullable(getRelevantUnprocessedEvents(subscriptionId, limit, paginationOffset))
-            .orElse(Collections.emptyList());
 
     List<ChangeEvent> allUnprocessedEvents =
         getAllUnprocessedEvents(subscriptionId, limit, paginationOffset);
@@ -469,6 +512,24 @@ public class EventSubscriptionScheduler {
           ex);
     }
     return Optional.empty();
+  }
+
+  public int countTotalEvents(UUID id, TypedEvent.Status status) {
+    return switch (status) {
+      case FAILED -> Entity.getCollectionDAO()
+          .eventSubscriptionDAO()
+          .countFailedEventsById(id.toString());
+      case SUCCESSFUL -> Entity.getCollectionDAO()
+          .eventSubscriptionDAO()
+          .countSuccessfulEventsBySubscriptionId(id.toString());
+      default -> throw new IllegalArgumentException("Unknown event status: " + status);
+    };
+  }
+
+  public int countTotalEvents(UUID id) {
+    return Entity.getCollectionDAO()
+        .eventSubscriptionDAO()
+        .countAllEventsWithStatuses(id.toString());
   }
 
   public boolean doesRecordExist(UUID id) {

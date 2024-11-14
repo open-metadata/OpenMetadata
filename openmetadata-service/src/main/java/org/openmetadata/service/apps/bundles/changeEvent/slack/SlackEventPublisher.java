@@ -15,6 +15,7 @@ package org.openmetadata.service.apps.bundles.changeEvent.slack;
 
 import static org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionType.SLACK;
 import static org.openmetadata.service.util.SubscriptionUtil.appendHeadersToTarget;
+import static org.openmetadata.service.util.SubscriptionUtil.deliverTestWebhookMessage;
 import static org.openmetadata.service.util.SubscriptionUtil.getClient;
 import static org.openmetadata.service.util.SubscriptionUtil.getTargetsForWebhookAlert;
 import static org.openmetadata.service.util.SubscriptionUtil.postWebhookMessage;
@@ -76,8 +77,7 @@ public class SlackEventPublisher implements Destination<ChangeEvent> {
   public void sendMessage(ChangeEvent event) throws EventPublisherException {
     try {
       SlackMessage slackMessage =
-          slackMessageFormatter.buildOutgoingMessage(
-              eventSubscription.getFullyQualifiedName(), event);
+          slackMessageFormatter.buildOutgoingMessage(getDisplayNameOrFqn(eventSubscription), event);
 
       String json = JsonUtils.pojoToJsonIgnoreNull(slackMessage);
       json = convertCamelCaseToSnakeCase(json);
@@ -108,17 +108,16 @@ public class SlackEventPublisher implements Destination<ChangeEvent> {
   @Override
   public void sendTestMessage() throws EventPublisherException {
     try {
-      SlackMessage slackMessage =
-          slackMessageFormatter.buildOutgoingTestMessage(eventSubscription.getFullyQualifiedName());
+      SlackMessage slackMessage = slackMessageFormatter.buildOutgoingTestMessage();
 
       String json = JsonUtils.pojoToJsonIgnoreNull(slackMessage);
       json = convertCamelCaseToSnakeCase(json);
       if (target != null) {
-        if (webhook.getSecretKey() != null && !webhook.getSecretKey().isEmpty()) {
+        if (!CommonUtil.nullOrEmpty(webhook.getSecretKey())) {
           String hmac = "sha256=" + CommonUtil.calculateHMAC(webhook.getSecretKey(), json);
-          postWebhookMessage(this, target.header(RestUtil.SIGNATURE_HEADER, hmac), json);
+          deliverTestWebhookMessage(this, target.header(RestUtil.SIGNATURE_HEADER, hmac), json);
         } else {
-          postWebhookMessage(this, target, json);
+          deliverTestWebhookMessage(this, target, json);
         }
       }
     } catch (Exception e) {

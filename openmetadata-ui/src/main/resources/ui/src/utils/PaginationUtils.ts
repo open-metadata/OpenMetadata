@@ -11,8 +11,6 @@
  *  limitations under the License.
  */
 
-import { EventFilterRule } from '../../../generated/events/eventSubscription';
-
-export interface ObservabilityFormTriggerItemProps {
-  supportedTriggers?: EventFilterRule[];
-}
+export const computeTotalPages = (pSize: number, total: number) => {
+  return Math.ceil(total / pSize);
+};

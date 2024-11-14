@@ -29,6 +29,7 @@ const MOCK_DESTINATION_SELECT_ITEM_PROPS: DestinationSelectItemProps = {
   selectorKey: 0,
   id: 0,
   remove: jest.fn(),
+  isDestinationStatusLoading: false,
 };
 
 jest.mock('../../../../hooks/useFqn', () => ({

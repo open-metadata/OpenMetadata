@@ -63,6 +63,10 @@ import {
 import AppDetails from '../Settings/Applications/AppDetails/AppDetails.component';
 import AdminProtectedRoute from './AdminProtectedRoute';
 
+const NotificationAlertDetailsPage = () => (
+  <AlertDetailsPage isNotificationAlert />
+);
+
 const SettingsRouter = () => {
   const { permissions } = usePermissionProvider();
 
@@ -111,19 +115,25 @@ const SettingsRouter = () => {
       <AdminProtectedRoute
         exact
         component={NotificationListPage}
-        hasPermission={false}
+        hasPermission={userPermissions.hasViewPermissions(
+          ResourceEntity.EVENT_SUBSCRIPTION,
+          permissions
+        )}
         path={getSettingPath(GlobalSettingsMenuCategory.NOTIFICATIONS)}
       />
 
       <AdminProtectedRoute
         exact
-        component={() => <AlertDetailsPage isNotificationAlert />}
-        path={ROUTES.NOTIFICATION_ALERT_DETAILS}
+        component={NotificationAlertDetailsPage}
+        hasPermission={userPermissions.hasViewPermissions(
+          ResourceEntity.EVENT_SUBSCRIPTION,
+          permissions
+        )}
+        path={ROUTES.NOTIFICATION_ALERT_DETAILS_WITH_TAB}
       />
-      <AdminProtectedRoute
+      <Route
         exact
         component={AddNotificationPage}
-        hasPermission={false}
         path={[
           getSettingPath(
             GlobalSettingsMenuCategory.NOTIFICATIONS,

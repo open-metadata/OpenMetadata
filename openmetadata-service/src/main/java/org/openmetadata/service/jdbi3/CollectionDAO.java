@@ -2123,14 +2123,18 @@ public interface CollectionDAO {
 
     @ConnectionAwareSqlUpdate(
         value =
-            "INSERT INTO successful_sent_change_events (id, change_event_id, event_subscription_id, json, timestamp) VALUES (:id, :change_event_id, :event_subscription_id, :json, :timestamp)",
+            "INSERT INTO successful_sent_change_events (change_event_id, event_subscription_id, json, timestamp) "
+                + "VALUES (:change_event_id, :event_subscription_id, :json, :timestamp) "
+                + "ON DUPLICATE KEY UPDATE json = :json, timestamp = :timestamp",
         connectionType = MYSQL)
     @ConnectionAwareSqlUpdate(
         value =
-            "INSERT INTO successful_sent_change_events (id, change_event_id, event_subscription_id, json, timestamp) VALUES (:id, :change_event_id, :event_subscription_id, CAST(:json AS jsonb), :timestamp)",
+            "INSERT INTO successful_sent_change_events (change_event_id, event_subscription_id, json, timestamp) "
+                + "VALUES (:change_event_id, :event_subscription_id, CAST(:json AS jsonb), :timestamp) "
+                + "ON CONFLICT (change_event_id, event_subscription_id) "
+                + "DO UPDATE SET json = EXCLUDED.json, timestamp = EXCLUDED.timestamp",
         connectionType = POSTGRES)
-    void insertSuccessfulChangeEvent(
-        @Bind("id") String id,
+    void upsertSuccessfulChangeEvent(
         @Bind("change_event_id") String changeEventId,
         @Bind("event_subscription_id") String eventSubscriptionId,
         @Bind("json") String json,
@@ -2171,6 +2175,39 @@ public interface CollectionDAO {
 
     @SqlUpdate("DELETE FROM consumers_dlq WHERE id = :eventSubscriptionId")
     void deleteFailedRecordsBySubscriptionId(
+        @Bind("eventSubscriptionId") String eventSubscriptionId);
+
+    @SqlUpdate("DELETE from change_event_consumers cec where id = :eventSubscriptionId;")
+    void deleteAlertMetrics(@Bind("eventSubscriptionId") String eventSubscriptionId);
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT COUNT(*) FROM ( "
+                + "    SELECT json, 'FAILED' AS status, timestamp "
+                + "    FROM consumers_dlq WHERE id = :id "
+                + "    UNION ALL "
+                + "    SELECT json, 'SUCCESSFUL' AS status, timestamp "
+                + "    FROM successful_sent_change_events WHERE event_subscription_id = :id "
+                + ") AS combined_events",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT COUNT(*) FROM ( "
+                + "    SELECT json, 'failed' AS status, timestamp "
+                + "    FROM consumers_dlq WHERE id = :id "
+                + "    UNION ALL "
+                + "    SELECT json, 'successful' AS status, timestamp "
+                + "    FROM successful_sent_change_events WHERE event_subscription_id = :id "
+                + ") AS combined_events",
+        connectionType = POSTGRES)
+    int countAllEventsWithStatuses(@Bind("id") String id);
+
+    @SqlQuery("SELECT COUNT(*) FROM consumers_dlq WHERE id = :id")
+    int countFailedEventsById(@Bind("id") String id);
+
+    @SqlQuery(
+        "SELECT COUNT(*) FROM successful_sent_change_events WHERE event_subscription_id = :eventSubscriptionId")
+    int countSuccessfulEventsBySubscriptionId(
         @Bind("eventSubscriptionId") String eventSubscriptionId);
   }
 
@@ -4068,6 +4105,9 @@ public interface CollectionDAO {
         @Bind("id") String id,
         @Bind("limit") int limit,
         @Bind("paginationOffset") long paginationOffset);
+
+    @SqlQuery("SELECT json FROM change_event ce where ce.offset > :offset")
+    List<String> listUnprocessedEvents(@Bind("offset") long offset);
 
     @SqlQuery(
         "SELECT CASE WHEN EXISTS (SELECT 1 FROM event_subscription_entity WHERE id = :id) THEN 1 ELSE 0 END AS record_exists")

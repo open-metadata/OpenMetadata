@@ -1,0 +1,46 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/events/subscriptionStatus.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SubscriptionStatus",
+  "description": "Current status of the subscription, including details on the last successful and failed attempts, and retry information.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.entity.events.SubscriptionStatus",
+  "properties": {
+    "status": {
+      "description": "Status is `disabled` when the event subscription was created with `enabled` set to false and it never started publishing events. Status is `active` when the event subscription is functioning normally and a 200 OK response was received for the callback notification. Status is `failed` when a bad callback URL, connection failures, or `1xx` or `3xx` response was received for the callback notification. Status is `awaitingRetry` when the previous attempt at callback timed out or received a `4xx` or `5xx` response. Status is `retryLimitReached` after all retries fail.",
+      "type": "string",
+      "enum": [
+        "disabled",
+        "failed",
+        "retryLimitReached",
+        "awaitingRetry",
+        "active"
+      ]
+    },
+    "lastSuccessfulAt": {
+      "description": "Timestamp of the last successful callback in UNIX UTC epoch time in milliseconds.",
+      "$ref": "../type/basic.json#/definitions/timestamp"
+    },
+    "lastFailedAt": {
+      "description": "Timestamp of the last failed callback in UNIX UTC epoch time in milliseconds.",
+      "$ref": "../type/basic.json#/definitions/timestamp"
+    },
+    "lastFailedStatusCode": {
+      "description": "HTTP status code received during the last failed callback attempt.",
+      "type": "integer"
+    },
+    "lastFailedReason": {
+      "description": "Detailed reason for the last failure received during callback.",
+      "type": "string"
+    },
+    "nextAttempt": {
+      "description": "Timestamp for the next retry attempt in UNIX epoch time in milliseconds. Only valid if `status` is `awaitingRetry`.",
+      "$ref": "../type/basic.json#/definitions/timestamp"
+    },
+    "timestamp": {
+      "description": "Current timestamp of this status in UNIX epoch time in milliseconds.",
+      "$ref": "../type/basic.json#/definitions/timestamp"
+    }
+  },
+  "additionalProperties": false
+}

@@ -1728,12 +1728,11 @@ WHERE JSON_EXTRACT(json, '$.offset') IS NOT NULL
 
 -- Create table successful_sent_change_events for storing successfully sent events per alert
 CREATE TABLE IF NOT EXISTS successful_sent_change_events (
-    id VARCHAR(36) NOT NULL,
     change_event_id VARCHAR(36) NOT NULL,
     event_subscription_id VARCHAR(36) NOT NULL,
     json JSON NOT NULL,
     timestamp BIGINT UNSIGNED NOT NULL,
-    PRIMARY KEY (id)
+    PRIMARY KEY (change_event_id, event_subscription_id)
 );
 
 -- Create an index on the event_subscription_id column in the successful_sent_change_events table

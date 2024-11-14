@@ -11,8 +11,21 @@
  *  limitations under the License.
  */
 
-export interface DestinationSelectItemProps {
-  selectorKey: number;
-  id: number;
-  remove: (index: number | number[]) => void;
+import { ChangeEvent } from '../../../../generated/events/api/typedEvent';
+import { EventSubscription } from '../../../../generated/events/eventSubscription';
+
+export interface AlertRecentEventsTabProps {
+  alertDetails: EventSubscription;
 }
+
+export type AlertEventDetailsToDisplay = Pick<
+  ChangeEvent,
+  | 'eventType'
+  | 'entityId'
+  | 'userName'
+  | 'previousVersion'
+  | 'currentVersion'
+  | 'reason'
+  | 'source'
+  | 'failingSubscriptionId'
+>;

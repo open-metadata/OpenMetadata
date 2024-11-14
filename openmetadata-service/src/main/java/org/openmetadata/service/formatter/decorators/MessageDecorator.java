@@ -83,7 +83,7 @@ public interface MessageDecorator<T> {
 
   T buildThreadMessage(String publisherName, ChangeEvent event);
 
-  T buildTestMessage(String publisherName);
+  T buildTestMessage();
 
   default String buildEntityUrl(String entityType, EntityInterface entityInterface) {
     String fqn = resolveFullyQualifiedName(entityType, entityInterface);
@@ -187,8 +187,8 @@ public interface MessageDecorator<T> {
     }
   }
 
-  default T buildOutgoingTestMessage(String publisherName) {
-    return buildTestMessage(publisherName);
+  default T buildOutgoingTestMessage() {
+    return buildTestMessage();
   }
 
   default String getPlaintextDiff(String oldValue, String newValue) {
