@@ -178,8 +178,7 @@ public class WebsocketNotificationHandler {
 
   public static void sendCsvImportCompleteNotification(
       String jobId, SecurityContext securityContext, CsvImportResult result) {
-    CSVImportMessage message =
-        new CSVImportMessage(jobId, "COMPLETED", result, null);
+    CSVImportMessage message = new CSVImportMessage(jobId, "COMPLETED", result, null);
     String jsonMessage = JsonUtils.pojoToJson(message);
     UUID userId = getUserIdFromSecurityContext(securityContext);
     WebSocketManager.getInstance()
