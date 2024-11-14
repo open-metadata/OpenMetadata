@@ -817,9 +817,6 @@ site_menu:
     url: /how-to-guides/data-quality-observability/quality
   - category: How-to Guides / Data Quality and Profiler / Data Quality / Data Quality Tab
     url: /how-to-guides/data-quality-observability/quality/tab
-  - category: How-to Guides / Data Quality and Profiler / Data Quality / Data Quality Overview Section
-    url: /how-to-guides/data-quality-observability/quality/overview
-    isCollateOnly: true
   - category: How-to Guides / Data Quality and Profiler / Data Quality / How to Write and Deploy No-Code Test Cases
     url: /how-to-guides/data-quality-observability/quality/test
   - category: How-to Guides / Data Quality and Observability / Data Quality / Configure Data Quality
@@ -860,9 +857,6 @@ site_menu:
     url: /how-to-guides/data-quality-observability/incident-manager
   - category: How-to Guides / Data Quality and Observability / Incident Manager / How to work with the Incident Manager
     url: /how-to-guides/data-quality-observability/incident-manager/workflow
-  - category: How-to Guides / Data Quality and Observability / Incident Manager / Root Cause Analysis
-    url: /how-to-guides/data-quality-observability/incident-manager/root-cause-analysis
-    isCollateOnly: true
 
   - category: How-to Guides / Data Lineage
     url: /how-to-guides/data-lineage
