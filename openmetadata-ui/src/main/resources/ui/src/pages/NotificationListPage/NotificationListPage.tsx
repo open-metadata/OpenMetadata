@@ -141,13 +141,13 @@ const NotificationListPage = () => {
         dataIndex: 'name',
         width: '200px',
         key: 'name',
-        render: (name: string, record: EventSubscription) => {
+        render: (_: string, record: EventSubscription) => {
           return (
             record.fullyQualifiedName && (
               <Link
                 data-testid="alert-name"
                 to={getNotificationAlertDetailsPath(record.fullyQualifiedName)}>
-                {name}
+                {getEntityName(record)}
               </Link>
             )
           );
