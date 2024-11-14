@@ -606,6 +606,10 @@
       "descriptionStatus": {
         "type": "keyword"
       },
+
+      "columnDescriptionStatus": {
+        "type": "keyword"
+      },
       "certification": {
         "type": "object",
         "properties": {

@@ -185,6 +185,25 @@ class AdvancedSearchClassBase {
         useAsyncSearch: true,
       },
     },
+
+    [EntityFields.COLUMN_DESCRIPTION_STATUS]: {
+      label: t('label.column-description'),
+      type: 'select',
+      operators: [
+        'select_equals',
+        'select_not_equals',
+        'is_null',
+        'is_not_null',
+      ],
+      mainWidgetProps: this.mainWidgetProps,
+      valueSources: ['value'],
+      fieldSettings: {
+        listValues: {
+          INCOMPLETE: t('label.incomplete'),
+          COMPLETE: t('label.complete'),
+        },
+      },
+    },
   };
 
   /**

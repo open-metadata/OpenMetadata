@@ -76,6 +76,7 @@ public record TableIndex(Table table) implements ColumnIndex {
         }
       }
       doc.put("columnNames", columnsWithChildrenName);
+      doc.put("columnDescriptionStatus", getColumnDescriptionStatus(table));
     }
     serviceSuggest.add(
         SearchSuggest.builder().input(table.getService().getName()).weight(5).build());
