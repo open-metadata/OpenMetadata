@@ -222,7 +222,9 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
             f"Table FQN not found for table: {table_details} within services: {services}"
         )
 
-    def yield_tag(self, *args, **kwargs) -> Iterable[Either[OMetaTagAndClassification]]:
+    def yield_tag(
+        self, pipeline_details: Any
+    ) -> Iterable[Either[OMetaTagAndClassification]]:
         """Method to fetch pipeline tags"""
 
     def close(self):
