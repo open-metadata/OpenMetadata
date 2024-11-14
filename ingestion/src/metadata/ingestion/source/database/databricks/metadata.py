@@ -113,7 +113,7 @@ _type_map.update(
 )
 
 
-def validate_schema(schema):
+def format_schema_name(schema):
     # Adds back quotes(``) if hyphen(-) in schema name
     return f"`{schema}`" if "-" in schema else schema
 
@@ -160,7 +160,7 @@ def _get_table_columns(self, connection, table_name, schema, db_name):
 
 def _get_column_rows(self, connection, table_name, schema, db_name):
     # get columns and strip whitespace
-    schema = validate_schema(schema=schema)
+    schema = format_schema_name(schema=schema)
     table_columns = _get_table_columns(  # pylint: disable=protected-access
         self, connection, table_name, schema, db_name
     )
@@ -395,7 +395,7 @@ def get_table_type(self, connection, database, schema, table):
                 database_name=database, schema_name=schema, table_name=table
             )
         else:
-            schema = validate_schema(schema=schema)
+            schema = format_schema_name(schema=schema)
             query = f"DESCRIBE TABLE EXTENDED {schema}.{table}"
         rows = get_table_comment_result(
             self,
@@ -763,7 +763,7 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
     ) -> str:
         description = None
         try:
-            schema_name = validate_schema(schema=schema_name)
+            schema_name = format_schema_name(schema=schema_name)
             query = DATABRICKS_GET_TABLE_COMMENTS.format(
                 database_name=self.context.get().database,
                 schema_name=schema_name,
@@ -818,7 +818,7 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
         try:
             query = DATABRICKS_GET_TABLE_COMMENTS.format(
                 database_name=self.context.get().database,
-                schema_name=validate_schema(schema=self.context.get().database_schema),
+                schema_name=format_schema_name(schema=self.context.get().database_schema),
                 table_name=table_name,
             )
             result = self.inspector.dialect.get_table_comment_result(
