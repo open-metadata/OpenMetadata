@@ -82,6 +82,10 @@ UPDATE dashboard_service_entity
 SET json = jsonb_set(json, '{serviceType}', '"MicroStrategy"')
 WHERE jsonb_extract_path_text(json, 'serviceType') = 'Mstr';
 
+UPDATE dashboard_service_entity
+SET json = jsonb_set(json, '{connection,config,type}', '"MicroStrategy"')
+WHERE jsonb_extract_path_text(json, 'connection', 'config', 'type') = 'Mstr';
+
 -- Update serviceType in dashboard_data_model_entity table
 UPDATE dashboard_data_model_entity
 SET json = jsonb_set(json, '{serviceType}', '"MicroStrategy"')

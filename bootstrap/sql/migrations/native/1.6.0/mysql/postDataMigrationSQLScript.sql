@@ -66,6 +66,10 @@ UPDATE dashboard_service_entity
 SET json = JSON_SET(json, '$.serviceType', 'MicroStrategy')
 WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.serviceType')) = 'Mstr';
 
+UPDATE dashboard_service_entity
+SET json = JSON_SET(json, '$.connection.config.type', 'MicroStrategy')
+WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.connection.config.type')) = 'Mstr';
+
 -- Update serviceType in dashboard_data_model_entity table
 UPDATE dashboard_data_model_entity
 SET json = JSON_SET(json, '$.serviceType', 'MicroStrategy')
