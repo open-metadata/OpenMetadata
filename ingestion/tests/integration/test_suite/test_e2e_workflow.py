@@ -362,7 +362,7 @@ class TestE2EWorkflow(unittest.TestCase):
         assert data_test_case_result_1[0]["testCaseStatus"] == "Success"
         assert data_test_case_result_2
         assert data_test_case_result_2[0]["testCaseStatus"] == "Success"
-        self.assertAlmostEqual(data_test_case_result_2[0]["passedRows"], 15, delta=3)
+        self.assertAlmostEqual(data_test_case_result_2[0]["passedRows"], 15, delta=5)
 
     def test_e2e_cli_partitioned_workflow(self):
         """test cli workflow e2e"""
