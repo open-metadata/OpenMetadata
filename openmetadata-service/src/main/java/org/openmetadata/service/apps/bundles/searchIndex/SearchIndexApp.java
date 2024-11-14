@@ -344,7 +344,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
               int noOfThreads = calculateNumberOfThreads(totalEntityRecords);
               if (totalEntityRecords > 0) {
                 for (int i = 0; i < noOfThreads; i++) {
-                  LOG.info(
+                  LOG.debug(
                       "[{}] Submitting producer task current queue size: {}",
                       Thread.currentThread().getName(),
                       producerQueue.size());
