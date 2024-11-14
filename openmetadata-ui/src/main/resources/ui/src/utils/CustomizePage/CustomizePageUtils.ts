@@ -13,7 +13,7 @@
 import { TabsProps } from 'antd';
 import { CommonWidgetType } from '../../constants/CustomizeWidgets.constants';
 import { EntityTabs } from '../../enums/entity.enum';
-import { PageType } from '../../generated/system/ui/page';
+import { PageType, Tab } from '../../generated/system/ui/page';
 import customizeGlossaryPageClassBase from '../CustomizeGlossaryPage/CustomizeGlossaryPage';
 import customizeGlossaryTermPageClassBase from '../CustomizeGlossaryTerm/CustomizeGlossaryTermBaseClass';
 import i18n from '../i18next/LocalUtil';
@@ -145,7 +145,7 @@ export const getTableDefaultTabs = () => {
   return tabs;
 };
 
-export const getDefaultTabs = (pageType?: string) => {
+export const getDefaultTabs = (pageType?: string): Tab[] => {
   switch (pageType) {
     case PageType.GlossaryTerm:
       return getGlossaryTermDefaultTabs();

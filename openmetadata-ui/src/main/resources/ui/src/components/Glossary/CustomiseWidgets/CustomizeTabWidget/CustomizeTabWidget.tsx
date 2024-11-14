@@ -55,9 +55,9 @@ type TargetKey = React.MouseEvent | React.KeyboardEvent | string;
 export const CustomizeTabWidget = () => {
   const { currentPage, currentPageType, updateCurrentPage } =
     useCustomizeStore();
-  const [items, setItems] = useState<Tab[]>(
-    currentPage?.tabs ?? getDefaultTabs(currentPageType as PageType)
-  );
+  const items = useMemo(() => {
+    return currentPage?.tabs ?? getDefaultTabs(currentPageType as PageType);
+  }, [currentPage, currentPageType]);
   const [activeKey, setActiveKey] = useState<string | null>(
     (items[0]?.id as EntityTabs) ?? null
   );
@@ -81,7 +81,15 @@ export const CustomizeTabWidget = () => {
   const onChange = (tabKey: string) => {
     const key = tabKey as EntityTabs;
     setActiveKey(key);
-    const newTab = items.find((item) => item.id === key);
+    const newTab = currentPage?.tabs?.find((item) => item.id === key);
+
+    // Save current tab layout before changing
+    updateCurrentPage({
+      ...currentPage,
+      tabs: items,
+    } as Page);
+
+    // Update tabLayout with new tab selection
     setTabLayouts(
       getLayoutWithEmptyWidgetPlaceholder(
         isEmpty(newTab?.layout)
@@ -95,15 +103,20 @@ export const CustomizeTabWidget = () => {
 
   const add = () => {
     const newActiveKey = uniqueId(`newTab`);
-    setItems((items) => [
-      ...items,
-      {
-        name: 'New Tab',
-        layout: [],
-        id: newActiveKey,
-        editable: true,
-      } as Tab,
-    ]);
+
+    updateCurrentPage({
+      ...currentPage,
+      tabs: [
+        ...items,
+        {
+          name: 'New Tab',
+          layout: [],
+          id: newActiveKey,
+          editable: true,
+        } as Tab,
+      ],
+    } as Page);
+
     onChange(newActiveKey);
   };
 
@@ -123,7 +136,12 @@ export const CustomizeTabWidget = () => {
         newActiveKey = newPanes[0].id as EntityTabs;
       }
     }
-    setItems(newPanes);
+
+    updateCurrentPage({
+      ...currentPage,
+      tabs: newPanes,
+    } as Page);
+
     onChange(newActiveKey ?? EntityTabs.OVERVIEW);
   };
 
@@ -147,7 +165,6 @@ export const CustomizeTabWidget = () => {
       const newItems = items.map((item) =>
         item.id === editableItem.id ? editableItem : item
       );
-      setItems(newItems);
       updateCurrentPage({
         ...currentPage,
         tabs: newItems,
@@ -232,16 +249,16 @@ export const CustomizeTabWidget = () => {
     const newItems = newOrder.map(
       (key) => items.find((item) => item.id === key) as Tab
     );
-    setItems(newItems);
+    updateCurrentPage({
+      ...currentPage,
+      tabs: newItems,
+    } as Page);
 
     updateCurrentPage({
       ...currentPage,
       tabs: newItems,
     } as Page);
   };
-
-  // eslint-disable-next-line no-console
-  console.log('widgets', tabLayouts, currentPage);
 
   // call the hook to set the direction of the grid layout
   useGridLayoutDirection();
