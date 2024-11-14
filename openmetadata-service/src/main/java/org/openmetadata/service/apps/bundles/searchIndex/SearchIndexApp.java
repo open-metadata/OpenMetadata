@@ -344,13 +344,17 @@ public class SearchIndexApp extends AbstractNativeApplication {
               int noOfThreads = calculateNumberOfThreads(totalEntityRecords);
               if (totalEntityRecords > 0) {
                 for (int i = 0; i < noOfThreads; i++) {
-                  LOG.info("Submitting producer task current queue size: {}", producerQueue.size());
+                  LOG.info(
+                      "[{}] Submitting producer task current queue size: {}",
+                      Thread.currentThread().getName(),
+                      producerQueue.size());
                   int currentOffset = i * batchSize.get();
                   producerExecutor.submit(
                       () -> {
                         try {
-                          LOG.info(
-                              "Running Task for CurrentOffset: {},  Producer Latch Down, Current : {}, Current Time: {}",
+                          LOG.debug(
+                              "[{}] Running Task for CurrentOffset: {},  Producer Latch Down, Current : {}, Current Time: {}",
+                              Thread.currentThread().getName(),
                               currentOffset,
                               producerLatch.getCount(),
                               getCurrentTime());
@@ -358,7 +362,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
                         } catch (Exception e) {
                           LOG.error("Error processing entity type {}", entityType, e);
                         } finally {
-                          LOG.info(
+                          LOG.debug(
                               "Producer Latch Down, Current : {}, Current Time: {}",
                               producerLatch.getCount(),
                               getCurrentTime());
@@ -398,7 +402,8 @@ public class SearchIndexApp extends AbstractNativeApplication {
     while (true) {
       IndexingTask<?> task = taskQueue.take();
       LOG.info(
-          "Consuming Indexing Task for entityType: {}, entity offset : {}",
+          "[{}] Consuming Indexing Task for entityType: {}, entity offset : {}",
+          Thread.currentThread().getName(),
           task.entityType(),
           task.currentEntityOffset());
       if (task == IndexingTask.POISON_PILL) {
@@ -704,14 +709,14 @@ public class SearchIndexApp extends AbstractNativeApplication {
   private void processReadTask(String entityType, Source<?> source, int offset) {
     try {
       Object resultList = source.readWithCursor(RestUtil.encodeCursor(String.valueOf(offset)));
+      LOG.info(
+          "[{}] Read Entities with CurrentOffset: {}, CurrentTime : {}",
+          Thread.currentThread().getName(),
+          offset,
+          getCurrentTime());
       if (resultList != null) {
         ResultList<?> entities = extractEntities(entityType, resultList);
         if (!nullOrEmpty(entities.getData())) {
-          LOG.info(
-              "Creating Indexing Task for entityType: {}, current offset: {}, timeStamp: {}",
-              entityType,
-              offset,
-              getCurrentTime());
           IndexingTask<?> task = new IndexingTask<>(entityType, entities, offset);
           taskQueue.put(task);
         }
