@@ -64,6 +64,7 @@
     "batchSize": "100",
     "payLoadSize": 104857600,
     "producerThreads": 1,
+    "queueSize": 100,
     "consumerThreads": 1,
     "maxConcurrentRequests": 100,
     "maxRetries": 3,
