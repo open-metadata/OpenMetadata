@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { TabsProps } from 'antd';
-import { get, isUndefined, uniqueId } from 'lodash';
+import { isUndefined, uniqueId } from 'lodash';
 import React from 'react';
 import EmptyWidgetPlaceholder from '../../components/MyData/CustomizableComponents/EmptyWidgetPlaceholder/EmptyWidgetPlaceholder';
 import { SIZE } from '../../enums/common.enum';
@@ -168,12 +168,14 @@ export const getAddWidgetHandler =
   };
 
 export const getGlossaryTermDetailTabs = (
-  defaultTabs: TabsProps['items'],
+  defaultTabs: Array<
+    NonNullable<TabsProps['items']>[number] & { isHidden?: boolean }
+  >,
   customizedTabs?: Tab[],
   defaultTabId: EntityTabs = EntityTabs.OVERVIEW
 ) => {
   if (!customizedTabs) {
-    return defaultTabs;
+    return defaultTabs.filter((data) => !data.isHidden);
   }
   const overviewTab = defaultTabs?.find((t) => t.key === defaultTabId);
 
@@ -190,7 +192,7 @@ export const getGlossaryTermDetailTabs = (
       );
     }) ?? defaultTabs;
 
-  return newTabs.filter((data) => !get(data, 'isHidden', false));
+  return newTabs.filter((data) => !data.isHidden);
 };
 
 export const getTabLabelMap = (tabs?: Tab[]): Record<EntityTabs, string> => {
