@@ -58,6 +58,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import lombok.Getter;
@@ -161,7 +162,8 @@ public class SearchIndexApp extends AbstractNativeApplication {
   private volatile boolean stopped = false;
   private ExecutorService consumerExecutor;
   private ExecutorService producerExecutor;
-  private final BlockingQueue<IndexingTask<?>> taskQueue = new LinkedBlockingQueue<>();
+  private ExecutorService jobExecutor = Executors.newFixedThreadPool(2);
+  private BlockingQueue<IndexingTask<?>> taskQueue = new LinkedBlockingQueue<>(100);
   private final AtomicReference<Stats> searchIndexStats = new AtomicReference<>();
   private final AtomicReference<Integer> batchSize = new AtomicReference<>(5);
 
@@ -286,8 +288,22 @@ public class SearchIndexApp extends AbstractNativeApplication {
     int numConsumers = jobData.getConsumerThreads();
     LOG.info("Starting reindexing with {} producers and {} consumers.", numProducers, numConsumers);
 
-    consumerExecutor = Executors.newFixedThreadPool(numConsumers);
-    producerExecutor = Executors.newFixedThreadPool(numProducers);
+    taskQueue = new LinkedBlockingQueue<>(jobData.getQueueSize());
+    consumerExecutor =
+        new ThreadPoolExecutor(
+            numConsumers,
+            numConsumers,
+            0L,
+            TimeUnit.MILLISECONDS,
+            new LinkedBlockingQueue<>(jobData.getQueueSize()));
+    producerExecutor =
+        new ThreadPoolExecutor(
+            numProducers,
+            numProducers,
+            0L,
+            TimeUnit.MILLISECONDS,
+            new LinkedBlockingQueue<>(jobData.getQueueSize()),
+            new ThreadPoolExecutor.CallerRunsPolicy());
 
     try {
       processEntityReindex(jobExecutionContext);
@@ -295,6 +311,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
       LOG.error("Error during reindexing process.", e);
       throw e;
     } finally {
+      shutdownExecutor(jobExecutor, "JobExecutor", 20, TimeUnit.SECONDS);
       shutdownExecutor(producerExecutor, "ReaderExecutor", 1, TimeUnit.MINUTES);
       shutdownExecutor(consumerExecutor, "ConsumerExecutor", 20, TimeUnit.SECONDS);
     }
@@ -304,6 +321,14 @@ public class SearchIndexApp extends AbstractNativeApplication {
       throws InterruptedException {
     int numConsumers = jobData.getConsumerThreads();
     CountDownLatch producerLatch = new CountDownLatch(getTotalLatchCount(jobData.getEntities()));
+    jobExecutor.submit(() -> submitProducerTask(producerLatch));
+    jobExecutor.submit(() -> submitConsumerTask(jobExecutionContext));
+
+    producerLatch.await();
+    sendPoisonPills(numConsumers);
+  }
+
+  private void submitProducerTask(CountDownLatch producerLatch) {
     for (String entityType : jobData.getEntities()) {
       try {
         reCreateIndexes(entityType);
@@ -329,8 +354,10 @@ public class SearchIndexApp extends AbstractNativeApplication {
         LOG.error("Error processing entity type {}", entityType, e);
       }
     }
+  }
 
-    for (int i = 0; i < numConsumers; i++) {
+  private void submitConsumerTask(JobExecutionContext jobExecutionContext) {
+    for (int i = 0; i < jobData.getConsumerThreads(); i++) {
       consumerExecutor.submit(
           () -> {
             try {
@@ -341,9 +368,6 @@ public class SearchIndexApp extends AbstractNativeApplication {
             }
           });
     }
-
-    producerLatch.await();
-    sendPoisonPills(numConsumers);
   }
 
   private void consumeTasks(JobExecutionContext jobExecutionContext) throws InterruptedException {
