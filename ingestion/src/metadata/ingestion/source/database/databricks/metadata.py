@@ -118,6 +118,8 @@ def validate_schema(schema):
     return f"`{schema}`" if "-" in schema else schema
 
 
+# This method is from hive dialect originally but
+# is overridden to optimize DESCRIBE query execution
 def _get_table_columns(self, connection, table_name, schema, db_name):
     full_table = table_name
     if schema:
