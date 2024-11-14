@@ -42,6 +42,7 @@ export const INTERNAL_CATEGORY_OPTIONS = filter(
 export const EXTERNAL_CATEGORY_OPTIONS = filter(
   SubscriptionType,
   (value) =>
+    // Exclude the following categories from the external dropdown
     value !== SubscriptionType.ActivityFeed &&
     value !== SubscriptionType.GovernanceWorkflowChangeEvent
 ).map((value) => ({
