@@ -818,7 +818,9 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
         try:
             query = DATABRICKS_GET_TABLE_COMMENTS.format(
                 database_name=self.context.get().database,
-                schema_name=format_schema_name(schema=self.context.get().database_schema),
+                schema_name=format_schema_name(
+                    schema=self.context.get().database_schema
+                ),
                 table_name=table_name,
             )
             result = self.inspector.dialect.get_table_comment_result(
