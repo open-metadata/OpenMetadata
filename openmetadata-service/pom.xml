@@ -16,7 +16,7 @@
     <sonar.coverage.jacoco.xmlReportPaths>${project.basedir}/target/site/jacoco-aggregate/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
     <sonar.tests>${project.basedir}/src/test/java</sonar.tests>
     <org.testcontainers.version>1.20.3</org.testcontainers.version>
-    <awssdk.version>2.29.1</awssdk.version>
+    <awssdk.version>2.29.11</awssdk.version>
     <azure-identity.version>1.14.0</azure-identity.version>
     <azure-kv.version>4.9.0</azure-kv.version>
     <azure-identity-extensions.version>1.0.0</azure-identity-extensions.version>
@@ -654,6 +654,18 @@
       <artifactId>jakarta.activation</artifactId>
       <version>2.0.1</version>
     </dependency>
+    <!-- Governance Workflows -->
+    <dependency>
+      <groupId>org.flowable</groupId>
+      <artifactId>flowable-engine</artifactId>
+      <version>7.0.1</version>
+    </dependency>
+    <dependency>
+      <groupId>io.github.jamsesso</groupId>
+      <artifactId>json-logic-java</artifactId>
+      <version>1.0.7</version>
+    </dependency>
+    <!-- ################ -->
     <dependency>
       <groupId>com.microsoft.azure</groupId>
       <artifactId>msal4j</artifactId>
