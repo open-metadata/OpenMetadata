@@ -57,9 +57,7 @@ class PandasTestSuiteInterface(TestSuiteInterface, PandasInterfaceMixin):
 
         self.ometa_client = ometa_client
         self.service_connection_config = service_connection_config
-        self.client = get_connection(
-            self.service_connection_config
-        ).client._client  # pylint: disable=W0212
+        self.client = get_connection(self.service_connection_config).client._client
 
         (
             self.sample_query,
@@ -94,7 +92,7 @@ class PandasTestSuiteInterface(TestSuiteInterface, PandasInterfaceMixin):
             "DatalakeSampler",
             sampler_factory_.create(
                 DatalakeConnection.__name__,
-                client=self.client,  # pylint: disable=W0212
+                client=self.client,
                 table=deepcopy(
                     self.dfs
                 ),  # deep copy to avoid changing the original data

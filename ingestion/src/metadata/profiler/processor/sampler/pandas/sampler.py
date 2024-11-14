@@ -136,9 +136,7 @@ class DatalakeSampler(SamplerInterface):
                 break
         return cols, rows
 
-    def get_dataset(
-        self, columns: Optional[List] = None
-    ):  # pylint: disable=unused-argument
+    def get_dataset(self, columns: Optional[List] = None):
         """Generate random sample from the table
 
         Returns:
