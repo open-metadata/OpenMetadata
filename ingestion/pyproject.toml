@@ -273,6 +273,7 @@ ignore = [
   "src/metadata/workflow/metadata.py",
   "src/metadata/workflow/profiler.py",
   "src/metadata/workflow/usage.py",
+  "src/metadata/workflow/sampler.py",
   "src/metadata/workflow/workflow_status_mixin.py",
 ]
 
