@@ -19,11 +19,9 @@ from typing import Optional, cast
 from sqlalchemy import MetaData
 from sqlalchemy.orm import DeclarativeMeta
 
+from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import Table
-from metadata.generated.schema.entity.services.databaseService import (
-    DatabaseConnection,
-    DatabaseService,
-)
+from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
 )
@@ -84,10 +82,12 @@ class SamplerProcessor(Processor):
 
         try:
             entity = cast(Table, record.entity)
-            schema_entity, database_entity, db_service = get_context_entities(
+            schema_entity, database_entity, _ = get_context_entities(
                 entity=entity, metadata=self.metadata
             )
-            service_conn_config = self._copy_service_config(self.config, db_service)
+            service_conn_config = self._copy_service_config(
+                self.config, database_entity
+            )
             sqa_metadata = _get_sqa_metadata(str(service_conn_config.type.value))
 
             _orm = self._build_table_orm(entity, sqa_metadata)
@@ -147,7 +147,7 @@ class SamplerProcessor(Processor):
         )
 
     def _copy_service_config(
-        self, config: OpenMetadataWorkflowConfig, database: DatabaseService
+        self, config: OpenMetadataWorkflowConfig, database: Database
     ) -> DatabaseConnection:
         """Make a copy of the service config and update the database name
 

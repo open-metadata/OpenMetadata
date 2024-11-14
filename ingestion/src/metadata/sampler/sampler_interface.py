@@ -233,4 +233,4 @@ class SamplerInterface(ABC):
         except Exception as err:
             logger.debug(traceback.format_exc())
             logger.warning(f"Error fetching sample data: {err}")
-            return None
+            raise err

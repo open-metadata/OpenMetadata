@@ -74,7 +74,7 @@ class ProfilerSource(ProfilerSourceInterface):
     def __init__(
         self,
         config: OpenMetadataWorkflowConfig,
-        database: DatabaseService,
+        database: Database,
         ometa_client: OpenMetadata,
         global_profiler_configuration: ProfilerConfiguration,
     ):
@@ -114,7 +114,7 @@ class ProfilerSource(ProfilerSourceInterface):
         return None
 
     def _copy_service_config(
-        self, config: OpenMetadataWorkflowConfig, database: DatabaseService
+        self, config: OpenMetadataWorkflowConfig, database: Database
     ) -> DatabaseConnection:
         """Make a copy of the service config and update the database name
 
