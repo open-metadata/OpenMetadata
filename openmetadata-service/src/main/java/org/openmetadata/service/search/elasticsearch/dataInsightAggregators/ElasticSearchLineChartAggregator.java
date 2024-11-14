@@ -145,11 +145,17 @@ public class ElasticSearchLineChartAggregator
         ParsedTerms parsedTerms = (ParsedTerms) arg;
         for (Terms.Bucket bucket : parsedTerms.getBuckets()) {
           for (Aggregation subArg : bucket.getAggregations()) {
+            String group;
+            if (lineChart.getMetrics().size() > 1) {
+              group = bucket.getKeyAsString() + " - " + getMetricName(lineChart, subArg.getName());
+            } else {
+              group = bucket.getKeyAsString();
+            }
             diChartResults.addAll(
                 processAggregations(
                     List.of(subArg),
                     metricFormulaHolderInternal.get(subArg.getName()).formula,
-                    bucket.getKeyAsString(),
+                    group,
                     metricFormulaHolderInternal.get(subArg.getName()).holders,
                     getMetricName(lineChart, subArg.getName())));
           }
@@ -165,11 +171,15 @@ public class ElasticSearchLineChartAggregator
           metricFormulaHolder.get(aggregationList.get(i).getName()) == null
               ? new MetricFormulaHolder()
               : metricFormulaHolderInternal.get(aggregationList.get(i).getName());
+      String group = null;
+      if (lineChart.getMetrics().size() > 1) {
+        group = getMetricName(lineChart, aggregationList.get(i).getName());
+      }
       List<DataInsightCustomChartResult> results =
           processAggregations(
               List.of(aggregationList.get(i)),
               formulaHolder.formula,
-              null,
+              group,
               formulaHolder.holders,
               getMetricName(lineChart, aggregationList.get(i).getName()));
       diChartResults.addAll(results);
