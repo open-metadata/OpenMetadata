@@ -118,14 +118,14 @@ const ObservabilityAlertsPage = () => {
         dataIndex: 'name',
         width: '200px',
         key: 'name',
-        render: (name: string, record: EventSubscription) => {
+        render: (_: string, record: EventSubscription) => {
           return (
             <Link
               data-testid="alert-name"
               to={getObservabilityAlertDetailsPath(
                 record.fullyQualifiedName ?? ''
               )}>
-              {name}
+              {getEntityName(record)}
             </Link>
           );
         },

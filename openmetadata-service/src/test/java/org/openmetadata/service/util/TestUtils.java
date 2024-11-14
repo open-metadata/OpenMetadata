@@ -710,7 +710,8 @@ public final class TestUtils {
   public static void assertFieldExists(
       DocumentContext jsonContext, String jsonPath, String fieldName) {
     List<Map<String, Object>> result = jsonContext.read(jsonPath, List.class);
-    assertTrue(result.size() > 0, "The query should contain '" + fieldName + "' term.");
+    assertFalse(
+        (result == null || result.isEmpty()), "The query should contain '" + fieldName + "' term.");
   }
 
   public static void assertFieldDoesNotExist(

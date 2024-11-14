@@ -98,16 +98,12 @@ public class MSTeamsMessageDecorator implements MessageDecorator<TeamsMessage> {
   }
 
   @Override
-  public TeamsMessage buildTestMessage(String publisherName) {
-    return getTeamTestMessage(publisherName);
+  public TeamsMessage buildTestMessage() {
+    return getTeamTestMessage();
   }
 
-  public TeamsMessage getTeamTestMessage(String publisherName) {
-    if (publisherName.isEmpty()) {
-      throw new UnhandledServerException("Publisher name not found.");
-    }
-
-    return createConnectionTestMessage(publisherName);
+  public TeamsMessage getTeamTestMessage() {
+    return createConnectionTestMessage();
   }
 
   private TeamsMessage createMessage(
@@ -497,22 +493,20 @@ public class MSTeamsMessageDecorator implements MessageDecorator<TeamsMessage> {
         .collect(Collectors.toList());
   }
 
-  private TeamsMessage createConnectionTestMessage(String publisherName) {
+  private TeamsMessage createConnectionTestMessage() {
     Image imageItem = createOMImageMessage();
 
     Column column1 =
         Column.builder().type("Column").width("auto").items(List.of(imageItem)).build();
 
     TextBlock textBlock1 = createTextBlock("Connection Successful \u2705", "Bolder", "Large");
-    TextBlock textBlock2 =
-        createTextBlock(applyBoldFormat("Publisher:") + publisherName, null, null);
-    TextBlock textBlock3 = createTextBlock(CONNECTION_TEST_DESCRIPTION, null, null);
+    TextBlock textBlock2 = createTextBlock(CONNECTION_TEST_DESCRIPTION, null, null);
 
     Column column2 =
         Column.builder()
             .type("Column")
             .width("stretch")
-            .items(List.of(textBlock1, textBlock2, textBlock3))
+            .items(List.of(textBlock1, textBlock2))
             .build();
 
     ColumnSet columnSet =
