@@ -90,17 +90,11 @@ export const POSTGRES = {
 
 export const MYSQL = 'Mysql';
 
-export const HTTP_CONFIG_SOURCE = {
-  DBT_CATALOG_HTTP_PATH:
-    'https://raw.githubusercontent.com/OnkarVO7/dbt_git_test/dbt_aut/catalog.json',
-  DBT_MANIFEST_HTTP_PATH:
-    'https://raw.githubusercontent.com/OnkarVO7/dbt_git_test/dbt_aut/manifest.json',
-  DBT_RUN_RESULTS_FILE_PATH:
-    'https://raw.githubusercontent.com/OnkarVO7/dbt_git_test/dbt_aut/run_results.json',
-};
-
 export const DBT = {
   classification: 'dbtTags',
+  awsRegion: 'us-east-2',
+  s3BucketName: 'awsdatalake-testing',
+  s3Prefix: 'dbt-testing/mayur/',
   tagName: 'model_tag_two',
   dbtQuery: 'select * from "dev"."dbt_automate_upgrade_tests"."stg_orders"',
   dbtLineageNodeLabel: 'customers',
