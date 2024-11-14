@@ -159,7 +159,7 @@ class DatalakeSampleTest(TestCase):
             table_partition_config=None,
         )
 
-    def test_random_sampler(self):
+    def test_get_dataset(self):
         """
         The random sampler should be able to
         generate a random subset of data
@@ -169,8 +169,8 @@ class DatalakeSampleTest(TestCase):
             table=[self.df1, self.df2],
             profile_sample_config=ProfileSampleConfig(profile_sample=50.0),
         )
-        random_sample = sampler.random_sample()
-        res = sum(len(r) for r in random_sample)
+        dataset = sampler.get_dataset()
+        res = sum(len(r) for r in dataset)
         assert res < 5
 
     @mock.patch(
@@ -197,8 +197,8 @@ class DatalakeSampleTest(TestCase):
             table_partition_config=None,
         )
 
-        random_sample = datalake_profiler_interface._get_sampler().random_sample()
-        res = sum(len(r) for r in random_sample)
+        dataset = datalake_profiler_interface._get_sampler().get_dataset()
+        res = sum(len(r) for r in dataset)
         assert res < 5
 
     def test_table_row_count(self):
@@ -212,7 +212,7 @@ class DatalakeSampleTest(TestCase):
             profiler_interface=self.datalake_profiler_interface,
         )
         res = profiler.compute_metrics()._table_results
-        assert res.get(Metrics.ROW_COUNT.name) == 3
+        assert res.get(Metrics.ROW_COUNT.name) == 6
 
     @pytest.mark.skip(reason="Flaky test due to small sample size")
     def test_random_sample_histogram(self):

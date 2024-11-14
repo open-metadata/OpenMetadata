@@ -58,7 +58,7 @@ class SamplerInterface(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def random_sample(self):
+    def get_dataset(self, columns: Optional[List] = None):
         """Get random sample"""
         raise NotImplementedError
 

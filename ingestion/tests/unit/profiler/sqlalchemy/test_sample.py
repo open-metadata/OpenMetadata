@@ -136,7 +136,7 @@ class SampleTest(TestCase):
             cls.session.add_all(data)
             cls.session.commit()
 
-    def test_random_sampler(self):
+    def test_sampler(self):
         """
         The random sampler should be able to
         generate a random subset of data
@@ -146,8 +146,8 @@ class SampleTest(TestCase):
             table=User,
             profile_sample_config=ProfileSampleConfig(profile_sample=50.0),
         )
-        random_sample = sampler.random_sample()
-        res = self.session.query(func.count()).select_from(random_sample).first()
+        dataset = sampler.get_dataset()
+        res = self.session.query(func.count()).select_from(dataset).first()
         assert res[0] < 30
 
     def test_sample_property(self):
@@ -170,11 +170,11 @@ class SampleTest(TestCase):
                 None,
             )
 
-        sample = sqa_profiler_interface._create_thread_safe_sampler(
+        dataset = sqa_profiler_interface._create_thread_safe_sampler(
             self.session, User
-        ).random_sample()
+        ).get_dataset()
 
-        res = self.session.query(func.count()).select_from(sample).first()
+        res = self.session.query(func.count()).select_from(dataset).first()
         assert res[0] < 30
 
     def test_table_row_count(self):

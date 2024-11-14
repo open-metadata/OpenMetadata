@@ -34,7 +34,7 @@ class NoSQLSampler(SamplerInterface):
             rows=[list(map(str, row)) for row in rows], columns=[c.name for c in cols]
         )
 
-    def random_sample(self):
+    def get_dataset(self, columns: Optional[List] = None) -> None:
         pass
 
     def fetch_sample_data(self, columns: List[SQALikeColumn]) -> TableData:

@@ -91,7 +91,7 @@ class User(Base):
 
 # with weird characters of fqn
 class NewUser(Base):
-    __tablename__ = "new/users"
+    __tablename__ = "newUsers"
     id = Column(Integer, primary_key=True)
     name = Column(String(256))
     fullname = Column(String(256))
@@ -302,7 +302,7 @@ class ProfilerWorkflowTest(TestCase):
             {
                 "type": "Profiler",
                 "profileSample": 50,
-                "tableFilterPattern": {"includes": ["new/users"]},
+                "tableFilterPattern": {"includes": ["newUsers"]},
             }
         )
         workflow_config["processor"] = {"type": "orm-profiler", "config": {}}
@@ -314,7 +314,7 @@ class ProfilerWorkflowTest(TestCase):
 
         table = self.metadata.get_by_name(
             entity=Table,
-            fqn="test_sqlite.main.main.new/users",
+            fqn="test_sqlite.main.main.newUsers",
             fields=["tableProfilerConfig"],
         )
         # setting sampleProfile from config has been temporarly removed

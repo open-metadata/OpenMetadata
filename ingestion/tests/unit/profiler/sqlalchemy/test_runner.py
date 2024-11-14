@@ -65,9 +65,9 @@ class RunnerTest(TestCase):
         table=User,
         profile_sample_config=ProfileSampleConfig(profile_sample=50.0),
     )
-    sample = sampler.random_sample()
+    dataset = sampler.get_dataset()
 
-    raw_runner = QueryRunner(session=session, table=User, sample=sample)
+    raw_runner = QueryRunner(session=session, dataset=dataset)
     timeout_runner: Timer = cls_timeout(1)(Timer())
 
     @classmethod
@@ -135,7 +135,7 @@ class RunnerTest(TestCase):
         res = self.raw_runner.select_first_from_query(query)
         assert res[0] == 30
 
-        query = self.session.query(func.count()).select_from(self.sample)
+        query = self.session.query(func.count()).select_from(self.dataset)
         res = self.raw_runner.select_first_from_query(query)
         assert res[0] < 30
 
@@ -143,7 +143,7 @@ class RunnerTest(TestCase):
         res = self.raw_runner.select_all_from_query(query)
         assert len(res) == 30
 
-        query = self.session.query(func.count()).select_from(self.sample)
+        query = self.session.query(func.count()).select_from(self.dataset)
         res = self.raw_runner.select_all_from_query(query)
         assert len(res) < 30
 
