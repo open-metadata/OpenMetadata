@@ -170,6 +170,15 @@ public interface SearchClient {
       String q)
       throws IOException;
 
+  SearchResultListMapper listWithDeepPagination(
+      String index,
+      String query,
+      String filter,
+      SearchSortFilter searchSortFilter,
+      int size,
+      Object[] searchAfter)
+      throws IOException;
+
   Response searchBySourceUrl(String sourceUrl) throws IOException;
 
   Response searchLineage(
@@ -197,6 +206,12 @@ public interface SearchClient {
   */
   @SuppressWarnings("unused")
   default ResultList listPageHierarchy(String parent, String pageType, int offset, int limit) {
+    throw new CustomExceptionMessage(
+        Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
+  }
+
+  @SuppressWarnings("unused")
+  default ResultList searchPageHierarchy(String query, String pageType, int offset, int limit) {
     throw new CustomExceptionMessage(
         Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
   }
@@ -307,10 +322,18 @@ public interface SearchClient {
   class SearchResultListMapper {
     public List<Map<String, Object>> results;
     public long total;
+    public Object[] lastHitSortValues;
 
     public SearchResultListMapper(List<Map<String, Object>> results, long total) {
       this.results = results;
       this.total = total;
+    }
+
+    public SearchResultListMapper(
+        List<Map<String, Object>> results, long total, Object[] lastHitSortValues) {
+      this.results = results;
+      this.total = total;
+      this.lastHitSortValues = lastHitSortValues;
     }
   }
 

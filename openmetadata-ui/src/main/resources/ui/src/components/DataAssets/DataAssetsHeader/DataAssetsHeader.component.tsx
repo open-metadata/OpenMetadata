@@ -370,6 +370,7 @@ export const DataAssetsHeader = ({
             <Col span={24}>
               <EntityHeaderTitle
                 badge={badge}
+                certification={(dataAsset as Table)?.certification}
                 deleted={dataAsset?.deleted}
                 displayName={dataAsset.displayName}
                 icon={icon}

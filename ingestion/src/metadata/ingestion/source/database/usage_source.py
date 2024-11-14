@@ -152,7 +152,10 @@ class UsageSource(QueryParserSource, ABC):
             except Exception as exc:
                 if query:
                     logger.debug(
-                        f"###### USAGE QUERY #######\n{mask_query(query, self.dialect.value)}\n##########################"
+                        (
+                            f"###### USAGE QUERY #######\n{mask_query(query, self.dialect.value)}"
+                            "\n##########################"
+                        )
                     )
                 logger.debug(traceback.format_exc())
                 logger.error(f"Source usage processing error: {exc}")
