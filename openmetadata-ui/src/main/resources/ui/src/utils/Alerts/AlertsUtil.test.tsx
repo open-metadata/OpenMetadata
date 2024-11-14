@@ -61,7 +61,9 @@ describe('AlertsUtil tests', () => {
   });
 
   it('getFunctionDisplayName should return correct text for matchAnyOwnerName', () => {
-    expect(getFunctionDisplayName('matchAnyOwnerName')).toBe('label.owner');
+    expect(getFunctionDisplayName('matchAnyOwnerName')).toBe(
+      'label.owner-plural'
+    );
   });
 
   it('getFunctionDisplayName should return correct text for matchAnyEventType', () => {
@@ -179,9 +181,9 @@ describe('AlertsUtil tests', () => {
     );
 
     [resultTask, resultTable].forEach((results) => {
-      expect(results).toHaveLength(5);
+      expect(results).toHaveLength(6);
 
-      results.map((result) =>
+      results.forEach((result) =>
         expect(
           mockExternalDestinationOptions.includes(
             result.value as Exclude<

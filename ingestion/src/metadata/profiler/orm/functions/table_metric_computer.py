@@ -412,7 +412,7 @@ class RedshiftTableMetricComputer(BaseTableMetricComputer):
         )
         res = self.runner._session.execute(query).first()
         if not res:
-            return None
+            return super().compute()
         if res.rowCount is None or (
             res.rowCount == 0 and self._entity.tableType == TableType.View
         ):

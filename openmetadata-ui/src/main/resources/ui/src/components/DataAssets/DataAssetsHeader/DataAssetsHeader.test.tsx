@@ -21,7 +21,7 @@ import { Container } from '../../../generated/entity/data/container';
 import { MOCK_TIER_DATA } from '../../../mocks/TableData.mock';
 import { getContainerByName } from '../../../rest/storageAPI';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
-import { DataAssetsHeader } from './DataAssetsHeader.component';
+import { DataAssetsHeader, ExtraInfoLink } from './DataAssetsHeader.component';
 import { DataAssetsHeaderProps } from './DataAssetsHeader.interface';
 
 const mockProps: DataAssetsHeaderProps = {
@@ -102,6 +102,37 @@ jest.mock('../../../rest/storageAPI', () => ({
     .fn()
     .mockImplementation(() => Promise.resolve({ name: 'test' })),
 }));
+
+describe('ExtraInfoLink component', () => {
+  const mockProps = {
+    label: 'myLabel',
+    value: 'example',
+    href: 'http://example.com/',
+  };
+
+  it('should not have target and rel attributes when newTab is false (default)', () => {
+    const { container } = render(<ExtraInfoLink {...mockProps} />);
+
+    const elm = container.querySelector('a');
+
+    expect(elm).toHaveAttribute('href', mockProps.href);
+    expect(elm).not.toHaveAttribute('target');
+    expect(elm).not.toHaveAttribute('rel');
+  });
+
+  it('should have target and rel attributes when newTab is true', () => {
+    const { container } = render(<ExtraInfoLink {...mockProps} newTab />);
+
+    const elm = container.querySelector('a');
+
+    expect(elm).toHaveAttribute('href', mockProps.href);
+    expect(elm).toHaveAttribute('target', '_blank');
+
+    const rel = (elm?.getAttribute('rel') || '').split(/\s+/g);
+
+    expect(rel.sort()).toStrictEqual(['noopener', 'noreferrer'].sort());
+  });
+});
 
 describe('DataAssetsHeader component', () => {
   it('should call getContainerByName API on Page load for container assets', () => {

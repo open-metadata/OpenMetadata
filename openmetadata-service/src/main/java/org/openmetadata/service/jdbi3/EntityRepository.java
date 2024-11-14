@@ -29,6 +29,7 @@ import static org.openmetadata.schema.utils.EntityInterfaceUtil.quoteName;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 import static org.openmetadata.service.Entity.DATA_PRODUCT;
 import static org.openmetadata.service.Entity.DOMAIN;
+import static org.openmetadata.service.Entity.FIELD_CERTIFICATION;
 import static org.openmetadata.service.Entity.FIELD_CHILDREN;
 import static org.openmetadata.service.Entity.FIELD_DATA_PRODUCTS;
 import static org.openmetadata.service.Entity.FIELD_DELETED;
@@ -51,6 +52,7 @@ import static org.openmetadata.service.Entity.getEntityFields;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.csvNotSupported;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTags;
+import static org.openmetadata.service.resources.tags.TagLabelUtil.checkDisabledTags;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusive;
 import static org.openmetadata.service.util.EntityUtil.compareTagLabel;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
@@ -67,7 +69,6 @@ import static org.openmetadata.service.util.EntityUtil.objectMatch;
 import static org.openmetadata.service.util.EntityUtil.tagLabelMatch;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.cache.CacheBuilder;
@@ -78,14 +79,18 @@ import com.networknt.schema.JsonSchema;
 import com.networknt.schema.ValidationMessage;
 import java.io.IOException;
 import java.net.URI;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.Period;
+import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.time.temporal.TemporalAccessor;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -98,11 +103,12 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.function.BiConsumer;
 import java.util.function.BiPredicate;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
 import javax.json.JsonPatch;
+import javax.validation.ConstraintViolationException;
 import javax.validation.constraints.NotNull;
 import javax.ws.rs.core.Response.Status;
 import javax.ws.rs.core.UriInfo;
@@ -119,12 +125,14 @@ import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.api.VoteRequest.VoteType;
 import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.api.teams.CreateTeam;
+import org.openmetadata.schema.configuration.AssetCertificationSettings;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.feed.Suggestion;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.system.EntityError;
 import org.openmetadata.schema.type.ApiStatus;
+import org.openmetadata.schema.type.AssetCertification;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.Column;
@@ -145,7 +153,7 @@ import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.api.BulkResponse;
 import org.openmetadata.schema.type.csv.CsvImportResult;
-import org.openmetadata.schema.type.customproperties.EnumWithDescriptionsConfig;
+import org.openmetadata.schema.type.customProperties.TableConfig;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
@@ -211,13 +219,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   public static final LoadingCache<Pair<String, String>, EntityInterface> CACHE_WITH_NAME =
       CacheBuilder.newBuilder()
-          .maximumSize(5000)
+          .maximumSize(20000)
           .expireAfterWrite(30, TimeUnit.SECONDS)
           .recordStats()
           .build(new EntityLoaderWithName());
   public static final LoadingCache<Pair<String, UUID>, EntityInterface> CACHE_WITH_ID =
       CacheBuilder.newBuilder()
-          .maximumSize(5000)
+          .maximumSize(20000)
           .expireAfterWrite(30, TimeUnit.SECONDS)
           .recordStats()
           .build(new EntityLoaderWithId());
@@ -233,6 +241,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   @Getter protected final boolean supportsOwners;
   @Getter protected final boolean supportsStyle;
   @Getter protected final boolean supportsLifeCycle;
+  @Getter protected final boolean supportsCertification;
   protected final boolean supportsFollower;
   protected final boolean supportsExtension;
   protected final boolean supportsVotes;
@@ -251,6 +260,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
   @Getter protected final Fields putFields;
 
   protected boolean supportsSearch = false;
+  @Getter protected boolean parent = false;
+  protected final Map<String, BiConsumer<List<T>, Fields>> fieldFetchers = new HashMap<>();
 
   protected EntityRepository(
       String collectionPath,
@@ -325,6 +336,33 @@ public abstract class EntityRepository<T extends EntityInterface> {
       this.patchFields.addField(allowedFields, FIELD_LIFE_CYCLE);
       this.putFields.addField(allowedFields, FIELD_LIFE_CYCLE);
     }
+    this.supportsCertification = allowedFields.contains(FIELD_CERTIFICATION);
+    if (supportsCertification) {
+      this.patchFields.addField(allowedFields, FIELD_CERTIFICATION);
+      this.putFields.addField(allowedFields, FIELD_CERTIFICATION);
+    }
+
+    Map<String, Pair<Boolean, BiConsumer<List<T>, Fields>>> fieldSupportMap = new HashMap<>();
+
+    fieldSupportMap.put(FIELD_TAGS, Pair.of(supportsTags, this::fetchAndSetTags));
+    fieldSupportMap.put(FIELD_OWNERS, Pair.of(supportsOwners, this::fetchAndSetOwners));
+    fieldSupportMap.put(FIELD_DOMAIN, Pair.of(supportsDomain, this::fetchAndSetDomain));
+    fieldSupportMap.put(FIELD_REVIEWERS, Pair.of(supportsReviewers, this::fetchAndSetReviewers));
+    fieldSupportMap.put(FIELD_EXTENSION, Pair.of(supportsExtension, this::fetchAndSetExtension));
+
+    for (Map.Entry<String, Pair<Boolean, BiConsumer<List<T>, Fields>>> entry :
+        fieldSupportMap.entrySet()) {
+      String fieldName = entry.getKey();
+      boolean supportsField = entry.getValue().getLeft();
+      BiConsumer<List<T>, Fields> fetcher = entry.getValue().getRight();
+
+      if (supportsField) {
+        this.fieldFetchers.put(fieldName, fetcher);
+        this.patchFields.addField(allowedFields, fieldName);
+        this.putFields.addField(allowedFields, fieldName);
+      }
+    }
+
     Entity.registerEntity(entityClass, entityType, this);
   }
 
@@ -643,6 +681,32 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return entities;
   }
 
+  public final List<T> listAllForCSV(Fields fields, String parentFqn) {
+    List<String> jsons = listAllByParentFqn(parentFqn);
+    List<T> entities = new ArrayList<>();
+    setFieldsInBulk(jsons, fields, entities);
+    return entities;
+  }
+
+  public void setFieldsInBulk(List<String> jsons, Fields fields, List<T> entities) {
+    for (String json : jsons) {
+      T entity = JsonUtils.readValue(json, entityClass);
+      entities.add(entity);
+    }
+    fetchAndSetFields(entities, fields);
+    for (T entity : entities) {
+      setInheritedFields(entity, fields);
+      clearFieldsInternal(entity, fields);
+    }
+  }
+
+  public List<String> listAllByParentFqn(String parentFqn) {
+    String fqnPrefixHash = FullyQualifiedName.buildHash(parentFqn);
+    String startHash = fqnPrefixHash + ".00000000000000000000000000000000";
+    String endHash = fqnPrefixHash + ".ffffffffffffffffffffffffffffffff";
+    return dao.listAll(startHash, endHash);
+  }
+
   public ResultList<T> listAfter(
       UriInfo uriInfo, Fields fields, ListFilter filter, int limitParam, String after) {
     int total = dao.listCount(filter);
@@ -907,6 +971,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
+  @SuppressWarnings("unused")
+  protected void postUpdate(T updated) {
+    if (supportsSearch) {
+      searchRepository.updateEntity(updated);
+    }
+  }
+
   @Transaction
   public final PutResponse<T> update(UriInfo uriInfo, T original, T updated) {
     // Get all the fields in the original entity that can be updated during PUT operation
@@ -1138,9 +1209,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
               searchListFilter, limit, offset, entityType, searchSortFilter, q);
       total = results.getTotal();
       for (Map<String, Object> json : results.getResults()) {
-        T entity = setFieldsInternal(JsonUtils.readOrConvertValue(json, entityClass), fields);
-        setInheritedFields(entity, fields);
-        clearFieldsInternal(entity, fields);
+        T entity = JsonUtils.readOrConvertValue(json, entityClass);
         entityList.add(withHref(uriInfo, entity));
       }
       return new ResultList<>(entityList, offset, limit, total.intValue());
@@ -1430,19 +1499,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
       String customPropertyType = TypeRegistry.getCustomPropertyType(entityType, fieldName);
       String propertyConfig = TypeRegistry.getCustomPropertyConfig(entityType, fieldName);
 
-      try {
-        validateAndUpdateExtensionBasedOnPropertyType(
-            entity,
-            (ObjectNode) jsonNode,
-            fieldName,
-            fieldValue,
-            customPropertyType,
-            propertyConfig);
-      } catch (DateTimeParseException e) {
-        throw new IllegalArgumentException(
-            CatalogExceptionMessage.dateTimeValidationError(fieldName, propertyConfig));
-      }
-
+      validateAndUpdateExtensionBasedOnPropertyType(
+          entity, (ObjectNode) jsonNode, fieldName, fieldValue, customPropertyType, propertyConfig);
       Set<ValidationMessage> validationMessages = jsonSchema.validate(entry.getValue());
       if (!validationMessages.isEmpty()) {
         throw new IllegalArgumentException(
@@ -1466,8 +1524,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
                 fieldValue.textValue(), customPropertyType, propertyConfig, fieldName);
         jsonNode.put(fieldName, formattedValue);
       }
-      case "enumWithDescriptions" -> handleEnumWithDescriptions(
-          fieldName, fieldValue, propertyConfig, jsonNode, entity);
+      case "table-cp" -> validateTableType(fieldValue, propertyConfig, fieldName);
       default -> {}
     }
   }
@@ -1505,37 +1562,48 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
-  private void handleEnumWithDescriptions(
-      String fieldName, JsonNode fieldValue, String propertyConfig, ObjectNode jsonNode, T entity) {
-    JsonNode propertyConfigNode = JsonUtils.readTree(propertyConfig);
-    EnumWithDescriptionsConfig config =
-        JsonUtils.treeToValue(propertyConfigNode, EnumWithDescriptionsConfig.class);
+  private void validateTableType(JsonNode fieldValue, String propertyConfig, String fieldName) {
+    TableConfig tableConfig =
+        JsonUtils.convertValue(JsonUtils.readTree(propertyConfig), TableConfig.class);
+    org.openmetadata.schema.type.customProperties.Table tableValue =
+        JsonUtils.convertValue(
+            JsonUtils.readTree(String.valueOf(fieldValue)),
+            org.openmetadata.schema.type.customProperties.Table.class);
+    Set<String> configColumns = tableConfig.getColumns();
 
-    if (!config.getMultiSelect() && fieldValue.size() > 1) {
+    try {
+      JsonUtils.validateJsonSchema(
+          tableValue, org.openmetadata.schema.type.customProperties.Table.class);
+
+      Set<String> fieldColumns = new HashSet<>();
+      fieldValue.get("columns").forEach(column -> fieldColumns.add(column.asText()));
+
+      Set<String> undefinedColumns = new HashSet<>(fieldColumns);
+      undefinedColumns.removeAll(configColumns);
+      if (!undefinedColumns.isEmpty()) {
+        throw new IllegalArgumentException(
+            "Expected columns: "
+                + configColumns
+                + ", but found undefined columns: "
+                + undefinedColumns);
+      }
+
+      Set<String> rowFieldNames = new HashSet<>();
+      fieldValue.get("rows").forEach(row -> row.fieldNames().forEachRemaining(rowFieldNames::add));
+
+      undefinedColumns = new HashSet<>(rowFieldNames);
+      undefinedColumns.removeAll(configColumns);
+      if (!undefinedColumns.isEmpty()) {
+        throw new IllegalArgumentException("Rows contain undefined columns: " + undefinedColumns);
+      }
+    } catch (ConstraintViolationException e) {
+      String validationErrors =
+          e.getConstraintViolations().stream()
+              .map(violation -> violation.getPropertyPath() + " " + violation.getMessage())
+              .collect(Collectors.joining(", "));
+
       throw new IllegalArgumentException(
-          "Only one key is allowed for non-multiSelect enumWithDescriptions");
-    }
-    // Replace each enumWithDescriptions key in the fieldValue with the corresponding object from
-    // the propertyConfig
-    Map<String, JsonNode> keyToObjectMap =
-        StreamSupport.stream(propertyConfigNode.get("values").spliterator(), false)
-            .collect(Collectors.toMap(node -> node.get("key").asText(), node -> node));
-
-    if (fieldValue.isArray()) {
-      ArrayNode newArray = JsonUtils.getObjectNode().arrayNode();
-      fieldValue.forEach(
-          valueNode -> {
-            String key = valueNode.isTextual() ? valueNode.asText() : valueNode.get("key").asText();
-            JsonNode valueObject = keyToObjectMap.get(key);
-
-            if (valueObject == null) {
-              throw new IllegalArgumentException("Key not found in propertyConfig: " + key);
-            }
-            newArray.add(valueNode.isTextual() ? valueObject : valueNode);
-          });
-
-      jsonNode.replace(fieldName, newArray);
-      entity.setExtension(JsonUtils.treeToValue(jsonNode, Object.class));
+          CatalogExceptionMessage.jsonValidationError(fieldName, validationErrors));
     }
   }
 
@@ -1610,10 +1678,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   @Transaction
   public final void applyTags(List<TagLabel> tagLabels, String targetFQN) {
     for (TagLabel tagLabel : listOrEmpty(tagLabels)) {
-      // Apply tagLabel to targetFQN that identifies an entity or field
-      boolean isTagDerived = tagLabel.getLabelType().equals(TagLabel.LabelType.DERIVED);
-      // Derived Tags should not create Relationships, and needs to be built on the during Read
-      if (!isTagDerived) {
+      if (!tagLabel.getLabelType().equals(TagLabel.LabelType.DERIVED)) {
         daoCollection
             .tagUsageDAO()
             .applyTag(
@@ -1783,6 +1848,22 @@ public abstract class EntityRepository<T extends EntityInterface> {
     List<EntityRelationshipRecord> records =
         findFromRecords(toId, toEntityType, relationship, fromEntityType);
     return getEntityReferences(records);
+  }
+
+  public final List<CollectionDAO.EntityRelationshipObject> findFromRecordsBatch(
+      Set<String> toIds, String toEntityType, Relationship relationship, String fromEntityType) {
+    return daoCollection
+        .relationshipDAO()
+        .findFromBatch(
+            new ArrayList<>(toIds), relationship.ordinal(), toEntityType, fromEntityType);
+  }
+
+  public final List<CollectionDAO.EntityRelationshipObject> findToRecordsBatch(
+      Set<String> fromIds, String fromEntityType, Relationship relationship, String toEntityType) {
+    return daoCollection
+        .relationshipDAO()
+        .findToBatch(
+            new ArrayList<>(fromIds), relationship.ordinal(), fromEntityType, toEntityType);
   }
 
   public final List<EntityRelationshipRecord> findFromRecords(
@@ -2325,6 +2406,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     validateTags(entity.getTags());
     entity.setTags(addDerivedTags(entity.getTags()));
     checkMutuallyExclusive(entity.getTags());
+    checkDisabledTags(entity.getTags());
   }
 
   protected void validateTags(List<TagLabel> labels) {
@@ -2563,6 +2645,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
         updateReviewers();
         updateStyle();
         updateLifeCycle();
+        updateCertification();
         entitySpecificUpdate();
       }
     }
@@ -2865,6 +2948,53 @@ public abstract class EntityRepository<T extends EntityInterface> {
       recordChange(FIELD_LIFE_CYCLE, origLifeCycle, updatedLifeCycle, true);
     }
 
+    private void updateCertification() {
+      if (!supportsCertification) {
+        return;
+      }
+      AssetCertification origCertification = original.getCertification();
+      AssetCertification updatedCertification = updated.getCertification();
+
+      if (origCertification == updatedCertification || updatedCertification == null) return;
+
+      SystemRepository systemRepository = Entity.getSystemRepository();
+      AssetCertificationSettings assetCertificationSettings =
+          systemRepository.getAssetCertificationSettings();
+
+      String certificationLabel = updatedCertification.getTagLabel().getTagFQN();
+
+      validateCertification(certificationLabel, assetCertificationSettings);
+
+      long certificationDate = System.currentTimeMillis();
+      updatedCertification.setAppliedDate(certificationDate);
+
+      LocalDateTime nowDateTime =
+          LocalDateTime.ofInstant(Instant.ofEpochMilli(certificationDate), ZoneOffset.UTC);
+      Period datePeriod = Period.parse(assetCertificationSettings.getValidityPeriod());
+      LocalDateTime targetDateTime = nowDateTime.plus(datePeriod);
+      updatedCertification.setExpiryDate(targetDateTime.toInstant(ZoneOffset.UTC).toEpochMilli());
+
+      recordChange(FIELD_CERTIFICATION, origCertification, updatedCertification, true);
+    }
+
+    private void validateCertification(
+        String certificationLabel, AssetCertificationSettings assetCertificationSettings) {
+      if (Optional.ofNullable(assetCertificationSettings).isEmpty()) {
+        throw new IllegalArgumentException(
+            "Certification is not configured. Please configure the Classification used for Certification in the Settings.");
+      } else {
+        String allowedClassification = assetCertificationSettings.getAllowedClassification();
+        String[] fqnParts = FullyQualifiedName.split(certificationLabel);
+        String parentFqn = FullyQualifiedName.getParentFQN(fqnParts);
+        if (!allowedClassification.equals(parentFqn)) {
+          throw new IllegalArgumentException(
+              String.format(
+                  "Invalid Classification: %s is not valid for Certification.",
+                  certificationLabel));
+        }
+      }
+    }
+
     public final boolean updateVersion(Double oldVersion) {
       Double newVersion = oldVersion;
       if (majorVersionChange) {
@@ -3152,7 +3282,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     private boolean consolidateChanges(T original, T updated, Operation operation) {
       // If user is the same and the new update is with in the user session timeout
-      return original.getVersion() > 0.1 // First update on an entity that
+      return !parent // Parent entity shouldn't consolidate changes, as we need ChangeDescription to
+          // propagate to children
+          && original.getVersion() > 0.1 // First update on an entity that
           && operation == Operation.PATCH
           && !Boolean.TRUE.equals(original.getDeleted()) // Entity is not soft deleted
           && !operation.isDelete() // Operation must be an update
@@ -3161,6 +3293,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
               .equals(updated.getUpdatedBy()) // Must be updated by the same user
           && updated.getUpdatedAt() - original.getUpdatedAt()
               <= sessionTimeoutMillis; // With in session timeout
+      // changes to children
     }
 
     private T getPreviousVersion(T original) {
@@ -3366,5 +3499,220 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (!validColumn) {
       throw new IllegalArgumentException("Invalid column name " + columnName);
     }
+  }
+
+  private void fetchAndSetFields(List<T> entities, Fields fields) {
+    for (String field : fields) {
+      BiConsumer<List<T>, Fields> fetcher = fieldFetchers.get(field);
+      if (fetcher != null) {
+        fetcher.accept(entities, fields);
+      }
+    }
+  }
+
+  private void fetchAndSetOwners(List<T> entities, Fields fields) {
+    if (!fields.contains(FIELD_OWNERS) || !supportsOwners) {
+      return;
+    }
+    Map<UUID, List<EntityReference>> ownersMap = batchFetchOwners(entities);
+    for (T entity : entities) {
+      entity.setOwners(ownersMap.getOrDefault(entity.getId(), Collections.emptyList()));
+    }
+  }
+
+  private void fetchAndSetTags(List<T> entities, Fields fields) {
+    if (!fields.contains(FIELD_TAGS) || !supportsTags) {
+      return;
+    }
+
+    List<String> entityFQNs =
+        entities.stream().map(EntityInterface::getFullyQualifiedName).toList();
+
+    Map<String, List<TagLabel>> tagsMap = batchFetchTags(entityFQNs);
+
+    for (T entity : entities) {
+      entity.setTags(
+          addDerivedTags(
+              tagsMap.getOrDefault(entity.getFullyQualifiedName(), Collections.emptyList())));
+    }
+  }
+
+  private void fetchAndSetDomain(List<T> entities, Fields fields) {
+    if (!fields.contains(FIELD_DOMAIN) || !supportsDomain) {
+      return;
+    }
+
+    Map<UUID, EntityReference> domainsMap = batchFetchDomain(entities);
+
+    for (T entity : entities) {
+      EntityReference domainRef = domainsMap.get(entity.getId());
+      entity.setDomain(domainRef);
+    }
+  }
+
+  private void fetchAndSetExtension(List<T> entities, Fields fields) {
+    if (!fields.contains(FIELD_EXTENSION)
+        || !supportsExtension
+        || entities == null
+        || entities.isEmpty()) {
+      return;
+    }
+
+    Map<UUID, Object> extensionsMap = batchFetchExtensions(entities);
+
+    for (T entity : entities) {
+      Object extension = extensionsMap.get(entity.getId());
+      entity.setExtension(extension);
+    }
+  }
+
+  private void fetchAndSetReviewers(List<T> entities, Fields fields) {
+    if (!fields.contains(FIELD_REVIEWERS) || !supportsReviewers || entities.isEmpty()) {
+      return;
+    }
+
+    Map<UUID, List<EntityReference>> reviewersMap = batchFetchReviewers(entities);
+
+    for (T entity : entities) {
+      List<EntityReference> reviewers =
+          reviewersMap.getOrDefault(entity.getId(), Collections.emptyList());
+      entity.setReviewers(reviewers);
+    }
+  }
+
+  private Map<UUID, List<EntityReference>> batchFetchOwners(List<T> entities) {
+    Map<UUID, List<EntityReference>> ownersMap = new HashMap<>();
+
+    if (entities == null || entities.isEmpty()) {
+      return ownersMap;
+    }
+    List<CollectionDAO.EntityRelationshipObject> records =
+        daoCollection
+            .relationshipDAO()
+            .findFromBatch(entityListToStrings(entities), Relationship.OWNS.ordinal());
+    for (CollectionDAO.EntityRelationshipObject rec : records) {
+      UUID toId = UUID.fromString(rec.getToId());
+      EntityReference ownerRef =
+          Entity.getEntityReferenceById(rec.getFromEntity(), UUID.fromString(rec.getFromId()), ALL);
+      ownersMap.computeIfAbsent(toId, k -> new ArrayList<>()).add(ownerRef);
+    }
+
+    return ownersMap;
+  }
+
+  private Map<String, List<TagLabel>> batchFetchTags(List<String> entityFQNs) {
+    if (entityFQNs == null || entityFQNs.isEmpty()) {
+      return Collections.emptyMap();
+    }
+
+    // Fetch tags from DAO
+    List<CollectionDAO.TagUsageDAO.TagLabelWithFQNHash> tags =
+        daoCollection.tagUsageDAO().getTagsInternalBatch(entityFQNs);
+
+    // Map from targetFQNHash to targetFQN
+    Map<String, String> fqnHashToFqnMap =
+        entityFQNs.stream().collect(Collectors.toMap(FullyQualifiedName::buildHash, fqn -> fqn));
+
+    // Map to hold targetFQN to list of TagLabel
+    Map<String, List<TagLabel>> tagsMap = new HashMap<>();
+    for (CollectionDAO.TagUsageDAO.TagLabelWithFQNHash tagWithHash : tags) {
+      String targetFQNHash = tagWithHash.getTargetFQNHash();
+      String targetFQN = fqnHashToFqnMap.get(targetFQNHash);
+
+      if (targetFQN != null) {
+        tagsMap.computeIfAbsent(targetFQN, k -> new ArrayList<>()).add(tagWithHash.toTagLabel());
+      }
+    }
+
+    return tagsMap;
+  }
+
+  private Map<UUID, EntityReference> batchFetchDomain(List<T> entities) {
+    Map<UUID, EntityReference> domainsMap = new HashMap<>();
+
+    if (entities == null || entities.isEmpty()) {
+      return domainsMap;
+    }
+    List<CollectionDAO.EntityRelationshipObject> records =
+        daoCollection
+            .relationshipDAO()
+            .findFromBatch(
+                entityListToStrings(entities), Relationship.HAS.ordinal(), Entity.DOMAIN);
+
+    for (CollectionDAO.EntityRelationshipObject rec : records) {
+      UUID toId = UUID.fromString(rec.getToId());
+      UUID fromId = UUID.fromString(rec.getFromId());
+      String fromEntity = rec.getFromEntity();
+
+      EntityReference domainRef = Entity.getEntityReferenceById(fromEntity, fromId, ALL);
+
+      // Since each entity can have only one domain, we can directly put it in the map
+      if (domainsMap.containsKey(toId)) {
+        // Handle the case where an entity has multiple domains (which shouldn't happen)
+        throw new IllegalStateException(
+            String.format("Entity with ID %s has multiple domains", toId));
+      } else {
+        domainsMap.put(toId, domainRef);
+      }
+    }
+
+    return domainsMap;
+  }
+
+  private Map<UUID, List<EntityReference>> batchFetchReviewers(List<T> entities) {
+    List<CollectionDAO.EntityRelationshipObject> records =
+        daoCollection
+            .relationshipDAO()
+            .findFromBatch(
+                entityListToStrings(entities), entityType, Relationship.REVIEWS.ordinal());
+
+    Map<UUID, List<EntityReference>> reviewersMap = new HashMap<>();
+
+    for (CollectionDAO.EntityRelationshipObject rec : records) {
+      UUID entityId = UUID.fromString(rec.getToId());
+      EntityReference reviewerRef =
+          Entity.getEntityReferenceById(rec.getFromEntity(), UUID.fromString(rec.getFromId()), ALL);
+      reviewersMap.computeIfAbsent(entityId, k -> new ArrayList<>()).add(reviewerRef);
+    }
+
+    return reviewersMap;
+  }
+
+  private Map<UUID, Object> batchFetchExtensions(List<T> entities) {
+    if (!supportsExtension || entities == null || entities.isEmpty()) {
+      return Collections.emptyMap();
+    }
+    String fieldFQNPrefix = TypeRegistry.getCustomPropertyFQNPrefix(entityType);
+
+    List<CollectionDAO.ExtensionRecordWithId> records =
+        daoCollection
+            .entityExtensionDAO()
+            .getExtensionsBatch(entityListToStrings(entities), fieldFQNPrefix);
+
+    Map<UUID, List<CollectionDAO.ExtensionRecordWithId>> extensionsMap =
+        records.stream().collect(Collectors.groupingBy(CollectionDAO.ExtensionRecordWithId::id));
+
+    Map<UUID, Object> result = new HashMap<>();
+
+    for (Map.Entry<UUID, List<CollectionDAO.ExtensionRecordWithId>> entry :
+        extensionsMap.entrySet()) {
+      UUID entityId = entry.getKey();
+      List<CollectionDAO.ExtensionRecordWithId> extensionRecords = entry.getValue();
+
+      ObjectNode objectNode = JsonUtils.getObjectNode();
+      for (CollectionDAO.ExtensionRecordWithId record : extensionRecords) {
+        String fieldName = TypeRegistry.getPropertyName(record.extensionName());
+        JsonNode extensionJsonNode = JsonUtils.readTree(record.extensionJson());
+        objectNode.set(fieldName, extensionJsonNode);
+      }
+
+      result.put(entityId, objectNode);
+    }
+
+    return result;
+  }
+
+  private List<String> entityListToStrings(List<T> entities) {
+    return entities.stream().map(EntityInterface::getId).map(UUID::toString).toList();
   }
 }

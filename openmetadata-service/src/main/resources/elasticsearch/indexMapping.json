@@ -101,7 +101,7 @@
     "indexName": "test_case_result_search_index",
     "indexMappingFile": "/elasticsearch/%s/test_case_result_index_mapping.json",
     "alias": "testCaseResult",
-    "parentAliases": ["testSuite", "testCase", "all"],
+    "parentAliases": ["testSuite", "testCase"],
     "childAliases": []
   },
   "testSuite": {
@@ -158,7 +158,7 @@
     "indexMappingFile": "/elasticsearch/%s/classification_index_mapping.json",
     "alias": "classification",
     "parentAliases": ["all"],
-    "childAliases": []
+    "childAliases": ["tag"]
   },
   "user": {
     "indexName": "user_search_index",

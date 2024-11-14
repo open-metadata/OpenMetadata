@@ -35,7 +35,7 @@
               "$ref": "#/definitions/entityTypes"
             },
             {
-              "$ref": "../type/customProperties/enumWithDescriptionsConfig.json"
+              "$ref": "customProperties/tableConfig.json"
             }
           ]
         }
@@ -51,6 +51,10 @@
     "name": {
       "description": "Name of the entity property. Note a property name must be unique for an entity. Property name must follow camelCase naming adopted by openMetadata - must start with lower case with no space, underscore, or dots.",
       "$ref": "../type/basic.json#/definitions/entityName"
+    },
+    "displayName": {
+      "description": "Display Name for the custom property.Must be unique for an entity.",
+      "type": "string"
     },
     "description": {
       "$ref": "../type/basic.json#/definitions/markdown"

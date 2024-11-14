@@ -276,7 +276,10 @@ const UserListPageV1 = () => {
   }, [pageSize, isAdminPage]);
 
   const handleAddNewUser = () => {
-    history.push(ROUTES.CREATE_USER);
+    history.push({
+      pathname: ROUTES.CREATE_USER,
+      state: { isAdminPage },
+    });
   };
 
   const handleReactiveUser = async () => {
@@ -308,8 +311,12 @@ const UserListPageV1 = () => {
   };
 
   const columns: ColumnsType<User> = useMemo(() => {
+    const commonFields = isAdminPage
+      ? commonUserDetailColumns().filter((col) => col.key !== 'roles')
+      : commonUserDetailColumns();
+
     return [
-      ...commonUserDetailColumns(),
+      ...commonFields,
       {
         title: t('label.action-plural'),
         dataIndex: 'actions',
@@ -437,7 +444,9 @@ const UserListPageV1 = () => {
                   data-testid="add-user"
                   type="primary"
                   onClick={handleAddNewUser}>
-                  {t('label.add-entity', { entity: t('label.user') })}
+                  {t('label.add-entity', {
+                    entity: t(`label.${isAdminPage ? 'admin' : 'user'}`),
+                  })}
                 </Button>
               </LimitWrapper>
             )}
@@ -474,6 +483,7 @@ const UserListPageV1 = () => {
           {showPagination && (
             <NextPrevious
               currentPage={currentPage}
+              isLoading={isDataLoading}
               isNumberBased={Boolean(searchValue)}
               pageSize={pageSize}
               paging={paging}

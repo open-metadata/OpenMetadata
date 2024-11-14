@@ -1,6 +1,6 @@
 ---
 title: How to Visualize Test Results
-slug: /how-to-guides/data-quality-observability/visualize
+slug: /how-to-guides/data-quality-observability/quality/visualize
 ---
 
 # How to Visualize Test Results

@@ -94,7 +94,7 @@ import org.quartz.SchedulerException;
     description = "Apps are internal/external apps used to something on top of Open-metadata.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "apps")
+@Collection(name = "apps", order = 8)
 @Slf4j
 public class AppResource extends EntityResource<App, AppRepository> {
   public static final String COLLECTION_PATH = "v1/apps/";

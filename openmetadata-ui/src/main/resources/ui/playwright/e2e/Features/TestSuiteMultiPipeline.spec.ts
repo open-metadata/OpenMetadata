@@ -55,8 +55,11 @@ test(
 
       await page.getByTestId('add-ingestion-button').click();
       await page.getByTestId('select-all-test-cases').click();
-      await page.getByTestId('cron-type').getByText('Hour').click();
-      await page.getByTitle('Day').click();
+
+      await expect(
+        page.getByTestId('cron-type').getByText('Day')
+      ).toBeAttached();
+
       await page.getByTestId('deploy-button').click();
 
       await expect(page.getByTestId('view-service-button')).toBeVisible();

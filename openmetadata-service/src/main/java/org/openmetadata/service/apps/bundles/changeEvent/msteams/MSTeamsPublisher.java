@@ -100,7 +100,9 @@ public class MSTeamsPublisher implements Destination<ChangeEvent> {
       String message =
           CatalogExceptionMessage.eventPublisherFailedToPublish(MS_TEAMS, event, e.getMessage());
       LOG.error(message);
-      throw new EventPublisherException(message, Pair.of(subscriptionDestination.getId(), event));
+      throw new EventPublisherException(
+          CatalogExceptionMessage.eventPublisherFailedToPublish(MS_TEAMS, e.getMessage()),
+          Pair.of(subscriptionDestination.getId(), event));
     }
   }
 

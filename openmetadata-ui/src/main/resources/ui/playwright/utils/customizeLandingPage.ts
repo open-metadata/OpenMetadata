@@ -21,20 +21,20 @@ export const navigateToCustomizeLandingPage = async (
 ) => {
   const getPersonas = page.waitForResponse('/api/v1/personas*');
 
-  await settingClick(page, GlobalSettingOptions.CUSTOMIZE_LANDING_PAGE);
+  await settingClick(page, GlobalSettingOptions.PERSONA);
 
   await getPersonas;
 
   const getCustomPageDataResponse = page.waitForResponse(
-    `/api/v1/docStore/name/persona.${encodeURIComponent(
-      personaName
-    )}.Page.LandingPage`
+    `/api/v1/docStore/name/persona.${encodeURIComponent(personaName)}`
   );
 
   // Navigate to the customize landing page
-  await page.click(
-    `[data-testid="persona-details-card-${personaName}"] [data-testid="customize-page-button"]`
-  );
+  await page.getByTestId(`persona-details-card-${personaName}`).click();
+
+  await page.getByRole('tab', { name: 'Customize UI' }).click();
+
+  await page.getByTestId('LandingPage').click();
 
   expect((await getCustomPageDataResponse).status()).toBe(
     customPageDataResponse

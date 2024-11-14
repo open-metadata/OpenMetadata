@@ -51,7 +51,7 @@ import { FeedCounts } from '../../../interface/feed.interface';
 import { postThread } from '../../../rest/feedsAPI';
 import { restorePipeline } from '../../../rest/pipelineAPI';
 import { getFeedCounts } from '../../../utils/CommonUtils';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getColumnSorter, getEntityName } from '../../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import {
   getAllTags,
@@ -383,6 +383,7 @@ const PipelineDetails = ({
         title: t('label.name'),
         width: 220,
         fixed: 'left',
+        sorter: getColumnSorter<Task, 'name'>('name'),
         render: (_, record) =>
           isEmpty(record.sourceUrl) ? (
             <span>{getEntityName(record)}</span>
@@ -434,7 +435,7 @@ const PipelineDetails = ({
         ),
       },
       {
-        title: t('label.owner'),
+        title: t('label.owner-plural'),
         dataIndex: 'owners',
         key: 'owners',
         width: 120,

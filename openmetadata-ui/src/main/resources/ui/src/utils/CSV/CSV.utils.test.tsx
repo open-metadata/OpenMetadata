@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { ExtensionDataProps } from '../../components/Modals/ModalWithCustomProperty/ModalWithMarkdownEditor.interface';
 import { EntityType } from '../../enums/entity.enum';
 import {
   MOCK_GLOSSARY_TERM_CUSTOM_PROPERTIES,
@@ -162,6 +163,15 @@ describe('CSVUtils', () => {
       expect(convertedCSVEntities).toStrictEqual(
         MOCK_GLOSSARY_TERM_CUSTOM_PROPERTIES_CONVERTED_EXTENSION_CSV_STRING
       );
+    });
+
+    it('should return string correctly which contains undefined as value for property', () => {
+      const convertedCSVEntities = convertEntityExtensionToCustomPropertyString(
+        { dateCp: undefined } as unknown as ExtensionDataProps,
+        MOCK_GLOSSARY_TERM_CUSTOM_PROPERTIES
+      );
+
+      expect(convertedCSVEntities).toStrictEqual(`dateCp:undefined`);
     });
   });
 });

@@ -11,10 +11,24 @@
  *  limitations under the License.
  */
 
-import { FilterOutlined } from '@ant-design/icons';
+import { DownOutlined } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Button, Col, Modal, Row, Space, TableProps, Tooltip } from 'antd';
-import { ColumnsType, ExpandableConfig } from 'antd/lib/table/interface';
+import {
+  Button,
+  Checkbox,
+  Col,
+  Dropdown,
+  Modal,
+  Row,
+  Space,
+  TableProps,
+  Tooltip,
+} from 'antd';
+import {
+  ColumnsType,
+  ColumnType,
+  ExpandableConfig,
+} from 'antd/lib/table/interface';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
@@ -38,6 +52,7 @@ import StatusBadge from '../../../components/common/StatusBadge/StatusBadge.comp
 import {
   API_RES_MAX_SIZE,
   DE_ACTIVE_COLOR,
+  NO_DATA_PLACEHOLDER,
   TEXT_BODY_COLOR,
 } from '../../../constants/constants';
 import { GLOSSARIES_DOCS } from '../../../constants/docs.constants';
@@ -49,7 +64,6 @@ import {
   GlossaryTerm,
   Status,
 } from '../../../generated/entity/data/glossaryTerm';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import {
   getFirstLevelGlossaryTerms,
   getGlossaryTerms,
@@ -64,13 +78,14 @@ import {
   findExpandableKeysForArray,
   findGlossaryTermByFqn,
   StatusClass,
-  StatusFilters,
 } from '../../../utils/GlossaryUtils';
 import { getGlossaryPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { DraggableBodyRowProps } from '../../common/Draggable/DraggableBodyRowProps.interface';
 import Loader from '../../common/Loader/Loader';
 import Table from '../../common/Table/Table';
+import TagButton from '../../common/TagButton/TagButton.component';
+import DraggableMenuItem from '../GlossaryColumnsSelectionDropdown/DraggableMenuItem.component';
 import { ModifiedGlossary, useGlossaryStore } from '../useGlossary.store';
 import {
   GlossaryTermTabProps,
@@ -89,7 +104,6 @@ const GlossaryTermTab = ({
 }: GlossaryTermTabProps) => {
   const { activeGlossary, glossaryChildTerms, setGlossaryChildTerms } =
     useGlossaryStore();
-  const { theme } = useApplicationStore();
   const { t } = useTranslation();
 
   const glossaryTerms = (glossaryChildTerms as ModifiedGlossaryTerm[]) ?? [];
@@ -100,6 +114,19 @@ const GlossaryTermTab = ({
   const [isTableLoading, setIsTableLoading] = useState(false);
   const [isTableHovered, setIsTableHovered] = useState(false);
   const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
+  const [isStatusDropdownVisible, setIsStatusDropdownVisible] =
+    useState<boolean>(false);
+  const statusOptions = useMemo(
+    () =>
+      Object.values(Status).map((status) => ({ value: status, label: status })),
+    []
+  );
+  const [statusDropdownSelection, setStatusDropdownSelections] = useState<
+    string[]
+  >(['Approved', 'Draft']);
+  const [selectedStatus, setSelectedStatus] = useState<string[]>([
+    ...statusDropdownSelection,
+  ]);
 
   const glossaryTermStatus: Status | null = useMemo(() => {
     if (!isGlossary) {
@@ -163,7 +190,37 @@ const GlossaryTermTab = ({
           ),
       },
       {
-        title: t('label.owner'),
+        title: t('label.reviewer'),
+        dataIndex: 'reviewers',
+        key: 'reviewers',
+        width: '33%',
+        render: (reviewers: EntityReference[]) => (
+          <OwnerLabel owners={reviewers} />
+        ),
+      },
+      {
+        title: t('label.synonym-plural'),
+        dataIndex: 'synonyms',
+        key: 'synonyms',
+        width: '33%',
+        render: (synonyms: string[]) => {
+          return isEmpty(synonyms) ? (
+            <div>{NO_DATA_PLACEHOLDER}</div>
+          ) : (
+            <div className="d-flex flex-wrap">
+              {synonyms.map((synonym: string) => (
+                <TagButton
+                  className="glossary-synonym-tag"
+                  key={synonym}
+                  label={synonym}
+                />
+              ))}
+            </div>
+          );
+        },
+      },
+      {
+        title: t('label.owner-plural'),
         dataIndex: 'owners',
         key: 'owners',
         width: '17%',
@@ -174,14 +231,6 @@ const GlossaryTermTab = ({
         dataIndex: 'status',
         key: 'status',
         width: '12%',
-        filterIcon: (filtered) => (
-          <FilterOutlined
-            style={{
-              color: filtered ? theme.primaryColor : undefined,
-            }}
-          />
-        ),
-        filters: StatusFilters,
         render: (_, record) => {
           const status = record.status ?? Status.Approved;
 
@@ -248,6 +297,303 @@ const GlossaryTermTab = ({
 
     return data;
   }, [glossaryTerms, permissions]);
+
+  const listOfVisibleColumns = useMemo(() => {
+    return ['name', 'description', 'owners', 'status', 'new-term'];
+  }, []);
+
+  const defaultCheckedList = useMemo(
+    () =>
+      columns.reduce<string[]>(
+        (acc, column) =>
+          listOfVisibleColumns.includes(column.key as string)
+            ? [...acc, column.key as string]
+            : acc,
+        []
+      ),
+    [columns, listOfVisibleColumns]
+  );
+
+  const [selectedColumns, setSelectedColumns] =
+    useState<string[]>(defaultCheckedList);
+  const [columnDropdownSelections, setColumnDropdownSelections] = useState<
+    string[]
+  >([...selectedColumns]);
+
+  const [isDropdownVisible, setIsDropdownVisible] = useState<boolean>(false);
+
+  const [options, setOptions] = useState<{ value: string; label: string }[]>(
+    columns.reduce<{ value: string; label: string }[]>(
+      (acc, { key, title }) =>
+        key !== 'name'
+          ? [...acc, { label: title as string, value: key as string }]
+          : acc,
+      []
+    )
+  );
+
+  const newColumns = useMemo(() => {
+    return columns.map((item) => ({
+      ...item,
+      hidden: !selectedColumns.includes(item.key as string),
+    }));
+  }, [columns, selectedColumns]);
+
+  const rearrangedColumns = useMemo(
+    () =>
+      newColumns
+        .filter((column) => !column.hidden)
+        .sort((a, b) => {
+          const aIndex = options.findIndex(
+            (option: { value: string; label: string }) => option.value === a.key
+          );
+          const bIndex = options.findIndex(
+            (option: { value: string; label: string }) => option.value === b.key
+          );
+
+          return aIndex - bIndex;
+        }),
+    [newColumns]
+  );
+
+  const handleColumnSelectionDropdownSave = useCallback(() => {
+    setSelectedColumns(columnDropdownSelections);
+    setIsDropdownVisible(false);
+  }, [columnDropdownSelections]);
+
+  const handleColumnSelectionDropdownCancel = useCallback(() => {
+    setColumnDropdownSelections(selectedColumns);
+    setIsDropdownVisible(false);
+  }, [selectedColumns]);
+
+  const handleMoveItem = (updatedList: { value: string; label: string }[]) => {
+    setOptions(updatedList);
+    setColumnDropdownSelections((prevCheckedList) => {
+      const updatedCheckedList = prevCheckedList.map((item) => {
+        const index = updatedList.findIndex((option) => option.value === item);
+
+        return updatedList[index]?.value || item;
+      });
+
+      return updatedCheckedList;
+    });
+  };
+  const handleCheckboxChange = useCallback(
+    (key: string, checked: boolean, type: 'columns' | 'status') => {
+      const setCheckedList =
+        type === 'columns'
+          ? setColumnDropdownSelections
+          : setStatusDropdownSelections;
+
+      const optionsToUse =
+        type === 'columns'
+          ? (columns as ColumnType<ModifiedGlossaryTerm>[])
+          : (statusOptions as { value: string }[]);
+
+      if (key === 'all') {
+        if (checked) {
+          const newCheckedList = [
+            'all',
+            ...optionsToUse.map((option) => {
+              return type === 'columns'
+                ? String((option as ColumnType<ModifiedGlossaryTerm>).key)
+                : (option as { value: string }).value ?? '';
+            }),
+          ];
+          setCheckedList(newCheckedList);
+        } else {
+          setCheckedList([type === 'columns' ? 'name' : 'Draft']);
+        }
+      } else {
+        setCheckedList((prev: string[]) => {
+          const newCheckedList = checked
+            ? [...prev, key]
+            : prev.filter((item) => item !== key);
+
+          const allChecked =
+            type === 'columns'
+              ? (optionsToUse as ColumnType<ModifiedGlossaryTerm>[]).every(
+                  (opt) => newCheckedList.includes(String(opt.key))
+                )
+              : (optionsToUse as { value: string }[]).every((opt) =>
+                  newCheckedList.includes(opt.value ?? '')
+                );
+
+          if (allChecked) {
+            return ['all', ...newCheckedList];
+          }
+
+          return newCheckedList.filter((item) => item !== 'all');
+        });
+      }
+    },
+    [
+      columns,
+      statusOptions,
+      setColumnDropdownSelections,
+      setStatusDropdownSelections,
+    ]
+  );
+
+  const menu = useMemo(
+    () => ({
+      items: [
+        {
+          key: 'addColumn',
+          label: (
+            <div className="glossary-col-sel-dropdown-title">
+              <p className="m-l-md">{t('label.add-column')}</p>
+              <Checkbox.Group
+                className="glossary-col-sel-checkbox-group"
+                value={columnDropdownSelections}>
+                <Checkbox
+                  checked={columns
+                    .filter((col) => col.key === 'name')
+                    .every(({ key }) =>
+                      columnDropdownSelections.includes(key as string)
+                    )}
+                  className="custom-glossary-col-sel-checkbox m-l-lg p-l-md"
+                  key="all"
+                  value="all"
+                  onChange={(e) =>
+                    handleCheckboxChange('all', e.target.checked, 'columns')
+                  }>
+                  {t('label.all')}
+                </Checkbox>
+                {options.map(
+                  (option: { value: string; label: string }, index: number) => (
+                    <div
+                      className="d-flex justify-start items-center"
+                      key={option.value}>
+                      <DraggableMenuItem
+                        index={index}
+                        option={option}
+                        options={options}
+                        selectedOptions={columnDropdownSelections}
+                        onMoveItem={handleMoveItem}
+                        onSelect={handleCheckboxChange}
+                      />
+                    </div>
+                  )
+                )}
+              </Checkbox.Group>
+            </div>
+          ),
+        },
+        {
+          key: 'divider',
+          type: 'divider',
+        },
+        {
+          key: 'actions',
+          label: (
+            <div className="flex-center">
+              <Space>
+                <Button
+                  type="primary"
+                  onClick={handleColumnSelectionDropdownSave}>
+                  {t('label.save')}
+                </Button>
+                <Button
+                  type="default"
+                  onClick={handleColumnSelectionDropdownCancel}>
+                  {t('label.cancel')}
+                </Button>
+              </Space>
+            </div>
+          ),
+        },
+      ],
+    }),
+    [
+      columnDropdownSelections,
+      columns,
+      options,
+      handleCheckboxChange,
+      handleColumnSelectionDropdownSave,
+      handleColumnSelectionDropdownCancel,
+    ]
+  );
+  const handleStatusSelectionDropdownSave = () => {
+    setSelectedStatus(statusDropdownSelection);
+    setIsStatusDropdownVisible(false);
+  };
+
+  const handleStatusSelectionDropdownCancel = () => {
+    setStatusDropdownSelections(selectedStatus);
+    setIsStatusDropdownVisible(false);
+  };
+  const statusDropdownMenu = useMemo(
+    () => ({
+      items: [
+        {
+          key: 'statusSelection',
+          label: (
+            <div className="status-selection-dropdown">
+              <Checkbox.Group
+                className="glossary-col-sel-checkbox-group"
+                value={statusDropdownSelection}>
+                <Checkbox
+                  className="custom-glossary-col-sel-checkbox"
+                  key="all"
+                  value="all"
+                  onChange={(e) =>
+                    handleCheckboxChange('all', e.target.checked, 'status')
+                  }>
+                  <p className="glossary-dropdown-label">{t('label.all')}</p>
+                </Checkbox>
+                {statusOptions.map((option) => (
+                  <div key={option.value}>
+                    <Checkbox
+                      className="custom-glossary-col-sel-checkbox"
+                      value={option.value}
+                      onChange={(e) =>
+                        handleCheckboxChange(
+                          option.value,
+                          e.target.checked,
+                          'status'
+                        )
+                      }>
+                      <p className="glossary-dropdown-label">{option.label}</p>
+                    </Checkbox>
+                  </div>
+                ))}
+              </Checkbox.Group>
+            </div>
+          ),
+        },
+        {
+          key: 'divider',
+          type: 'divider',
+        },
+        {
+          key: 'actions',
+          label: (
+            <div className="flex-center">
+              <Space>
+                <Button
+                  type="primary"
+                  onClick={handleStatusSelectionDropdownSave}>
+                  {t('label.save')}
+                </Button>
+                <Button
+                  type="default"
+                  onClick={handleStatusSelectionDropdownCancel}>
+                  {t('label.cancel')}
+                </Button>
+              </Space>
+            </div>
+          ),
+        },
+      ],
+    }),
+    [
+      statusDropdownSelection,
+      statusOptions,
+      handleStatusSelectionDropdownSave,
+      handleStatusSelectionDropdownCancel,
+    ]
+  );
 
   const handleAddGlossaryTermClick = () => {
     onAddGlossaryTerm(
@@ -468,6 +814,52 @@ const GlossaryTermTab = ({
               {isAllExpanded ? t('label.collapse-all') : t('label.expand-all')}
             </Space>
           </Button>
+          <Dropdown
+            className="custom-glossary-dropdown-menu status-dropdown"
+            getPopupContainer={(trigger) => {
+              const customContainer = trigger.closest(
+                '.custom-glossary-dropdown-menu.status-dropdown'
+              );
+
+              return customContainer as HTMLElement;
+            }}
+            menu={statusDropdownMenu}
+            open={isStatusDropdownVisible}
+            trigger={['click']}
+            onOpenChange={setIsStatusDropdownVisible}>
+            <Button
+              className="custom-status-dropdown-btn m-r-sm"
+              data-testid="glossary-status-dropdown">
+              <Space>
+                {t('label.status')}
+                <DownOutlined />
+              </Space>
+            </Button>
+          </Dropdown>
+          <DndProvider backend={HTML5Backend}>
+            <Dropdown
+              className="mb-4 custom-glossary-dropdown-menu"
+              getPopupContainer={(trigger) => {
+                const customContainer = trigger.closest(
+                  '.custom-glossary-dropdown-menu'
+                );
+
+                return customContainer as HTMLElement;
+              }}
+              menu={menu}
+              open={isDropdownVisible}
+              trigger={['click']}
+              onOpenChange={setIsDropdownVisible}>
+              <Button
+                className="custom-status-dropdown-btn m-r-xs"
+                data-testid="glossary-column-dropdown">
+                <Space>
+                  {t('label.column-plural')}
+                  <DownOutlined />
+                </Space>
+              </Button>
+            </Dropdown>
+          </DndProvider>
         </div>
 
         {glossaryTerms.length > 0 ? (
@@ -477,9 +869,12 @@ const GlossaryTermTab = ({
               className={classNames('drop-over-background', {
                 'drop-over-table': isTableHovered,
               })}
-              columns={columns}
+              columns={rearrangedColumns.filter((col) => !col.hidden)}
               components={TABLE_CONSTANTS}
-              dataSource={glossaryTerms}
+              data-testid="glossary-terms-table"
+              dataSource={glossaryTerms.filter((term) =>
+                selectedStatus.includes(term.status as string)
+              )}
               expandable={expandableConfig}
               loading={isTableLoading}
               pagination={false}

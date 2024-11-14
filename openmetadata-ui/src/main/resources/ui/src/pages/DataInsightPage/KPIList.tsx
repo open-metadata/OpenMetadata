@@ -234,6 +234,7 @@ const KPIList = () => {
       <Col span={24}>
         <Table
           bordered
+          className="kpi-table"
           columns={columns}
           data-testid="kpi-table"
           dataSource={kpiList}
@@ -250,6 +251,7 @@ const KPIList = () => {
         <Col span={24}>
           <NextPrevious
             currentPage={kpiPage}
+            isLoading={isLoading}
             pageSize={PAGE_SIZE_MEDIUM}
             paging={kpiPaging}
             pagingHandler={kpiPagingHandler}
