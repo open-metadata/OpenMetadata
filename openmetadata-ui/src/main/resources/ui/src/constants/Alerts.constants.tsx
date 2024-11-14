@@ -41,7 +41,9 @@ export const INTERNAL_CATEGORY_OPTIONS = filter(
 
 export const EXTERNAL_CATEGORY_OPTIONS = filter(
   SubscriptionType,
-  (value) => value !== SubscriptionType.ActivityFeed
+  (value) =>
+    value !== SubscriptionType.ActivityFeed &&
+    value !== SubscriptionType.GovernanceWorkflowChangeEvent
 ).map((value) => ({
   label: (
     <div
