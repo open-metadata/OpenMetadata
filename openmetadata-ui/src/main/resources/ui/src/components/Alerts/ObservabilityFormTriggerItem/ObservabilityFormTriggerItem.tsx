@@ -17,27 +17,27 @@ import { isEmpty, isNil } from 'lodash';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import FormCardSection from '../../../components/common/FormCardSection/FormCardSection';
+import { CreateEventSubscription } from '../../../generated/events/api/createEventSubscription';
 import {
-  CreateEventSubscription,
   Effect,
-} from '../../../generated/events/api/createEventSubscription';
-import { EventFilterRule } from '../../../generated/events/eventSubscription';
+  EventFilterRule,
+} from '../../../generated/events/eventSubscription';
 import {
   getConditionalField,
   getSupportedFilterOptions,
 } from '../../../utils/Alerts/AlertsUtil';
-import { ObservabilityFormFiltersItemProps } from './ObservabilityFormFiltersItem.interface';
+import { ObservabilityFormTriggerItemProps } from './ObservabilityFormTriggerItem.interface';
 
-function ObservabilityFormFiltersItem({
-  supportedFilters,
-}: Readonly<ObservabilityFormFiltersItemProps>) {
+function ObservabilityFormTriggerItem({
+  supportedTriggers,
+  isViewMode = false,
+}: Readonly<ObservabilityFormTriggerItemProps>) {
   const { t } = useTranslation();
-
   const form = Form.useFormInstance();
 
   // Watchers
-  const selectedFilters = Form.useWatch<EventFilterRule[]>(
-    ['input', 'filters'],
+  const selectedTriggers = Form.useWatch<EventFilterRule[]>(
+    ['input', 'actions'],
     form
   );
   const [selectedTrigger] =
@@ -45,34 +45,33 @@ function ObservabilityFormFiltersItem({
     [];
 
   // Run time values needed for conditional rendering
-  const filterOptions = useMemo(() => {
-    return getSupportedFilterOptions(selectedFilters, supportedFilters);
-  }, [selectedFilters, supportedFilters]);
+  const triggerOptions = useMemo(() => {
+    return getSupportedFilterOptions(selectedTriggers, supportedTriggers);
+  }, [selectedTriggers, supportedTriggers]);
 
   return (
     <FormCardSection
-      heading={t('label.filter-plural')}
-      subHeading={t('message.alerts-filter-description')}>
-      <Form.List name={['input', 'filters']}>
+      heading={t('label.trigger')}
+      subHeading={t('message.alerts-trigger-description')}>
+      <Form.List name={['input', 'actions']}>
         {(fields, { add, remove }, { errors }) => {
-          const showAddFilterButton =
-            fields.length < (supportedFilters?.length ?? 1);
+          const showAddTriggerButton =
+            fields.length < (supportedTriggers?.length ?? 1) && !isViewMode;
 
           return (
-            <Row data-testid="filters-list" gutter={[16, 16]} key="filters">
+            <Row data-testid="triggers-list" gutter={[16, 16]} key="triggers">
               {fields.map(({ key, name }) => {
                 const effect =
-                  form.getFieldValue(['input', 'filters', name, 'effect']) ??
+                  form.getFieldValue(['input', 'actions', name, 'effect']) ??
                   Effect.Include;
 
                 const showConditionalFields =
-                  !isNil(supportedFilters) &&
-                  !isEmpty(selectedFilters) &&
-                  selectedFilters[name];
+                  !isEmpty(selectedTriggers) &&
+                  !isEmpty(selectedTriggers[name]);
 
                 return (
                   <Col
-                    data-testid={`filter-${name}`}
+                    data-testid={`trigger-${name}`}
                     key={`observability-${key}`}
                     span={24}>
                     <div className="flex gap-4">
@@ -80,25 +79,25 @@ function ObservabilityFormFiltersItem({
                         <Row gutter={[8, 8]}>
                           <Col span={12}>
                             <Form.Item
-                              key={`filter-${key}`}
+                              key={`trigger-${key}`}
                               name={[name, 'name']}
                               rules={[
                                 {
                                   required: true,
                                   message: t('message.field-text-is-required', {
-                                    fieldText: t('label.filter'),
+                                    fieldText: t('label.trigger'),
                                   }),
                                 },
                               ]}>
                               <Select
-                                data-testid={`filter-select-${name}`}
-                                options={filterOptions}
+                                data-testid={`trigger-select-${name}`}
+                                options={triggerOptions}
                                 placeholder={t('label.select-field', {
-                                  field: t('label.filter'),
+                                  field: t('label.trigger'),
                                 })}
                                 onChange={() => {
                                   form.setFieldValue(
-                                    ['input', 'filters', name, 'arguments'],
+                                    ['input', 'actions', name, 'arguments'],
                                     []
                                   );
                                 }}
@@ -107,19 +106,20 @@ function ObservabilityFormFiltersItem({
                           </Col>
                           {showConditionalFields &&
                             getConditionalField(
-                              selectedFilters[name].name ?? '',
+                              selectedTriggers[name].name ?? '',
                               name,
                               selectedTrigger,
-                              supportedFilters
+                              supportedTriggers
                             )}
                         </Row>
                       </div>
-
-                      <Button
-                        data-testid={`remove-filter-${name}`}
-                        icon={<CloseOutlined />}
-                        onClick={() => remove(name)}
-                      />
+                      {!isViewMode && (
+                        <Button
+                          data-testid={`remove-trigger-${name}`}
+                          icon={<CloseOutlined />}
+                          onClick={() => remove(name)}
+                        />
+                      )}
                     </div>
                     <Form.Item
                       label={
@@ -131,16 +131,16 @@ function ObservabilityFormFiltersItem({
                       }>
                       <Switch
                         checked={effect === Effect.Include}
-                        data-testid={`filter-switch-${name}`}
+                        data-testid={`trigger-switch-${name}`}
                       />
                     </Form.Item>
                   </Col>
                 );
               })}
-              {showAddFilterButton ? (
+              {showAddTriggerButton && (
                 <Col span={24}>
                   <Button
-                    data-testid="add-filters"
+                    data-testid="add-trigger"
                     disabled={
                       isEmpty(selectedTrigger) || isNil(selectedTrigger)
                     }
@@ -151,11 +151,11 @@ function ObservabilityFormFiltersItem({
                       })
                     }>
                     {t('label.add-entity', {
-                      entity: t('label.filter'),
+                      entity: t('label.trigger'),
                     })}
                   </Button>
                 </Col>
-              ) : null}
+              )}
               <Form.ErrorList errors={errors} />
             </Row>
           );
@@ -165,4 +165,4 @@ function ObservabilityFormFiltersItem({
   );
 }
 
-export default ObservabilityFormFiltersItem;
+export default ObservabilityFormTriggerItem;
