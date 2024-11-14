@@ -235,6 +235,15 @@ public class WorkflowHandler {
     return false;
   }
 
+  public boolean triggerWorkflow(String workflowName) {
+    try {
+      runtimeService.startProcessInstanceByKey(getTriggerWorkflowId(workflowName));
+      return true;
+    } catch (FlowableObjectNotFoundException ex) {
+      return false;
+    }
+  }
+
   public void suspendWorkflow(String workflowName) {
     repositoryService.suspendProcessDefinitionByKey(getTriggerWorkflowId(workflowName), true, null);
   }
