@@ -184,6 +184,7 @@
     "collection-plural": "Collections",
     "color": "Color",
     "column": "Colonne",
+    "column-description": "Column Description",
     "column-entity": "{{entity}} Colonnes",
     "column-level-lineage": "Column Level Lineage",
     "column-lowercase": "colonne",

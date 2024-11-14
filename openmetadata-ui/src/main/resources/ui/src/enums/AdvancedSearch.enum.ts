@@ -40,6 +40,7 @@ export enum EntityFields {
   DATA_MODEL_TYPE = 'dataModelType',
   ENTITY_TYPE = 'entityType',
   TABLE_TYPE = 'tableType',
+  COLUMN_DESCRIPTION_STATUS = 'columnDescriptionStatus',
   DISPLAY_NAME_KEYWORD = 'displayName.keyword',
   NAME_KEYWORD = 'name.keyword',
   GLOSSARY = 'glossary.name.keyword',
