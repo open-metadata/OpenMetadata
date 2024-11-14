@@ -204,7 +204,7 @@ describe('AlertsUtil tests', () => {
     );
 
     [resultTask, resultTable].forEach((results) => {
-      expect(results).toHaveLength(6);
+      expect(results).toHaveLength(5);
 
       results.forEach((result) =>
         expect(
