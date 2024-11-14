@@ -268,3 +268,7 @@ class SQASampler(SamplerInterface):
                 False,
             )
         )
+
+    def get_columns(self):
+        """get columns from entity"""
+        return list(inspect(self.table).c)

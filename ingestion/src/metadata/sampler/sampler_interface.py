@@ -13,13 +13,15 @@ Interface for sampler
 """
 import traceback
 from abc import ABC, abstractmethod
-from typing import Dict, List, Optional, Union
-
-from sqlalchemy import Column
+from typing import Dict, List, Optional, Set, Union
 
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
-from metadata.generated.schema.entity.data.table import Table, TableData
+from metadata.generated.schema.entity.data.table import (
+    ColumnProfilerConfig,
+    Table,
+    TableData,
+)
 from metadata.generated.schema.entity.services.connections.connectionBasicType import (
     DataStorageConfig,
 )
@@ -30,7 +32,12 @@ from metadata.generated.schema.entity.services.databaseService import DatabaseCo
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.profiler.api.models import TableConfig
 from metadata.profiler.processor.sample_data_handler import upload_sample_data
-from metadata.sampler.config import get_sample_data_count_config, get_sample_query
+from metadata.sampler.config import (
+    get_exclude_columns,
+    get_include_columns,
+    get_sample_data_count_config,
+    get_sample_query,
+)
 from metadata.sampler.models import SampleConfig
 from metadata.sampler.partition import get_partition_details
 from metadata.utils.constants import SAMPLE_DATA_DEFAULT_COUNT
@@ -50,6 +57,8 @@ class SamplerInterface(ABC):
         service_connection_config: Union[DatabaseConnection, DatalakeConnection],
         ometa_client: OpenMetadata,
         entity: Table,
+        include_columns: Optional[List[ColumnProfilerConfig]] = None,
+        exclude_columns: Optional[List[str]] = None,
         sample_config: Optional[SampleConfig] = None,
         partition_details: Optional[Dict] = None,
         sample_query: Optional[str] = None,
@@ -58,10 +67,16 @@ class SamplerInterface(ABC):
         **kwargs,
     ):
         self.ometa_client = ometa_client
-        self._sample_rows = None
+        self._sample = None
+        self._columns: Optional[List[SQALikeColumn]] = None
         self.sample_config = sample_config
 
+        if not self.sample_config.profile_sample:
+            self.sample_config.profile_sample = 100
+
         self.entity = entity
+        self.include_columns = include_columns
+        self.exclude_columns = exclude_columns
         self.sample_query = sample_query
         self.sample_limit = sample_data_count
         self.partition_details = partition_details
@@ -94,15 +109,17 @@ class SamplerInterface(ABC):
             entity_config=table_config,
             default_sample_data_count=default_sample_data_count,
         )
-
         sample_query = get_sample_query(entity=entity, entity_config=table_config)
-
         partition_details = get_partition_details(entity=entity)
+        include_columns = get_include_columns(entity, table_config)
+        exclude_columns = get_exclude_columns(entity, table_config)
 
         return cls(
             service_connection_config=service_connection_config,
             ometa_client=ometa_client,
             entity=entity,
+            include_columns=include_columns,
+            exclude_columns=exclude_columns,
             sample_config=sample_config,
             partition_details=partition_details,
             sample_query=sample_query,
@@ -110,6 +127,44 @@ class SamplerInterface(ABC):
             sample_data_count=sample_data_count,
             **kwargs,
         )
+
+    @property
+    def columns(self) -> List[SQALikeColumn]:
+        """
+        Return the list of columns to profile
+        by skipping the columns to ignore.
+        """
+
+        if self._columns:
+            return self._columns
+
+        if self._get_included_columns():
+            self._columns = [
+                column
+                for column in self.get_columns()
+                if column.name in self._get_included_columns()
+            ]
+
+        if not self._get_included_columns():
+            self._columns = [
+                column
+                for column in self._columns or self.get_columns()
+                if column.name not in self._get_excluded_columns()
+            ]
+
+        return self._columns
+
+    def _get_excluded_columns(self) -> Optional[Set[str]]:
+        """Get excluded  columns for table being profiled"""
+        if self.exclude_columns:
+            return set(self.exclude_columns)
+        return set()
+
+    def _get_included_columns(self) -> Optional[Set[str]]:
+        """Get include columns for table being profiled"""
+        if self.include_columns:
+            return {include_col.columnName for include_col in self.include_columns}
+        return set()
 
     @property
     @abstractmethod
@@ -138,14 +193,17 @@ class SamplerInterface(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def fetch_sample_data(
-        self, columns: Optional[Union[List[Column], List[SQALikeColumn]]]
-    ) -> TableData:
+    def fetch_sample_data(self, columns: Optional[List[SQALikeColumn]]) -> TableData:
         """Fetch sample data
 
         Args:
             columns (Optional[List]): List of columns to fetch
         """
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_columns(self) -> List[SQALikeColumn]:
+        """get columns"""
         raise NotImplementedError
 
     @calculate_execution_time(store=False)
@@ -157,8 +215,7 @@ class SamplerInterface(ABC):
         """
         try:
             logger.debug(
-                "Fetching sample data for "
-                f"{self.profiler_interface.table_entity.fullyQualifiedName.root}..."  # type: ignore
+                f"Fetching sample data for {self.entity.fullyQualifiedName.root}..."
             )
             table_data = self.fetch_sample_data(self.columns)
             # Only store the data if configured to do so

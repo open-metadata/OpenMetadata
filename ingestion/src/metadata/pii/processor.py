@@ -19,8 +19,8 @@ from metadata.generated.schema.entity.data.table import Column, TableData
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
 )
-from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline import (
-    DatabaseServiceProfilerPipeline,
+from metadata.generated.schema.metadataIngestion.databaseServiceSamplerPipeline import (
+    DatabaseServiceSamplerPipeline,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
@@ -40,7 +40,6 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.pii.constants import PII
 from metadata.pii.scanners.column_name_scanner import ColumnNameScanner
 from metadata.pii.scanners.ner_scanner import NERScanner
-from metadata.profiler.api.models import ProfilerResponse
 from metadata.sampler.models import SamplerResponse
 from metadata.utils.logger import profiler_logger
 
@@ -62,8 +61,8 @@ class PIIProcessor(Processor):
         self.metadata = metadata
 
         # Init and type the source config
-        self.source_config: DatabaseServiceProfilerPipeline = cast(
-            DatabaseServiceProfilerPipeline, self.config.source.sourceConfig.config
+        self.source_config: DatabaseServiceSamplerPipeline = cast(
+            DatabaseServiceSamplerPipeline, self.config.source.sourceConfig.config
         )  # Used to satisfy type checked
 
         self._ner_scanner = None
@@ -72,7 +71,7 @@ class PIIProcessor(Processor):
 
     @property
     def name(self) -> str:
-        return "PII Processor"
+        return "Auto Classification Processor"
 
     @property
     def ner_scanner(self) -> NERScanner:
@@ -153,7 +152,7 @@ class PIIProcessor(Processor):
 
     def _run(
         self,
-        record: ProfilerResponse,
+        record: SamplerResponse,
     ) -> Either[SamplerResponse]:
         """
         Main entrypoint for the scanner.
@@ -163,7 +162,7 @@ class PIIProcessor(Processor):
         """
 
         # We don't always need to process
-        if not self.source_config.processPiiSensitive:
+        if not self.source_config.enableAutoClassification:
             return Either(right=record)
 
         column_tags = []

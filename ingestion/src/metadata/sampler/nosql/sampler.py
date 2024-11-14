@@ -87,3 +87,8 @@ class NoSQLSampler(SamplerInterface):
                 row.append(record.get(column.name))
             rows.append(row)
         return rows, columns
+
+    def get_columns(self) -> List[Optional[SQALikeColumn]]:
+        return [
+            SQALikeColumn(name=c.name.root, type=c.dataType) for c in self.table.columns
+        ]

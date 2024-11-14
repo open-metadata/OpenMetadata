@@ -14,7 +14,7 @@ Base source for the profiler used to instantiate a profiler runner with
 its interface
 """
 from copy import deepcopy
-from typing import List, Optional, cast
+from typing import Optional, cast
 
 from sqlalchemy import MetaData
 from sqlalchemy.orm import DeclarativeMeta
@@ -24,7 +24,7 @@ from metadata.generated.schema.configuration.profilerConfiguration import (
 )
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
-from metadata.generated.schema.entity.data.table import ColumnProfilerConfig, Table
+from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
     DatalakeConnection,
 )
@@ -47,6 +47,11 @@ from metadata.profiler.orm.converter.base import ometa_to_sqa_orm
 from metadata.profiler.processor.core import Profiler
 from metadata.profiler.processor.default import DefaultProfiler, get_default_metrics
 from metadata.profiler.source.profiler_source_interface import ProfilerSourceInterface
+from metadata.sampler.config import (
+    get_config_for_table,
+    get_exclude_columns,
+    get_include_columns,
+)
 from metadata.sampler.models import SampleConfig
 from metadata.sampler.sampler_interface import SamplerInterface
 from metadata.utils.logger import profiler_logger
@@ -73,10 +78,8 @@ class ProfilerSource(ProfilerSourceInterface):
         ometa_client: OpenMetadata,
         global_profiler_configuration: ProfilerConfiguration,
     ):
+        self.config = config
         self.service_conn_config = self._copy_service_config(config, database)
-        self.source_config = DatabaseServiceProfilerPipeline.model_validate(
-            config.source.sourceConfig.config
-        )
         self.profiler_config = ProfilerProcessorConfig.model_validate(
             config.processor.model_dump().get("config")
         )
@@ -108,60 +111,6 @@ class ProfilerSource(ProfilerSourceInterface):
         """Build the ORM table if needed for the sampler and profiler interfaces"""
         if not isinstance(self.service_conn_config, NON_SQA_DATABASE_CONNECTIONS):
             return ometa_to_sqa_orm(entity, self.ometa_client, self.sqa_metadata)
-        return None
-
-    @staticmethod
-    def get_config_for_table(entity: Table, profiler_config) -> Optional[TableConfig]:
-        """Get config for a specific entity
-
-        Args:
-            entity: table entity
-        """
-        for table_config in profiler_config.tableConfig or []:
-            if table_config.fullyQualifiedName.root == entity.fullyQualifiedName.root:
-                return table_config
-
-        for schema_config in profiler_config.schemaConfig or []:
-            if (
-                schema_config.fullyQualifiedName.root
-                == entity.databaseSchema.fullyQualifiedName
-            ):
-                return TableConfig.from_database_and_schema_config(
-                    schema_config, entity.fullyQualifiedName.root
-                )
-        for database_config in profiler_config.databaseConfig or []:
-            if (
-                database_config.fullyQualifiedName.root
-                == entity.database.fullyQualifiedName
-            ):
-                return TableConfig.from_database_and_schema_config(
-                    database_config, entity.fullyQualifiedName.root
-                )
-
-        return None
-
-    def _get_include_columns(
-        self, entity, entity_config: Optional[TableConfig]
-    ) -> Optional[List[ColumnProfilerConfig]]:
-        """get included columns"""
-        if entity_config and entity_config.columnConfig:
-            return entity_config.columnConfig.includeColumns
-
-        if entity.tableProfilerConfig:
-            return entity.tableProfilerConfig.includeColumns
-
-        return None
-
-    def _get_exclude_columns(
-        self, entity, entity_config: Optional[TableConfig]
-    ) -> Optional[List[str]]:
-        """get included columns"""
-        if entity_config and entity_config.columnConfig:
-            return entity_config.columnConfig.excludeColumns
-
-        if entity.tableProfilerConfig:
-            return entity.tableProfilerConfig.excludeColumns
-
         return None
 
     def _copy_service_config(
@@ -202,6 +151,9 @@ class ProfilerSource(ProfilerSourceInterface):
         db_service: Optional[DatabaseService],
     ) -> ProfilerInterface:
         """Create sqlalchemy profiler interface"""
+        self.source_config = DatabaseServiceProfilerPipeline.model_validate(
+            self.config.source.sourceConfig.config
+        )
         profiler_class = import_profiler_class(
             ServiceType.Database, source_type=self._interface_type
         )
@@ -243,7 +195,7 @@ class ProfilerSource(ProfilerSourceInterface):
         """
         Returns the runner for the profiler
         """
-        table_config = self.get_config_for_table(entity, profiler_config)
+        table_config = get_config_for_table(entity, profiler_config)
         schema_entity, database_entity, db_service = get_context_entities(
             entity=entity, metadata=self.ometa_client
         )
@@ -259,8 +211,8 @@ class ProfilerSource(ProfilerSourceInterface):
         if not profiler_config.profiler:
             return DefaultProfiler(
                 profiler_interface=profiler_interface,
-                include_columns=self._get_include_columns(entity, table_config),
-                exclude_columns=self._get_exclude_columns(entity, table_config),
+                include_columns=get_include_columns(entity, table_config),
+                exclude_columns=get_exclude_columns(entity, table_config),
                 global_profiler_configuration=self.global_profiler_configuration,
                 db_service=db_service,
             )
@@ -278,7 +230,7 @@ class ProfilerSource(ProfilerSourceInterface):
         return Profiler(
             *metrics,  # type: ignore
             profiler_interface=profiler_interface,
-            include_columns=self._get_include_columns(entity, table_config),
-            exclude_columns=self._get_exclude_columns(entity, table_config),
+            include_columns=get_include_columns(entity, table_config),
+            exclude_columns=get_exclude_columns(entity, table_config),
             global_profiler_configuration=self.global_profiler_configuration,
         )

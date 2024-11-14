@@ -14,6 +14,7 @@ for the profiler
 """
 import math
 import random
+from copy import deepcopy
 from typing import List, Optional, cast
 
 from metadata.data_quality.validations.table.pandas.tableRowInsertedCountToBeBetween import (
@@ -27,6 +28,8 @@ from metadata.generated.schema.entity.data.table import (
 )
 from metadata.mixins.pandas.pandas_mixin import PandasInterfaceMixin
 from metadata.sampler.sampler_interface import SamplerInterface
+from metadata.utils.constants import COMPLEX_COLUMN_SEPARATOR
+from metadata.utils.datalake.datalake_utils import GenericDataFrameColumnParser
 from metadata.utils.sqa_like_column import SQALikeColumn
 
 
@@ -36,14 +39,22 @@ class DatalakeSampler(SamplerInterface, PandasInterfaceMixin):
     run the query in the whole table.
     """
 
+    def __init__(self, *args, **kwargs):
+        """Init the pandas sampler"""
+        super().__init__(*args, **kwargs)
+        self._table = None
+        self.complex_dataframe_sample = deepcopy(self.random_sample(is_sampled=True))
+
     @property
     def table(self):
-        return self.return_ometa_dataframes_sampled(
-            service_connection_config=self.service_connection_config,
-            client=self.client._client,
-            table=self.entity,
-            profile_sample_config=self.sample_config.profile_sample,
-        )
+        if not self._table:
+            self._table = self.return_ometa_dataframes_sampled(
+                service_connection_config=self.service_connection_config,
+                client=self.client._client,
+                table=self.entity,
+                profile_sample_config=self.sample_config.profile_sample,
+            )
+        return self._table
 
     def get_client(self):
         return self.connection.client
@@ -183,3 +194,30 @@ class DatalakeSampler(SamplerInterface, PandasInterfaceMixin):
 
         cols, rows = self.get_col_row(data_frame=self.table, columns=columns)
         return TableData(columns=cols, rows=rows)
+
+    def get_columns(self) -> List[Optional[SQALikeColumn]]:
+        """Get SQALikeColumns for datalake to be passed for metric computation"""
+        sqalike_columns = []
+        if self.complex_dataframe_sample:
+            for column_name in self.complex_dataframe_sample[0].columns:
+                complex_col_name = None
+                if COMPLEX_COLUMN_SEPARATOR in column_name:
+                    complex_col_name = ".".join(
+                        column_name.split(COMPLEX_COLUMN_SEPARATOR)[1:]
+                    )
+                    if complex_col_name:
+                        for df in self.complex_dataframe_sample:
+                            df.rename(
+                                columns={column_name: complex_col_name}, inplace=True
+                            )
+                column_name = complex_col_name or column_name
+                sqalike_columns.append(
+                    SQALikeColumn(
+                        column_name,
+                        GenericDataFrameColumnParser.fetch_col_types(
+                            self.complex_dataframe_sample[0], column_name
+                        ),
+                    )
+                )
+            return sqalike_columns
+        return []

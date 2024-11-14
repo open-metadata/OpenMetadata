@@ -13,6 +13,7 @@ Data Sampler for the PII Workflow
 """
 import traceback
 from copy import deepcopy
+from functools import lru_cache
 from typing import Optional, cast
 
 from sqlalchemy import MetaData
@@ -39,14 +40,21 @@ from metadata.ingestion.api.step import Step
 from metadata.ingestion.api.steps import Processor
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.profiler.orm.converter.base import ometa_to_sqa_orm
-from metadata.profiler.source.database.base.profiler_source import (
-    NON_SQA_DATABASE_CONNECTIONS,
-)
 from metadata.profiler.source.metadata import ProfilerSourceAndEntity
 from metadata.sampler.models import SampleConfig, SampleData, SamplerResponse
 from metadata.sampler.sampler_interface import SamplerInterface
 from metadata.utils.profiler_utils import get_context_entities
 from metadata.utils.service_spec.service_spec import import_sampler_class
+
+NON_SQA_DATABASE_CONNECTIONS = ("Datalake",)
+
+
+@lru_cache
+def _get_sqa_metadata(conn_type: str) -> Optional[MetaData]:
+    """Set sqlalchemy metadata"""
+    if conn_type not in NON_SQA_DATABASE_CONNECTIONS:
+        return MetaData()
+    return None
 
 
 class SamplerProcessor(Processor):
@@ -57,13 +65,15 @@ class SamplerProcessor(Processor):
 
         self.config = config
         self.metadata = metadata
-        self.sqa_metadata = self._set_sqa_metadata()
 
         self.source_config: DatabaseServiceSamplerPipeline = cast(
             DatabaseServiceSamplerPipeline, self.config.source.sourceConfig.config
         )  # Used to satisfy type checked
 
         self._interface_type: str = config.source.type.lower()
+        self.sampler_class = import_sampler_class(
+            ServiceType.Database, source_type=self._interface_type
+        )
 
     @property
     def name(self) -> str:
@@ -77,16 +87,12 @@ class SamplerProcessor(Processor):
             schema_entity, database_entity, db_service = get_context_entities(
                 entity=entity, metadata=self.metadata
             )
-            self.service_conn_config = self._copy_service_config(
-                self.config, db_service
-            )
+            service_conn_config = self._copy_service_config(self.config, db_service)
+            sqa_metadata = _get_sqa_metadata(str(service_conn_config.type.value))
 
-            sampler_class = import_sampler_class(
-                ServiceType.Database, source_type=self._interface_type
-            )
-            _orm = self._build_table_orm(entity)
-            sampler_interface: SamplerInterface = sampler_class.create(
-                service_connection_config=self.service_conn_config,
+            _orm = self._build_table_orm(entity, sqa_metadata)
+            sampler_interface: SamplerInterface = self.sampler_class.create(
+                service_connection_config=service_conn_config,
                 ometa_client=self.metadata,
                 entity=entity,
                 schema_entity=schema_entity,
@@ -107,13 +113,13 @@ class SamplerProcessor(Processor):
             return Either(
                 right=SamplerResponse(
                     table=entity,
-                    sampleData=sample_data,
+                    sample_data=sample_data,
                 )
             )
 
         except Exception as exc:
-            self.status.failed(
-                StackTraceError(
+            return Either(
+                left=StackTraceError(
                     name=record.entity.fullyQualifiedName.root,
                     error=f"Unexpected exception processing entity {record.entity.fullyQualifiedName.root}: {exc}",
                     stackTrace=traceback.format_exc(),
@@ -130,17 +136,15 @@ class SamplerProcessor(Processor):
         config = parse_workflow_config_gracefully(config_dict)
         return cls(config=config, metadata=metadata)
 
-    def _set_sqa_metadata(self):
-        """Set sqlalchemy metadata"""
-        if not isinstance(self.service_conn_config, NON_SQA_DATABASE_CONNECTIONS):
-            return MetaData()
-        return None
-
-    def _build_table_orm(self, entity: Table) -> Optional[DeclarativeMeta]:
+    def _build_table_orm(
+        self, entity: Table, sqa_metadata: Optional[MetaData]
+    ) -> Optional[DeclarativeMeta]:
         """Build the ORM table if needed for the sampler and profiler interfaces"""
-        if not isinstance(self.service_conn_config, NON_SQA_DATABASE_CONNECTIONS):
-            return ometa_to_sqa_orm(entity, self.metadata, self.sqa_metadata)
-        return None
+        return (
+            ometa_to_sqa_orm(entity, self.metadata, sqa_metadata)
+            if sqa_metadata
+            else None
+        )
 
     def _copy_service_config(
         self, config: OpenMetadataWorkflowConfig, database: DatabaseService

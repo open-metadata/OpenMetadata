@@ -127,6 +127,12 @@ def get_parser(args: Optional[List[str]] = None):
             help="Workflow for running external applications",
         )
     )
+    create_common_config_parser_args(
+        sub_parser.add_parser(
+            MetadataCommands.SAMPLE.value,
+            help="Workflow for running sampling and auto classification",
+        )
+    )
     webhook_args(
         sub_parser.add_parser(
             MetadataCommands.WEBHOOK.value,

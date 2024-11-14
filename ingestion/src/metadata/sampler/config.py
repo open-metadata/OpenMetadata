@@ -11,7 +11,7 @@
 """
 Sampler configuration helpers
 """
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
 from metadata.generated.schema.entity.data.database import (
     Database,
@@ -21,7 +21,11 @@ from metadata.generated.schema.entity.data.databaseSchema import (
     DatabaseSchema,
     DatabaseSchemaProfilerConfig,
 )
-from metadata.generated.schema.entity.data.table import PartitionProfilerConfig, Table
+from metadata.generated.schema.entity.data.table import (
+    ColumnProfilerConfig,
+    PartitionProfilerConfig,
+    Table,
+)
 from metadata.generated.schema.entity.services.connections.connectionBasicType import (
     DataStorageConfig,
 )
@@ -196,3 +200,59 @@ def get_sample_data_count_config(
             return config.sampleDataCount
 
     return default_sample_data_count
+
+
+def get_config_for_table(entity: Table, profiler_config) -> Optional[TableConfig]:
+    """Get config for a specific entity
+
+    Args:
+        entity: table entity
+    """
+    for table_config in profiler_config.tableConfig or []:
+        if table_config.fullyQualifiedName.root == entity.fullyQualifiedName.root:
+            return table_config
+
+    for schema_config in profiler_config.schemaConfig or []:
+        if (
+            schema_config.fullyQualifiedName.root
+            == entity.databaseSchema.fullyQualifiedName
+        ):
+            return TableConfig.from_database_and_schema_config(
+                schema_config, entity.fullyQualifiedName.root
+            )
+    for database_config in profiler_config.databaseConfig or []:
+        if (
+            database_config.fullyQualifiedName.root
+            == entity.database.fullyQualifiedName
+        ):
+            return TableConfig.from_database_and_schema_config(
+                database_config, entity.fullyQualifiedName.root
+            )
+
+    return None
+
+
+def get_include_columns(
+    entity, entity_config: Optional[TableConfig]
+) -> Optional[List[ColumnProfilerConfig]]:
+    """get included columns"""
+    if entity_config and entity_config.columnConfig:
+        return entity_config.columnConfig.includeColumns
+
+    if entity.tableProfilerConfig:
+        return entity.tableProfilerConfig.includeColumns
+
+    return None
+
+
+def get_exclude_columns(
+    entity, entity_config: Optional[TableConfig]
+) -> Optional[List[str]]:
+    """get included columns"""
+    if entity_config and entity_config.columnConfig:
+        return entity_config.columnConfig.excludeColumns
+
+    if entity.tableProfilerConfig:
+        return entity.tableProfilerConfig.excludeColumns
+
+    return None
