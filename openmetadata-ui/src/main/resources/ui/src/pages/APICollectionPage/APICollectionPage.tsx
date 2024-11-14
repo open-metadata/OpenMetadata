@@ -15,7 +15,7 @@ import { Col, Row, Skeleton, Tabs, TabsProps } from 'antd';
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
 import { isEmpty, isUndefined } from 'lodash';
-import { EntityTags, PagingResponse } from 'Models';
+import { EntityTags } from 'Models';
 import React, {
   FunctionComponent,
   useCallback,
@@ -46,6 +46,7 @@ import {
   getEntityDetailsPath,
   getVersionPath,
   INITIAL_PAGING_VALUE,
+  PAGE_SIZE,
   ROUTES,
 } from '../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
@@ -69,6 +70,7 @@ import { APIEndpoint } from '../../generated/entity/data/apiEndpoint';
 import { ThreadType } from '../../generated/entity/feed/thread';
 import { Include } from '../../generated/type/include';
 import { TagLabel } from '../../generated/type/tagLabel';
+import { usePaging } from '../../hooks/paging/usePaging';
 import { useFqn } from '../../hooks/useFqn';
 import { FeedCounts } from '../../interface/feed.interface';
 import {
@@ -99,6 +101,9 @@ const APICollectionPage: FunctionComponent = () => {
   const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
   const { t } = useTranslation();
   const { getEntityPermissionByFqn } = usePermissionProvider();
+  const pagingInfo = usePaging(PAGE_SIZE);
+
+  const { paging, pageSize, handlePagingChange } = pagingInfo;
 
   const { tab: activeTab = EntityTabs.API_ENDPOINT } =
     useParams<{ tab: EntityTabs }>();
@@ -112,12 +117,7 @@ const APICollectionPage: FunctionComponent = () => {
   const [apiCollection, setAPICollection] = useState<APICollection>(
     {} as APICollection
   );
-  const [apiEndpoints, setAPIEndpoints] = useState<
-    PagingResponse<APIEndpoint[]>
-  >({
-    data: [],
-    paging: { total: 0 },
-  });
+  const [apiEndpoints, setAPIEndpoints] = useState<Array<APIEndpoint>>([]);
   const [apiEndpointsLoading, setAPIEndpointsLoading] = useState<boolean>(true);
   const [isAPICollectionLoading, setIsAPICollectionLoading] =
     useState<boolean>(true);
@@ -239,7 +239,8 @@ const APICollectionPage: FunctionComponent = () => {
           service: apiCollection?.service?.fullyQualifiedName ?? '',
           include: showDeletedEndpoints ? Include.Deleted : Include.NonDeleted,
         });
-        setAPIEndpoints(res);
+        setAPIEndpoints(res.data);
+        handlePagingChange(res.paging);
       } catch (err) {
         showErrorToast(err as AxiosError);
       } finally {
@@ -454,13 +455,13 @@ const APICollectionPage: FunctionComponent = () => {
       if (cursorType) {
         getAPICollectionEndpoints({
           paging: {
-            [cursorType]: apiEndpoints.paging[cursorType],
+            [cursorType]: paging[cursorType],
           },
         });
       }
       setCurrentEndpointsPage(currentPage);
     },
-    [apiEndpoints, getAPICollectionEndpoints]
+    [paging, getAPICollectionEndpoints]
   );
 
   const versionHandler = useCallback(() => {
@@ -503,13 +504,16 @@ const APICollectionPage: FunctionComponent = () => {
 
   useEffect(() => {
     if (viewAPICollectionPermission && decodedAPICollectionFQN) {
-      getAPICollectionEndpoints();
+      getAPICollectionEndpoints({
+        paging: { limit: pageSize },
+      });
     }
   }, [
     showDeletedEndpoints,
     decodedAPICollectionFQN,
     viewAPICollectionPermission,
     apiCollection,
+    pageSize,
   ]);
 
   const {
@@ -561,7 +565,7 @@ const APICollectionPage: FunctionComponent = () => {
     {
       label: (
         <TabsLabel
-          count={apiEndpoints.paging.total}
+          count={paging.total}
           id={EntityTabs.API_ENDPOINT}
           isActive={activeTab === EntityTabs.API_ENDPOINT}
           name={t('label.endpoint-plural')}
@@ -585,6 +589,7 @@ const APICollectionPage: FunctionComponent = () => {
                       editDescriptionPermission={editDescriptionPermission}
                       endpointPaginationHandler={endpointPaginationHandler}
                       isEdit={isEdit}
+                      pagingInfo={pagingInfo}
                       showDeletedEndpoints={showDeletedEndpoints}
                       onCancel={onEditCancel}
                       onDescriptionEdit={onDescriptionEdit}

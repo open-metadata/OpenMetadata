@@ -15,7 +15,7 @@ import { Col, Row, Skeleton, Tabs, TabsProps } from 'antd';
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
 import { isEmpty, isUndefined } from 'lodash';
-import { EntityTags, PagingResponse } from 'Models';
+import { EntityTags } from 'Models';
 import React, {
   FunctionComponent,
   useCallback,
@@ -40,6 +40,7 @@ import {
   getEntityDetailsPath,
   getVersionPath,
   INITIAL_PAGING_VALUE,
+  PAGE_SIZE,
   ROUTES,
 } from '../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
@@ -62,6 +63,7 @@ import { Table } from '../../generated/entity/data/table';
 import { ThreadType } from '../../generated/entity/feed/thread';
 import { Include } from '../../generated/type/include';
 import { TagLabel } from '../../generated/type/tagLabel';
+import { usePaging } from '../../hooks/paging/usePaging';
 import { useFqn } from '../../hooks/useFqn';
 import { FeedCounts } from '../../interface/feed.interface';
 import {
@@ -90,6 +92,9 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
   const { t } = useTranslation();
   const { getEntityPermissionByFqn } = usePermissionProvider();
+  const pagingInfo = usePaging(PAGE_SIZE);
+
+  const { paging, pageSize, handlePagingChange } = pagingInfo;
 
   const { tab: activeTab = EntityTabs.TABLE } =
     useParams<{ tab: EntityTabs }>();
@@ -103,10 +108,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   const [databaseSchema, setDatabaseSchema] = useState<DatabaseSchema>(
     {} as DatabaseSchema
   );
-  const [tableData, setTableData] = useState<PagingResponse<Table[]>>({
-    data: [],
-    paging: { total: 0 },
-  });
+  const [tableData, setTableData] = useState<Array<Table>>([]);
   const [tableDataLoading, setTableDataLoading] = useState<boolean>(true);
   const [isSchemaDetailsLoading, setIsSchemaDetailsLoading] =
     useState<boolean>(true);
@@ -240,7 +242,8 @@ const DatabaseSchemaPage: FunctionComponent = () => {
           databaseSchema: decodedDatabaseSchemaFQN,
           include: showDeletedTables ? Include.Deleted : Include.NonDeleted,
         });
-        setTableData(res);
+        setTableData(res.data);
+        handlePagingChange(res.paging);
       } catch (err) {
         showErrorToast(err as AxiosError);
       } finally {
@@ -452,11 +455,11 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   const tablePaginationHandler = useCallback(
     ({ cursorType, currentPage }: PagingHandlerParams) => {
       if (cursorType) {
-        getSchemaTables({ [cursorType]: tableData.paging[cursorType] });
+        getSchemaTables({ [cursorType]: paging[cursorType] });
       }
       setCurrentTablesPage(currentPage);
     },
-    [tableData, getSchemaTables]
+    [paging, getSchemaTables]
   );
 
   const versionHandler = useCallback(() => {
@@ -513,13 +516,14 @@ const DatabaseSchemaPage: FunctionComponent = () => {
 
   useEffect(() => {
     if (viewDatabaseSchemaPermission && decodedDatabaseSchemaFQN) {
-      getSchemaTables();
+      getSchemaTables({ limit: pageSize });
     }
   }, [
     showDeletedTables,
     decodedDatabaseSchemaFQN,
     viewDatabaseSchemaPermission,
     deleted,
+    pageSize,
   ]);
 
   const {
@@ -599,6 +603,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
         getEntityFeedCount,
         fetchDatabaseSchemaDetails,
         handleFeedCount,
+        pagingInfo,
       }),
     [
       feedCount,
@@ -629,6 +634,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       getEntityFeedCount,
       fetchDatabaseSchemaDetails,
       handleFeedCount,
+      pagingInfo,
     ]
   );
 

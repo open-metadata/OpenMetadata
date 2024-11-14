@@ -18,6 +18,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
@@ -96,6 +97,9 @@ public interface SearchIndex {
             entity.getFullyQualifiedName(),
             suggest.stream().map(SearchSuggest::getInput).toList()));
     map.put("deleted", entity.getDeleted() != null && entity.getDeleted());
+
+    Optional.ofNullable(entity.getCertification())
+        .ifPresent(assetCertification -> map.put("certification", assetCertification));
     return map;
   }
 

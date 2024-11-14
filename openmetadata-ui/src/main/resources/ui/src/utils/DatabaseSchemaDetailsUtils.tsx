@@ -59,12 +59,13 @@ export const getDataBaseSchemaPageBaseTabs = ({
   getEntityFeedCount,
   fetchDatabaseSchemaDetails,
   handleFeedCount,
+  pagingInfo,
 }: DatabaseSchemaPageTabProps): TabProps[] => {
   return [
     {
       label: (
         <TabsLabel
-          count={tableData.paging.total}
+          count={pagingInfo.paging.total}
           id={EntityTabs.TABLE}
           isActive={activeTab === EntityTabs.TABLE}
           name={t('label.table-plural')}
@@ -85,6 +86,7 @@ export const getDataBaseSchemaPageBaseTabs = ({
                       description={description}
                       editDescriptionPermission={editDescriptionPermission}
                       isEdit={isEdit}
+                      pagingInfo={pagingInfo}
                       showDeletedTables={showDeletedTables}
                       tableData={tableData}
                       tableDataLoading={tableDataLoading}

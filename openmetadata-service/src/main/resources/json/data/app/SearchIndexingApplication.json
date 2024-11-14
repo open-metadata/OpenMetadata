@@ -42,12 +42,15 @@
       "testCaseResult",
       "apiService",
       "apiEndpoint",
-      "apiCollection"
+      "apiCollection",
+      "metric"
     ],
     "recreateIndex": false,
     "batchSize": "100",
     "payLoadSize": 104857600,
-    "numberOfThreads": 5,
+    "producerThreads": 1,
+    "consumerThreads": 1,
+    "queueSize": 100,
     "maxConcurrentRequests": 100,
     "maxRetries": 3,
     "initialBackoff": 1000,

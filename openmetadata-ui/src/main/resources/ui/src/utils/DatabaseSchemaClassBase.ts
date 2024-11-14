@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { EntityTags, PagingResponse } from 'Models';
+import { EntityTags } from 'Models';
 import { PagingHandlerParams } from '../components/common/NextPrevious/NextPrevious.interface';
 import { TabProps } from '../components/common/TabsLabel/TabsLabel.interface';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
@@ -18,12 +18,13 @@ import { EntityTabs } from '../enums/entity.enum';
 import { DatabaseSchema } from '../generated/entity/data/databaseSchema';
 import { Table } from '../generated/entity/data/table';
 import { ThreadType } from '../generated/entity/feed/thread';
+import { UsePagingInterface } from '../hooks/paging/usePaging';
 import { FeedCounts } from '../interface/feed.interface';
 import { getDataBaseSchemaPageBaseTabs } from './DatabaseSchemaDetailsUtils';
 
 export interface DatabaseSchemaPageTabProps {
   feedCount: FeedCounts;
-  tableData: PagingResponse<Table[]>;
+  tableData: Table[];
   activeTab: EntityTabs;
   currentTablesPage: number;
   databaseSchema: DatabaseSchema;
@@ -53,6 +54,7 @@ export interface DatabaseSchemaPageTabProps {
   getEntityFeedCount: () => void;
   fetchDatabaseSchemaDetails: () => Promise<void>;
   handleFeedCount: (data: FeedCounts) => void;
+  pagingInfo: UsePagingInterface;
 }
 
 class DatabaseSchemaClassBase {
