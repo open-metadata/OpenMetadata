@@ -38,6 +38,6 @@ for (const searchItem of navbarSearchItems) {
       `/api/v1/search/query?q=*&index=${searchIndex}`
     );
     await page.getByTestId('searchBox').fill('dim');
-    searchRes;
+    await searchRes;
   });
 }
