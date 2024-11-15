@@ -135,7 +135,27 @@ export const AuthProvider = ({
     getRefreshToken,
     isApplicationLoading,
     setApplicationLoading,
-  } = useApplicationStore();
+  } = useApplicationStore((state) => ({
+    setHelperFunctionsRef: state.setHelperFunctionsRef,
+    setCurrentUser: state.setCurrentUser,
+    updateNewUser: state.updateNewUser,
+    setIsAuthenticated: state.setIsAuthenticated,
+    authConfig: state.authConfig,
+    setAuthConfig: state.setAuthConfig,
+    setAuthorizerConfig: state.setAuthorizerConfig,
+    setIsSigningUp: state.setIsSigningUp,
+    authorizerConfig: state.authorizerConfig,
+    jwtPrincipalClaims: state.jwtPrincipalClaims,
+    jwtPrincipalClaimsMapping: state.jwtPrincipalClaimsMapping,
+    setJwtPrincipalClaims: state.setJwtPrincipalClaims,
+    setJwtPrincipalClaimsMapping: state.setJwtPrincipalClaimsMapping,
+    removeRefreshToken: state.removeRefreshToken,
+    removeOidcToken: state.removeOidcToken,
+    getOidcToken: state.getOidcToken,
+    getRefreshToken: state.getRefreshToken,
+    isApplicationLoading: state.isApplicationLoading,
+    setApplicationLoading: state.setApplicationLoading,
+  }));
   const { updateDomains, updateDomainLoading } = useDomainStore();
   const tokenService = useRef<TokenService>();
 
@@ -266,43 +286,10 @@ export const AuthProvider = ({
   };
 
   /**
-   * Renew Id Token handler for all the SSOs.
-   * This method will be called when the id token is about to expire.
-   */
-  const renewIdToken = async () => {
-    try {
-      if (!tokenService.current?.isTokenUpdateInProgress()) {
-        await tokenService.current?.refreshToken();
-      } else {
-        // wait for renewal to complete
-        const wait = new Promise((resolve) => {
-          setTimeout(() => {
-            return resolve(true);
-          }, 500);
-        });
-        await wait;
-
-        // should have updated token after renewal
-        return getOidcToken();
-      }
-    } catch (error) {
-      // eslint-disable-next-line no-console
-      console.error(
-        `Error while refreshing token: `,
-        (error as AxiosError).message
-      );
-
-      throw error;
-    }
-
-    return getOidcToken();
-  };
-
-  /**
    * This method will try to signIn silently when token is about to expire
    * if it's not succeed then it will proceed for logout
    */
-  const trySilentSignIn = async (forceLogout?: boolean) => {
+  const trySilentSignIn = async () => {
     const pathName = getPathNameFromWindowLocation();
     // Do not try silent sign in for SignIn or SignUp route
     if (
@@ -311,27 +298,8 @@ export const AuthProvider = ({
       return;
     }
 
-    try {
-      // Try to renew token
-      const newToken = await renewIdToken();
-
-      if (newToken) {
-        // Start expiry timer on successful silent signIn
-        // eslint-disable-next-line @typescript-eslint/no-use-before-define
-        startTokenExpiryTimer();
-
-        // Retry the failed request after successful silent signIn
-        if (failedLoggedInUserRequest) {
-          await getLoggedInUserDetails();
-          failedLoggedInUserRequest = null;
-        }
-      } else {
-        // reset user details if silent signIn fails
-        resetUserDetails(forceLogout);
-      }
-    } catch (error) {
-      // reset user details if silent signIn fails
-      resetUserDetails(forceLogout);
+    if (!tokenService.current?.isTokenUpdateInProgress()) {
+      await tokenService.current?.refreshToken();
     }
   };
 
@@ -580,7 +548,7 @@ export const AuthProvider = ({
               failedLoggedInUserRequest = true;
             }
             handleStoreProtectedRedirectPath();
-            trySilentSignIn(true);
+            trySilentSignIn();
           }
         }
 
@@ -611,9 +579,11 @@ export const AuthProvider = ({
           } else {
             // get the user details if token is present and route is not auth callback and saml callback
             if (
-              ![ROUTES.AUTH_CALLBACK, ROUTES.SAML_CALLBACK].includes(
-                location.pathname
-              )
+              ![
+                ROUTES.AUTH_CALLBACK,
+                ROUTES.SAML_CALLBACK,
+                ROUTES.SILENT_CALLBACK,
+              ].includes(location.pathname)
             ) {
               getLoggedInUserDetails();
             }

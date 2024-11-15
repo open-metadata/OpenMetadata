@@ -73,7 +73,16 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
       newUser,
       setOidcToken,
       isApplicationLoading,
-    } = useApplicationStore();
+    } = useApplicationStore((state) => ({
+      isAuthenticated: state.isAuthenticated,
+      isSigningUp: state.isSigningUp,
+      setIsSigningUp: state.setIsSigningUp,
+      updateAxiosInterceptors: state.updateAxiosInterceptors,
+      currentUser: state.currentUser,
+      newUser: state.newUser,
+      setOidcToken: state.setOidcToken,
+      isApplicationLoading: state.isApplicationLoading,
+    }));
     const history = useHistory();
     const location = useCustomLocation();
     const userManager = useMemo(
@@ -98,7 +107,7 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
     // Performs silent signIn and returns with IDToken
     const signInSilently = async () => {
       const user = await userManager.signinSilent();
-      setOidcToken(user.id_token);
+      //   setOidcToken(user.id_token);
 
       return user.id_token;
     };

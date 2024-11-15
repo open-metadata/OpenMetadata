@@ -40,7 +40,7 @@ import { isDev } from './EnvironmentUtils';
 const cookieStorage = new CookieStorage();
 
 // 1 minutes for client auth approach
-export const EXPIRY_THRESHOLD_MILLES = 1 * 60 * 1000;
+export const EXPIRY_THRESHOLD_MILLES = 2 * 60 * 1000;
 
 const subPath = process.env.APP_SUB_PATH ?? '';
 
@@ -340,6 +340,7 @@ export const extractDetailsFromToken = (token: string) => {
         return {
           exp,
           isExpired: false,
+          timeoutExpiry: 0,
         };
       }
       const threshouldMillis = EXPIRY_THRESHOLD_MILLES;
