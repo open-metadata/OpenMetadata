@@ -1129,16 +1129,21 @@ To continue pursuing this objective, the application was completely refactored t
   {
     id: 53,
     version: 'v1.5.11',
-    description: 'Released on 6th November 2024.',
+    description: 'Released on 15th November 2024.',
     features: [],
     changeLogs: {
       Improvements: `- **Improvement**: Parallelize the search indexing process.
 - **Fix**: Return s3 endpoint as str() instead of Url.
 - **Improvement**: Databricks query run optimisation.
 - **Fix**: Make Export CSV Async API, websocket to push data back.
-- **Fix**: Airflow dependency.
 - **Improvement**: Add Column Value to be At Expected Location Test.
 - **Fix**: User count doesn't update on adding to the team while using search.
+- **Improvement**: Added support for lineage default depth settings.
+- **Fix**: Materialised View Lineage.
+- **Improvement**: Add PowerBI Report Server Connector ${CollateIconWithLinkMD}
+- **Improvement**: Mask SQL Queries in Usage & Lineage Workflow.
+- **Fix**: Sample data overlapping issue.
+- **Fix**: Checkmark saves wrong custom property field 
 `,
     },
   },
