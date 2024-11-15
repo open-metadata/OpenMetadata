@@ -27,6 +27,7 @@ export interface TopicSchemaFieldsProps
   messageSchema: Topic['messageSchema'];
   hasDescriptionEditAccess: boolean;
   hasTagEditAccess: boolean;
+  hasGlossaryTermEditAccess: boolean;
   isReadOnly: boolean;
   entityFqn: string;
   isVersionView?: boolean;

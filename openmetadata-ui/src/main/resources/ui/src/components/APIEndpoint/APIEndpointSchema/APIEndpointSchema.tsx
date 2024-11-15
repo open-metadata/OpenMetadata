@@ -368,7 +368,9 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
             entityFqn={apiEndpointDetails.fullyQualifiedName ?? ''}
             entityType={EntityType.API_ENDPOINT}
             handleTagSelection={handleFieldTagsChange}
-            hasTagEditAccess={permissions.EditTags || permissions.EditAll}
+            hasTagEditAccess={
+              permissions.EditGlossaryTerms || permissions.EditAll
+            }
             index={index}
             isReadOnly={Boolean(apiEndpointDetails.deleted) || isVersionView}
             record={record}

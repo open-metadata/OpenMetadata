@@ -7,6 +7,7 @@ import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.schema.type.ColumnDataType.ARRAY;
 import static org.openmetadata.schema.type.ColumnDataType.BIGINT;
@@ -797,9 +798,9 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
         container.getChildren(),
         container.getDataModel(),
         container.getOwners(),
-        container.getTags(),
         container.getFollowers(),
         container.getExtension());
+    assertTrue(container.getTags().isEmpty());
 
     // .../models?fields=dataModel - parent,children are not set in createEntity - these are tested
     // separately

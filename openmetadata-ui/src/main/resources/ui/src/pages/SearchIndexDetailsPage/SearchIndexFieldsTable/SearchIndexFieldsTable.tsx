@@ -58,6 +58,7 @@ const SearchIndexFieldsTable = ({
   onUpdate,
   hasDescriptionEditAccess,
   hasTagEditAccess,
+  hasGlossaryTermEditAccess,
   isReadOnly = false,
   onThreadLinkSelect,
   entityFqn,
@@ -256,7 +257,7 @@ const SearchIndexFieldsTable = ({
             entityFqn={entityFqn}
             entityType={EntityType.SEARCH_INDEX}
             handleTagSelection={handleTagSelection}
-            hasTagEditAccess={hasTagEditAccess}
+            hasTagEditAccess={hasGlossaryTermEditAccess}
             index={index}
             isReadOnly={isReadOnly}
             record={record}
@@ -271,6 +272,7 @@ const SearchIndexFieldsTable = ({
       entityFqn,
       isReadOnly,
       hasTagEditAccess,
+      hasGlossaryTermEditAccess,
       handleUpdate,
       handleTagSelection,
       renderDataTypeDisplay,

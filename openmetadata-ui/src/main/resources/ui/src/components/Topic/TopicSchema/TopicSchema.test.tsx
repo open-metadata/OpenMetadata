@@ -35,6 +35,7 @@ const mockProps: TopicSchemaFieldsProps = {
   isReadOnly: false,
   onUpdate: mockOnUpdate,
   hasTagEditAccess: true,
+  hasGlossaryTermEditAccess: true,
   entityFqn: 'topic.fqn',
   onThreadLinkSelect: jest.fn(),
 };

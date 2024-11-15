@@ -532,6 +532,7 @@ const TableDetailsPageV1: React.FC = () => {
 
   const {
     editTagsPermission,
+    editGlossaryTermsPermission,
     editDescriptionPermission,
     editCustomAttributePermission,
     editAllPermission,
@@ -545,6 +546,9 @@ const TableDetailsPageV1: React.FC = () => {
     () => ({
       editTagsPermission:
         (tablePermissions.EditTags || tablePermissions.EditAll) && !deleted,
+      editGlossaryTermsPermission:
+        (tablePermissions.EditGlossaryTerms || tablePermissions.EditAll) &&
+        !deleted,
       editDescriptionPermission:
         (tablePermissions.EditDescription || tablePermissions.EditAll) &&
         !deleted,
@@ -602,6 +606,7 @@ const TableDetailsPageV1: React.FC = () => {
                   />
                   <SchemaTab
                     hasDescriptionEditAccess={editDescriptionPermission}
+                    hasGlossaryTermEditAccess={editGlossaryTermsPermission}
                     hasTagEditAccess={editTagsPermission}
                     isReadOnly={deleted}
                     table={tableDetails}
@@ -640,6 +645,7 @@ const TableDetailsPageV1: React.FC = () => {
                     editCustomAttributePermission={
                       editCustomAttributePermission
                     }
+                    editGlossaryTermsPermission={editGlossaryTermsPermission}
                     editTagPermission={editTagsPermission}
                     entityFQN={tableFqn}
                     entityId={tableDetails?.id ?? ''}
@@ -674,6 +680,7 @@ const TableDetailsPageV1: React.FC = () => {
       onDescriptionUpdate,
       testCaseSummary,
       editTagsPermission,
+      editGlossaryTermsPermission,
       editDescriptionPermission,
       editAllPermission,
       viewAllPermission,

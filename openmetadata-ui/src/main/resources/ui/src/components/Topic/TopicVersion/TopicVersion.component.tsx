@@ -159,6 +159,7 @@ const TopicVersion: FC<TopicVersionProp> = ({
                     isVersionView
                     entityFqn={currentVersionData?.fullyQualifiedName ?? ''}
                     hasDescriptionEditAccess={false}
+                    hasGlossaryTermEditAccess={false}
                     hasTagEditAccess={false}
                     messageSchema={messageSchemaDiff}
                     schemaTypePlaceholder={schemaType}

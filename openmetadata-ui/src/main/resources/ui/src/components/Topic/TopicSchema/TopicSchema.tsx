@@ -65,6 +65,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
   isReadOnly,
   onUpdate,
   hasTagEditAccess,
+  hasGlossaryTermEditAccess,
   entityFqn,
   onThreadLinkSelect,
   isVersionView = false,
@@ -259,7 +260,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
             entityFqn={entityFqn}
             entityType={EntityType.TOPIC}
             handleTagSelection={handleFieldTagsChange}
-            hasTagEditAccess={hasTagEditAccess}
+            hasTagEditAccess={hasGlossaryTermEditAccess}
             index={index}
             isReadOnly={isReadOnly}
             record={record}

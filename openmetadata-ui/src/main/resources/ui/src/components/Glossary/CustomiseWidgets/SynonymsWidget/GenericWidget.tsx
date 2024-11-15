@@ -223,6 +223,7 @@ export const GenericWidget = (props: WidgetCommonProps) => {
       return (
         <SchemaTable
           hasDescriptionEditAccess={false}
+          hasGlossaryTermEditAccess={false}
           hasTagEditAccess={false}
           table={
             {

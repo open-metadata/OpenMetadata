@@ -193,7 +193,7 @@ EXPECTED_DATA_MODEL_NULL_DB = [
                 )
             ]
         ),
-        tags=None,
+        tags=[],
         columns=[
             Column(
                 name="customer_id",

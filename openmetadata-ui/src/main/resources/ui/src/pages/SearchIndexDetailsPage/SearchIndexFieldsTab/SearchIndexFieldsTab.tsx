@@ -32,6 +32,7 @@ function SearchIndexFieldsTab({
   onUpdate,
   hasDescriptionEditAccess,
   hasTagEditAccess,
+  hasGlossaryTermEditAccess,
   onThreadLinkSelect,
   isReadOnly = false,
   entityFqn,
@@ -123,6 +124,7 @@ function SearchIndexFieldsTab({
         entityFqn={entityFqn}
         expandableConfig={expandableConfig}
         hasDescriptionEditAccess={hasDescriptionEditAccess}
+        hasGlossaryTermEditAccess={hasGlossaryTermEditAccess}
         hasTagEditAccess={hasTagEditAccess}
         isReadOnly={isReadOnly}
         searchIndexFields={fields}

@@ -25,6 +25,7 @@ const mockProps = {
   onUpdate: mockOnUpdate,
   hasDescriptionEditAccess: true,
   hasTagEditAccess: true,
+  hasGlossaryTermEditAccess: true,
   onThreadLinkSelect: mockOnThreadLinkSelect,
   expandableConfig: {},
   entityFqn: 'search_service.search_index_fqn',

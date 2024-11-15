@@ -247,6 +247,7 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
 
   const {
     editTagsPermission,
+    editGlossaryTermsPermission,
     editDescriptionPermission,
     editCustomAttributePermission,
     editAllPermission,
@@ -257,6 +258,9 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
     () => ({
       editTagsPermission:
         (metricPermissions.EditTags || metricPermissions.EditAll) && !deleted,
+      editGlossaryTermsPermission:
+        (metricPermissions.EditGlossaryTerms || metricPermissions.EditAll) &&
+        !deleted,
       editDescriptionPermission:
         (metricPermissions.EditDescription || metricPermissions.EditAll) &&
         !deleted,
@@ -330,6 +334,9 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
                         domain={metricDetails?.domain}
                         editCustomAttributePermission={
                           editCustomAttributePermission
+                        }
+                        editGlossaryTermsPermission={
+                          editGlossaryTermsPermission
                         }
                         editTagPermission={editTagsPermission}
                         entityFQN={decodedMetricFqn}
@@ -444,6 +451,7 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
       onDescriptionUpdate,
       onDataProductsUpdate,
       editTagsPermission,
+      editGlossaryTermsPermission,
       editDescriptionPermission,
       editCustomAttributePermission,
       editLineagePermission,

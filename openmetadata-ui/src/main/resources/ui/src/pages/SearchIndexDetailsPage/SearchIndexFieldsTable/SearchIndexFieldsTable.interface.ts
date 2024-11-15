@@ -20,6 +20,7 @@ export interface SearchIndexFieldsTableProps {
   searchIndexFields: Array<SearchIndexField>;
   hasDescriptionEditAccess: boolean;
   hasTagEditAccess: boolean;
+  hasGlossaryTermEditAccess: boolean;
   searchedFields: Array<SearchIndexField>;
   expandableConfig: ExpandableConfig<SearchIndexField>;
   isReadOnly?: boolean;
