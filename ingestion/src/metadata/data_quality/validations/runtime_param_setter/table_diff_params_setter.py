@@ -122,8 +122,8 @@ class TableDiffParamsSetter(RuntimeParameterSetter):
         partition_where_clause = (
             None
             if not (
-                self.sampler._partition_details
-                and self.sampler._partition_details.enablePartitioning
+                self.sampler.partition_details
+                and self.sampler.partition_details.enablePartitioning
             )
             else self.sampler.get_partitioned_query().whereclause.compile(
                 compile_kwargs={"literal_binds": True}

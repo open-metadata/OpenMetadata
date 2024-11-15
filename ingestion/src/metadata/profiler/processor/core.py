@@ -245,11 +245,6 @@ class Profiler(Generic[TMetric]):
             return column.customMetrics or None
         return None
 
-    @property
-    def sample(self):
-        """Return the sample used for the profiler"""
-        return self.profiler_interface.sample
-
     def validate_composed_metric(self) -> None:
         """
         Make sure that all composed metrics have

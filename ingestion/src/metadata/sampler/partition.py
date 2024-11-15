@@ -25,6 +25,7 @@ from metadata.generated.schema.entity.data.table import (
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
+from metadata.sampler.models import TableConfig
 
 
 def validate_athena_injected_partitioning(
@@ -66,7 +67,9 @@ def validate_athena_injected_partitioning(
                 )
 
 
-def get_partition_details(entity: Table) -> Optional[PartitionProfilerConfig]:
+def get_partition_details(
+    entity: Table, entity_config: Optional[TableConfig] = None
+) -> Optional[PartitionProfilerConfig]:
     """Build PartitionProfilerConfig object from entity
 
     Args:
@@ -74,6 +77,9 @@ def get_partition_details(entity: Table) -> Optional[PartitionProfilerConfig]:
     Returns:
         PartitionProfilerConfig
     """
+    if entity_config:
+        return entity_config.partitionConfig
+
     # Gather service type information
     service_type = getattr(entity, "serviceType", None)
 

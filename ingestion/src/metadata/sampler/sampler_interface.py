@@ -35,6 +35,7 @@ from metadata.profiler.processor.sample_data_handler import upload_sample_data
 from metadata.sampler.config import (
     get_exclude_columns,
     get_include_columns,
+    get_profile_sample_config,
     get_sample_data_count_config,
     get_sample_query,
 )
@@ -59,7 +60,7 @@ class SamplerInterface(ABC):
         entity: Table,
         include_columns: Optional[List[ColumnProfilerConfig]] = None,
         exclude_columns: Optional[List[str]] = None,
-        sample_config: Optional[SampleConfig] = None,
+        sample_config: SampleConfig = SampleConfig(),
         partition_details: Optional[Dict] = None,
         sample_query: Optional[str] = None,
         storage_config: DataStorageConfig = None,
@@ -96,7 +97,7 @@ class SamplerInterface(ABC):
         database_entity: Database,
         table_config: Optional[TableConfig] = None,
         storage_config: Optional[DataStorageConfig] = None,
-        sample_config: Optional[SampleConfig] = None,
+        default_sample_config: Optional[SampleConfig] = None,
         default_sample_data_count: Optional[int] = SAMPLE_DATA_DEFAULT_COUNT,
         **kwargs,
     ) -> "SamplerInterface":
@@ -108,6 +109,13 @@ class SamplerInterface(ABC):
             database_entity=database_entity,
             entity_config=table_config,
             default_sample_data_count=default_sample_data_count,
+        )
+        sample_config = get_profile_sample_config(
+            entity=entity,
+            schema_entity=schema_entity,
+            database_entity=database_entity,
+            entity_config=table_config,
+            default_sample_config=default_sample_config,
         )
         sample_query = get_sample_query(entity=entity, entity_config=table_config)
         partition_details = get_partition_details(entity=entity)

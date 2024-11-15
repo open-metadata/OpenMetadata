@@ -107,12 +107,9 @@ class ProfilerTest(TestCase):
             ),
         ],
     )
-    with patch.object(
-        SQAProfilerInterface, "_convert_table_to_orm_object", return_value=User
-    ):
-        sqa_profiler_interface = SQAProfilerInterface(
-            sqlite_conn, None, table_entity, None, None, None, None, None, 5, 43200
-        )
+    sqa_profiler_interface = SQAProfilerInterface(
+        sqlite_conn, None, table_entity, None, None, None, None, None, 5, 43200
+    )
 
     @classmethod
     def setUpClass(cls) -> None:

@@ -136,7 +136,7 @@ class BaseTestSuiteRunner:
             entity=self.entity,
             schema_entity=schema_entity,
             database_entity=database_entity,
-            sample_config=SampleConfig(
+            default_sample_config=SampleConfig(
                 profile_sample=self.source_config.profileSample,
                 profile_sample_type=self.source_config.profileSampleType,
                 sampling_method_type=self.source_config.samplingMethodType,

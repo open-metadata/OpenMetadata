@@ -26,7 +26,7 @@ from metadata.generated.schema.entity.services.connections.database.sqliteConnec
     SQLiteConnection,
     SQLiteScheme,
 )
-from metadata.profiler.api.models import ProfileSampleConfig
+from metadata.profiler.api.models import SampleConfig
 from metadata.profiler.interface.sqlalchemy.profiler_interface import (
     SQAProfilerInterface,
 )
@@ -144,7 +144,7 @@ class SampleTest(TestCase):
         sampler = SQASampler(
             client=self.session,
             table=User,
-            profile_sample_config=ProfileSampleConfig(profile_sample=50.0),
+            profile_sample_config=SampleConfig(profile_sample=50.0),
         )
         random_sample = sampler.random_sample()
         res = self.session.query(func.count()).select_from(random_sample).first()
@@ -164,7 +164,7 @@ class SampleTest(TestCase):
                 None,
                 self.table_entity,
                 None,
-                ProfileSampleConfig(profile_sample=50.0),
+                SampleConfig(profile_sample=50.0),
                 None,
                 None,
                 None,
@@ -209,7 +209,7 @@ class SampleTest(TestCase):
                     None,
                     self.table_entity,
                     None,
-                    ProfileSampleConfig(profile_sample=50),
+                    SampleConfig(profile_sample=50),
                     None,
                     None,
                     None,
@@ -246,7 +246,7 @@ class SampleTest(TestCase):
                     None,
                     self.table_entity,
                     None,
-                    ProfileSampleConfig(profile_sample=50),
+                    SampleConfig(profile_sample=50),
                     None,
                     None,
                     None,

@@ -17,7 +17,7 @@ from metadata.generated.schema.entity.data.table import (
 from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
     SnowflakeConnection,
 )
-from metadata.profiler.api.models import ProfileSampleConfig
+from metadata.profiler.api.models import SampleConfig
 from metadata.profiler.interface.sqlalchemy.profiler_interface import (
     SQAProfilerInterface,
 )
@@ -64,7 +64,7 @@ class SampleTest(TestCase):
         sampler = SnowflakeSampler(
             client=self.session,
             table=User,
-            profile_sample_config=ProfileSampleConfig(
+            profile_sample_config=SampleConfig(
                 profile_sample_type=ProfileSampleType.PERCENTAGE, profile_sample=50.0
             ),
         )
@@ -82,7 +82,7 @@ class SampleTest(TestCase):
             sampler = SnowflakeSampler(
                 client=self.session,
                 table=User,
-                profile_sample_config=ProfileSampleConfig(
+                profile_sample_config=SampleConfig(
                     profile_sample_type=ProfileSampleType.PERCENTAGE,
                     profile_sample=50.0,
                     sampling_method_type=sampling_method_type,

@@ -21,18 +21,11 @@ from metadata.generated.schema.entity.data.databaseSchema import (
     DatabaseSchema,
     DatabaseSchemaProfilerConfig,
 )
-from metadata.generated.schema.entity.data.table import (
-    ColumnProfilerConfig,
-    PartitionProfilerConfig,
-    Table,
-)
+from metadata.generated.schema.entity.data.table import ColumnProfilerConfig, Table
 from metadata.generated.schema.entity.services.connections.connectionBasicType import (
     DataStorageConfig,
 )
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
-from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline import (
-    DatabaseServiceProfilerPipeline,
-)
 from metadata.profiler.api.models import ProfilerProcessorConfig
 from metadata.profiler.config import (
     get_database_profiler_config,
@@ -105,18 +98,23 @@ def get_storage_config_for_table(
 
 def get_profile_sample_config(
     entity: Table,
-    schema_profiler_config: Optional[DatabaseSchemaProfilerConfig],
-    database_profiler_config: Optional[DatabaseProfilerConfig],
+    schema_entity: Optional[DatabaseSchema],
+    database_entity: Optional[Database],
     entity_config: Optional[Union[TableConfig, DatabaseAndSchemaConfig]],
-    source_config: DatabaseServiceProfilerPipeline,
-) -> Optional[SampleConfig]:
+    default_sample_config: Optional[SampleConfig],
+) -> SampleConfig:
     """Get profile sample config for a specific entity"""
+    schema_profiler_config = get_schema_profiler_config(schema_entity=schema_entity)
+    database_profiler_config = get_database_profiler_config(
+        database_entity=database_entity
+    )
+
     for config in (
         entity_config,
         entity.tableProfilerConfig,
         schema_profiler_config,
         database_profiler_config,
-        source_config,
+        default_sample_config,
     ):
         try:
             if config and config.profileSample:
@@ -128,26 +126,7 @@ def get_profile_sample_config(
         except AttributeError:
             pass
 
-    return None
-
-
-def get_partition_details(
-    entity: Table,
-    entity_config: Optional[TableConfig] = None,
-) -> Optional[PartitionProfilerConfig]:
-    """_summary_
-
-    Args:
-        entity (Table): table entity object
-        entity_config (Optional[TableConfig]): entity configuration
-
-    Returns:
-        Optional[PartitionProfilerConfig]:
-    """
-    if entity_config:
-        return entity_config.partitionConfig
-
-    return get_partition_details(entity)
+    return SampleConfig()
 
 
 def get_sample_query(
@@ -173,8 +152,8 @@ def get_sample_query(
 
 def get_sample_data_count_config(
     entity: Table,
-    schema_entity: DatabaseSchema,
-    database_entity: Database,
+    schema_entity: Optional[DatabaseSchema],
+    database_entity: Optional[Database],
     entity_config: Optional[TableConfig],
     default_sample_data_count: int,
 ) -> Optional[int]:

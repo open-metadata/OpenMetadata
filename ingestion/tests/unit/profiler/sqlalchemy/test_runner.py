@@ -21,7 +21,7 @@ from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import declarative_base
 
 from metadata.ingestion.connections.session import create_and_bind_session
-from metadata.profiler.api.models import ProfileSampleConfig
+from metadata.profiler.api.models import SampleConfig
 from metadata.profiler.processor.runner import QueryRunner
 from metadata.profiler.processor.sampler.sqlalchemy.sampler import SQASampler
 from metadata.utils.timeout import cls_timeout
@@ -63,7 +63,7 @@ class RunnerTest(TestCase):
     sampler = SQASampler(
         client=session,
         table=User,
-        profile_sample_config=ProfileSampleConfig(profile_sample=50.0),
+        profile_sample_config=SampleConfig(profile_sample=50.0),
     )
     sample = sampler.random_sample()
 

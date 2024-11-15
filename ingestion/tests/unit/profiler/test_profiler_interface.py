@@ -35,12 +35,16 @@ from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline
 )
 from metadata.generated.schema.security.credentials.awsCredentials import AWSCredentials
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.profiler.api.models import (
-    DatabaseAndSchemaConfig,
-    ProfileSampleConfig,
-    TableConfig,
+from metadata.profiler.api.models import DatabaseAndSchemaConfig, TableConfig
+from metadata.profiler.config import (
+    get_database_profiler_config,
+    get_schema_profiler_config,
 )
-from metadata.profiler.interface.profiler_interface import ProfilerInterface
+from metadata.sampler.config import (
+    get_profile_sample_config,
+    get_sample_data_count_config,
+)
+from metadata.sampler.models import SampleConfig
 
 
 class ProfilerInterfaceTest(TestCase):
@@ -130,49 +134,35 @@ class ProfilerInterfaceTest(TestCase):
         )
 
     def test_get_schema_profiler_config(self):
-        self.assertIsNone(
-            ProfilerInterface.get_schema_profiler_config(schema_entity=None)
-        )
+        self.assertIsNone(get_schema_profiler_config(schema_entity=None))
         schema_entity_copy = deepcopy(self.schema_entity)
         schema_entity_copy.databaseSchemaProfilerConfig = None
-        self.assertIsNone(
-            ProfilerInterface.get_schema_profiler_config(
-                schema_entity=schema_entity_copy
-            )
-        )
+        self.assertIsNone(get_schema_profiler_config(schema_entity=schema_entity_copy))
         self.assertEqual(
-            ProfilerInterface.get_schema_profiler_config(
-                schema_entity=self.schema_entity
-            ),
+            get_schema_profiler_config(schema_entity=self.schema_entity),
             self.schema_profiler_config,
         )
 
     def test_get_database_profiler_config(self):
-        self.assertIsNone(
-            ProfilerInterface.get_database_profiler_config(database_entity=None)
-        )
+        self.assertIsNone(get_database_profiler_config(database_entity=None))
         database_entity_copy = deepcopy(self.database_entity)
         database_entity_copy.databaseProfilerConfig = None
         self.assertIsNone(
-            ProfilerInterface.get_database_profiler_config(
-                database_entity=database_entity_copy
-            )
+            get_database_profiler_config(database_entity=database_entity_copy)
         )
         self.assertEqual(
-            ProfilerInterface.get_database_profiler_config(
-                database_entity=self.database_entity
-            ),
+            get_database_profiler_config(database_entity=self.database_entity),
             self.database_profiler_config,
         )
 
     def test_get_profile_sample_configs(self):
         source_config = DatabaseServiceProfilerPipeline()
 
-        expected = ProfileSampleConfig(
+        expected = SampleConfig(
             profile_sample=11,
             profile_sample_type=ProfileSampleType.PERCENTAGE,
         )
-        actual = ProfilerInterface.get_profile_sample_config(
+        actual = get_profile_sample_config(
             entity=self.table,
             schema_profiler_config=self.schema_profiler_config,
             database_profiler_config=self.database_profiler_config,
@@ -186,11 +176,11 @@ class ProfilerInterfaceTest(TestCase):
             profileSampleType=ProfileSampleType.PERCENTAGE,
             fullyQualifiedName="demo",
         )
-        expected = ProfileSampleConfig(
+        expected = SampleConfig(
             profile_sample=11,
             profile_sample_type=ProfileSampleType.PERCENTAGE,
         )
-        actual = ProfilerInterface.get_profile_sample_config(
+        actual = get_profile_sample_config(
             entity=self.table,
             schema_profiler_config=self.schema_profiler_config,
             database_profiler_config=self.database_profiler_config,
@@ -200,13 +190,13 @@ class ProfilerInterfaceTest(TestCase):
         self.assertEqual(expected, actual)
 
         profiler = None
-        expected = ProfileSampleConfig(
+        expected = SampleConfig(
             profile_sample=22,
             profile_sample_type=ProfileSampleType.PERCENTAGE,
         )
         table_copy = deepcopy(self.table)
         table_copy.tableProfilerConfig = None
-        actual = ProfilerInterface.get_profile_sample_config(
+        actual = get_profile_sample_config(
             entity=table_copy,
             schema_profiler_config=None,
             database_profiler_config=self.database_profiler_config,
@@ -224,51 +214,51 @@ class ProfilerInterfaceTest(TestCase):
         )
         source_config = DatabaseServiceProfilerPipeline()
 
-        actual = ProfilerInterface.get_sample_data_count_config(
+        actual = get_sample_data_count_config(
             entity=self.table,
-            schema_profiler_config=self.schema_profiler_config,
-            database_profiler_config=self.database_profiler_config,
+            schema_entity=self.schema_entity,
+            database_entity=self.database_entity,
             entity_config=entity_config,
-            source_config=source_config,
+            default_sample_data_count=50,
         )
         self.assertEqual(20, actual)
 
-        actual = ProfilerInterface.get_sample_data_count_config(
+        actual = get_sample_data_count_config(
             entity=self.table,
-            schema_profiler_config=self.schema_profiler_config,
-            database_profiler_config=self.database_profiler_config,
+            schema_entity=self.schema_entity,
+            database_entity=self.database_entity,
             entity_config=None,
-            source_config=source_config,
+            default_sample_data_count=50,
         )
         self.assertEqual(101, actual)
 
         table_copy = deepcopy(self.table)
         table_copy.tableProfilerConfig = None
 
-        actual = ProfilerInterface.get_sample_data_count_config(
+        actual = get_sample_data_count_config(
             entity=table_copy,
-            schema_profiler_config=self.schema_profiler_config,
-            database_profiler_config=self.database_profiler_config,
+            schema_entity=self.schema_entity,
+            database_entity=self.database_entity,
             entity_config=None,
-            source_config=source_config,
+            default_sample_data_count=50,
         )
         self.assertEqual(102, actual)
 
-        actual = ProfilerInterface.get_sample_data_count_config(
+        actual = get_sample_data_count_config(
             entity=table_copy,
-            schema_profiler_config=None,
-            database_profiler_config=self.database_profiler_config,
+            schema_entity=None,
+            database_entity=self.database_entity,
             entity_config=None,
-            source_config=source_config,
+            default_sample_data_count=50,
         )
         self.assertEqual(202, actual)
 
-        actual = ProfilerInterface.get_sample_data_count_config(
+        actual = get_sample_data_count_config(
             entity=table_copy,
-            schema_profiler_config=None,
-            database_profiler_config=None,
+            schema_entity=None,
+            database_entity=None,
             entity_config=None,
-            source_config=source_config,
+            default_sample_data_count=50,
         )
         self.assertEqual(50, actual)
 

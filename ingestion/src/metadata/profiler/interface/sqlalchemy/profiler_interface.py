@@ -83,7 +83,6 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
     """
 
     # pylint: disable=too-many-arguments
-
     def __init__(
         self,
         service_connection_config: Union[DatabaseConnection, DatalakeConnection],
