@@ -49,6 +49,9 @@
         },
         {
           "$ref": "./common/azureConfig.json"
+        },
+        {
+          "$ref": "./common/noConfigAuthenticationTypes.json"
         }
       ]
     },

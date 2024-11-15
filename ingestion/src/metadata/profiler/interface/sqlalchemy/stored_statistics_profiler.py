@@ -17,10 +17,10 @@ supporting sqlalchemy abstraction layer
 import threading
 from typing import Any, Dict, List, Set
 
-from mlflow.protos.databricks_uc_registry_messages_pb2 import Table
 from more_itertools import partition
 from sqlalchemy import Column
 
+from metadata.generated.schema.entity.data.table import Table
 from metadata.mixins.sqalchemy.sqa_mixin import Root
 from metadata.profiler.interface.sqlalchemy.profiler_interface import (
     SQAProfilerInterface,
