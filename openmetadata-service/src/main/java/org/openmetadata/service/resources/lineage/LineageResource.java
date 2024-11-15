@@ -29,6 +29,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.ExecutorService;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
@@ -60,6 +61,10 @@ import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
+import org.openmetadata.service.util.AsyncService;
+import org.openmetadata.service.util.CSVExportMessage;
+import org.openmetadata.service.util.CSVExportResponse;
+import org.openmetadata.service.util.WebsocketNotificationHandler;
 
 @Path("/v1/lineage")
 @Tag(
@@ -273,8 +278,59 @@ public class LineageResource {
           boolean deleted,
       @Parameter(description = "entity type") @QueryParam("type") String entityType)
       throws IOException {
-
+    Entity.getSearchRepository()
+        .searchLineage(fqn, upstreamDepth, downstreamDepth, queryFilter, deleted, entityType);
     return dao.exportCsv(fqn, upstreamDepth, downstreamDepth, queryFilter, deleted, entityType);
+  }
+
+  @GET
+  @Path("/exportAsync")
+  @Produces(MediaType.APPLICATION_JSON)
+  @Operation(
+      operationId = "exportLineage",
+      summary = "Export lineage",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "search response",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = CSVExportMessage.class)))
+      })
+  public Response exportLineageAsync(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "fqn") @QueryParam("fqn") String fqn,
+      @Parameter(description = "upstreamDepth") @QueryParam("upstreamDepth") int upstreamDepth,
+      @Parameter(description = "downstreamDepth") @QueryParam("downstreamDepth")
+          int downstreamDepth,
+      @Parameter(
+              description =
+                  "Elasticsearch query that will be combined with the query_string query generator from the `query` argument")
+          @QueryParam("query_filter")
+          String queryFilter,
+      @Parameter(description = "Filter documents by deleted param. By default deleted is false")
+          @QueryParam("includeDeleted")
+          boolean deleted,
+      @Parameter(description = "entity type") @QueryParam("type") String entityType) {
+    String jobId = UUID.randomUUID().toString();
+    ExecutorService executorService = AsyncService.getInstance().getExecutorService();
+    executorService.submit(
+        () -> {
+          try {
+            String csvData =
+                dao.exportCsvAsync(
+                    fqn, upstreamDepth, downstreamDepth, queryFilter, entityType, deleted);
+            WebsocketNotificationHandler.sendCsvExportCompleteNotification(
+                jobId, securityContext, csvData);
+          } catch (Exception e) {
+            WebsocketNotificationHandler.sendCsvExportFailedNotification(
+                jobId, securityContext, e.getMessage());
+          }
+        });
+    CSVExportResponse response = new CSVExportResponse(jobId, "Export initiated successfully.");
+    return Response.accepted().entity(response).type(MediaType.APPLICATION_JSON).build();
   }
 
   @PUT
