@@ -11,6 +11,8 @@
 
 from unittest import TestCase
 
+from trino.auth import BasicAuthentication, JWTAuthentication, OAuth2Authentication
+
 from metadata.generated.schema.entity.services.connections.database.athenaConnection import (
     AthenaConnection,
     AthenaScheme,
@@ -18,6 +20,9 @@ from metadata.generated.schema.entity.services.connections.database.athenaConnec
 from metadata.generated.schema.entity.services.connections.database.clickhouseConnection import (
     ClickhouseConnection,
     ClickhouseScheme,
+)
+from metadata.generated.schema.entity.services.connections.database.common import (
+    noConfigAuthenticationTypes,
 )
 from metadata.generated.schema.entity.services.connections.database.common.basicAuth import (
     BasicAuth,
@@ -107,6 +112,7 @@ from metadata.ingestion.connections.builders import (
     get_connection_args_common,
     get_connection_url_common,
 )
+from metadata.ingestion.source.database.trino.connection import get_connection_args
 
 
 # pylint: disable=import-outside-toplevel
@@ -401,7 +407,7 @@ class SourceConnectionTest(TestCase):
             get_connection_url,
         )
 
-        expected_url = "trino://username:pass@localhost:443/catalog"
+        expected_url = "trino://username@localhost:443/catalog"
         trino_conn_obj = TrinoConnection(
             scheme=TrinoScheme.trino,
             hostPort="localhost:443",
@@ -413,7 +419,7 @@ class SourceConnectionTest(TestCase):
         assert expected_url == get_connection_url(trino_conn_obj)
 
         # Passing @ in username and password
-        expected_url = "trino://username%2540444:pass%40111@localhost:443/catalog"
+        expected_url = "trino://username%40444@localhost:443/catalog"
         trino_conn_obj = TrinoConnection(
             scheme=TrinoScheme.trino,
             hostPort="localhost:443",
@@ -430,7 +436,10 @@ class SourceConnectionTest(TestCase):
         )
 
         # connection arguments without connectionArguments and without proxies
-        expected_args = {}
+        expected_args = {
+            "auth": BasicAuthentication("user", None),
+            "http_scheme": "https",
+        }
         trino_conn_obj = TrinoConnection(
             username="user",
             authType=BasicAuth(password=None),
@@ -442,7 +451,11 @@ class SourceConnectionTest(TestCase):
         assert expected_args == get_connection_args(trino_conn_obj)
 
         # connection arguments with connectionArguments and without proxies
-        expected_args = {"user": "user-to-be-impersonated"}
+        expected_args = {
+            "user": "user-to-be-impersonated",
+            "auth": BasicAuthentication("user", None),
+            "http_scheme": "https",
+        }
         trino_conn_obj = TrinoConnection(
             username="user",
             authType=BasicAuth(password=None),
@@ -454,7 +467,10 @@ class SourceConnectionTest(TestCase):
         assert expected_args == get_connection_args(trino_conn_obj)
 
         # connection arguments without connectionArguments and with proxies
-        expected_args = {}
+        expected_args = {
+            "auth": BasicAuthentication("user", None),
+            "http_scheme": "https",
+        }
         trino_conn_obj = TrinoConnection(
             username="user",
             authType=BasicAuth(password=None),
@@ -470,7 +486,11 @@ class SourceConnectionTest(TestCase):
         assert expected_args == conn_args
 
         # connection arguments with connectionArguments and with proxies
-        expected_args = {"user": "user-to-be-impersonated"}
+        expected_args = {
+            "user": "user-to-be-impersonated",
+            "auth": BasicAuthentication("user", None),
+            "http_scheme": "https",
+        }
         trino_conn_obj = TrinoConnection(
             username="user",
             authType=BasicAuth(password=None),
@@ -490,7 +510,7 @@ class SourceConnectionTest(TestCase):
             get_connection_url,
         )
 
-        expected_url = "trino://username:pass@localhost:443/catalog?param=value"
+        expected_url = "trino://username@localhost:443/catalog?param=value"
         trino_conn_obj = TrinoConnection(
             scheme=TrinoScheme.trino,
             hostPort="localhost:443",
@@ -506,9 +526,11 @@ class SourceConnectionTest(TestCase):
             get_connection_url,
         )
 
-        expected_url = (
-            "trino://username@localhost:443/catalog?access_token=jwt_token_value"
-        )
+        expected_url = "trino://username@localhost:443/catalog"
+        expected_args = {
+            "auth": JWTAuthentication("jwt_token_value"),
+            "http_scheme": "https",
+        }
         trino_conn_obj = TrinoConnection(
             scheme=TrinoScheme.trino,
             hostPort="localhost:443",
@@ -517,6 +539,7 @@ class SourceConnectionTest(TestCase):
             catalog="catalog",
         )
         assert expected_url == get_connection_url(trino_conn_obj)
+        assert expected_args == get_connection_args(trino_conn_obj)
 
     def test_trino_with_proxies(self):
         from metadata.ingestion.source.database.trino.connection import (
@@ -543,7 +566,7 @@ class SourceConnectionTest(TestCase):
         )
 
         # Test trino url without catalog
-        expected_url = "trino://username:pass@localhost:443"
+        expected_url = "trino://username@localhost:443"
         trino_conn_obj = TrinoConnection(
             scheme=TrinoScheme.trino,
             hostPort="localhost:443",
@@ -552,6 +575,40 @@ class SourceConnectionTest(TestCase):
         )
 
         assert expected_url == get_connection_url(trino_conn_obj)
+
+    def test_trino_without_catalog(self):
+        from metadata.ingestion.source.database.trino.connection import (
+            get_connection_url,
+        )
+
+        # Test trino url without catalog
+        expected_url = "trino://username@localhost:443"
+        trino_conn_obj = TrinoConnection(
+            scheme=TrinoScheme.trino,
+            hostPort="localhost:443",
+            username="username",
+            authType=BasicAuth(password="pass"),
+        )
+
+        assert expected_url == get_connection_url(trino_conn_obj)
+
+    def test_trino_with_oauth2(self):
+        from metadata.ingestion.source.database.trino.connection import (
+            get_connection_url,
+        )
+
+        # Test trino url without catalog
+        expected_url = "trino://username@localhost:443"
+        trino_conn_obj = TrinoConnection(
+            scheme=TrinoScheme.trino,
+            hostPort="localhost:443",
+            username="username",
+            authType=noConfigAuthenticationTypes.NoConfigAuthenticationTypes.OAuth2,
+        )
+
+        assert isinstance(
+            get_connection_args(trino_conn_obj).get("auth"), OAuth2Authentication
+        )
 
     def test_vertica_url(self):
         expected_url = (
