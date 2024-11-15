@@ -165,7 +165,7 @@ const MetricExpression: FC<MetricExpressionProps> = ({
         </Form>
       ) : (
         <SchemaEditor
-          editorClass="custom-code-mirror-theme"
+          editorClass="custom-code-mirror-theme full-screen-editor-height"
           mode={{ name: CSMode.SQL }}
           options={{
             styleActiveLine: false,
