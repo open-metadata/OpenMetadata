@@ -1,15 +1,12 @@
 ---
 title: Overview of Knowledge Center
 slug: /how-to-guides/data-collaboration/knowledge-center
+collate: true
 ---
 
 # Overview of Knowledge Center
 
 As organizations increasingly rely on OpenMetadata for discovery, collaboration, data quality, observability, and governance, there is a need to house long-form articles right within OpenMetadata to describe architecture, showcase usage tutorials, and document best practices in data management. Instead of turning to tools like Google Docs or Confluence to document these extensive details, data teams can create articles in OpenMetadata's Knowledge Center to share crucial information with the team.
-
-{% note noteType="Tip" %}
-Knowledge Center is a **[Collate only](https://www.getcollate.io/)** feature in OpenMetadata.
-{% /note %}
 
 Knowledge Center helps to **centralize tribal knowledge** and **enhance data documentation** in your organization. The Knowledge Center supports the creation of **in-depth, long-form knowledge articles**. The innovative new editor facilitates rich content creation, embedding images and other media to elucidate complex details. OpenMetadata's knowledge center **fosters seamless connection** between documentation and data assets by allowing users to **tag teams and data assets** as references. Knowledge Articles come equipped with **comments, version history,** and all the other features that are an integral part of OpenMetadata.
 

@@ -350,12 +350,12 @@ site_menu:
     url: /connectors/pipeline/kafkaconnect/yaml
   - category: Connectors / Pipeline / Matillion
     url: /connectors/pipeline/matillion
-    isCollateOnly: true
+
   - category: Connectors / Pipeline / Matillion / Run Externally
     url: /connectors/pipeline/matillion/yaml
   - category: Connectors / Pipeline / DataFactory
     url: /connectors/pipeline/datafactory
-    isCollateOnly: true
+
   - category: Connectors / Pipeline / DataFactory / Run Externally
     url: /connectors/pipeline/datafactory/yaml
   - category: Connectors / Pipeline / Databricks Pipeline
@@ -662,7 +662,7 @@ site_menu:
     url: /how-to-guides/data-quality-observability/quality/tab
   - category: How-to Guides / Data Quality and Profiler / Data Quality / Data Quality Overview Section
     url: /how-to-guides/data-quality-observability/quality/overview
-    isCollateOnly: true
+
   - category: How-to Guides / Data Quality and Profiler / Data Quality / How to Write and Deploy No-Code Test Cases
     url: /how-to-guides/data-quality-observability/quality/test
   - category: How-to Guides / Data Quality and Observability / Data Quality / Configure Data Quality
@@ -697,13 +697,12 @@ site_menu:
     url: /how-to-guides/data-quality-observability/incident-manager/workflow
   - category: How-to Guides / Data Quality and Observability / Incident Manager / Root Cause Analysis
     url: /how-to-guides/data-quality-observability/incident-manager/root-cause-analysis
-    isCollateOnly: true
+
   - category: How-to Guides / Data Quality and Observability / Anomaly Detection
     url: /how-to-guides/data-quality-observability/anomaly-detection
-    isCollateOnly: true
+
   - category: How-to Guides / Data Quality and Observability / Anomaly Detection / Steps to Set Up Anomaly Detection
     url: /how-to-guides/data-quality-observability/anomaly-detection/setting-up
-    isCollateOnly: true
 
   - category: How-to Guides / Data Lineage
     url: /how-to-guides/data-lineage
