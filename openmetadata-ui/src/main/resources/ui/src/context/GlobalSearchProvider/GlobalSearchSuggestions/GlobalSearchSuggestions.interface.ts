@@ -72,6 +72,16 @@ export interface GlossarySource extends CommonSource {
   glossary_name: string;
 }
 
+export interface DatabaseSource extends CommonSource {
+  database_id: string;
+  database_name: string;
+}
+
+export interface DatabaseSchemaSource extends CommonSource {
+  database_schema_id: string;
+  database_schema_name: string;
+}
+
 export interface TagSource extends CommonSource {
   tag_id: string;
   tag_name: string;
@@ -148,4 +158,6 @@ export type SearchSuggestions =
   | ChartSource[]
   | APIEndpointSource[]
   | APICollectionSource[]
-  | MetricSource[];
+  | MetricSource[]
+  | DatabaseSource[]
+  | DatabaseSchemaSource[];
