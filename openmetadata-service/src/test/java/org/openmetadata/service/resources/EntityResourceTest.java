@@ -724,6 +724,11 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   @Test
   @Execution(ExecutionMode.CONCURRENT)
   protected void get_entityListWithPagination_200(TestInfo test) throws IOException {
+    //    if (test.getTestClass().isPresent()) {
+    //      if (test.getTestClass().get().getSimpleName().equals("GlossaryTermResourceTest")) {
+    //        WorkflowHandler.getInstance().suspendWorkflow("GlossaryTermApprovalWorkflow");
+    //      }
+    //    }
     // Create a number of entities between 5 and 20 inclusive
     Random rand = new Random();
     int maxEntities = rand.nextInt(16) + 5;
@@ -838,6 +843,12 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
         }
       }
     }
+
+    //    if (test.getTestClass().isPresent()) {
+    //      if (test.getTestClass().get().getSimpleName().equals("GlossaryTermResourceTest")) {
+    //        WorkflowHandler.getInstance().resumeWorkflow("GlossaryTermApprovalWorkflow");
+    //      }
+    //    }
   }
 
   protected void validateEntityListFromSearchWithPagination(
@@ -1001,6 +1012,10 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
         createRequest(
             getEntityName(test), "description", "displayName", Lists.newArrayList(USER1_REF));
 
+    if (supportsReviewers) {
+      create.setReviewers(List.of(USER1_REF));
+    }
+
     T entity = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
     if (supportsTags) {
       String origJson = JsonUtils.pojoToJson(entity);
@@ -1016,6 +1031,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
               userResourceTest.createRequest(test, 1), USER_WITH_CREATE_HEADERS);
       addFollower(entity.getId(), user1.getId(), OK, TEST_AUTH_HEADERS);
     }
+
     entity = validateGetWithDifferentFields(entity, false);
     validateGetCommonFields(entity);
 
@@ -3972,6 +3988,11 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     return TestUtils.putCsv(target, csv, CsvImportResult.class, Status.OK, ADMIN_AUTH_HEADERS);
   }
 
+  protected String exportCsv(String entityName) throws HttpResponseException {
+    WebTarget target = getResourceByName(entityName + "/export");
+    return TestUtils.get(target, String.class, ADMIN_AUTH_HEADERS);
+  }
+
   private String receiveCsvViaSocketIO(String entityName) throws Exception {
     UUID userId = getAdminUserId();
     String uri = String.format("http://localhost:%d", APP.getLocalPort());
@@ -4052,7 +4073,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   }
 
   protected String initiateExport(String entityName) throws IOException {
-    WebTarget target = getResourceByName(entityName + "/export");
+    WebTarget target = getResourceByName(entityName + "/exportAsync");
     CSVExportResponse response =
         TestUtils.getWithResponse(
             target, CSVExportResponse.class, ADMIN_AUTH_HEADERS, Status.ACCEPTED.getStatusCode());
@@ -4088,8 +4109,10 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     assertEquals(dryRunResult.withDryRun(false), result);
 
     // Finally, export CSV and ensure the exported CSV is same as imported CSV
-    String exportedCsv = receiveCsvViaSocketIO(entityName);
-    CsvUtilTest.assertCsv(csv, exportedCsv);
+    String exportedCsvAsync = receiveCsvViaSocketIO(entityName);
+    CsvUtilTest.assertCsv(csv, exportedCsvAsync);
+    String exportedCsvSync = exportCsv(entityName);
+    CsvUtilTest.assertCsv(csv, exportedCsvSync);
   }
 
   protected void testImportExport(

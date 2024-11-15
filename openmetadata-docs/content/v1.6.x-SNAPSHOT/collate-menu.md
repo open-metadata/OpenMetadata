@@ -264,6 +264,10 @@ site_menu:
     url: /connectors/dashboard/powerbi/yaml
   - category: Connectors / Dashboard / PowerBI / Lineage from pbit files
     url: /connectors/dashboard/powerbi/powerbi-pbit-lineage
+  - category: Connectors / Dashboard / PowerBI Report Server
+    url: /connectors/dashboard/powerbireportserver
+  - category: Connectors / Dashboard / PowerBI Report Server / Run Externally
+    url: /connectors/dashboard/powerbireportserver/yaml
   - category: Connectors / Dashboard / Qlik Sense
     url: /connectors/dashboard/qliksense
   - category: Connectors / Dashboard / Qlik Sense / Run Externally
@@ -349,6 +353,11 @@ site_menu:
     isCollateOnly: true
   - category: Connectors / Pipeline / Matillion / Run Externally
     url: /connectors/pipeline/matillion/yaml
+  - category: Connectors / Pipeline / DataFactory
+    url: /connectors/pipeline/datafactory
+    isCollateOnly: true
+  - category: Connectors / Pipeline / DataFactory / Run Externally
+    url: /connectors/pipeline/datafactory/yaml
   - category: Connectors / Pipeline / Databricks Pipeline
     url: /connectors/pipeline/databricks-pipeline
   - category: Connectors / Pipeline / Databricks Pipeline / Run Externally
@@ -689,6 +698,12 @@ site_menu:
   - category: How-to Guides / Data Quality and Observability / Incident Manager / Root Cause Analysis
     url: /how-to-guides/data-quality-observability/incident-manager/root-cause-analysis
     isCollateOnly: true
+  - category: How-to Guides / Data Quality and Observability / Anomaly Detection
+    url: /how-to-guides/data-quality-observability/anomaly-detection
+    isCollateOnly: true
+  - category: How-to Guides / Data Quality and Observability / Anomaly Detection / Steps to Set Up Anomaly Detection
+    url: /how-to-guides/data-quality-observability/anomaly-detection/setting-up
+    isCollateOnly: true
 
   - category: How-to Guides / Data Lineage
     url: /how-to-guides/data-lineage
@@ -880,8 +895,6 @@ site_menu:
   - category: Releases / All Releases / 0.4.0 Release
     url: /releases/all-releases/#0.4.0-release
 
-  - category: Roadmap
-    url: /roadmap
 
   - category: Main Concepts
     url: /main-concepts

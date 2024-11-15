@@ -31,7 +31,6 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -63,6 +62,7 @@ import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.events.CreateEventSubscription;
 import org.openmetadata.schema.api.events.EventSubscriptionDestinationTestRequest;
 import org.openmetadata.schema.api.events.EventSubscriptionDiagnosticInfo;
+import org.openmetadata.schema.api.events.EventsRecord;
 import org.openmetadata.schema.entity.events.EventFilterRule;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.FailedEventResponse;
@@ -89,6 +89,7 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
@@ -418,33 +419,6 @@ public class EventSubscriptionResource
   }
 
   @GET
-  @Path("/{id}/processedEvents")
-  @Operation(
-      operationId = "checkIfThePublisherProcessedALlEvents",
-      summary = "Check If the Publisher Processed All Events",
-      description =
-          "Return a boolean 'true' or 'false' to indicate if the publisher processed all events",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "List of Event Subscription versions",
-            content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = EntityHistory.class)))
-      })
-  public Response checkIfThePublisherProcessedALlEvents(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the Event Subscription", schema = @Schema(type = "UUID"))
-          @PathParam("id")
-          UUID id) {
-    return Response.ok()
-        .entity(EventSubscriptionScheduler.getInstance().checkIfPublisherPublishedAllEvents(id))
-        .build();
-  }
-
-  @GET
   @Path("/{id}/versions/{version}")
   @Operation(
       operationId = "getSpecificEventSubscriptionVersion",
@@ -502,6 +476,7 @@ public class EventSubscriptionResource
       throws SchedulerException {
     EventSubscription eventSubscription = repository.get(null, id, repository.getFields("id"));
     EventSubscriptionScheduler.getInstance().deleteEventSubscriptionPublisher(eventSubscription);
+    EventSubscriptionScheduler.getInstance().deleteSuccessfulAndFailedEventsRecordByAlert(id);
     return delete(uriInfo, securityContext, id, true, true);
   }
 
@@ -525,6 +500,8 @@ public class EventSubscriptionResource
     EventSubscription eventSubscription =
         repository.getByName(null, name, repository.getFields("id"));
     EventSubscriptionScheduler.getInstance().deleteEventSubscriptionPublisher(eventSubscription);
+    EventSubscriptionScheduler.getInstance()
+        .deleteSuccessfulAndFailedEventsRecordByAlert(eventSubscription.getId());
     return deleteByName(uriInfo, securityContext, name, true, true);
   }
 
@@ -554,6 +531,10 @@ public class EventSubscriptionResource
       @Parameter(description = "Destination Id", schema = @Schema(type = "UUID"))
           @PathParam("destinationId")
           UUID destinationId) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.VIEW_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
+
     authorizer.authorizeAdmin(securityContext);
     EventSubscription sub = repository.getByName(null, name, repository.getFields("name"));
     return EventSubscriptionScheduler.getInstance()
@@ -586,6 +567,10 @@ public class EventSubscriptionResource
       @Parameter(description = "Destination Id", schema = @Schema(type = "UUID"))
           @PathParam("destinationId")
           UUID destinationId) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.VIEW_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+
     return EventSubscriptionScheduler.getInstance()
         .getStatusForEventSubscription(id, destinationId);
   }
@@ -603,7 +588,9 @@ public class EventSubscriptionResource
       @Parameter(description = "AlertType", schema = @Schema(type = "string"))
           @PathParam("alertType")
           CreateEventSubscription.AlertType alertType) {
-    authorizer.authorizeAdmin(securityContext);
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.CREATE);
+    authorizer.authorize(securityContext, operationContext, getResourceContext());
+
     if (alertType.equals(NOTIFICATION)) {
       return new ResultList<>(EventsSubscriptionRegistry.listEntityNotificationDescriptors());
     } else {
@@ -632,6 +619,33 @@ public class EventSubscriptionResource
   }
 
   @GET
+  @Path("/{id}/processedEvents")
+  @Operation(
+      operationId = "checkIfThePublisherProcessedALlEvents",
+      summary = "Check If the Publisher Processed All Events",
+      description =
+          "Return a boolean 'true' or 'false' to indicate if the publisher processed all events",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of Event Subscription versions",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = EntityHistory.class)))
+      })
+  public Response checkIfThePublisherProcessedALlEvents(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the Event Subscription", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id) {
+    return Response.ok()
+        .entity(EventSubscriptionScheduler.getInstance().checkIfPublisherPublishedAllEvents(id))
+        .build();
+  }
+
+  @GET
   @Path("id/{id}/listEvents")
   @Operation(
       operationId = "getEvents",
@@ -648,11 +662,11 @@ public class EventSubscriptionResource
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(
-              description = "Status of events to retrieve (failed, successful, unprocessed)",
+              description = "Status of events to retrieve (failed, successful)",
               schema =
                   @Schema(
                       type = "string",
-                      allowableValues = {"failed", "successful", "unprocessed"}))
+                      allowableValues = {"failed", "successful"}))
           @QueryParam("status")
           String statusParam,
       @Parameter(description = "ID of the alert or destination", schema = @Schema(type = "UUID"))
@@ -662,37 +676,21 @@ public class EventSubscriptionResource
               description = "Maximum number of events to retrieve",
               schema = @Schema(type = "integer"))
           @QueryParam("limit")
-          @DefaultValue("100")
+          @DefaultValue("15")
           @Min(0)
-          int limit) {
-
-    authorizer.authorizeAdmin(securityContext);
-
+          int limit,
+      @Parameter(
+              description = "Offset for pagination (starting point for records)",
+              schema = @Schema(type = "integer"))
+          @QueryParam("paginationOffset")
+          @DefaultValue("0")
+          int paginationOffset) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.VIEW_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     try {
-      List<TypedEvent> combinedEvents = new ArrayList<>();
-      TypedEvent.Status status = null;
-
-      if (statusParam != null && !statusParam.isBlank()) {
-        try {
-          status = TypedEvent.Status.fromValue(statusParam);
-        } catch (IllegalArgumentException e) {
-          throw new WebApplicationException(
-              "Invalid status. Must be 'failed', 'successful', or 'unprocessed'.",
-              Response.Status.BAD_REQUEST);
-        }
-      }
-
-      if (status == null) {
-        combinedEvents.addAll(fetchEvents(TypedEvent.Status.FAILED, id, limit));
-        combinedEvents.addAll(fetchEvents(TypedEvent.Status.SUCCESSFUL, id, limit));
-        combinedEvents.addAll(fetchEvents(TypedEvent.Status.UNPROCESSED, id, limit));
-        // Sort combined events by timestamp in ascending order.
-        combinedEvents.sort(Comparator.comparing(TypedEvent::getTimestamp));
-      } else {
-        combinedEvents.addAll(fetchEvents(status, id, limit));
-      }
-
-      return Response.ok().entity(combinedEvents).build();
+      ResultList<TypedEvent> result = fetchEventRecords(id, statusParam, limit, paginationOffset);
+      return Response.ok().entity(result).build();
     } catch (EntityNotFoundException e) {
       LOG.error("Entity not found for ID: {}", id, e);
       return Response.status(Response.Status.NOT_FOUND)
@@ -706,36 +704,107 @@ public class EventSubscriptionResource
     }
   }
 
-  private List<TypedEvent> fetchEvents(TypedEvent.Status status, UUID id, int limit) {
-    List<?> events;
-    switch (status) {
-      case FAILED -> events =
-          EventSubscriptionScheduler.getInstance().getFailedEventsById(id, limit);
-      case SUCCESSFUL -> events =
-          EventSubscriptionScheduler.getInstance()
-              .getSuccessfullySentChangeEventsForAlert(id, limit);
-      case UNPROCESSED -> events =
-          EventSubscriptionScheduler.getInstance().getUnpublishedEvents(id, limit);
-      default -> throw new IllegalArgumentException("Unknown event status: " + status);
-    }
+  @GET
+  @Path("/id/{subscriptionId}/eventsRecord")
+  @Operation(
+      operationId = "getEventSubscriptionEventsRecordById",
+      summary = "Get event subscription events record",
+      description =
+          "Retrieve the total count, pending count, failed count, and successful count of events for a given event subscription ID.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Event subscription events record retrieved successfully",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = EventsRecord.class))),
+        @ApiResponse(responseCode = "404", description = "Event subscription not found"),
+        @ApiResponse(responseCode = "500", description = "Internal server error")
+      })
+  public Response getEventSubscriptionEventsRecordById(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "UUID of the Event Subscription", schema = @Schema(type = "UUID"))
+          @PathParam("subscriptionId")
+          UUID subscriptionId) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.VIEW_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(subscriptionId));
 
-    return events.stream()
-        .map(
-            event ->
-                new TypedEvent()
-                    .withStatus(status)
-                    .withData(List.of(event))
-                    .withTimestamp(Double.valueOf(extractTimestamp(event))))
-        .toList();
+    try {
+      if (!EventSubscriptionScheduler.getInstance().doesRecordExist(subscriptionId)) {
+        return Response.status(Response.Status.NOT_FOUND)
+            .entity("Event subscription not found for ID: " + subscriptionId)
+            .build();
+      }
+
+      EventsRecord eventsRecord =
+          EventSubscriptionScheduler.getInstance().getEventSubscriptionEventsRecord(subscriptionId);
+
+      return Response.ok().entity(eventsRecord).build();
+    } catch (Exception e) {
+      LOG.error("Error retrieving events record for subscription ID: {}", subscriptionId, e);
+      return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+          .entity(
+              "An error occurred while retrieving events record for subscription ID: "
+                  + subscriptionId)
+          .build();
+    }
   }
 
-  private Long extractTimestamp(Object event) {
-    if (event instanceof ChangeEvent changeEvent) {
-      return changeEvent.getTimestamp();
-    } else if (event instanceof FailedEventResponse failedEvent) {
-      return failedEvent.getChangeEvent().getTimestamp();
+  @GET
+  @Path("/name/{subscriptionName}/eventsRecord")
+  @Operation(
+      operationId = "getEventSubscriptionEventsRecordByName",
+      summary = "Get event subscription events record by name",
+      description =
+          "Retrieve the total count, pending count, failed count, and successful count of events for a given event subscription name.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Event subscription events record retrieved successfully",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = EventsRecord.class))),
+        @ApiResponse(responseCode = "404", description = "Event subscription not found"),
+        @ApiResponse(responseCode = "500", description = "Internal server error")
+      })
+  public Response getEventSubscriptionEventsRecordByName(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the Event Subscription", schema = @Schema(type = "string"))
+          @PathParam("subscriptionName")
+          String subscriptionName) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.VIEW_ALL);
+    authorizer.authorize(
+        securityContext, operationContext, getResourceContextByName(subscriptionName));
+
+    try {
+      EventSubscription subscription =
+          repository.getByName(null, subscriptionName, repository.getFields("id"));
+
+      if (subscription == null) {
+        return Response.status(Response.Status.NOT_FOUND)
+            .entity("Event subscription not found for name: " + subscriptionName)
+            .build();
+      }
+
+      EventsRecord eventsRecord =
+          EventSubscriptionScheduler.getInstance()
+              .getEventSubscriptionEventsRecord(subscription.getId());
+
+      return Response.ok().entity(eventsRecord).build();
+    } catch (Exception e) {
+      LOG.error("Error retrieving events record for subscription name: {}", subscriptionName, e);
+      return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+          .entity(
+              "An error occurred while retrieving events record for subscription name: "
+                  + subscriptionName)
+          .build();
     }
-    throw new IllegalArgumentException("Unknown event type: " + event.getClass());
   }
 
   @GET
@@ -760,14 +829,27 @@ public class EventSubscriptionResource
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Maximum number of unprocessed events returned")
-          @DefaultValue("100")
+          @DefaultValue("15")
           @Min(0)
           @QueryParam("limit")
           int limit,
+      @Parameter(
+              description = "Offset for pagination (starting point for records)",
+              schema = @Schema(type = "integer"))
+          @QueryParam("paginationOffset")
+          @DefaultValue("0")
+          int paginationOffset,
       @Parameter(description = "UUID of the Event Subscription", schema = @Schema(type = "UUID"))
           @PathParam("subscriptionId")
-          UUID subscriptionId) {
-    authorizer.authorizeAdmin(securityContext);
+          UUID subscriptionId,
+      @Parameter(description = "Return only count if true")
+          @QueryParam("listCountOnly")
+          @DefaultValue("false")
+          boolean listCountOnly) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.VIEW_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(subscriptionId));
+
     try {
       if (!EventSubscriptionScheduler.getInstance().doesRecordExist(subscriptionId)) {
         return Response.status(Response.Status.NOT_FOUND)
@@ -777,7 +859,8 @@ public class EventSubscriptionResource
 
       EventSubscriptionDiagnosticInfo diagnosticInfo =
           EventSubscriptionScheduler.getInstance()
-              .getEventSubscriptionDiagnosticInfo(subscriptionId, limit);
+              .getEventSubscriptionDiagnosticInfo(
+                  subscriptionId, limit, paginationOffset, listCountOnly);
 
       return Response.ok().entity(diagnosticInfo).build();
     } catch (Exception e) {
@@ -812,14 +895,28 @@ public class EventSubscriptionResource
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Maximum number of unprocessed events returned")
-          @DefaultValue("100")
+          @DefaultValue("15")
           @Min(0)
           @QueryParam("limit")
           int limit,
+      @Parameter(
+              description = "Offset for pagination (starting point for records)",
+              schema = @Schema(type = "integer"))
+          @QueryParam("paginationOffset")
+          @DefaultValue("0")
+          int paginationOffset,
       @Parameter(description = "Name of the Event Subscription", schema = @Schema(type = "string"))
           @PathParam("subscriptionName")
-          String subscriptionName) {
-    authorizer.authorizeAdmin(securityContext);
+          String subscriptionName,
+      @Parameter(description = "Return only count if true")
+          @QueryParam("listCountOnly")
+          @DefaultValue("false")
+          boolean listCountOnly) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.VIEW_ALL);
+    authorizer.authorize(
+        securityContext, operationContext, getResourceContextByName(subscriptionName));
+
     try {
       EventSubscription subscription =
           repository.getByName(null, subscriptionName, repository.getFields("id"));
@@ -832,7 +929,8 @@ public class EventSubscriptionResource
 
       EventSubscriptionDiagnosticInfo diagnosticInfo =
           EventSubscriptionScheduler.getInstance()
-              .getEventSubscriptionDiagnosticInfo(subscription.getId(), limit);
+              .getEventSubscriptionDiagnosticInfo(
+                  subscription.getId(), limit, paginationOffset, listCountOnly);
 
       return Response.ok().entity(diagnosticInfo).build();
     } catch (Exception e) {
@@ -872,17 +970,26 @@ public class EventSubscriptionResource
               description = "Maximum number of failed events to retrieve",
               schema = @Schema(type = "integer"))
           @QueryParam("limit")
-          @DefaultValue("100")
+          @DefaultValue("15")
           @Min(0)
           int limit,
+      @Parameter(
+              description = "Offset for pagination (starting point for records)",
+              schema = @Schema(type = "integer"))
+          @QueryParam("paginationOffset")
+          @DefaultValue("0")
+          int paginationOffset,
       @Parameter(description = "Source of the failed events", schema = @Schema(type = "string"))
           @QueryParam("source")
           String source) {
-    authorizer.authorizeAdmin(securityContext);
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.VIEW_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
 
     try {
       List<FailedEventResponse> failedEvents =
-          EventSubscriptionScheduler.getInstance().getFailedEventsByIdAndSource(id, source, limit);
+          EventSubscriptionScheduler.getInstance()
+              .getFailedEventsByIdAndSource(id, source, limit, paginationOffset);
 
       return Response.ok().entity(failedEvents).build();
     } catch (Exception e) {
@@ -920,20 +1027,28 @@ public class EventSubscriptionResource
               description = "Maximum number of failed events to retrieve",
               schema = @Schema(type = "integer"))
           @QueryParam("limit")
-          @DefaultValue("100")
+          @DefaultValue("15")
           @Min(0)
           int limit,
+      @Parameter(
+              description = "Offset for pagination (starting point for records)",
+              schema = @Schema(type = "integer"))
+          @QueryParam("paginationOffset")
+          @DefaultValue("0")
+          int paginationOffset,
       @Parameter(description = "Source of the failed events", schema = @Schema(type = "string"))
           @QueryParam("source")
           String source) {
-    authorizer.authorizeAdmin(securityContext);
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.VIEW_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
 
     try {
       EventSubscription subscription = repository.getByName(null, name, repository.getFields("id"));
 
       List<FailedEventResponse> failedEvents =
           EventSubscriptionScheduler.getInstance()
-              .getFailedEventsByIdAndSource(subscription.getId(), source, limit);
+              .getFailedEventsByIdAndSource(subscription.getId(), source, limit, paginationOffset);
 
       return Response.ok().entity(failedEvents).build();
 
@@ -973,17 +1088,26 @@ public class EventSubscriptionResource
               description = "Maximum number of failed events to retrieve",
               schema = @Schema(type = "integer"))
           @QueryParam("limit")
-          @DefaultValue("100")
+          @DefaultValue("15")
           @Min(0)
           int limit,
+      @Parameter(
+              description = "Offset for pagination (starting point for records)",
+              schema = @Schema(type = "integer"))
+          @QueryParam("paginationOffset")
+          @DefaultValue("0")
+          int paginationOffset,
       @Parameter(description = "Source of the failed events", schema = @Schema(type = "string"))
           @QueryParam("source")
           String source) {
-    authorizer.authorizeAdmin(securityContext);
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.VIEW_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContext());
 
     try {
       List<FailedEventResponse> failedEvents =
-          EventSubscriptionScheduler.getInstance().getAllFailedEvents(source, limit);
+          EventSubscriptionScheduler.getInstance()
+              .getAllFailedEvents(source, limit, paginationOffset);
 
       return Response.ok().entity(failedEvents).build();
     } catch (Exception e) {
@@ -1024,16 +1148,23 @@ public class EventSubscriptionResource
               description = "Maximum number of change events to retrieve",
               schema = @Schema(type = "integer"))
           @QueryParam("limit")
-          @DefaultValue("100")
+          @DefaultValue("15")
           @Min(0)
-          int limit) {
-
-    authorizer.authorizeAdmin(securityContext);
+          int limit,
+      @Parameter(
+              description = "Offset for pagination (starting point for records)",
+              schema = @Schema(type = "integer"))
+          @QueryParam("paginationOffset")
+          @DefaultValue("0")
+          int paginationOffset) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.VIEW_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
 
     try {
       List<ChangeEvent> changeEvents =
           EventSubscriptionScheduler.getInstance()
-              .getSuccessfullySentChangeEventsForAlert(id, limit);
+              .getSuccessfullySentChangeEventsForAlert(id, limit, paginationOffset);
 
       return Response.ok().entity(changeEvents).build();
     } catch (EntityNotFoundException e) {
@@ -1082,17 +1213,25 @@ public class EventSubscriptionResource
               description = "Maximum number of change events to retrieve",
               schema = @Schema(type = "integer"))
           @QueryParam("limit")
-          @DefaultValue("100")
+          @DefaultValue("15")
           @Min(0)
-          int limit) {
-    authorizer.authorizeAdmin(securityContext);
-
+          int limit,
+      @Parameter(
+              description = "Offset for pagination (starting point for records)",
+              schema = @Schema(type = "integer"))
+          @QueryParam("paginationOffset")
+          @DefaultValue("0")
+          int paginationOffset) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.VIEW_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
     try {
       EventSubscription subscription = repository.getByName(null, name, repository.getFields("id"));
 
       List<ChangeEvent> changeEvents =
           EventSubscriptionScheduler.getInstance()
-              .getSuccessfullySentChangeEventsForAlert(subscription.getId(), limit);
+              .getSuccessfullySentChangeEventsForAlert(
+                  subscription.getId(), limit, paginationOffset);
 
       return Response.ok().entity(changeEvents).build();
     } catch (EntityNotFoundException e) {
@@ -1138,6 +1277,9 @@ public class EventSubscriptionResource
       @Parameter(description = "ID of the Event Subscription", schema = @Schema(type = "UUID"))
           @PathParam("eventSubscriptionId")
           UUID id) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.VIEW_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     return EventSubscriptionScheduler.getInstance().listAlertDestinations(id);
   }
 
@@ -1167,7 +1309,9 @@ public class EventSubscriptionResource
       @Parameter(description = "Name of the Event Subscription", schema = @Schema(type = "string"))
           @PathParam("eventSubscriptionName")
           String name) {
-    authorizer.authorizeAdmin(securityContext);
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.VIEW_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
     EventSubscription sub = repository.getByName(null, name, repository.getFields("id"));
     return EventSubscriptionScheduler.getInstance().listAlertDestinations(sub.getId());
   }
@@ -1188,10 +1332,9 @@ public class EventSubscriptionResource
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       EventSubscriptionDestinationTestRequest request) {
-    authorizer.authorizeAdmin(securityContext);
-
-    EventSubscription eventSubscription =
-        new EventSubscription().withFullyQualifiedName(request.getAlertName());
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.CREATE);
+    authorizer.authorize(securityContext, operationContext, getResourceContext());
+    EventSubscription eventSubscription = new EventSubscription();
 
     List<SubscriptionDestination> resultDestinations = new ArrayList<>();
 
@@ -1265,6 +1408,70 @@ public class EventSubscriptionResource
                   .withSupportedFilters(rules);
             })
         .toList();
+  }
+
+  private ResultList<TypedEvent> fetchEventRecords(
+      UUID id, String statusParam, int limit, int paginationOffset) {
+    List<TypedEvent> combinedEvents = new ArrayList<>();
+    TypedEvent.Status status = null;
+    int totalEvents;
+
+    // validate the status parameter
+    if (statusParam != null && !statusParam.isBlank()) {
+      try {
+        status = TypedEvent.Status.fromValue(statusParam);
+      } catch (IllegalArgumentException e) {
+        throw new WebApplicationException(
+            "Invalid status. Must be 'failed' or 'successful'.", Response.Status.BAD_REQUEST);
+      }
+    }
+
+    // Fetch total count and events based on status
+    if (status == null) {
+      totalEvents = EventSubscriptionScheduler.getInstance().countTotalEvents(id);
+      combinedEvents.addAll(fetchEvents(id, limit, paginationOffset));
+    } else {
+      totalEvents = EventSubscriptionScheduler.getInstance().countTotalEvents(id, status);
+      combinedEvents.addAll(fetchEvents(id, limit, paginationOffset, status));
+    }
+
+    return new ResultList<>(combinedEvents, paginationOffset, limit, totalEvents);
+  }
+
+  private List<TypedEvent> fetchEvents(
+      UUID id, int limit, int paginationOffset, TypedEvent.Status status) {
+    List<?> events;
+    switch (status) {
+      case FAILED -> events =
+          EventSubscriptionScheduler.getInstance().getFailedEventsById(id, limit, paginationOffset);
+      case SUCCESSFUL -> events =
+          EventSubscriptionScheduler.getInstance()
+              .getSuccessfullySentChangeEventsForAlert(id, limit, paginationOffset);
+      default -> throw new IllegalArgumentException("Unknown event status: " + status);
+    }
+
+    return events.stream()
+        .map(
+            event ->
+                new TypedEvent()
+                    .withStatus(status)
+                    .withData(List.of(event))
+                    .withTimestamp(Double.valueOf(extractTimestamp(event))))
+        .toList();
+  }
+
+  private List<TypedEvent> fetchEvents(UUID id, int limit, int paginationOffset) {
+    return EventSubscriptionScheduler.getInstance()
+        .listEventsForSubscription(id, limit, paginationOffset);
+  }
+
+  private Long extractTimestamp(Object event) {
+    if (event instanceof ChangeEvent changeEvent) {
+      return changeEvent.getTimestamp();
+    } else if (event instanceof FailedEventResponse failedEvent) {
+      return failedEvent.getChangeEvent().getTimestamp();
+    }
+    throw new IllegalArgumentException("Unknown event type: " + event.getClass());
   }
 
   public static List<FilterResourceDescriptor> getObservabilityFilterDescriptors()

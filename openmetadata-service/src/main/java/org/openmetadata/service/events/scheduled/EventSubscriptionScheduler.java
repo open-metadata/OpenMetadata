@@ -19,6 +19,7 @@ import static org.openmetadata.service.events.subscription.AlertUtil.getStarting
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -28,6 +29,7 @@ import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.events.EventSubscriptionDiagnosticInfo;
+import org.openmetadata.schema.api.events.EventsRecord;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.EventSubscriptionOffset;
 import org.openmetadata.schema.entity.events.FailedEventResponse;
@@ -36,7 +38,10 @@ import org.openmetadata.schema.entity.events.SubscriptionStatus;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.changeEvent.AlertPublisher;
+import org.openmetadata.service.events.subscription.AlertUtil;
 import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.jdbi3.EventSubscriptionRepository;
+import org.openmetadata.service.resources.events.subscription.TypedEvent;
 import org.openmetadata.service.util.JsonUtils;
 import org.quartz.JobBuilder;
 import org.quartz.JobDataMap;
@@ -56,6 +61,8 @@ public class EventSubscriptionScheduler {
   public static final String ALERT_TRIGGER_GROUP = "OMAlertJobGroup";
   private static EventSubscriptionScheduler instance;
   private static volatile boolean initialized = false;
+  public static volatile boolean cleanupJobInitialised = false;
+
   private final Scheduler alertsScheduler = new StdSchedulerFactory().getScheduler();
 
   private EventSubscriptionScheduler() throws SchedulerException {
@@ -111,6 +118,7 @@ public class EventSubscriptionScheduler {
 
       // Schedule the Job
       alertsScheduler.scheduleJob(jobDetail, trigger);
+      instance.scheduleCleanupJob();
 
       LOG.info(
           "Event Subscription started as {} : status {} for all Destinations",
@@ -163,16 +171,57 @@ public class EventSubscriptionScheduler {
     LOG.info("Alert publisher deleted for {}", deletedEntity.getName());
   }
 
+  public void scheduleCleanupJob() {
+    if (!cleanupJobInitialised) {
+      try {
+        JobDetail cleanupJob =
+            JobBuilder.newJob(EventSubscriptionCleanupJob.class)
+                .withIdentity("CleanupJob", ALERT_JOB_GROUP)
+                .build();
+
+        Trigger cleanupTrigger =
+            TriggerBuilder.newTrigger()
+                .withIdentity("CleanupTrigger", ALERT_TRIGGER_GROUP)
+                .withSchedule(
+                    SimpleScheduleBuilder.simpleSchedule()
+                        .withIntervalInSeconds(10)
+                        .repeatForever())
+                .startNow()
+                .build();
+
+        alertsScheduler.scheduleJob(cleanupJob, cleanupTrigger);
+        cleanupJobInitialised = true;
+        LOG.info("Scheduled periodic cleanup job to run every 10 seconds.");
+      } catch (SchedulerException e) {
+        LOG.error("Failed to schedule cleanup job", e);
+      }
+    }
+  }
+
+  @Transaction
+  public void deleteSuccessfulAndFailedEventsRecordByAlert(UUID id) {
+    Entity.getCollectionDAO()
+        .eventSubscriptionDAO()
+        .deleteSuccessfulChangeEventBySubscriptionId(id.toString());
+
+    Entity.getCollectionDAO()
+        .eventSubscriptionDAO()
+        .deleteFailedRecordsBySubscriptionId(id.toString());
+
+    Entity.getCollectionDAO().eventSubscriptionDAO().deleteAlertMetrics(id.toString());
+  }
+
   public SubscriptionStatus getStatusForEventSubscription(UUID subscriptionId, UUID destinationId) {
     Optional<EventSubscription> eventSubscriptionOpt =
         getEventSubscriptionFromScheduledJob(subscriptionId);
 
     if (eventSubscriptionOpt.isPresent()) {
-      return eventSubscriptionOpt.get().getDestinations().stream()
-          .filter(destination -> destination.getId().equals(destinationId))
-          .map(SubscriptionDestination::getStatusDetails)
-          .findFirst()
-          .orElse(null);
+      return (SubscriptionStatus)
+          eventSubscriptionOpt.get().getDestinations().stream()
+              .filter(destination -> destination.getId().equals(destinationId))
+              .map(SubscriptionDestination::getStatusDetails)
+              .findFirst()
+              .orElse(null);
     }
 
     EntityRepository<? extends EntityInterface> subscriptionRepository =
@@ -217,39 +266,105 @@ public class EventSubscriptionScheduler {
     return eventSubscription.getDestinations();
   }
 
-  public EventSubscriptionDiagnosticInfo getEventSubscriptionDiagnosticInfo(
-      UUID subscriptionId, int limit) {
-    boolean isAllEventsPublished = checkIfPublisherPublishedAllEvents(subscriptionId);
-    EventSubscriptionOffset latestOffset = getLatestOffset();
+  public EventsRecord getEventSubscriptionEventsRecord(UUID subscriptionId) {
+    long failedEventsCount =
+        Entity.getCollectionDAO().changeEventDAO().countFailedEvents(subscriptionId.toString());
 
-    long currentOffset =
-        getEventSubscriptionOffset(subscriptionId)
-            .map(EventSubscriptionOffset::getOffset)
-            .orElse(0L);
+    long successfulEventsCount =
+        Entity.getCollectionDAO()
+            .eventSubscriptionDAO()
+            .getSuccessfulRecordCount(subscriptionId.toString());
 
-    long unpublishedEventCount = getUnpublishedEventCount(subscriptionId);
-    List<ChangeEvent> unprocessedEvents =
-        Optional.ofNullable(getUnpublishedEvents(subscriptionId, limit))
-            .orElse(Collections.emptyList());
+    long unprocessedEventsCount = getRelevantUnprocessedEvents(subscriptionId);
+    long totalEventsCount = failedEventsCount + successfulEventsCount + unprocessedEventsCount;
 
-    return new EventSubscriptionDiagnosticInfo()
-        .withLatestOffset(latestOffset.getOffset())
-        .withCurrentOffset(currentOffset)
-        .withHasProcessedAllEvents(isAllEventsPublished)
-        .withUnprocessedEventsCount(unpublishedEventCount)
-        .withUnprocessedEventsList(unprocessedEvents);
+    return new EventsRecord()
+        .withTotalEventsCount(totalEventsCount)
+        .withFailedEventsCount(failedEventsCount)
+        .withPendingEventsCount(unprocessedEventsCount)
+        .withSuccessfulEventsCount(successfulEventsCount);
   }
 
-  public static EventSubscriptionOffset getLatestOffset() {
-    return new EventSubscriptionOffset()
-        .withOffset(Entity.getCollectionDAO().changeEventDAO().getLatestOffset());
+  public long getRelevantUnprocessedEvents(UUID subscriptionId) {
+    long offset =
+        getEventSubscriptionOffset(subscriptionId)
+            .map(EventSubscriptionOffset::getCurrentOffset)
+            .orElse(Entity.getCollectionDAO().changeEventDAO().getLatestOffset());
+
+    return Entity.getCollectionDAO().changeEventDAO().listUnprocessedEvents(offset).parallelStream()
+        .map(
+            eventJson -> {
+              ChangeEvent event = JsonUtils.readValue(eventJson, ChangeEvent.class);
+              return AlertUtil.checkIfChangeEventIsAllowed(
+                      event, getEventSubscription(subscriptionId).getFilteringRules())
+                  ? event
+                  : null;
+            })
+        .filter(Objects::nonNull) // Remove null entries (events that did not pass filtering)
+        .count();
+  }
+
+  public EventSubscriptionDiagnosticInfo getEventSubscriptionDiagnosticInfo(
+      UUID subscriptionId, int limit, int paginationOffset, boolean listCountOnly) {
+    Optional<EventSubscriptionOffset> eventSubscriptionOffsetOptional =
+        getEventSubscriptionOffset(subscriptionId);
+
+    long currentOffset =
+        eventSubscriptionOffsetOptional.map(EventSubscriptionOffset::getCurrentOffset).orElse(0L);
+    long latestOffset = Entity.getCollectionDAO().changeEventDAO().getLatestOffset();
+    long startingOffset =
+        eventSubscriptionOffsetOptional.map(EventSubscriptionOffset::getStartingOffset).orElse(0L);
+    long failedEventsCount =
+        Entity.getCollectionDAO().changeEventDAO().countFailedEvents(subscriptionId.toString());
+
+    long successfulEventsCount =
+        Entity.getCollectionDAO()
+            .eventSubscriptionDAO()
+            .getSuccessfulRecordCount(subscriptionId.toString());
+
+    long totalUnprocessedEventCount = getUnpublishedEventCount(subscriptionId);
+
+    boolean hasProcessedAllEvents = checkIfPublisherPublishedAllEvents(subscriptionId);
+
+    List<ChangeEvent> unprocessedEvents =
+        Optional.ofNullable(getRelevantUnprocessedEvents(subscriptionId, limit, paginationOffset))
+            .orElse(Collections.emptyList());
+
+    if (listCountOnly) {
+      return new EventSubscriptionDiagnosticInfo()
+          .withLatestOffset(latestOffset)
+          .withCurrentOffset(currentOffset)
+          .withStartingOffset(startingOffset)
+          .withHasProcessedAllEvents(hasProcessedAllEvents)
+          .withSuccessfulEventsCount(successfulEventsCount)
+          .withFailedEventsCount(failedEventsCount)
+          .withTotalUnprocessedEventsCount(totalUnprocessedEventCount)
+          .withRelevantUnprocessedEventsCount((long) unprocessedEvents.size())
+          .withRelevantUnprocessedEventsList(null)
+          .withTotalUnprocessedEventsList(null);
+    }
+
+    List<ChangeEvent> allUnprocessedEvents =
+        getAllUnprocessedEvents(subscriptionId, limit, paginationOffset);
+
+    return new EventSubscriptionDiagnosticInfo()
+        .withLatestOffset(Entity.getCollectionDAO().changeEventDAO().getLatestOffset())
+        .withCurrentOffset(currentOffset)
+        .withStartingOffset(startingOffset)
+        .withHasProcessedAllEvents(hasProcessedAllEvents)
+        .withSuccessfulEventsCount(successfulEventsCount)
+        .withFailedEventsCount(failedEventsCount)
+        .withTotalUnprocessedEventsCount(totalUnprocessedEventCount)
+        .withTotalUnprocessedEventsList(allUnprocessedEvents)
+        .withRelevantUnprocessedEventsCount((long) unprocessedEvents.size())
+        .withRelevantUnprocessedEventsList(unprocessedEvents);
   }
 
   public boolean checkIfPublisherPublishedAllEvents(UUID subscriptionID) {
     long countOfEvents = Entity.getCollectionDAO().changeEventDAO().getLatestOffset();
 
     return getEventSubscriptionOffset(subscriptionID)
-        .map(offset -> offset.getOffset() == countOfEvents)
+        .map(offset -> offset.getCurrentOffset() == countOfEvents)
         .orElse(false);
   }
 
@@ -257,67 +372,114 @@ public class EventSubscriptionScheduler {
     long countOfEvents = Entity.getCollectionDAO().changeEventDAO().getLatestOffset();
 
     return getEventSubscriptionOffset(subscriptionID)
-        .map(offset -> Math.abs(countOfEvents - offset.getOffset()))
+        .map(offset -> Math.abs(countOfEvents - offset.getCurrentOffset()))
         .orElse(countOfEvents);
   }
 
-  public List<ChangeEvent> getUnpublishedEvents(UUID subscriptionId, int limit) {
+  public List<ChangeEvent> getRelevantUnprocessedEvents(
+      UUID subscriptionId, int limit, int paginationOffset) {
     long offset =
         getEventSubscriptionOffset(subscriptionId)
-            .map(EventSubscriptionOffset::getOffset)
+            .map(EventSubscriptionOffset::getCurrentOffset)
             .orElse(Entity.getCollectionDAO().changeEventDAO().getLatestOffset());
 
-    List<String> unprocessedEventJsonList =
-        Entity.getCollectionDAO().changeEventDAO().listUnprocessedEvents(offset, limit);
+    return Entity.getCollectionDAO()
+        .changeEventDAO()
+        .listUnprocessedEvents(offset, limit, paginationOffset)
+        .parallelStream()
+        .map(
+            eventJson -> {
+              ChangeEvent event = JsonUtils.readValue(eventJson, ChangeEvent.class);
+              return AlertUtil.checkIfChangeEventIsAllowed(
+                      event, getEventSubscription(subscriptionId).getFilteringRules())
+                  ? event
+                  : null;
+            })
+        .filter(Objects::nonNull) // Remove null entries (events that did not pass filtering)
+        .toList();
+  }
 
-    return unprocessedEventJsonList.stream()
+  public List<ChangeEvent> getAllUnprocessedEvents(
+      UUID subscriptionId, int limit, int paginationOffset) {
+    long offset =
+        getEventSubscriptionOffset(subscriptionId)
+            .map(EventSubscriptionOffset::getCurrentOffset)
+            .orElse(Entity.getCollectionDAO().changeEventDAO().getLatestOffset());
+
+    return Entity.getCollectionDAO()
+        .changeEventDAO()
+        .listUnprocessedEvents(offset, limit, paginationOffset)
+        .parallelStream()
         .map(eventJson -> JsonUtils.readValue(eventJson, ChangeEvent.class))
         .collect(Collectors.toList());
   }
 
   public List<FailedEventResponse> getFailedEventsByIdAndSource(
-      UUID subscriptionId, String source, int limit) {
+      UUID subscriptionId, String source, int limit, int paginationOffset) {
     if (CommonUtil.nullOrEmpty(source)) {
       return Entity.getCollectionDAO()
           .changeEventDAO()
-          .listFailedEventsById(subscriptionId.toString(), limit);
+          .listFailedEventsById(subscriptionId.toString(), limit, paginationOffset);
     } else {
       return Entity.getCollectionDAO()
           .changeEventDAO()
-          .listFailedEventsByIdAndSource(subscriptionId.toString(), source, limit);
+          .listFailedEventsByIdAndSource(
+              subscriptionId.toString(), source, limit, paginationOffset);
     }
   }
 
-  public List<FailedEventResponse> getFailedEventsById(UUID subscriptionId, int limit) {
+  public List<TypedEvent> listEventsForSubscription(UUID subscriptionId, int limit, long offset) {
+    Optional<EventSubscriptionOffset> eventSubscriptionOffset =
+        getEventSubscriptionOffset(subscriptionId);
+    if (eventSubscriptionOffset.isEmpty()) {
+      return Collections.emptyList();
+    }
+
     return Entity.getCollectionDAO()
         .changeEventDAO()
-        .listFailedEventsById(subscriptionId.toString(), limit);
+        .listAllEventsWithStatuses(subscriptionId.toString(), limit, offset);
   }
 
-  public List<FailedEventResponse> getAllFailedEvents(String source, int limit) {
+  private EventSubscription getEventSubscription(UUID eventSubscriptionId) {
+    EventSubscriptionRepository repository =
+        (EventSubscriptionRepository) Entity.getEntityRepository(Entity.EVENT_SUBSCRIPTION);
+    return repository.get(null, eventSubscriptionId, repository.getFields("*"));
+  }
+
+  public List<FailedEventResponse> getFailedEventsById(UUID subscriptionId, int limit, int offset) {
+    return Entity.getCollectionDAO()
+        .changeEventDAO()
+        .listFailedEventsById(subscriptionId.toString(), limit, offset);
+  }
+
+  public List<FailedEventResponse> getAllFailedEvents(
+      String source, int limit, int paginationOffset) {
     if (CommonUtil.nullOrEmpty(source)) {
-      return Entity.getCollectionDAO().changeEventDAO().listAllFailedEvents(limit);
+      return Entity.getCollectionDAO()
+          .changeEventDAO()
+          .listAllFailedEvents(limit, paginationOffset);
     } else {
-      return Entity.getCollectionDAO().changeEventDAO().listAllFailedEventsBySource(source, limit);
+      return Entity.getCollectionDAO()
+          .changeEventDAO()
+          .listAllFailedEventsBySource(source, limit, paginationOffset);
     }
   }
 
-  public List<ChangeEvent> getSuccessfullySentChangeEventsForAlert(UUID id, int limit) {
+  public List<ChangeEvent> getSuccessfullySentChangeEventsForAlert(
+      UUID id, int limit, int paginationOffset) {
     Optional<EventSubscriptionOffset> eventSubscriptionOffset = getEventSubscriptionOffset(id);
+    if (eventSubscriptionOffset.isEmpty()) {
+      return Collections.emptyList();
+    }
 
-    return eventSubscriptionOffset
-        .map(
-            offset -> {
-              List<String> jsonEvents =
-                  Entity.getCollectionDAO()
-                      .changeEventDAO()
-                      .listChangeEventsBeforeOffset(limit, offset.getOffset());
+    List<String> successfullySentChangeEvents =
+        Entity.getCollectionDAO()
+            .eventSubscriptionDAO()
+            .getSuccessfulChangeEventBySubscriptionId(id.toString(), limit, paginationOffset);
 
-              return jsonEvents.stream()
-                  .map(json -> JsonUtils.readValue(json, ChangeEvent.class))
-                  .collect(Collectors.toList());
-            })
-        .orElse(Collections.emptyList());
+    return successfullySentChangeEvents.stream()
+        .map(e -> JsonUtils.readValue(e, ChangeEvent.class))
+        .collect(Collectors.toList());
   }
 
   public Optional<EventSubscription> getEventSubscriptionFromScheduledJob(UUID id) {
@@ -350,6 +512,24 @@ public class EventSubscriptionScheduler {
           ex);
     }
     return Optional.empty();
+  }
+
+  public int countTotalEvents(UUID id, TypedEvent.Status status) {
+    return switch (status) {
+      case FAILED -> Entity.getCollectionDAO()
+          .eventSubscriptionDAO()
+          .countFailedEventsById(id.toString());
+      case SUCCESSFUL -> Entity.getCollectionDAO()
+          .eventSubscriptionDAO()
+          .countSuccessfulEventsBySubscriptionId(id.toString());
+      default -> throw new IllegalArgumentException("Unknown event status: " + status);
+    };
+  }
+
+  public int countTotalEvents(UUID id) {
+    return Entity.getCollectionDAO()
+        .eventSubscriptionDAO()
+        .countAllEventsWithStatuses(id.toString());
   }
 
   public boolean doesRecordExist(UUID id) {

@@ -7,6 +7,7 @@
 {% connectorInfoCard name="MicroStrategy" stage="PROD" href="/connectors/dashboard/microstrategy" platform="OpenMetadata" / %}
 {% connectorInfoCard name="Mode" stage="PROD" href="/connectors/dashboard/mode" platform="OpenMetadata" / %}
 {% connectorInfoCard name="PowerBI" stage="PROD" href="/connectors/dashboard/powerbi" platform="OpenMetadata" / %}
+{% connectorInfoCard name="Qlik Cloud" stage="PROD" href="/connectors/dashboard/qlikcloud" platform="OpenMetadata" / %}
 {% connectorInfoCard name="Qlik Sense" stage="PROD" href="/connectors/dashboard/qliksense" platform="OpenMetadata" / %}
 {% connectorInfoCard name="QuickSight" stage="PROD" href="/connectors/dashboard/quicksight" platform="OpenMetadata" / %}
 {% connectorInfoCard name="Redash" stage="PROD" href="/connectors/dashboard/redash" platform="OpenMetadata" / %}

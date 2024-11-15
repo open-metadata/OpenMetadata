@@ -1,4 +1,5 @@
 import { DateRangeObject } from 'Models';
+import { LinkProps } from 'react-router-dom';
 import { TestCaseStatus } from '../../generated/tests/testCase';
 import { TestCaseResolutionStatusTypes } from '../../generated/tests/testCaseResolutionStatus';
 import { TestPlatform } from '../../generated/tests/testDefinition';
@@ -55,6 +56,7 @@ export interface IncidentTimeChartWidgetProps {
   incidentMetricType: IncidentTimeMetricsType;
   name: string;
   chartFilter?: DataQualityDashboardChartFilters;
+  height?: number;
 }
 export interface TestCaseStatusAreaChartWidgetProps {
   title: string;
@@ -62,8 +64,20 @@ export interface TestCaseStatusAreaChartWidgetProps {
   name: string;
   chartColorScheme?: AreaChartColorScheme;
   chartFilter?: DataQualityDashboardChartFilters;
+  height?: number;
 }
 
 export interface PieChartWidgetCommonProps {
   chartFilter?: DataQualityDashboardChartFilters;
+}
+
+export interface DataStatisticWidgetProps {
+  name: string;
+  title: string;
+  icon: SvgComponent;
+  dataLabel: string;
+  countValue: number;
+  redirectPath: LinkProps['to'];
+  linkLabel: string;
+  isLoading?: boolean;
 }

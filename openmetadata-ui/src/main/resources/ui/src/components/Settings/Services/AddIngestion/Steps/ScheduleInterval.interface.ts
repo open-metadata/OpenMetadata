@@ -22,8 +22,8 @@ export type ScheduleIntervalProps<T> = {
   children?: ReactNode;
   disabled?: boolean;
   isEditMode?: boolean;
-  onBack: () => void;
-  onDeploy: (values: WorkflowExtraConfig & T) => void;
+  onBack?: () => void;
+  onDeploy?: (values: WorkflowExtraConfig & T) => void;
   buttonProps?: {
     okText?: string;
     cancelText?: string;
@@ -33,6 +33,7 @@ export type ScheduleIntervalProps<T> = {
     initialValue?: boolean;
   };
   topChildren?: ReactNode;
+  showActionButtons?: boolean;
 };
 
 export interface WorkflowExtraConfig {

@@ -33,7 +33,7 @@ VERSIONS = {
     "neo4j": "neo4j~=5.3.0",
     "pandas": "pandas~=2.0.0",
     "pyarrow": "pyarrow~=16.0",
-    "pydantic": "pydantic~=2.0",
+    "pydantic": "pydantic~=2.0,>=2.7.0",
     "pydomo": "pydomo~=0.3",
     "pymysql": "pymysql~=1.0",
     "pyodbc": "pyodbc>=4.0.35,<5",
@@ -146,11 +146,10 @@ base_requirements = {
 
 plugins: Dict[str, Set[str]] = {
     "airflow": {
-        VERSIONS["airflow"],
-        "opentelemetry-api==1.27.0",  # internal dependency of airflow, need to restrict version
-        "opentelemetry-exporter-otlp-proto-grpc==1.27.0",
+        "opentelemetry-exporter-otlp==1.27.0",
         "protobuf<5",
         "attrs",
+        VERSIONS["airflow"],
     },  # Same as ingestion container. For development.
     "amundsen": {VERSIONS["neo4j"]},
     "athena": {"pyathena~=3.0"},
@@ -344,6 +343,7 @@ dev = {
 
 test = {
     # Install Airflow as it's not part of `all` plugin
+    "opentelemetry-exporter-otlp==1.27.0",
     VERSIONS["airflow"],
     "boto3-stubs",
     "mypy-boto3-glue",
@@ -354,6 +354,7 @@ test = {
     "pytest==7.0.0",
     "pytest-cov",
     "pytest-order",
+    "dirty-equals",
     # install dbt dependency
     "dbt-artifacts-parser",
     "freezegun",

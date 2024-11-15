@@ -269,20 +269,20 @@ export const ROUTES = {
 
   SETTINGS_EDIT_CUSTOM_LOGIN_CONFIG: `/settings/OpenMetadata/loginConfiguration/edit-custom-login-configuration`,
 
-  CUSTOMIZE_PAGE: `/customize-page/:fqn/:pageFqn`,
+  CUSTOMIZE_PAGE: `/customize-page/${PLACEHOLDER_ROUTE_FQN}/:pageFqn`,
 
   ADD_CUSTOM_METRIC: `/add-custom-metric/${PLACEHOLDER_DASHBOARD_TYPE}/${PLACEHOLDER_ROUTE_FQN}`,
 
   // Observability
   OBSERVABILITY: '/observability',
   OBSERVABILITY_ALERTS: '/observability/alerts',
-  OBSERVABILITY_ALERT_DETAILS: `/observability/alert/${PLACEHOLDER_ROUTE_FQN}`,
+  OBSERVABILITY_ALERT_DETAILS_WITH_TAB: `/observability/alert/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
   ADD_OBSERVABILITY_ALERTS: '/observability/alerts/add',
   EDIT_OBSERVABILITY_ALERTS: `/observability/alerts/edit/${PLACEHOLDER_ROUTE_FQN}`,
 
   // Notification Alerts
   NOTIFICATION_ALERTS: `/settings/${GlobalSettingsMenuCategory.NOTIFICATIONS}`,
-  NOTIFICATION_ALERT_DETAILS: `/settings/${GlobalSettingsMenuCategory.NOTIFICATIONS}/alert/${PLACEHOLDER_ROUTE_FQN}`,
+  NOTIFICATION_ALERT_DETAILS_WITH_TAB: `/settings/${GlobalSettingsMenuCategory.NOTIFICATIONS}/alert/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
   EDIT_NOTIFICATION_ALERTS: `/settings/${GlobalSettingsMenuCategory.NOTIFICATIONS}/${GlobalSettingOptions.EDIT_NOTIFICATION}/${PLACEHOLDER_ROUTE_FQN}`,
 
   // Metric Entity
@@ -296,6 +296,8 @@ export const SOCKET_EVENTS = {
   MENTION_CHANNEL: 'mentionChannel',
   JOB_STATUS: 'jobStatus',
   CSV_EXPORT_CHANNEL: 'csvExportChannel',
+  SEARCH_INDEX_JOB_BROADCAST_CHANNEL: 'searchIndexJobStatus',
+  DATA_INSIGHTS_JOB_BROADCAST_CHANNEL: 'dataInsightsJobStatus',
 };
 
 export const IN_PAGE_SEARCH_ROUTES: Record<string, Array<string>> = {

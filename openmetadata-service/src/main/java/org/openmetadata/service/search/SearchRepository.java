@@ -81,9 +81,9 @@ import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 @Slf4j
 public class SearchRepository {
 
-  @Getter private final SearchClient searchClient;
+  private volatile SearchClient searchClient;
 
-  private Map<String, IndexMapping> entityIndexMap;
+  @Getter private Map<String, IndexMapping> entityIndexMap;
 
   private final String language;
 
@@ -122,6 +122,17 @@ public class SearchRepository {
             : "en";
     clusterAlias = config != null ? config.getClusterAlias() : "";
     loadIndexMappings();
+  }
+
+  public SearchClient getSearchClient() {
+    if (searchClient == null) {
+      synchronized (SearchRepository.class) {
+        if (searchClient == null) {
+          searchClient = buildSearchClient(elasticSearchConfiguration);
+        }
+      }
+    }
+    return searchClient;
   }
 
   private void loadIndexMappings() {
@@ -824,6 +835,19 @@ public class SearchRepository {
         index.getIndexName(clusterAlias),
         searchSortFilter,
         q);
+  }
+
+  public SearchClient.SearchResultListMapper listWithDeepPagination(
+      String entityType,
+      String query,
+      String filter,
+      SearchSortFilter searchSortFilter,
+      int size,
+      Object[] searchAfter)
+      throws IOException {
+    IndexMapping index = entityIndexMap.get(entityType);
+    return searchClient.listWithDeepPagination(
+        index.getIndexName(clusterAlias), query, filter, searchSortFilter, size, searchAfter);
   }
 
   public Response searchBySourceUrl(String sourceUrl) throws IOException {

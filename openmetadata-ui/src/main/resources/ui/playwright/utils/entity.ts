@@ -337,10 +337,11 @@ export const updateDescription = async (page: Page, description: string) => {
 export const assignTag = async (
   page: Page,
   tag: string,
-  action: 'Add' | 'Edit' = 'Add'
+  action: 'Add' | 'Edit' = 'Add',
+  parentId = 'entity-right-panel'
 ) => {
   await page
-    .getByTestId('entity-right-panel')
+    .getByTestId(parentId)
     .getByTestId('tags-container')
     .getByTestId(action === 'Add' ? 'add-tag' : 'edit-button')
     .click();
@@ -363,7 +364,7 @@ export const assignTag = async (
 
   await expect(
     page
-      .getByTestId('entity-right-panel')
+      .getByTestId(parentId)
       .getByTestId('tags-container')
       .getByTestId(`tag-${tag}`)
   ).toBeVisible();
@@ -1234,7 +1235,7 @@ export const softDeleteEntity = async (
   if (endPoint === EntityTypeEndpoint.Table) {
     await page.click('[data-testid="breadcrumb-link"]:last-child');
     const deletedTableResponse = page.waitForResponse(
-      '/api/v1/tables?databaseSchema=*'
+      '/api/v1/tables?*databaseSchema=*'
     );
     await page.click('[data-testid="show-deleted"]');
     await deletedTableResponse;
