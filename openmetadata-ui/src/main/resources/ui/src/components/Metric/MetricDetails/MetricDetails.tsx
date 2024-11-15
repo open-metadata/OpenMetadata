@@ -296,8 +296,9 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
                 firstPanel={{
                   className: 'entity-resizable-panel-container',
                   children: (
-                    <div className="d-flex flex-col gap-4 p-t-sm m-x-lg">
+                    <div className="d-flex flex-col gap-4 p-y-sm m-x-lg">
                       <DescriptionV1
+                        isDescriptionExpanded
                         description={metricDetails.description}
                         entityFqn={decodedMetricFqn}
                         entityName={entityName}
@@ -310,10 +311,6 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
                         onDescriptionEdit={onDescriptionEdit}
                         onDescriptionUpdate={onDescriptionUpdate}
                         onThreadLinkSelect={onThreadLinkSelect}
-                      />
-                      <MetricExpression
-                        metricDetails={metricDetails}
-                        onMetricUpdate={onMetricUpdate}
                       />
                     </div>
                   ),
@@ -360,6 +357,20 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
               />
             </Col>
           </Row>
+        ),
+      },
+      {
+        label: (
+          <TabsLabel id={EntityTabs.EXPRESSION} name={t('label.expression')} />
+        ),
+        key: EntityTabs.EXPRESSION,
+        children: (
+          <div className="p-t-sm m-x-lg">
+            <MetricExpression
+              metricDetails={metricDetails}
+              onMetricUpdate={onMetricUpdate}
+            />
+          </div>
         ),
       },
       {
