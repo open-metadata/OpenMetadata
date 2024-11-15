@@ -164,10 +164,14 @@ class ProfilerInterfaceTest(TestCase):
         )
         actual = get_profile_sample_config(
             entity=self.table,
-            schema_profiler_config=self.schema_profiler_config,
-            database_profiler_config=self.database_profiler_config,
+            schema_entity=self.schema_entity,
+            database_entity=self.database_entity,
             entity_config=None,
-            source_config=source_config,
+            default_sample_config=SampleConfig(
+                profile_sample=source_config.profileSample,
+                profile_sample_type=source_config.profileSampleType,
+                sampling_method_type=source_config.samplingMethodType,
+            ),
         )
         self.assertEqual(expected, actual)
 
@@ -182,10 +186,14 @@ class ProfilerInterfaceTest(TestCase):
         )
         actual = get_profile_sample_config(
             entity=self.table,
-            schema_profiler_config=self.schema_profiler_config,
-            database_profiler_config=self.database_profiler_config,
+            schema_entity=self.schema_entity,
+            database_entity=self.database_entity,
             entity_config=profiler,
-            source_config=source_config,
+            default_sample_config=SampleConfig(
+                profile_sample=source_config.profileSample,
+                profile_sample_type=source_config.profileSampleType,
+                sampling_method_type=source_config.samplingMethodType,
+            ),
         )
         self.assertEqual(expected, actual)
 
@@ -198,10 +206,14 @@ class ProfilerInterfaceTest(TestCase):
         table_copy.tableProfilerConfig = None
         actual = get_profile_sample_config(
             entity=table_copy,
-            schema_profiler_config=None,
-            database_profiler_config=self.database_profiler_config,
+            schema_entity=None,
+            database_entity=self.database_entity,
             entity_config=profiler,
-            source_config=source_config,
+            default_sample_config=SampleConfig(
+                profile_sample=source_config.profileSample,
+                profile_sample_type=source_config.profileSampleType,
+                sampling_method_type=source_config.samplingMethodType,
+            ),
         )
         self.assertEqual(expected, actual)
 
@@ -212,7 +224,6 @@ class ProfilerInterfaceTest(TestCase):
             sampleDataCount=20,
             fullyQualifiedName="demo",
         )
-        source_config = DatabaseServiceProfilerPipeline()
 
         actual = get_sample_data_count_config(
             entity=self.table,
