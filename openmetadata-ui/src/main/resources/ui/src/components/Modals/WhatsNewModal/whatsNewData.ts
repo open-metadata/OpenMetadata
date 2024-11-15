@@ -1136,7 +1136,6 @@ To continue pursuing this objective, the application was completely refactored t
 - **Fix**: Return s3 endpoint as str() instead of Url.
 - **Improvement**: Databricks query run optimisation.
 - **Fix**: Make Export CSV Async API, websocket to push data back.
-- **Fix**: Airflow dependency.
 - **Improvement**: Add Column Value to be At Expected Location Test.
 - **Fix**: User count doesn't update on adding to the team while using search.
 - **Improvement**: Added support for lineage default depth settings.
