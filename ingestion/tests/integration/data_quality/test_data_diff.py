@@ -326,6 +326,10 @@ class TestParameters(BaseModel):
                     timestamp=int(datetime.now().timestamp() * 1000),
                     testCaseStatus=TestCaseStatus.Success,
                 ),
+                TableProfilerConfig(
+                    profileSampleType=ProfileSampleType.PERCENTAGE,
+                    profileSample=10,
+                ),
             ),
             (
                 TestCaseDefinition(
