@@ -23,6 +23,14 @@ import {
   CommonWidgetType,
   CUSTOM_PROPERTIES_WIDGET,
   DESCRIPTION_WIDGET,
+  DOMAIN_WIDGET,
+  OWNER_WIDGET,
+  REFERENCES_WIDGET,
+  RELATED_TERMS_WIDGET,
+  REVIEWER_WIDGET,
+  SYNONYMS_WIDGET,
+  TAGS_WIDGET,
+  TERMS_TABLE_WIDGET,
 } from '../../constants/CustomizeWidgets.constants';
 import { GlossaryTermDetailPageWidgetKeys } from '../../enums/CustomizeDetailPage.enum';
 import { EntityTabs } from '../../enums/entity.enum';
@@ -236,9 +244,7 @@ class CustomizeGlossaryTermPageClassBase {
     }
   >
    */
-  public getWidgetsFromKey<T extends GlossaryTermDetailPageWidgetKeys>(
-    widgetKey: T
-  ) {
+  public getWidgetsFromKey(widgetKey: string) {
     if (widgetKey.startsWith(GlossaryTermDetailPageWidgetKeys.HEADER)) {
       return GlossaryHeaderWidget;
     } else if (widgetKey.startsWith(GlossaryTermDetailPageWidgetKeys.TABS)) {
@@ -360,33 +366,25 @@ class CustomizeGlossaryTermPageClassBase {
     return [];
   }
 
-  public getCommonWidgetList(): CommonWidgetType[] {
-    return [
+  public getCommonWidgetList(isGlossary: boolean): CommonWidgetType[] {
+    const commonWidgetList = [
       DESCRIPTION_WIDGET,
-      {
-        fullyQualifiedName: GlossaryTermDetailPageWidgetKeys.SYNONYMS,
-        name: 'Synonyms',
-        data: {
-          gridSizes: ['small'],
-        },
-      },
-      {
-        fullyQualifiedName: GlossaryTermDetailPageWidgetKeys.RELATED_TERMS,
-        name: 'Related Terms',
-        data: { gridSizes: ['small'] },
-      },
-      {
-        fullyQualifiedName: GlossaryTermDetailPageWidgetKeys.REFERENCES,
-        name: 'References',
-        data: { gridSizes: ['small'] },
-      },
-      {
-        fullyQualifiedName: GlossaryTermDetailPageWidgetKeys.REVIEWER,
-        name: 'Reviewer',
-        data: { gridSizes: ['small'] },
-      },
+      TERMS_TABLE_WIDGET,
+      DOMAIN_WIDGET,
+      REFERENCES_WIDGET,
+      REVIEWER_WIDGET,
       CUSTOM_PROPERTIES_WIDGET,
+      TAGS_WIDGET,
     ];
+
+    return isGlossary
+      ? commonWidgetList
+      : [
+          ...commonWidgetList,
+          OWNER_WIDGET,
+          SYNONYMS_WIDGET,
+          RELATED_TERMS_WIDGET,
+        ];
   }
 }
 

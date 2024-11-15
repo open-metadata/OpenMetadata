@@ -29,7 +29,9 @@ export enum DetailPageWidgetKeys {
   DOMAIN = 'KnowledgePanel.Domain',
   GLOSSARY_TERMS = 'KnowledgePanel.GlossaryTerms',
   CUSTOM_PROPERTIES = 'KnowledgePanel.CustomProperties',
+  TABLE_CONSTRAINTS = 'KnowledgePanel.TableConstraints',
   EMPTY_WIDGET_PLACEHOLDER = 'ExtraWidget.EmptyWidgetPlaceholder',
+  PARTITIONED_KEYS = 'KnowledgePanel.PartitionedKeys',
 }
 
 export enum GlossaryTermDetailPageWidgetKeys {

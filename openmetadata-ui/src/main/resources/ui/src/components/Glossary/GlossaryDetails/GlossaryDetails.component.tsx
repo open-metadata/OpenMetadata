@@ -98,7 +98,7 @@ const GlossaryDetails = ({
       return customizeGlossaryPageClassBase.getDefaultWidgetForTab(activeTab);
     }
 
-    const page = currentPersonaDocStore?.data?.pages.find(
+    const page = currentPersonaDocStore?.data?.pages?.find(
       (p: Page) => p.pageType === PageType.Glossary
     );
 

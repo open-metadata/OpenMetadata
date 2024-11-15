@@ -180,7 +180,10 @@ export const CustomizablePage = () => {
               name: `${personaDetails.name}-${personaFQN}`,
               fullyQualifiedName: pageLayoutFQN,
               entityType: EntityType.PAGE,
-              data: {},
+              data: {
+                pages: [],
+                navigation: [],
+              },
             });
             setCurrentPageType(pageFqn as PageType);
           } else {

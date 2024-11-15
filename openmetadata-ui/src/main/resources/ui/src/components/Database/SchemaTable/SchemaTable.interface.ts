@@ -13,8 +13,7 @@
 
 import { ReactNode } from 'react';
 import { ThreadType } from '../../../generated/api/feed/createThread';
-import { Column, Table } from '../../../generated/entity/data/table';
-import { TestSummary } from '../../../generated/tests/testCase';
+import { Column } from '../../../generated/entity/data/table';
 
 export interface SchemaTableProps {
   hasDescriptionEditAccess: boolean;
@@ -23,8 +22,6 @@ export interface SchemaTableProps {
   isReadOnly?: boolean;
   onUpdate: (columns: Column[]) => Promise<void>;
   onThreadLinkSelect: (value: string, threadType?: ThreadType) => void;
-  table?: Table;
-  testCaseSummary?: TestSummary;
 }
 
 export type TableCellRendered<T, K extends keyof T> = (

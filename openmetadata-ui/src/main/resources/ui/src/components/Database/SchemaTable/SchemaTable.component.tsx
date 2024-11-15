@@ -40,17 +40,17 @@ import {
   COLUMN_CONSTRAINT_TYPE_OPTIONS,
   TABLE_SCROLL_VALUE,
 } from '../../../constants/Table.constants';
-import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType, FqnPart } from '../../../enums/entity.enum';
-import { Column } from '../../../generated/entity/data/table';
+import {
+  Column,
+  Table as TableType,
+} from '../../../generated/entity/data/table';
+import { TestSummary } from '../../../generated/tests/testCase';
 import { TagSource } from '../../../generated/type/schema';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useFqn } from '../../../hooks/useFqn';
+import { getTestCaseExecutionSummary } from '../../../rest/testAPI';
 import { getPartialNameFromTableFQN } from '../../../utils/CommonUtils';
 import {
   getColumnSorter,
@@ -70,10 +70,10 @@ import {
   prepareConstraintIcon,
   updateFieldTags,
 } from '../../../utils/TableUtils';
-import { showErrorToast } from '../../../utils/ToastUtils';
 import FilterTablePlaceHolder from '../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
 import Table from '../../common/Table/Table';
 import TestCaseStatusSummaryIndicator from '../../common/TestCaseStatusSummaryIndicator/TestCaseStatusSummaryIndicator.component';
+import { useGenericContext } from '../../GenericProvider/GenericProvider';
 import EntityNameModal from '../../Modals/EntityNameModal/EntityNameModal.component';
 import {
   EntityName,
@@ -94,13 +94,23 @@ const SchemaTable = ({
   hasDescriptionEditAccess,
   hasTagEditAccess,
   isReadOnly = false,
-  table,
-  testCaseSummary,
   onUpdate,
   onThreadLinkSelect,
 }: SchemaTableProps) => {
   const { theme } = useApplicationStore();
   const { t } = useTranslation();
+  const [testCaseSummary, setTestCaseSummary] = useState<TestSummary>();
+  const [searchedColumns, setSearchedColumns] = useState<Column[]>([]);
+  const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
+
+  const [editColumn, setEditColumn] = useState<Column>();
+
+  const { fqn: decodedEntityFqn } = useFqn();
+
+  const [editColumnDisplayName, setEditColumnDisplayName] = useState<Column>();
+  const { permissions: tablePermissions, data: table } =
+    useGenericContext<TableType>();
+
   const { testCaseCounts, tableColumns, joins, tableConstraints } = useMemo(
     () => ({
       testCaseCounts: testCaseSummary?.columnTestSummary ?? [],
@@ -110,17 +120,6 @@ const SchemaTable = ({
     }),
     [table, testCaseSummary]
   );
-
-  const [searchedColumns, setSearchedColumns] = useState<Column[]>([]);
-  const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
-  const [tablePermissions, setTablePermissions] =
-    useState<OperationPermission>();
-  const [editColumn, setEditColumn] = useState<Column>();
-
-  const { fqn: decodedEntityFqn } = useFqn();
-
-  const [editColumnDisplayName, setEditColumnDisplayName] = useState<Column>();
-  const { getEntityPermissionByFqn } = usePermissionProvider();
 
   const tableFqn = useMemo(
     () =>
@@ -137,19 +136,12 @@ const SchemaTable = ({
     [tableColumns]
   );
 
-  const fetchResourcePermission = async (entityFqn: string) => {
+  const fetchTestCaseSummary = async () => {
     try {
-      const permissions = await getEntityPermissionByFqn(
-        ResourceEntity.TABLE,
-        entityFqn
-      );
-      setTablePermissions(permissions);
+      const response = await getTestCaseExecutionSummary(table?.testSuite?.id);
+      setTestCaseSummary(response);
     } catch (error) {
-      showErrorToast(
-        t('server.fetch-entity-permissions-error', {
-          entity: entityFqn,
-        })
-      );
+      setTestCaseSummary(undefined);
     }
   };
 
@@ -165,9 +157,7 @@ const SchemaTable = ({
   );
 
   useEffect(() => {
-    if (!isEmpty(tableFqn)) {
-      fetchResourcePermission(tableFqn);
-    }
+    fetchTestCaseSummary();
   }, [tableFqn]);
 
   const handleEditColumn = (column: Column): void => {
