@@ -366,6 +366,7 @@
     "destination": "Destino",
     "detail-plural": "Detalles",
     "developed-by-developer": "Desenvolvido por {{developer}}",
+    "dimension": "Dimension",
     "disable": "Desactivar",
     "disable-lowercase": "desactivar",
     "disable-tag": "Desactivar etiqueta",

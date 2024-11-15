@@ -461,12 +461,20 @@ export const TEST_CASE_FILTERS: Record<string, keyof TestCaseSearchParams> = {
   tier: 'tier',
   tags: 'tags',
   service: 'serviceName',
+  dimension: 'dataQualityDimension',
 };
 
 export const TEST_CASE_PLATFORM_OPTION = values(TestPlatform).map((value) => ({
   label: value,
   value: value,
 }));
+
+export const TEST_CASE_DIMENSIONS_OPTION = values(DataQualityDimensions).map(
+  (value) => ({
+    label: value,
+    value: value,
+  })
+);
 
 export const INITIAL_COLUMN_METRICS_VALUE = {
   countMetrics: INITIAL_COUNT_METRIC_VALUE,

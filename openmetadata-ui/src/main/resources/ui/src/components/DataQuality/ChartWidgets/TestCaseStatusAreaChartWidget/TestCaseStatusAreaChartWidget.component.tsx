@@ -14,10 +14,12 @@ import { Card, Typography } from 'antd';
 import classNames from 'classnames';
 import { toLower } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { fetchTestCaseStatusMetricsByDays } from '../../../../rest/dataQualityDashboardAPI';
 import { CustomAreaChartData } from '../../../Visualisations/Chart/Chart.interface';
 import CustomAreaChart from '../../../Visualisations/Chart/CustomAreaChart.component';
 import { TestCaseStatusAreaChartWidgetProps } from '../../DataQuality.interface';
+import '../chart-widgets.less';
 import './test-case-status-area-chart-widget.less';
 
 const TestCaseStatusAreaChartWidget = ({
@@ -27,14 +29,29 @@ const TestCaseStatusAreaChartWidget = ({
   chartColorScheme,
   chartFilter,
   height,
+  redirectPath,
 }: TestCaseStatusAreaChartWidgetProps) => {
   const [chartData, setChartData] = useState<CustomAreaChartData[]>([]);
   const [isChartLoading, setIsChartLoading] = useState(true);
 
-  const totalValue = useMemo(() => {
-    return chartData.reduce((acc, curr) => {
+  const totalValueElement = useMemo(() => {
+    const totalValue = chartData.reduce((acc, curr) => {
       return acc + curr.count;
     }, 0);
+
+    return (
+      <Typography.Paragraph
+        className="font-medium text-xl m-b-0 chart-total-count-value-link"
+        data-testid="total-value">
+        {redirectPath ? (
+          <Link className="font-medium text-xl" to={redirectPath}>
+            {totalValue}
+          </Link>
+        ) : (
+          totalValue
+        )}
+      </Typography.Paragraph>
+    );
   }, [chartData]);
 
   const getTestCaseStatusMetrics = async () => {
@@ -74,11 +91,7 @@ const TestCaseStatusAreaChartWidget = ({
       <Typography.Paragraph className="text-xs text-grey-muted">
         {title}
       </Typography.Paragraph>
-      <Typography.Paragraph
-        className="font-medium text-xl m-b-0"
-        data-testid="total-value">
-        {totalValue}
-      </Typography.Paragraph>
+      {totalValueElement}
 
       <CustomAreaChart
         colorScheme={chartColorScheme}

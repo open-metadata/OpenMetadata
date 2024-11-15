@@ -366,6 +366,7 @@
     "destination": "יעד",
     "detail-plural": "פרטים",
     "developed-by-developer": "פותח על ידי {{developer}}",
+    "dimension": "Dimension",
     "disable": "השבת",
     "disable-lowercase": "השבתה",
     "disable-tag": "",

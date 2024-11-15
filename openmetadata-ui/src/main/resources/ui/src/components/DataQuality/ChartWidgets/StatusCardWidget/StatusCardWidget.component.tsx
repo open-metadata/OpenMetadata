@@ -13,11 +13,17 @@
 import { Space, Tooltip, Typography } from 'antd';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import { PRIMARY_COLOR } from '../../../../constants/Color.constants';
+import '../chart-widgets.less';
 import './status-card-widget.less';
 import { StatusCardWidgetProps } from './StatusCardWidget.interface';
 
-const StatusDataWidget = ({ statusData, icon }: StatusCardWidgetProps) => {
+const StatusDataWidget = ({
+  statusData,
+  icon,
+  redirectPath,
+}: StatusCardWidgetProps) => {
   const IconSvg = icon;
   const { t } = useTranslation();
 
@@ -46,9 +52,15 @@ const StatusDataWidget = ({ statusData, icon }: StatusCardWidgetProps) => {
         </Typography.Text>
       </div>
       <Typography.Text
-        className="font-medium text-md"
+        className="font-medium text-md chart-total-count-value-link"
         data-testid="total-value">
-        {statusData.total}
+        {redirectPath ? (
+          <Link className="font-medium text-xl" to={redirectPath}>
+            {statusData.total}
+          </Link>
+        ) : (
+          statusData.total
+        )}
       </Typography.Text>
       <div className="d-flex items-center gap-3">
         {Object.entries(countCard).map(([key, value]) => (

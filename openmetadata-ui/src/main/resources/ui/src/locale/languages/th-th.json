@@ -366,6 +366,7 @@
     "destination": "ปลายทาง",
     "detail-plural": "รายละเอียด",
     "developed-by-developer": "พัฒนาโดย {{developer}}",
+    "dimension": "Dimension",
     "disable": "ปิดการใช้งาน",
     "disable-lowercase": "ปิดการใช้งาน",
     "disable-tag": "ปิดแท็ก",

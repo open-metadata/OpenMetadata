@@ -366,6 +366,7 @@
     "destination": "目的地",
     "detail-plural": "详情",
     "developed-by-developer": "Developed by {{developer}}",
+    "dimension": "Dimension",
     "disable": "禁用",
     "disable-lowercase": "禁用",
     "disable-tag": "禁用标签",

@@ -366,6 +366,7 @@
     "destination": "宛先",
     "detail-plural": "詳細",
     "developed-by-developer": "Developed by {{developer}}",
+    "dimension": "Dimension",
     "disable": "Disable",
     "disable-lowercase": "disable",
     "disable-tag": "Disable Tag",

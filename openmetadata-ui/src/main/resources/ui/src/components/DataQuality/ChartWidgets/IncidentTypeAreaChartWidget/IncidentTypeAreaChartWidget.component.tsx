@@ -12,27 +12,42 @@
  */
 import { Card, Typography } from 'antd';
 import React, { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { fetchCountOfIncidentStatusTypeByDays } from '../../../../rest/dataQualityDashboardAPI';
 import { CustomAreaChartData } from '../../../Visualisations/Chart/Chart.interface';
 import CustomAreaChart from '../../../Visualisations/Chart/CustomAreaChart.component';
 import { IncidentTypeAreaChartWidgetProps } from '../../DataQuality.interface';
+import '../chart-widgets.less';
 
 const IncidentTypeAreaChartWidget = ({
   incidentStatusType,
   title,
   name,
   chartFilter,
+  redirectPath,
 }: IncidentTypeAreaChartWidgetProps) => {
   const [isChartLoading, setIsChartLoading] = useState(true);
   const [chartData, setChartData] = useState<CustomAreaChartData[]>([]);
 
-  const totalValue = useMemo(
-    () =>
-      chartData.reduce((acc, curr) => {
-        return acc + curr.count;
-      }, 0),
-    [chartData]
-  );
+  const totalValueElement = useMemo(() => {
+    const totalValue = chartData.reduce((acc, curr) => {
+      return acc + curr.count;
+    }, 0);
+
+    return (
+      <Typography.Paragraph
+        className="font-medium text-xl m-b-0 chart-total-count-value-link"
+        data-testid="total-value">
+        {redirectPath ? (
+          <Link className="font-medium text-xl" to={redirectPath}>
+            {totalValue}
+          </Link>
+        ) : (
+          totalValue
+        )}
+      </Typography.Paragraph>
+    );
+  }, [chartData]);
 
   const getCountOfIncidentStatus = async () => {
     setIsChartLoading(true);
@@ -64,12 +79,7 @@ const IncidentTypeAreaChartWidget = ({
       <Typography.Paragraph className="text-xs text-grey-muted">
         {title}
       </Typography.Paragraph>
-      <Typography.Paragraph
-        className="font-medium text-xl m-b-0"
-        data-testid="total-value">
-        {totalValue}
-      </Typography.Paragraph>
-
+      {totalValueElement}
       <CustomAreaChart data={chartData} name={name} />
     </Card>
   );

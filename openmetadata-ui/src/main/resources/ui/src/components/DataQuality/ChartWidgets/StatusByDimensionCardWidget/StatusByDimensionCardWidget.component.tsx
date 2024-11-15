@@ -10,16 +10,20 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Card, Col, Divider, Row } from 'antd';
+import { Card, Col, Row } from 'antd';
+import classNames from 'classnames';
 import { isUndefined } from 'lodash';
-import React, { Fragment, useEffect, useMemo, useState } from 'react';
+import QueryString from 'qs';
+import React, { useEffect, useMemo, useState } from 'react';
 import { DataQualityReport } from '../../../../generated/tests/dataQualityReport';
 import { DataQualityDimensions } from '../../../../generated/tests/testDefinition';
+import { DataQualityPageTabs } from '../../../../pages/DataQuality/DataQualityPage.interface';
 import { fetchTestCaseSummaryByDimension } from '../../../../rest/dataQualityDashboardAPI';
 import {
   getDimensionIcon,
   transformToTestCaseStatusByDimension,
 } from '../../../../utils/DataQuality/DataQualityUtils';
+import { getDataQualityPagePath } from '../../../../utils/RouterUtils';
 import { PieChartWidgetCommonProps } from '../../DataQuality.interface';
 import StatusByDimensionWidget from '../StatusCardWidget/StatusCardWidget.component';
 import './status-by-dimension-card-widget.less';
@@ -64,26 +68,31 @@ const StatusByDimensionCardWidget = ({
 
   return (
     <Card
+      bodyStyle={{ padding: '40px 14px' }}
       className="status-by-dimension-card-widget-container"
       loading={isDqByDimensionLoading}>
-      <Row justify="space-between">
+      <Row gutter={[24, 40]}>
         {dqDimensions.map((dimension, index) => (
-          <Fragment key={dimension.title}>
-            <Col>
-              <StatusByDimensionWidget
-                icon={getDimensionIcon(
-                  dimension.title as DataQualityDimensions
-                )}
-                key={dimension.title}
-                statusData={dimension}
-              />
-            </Col>
-            {dqDimensions.length - 1 > index && (
-              <Col>
-                <Divider className="dimension-widget-divider" type="vertical" />
-              </Col>
-            )}
-          </Fragment>
+          <Col
+            className={classNames({
+              'dimension-widget-divider': (index + 1) % 4 !== 0,
+            })}
+            key={dimension.title}
+            span={6}>
+            <StatusByDimensionWidget
+              icon={getDimensionIcon(dimension.title as DataQualityDimensions)}
+              key={dimension.title}
+              redirectPath={{
+                pathname: getDataQualityPagePath(
+                  DataQualityPageTabs.TEST_CASES
+                ),
+                search: QueryString.stringify({
+                  dataQualityDimension: dimension.title,
+                }),
+              }}
+              statusData={dimension}
+            />
+          </Col>
         ))}
       </Row>
     </Card>

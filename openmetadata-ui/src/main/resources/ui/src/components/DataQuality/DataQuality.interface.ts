@@ -42,6 +42,7 @@ export type TestCaseSearchParams = {
   tier?: string;
   tags?: string;
   serviceName?: string;
+  dataQualityDimension?: string;
 };
 
 export interface IncidentTypeAreaChartWidgetProps {
@@ -49,6 +50,7 @@ export interface IncidentTypeAreaChartWidgetProps {
   incidentStatusType: TestCaseResolutionStatusTypes;
   name: string;
   chartFilter?: DataQualityDashboardChartFilters;
+  redirectPath?: LinkProps['to'];
 }
 
 export interface IncidentTimeChartWidgetProps {
@@ -57,6 +59,7 @@ export interface IncidentTimeChartWidgetProps {
   name: string;
   chartFilter?: DataQualityDashboardChartFilters;
   height?: number;
+  redirectPath?: LinkProps['to'];
 }
 export interface TestCaseStatusAreaChartWidgetProps {
   title: string;
@@ -65,6 +68,7 @@ export interface TestCaseStatusAreaChartWidgetProps {
   chartColorScheme?: AreaChartColorScheme;
   chartFilter?: DataQualityDashboardChartFilters;
   height?: number;
+  redirectPath?: LinkProps['to'];
 }
 
 export interface PieChartWidgetCommonProps {
