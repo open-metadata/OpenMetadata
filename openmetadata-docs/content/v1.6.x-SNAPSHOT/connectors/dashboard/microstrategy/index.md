@@ -47,7 +47,7 @@ To integrate MicroStrategy, ensure you are using OpenMetadata version 1.2.x or h
 
 - **Host Port**: This parameter specifies the host and port of the MicroStrategy instance. This should be specified as a URI string in the format http://hostname:port or https://hostname:port.
 
-For example, you might set it to https://org.mstr.com:3000.
+For example, you might set it to https://demo.microstrategy.com.
 
 - **Project Name**: The name of the project within MicroStrategy that OpenMetadata will connect to, linking to the relevant dashboards and reports for metadata retrieval.
 

@@ -108,6 +108,8 @@ class MicrostrategySource(DashboardServiceSource):
         """
         Method to Get Dashboard Entity
         """
+        if not dashboard_details:
+            return
         try:
             dashboard_url = (
                 f"{clean_uri(self.service_connection.hostPort)}/MicroStrategyLibrary/app/"
@@ -158,6 +160,8 @@ class MicrostrategySource(DashboardServiceSource):
         Returns:
             Iterable[CreateChartRequest]
         """
+        if not dashboard_details:
+            return None
         try:
             for chapter in dashboard_details.chapters:
                 for page in chapter.pages:

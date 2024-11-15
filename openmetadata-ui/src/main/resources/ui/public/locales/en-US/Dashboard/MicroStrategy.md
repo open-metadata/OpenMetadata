@@ -21,5 +21,5 @@ $$section
 
 This parameter specifies the host and port of the MicroStrategy instance. This should be specified as a URI string in the format `http://hostname:port` or `https://hostname:port`. 
 
-For example, you might set it to `https://org.mstr.com:3000`.
+For example, you might set it to `https://demo.microstrategy.com`.
 $$

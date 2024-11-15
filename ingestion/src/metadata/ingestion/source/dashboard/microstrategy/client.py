@@ -15,7 +15,7 @@ import traceback
 from typing import List, Optional
 
 import requests
-from mstr.requests import MSTRRESTSession
+from mstrio.connection import Connection
 
 from metadata.generated.schema.entity.services.connections.dashboard.microStrategyConnection import (
     MicroStrategyConnection,
@@ -45,15 +45,16 @@ class MicroStrategyClient:
 
     def _get_base_url(self, path=None):
         if not path:
-            return f"{clean_uri(self.config.hostPort)}/{API_VERSION}/"
+            return f"{clean_uri(self.config.hostPort)}/{API_VERSION}"
         return f"{clean_uri(self.config.hostPort)}/{API_VERSION}/{path}"
 
-    def _get_mstr_session(self) -> MSTRRESTSession:
+    def _get_mstr_session(self) -> Connection:
         try:
-            session = MSTRRESTSession(base_url=self._get_base_url())
-            session.login(
+            session = Connection(
+                base_url=self._get_base_url(),
                 username=self.config.username,
                 password=self.config.password.get_secret_value(),
+                login_mode=8,
             )
             return session
 
@@ -81,7 +82,7 @@ class MicroStrategyClient:
         """
         try:
             resp_projects = self.session.get(
-                url=self._get_base_url("projects"), params={"include_auth": True}
+                url=self._get_base_url("projects"),
             )
 
             if not resp_projects.ok:
@@ -103,7 +104,6 @@ class MicroStrategyClient:
         try:
             resp_projects = self.session.get(
                 url=self._get_base_url(f"projects/{self.config.projectName}"),
-                params={"include_auth": True},
             )
 
             if not resp_projects.ok:
@@ -128,7 +128,6 @@ class MicroStrategyClient:
             resp_results = self.session.get(
                 url=self._get_base_url("searches/results"),
                 params={
-                    "include_auth": True,
                     "project_id": project_id,
                     "type": object_type,
                     "getAncestors": False,
@@ -193,9 +192,6 @@ class MicroStrategyClient:
         try:
             resp_dashboard = self.session.get(
                 url=self._get_base_url(f"v2/dossiers/{dashboard_id}/definition"),
-                params={
-                    "include_auth": True,
-                },
                 headers={"X-MSTR-ProjectID": project_id},
             )
 
