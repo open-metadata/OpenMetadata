@@ -45,7 +45,7 @@ def validate_name_and_transform(values, modification_method):
     try:
         if isinstance(values, str):
             values = modification_method(values)
-        elif hasattr(values, "root"):
+        elif hasattr(values, "root") and isinstance(values.root, str):
             values.root = modification_method(values.root)
         elif hasattr(values, "model_fields"):
             for key in type(values).model_fields.keys():

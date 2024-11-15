@@ -344,7 +344,6 @@ class TestCaseRunner(Processor):
                 result.append(tc)
                 continue
             column_name = entity_link.get_decoded_column(tc.entityLink.root)
-
             column = next(c for c in table.columns if c.name.root == column_name)
 
             if column.dataType not in test_definition.supportedDataTypes:
