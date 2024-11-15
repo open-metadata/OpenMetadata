@@ -460,16 +460,24 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <AdminProtectedRoute
         exact
         component={ObservabilityAlertsPage}
+        hasPermission={userPermissions.hasViewPermissions(
+          ResourceEntity.EVENT_SUBSCRIPTION,
+          permissions
+        )}
         path={ROUTES.OBSERVABILITY_ALERTS}
       />
 
       <AdminProtectedRoute
         exact
         component={AlertDetailsPage}
-        path={ROUTES.OBSERVABILITY_ALERT_DETAILS}
+        hasPermission={userPermissions.hasViewPermissions(
+          ResourceEntity.EVENT_SUBSCRIPTION,
+          permissions
+        )}
+        path={ROUTES.OBSERVABILITY_ALERT_DETAILS_WITH_TAB}
       />
 
-      <AdminProtectedRoute
+      <Route
         exact
         component={AddObservabilityPage}
         path={[

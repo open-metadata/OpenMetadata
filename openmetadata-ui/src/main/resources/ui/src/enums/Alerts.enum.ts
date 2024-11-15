@@ -11,8 +11,13 @@
  *  limitations under the License.
  */
 
-import { EventFilterRule } from '../../../generated/events/eventSubscription';
+export enum AlertDetailTabs {
+  CONFIGURATION = 'configuration',
+  RECENT_EVENTS = 'recentEvents',
+}
 
-export interface ObservabilityFormFiltersItemProps {
-  supportedFilters?: EventFilterRule[];
+export enum AlertRecentEventFilters {
+  ALL = 'all',
+  SUCCESSFUL = 'successful',
+  FAILED = 'failed',
 }
