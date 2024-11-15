@@ -95,21 +95,19 @@
   font-size: 16px;
   color: @grey-3;
   width: 100%;
-
+  margin-left: @margin-md;
   .ant-checkbox-inner {
     width: 20px;
     height: 20px;
     background-color: @white;
     border-color: @grey-4;
-
     &::after {
       width: 6px;
       height: 10px;
-      border-color: @purple-2;
+      border-color: @blue-3;
       border-width: 0 2px 2px 0;
     }
   }
-
   .ant-checkbox-checked .ant-checkbox-inner {
     background-color: @white;
     border-color: @grey-4;
@@ -152,20 +150,24 @@
 }
 .status-dropdown {
   .ant-dropdown-menu-item {
-    padding-left: 8px;
-    padding-right: 8px;
+    padding-left: @padding-sm;
+    padding-right: @padding-xs;
+  }
+  .ant-checkbox-wrapper {
+    height: 33px;
   }
 }
+
 .draggable-menu-item {
   display: flex;
   flex-direction: row;
   align-items: center;
-  justify-content: space-between;
   transition: background-color 0.3s ease, opacity 0.3s ease;
   width: 100%;
   box-sizing: border-box;
   padding: 0px 8px;
   box-sizing: border-box;
+  height: 33px;
 }
 
 .draggable-menu-item.dragging {
@@ -178,6 +180,7 @@
   font-size: 14px;
   line-height: 21px;
   color: @grey-4;
+  padding-left: 7px;
 }
 
 .custom-status-dropdown-btn {
@@ -188,4 +191,18 @@
 
 .glossary-col-dropdown-drag-icon {
   margin-left: 8px;
+}
+
+.select-all-checkbox {
+  font-size: 14px;
+  color: @grey-4;
+  padding-left: 28px;
+}
+
+.custom-glossary-dropdown-action-btn {
+  height: 26px;
+  width: 75px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
