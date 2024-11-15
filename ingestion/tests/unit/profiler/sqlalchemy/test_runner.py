@@ -13,7 +13,8 @@
 Test Sample behavior
 """
 import time
-from unittest import TestCase
+from unittest import TestCase, mock
+from unittest.mock import Mock, patch
 
 import pytest
 from sqlalchemy import TEXT, Column, Integer, String, create_engine, func
@@ -21,9 +22,9 @@ from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import declarative_base
 
 from metadata.ingestion.connections.session import create_and_bind_session
-from metadata.profiler.api.models import SampleConfig
 from metadata.profiler.processor.runner import QueryRunner
-from metadata.profiler.processor.sampler.sqlalchemy.sampler import SQASampler
+from metadata.sampler.models import SampleConfig
+from metadata.sampler.sqlalchemy.sampler import SQASampler
 from metadata.utils.timeout import cls_timeout
 
 Base = declarative_base()
@@ -60,22 +61,31 @@ class RunnerTest(TestCase):
     engine = create_engine("sqlite+pysqlite:///:memory:", echo=False, future=True)
     session = create_and_bind_session(engine)
 
-    sampler = SQASampler(
-        client=session,
-        table=User,
-        profile_sample_config=SampleConfig(profile_sample=50.0),
-    )
-    sample = sampler.random_sample()
-
-    raw_runner = QueryRunner(session=session, table=User, sample=sample)
-    timeout_runner: Timer = cls_timeout(1)(Timer())
-
     @classmethod
     def setUpClass(cls) -> None:
         """
         Prepare Ingredients
         """
         User.__table__.create(bind=cls.engine)
+
+        with (
+            patch.object(SQASampler, "get_client", return_value=cls.session),
+            mock.patch(
+                "metadata.sampler.sampler_interface.get_ssl_connection",
+                return_value=Mock(),
+            ),
+        ):
+            sampler = SQASampler(
+                service_connection_config=Mock(),
+                ometa_client=None,
+                entity=None,
+                sample_config=SampleConfig(profile_sample=50.0),
+                orm_table=User,
+            )
+            cls.sample = sampler.random_sample()
+
+        cls.raw_runner = QueryRunner(session=cls.session, table=User, sample=cls.sample)
+        cls.timeout_runner: Timer = cls_timeout(1)(Timer())
 
         # Insert 30 rows
         for i in range(10):
@@ -161,7 +171,7 @@ class RunnerTest(TestCase):
         Test querying using `from_statement` returns expected values
         """
         stmt = "SELECT name FROM users"
-        self.raw_runner._profile_sample_query = stmt
+        self.raw_runner.profile_sample_query = stmt
 
         res = self.raw_runner.select_all_from_table(Column(User.name.name))
         assert len(res) == 30
@@ -170,9 +180,9 @@ class RunnerTest(TestCase):
         assert len(res) == 1
 
         stmt = "SELECT id FROM users"
-        self.raw_runner._profile_sample_query = stmt
+        self.raw_runner.profile_sample_query = stmt
 
         with pytest.raises(OperationalError):
             self.raw_runner.select_first_from_table(Column(User.name.name))
 
-        self.raw_runner._profile_sample_query = None
+        self.raw_runner.profile_sample_query = None
