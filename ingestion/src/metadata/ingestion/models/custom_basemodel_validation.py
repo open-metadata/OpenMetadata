@@ -33,6 +33,8 @@ def revert_separators(value):
 
 
 def replace_separators(value):
+    if RESERVED_COLON_KEYWORD in value or RESERVED_ARROW_KEYWORD in value:
+        raise Exception("Reserved keywords found in the name")
     return value.replace("::", RESERVED_COLON_KEYWORD).replace(
         ">", RESERVED_ARROW_KEYWORD
     )
@@ -42,37 +44,31 @@ def validate_name_and_transform(values, modification_method):
     """
     Validate the name and transform it if needed.
     """
-    try:
-        if isinstance(values, str):
-            values = modification_method(values)
-        elif hasattr(values, "root") and isinstance(values.root, str):
-            values.root = modification_method(values.root)
-        elif hasattr(values, "model_fields"):
-            for key in type(values).model_fields.keys():
-                if getattr(values, key):
-                    if getattr(values, key).__class__.__name__ in NAME_FIELDS:
-                        setattr(
-                            values,
-                            key,
+    if isinstance(values, str):
+        values = modification_method(values)
+    elif hasattr(values, "root") and isinstance(values.root, str):
+        values.root = modification_method(values.root)
+    elif hasattr(values, "model_fields"):
+        for key in type(values).model_fields.keys():
+            if getattr(values, key):
+                if getattr(values, key).__class__.__name__ in NAME_FIELDS:
+                    setattr(
+                        values,
+                        key,
+                        validate_name_and_transform(
+                            getattr(values, key),
+                            modification_method=modification_method,
+                        ),
+                    )
+                elif isinstance(getattr(values, key), list):
+                    setattr(
+                        values,
+                        key,
+                        [
                             validate_name_and_transform(
-                                getattr(values, key),
-                                modification_method=modification_method,
-                            ),
-                        )
-                    elif isinstance(getattr(values, key), list):
-                        setattr(
-                            values,
-                            key,
-                            [
-                                validate_name_and_transform(
-                                    item, modification_method=modification_method
-                                )
-                                for item in getattr(values, key)
-                            ],
-                        )
-    except Exception as err:
-        logger.warning(
-            "Warning triggered while validating name: %s, skipping validation of the name",
-            err,
-        )
+                                item, modification_method=modification_method
+                            )
+                            for item in getattr(values, key)
+                        ],
+                    )
     return values
