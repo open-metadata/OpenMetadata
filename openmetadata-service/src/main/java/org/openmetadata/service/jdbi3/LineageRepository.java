@@ -31,7 +31,6 @@ import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
 import static org.openmetadata.service.search.SearchClient.REMOVE_LINEAGE_SCRIPT;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.opencsv.CSVWriter;
 import java.io.IOException;
 import java.io.StringWriter;
@@ -272,8 +271,8 @@ public class LineageRepository {
             .searchLineage(fqn, upstreamDepth, downstreamDepth, queryFilter, deleted, entityType);
 
     try {
-      ObjectMapper objectMapper = new ObjectMapper();
-      JsonNode rootNode = objectMapper.readTree(response.getEntity().toString());
+      String jsonResponse = JsonUtils.pojoToJson(response.getEntity());
+      JsonNode rootNode = JsonUtils.readTree(jsonResponse);
 
       Map<String, JsonNode> entityMap = new HashMap<>();
       JsonNode nodes = rootNode.path("nodes");
