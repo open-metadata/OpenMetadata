@@ -77,7 +77,11 @@ import {
 } from '../../generated/type/entityLineage';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
-import { getLineageDataByFQN, updateLineageEdge } from '../../rest/lineageAPI';
+import {
+  exportLineageAsync,
+  getLineageDataByFQN,
+  updateLineageEdge,
+} from '../../rest/lineageAPI';
 import {
   addLineageHandler,
   centerNodePosition,
@@ -90,7 +94,6 @@ import {
   getChildMap,
   getClassifiedEdge,
   getConnectedNodesEdges,
-  getExportData,
   getLayoutedElements,
   getLineageEdge,
   getLineageEdgeForAPI,
@@ -281,20 +284,14 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
 
   const exportLineageData = useCallback(
     async (_: string) => {
-      if (
-        entityType === EntityType.PIPELINE ||
-        entityType === EntityType.STORED_PROCEDURE
-      ) {
-        // Since pipeline is an edge, we cannot create a tree, hence we take the nodes from the lineage response
-        // to get the export data.
-        return getExportData(entityLineage.nodes ?? []);
-      }
-
-      const { exportResult } = getChildMap(entityLineage, decodedFqn);
-
-      return exportResult;
+      return exportLineageAsync(
+        decodedFqn,
+        entityType,
+        lineageConfig,
+        queryFilter
+      );
     },
-    [entityType, decodedFqn, entityLineage]
+    [entityType, decodedFqn, lineageConfig, queryFilter]
   );
 
   const onExportClick = useCallback(() => {
@@ -304,7 +301,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         onExport: exportLineageData,
       });
     }
-  }, [entityType, decodedFqn, entityLineage]);
+  }, [entityType, decodedFqn, lineageConfig, queryFilter]);
 
   const loadChildNodesHandler = useCallback(
     async (node: SourceType, direction: EdgeTypeEnum) => {
