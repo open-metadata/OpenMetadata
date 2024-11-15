@@ -72,6 +72,7 @@ import {
   isProtectedRoute,
   prepareUserProfileFromClaims,
 } from '../../../utils/AuthProvider.util';
+import { getOidcToken } from '../../../utils/LocalStorageUtils';
 import { getPathNameFromWindowLocation } from '../../../utils/RouterUtils';
 import { escapeESReservedCharacters } from '../../../utils/StringsUtils';
 import { showErrorToast, showInfoToast } from '../../../utils/ToastUtils';
@@ -131,31 +132,10 @@ export const AuthProvider = ({
     setJwtPrincipalClaimsMapping,
     removeRefreshToken,
     removeOidcToken,
-    getOidcToken,
     getRefreshToken,
     isApplicationLoading,
     setApplicationLoading,
-  } = useApplicationStore((state) => ({
-    setHelperFunctionsRef: state.setHelperFunctionsRef,
-    setCurrentUser: state.setCurrentUser,
-    updateNewUser: state.updateNewUser,
-    setIsAuthenticated: state.setIsAuthenticated,
-    authConfig: state.authConfig,
-    setAuthConfig: state.setAuthConfig,
-    setAuthorizerConfig: state.setAuthorizerConfig,
-    setIsSigningUp: state.setIsSigningUp,
-    authorizerConfig: state.authorizerConfig,
-    jwtPrincipalClaims: state.jwtPrincipalClaims,
-    jwtPrincipalClaimsMapping: state.jwtPrincipalClaimsMapping,
-    setJwtPrincipalClaims: state.setJwtPrincipalClaims,
-    setJwtPrincipalClaimsMapping: state.setJwtPrincipalClaimsMapping,
-    removeRefreshToken: state.removeRefreshToken,
-    removeOidcToken: state.removeOidcToken,
-    getOidcToken: state.getOidcToken,
-    getRefreshToken: state.getRefreshToken,
-    isApplicationLoading: state.isApplicationLoading,
-    setApplicationLoading: state.setApplicationLoading,
-  }));
+  } = useApplicationStore();
   const { updateDomains, updateDomainLoading } = useDomainStore();
   const tokenService = useRef<TokenService>();
 
@@ -289,7 +269,7 @@ export const AuthProvider = ({
    * This method will try to signIn silently when token is about to expire
    * if it's not succeed then it will proceed for logout
    */
-  const trySilentSignIn = async () => {
+  const trySilentSignIn = async (forceLogout?: boolean) => {
     const pathName = getPathNameFromWindowLocation();
     // Do not try silent sign in for SignIn or SignUp route
     if (
@@ -299,7 +279,22 @@ export const AuthProvider = ({
     }
 
     if (!tokenService.current?.isTokenUpdateInProgress()) {
-      await tokenService.current?.refreshToken();
+      // For OIDC we won't be getting newToken immediately hence not updating token here
+      const newToken = await tokenService.current?.refreshToken();
+      // Start expiry timer on successful silent signIn
+      if (newToken) {
+        // Start expiry timer on successful silent signIn
+        // eslint-disable-next-line @typescript-eslint/no-use-before-define
+        startTokenExpiryTimer();
+
+        // Retry the failed request after successful silent signIn
+        if (failedLoggedInUserRequest) {
+          await getLoggedInUserDetails();
+          failedLoggedInUserRequest = null;
+        }
+      } else if (forceLogout) {
+        resetUserDetails(true);
+      }
     }
   };
 
@@ -548,7 +543,7 @@ export const AuthProvider = ({
               failedLoggedInUserRequest = true;
             }
             handleStoreProtectedRedirectPath();
-            trySilentSignIn();
+            trySilentSignIn(true);
           }
         }
 

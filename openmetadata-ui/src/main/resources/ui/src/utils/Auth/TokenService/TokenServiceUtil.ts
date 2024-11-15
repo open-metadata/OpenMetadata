@@ -18,11 +18,17 @@ import { getOidcToken } from '../../LocalStorageUtils';
 
 class TokenService {
   channel: BroadcastChannel;
-  renewToken: () => Promise<string> | Promise<AccessTokenResponse>;
+  renewToken: () =>
+    | Promise<string>
+    | Promise<AccessTokenResponse>
+    | Promise<void>;
   tokeUpdateInProgress: boolean;
 
   constructor(
-    renewToken: () => Promise<string> | Promise<AccessTokenResponse>
+    renewToken: () =>
+      | Promise<string>
+      | Promise<AccessTokenResponse>
+      | Promise<void>
   ) {
     this.channel = new BroadcastChannel('auth_channel');
     this.renewToken = renewToken;
@@ -68,14 +74,15 @@ class TokenService {
 
   // Call renewal method according to the provider
   async fetchNewToken() {
-    let response: string | AccessTokenResponse | null = null;
+    let response: string | AccessTokenResponse | null | void = null;
     if (typeof this.renewToken === 'function') {
       try {
         this.tokeUpdateInProgress = true;
         response = await this.renewToken();
-        this.tokeUpdateInProgress = false;
       } catch (error) {
+        // Silent Frame window timeout error since it doesn't affect refresh token process
         if ((error as AxiosError).message !== 'Frame window timed out') {
+          // Perform logout for any error
           useApplicationStore.getState().onLogoutHandler();
         }
         // Do nothing
