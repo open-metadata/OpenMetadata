@@ -1,6 +1,7 @@
 ---
 title: Root Cause Analysis
 slug: /how-to-guides/data-quality-observability/incident-manager/root-cause-analysis
+Collate: true
 ---
 
 # Root Cause Analysis

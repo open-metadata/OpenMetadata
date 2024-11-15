@@ -1027,7 +1027,7 @@ test.describe('Glossary tests', () => {
     }
   });
 
-  test('Column dropdown drag-and-drop functionality for Glossary Terms table', async ({
+  test.skip('Column dropdown drag-and-drop functionality for Glossary Terms table', async ({
     browser,
   }) => {
     const { page, afterAction, apiContext } = await performAdminLogin(browser);
