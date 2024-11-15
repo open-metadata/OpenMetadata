@@ -34,7 +34,7 @@ def revert_separators(value):
 
 def replace_separators(value):
     if RESERVED_COLON_KEYWORD in value or RESERVED_ARROW_KEYWORD in value:
-        raise Exception("Reserved keywords found in the name")
+        raise ValueError("Reserved keywords found in the name")
     return value.replace("::", RESERVED_COLON_KEYWORD).replace(
         ">", RESERVED_ARROW_KEYWORD
     )
