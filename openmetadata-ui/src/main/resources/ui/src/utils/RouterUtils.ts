@@ -38,6 +38,7 @@ import {
   GlobalSettingsMenuCategory,
 } from '../constants/GlobalSettings.constants';
 import { arrServiceTypes } from '../constants/Services.constant';
+import { AlertDetailTabs } from '../enums/Alerts.enum';
 import { EntityAction } from '../enums/entity.enum';
 import { ProfilerDashboardType } from '../enums/table.enum';
 import { PipelineType } from '../generated/api/services/ingestionPipelines/createIngestionPipeline';
@@ -605,18 +606,30 @@ export const getNotificationAlertsEditPath = (fqn: string) => {
   return path;
 };
 
-export const getObservabilityAlertDetailsPath = (fqn: string) => {
-  let path = ROUTES.OBSERVABILITY_ALERT_DETAILS;
+export const getObservabilityAlertDetailsPath = (fqn: string, tab?: string) => {
+  let path = ROUTES.OBSERVABILITY_ALERT_DETAILS_WITH_TAB.replace(
+    PLACEHOLDER_ROUTE_FQN,
+    getEncodedFqn(fqn)
+  );
 
-  path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(fqn));
+  path = path.replace(
+    PLACEHOLDER_ROUTE_TAB,
+    tab ?? AlertDetailTabs.CONFIGURATION
+  );
 
   return path;
 };
 
-export const getNotificationAlertDetailsPath = (fqn: string) => {
-  let path = ROUTES.NOTIFICATION_ALERT_DETAILS;
+export const getNotificationAlertDetailsPath = (fqn: string, tab?: string) => {
+  let path = ROUTES.NOTIFICATION_ALERT_DETAILS_WITH_TAB.replace(
+    PLACEHOLDER_ROUTE_FQN,
+    getEncodedFqn(fqn)
+  );
 
-  path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(fqn));
+  path = path.replace(
+    PLACEHOLDER_ROUTE_TAB,
+    tab ?? AlertDetailTabs.CONFIGURATION
+  );
 
   return path;
 };
