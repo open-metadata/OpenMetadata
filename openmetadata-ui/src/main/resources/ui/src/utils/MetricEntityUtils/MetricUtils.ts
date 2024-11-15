@@ -10,7 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Metric, MetricGranularity } from '../../generated/entity/data/metric';
+import { CSMode } from '../../enums/codemirror.enum';
+import {
+  Language,
+  Metric,
+  MetricGranularity,
+} from '../../generated/entity/data/metric';
 
 const granularityOrder = [
   MetricGranularity.Second,
@@ -45,4 +50,16 @@ export const getSortedOptions = (
           granularityOrder.indexOf(b.value as MetricGranularity)
       : 0;
   });
+};
+
+export const getMetricExpressionLanguageName = (language?: Language) => {
+  if (!language) {
+    return CSMode.SQL;
+  }
+
+  if (language === Language.Java) {
+    return CSMode.CLIKE;
+  }
+
+  return language.toLowerCase() as CSMode;
 };

@@ -14,4 +14,6 @@
 export enum CSMode {
   JAVASCRIPT = 'javascript',
   SQL = 'sql',
+  PYTHON = 'python',
+  CLIKE = 'clike',
 }

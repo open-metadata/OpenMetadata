@@ -10,8 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { UnitOfMeasurement } from '../../generated/entity/data/metric';
-import { getSortedOptions } from './MetricUtils';
+import { CSMode } from '../../enums/codemirror.enum';
+import {
+  Language,
+  UnitOfMeasurement,
+} from '../../generated/entity/data/metric';
+import {
+  getMetricExpressionLanguageName,
+  getSortedOptions,
+} from './MetricUtils';
 
 describe('getSortedOptions', () => {
   it('should sort options by granularity order if valueKey is granularity', () => {
@@ -65,5 +72,33 @@ describe('getSortedOptions', () => {
       { key: 'TIMESTAMP', label: 'TIMESTAMP', value: 'TIMESTAMP' },
       { key: 'TRANSACTIONS', label: 'TRANSACTIONS', value: 'TRANSACTIONS' },
     ]);
+  });
+});
+
+describe('getMetricExpressionLanguageName', () => {
+  it('should return SQL if language is not provided', () => {
+    const result = getMetricExpressionLanguageName();
+
+    expect(result).toBe(CSMode.SQL);
+
+    const result2 = getMetricExpressionLanguageName(undefined);
+
+    expect(result2).toBe(CSMode.SQL);
+
+    const result3 = getMetricExpressionLanguageName('' as Language);
+
+    expect(result3).toBe(CSMode.SQL);
+  });
+
+  it('should return CLIKE if language is Java', () => {
+    const result = getMetricExpressionLanguageName(Language.Java);
+
+    expect(result).toBe(CSMode.CLIKE);
+  });
+
+  it('should return language in lowercase if language is provided', () => {
+    const result = getMetricExpressionLanguageName(Language.Python);
+
+    expect(result).toBe('python');
   });
 });
