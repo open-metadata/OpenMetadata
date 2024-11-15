@@ -452,13 +452,19 @@ const GlossaryTermTab = ({
                     .every(({ key }) =>
                       columnDropdownSelections.includes(key as string)
                     )}
-                  className="custom-glossary-col-sel-checkbox select-all-checkbox"
+                  className={classNames(
+                    'd-flex',
+                    'items-center',
+                    'm-b-xss',
+                    'custom-glossary-col-sel-checkbox',
+                    'select-all-checkbox'
+                  )}
                   key="all"
                   value="all"
                   onChange={(e) =>
                     handleCheckboxChange('all', e.target.checked, 'columns')
                   }>
-                  <p className="select-all-dropdown-text">{t('label.all')}</p>
+                  <p className="m-l-xs m-t-sm">{t('label.all')}</p>
                 </Checkbox>
                 {options.map(
                   (option: { value: string; label: string }, index: number) => (
@@ -483,11 +489,12 @@ const GlossaryTermTab = ({
         {
           key: 'divider',
           type: 'divider',
+          className: 'm-b-xs',
         },
         {
           key: 'actions',
           label: (
-            <div className="flex-center glossary-dropdown-actions-container">
+            <div className="flex-center">
               <Space>
                 <Button
                   className="custom-glossary-dropdown-action-btn"
@@ -567,11 +574,12 @@ const GlossaryTermTab = ({
         {
           key: 'divider',
           type: 'divider',
+          className: 'm-b-xs',
         },
         {
           key: 'actions',
           label: (
-            <div className="flex-center glossary-dropdown-actions-container">
+            <div className="flex-center">
               <Space>
                 <Button
                   className="custom-glossary-dropdown-action-btn"

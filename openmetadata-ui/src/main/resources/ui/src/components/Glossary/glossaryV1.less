@@ -95,7 +95,7 @@
   font-size: 16px;
   color: @grey-3;
   width: 100%;
-  margin-left: 15px;
+  margin-left: @margin-md;
   .ant-checkbox-inner {
     width: 20px;
     height: 20px;
@@ -150,13 +150,14 @@
 }
 .status-dropdown {
   .ant-dropdown-menu-item {
-    padding-left: 8px;
-    padding-right: 8px;
+    padding-left: @padding-sm;
+    padding-right: @padding-xs;
   }
   .ant-checkbox-wrapper {
     height: 33px;
   }
 }
+
 .draggable-menu-item {
   display: flex;
   flex-direction: row;
@@ -195,20 +196,7 @@
 .select-all-checkbox {
   font-size: 14px;
   color: @grey-4;
-  height: 33px;
   padding-left: 28px;
-  display: flex;
-  align-items: center;
-  width: 100%;
-  margin-bottom: 4px;
-  .ant-checkbox-inner {
-    display: flex;
-    align-items: center;
-  }
-  .select-all-dropdown-text {
-    margin-left: 8px;
-    margin-top: 10px;
-  }
 }
 
 .custom-glossary-dropdown-action-btn {
@@ -217,8 +205,4 @@
   display: flex;
   justify-content: center;
   align-items: center;
-}
-
-.glossary-dropdown-actions-container {
-  padding-top: 5px;
 }
