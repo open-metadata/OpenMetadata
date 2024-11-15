@@ -73,6 +73,7 @@ const LogsViewerPage = () => {
   const [appData, setAppData] = useState<App>();
   const [appRuns, setAppRuns] = useState<PipelineStatus[]>([]);
   const [paging, setPaging] = useState<Paging>();
+  const [isLogsLoading, setIsLogsLoading] = useState(true);
 
   const isApplicationType = useMemo(
     () => logEntityType === GlobalSettingOptions.APPLICATIONS,
@@ -83,6 +84,7 @@ const LogsViewerPage = () => {
     ingestionId?: string,
     pipelineType?: PipelineType
   ) => {
+    setIsLogsLoading(true);
     try {
       if (isApplicationType) {
         const currentTime = Date.now();
@@ -103,12 +105,10 @@ const LogsViewerPage = () => {
         paging?.total !== paging?.after ? paging?.after : ''
       );
 
-      if (res.data.after && res.data.total) {
-        setPaging({
-          after: res.data.after,
-          total: toNumber(res.data.total),
-        });
-      }
+      setPaging({
+        after: res.data.after,
+        total: toNumber(res.data.total),
+      });
 
       switch (pipelineType || ingestionDetails?.pipelineType) {
         case PipelineType.Metadata:
@@ -156,6 +156,8 @@ const LogsViewerPage = () => {
       }
     } catch (err) {
       showErrorToast(err as AxiosError);
+    } finally {
+      setIsLogsLoading(false);
     }
   };
 
@@ -195,10 +197,6 @@ const LogsViewerPage = () => {
 
   const fetchMoreLogs = () => {
     fetchLogs(ingestionDetails?.id, ingestionDetails?.pipelineType);
-    setPaging({
-      ...paging,
-      after: '',
-    } as Paging);
   };
 
   useEffect(() => {
@@ -218,20 +216,13 @@ const LogsViewerPage = () => {
     const isBottom = clientHeight + scrollTop === scrollHeight;
 
     if (
+      !isLogsLoading &&
       isBottom &&
       !isNil(paging) &&
       !isUndefined(paging.after) &&
       toNumber(paging?.after) < toNumber(paging?.total)
     ) {
       fetchMoreLogs();
-    }
-
-    if (toNumber(paging?.after) + 1 === toNumber(paging?.total)) {
-      // to stop at last page
-      setPaging({
-        ...paging,
-        after: undefined,
-      } as Paging);
     }
 
     return;
