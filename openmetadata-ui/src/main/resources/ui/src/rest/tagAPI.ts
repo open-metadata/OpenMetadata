@@ -20,6 +20,7 @@ import { CreateClassification } from '../generated/api/classification/createClas
 import { CreateTag } from '../generated/api/classification/createTag';
 import { Classification } from '../generated/entity/classification/classification';
 import { EntityReference, Tag } from '../generated/entity/classification/tag';
+import { AssetResponse } from '../generated/type/bulkOperationResult';
 import { EntityHistory } from '../generated/type/entityHistory';
 import { ListParams } from '../interface/API.interface';
 import { getEncodedFqn } from '../utils/StringsUtils';
@@ -69,7 +70,7 @@ export const addAssetsToTags = async (
 
   const response = await APIClient.put<
     AddTagToAssetsRequest,
-    AxiosResponse<Tag>
+    AxiosResponse<AssetResponse>
   >(`/tags/${tagId}/assets/add`, data);
 
   return response.data;

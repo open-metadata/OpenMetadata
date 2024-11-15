@@ -41,7 +41,12 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as FilterIcon } from '../../../assets/svg/ic-feeds-filter.svg';
-import { PAGE_SIZE_MEDIUM } from '../../../constants/constants';
+import {
+  ES_UPDATE_DELAY,
+  PAGE_SIZE_MEDIUM,
+  SOCKET_EVENTS,
+} from '../../../constants/constants';
+import { useWebSocketConnector } from '../../../context/WebSocketProvider/WebSocketProvider';
 import { TabSpecificField } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { Tag } from '../../../generated/entity/classification/tag';
@@ -96,7 +101,6 @@ export const AssetSelectionModal = ({
 }: AssetSelectionModalProps) => {
   const { theme } = useApplicationStore();
   const { t } = useTranslation();
-  const ES_UPDATE_DELAY = 500;
   const [search, setSearch] = useState('');
   const [items, setItems] = useState<SearchedDataProps['data']>([]);
   const [failedStatus, setFailedStatus] = useState<BulkOperationResult>();
@@ -129,6 +133,8 @@ export const AssetSelectionModal = ({
     );
   const [selectedFilter, setSelectedFilter] = useState<string[]>([]);
   const [filters, setFilters] = useState<ExploreQuickFilterField[]>([]);
+
+  const { socket } = useWebSocketConnector();
 
   const handleMenuClick = ({ key }: { key: string }) => {
     setSelectedFilter((prevSelected) => [...prevSelected, key]);
@@ -480,6 +486,28 @@ export const AssetSelectionModal = ({
       return data;
     });
   }, [setQuickFilterQuery, handleQuickFiltersChange, setSelectedQuickFilters]);
+
+  useEffect(() => {
+    if (socket) {
+      socket.on(SOCKET_EVENTS.BULK_ASSETS_CHANNEL, (newActivity) => {
+        if (newActivity) {
+          const activity = JSON.parse(newActivity);
+          if (activity.status === 'COMPLETED') {
+            if (activity.numberOfRowsFailed === 0) {
+              onSave?.();
+              onCancel();
+            } else {
+              setFailedStatus(activity.failedRequest);
+            }
+          }
+        }
+      });
+    }
+
+    return () => {
+      socket && socket.off(SOCKET_EVENTS.BULK_ASSETS_CHANNEL);
+    };
+  }, [socket]);
 
   return (
     <Modal
