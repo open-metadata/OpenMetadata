@@ -13,8 +13,7 @@
 
 import { Col, Row, Switch, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
-import { isEmpty } from 'lodash';
-import { PagingResponse } from 'Models';
+import { isEmpty, isUndefined } from 'lodash';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -24,11 +23,11 @@ import NextPrevious from '../../components/common/NextPrevious/NextPrevious';
 import { NextPreviousProps } from '../../components/common/NextPrevious/NextPrevious.interface';
 import RichTextEditorPreviewer from '../../components/common/RichTextEditor/RichTextEditorPreviewer';
 import TableAntd from '../../components/common/Table/Table';
-import { PAGE_SIZE } from '../../constants/constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { DatabaseSchema } from '../../generated/entity/data/databaseSchema';
 import { Table } from '../../generated/entity/data/table';
+import { UsePagingInterface } from '../../hooks/paging/usePaging';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../utils/EntityUtils';
 
@@ -39,7 +38,7 @@ interface SchemaTablesTabProps {
   editDescriptionPermission?: boolean;
   isEdit?: boolean;
   showDeletedTables?: boolean;
-  tableData: PagingResponse<Table[]>;
+  tableData: Table[];
   currentTablesPage: number;
   tablePaginationHandler: NextPreviousProps['pagingHandler'];
   onCancel?: () => void;
@@ -48,6 +47,7 @@ interface SchemaTablesTabProps {
   onThreadLinkSelect?: (link: string) => void;
   onShowDeletedTablesChange?: (value: boolean) => void;
   isVersionView?: boolean;
+  pagingInfo: UsePagingInterface;
 }
 
 function SchemaTablesTab({
@@ -66,6 +66,7 @@ function SchemaTablesTab({
   showDeletedTables = false,
   onShowDeletedTablesChange,
   isVersionView = false,
+  pagingInfo,
 }: Readonly<SchemaTablesTabProps>) {
   const { t } = useTranslation();
 
@@ -115,7 +116,7 @@ function SchemaTablesTab({
             description={description}
             entityFqn={databaseSchemaDetails.fullyQualifiedName}
             entityType={EntityType.DATABASE_SCHEMA}
-            isDescriptionExpanded={isEmpty(tableData.data)}
+            isDescriptionExpanded={isEmpty(tableData)}
             showActions={false}
           />
         ) : (
@@ -125,7 +126,7 @@ function SchemaTablesTab({
             entityName={getEntityName(databaseSchemaDetails)}
             entityType={EntityType.DATABASE_SCHEMA}
             hasEditAccess={editDescriptionPermission}
-            isDescriptionExpanded={isEmpty(tableData.data)}
+            isDescriptionExpanded={isEmpty(tableData)}
             isEdit={isEdit}
             showActions={!databaseSchemaDetails.deleted}
             onCancel={onCancel}
@@ -157,7 +158,7 @@ function SchemaTablesTab({
           bordered
           columns={tableColumn}
           data-testid="databaseSchema-tables"
-          dataSource={tableData.data}
+          dataSource={tableData}
           loading={tableDataLoading}
           locale={{
             emptyText: (
@@ -172,13 +173,15 @@ function SchemaTablesTab({
           size="small"
         />
       </Col>
-      {tableData.paging.total > PAGE_SIZE && tableData.data.length > 0 && (
+      {!isUndefined(pagingInfo) && pagingInfo.showPagination && (
         <Col span={24}>
           <NextPrevious
             currentPage={currentTablesPage}
-            pageSize={PAGE_SIZE}
-            paging={tableData.paging}
+            isLoading={tableDataLoading}
+            pageSize={pagingInfo.pageSize}
+            paging={pagingInfo.paging}
             pagingHandler={tablePaginationHandler}
+            onShowSizeChange={pagingInfo.handlePageSizeChange}
           />
         </Col>
       )}

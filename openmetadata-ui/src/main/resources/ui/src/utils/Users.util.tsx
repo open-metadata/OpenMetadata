@@ -48,6 +48,12 @@ export const commonUserDetailColumns = (
     render: (_, record) => userCellRenderer(record),
   },
   {
+    title: t('label.name'),
+    dataIndex: 'name',
+    key: 'name',
+    render: (_, record) => getEntityName(record),
+  },
+  {
     title: t('label.team-plural'),
     dataIndex: 'teams',
     key: 'teams',

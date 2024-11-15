@@ -15,7 +15,7 @@ Make sure to use the same `openmetadata-ingestion` version as your server versio
 server at version 0.13.0, you will need to install:
 
 ```python
-pip install "openmetadata-ingestion~=1.5.7.0"
+pip install "openmetadata-ingestion~=1.5.8.0"
 ```
 
 {% /note %}

@@ -20,12 +20,12 @@ on:
         required: True
         default: '["bigquery", "dbt_redshift", "metabase", "mssql", "mysql", "redash", "snowflake", "tableau", "powerbi", "vertica", "python", "redshift", "quicksight", "datalake_s3", "postgres", "oracle", "athena", "bigquery_multiple_project"]'
       debug:
-        description: "If Debugging the Pipeline, Slack and Sonar events won't be triggered [default, true or false]"
+        description: "If Debugging the Pipeline, Slack and Sonar events won't be triggered [default, true or false]. Default will trigger only on main branch."
         required: False
         default: "default"
 
 env:
-  DEBUG: ${{ inputs.debug == 'true' || (inputs.debug == 'default' && github.ref != 'refs/heads/main') }}' }}
+  DEBUG: "${{ (inputs.debug == 'default' && github.ref == 'refs/heads/main' && 'false') || (inputs.debug == 'default' && github.ref != 'refs/heads/main' && 'true') || inputs.debug  || 'false' }}"
 
 permissions:
   id-token: write
@@ -38,7 +38,7 @@ jobs:
     outputs:
       DEBUG: ${{ env.DEBUG }}
     steps:
-      - run: echo "null"
+      - run: echo "INPUTS_DEBUG=${{ inputs.debug }}, GITHUB_REF=${{ github.ref }}, DEBUG=$DEBUG"
 
   py-cli-e2e-tests:
     runs-on: ubuntu-latest
@@ -189,16 +189,13 @@ jobs:
         docker compose down --remove-orphans
         sudo rm -rf ${PWD}/docker-volume
     
-    - uses: austenstone/job-id@v1
-      id: job-id  
-    
     - name: Slack on Failure
       if: steps.e2e-test.outcome != 'success' && steps.python-e2e-test.outcome != 'success' && env.DEBUG == 'false'
       uses: slackapi/slack-github-action@v1.23.0
       with:
         payload: |
           {
-            "text": "🔥 Failed E2E Test for: ${{ matrix.e2e-test }} 🔥\nLogs: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}/job/${{ steps.job-id.outputs.job-id }}"         
+            "text": "🔥 Failed E2E Test for: ${{ matrix.e2e-test }} 🔥\nLogs: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"         
           }          
       env:
         SLACK_WEBHOOK_URL: ${{ secrets.E2E_SLACK_WEBHOOK }}

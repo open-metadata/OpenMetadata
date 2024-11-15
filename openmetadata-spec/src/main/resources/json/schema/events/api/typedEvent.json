@@ -1,0 +1,36 @@
+{
+  "$id": "https://open-metadata.org/schema/events/api/typedEvent.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Typed Event",
+  "description": "Schema defining a Typed Event with its status, data, and timestamp.",
+  "type": "object",
+  "javaType": "org.openmetadata.service.resources.events.subscription.TypedEvent",
+  "properties": {
+    "status": {
+      "description": "The status of the event, such as 'failed', 'successful', or 'unprocessed'.",
+      "type": "string",
+      "enum": ["failed", "successful", "unprocessed"]
+    },
+    "data": {
+      "description": "The event data, which can be of different types depending on the status.",
+      "type": "array",
+      "items": {
+        "oneOf": [
+          {
+            "$ref": "../../type/changeEvent.json"
+          },
+          {
+            "$ref": "../failedEventResponse.json"
+          }
+        ]
+      }
+    },
+    "timestamp": {
+      "description": "The timestamp when the event occurred, represented as a long.",
+      "type": "number",
+      "format": "int64"
+    }
+  },
+  "required": ["status", "data", "timestamp"],
+  "additionalProperties": false
+}

@@ -74,6 +74,7 @@ export enum GlobalSettingOptions {
   DASHBOARD_DATA_MODEL = 'dashboardDataModels',
   METRICS = 'metrics',
   SEARCH_RBAC = 'search-rbac',
+  LINEAGE_CONFIG = 'lineageConfig',
 }
 
 export const SETTINGS_OPTIONS_PATH = {
@@ -187,6 +188,10 @@ export const SETTINGS_OPTIONS_PATH = {
   [GlobalSettingOptions.SEARCH_RBAC]: [
     GlobalSettingsMenuCategory.PREFERENCES,
     `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.SEARCH_RBAC}`,
+  ],
+  [GlobalSettingOptions.LINEAGE_CONFIG]: [
+    GlobalSettingsMenuCategory.PREFERENCES,
+    `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.LINEAGE_CONFIG}`,
   ],
 };
 

@@ -7,7 +7,7 @@ slug: /connectors/database/druid/yaml
 name="Druid"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Data Profiler", "Data Quality", "Lineage", "Column-level Lineage", "dbt"]
+availableFeatures=["Metadata", "Data Profiler", "Data Quality", "View Lineage", "View Column-level Lineage", "dbt"]
 unavailableFeatures=["Query Usage", "Owners", "Tags", "Stored Procedures"]
 / %}
 

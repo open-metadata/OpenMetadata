@@ -176,6 +176,7 @@ export const QualityTab = () => {
                 <NextPrevious
                   isNumberBased
                   currentPage={currentPage}
+                  isLoading={isTestsLoading}
                   pageSize={pageSize}
                   paging={paging}
                   pagingHandler={handleTestCasePageChange}

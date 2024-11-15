@@ -74,3 +74,15 @@
     border-right: 1px solid @left-panel-border-color;
   }
 }
+
+.custom-menu-with-description {
+  &.custom-menu.ant-menu-root.ant-menu-inline .ant-menu-item {
+    height: 50px;
+    margin-top: 4px;
+  }
+  &.custom-menu.ant-menu-root.ant-menu-inline
+    .ant-menu-item-selected
+    .ant-menu-title-content {
+    font-weight: 400;
+  }
+}

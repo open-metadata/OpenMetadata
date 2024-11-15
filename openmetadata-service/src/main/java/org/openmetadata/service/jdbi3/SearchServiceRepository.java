@@ -17,5 +17,6 @@ public class SearchServiceRepository
         "",
         ServiceType.SEARCH);
     supportsSearch = true;
+    parent = true;
   }
 }

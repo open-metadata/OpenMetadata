@@ -1,0 +1,43 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/configuration/lineageSettings.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "LineageSettings",
+  "description": "This schema defines the Lineage Settings.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.lineage.LineageSettings",
+  "definitions": {
+    "lineageLayer": {
+      "javaType": "org.openmetadata.schema.api.lineage.LineageLayer",
+      "description": "Lineage Layers",
+      "type": "string",
+      "enum": [
+        "EntityLineage",
+        "ColumnLevelLineage",
+        "DataObservability"
+      ],
+      "default": "EntityLineage"
+    }
+  },
+  "properties": {
+    "upstreamDepth": {
+      "description": "Upstream Depth for Lineage.",
+      "type": "integer",
+      "default": 2,
+      "minimum": 1,
+      "maximum": 5
+    },
+    "downstreamDepth": {
+      "description": "DownStream Depth for Lineage.",
+      "type": "integer",
+      "default": 2,
+      "minimum": 1,
+      "maximum": 5
+    },
+    "lineageLayer": {
+      "description": "Lineage Layer.",
+      "$ref": "#/definitions/lineageLayer"
+    }
+  },
+  "required": ["upstreamDepth", "downstreamDepth", "lineageLayer"],
+  "additionalProperties": false
+}

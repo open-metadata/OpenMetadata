@@ -65,6 +65,10 @@ export const DATA_ASSET_DROPDOWN_ITEMS = [
     key: EntityFields.TIER,
   },
   {
+    label: t('label.certification'),
+    key: EntityFields.CERTIFICATION,
+  },
+  {
     label: t('label.service'),
     key: EntityFields.SERVICE,
   },
@@ -90,6 +94,10 @@ export const TABLE_DROPDOWN_ITEMS = [
   {
     label: t('label.table-type'),
     key: EntityFields.TABLE_TYPE,
+  },
+  {
+    label: t('label.column-description'),
+    key: EntityFields.COLUMN_DESCRIPTION_STATUS,
   },
 ];
 

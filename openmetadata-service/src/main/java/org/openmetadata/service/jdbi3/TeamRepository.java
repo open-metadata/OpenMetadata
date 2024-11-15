@@ -102,6 +102,7 @@ public class TeamRepository extends EntityRepository<Team> {
         TEAM_UPDATE_FIELDS);
     this.quoteFqn = true;
     supportsSearch = true;
+    parent = true;
   }
 
   @Override
@@ -797,6 +798,8 @@ public class TeamRepository extends EntityRepository<Team> {
           origUsers,
           updatedUsers,
           false);
+
+      updatedTeam.setUserCount(updatedUsers.size());
     }
 
     private void updateDefaultRoles(Team origTeam, Team updatedTeam) {

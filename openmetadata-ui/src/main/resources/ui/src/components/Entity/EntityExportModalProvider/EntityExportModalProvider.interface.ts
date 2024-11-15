@@ -10,11 +10,29 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+export type CSVExportResponse = {
+  jobId: string;
+  message: string;
+};
+
+export type CSVExportWebsocketResponse = {
+  jobId: string;
+  status: 'COMPLETED' | 'FAILED';
+  data: string;
+  error: string | null;
+};
+
+export type CSVExportJob = {
+  fileName: string;
+} & Partial<CSVExportWebsocketResponse> &
+  CSVExportResponse;
+
 export type ExportData = {
   name: string;
   title?: string;
-  onExport: (name: string) => Promise<string>;
+  onExport: (name: string) => Promise<CSVExportResponse | string>;
 };
 export interface EntityExportModalContextProps {
   showModal: (data: ExportData) => void;
+  onUpdateCSVExportJob: (data: Partial<CSVExportWebsocketResponse>) => void;
 }

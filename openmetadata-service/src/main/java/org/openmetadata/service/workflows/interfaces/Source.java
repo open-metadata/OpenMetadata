@@ -13,12 +13,17 @@
 
 package org.openmetadata.service.workflows.interfaces;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
 import org.openmetadata.service.exception.SearchIndexException;
+import org.openmetadata.service.jdbi3.ListFilter;
 
 public interface Source<R> extends Stats {
   R readNext(Map<String, Object> contextData) throws SearchIndexException;
+
+  R readWithCursor(String currentCursor) throws SearchIndexException;
 
   List<String> getReaderErrors();
 
@@ -30,5 +35,13 @@ public interface Source<R> extends Stats {
 
   String getLastFailedCursor();
 
-  boolean isDone();
+  default List<String> getFields() {
+    return new ArrayList<>();
+  }
+
+  ListFilter getFilter();
+
+  AtomicReference<Boolean> isDone();
+
+  AtomicReference<String> getCursor();
 }

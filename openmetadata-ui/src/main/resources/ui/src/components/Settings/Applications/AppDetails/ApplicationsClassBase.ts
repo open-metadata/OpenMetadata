@@ -13,7 +13,7 @@
 
 import { FC } from 'react';
 import { App, AppType } from '../../../../generated/entity/applications/app';
-import { getScheduleOptionsFromSchedules } from '../../../../utils/ScheduleUtils';
+import { getScheduleOptionsFromSchedules } from '../../../../utils/SchedularUtils';
 
 class ApplicationsClassBase {
   public importSchema(fqn: string) {

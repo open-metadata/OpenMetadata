@@ -421,8 +421,6 @@ class CliDBBase(TestCase):
 
         def system_profile_assertions(self):
             cases = self.get_system_profile_cases()
-            if not cases:
-                return
             for table_fqn, expected_profile in cases:
                 actual_profiles = self.openmetadata.get_profile_data(
                     table_fqn,
@@ -431,10 +429,14 @@ class CliDBBase(TestCase):
                     profile_type=SystemProfile,
                 ).entities
                 actual_profiles = sorted(
-                    actual_profiles, key=lambda x: x.timestamp.root
+                    actual_profiles,
+                    key=lambda x: (-x.timestamp.root, x.operation.value),
                 )
-                actual_profiles = actual_profiles[-len(expected_profile) :]
-                assert len(expected_profile) == len(actual_profiles)
+                expected_profile = sorted(
+                    expected_profile,
+                    key=lambda x: (-x.timestamp.root, x.operation.value),
+                )
+                assert len(actual_profiles) >= len(expected_profile)
                 for expected, actual in zip(expected_profile, actual_profiles):
                     try:
                         assert_equal_pydantic_objects(

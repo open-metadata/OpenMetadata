@@ -27,6 +27,7 @@ import { AxiosError } from 'axios';
 import { compact, isEmpty, isUndefined, map, trim } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useLocation } from 'react-router-dom';
 import { ReactComponent as IconSync } from '../../../../assets/svg/ic-sync.svg';
 import { VALIDATION_MESSAGES } from '../../../../constants/constants';
 import {
@@ -72,10 +73,16 @@ const CreateUser = ({
   onSave,
   forceBot,
 }: CreateUserProps) => {
+  const {
+    state,
+  }: {
+    state?: { isAdminPage: boolean };
+  } = useLocation();
   const { t } = useTranslation();
   const [form] = Form.useForm();
+  const isAdminPage = Boolean(state?.isAdminPage);
   const { authConfig, inlineAlertDetails } = useApplicationStore();
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(isAdminPage);
   const [isBot, setIsBot] = useState(forceBot);
   const [selectedTeams, setSelectedTeams] = useState<
     Array<EntityReference | undefined>
@@ -387,21 +394,25 @@ const CreateUser = ({
               )}
             </>
           )}
-          <Form.Item label={t('label.team-plural')} name="teams">
-            <TeamsSelectable onSelectionChange={setSelectedTeams} />
-          </Form.Item>
-          <Form.Item label={t('label.role-plural')} name="roles">
-            <Select
-              data-testid="roles-dropdown"
-              disabled={isEmpty(roles)}
-              filterOption={handleSearchFilterOption}
-              mode="multiple"
-              options={roleOptions}
-              placeholder={t('label.please-select-entity', {
-                entity: t('label.role-plural'),
-              })}
-            />
-          </Form.Item>
+          {!isAdminPage && (
+            <>
+              <Form.Item label={t('label.team-plural')} name="teams">
+                <TeamsSelectable onSelectionChange={setSelectedTeams} />
+              </Form.Item>
+              <Form.Item label={t('label.role-plural')} name="roles">
+                <Select
+                  data-testid="roles-dropdown"
+                  disabled={isEmpty(roles)}
+                  filterOption={handleSearchFilterOption}
+                  mode="multiple"
+                  options={roleOptions}
+                  placeholder={t('label.please-select-entity', {
+                    entity: t('label.role-plural'),
+                  })}
+                />
+              </Form.Item>
+            </>
+          )}
 
           <Form.Item>
             <Space>

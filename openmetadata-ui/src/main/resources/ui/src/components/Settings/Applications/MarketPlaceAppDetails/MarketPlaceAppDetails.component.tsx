@@ -203,7 +203,10 @@ const MarketPlaceAppDetails = () => {
         <Space className="p-t-lg" direction="vertical" size={8}>
           <Typography.Text>
             {appData?.supportEmail && (
-              <Typography.Link href={appData?.supportEmail} target="_blank">
+              <Typography.Link
+                data-testid="app-support-email"
+                href={`mailto:${appData?.supportEmail}`}
+                target="_blank">
                 <Space>{t('label.get-app-support')}</Space>
               </Typography.Link>
             )}

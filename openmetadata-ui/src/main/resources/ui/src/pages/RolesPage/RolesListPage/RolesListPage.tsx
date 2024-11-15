@@ -335,6 +335,7 @@ const RolesListPage = () => {
           {showPagination && (
             <NextPrevious
               currentPage={currentPage}
+              isLoading={isLoading}
               pageSize={pageSize}
               paging={paging}
               pagingHandler={handlePaging}

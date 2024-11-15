@@ -54,7 +54,7 @@ class OMetaUserMixin:
         but looked as `Random User`, we want to find this match.
         """
         return (
-            "/search/query?q={name}&from={from_}&size={size}&index="
+            "/search/query?q={name} AND isBot:false&from={from_}&size={size}&index="
             + ES_INDEX_MAP[entity.__name__]
         )
 

@@ -99,7 +99,7 @@ public class WebAnalyticsEntityViewProcessor
           EntityInterface entity =
               Entity.getEntityByName(
                   URLDecoder.decode(entityType, StandardCharsets.UTF_8),
-                  entityFqn,
+                  URLDecoder.decode(entityFqn, StandardCharsets.UTF_8),
                   "*",
                   Include.NON_DELETED,
                   true);

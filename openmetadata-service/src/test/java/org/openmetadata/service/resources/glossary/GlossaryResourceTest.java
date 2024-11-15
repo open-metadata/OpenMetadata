@@ -37,17 +37,18 @@ import static org.openmetadata.schema.type.ProviderType.SYSTEM;
 import static org.openmetadata.schema.type.TaskType.RequestDescription;
 import static org.openmetadata.service.security.SecurityUtil.authHeaders;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
+import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.EntityUtil.getFqn;
 import static org.openmetadata.service.util.EntityUtil.toTagLabels;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
-import static org.openmetadata.service.util.TestUtils.UpdateType.CHANGE_CONSOLIDATED;
 import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.service.util.TestUtils.assertListNull;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 import static org.openmetadata.service.util.TestUtils.validateTagLabel;
 
 import java.io.IOException;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -92,12 +93,14 @@ import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.type.customProperties.TableConfig;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.EntityRepository.EntityUpdater;
 import org.openmetadata.service.jdbi3.GlossaryRepository.GlossaryCsv;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.resources.feeds.FeedResource;
 import org.openmetadata.service.resources.feeds.FeedResourceTest;
+import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.metadata.TypeResourceTest;
 import org.openmetadata.service.resources.tags.ClassificationResourceTest;
 import org.openmetadata.service.resources.tags.TagResourceTest;
@@ -168,17 +171,15 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
     glossary.withReviewers(List.of(USER1_REF, USER2_REF));
     change =
         getChangeDescription(
-            glossary,
-            CHANGE_CONSOLIDATED); // PATCH operation update is consolidated in a user session
-    fieldAdded(change, "reviewers", List.of(USER1_REF, USER2_REF));
-    glossary =
-        patchEntityAndCheck(glossary, origJson, ADMIN_AUTH_HEADERS, CHANGE_CONSOLIDATED, change);
+            glossary, MINOR_UPDATE); // PATCH operation update is consolidated in a user session
+    fieldAdded(change, "reviewers", List.of(USER2_REF));
+    glossary = patchEntityAndCheck(glossary, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // Create a glossary term and assign USER2 as a reviewer
     GlossaryTermResourceTest glossaryTermResourceTest = new GlossaryTermResourceTest();
     CreateGlossaryTerm createGlossaryTerm =
         glossaryTermResourceTest
-            .createRequest("GLOSSARY_TERM1", "", "", null)
+            .createRequest("GLOSSARY_TERM1", "description", "", null)
             .withRelatedTerms(List.of(GLOSSARY1_TERM1.getFullyQualifiedName()))
             .withGlossary(glossary.getName())
             .withReviewers(listOf(USER2_REF));
@@ -201,6 +202,7 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
         listOf(USER1_REF.getId(), USER2_REF.getId()).stream().sorted().toList());
 
     // Verify that the task assignees are the same as the term reviewers
+    waitForTaskToBeCreated(GLOSSARY_TERM1.getFullyQualifiedName());
     Thread approvalTask =
         glossaryTermResourceTest.assertApprovalTask(GLOSSARY_TERM1, TaskStatus.Open);
     assertEquals(
@@ -220,10 +222,9 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
     glossary.withReviewers(List.of(USER2_REF));
     change =
         getChangeDescription(
-            glossary,
-            CHANGE_CONSOLIDATED); // PATCH operation update is consolidated in a user session
-    fieldAdded(change, "reviewers", List.of(USER2_REF));
-    patchEntityAndCheck(glossary, origJson, ADMIN_AUTH_HEADERS, CHANGE_CONSOLIDATED, change);
+            glossary, MINOR_UPDATE); // PATCH operation update is consolidated in a user session
+    fieldDeleted(change, "reviewers", List.of(USER1_REF));
+    patchEntityAndCheck(glossary, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // Verify that USER1_REF is removed from the reviewers for the terms inside the glossary
     GLOSSARY_TERM1 =
@@ -236,7 +237,7 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
     // term
     createGlossaryTerm =
         glossaryTermResourceTest
-            .createRequest("CHILD_TERM1", "", "", null)
+            .createRequest("CHILD_TERM1", "description", "", null)
             .withRelatedTerms(List.of(GLOSSARY1_TERM1.getFullyQualifiedName()))
             .withGlossary(glossary.getName())
             .withParent(GLOSSARY_TERM1.getFullyQualifiedName())
@@ -259,6 +260,7 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
         listOf(DATA_CONSUMER_REF.getId(), USER2_REF.getId()).stream().sorted().toList());
 
     // Verify that the task assignees are the same as the child term reviewers
+    waitForTaskToBeCreated(CHILD_TERM1.getFullyQualifiedName());
     approvalTask = glossaryTermResourceTest.assertApprovalTask(CHILD_TERM1, TaskStatus.Open);
     assertEquals(CHILD_TERM1.getReviewers().size(), approvalTask.getTask().getAssignees().size());
 
@@ -910,6 +912,8 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
     GlossaryTerm glossaryTerm =
         createGlossaryTerm(glossaryTermResourceTest, glossary, null, "glossaryTerm");
 
+    waitForTaskToBeCreated(glossaryTerm.getFullyQualifiedName());
+
     // Check that a task has been added for the glossary term
     String termAbout =
         String.format("<#E::%s::%s>", Entity.GLOSSARY_TERM, glossaryTerm.getFullyQualifiedName());
@@ -1112,5 +1116,19 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
       assertTagPrefixAbsent(table.getTags(), previousTermFqn);
       assertTagPrefixAbsent(table.getColumns().get(0).getTags(), previousTermFqn);
     }
+  }
+
+  public static void waitForTaskToBeCreated(String fullyQualifiedName) {
+    String entityLink =
+        new MessageParser.EntityLink(Entity.GLOSSARY_TERM, fullyQualifiedName).getLinkString();
+    Awaitility.await("Wait for Task to be Created")
+        .ignoreExceptions()
+        .pollInterval(Duration.ofMillis(2000L))
+        .atMost(Duration.ofMillis(60000L))
+        .until(
+            () ->
+                WorkflowHandler.getInstance()
+                    .isActivityWithVariableExecuting(
+                        "ApproveGlossaryTerm.approvalTask", "relatedEntity", entityLink));
   }
 }

@@ -14,7 +14,7 @@ import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import { Button, Card, Typography } from 'antd';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as StarIcon } from '../../../assets/svg/ic-suggestions.svg';
+import { ReactComponent as StarIcon } from '../../../assets/svg/ic-suggestions-coloured.svg';
 import UserPopOverCard from '../../common/PopOverCard/UserPopOverCard';
 import ProfilePicture from '../../common/ProfilePicture/ProfilePicture';
 import RichTextEditorPreviewer from '../../common/RichTextEditor/RichTextEditorPreviewer';

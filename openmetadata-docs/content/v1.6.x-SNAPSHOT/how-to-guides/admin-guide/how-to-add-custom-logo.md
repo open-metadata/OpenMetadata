@@ -7,30 +7,35 @@ slug: /how-to-guides/admin-guide/how-to-add-custom-logo
 
 OpenMetadata allows you to customize the logo and favicons. In this guide we will see how to add custom logo and favicon.
 
-1. Navigate to **Setting >> OpenMetadata >> Custom Logo**
+1. Navigate to **Setting >> Preferences >> Themes**
 
-page and then scroll down to OpenMetadata section and navigate to `Custom Logo` settings and click on the `Edit` button.
+page and page and then you will get option to enter `Custom Logo` url.
 
 {% image
-src="/images/v1.5/how-to-guides/custom-logo/logo.png"
+src="/images/v1.6/how-to-guides/custom-logo/logo.png"
+alt="Custom Logo"
+/%}
+
+{% image
+src="/images/v1.6/how-to-guides/custom-logo/logo0.1.png"
 alt="Custom Logo Setting"
 /%}
 
-2. Click on the **Edit**. Enter the values in the edit form and **Save** the changes.
+2. Enter the values in the edit form and **Save** the changes.
 
 {% image
-src="/images/v1.5/how-to-guides/custom-logo/custom-logo-form.png"
+src="/images/v1.6/how-to-guides/custom-logo/custom-logo-form.png"
 alt="custom-logo-form"
 /%}
 
 3. After saving the changes, refresh the page to view the updated logos and favicon.
 
 {% image
-src="/images/v1.5/how-to-guides/custom-logo/custom-logo-application.png"
+src="/images/v1.6/how-to-guides/custom-logo/custom-logo-application.png"
 alt="custom-logo-application"
 /%}
 
 {% image
-src="/images/v1.5/how-to-guides/custom-logo/custom-logo-login-page.png"
+src="/images/v1.6/how-to-guides/custom-logo/custom-logo-login-page.png"
 alt="custom-logo-login-page"
 /%}

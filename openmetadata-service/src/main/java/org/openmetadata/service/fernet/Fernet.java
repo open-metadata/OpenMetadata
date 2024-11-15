@@ -30,6 +30,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.NonNull;
 import org.openmetadata.schema.api.fernet.FernetConfiguration;
@@ -140,6 +141,10 @@ public class Fernet {
                 subscription.withConfig(config);
               }
             }
+          }
+
+          if (nullOrEmpty(subscription.getId())) {
+            subscription.withId(UUID.randomUUID());
           }
 
           result.add(subscription);

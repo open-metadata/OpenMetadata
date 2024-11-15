@@ -48,6 +48,7 @@ import {
   pagingObject,
   ROUTES,
 } from '../../constants/constants';
+import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import {
   OPEN_METADATA,
   SERVICE_INGESTION_PIPELINE_TYPES,
@@ -113,11 +114,14 @@ import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import {
   getEditConnectionPath,
   getServiceVersionPath,
+  getSettingPath,
 } from '../../utils/RouterUtils';
 import {
   getCountLabel,
   getEntityTypeFromServiceCategory,
   getResourceEntityFromServiceCategory,
+  getServiceDisplayNameQueryFilter,
+  getServiceRouteFromServiceType,
   shouldTestConnection,
 } from '../../utils/ServiceUtils';
 import {
@@ -175,8 +179,13 @@ const ServiceDetailsPage: FunctionComponent = () => {
     handlePagingChange: handleIngestionPagingChange,
   } = ingestionPagingInfo;
 
-  const { paging, currentPage, handlePageChange, handlePagingChange } =
-    pagingInfo;
+  const {
+    paging,
+    pageSize: databasePageSize,
+    currentPage,
+    handlePageChange,
+    handlePagingChange,
+  } = pagingInfo;
 
   const [serviceDetails, setServiceDetails] = useState<ServicesType>(
     {} as ServicesType
@@ -338,6 +347,9 @@ const ServiceDetailsPage: FunctionComponent = () => {
                 index < SERVICE_INGESTION_PIPELINE_TYPES.length - 1 ? 'OR' : ''
               }`
           ).join(' ')})`,
+          queryFilter: getServiceDisplayNameQueryFilter(
+            getEntityName(serviceDetails)
+          ),
         });
         const pipelines = res.hits.hits.map((hit) => hit._source);
         const total = res?.hits?.total.value ?? 0;
@@ -348,7 +360,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
         setIsIngestionPipelineLoading(false);
       }
     },
-    [ingestionPageSize, handleIngestionPagingChange]
+    [ingestionPageSize, handleIngestionPagingChange, serviceDetails]
   );
 
   const include = useMemo(
@@ -791,8 +803,15 @@ const ServiceDetailsPage: FunctionComponent = () => {
 
   const afterDeleteAction = useCallback(
     (isSoftDelete?: boolean, version?: number) =>
-      isSoftDelete ? handleToggleDelete(version) : history.goBack(),
-    [handleToggleDelete]
+      isSoftDelete
+        ? handleToggleDelete(version)
+        : history.push(
+            getSettingPath(
+              GlobalSettingsMenuCategory.SERVICES,
+              getServiceRouteFromServiceType(serviceCategory)
+            )
+          ),
+    [handleToggleDelete, serviceCategory]
   );
 
   const handleRestoreService = useCallback(async () => {
@@ -834,8 +853,8 @@ const ServiceDetailsPage: FunctionComponent = () => {
 
   useEffect(() => {
     handlePageChange(INITIAL_PAGING_VALUE);
-    getOtherDetails();
-  }, [activeTab, showDeleted, deleted]);
+    getOtherDetails({ limit: databasePageSize });
+  }, [activeTab, showDeleted, deleted, databasePageSize]);
 
   useEffect(() => {
     // fetch count for data modal tab, its need only when its dashboard page and data modal tab is not active
@@ -1000,6 +1019,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
             isServiceLoading={isServiceLoading}
             paging={paging}
             pagingHandler={pagingHandler}
+            pagingInfo={pagingInfo}
             saveUpdatedServiceData={saveUpdatedServiceData}
             serviceDetails={serviceDetails}
             serviceName={serviceCategory}

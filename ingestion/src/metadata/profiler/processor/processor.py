@@ -30,7 +30,7 @@ from metadata.ingestion.api.steps import Processor
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.profiler.api.models import ProfilerProcessorConfig, ProfilerResponse
 from metadata.profiler.processor.core import Profiler
-from metadata.profiler.source.metadata import ProfilerSourceAndEntity
+from metadata.profiler.source.model import ProfilerSourceAndEntity
 
 
 class ProfilerProcessor(Processor):

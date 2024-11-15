@@ -84,6 +84,9 @@
     "sampleDataStorageConfig": {
       "title": "Storage Config for Sample Data",
       "$ref": "../connectionBasicType.json#/definitions/sampleDataStorageConfig"
+    },
+    "supportsViewLineageExtraction": {
+      "$ref": "../connectionBasicType.json#/definitions/supportsViewLineageExtraction"
     }
   },
   "additionalProperties": false,

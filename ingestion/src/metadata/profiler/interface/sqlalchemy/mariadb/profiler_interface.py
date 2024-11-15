@@ -24,11 +24,13 @@ from metadata.profiler.interface.sqlalchemy.profiler_interface import (
 )
 from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.processor.runner import QueryRunner
-from metadata.profiler.source.mariadb.metrics.window.first_quartile import (
+from metadata.profiler.source.database.mariadb.metrics.window.first_quartile import (
     MariaDBFirstQuartile,
 )
-from metadata.profiler.source.mariadb.metrics.window.median import MariaDBMedian
-from metadata.profiler.source.mariadb.metrics.window.third_quartile import (
+from metadata.profiler.source.database.mariadb.metrics.window.median import (
+    MariaDBMedian,
+)
+from metadata.profiler.source.database.mariadb.metrics.window.third_quartile import (
     MariaDBThirdQuartile,
 )
 from metadata.utils.logger import profiler_interface_registry_logger

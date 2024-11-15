@@ -26,9 +26,7 @@ export const navigateToCustomizeLandingPage = async (
   await getPersonas;
 
   const getCustomPageDataResponse = page.waitForResponse(
-    `/api/v1/docStore/name/persona.${encodeURIComponent(
-      personaName
-    )}.Page.LandingPage`
+    `/api/v1/docStore/name/persona.${encodeURIComponent(personaName)}`
   );
 
   // Navigate to the customize landing page

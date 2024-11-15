@@ -62,6 +62,7 @@ from metadata.profiler.metrics.core import MetricTypes
 from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.metrics.system.system import System
 from metadata.profiler.processor.runner import QueryRunner
+from metadata.utils.collaborative_super import Root
 from metadata.utils.constants import SAMPLE_DATA_DEFAULT_COUNT
 from metadata.utils.partition import get_partition_details
 from metadata.utils.ssl_manager import get_ssl_connection
@@ -86,11 +87,10 @@ class ProfilerProcessorStatus(Status):
 
 
 # pylint: disable=too-many-instance-attributes
-class ProfilerInterface(ABC):
+class ProfilerInterface(Root, ABC):
     """Protocol interface for the profiler processor"""
 
-    # pylint: disable=too-many-arguments,unused-argument
-    def __init__(
+    def __init__(  # pylint: disable=too-many-arguments
         self,
         service_connection_config: Union[DatabaseConnection, DatalakeConnection],
         ometa_client: OpenMetadata,
@@ -137,6 +137,21 @@ class ProfilerInterface(ABC):
             MetricTypes.Custom.value: self._compute_custom_metrics,
         }
 
+        super().__init__(
+            service_connection_config=service_connection_config,
+            ometa_client=ometa_client,
+            entity=entity,
+            storage_config=storage_config,
+            profile_sample_config=profile_sample_config,
+            source_config=source_config,
+            sample_query=sample_query,
+            table_partition_config=table_partition_config,
+            thread_count=thread_count,
+            timeout_seconds=timeout_seconds,
+            sample_data_count=sample_data_count,
+            **kwargs,
+        )
+
     @abstractmethod
     def _get_sampler(self):
         """Get the sampler"""
@@ -144,7 +159,7 @@ class ProfilerInterface(ABC):
 
     # pylint: disable=too-many-locals
     @classmethod
-    def create(
+    def create(  # pylint: disable=too-many-arguments
         cls,
         entity: Table,
         database_schema: DatabaseSchema,

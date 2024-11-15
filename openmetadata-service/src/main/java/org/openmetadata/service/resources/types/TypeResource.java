@@ -84,6 +84,7 @@ import org.openmetadata.service.util.SchemaFieldExtractor;
 @Slf4j
 public class TypeResource extends EntityResource<Type, TypeRepository> {
   public static final String COLLECTION_PATH = "v1/metadata/types/";
+  public SchemaFieldExtractor extractor;
 
   @Override
   public Type addHref(UriInfo uriInfo, Type type) {
@@ -94,6 +95,7 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
 
   public TypeResource(Authorizer authorizer, Limits limits) {
     super(Entity.TYPE, authorizer, limits);
+    extractor = new SchemaFieldExtractor();
   }
 
   @Override
@@ -481,7 +483,6 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
     try {
       Fields fieldsParam = new Fields(Set.of("customProperties"));
       Type typeEntity = repository.getByName(uriInfo, entityType, fieldsParam, include, false);
-      SchemaFieldExtractor extractor = new SchemaFieldExtractor();
       List<SchemaFieldExtractor.FieldDefinition> fieldsList =
           extractor.extractFields(typeEntity, entityType);
       return Response.ok(fieldsList).type(MediaType.APPLICATION_JSON).build();

@@ -1,7 +1,7 @@
 ---
 title: Hybrid SaaS
 slug: /getting-started/day-1/hybrid-saas
-collate: 
+collate: true
 ---
 
 # Hybrid SaaS

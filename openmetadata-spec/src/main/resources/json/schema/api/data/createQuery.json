@@ -65,6 +65,10 @@
       },
       "uniqueItems": true
     },
+    "dialect": {
+      "description": "SQL dialect.",
+      "type": "string"
+    },
     "queryDate": {
       "description": "Date on which the query ran.",
       "$ref": "../../type/basic.json#/definitions/timestamp"

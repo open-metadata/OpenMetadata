@@ -157,6 +157,7 @@ export const DataAssetsHeader = ({
   onUpdateRetentionPeriod,
   extraDropdownContent,
   onMetricUpdate,
+  badge,
 }: DataAssetsHeaderProps) => {
   const { currentUser } = useApplicationStore();
   const USER_ID = currentUser?.id ?? '';
@@ -368,6 +369,8 @@ export const DataAssetsHeader = ({
             </Col>
             <Col span={24}>
               <EntityHeaderTitle
+                badge={badge}
+                certification={(dataAsset as Table)?.certification}
                 deleted={dataAsset?.deleted}
                 displayName={dataAsset.displayName}
                 icon={icon}

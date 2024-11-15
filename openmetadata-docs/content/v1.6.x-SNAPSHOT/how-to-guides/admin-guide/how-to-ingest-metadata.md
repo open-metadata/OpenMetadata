@@ -47,7 +47,17 @@ Let’s start with an example of fetching metadata from a database service, i.e.
 
 - Start by creating a service connection by clicking on **Settings** from the left nav bar. Navigate to the **Services** section, and click on **Databases**. Click on **Add New Service**.
 {% image
-    src="/images/v1.5/how-to-guides/admin-guide/connector1.jpg"
+    src="/images/v1.5/how-to-guides/admin-guide/connector1.png"
+    alt="Create a Service Connection"
+    caption="Create a Service Connection"
+    /%}
+{% image
+    src="/images/v1.5/how-to-guides/admin-guide/connector1.1.png"
+    alt="Create a Service Connection"
+    caption="Create a Service Connection"
+    /%}
+{% image
+    src="/images/v1.5/how-to-guides/admin-guide/connector1.2.png"
     alt="Create a Service Connection"
     caption="Create a Service Connection"
     /%}

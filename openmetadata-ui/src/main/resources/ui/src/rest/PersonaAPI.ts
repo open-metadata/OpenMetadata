@@ -36,12 +36,12 @@ export const getAllPersonas = async (params: GetPersonasParams) => {
   return response.data;
 };
 
-export const getPersonaByName = async (fqn: string) => {
+export const getPersonaByName = async (fqn: string, fields?: string) => {
   const response = await axiosClient.get<Persona>(
     `${BASE_URL}/name/${getEncodedFqn(fqn)}`,
     {
       params: {
-        fields: TabSpecificField.USERS,
+        fields: fields ?? TabSpecificField.USERS,
       },
     }
   );

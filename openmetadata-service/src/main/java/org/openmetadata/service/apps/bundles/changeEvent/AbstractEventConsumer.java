@@ -53,7 +53,10 @@ public abstract class AbstractEventConsumer
   public static final String OFFSET_EXTENSION = "eventSubscription.Offset";
   public static final String METRICS_EXTENSION = "eventSubscription.metrics";
   public static final String FAILED_EVENT_EXTENSION = "eventSubscription.failedEvent";
+
   private long offset = -1;
+  private long startingOffset = -1;
+
   private AlertMetrics alertMetrics;
 
   @Getter @Setter private JobDetail jobDetail;
@@ -67,7 +70,8 @@ public abstract class AbstractEventConsumer
         (EventSubscription) context.getJobDetail().getJobDataMap().get(ALERT_INFO_KEY);
     this.jobDetail = context.getJobDetail();
     this.eventSubscription = sub;
-    this.offset = loadInitialOffset(context);
+    this.offset = loadInitialOffset(context).getCurrentOffset();
+    this.startingOffset = loadInitialOffset(context).getStartingOffset();
     this.alertMetrics = loadInitialMetrics();
     this.destinationMap = loadDestinationsMap(context);
     this.doInit(context);
@@ -77,8 +81,13 @@ public abstract class AbstractEventConsumer
     // To be implemented by the Subclass if needed
   }
 
+  public enum FailureTowards {
+    SUBSCRIBER,
+    PUBLISHER
+  }
+
   @Override
-  public void handleFailedEvent(EventPublisherException ex) {
+  public void handleFailedEvent(EventPublisherException ex, boolean errorOnSub) {
     UUID failingSubscriptionId = ex.getChangeEventWithSubscription().getLeft();
     ChangeEvent changeEvent = ex.getChangeEventWithSubscription().getRight();
     LOG.debug(
@@ -86,6 +95,8 @@ public abstract class AbstractEventConsumer
         eventSubscription.getName(),
         failingSubscriptionId,
         changeEvent);
+
+    FailureTowards source = errorOnSub ? FailureTowards.SUBSCRIBER : FailureTowards.PUBLISHER;
 
     Entity.getCollectionDAO()
         .eventSubscriptionDAO()
@@ -97,21 +108,33 @@ public abstract class AbstractEventConsumer
                     .withFailingSubscriptionId(failingSubscriptionId)
                     .withChangeEvent(changeEvent)
                     .withRetriesLeft(eventSubscription.getRetries())
-                    .withTimestamp(System.currentTimeMillis())));
+                    .withReason(ex.getMessage())
+                    .withTimestamp(System.currentTimeMillis())),
+            source.toString());
   }
 
-  private long loadInitialOffset(JobExecutionContext context) {
+  private void recordSuccessfulChangeEvent(UUID eventSubscriptionId, ChangeEvent event) {
+    Entity.getCollectionDAO()
+        .eventSubscriptionDAO()
+        .upsertSuccessfulChangeEvent(
+            event.getId().toString(),
+            eventSubscriptionId.toString(),
+            JsonUtils.pojoToJson(event),
+            System.currentTimeMillis());
+  }
+
+  private EventSubscriptionOffset loadInitialOffset(JobExecutionContext context) {
     EventSubscriptionOffset jobStoredOffset =
         (EventSubscriptionOffset) jobDetail.getJobDataMap().get(ALERT_OFFSET_KEY);
     // If the Job Data Map has the latest offset, use it
     if (jobStoredOffset != null) {
-      return jobStoredOffset.getOffset();
+      return jobStoredOffset;
     } else {
       EventSubscriptionOffset eventSubscriptionOffset =
           getStartingOffset(eventSubscription.getId());
       // Update the Job Data Map with the latest offset
       context.getJobDetail().getJobDataMap().put(ALERT_OFFSET_KEY, eventSubscriptionOffset);
-      return eventSubscriptionOffset.getOffset();
+      return eventSubscriptionOffset;
     }
   }
 
@@ -161,10 +184,11 @@ public abstract class AbstractEventConsumer
       for (UUID receiverId : eventWithReceivers.getValue()) {
         try {
           sendAlert(receiverId, eventWithReceivers.getKey());
+          recordSuccessfulChangeEvent(eventSubscription.getId(), eventWithReceivers.getKey());
           alertMetrics.withSuccessEvents(alertMetrics.getSuccessEvents() + 1);
         } catch (EventPublisherException e) {
           alertMetrics.withFailedEvents(alertMetrics.getFailedEvents() + 1);
-          handleFailedEvent(e);
+          handleFailedEvent(e, false);
         }
       }
     }
@@ -175,7 +199,11 @@ public abstract class AbstractEventConsumer
     long currentTime = System.currentTimeMillis();
     // Upsert Offset
     EventSubscriptionOffset eventSubscriptionOffset =
-        new EventSubscriptionOffset().withOffset(offset).withTimestamp(currentTime);
+        new EventSubscriptionOffset()
+            .withCurrentOffset(offset)
+            .withStartingOffset(startingOffset)
+            .withTimestamp(currentTime);
+
     Entity.getCollectionDAO()
         .eventSubscriptionDAO()
         .upsertSubscriberExtension(
@@ -183,6 +211,7 @@ public abstract class AbstractEventConsumer
             OFFSET_EXTENSION,
             "eventSubscriptionOffset",
             JsonUtils.pojoToJson(eventSubscriptionOffset));
+
     jobExecutionContext
         .getJobDetail()
         .getJobDataMap()
@@ -195,6 +224,7 @@ public abstract class AbstractEventConsumer
             .withFailedEvents(alertMetrics.getFailedEvents())
             .withSuccessEvents(alertMetrics.getSuccessEvents())
             .withTimestamp(currentTime);
+
     Entity.getCollectionDAO()
         .eventSubscriptionDAO()
         .upsertSubscriberExtension(
@@ -202,6 +232,7 @@ public abstract class AbstractEventConsumer
             METRICS_EXTENSION,
             "alertMetrics",
             JsonUtils.pojoToJson(metrics));
+
     jobExecutionContext.getJobDetail().getJobDataMap().put(METRICS_EXTENSION, alertMetrics);
 
     // Populate the Destination map

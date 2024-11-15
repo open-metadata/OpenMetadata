@@ -109,7 +109,9 @@ export const OwnerLabel = ({
                   key={owner.id}
                   to={
                     owner.type === OwnerType.TEAM
-                      ? getTeamAndUserDetailsPath(owner.name ?? '')
+                      ? getTeamAndUserDetailsPath(
+                          owner.fullyQualifiedName ?? ''
+                        )
                       : getUserPath(owner.name ?? '')
                   }>
                   {ownerDisplayName?.[index] ?? displayName}

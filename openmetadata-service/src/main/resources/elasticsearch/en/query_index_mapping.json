@@ -101,6 +101,16 @@
               }
             }
           },
+          "displayName": {
+            "type": "text",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "normalizer": "lowercase_normalizer",
+                "ignore_above": 256
+              }
+            }
+          },
           "fullyQualifiedName": {
             "type": "text"
           },
@@ -238,7 +248,8 @@
       "tags": {
         "properties": {
           "tagFQN": {
-            "type": "keyword"
+            "type": "keyword",
+            "normalizer": "lowercase_normalizer"
           },
           "labelType": {
             "type": "keyword"

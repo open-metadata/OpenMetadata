@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.resources;
 
+import static javax.ws.rs.client.Entity.entity;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.EventType.ENTITY_CREATED;
@@ -27,7 +28,9 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.UUID;
+import java.util.concurrent.ExecutorService;
 import javax.json.JsonPatch;
+import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
@@ -52,6 +55,8 @@ import org.openmetadata.service.security.policyevaluator.CreateResourceContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
+import org.openmetadata.service.util.AsyncService;
+import org.openmetadata.service.util.CSVExportResponse;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.RestUtil;
@@ -59,6 +64,7 @@ import org.openmetadata.service.util.RestUtil.DeleteResponse;
 import org.openmetadata.service.util.RestUtil.PatchResponse;
 import org.openmetadata.service.util.RestUtil.PutResponse;
 import org.openmetadata.service.util.ResultList;
+import org.openmetadata.service.util.WebsocketNotificationHandler;
 
 @Slf4j
 public abstract class EntityResource<T extends EntityInterface, K extends EntityRepository<T>> {
@@ -374,6 +380,28 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
         Entity.getEntityTypeFromObject(response.getEntity()),
         response.getEntity().getId());
     return response.toResponse();
+  }
+
+  public Response exportCsvInternalAsync(SecurityContext securityContext, String name) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.VIEW_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
+    String jobId = UUID.randomUUID().toString();
+    ExecutorService executorService = AsyncService.getInstance().getExecutorService();
+    executorService.submit(
+        () -> {
+          try {
+            String csvData =
+                repository.exportToCsv(name, securityContext.getUserPrincipal().getName());
+            WebsocketNotificationHandler.sendCsvExportCompleteNotification(
+                jobId, securityContext, csvData);
+          } catch (Exception e) {
+            WebsocketNotificationHandler.sendCsvExportFailedNotification(
+                jobId, securityContext, e.getMessage());
+          }
+        });
+    CSVExportResponse response = new CSVExportResponse(jobId, "Export initiated successfully.");
+    return Response.accepted().entity(response).type(MediaType.APPLICATION_JSON).build();
   }
 
   public String exportCsvInternal(SecurityContext securityContext, String name) throws IOException {

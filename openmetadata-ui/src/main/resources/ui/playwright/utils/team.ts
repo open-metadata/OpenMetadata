@@ -11,7 +11,10 @@
  *  limitations under the License.
  */
 import { APIRequestContext, expect, Page } from '@playwright/test';
+import { TableClass } from '../support/entity/TableClass';
+import { TeamClass } from '../support/team/TeamClass';
 import { descriptionBox, toastNotification, uuid } from './common';
+import { addOwner } from './entity';
 import { validateFormNameFieldInput } from './form';
 
 const TEAM_TYPES = ['Department', 'Division', 'Group'];
@@ -251,11 +254,65 @@ export const removeOrganizationPolicyAndRole = async (
   });
 };
 
-export const searchTeam = async (page: Page, teamName: string) => {
+export const searchTeam = async (
+  page: Page,
+  teamName: string,
+  searchWillBeEmpty?: boolean
+) => {
   const searchResponse = page.waitForResponse('/api/v1/search/query?q=**');
 
   await page.fill('[data-testid="searchbar"]', teamName);
   await searchResponse;
 
-  await expect(page.locator('table')).toContainText(teamName);
+  if (searchWillBeEmpty) {
+    await expect(page.getByTestId('search-error-placeholder')).toBeVisible();
+  } else {
+    await expect(page.locator('table')).toContainText(teamName);
+  }
+};
+
+export const addTeamOwnerToEntity = async (
+  page: Page,
+  table: TableClass,
+  team: TeamClass
+) => {
+  await table.visitEntityPage(page);
+  await addOwner({
+    page,
+    owner: team.data.displayName,
+    type: 'Teams',
+    endpoint: table.endpoint,
+    dataTestId: 'data-assets-header',
+  });
+};
+
+export const verifyAssetsInTeamsPage = async (
+  page: Page,
+  table: TableClass,
+  team: TeamClass,
+  assetCount: number
+) => {
+  const fullyQualifiedName = table.entityResponseData?.['fullyQualifiedName'];
+  await table.visitEntityPage(page);
+
+  await expect(
+    page.getByTestId('data-assets-header').getByTestId('owner-link')
+  ).toContainText(team.data.displayName);
+
+  await page
+    .getByTestId('data-assets-header')
+    .locator(`a:has-text("${team.data.displayName}")`)
+    .click();
+
+  const res = page.waitForResponse('/api/v1/search/query?*size=15');
+  await page.getByTestId('assets').click();
+  await res;
+
+  await expect(
+    page.locator(`[data-testid="table-data-card_${fullyQualifiedName}"]`)
+  ).toBeVisible();
+
+  await expect(
+    page.getByTestId('assets').getByTestId('filter-count')
+  ).toContainText(assetCount.toString());
 };

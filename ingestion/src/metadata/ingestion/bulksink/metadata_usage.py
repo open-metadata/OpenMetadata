@@ -285,7 +285,7 @@ class MetadataUsageBulkSink(BulkSink):
         # TODO: Clean up how we are passing dates from query parsing to here to use timestamps instead of strings
         start_date = datetime.fromtimestamp(int(table_usage.date) / 1000)
         table_joins: TableJoins = TableJoins(
-            columnJoins=[], directTableJoins=[], startDate=start_date
+            columnJoins=[], directTableJoins=[], startDate=start_date.date()
         )
         column_joins_dict = {}
         for column_join in table_usage.joins:

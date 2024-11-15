@@ -17,7 +17,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Dict, Iterable, List, Optional, cast
 
-from airflow.models import BaseOperator, DagRun, TaskInstance
+from airflow.models import BaseOperator, DagRun, DagTag, TaskInstance
 from airflow.models.dag import DagModel
 from airflow.models.serialized_dag import SerializedDagModel
 from airflow.serialization.serialized_objects import SerializedDAG
@@ -57,6 +57,7 @@ from metadata.generated.schema.type.entityReferenceList import EntityReferenceLi
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.connections.session import create_and_bind_session
+from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.pipeline.airflow.lineage_parser import (
@@ -74,8 +75,11 @@ from metadata.utils import fqn
 from metadata.utils.constants import ENTITY_REFERENCE_TYPE_MAP
 from metadata.utils.helpers import clean_uri, datetime_to_ts
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_labels
 
 logger = ingestion_logger()
+
+AIRFLOW_TAG_CATEGORY = "AirflowTags"
 
 
 class AirflowTaskStatus(Enum):
@@ -151,6 +155,31 @@ class AirflowSource(PipelineServiceSource):
         if task.keys() == {"__var", "__type"}:
             return task["__var"]
         return task
+
+    def get_all_tags(self, dag_id: str) -> List[str]:
+        try:
+            tag_query = (
+                self.session.query(DagTag.name)
+                .filter(DagTag.dag_id == dag_id)
+                .distinct()
+                .all()
+            )
+            return [tag[0] for tag in tag_query]
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Could not extract tags details due to {exc}")
+        return []
+
+    def yield_tag(
+        self, pipeline_details: AirflowDagDetails
+    ) -> Iterable[Either[OMetaTagAndClassification]]:
+        yield from get_ometa_tag_and_classification(
+            tags=self.get_all_tags(dag_id=pipeline_details.dag_id),
+            classification_name=AIRFLOW_TAG_CATEGORY,
+            tag_description="Airflow Tag",
+            classification_description="Tags associated with airflow entities.",
+            include_tags=self.source_config.includeTags,
+        )
 
     def get_pipeline_status(self, dag_id: str) -> List[DagRun]:
         """
@@ -441,7 +470,6 @@ class AirflowSource(PipelineServiceSource):
         try:
             # Airflow uses /dags/dag_id/grid to show pipeline / dag
             source_url = f"{clean_uri(self.service_connection.hostPort)}/dags/{pipeline_details.dag_id}/grid"
-
             pipeline_request = CreatePipelineRequest(
                 name=EntityName(pipeline_details.dag_id),
                 description=Markdown(pipeline_details.description)
@@ -459,6 +487,12 @@ class AirflowSource(PipelineServiceSource):
                 service=FullyQualifiedEntityName(self.context.get().pipeline_service),
                 owners=self.get_owner(pipeline_details.owner),
                 scheduleInterval=pipeline_details.schedule_interval,
+                tags=get_tag_labels(
+                    metadata=self.metadata,
+                    tags=pipeline_details.data.dag.tags,
+                    classification_name=AIRFLOW_TAG_CATEGORY,
+                    include_tags=self.source_config.includeTags,
+                ),
             )
             yield Either(right=pipeline_request)
             self.register_record(pipeline_request=pipeline_request)

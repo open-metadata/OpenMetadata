@@ -13,12 +13,17 @@
 
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
-import { TabSpecificField } from '../enums/entity.enum';
+import { EntityType, TabSpecificField } from '../enums/entity.enum';
 import { Category, Type } from '../generated/entity/type';
 import { CustomProperty } from '../generated/type/customProperty';
 import { Paging } from '../generated/type/paging';
 import { getEncodedFqn } from '../utils/StringsUtils';
 import APIClient from './index';
+
+export type FieldData = {
+  name: string;
+  type: string;
+};
 
 export const getTypeListByCategory = async (category: Category) => {
   const path = `/metadata/types`;
@@ -32,12 +37,26 @@ export const getTypeListByCategory = async (category: Category) => {
   return response.data;
 };
 
+export const getFieldsForEntity = async (entityType: EntityType) => {
+  const path = `/metadata/types/fields/${entityType}`;
+  const response = await APIClient.get<FieldData[]>(path);
+
+  return response.data;
+};
+
 export const getTypeByFQN = async (typeFQN: string) => {
   const path = `/metadata/types/name/${getEncodedFqn(typeFQN)}`;
 
   const params = { fields: TabSpecificField.CUSTOM_PROPERTIES };
 
   const response = await APIClient.get<Type>(path, { params });
+
+  return response.data;
+};
+
+export const getAllCustomProperties = async () => {
+  const path = `/metadata/types/customProperties`;
+  const response = await APIClient.get<Type>(path);
 
   return response.data;
 };

@@ -15,10 +15,16 @@ package org.openmetadata.service.resources.services;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.OK;
+import static org.apache.commons.lang.StringEscapeUtils.escapeCsv;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.common.utils.CommonUtil.listOf;
+import static org.openmetadata.csv.CsvUtil.recordToString;
+import static org.openmetadata.csv.EntityCsv.entityNotFound;
+import static org.openmetadata.csv.EntityCsvTest.*;
+import static org.openmetadata.csv.EntityCsvTest.assertRows;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.invalidEnumValue;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
@@ -35,14 +41,18 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import javax.ws.rs.client.WebTarget;
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
+import org.openmetadata.csv.EntityCsv;
+import org.openmetadata.schema.api.data.CreateDatabase;
 import org.openmetadata.schema.api.services.CreateDatabaseService;
 import org.openmetadata.schema.api.services.CreateDatabaseService.DatabaseServiceType;
 import org.openmetadata.schema.api.services.DatabaseConnection;
 import org.openmetadata.schema.api.services.ingestionPipelines.CreateIngestionPipeline;
+import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.connections.TestConnectionResult;
 import org.openmetadata.schema.entity.services.connections.TestConnectionResultStatus;
@@ -57,13 +67,18 @@ import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.database.RedshiftConnection;
 import org.openmetadata.schema.services.connections.database.SnowflakeConnection;
 import org.openmetadata.schema.services.connections.database.common.basicAuth;
+import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Schedule;
+import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.DatabaseServiceRepository.DatabaseServiceCsv;
+import org.openmetadata.service.resources.databases.DatabaseResourceTest;
 import org.openmetadata.service.resources.services.database.DatabaseServiceResource.DatabaseServiceList;
 import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineResourceTest;
 import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
+import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.TestUtils;
 
@@ -134,7 +149,8 @@ public class DatabaseServiceResourceTest
         createAndCheckEntity(createRequest(test).withDescription(null), ADMIN_AUTH_HEADERS);
 
     // Update database description and ingestion service that are null
-    CreateDatabaseService update = createRequest(test).withDescription("description1");
+    CreateDatabaseService update =
+        createRequest(test).withDescription("description1").withName(service.getName());
 
     ChangeDescription change = getChangeDescription(service, MINOR_UPDATE);
     fieldAdded(change, "description", "description1");
@@ -186,19 +202,18 @@ public class DatabaseServiceResourceTest
     RedshiftConnection redshiftConnection =
         new RedshiftConnection().withHostPort("localhost:3300").withUsername("test");
     DatabaseConnection dbConn = new DatabaseConnection().withConfig(redshiftConnection);
+    CreateDatabaseService create = createRequest(test).withConnection(dbConn);
     assertResponseContains(
-        () ->
-            createEntity(
-                createRequest(test).withDescription(null).withConnection(dbConn),
-                ADMIN_AUTH_HEADERS),
+        () -> createEntity(create, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
         String.format(
             "Failed to convert [%s] to type [Snowflake]. Review the connection.",
-            getEntityName(test)));
+            create.getName()));
     DatabaseService service =
         createAndCheckEntity(createRequest(test).withDescription(null), ADMIN_AUTH_HEADERS);
     // Update database description and ingestion service that are null
-    CreateDatabaseService update = createRequest(test).withDescription("description1");
+    CreateDatabaseService update =
+        createRequest(test).withDescription("description1").withName(service.getName());
 
     ChangeDescription change = getChangeDescription(service, MINOR_UPDATE);
     fieldAdded(change, "description", "description1");
@@ -229,7 +244,8 @@ public class DatabaseServiceResourceTest
         new DatabaseConnection().withConfig(snowflakeConnection);
 
     // Update database connection to a new connection
-    CreateDatabaseService update = createRequest(test).withConnection(databaseConnection);
+    CreateDatabaseService update =
+        createRequest(test).withConnection(databaseConnection).withName(service.getName());
     ChangeDescription change = getChangeDescription(service, MINOR_UPDATE);
     fieldUpdated(change, "connection", oldDatabaseConnection, databaseConnection);
     service = updateAndCheckEntity(update, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
@@ -319,6 +335,72 @@ public class DatabaseServiceResourceTest
         () -> listEntities(queryParams, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
         invalidEnumValue(Include.class));
+  }
+
+  @Test
+  @SneakyThrows
+  void testImportInvalidCsv() {
+    DatabaseService service = createEntity(createRequest("invalidCsv"), ADMIN_AUTH_HEADERS);
+    String serviceName = service.getFullyQualifiedName();
+    DatabaseResourceTest databaseTest = new DatabaseResourceTest();
+    CreateDatabase createDatabase = databaseTest.createRequest("s1").withService(serviceName);
+    databaseTest.createEntity(createDatabase, ADMIN_AUTH_HEADERS);
+
+    // Headers: name, displayName, description, owner, tags, glossaryTerms, tiers, domain, extension
+    // Update database with invalid tags field
+    String resultsHeader = recordToString(EntityCsv.getResultHeaders(DatabaseServiceCsv.HEADERS));
+    String record = "d1,dsp1,dsc1,,Tag.invalidTag,,,,";
+    String csv = createCsv(DatabaseServiceCsv.HEADERS, listOf(record), null);
+    CsvImportResult result = importCsv(serviceName, csv, false);
+    assertSummary(result, ApiStatus.PARTIAL_SUCCESS, 2, 1, 1);
+    String[] expectedRows =
+        new String[] {
+          resultsHeader, getFailedRecord(record, entityNotFound(4, "tag", "Tag.invalidTag"))
+        };
+    assertRows(result, expectedRows);
+
+    //  invalid tag it will give error.
+    record = "non-existing,dsp1,dsc1,,Tag.invalidTag,,,,";
+    csv = createCsv(DatabaseServiceCsv.HEADERS, listOf(record), null);
+    result = importCsv(serviceName, csv, false);
+    assertSummary(result, ApiStatus.PARTIAL_SUCCESS, 2, 1, 1);
+    expectedRows =
+        new String[] {
+          resultsHeader, getFailedRecord(record, entityNotFound(4, "tag", "Tag.invalidTag"))
+        };
+    assertRows(result, expectedRows);
+
+    // database will be created if it does not exist
+    String databaseFqn = FullyQualifiedName.add(serviceName, "non-existing");
+    record = "non-existing,dsp1,dsc1,,,,,,";
+    csv = createCsv(DatabaseServiceCsv.HEADERS, listOf(record), null);
+    result = importCsv(serviceName, csv, false);
+    assertSummary(result, ApiStatus.SUCCESS, 2, 2, 0);
+    expectedRows = new String[] {resultsHeader, getSuccessRecord(record, "Entity created")};
+    assertRows(result, expectedRows);
+    Database createdDatabase = databaseTest.getEntityByName(databaseFqn, "id", ADMIN_AUTH_HEADERS);
+    assertEquals(databaseFqn, createdDatabase.getFullyQualifiedName());
+  }
+
+  @Test
+  void testImportExport() throws IOException {
+    String user1 = USER1.getName();
+    DatabaseService service = createEntity(createRequest("importExportTest"), ADMIN_AUTH_HEADERS);
+    DatabaseResourceTest databaseTest = new DatabaseResourceTest();
+    CreateDatabase createDatabase =
+        databaseTest.createRequest("d1").withService(service.getFullyQualifiedName());
+    databaseTest.createEntity(createDatabase, ADMIN_AUTH_HEADERS);
+
+    // Headers: name, displayName, description, owner, tags, glossaryTerms, tiers, domain, extension
+    // Update terms with change in description
+    String record =
+        String.format(
+            "d1,dsp1,new-dsc1,user:%s,,,Tier.Tier1,%s,",
+            user1, escapeCsv(DOMAIN.getFullyQualifiedName()));
+
+    // Update created entity with changes
+    importCsvAndValidate(
+        service.getFullyQualifiedName(), DatabaseServiceCsv.HEADERS, null, listOf(record));
   }
 
   public DatabaseService putTestConnectionResult(

@@ -10,6 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
+import { AssetCertification } from '../../../generated/entity/data/table';
+
 export interface EntityHeaderTitleProps {
   className?: string;
   icon: React.ReactNode;
@@ -23,4 +26,5 @@ export interface EntityHeaderTitleProps {
   badge?: React.ReactNode;
   isDisabled?: boolean;
   showName?: boolean;
+  certification?: AssetCertification;
 }

@@ -24,13 +24,13 @@ from metadata.profiler.interface.sqlalchemy.profiler_interface import (
 )
 from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.processor.runner import QueryRunner
-from metadata.profiler.source.single_store.metrics.window.first_quartile import (
+from metadata.profiler.source.database.single_store.metrics.window.first_quartile import (
     SingleStoreFirstQuartile,
 )
-from metadata.profiler.source.single_store.metrics.window.median import (
+from metadata.profiler.source.database.single_store.metrics.window.median import (
     SingleStoreMedian,
 )
-from metadata.profiler.source.single_store.metrics.window.third_quartile import (
+from metadata.profiler.source.database.single_store.metrics.window.third_quartile import (
     SingleStoreThirdQuartile,
 )
 from metadata.utils.logger import profiler_interface_registry_logger

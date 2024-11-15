@@ -36,7 +36,7 @@ import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndexField } from '../../../generated/entity/data/searchIndex';
 import { TagSource } from '../../../generated/type/schema';
 import { TagLabel } from '../../../generated/type/tagLabel';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getColumnSorter, getEntityName } from '../../../utils/EntityUtils';
 import { makeData } from '../../../utils/SearchIndexUtils';
 import {
   getAllTags,
@@ -194,6 +194,7 @@ const SearchIndexFieldsTable = ({
         accessor: 'name',
         width: 220,
         fixed: 'left',
+        sorter: getColumnSorter<SearchIndexField, 'name'>('name'),
         render: (_, record: SearchIndexField) => (
           <div className="d-inline-flex w-max-90">
             <span className="break-word">{getEntityName(record)}</span>

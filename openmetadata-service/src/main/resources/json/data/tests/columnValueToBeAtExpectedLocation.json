@@ -1,0 +1,44 @@
+{
+    "name": "columnValuesToBeAtExpectedLocation",
+    "fullyQualifiedName": "columnValuesToBeAtExpectedLocation",
+    "displayName": "Column Values To Be At Expected Location",
+    "description": "This schema defines the test ColumnValuesToBeAtExpectedLocation. Test the lat/long values in a column to be at the specified location in the reference column.",
+    "entityType": "COLUMN",
+    "testPlatforms": ["OpenMetadata"],
+    "supportedDataTypes": ["BYTES", "STRING", "MEDIUMTEXT", "TEXT", "CHAR", "VARCHAR","NUMBER", "INT", "FLOAT", "DOUBLE", "DECIMAL", "TINYINT", "SMALLINT", "BIGINT", "BYTEINT"],
+    "parameterDefinition": [
+      {
+        "name": "locationReferenceType",
+        "displayName": "Location Reference Type",
+        "description": "The type of the location reference column.",
+        "dataType": "ARRAY",
+        "optionValues": ["CITY", "POSTAL_CODE"],
+        "required": true
+      },
+      {
+        "name": "longitudeColumnName",
+        "displayName": "Longitude Column Name (X)",
+        "description": "The longitude column name in the table.",
+        "dataType": "STRING",
+        "required": true
+      },
+      {
+        "name": "latitudeColumnName",
+        "displayName": "Latitude Column Name (Y)",
+        "description": "The latitude column name in the table.",
+        "dataType": "STRING",
+        "required": true
+      },
+      {
+        "name": "radius",
+        "displayName": "Radius (in meters) from the expected location",
+        "description": "The radius in meters from the expected location. The test will check if the lat/long values are within the location + the radius.",
+        "dataType": "FLOAT",
+        "required": true
+      }
+    ],
+    "supportsRowLevelPassedFailed": false,
+    "provider": "system",
+    "dataQualityDimension": "Accuracy"
+  }
+  

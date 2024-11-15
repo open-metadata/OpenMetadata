@@ -95,6 +95,11 @@ const DataModelTable = () => {
             </span>
           ),
       },
+      {
+        title: t('label.data-model-type'),
+        dataIndex: 'dataModelType',
+        key: 'dataModelType',
+      },
     ],
     []
   );
@@ -178,6 +183,7 @@ const DataModelTable = () => {
         {showPagination && (
           <NextPrevious
             currentPage={currentPage}
+            isLoading={isLoading}
             pageSize={pageSize}
             paging={paging}
             pagingHandler={handleDataModelPageChange}

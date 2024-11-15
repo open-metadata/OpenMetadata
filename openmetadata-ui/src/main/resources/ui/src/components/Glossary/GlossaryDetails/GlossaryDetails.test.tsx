@@ -46,13 +46,6 @@ jest.mock(
   })
 );
 
-jest.mock(
-  '../GlossaryDetailsRightPanel/GlossaryDetailsRightPanel.component',
-  () => {
-    return jest.fn().mockImplementation(() => <>testGlossaryRightPanel</>);
-  }
-);
-
 jest.mock('../../common/EntityDescription/DescriptionV1', () =>
   jest.fn().mockImplementation(() => <div>DescriptionV1</div>)
 );

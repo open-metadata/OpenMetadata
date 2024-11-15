@@ -30,6 +30,7 @@
 {% connectorInfoCard name="Presto" stage="PROD" href="/connectors/database/presto" platform="OpenMetadata" / %}
 {% connectorInfoCard name="Redshift" stage="PROD" href="/connectors/database/redshift" platform="OpenMetadata" / %}
 {% connectorInfoCard name="Salesforce" stage="PROD" href="/connectors/database/salesforce" platform="OpenMetadata" / %}
+{% connectorInfoCard name="SAP ERP" stage="PROD" href="/connectors/database/sap-erp" platform="OpenMetadata" / %}
 {% connectorInfoCard name="SAP Hana" stage="PROD" href="/connectors/database/sap-hana" platform="OpenMetadata" / %}
 {% connectorInfoCard name="SAS" stage="BETA" href="/connectors/database/sas" platform="OpenMetadata" / %}
 {% connectorInfoCard name="SingleStore" stage="PROD" href="/connectors/database/singlestore" platform="OpenMetadata" / %}
@@ -40,6 +41,5 @@
 {% connectorInfoCard name="Trino" stage="PROD" href="/connectors/database/trino" platform="OpenMetadata" / %}
 {% connectorInfoCard name="Unity Catalog" stage="PROD" href="/connectors/database/unity-catalog" platform="OpenMetadata" / %}
 {% connectorInfoCard name="Vertica" stage="PROD" href="/connectors/database/vertica" platform="OpenMetadata" / %}
-{% connectorInfoCard name="SAP ERP" stage="PROD" href="/connectors/database/sap-erp" platform="OpenMetadata" / %}
 
 {% /connectorsListContainer %}

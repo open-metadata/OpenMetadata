@@ -614,6 +614,9 @@ export const addCustomPropertiesForEntity = async ({
   // Correct name
   await page.fill('[data-testid="name"]', propertyName);
 
+  // displayName
+  await page.fill('[data-testid="display-name"]', propertyName);
+
   // Select custom type
   await page.locator('[id="root\\/propertyType"]').fill(customType);
   await page.getByTitle(`${customType}`, { exact: true }).click();
@@ -712,6 +715,10 @@ export const editCreatedProperty = async (
   }
 
   await editButton.click();
+
+  // displayName
+  await page.fill('[data-testid="display-name"]', '');
+  await page.fill('[data-testid="display-name"]', propertyName);
 
   await page.locator(descriptionBox).fill('');
   await page.locator(descriptionBox).fill('This is new description');

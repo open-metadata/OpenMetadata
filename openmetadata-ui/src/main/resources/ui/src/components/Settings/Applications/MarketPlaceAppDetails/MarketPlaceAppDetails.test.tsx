@@ -179,4 +179,15 @@ describe('MarketPlaceAppDetails component', () => {
 
     expect(mockPush).toHaveBeenCalledWith('app install path');
   });
+
+  it("should render the correct support email url with 'mailto:' schema", async () => {
+    render(<MarketPlaceAppDetails />);
+
+    await waitForElementToBeRemoved(() => screen.getByText('Loader'));
+
+    expect(screen.getByTestId('app-support-email')).toHaveAttribute(
+      'href',
+      'mailto:support@email.com'
+    );
+  });
 });

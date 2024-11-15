@@ -22,8 +22,18 @@ caption="Data Insights Report"
 All the reports can be filtered by **Teams, Data Tiers, and a Time Filter**.
 {% image
 src="/images/v1.5/how-to-guides/insights/insights2.png"
-alt="Data Insights Report Filters: Team, Tier, Time"
-caption="Data Insights Report Filters: Team, Tier, Time"
+alt="Data Insights Report Filter: Team"
+caption="Data Insights Report Filter: Team"
+/%}
+{% image
+src="/images/v1.5/how-to-guides/insights/insights2.1.png"
+alt="Data Insights Report Filter: Tier"
+caption="Data Insights Report Filter: Tier"
+/%}
+{% image
+src="/images/v1.5/how-to-guides/insights/insights2.2.png"
+alt="Data Insights Report Filter: Time"
+caption="Data Insights Report Filter: Time"
 /%}
 
 ## Data Assets Report

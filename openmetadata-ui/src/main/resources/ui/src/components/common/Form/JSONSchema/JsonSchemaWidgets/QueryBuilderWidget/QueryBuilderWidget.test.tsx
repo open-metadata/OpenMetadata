@@ -26,7 +26,7 @@ jest.mock(
   '../../../../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.component',
   () => ({
     AdvanceSearchProvider: ({ children }: { children: React.ReactNode }) => (
-      <div data-testid="advance-search-provider-mock">{children}</div>
+      <div data-testid="query-builder-form-field">{children}</div>
     ),
     useAdvanceSearch: jest.fn().mockImplementation(() => ({
       toggleModal: jest.fn(),

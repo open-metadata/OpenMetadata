@@ -150,6 +150,7 @@ import org.openmetadata.service.security.mask.PIIMasker;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.saml.JwtTokenCacheManager;
+import org.openmetadata.service.util.CSVExportResponse;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.JsonUtils;
@@ -1388,6 +1389,33 @@ public class UserResource extends EntityResource<User, UserRepository> {
       summary = "Get CSV documentation for user import/export")
   public String getUserCsvDocumentation(@Context SecurityContext securityContext) {
     return JsonUtils.pojoToJson(UserCsv.DOCUMENTATION);
+  }
+
+  @GET
+  @Path("/exportAsync")
+  @Produces(MediaType.APPLICATION_JSON)
+  @Valid
+  @Operation(
+      operationId = "exportUsers",
+      summary = "Export users in a team in CSV format",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Exported csv with user information",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = CSVExportResponse.class)))
+      })
+  public Response exportUsersCsvAsync(
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Name of the team to under which the users are imported to",
+              required = true,
+              schema = @Schema(type = "string"))
+          @QueryParam("team")
+          String team) {
+    return exportCsvInternalAsync(securityContext, team);
   }
 
   @GET

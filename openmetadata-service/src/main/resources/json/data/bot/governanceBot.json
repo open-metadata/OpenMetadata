@@ -1,0 +1,11 @@
+{
+  "name": "governance-bot",
+  "displayName": "GovernanceBot",
+  "description": "Bot used for the Governance Workflows automation.",
+  "fullyQualifiedName": "governance-bot",
+  "botUser": {
+    "name" : "governance-bot",
+    "type" : "user"
+  },
+  "provider": "system"
+}

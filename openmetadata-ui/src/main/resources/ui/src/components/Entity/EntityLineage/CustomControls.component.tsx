@@ -32,8 +32,8 @@ import { ReactComponent as ExportIcon } from '../../../assets/svg/ic-export.svg'
 import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
 import { LINEAGE_DEFAULT_QUICK_FILTERS } from '../../../constants/Lineage.constants';
 import { useLineageProvider } from '../../../context/LineageProvider/LineageProvider';
-import { LineageLayerView } from '../../../context/LineageProvider/LineageProvider.interface';
 import { SearchIndex } from '../../../enums/search.enum';
+import { LineageLayer } from '../../../generated/settings/settings';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { getAssetsPageQuickFilters } from '../../../utils/AdvancedSearchUtils';
 import { getLoadingStatusValue } from '../../../utils/EntityLineageUtils';
@@ -75,7 +75,7 @@ const CustomControls: FC<ControlProps> = ({
   >([]);
   const [filters, setFilters] = useState<ExploreQuickFilterField[]>([]);
   const isColumnLayerActive = useMemo(() => {
-    return activeLayer.includes(LineageLayerView.COLUMN);
+    return activeLayer.includes(LineageLayer.ColumnLevelLineage);
   }, [activeLayer]);
 
   const handleMenuClick = ({ key }: { key: string }) => {

@@ -12,7 +12,7 @@
 """
 Test Bigquery connector with CLI
 """
-from typing import List
+from typing import List, Tuple
 
 from metadata.generated.schema.entity.data.table import DmlOperationType, SystemProfile
 from metadata.generated.schema.type.basic import Timestamp
@@ -137,13 +137,13 @@ class BigqueryCliTest(CliCommonDB.TestSuite, SQACommonMethods):
                 [
                     SystemProfile(
                         timestamp=Timestamp(root=0),
-                        operation=DmlOperationType.UPDATE,
-                        rowsAffected=1,
-                    ),
-                    SystemProfile(
-                        timestamp=Timestamp(root=0),
                         operation=DmlOperationType.INSERT,
                         rowsAffected=2,
+                    ),
+                    SystemProfile(
+                        timestamp=Timestamp(root=1),
+                        operation=DmlOperationType.UPDATE,
+                        rowsAffected=1,
                     ),
                 ],
             )

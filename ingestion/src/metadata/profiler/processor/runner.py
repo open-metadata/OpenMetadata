@@ -22,7 +22,10 @@ from sqlalchemy import text
 from sqlalchemy.orm import DeclarativeMeta, Query, Session
 from sqlalchemy.orm.util import AliasedClass
 
-from metadata.profiler.processor.handle_partition import partition_filter_handler
+from metadata.profiler.processor.handle_partition import (
+    build_partition_predicate,
+    partition_filter_handler,
+)
 from metadata.utils.logger import query_runner_logger
 from metadata.utils.sqa_utils import get_query_filter_for_runner
 
@@ -120,6 +123,22 @@ class QueryRunner:
     @partition_filter_handler(first=False, sampled=True)
     def select_all_from_sample(self, *entities, **kwargs):
         return self._select_from_sample(*entities, **kwargs).all()
+
+    def yield_from_sample(self, *entities, **kwargs):
+        query = self._select_from_sample(*entities, **kwargs)
+        if self._partition_details:
+            partition_filter = build_partition_predicate(
+                self._partition_details,
+                self.table.__table__.c,
+            )
+            query.filter(partition_filter)
+
+        result = self._session.execute(self._select_from_sample(*entities, **kwargs))
+        while True:
+            rows = result.fetchmany(1000)
+            if not rows:
+                break
+            yield from rows
 
     def dispatch_query_select_first(self, *entities, **kwargs):
         """dispatch query to sample or all table"""

@@ -18,6 +18,7 @@ import { isEmpty, omit } from 'lodash';
 import React, { FC, MutableRefObject, useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CustomProperty } from '../../../../generated/type/customProperty';
+import { getEntityName } from '../../../../utils/EntityUtils';
 import { TableTypePropertyValueType } from '../CustomPropertyTable.interface';
 import './edit-table-type-property.less';
 import TableTypePropertyView from './TableTypePropertyView';
@@ -198,7 +199,7 @@ const EditTableTypePropertyModal: FC<EditTableTypePropertyModalProps> = ({
         <Typography.Text>
           {t('label.edit-entity-name', {
             entityType: t('label.property'),
-            entityName: property.name,
+            entityName: getEntityName(property),
           })}
         </Typography.Text>
       }

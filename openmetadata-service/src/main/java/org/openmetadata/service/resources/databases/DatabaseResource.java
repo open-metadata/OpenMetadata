@@ -65,6 +65,7 @@ import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.util.CSVExportResponse;
 import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/databases")
@@ -419,6 +420,30 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
           @PathParam("id")
           UUID id) {
     return delete(uriInfo, securityContext, id, recursive, hardDelete);
+  }
+
+  @GET
+  @Path("/name/{name}/exportAsync")
+  @Produces(MediaType.APPLICATION_JSON)
+  @Valid
+  @Operation(
+      operationId = "exportDatabase",
+      summary = "Export database in CSV format",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Exported csv with database schemas",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = CSVExportResponse.class)))
+      })
+  public Response exportCsvAsync(
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the Database", schema = @Schema(type = "string"))
+          @PathParam("name")
+          String name) {
+    return exportCsvInternalAsync(securityContext, name);
   }
 
   @GET

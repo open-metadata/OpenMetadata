@@ -16,7 +16,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
 import org.openmetadata.schema.dataInsight.custom.LineChart;
+import org.openmetadata.schema.dataInsight.custom.LineChartMetric;
 import org.openmetadata.schema.dataInsight.custom.SummaryCard;
+import org.openmetadata.schema.dataInsight.custom.SummaryChartMetric;
 import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.tests.TestDefinition;
@@ -294,7 +296,7 @@ public class MigrationUtil {
     createChart(
         "total_data_assets",
         new LineChart()
-            .withFormula("count(k='id.keyword')")
+            .withMetrics(List.of(new LineChartMetric().withFormula("count(k='id.keyword')")))
             .withGroupBy("entityType.keyword")
             .withExcludeGroups(excludeList));
 
@@ -302,7 +304,11 @@ public class MigrationUtil {
     createChart(
         "percentage_of_data_asset_with_description",
         new LineChart()
-            .withFormula("(count(k='id.keyword',q='hasDescription: 1')/count(k='id.keyword'))*100")
+            .withMetrics(
+                List.of(
+                    new LineChartMetric()
+                        .withFormula(
+                            "(count(k='id.keyword',q='hasDescription: 1')/count(k='id.keyword'))*100")))
             .withGroupBy("entityType.keyword")
             .withExcludeGroups(excludeList));
 
@@ -310,8 +316,11 @@ public class MigrationUtil {
     createChart(
         "percentage_of_data_asset_with_owner",
         new LineChart()
-            .withFormula(
-                "(count(k='id.keyword',q='owners.name.keyword: *')/count(k='id.keyword'))*100")
+            .withMetrics(
+                List.of(
+                    new LineChartMetric()
+                        .withFormula(
+                            "(count(k='id.keyword',q='owners.name.keyword: *')/count(k='id.keyword'))*100")))
             .withGroupBy("entityType.keyword")
             .withExcludeGroups(excludeList));
 
@@ -319,77 +328,115 @@ public class MigrationUtil {
     createChart(
         "percentage_of_service_with_description",
         new LineChart()
-            .withFormula("(count(k='id.keyword',q='hasDescription: 1')/count(k='id.keyword'))*100")
+            .withMetrics(
+                List.of(
+                    new LineChartMetric()
+                        .withFormula(
+                            "(count(k='id.keyword',q='hasDescription: 1')/count(k='id.keyword'))*100")))
             .withGroupBy("service.name.keyword"));
 
     // Percentage of Service with Owner
     createChart(
         "percentage_of_service_with_owner",
         new LineChart()
-            .withFormula(
-                "(count(k='id.keyword',q='owners.name.keyword: *')/count(k='id.keyword'))*100")
+            .withMetrics(
+                List.of(
+                    new LineChartMetric()
+                        .withFormula(
+                            "(count(k='id.keyword',q='owners.name.keyword: *')/count(k='id.keyword'))*100")))
             .withGroupBy("service.name.keyword"));
 
     // total data assets by tier
     createChart(
         "total_data_assets_by_tier",
-        new LineChart().withFormula("count(k='id.keyword')").withGroupBy("tier.keyword"));
+        new LineChart()
+            .withMetrics(List.of(new LineChartMetric().withFormula("count(k='id.keyword')")))
+            .withGroupBy("tier.keyword"));
 
     // total data assets summary card
     createChart(
         "total_data_assets_summary_card",
-        new SummaryCard().withFormula("count(k='id.keyword')").withFilter(exclude_tags_filter));
+        new SummaryCard()
+            .withMetrics(
+                List.of(
+                    new SummaryChartMetric()
+                        .withFormula("count(k='id.keyword')")
+                        .withFilter(exclude_tags_filter))));
 
     // data assets with description summary card
     createChart(
         "data_assets_with_description_summary_card",
         new SummaryCard()
-            .withFormula("(count(k='id.keyword',q='hasDescription: 1')/count(k='id.keyword'))*100")
-            .withFilter(exclude_tags_filter));
+            .withMetrics(
+                List.of(
+                    new SummaryChartMetric()
+                        .withFormula(
+                            "(count(k='id.keyword',q='hasDescription: 1')/count(k='id.keyword'))*100")
+                        .withFilter(exclude_tags_filter))));
 
     // data assets with owner summary card
     createChart(
         "data_assets_with_owner_summary_card",
         new SummaryCard()
-            .withFormula(
-                "(count(k='id.keyword',q='owners.name.keyword: *')/count(k='id.keyword'))*100")
-            .withFilter(exclude_tags_filter));
+            .withMetrics(
+                List.of(
+                    new SummaryChartMetric()
+                        .withFormula(
+                            "(count(k='id.keyword',q='owners.name.keyword: *')/count(k='id.keyword'))*100")
+                        .withFilter(exclude_tags_filter))));
 
     // total data assets with tier summary card
     createChart(
         "total_data_assets_with_tier_summary_card",
         new SummaryCard()
-            .withFormula(
-                "(count(k='id.keyword',q='NOT tier.keyword:\"NoTier\"')/count(k='id.keyword'))*100")
-            .withFilter(exclude_tags_filter));
+            .withMetrics(
+                List.of(
+                    new SummaryChartMetric()
+                        .withFormula(
+                            "(count(k='id.keyword',q='NOT tier.keyword:\"NoTier\"')/count(k='id.keyword'))*100")
+                        .withFilter(exclude_tags_filter))));
 
     // percentage of Data Asset with Description KPI
     createChart(
         "percentage_of_data_asset_with_description_kpi",
         new LineChart()
-            .withFormula("(count(k='id.keyword',q='hasDescription: 1')/count(k='id.keyword'))*100")
-            .withFilter(exclude_tags_filter));
+            .withMetrics(
+                List.of(
+                    new LineChartMetric()
+                        .withFormula(
+                            "(count(k='id.keyword',q='hasDescription: 1')/count(k='id.keyword'))*100")
+                        .withFilter(exclude_tags_filter))));
 
     // Number of Data Asset with Owner KPI
     createChart(
         "percentage_of_data_asset_with_owner_kpi",
         new LineChart()
-            .withFormula(
-                "(count(k='id.keyword',q='owners.name.keyword: *')/count(k='id.keyword'))*100")
-            .withFilter(exclude_tags_filter));
+            .withMetrics(
+                List.of(
+                    new LineChartMetric()
+                        .withFormula(
+                            "(count(k='id.keyword',q='owners.name.keyword: *')/count(k='id.keyword'))*100")
+                        .withFilter(exclude_tags_filter))));
+    ;
 
     // number of Data Asset with Description KPI
     createChart(
         "number_of_data_asset_with_description_kpi",
         new LineChart()
-            .withFormula("count(k='id.keyword',q='hasDescription: 1')")
-            .withFilter(exclude_tags_filter));
+            .withMetrics(
+                List.of(
+                    new LineChartMetric()
+                        .withFormula("count(k='id.keyword',q='hasDescription: 1')")
+                        .withFilter(exclude_tags_filter))));
 
     // Number of Data Asset with Owner KPI
     createChart(
         "number_of_data_asset_with_owner_kpi",
         new LineChart()
-            .withFormula("count(k='id.keyword',q='owners.name.keyword: *')")
-            .withFilter(exclude_tags_filter));
+            .withMetrics(
+                List.of(
+                    new LineChartMetric()
+                        .withFormula("count(k='id.keyword',q='owners.name.keyword: *')")
+                        .withFilter(exclude_tags_filter))));
   }
 }

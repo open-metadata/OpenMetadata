@@ -14,6 +14,7 @@
 package org.openmetadata.service.apps.bundles.changeEvent.gchat;
 
 import static org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionType.G_CHAT;
+import static org.openmetadata.service.util.SubscriptionUtil.deliverTestWebhookMessage;
 import static org.openmetadata.service.util.SubscriptionUtil.getClient;
 import static org.openmetadata.service.util.SubscriptionUtil.getTargetsForWebhookAlert;
 import static org.openmetadata.service.util.SubscriptionUtil.postWebhookMessage;
@@ -73,10 +74,11 @@ public class GChatPublisher implements Destination<ChangeEvent> {
 
   @Override
   public void sendMessage(ChangeEvent event) throws EventPublisherException {
+
     try {
       GChatMessage gchatMessage =
           gChatMessageMessageDecorator.buildOutgoingMessage(
-              eventSubscription.getFullyQualifiedName(), event);
+              getDisplayNameOrFqn(eventSubscription), event);
       List<Invocation.Builder> targets =
           getTargetsForWebhookAlert(
               webhook, subscriptionDestination.getCategory(), G_CHAT, client, event);
@@ -90,19 +92,19 @@ public class GChatPublisher implements Destination<ChangeEvent> {
       String message =
           CatalogExceptionMessage.eventPublisherFailedToPublish(G_CHAT, event, e.getMessage());
       LOG.error(message);
-      throw new EventPublisherException(message, Pair.of(subscriptionDestination.getId(), event));
+      throw new EventPublisherException(
+          CatalogExceptionMessage.eventPublisherFailedToPublish(G_CHAT, e.getMessage()),
+          Pair.of(subscriptionDestination.getId(), event));
     }
   }
 
   @Override
   public void sendTestMessage() throws EventPublisherException {
     try {
-      GChatMessage gchatMessage =
-          gChatMessageMessageDecorator.buildOutgoingTestMessage(
-              eventSubscription.getFullyQualifiedName());
+      GChatMessage gchatMessage = gChatMessageMessageDecorator.buildOutgoingTestMessage();
 
       if (target != null) {
-        postWebhookMessage(this, target, gchatMessage);
+        deliverTestWebhookMessage(this, target, gchatMessage);
       }
     } catch (Exception e) {
       String message =

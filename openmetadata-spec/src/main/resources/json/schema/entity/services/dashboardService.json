@@ -21,6 +21,7 @@
         "Redash",
         "Metabase",
         "PowerBI",
+        "PowerBIReportServer",
         "Mode",
         "CustomDashboard",
         "DomoDashboard",
@@ -49,6 +50,9 @@
         },
         {
           "name": "PowerBI"
+        },
+        {
+          "name": "PowerBIReportServer"
         },
         {
           "name": "Mode"
@@ -98,6 +102,9 @@
             },
             {
               "$ref": "./connections/dashboard/powerBIConnection.json"
+            },
+            {
+              "$ref": "./connections/dashboard/powerBIReportServerConnection.json"
             },
             {
               "$ref": "./connections/dashboard/redashConnection.json"

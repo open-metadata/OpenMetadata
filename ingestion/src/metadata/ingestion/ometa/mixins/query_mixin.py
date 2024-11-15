@@ -23,6 +23,7 @@ from metadata.generated.schema.entity.data.query import Query
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.type.basic import Uuid
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.ingestion.lineage.masker import mask_query
 from metadata.ingestion.ometa.client import REST
 from metadata.ingestion.ometa.utils import model_str
 
@@ -60,6 +61,9 @@ class OMetaQueryMixin:
         """
         for create_query in queries:
             if not create_query.exclude_usage:
+                create_query.query.root = mask_query(
+                    create_query.query.root, create_query.dialect
+                )
                 query = self._get_or_create_query(create_query)
                 if query:
                     # Add Query Usage

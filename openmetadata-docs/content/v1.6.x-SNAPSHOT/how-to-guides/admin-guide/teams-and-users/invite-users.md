@@ -7,10 +7,22 @@ slug: /how-to-guides/admin-guide/teams-and-users/invite-users
 
 Data is a team game and OpenMetadata is a platform to discover, collaborate and get your data right. Collaboration works best when all the team members have access to a standard tool. Admins can send invitations and invite users to onboard to OpenMetadata.
 
-- Navigate to **Settings >> Users** and click on **Add Users**.
+- Navigate to **Settings >> Team & User Management >> Users** and click on **Add Users**.
 
 {% image
 src="/images/v1.5/how-to-guides/teams-and-users/add-user1.png"
+alt="Team & User Management"
+caption="Team & User Management"
+/%}
+
+{% image
+src="/images/v1.5/how-to-guides/teams-and-users/add-user1.1.png"
+alt="Users"
+caption="Users"
+/%}
+
+{% image
+src="/images/v1.5/how-to-guides/teams-and-users/add-user1.2.png"
 alt="Add User"
 caption="Add User"
 /%}

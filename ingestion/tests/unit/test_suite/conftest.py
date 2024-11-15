@@ -42,6 +42,7 @@ ENTITY_LINK_AGE = "<#E::table::service.db.users::columns::age>"
 ENTITY_LINK_NAME = "<#E::table::service.db.users::columns::name>"
 ENTITY_LINK_USER = "<#E::table::service.db.users>"
 ENTITY_LINK_INSERTED_DATE = "<#E::table::service.db.users::columns::inserted_date>"
+ENTITY_LINK_EXPECTED_LOCATION = "<#E::table::service.db.users::columns::postal_code>"
 
 TABLE = Table(
     id=uuid4(),
@@ -55,6 +56,9 @@ TABLE = Table(
         Column(name="nickname", dataType=DataType.STRING),  # type: ignore
         Column(name="age", dataType=DataType.INT),  # type: ignore
         Column(name="inserted_date", dataType=DataType.DATE),  # type: ignore
+        Column(name="postal_code", dataType=DataType.INT),  # type: ignore
+        Column(name="lat", dataType=DataType.DECIMAL),  # type: ignore
+        Column(name="lon", dataType=DataType.DECIMAL),  # type: ignore
     ],
     database=EntityReference(id=uuid4(), name="db", type="database"),  # type: ignore
 )  # type: ignore
@@ -69,6 +73,9 @@ class User(Base):
     nickname = sqa.Column(sqa.String(256))
     age = sqa.Column(sqa.Integer)
     inserted_date = sqa.Column(sqa.DATE)
+    postal_code = sqa.Column(sqa.INT)
+    lat = sqa.Column(sqa.DECIMAL)
+    lon = sqa.Column(sqa.DECIMAL)
 
 
 @pytest.fixture
@@ -105,6 +112,9 @@ def create_sqlite_table():
                 nickname="",
                 age=30,
                 inserted_date=datetime.today() - timedelta(days=i),
+                postal_code=60001,
+                lat=49.6852237,
+                lon=1.7743058,
             ),
             User(
                 name="Jane",
@@ -113,6 +123,9 @@ def create_sqlite_table():
                 nickname="Johnny d",
                 age=31,
                 inserted_date=datetime.today() - timedelta(days=i),
+                postal_code=19005,
+                lat=45.2589385,
+                lon=1.4731471,
             ),
             User(
                 name="John",
@@ -121,6 +134,9 @@ def create_sqlite_table():
                 nickname=None,
                 age=None,
                 inserted_date=datetime.today() - timedelta(days=i),
+                postal_code=11008,
+                lat=42.9974445,
+                lon=2.2518325,
             ),
         ]
         session.add_all(data)
@@ -464,7 +480,7 @@ def test_case_table_column_count_to_be_between():
         testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
         parameterValues=[
             TestCaseParameterValue(name="minColValue", value="2"),
-            TestCaseParameterValue(name="maxColValue", value="10"),
+            TestCaseParameterValue(name="maxColValue", value="11"),
         ],
     )  # type: ignore
 
@@ -705,4 +721,21 @@ def test_case_column_values_to_be_between_datetime():
             TestCaseParameterValue(name="minValue", value="1625127852000"),
             TestCaseParameterValue(name="maxValue", value="1625171052000"),
         ],
+    )  # type: ignore
+
+
+@pytest.fixture
+def test_case_column_values_to_be_at_expected_location():
+    return TestCase(
+        name=TEST_CASE_NAME,
+        entityLink=ENTITY_LINK_EXPECTED_LOCATION,
+        testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
+        testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
+        parameterValues=[
+            TestCaseParameterValue(name="locationReferenceType", value="POSTAL_CODE"),
+            TestCaseParameterValue(name="longitudeColumnName", value="lon"),
+            TestCaseParameterValue(name="latitudeColumnName", value="lat"),
+            TestCaseParameterValue(name="radius", value="1000"),
+        ],
+        computePassedFailedRowCount=True,
     )  # type: ignore

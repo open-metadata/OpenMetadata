@@ -317,6 +317,7 @@ const BotListV1 = ({
         {showPagination && (
           <NextPrevious
             currentPage={currentPage}
+            isLoading={loading}
             pageSize={pageSize}
             paging={paging}
             pagingHandler={handleBotPageChange}

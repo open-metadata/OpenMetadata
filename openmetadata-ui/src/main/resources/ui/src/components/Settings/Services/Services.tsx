@@ -525,6 +525,7 @@ const Services = ({ serviceName }: ServicesProps) => {
         {showPagination && (
           <NextPrevious
             currentPage={currentPage}
+            isLoading={isLoading}
             isNumberBased={!isEmpty(searchTerm)}
             pageSize={pageSize}
             paging={paging}
