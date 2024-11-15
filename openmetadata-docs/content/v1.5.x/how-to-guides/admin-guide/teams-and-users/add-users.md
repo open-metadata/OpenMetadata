@@ -17,7 +17,7 @@ alt="Add User to Team"
 
 
 If the user, already exists in OpenMetadata, then
-- Go to **Settings >> Teams >> Users Tab**
+- Go to **Settings >> Team & User Management >> Users Tab**
 - Select the specific team you would like to add a user to. A team may have further sub teams. Select the required sub team.
 - Click on **Add User**.
 
@@ -27,6 +27,18 @@ If the user, already exists in OpenMetadata, then
 
 {% image
 src="/images/v1.5/how-to-guides/teams-and-users/add-user3.png"
+alt="Team & User Management"
+caption="Team & User Management"
+/%}
+
+{% image
+src="/images/v1.5/how-to-guides/teams-and-users/add-user3.1.png"
+alt="Teams"
+caption="Teams"
+/%}
+
+{% image
+src="/images/v1.5/how-to-guides/teams-and-users/add-user3.2.png"
 alt="Add User to Team"
 caption="Select Relevant Team"
 /%}
