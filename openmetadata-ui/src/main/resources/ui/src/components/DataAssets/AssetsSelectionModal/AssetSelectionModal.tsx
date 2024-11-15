@@ -29,6 +29,7 @@ import {
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
+import { isUndefined } from 'lodash';
 import { EntityDetailUnion } from 'Models';
 import VirtualList from 'rc-virtual-list';
 import {
@@ -79,10 +80,12 @@ import {
   getQuickFilterQuery,
 } from '../../../utils/ExploreUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import Banner from '../../common/Banner/Banner';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';
 import Searchbar from '../../common/SearchBarComponent/SearchBar.component';
 import TableDataCardV2 from '../../common/TableDataCardV2/TableDataCardV2';
+import { CSVExportResponse } from '../../Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
 import { ExploreQuickFilterField } from '../../Explore/ExplorePage.interface';
 import ExploreQuickFilters from '../../Explore/ExploreQuickFilters';
 import { AssetsOfEntity } from '../../Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
@@ -117,6 +120,7 @@ export const AssetSelectionModal = ({
   const [totalCount, setTotalCount] = useState(0);
 
   const [isSaveLoading, setIsSaveLoading] = useState<boolean>(false);
+  const [assetJobResponse, setAssetJobResponse] = useState<CSVExportResponse>();
   const [aggregations, setAggregations] = useState<Aggregations>();
   const [selectedQuickFilters, setSelectedQuickFilters] = useState<
     ExploreQuickFilterField[]
@@ -321,16 +325,22 @@ export const AssetSelectionModal = ({
           break;
       }
 
-      if ((res as BulkOperationResult).status === Status.Success) {
-        await new Promise((resolve) => {
-          setTimeout(() => {
-            resolve('');
-            onSave?.();
-          }, ES_UPDATE_DELAY);
-        });
-        onCancel();
+      // check if res has jobId property
+      if (isUndefined((res as CSVExportResponse).jobId)) {
+        if ((res as BulkOperationResult).status === Status.Success) {
+          await new Promise((resolve) => {
+            setTimeout(() => {
+              resolve('');
+              onSave?.();
+            }, ES_UPDATE_DELAY);
+          });
+          onCancel();
+        } else {
+          setFailedStatus(res as BulkOperationResult);
+        }
       } else {
-        setFailedStatus(res as BulkOperationResult);
+        // handle websocket response
+        setAssetJobResponse(res as CSVExportResponse);
       }
     } catch (err) {
       showErrorToast(err as AxiosError);
@@ -493,11 +503,12 @@ export const AssetSelectionModal = ({
         if (newActivity) {
           const activity = JSON.parse(newActivity);
           if (activity.status === 'COMPLETED') {
-            if (activity.numberOfRowsFailed === 0) {
+            setAssetJobResponse(undefined);
+            if (activity.result.status === 'success') {
               onSave?.();
               onCancel();
             } else {
-              setFailedStatus(activity.failedRequest);
+              setFailedStatus(activity.result);
             }
           }
         }
@@ -544,7 +555,7 @@ export const AssetSelectionModal = ({
             <Button
               data-testid="save-btn"
               disabled={!selectedItems?.size || isLoading}
-              loading={isSaveLoading}
+              loading={isSaveLoading || !isUndefined(assetJobResponse)}
               type="primary"
               onClick={onSaveAction}>
               {t('label.save')}
@@ -558,6 +569,15 @@ export const AssetSelectionModal = ({
       width={675}
       onCancel={onCancel}>
       <Space className="w-full h-full" direction="vertical" size={16}>
+        {assetJobResponse && (
+          <Banner
+            isLoading
+            className="border-radius"
+            message={assetJobResponse.message ?? ''}
+            type="success"
+          />
+        )}
+
         <div className="d-flex items-center gap-3">
           <Dropdown
             menu={{

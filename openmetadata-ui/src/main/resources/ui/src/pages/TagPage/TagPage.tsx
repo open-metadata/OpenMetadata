@@ -46,6 +46,7 @@ import { ManageButtonItemLabel } from '../../components/common/ManageButtonConte
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import StatusBadge from '../../components/common/StatusBadge/StatusBadge.component';
 import { StatusType } from '../../components/common/StatusBadge/StatusBadge.interface';
+import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import { AssetSelectionModal } from '../../components/DataAssets/AssetsSelectionModal/AssetSelectionModal';
 import { EntityHeader } from '../../components/Entity/EntityHeader/EntityHeader.component';
@@ -80,7 +81,7 @@ import { useFqn } from '../../hooks/useFqn';
 import { MOCK_TAG_PERMISSIONS } from '../../mocks/Tags.mock';
 import { searchData } from '../../rest/miscAPI';
 import { deleteTag, getTagByFqn, patchTag } from '../../rest/tagAPI';
-import { getCountBadge, getEntityDeleteMessage } from '../../utils/CommonUtils';
+import { getEntityDeleteMessage } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import {
@@ -323,6 +324,9 @@ const TagPage = () => {
       );
 
       setAssetCount(res.data.hits.total.value ?? 0);
+      if (res.data.hits.total.value === 0) {
+        setPreviewAsset(undefined);
+      }
     } catch (error) {
       setAssetCount(0);
     }
@@ -405,7 +409,7 @@ const TagPage = () => {
   const tabItems = useMemo(() => {
     const items = [
       {
-        label: <div data-testid="overview">{t('label.overview')}</div>,
+        label: <TabsLabel id={TagTabs.OVERVIEW} name={t('label.overview')} />,
         key: 'overview',
         children: (
           <ResizablePanels
@@ -456,12 +460,12 @@ const TagPage = () => {
       },
       {
         label: (
-          <div data-testid="assets">
-            {t('label.asset-plural')}
-            <span className="p-l-xs ">
-              {getCountBadge(assetCount ?? 0, '', activeTab === 'assets')}
-            </span>
-          </div>
+          <TabsLabel
+            count={assetCount ?? 0}
+            id="assets"
+            isActive={activeTab === TagTabs.ASSETS}
+            name={t('label.asset-plural')}
+          />
         ),
         key: 'assets',
         children: (
@@ -494,7 +498,7 @@ const TagPage = () => {
               ),
               ...COMMON_RESIZABLE_PANEL_CONFIG.RIGHT_PANEL,
               className:
-                'entity-resizable-right-panel-container tag-resizable-panel-container',
+                'entity-summary-resizable-right-panel-container tag-resizable-panel-container',
             }}
           />
         ),

@@ -1,6 +1,6 @@
 # OpenMetadata UI
 
-> This guide will help you run OpenMetadata UI locally in dev mode..
+> This guide will help you run OpenMetadata UI locally in dev mode.
 
 ## Pre-requisites
 
