@@ -68,6 +68,8 @@ import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestMethodOrder;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.schema.api.data.CreateGlossary;
 import org.openmetadata.schema.api.data.CreateGlossaryTerm;
 import org.openmetadata.schema.api.data.CreateTable;
@@ -98,6 +100,7 @@ import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
+import org.testcontainers.shaded.com.google.common.collect.Lists;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @Slf4j
@@ -874,6 +877,28 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
             .orElse(false); // Return false if no glossary named "g1" was found
 
     assertTrue(isChild, "childGlossaryTerm should be a child of parentGlossaryTerm");
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void get_entityWithDifferentFields_200_OK(TestInfo test) throws IOException {
+    CreateGlossaryTerm create =
+        createRequest(
+            getEntityName(test), "description", "displayName", Lists.newArrayList(USER1_REF));
+    create.setReviewers(List.of(USER1_REF));
+    create.setTags(List.of(USER_ADDRESS_TAG_LABEL, GLOSSARY2_TERM1_LABEL));
+
+    GlossaryTerm entity = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+
+    waitForTaskToBeCreated(entity.getFullyQualifiedName());
+
+    entity = validateGetWithDifferentFields(entity, false);
+    validateEntityReferences(entity.getOwners());
+    assertListNotEmpty(entity.getTags());
+
+    entity = validateGetWithDifferentFields(entity, true);
+    validateEntityReferences(entity.getOwners());
+    assertListNotEmpty(entity.getTags());
   }
 
   @Test
