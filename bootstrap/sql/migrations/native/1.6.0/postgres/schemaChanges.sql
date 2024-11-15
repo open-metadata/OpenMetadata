@@ -1729,3 +1729,27 @@ CREATE INDEX idx_event_subscription_id ON successful_sent_change_events (event_s
 UPDATE ingestion_pipeline_entity
 SET json = json::jsonb #- '{sourceConfig,config,overrideViewLineage}'
 WHERE json #>> '{pipelineType}' = 'metadata';
+
+-- Update serviceType in dashboard_entity table
+UPDATE dashboard_entity
+SET json = jsonb_set(json, '{serviceType}', '"MicroStrategy"')
+WHERE jsonb_extract_path_text(json, 'serviceType') = 'Mstr';
+
+-- Update serviceType in dashboard_service_entity table
+UPDATE dashboard_service_entity
+SET json = jsonb_set(json, '{serviceType}', '"MicroStrategy"')
+WHERE jsonb_extract_path_text(json, 'serviceType') = 'Mstr';
+
+UPDATE dashboard_service_entity
+SET json = jsonb_set(json, '{connection,config,type}', '"MicroStrategy"')
+WHERE jsonb_extract_path_text(json, 'connection', 'config', 'type') = 'Mstr';
+
+-- Update serviceType in dashboard_data_model_entity table
+UPDATE dashboard_data_model_entity
+SET json = jsonb_set(json, '{serviceType}', '"MicroStrategy"')
+WHERE jsonb_extract_path_text(json, 'serviceType') = 'Mstr';
+
+-- Update serviceType in chart_entity table
+UPDATE chart_entity
+SET json = jsonb_set(json, '{serviceType}', '"MicroStrategy"')
+WHERE jsonb_extract_path_text(json, 'serviceType') = 'Mstr';

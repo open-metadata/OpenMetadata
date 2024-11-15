@@ -71,27 +71,3 @@ WHERE serviceType IN ('Snowflake', 'Redshift', 'BigQuery');
 
 -- Update all rows in the consumers_dlq table to set the source column to 'publisher'
 UPDATE consumers_dlq SET source = 'publisher';
-
--- Update serviceType in dashboard_entity table
-UPDATE dashboard_entity
-SET json = jsonb_set(json, '{serviceType}', '"MicroStrategy"')
-WHERE jsonb_extract_path_text(json, 'serviceType') = 'Mstr';
-
--- Update serviceType in dashboard_service_entity table
-UPDATE dashboard_service_entity
-SET json = jsonb_set(json, '{serviceType}', '"MicroStrategy"')
-WHERE jsonb_extract_path_text(json, 'serviceType') = 'Mstr';
-
-UPDATE dashboard_service_entity
-SET json = jsonb_set(json, '{connection,config,type}', '"MicroStrategy"')
-WHERE jsonb_extract_path_text(json, 'connection', 'config', 'type') = 'Mstr';
-
--- Update serviceType in dashboard_data_model_entity table
-UPDATE dashboard_data_model_entity
-SET json = jsonb_set(json, '{serviceType}', '"MicroStrategy"')
-WHERE jsonb_extract_path_text(json, 'serviceType') = 'Mstr';
-
--- Update serviceType in chart_entity table
-UPDATE chart_entity
-SET json = jsonb_set(json, '{serviceType}', '"MicroStrategy"')
-WHERE jsonb_extract_path_text(json, 'serviceType') = 'Mstr';
