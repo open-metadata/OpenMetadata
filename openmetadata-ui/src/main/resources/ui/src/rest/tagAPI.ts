@@ -14,6 +14,7 @@
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { PagingResponse } from 'Models';
+import { CSVExportResponse } from '../components/Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
 import { PAGE_SIZE } from '../constants/constants';
 import { AddTagToAssetsRequest } from '../generated/api/addTagToAssetsRequest';
 import { CreateClassification } from '../generated/api/classification/createClassification';
@@ -69,7 +70,7 @@ export const addAssetsToTags = async (
 
   const response = await APIClient.put<
     AddTagToAssetsRequest,
-    AxiosResponse<Tag>
+    AxiosResponse<CSVExportResponse>
   >(`/tags/${tagId}/assets/add`, data);
 
   return response.data;
