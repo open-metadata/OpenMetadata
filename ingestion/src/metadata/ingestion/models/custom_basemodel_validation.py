@@ -12,6 +12,11 @@
 Validation logic for Custom Pydantic BaseModel
 """
 
+import logging
+
+logger = logging.getLogger("metadata")
+
+
 RESTRICTED_KEYWORDS = ["::", ">"]
 RESERVED_COLON_KEYWORD = "__reserved__colon__"
 RESERVED_ARROW_KEYWORD = "__reserved__arrow__"
@@ -37,31 +42,37 @@ def validate_name_and_transform(values, modification_method):
     """
     Validate the name and transform it if needed.
     """
-    if isinstance(values, str):
-        values = modification_method(values)
-    elif hasattr(values, "root"):
-        values.root = modification_method(values.root)
-    elif hasattr(values, "model_fields"):
-        for key in type(values).model_fields.keys():
-            if getattr(values, key):
-                if getattr(values, key).__class__.__name__ in NAME_FIELDS:
-                    setattr(
-                        values,
-                        key,
-                        validate_name_and_transform(
-                            getattr(values, key),
-                            modification_method=modification_method,
-                        ),
-                    )
-                elif isinstance(getattr(values, key), list):
-                    setattr(
-                        values,
-                        key,
-                        [
+    try:
+        if isinstance(values, str):
+            values = modification_method(values)
+        elif hasattr(values, "root"):
+            values.root = modification_method(values.root)
+        elif hasattr(values, "model_fields"):
+            for key in type(values).model_fields.keys():
+                if getattr(values, key):
+                    if getattr(values, key).__class__.__name__ in NAME_FIELDS:
+                        setattr(
+                            values,
+                            key,
                             validate_name_and_transform(
-                                item, modification_method=modification_method
-                            )
-                            for item in getattr(values, key)
-                        ],
-                    )
+                                getattr(values, key),
+                                modification_method=modification_method,
+                            ),
+                        )
+                    elif isinstance(getattr(values, key), list):
+                        setattr(
+                            values,
+                            key,
+                            [
+                                validate_name_and_transform(
+                                    item, modification_method=modification_method
+                                )
+                                for item in getattr(values, key)
+                            ],
+                        )
+    except Exception as err:
+        logger.warning(
+            "Warning triggered while validating name: %s, skipping validation of the name",
+            err,
+        )
     return values

@@ -55,17 +55,10 @@ class BaseModel(PydanticBaseModel):
         if not values:
             return
 
-        try:
-
-            if cls.__name__ in CREATE_ADJACENT_MODELS or cls.__name__.startswith(
-                "Create"
-            ):
-                values = validate_name_and_transform(values, replace_separators)
-            elif cls.__name__ in FETCH_MODELS:
-                values = validate_name_and_transform(values, revert_separators)
-
-        except Exception as exc:
-            logger.warning("Exception while parsing special characters: %s", exc)
+        if cls.__name__ in CREATE_ADJACENT_MODELS or cls.__name__.startswith("Create"):
+            values = validate_name_and_transform(values, replace_separators)
+        elif cls.__name__ in FETCH_MODELS:
+            values = validate_name_and_transform(values, revert_separators)
         return values
 
     def model_dump_json(  # pylint: disable=too-many-arguments
