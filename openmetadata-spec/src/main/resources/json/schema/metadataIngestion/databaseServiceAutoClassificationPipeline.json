@@ -1,22 +1,22 @@
 {
-  "$id": "https://open-metadata.org/schema/metadataIngestion/databaseServiceSamplerPipeline.json",
+  "$id": "https://open-metadata.org/schema/metadataIngestion/databaseServiceAutoClassificationPipeline.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "DatabaseServiceSamplerPipeline",
-  "description": "DatabaseService Sampler & Auto Classification Pipeline Configuration.",
+  "title": "DatabaseServiceAutoClassificationPipeline",
+  "description": "DatabaseService AutoClassification & Auto Classification Pipeline Configuration.",
   "type": "object",
   "definitions": {
-    "samplerConfigType": {
+    "autoClassificationConfigType": {
       "description": "Profiler Source Config Pipeline type",
       "type": "string",
-      "enum": ["Sampler"],
-      "default": "Sampler"
+      "enum": ["AutoClassification"],
+      "default": "AutoClassification"
     }
   },
   "properties": {
     "type": {
       "description": "Pipeline type",
-      "$ref": "#/definitions/samplerConfigType",
-      "default": "Sampler"
+      "$ref": "#/definitions/autoClassificationConfigType",
+      "default": "AutoClassification"
     },
     "classificationFilterPattern": {
       "description": "Regex to only compute metrics for table that matches the given tag, tiers, gloassary pattern.",

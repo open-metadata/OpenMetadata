@@ -31,7 +31,7 @@
               "$ref": "databaseServiceProfilerPipeline.json"
             },
             {
-              "$ref": "databaseServiceSamplerPipeline.json"
+              "$ref": "databaseServiceAutoClassificationPipeline.json"
             },
             {
               "$ref": "pipelineServiceMetadataPipeline.json"
