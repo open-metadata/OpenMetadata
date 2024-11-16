@@ -19,8 +19,8 @@ from metadata.generated.schema.entity.data.table import Column, TableData
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
 )
-from metadata.generated.schema.metadataIngestion.databaseServiceSamplerPipeline import (
-    DatabaseServiceSamplerPipeline,
+from metadata.generated.schema.metadataIngestion.databaseServiceAutoClassificationPipeline import (
+    DatabaseServiceAutoClassificationPipeline,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
@@ -61,8 +61,9 @@ class PIIProcessor(Processor):
         self.metadata = metadata
 
         # Init and type the source config
-        self.source_config: DatabaseServiceSamplerPipeline = cast(
-            DatabaseServiceSamplerPipeline, self.config.source.sourceConfig.config
+        self.source_config: DatabaseServiceAutoClassificationPipeline = cast(
+            DatabaseServiceAutoClassificationPipeline,
+            self.config.source.sourceConfig.config,
         )  # Used to satisfy type checked
 
         self._ner_scanner = None

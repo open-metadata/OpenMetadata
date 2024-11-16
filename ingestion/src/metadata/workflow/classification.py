@@ -13,8 +13,8 @@ Workflow definition for the profiler
 """
 from typing import cast
 
-from metadata.generated.schema.metadataIngestion.databaseServiceSamplerPipeline import (
-    DatabaseServiceSamplerPipeline,
+from metadata.generated.schema.metadataIngestion.databaseServiceAutoClassificationPipeline import (
+    DatabaseServiceAutoClassificationPipeline,
 )
 from metadata.ingestion.api.steps import Processor
 from metadata.pii.processor import PIIProcessor
@@ -25,8 +25,8 @@ from metadata.workflow.profiler import ProfilerWorkflow
 logger = profiler_logger()
 
 
-class SamplerWorkflow(ProfilerWorkflow):
-    """Sampler workflow implementation. Based on the Profiler logic with different steps"""
+class AutoClassificationWorkflow(ProfilerWorkflow):
+    """Auto Classification workflow implementation. Based on the Profiler logic with different steps"""
 
     def set_steps(self):
         source_class = self._get_source_class()
@@ -36,8 +36,9 @@ class SamplerWorkflow(ProfilerWorkflow):
         sampler_processor = self._get_sampler_processor()
 
         # Only instantiate the PII Processor on demand
-        source_config: DatabaseServiceSamplerPipeline = cast(
-            DatabaseServiceSamplerPipeline, self.config.source.sourceConfig.config
+        source_config: DatabaseServiceAutoClassificationPipeline = cast(
+            DatabaseServiceAutoClassificationPipeline,
+            self.config.source.sourceConfig.config,
         )
         if source_config.enableAutoClassification:
             pii_processor = self._get_pii_processor()

@@ -26,8 +26,8 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
     StackTraceError,
 )
 from metadata.generated.schema.entity.services.serviceType import ServiceType
-from metadata.generated.schema.metadataIngestion.databaseServiceSamplerPipeline import (
-    DatabaseServiceSamplerPipeline,
+from metadata.generated.schema.metadataIngestion.databaseServiceAutoClassificationPipeline import (
+    DatabaseServiceAutoClassificationPipeline,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
@@ -64,8 +64,9 @@ class SamplerProcessor(Processor):
         self.config = config
         self.metadata = metadata
 
-        self.source_config: DatabaseServiceSamplerPipeline = cast(
-            DatabaseServiceSamplerPipeline, self.config.source.sourceConfig.config
+        self.source_config: DatabaseServiceAutoClassificationPipeline = cast(
+            DatabaseServiceAutoClassificationPipeline,
+            self.config.source.sourceConfig.config,
         )  # Used to satisfy type checked
 
         self._interface_type: str = config.source.type.lower()

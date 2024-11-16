@@ -22,11 +22,11 @@ from typing import List, Optional, Union
 
 from metadata.__version__ import get_metadata_version
 from metadata.cli.app import run_app
+from metadata.cli.classify import run_classification
 from metadata.cli.dataquality import run_test
 from metadata.cli.ingest import run_ingest
 from metadata.cli.lineage import run_lineage
 from metadata.cli.profile import run_profiler
-from metadata.cli.sample import run_sample
 from metadata.cli.usage import run_usage
 from metadata.utils.logger import cli_logger, set_loggers_level
 
@@ -41,7 +41,7 @@ class MetadataCommands(Enum):
     WEBHOOK = "webhook"
     LINEAGE = "lineage"
     APP = "app"
-    SAMPLE = "sample"
+    AUTO_CLASSIFICATION = "classification"
 
 
 RUN_PATH_METHODS = {
@@ -51,7 +51,7 @@ RUN_PATH_METHODS = {
     MetadataCommands.PROFILE.value: run_profiler,
     MetadataCommands.TEST.value: run_test,
     MetadataCommands.APP.value: run_app,
-    MetadataCommands.SAMPLE.value: run_sample,
+    MetadataCommands.AUTO_CLASSIFICATION.value: run_classification,
 }
 
 
@@ -129,8 +129,8 @@ def get_parser(args: Optional[List[str]] = None):
     )
     create_common_config_parser_args(
         sub_parser.add_parser(
-            MetadataCommands.SAMPLE.value,
-            help="Workflow for running sampling and auto classification",
+            MetadataCommands.AUTO_CLASSIFICATION.value,
+            help="Workflow for running auto classification",
         )
     )
     webhook_args(
