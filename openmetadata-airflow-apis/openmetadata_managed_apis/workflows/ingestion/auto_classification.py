@@ -14,8 +14,6 @@ Auto Classification DAG function builder
 import json
 
 from airflow import DAG
-from metadata.workflow.classification import AutoClassificationWorkflow
-
 from openmetadata_managed_apis.utils.logger import set_operator_logger
 from openmetadata_managed_apis.workflows.ingestion.common import build_dag, build_source
 
@@ -29,6 +27,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Sink,
     WorkflowConfig,
 )
+from metadata.workflow.classification import AutoClassificationWorkflow
 
 
 def auto_classification_workflow(workflow_config: OpenMetadataWorkflowConfig):

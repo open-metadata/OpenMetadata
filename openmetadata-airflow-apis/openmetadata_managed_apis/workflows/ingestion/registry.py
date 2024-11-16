@@ -16,7 +16,9 @@ Add a function for each type from PipelineType
 from openmetadata_managed_apis.workflows.ingestion.application import (
     build_application_dag,
 )
-from openmetadata_managed_apis.workflows.ingestion.auto_classification import build_auto_classification_dag
+from openmetadata_managed_apis.workflows.ingestion.auto_classification import (
+    build_auto_classification_dag,
+)
 from openmetadata_managed_apis.workflows.ingestion.dbt import build_dbt_dag
 from openmetadata_managed_apis.workflows.ingestion.es_reindex import (
     build_es_reindex_dag,

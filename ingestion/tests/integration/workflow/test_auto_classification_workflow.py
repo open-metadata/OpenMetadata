@@ -16,7 +16,6 @@ from unittest.mock import patch
 import yaml
 
 from metadata.profiler.source.metadata import OpenMetadataSource
-from metadata.workflow.application import ApplicationWorkflow, AppRunner
 from metadata.workflow.classification import AutoClassificationWorkflow
 
 
