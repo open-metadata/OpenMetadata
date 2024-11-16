@@ -28,6 +28,11 @@
           "description": "OAuth2 Client Secret",
           "type": "string",
           "format": "password"
+        },
+        "scope": {
+          "title": "Scope",
+          "description": "OAuth2 Scope",
+          "type": "string"
         }
       },
       "additionalProperties": false

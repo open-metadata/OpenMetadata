@@ -240,12 +240,14 @@ plugins: Dict[str, Set[str]] = {
         "impyla~=0.18.0",
     },
     "iceberg": {
-        "pyiceberg==0.5.1",
+        "pyiceberg[hive,glue,dynamodb,s3fs,adlfs,gcsfs]==0.7.1",
         # Forcing the version of a few packages so it plays nicely with other requirements.
         VERSIONS["pydantic"],
         VERSIONS["adlfs"],
         VERSIONS["gcsfs"],
         VERSIONS["pyarrow"],
+        VERSIONS["boto3"],
+        *COMMONS["hive"],
     },
     "impala": {
         "presto-types-parser>=0.0.2",
