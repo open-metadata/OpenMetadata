@@ -87,6 +87,9 @@ class ProfilerSource(ProfilerSourceInterface):
         self._interface_type: str = config.source.type.lower()
         self.sqa_metadata = self._set_sqa_metadata()
         self._interface = None
+        # We define this in create_profiler_interface to help us reuse
+        # this method for the sampler, which does not have a DatabaseServiceProfilerPipeline
+        self.source_config = None
         self.global_profiler_configuration = global_profiler_configuration
 
     @property

@@ -48,8 +48,6 @@ class TestSuiteInterface(ABC):
         ometa_client: OpenMetadata,
         sampler: SamplerInterface,
         table_entity: Table,
-        *args,
-        **kwargs,
     ):
         """Required attribute for the interface"""
         self.ometa_client = ometa_client

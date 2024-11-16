@@ -50,7 +50,7 @@ class DatalakeSampler(SamplerInterface, PandasInterfaceMixin):
         if not self._table:
             self._table = self.return_ometa_dataframes_sampled(
                 service_connection_config=self.service_connection_config,
-                client=self.client._client,
+                client=self.client.client,
                 table=self.entity,
                 profile_sample_config=self.sample_config.profile_sample,
             )
@@ -162,7 +162,7 @@ class DatalakeSampler(SamplerInterface, PandasInterfaceMixin):
                 break
         return cols, rows
 
-    def random_sample(self, is_sampled: bool = False):
+    def random_sample(self, is_sampled: bool = False, **__):
         """Generate random sample from the table
 
         Returns:

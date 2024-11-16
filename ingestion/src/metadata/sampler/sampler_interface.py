@@ -53,6 +53,7 @@ logger = sampler_logger()
 class SamplerInterface(ABC):
     """Sampler interface"""
 
+    # pylint: disable=too-many-instance-attributes, too-many-arguments
     def __init__(
         self,
         service_connection_config: Union[DatabaseConnection, DatalakeConnection],
@@ -65,7 +66,7 @@ class SamplerInterface(ABC):
         sample_query: Optional[str] = None,
         storage_config: DataStorageConfig = None,
         sample_data_count: Optional[int] = SAMPLE_DATA_DEFAULT_COUNT,
-        **kwargs,
+        **__,
     ):
         self.ometa_client = ometa_client
         self._sample = None
@@ -87,6 +88,7 @@ class SamplerInterface(ABC):
         self.connection = get_ssl_connection(self.service_connection_config)
         self.client = self.get_client()
 
+    # pylint: disable=too-many-arguments, too-many-locals
     @classmethod
     def create(
         cls,

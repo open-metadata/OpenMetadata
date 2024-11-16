@@ -60,7 +60,6 @@ class ProfilerProcessorStatus(Status):
         )
 
 
-# pylint: disable=too-many-instance-attributes
 class ProfilerInterface(Root, ABC):
     """Protocol interface for the profiler processor"""
 
@@ -112,7 +111,6 @@ class ProfilerInterface(Root, ABC):
             **kwargs,
         )
 
-    # pylint: disable=too-many-locals
     @classmethod
     def create(
         cls,

@@ -120,7 +120,7 @@ class SQASampler(SamplerInterface):
             .cte(f"{self.table.__tablename__}_rnd")
         )
 
-    def random_sample(self, ccolumn=None) -> Union[DeclarativeMeta, AliasedClass]:
+    def random_sample(self, ccolumn=None, **__) -> Union[DeclarativeMeta, AliasedClass]:
         """
         Either return a sampled CTE of table, or
         the full table if no sampling is required.

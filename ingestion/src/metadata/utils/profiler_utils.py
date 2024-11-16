@@ -110,6 +110,7 @@ def set_cache(cache: defaultdict, key: str, value):
 def get_context_entities(
     entity: Table, metadata: OpenMetadata
 ) -> Tuple[DatabaseSchema, Database, DatabaseService]:
+    """Based on the table, get all the parent entities"""
     schema_entity = None
     database_entity = None
     db_service = None

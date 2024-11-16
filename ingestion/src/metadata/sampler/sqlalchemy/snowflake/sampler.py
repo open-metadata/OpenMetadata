@@ -42,6 +42,7 @@ class SnowflakeSampler(SQASampler):
     run the query in the whole table.
     """
 
+    # pylint: disable=too-many-arguments
     def __init__(
         self,
         service_connection_config: Union[DatabaseConnection, DatalakeConnection],

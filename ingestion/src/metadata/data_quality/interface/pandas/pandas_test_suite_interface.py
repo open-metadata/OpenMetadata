@@ -44,7 +44,7 @@ class PandasTestSuiteInterface(TestSuiteInterface, PandasInterfaceMixin):
         ometa_client: OpenMetadata,
         sampler: SamplerInterface,
         table_entity: Table,
-        **kwargs,  # pylint: disable=unused-argument
+        **__,
     ):
         super().__init__(
             service_connection_config,

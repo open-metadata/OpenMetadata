@@ -17,6 +17,8 @@ from typing import Optional, Protocol, runtime_checkable
 from metadata.generated.schema.type.filterPattern import FilterPattern
 
 
+# We take the names from the JSON Schema
+# pylint: disable=invalid-name
 @runtime_checkable
 class EntityFilterConfigInterface(Protocol):
     """Interface for the OM workflow source configs that allow filtering"""
