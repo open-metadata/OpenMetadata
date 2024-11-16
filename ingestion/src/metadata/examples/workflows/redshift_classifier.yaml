@@ -1,16 +1,16 @@
 source:
-  type: db2
-  serviceName: local_db2
+  type: redshift
+  serviceName: local_redshift
   serviceConnection:
     config:
-      type: Db2
-      username: openmetadata_user
-      password: openmetadata_password
-      hostPort: localhost:50000
-      database: default
+      hostPort: my-host:5439
+      username: username
+      password: strongPassword
+      database: databaseToConnect
+      type: Redshift
   sourceConfig:
     config:
-      type: Profiler
+      type: AutoClassification
       databaseFilterPattern:
         includes: 
           - database
@@ -23,17 +23,9 @@ source:
         includes: 
           - orders
           - customers
+
 processor:
-  type: "orm-profiler"
-  config:
-    tableConfig:
-      - fullyQualifiedName: local_db2.database.schema_one.orders
-        profileSample: 85
-        columnConfig:
-          includeColumns:
-            - columnName: order_id
-            - columnName: order_date
-            - columnName: status
+   type: "orm-profiler"
 sink:
   type: metadata-rest
   config: {}

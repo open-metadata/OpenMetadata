@@ -152,9 +152,8 @@ class DatalakeSampleTest(TestCase):
             patch.object(
                 DatalakeSampler, "table", new_callable=lambda: [cls.df1, cls.df2]
             ),
-            patch.object(DatalakeSampler, "get_client") as mock_client,
+            patch.object(DatalakeSampler, "get_client", return_value=Mock()),
         ):
-            mock_client.return_value = Mock()
             sampler = DatalakeSampler(
                 service_connection_config=DatalakeConnection(configSource={}),
                 ometa_client=None,
@@ -183,9 +182,8 @@ class DatalakeSampleTest(TestCase):
             patch.object(
                 DatalakeSampler, "table", new_callable=lambda: [self.df1, self.df2]
             ),
-            patch.object(DatalakeSampler, "get_client") as mock_client,
+            patch.object(DatalakeSampler, "get_client", return_value=Mock()),
         ):
-            mock_client.return_value = Mock()
             sampler = DatalakeSampler(
                 service_connection_config=DatalakeConnection(configSource={}),
                 ometa_client=None,
@@ -216,9 +214,8 @@ class DatalakeSampleTest(TestCase):
             patch.object(
                 DatalakeSampler, "table", new_callable=lambda: [self.df1, self.df2]
             ),
-            patch.object(DatalakeSampler, "get_client") as mock_client,
+            patch.object(DatalakeSampler, "get_client", return_value=Mock()),
         ):
-            mock_client.return_value = Mock()
             sampler = DatalakeSampler(
                 service_connection_config=DatalakeConnection(configSource={}),
                 ometa_client=None,
@@ -292,9 +289,8 @@ class DatalakeSampleTest(TestCase):
             patch.object(
                 DatalakeSampler, "table", new_callable=lambda: [self.df1, self.df2]
             ),
-            patch.object(DatalakeSampler, "get_client") as mock_client,
+            patch.object(DatalakeSampler, "get_client", return_value=Mock()),
         ):
-            mock_client.return_value = Mock()
             sampler = DatalakeSampler(
                 service_connection_config=DatalakeConnection(configSource={}),
                 ometa_client=None,
@@ -319,9 +315,8 @@ class DatalakeSampleTest(TestCase):
             patch.object(
                 DatalakeSampler, "table", new_callable=lambda: [self.df1, self.df2]
             ),
-            patch.object(DatalakeSampler, "get_client") as mock_client,
+            patch.object(DatalakeSampler, "get_client", return_value=Mock()),
         ):
-            mock_client.return_value = Mock()
             sampler = DatalakeSampler(
                 service_connection_config=DatalakeConnection(configSource={}),
                 ometa_client=None,

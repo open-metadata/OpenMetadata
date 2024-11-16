@@ -172,9 +172,8 @@ class ProfilerTest(TestCase):
                     pd.concat([cls.df2, pd.DataFrame(index=cls.df1.index)]),
                 ],
             ),
-            patch.object(DatalakeSampler, "get_client") as mock_client,
+            patch.object(DatalakeSampler, "get_client", return_value=Mock()),
         ):
-            mock_client.return_value = Mock()
             cls.sampler = DatalakeSampler(
                 service_connection_config=DatalakeConnection(configSource={}),
                 ometa_client=None,

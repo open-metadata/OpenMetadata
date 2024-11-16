@@ -1,39 +1,49 @@
 source:
-  type: db2
-  serviceName: local_db2
+  type: bigquery
+  serviceName: local_bigquery
   serviceConnection:
     config:
-      type: Db2
-      username: openmetadata_user
-      password: openmetadata_password
-      hostPort: localhost:50000
-      database: default
+      type: BigQuery
+      credentials:
+        gcpConfig:
+          type: service_account
+          projectId: my-project-id-1234
+          privateKeyId: privateKeyID
+          privateKey: "-----BEGIN PRIVATE KEY-----\nmySuperSecurePrivateKey==\n-----END PRIVATE KEY-----\n"
+          clientEmail: client@email.secure
+          clientId: "1234567890"
+          authUri: https://accounts.google.com/o/oauth2/auth
+          tokenUri: https://oauth2.googleapis.com/token
+          authProviderX509CertUrl: https://www.googleapis.com/oauth2/v1/certs
+          clientX509CertUrl: https://www.googleapis.com/oauth2/v1/certs
   sourceConfig:
     config:
-      type: Profiler
+      type: AutoClassification
+      storeSampleData: true
+      enableAutoClassification: true
       databaseFilterPattern:
         includes: 
-          - database
+          - hello-world-1234
       schemaFilterPattern:
         includes: 
-          - schema_one
-        excludes:
-          - schema_two
+          - super_schema
       tableFilterPattern:
         includes: 
-          - orders
-          - customers
+          - abc
+
 processor:
-  type: "orm-profiler"
-  config:
+   type: "orm-profiler"
+   config:
     tableConfig:
-      - fullyQualifiedName: local_db2.database.schema_one.orders
+      - fullyQualifiedName: local_bigquery.hello-world-1234.super_schema.abc
         profileSample: 85
+        partitionConfig:
+          partitionQueryDuration: 180
         columnConfig:
-          includeColumns:
-            - columnName: order_id
-            - columnName: order_date
-            - columnName: status
+          excludeColumns:
+            - a
+            - b
+
 sink:
   type: metadata-rest
   config: {}
