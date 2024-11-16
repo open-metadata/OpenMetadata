@@ -41,7 +41,7 @@ class MetadataCommands(Enum):
     WEBHOOK = "webhook"
     LINEAGE = "lineage"
     APP = "app"
-    AUTO_CLASSIFICATION = "classification"
+    AUTO_CLASSIFICATION = "classify"
 
 
 RUN_PATH_METHODS = {
