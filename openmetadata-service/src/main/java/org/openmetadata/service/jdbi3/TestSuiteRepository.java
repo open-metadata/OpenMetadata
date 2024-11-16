@@ -152,6 +152,24 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
     }
   }
 
+  private TestSummary getTestCasesExecutionSummary(JsonObject aggregation) {
+    // Initialize the test summary with 0 values
+    TestSummary testSummary =
+        new TestSummary().withAborted(0).withFailed(0).withSuccess(0).withQueued(0).withTotal(0);
+    Optional<JsonObject> summary =
+        Optional.ofNullable(aggregation.getJsonObject("sterms#status_counts"));
+    return summary
+        .map(
+            s -> {
+              JsonArray buckets = s.getJsonArray("buckets");
+              for (JsonValue bucket : buckets) {
+                updateTestSummaryFromBucket(((JsonObject) bucket), testSummary);
+              }
+              return testSummary;
+            })
+        .orElse(testSummary);
+  }
+
   private TestSummary getEntityTestCasesExecutionSummary(JsonObject aggregation) {
     TestSummary testSummary =
         new TestSummary().withAborted(0).withFailed(0).withSuccess(0).withQueued(0).withTotal(0);
@@ -267,15 +285,24 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
     try {
       // TODO: Delete with https://github.com/open-metadata/OpenMetadata/pull/18323
       TestSummary testSummary;
-      String aggregationStr =
-          "bucketName=entityLinks:aggType=terms:field=entityLink.nonNormalized,"
-              + "bucketName=status_counts:aggType=terms:field=testCaseResult.testCaseStatus";
-      SearchAggregation searchAggregation = SearchIndexUtils.buildAggregationTree(aggregationStr);
-      String query = ENTITY_EXECUTION_SUMMARY_FILTER.formatted(testSuiteId);
-      // don't want to get it from the cache as test results summary may be stale
-      JsonObject testCaseResultSummary =
-          searchRepository.aggregate(query, TEST_CASE, searchAggregation, new SearchListFilter());
-      testSummary = getEntityTestCasesExecutionSummary(testCaseResultSummary);
+      if (testSuiteId == null) {
+        String aggregationStr =
+            "bucketName=status_counts:aggType=terms:field=testCaseResult.testCaseStatus";
+        SearchAggregation searchAggregation = SearchIndexUtils.buildAggregationTree(aggregationStr);
+        JsonObject testCaseResultSummary =
+            searchRepository.aggregate(null, TEST_CASE, searchAggregation, new SearchListFilter());
+        testSummary = getTestCasesExecutionSummary(testCaseResultSummary);
+      } else {
+        String aggregationStr =
+            "bucketName=entityLinks:aggType=terms:field=entityLink.nonNormalized,"
+                + "bucketName=status_counts:aggType=terms:field=testCaseResult.testCaseStatus";
+        SearchAggregation searchAggregation = SearchIndexUtils.buildAggregationTree(aggregationStr);
+        String query = ENTITY_EXECUTION_SUMMARY_FILTER.formatted(testSuiteId);
+        // don't want to get it from the cache as test results summary may be stale
+        JsonObject testCaseResultSummary =
+            searchRepository.aggregate(query, TEST_CASE, searchAggregation, new SearchListFilter());
+        testSummary = getEntityTestCasesExecutionSummary(testCaseResultSummary);
+      }
       return testSummary;
     } catch (Exception e) {
       LOG.error("Error reading aggregation query", e);
