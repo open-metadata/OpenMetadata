@@ -41,6 +41,7 @@ export const getDataBaseSchemaPageBaseTabs = ({
   isEdit,
   showDeletedTables,
   tableDataLoading,
+  editGlossaryTermsPermission,
   editCustomAttributePermission,
   editTagsPermission,
   decodedDatabaseSchemaFQN,
@@ -110,6 +111,7 @@ export const getDataBaseSchemaPageBaseTabs = ({
                       editCustomAttributePermission={
                         editCustomAttributePermission
                       }
+                      editGlossaryTermsPermission={editGlossaryTermsPermission}
                       editTagPermission={editTagsPermission}
                       entityFQN={decodedDatabaseSchemaFQN}
                       entityId={databaseSchema?.id ?? ''}
