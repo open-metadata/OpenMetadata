@@ -13,10 +13,12 @@
 Test Metrics behavior
 """
 import os
+import sys
 from unittest import TestCase, mock
 from unittest.mock import Mock, patch
 from uuid import uuid4
 
+import pytest
 from sqlalchemy import TEXT, Column, Date, DateTime, Integer, String, Time
 from sqlalchemy.orm import declarative_base
 
@@ -35,6 +37,13 @@ from metadata.profiler.processor.core import Profiler
 from metadata.sampler.pandas.sampler import DatalakeSampler
 
 Base = declarative_base()
+
+
+if sys.version_info < (3, 9):
+    pytest.skip(
+        "requires python 3.9+ due to incompatibility with object patch",
+        allow_module_level=True,
+    )
 
 
 class User(Base):

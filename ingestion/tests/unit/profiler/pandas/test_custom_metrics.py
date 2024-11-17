@@ -13,11 +13,13 @@
 Test Metrics behavior
 """
 import os
+import sys
 from unittest import TestCase, mock
 from unittest.mock import Mock, patch
 from uuid import uuid4
 
 import pandas as pd
+import pytest
 
 from metadata.generated.schema.entity.data.table import Column as EntityColumn
 from metadata.generated.schema.entity.data.table import ColumnName, DataType, Table
@@ -38,6 +40,13 @@ from metadata.sampler.pandas.sampler import DatalakeSampler
 
 BUCKET_NAME = "MyBucket"
 REGION = "us-west-1"
+
+
+if sys.version_info < (3, 9):
+    pytest.skip(
+        "requires python 3.9+ due to incompatibility with object patch",
+        allow_module_level=True,
+    )
 
 
 class FakeClient:

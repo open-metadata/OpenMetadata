@@ -13,6 +13,7 @@
 Test Sample behavior
 """
 import os
+import sys
 from unittest import TestCase, mock
 from unittest.mock import Mock, patch
 from uuid import uuid4
@@ -36,6 +37,13 @@ from metadata.sampler.models import SampleConfig
 from metadata.sampler.pandas.sampler import DatalakeSampler
 
 Base = declarative_base()
+
+
+if sys.version_info < (3, 9):
+    pytest.skip(
+        "requires python 3.9+ due to incompatibility with object patch",
+        allow_module_level=True,
+    )
 
 
 class User(Base):
