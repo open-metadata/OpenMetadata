@@ -14,11 +14,13 @@ Test SQA Interface
 """
 
 import os
+import sys
 from datetime import datetime
 from unittest import TestCase, mock
 from unittest.mock import Mock, patch
 from uuid import uuid4
 
+import pytest
 from sqlalchemy import TEXT, Column, Integer, String, inspect
 from sqlalchemy.orm import declarative_base
 
@@ -51,6 +53,12 @@ from metadata.profiler.metrics.core import (
 from metadata.profiler.metrics.static.row_count import RowCount
 from metadata.profiler.processor.default import get_default_metrics
 from metadata.sampler.pandas.sampler import DatalakeSampler
+
+if sys.version_info < (3, 9):
+    pytest.skip(
+        "requires python 3.9+ due to incompatibility with object patch",
+        allow_module_level=True,
+    )
 
 
 class User(declarative_base()):
