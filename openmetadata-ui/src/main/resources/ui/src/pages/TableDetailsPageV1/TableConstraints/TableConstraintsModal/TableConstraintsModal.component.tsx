@@ -59,7 +59,9 @@ const TableConstraintsModal = ({
     setIsRelatedColumnLoading(true);
     try {
       const data = await searchQuery({
-        query: value,
+        query:
+          value &&
+          `(columns.name.keyword:${value}) OR (columns.fullyQualifiedName:${value})`,
         searchIndex: SearchIndex.TABLE,
         queryFilter: getServiceNameQueryFilter(
           tableDetails?.service?.name ?? ''
