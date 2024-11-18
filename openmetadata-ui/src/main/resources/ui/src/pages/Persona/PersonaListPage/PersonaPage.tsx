@@ -123,7 +123,7 @@ export const PersonaPage = () => {
   return (
     <PageLayoutV1 pageTitle={t('label.persona-plural')}>
       {isEmpty(persona) && !isLoading ? (
-        <>
+        <div className="mt-44">
           {errorPlaceHolder}
           {Boolean(addEditPersona) && (
             <AddEditPersonaForm
@@ -132,7 +132,7 @@ export const PersonaPage = () => {
               onSave={handlePersonaAddEditSave}
             />
           )}
-        </>
+        </div>
       ) : (
         <Row className="user-listing page-container p-b-md" gutter={[16, 16]}>
           <Col span={24}>

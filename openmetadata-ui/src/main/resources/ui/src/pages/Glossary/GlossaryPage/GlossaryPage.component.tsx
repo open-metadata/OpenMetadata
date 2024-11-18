@@ -422,7 +422,7 @@ const GlossaryPage = () => {
         {glossaries.length === 0 && !isLoading ? (
           <ErrorPlaceHolder
             buttonId="add-glossary"
-            className="mt-0-important text-center"
+            className="mt-44"
             doc={GLOSSARIES_DOCS}
             heading={t('label.glossary')}
             permission={createGlossaryPermission}

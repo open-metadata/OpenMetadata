@@ -191,7 +191,7 @@ const DomainPage = () => {
       {isEmpty(rootDomains) ? (
         <ErrorPlaceHolder
           buttonId="add-domain"
-          className="mt-0-important"
+          className="mt-44"
           heading={t('label.domain')}
           permission={createDomainPermission}
           type={
