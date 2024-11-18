@@ -101,6 +101,7 @@ public final class CatalogExceptionMessage {
   public static final String INVALID_BOT_USER = "Revoke Token can only be applied to Bot Users.";
   public static final String NO_MANUAL_TRIGGER_ERR = "App does not support manual trigger.";
   public static final String INVALID_APP_TYPE = "Application Type is not valid.";
+  public static final String CSV_EXPORT_FAILED = "CSV Export Failed.";
 
   private CatalogExceptionMessage() {}
 
