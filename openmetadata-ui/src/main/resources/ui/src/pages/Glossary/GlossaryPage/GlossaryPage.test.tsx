@@ -21,8 +21,6 @@ import {
 } from '../../../rest/glossaryAPI';
 import GlossaryPage from './GlossaryPage.component';
 
-jest.useFakeTimers();
-
 jest.mock('react-router-dom', () => ({
   useHistory: () => ({
     push: jest.fn(),
@@ -46,6 +44,15 @@ jest.mock('../../../context/PermissionProvider/PermissionProvider', () => {
       },
     })),
   };
+});
+
+jest.mock('../../../components/PageLayoutV1/PageLayoutV1', () => {
+  return jest.fn(({ children, pageTitle }) => (
+    <div data-testid="page-layout-v1">
+      <h1>{pageTitle}</h1>
+      <div>{children}</div>
+    </div>
+  ));
 });
 
 jest.mock('../../../components/Glossary/GlossaryV1.component', () => {
