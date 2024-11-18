@@ -30,6 +30,8 @@ public class WebSocketManager {
   public static final String ANNOUNCEMENT_CHANNEL = "announcementChannel";
   public static final String CSV_EXPORT_CHANNEL = "csvExportChannel";
 
+  public static final String BULK_ASSETS_CHANNEL = "bulkAssetsChannel";
+
   @Getter
   private final Map<UUID, Map<String, SocketIoSocket>> activityFeedEndpoints =
       new ConcurrentHashMap<>();
