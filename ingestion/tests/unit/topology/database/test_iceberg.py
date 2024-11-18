@@ -406,11 +406,6 @@ MOCK_REST_CONFIG = {
                     "name": "Batata",
                     "connection": {
                         "uri": "http://localhost:8181",
-                        "credential": {
-                            "clientId": "client_id",
-                            "clientSecret": "client_secret",
-                            "scope": "scope",
-                        },
                     },
                 },
             }
