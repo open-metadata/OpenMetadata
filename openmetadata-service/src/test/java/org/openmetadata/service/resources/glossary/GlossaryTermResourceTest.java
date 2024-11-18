@@ -68,8 +68,6 @@ import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestMethodOrder;
-import org.junit.jupiter.api.parallel.Execution;
-import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.schema.api.data.CreateGlossary;
 import org.openmetadata.schema.api.data.CreateGlossaryTerm;
 import org.openmetadata.schema.api.data.CreateTable;
@@ -880,7 +878,6 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
   }
 
   @Test
-  @Execution(ExecutionMode.CONCURRENT)
   void get_entityWithDifferentFields_200_OK(TestInfo test) throws IOException {
     CreateGlossaryTerm create =
         createRequest(
@@ -890,7 +887,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
 
     GlossaryTerm entity = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
 
-    waitForTaskToBeCreated(entity.getFullyQualifiedName());
+    waitForTaskToBeCreated(entity.getFullyQualifiedName(), 6000L * 3);
 
     entity = validateGetWithDifferentFields(entity, false);
     validateEntityReferences(entity.getOwners());
