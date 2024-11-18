@@ -68,6 +68,7 @@ export class TagClass {
       page,
       this.responseData.classification.displayName
     );
+    await page.getByTestId(this.data.name).click();
   }
 
   async create(apiContext: APIRequestContext) {
