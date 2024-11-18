@@ -24,6 +24,7 @@ RESERVED_ARROW_KEYWORD = "__reserved__arrow__"
 CREATE_ADJACENT_MODELS = {"ProfilerResponse", "SampleData"}
 NAME_FIELDS = {"EntityName", "str", "ColumnName", "TableData"}
 FETCH_MODELS = {"Table", "CustomColumnName"}
+FIELD_NAMES = {"name", "columns", "root"}
 
 
 def revert_separators(value):
@@ -38,13 +39,17 @@ def replace_separators(value):
     )
 
 
-def validate_name_and_transform(values, modification_method):
+def validate_name_and_transform(values, modification_method, field_name: str = None):
     """
     Validate the name and transform it if needed.
     """
-    if isinstance(values, str):
+    if isinstance(values, str) and field_name in FIELD_NAMES:
         values = modification_method(values)
-    elif hasattr(values, "root") and isinstance(values.root, str):
+    elif (
+        hasattr(values, "root")
+        and isinstance(values.root, str)
+        and field_name in FIELD_NAMES
+    ):
         values.root = modification_method(values.root)
     elif hasattr(values, "model_fields"):
         for key in type(values).model_fields.keys():
@@ -56,6 +61,7 @@ def validate_name_and_transform(values, modification_method):
                         validate_name_and_transform(
                             getattr(values, key),
                             modification_method=modification_method,
+                            field_name=key,
                         ),
                     )
                 elif isinstance(getattr(values, key), list):
@@ -64,7 +70,9 @@ def validate_name_and_transform(values, modification_method):
                         key,
                         [
                             validate_name_and_transform(
-                                item, modification_method=modification_method
+                                item,
+                                modification_method=modification_method,
+                                field_name=key,
                             )
                             for item in getattr(values, key)
                         ],
