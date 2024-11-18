@@ -410,7 +410,7 @@ const getTopicOverview = (topicDetails: Topic) => {
     ...getCommonOverview({ domain }),
     {
       name: i18next.t('label.partition-plural'),
-      value: partitions,
+      value: partitions ?? NO_DATA,
       isLink: false,
       visible: [
         DRAWER_NAVIGATION_OPTIONS.lineage,
@@ -437,7 +437,7 @@ const getTopicOverview = (topicDetails: Topic) => {
     },
     {
       name: i18next.t('label.clean-up-policy-plural'),
-      value: cleanupPolicies,
+      value: cleanupPolicies ? cleanupPolicies.join(', ') : NO_DATA,
       isLink: false,
       visible: [
         DRAWER_NAVIGATION_OPTIONS.lineage,
