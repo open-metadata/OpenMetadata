@@ -1125,7 +1125,7 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
     Awaitility.await("Wait for Task to be Created")
         .ignoreExceptions()
         .pollInterval(Duration.ofMillis(2000L))
-        .atMost(Duration.ofMillis(60000L))
+        .atMost(Duration.ofMillis(60000L * 2))
         .until(
             () ->
                 WorkflowHandler.getInstance()

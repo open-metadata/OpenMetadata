@@ -3,8 +3,8 @@ package org.openmetadata.service.governance.workflows.elements.triggers;
 import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.getFlowableElementId;
 
-import java.util.Optional;
 import java.util.List;
+import java.util.Optional;
 import lombok.Getter;
 import org.flowable.bpmn.model.BpmnModel;
 import org.flowable.bpmn.model.CallActivity;
