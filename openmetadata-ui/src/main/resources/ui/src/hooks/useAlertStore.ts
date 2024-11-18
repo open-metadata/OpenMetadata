@@ -31,8 +31,7 @@ export const useAlertStore = create<AlertStore>()((set) => ({
   addAlert: (alert: AlertType, timer?: number) => {
     set({ alert, animationClass: 'show-alert' });
 
-    const autoCloseTimer =
-      timer !== undefined ? timer : alert.type === 'error' ? Infinity : 5000;
+    const autoCloseTimer = timer ?? (alert.type === 'error' ? Infinity : 5000);
 
     if (autoCloseTimer !== Infinity) {
       setTimeout(() => {

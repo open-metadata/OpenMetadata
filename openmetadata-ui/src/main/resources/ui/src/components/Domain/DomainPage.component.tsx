@@ -37,6 +37,7 @@ import { getDomainPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import Loader from '../common/Loader/Loader';
 import ResizableLeftPanels from '../common/ResizablePanels/ResizableLeftPanels';
+import PageLayoutV1 from '../PageLayoutV1/PageLayoutV1';
 import './domain.less';
 import DomainDetailsPage from './DomainDetailsPage/DomainDetailsPage.component';
 import DomainsLeftPanel from './DomainLeftPanel/DomainLeftPanel.component';
@@ -176,10 +177,6 @@ const DomainPage = () => {
     }
   }, [rootDomains, domainFqn]);
 
-  if (domainLoading) {
-    return <Loader />;
-  }
-
   if (!(viewBasicDomainPermission || viewAllDomainPermission)) {
     return (
       <ErrorPlaceHolder
@@ -189,41 +186,43 @@ const DomainPage = () => {
     );
   }
 
-  if (isEmpty(rootDomains)) {
-    return (
-      <ErrorPlaceHolder
-        buttonId="add-domain"
-        className="mt-0-important"
-        heading={t('label.domain')}
-        permission={createDomainPermission}
-        type={
-          createDomainPermission
-            ? ERROR_PLACEHOLDER_TYPE.CREATE
-            : ERROR_PLACEHOLDER_TYPE.CUSTOM
-        }
-        onClick={handleAddDomainClick}>
-        {t('message.domains-not-configured')}
-      </ErrorPlaceHolder>
-    );
-  }
-
   return (
-    <ResizableLeftPanels
-      className="content-height-with-resizable-panel"
-      firstPanel={{
-        className: 'content-resizable-panel-container',
-        minWidth: 280,
-        flex: 0.13,
-        children: <DomainsLeftPanel domains={rootDomains} />,
-      }}
-      pageTitle={t('label.domain')}
-      secondPanel={{
-        children: domainPageRender,
-        className: 'content-resizable-panel-container p-t-sm',
-        minWidth: 800,
-        flex: 0.87,
-      }}
-    />
+    <PageLayoutV1 pageTitle={t('label.domain-plural')}>
+      {isEmpty(rootDomains) ? (
+        <ErrorPlaceHolder
+          buttonId="add-domain"
+          className="mt-0-important"
+          heading={t('label.domain')}
+          permission={createDomainPermission}
+          type={
+            createDomainPermission
+              ? ERROR_PLACEHOLDER_TYPE.CREATE
+              : ERROR_PLACEHOLDER_TYPE.CUSTOM
+          }
+          onClick={handleAddDomainClick}>
+          {t('message.domains-not-configured')}
+        </ErrorPlaceHolder>
+      ) : (
+        <ResizableLeftPanels
+          className="content-height-with-resizable-panel"
+          firstPanel={{
+            className: 'content-resizable-panel-container',
+            minWidth: 280,
+            flex: 0.13,
+            children: <DomainsLeftPanel domains={rootDomains} />,
+          }}
+          pageTitle={t('label.domain')}
+          secondPanel={{
+            children: domainPageRender,
+            className: 'content-resizable-panel-container p-t-sm',
+            minWidth: 800,
+            flex: 0.87,
+          }}
+        />
+      )}
+
+      {domainLoading && <Loader />}
+    </PageLayoutV1>
   );
 };
 

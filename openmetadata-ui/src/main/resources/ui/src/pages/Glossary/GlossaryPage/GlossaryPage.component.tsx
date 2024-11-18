@@ -29,6 +29,7 @@ import {
   ModifiedGlossary,
   useGlossaryStore,
 } from '../../../components/Glossary/useGlossary.store';
+import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { PAGE_SIZE_LARGE, ROUTES } from '../../../constants/constants';
 import { GLOSSARIES_DOCS } from '../../../constants/docs.constants';
@@ -348,24 +349,6 @@ const GlossaryPage = () => {
     return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
   }
 
-  if (glossaries.length === 0 && !isLoading) {
-    return (
-      <ErrorPlaceHolder
-        buttonId="add-glossary"
-        className="mt-0-important"
-        doc={GLOSSARIES_DOCS}
-        heading={t('label.glossary')}
-        permission={createGlossaryPermission}
-        type={
-          createGlossaryPermission
-            ? ERROR_PLACEHOLDER_TYPE.CREATE
-            : ERROR_PLACEHOLDER_TYPE.NO_DATA
-        }
-        onClick={handleAddGlossaryClick}
-      />
-    );
-  }
-
   const glossaryElement = (
     <div className="p-t-sm">
       {isRightPanelLoading ? (
@@ -433,7 +416,29 @@ const GlossaryPage = () => {
     />
   );
 
-  return <>{resizableLayout}</>;
+  return (
+    <>
+      <PageLayoutV1 pageTitle={t('label.glossary-plural')}>
+        {glossaries.length === 0 && !isLoading ? (
+          <ErrorPlaceHolder
+            buttonId="add-glossary"
+            className="mt-0-important text-center"
+            doc={GLOSSARIES_DOCS}
+            heading={t('label.glossary')}
+            permission={createGlossaryPermission}
+            type={
+              createGlossaryPermission
+                ? ERROR_PLACEHOLDER_TYPE.CREATE
+                : ERROR_PLACEHOLDER_TYPE.NO_DATA
+            }
+            onClick={handleAddGlossaryClick}
+          />
+        ) : (
+          resizableLayout
+        )}
+      </PageLayoutV1>
+    </>
+  );
 };
 
 export default GlossaryPage;
