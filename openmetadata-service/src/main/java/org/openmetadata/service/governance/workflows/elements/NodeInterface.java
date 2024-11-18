@@ -8,7 +8,6 @@ import org.flowable.bpmn.model.FlowNode;
 import org.flowable.bpmn.model.FlowableListener;
 import org.flowable.bpmn.model.Process;
 import org.flowable.bpmn.model.StartEvent;
-import org.openmetadata.service.governance.workflows.MainWorkflowHasFinishedListener;
 import org.openmetadata.service.governance.workflows.MainWorkflowTerminationListener;
 import org.openmetadata.service.governance.workflows.WorkflowInstanceExecutionIdSetterListener;
 import org.openmetadata.service.governance.workflows.WorkflowInstanceStageListener;
@@ -50,15 +49,6 @@ public interface NodeInterface {
             .implementation(WorkflowInstanceExecutionIdSetterListener.class.getName())
             .build();
     startEvent.getExecutionListeners().add(listener);
-  }
-
-  default void attachMainWorkflowHasFinishedListener(EndEvent endEvent) {
-    FlowableListener listener =
-        new FlowableListenerBuilder()
-            .event("end")
-            .implementation(MainWorkflowHasFinishedListener.class.getName())
-            .build();
-    endEvent.getExecutionListeners().add(listener);
   }
 
   default void attachMainWorkflowTerminationListener(EndEvent endEvent) {
