@@ -21,6 +21,8 @@ import {
 } from '../../../rest/glossaryAPI';
 import GlossaryPage from './GlossaryPage.component';
 
+jest.useFakeTimers();
+
 jest.mock('react-router-dom', () => ({
   useHistory: () => ({
     push: jest.fn(),
