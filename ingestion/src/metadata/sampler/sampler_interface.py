@@ -120,9 +120,11 @@ class SamplerInterface(ABC):
             default_sample_config=default_sample_config,
         )
         sample_query = get_sample_query(entity=entity, entity_config=table_config)
-        partition_details = get_partition_details(entity=entity)
-        include_columns = get_include_columns(entity, table_config)
-        exclude_columns = get_exclude_columns(entity, table_config)
+        partition_details = get_partition_details(
+            entity=entity, entity_config=table_config
+        )
+        include_columns = get_include_columns(entity, entity_config=table_config)
+        exclude_columns = get_exclude_columns(entity, entity_config=table_config)
 
         return cls(
             service_connection_config=service_connection_config,

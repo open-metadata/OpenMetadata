@@ -172,7 +172,7 @@ class DatalakeSampler(SamplerInterface, PandasInterfaceMixin):
             return self._rdn_sample_from_user_query()
 
         if self.partition_details:
-            self.table = self._partitioned_table()
+            self._table = self._partitioned_table()
 
         if not self.sample_config.profile_sample or is_sampled:
             return self.table
