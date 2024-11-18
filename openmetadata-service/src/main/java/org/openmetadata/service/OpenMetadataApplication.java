@@ -162,6 +162,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     jdbi = createAndSetupJDBI(environment, catalogConfig.getDataSourceFactory());
     Entity.setCollectionDAO(getDao(jdbi));
+    Entity.setJdbi(jdbi);
 
     initializeSearchRepository(catalogConfig.getElasticSearchConfiguration());
     // Initialize the MigrationValidationClient, used in the Settings Repository

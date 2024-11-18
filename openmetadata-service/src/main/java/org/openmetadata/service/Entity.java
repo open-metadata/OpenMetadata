@@ -77,6 +77,7 @@ import org.openmetadata.service.util.FullyQualifiedName;
 public final class Entity {
   private static volatile boolean initializedRepositories = false;
   @Getter @Setter private static CollectionDAO collectionDAO;
+  @Getter @Setter private static Jdbi jdbi;
   public static final String SEPARATOR = "."; // Fully qualified name separator
 
   // Canonical entity name to corresponding EntityRepository map
