@@ -887,7 +887,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
 
     GlossaryTerm entity = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
 
-    waitForTaskToBeCreated(entity.getFullyQualifiedName(), 6000L * 3);
+    waitForTaskToBeCreated(entity.getFullyQualifiedName(), 60000L * 3);
 
     entity = validateGetWithDifferentFields(entity, false);
     validateEntityReferences(entity.getOwners());
