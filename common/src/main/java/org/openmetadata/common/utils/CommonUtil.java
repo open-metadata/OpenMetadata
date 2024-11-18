@@ -38,7 +38,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
-import java.util.TimeZone;
 import java.util.UUID;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -128,7 +127,7 @@ public final class CommonUtil {
   public static LocalDate getDateByOffset(DateTimeFormatter dateFormat, String strDate, int days) {
     LocalDate localDate;
     try {
-    localDate = LocalDate.parse(strDate, dateFormat);
+      localDate = LocalDate.parse(strDate, dateFormat);
     } catch (DateTimeParseException e) {
       throw new IllegalArgumentException("Failed to parse date " + strDate, e);
     }
@@ -136,7 +135,8 @@ public final class CommonUtil {
   }
 
   /** Get date after {@code days} from the given date or before i{@code days} when it is negative */
-  public static String getDateStringByOffset(DateTimeFormatter dateFormat, String strDate, int days) {
+  public static String getDateStringByOffset(
+      DateTimeFormatter dateFormat, String strDate, int days) {
     LocalDate localDate = getDateByOffset(dateFormat, strDate, days);
     return localDate.format(dateFormat);
   }
@@ -153,8 +153,8 @@ public final class CommonUtil {
     } catch (DateTimeParseException e) {
       throw new IllegalArgumentException("Failed to parse date " + date, e);
     }
-    return (givenDate.isAfter(startDate) || givenDate.equals(startDate)) &&
-            (givenDate.isBefore(endDate) || givenDate.equals(endDate));
+    return (givenDate.isAfter(startDate) || givenDate.equals(startDate))
+        && (givenDate.isBefore(endDate) || givenDate.equals(endDate));
   }
 
   public static final String HMAC_SHA256_ALGORITHM = "HmacSHA256";
