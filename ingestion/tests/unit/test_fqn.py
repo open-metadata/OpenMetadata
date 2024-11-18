@@ -87,7 +87,7 @@ class TestFqn(TestCase):
 
     def test_invalid(self):
         with self.assertRaises(Exception):
-            fqn.split('a"')
+            fqn.split('a.."')
 
     def test_build_table(self):
         """

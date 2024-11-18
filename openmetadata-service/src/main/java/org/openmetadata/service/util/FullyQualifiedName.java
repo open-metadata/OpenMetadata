@@ -160,6 +160,11 @@ public class FullyQualifiedName {
     if (!unquotedName.contains("\"")) {
       return unquotedName.contains(".") ? "\"" + name + "\"" : unquotedName;
     }
+    // Allow names with quotes
+    else if (unquotedName.contains("\"")) {
+      return unquotedName.replace("\"", "\\\"");
+    }
+
     throw new IllegalArgumentException(CatalogExceptionMessage.invalidName(name));
   }
 

@@ -34,6 +34,10 @@ from metadata.utils.entity_link import get_decoded_column, get_table_or_column_f
             "<#E::table::rds.dev.dbt_jaffle.column_w_space::columns::随机的>",
             "随机的",
         ),
+        (
+            "<#E::table::rds.dev.dbt_jaffle.column_w_space::columns::test__reserved__colon____reserved__arrow__test>",
+            "test::>test",
+        ),
     ],
 )
 def test_get_decoded_column(entity_link, expected):
@@ -94,6 +98,21 @@ def test_get_decoded_column(entity_link, expected):
             "rds.dev.dbt_jaffle>.customers",
             id="valid_entity_link10",
         ),
+        pytest.param(
+            '<#E::dashboard::"rds.dev.dbt_jaffle.customers">',
+            '"rds.dev.dbt_jaffle.customers"',
+            id="valid_entity_link11",
+        ),
+        pytest.param(
+            "<#E::table::rds.dev.:dbt_jaffle.customers::columns::阿>",
+            "rds.dev.:dbt_jaffle.customers.阿",
+            id="valid_entity_link12",
+        ),
+        pytest.param(
+            "<#E::table::rds.dev.dbt_jaffle.customers::columns::grea:>hdfwsd>",
+            "rds.dev.dbt_jaffle.customers.grea:>hdfwsd",
+            id="valid_entity_link13",
+        ),
     ],
 )
 def test_valid_get_table_or_column_fqn(entity_link, fqn):
@@ -113,16 +132,6 @@ def test_valid_get_table_or_column_fqn(entity_link, fqn):
             "<#E::table::rds.dev.dbt_jaffle.customers::foo::number_of_orders>",
             ParseCancellationException,
             id="invalid_entity_link1",
-        ),
-        pytest.param(
-            "<#E::table::rds.dev.dbt_jaffle.customers::columns::grea:>hdfwsd>",
-            ParseCancellationException,
-            id="invalid_entity_link2",
-        ),
-        pytest.param(
-            "<#E::table::rds.dev.:dbt_jaffle.customers::columns::阿>",
-            ParseCancellationException,
-            id="invalid_entity_link3",
         ),
         pytest.param(
             "<#E::table::rds.dev.dbt_jaffle.customers::columns>",

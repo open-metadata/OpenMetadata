@@ -142,7 +142,8 @@ def ometa_to_sqa_orm(
                 "extend_existing": True,  # Recreates the table ORM object if it already exists. Useful for testing
                 "quote": check_snowflake_case_sensitive(
                     table.serviceType, table.name.root
-                ),
+                )
+                or None,
             },
             **cols,
             "metadata": sqa_metadata_obj or Base.metadata,
