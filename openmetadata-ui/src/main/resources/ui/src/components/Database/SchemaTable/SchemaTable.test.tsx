@@ -72,6 +72,7 @@ const mockEntityTableProp: SchemaTableProps = {
   hasDescriptionEditAccess: true,
   isReadOnly: false,
   hasTagEditAccess: true,
+  hasGlossaryTermEditAccess: true,
   onThreadLinkSelect,
   onUpdate,
   table: { ...MOCK_TABLE, columns, tableConstraints: mockTableConstraints },
