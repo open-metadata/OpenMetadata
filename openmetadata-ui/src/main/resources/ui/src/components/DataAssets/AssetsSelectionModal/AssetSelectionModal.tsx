@@ -85,7 +85,10 @@ import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder
 import Loader from '../../common/Loader/Loader';
 import Searchbar from '../../common/SearchBarComponent/SearchBar.component';
 import TableDataCardV2 from '../../common/TableDataCardV2/TableDataCardV2';
-import { CSVExportResponse } from '../../Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
+import {
+  CSVExportJob,
+  CSVExportResponse,
+} from '../../Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
 import { ExploreQuickFilterField } from '../../Explore/ExplorePage.interface';
 import ExploreQuickFilters from '../../Explore/ExploreQuickFilters';
 import { AssetsOfEntity } from '../../Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
@@ -107,6 +110,7 @@ export const AssetSelectionModal = ({
   const [search, setSearch] = useState('');
   const [items, setItems] = useState<SearchedDataProps['data']>([]);
   const [failedStatus, setFailedStatus] = useState<BulkOperationResult>();
+  const [exportJob, setExportJob] = useState<Partial<CSVExportJob>>();
   const [selectedItems, setSelectedItems] =
     useState<Map<string, EntityDetailUnion>>();
   const [isLoading, setIsLoading] = useState(false);
@@ -510,6 +514,9 @@ export const AssetSelectionModal = ({
             } else {
               setFailedStatus(activity.result);
             }
+          } else if (activity.status === 'FAILED') {
+            setExportJob(activity);
+            setAssetJobResponse(undefined);
           }
         }
       });
@@ -569,12 +576,12 @@ export const AssetSelectionModal = ({
       width={675}
       onCancel={onCancel}>
       <Space className="w-full h-full" direction="vertical" size={16}>
-        {assetJobResponse && (
+        {(assetJobResponse || exportJob?.error) && (
           <Banner
-            isLoading
             className="border-radius"
-            message={assetJobResponse.message ?? ''}
-            type="success"
+            isLoading={isUndefined(exportJob?.error)}
+            message={exportJob?.error ?? assetJobResponse?.message ?? ''}
+            type={exportJob?.error ? 'error' : 'success'}
           />
         )}
 
