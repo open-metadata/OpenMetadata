@@ -36,18 +36,24 @@ const IncidentTypeAreaChartWidget = ({
 
     return (
       <Typography.Paragraph
-        className="font-medium text-xl m-b-0 chart-total-count-value-link"
+        className="font-medium chart-widget-link-underline text-xl m-b-0"
         data-testid="total-value">
-        {redirectPath ? (
-          <Link className="font-medium text-xl" to={redirectPath}>
-            {totalValue}
-          </Link>
-        ) : (
-          totalValue
-        )}
+        {totalValue}
       </Typography.Paragraph>
     );
   }, [chartData]);
+
+  const bodyElement = useMemo(() => {
+    return (
+      <>
+        <Typography.Paragraph className="text-xs text-grey-muted">
+          {title}
+        </Typography.Paragraph>
+        {totalValueElement}
+        <CustomAreaChart data={chartData} name={name} />
+      </>
+    );
+  }, [title, totalValueElement, chartData, name]);
 
   const getCountOfIncidentStatus = async () => {
     setIsChartLoading(true);
@@ -74,13 +80,14 @@ const IncidentTypeAreaChartWidget = ({
 
   return (
     <Card
+      className="chart-widget-link-no-underline"
       data-testid={`incident-${incidentStatusType}-type-area-chart-widget-container`}
       loading={isChartLoading}>
-      <Typography.Paragraph className="text-xs text-grey-muted">
-        {title}
-      </Typography.Paragraph>
-      {totalValueElement}
-      <CustomAreaChart data={chartData} name={name} />
+      {redirectPath ? (
+        <Link to={redirectPath}>{bodyElement}</Link>
+      ) : (
+        bodyElement
+      )}
     </Card>
   );
 };

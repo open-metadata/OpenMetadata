@@ -35,10 +35,17 @@ const StatusByDimensionCardWidget = ({
   const [dqByDimensionData, setDqByDimensionData] =
     useState<DataQualityReport['data']>();
 
+  const dqDimensionValue = useMemo(() => {
+    const value: string[] = Object.values(DataQualityDimensions);
+    value.push('No Dimension');
+
+    return value;
+  }, []);
+
   const dqDimensions = useMemo(
     () =>
       isUndefined(dqByDimensionData)
-        ? Object.values(DataQualityDimensions).map((item) => ({
+        ? dqDimensionValue.map((item) => ({
             title: item,
             success: 0,
             failed: 0,

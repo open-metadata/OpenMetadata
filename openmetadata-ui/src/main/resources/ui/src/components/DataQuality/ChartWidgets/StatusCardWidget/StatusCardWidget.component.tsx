@@ -36,7 +36,7 @@ const StatusDataWidget = ({
     [statusData]
   );
 
-  return (
+  const body = (
     <Space
       align="center"
       className="w-full"
@@ -52,15 +52,9 @@ const StatusDataWidget = ({
         </Typography.Text>
       </div>
       <Typography.Text
-        className="font-medium text-md chart-total-count-value-link"
+        className="font-medium text-xl chart-widget-link-underline"
         data-testid="total-value">
-        {redirectPath ? (
-          <Link className="font-medium text-xl" to={redirectPath}>
-            {statusData.total}
-          </Link>
-        ) : (
-          statusData.total
-        )}
+        {statusData.total}
       </Typography.Text>
       <div className="d-flex items-center gap-3">
         {Object.entries(countCard).map(([key, value]) => (
@@ -74,6 +68,12 @@ const StatusDataWidget = ({
         ))}
       </div>
     </Space>
+  );
+
+  return (
+    <div className="chart-widget-link-no-underline">
+      {redirectPath ? <Link to={redirectPath}>{body}</Link> : body}
+    </div>
   );
 };
 

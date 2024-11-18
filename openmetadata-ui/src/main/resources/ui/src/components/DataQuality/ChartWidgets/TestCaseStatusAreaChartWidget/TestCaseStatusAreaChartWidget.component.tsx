@@ -34,25 +34,30 @@ const TestCaseStatusAreaChartWidget = ({
   const [chartData, setChartData] = useState<CustomAreaChartData[]>([]);
   const [isChartLoading, setIsChartLoading] = useState(true);
 
-  const totalValueElement = useMemo(() => {
+  const bodyElement = useMemo(() => {
     const totalValue = chartData.reduce((acc, curr) => {
       return acc + curr.count;
     }, 0);
 
     return (
-      <Typography.Paragraph
-        className="font-medium text-xl m-b-0 chart-total-count-value-link"
-        data-testid="total-value">
-        {redirectPath ? (
-          <Link className="font-medium text-xl" to={redirectPath}>
-            {totalValue}
-          </Link>
-        ) : (
-          totalValue
-        )}
-      </Typography.Paragraph>
+      <>
+        <Typography.Paragraph className="text-xs text-grey-muted">
+          {title}
+        </Typography.Paragraph>
+        <Typography.Paragraph
+          className="font-medium text-xl m-b-0 chart-widget-link-underline"
+          data-testid="total-value">
+          {totalValue}
+        </Typography.Paragraph>
+        <CustomAreaChart
+          colorScheme={chartColorScheme}
+          data={chartData}
+          height={height}
+          name={name}
+        />
+      </>
     );
-  }, [chartData]);
+  }, [title, chartData, name, chartColorScheme, height]);
 
   const getTestCaseStatusMetrics = async () => {
     setIsChartLoading(true);
@@ -83,22 +88,16 @@ const TestCaseStatusAreaChartWidget = ({
   return (
     <Card
       className={classNames(
-        'test-case-area-chart-widget-container',
+        'test-case-area-chart-widget-container chart-widget-link-no-underline',
         toLower(testCaseStatus)
       )}
       data-testid={`test-case-${testCaseStatus}-area-chart-widget`}
       loading={isChartLoading}>
-      <Typography.Paragraph className="text-xs text-grey-muted">
-        {title}
-      </Typography.Paragraph>
-      {totalValueElement}
-
-      <CustomAreaChart
-        colorScheme={chartColorScheme}
-        data={chartData}
-        height={height}
-        name={name}
-      />
+      {redirectPath ? (
+        <Link to={redirectPath}>{bodyElement}</Link>
+      ) : (
+        bodyElement
+      )}
     </Card>
   );
 };

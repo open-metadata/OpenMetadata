@@ -1,4 +1,5 @@
 import { DateRangeObject } from 'Models';
+import { SVGAttributes } from 'react';
 import { LinkProps } from 'react-router-dom';
 import { TestCaseStatus } from '../../generated/tests/testCase';
 import { TestCaseResolutionStatusTypes } from '../../generated/tests/testCaseResolutionStatus';
@@ -84,4 +85,5 @@ export interface DataStatisticWidgetProps {
   redirectPath: LinkProps['to'];
   linkLabel: string;
   isLoading?: boolean;
+  iconProps?: SVGAttributes<SVGElement>;
 }

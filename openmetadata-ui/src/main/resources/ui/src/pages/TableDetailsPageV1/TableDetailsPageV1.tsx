@@ -155,7 +155,7 @@ const TableDetailsPageV1: React.FC = () => {
             tableFqn,
             EntityTabs.PROFILER
           )}>
-          <RedAlertIcon height={24} width={24} />
+          <RedAlertIcon className="text-red-3" height={24} width={24} />
         </Link>
       </Tooltip>
     ) : undefined;
@@ -239,6 +239,7 @@ const TableDetailsPageV1: React.FC = () => {
   const fetchTestCaseSummary = async () => {
     try {
       if (isUndefined(tableDetails?.testSuite?.id)) {
+        setTestCaseSummary(undefined);
         await fetchDQFailureCount();
 
         return;
