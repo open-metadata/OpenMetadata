@@ -518,7 +518,7 @@ def test_error_paths(
             )
     workflow_config = {
         "source": {
-            "type": TestSuiteConfigType.TestSuite.value,
+            "type": "postgres",
             "serviceName": "MyTestSuite",
             "sourceConfig": {
                 "config": {
