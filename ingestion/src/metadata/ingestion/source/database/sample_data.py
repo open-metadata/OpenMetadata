@@ -136,7 +136,8 @@ from metadata.parsers.schema_parsers import (
     InvalidSchemaTypeException,
     schema_parser_config_registry,
 )
-from metadata.profiler.api.models import ProfilerResponse, SampleData
+from metadata.profiler.api.models import ProfilerResponse
+from metadata.sampler.models import SampleData
 from metadata.utils import entity_link, fqn
 from metadata.utils.constants import UTF_8
 from metadata.utils.fqn import FQN_SEPARATOR
