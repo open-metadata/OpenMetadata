@@ -2,11 +2,13 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.schema.type.EventType.ENTITY_DELETED;
 import static org.openmetadata.service.Entity.TEST_CASE;
+import static org.openmetadata.service.Entity.TEST_CASE_RESULT;
 import static org.openmetadata.service.Entity.TEST_DEFINITION;
 
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import javax.json.JsonPatch;
@@ -237,6 +239,11 @@ public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCas
   protected void deleteAllTestCaseResults(String fqn) {
     // Delete all the test case results
     daoCollection.dataQualityDataTimeSeriesDao().deleteAll(fqn);
+    Map<String, Object> params = Map.of("fqn", fqn);
+    searchRepository.deleteByScript(
+        TEST_CASE_RESULT,
+        "if (!(doc['testCaseFQN.keyword'].empty)) { doc['testCaseFQN.keyword'].value == params.fqn}",
+        params);
   }
 
   public boolean hasTestCaseFailure(String fqn) throws IOException {
