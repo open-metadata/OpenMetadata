@@ -1149,11 +1149,8 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
             ? getEntityByName(term.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(term.getId(), fields, ADMIN_AUTH_HEADERS);
     assertListNull(
-        term.getChildren(),
-        term.getRelatedTerms(),
-        term.getReviewers(),
-        term.getOwners(),
-        term.getTags());
+        term.getChildren(), term.getRelatedTerms(), term.getReviewers(), term.getOwners());
+    assertTrue(term.getTags().isEmpty());
 
     fields = "children,relatedTerms,reviewers,owners,tags";
     term =
