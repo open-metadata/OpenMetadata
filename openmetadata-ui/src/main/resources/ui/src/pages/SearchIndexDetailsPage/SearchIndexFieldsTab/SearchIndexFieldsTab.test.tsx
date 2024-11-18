@@ -28,6 +28,7 @@ const mockProps: SearchIndexFieldsTabProps = {
   onUpdate: mockOnUpdate,
   hasDescriptionEditAccess: true,
   hasTagEditAccess: true,
+  hasGlossaryTermEditAccess: true,
   isReadOnly: false,
   onThreadLinkSelect: mockOnThreadLinkSelect,
   entityFqn: 'search_service.search_index_fqn',
