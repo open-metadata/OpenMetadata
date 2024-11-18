@@ -50,6 +50,7 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
   dataModel,
   hasDescriptionEditAccess,
   hasTagEditAccess,
+  hasGlossaryTermEditAccess,
   isReadOnly,
   onUpdate,
   entityFqn,
@@ -220,7 +221,7 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
             entityFqn={entityFqn}
             entityType={EntityType.CONTAINER}
             handleTagSelection={handleFieldTagsChange}
-            hasTagEditAccess={hasTagEditAccess}
+            hasTagEditAccess={hasGlossaryTermEditAccess}
             index={index}
             isReadOnly={isReadOnly}
             record={record}
@@ -235,6 +236,7 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
       isReadOnly,
       entityFqn,
       hasTagEditAccess,
+      hasGlossaryTermEditAccess,
       hasDescriptionEditAccess,
       editContainerColumnDescription,
       getEntityName,

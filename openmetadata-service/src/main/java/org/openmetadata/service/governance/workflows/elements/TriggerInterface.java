@@ -22,7 +22,7 @@ public interface TriggerInterface {
   private List<FlowableListener> getWorkflowInstanceListeners() {
     List<FlowableListener> listeners = new ArrayList<>();
 
-    List<String> events = List.of("start");
+    List<String> events = List.of("start", "end");
     for (String event : events) {
       FlowableListener listener =
           new FlowableListenerBuilder()

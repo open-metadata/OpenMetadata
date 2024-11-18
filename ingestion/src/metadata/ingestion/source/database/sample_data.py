@@ -136,6 +136,7 @@ from metadata.parsers.schema_parsers import (
     InvalidSchemaTypeException,
     schema_parser_config_registry,
 )
+from metadata.profiler.api.models import ProfilerResponse, SampleData
 from metadata.utils import entity_link, fqn
 from metadata.utils.constants import UTF_8
 from metadata.utils.fqn import FQN_SEPARATOR
@@ -898,10 +899,24 @@ class SampleDataSource(
 
                 self.metadata.ingest_table_sample_data(
                     table_entity,
-                    TableData(
-                        rows=table["sampleData"]["rows"],
-                        columns=table["sampleData"]["columns"],
-                    ),
+                    ProfilerResponse(
+                        table=table_entity,
+                        profile=CreateTableProfileRequest(
+                            tableProfile=TableProfile(
+                                timestamp=Timestamp(
+                                    int(datetime.now().timestamp() * 1000)
+                                ),
+                                columnCount=1.0,
+                                rowCount=3.0,
+                            )
+                        ),
+                        sample_data=SampleData(
+                            data=TableData(
+                                rows=table["sampleData"]["rows"],
+                                columns=table["sampleData"]["columns"],
+                            )
+                        ),
+                    ).sample_data.data,
                 )
 
             if table.get("customMetrics"):
@@ -1331,12 +1346,14 @@ class SampleDataSource(
                     description=model["description"],
                     algorithm=model["algorithm"],
                     dashboard=dashboard.fullyQualifiedName.root,
-                    mlStore=MlStore(
-                        storage=model["mlStore"]["storage"],
-                        imageRepository=model["mlStore"]["imageRepository"],
-                    )
-                    if model.get("mlStore")
-                    else None,
+                    mlStore=(
+                        MlStore(
+                            storage=model["mlStore"]["storage"],
+                            imageRepository=model["mlStore"]["imageRepository"],
+                        )
+                        if model.get("mlStore")
+                        else None
+                    ),
                     server=model.get("server"),
                     target=model.get("target"),
                     mlFeatures=self.get_ml_features(model),
@@ -1375,9 +1392,11 @@ class SampleDataSource(
                     name=container["name"],
                     displayName=container["displayName"],
                     description=container["description"],
-                    parent=EntityReference(id=parent_container.id, type="container")
-                    if parent_container_fqn
-                    else None,
+                    parent=(
+                        EntityReference(id=parent_container.id, type="container")
+                        if parent_container_fqn
+                        else None
+                    ),
                     prefix=container["prefix"],
                     dataModel=container.get("dataModel"),
                     numberOfObjects=container.get("numberOfObjects"),
@@ -1415,11 +1434,13 @@ class SampleDataSource(
                     yield Either(
                         right=CreateContainerRequest(
                             name=name,
-                            parent=EntityReference(
-                                id=parent_container.id, type="container"
-                            )
-                            if parent_container
-                            else None,
+                            parent=(
+                                EntityReference(
+                                    id=parent_container.id, type="container"
+                                )
+                                if parent_container
+                                else None
+                            ),
                             service=self.storage_service.fullyQualifiedName,
                         )
                     )

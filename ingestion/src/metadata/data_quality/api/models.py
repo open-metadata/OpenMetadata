@@ -18,13 +18,14 @@ multiple test cases per workflow.
 
 from typing import List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import Field
 
 from metadata.config.common import ConfigModel
 from metadata.generated.schema.api.tests.createTestSuite import CreateTestSuiteRequest
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.tests.basic import TestCaseResult
 from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
+from metadata.ingestion.models.custom_pydantic import BaseModel
 
 
 class TestCaseDefinition(ConfigModel):

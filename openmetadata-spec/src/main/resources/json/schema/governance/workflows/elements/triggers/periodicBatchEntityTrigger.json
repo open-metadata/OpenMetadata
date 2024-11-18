@@ -25,7 +25,7 @@
         "batchSize": {
           "description": "Number of Entities to process at once.",
           "type": "integer",
-          "default": 100
+          "default": 1000
         }
       },
       "required": ["schedule", "entityType", "filters"],

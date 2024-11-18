@@ -21,7 +21,6 @@ import {
   isUndefined,
   lowerCase,
   omit,
-  reduce,
   toString,
   uniqBy,
   uniqueId,
@@ -657,32 +656,34 @@ export const searchInFields = <T extends SearchIndexField | Column>(
   return searchedValue;
 };
 
-export const getUpdatedTags = <T extends TableFieldsInfoCommonEntities>(
-  newFieldTags: Array<EntityTags>,
-  field?: T
-): TagLabel[] => {
-  const prevTagsFqn = field?.tags?.map((tag) => tag.tagFQN);
+export const updateFieldTags = <T extends TableFieldsInfoCommonEntities>(
+  changedFieldFQN: string,
+  newFieldTags: EntityTags[],
+  searchIndexFields?: Array<T>
+) => {
+  searchIndexFields?.forEach((field) => {
+    if (field.fullyQualifiedName === changedFieldFQN) {
+      field.tags = getUpdatedTags(newFieldTags);
+    } else {
+      updateFieldTags(
+        changedFieldFQN,
+        newFieldTags,
+        field?.children as Array<T>
+      );
+    }
+  });
+};
 
-  return reduce(
-    newFieldTags,
-    (acc: Array<EntityTags>, cv: EntityTags) => {
-      if (prevTagsFqn?.includes(cv.tagFQN)) {
-        const prev = field?.tags?.find((tag) => tag.tagFQN === cv.tagFQN);
+export const getUpdatedTags = (newFieldTags: Array<EntityTags>): TagLabel[] => {
+  const mappedNewTags: TagLabel[] = newFieldTags.map((tag) => ({
+    ...omit(tag, 'isRemovable'),
+    labelType: LabelType.Manual,
+    state: State.Confirmed,
+    source: tag.source || 'Classification',
+    tagFQN: tag.tagFQN,
+  }));
 
-        return [...acc, prev];
-      } else {
-        return [
-          ...acc,
-          {
-            ...omit(cv, 'isRemovable'),
-            labelType: LabelType.Manual,
-            state: State.Confirmed,
-          },
-        ];
-      }
-    },
-    []
-  );
+  return mappedNewTags;
 };
 
 export const updateFieldDescription = <T extends TableFieldsInfoCommonEntities>(
@@ -697,24 +698,6 @@ export const updateFieldDescription = <T extends TableFieldsInfoCommonEntities>(
       updateFieldDescription(
         changedFieldFQN,
         description,
-        field?.children as Array<T>
-      );
-    }
-  });
-};
-
-export const updateFieldTags = <T extends TableFieldsInfoCommonEntities>(
-  changedFieldFQN: string,
-  newFieldTags: EntityTags[],
-  searchIndexFields?: Array<T>
-) => {
-  searchIndexFields?.forEach((field) => {
-    if (field.fullyQualifiedName === changedFieldFQN) {
-      field.tags = getUpdatedTags<T>(newFieldTags, field);
-    } else {
-      updateFieldTags(
-        changedFieldFQN,
-        newFieldTags,
         field?.children as Array<T>
       );
     }

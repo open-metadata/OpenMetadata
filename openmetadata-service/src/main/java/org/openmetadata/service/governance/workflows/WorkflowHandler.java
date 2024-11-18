@@ -40,6 +40,10 @@ public class WorkflowHandler {
     ProcessEngineConfiguration processEngineConfiguration =
         new StandaloneProcessEngineConfiguration()
             .setAsyncExecutorActivate(true)
+            .setAsyncExecutorCorePoolSize(50)
+            .setAsyncExecutorMaxPoolSize(100)
+            .setAsyncExecutorThreadPoolQueueSize(1000)
+            .setAsyncExecutorMaxAsyncJobsDuePerAcquisition(20)
             .setJdbcUrl(config.getDataSourceFactory().getUrl())
             .setJdbcUsername(config.getDataSourceFactory().getUser())
             .setJdbcPassword(config.getDataSourceFactory().getPassword())

@@ -71,6 +71,7 @@ const props = {
   },
   hasDescriptionEditAccess: true,
   hasTagEditAccess: true,
+  hasGlossaryTermEditAccess: true,
   isReadOnly: false,
   onUpdate: jest.fn(),
   entityFqn: 's3_storage_sample.departments',

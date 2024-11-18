@@ -2,6 +2,8 @@ package org.openmetadata.service.migration.utils.v160;
 
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 
+import java.util.Arrays;
+import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
 import org.openmetadata.schema.entity.policies.Policy;
@@ -46,7 +48,69 @@ public class MigrationUtil {
                 JsonUtils.pojoToJson(organizationPolicy));
       }
     } catch (EntityNotFoundException ex) {
-      LOG.warn("OrganizationPolicy not found", ex);
+      LOG.warn("OrganizationPolicy not found, skipping adding view all rule");
+    }
+  }
+
+  public static void addEditGlossaryTermsToDataConsumerPolicy(CollectionDAO collectionDAO) {
+    List<MetadataOperation> operationsToAdd =
+        Arrays.asList(
+            MetadataOperation.EDIT_GLOSSARY_TERMS,
+            MetadataOperation.EDIT_TIER,
+            MetadataOperation.EDIT_TAGS);
+    addOperationsToPolicyRule(
+        "DataConsumerPolicy", "DataConsumerPolicy-EditRule", operationsToAdd, collectionDAO);
+    addOperationsToPolicyRule(
+        "DataStewardPolicy", "DataStewardPolicy-EditRule", operationsToAdd, collectionDAO);
+  }
+
+  public static void addOperationsToPolicyRule(
+      String policyName,
+      String ruleName,
+      List<MetadataOperation> operationsToAdd,
+      CollectionDAO collectionDAO) {
+    PolicyRepository repository = (PolicyRepository) Entity.getEntityRepository(Entity.POLICY);
+    try {
+      Policy policy = repository.findByName(policyName, Include.NON_DELETED);
+      if (policy.getRules() == null) {
+        LOG.warn("{} has no rules defined.", policyName);
+        return;
+      }
+
+      Rule editRule =
+          policy.getRules().stream()
+              .filter(rule -> ruleName.equals(rule.getName()))
+              .findFirst()
+              .orElse(null);
+
+      if (editRule == null || editRule.getOperations() == null) {
+        LOG.warn("{} not found or has no operations.", ruleName);
+        return;
+      }
+
+      List<MetadataOperation> existingOperations = editRule.getOperations();
+      boolean updatedRequired = false;
+
+      for (MetadataOperation op : operationsToAdd) {
+        if (!existingOperations.contains(op)) {
+          existingOperations.add(op);
+          updatedRequired = true;
+          LOG.info("Added operation {} to rule {}", op, ruleName);
+        }
+      }
+
+      if (updatedRequired) {
+        collectionDAO
+            .policyDAO()
+            .update(policy.getId(), policy.getFullyQualifiedName(), JsonUtils.pojoToJson(policy));
+        LOG.info("Updated policy {} with new operations.", policyName);
+      } else {
+        LOG.info("No updates required for policy {}.", policyName);
+      }
+    } catch (EntityNotFoundException ex) {
+      LOG.warn("{} not found, skipping updates.", policyName);
+    } catch (Exception ex) {
+      LOG.error("Error updating policy {}: {}", policyName, ex.getMessage());
     }
   }
 

@@ -19,17 +19,21 @@ from antlr4.CommonTokenStream import CommonTokenStream
 from antlr4.error.ErrorStrategy import BailErrorStrategy
 from antlr4.InputStream import InputStream
 from antlr4.tree.Tree import ParseTreeWalker
-from pydantic import BaseModel
 from requests.compat import unquote_plus
 
 from metadata.antlr.split_listener import EntityLinkSplitListener
 from metadata.generated.antlr.EntityLinkLexer import EntityLinkLexer
 from metadata.generated.antlr.EntityLinkParser import EntityLinkParser
 from metadata.generated.schema.entity.data.table import Table
+from metadata.ingestion.models.custom_pydantic import BaseModel
 from metadata.utils.constants import ENTITY_REFERENCE_TYPE_MAP
 from metadata.utils.dispatch import class_register
 
 T = TypeVar("T", bound=BaseModel)
+
+
+class CustomColumnName(BaseModel):
+    root: str
 
 
 class EntityLinkBuildingException(Exception):
@@ -69,7 +73,9 @@ def get_decoded_column(entity_link: str) -> str:
         entity_link: entity link
     """
 
-    return unquote_plus(entity_link.split("::")[-1].replace(">", ""))
+    return CustomColumnName(
+        root=unquote_plus(entity_link.split("::")[-1].replace(">", ""))
+    ).root
 
 
 def get_table_fqn(entity_link: str) -> str:

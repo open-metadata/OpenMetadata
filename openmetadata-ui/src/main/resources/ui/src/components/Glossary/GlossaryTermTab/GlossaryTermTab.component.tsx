@@ -498,6 +498,7 @@ const GlossaryTermTab = ({
               <Space>
                 <Button
                   className="custom-glossary-dropdown-action-btn"
+                  data-testid="glossary-col-dropdown-save"
                   type="primary"
                   onClick={handleColumnSelectionDropdownSave}>
                   {t('label.save')}

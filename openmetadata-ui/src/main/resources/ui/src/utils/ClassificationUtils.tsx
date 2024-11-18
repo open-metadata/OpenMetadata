@@ -25,7 +25,8 @@ import { OperationPermission } from '../context/PermissionProvider/PermissionPro
 import { ProviderType } from '../generated/entity/bot';
 import { Tag } from '../generated/entity/classification/tag';
 import { DeleteTagsType } from '../pages/TagsPage/TagsPage.interface';
-import { getDeleteIcon, getUsageCountLink } from './TagsUtils';
+import { getClassificationTagPath } from './RouterUtils';
+import { getDeleteIcon } from './TagsUtils';
 
 export const getDeleteButtonData = (
   record: Tag,
@@ -60,11 +61,13 @@ export const getCommonColumns = (): ColumnsType<Tag> => [
         {record.style?.iconURL && (
           <img data-testid="tag-icon" src={record.style.iconURL} width={16} />
         )}
-        <Typography.Text
+        <Link
           className="m-b-0"
-          style={{ color: record.style?.color }}>
+          data-testid={record.name}
+          style={{ color: record.style?.color }}
+          to={getClassificationTagPath(record.fullyQualifiedName ?? '')}>
           {record.name}
-        </Typography.Text>
+        </Link>
         {record.disabled ? (
           <Badge
             className="m-l-xs badge-grey"
@@ -88,7 +91,7 @@ export const getCommonColumns = (): ColumnsType<Tag> => [
     title: t('label.description'),
     dataIndex: 'description',
     key: 'description',
-    render: (text: string, record: Tag) => (
+    render: (text: string) => (
       <>
         <div className="cursor-pointer d-flex">
           <div>
@@ -103,19 +106,6 @@ export const getCommonColumns = (): ColumnsType<Tag> => [
             )}
           </div>
         </div>
-        <Space align="center" data-testid="usage" size={4}>
-          <span className="text-grey-muted">{`${t('label.usage')}:`}</span>
-          {record.usageCount ? (
-            <Link
-              className="link-text align-middle"
-              data-testid="usage-count"
-              to={getUsageCountLink(record.fullyQualifiedName ?? '')}>
-              {record.usageCount}
-            </Link>
-          ) : (
-            <span className="text-grey-muted">{t('label.not-used')}</span>
-          )}
-        </Space>
       </>
     ),
   },

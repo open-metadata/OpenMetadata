@@ -51,6 +51,7 @@ import java.util.stream.Stream;
 import javax.json.JsonObject;
 import javax.net.ssl.SSLContext;
 import javax.ws.rs.core.Response;
+import lombok.Getter;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang.WordUtils;
@@ -214,7 +215,7 @@ import os.org.opensearch.search.suggest.completion.context.CategoryQueryContext;
 @Slf4j
 // Not tagged with Repository annotation as it is programmatically initialized
 public class OpenSearchClient implements SearchClient {
-  protected final RestHighLevelClient client;
+  @Getter protected final RestHighLevelClient client;
   public static final NamedXContentRegistry X_CONTENT_REGISTRY;
   private final boolean isClientAvailable;
   private final RBACConditionEvaluator rbacConditionEvaluator;

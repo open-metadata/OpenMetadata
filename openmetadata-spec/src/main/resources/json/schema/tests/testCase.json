@@ -141,7 +141,7 @@
       "items": {
         "$ref": "../type/tagLabel.json"
       },
-      "default": null
+      "default": []
     }
   },
   "required": ["name", "testDefinition", "entityLink", "testSuite"],

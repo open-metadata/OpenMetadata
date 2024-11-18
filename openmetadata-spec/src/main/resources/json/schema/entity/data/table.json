@@ -328,7 +328,7 @@
           "items": {
             "$ref": "../../type/tagLabel.json"
           },
-          "default": null
+          "default": []
         },
         "constraint": {
           "description": "Column level constraint.",
@@ -921,7 +921,7 @@
           "items": {
             "$ref": "../../type/tagLabel.json"
           },
-          "default": null
+          "default": []
         },
         "columns": {
           "description": "Columns from the schema defined during modeling. In case of DBT, the metadata here comes from `schema.yaml`.",

@@ -140,7 +140,7 @@
       "items": {
         "$ref": "../../type/tagLabel.json"
       },
-      "default": null
+      "default": []
     },
     "extension": {
       "description": "Entity extension data with custom attributes added to the entity.",
