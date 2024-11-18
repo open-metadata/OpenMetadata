@@ -417,27 +417,25 @@ const GlossaryPage = () => {
   );
 
   return (
-    <>
-      <PageLayoutV1 pageTitle={t('label.glossary-plural')}>
-        {glossaries.length === 0 && !isLoading ? (
-          <ErrorPlaceHolder
-            buttonId="add-glossary"
-            className="mt-44"
-            doc={GLOSSARIES_DOCS}
-            heading={t('label.glossary')}
-            permission={createGlossaryPermission}
-            type={
-              createGlossaryPermission
-                ? ERROR_PLACEHOLDER_TYPE.CREATE
-                : ERROR_PLACEHOLDER_TYPE.NO_DATA
-            }
-            onClick={handleAddGlossaryClick}
-          />
-        ) : (
-          resizableLayout
-        )}
-      </PageLayoutV1>
-    </>
+    <PageLayoutV1 pageTitle={t('label.glossary-plural')}>
+      {glossaries.length === 0 && !isLoading ? (
+        <ErrorPlaceHolder
+          buttonId="add-glossary"
+          className="mt-44"
+          doc={GLOSSARIES_DOCS}
+          heading={t('label.glossary')}
+          permission={createGlossaryPermission}
+          type={
+            createGlossaryPermission
+              ? ERROR_PLACEHOLDER_TYPE.CREATE
+              : ERROR_PLACEHOLDER_TYPE.NO_DATA
+          }
+          onClick={handleAddGlossaryClick}
+        />
+      ) : (
+        resizableLayout
+      )}
+    </PageLayoutV1>
   );
 };
 
