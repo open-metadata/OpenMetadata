@@ -279,7 +279,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
           boolean recreateIndexes,
       @Option(
               names = {"--producer-threads"},
-              defaultValue = "10",
+              defaultValue = "5",
               description = "Number of threads to use for processing.")
           int producerThreads,
       @Option(
