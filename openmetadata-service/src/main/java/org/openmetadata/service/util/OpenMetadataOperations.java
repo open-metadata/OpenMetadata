@@ -264,7 +264,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
   public Integer reIndex(
       @Option(
               names = {"-b", "--batch-size"},
-              defaultValue = "100",
+              defaultValue = "300",
               description = "Number of records to process in each batch.")
           int batchSize,
       @Option(
@@ -279,7 +279,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
           boolean recreateIndexes,
       @Option(
               names = {"--producer-threads"},
-              defaultValue = "5",
+              defaultValue = "10",
               description = "Number of threads to use for processing.")
           int producerThreads,
       @Option(
@@ -304,7 +304,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
           int maxBackOff,
       @Option(
               names = {"--max-requests"},
-              defaultValue = "100",
+              defaultValue = "1000",
               description = "Maximum number of concurrent search requests.")
           int maxRequests,
       @Option(
