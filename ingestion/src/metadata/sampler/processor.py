@@ -13,7 +13,6 @@ Data Sampler for the PII Workflow
 """
 import traceback
 from copy import deepcopy
-from functools import lru_cache
 from typing import Optional, cast
 
 from sqlalchemy import MetaData
@@ -37,22 +36,15 @@ from metadata.ingestion.api.parser import parse_workflow_config_gracefully
 from metadata.ingestion.api.step import Step
 from metadata.ingestion.api.steps import Processor
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.profiler.api.models import ProfilerProcessorConfig
 from metadata.profiler.orm.converter.base import ometa_to_sqa_orm
 from metadata.profiler.source.metadata import ProfilerSourceAndEntity
+from metadata.sampler.config import get_config_for_table
 from metadata.sampler.models import SampleConfig, SampleData, SamplerResponse
 from metadata.sampler.sampler_interface import SamplerInterface
+from metadata.utils.constants import NON_SQA_DATABASE_CONNECTIONS
 from metadata.utils.profiler_utils import get_context_entities
 from metadata.utils.service_spec.service_spec import import_sampler_class
-
-NON_SQA_DATABASE_CONNECTIONS = ("Datalake",)
-
-
-@lru_cache
-def _get_sqa_metadata(conn_type: str) -> Optional[MetaData]:
-    """Set sqlalchemy metadata"""
-    if conn_type not in NON_SQA_DATABASE_CONNECTIONS:
-        return MetaData()
-    return None
 
 
 class SamplerProcessor(Processor):
@@ -68,6 +60,10 @@ class SamplerProcessor(Processor):
             DatabaseServiceAutoClassificationPipeline,
             self.config.source.sourceConfig.config,
         )  # Used to satisfy type checked
+        # We still rely on the orm-processor. We should decouple this in the future
+        self.profiler_config = ProfilerProcessorConfig.model_validate(
+            self.config.processor.model_dump().get("config")
+        )
 
         self._interface_type: str = config.source.type.lower()
         self.sampler_class = import_sampler_class(
@@ -89,15 +85,17 @@ class SamplerProcessor(Processor):
             service_conn_config = self._copy_service_config(
                 self.config, database_entity
             )
-            sqa_metadata = _get_sqa_metadata(str(service_conn_config.type.value))
 
-            _orm = self._build_table_orm(entity, sqa_metadata)
+            _orm = self._build_table_orm(
+                entity, conn_type=str(service_conn_config.type.value)
+            )
             sampler_interface: SamplerInterface = self.sampler_class.create(
                 service_connection_config=service_conn_config,
                 ometa_client=self.metadata,
                 entity=entity,
                 schema_entity=schema_entity,
                 database_entity=database_entity,
+                table_config=get_config_for_table(entity, self.profiler_config),
                 default_sample_config=SampleConfig(
                     profile_sample=self.source_config.profileSample,
                     profile_sample_type=self.source_config.profileSampleType,
@@ -138,14 +136,12 @@ class SamplerProcessor(Processor):
         return cls(config=config, metadata=metadata)
 
     def _build_table_orm(
-        self, entity: Table, sqa_metadata: Optional[MetaData]
+        self, entity: Table, conn_type: str
     ) -> Optional[DeclarativeMeta]:
         """Build the ORM table if needed for the sampler and profiler interfaces"""
-        return (
-            ometa_to_sqa_orm(entity, self.metadata, sqa_metadata)
-            if sqa_metadata
-            else None
-        )
+        if conn_type not in NON_SQA_DATABASE_CONNECTIONS:
+            return ometa_to_sqa_orm(entity, self.metadata, MetaData())
+        return None
 
     def _copy_service_config(
         self, config: OpenMetadataWorkflowConfig, database: Database

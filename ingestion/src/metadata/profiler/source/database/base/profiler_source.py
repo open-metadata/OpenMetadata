@@ -25,9 +25,6 @@ from metadata.generated.schema.configuration.profilerConfiguration import (
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import Table
-from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
-    DatalakeConnection,
-)
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseConnection,
     DatabaseService,
@@ -54,14 +51,13 @@ from metadata.sampler.config import (
 )
 from metadata.sampler.models import SampleConfig
 from metadata.sampler.sampler_interface import SamplerInterface
+from metadata.utils.constants import NON_SQA_DATABASE_CONNECTIONS
 from metadata.utils.logger import profiler_logger
 from metadata.utils.profiler_utils import get_context_entities
 from metadata.utils.service_spec.service_spec import (
     import_profiler_class,
     import_sampler_class,
 )
-
-NON_SQA_DATABASE_CONNECTIONS = (DatalakeConnection,)
 
 logger = profiler_logger()
 
@@ -85,7 +81,6 @@ class ProfilerSource(ProfilerSourceInterface):
         )
         self.ometa_client = ometa_client
         self._interface_type: str = config.source.type.lower()
-        self.sqa_metadata = self._set_sqa_metadata()
         self._interface = None
         # We define this in create_profiler_interface to help us reuse
         # this method for the sampler, which does not have a DatabaseServiceProfilerPipeline
@@ -104,16 +99,10 @@ class ProfilerSource(ProfilerSourceInterface):
         """Set the interface"""
         self._interface = interface
 
-    def _set_sqa_metadata(self):
-        """Set sqlalchemy metadata"""
-        if not isinstance(self.service_conn_config, NON_SQA_DATABASE_CONNECTIONS):
-            return MetaData()
-        return None
-
     def _build_table_orm(self, entity: Table) -> Optional[DeclarativeMeta]:
         """Build the ORM table if needed for the sampler and profiler interfaces"""
-        if not isinstance(self.service_conn_config, NON_SQA_DATABASE_CONNECTIONS):
-            return ometa_to_sqa_orm(entity, self.ometa_client, self.sqa_metadata)
+        if self.service_conn_config.type.value not in NON_SQA_DATABASE_CONNECTIONS:
+            return ometa_to_sqa_orm(entity, self.ometa_client, MetaData())
         return None
 
     def _copy_service_config(

@@ -26,7 +26,7 @@ class NoSQLSampler(SamplerInterface):
 
     @property
     def table(self):
-        return self.table
+        return self.entity
 
     def get_client(self):
         return factory.create(
@@ -71,7 +71,7 @@ class NoSQLSampler(SamplerInterface):
         returns sampled ometa dataframes
         """
         limit = self._get_limit()
-        records = self.client.scan(self.table, self.table.columns, limit)
+        records = self.client.scan(self.table, self.table.columns, int(limit))
         rows, cols = self.transpose_records(records, columns)
         return TableData(
             rows=[list(map(str, row)) for row in rows],

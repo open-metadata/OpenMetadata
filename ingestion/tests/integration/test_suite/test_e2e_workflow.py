@@ -49,7 +49,7 @@ from metadata.workflow.data_quality import TestSuiteWorkflow
 
 test_suite_config = {
     "source": {
-        "type": "custom-database",
+        "type": "sqlite",
         "serviceName": "test_suite_service_test",
         "sourceConfig": {
             "config": {

@@ -21,9 +21,6 @@ from sqlalchemy.orm import DeclarativeMeta
 from metadata.data_quality.interface.test_suite_interface import TestSuiteInterface
 from metadata.data_quality.runner.core import DataTestsRunner
 from metadata.generated.schema.entity.data.table import Table
-from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
-    DatalakeConnection,
-)
 from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
 from metadata.generated.schema.entity.services.serviceType import ServiceType
 from metadata.generated.schema.metadataIngestion.testSuitePipeline import (
@@ -37,13 +34,12 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.profiler.orm.converter.base import ometa_to_sqa_orm
 from metadata.sampler.models import SampleConfig
 from metadata.sampler.sampler_interface import SamplerInterface
+from metadata.utils.constants import NON_SQA_DATABASE_CONNECTIONS
 from metadata.utils.profiler_utils import get_context_entities
 from metadata.utils.service_spec.service_spec import (
     import_sampler_class,
     import_test_suite_class,
 )
-
-NON_SQA_DATABASE_CONNECTIONS = (DatalakeConnection,)
 
 
 class BaseTestSuiteRunner:
@@ -63,7 +59,6 @@ class BaseTestSuiteRunner:
             config.source.sourceConfig.config
         )
         self.ometa_client = ometa_client
-        self.sqa_metadata = self._set_sqa_metadata()
 
     @property
     def interface(self) -> Optional[TestSuiteInterface]:
@@ -101,16 +96,10 @@ class BaseTestSuiteRunner:
 
         return config_copy
 
-    def _set_sqa_metadata(self):
-        """Set sqlalchemy metadata"""
-        if not isinstance(self.service_conn_config, NON_SQA_DATABASE_CONNECTIONS):
-            return MetaData()
-        return None
-
     def _build_table_orm(self, entity: Table) -> Optional[DeclarativeMeta]:
         """Build the ORM table if needed for the sampler and profiler interfaces"""
-        if not isinstance(self.service_conn_config, NON_SQA_DATABASE_CONNECTIONS):
-            return ometa_to_sqa_orm(entity, self.ometa_client, self.sqa_metadata)
+        if self.service_conn_config.type.value not in NON_SQA_DATABASE_CONNECTIONS:
+            return ometa_to_sqa_orm(entity, self.ometa_client, MetaData())
         return None
 
     def create_data_quality_interface(self) -> TestSuiteInterface:
