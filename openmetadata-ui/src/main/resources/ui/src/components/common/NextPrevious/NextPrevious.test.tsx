@@ -214,7 +214,9 @@ describe('Test Pagination Component', () => {
 
     expect(pageIndicator).toBeInTheDocument();
 
-    expect(pageIndicator).toHaveTextContent(`${totalPage}/${totalPage} Page`);
+    expect(pageIndicator).toHaveTextContent(
+      `${totalPage}/${totalPage} label.page`
+    );
   });
 
   it('On clicking Previous and Next button respective pages should be rendered', async () => {

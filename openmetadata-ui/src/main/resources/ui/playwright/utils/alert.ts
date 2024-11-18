@@ -30,6 +30,7 @@ import {
   toastNotification,
   uuid,
 } from './common';
+import { getEntityDisplayName } from './entity';
 import { validateFormNameFieldInput } from './form';
 import { sidebarClick } from './sidebar';
 
@@ -92,7 +93,9 @@ export const visitEditAlertPage = async (
   );
 
   // Check alert name
-  await expect(page.locator('#name')).toHaveValue(alertDetails.name);
+  await expect(page.locator('#displayName')).toHaveValue(
+    getEntityDisplayName(alertDetails)
+  );
 };
 
 export const visitAlertDetailsPage = async (
@@ -106,16 +109,20 @@ export const visitAlertDetailsPage = async (
   );
   await page
     .locator(`[data-row-key="${alertDetails.id}"]`)
-    .getByText(alertDetails.name)
+    .getByText(getEntityDisplayName(alertDetails))
     .click();
   await getAlertDetails;
 };
 
-export const deleteAlertSteps = async (page: Page, name: string) => {
+export const deleteAlertSteps = async (
+  page: Page,
+  name: string,
+  displayName: string
+) => {
   await page.getByTestId(`alert-delete-${name}`).click();
 
   await expect(page.locator('.ant-modal-header')).toHaveText(
-    `Delete subscription "${name}"`
+    `Delete subscription "${displayName}"`
   );
 
   await page.fill('[data-testid="confirmation-text-input"]', DELETE_TERM);
@@ -127,7 +134,7 @@ export const deleteAlertSteps = async (page: Page, name: string) => {
   await page.click('[data-testid="confirm-button"]');
   await deleteAlert;
 
-  await toastNotification(page, `"${name}" deleted successfully!`);
+  await toastNotification(page, `"${displayName}" deleted successfully!`);
 };
 
 export const addOwnerFilter = async ({
@@ -453,6 +460,15 @@ export const addExternalDestination = async ({
 
   // Input the secret key value
   if (category === 'Webhook' && secretKey) {
+    await page
+      .getByTestId(`destination-${destinationNumber}`)
+      .getByText('Advanced Configuration')
+      .click();
+
+    await expect(
+      page.getByTestId(`secret-key-input-${destinationNumber}`)
+    ).toBeVisible();
+
     await page.fill(
       `[data-testid="secret-key-input-${destinationNumber}"]`,
       secretKey
@@ -463,38 +479,31 @@ export const addExternalDestination = async ({
 const checkActionOrFilterDetails = async ({
   page,
   filters,
+  isFilter = true,
 }: {
   page: Page;
   filters: AlertDetails['input']['filters'];
+  isFilter?: boolean;
 }) => {
   if (!isEmpty(filters)) {
     for (const filter of filters) {
       const index = filters.indexOf(filter);
 
-      // Check filter effect
-      await expect(
-        page.locator('[data-testid="effect-value"]').nth(index)
-      ).toContainText(startCase(filter.effect));
+      await expect(page.getByTestId(`filter-${index}`)).toBeAttached();
 
-      // Check filter name
-      await expect(
-        page.locator('[data-testid="filter-name"]').nth(index)
-      ).toContainText(startCase(filter.name));
-
-      if (!isEmpty(filter.arguments)) {
-        for (const argument of filter.arguments) {
-          // Check filter arguments
-          await expect(
-            page.locator(`[data-testid="argument-container-${argument.name}"]`)
-          ).toBeAttached();
-
-          for (const val of argument.input) {
-            await expect(
-              page.locator(`[data-testid="argument-value"]`).getByText(val)
-            ).toBeAttached();
-          }
-        }
-      }
+      filter.effect === 'include'
+        ? await expect(
+            page.getByTestId(
+              `${isFilter ? 'filter' : 'trigger'}-switch-${index}`
+            )
+          ).toHaveClass('ant-switch ant-switch-checked ant-switch-disabled')
+        : await expect(
+            page.getByTestId(
+              `${isFilter ? 'filter' : 'trigger'}-switch-${index}`
+            )
+          ).not.toHaveClass(
+            'ant-switch ant-switch-checked ant-switch-disabled'
+          );
     }
   }
 };
@@ -508,8 +517,14 @@ export const verifyAlertDetails = async ({
   alertDetails: AlertDetails;
   isObservabilityAlert?: boolean;
 }) => {
-  const { name, description, filteringRules, input, destinations } =
-    alertDetails;
+  const {
+    name,
+    displayName,
+    description,
+    filteringRules,
+    input,
+    destinations,
+  } = alertDetails;
 
   const triggerName = filteringRules.resources[0];
   const filters = input.filters;
@@ -518,7 +533,10 @@ export const verifyAlertDetails = async ({
   await expect(page.getByTestId('alert-details-container')).toBeAttached();
 
   // Check alert name
-  await expect(page.getByTestId('alert-name')).toContainText(name);
+  await expect(page.getByTestId('entity-header-name')).toContainText(name);
+  await expect(page.getByTestId('entity-header-display-name')).toContainText(
+    displayName
+  );
 
   if (description) {
     // Check alert name
@@ -528,9 +546,7 @@ export const verifyAlertDetails = async ({
   }
 
   // Check trigger name
-  await expect(page.getByTestId('resource-name')).toContainText(
-    startCase(triggerName)
-  );
+  await expect(page.getByTestId('source-select')).toContainText(triggerName);
 
   // Check filter details
   await checkActionOrFilterDetails({ page, filters });
@@ -539,43 +555,23 @@ export const verifyAlertDetails = async ({
     const actions = input.actions;
 
     // Check action details
-    await checkActionOrFilterDetails({ page, filters: actions });
+    await checkActionOrFilterDetails({
+      page,
+      filters: actions,
+      isFilter: false,
+    });
   }
 
   if (!isEmpty(destinations)) {
     // Check connection timeout details
-    await expect(page.getByTestId('connection-timeout')).toContainText(
+    await expect(page.getByTestId('connection-timeout-input')).toHaveValue(
       destinations[0].timeout.toString()
     );
 
-    for (const destination of destinations) {
-      // Check Destination category
+    for (const destinationNumber in destinations) {
       await expect(
-        page
-          .getByTestId(`destination-${destination.category}`)
-          .getByTestId('category-value')
-      ).toContainText(destination.category);
-
-      // Check Destination type
-      await expect(
-        page
-          .getByTestId(`destination-${destination.category}`)
-          .getByTestId('destination-type')
-      ).toContainText(startCase(destination.type));
-
-      if (!isEmpty(destination.config?.secretKey)) {
-        // Check secret key is present
-        await expect(
-          page.getByTestId(`destination-${destination.category}`)
-        ).toContainText('Secret Key');
-      }
-
-      if (!isEmpty(destination.config?.receivers)) {
-        // Check Destination receivers
-        for (const receiver of destination.config.receivers) {
-          await expect(page.getByTestId(`receiver-${receiver}`)).toBeAttached();
-        }
-      }
+        page.getByTestId(`destination-${destinationNumber}`)
+      ).toBeAttached();
     }
   }
 };
@@ -722,6 +718,7 @@ export const inputBasicAlertInformation = async ({
     value: name,
     fieldName: 'Name',
     errorDivSelector: '#name_help',
+    fieldSelector: '#displayName',
   });
 
   // Enter description
@@ -744,6 +741,7 @@ export const saveAlertAndVerifyResponse = async (page: Page) => {
     alertDetails: {
       id: '',
       name: '',
+      displayName: '',
       description: '',
       filteringRules: { resources: [] },
       input: { filters: [], actions: [] },
@@ -785,7 +783,11 @@ export const deleteAlert = async (
     await visitObservabilityAlertPage(page);
   }
   await findPageWithAlert(page, alertDetails);
-  await deleteAlertSteps(page, alertDetails.name);
+  await deleteAlertSteps(
+    page,
+    alertDetails.name,
+    getEntityDisplayName(alertDetails)
+  );
 };
 
 export const getObservabilityCreationDetails = ({
