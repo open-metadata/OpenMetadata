@@ -15,10 +15,10 @@ Bigquery Profiler source
 
 from copy import deepcopy
 
+from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
     BigQueryConnection,
 )
-from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
@@ -34,14 +34,14 @@ class BigQueryProfilerSource(ProfilerSource):
     """override the base profiler source to handle BigQuery specific connection configs"""
 
     def _copy_service_config(
-        self, config: OpenMetadataWorkflowConfig, database: DatabaseService
+        self, config: OpenMetadataWorkflowConfig, database: Database
     ) -> BigQueryConnection:
         """Make a copy of the database connection config. If MultiProjectId is used, replace it
         with SingleProjectId with the database name being profiled. We iterate over all non filtered
         database in workflow.py `def execute`.
 
         Args:
-            database (DatabaseService): a database entity
+            database (Database): a database entity
 
         Returns:
             DatabaseConnection

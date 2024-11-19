@@ -12,15 +12,27 @@
 Helper module to handle data sampling
 for the profiler
 """
-from typing import Dict, Optional
+from typing import Dict, Optional, Union
 
 from sqlalchemy import Column
 from sqlalchemy.orm import Query
 
-from metadata.generated.schema.entity.data.table import ProfileSampleType, TableType
-from metadata.profiler.api.models import ProfileSampleConfig
+from metadata.generated.schema.entity.data.table import (
+    ProfileSampleType,
+    Table,
+    TableType,
+)
+from metadata.generated.schema.entity.services.connections.connectionBasicType import (
+    DataStorageConfig,
+)
+from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
+    DatalakeConnection,
+)
+from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.profiler.processor.handle_partition import partition_filter_handler
-from metadata.profiler.processor.sampler.sqlalchemy.sampler import SQASampler
+from metadata.sampler.models import SampleConfig
+from metadata.sampler.sqlalchemy.sampler import SQASampler
 from metadata.utils.constants import SAMPLE_DATA_DEFAULT_COUNT
 
 
@@ -33,21 +45,27 @@ class BigQuerySampler(SQASampler):
     # pylint: disable=too-many-arguments
     def __init__(
         self,
-        client,
-        table,
-        profile_sample_config: Optional[ProfileSampleConfig] = None,
+        service_connection_config: Union[DatabaseConnection, DatalakeConnection],
+        ometa_client: OpenMetadata,
+        entity: Table,
+        sample_config: Optional[SampleConfig] = None,
         partition_details: Optional[Dict] = None,
-        profile_sample_query: Optional[str] = None,
+        sample_query: Optional[str] = None,
+        storage_config: DataStorageConfig = None,
         sample_data_count: Optional[int] = SAMPLE_DATA_DEFAULT_COUNT,
         table_type: TableType = None,
+        **kwargs,
     ):
         super().__init__(
-            client,
-            table,
-            profile_sample_config,
-            partition_details,
-            profile_sample_query,
-            sample_data_count,
+            service_connection_config=service_connection_config,
+            ometa_client=ometa_client,
+            entity=entity,
+            sample_config=sample_config,
+            partition_details=partition_details,
+            sample_query=sample_query,
+            storage_config=storage_config,
+            sample_data_count=sample_data_count,
+            **kwargs,
         )
         self.table_type: TableType = table_type
 
@@ -83,13 +101,13 @@ class BigQuerySampler(SQASampler):
         """get query for sample data"""
         # TABLESAMPLE SYSTEM is not supported for views
         if (
-            self.profile_sample_type == ProfileSampleType.PERCENTAGE
+            self.sample_config.profile_sample_type == ProfileSampleType.PERCENTAGE
             and self.table_type != TableType.View
         ):
             return (
                 self._base_sample_query(column)
                 .suffix_with(
-                    f"TABLESAMPLE SYSTEM ({self.profile_sample or 100} PERCENT)",
+                    f"TABLESAMPLE SYSTEM ({self.sample_config.profile_sample or 100} PERCENT)",
                 )
                 .cte(f"{self.table.__tablename__}_sample")
             )
