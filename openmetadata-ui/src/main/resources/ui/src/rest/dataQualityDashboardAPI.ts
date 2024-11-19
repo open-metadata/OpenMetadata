@@ -195,6 +195,7 @@ export const fetchTestCaseSummaryByNoDimension = (
       query: {
         bool: {
           must: mustFilter,
+          must_not: [{ exists: { field: 'dataQualityDimension' } }],
         },
       },
     }),
