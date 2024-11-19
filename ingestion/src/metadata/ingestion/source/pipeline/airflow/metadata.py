@@ -357,32 +357,42 @@ class AirflowSource(PipelineServiceSource):
             ).filter(
                 DagModel.is_paused == False  # pylint: disable=singleton-comparison
             )
-        for serialized_dag in session_query.yield_per(100):
-            try:
-                data = serialized_dag[1]["dag"]
-                dag = AirflowDagDetails(
-                    dag_id=serialized_dag[0],
-                    fileloc=serialized_dag[2],
-                    data=AirflowDag.model_validate(serialized_dag[1]),
-                    max_active_runs=data.get("max_active_runs", None),
-                    description=data.get("_description", None),
-                    start_date=data.get("start_date", None),
-                    tasks=list(
-                        map(self._extract_serialized_task, data.get("tasks", []))
-                    ),
-                    schedule_interval=get_schedule_interval(data),
-                    owner=self.fetch_dag_owners(data),
-                )
+        limit = 100  # Number of records per batch
+        offset = 0  # Start
 
-                yield dag
-            except ValidationError as err:
-                logger.debug(traceback.format_exc())
-                logger.warning(
-                    f"Error building pydantic model for {serialized_dag} - {err}"
-                )
-            except Exception as err:
-                logger.debug(traceback.format_exc())
-                logger.warning(f"Wild error yielding dag {serialized_dag} - {err}")
+        while True:
+            paginated_query = session_query.limit(limit).offset(offset)
+            results = paginated_query.all()
+            if not results:
+                break
+            for serialized_dag in results:
+                try:
+                    data = serialized_dag[1]["dag"]
+                    dag = AirflowDagDetails(
+                        dag_id=serialized_dag[0],
+                        fileloc=serialized_dag[2],
+                        data=AirflowDag.model_validate(serialized_dag[1]),
+                        max_active_runs=data.get("max_active_runs", None),
+                        description=data.get("_description", None),
+                        start_date=data.get("start_date", None),
+                        tasks=list(
+                            map(self._extract_serialized_task, data.get("tasks", []))
+                        ),
+                        schedule_interval=get_schedule_interval(data),
+                        owner=self.fetch_dag_owners(data),
+                    )
+
+                    yield dag
+                except ValidationError as err:
+                    logger.debug(traceback.format_exc())
+                    logger.warning(
+                        f"Error building pydantic model for {serialized_dag} - {err}"
+                    )
+                except Exception as err:
+                    logger.debug(traceback.format_exc())
+                    logger.warning(f"Wild error yielding dag {serialized_dag} - {err}")
+
+            offset += limit
 
     def fetch_dag_owners(self, data) -> Optional[str]:
         """
