@@ -55,7 +55,11 @@ export const PersonaPage = () => {
   } = usePaging();
 
   const breadcrumbs: TitleBreadcrumbProps['titleLinks'] = useMemo(
-    () => getSettingPageEntityBreadCrumb(GlobalSettingsMenuCategory.PERSONA),
+    () =>
+      getSettingPageEntityBreadCrumb(
+        GlobalSettingsMenuCategory.MEMBERS,
+        t('label.persona-plural')
+      ),
     []
   );
 
@@ -88,9 +92,8 @@ export const PersonaPage = () => {
 
   const errorPlaceHolder = useMemo(
     () => (
-      <Col className="h-full text-center" span={24}>
+      <Col className="mt-24 text-center" span={24}>
         <ErrorPlaceHolder
-          buttonId="add-persona-button"
           heading={t('label.persona')}
           permission={isAdminUser}
           type={ERROR_PLACEHOLDER_TYPE.CREATE}
@@ -120,24 +123,12 @@ export const PersonaPage = () => {
     }
   };
 
-  if (isEmpty(persona) && !isLoading) {
-    return (
-      <>
-        {errorPlaceHolder}
-        {Boolean(addEditPersona) && (
-          <AddEditPersonaForm
-            persona={addEditPersona}
-            onCancel={handlePersonalAddEditCancel}
-            onSave={handlePersonaAddEditSave}
-          />
-        )}
-      </>
-    );
-  }
-
   return (
     <PageLayoutV1 pageTitle={t('label.persona-plural')}>
-      <Row className="user-listing page-container p-b-md" gutter={[16, 16]}>
+      <Row
+        className="user-listing page-container p-b-md"
+        data-testid="user-list-v1-component"
+        gutter={[16, 16]}>
         <Col span={24}>
           <TitleBreadcrumb titleLinks={breadcrumbs} />
         </Col>
@@ -169,6 +160,8 @@ export const PersonaPage = () => {
               </Col>
             ))}
 
+        {isEmpty(persona) && !isLoading && errorPlaceHolder}
+
         {showPagination && (
           <Col span={24}>
             <NextPrevious
@@ -181,6 +174,7 @@ export const PersonaPage = () => {
             />
           </Col>
         )}
+
         {Boolean(addEditPersona) && (
           <AddEditPersonaForm
             persona={addEditPersona}

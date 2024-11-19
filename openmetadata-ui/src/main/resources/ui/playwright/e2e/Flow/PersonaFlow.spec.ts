@@ -102,7 +102,15 @@ test.describe.serial('Persona operations', () => {
     // Verify created persona details
 
     await expect(
-      page.getByTestId(`persona-details-card-${PERSONA_DETAILS.name}`)
+      page
+        .getByTestId('persona-details-card')
+        .getByText(PERSONA_DETAILS.displayName)
+    ).toBeVisible();
+
+    await expect(
+      page
+        .getByTestId('persona-details-card')
+        .getByText(PERSONA_DETAILS.description)
     ).toBeVisible();
 
     const personaResponse = page.waitForResponse(
@@ -112,7 +120,8 @@ test.describe.serial('Persona operations', () => {
     );
 
     await page
-      .getByTestId(`persona-details-card-${PERSONA_DETAILS.name}`)
+      .locator('[data-testid="persona-details-card"]')
+      .getByText(PERSONA_DETAILS.displayName)
       .click();
 
     await personaResponse;
@@ -144,7 +153,8 @@ test.describe.serial('Persona operations', () => {
     page,
   }) => {
     await page
-      .getByTestId(`persona-details-card-${PERSONA_DETAILS.name}`)
+      .locator('[data-testid="persona-details-card"]')
+      .getByText(PERSONA_DETAILS.displayName)
       .click();
 
     await page.getByTestId('edit-description').click();
@@ -170,7 +180,9 @@ test.describe.serial('Persona operations', () => {
 
   test('Persona rename flow should work properly', async ({ page }) => {
     await page
-      .getByTestId(`persona-details-card-${PERSONA_DETAILS.name}`)
+      .locator('[data-testid="persona-details-card"]')
+      .getByText(PERSONA_DETAILS.displayName)
+
       .click();
 
     await updatePersonaDisplayName({ page, displayName: 'Test Persona' });
@@ -191,7 +203,8 @@ test.describe.serial('Persona operations', () => {
 
   test('Remove users in persona should work properly', async ({ page }) => {
     await page
-      .getByTestId(`persona-details-card-${PERSONA_DETAILS.name}`)
+      .locator('[data-testid="persona-details-card"]')
+      .getByText(PERSONA_DETAILS.displayName)
       .click();
 
     await page
@@ -218,7 +231,8 @@ test.describe.serial('Persona operations', () => {
 
   test('Delete persona should work properly', async ({ page }) => {
     await page
-      .getByTestId(`persona-details-card-${PERSONA_DETAILS.name}`)
+      .locator('[data-testid="persona-details-card"]')
+      .getByText(PERSONA_DETAILS.displayName)
       .click();
 
     await page.click('[data-testid="manage-button"]');

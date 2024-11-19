@@ -353,11 +353,10 @@ export const updateDescription = async (
 export const assignTag = async (
   page: Page,
   tag: string,
-  action: 'Add' | 'Edit' = 'Add',
-  parentId = 'entity-right-panel'
+  action: 'Add' | 'Edit' = 'Add'
 ) => {
   await page
-    .getByTestId(parentId)
+    .getByTestId('entity-right-panel')
     .getByTestId('tags-container')
     .getByTestId(action === 'Add' ? 'add-tag' : 'edit-button')
     .click();
@@ -380,7 +379,7 @@ export const assignTag = async (
 
   await expect(
     page
-      .getByTestId(parentId)
+      .getByTestId('entity-right-panel')
       .getByTestId('tags-container')
       .getByTestId(`tag-${tag}`)
   ).toBeVisible();

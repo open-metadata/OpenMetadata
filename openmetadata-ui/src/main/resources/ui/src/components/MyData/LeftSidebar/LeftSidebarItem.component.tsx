@@ -19,7 +19,7 @@ import { NavLink } from 'react-router-dom';
 interface LeftSidebarItemProps {
   data: {
     key: string;
-    title: string;
+    label: string;
     dataTestId: string;
     redirect_url?: string;
     icon: SvgComponent;
@@ -29,7 +29,7 @@ interface LeftSidebarItemProps {
 }
 
 const LeftSidebarItem = ({
-  data: { title, redirect_url, dataTestId, icon, isBeta, onClick },
+  data: { label, redirect_url, dataTestId, icon, isBeta, onClick },
 }: LeftSidebarItemProps) => {
   const { t } = useTranslation();
 
@@ -42,7 +42,7 @@ const LeftSidebarItem = ({
       }}>
       <div className="d-flex items-center">
         <Icon component={icon} />
-        <Typography.Text className="left-panel-label">{title}</Typography.Text>
+        <Typography.Text className="left-panel-label">{label}</Typography.Text>
 
         {isBeta && (
           <Badge
@@ -61,7 +61,7 @@ const LeftSidebarItem = ({
       type="text"
       onClick={onClick}>
       <Icon component={icon} />
-      <Typography.Text className="left-panel-label">{title}</Typography.Text>
+      <Typography.Text className="left-panel-label">{label}</Typography.Text>
     </Button>
   );
 };

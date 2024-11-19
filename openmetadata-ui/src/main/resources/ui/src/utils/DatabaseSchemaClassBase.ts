@@ -14,7 +14,6 @@ import { EntityTags } from 'Models';
 import { PagingHandlerParams } from '../components/common/NextPrevious/NextPrevious.interface';
 import { TabProps } from '../components/common/TabsLabel/TabsLabel.interface';
 import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
-import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs } from '../enums/entity.enum';
 import { DatabaseSchema } from '../generated/entity/data/databaseSchema';
 import { Table } from '../generated/entity/data/table';
@@ -65,81 +64,6 @@ class DatabaseSchemaClassBase {
   ): TabProps[] {
     return getDataBaseSchemaPageBaseTabs(databaseSchemaTabData);
   }
-
-  public getDatabaseSchemaPageTabsIds(): EntityTabs[] {
-    return [
-      EntityTabs.SCHEMA,
-      EntityTabs.ACTIVITY_FEED,
-      EntityTabs.CUSTOM_PROPERTIES,
-    ];
-  }
-
-  public getDatabaseSchemaPageDefaultLayout = (tab: EntityTabs) => {
-    switch (tab) {
-      case EntityTabs.SCHEMA:
-        return [
-          {
-            h: 2,
-            i: DetailPageWidgetKeys.DESCRIPTION,
-            w: 6,
-            x: 0,
-            y: 0,
-            static: false,
-          },
-          {
-            h: 8,
-            i: DetailPageWidgetKeys.TABLE_SCHEMA,
-            w: 6,
-            x: 0,
-            y: 0,
-            static: false,
-          },
-          {
-            h: 1,
-            i: DetailPageWidgetKeys.FREQUENTLY_JOINED_TABLES,
-            w: 2,
-            x: 6,
-            y: 0,
-            static: false,
-          },
-          {
-            h: 1,
-            i: DetailPageWidgetKeys.DATA_PRODUCTS,
-            w: 2,
-            x: 6,
-            y: 1,
-            static: false,
-          },
-          {
-            h: 1,
-            i: DetailPageWidgetKeys.TAGS,
-            w: 2,
-            x: 6,
-            y: 2,
-            static: false,
-          },
-          {
-            h: 1,
-            i: DetailPageWidgetKeys.GLOSSARY_TERMS,
-            w: 2,
-            x: 6,
-            y: 3,
-            static: false,
-          },
-          {
-            h: 3,
-            i: DetailPageWidgetKeys.CUSTOM_PROPERTIES,
-            w: 2,
-            x: 6,
-            y: 4,
-            static: false,
-          },
-        ];
-
-      default:
-        return [];
-    }
-  };
 }
 
 const databaseSchemaClassBase = new DatabaseSchemaClassBase();
