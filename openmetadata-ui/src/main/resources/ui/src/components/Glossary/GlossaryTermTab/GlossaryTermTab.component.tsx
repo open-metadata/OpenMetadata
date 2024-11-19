@@ -123,7 +123,7 @@ const GlossaryTermTab = ({
   );
   const [statusDropdownSelection, setStatusDropdownSelections] = useState<
     string[]
-  >(['Approved', 'Draft']);
+  >([Status.Approved, Status.Draft, Status.InReview]);
   const [selectedStatus, setSelectedStatus] = useState<string[]>([
     ...statusDropdownSelection,
   ]);
