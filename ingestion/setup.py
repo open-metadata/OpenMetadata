@@ -305,8 +305,8 @@ plugins: Dict[str, Set[str]] = {
         VERSIONS["geoalchemy2"],
     },
     "mstr": {
-        'mstrio-py==11.3.5.101; python_version >= "3.9"',
-        'mstrio-py==11.4.9.101; python_version >= "3.10"',
+        'mstrio-py==11.3.5.101; python_version >= "3.9" and python_version < "3.10"',
+        'mstrio-py==11.4.9.101; python_version >= "3.10" and python_version < "3.11"',
     },
     "sagemaker": {VERSIONS["boto3"]},
     "salesforce": {"simple_salesforce~=1.11"},
