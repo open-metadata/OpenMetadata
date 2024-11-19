@@ -273,11 +273,11 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
         ).with_schema()
         result = []
         for column in table1.key_columns + table1.extra_columns:
-            col1 = table1._schema.get(column)
+            col1 = table1._schema.get(column)  # pylint: disable=protected-access
             if col1 is None:
                 # Skip columns that are not in the first table. We cover this case in get_changed_added_columns.
                 continue
-            col2 = table2._schema.get(column)
+            col2 = table2._schema.get(column)  # pylint: disable=protected-access
             if col2 is None:
                 # Skip columns that are not in the second table. We cover this case in get_changed_added_columns.
                 continue
