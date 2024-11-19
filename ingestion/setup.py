@@ -304,7 +304,10 @@ plugins: Dict[str, Set[str]] = {
         "psycopg2-binary",
         VERSIONS["geoalchemy2"],
     },
-    "mstr": {'mstrio-py~=11.3.5.101; python_version >= "3.9"'},
+    "mstr": {
+        'mstrio-py==11.3.5.101; python_version >= "3.9"',
+        'mstrio-py==11.4.9.101; python_version >= "3.10"',
+    },
     "sagemaker": {VERSIONS["boto3"]},
     "salesforce": {"simple_salesforce~=1.11"},
     "sample-data": {VERSIONS["avro"], VERSIONS["grpc-tools"]},
