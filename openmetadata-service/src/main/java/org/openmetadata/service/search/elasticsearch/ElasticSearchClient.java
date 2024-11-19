@@ -131,6 +131,7 @@ import java.util.stream.Stream;
 import javax.json.JsonObject;
 import javax.net.ssl.SSLContext;
 import javax.ws.rs.core.Response;
+import lombok.Getter;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang.WordUtils;
@@ -217,6 +218,7 @@ import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 public class ElasticSearchClient implements SearchClient {
 
   @SuppressWarnings("deprecated")
+  @Getter
   protected final RestHighLevelClient client;
 
   private final RBACConditionEvaluator rbacConditionEvaluator;
