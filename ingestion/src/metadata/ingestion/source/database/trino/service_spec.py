@@ -4,6 +4,7 @@ from metadata.ingestion.source.database.trino.usage import TrinoUsageSource
 from metadata.profiler.interface.sqlalchemy.trino.profiler_interface import (
     TrinoProfilerInterface,
 )
+from metadata.sampler.sqlalchemy.trino.sampler import TrinoSampler
 from metadata.utils.service_spec.default import DefaultDatabaseSpec
 
 ServiceSpec = DefaultDatabaseSpec(
@@ -11,4 +12,5 @@ ServiceSpec = DefaultDatabaseSpec(
     lineage_source_class=TrinoLineageSource,
     usage_source_class=TrinoUsageSource,
     profiler_class=TrinoProfilerInterface,
+    sampler_class=TrinoSampler,
 )
