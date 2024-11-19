@@ -205,6 +205,7 @@ export enum EntityTabs {
   API_ENDPOINT = 'apiEndpoint',
   OVERVIEW = 'overview',
   INCIDENTS = 'incidents',
+  EXPRESSION = 'expression',
 }
 
 export enum EntityAction {
