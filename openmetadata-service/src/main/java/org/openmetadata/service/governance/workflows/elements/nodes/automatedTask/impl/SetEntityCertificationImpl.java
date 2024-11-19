@@ -44,10 +44,21 @@ public class SetEntityCertificationImpl implements JavaDelegate {
     String originalJson = JsonUtils.pojoToJson(entity);
 
     Optional<String> oCertification = Optional.ofNullable(certification);
+    Optional<AssetCertification> oEntityCertification =
+        Optional.ofNullable(entity.getCertification());
+
+    if (oCertification.isEmpty() && oEntityCertification.isEmpty()) {
+      return;
+    }
 
     if (oCertification.isEmpty()) {
       entity.setCertification(null);
     } else {
+
+      if (oCertification.get().equals(oEntityCertification.get().getTagLabel().getTagFQN())) {
+        return;
+      }
+
       AssetCertification assetCertification =
           new AssetCertification()
               .withTagLabel(EntityUtil.toTagLabel(TagLabelUtil.getTag(certification)));
