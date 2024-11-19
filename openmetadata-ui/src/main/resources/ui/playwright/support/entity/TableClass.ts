@@ -112,6 +112,7 @@ export class TableClass extends EntityClass {
   testSuitePipelineResponseData: unknown[] = [];
   testCasesResponseData: unknown[] = [];
   queryResponseData: unknown[] = [];
+  additionalEntityTableResponseData: unknown[] = [];
 
   constructor(name?: string) {
     super(EntityTypeEndpoint.Table);
@@ -155,6 +156,31 @@ export class TableClass extends EntityClass {
       schema,
       entity,
     };
+  }
+
+  async createAdditionalTable(
+    tableData: {
+      name: string;
+      displayName: string;
+      description?: string;
+      columns?: any[];
+      databaseSchema?: string;
+    },
+    apiContext: APIRequestContext
+  ) {
+    const entityResponse = await apiContext.post('/api/v1/tables', {
+      data: {
+        ...this.entity,
+        ...tableData,
+      },
+    });
+    const entity = await entityResponse.json();
+    this.additionalEntityTableResponseData = [
+      ...this.additionalEntityTableResponseData,
+      entity,
+    ];
+
+    return entity;
   }
 
   get() {

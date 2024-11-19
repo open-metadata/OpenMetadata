@@ -48,34 +48,31 @@ describe('TopicSummary component tests', () => {
       render(<TopicSummary entityDetails={mockTopicEntityDetails} />);
     });
 
-    const partitionsLabel = await screen.findByTestId('Partitions-label');
-    const replicationFactorLabel = await screen.findByTestId(
-      'Replication Factor-label'
+    const partitionsLabel = screen.getByTestId('label.partition-plural-label');
+    const replicationFactorLabel = screen.getByTestId(
+      'label.replication-factor-label'
     );
-    const retentionSizeLabel = await screen.findByTestId(
-      'Retention Size-label'
+    const retentionSizeLabel = screen.getByTestId('label.retention-size-label');
+    const cleanUpPoliciesLabel = screen.getByTestId(
+      'label.clean-up-policy-plural-label'
     );
-    const cleanUpPoliciesLabel = await screen.findByTestId(
-      'CleanUp Policies-label'
+    const maxMessageSizeLabel = screen.getByTestId(
+      'label.max-message-size-label'
     );
-    const maxMessageSizeLabel = await screen.findByTestId(
-      'Max Message Size-label'
+
+    const partitionsValue = screen.getByTestId('label.partition-plural-value');
+    const replicationFactorValue = screen.getByTestId(
+      'label.replication-factor-value'
     );
-    const partitionsValue = await screen.findByTestId('Partitions-value');
-    const replicationFactorValue = await screen.findByTestId(
-      'Replication Factor-value'
+    const retentionSizeValue = screen.getByTestId('label.retention-size-value');
+    const cleanUpPoliciesValue = screen.getByTestId(
+      'label.clean-up-policy-plural-value'
     );
-    const retentionSizeValue = await screen.findByTestId(
-      'Retention Size-value'
+    const maxMessageSizeValue = screen.getByTestId(
+      'label.max-message-size-value'
     );
-    const cleanUpPoliciesValue = await screen.findByTestId(
-      'CleanUp Policies-value'
-    );
-    const maxMessageSizeValue = await screen.findByTestId(
-      'Max Message Size-value'
-    );
-    const schemaHeader = await screen.findByTestId('schema-header');
-    const summaryList = await screen.findByTestId('SummaryList');
+    const schemaHeader = screen.getByTestId('schema-header');
+    const summaryList = screen.getByTestId('SummaryList');
 
     expect(partitionsLabel).toBeInTheDocument();
     expect(replicationFactorLabel).toBeInTheDocument();
@@ -115,7 +112,7 @@ describe('TopicSummary component tests', () => {
       render(<TopicSummary entityDetails={mockTopicEntityDetails} />);
     });
 
-    const partitionsValue = screen.getByTestId('Partitions-value');
+    const partitionsValue = screen.getByTestId('label.partition-plural-value');
 
     expect(partitionsValue).toContainHTML('-');
   });

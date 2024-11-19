@@ -24,6 +24,10 @@ import { SearchIndex } from '../../../../enums/search.enum';
 import { ConstraintType, Table } from '../../../../generated/entity/data/table';
 import { searchQuery } from '../../../../rest/searchAPI';
 import { getServiceNameQueryFilter } from '../../../../utils/ServiceUtils';
+import {
+  escapeESReservedCharacters,
+  getEncodedFqn,
+} from '../../../../utils/StringsUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import './table-constraint.style.less';
 import {
@@ -58,8 +62,11 @@ const TableConstraintsModal = ({
   const getSearchResults = async (value: string) => {
     setIsRelatedColumnLoading(true);
     try {
+      const encodedValue = getEncodedFqn(escapeESReservedCharacters(value));
       const data = await searchQuery({
-        query: value,
+        query:
+          value &&
+          `(columns.name.keyword:${encodedValue}) OR (columns.fullyQualifiedName:${encodedValue})`,
         searchIndex: SearchIndex.TABLE,
         queryFilter: getServiceNameQueryFilter(
           tableDetails?.service?.name ?? ''
@@ -250,6 +257,7 @@ const TableConstraintsModal = ({
                       },
                     ]}>
                     <Select
+                      allowClear
                       showSearch
                       data-testid={`${key}-related-column-select`}
                       loading={isRelatedColumnLoading}
@@ -259,7 +267,10 @@ const TableConstraintsModal = ({
                       onClick={(e) => e.stopPropagation()}
                       onSearch={handleSearch}>
                       {relatedColumns.map((option) => (
-                        <Select.Option key={option.value} value={option.value}>
+                        <Select.Option
+                          data-testid={`option-label-${option.label}`}
+                          key={option.value}
+                          value={option.value}>
                           <Tooltip placement="right" title={option.label}>
                             <Typography.Text>{option.label}</Typography.Text>
                           </Tooltip>
