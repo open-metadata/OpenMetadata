@@ -16,7 +16,6 @@ import { LandingPageWidgetKeys } from '../enums/CustomizablePage.enum';
 import { Document } from '../generated/entity/docStore/document';
 import { Thread, ThreadType } from '../generated/entity/feed/thread';
 import { User } from '../generated/entity/teams/user';
-import { PageType } from '../generated/system/ui/page';
 import { Paging } from '../generated/type/paging';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 
@@ -134,12 +133,9 @@ export const mockDocumentData: Document = {
   fullyQualifiedName: `persona.${mockPersonaName}.Page.LandingPage`,
   entityType: 'Page',
   data: {
-    pages: [
-      {
-        pageType: PageType.LandingPage,
-        layout: mockCustomizedLayout,
-      },
-    ],
+    page: {
+      layout: mockCustomizedLayout,
+    },
   },
 };
 

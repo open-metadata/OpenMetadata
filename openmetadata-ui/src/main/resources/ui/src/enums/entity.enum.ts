@@ -157,7 +157,6 @@ export enum TabSpecificField {
   CUSTOM_PROPERTIES = 'customProperties',
   LOCATION = 'location',
   RELATED_METRICS = 'relatedMetrics',
-  UI_CUSTOMIZATION = 'uiCustomization',
 }
 
 export enum FqnPart {
@@ -206,9 +205,6 @@ export enum EntityTabs {
   API_ENDPOINT = 'apiEndpoint',
   OVERVIEW = 'overview',
   INCIDENTS = 'incidents',
-  TERMS = 'terms',
-  GLOSSARY_TERMS = 'glossary_terms',
-  ASSETS = 'assets',
   EXPRESSION = 'expression',
 }
 

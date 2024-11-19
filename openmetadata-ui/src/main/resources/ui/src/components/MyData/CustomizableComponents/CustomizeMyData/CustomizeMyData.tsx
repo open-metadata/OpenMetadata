@@ -11,24 +11,30 @@
  *  limitations under the License.
  */
 
+import { Button, Col, Modal, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { isEmpty } from 'lodash';
+import { isEmpty, isNil } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import RGL, { Layout, WidthProvider } from 'react-grid-layout';
 import { useTranslation } from 'react-i18next';
+import { Link, useHistory } from 'react-router-dom';
 import gridBgImg from '../../../../assets/img/grid-bg-img.png';
 import { KNOWLEDGE_LIST_LENGTH } from '../../../../constants/constants';
+import {
+  GlobalSettingOptions,
+  GlobalSettingsMenuCategory,
+} from '../../../../constants/GlobalSettings.constants';
 import { LandingPageWidgetKeys } from '../../../../enums/CustomizablePage.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { Document } from '../../../../generated/entity/docStore/document';
 import { EntityReference } from '../../../../generated/entity/type';
-import { Page } from '../../../../generated/system/ui/page';
-import { PageType } from '../../../../generated/system/ui/uiCustomization';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
+import { useFqn } from '../../../../hooks/useFqn';
 import { useGridLayoutDirection } from '../../../../hooks/useGridLayoutDirection';
 import { WidgetConfig } from '../../../../pages/CustomizablePage/CustomizablePage.interface';
 import '../../../../pages/MyDataPage/my-data.less';
 import { searchQuery } from '../../../../rest/searchAPI';
+import { Transi18next } from '../../../../utils/CommonUtils';
 import {
   getAddWidgetHandler,
   getLayoutUpdateHandler,
@@ -37,13 +43,16 @@ import {
   getUniqueFilteredLayout,
   getWidgetFromKey,
 } from '../../../../utils/CustomizableLandingPageUtils';
-import customizeMyDataPageClassBase from '../../../../utils/CustomizeMyDataPageClassBase';
+import customizePageClassBase from '../../../../utils/CustomizePageClassBase';
 import { getEntityName } from '../../../../utils/EntityUtils';
+import {
+  getPersonaDetailsPath,
+  getSettingPath,
+} from '../../../../utils/RouterUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import ActivityFeedProvider from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import PageLayoutV1 from '../../../PageLayoutV1/PageLayoutV1';
 import AddWidgetModal from '../AddWidgetModal/AddWidgetModal';
-import { CustomizablePageHeader } from '../CustomizablePageHeader/CustomizablePageHeader';
 import './customize-my-data.less';
 import { CustomizeMyDataProps } from './CustomizeMyData.interface';
 
@@ -53,14 +62,17 @@ function CustomizeMyData({
   personaDetails,
   initialPageData,
   onSaveLayout,
+  handlePageDataChange,
+  handleSaveCurrentPageLayout,
 }: Readonly<CustomizeMyDataProps>) {
   const { t } = useTranslation();
-  const { currentUser } = useApplicationStore();
-
+  const { currentUser, theme } = useApplicationStore();
+  const history = useHistory();
+  const { fqn: decodedPersonaFQN } = useFqn();
   const [layout, setLayout] = useState<Array<WidgetConfig>>(
     getLayoutWithEmptyWidgetPlaceholder(
-      (initialPageData?.layout as WidgetConfig[]) ??
-        customizeMyDataPageClassBase.defaultLayout,
+      initialPageData.data?.page?.layout ??
+        customizePageClassBase.defaultLayout,
       2,
       4
     )
@@ -70,10 +82,11 @@ function CustomizeMyData({
     LandingPageWidgetKeys.EMPTY_WIDGET_PLACEHOLDER
   );
   const [isWidgetModalOpen, setIsWidgetModalOpen] = useState<boolean>(false);
-
+  const [isResetModalOpen, setIsResetModalOpen] = useState<boolean>(false);
   const [followedData, setFollowedData] = useState<Array<EntityReference>>([]);
   const [followedDataCount, setFollowedDataCount] = useState(0);
   const [isLoadingOwnedData, setIsLoadingOwnedData] = useState<boolean>(false);
+  const [saving, setSaving] = useState<boolean>(false);
 
   const handlePlaceholderWidgetKey = useCallback((value: string) => {
     setPlaceholderWidgetKey(value);
@@ -94,7 +107,7 @@ function CustomizeMyData({
           newWidgetData,
           placeholderWidgetKey,
           widgetSize,
-          customizeMyDataPageClassBase.landingPageMaxGridSize
+          customizePageClassBase.landingPageMaxGridSize
         )
       );
       setIsWidgetModalOpen(false);
@@ -110,6 +123,14 @@ function CustomizeMyData({
     },
     [layout]
   );
+
+  const handleOpenResetModal = useCallback(() => {
+    setIsResetModalOpen(true);
+  }, []);
+
+  const handleCloseResetModal = useCallback(() => {
+    setIsResetModalOpen(false);
+  }, []);
 
   const handleOpenAddWidgetModal = useCallback(() => {
     setIsWidgetModalOpen(true);
@@ -176,15 +197,44 @@ function CustomizeMyData({
     ]
   );
 
+  useEffect(() => {
+    handlePageDataChange({
+      ...initialPageData,
+      data: {
+        page: {
+          layout: getUniqueFilteredLayout(layout),
+        },
+      },
+    });
+  }, [layout]);
+
+  const handleCancel = useCallback(() => {
+    history.push(
+      getSettingPath(
+        GlobalSettingsMenuCategory.PREFERENCES,
+        GlobalSettingOptions.CUSTOMIZE_LANDING_PAGE
+      )
+    );
+  }, []);
+
   const handleReset = useCallback(() => {
     // Get default layout with the empty widget added at the end
     const newMainPanelLayout = getLayoutWithEmptyWidgetPlaceholder(
-      customizeMyDataPageClassBase.defaultLayout,
+      customizePageClassBase.defaultLayout,
       2,
       4
     );
     setLayout(newMainPanelLayout);
-    onSaveLayout();
+    handlePageDataChange({
+      ...initialPageData,
+      data: {
+        page: {
+          layout: getUniqueFilteredLayout(newMainPanelLayout),
+        },
+      },
+    });
+    handleSaveCurrentPageLayout(true);
+    setIsResetModalOpen(false);
   }, []);
 
   useEffect(() => {
@@ -192,13 +242,10 @@ function CustomizeMyData({
   }, []);
 
   const handleSave = async () => {
-    await onSaveLayout({
-      ...(initialPageData ??
-        ({
-          pageType: PageType.LandingPage,
-        } as Page)),
-      layout: getUniqueFilteredLayout(layout),
-    });
+    setSaving(true);
+    await onSaveLayout();
+
+    setSaving(false);
   };
 
   // call the hook to set the direction of the grid layout
@@ -207,6 +254,59 @@ function CustomizeMyData({
   return (
     <ActivityFeedProvider>
       <PageLayoutV1
+        header={
+          <Col
+            className="bg-white d-flex justify-between border-bottom p-sm"
+            data-testid="customize-landing-page-header"
+            span={24}>
+            <div className="d-flex gap-2 items-center">
+              <Typography.Title
+                className="m-0"
+                data-testid="customize-page-title"
+                level={5}>
+                <Transi18next
+                  i18nKey="message.customize-landing-page-header"
+                  renderElement={
+                    <Link
+                      style={{ color: theme.primaryColor, fontSize: '16px' }}
+                      to={getPersonaDetailsPath(decodedPersonaFQN)}
+                    />
+                  }
+                  values={{
+                    persona: isNil(personaDetails)
+                      ? decodedPersonaFQN
+                      : getEntityName(personaDetails),
+                  }}
+                />
+              </Typography.Title>
+            </div>
+            <Space>
+              <Button
+                data-testid="cancel-button"
+                disabled={saving}
+                size="small"
+                onClick={handleCancel}>
+                {t('label.cancel')}
+              </Button>
+              <Button
+                data-testid="reset-button"
+                disabled={saving}
+                size="small"
+                onClick={handleOpenResetModal}>
+                {t('label.reset')}
+              </Button>
+              <Button
+                data-testid="save-button"
+                loading={saving}
+                size="small"
+                type="primary"
+                onClick={handleSave}>
+                {t('label.save')}
+              </Button>
+            </Space>
+          </Col>
+        }
+        headerClassName="m-0 p-0"
         mainContainerClassName="p-t-0"
         pageContainerStyle={{
           backgroundImage: `url(${gridBgImg})`,
@@ -214,21 +314,16 @@ function CustomizeMyData({
         pageTitle={t('label.customize-entity', {
           entity: t('label.landing-page'),
         })}>
-        <CustomizablePageHeader
-          personaName={getEntityName(personaDetails)}
-          onReset={handleReset}
-          onSave={handleSave}
-        />
         <ReactGridLayout
           className="grid-container"
           cols={4}
           draggableHandle=".drag-widget-icon"
           isResizable={false}
           margin={[
-            customizeMyDataPageClassBase.landingPageWidgetMargin,
-            customizeMyDataPageClassBase.landingPageWidgetMargin,
+            customizePageClassBase.landingPageWidgetMargin,
+            customizePageClassBase.landingPageWidgetMargin,
           ]}
-          rowHeight={customizeMyDataPageClassBase.landingPageRowHeight}
+          rowHeight={customizePageClassBase.landingPageRowHeight}
           onLayoutChange={handleLayoutUpdate}>
           {widgets}
         </ReactGridLayout>
@@ -239,12 +334,23 @@ function CustomizeMyData({
           addedWidgetsList={addedWidgetsList}
           handleAddWidget={handleMainPanelAddWidget}
           handleCloseAddWidgetModal={handleCloseAddWidgetModal}
-          maxGridSizeSupport={
-            customizeMyDataPageClassBase.landingPageMaxGridSize
-          }
+          maxGridSizeSupport={customizePageClassBase.landingPageMaxGridSize}
           open={isWidgetModalOpen}
           placeholderWidgetKey={placeholderWidgetKey}
         />
+      )}
+      {isResetModalOpen && (
+        <Modal
+          centered
+          cancelText={t('label.no')}
+          data-testid="reset-layout-modal"
+          okText={t('label.yes')}
+          open={isResetModalOpen}
+          title={t('label.reset-default-layout')}
+          onCancel={handleCloseResetModal}
+          onOk={handleReset}>
+          {t('message.reset-layout-confirmation')}
+        </Modal>
       )}
     </ActivityFeedProvider>
   );

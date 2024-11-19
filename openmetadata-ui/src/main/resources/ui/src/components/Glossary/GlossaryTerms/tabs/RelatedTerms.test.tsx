@@ -18,40 +18,57 @@ import {
 } from '../../../../mocks/Glossary.mock';
 import RelatedTerms from './RelatedTerms';
 
-const mockContext = {
-  data: MOCKED_GLOSSARY_TERMS[2],
-  onUpdate: jest.fn(),
-  isVersionView: false,
-  permissions: MOCK_PERMISSIONS,
-};
+const glossaryTerm = MOCKED_GLOSSARY_TERMS[2];
 
-jest.mock('../../../GenericProvider/GenericProvider', () => ({
-  useGenericContext: jest.fn().mockImplementation(() => mockContext),
-}));
+const permissions = MOCK_PERMISSIONS;
+
+const onGlossaryTermUpdate = jest.fn();
 
 describe('RelatedTerms', () => {
   it('should render the component', () => {
-    const { container } = render(<RelatedTerms />);
+    const { container } = render(
+      <RelatedTerms
+        glossaryTerm={glossaryTerm}
+        permissions={permissions}
+        onGlossaryTermUpdate={onGlossaryTermUpdate}
+      />
+    );
 
     expect(container).toBeInTheDocument();
   });
 
   it('should show the related terms', () => {
-    const { getByText } = render(<RelatedTerms />);
+    const { getByText } = render(
+      <RelatedTerms
+        glossaryTerm={glossaryTerm}
+        permissions={permissions}
+        onGlossaryTermUpdate={onGlossaryTermUpdate}
+      />
+    );
 
     expect(getByText('Business Customer')).toBeInTheDocument();
   });
 
   it('should show the add button if there are no related terms and the user has edit permissions', () => {
-    mockContext.data = { ...mockContext.data, relatedTerms: [] };
-    const { getByTestId } = render(<RelatedTerms />);
+    const { getByTestId } = render(
+      <RelatedTerms
+        glossaryTerm={{ ...glossaryTerm, relatedTerms: [] }}
+        permissions={permissions}
+        onGlossaryTermUpdate={onGlossaryTermUpdate}
+      />
+    );
 
     expect(getByTestId('related-term-add-button')).toBeInTheDocument();
   });
 
   it('should not show the add button if there are no related terms and the user does not have edit permissions', async () => {
-    mockContext.permissions = { ...mockContext.permissions, EditAll: false };
-    const { queryByTestId, findByText } = render(<RelatedTerms />);
+    const { queryByTestId, findByText } = render(
+      <RelatedTerms
+        glossaryTerm={{ ...glossaryTerm, relatedTerms: [] }}
+        permissions={{ ...MOCK_PERMISSIONS, EditAll: false }}
+        onGlossaryTermUpdate={onGlossaryTermUpdate}
+      />
+    );
 
     expect(queryByTestId('related-term-add-button')).toBeNull();
 
@@ -61,16 +78,25 @@ describe('RelatedTerms', () => {
   });
 
   it('should show the edit button if there are related terms and the user has edit permissions', () => {
-    mockContext.permissions = MOCK_PERMISSIONS;
-    mockContext.data = { ...MOCKED_GLOSSARY_TERMS[2] };
-    const { getByTestId } = render(<RelatedTerms />);
+    const { getByTestId } = render(
+      <RelatedTerms
+        glossaryTerm={glossaryTerm}
+        permissions={permissions}
+        onGlossaryTermUpdate={onGlossaryTermUpdate}
+      />
+    );
 
     expect(getByTestId('edit-button')).toBeInTheDocument();
   });
 
   it('should not show the edit button if there are no related terms and the user has edit permissions', () => {
-    mockContext.data = { ...MOCKED_GLOSSARY_TERMS[2], relatedTerms: [] };
-    const { queryByTestId } = render(<RelatedTerms />);
+    const { queryByTestId } = render(
+      <RelatedTerms
+        glossaryTerm={{ ...glossaryTerm, relatedTerms: [] }}
+        permissions={permissions}
+        onGlossaryTermUpdate={onGlossaryTermUpdate}
+      />
+    );
 
     expect(queryByTestId('edit-button')).toBeNull();
   });
