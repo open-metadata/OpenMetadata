@@ -28,15 +28,16 @@ import { UserSelectableList } from '../../../components/common/UserSelectableLis
 import EntityHeaderTitle from '../../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
 import { EntityName } from '../../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
-import { CustomizeUI } from '../../../components/Settings/Persona/CustomizeUI/CustomizeUI';
 import { UsersTab } from '../../../components/Settings/Users/UsersTab/UsersTabs.component';
-import { GlobalSettingsMenuCategory } from '../../../constants/GlobalSettings.constants';
+import {
+  GlobalSettingOptions,
+  GlobalSettingsMenuCategory,
+} from '../../../constants/GlobalSettings.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { SIZE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { Persona } from '../../../generated/entity/teams/persona';
-import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../hooks/useFqn';
 import { getPersonaByName, updatePersona } from '../../../rest/PersonaAPI';
 import { getEntityName } from '../../../utils/EntityUtils';
@@ -54,11 +55,6 @@ export const PersonaDetailsPage = () => {
   const [entityPermission, setEntityPermission] = useState(
     DEFAULT_ENTITY_PERMISSION
   );
-  const location = useCustomLocation();
-  const activeKey = useMemo(
-    () => location.hash?.replace('#', '') || 'users',
-    [location]
-  );
 
   const { getEntityPermissionByFqn } = usePermissionProvider();
 
@@ -66,7 +62,10 @@ export const PersonaDetailsPage = () => {
     () => [
       {
         name: t('label.persona-plural'),
-        url: getSettingPath(GlobalSettingsMenuCategory.PERSONA),
+        url: getSettingPath(
+          GlobalSettingsMenuCategory.MEMBERS,
+          GlobalSettingOptions.PERSONA
+        ),
       },
       {
         name: getEntityName(personaDetails),
@@ -165,34 +164,13 @@ export const PersonaDetailsPage = () => {
   );
 
   const handleAfterDeleteAction = () => {
-    history.push(getSettingPath(GlobalSettingsMenuCategory.PERSONA));
+    history.push(
+      getSettingPath(
+        GlobalSettingsMenuCategory.MEMBERS,
+        GlobalSettingOptions.PERSONA
+      )
+    );
   };
-
-  const handleTabChange = (activeKey: string) => {
-    history.push({
-      hash: activeKey,
-    });
-  };
-
-  const tabItems = useMemo(() => {
-    return [
-      {
-        label: t('label.user-plural'),
-        key: 'users',
-        children: (
-          <UsersTab
-            users={personaDetails?.users ?? []}
-            onRemoveUser={handleRemoveUser}
-          />
-        ),
-      },
-      {
-        label: t('label.customize-ui'),
-        key: 'customize-ui',
-        children: <CustomizeUI />,
-      },
-    ];
-  }, [personaDetails]);
 
   if (isLoading) {
     return <Loader />;
@@ -251,8 +229,19 @@ export const PersonaDetailsPage = () => {
         </Col>
         <Col span={24}>
           <Tabs
-            activeKey={activeKey}
-            items={tabItems}
+            defaultActiveKey="users"
+            items={[
+              {
+                label: 'Users',
+                key: 'users',
+                children: (
+                  <UsersTab
+                    users={personaDetails.users ?? []}
+                    onRemoveUser={handleRemoveUser}
+                  />
+                ),
+              },
+            ]}
             tabBarExtraContent={
               <UserSelectableList
                 hasPermission
@@ -267,7 +256,6 @@ export const PersonaDetailsPage = () => {
                 </Button>
               </UserSelectableList>
             }
-            onChange={handleTabChange}
           />
         </Col>
       </Row>

@@ -318,7 +318,7 @@ const DataProductsDetailsPage = ({
     assetTabRef.current?.refreshAssets();
   };
 
-  const onNameSave = (obj: { name: string; displayName?: string }) => {
+  const onNameSave = (obj: { name: string; displayName: string }) => {
     if (dataProduct) {
       const { displayName } = obj;
       let updatedDetails = cloneDeep(dataProduct);
@@ -640,7 +640,7 @@ const DataProductsDetailsPage = ({
         </Col>
       </Row>
 
-      <EntityNameModal<DataProduct>
+      <EntityNameModal
         entity={dataProduct}
         title={t('label.edit-entity', {
           entity: t('label.display-name'),

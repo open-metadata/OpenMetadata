@@ -25,12 +25,11 @@ import {
   OperationPermission,
   ResourceEntity,
 } from '../../context/PermissionProvider/PermissionProvider.interface';
-import { EntityAction, EntityTabs } from '../../enums/entity.enum';
+import { EntityAction } from '../../enums/entity.enum';
 import {
   CreateThread,
   ThreadType,
 } from '../../generated/api/feed/createThread';
-import { Glossary } from '../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
 import { VERSION_VIEW_GLOSSARY_PERMISSION } from '../../mocks/Glossary.mock';
 import { postThread } from '../../rest/feedsAPI';
@@ -247,7 +246,7 @@ const GlossaryV1 = ({
       history.push(
         getGlossaryTermDetailsPath(
           selectedData.fullyQualifiedName || '',
-          EntityTabs.TERMS
+          'terms'
         )
       );
     }
@@ -325,17 +324,6 @@ const GlossaryV1 = ({
     }
   };
 
-  const handleGlossaryUpdate = async (newGlossary: Glossary) => {
-    const jsonPatch = compare(selectedData, newGlossary);
-
-    const shouldRefreshTerms = jsonPatch.some((patch) =>
-      patch.path.startsWith('/owners')
-    );
-
-    await updateGlossary(newGlossary);
-    shouldRefreshTerms && loadGlossaryTerms(true);
-  };
-
   useEffect(() => {
     if (id && !action) {
       loadGlossaryTerms();
@@ -365,7 +353,7 @@ const GlossaryV1 = ({
             permissions={glossaryPermission}
             refreshGlossaryTerms={() => loadGlossaryTerms(true)}
             termsLoading={isTermsLoading}
-            updateGlossary={handleGlossaryUpdate}
+            updateGlossary={updateGlossary}
             updateVote={updateVote}
             onAddGlossaryTerm={(term) =>
               handleGlossaryTermModalAction(false, term ?? null)
