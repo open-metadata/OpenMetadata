@@ -4184,7 +4184,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
               }
             });
 
-    Awaitility.await().atMost(20, TimeUnit.SECONDS).until(() -> true);
+    Awaitility.await().atMost(120, TimeUnit.SECONDS).until(() -> true);
 
     String jobId = initiateImport(entityName, csv, true);
 
