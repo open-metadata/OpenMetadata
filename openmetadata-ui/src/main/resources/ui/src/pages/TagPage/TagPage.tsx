@@ -149,13 +149,10 @@ const TagPage = () => {
       const isEditable = !tagItem.disabled && !tagItem.deleted;
 
       return {
-        editTagsPermission:
-          isEditable && (tagPermissions.EditTags || tagPermissions.EditAll),
+        editTagsPermission: isEditable && tagPermissions.EditAll,
         editDescriptionPermission:
           isEditable &&
-          (tagPermissions.EditDescription ||
-            tagPermissions.EditAll ||
-            tagPermissions.EditTags),
+          (tagPermissions.EditDescription || tagPermissions.EditAll),
       };
     }
 
@@ -573,7 +570,7 @@ const TagPage = () => {
             <Col className="p-x-md" flex="auto">
               <EntityHeader
                 badge={
-                  !editTagsPermission && (
+                  tagItem.disabled && (
                     <Space>
                       <Divider className="m-x-xs h-6" type="vertical" />
                       <StatusBadge

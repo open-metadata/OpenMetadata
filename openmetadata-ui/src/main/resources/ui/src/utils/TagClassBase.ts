@@ -24,7 +24,24 @@ class TagClassBase {
       filters: 'disabled:false',
       pageNumber: page,
       pageSize: PAGE_SIZE,
-      queryFilter: {},
+      queryFilter: {
+        query: {
+          bool: {
+            must_not: [
+              {
+                wildcard: {
+                  fullyQualifiedName: '*Certification*',
+                },
+              },
+              {
+                wildcard: {
+                  fullyQualifiedName: '*Tier*',
+                },
+              },
+            ],
+          },
+        },
+      },
       searchIndex: SearchIndex.TAG,
     });
 

@@ -17,6 +17,7 @@ import { DashboardClass } from '../support/entity/DashboardClass';
 import { EntityClass } from '../support/entity/EntityClass';
 import { TableClass } from '../support/entity/TableClass';
 import { TopicClass } from '../support/entity/TopicClass';
+import { TagClass } from '../support/tag/TagClass';
 import {
   getApiContext,
   NAME_MIN_MAX_LENGTH_VALIDATION_ERROR,
@@ -226,4 +227,30 @@ export const addTagToTableColumn = async (
       `[data-testid="classification-tags-${columnNumber}"] [data-testid="tags-container"] [data-testid="tag-${tagFqn}"]`
     )
   ).toBeVisible();
+};
+
+export const verifyTagPageUI = async (
+  page: Page,
+  classificationName: string,
+  tag: TagClass
+) => {
+  const res = page.waitForResponse(`/api/v1/tags/name/*`);
+  await tag.visitPage(page);
+  await res;
+
+  await expect(page.getByText(tag.data.name)).toBeVisible();
+  await expect(page.getByText(tag.data.description)).toBeVisible();
+
+  const classificationTable = page.waitForResponse(
+    `/api/v1/classifications/name/*`
+  );
+  await page.getByRole('link', { name: classificationName }).click();
+  classificationTable;
+
+  await page.getByTestId(tag.data.name).click();
+  await res;
+
+  const classificationPage = page.waitForResponse(`/api/v1/classifications*`);
+  await page.getByRole('link', { name: 'Classifications' }).click();
+  await classificationPage;
 };
