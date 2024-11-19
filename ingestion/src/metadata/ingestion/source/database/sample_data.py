@@ -1331,12 +1331,14 @@ class SampleDataSource(
                     description=model["description"],
                     algorithm=model["algorithm"],
                     dashboard=dashboard.fullyQualifiedName.root,
-                    mlStore=MlStore(
-                        storage=model["mlStore"]["storage"],
-                        imageRepository=model["mlStore"]["imageRepository"],
-                    )
-                    if model.get("mlStore")
-                    else None,
+                    mlStore=(
+                        MlStore(
+                            storage=model["mlStore"]["storage"],
+                            imageRepository=model["mlStore"]["imageRepository"],
+                        )
+                        if model.get("mlStore")
+                        else None
+                    ),
                     server=model.get("server"),
                     target=model.get("target"),
                     mlFeatures=self.get_ml_features(model),
@@ -1375,9 +1377,11 @@ class SampleDataSource(
                     name=container["name"],
                     displayName=container["displayName"],
                     description=container["description"],
-                    parent=EntityReference(id=parent_container.id, type="container")
-                    if parent_container_fqn
-                    else None,
+                    parent=(
+                        EntityReference(id=parent_container.id, type="container")
+                        if parent_container_fqn
+                        else None
+                    ),
                     prefix=container["prefix"],
                     dataModel=container.get("dataModel"),
                     numberOfObjects=container.get("numberOfObjects"),
@@ -1415,11 +1419,13 @@ class SampleDataSource(
                     yield Either(
                         right=CreateContainerRequest(
                             name=name,
-                            parent=EntityReference(
-                                id=parent_container.id, type="container"
-                            )
-                            if parent_container
-                            else None,
+                            parent=(
+                                EntityReference(
+                                    id=parent_container.id, type="container"
+                                )
+                                if parent_container
+                                else None
+                            ),
                             service=self.storage_service.fullyQualifiedName,
                         )
                     )

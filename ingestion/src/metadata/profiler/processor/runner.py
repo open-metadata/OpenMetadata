@@ -49,8 +49,8 @@ class QueryRunner:
     ):
         self._session = session
         self._dataset = dataset
-        self._partition_details = partition_details
-        self._profile_sample_query = profile_sample_query
+        self.partition_details = partition_details
+        self.profile_sample_query = profile_sample_query
 
     @property
     def table(self):
@@ -118,7 +118,7 @@ class QueryRunner:
         """
         filter_ = get_query_filter_for_runner(kwargs)
 
-        if self._profile_sample_query:
+        if self.profile_sample_query:
             return self._select_from_user_query(*entities, **kwargs).first()
         query = self._build_query(*entities, **kwargs).select_from(self.table)
 
@@ -137,7 +137,7 @@ class QueryRunner:
         """
         filter_ = get_query_filter_for_runner(kwargs)
 
-        if self._profile_sample_query:
+        if self.profile_sample_query:
             return self._select_from_user_query(*entities, **kwargs).all()
 
         query = self._build_query(*entities, **kwargs).select_from(self.table)

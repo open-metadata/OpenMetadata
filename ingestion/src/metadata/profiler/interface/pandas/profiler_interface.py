@@ -18,26 +18,32 @@ import traceback
 from collections import defaultdict
 from copy import deepcopy
 from datetime import datetime
-from typing import TYPE_CHECKING, Dict, List, Optional, cast
+from typing import TYPE_CHECKING, Dict, List, Optional, cast, Union
 
 from sqlalchemy import Column
 
 from metadata.generated.schema.entity.data.table import (
     CustomMetricProfile,
     DataType,
-    TableData,
+    Table,
 )
 from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
     DatalakeConnection,
 )
+from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
+from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline import (
+    DatabaseServiceProfilerPipeline,
+)
 from metadata.generated.schema.tests.customMetric import CustomMetric
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.mixins.pandas.pandas_mixin import PandasInterfaceMixin
 from metadata.profiler.api.models import ThreadPoolMetrics
 from metadata.profiler.interface.profiler_interface import ProfilerInterface
 from metadata.profiler.metrics.core import MetricTypes
 from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.processor.metric_filter import MetricFilter
-from metadata.utils.constants import COMPLEX_COLUMN_SEPARATOR, SAMPLE_DATA_DEFAULT_COUNT
+from metadata.sampler.pandas.sampler import DatalakeSampler
+from metadata.utils.constants import COMPLEX_COLUMN_SEPARATOR
 from metadata.utils.datalake.datalake_utils import GenericDataFrameColumnParser
 from metadata.utils.logger import profiler_interface_registry_logger
 from metadata.utils.sqa_like_column import SQALikeColumn
@@ -58,44 +64,33 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
 
     def __init__(
         self,
-        service_connection_config,
-        ometa_client,
-        entity,
-        storage_config,
-        profile_sample_config,
-        source_config,
-        sample_query,
-        table_partition_config,
+        service_connection_config: Union[DatabaseConnection, DatalakeConnection],
+        ometa_client: OpenMetadata,
+        entity: Table,
+        source_config: DatabaseServiceProfilerPipeline,
+        sampler: DatalakeSampler,
         thread_count: int = 5,
         timeout_seconds: int = 43200,
-        sample_data_count: int = SAMPLE_DATA_DEFAULT_COUNT,
         **kwargs,
     ):
         """Instantiate Pandas Interface object"""
 
         super().__init__(
-            service_connection_config,
-            ometa_client,
-            entity,
-            storage_config,
-            profile_sample_config,
-            source_config,
-            sample_query,
-            table_partition_config,
-            thread_count,
-            timeout_seconds,
-            sample_data_count,
+            service_connection_config=service_connection_config,
+            ometa_client=ometa_client,
+            entity=entity,
+            source_config=source_config,
+            sampler=sampler,
+            thread_count=thread_count,
+            timeout_seconds=timeout_seconds,
             **kwargs,
         )
 
-        self.client = self.connection.client
-        self.dfs = self.get_dataframes(
-            service_connection_config=self.service_connection_config,
-            client=self.client._client,
-            table=self.table_entity,
+        self.client = self.sampler.client
+        self.dfs = self.sampler.table
+        self.complex_dataframe_sample = deepcopy(
+            self.sampler.random_sample(is_sampled=True)
         )
-        self.sampler = self._get_sampler()
-        self.dataset = self.sampler.get_dataset()
         self.complex_df()
 
     def complex_df(self):
@@ -128,26 +123,6 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
                 self.dataset[index] = df
                 logger.warning(f"NaN/NoneType found in the Dataframe: {err}")
                 break
-
-    def _get_sampler(self) -> "DatalakeSampler":
-        """Get dataframe sampler from config"""
-        from metadata.profiler.processor.sampler.sampler_factory import (  # pylint: disable=import-outside-toplevel
-            sampler_factory_,
-        )
-
-        return cast(
-            "DatalakeSampler",
-            sampler_factory_.create(
-                DatalakeConnection.__name__,
-                client=self.client._client,  # pylint: disable=W0212
-                table=deepcopy(
-                    self.dfs
-                ),  # deep copy to avoid changing the original data
-                profile_sample_config=self.profile_sample_config,
-                partition_details=self.partition_details,
-                profile_sample_query=self.profile_query,
-            ),
-        )
 
     def _compute_table_metrics(
         self,
@@ -331,18 +306,6 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
             self.status.scanned(metric_func.table.name.root)
             column = None
         return row, column, metric_func.metric_type.value
-
-    def fetch_sample_data(self, table, columns: SQALikeColumn) -> TableData:
-        """Fetch sample data from database
-
-        Args:
-            table: ORM declarative table
-
-        Returns:
-            TableData: sample table data
-        """
-        sampler = self._get_sampler()
-        return sampler.fetch_sample_data(columns)
 
     def get_composed_metrics(
         self, column: Column, metric: Metrics, column_results: Dict

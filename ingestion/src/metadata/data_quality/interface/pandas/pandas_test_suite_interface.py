@@ -27,8 +27,8 @@ from metadata.generated.schema.entity.services.connections.database.datalakeConn
 )
 from metadata.generated.schema.tests.testCase import TestCase
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.connections import get_connection
 from metadata.mixins.pandas.pandas_mixin import PandasInterfaceMixin
+from metadata.sampler.sampler_interface import SamplerInterface
 from metadata.utils.logger import test_suite_logger
 
 if TYPE_CHECKING:
@@ -49,15 +49,16 @@ class PandasTestSuiteInterface(TestSuiteInterface, PandasInterfaceMixin):
         self,
         service_connection_config: DatalakeConnection,
         ometa_client: OpenMetadata,
-        table_entity: Table = None,
-        **kwargs,  # pylint: disable=unused-argument
+        sampler: SamplerInterface,
+        table_entity: Table,
+        **__,
     ):
-        super().__init__()
-        self.table_entity = table_entity
-
-        self.ometa_client = ometa_client
-        self.service_connection_config = service_connection_config
-        self.client = get_connection(self.service_connection_config).client._client
+        super().__init__(
+            service_connection_config,
+            ometa_client,
+            sampler,
+            table_entity,
+        )
 
         (
             self.sample_query,
@@ -65,39 +66,12 @@ class PandasTestSuiteInterface(TestSuiteInterface, PandasInterfaceMixin):
             self.partition_details,
         ) = self._get_table_config()
 
-        self.dfs = self.get_dataframes(
-            service_connection_config=self.service_connection_config,
-            client=self.client,
-            table=self.table_entity,
-        )
-        self._sampler = self._get_sampler()
-        self.dataset = self.sampler.get_dataset()
-
-    @property
-    def sampler(self) -> "DatalakeSampler":
-        return self._sampler
+        # add partition logic to test suite
+        self.dfs = self.sampler.table
+        if self.dfs and self.table_partition_config:
+            self.dfs = self.get_partitioned_df(self.dfs)
 
     def _get_validator_builder(
         self, test_case: TestCase, entity_type: str
     ) -> IValidatorBuilder:
         return PandasValidatorBuilder(self.dataset, test_case, entity_type)
-
-    def _get_sampler(self) -> "DatalakeSampler":
-        """Get dataframe sampler from config"""
-        from metadata.profiler.processor.sampler.sampler_factory import (  # pylint: disable=import-outside-toplevel
-            sampler_factory_,
-        )
-
-        return cast(
-            "DatalakeSampler",
-            sampler_factory_.create(
-                DatalakeConnection.__name__,
-                client=self.client,
-                table=deepcopy(
-                    self.dfs
-                ),  # deep copy to avoid changing the original data
-                profile_sample_config=self.profile_sample_config,
-                partition_details=self.partition_details,
-                profile_sample_query=self.sample_query,
-            ),
-        )
