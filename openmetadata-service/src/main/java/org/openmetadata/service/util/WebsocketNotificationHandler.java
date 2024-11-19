@@ -69,6 +69,25 @@ public class WebsocketNotificationHandler {
         .sendToOne(userId, WebSocketManager.CSV_EXPORT_CHANNEL, jsonMessage);
   }
 
+  public static void bulkAssetsOperationCompleteNotification(
+      String jobId, SecurityContext securityContext, BulkOperationResult result) {
+    BulkAssetsOperationMessage message =
+        new BulkAssetsOperationMessage(jobId, "COMPLETED", result, null);
+    String jsonMessage = JsonUtils.pojoToJson(message);
+    UUID userId = getUserIdFromSecurityContext(securityContext);
+    WebSocketManager.getInstance()
+        .sendToOne(userId, WebSocketManager.BULK_ASSETS_CHANNEL, jsonMessage);
+  }
+
+  public static void bulkAssetsOperationFailedNotification(
+      String jobId, SecurityContext securityContext, String errorMessage) {
+    CSVExportMessage message = new CSVExportMessage(jobId, "FAILED", null, errorMessage);
+    String jsonMessage = JsonUtils.pojoToJson(message);
+    UUID userId = getUserIdFromSecurityContext(securityContext);
+    WebSocketManager.getInstance()
+        .sendToOne(userId, WebSocketManager.BULK_ASSETS_CHANNEL, jsonMessage);
+  }
+
   private void handleNotifications(ContainerResponseContext responseContext) {
     int responseCode = responseContext.getStatus();
     if (responseCode == Response.Status.CREATED.getStatusCode()
