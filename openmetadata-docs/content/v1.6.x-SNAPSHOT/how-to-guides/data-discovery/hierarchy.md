@@ -1,5 +1,5 @@
 ---
-title: Add Complex Queries using Advanced Search
+title: Guide to Searching Data Using Hierarchical View
 slug: /how-to-guides/data-discovery/hierarchy
 ---
 
