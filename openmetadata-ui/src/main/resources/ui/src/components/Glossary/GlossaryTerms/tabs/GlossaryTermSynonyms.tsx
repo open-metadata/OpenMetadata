@@ -24,6 +24,7 @@ import {
 } from '../../../../constants/constants';
 import { EntityField } from '../../../../constants/Feeds.constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../../../constants/HelperTextUtil';
+import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { GlossaryTerm } from '../../../../generated/entity/data/glossaryTerm';
 import { ChangeDescription } from '../../../../generated/entity/type';
 import {
@@ -32,18 +33,23 @@ import {
   getDiffByFieldName,
 } from '../../../../utils/EntityVersionUtils';
 import TagButton from '../../../common/TagButton/TagButton.component';
-import { useGenericContext } from '../../../GenericProvider/GenericProvider';
 
-const GlossaryTermSynonyms = () => {
+interface GlossaryTermSynonymsProps {
+  isVersionView?: boolean;
+  permissions: OperationPermission;
+  glossaryTerm: GlossaryTerm;
+  onGlossaryTermUpdate: (glossaryTerm: GlossaryTerm) => Promise<void>;
+}
+
+const GlossaryTermSynonyms = ({
+  permissions,
+  glossaryTerm,
+  onGlossaryTermUpdate,
+  isVersionView,
+}: GlossaryTermSynonymsProps) => {
   const [isViewMode, setIsViewMode] = useState<boolean>(true);
   const [synonyms, setSynonyms] = useState<string[]>([]);
   const [saving, setSaving] = useState<boolean>(false);
-  const {
-    data: glossaryTerm,
-    onUpdate: onGlossaryTermUpdate,
-    isVersionView,
-    permissions,
-  } = useGenericContext<GlossaryTerm>();
 
   const getSynonyms = () => (
     <div className="d-flex flex-wrap">

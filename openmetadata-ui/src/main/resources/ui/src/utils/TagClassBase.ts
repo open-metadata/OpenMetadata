@@ -18,7 +18,7 @@ import { escapeESReservedCharacters, getEncodedFqn } from './StringsUtils';
 
 class TagClassBase {
   public async getTags(searchText: string, page: number) {
-    // this is to escape and encode any chars which is known by ES search internally
+    // this is to esacpe and encode any chars which is known by ES search internally
     const encodedValue = getEncodedFqn(escapeESReservedCharacters(searchText));
     const res = await searchQuery({
       query: `*${encodedValue}*`,

@@ -33,7 +33,7 @@ import {
 import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { Thread } from '../../generated/entity/feed/thread';
-import { Page, PageType } from '../../generated/system/ui/page';
+import { PageType } from '../../generated/system/ui/page';
 import { EntityReference } from '../../generated/type/entityReference';
 import LimitWrapper from '../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
@@ -42,7 +42,7 @@ import { getDocumentByFQN } from '../../rest/DocStoreAPI';
 import { getActiveAnnouncement } from '../../rest/feedsAPI';
 import { searchQuery } from '../../rest/searchAPI';
 import { getWidgetFromKey } from '../../utils/CustomizableLandingPageUtils';
-import customizePageClassBase from '../../utils/CustomizeMyDataPageClassBase';
+import customizePageClassBase from '../../utils/CustomizePageClassBase';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { WidgetConfig } from '../CustomizablePage/CustomizablePage.interface';
 import './my-data.less';
@@ -78,18 +78,9 @@ const MyDataPage = () => {
     try {
       setIsLoading(true);
       if (!isEmpty(selectedPersona)) {
-        const pageFQN = `${EntityType.PERSONA}.${selectedPersona.fullyQualifiedName}`;
-        const docData = await getDocumentByFQN(pageFQN);
-
-        const pageData = docData.data?.pages?.find(
-          (p: Page) => p.pageType === PageType.LandingPage
-        ) ?? { layout: [], pageType: PageType.LandingPage };
-
-        setLayout(
-          isEmpty(pageData.layout)
-            ? customizePageClassBase.defaultLayout
-            : pageData.layout
-        );
+        const pageFQN = `${EntityType.PERSONA}.${selectedPersona.fullyQualifiedName}.${EntityType.PAGE}.${PageType.LandingPage}`;
+        const pageData = await getDocumentByFQN(pageFQN);
+        setLayout(pageData.data.page.layout);
       } else {
         setLayout(customizePageClassBase.defaultLayout);
       }
@@ -223,7 +214,6 @@ const MyDataPage = () => {
             <ReactGridLayout
               className="bg-white"
               cols={4}
-              compactType="vertical"
               isDraggable={false}
               isResizable={false}
               margin={[

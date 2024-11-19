@@ -381,7 +381,7 @@ const DomainDetailsPage = ({
     setShowAddDataProductModal(true);
   }, []);
 
-  const onNameSave = (obj: { name: string; displayName?: string }) => {
+  const onNameSave = (obj: { name: string; displayName: string }) => {
     const { displayName } = obj;
     let updatedDetails = cloneDeep(domain);
 
@@ -824,7 +824,7 @@ const DomainDetailsPage = ({
           }}
         />
       )}
-      <EntityNameModal<Domain>
+      <EntityNameModal
         entity={domain}
         title={t('label.edit-entity', {
           entity: t('label.display-name'),

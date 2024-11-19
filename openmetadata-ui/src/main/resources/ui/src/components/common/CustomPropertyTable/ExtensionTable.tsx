@@ -12,7 +12,6 @@
  */
 import { Table, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
-import classNames from 'classnames';
 import { isObject, isString, map } from 'lodash';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -29,10 +28,8 @@ interface ExtensionDataSource {
 
 export const ExtensionTable = ({
   extension,
-  tableClassName,
 }: {
   extension: ExtentionEntities[ExtentionEntitiesKeys]['extension'];
-  tableClassName?: string;
 }) => {
   const { t } = useTranslation();
   const dataSource: ExtensionDataSource[] = useMemo(() => {
@@ -72,7 +69,7 @@ export const ExtensionTable = ({
   return (
     <Table
       bordered
-      className={classNames('m-md', tableClassName)}
+      className="m-md"
       columns={tableColumn}
       data-testid="custom-properties-table"
       dataSource={dataSource}

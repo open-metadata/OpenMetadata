@@ -48,9 +48,7 @@ describe('PersonaDetailsCard Component', () => {
     });
 
     expect(
-      await screen.findByTestId(
-        `persona-details-card-${personaWithDescription.name}`
-      )
+      await screen.findByTestId('persona-details-card')
     ).toBeInTheDocument();
   });
 
@@ -83,7 +81,7 @@ describe('PersonaDetailsCard Component', () => {
       userEvent.click(personaCardTitle);
     });
 
-    expect(mockPush).toHaveBeenCalledWith('/settings/persona/john-doe');
+    expect(mockPush).toHaveBeenCalledWith('/settings/members/persona/john-doe');
   });
 
   it('should not navigate when persona.fullyQualifiedName is missing', async () => {

@@ -22,33 +22,23 @@ import React, {
   useState,
 } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
-import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { getGlossaryTermDetailsPath } from '../../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
-import {
-  ChangeDescription,
-  Glossary,
-} from '../../../generated/entity/data/glossary';
+import { Glossary } from '../../../generated/entity/data/glossary';
 import {
   GlossaryTerm,
   Status,
 } from '../../../generated/entity/data/glossaryTerm';
-import { Page, PageType } from '../../../generated/system/ui/page';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { ChangeDescription } from '../../../generated/entity/type';
 import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { MOCK_GLOSSARY_NO_PERMISSIONS } from '../../../mocks/Glossary.mock';
-import { getDocumentByFQN } from '../../../rest/DocStoreAPI';
 import { searchData } from '../../../rest/miscAPI';
 import { getCountBadge, getFeedCounts } from '../../../utils/CommonUtils';
 import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
-import {
-  getGlossaryTermDetailTabs,
-  getTabLabelMap,
-} from '../../../utils/GlossaryTerm/GlossaryTermUtil';
 import { getQueryFilterToExcludeTerm } from '../../../utils/GlossaryUtils';
 import { getGlossaryTermsVersionsPath } from '../../../utils/RouterUtils';
 import {
@@ -59,7 +49,7 @@ import { ActivityFeedTab } from '../../ActivityFeed/ActivityFeedTab/ActivityFeed
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
 import TabsLabel from '../../common/TabsLabel/TabsLabel.component';
 import { AssetSelectionModal } from '../../DataAssets/AssetsSelectionModal/AssetSelectionModal';
-import { GenericProvider } from '../../GenericProvider/GenericProvider';
+import { GlossaryTabs } from '../GlossaryDetails/GlossaryDetails.interface';
 import GlossaryHeader from '../GlossaryHeader/GlossaryHeader.component';
 import GlossaryTermTab from '../GlossaryTermTab/GlossaryTermTab.component';
 import { useGlossaryStore } from '../useGlossary.store';
@@ -92,11 +82,9 @@ const GlossaryTermsV1 = ({
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
   );
-  const { selectedPersona } = useApplicationStore();
   const [assetCount, setAssetCount] = useState<number>(0);
   const { glossaryChildTerms } = useGlossaryStore();
   const childGlossaryTerms = glossaryChildTerms ?? [];
-  const [customizedPage, setCustomizedPage] = useState<Page | null>(null);
 
   const assetPermissions = useMemo(() => {
     const glossaryTermStatus = glossaryTerm.status ?? Status.Approved;
@@ -107,7 +95,7 @@ const GlossaryTermsV1 = ({
   }, [glossaryTerm, permissions]);
 
   const activeTab = useMemo(() => {
-    return tab ?? EntityTabs.OVERVIEW;
+    return tab ?? 'overview';
   }, [tab]);
 
   const activeTabHandler = (tab: string) => {
@@ -179,24 +167,23 @@ const GlossaryTermsV1 = ({
   };
 
   const tabItems = useMemo(() => {
-    const tabLabelMap = getTabLabelMap(customizedPage?.tabs);
-
     const items = [
       {
-        label: (
-          <div data-testid="overview">
-            {tabLabelMap[EntityTabs.OVERVIEW] ?? t('label.overview')}
-          </div>
-        ),
-        key: EntityTabs.OVERVIEW,
+        label: <div data-testid="overview">{t('label.overview')}</div>,
+        key: 'overview',
         children: (
           <GlossaryOverviewTab
             editCustomAttributePermission={
               !isVersionView &&
               (permissions.EditAll || permissions.EditCustomFields)
             }
+            isGlossary={false}
+            isVersionView={isVersionView}
+            permissions={permissions}
+            selectedData={glossaryTerm}
             onExtensionUpdate={onExtensionUpdate}
             onThreadLinkSelect={onThreadLinkSelect}
+            onUpdate={onTermUpdate}
           />
         ),
       },
@@ -205,8 +192,7 @@ const GlossaryTermsV1 = ({
             {
               label: (
                 <div data-testid="terms">
-                  {tabLabelMap[EntityTabs.GLOSSARY_TERMS] ??
-                    t('label.glossary-term-plural')}
+                  {t('label.glossary-term-plural')}
                   <span className="p-l-xs ">
                     {getCountBadge(
                       childGlossaryTerms.length,
@@ -216,7 +202,7 @@ const GlossaryTermsV1 = ({
                   </span>
                 </div>
               ),
-              key: EntityTabs.GLOSSARY_TERMS,
+              key: 'terms',
               children: (
                 <GlossaryTermTab
                   className="p-md glossary-term-table-container"
@@ -232,13 +218,13 @@ const GlossaryTermsV1 = ({
             {
               label: (
                 <div data-testid="assets">
-                  {tabLabelMap[EntityTabs.ASSETS] ?? t('label.asset-plural')}
+                  {t('label.asset-plural')}
                   <span className="p-l-xs ">
                     {getCountBadge(assetCount ?? 0, '', activeTab === 'assets')}
                   </span>
                 </div>
               ),
-              key: EntityTabs.ASSETS,
+              key: 'assets',
               children: (
                 <AssetsTabs
                   assetCount={assetCount}
@@ -256,15 +242,12 @@ const GlossaryTermsV1 = ({
               label: (
                 <TabsLabel
                   count={feedCount.totalCount}
-                  id={EntityTabs.ACTIVITY_FEED}
-                  isActive={activeTab === EntityTabs.ACTIVITY_FEED}
-                  name={
-                    tabLabelMap[EntityTabs.ACTIVITY_FEED] ??
-                    t('label.activity-feed-and-task-plural')
-                  }
+                  id={GlossaryTabs.ACTIVITY_FEED}
+                  isActive={activeTab === GlossaryTabs.ACTIVITY_FEED}
+                  name={t('label.activity-feed-and-task-plural')}
                 />
               ),
-              key: EntityTabs.ACTIVITY_FEED,
+              key: GlossaryTabs.ACTIVITY_FEED,
               children: (
                 <ActivityFeedTab
                   entityType={EntityType.GLOSSARY_TERM}
@@ -280,10 +263,7 @@ const GlossaryTermsV1 = ({
               label: (
                 <TabsLabel
                   id={EntityTabs.CUSTOM_PROPERTIES}
-                  name={
-                    tabLabelMap[EntityTabs.CUSTOM_PROPERTIES] ??
-                    t('label.custom-property-plural')
-                  }
+                  name={t('label.custom-property-plural')}
                 />
               ),
               key: EntityTabs.CUSTOM_PROPERTIES,
@@ -307,9 +287,8 @@ const GlossaryTermsV1 = ({
         : []),
     ];
 
-    return getGlossaryTermDetailTabs(items, customizedPage?.tabs);
+    return items;
   }, [
-    customizedPage?.tabs,
     glossaryTerm,
     permissions,
     termsLoading,
@@ -332,62 +311,46 @@ const GlossaryTermsV1 = ({
     getEntityFeedCount();
   }, [glossaryFqn]);
 
-  const fetchDocument = useCallback(async () => {
-    const pageFQN = `${EntityType.PERSONA}${FQN_SEPARATOR_CHAR}${selectedPersona.fullyQualifiedName}`;
-    try {
-      const doc = await getDocumentByFQN(pageFQN);
-      setCustomizedPage(
-        doc.data?.pages?.find((p: Page) => p.pageType === PageType.GlossaryTerm)
-      );
-    } catch (error) {
-      // fail silent
-    }
-  }, [selectedPersona.fullyQualifiedName]);
+  const name = useMemo(
+    () =>
+      isVersionView
+        ? getEntityVersionByField(
+            glossaryTerm.changeDescription as ChangeDescription,
+            EntityField.NAME,
+            glossaryTerm.name
+          )
+        : glossaryTerm.name,
 
-  useEffect(() => {
-    if (selectedPersona?.fullyQualifiedName) {
-      fetchDocument();
-    }
-  }, [selectedPersona]);
+    [glossaryTerm, isVersionView]
+  );
 
-  const updatedGlossaryTerm = useMemo(() => {
-    const name = isVersionView
-      ? getEntityVersionByField(
-          glossaryTerm.changeDescription as ChangeDescription,
-          EntityField.NAME,
-          glossaryTerm.name
-        )
-      : glossaryTerm.name;
+  const displayName = useMemo(
+    () =>
+      isVersionView
+        ? getEntityVersionByField(
+            glossaryTerm.changeDescription as ChangeDescription,
+            EntityField.DISPLAYNAME,
+            glossaryTerm.displayName
+          )
+        : glossaryTerm.displayName,
 
-    const displayName = isVersionView
-      ? getEntityVersionByField(
-          glossaryTerm.changeDescription as ChangeDescription,
-          EntityField.DISPLAYNAME,
-          glossaryTerm.displayName
-        )
-      : glossaryTerm.displayName;
-
-    return {
-      ...glossaryTerm,
-      name,
-      displayName,
-    };
-  }, [glossaryTerm, isVersionView]);
+    [glossaryTerm, isVersionView]
+  );
 
   return (
-    <GenericProvider
-      data={updatedGlossaryTerm}
-      isVersionView={isVersionView}
-      permissions={permissions}
-      type={EntityType.GLOSSARY_TERM}
-      onUpdate={onTermUpdate}>
+    <>
       <Row data-testid="glossary-term" gutter={[0, 8]}>
         <Col className="p-x-md" span={24}>
           <GlossaryHeader
+            isGlossary={false}
+            isVersionView={isVersionView}
+            permissions={permissions}
+            selectedData={{ ...glossaryTerm, displayName, name }}
             updateVote={updateVote}
             onAddGlossaryTerm={onAddGlossaryTerm}
             onAssetAdd={() => setAssetModalVisible(true)}
             onDelete={handleGlossaryTermDelete}
+            onUpdate={onTermUpdate}
           />
         </Col>
 
@@ -413,7 +376,7 @@ const GlossaryTermsV1 = ({
           onSave={handleAssetSave}
         />
       )}
-    </GenericProvider>
+    </>
   );
 };
 

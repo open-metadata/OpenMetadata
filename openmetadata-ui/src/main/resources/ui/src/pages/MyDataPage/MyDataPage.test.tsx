@@ -57,7 +57,7 @@ jest.mock(
 jest.mock('../../components/common/Loader/Loader', () => {
   return jest.fn().mockImplementation(() => <div>Loader</div>);
 });
-jest.mock('../../utils/CustomizeMyDataPageClassBase', () => {
+jest.mock('../../utils/CustomizePageClassBase', () => {
   return mockCustomizePageClassBase;
 });
 jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => {

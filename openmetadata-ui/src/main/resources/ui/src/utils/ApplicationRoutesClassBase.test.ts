@@ -11,8 +11,12 @@
  *  limitations under the License.
  */
 import { FC } from 'react';
-import AuthenticatedAppRouter from '../components/AppRouter/AuthenticatedAppRouter';
 import { ApplicationRoutesClassBase } from './ApplicationRoutesClassBase';
+
+jest.mock('../components/AppRouter/AuthenticatedAppRouter', () => ({
+  __esModule: true,
+  default: 'AuthenticatedAppRouter',
+}));
 
 describe('ApplicationRoutesClassBase', () => {
   let applicationRoutesClassBase: ApplicationRoutesClassBase;
@@ -24,6 +28,6 @@ describe('ApplicationRoutesClassBase', () => {
   it('should return AuthenticatedAppRouter from getRouteElements', () => {
     const result: FC = applicationRoutesClassBase.getRouteElements();
 
-    expect(result).toBe(AuthenticatedAppRouter);
+    expect(result).toBe('AuthenticatedAppRouter');
   });
 });

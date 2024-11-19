@@ -18,23 +18,19 @@ import {
 } from '../../../../mocks/Glossary.mock';
 import GlossaryTermSynonyms from './GlossaryTermSynonyms';
 
-const [mockGlossaryTerm1, mockGlossaryTerm2] = MOCKED_GLOSSARY_TERMS;
-
-const mockContext = {
-  data: mockGlossaryTerm1,
-  onUpdate: jest.fn(),
-  isVersionView: false,
-  permissions: MOCK_PERMISSIONS,
-};
-
-jest.mock('../../../GenericProvider/GenericProvider', () => ({
-  useGenericContext: jest.fn().mockImplementation(() => mockContext),
-}));
+const onGlossaryTermUpdate = jest.fn();
 
 describe('GlossaryTermSynonyms', () => {
   it('renders synonyms and edit button', () => {
-    mockContext.data = mockGlossaryTerm2;
-    const { getByTestId, getByText } = render(<GlossaryTermSynonyms />);
+    const glossaryTerm = MOCKED_GLOSSARY_TERMS[1];
+    const permissions = MOCK_PERMISSIONS;
+    const { getByTestId, getByText } = render(
+      <GlossaryTermSynonyms
+        glossaryTerm={glossaryTerm}
+        permissions={permissions}
+        onGlossaryTermUpdate={onGlossaryTermUpdate}
+      />
+    );
     const synonymsContainer = getByTestId('synonyms-container');
     const synonymItem = getByText('accessory');
     const editBtn = getByTestId('edit-button');
@@ -45,8 +41,15 @@ describe('GlossaryTermSynonyms', () => {
   });
 
   it('renders add button', () => {
-    mockContext.data = mockGlossaryTerm1;
-    const { getByTestId } = render(<GlossaryTermSynonyms />);
+    const glossaryTerm = MOCKED_GLOSSARY_TERMS[0];
+    const permissions = MOCK_PERMISSIONS;
+    const { getByTestId } = render(
+      <GlossaryTermSynonyms
+        glossaryTerm={glossaryTerm}
+        permissions={permissions}
+        onGlossaryTermUpdate={onGlossaryTermUpdate}
+      />
+    );
     const synonymsContainer = getByTestId('synonyms-container');
     const synonymAddBtn = getByTestId('synonym-add-button');
 
@@ -55,10 +58,14 @@ describe('GlossaryTermSynonyms', () => {
   });
 
   it('should not render add button if no permission', async () => {
-    mockContext.data = mockGlossaryTerm1;
-    mockContext.permissions = { ...MOCK_PERMISSIONS, EditAll: false };
+    const glossaryTerm = MOCKED_GLOSSARY_TERMS[0];
+    const permissions = { ...MOCK_PERMISSIONS, EditAll: false };
     const { getByTestId, queryByTestId, findByText } = render(
-      <GlossaryTermSynonyms />
+      <GlossaryTermSynonyms
+        glossaryTerm={glossaryTerm}
+        permissions={permissions}
+        onGlossaryTermUpdate={onGlossaryTermUpdate}
+      />
     );
     const synonymsContainer = getByTestId('synonyms-container');
     const synonymAddBtn = queryByTestId('synonym-add-button');
@@ -72,9 +79,15 @@ describe('GlossaryTermSynonyms', () => {
   });
 
   it('should not render edit button if no permission', () => {
-    mockContext.data = mockGlossaryTerm2;
-    mockContext.permissions = { ...MOCK_PERMISSIONS, EditAll: false };
-    const { getByTestId, queryByTestId } = render(<GlossaryTermSynonyms />);
+    const glossaryTerm = MOCKED_GLOSSARY_TERMS[1];
+    const permissions = { ...MOCK_PERMISSIONS, EditAll: false };
+    const { getByTestId, queryByTestId } = render(
+      <GlossaryTermSynonyms
+        glossaryTerm={glossaryTerm}
+        permissions={permissions}
+        onGlossaryTermUpdate={onGlossaryTermUpdate}
+      />
+    );
     const synonymsContainer = getByTestId('synonyms-container');
     const editBtn = queryByTestId('edit-button');
 

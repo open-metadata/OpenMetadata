@@ -19,14 +19,12 @@ export type EntityNameWithAdditionFields = EntityName & {
   constraint: Constraint;
 };
 
-export interface EntityNameModalProps<
-  T extends { name: string; displayName?: string }
-> {
+export interface EntityNameModalProps {
   visible: boolean;
   allowRename?: boolean;
   onCancel: () => void;
-  onSave: (obj: T) => void | Promise<void>;
-  entity: T;
+  onSave: (obj: EntityName) => void | Promise<void>;
+  entity: Partial<EntityName>;
   title: string;
   nameValidationRules?: Rule[];
   additionalFields?: React.ReactNode;

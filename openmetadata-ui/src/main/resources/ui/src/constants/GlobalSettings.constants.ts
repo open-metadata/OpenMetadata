@@ -22,7 +22,6 @@ export enum GlobalSettingsMenuCategory {
   SERVICES = 'services',
   BOTS = 'bots',
   APPLICATIONS = 'apps',
-  PERSONA = 'persona',
 }
 
 export enum GlobalSettingOptions {

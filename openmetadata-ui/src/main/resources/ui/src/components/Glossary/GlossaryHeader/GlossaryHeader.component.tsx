@@ -43,6 +43,7 @@ import { ResourceEntity } from '../../../context/PermissionProvider/PermissionPr
 import { EntityAction, EntityType } from '../../../enums/entity.enum';
 import { Glossary } from '../../../generated/entity/data/glossary';
 import {
+  EntityReference,
   GlossaryTerm,
   Status,
 } from '../../../generated/entity/data/glossaryTerm';
@@ -69,33 +70,30 @@ import {
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { TitleBreadcrumbProps } from '../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import Voting from '../../Entity/Voting/Voting.component';
-import { useGenericContext } from '../../GenericProvider/GenericProvider';
 import ChangeParentHierarchy from '../../Modals/ChangeParentHierarchy/ChangeParentHierarchy.component';
 import StyleModal from '../../Modals/StyleModal/StyleModal.component';
 import { GlossaryStatusBadge } from '../GlossaryStatusBadge/GlossaryStatusBadge.component';
 import { GlossaryHeaderProps } from './GlossaryHeader.interface';
 
 const GlossaryHeader = ({
+  selectedData,
+  permissions,
+  onUpdate,
   onDelete,
+  isGlossary,
   onAssetAdd,
   onAddGlossaryTerm,
   updateVote,
+  isVersionView,
 }: GlossaryHeaderProps) => {
   const { t } = useTranslation();
   const history = useHistory();
-  const { fqn } = useFqn();
   const { currentUser } = useApplicationStore();
-  const {
-    onUpdate,
-    data: selectedData,
-    isVersionView,
-    permissions,
-    type: entityType,
-  } = useGenericContext<GlossaryTerm>();
 
   const { version } = useParams<{
     version: string;
   }>();
+  const { fqn } = useFqn();
   const { id } = useParams<{ id: string }>();
   const { showModal } = useEntityExportModalProvider();
   const [breadcrumb, setBreadcrumb] = useState<
@@ -110,7 +108,6 @@ const GlossaryHeader = ({
   const [isStyleEditing, setIsStyleEditing] = useState(false);
   const [openChangeParentHierarchyModal, setOpenChangeParentHierarchyModal] =
     useState(false);
-  const isGlossary = entityType === EntityType.GLOSSARY;
   const { permissions: globalPermissions } = usePermissionProvider();
 
   const createGlossaryTermPermission = useMemo(
@@ -154,7 +151,7 @@ const GlossaryHeader = ({
 
   const glossaryTermStatus: Status | null = useMemo(() => {
     if (!isGlossary) {
-      return selectedData.status ?? Status.Approved;
+      return (selectedData as GlossaryTerm).status ?? Status.Approved;
     }
 
     return null;
@@ -182,13 +179,13 @@ const GlossaryHeader = ({
       );
     }
 
-    if (selectedData.style?.iconURL) {
+    if ((selectedData as GlossaryTerm).style?.iconURL) {
       return (
         <img
           className="align-middle object-contain"
           data-testid="icon"
           height={36}
-          src={selectedData.style?.iconURL}
+          src={(selectedData as GlossaryTerm).style?.iconURL}
           width={32}
         />
       );
@@ -206,7 +203,7 @@ const GlossaryHeader = ({
   }, [selectedData, isGlossary]);
 
   const handleAddGlossaryTermClick = useCallback(() => {
-    onAddGlossaryTerm(!isGlossary ? selectedData : undefined);
+    onAddGlossaryTerm(!isGlossary ? (selectedData as GlossaryTerm) : undefined);
   }, [fqn]);
 
   const handleGlossaryImport = () =>
@@ -242,7 +239,7 @@ const GlossaryHeader = ({
     setIsDelete(false);
   };
 
-  const onNameSave = async (obj: { name: string; displayName?: string }) => {
+  const onNameSave = async (obj: { name: string; displayName: string }) => {
     const { name, displayName } = obj;
     let updatedDetails = cloneDeep(selectedData);
 
@@ -459,7 +456,8 @@ const GlossaryHeader = ({
 
   const statusBadge = useMemo(() => {
     if (!isGlossary) {
-      const entityStatus = selectedData.status ?? Status.Approved;
+      const entityStatus =
+        (selectedData as GlossaryTerm).status ?? Status.Approved;
 
       return <GlossaryStatusBadge status={entityStatus} />;
     }
@@ -564,7 +562,11 @@ const GlossaryHeader = ({
             entityType={EntityType.GLOSSARY_TERM}
             icon={icon}
             serviceName=""
-            titleColor={isGlossary ? undefined : selectedData.style?.color}
+            titleColor={
+              isGlossary
+                ? undefined
+                : (selectedData as GlossaryTerm).style?.color
+            }
           />
         </Col>
         <Col flex="360px">
@@ -652,9 +654,9 @@ const GlossaryHeader = ({
         />
       )}
 
-      <EntityNameModal<GlossaryTerm>
+      <EntityNameModal
         allowRename
-        entity={selectedData}
+        entity={selectedData as EntityReference}
         nameValidationRules={[
           {
             min: 1,
@@ -676,14 +678,14 @@ const GlossaryHeader = ({
 
       <StyleModal
         open={isStyleEditing}
-        style={selectedData.style}
+        style={(selectedData as GlossaryTerm).style}
         onCancel={() => setIsStyleEditing(false)}
         onSubmit={onStyleSave}
       />
 
       {openChangeParentHierarchyModal && (
         <ChangeParentHierarchy
-          selectedData={selectedData}
+          selectedData={selectedData as GlossaryTerm}
           onCancel={() => setOpenChangeParentHierarchyModal(false)}
           onSubmit={onChangeParentSave}
         />
