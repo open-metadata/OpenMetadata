@@ -10,10 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Form, FormProps, Input, Modal, Typography } from 'antd';
+import { Button, Form, FormProps, Modal, Typography } from 'antd';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ENTITY_NAME_REGEX } from '../../../constants/regex.constants';
+import SanitizedInput from '../../common/SanitizedInput/SanitizedInput';
 import { EntityName, EntityNameModalProps } from './EntityNameModal.interface';
 
 const EntityNameModal = <T extends EntityName>({
@@ -87,7 +88,7 @@ const EntityNameModal = <T extends EntityName>({
             },
             ...nameValidationRules,
           ]}>
-          <Input
+          <SanitizedInput
             disabled={!allowRename}
             placeholder={t('label.enter-entity-name', {
               entity: t('label.glossary'),
@@ -95,7 +96,7 @@ const EntityNameModal = <T extends EntityName>({
           />
         </Form.Item>
         <Form.Item label={t('label.display-name')} name="displayName">
-          <Input placeholder={t('message.enter-display-name')} />
+          <SanitizedInput placeholder={t('message.enter-display-name')} />
         </Form.Item>
 
         {additionalFields}
