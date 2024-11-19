@@ -17,7 +17,6 @@ import {
   waitForElementToBeRemoved,
 } from '@testing-library/react';
 import React from 'react';
-import { MemoryRouter } from 'react-router-dom';
 import { getPersonaByName, updatePersona } from '../../../rest/PersonaAPI';
 import { PersonaDetailsPage } from './PersonaDetailsPage';
 
@@ -150,13 +149,9 @@ jest.mock(
   () => jest.fn().mockImplementation(() => <div>EntityHeaderTitle</div>)
 );
 
-jest.mock('../../../hooks/useCustomLocation/useCustomLocation', () => {
-  return jest.fn().mockImplementation(() => ({ pathname: '', hash: '' }));
-});
-
 describe('PersonaDetailsPage', () => {
   it('Component should render', async () => {
-    render(<PersonaDetailsPage />), { wrapper: MemoryRouter };
+    render(<PersonaDetailsPage />);
 
     await waitForElementToBeRemoved(() => screen.getByTestId('loader'));
 
@@ -175,7 +170,7 @@ describe('PersonaDetailsPage', () => {
     (getPersonaByName as jest.Mock).mockImplementationOnce(() =>
       Promise.reject()
     );
-    render(<PersonaDetailsPage />, { wrapper: MemoryRouter });
+    render(<PersonaDetailsPage />);
 
     expect(
       await screen.findByText('NoDataPlaceholder.component')
@@ -183,18 +178,20 @@ describe('PersonaDetailsPage', () => {
   });
 
   it('handleAfterDeleteAction should call after delete', async () => {
-    render(<PersonaDetailsPage />, { wrapper: MemoryRouter });
+    render(<PersonaDetailsPage />);
 
     const deleteBtn = await screen.findByTestId('delete-btn');
 
     fireEvent.click(deleteBtn);
 
-    expect(mockUseHistory.push).toHaveBeenCalledWith('/settings/persona');
+    expect(mockUseHistory.push).toHaveBeenCalledWith(
+      '/settings/members/persona'
+    );
   });
 
   it('handleDisplayNameUpdate should call after updating displayName', async () => {
     const mockUpdatePersona = updatePersona as jest.Mock;
-    render(<PersonaDetailsPage />, { wrapper: MemoryRouter });
+    render(<PersonaDetailsPage />);
 
     const updateName = await screen.findByTestId('display-name-btn');
 
@@ -207,7 +204,7 @@ describe('PersonaDetailsPage', () => {
 
   it('add user should work', async () => {
     const mockUpdatePersona = updatePersona as jest.Mock;
-    render(<PersonaDetailsPage />, { wrapper: MemoryRouter });
+    render(<PersonaDetailsPage />);
 
     const addUser = await screen.findByTestId('user-selectable-list');
 

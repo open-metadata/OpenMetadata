@@ -209,7 +209,6 @@ test('Classification Page', async ({ page }) => {
   });
 
   await test.step('Create classification with validation checks', async () => {
-    await redirectToHomePage(page);
     await classification.visitPage(page);
     await page.click('[data-testid="add-classification"]');
     await page.waitForSelector('.ant-modal-content', {

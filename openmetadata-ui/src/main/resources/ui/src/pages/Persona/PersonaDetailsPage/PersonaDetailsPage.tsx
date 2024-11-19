@@ -18,6 +18,7 @@ import { isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
+import { ReactComponent as CustomDashboardLogoIcon } from '../../../assets/svg/customize-landing-page-colored.svg';
 import { ReactComponent as IconPersona } from '../../../assets/svg/ic-personas.svg';
 import DescriptionV1 from '../../../components/common/EntityDescription/DescriptionV1';
 import ManageButton from '../../../components/common/EntityPageInfos/ManageButton/ManageButton';
@@ -28,18 +29,22 @@ import { UserSelectableList } from '../../../components/common/UserSelectableLis
 import EntityHeaderTitle from '../../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
 import { EntityName } from '../../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
-import { CustomizeUI } from '../../../components/Settings/Persona/CustomizeUI/CustomizeUI';
+import SettingItemCard from '../../../components/Settings/SettingItemCard/SettingItemCard.component';
 import { UsersTab } from '../../../components/Settings/Users/UsersTab/UsersTabs.component';
-import { GlobalSettingsMenuCategory } from '../../../constants/GlobalSettings.constants';
+import {
+  GlobalSettingOptions,
+  GlobalSettingsMenuCategory,
+} from '../../../constants/GlobalSettings.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { SIZE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { Persona } from '../../../generated/entity/teams/persona';
-import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
+import { PageType } from '../../../generated/system/ui/page';
 import { useFqn } from '../../../hooks/useFqn';
 import { getPersonaByName, updatePersona } from '../../../rest/PersonaAPI';
 import { getEntityName } from '../../../utils/EntityUtils';
+import { getCustomizePagePath } from '../../../utils/GlobalSettingsUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { getSettingPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -54,11 +59,6 @@ export const PersonaDetailsPage = () => {
   const [entityPermission, setEntityPermission] = useState(
     DEFAULT_ENTITY_PERMISSION
   );
-  const location = useCustomLocation();
-  const activeKey = useMemo(
-    () => location.hash?.replace('#', '') || 'users',
-    [location]
-  );
 
   const { getEntityPermissionByFqn } = usePermissionProvider();
 
@@ -66,7 +66,10 @@ export const PersonaDetailsPage = () => {
     () => [
       {
         name: t('label.persona-plural'),
-        url: getSettingPath(GlobalSettingsMenuCategory.PERSONA),
+        url: getSettingPath(
+          GlobalSettingsMenuCategory.MEMBERS,
+          GlobalSettingOptions.PERSONA
+        ),
       },
       {
         name: getEntityName(personaDetails),
@@ -165,34 +168,22 @@ export const PersonaDetailsPage = () => {
   );
 
   const handleAfterDeleteAction = () => {
-    history.push(getSettingPath(GlobalSettingsMenuCategory.PERSONA));
+    history.push(
+      getSettingPath(
+        GlobalSettingsMenuCategory.MEMBERS,
+        GlobalSettingOptions.PERSONA
+      )
+    );
   };
 
-  const handleTabChange = (activeKey: string) => {
-    history.push({
-      hash: activeKey,
-    });
+  const handleCustomizeItemClick = (category: string) => {
+    history.push(
+      getCustomizePagePath(
+        personaDetails?.fullyQualifiedName as string,
+        category as PageType
+      )
+    );
   };
-
-  const tabItems = useMemo(() => {
-    return [
-      {
-        label: t('label.user-plural'),
-        key: 'users',
-        children: (
-          <UsersTab
-            users={personaDetails?.users ?? []}
-            onRemoveUser={handleRemoveUser}
-          />
-        ),
-      },
-      {
-        label: t('label.customize-ui'),
-        key: 'customize-ui',
-        children: <CustomizeUI />,
-      },
-    ];
-  }, [personaDetails]);
 
   if (isLoading) {
     return <Loader />;
@@ -251,8 +242,42 @@ export const PersonaDetailsPage = () => {
         </Col>
         <Col span={24}>
           <Tabs
-            activeKey={activeKey}
-            items={tabItems}
+            defaultActiveKey="users"
+            items={[
+              {
+                label: t('label.user-plural'),
+                key: 'users',
+                children: (
+                  <UsersTab
+                    users={personaDetails.users ?? []}
+                    onRemoveUser={handleRemoveUser}
+                  />
+                ),
+              },
+              {
+                label: t('label.customize-ui'),
+                key: 'customize-ui',
+                children: (
+                  <Row gutter={[16, 16]}>
+                    <Col span={8}>
+                      <SettingItemCard
+                        data={{
+                          label: t('label.customize-entity', {
+                            entity: t('label.landing-page'),
+                          }),
+                          description: t(
+                            'message.page-sub-header-for-customize-landing-page'
+                          ),
+                          key: PageType.LandingPage,
+                          icon: CustomDashboardLogoIcon,
+                        }}
+                        onClick={handleCustomizeItemClick}
+                      />
+                    </Col>
+                  </Row>
+                ),
+              },
+            ]}
             tabBarExtraContent={
               <UserSelectableList
                 hasPermission
@@ -267,7 +292,6 @@ export const PersonaDetailsPage = () => {
                 </Button>
               </UserSelectableList>
             }
-            onChange={handleTabChange}
           />
         </Col>
       </Row>

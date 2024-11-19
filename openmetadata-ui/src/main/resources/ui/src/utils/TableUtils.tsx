@@ -103,9 +103,7 @@ import { SearchIndexField } from '../generated/entity/data/searchIndex';
 import {
   Column,
   DataType,
-  JoinedWith,
   TableConstraint,
-  TableJoins,
 } from '../generated/entity/data/table';
 import { Field } from '../generated/type/schema';
 import { LabelType, State, TagLabel } from '../generated/type/tagLabel';
@@ -151,7 +149,6 @@ import { ReactComponent as IconUnknown } from '../assets/svg/data-type-icon/unkn
 import { ReactComponent as IconVarchar } from '../assets/svg/data-type-icon/varchar.svg';
 import { ReactComponent as IconVariant } from '../assets/svg/data-type-icon/variant.svg';
 import { ReactComponent as IconXML } from '../assets/svg/data-type-icon/xml.svg';
-import { Joined } from '../pages/TableDetailsPageV1/FrequentlyJoinedTables/FrequentlyJoinedTables.component';
 
 export const getUsagePercentile = (pctRank: number, isLiteral = false) => {
   const percentile = Math.round(pctRank * 10) / 10;
@@ -911,36 +908,4 @@ export const getTableDetailPageBaseTabs = ({
       ),
     },
   ];
-};
-
-export const getJoinsFromTableJoins = (joins?: TableJoins): Joined[] => {
-  const tableFQNGrouping = [
-    ...(joins?.columnJoins?.flatMap(
-      (cjs) =>
-        cjs.joinedWith?.map<JoinedWith>((jw) => ({
-          fullyQualifiedName: getTableFQNFromColumnFQN(jw.fullyQualifiedName),
-          joinCount: jw.joinCount,
-        })) ?? []
-    ) ?? []),
-    ...(joins?.directTableJoins ?? []),
-  ].reduce(
-    (result, jw) => ({
-      ...result,
-      [jw.fullyQualifiedName]:
-        (result[jw.fullyQualifiedName] ?? 0) + jw.joinCount,
-    }),
-    {} as Record<string, number>
-  );
-
-  return Object.entries(tableFQNGrouping)
-    .map<JoinedWith & { name: string }>(([fullyQualifiedName, joinCount]) => ({
-      fullyQualifiedName,
-      joinCount,
-      name: getPartialNameFromTableFQN(
-        fullyQualifiedName,
-        [FqnPart.Database, FqnPart.Table],
-        FQN_SEPARATOR_CHAR
-      ),
-    }))
-    .sort((a, b) => b.joinCount - a.joinCount);
 };

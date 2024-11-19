@@ -28,7 +28,7 @@ const mockProps: AddWidgetTabContentProps = {
   widgetSizeOptions: mockWidgetSizes,
 };
 
-jest.mock('../../../../utils/CustomizeMyDataPageClassBase', () => ({
+jest.mock('../../../../utils/CustomizePageClassBase', () => ({
   getWidgetImageFromKey: jest.fn().mockImplementation(() => ''),
 }));
 
