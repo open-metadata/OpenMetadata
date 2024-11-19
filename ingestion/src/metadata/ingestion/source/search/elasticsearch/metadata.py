@@ -103,6 +103,7 @@ class ElasticsearchSource(SearchServiceSource):
                 fields=parse_es_index_mapping(
                     search_index_details.get(index_name, {}).get("mappings")
                 ),
+                indexType="Index",
             )
             yield Either(right=search_index_request)
             self.register_record(search_index_request=search_index_request)
@@ -142,6 +143,51 @@ class ElasticsearchSource(SearchServiceSource):
                     ),
                 )
             )
+
+    def get_search_index_template_list(self) -> Iterable[dict]:
+        """
+        Get List of all search index template
+        """
+        for index_template in self.client.indices.get_index_template()[
+            "index_templates"
+        ]:
+            yield index_template
+
+    def get_search_index_template_name(
+        self, search_index_template_details: dict
+    ) -> Optional[str]:
+        """
+        Get Search Index Template Name
+        """
+        return search_index_template_details and search_index_template_details["name"]
+
+    def yield_search_index_template(
+        self, search_index_template_details: Any
+    ) -> Iterable[Either[CreateSearchIndexRequest]]:
+        """
+        Method to Get Search Index Template Entity
+        """
+        if not self.source_config.ingestIndexTemplate:
+            return None
+
+        index_name = self.get_search_index_template_name(search_index_template_details)
+        index_template = search_index_template_details["index_template"]
+        if index_name:
+            search_index_template_request = CreateSearchIndexRequest(
+                name=EntityName(index_name),
+                displayName=index_name,
+                searchIndexSettings=index_template.get("template", {}).get(
+                    "settings", {}
+                ),
+                service=FullyQualifiedEntityName(self.context.get().search_service),
+                fields=parse_es_index_mapping(
+                    index_template.get("template", {}).get("mappings")
+                ),
+                indexType="Index Template",
+                description=index_template.get("_meta", {}).get("description"),
+            )
+            yield Either(right=search_index_template_request)
+            self.register_record(search_index_request=search_index_template_request)
 
     def close(self):
         try:

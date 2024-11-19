@@ -83,7 +83,7 @@ class SearchServiceTopology(ServiceTopology):
                 cache_entities=True,
             ),
         ],
-        children=["search_index"],
+        children=["search_index", "search_index_template"],
         post_process=["mark_search_indexes_as_deleted"],
     )
     search_index: Annotated[
@@ -104,6 +104,21 @@ class SearchServiceTopology(ServiceTopology):
                 consumer=["search_service"],
                 nullable=True,
             ),
+        ],
+    )
+
+    search_index_template: Annotated[
+        TopologyNode, Field(description="Search Index Template Processing Node")
+    ] = TopologyNode(
+        producer="get_search_index_template",
+        stages=[
+            NodeStage(
+                type_=SearchIndex,
+                context="search_index_template",
+                processor="yield_search_index_template",
+                consumer=["search_service"],
+                use_cache=True,
+            )
         ],
     )
 
@@ -151,6 +166,11 @@ class SearchServiceSource(TopologyRunnerMixin, Source, ABC):
     ) -> Iterable[Either[CreateSearchIndexRequest]]:
         """Method to Get Search Index Entity"""
 
+    def yield_search_index_template(
+        self, search_index_details: Any
+    ) -> Iterable[Either[CreateSearchIndexRequest]]:
+        """Method to Get Search Index Templates"""
+
     def yield_search_index_sample_data(
         self, search_index_details: Any
     ) -> Iterable[Either[SearchIndexSampleData]]:
@@ -177,6 +197,29 @@ class SearchServiceSource(TopologyRunnerMixin, Source, ABC):
                 )
                 continue
             yield index_details
+
+    @abstractmethod
+    def get_search_index_template_list(self) -> Optional[List[Any]]:
+        """Get list of all search index templates"""
+
+    def get_search_index_template(self) -> Any:
+        if not self.source_config.ingestIndexTemplate:
+            return None
+
+        for index_template_details in self.get_search_index_template_list():
+            search_index_template_name = self.get_search_index_template_name(
+                index_template_details
+            )
+            if filter_by_search_index(
+                self.source_config.searchIndexFilterPattern,
+                search_index_template_name,
+            ):
+                self.status.filter(
+                    search_index_template_name,
+                    "Search Index Template Filtered Out",
+                )
+                continue
+            yield index_template_details
 
     def yield_create_request_search_service(
         self, config: WorkflowSource
