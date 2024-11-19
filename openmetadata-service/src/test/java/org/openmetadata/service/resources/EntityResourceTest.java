@@ -93,7 +93,6 @@ import java.util.Optional;
 import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
@@ -4069,7 +4068,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     return null;
   }
 
-  private String receiveCsvImportViaSocketIO(String entityName) throws Exception {
+  private String receiveCsvImportViaSocketIO(String entityName, String csv, boolean dryRun)
+      throws Exception {
     UUID userId = getAdminUserId();
     String uri = String.format("http://localhost:%d", APP.getLocalPort());
 
@@ -4118,8 +4118,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     if (!connectLatch.await(10, TimeUnit.SECONDS)) {
       fail("Could not connect to Socket.IO server");
     }
+    String jobId = initiateImport(entityName, csv, dryRun);
 
-    if (!messageLatch.await(30, TimeUnit.SECONDS)) {
+    if (!messageLatch.await(45, TimeUnit.SECONDS)) {
       fail("Did not receive CSV import result via Socket.IO within the expected time.");
     }
 
@@ -4173,27 +4174,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
     String csv = EntityCsvTest.createCsv(csvHeaders, createRecords, updateRecords);
 
-    // Open WebSocket Listener Before Triggering Import
-    CompletableFuture<String> receivedMessageFuture =
-        CompletableFuture.supplyAsync(
-            () -> {
-              try {
-                return receiveCsvImportViaSocketIO(entityName);
-              } catch (Exception e) {
-                throw new RuntimeException(e);
-              }
-            });
-
-    Awaitility.await().atMost(120, TimeUnit.SECONDS).until(() -> true);
-
-    String jobId = initiateImport(entityName, csv, true);
-
-    String receivedJson = receivedMessageFuture.get(45, TimeUnit.SECONDS);
-    if (receivedJson == null) {
-      fail("Received message is null.");
-    }
-
-    CsvImportResult dryRunResultAsync = JsonUtils.readValue(receivedJson, CsvImportResult.class);
+    CsvImportResult dryRunResultAsync =
+        JsonUtils.readValue(
+            receiveCsvImportViaSocketIO(entityName, csv, true), CsvImportResult.class);
     CsvImportResult dryRunResultSync = importCsv(entityName, csv, true);
 
     // Validate the imported result summary - it should include both created and updated records
@@ -4205,26 +4188,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     assertEquals(expectedResultsCsv, dryRunResultSync.getImportResultsCsv());
     assertEquals(expectedResultsCsv, dryRunResultAsync.getImportResultsCsv());
 
-    // Repeat for actual import (dryRun=false)
-    // Open a new WebSocket listener before initiating the real import with dryRun=false
-    receivedMessageFuture =
-        CompletableFuture.supplyAsync(
-            () -> {
-              try {
-                return receiveCsvImportViaSocketIO(entityName);
-              } catch (Exception e) {
-                throw new RuntimeException(e);
-              }
-            });
-
-    jobId = initiateImport(entityName, csv, false);
-
-    receivedJson = receivedMessageFuture.get(45, TimeUnit.SECONDS);
-    if (receivedJson == null) {
-      fail("Received message is null.");
-    }
-
-    CsvImportResult finalResultAsync = JsonUtils.readValue(receivedJson, CsvImportResult.class);
+    CsvImportResult finalResultAsync =
+        JsonUtils.readValue(
+            receiveCsvImportViaSocketIO(entityName, csv, false), CsvImportResult.class);
     CsvImportResult finalResultSync = importCsv(entityName, csv, false);
 
     assertEquals(dryRunResultAsync.withDryRun(false), finalResultAsync);
