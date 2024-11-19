@@ -136,7 +136,6 @@ from metadata.parsers.schema_parsers import (
     InvalidSchemaTypeException,
     schema_parser_config_registry,
 )
-from metadata.profiler.api.models import ProfilerResponse, SampleData
 from metadata.utils import entity_link, fqn
 from metadata.utils.constants import UTF_8
 from metadata.utils.fqn import FQN_SEPARATOR
@@ -899,24 +898,10 @@ class SampleDataSource(
 
                 self.metadata.ingest_table_sample_data(
                     table_entity,
-                    ProfilerResponse(
-                        table=table_entity,
-                        profile=CreateTableProfileRequest(
-                            tableProfile=TableProfile(
-                                timestamp=Timestamp(
-                                    int(datetime.now().timestamp() * 1000)
-                                ),
-                                columnCount=1.0,
-                                rowCount=3.0,
-                            )
-                        ),
-                        sample_data=SampleData(
-                            data=TableData(
-                                rows=table["sampleData"]["rows"],
-                                columns=table["sampleData"]["columns"],
-                            )
-                        ),
-                    ).sample_data.data,
+                    TableData(
+                        rows=table["sampleData"]["rows"],
+                        columns=table["sampleData"]["columns"],
+                    ),
                 )
 
             if table.get("customMetrics"):

@@ -105,9 +105,9 @@ class partition_filter_handler:
     def __call__(self, func):
         def handle_and_execute(_self, *args, **kwargs):
             """Handle partitioned queries"""
-            if _self._partition_details:
+            if _self.partition_details:
                 partition_filter = build_partition_predicate(
-                    _self._partition_details,
+                    _self.partition_details,
                     _self.table.__table__.c,
                 )
                 if self.build_sample:

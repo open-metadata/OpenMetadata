@@ -54,7 +54,7 @@ class TestDatalake:
                 if column.dataType == DataType.JSON:
                     assert column.children
 
-    def test_profiler(self, run_profiler):
+    def test_auto_classification(self, run_auto_classification):
         """Also excluding the test for parquet files until the above is fixed"""
         csv_ = self.metadata.get_by_name(
             entity=Table,

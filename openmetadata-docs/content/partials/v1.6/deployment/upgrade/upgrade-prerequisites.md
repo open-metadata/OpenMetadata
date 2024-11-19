@@ -124,3 +124,23 @@ workflow as successful. However, any errors when sending the information to Open
 
 Now, we're changing this behavior to consider the success rate of all the steps involved in the workflow. The UI will
 then show more `Partial Success` statuses rather than `Failed`, properly reflecting the real state of the workflow.
+
+### Profiler & Auto Classification Workflow
+
+We are creating a new `Auto Classification` workflow that will take care of managing the sample data and PII classification,
+which was previously done by the Profiler workflow. This change will allow us to have a more modular and scalable system.
+
+The Profiler workflow will now only focus on the profiling part of the data, while the Auto Classification will take care
+of the rest.
+
+This means that we are removing these properties from the `DatabaseServiceProfilerPipeline` schema:
+- `generateSampleData`
+- `processPiiSensitive`
+- `confidence`
+which will be moved to the new `DatabaseServiceAutoClassificationPipeline` schema.
+
+What you will need to do:
+- If you are using the **EXTERNAL** ingestion for the profiler (YAML configuration), you will need to update your configuration,
+removing these properties as well.
+- If you still want to use the Auto PII Classification and sampling features, you can create the new workflow
+from the UI.

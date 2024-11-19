@@ -20,9 +20,6 @@ from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
 )
-from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline import (
-    DatabaseServiceProfilerPipeline,
-)
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
@@ -31,6 +28,7 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.status import Status
 from metadata.ingestion.models.entity_interface import EntityInterfaceWithTags
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.profiler.source.fetcher.config import EntityFilterConfigInterface
 from metadata.profiler.source.fetcher.profiler_source_factory import (
     profiler_source_factory,
 )
@@ -116,7 +114,7 @@ class DatabaseFetcherStrategy(FetcherStrategy):
     ) -> None:
         super().__init__(config, metadata, global_profiler_config, status)
         self.source_config = cast(
-            DatabaseServiceProfilerPipeline, self.source_config
+            EntityFilterConfigInterface, self.source_config
         )  # Satisfy typchecker
 
     def _filter_databases(self, databases: Iterable[Database]) -> Iterable[Database]:

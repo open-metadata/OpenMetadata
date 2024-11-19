@@ -16,6 +16,9 @@ Add a function for each type from PipelineType
 from openmetadata_managed_apis.workflows.ingestion.application import (
     build_application_dag,
 )
+from openmetadata_managed_apis.workflows.ingestion.auto_classification import (
+    build_auto_classification_dag,
+)
 from openmetadata_managed_apis.workflows.ingestion.dbt import build_dbt_dag
 from openmetadata_managed_apis.workflows.ingestion.es_reindex import (
     build_es_reindex_dag,
@@ -40,6 +43,7 @@ build_registry.add(PipelineType.usage.value)(build_usage_dag)
 build_registry.add(PipelineType.lineage.value)(build_lineage_dag)
 build_registry.add(PipelineType.dbt.value)(build_dbt_dag)
 build_registry.add(PipelineType.profiler.value)(build_profiler_dag)
+build_registry.add(PipelineType.autoClassification.value)(build_auto_classification_dag)
 build_registry.add(PipelineType.TestSuite.value)(build_test_suite_dag)
 build_registry.add(PipelineType.elasticSearchReindex.value)(build_es_reindex_dag)
 build_registry.add(PipelineType.application.value)(build_application_dag)

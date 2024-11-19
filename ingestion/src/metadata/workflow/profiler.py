@@ -11,11 +11,7 @@
 """
 Workflow definition for the profiler
 """
-from typing import cast
 
-from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline import (
-    DatabaseServiceProfilerPipeline,
-)
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
@@ -24,7 +20,6 @@ from metadata.ingestion.connections.test_connections import (
     raise_test_connection_exception,
 )
 from metadata.ingestion.source.connections import get_test_connection_fn
-from metadata.pii.processor import PIIProcessor
 from metadata.profiler.processor.processor import ProfilerProcessor
 from metadata.profiler.source.metadata import OpenMetadataSource
 from metadata.profiler.source.metadata_ext import OpenMetadataSourceExt
@@ -68,15 +63,7 @@ class ProfilerWorkflow(IngestionWorkflow):
         profiler_processor = self._get_profiler_processor()
         sink = self._get_sink()
 
-        # Only instantiate the PII Processor on demand
-        source_config: DatabaseServiceProfilerPipeline = cast(
-            DatabaseServiceProfilerPipeline, self.config.source.sourceConfig.config
-        )
-        if source_config.processPiiSensitive:
-            pii_processor = self._get_pii_processor()
-            self.steps = (profiler_processor, pii_processor, sink)
-        else:
-            self.steps = (profiler_processor, sink)
+        self.steps = (profiler_processor, sink)
 
     def test_connection(self) -> None:
         service_config = self.config.source.serviceConnection.root.config
@@ -97,6 +84,3 @@ class ProfilerWorkflow(IngestionWorkflow):
 
     def _get_profiler_processor(self) -> Processor:
         return ProfilerProcessor.create(self.config.model_dump(), self.metadata)
-
-    def _get_pii_processor(self) -> Processor:
-        return PIIProcessor.create(self.config.model_dump(), self.metadata)

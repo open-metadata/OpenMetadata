@@ -16,7 +16,7 @@ from sqlalchemy import inspect, or_, text
 
 from metadata.profiler.orm.registry import FLOAT_SET
 from metadata.profiler.processor.handle_partition import RANDOM_LABEL
-from metadata.profiler.processor.sampler.sqlalchemy.sampler import SQASampler
+from metadata.sampler.sqlalchemy.sampler import SQASampler
 
 
 class TrinoSampler(SQASampler):

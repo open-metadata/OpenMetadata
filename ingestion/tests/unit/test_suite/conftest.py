@@ -15,7 +15,6 @@ shared test cases
 
 import os
 from datetime import datetime, timedelta
-from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
@@ -32,6 +31,7 @@ from metadata.generated.schema.entity.services.connections.database.sqliteConnec
 )
 from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.sampler.sqlalchemy.sampler import SQASampler
 
 Base = declarative_base()
 
@@ -89,14 +89,19 @@ def create_sqlite_table():
         databaseMode=db_path + "?check_same_thread=False",
     )  # type: ignore
 
-    with patch.object(
-        SQATestSuiteInterface, "_convert_table_to_orm_object", return_value=User
-    ):
-        sqa_profiler_interface = SQATestSuiteInterface(
-            sqlite_conn,  # type: ignore
-            table_entity=TABLE,
-            ometa_client=None,  # type: ignore
-        )
+    sampler = SQASampler(
+        service_connection_config=sqlite_conn,
+        ometa_client=None,
+        entity=TABLE,
+        orm_table=User,
+    )
+    sqa_profiler_interface = SQATestSuiteInterface(
+        sqlite_conn,
+        None,
+        sampler,
+        TABLE,
+        orm_table=User,
+    )
 
     runner = sqa_profiler_interface.runner
     engine = sqa_profiler_interface.session.get_bind()

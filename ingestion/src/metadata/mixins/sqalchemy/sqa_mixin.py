@@ -15,10 +15,9 @@ supporting sqlalchemy abstraction layer
 """
 
 
-from typing import List, Optional
+from typing import List
 
-from sqlalchemy import Column, MetaData, inspect
-from sqlalchemy.orm import DeclarativeMeta
+from sqlalchemy import Column, inspect
 
 from metadata.generated.schema.entity.services.connections.database.databricksConnection import (
     DatabricksConnection,
@@ -33,12 +32,11 @@ from metadata.ingestion.source.connections import get_connection
 from metadata.ingestion.source.database.snowflake.queries import (
     SNOWFLAKE_SESSION_TAG_QUERY,
 )
-from metadata.profiler.orm.converter.base import ometa_to_sqa_orm
 from metadata.utils.collaborative_super import Root
 
 
 class SQAInterfaceMixin(Root):
-    """SQLAlchemy inteface mixin grouping shared methods between sequential and threaded executor"""
+    """SQLAlchemy interface mixin grouping shared methods between sequential and threaded executor"""
 
     def _get_engine(self):
         """Get engine for database
@@ -51,19 +49,6 @@ class SQAInterfaceMixin(Root):
         engine = get_connection(self.service_connection_config)
 
         return engine
-
-    def _convert_table_to_orm_object(
-        self,
-        sqa_metadata_obj: Optional[MetaData] = None,
-    ) -> DeclarativeMeta:
-        """Given a table entity return a SQA ORM object
-
-        Args:
-            sqa_metadata_obj: sqa metadata registry
-        Returns:
-            DeclarativeMeta
-        """
-        return ometa_to_sqa_orm(self.table_entity, self.ometa_client, sqa_metadata_obj)
 
     def get_columns(self) -> Column:
         """get columns from an orm object"""

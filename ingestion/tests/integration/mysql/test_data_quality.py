@@ -27,7 +27,7 @@ def get_test_suite_config(workflow_config, sink_config):
     def inner(entity_fqn: str, test_case_definitions: List[TestCaseDefinition]):
         return {
             "source": {
-                "type": TestSuiteConfigType.TestSuite.value,
+                "type": "mysql",
                 "serviceName": "MyTestSuite",
                 "sourceConfig": {
                     "config": TestSuitePipeline(

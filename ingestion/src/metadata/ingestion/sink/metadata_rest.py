@@ -84,6 +84,7 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardUsage
 from metadata.ingestion.source.database.database_service import DataModelLink
 from metadata.profiler.api.models import ProfilerResponse
+from metadata.sampler.models import SamplerResponse
 from metadata.utils.execution_time_tracker import calculate_execution_time
 from metadata.utils.logger import get_log_name, ingestion_logger
 
@@ -549,6 +550,41 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         )
 
     @_run_dispatch.register
+    def write_sampler_response(self, record: SamplerResponse) -> Either[Table]:
+        """Ingest the sample data - if needed - and the PII tags"""
+        if record.sample_data and record.sample_data.store:
+            table_data = self.metadata.ingest_table_sample_data(
+                table=record.table, sample_data=record.sample_data.data
+            )
+            if not table_data:
+                self.status.failed(
+                    StackTraceError(
+                        name=record.table.fullyQualifiedName.root,
+                        error="Error trying to ingest sample data for table",
+                    )
+                )
+            else:
+                logger.debug(
+                    f"Successfully ingested sample data for {record.table.fullyQualifiedName.root}"
+                )
+
+        if record.column_tags:
+            patched = self.metadata.patch_column_tags(
+                table=record.table, column_tags=record.column_tags
+            )
+            if not patched:
+                self.status.warning(
+                    key=record.table.fullyQualifiedName.root,
+                    reason="Error patching tags for table",
+                )
+            else:
+                logger.debug(
+                    f"Successfully patched tag {record.column_tags} for {record.table.fullyQualifiedName.root}"
+                )
+
+        return Either(right=record.table)
+
+    @_run_dispatch.register
     def write_profiler_response(self, record: ProfilerResponse) -> Either[Table]:
         """Cleanup "`" character in columns and ingest"""
         column_profile = record.profile.columnProfile
@@ -564,37 +600,6 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         logger.debug(
             f"Successfully ingested profile metrics for {record.table.fullyQualifiedName.root}"
         )
-
-        if record.sample_data and record.sample_data.store:
-            table_data = self.metadata.ingest_table_sample_data(
-                table=record.table, sample_data=record.sample_data.data
-            )
-            if not table_data:
-                self.status.failed(
-                    StackTraceError(
-                        name=table.fullyQualifiedName.root,
-                        error="Error trying to ingest sample data for table",
-                    )
-                )
-            else:
-                logger.debug(
-                    f"Successfully ingested sample data for {record.table.fullyQualifiedName.root}"
-                )
-
-        if record.column_tags:
-            patched = self.metadata.patch_column_tags(
-                table=record.table, column_tags=record.column_tags
-            )
-            if not patched:
-                self.status.warning(
-                    key=table.fullyQualifiedName.root,
-                    reason="Error patching tags for table",
-                )
-            else:
-                logger.debug(
-                    f"Successfully patched tag {record.column_tags} for {record.table.fullyQualifiedName.root}"
-                )
-
         return Either(right=table)
 
     @_run_dispatch.register

@@ -17,7 +17,7 @@ from typing import List, Optional
 from sqlalchemy import Column
 
 from metadata.generated.schema.entity.data.table import TableData
-from metadata.profiler.processor.sampler.sqlalchemy.sampler import SQASampler
+from metadata.sampler.sqlalchemy.sampler import SQASampler
 
 
 class AzureSQLSampler(SQASampler):

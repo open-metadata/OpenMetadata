@@ -16,7 +16,6 @@ Test SQA Interface
 import os
 from datetime import datetime
 from unittest import TestCase
-from unittest.mock import patch
 from uuid import uuid4
 
 from sqlalchemy import TEXT, Column, Integer, String, inspect
@@ -51,6 +50,7 @@ from metadata.profiler.metrics.core import (
 )
 from metadata.profiler.metrics.static.row_count import RowCount
 from metadata.profiler.processor.default import get_default_metrics
+from metadata.sampler.sqlalchemy.sampler import SQASampler
 
 
 class User(declarative_base()):
@@ -78,19 +78,15 @@ class SQAInterfaceTest(TestCase):
         sqlite_conn = SQLiteConnection(
             scheme=SQLiteScheme.sqlite_pysqlite,
         )
-        with patch.object(
-            SQAProfilerInterface, "_convert_table_to_orm_object", return_value=User
-        ):
-            self.sqa_profiler_interface = SQAProfilerInterface(
-                sqlite_conn,
-                None,
-                table_entity,
-                None,
-                None,
-                None,
-                None,
-                None,
-            )
+        sampler = SQASampler(
+            service_connection_config=sqlite_conn,
+            ometa_client=None,
+            entity=None,
+            orm_table=User,
+        )
+        self.sqa_profiler_interface = SQAProfilerInterface(
+            sqlite_conn, None, table_entity, None, sampler, 5, 43200, orm_table=User
+        )
         self.table = User
 
     def test_init_interface(self):
@@ -118,12 +114,15 @@ class SQAInterfaceTestMultiThread(TestCase):
         scheme=SQLiteScheme.sqlite_pysqlite,
         databaseMode=db_path + "?check_same_thread=False",
     )
-    with patch.object(
-        SQAProfilerInterface, "_convert_table_to_orm_object", return_value=User
-    ):
-        sqa_profiler_interface = SQAProfilerInterface(
-            sqlite_conn, None, table_entity, None, None, None, None, None, 5, 43200
-        )
+    sampler = SQASampler(
+        service_connection_config=sqlite_conn,
+        ometa_client=None,
+        entity=None,
+        orm_table=User,
+    )
+    sqa_profiler_interface = SQAProfilerInterface(
+        sqlite_conn, None, table_entity, None, sampler, 5, 43200, orm_table=User
+    )
 
     @classmethod
     def setUpClass(cls) -> None:

@@ -16,7 +16,6 @@ import os
 from concurrent.futures import TimeoutError
 from datetime import datetime
 from unittest import TestCase
-from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
@@ -52,6 +51,7 @@ from metadata.profiler.metrics.core import MetricTypes, add_props
 from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.processor.core import MissingMetricException, Profiler
 from metadata.profiler.processor.default import DefaultProfiler
+from metadata.sampler.sqlalchemy.sampler import SQASampler
 
 Base = declarative_base()
 
@@ -107,12 +107,17 @@ class ProfilerTest(TestCase):
             ),
         ],
     )
-    with patch.object(
-        SQAProfilerInterface, "_convert_table_to_orm_object", return_value=User
-    ):
-        sqa_profiler_interface = SQAProfilerInterface(
-            sqlite_conn, None, table_entity, None, None, None, None, None, 5, 43200
-        )
+
+    sampler = SQASampler(
+        service_connection_config=sqlite_conn,
+        ometa_client=None,
+        entity=table_entity,
+        orm_table=User,
+    )
+
+    sqa_profiler_interface = SQAProfilerInterface(
+        sqlite_conn, None, table_entity, None, sampler, 5, 43200, orm_table=User
+    )
 
     @classmethod
     def setUpClass(cls) -> None:
@@ -280,20 +285,16 @@ class ProfilerTest(TestCase):
     def test_profiler_with_timeout(self):
         """check timeout is properly used"""
 
-        with patch.object(
-            SQAProfilerInterface, "_convert_table_to_orm_object", return_value=User
-        ):
-            sqa_profiler_interface = SQAProfilerInterface(
-                self.sqlite_conn,
-                None,
-                self.table_entity,
-                None,
-                None,
-                None,
-                None,
-                None,
-                timeout_seconds=0,
-            )
+        sqa_profiler_interface = SQAProfilerInterface(
+            self.sqlite_conn,
+            None,
+            self.table_entity,
+            None,
+            self.sampler,
+            5,
+            0,
+            orm_table=User,
+        )
 
         simple = DefaultProfiler(
             profiler_interface=sqa_profiler_interface,

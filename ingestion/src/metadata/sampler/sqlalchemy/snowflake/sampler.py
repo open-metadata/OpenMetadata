@@ -13,7 +13,7 @@ Helper module to handle data sampling
 for the profiler
 """
 
-from typing import Dict, Optional, cast
+from typing import Dict, Optional, Union, cast
 
 from sqlalchemy import Table
 from sqlalchemy.sql.selectable import CTE
@@ -22,9 +22,17 @@ from metadata.generated.schema.entity.data.table import (
     ProfileSampleType,
     SamplingMethodType,
 )
-from metadata.profiler.api.models import ProfileSampleConfig
+from metadata.generated.schema.entity.services.connections.connectionBasicType import (
+    DataStorageConfig,
+)
+from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
+    DatalakeConnection,
+)
+from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.profiler.processor.handle_partition import partition_filter_handler
-from metadata.profiler.processor.sampler.sqlalchemy.sampler import SQASampler
+from metadata.sampler.models import SampleConfig
+from metadata.sampler.sqlalchemy.sampler import SQASampler
 from metadata.utils.constants import SAMPLE_DATA_DEFAULT_COUNT
 
 
@@ -34,40 +42,47 @@ class SnowflakeSampler(SQASampler):
     run the query in the whole table.
     """
 
+    # pylint: disable=too-many-arguments
     def __init__(
         self,
-        client,
-        table,
-        profile_sample_config: Optional[ProfileSampleConfig] = None,
+        service_connection_config: Union[DatabaseConnection, DatalakeConnection],
+        ometa_client: OpenMetadata,
+        entity: Table,
+        sample_config: Optional[SampleConfig] = None,
         partition_details: Optional[Dict] = None,
-        profile_sample_query: Optional[str] = None,
+        sample_query: Optional[str] = None,
+        storage_config: DataStorageConfig = None,
         sample_data_count: Optional[int] = SAMPLE_DATA_DEFAULT_COUNT,
+        **kwargs,
     ):
         super().__init__(
-            client,
-            table,
-            profile_sample_config,
-            partition_details,
-            profile_sample_query,
-            sample_data_count,
+            service_connection_config=service_connection_config,
+            ometa_client=ometa_client,
+            entity=entity,
+            sample_config=sample_config,
+            partition_details=partition_details,
+            sample_query=sample_query,
+            storage_config=storage_config,
+            sample_data_count=sample_data_count,
+            **kwargs,
         )
         self.sampling_method_type = SamplingMethodType.BERNOULLI
-        if profile_sample_config and profile_sample_config.sampling_method_type:
-            self.sampling_method_type = profile_sample_config.sampling_method_type
+        if sample_config and sample_config.sampling_method_type:
+            self.sampling_method_type = sample_config.sampling_method_type
 
     @partition_filter_handler(build_sample=True)
     def get_sample_query(self, *, column=None) -> CTE:
         """get query for sample data"""
         # TABLESAMPLE SYSTEM is not supported for views
-        self.table = cast(Table, self.table)
+        self._table = cast(Table, self.table)
 
-        if self.profile_sample_type == ProfileSampleType.PERCENTAGE:
+        if self.sample_config.profile_sample_type == ProfileSampleType.PERCENTAGE:
             rnd = (
                 self._base_sample_query(
                     column,
                 )
                 .suffix_with(
-                    f"SAMPLE {self.sampling_method_type.value} ({self.profile_sample or 100})",
+                    f"SAMPLE {self.sampling_method_type.value} ({self.sample_config.profile_sample or 100})",
                 )
                 .cte(f"{self.table.__tablename__}_rnd")
             )
@@ -77,7 +92,7 @@ class SnowflakeSampler(SQASampler):
         return (
             self._base_sample_query(column)
             .suffix_with(
-                f"TABLESAMPLE ({self.profile_sample or 100} ROWS)",
+                f"TABLESAMPLE ({self.sample_config.profile_sample or 100} ROWS)",
             )
             .cte(f"{self.table.__tablename__}_sample")
         )

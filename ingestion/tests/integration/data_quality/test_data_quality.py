@@ -38,7 +38,7 @@ def test_empty_test_suite(
     )
     workflow_config = {
         "source": {
-            "type": TestSuiteConfigType.TestSuite.value,
+            "type": "postgres",
             "serviceName": "MyTestSuite",
             "sourceConfig": {
                 "config": {

@@ -20,6 +20,7 @@ import sqlalchemy as sqa
 from pytest import raises
 from sqlalchemy.orm import declarative_base
 
+from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import (
     Column,
     DataType,
@@ -44,6 +45,7 @@ from metadata.profiler.api.models import ProfilerProcessorConfig
 from metadata.profiler.interface.sqlalchemy.profiler_interface import (
     SQAProfilerInterface,
 )
+from metadata.profiler.orm.converter import base
 from metadata.profiler.processor.default import DefaultProfiler
 from metadata.profiler.source.database.base.profiler_source import ProfilerSource
 from metadata.profiler.source.fetcher.fetcher_strategy import DatabaseFetcherStrategy
@@ -62,6 +64,9 @@ TABLE = Table(
         Column(name="age", dataType=DataType.INT),
     ],
     database=EntityReference(id=uuid.uuid4(), name="db", type="database"),
+    databaseSchema=EntityReference(
+        id=uuid.uuid4(), name="schema", type="databaseSchema"
+    ),
     tableProfilerConfig=TableProfilerConfig(
         profileSample=80.0,
     ),  # type: ignore
@@ -110,15 +115,15 @@ class User(Base):
 
 @patch.object(
     SQAProfilerInterface,
-    "_convert_table_to_orm_object",
-    return_value=User,
+    "table",
+    new_callable=lambda: User,
 )
 @patch.object(
     OpenMetadataSource,
     "_validate_service_name",
     return_value=True,
 )
-def test_init_workflow(mocked_method, mocked_orm):  # pylint: disable=unused-argument
+def test_init_workflow(mocked_method, *_):  # pylint: disable=unused-argument
     """
     We can initialise the workflow from a config
     """
@@ -295,16 +300,26 @@ def test_filter_entities():
 
 
 @patch.object(
+    base,
+    "get_orm_database",
+    return_value="db",
+)
+@patch.object(
+    base,
+    "get_orm_schema",
+    return_value="schema",
+)
+@patch.object(
     SQAProfilerInterface,
-    "_convert_table_to_orm_object",
-    return_value=User,
+    "table",
+    new_callable=lambda: User,
 )
 @patch.object(
     OpenMetadataSource,
     "_validate_service_name",
     return_value=True,
 )
-def test_profile_def(mocked_method, mocked_orm):  # pylint: disable=unused-argument
+def test_profile_def(mocked_method, *_):  # pylint: disable=unused-argument
     """
     Validate the definitions of the profile in the JSON
     """
@@ -323,11 +338,13 @@ def test_profile_def(mocked_method, mocked_orm):  # pylint: disable=unused-argum
 
     profiler_source = ProfilerSource(
         profile_workflow.config,
-        DatabaseService(
+        Database(
             id=uuid.uuid4(),
             name="myDataBaseService",
-            serviceType=DatabaseServiceType.SQLite,
-        ),  # type: ignore
+            service=EntityReference(
+                id=uuid.uuid4(), name="my_service", type="databaseService"
+            ),
+        ),
         profile_workflow.metadata,
         None,
     )
@@ -343,18 +360,26 @@ def test_profile_def(mocked_method, mocked_orm):  # pylint: disable=unused-argum
 
 
 @patch.object(
+    base,
+    "get_orm_database",
+    return_value="db",
+)
+@patch.object(
+    base,
+    "get_orm_schema",
+    return_value="schema",
+)
+@patch.object(
     SQAProfilerInterface,
-    "_convert_table_to_orm_object",
-    return_value=User,
+    "table",
+    new_callable=lambda: User,
 )
 @patch.object(
     OpenMetadataSource,
     "_validate_service_name",
     return_value=True,
 )
-def test_default_profile_def(
-    mocked_method, mocked_orm  # pylint: disable=unused-argument
-):
+def test_default_profile_def(mocked_method, *_):  # pylint: disable=unused-argument
     """
     If no information is specified for the profiler, let's
     use the SimpleTableProfiler and SimpleProfiler

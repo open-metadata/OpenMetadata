@@ -27,7 +27,7 @@ from metadata.generated.schema.entity.data.table import (
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
-from metadata.utils.partition import get_partition_details
+from metadata.sampler.partition import get_partition_details
 
 
 class MockTable(BaseModel):

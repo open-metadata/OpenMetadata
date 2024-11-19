@@ -49,7 +49,7 @@ def run_data_quality_workflow(
     run_workflow(MetadataWorkflow, ingestion_config)
     test_suite_config = OpenMetadataWorkflowConfig(
         source=Source(
-            type=TestSuiteConfigType.TestSuite.value,
+            type="postgres",
             serviceName="MyTestSuite",
             sourceConfig=SourceConfig(
                 config=TestSuitePipeline(
@@ -323,7 +323,7 @@ def get_incompatible_column_type_config(workflow_config, sink_config):
     def inner(entity_fqn: str, incompatible_test_case: TestCaseDefinition):
         return {
             "source": {
-                "type": "TestSuite",
+                "type": "postgres",
                 "serviceName": "MyTestSuite",
                 "sourceConfig": {
                     "config": {

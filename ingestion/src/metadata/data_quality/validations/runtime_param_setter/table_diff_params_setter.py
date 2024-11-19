@@ -116,14 +116,13 @@ class TableDiffParamsSetter(RuntimeParameterSetter):
             whereClause=self.build_where_clause(test_case),
         )
 
-    # pylint: disable=protected-access
     def build_where_clause(self, test_case) -> Optional[str]:
         param_where_clause = self.get_parameter(test_case, "where", None)
         partition_where_clause = (
             None
             if not (
-                self.sampler._partition_details
-                and self.sampler._partition_details.enablePartitioning
+                self.sampler.partition_details
+                and self.sampler.partition_details.enablePartitioning
             )
             else self.sampler.get_partitioned_query().whereclause.compile(
                 compile_kwargs={"literal_binds": True}
