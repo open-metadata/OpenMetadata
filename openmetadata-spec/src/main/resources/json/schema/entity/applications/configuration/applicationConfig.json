@@ -21,6 +21,9 @@
         },
         {
           "$ref": "internal/searchIndexingAppConfig.json"
+        },
+        {
+          "$ref": "external/slackAppTokenConfiguration.json"
         }
       ]
     },

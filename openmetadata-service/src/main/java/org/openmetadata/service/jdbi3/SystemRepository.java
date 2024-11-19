@@ -4,8 +4,6 @@ import static org.openmetadata.schema.type.EventType.ENTITY_CREATED;
 import static org.openmetadata.schema.type.EventType.ENTITY_DELETED;
 import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
 
-import com.slack.api.bolt.model.builtin.DefaultBot;
-import com.slack.api.bolt.model.builtin.DefaultInstaller;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -222,12 +220,10 @@ public class SystemRepository {
             JsonUtils.convertValue(setting.getConfigValue(), SlackAppConfiguration.class);
         setting.setConfigValue(encryptSlackAppSetting(appConfiguration));
       } else if (setting.getConfigType() == SettingsType.SLACK_BOT) {
-        DefaultBot appConfiguration =
-            JsonUtils.convertValue(setting.getConfigValue(), DefaultBot.class);
+        String appConfiguration = JsonUtils.convertValue(setting.getConfigValue(), String.class);
         setting.setConfigValue(encryptSlackDefaultBotSetting(appConfiguration));
       } else if (setting.getConfigType() == SettingsType.SLACK_INSTALLER) {
-        DefaultInstaller appConfiguration =
-            JsonUtils.convertValue(setting.getConfigValue(), DefaultInstaller.class);
+        String appConfiguration = JsonUtils.convertValue(setting.getConfigValue(), String.class);
         setting.setConfigValue(encryptSlackDefaultInstallerSetting(appConfiguration));
       } else if (setting.getConfigType() == SettingsType.SLACK_STATE) {
         String slackState = JsonUtils.convertValue(setting.getConfigValue(), String.class);
@@ -251,7 +247,7 @@ public class SystemRepository {
   public Settings getSlackbotConfigInternal() {
     try {
       Settings setting = dao.getConfigWithKey(SettingsType.SLACK_BOT.value());
-      DefaultBot slackBotConfiguration =
+      String slackBotConfiguration =
           SystemRepository.decryptSlackDefaultBotSetting((String) setting.getConfigValue());
       setting.setConfigValue(slackBotConfiguration);
       return setting;
@@ -264,7 +260,7 @@ public class SystemRepository {
   public Settings getSlackInstallerConfigInternal() {
     try {
       Settings setting = dao.getConfigWithKey(SettingsType.SLACK_INSTALLER.value());
-      DefaultInstaller slackInstallerConfiguration =
+      String slackInstallerConfiguration =
           SystemRepository.decryptSlackDefaultInstallerSetting((String) setting.getConfigValue());
       setting.setConfigValue(slackInstallerConfiguration);
       return setting;
@@ -288,7 +284,7 @@ public class SystemRepository {
   }
 
   @SneakyThrows
-  public static String encryptSlackDefaultBotSetting(DefaultBot decryptedSetting) {
+  public static String encryptSlackDefaultBotSetting(String decryptedSetting) {
     String json = JsonUtils.pojoToJson(decryptedSetting);
     if (Fernet.getInstance().isKeyDefined()) {
       return Fernet.getInstance().encryptIfApplies(json);
@@ -297,15 +293,15 @@ public class SystemRepository {
   }
 
   @SneakyThrows
-  public static DefaultBot decryptSlackDefaultBotSetting(String encryptedSetting) {
+  public static String decryptSlackDefaultBotSetting(String encryptedSetting) {
     if (Fernet.getInstance().isKeyDefined()) {
       encryptedSetting = Fernet.getInstance().decryptIfApplies(encryptedSetting);
     }
-    return JsonUtils.readValue(encryptedSetting, DefaultBot.class);
+    return JsonUtils.readValue(encryptedSetting, String.class);
   }
 
   @SneakyThrows
-  public static String encryptSlackDefaultInstallerSetting(DefaultInstaller decryptedSetting) {
+  public static String encryptSlackDefaultInstallerSetting(String decryptedSetting) {
     String json = JsonUtils.pojoToJson(decryptedSetting);
     if (Fernet.getInstance().isKeyDefined()) {
       return Fernet.getInstance().encryptIfApplies(json);
@@ -314,11 +310,11 @@ public class SystemRepository {
   }
 
   @SneakyThrows
-  public static DefaultInstaller decryptSlackDefaultInstallerSetting(String encryptedSetting) {
+  public static String decryptSlackDefaultInstallerSetting(String encryptedSetting) {
     if (Fernet.getInstance().isKeyDefined()) {
       encryptedSetting = Fernet.getInstance().decryptIfApplies(encryptedSetting);
     }
-    return JsonUtils.readValue(encryptedSetting, DefaultInstaller.class);
+    return JsonUtils.readValue(encryptedSetting, String.class);
   }
 
   @SneakyThrows
