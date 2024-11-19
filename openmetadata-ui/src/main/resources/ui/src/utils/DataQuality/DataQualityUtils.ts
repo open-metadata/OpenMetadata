@@ -127,7 +127,7 @@ export const transformToTestCaseStatusByDimension = (
     const {
       document_count,
       'testCaseResult.testCaseStatus': status,
-      dataQualityDimension,
+      dataQualityDimension = 'No Dimension',
     } = item;
     const count = parseInt(document_count, 10);
 

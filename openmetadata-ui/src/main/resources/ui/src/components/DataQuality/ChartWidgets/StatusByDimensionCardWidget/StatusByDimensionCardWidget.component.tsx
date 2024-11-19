@@ -18,7 +18,10 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { DataQualityReport } from '../../../../generated/tests/dataQualityReport';
 import { DataQualityDimensions } from '../../../../generated/tests/testDefinition';
 import { DataQualityPageTabs } from '../../../../pages/DataQuality/DataQualityPage.interface';
-import { fetchTestCaseSummaryByDimension } from '../../../../rest/dataQualityDashboardAPI';
+import {
+  fetchTestCaseSummaryByDimension,
+  fetchTestCaseSummaryByNoDimension,
+} from '../../../../rest/dataQualityDashboardAPI';
 import {
   getDimensionIcon,
   transformToTestCaseStatusByDimension,
@@ -60,8 +63,11 @@ const StatusByDimensionCardWidget = ({
     setIsDqByDimensionLoading(true);
     try {
       const { data } = await fetchTestCaseSummaryByDimension(chartFilter);
+      const { data: noDimensionData } = await fetchTestCaseSummaryByNoDimension(
+        chartFilter
+      );
 
-      setDqByDimensionData(data);
+      setDqByDimensionData([...data, ...noDimensionData]);
     } catch (error) {
       setDqByDimensionData(undefined);
     } finally {
@@ -89,14 +95,18 @@ const StatusByDimensionCardWidget = ({
             <StatusByDimensionWidget
               icon={getDimensionIcon(dimension.title as DataQualityDimensions)}
               key={dimension.title}
-              redirectPath={{
-                pathname: getDataQualityPagePath(
-                  DataQualityPageTabs.TEST_CASES
-                ),
-                search: QueryString.stringify({
-                  dataQualityDimension: dimension.title,
-                }),
-              }}
+              redirectPath={
+                dimension.title === 'No Dimension'
+                  ? undefined
+                  : {
+                      pathname: getDataQualityPagePath(
+                        DataQualityPageTabs.TEST_CASES
+                      ),
+                      search: QueryString.stringify({
+                        dataQualityDimension: dimension.title,
+                      }),
+                    }
+              }
               statusData={dimension}
             />
           </Col>

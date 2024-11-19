@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 import { Card, Typography } from 'antd';
+import classNames from 'classnames';
+import { isUndefined } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { fetchCountOfIncidentStatusTypeByDays } from '../../../../rest/dataQualityDashboardAPI';
@@ -80,7 +82,9 @@ const IncidentTypeAreaChartWidget = ({
 
   return (
     <Card
-      className="chart-widget-link-no-underline"
+      className={classNames({
+        'chart-widget-link-no-underline': !isUndefined(redirectPath),
+      })}
       data-testid={`incident-${incidentStatusType}-type-area-chart-widget-container`}
       loading={isChartLoading}>
       {redirectPath ? (

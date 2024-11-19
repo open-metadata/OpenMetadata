@@ -12,7 +12,7 @@
  */
 import { Card, Typography } from 'antd';
 import classNames from 'classnames';
-import { toLower } from 'lodash';
+import { isUndefined, toLower } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { fetchTestCaseStatusMetricsByDays } from '../../../../rest/dataQualityDashboardAPI';
@@ -88,8 +88,11 @@ const TestCaseStatusAreaChartWidget = ({
   return (
     <Card
       className={classNames(
-        'test-case-area-chart-widget-container chart-widget-link-no-underline',
-        toLower(testCaseStatus)
+        'test-case-area-chart-widget-container',
+        toLower(testCaseStatus),
+        {
+          'chart-widget-link-no-underline': !isUndefined(redirectPath),
+        }
       )}
       data-testid={`test-case-${testCaseStatus}-area-chart-widget`}
       loading={isChartLoading}>

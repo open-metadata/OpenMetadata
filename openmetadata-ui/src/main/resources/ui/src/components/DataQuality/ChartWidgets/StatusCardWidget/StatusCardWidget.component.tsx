@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 import { Space, Tooltip, Typography } from 'antd';
+import classNames from 'classnames';
+import { isUndefined } from 'lodash';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -71,7 +73,10 @@ const StatusDataWidget = ({
   );
 
   return (
-    <div className="chart-widget-link-no-underline">
+    <div
+      className={classNames({
+        'chart-widget-link-no-underline': !isUndefined(redirectPath),
+      })}>
       {redirectPath ? <Link to={redirectPath}>{body}</Link> : body}
     </div>
   );

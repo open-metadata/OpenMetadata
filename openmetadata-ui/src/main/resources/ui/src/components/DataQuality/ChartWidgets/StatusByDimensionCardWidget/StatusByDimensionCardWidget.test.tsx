@@ -15,11 +15,15 @@ import { render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
 import { DataQualityDimensions } from '../../../../generated/tests/testDefinition';
 import { DataQualityDashboardChartFilters } from '../../../../pages/DataQuality/DataQualityPage.interface';
-import { fetchTestCaseSummaryByDimension } from '../../../../rest/dataQualityDashboardAPI';
+import {
+  fetchTestCaseSummaryByDimension,
+  fetchTestCaseSummaryByNoDimension,
+} from '../../../../rest/dataQualityDashboardAPI';
 import StatusByDimensionCardWidget from './StatusByDimensionCardWidget.component';
 
 jest.mock('../../../../rest/dataQualityDashboardAPI', () => ({
   fetchTestCaseSummaryByDimension: jest.fn(),
+  fetchTestCaseSummaryByNoDimension: jest.fn(),
 }));
 
 jest.mock('../../../../utils/DataQuality/DataQualityUtils', () => ({
@@ -61,6 +65,9 @@ describe('StatusByDimensionCardWidget', () => {
     };
 
     (fetchTestCaseSummaryByDimension as jest.Mock).mockResolvedValue(mockData);
+    (fetchTestCaseSummaryByNoDimension as jest.Mock).mockResolvedValue({
+      data: [],
+    });
 
     render(<StatusByDimensionCardWidget chartFilter={chartFilter} />);
 
@@ -86,6 +93,6 @@ describe('StatusByDimensionCardWidget', () => {
 
     expect(
       screen.getAllByText('StatusByDimensionWidget.component')
-    ).toHaveLength(7);
+    ).toHaveLength(8);
   });
 });
