@@ -15,9 +15,9 @@ import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ENTITY_NAME_REGEX } from '../../../constants/regex.constants';
 import SanitizedInput from '../../common/SanitizedInput/SanitizedInput';
-import { EntityName, EntityNameModalProps } from './EntityNameModal.interface';
+import { EntityNameModalProps } from './EntityNameModal.interface';
 
-const EntityNameModal = <T extends EntityName>({
+const EntityNameModal: React.FC<EntityNameModalProps> = ({
   visible,
   entity,
   onCancel,
@@ -28,7 +28,7 @@ const EntityNameModal = <T extends EntityName>({
   allowRename = false,
   nameValidationRules = [],
   additionalFields,
-}: EntityNameModalProps<T>) => {
+}) => {
   const { t } = useTranslation();
   const [form] = Form.useForm();
   const [isLoading, setIsLoading] = useState(false);
