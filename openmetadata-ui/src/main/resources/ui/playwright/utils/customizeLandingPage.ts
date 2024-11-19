@@ -21,7 +21,7 @@ export const navigateToCustomizeLandingPage = async (
 ) => {
   const getPersonas = page.waitForResponse('/api/v1/personas*');
 
-  await settingClick(page, GlobalSettingOptions.PERSONA);
+  await settingClick(page, GlobalSettingOptions.CUSTOMIZE_LANDING_PAGE);
 
   await getPersonas;
 
@@ -32,11 +32,9 @@ export const navigateToCustomizeLandingPage = async (
   );
 
   // Navigate to the customize landing page
-  await page.getByTestId(`persona-details-card-${personaName}`).click();
-
-  await page.getByRole('tab', { name: 'Customize UI' }).click();
-
-  await page.getByTestId('LandingPage').click();
+  await page.click(
+    `[data-testid="persona-details-card-${personaName}"] [data-testid="customize-page-button"]`
+  );
 
   expect((await getCustomPageDataResponse).status()).toBe(
     customPageDataResponse
