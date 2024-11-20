@@ -33,7 +33,7 @@ import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { cloneDeep, isEmpty, isUndefined } from 'lodash';
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { useTranslation } from 'react-i18next';
@@ -114,6 +114,10 @@ const GlossaryTermTab = ({
   const [isTableLoading, setIsTableLoading] = useState(false);
   const [isTableHovered, setIsTableHovered] = useState(false);
   const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
+  const listOfVisibleColumns = useMemo(() => {
+    return ['name', 'description', 'owners', 'status', 'new-term'];
+  }, []);
+
   const [isStatusDropdownVisible, setIsStatusDropdownVisible] =
     useState<boolean>(false);
   const statusOptions = useMemo(
@@ -298,10 +302,6 @@ const GlossaryTermTab = ({
     return data;
   }, [glossaryTerms, permissions]);
 
-  const listOfVisibleColumns = useMemo(() => {
-    return ['name', 'description', 'owners', 'status', 'new-term'];
-  }, []);
-
   const defaultCheckedList = useMemo(
     () =>
       columns.reduce<string[]>(
@@ -323,13 +323,7 @@ const GlossaryTermTab = ({
   const [isDropdownVisible, setIsDropdownVisible] = useState<boolean>(false);
 
   const [options, setOptions] = useState<{ value: string; label: string }[]>(
-    columns.reduce<{ value: string; label: string }[]>(
-      (acc, { key, title }) =>
-        key !== 'name'
-          ? [...acc, { label: title as string, value: key as string }]
-          : acc,
-      []
-    )
+    []
   );
 
   const newColumns = useMemo(() => {
@@ -353,7 +347,7 @@ const GlossaryTermTab = ({
 
           return aIndex - bIndex;
         }),
-    [newColumns]
+    [options, newColumns]
   );
 
   const handleColumnSelectionDropdownSave = useCallback(() => {
@@ -784,6 +778,18 @@ const GlossaryTermTab = ({
   const isAllExpanded = useMemo(() => {
     return expandedRowKeys.length === expandableKeys.length;
   }, [expandedRowKeys, expandableKeys]);
+
+  useEffect(() => {
+    setOptions(
+      columns.reduce<{ value: string; label: string }[]>(
+        (acc, { key, title }) =>
+          key !== 'name'
+            ? [...acc, { label: title as string, value: key as string }]
+            : acc,
+        []
+      )
+    );
+  }, [columns]);
 
   if (termsLoading) {
     return <Loader />;
