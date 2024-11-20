@@ -1,0 +1,503 @@
+{
+  "enableAccessControl": false,
+  "globalSettings": {
+    "maxAggregateSize": 10000,
+    "maxResultHits": 10000,
+    "maxAnalyzedOffset": 1000,
+    "aggregations": [
+      {
+        "name": "serviceType",
+        "type": "terms",
+        "field": "serviceType"
+      },
+      {
+        "name": "service.displayName.keyword",
+        "type": "terms",
+        "field": "service.displayName.keyword"
+      },
+      {
+        "name": "entityType",
+        "type": "terms",
+        "field": "entityType"
+      },
+      {
+        "name": "tier.tagFQN",
+        "type": "terms",
+        "field": "tier.tagFQN"
+      },
+      {
+        "name": "certification.tagLabel.tagFQN",
+        "type": "terms",
+        "field": "certification.tagLabel.tagFQN"
+      },
+      {
+        "name": "owners.displayName.keyword",
+        "type": "terms",
+        "field": "owners.displayName.keyword"
+      },
+      {
+        "name": "domain.displayName.keyword",
+        "type": "terms",
+        "field": "domain.displayName.keyword"
+      },
+      {
+        "name": "tags.tagFQN",
+        "type": "terms",
+        "field": "tags.tagFQN"
+      }
+    ],
+    "highlightFields": ["name", "displayName", "description", "displayName.ngram", "name.ngram"]
+  },
+  "assetTypeConfigurations": [
+    {
+      "assetType": "table",
+      "fields": {
+        "name": 10.0,
+        "displayName": 10.0,
+        "description": 2.0,
+        "fullyQualifiedName": 5.0,
+        "fullyQualifiedNameParts": 5.0,
+        "columns.name": 5.0,
+        "columns.displayName": 5.0,
+        "columns.description": 2.0,
+        "columns.children.name": 3.0
+      },
+      "mustMatch": ["name", "fullyQualifiedName"],
+      "shouldMatch": ["displayName", "description", "columns.name", "columns.description", "columns.children.name"],
+      "highlightFields": ["name","description","displayName","columns.name","columns.description","columns.children.name"],
+      "aggregations": [
+        {
+          "name": "database",
+          "type": "terms",
+          "field": "database.displayName.keyword"
+        },
+        {
+          "name": "databaseSchema",
+          "type": "terms",
+          "field": "databaseSchema.displayName.keyword"
+        },
+        {
+          "name": "columns",
+          "type": "terms",
+          "field": "columns.name.keyword"
+        },
+        {
+          "name": "columnNames",
+          "type": "terms",
+          "field": "columnNames"
+        },
+        {
+          "name": "tableType",
+          "type": "terms",
+          "field": "tableType"
+        }
+      ],
+      "boosts": [
+        { "field": "columns.name", "boost": 5.0 },
+        { "field": "columns.displayName", "boost": 5.0 },
+        { "field": "columns.description", "boost": 2.0 },
+        { "field": "columns.children.name", "boost": 3.0 }
+      ],
+      "scoreMode": "sum",
+      "boostMode": "multiply"
+    },
+    {
+      "assetType": "pipeline",
+      "fields": {
+        "name": 10.0,
+        "displayName": 10.0,
+        "description": 2.0,
+        "fullyQualifiedName": 5.0,
+        "fullyQualifiedNameParts": 5.0,
+        "tasks.name": 8.0,
+        "tasks.description": 1.0
+      },
+      "mustMatch": ["name", "fullyQualifiedName"],
+      "shouldMatch": ["displayName", "description", "tasks.name", "tasks.description"],
+      "highlightFields": ["tasks.name", "tasks.description"],
+      "aggregations": [
+        {
+          "name": "tasks",
+          "type": "terms",
+          "field": "tasks.displayName.keyword"
+        }
+      ],
+      "boosts": [
+        { "field": "tasks.name", "boost": 8.0 },
+        { "field": "tasks.description", "boost": 1.0 }
+      ],
+      "scoreMode": "sum",
+      "boostMode": "multiply"
+    },
+    {
+      "assetType": "mlmodel",
+      "fields": {
+        "name": 10.0,
+        "displayName": 10.0,
+        "description": 2.0,
+        "fullyQualifiedName": 5.0,
+        "fullyQualifiedNameParts": 5.0,
+        "mlFeatures.name": 8.0,
+        "mlFeatures.description": 1.0
+      },
+      "mustMatch": ["name", "fullyQualifiedName"],
+      "shouldMatch": ["displayName", "description", "mlFeatures.name", "mlFeatures.description"],
+      "highlightFields": ["mlFeatures.name", "mlFeatures.description"],
+      "boosts": [
+        { "field": "mlFeatures.name", "boost": 8.0 },
+        { "field": "mlFeatures.description", "boost": 1.0 }
+      ],
+      "scoreMode": "sum",
+      "boostMode": "multiply"
+    },
+    {
+      "assetType": "topic",
+      "fields": {
+        "name": 10.0,
+        "displayName": 10.0,
+        "description": 2.0,
+        "fullyQualifiedName": 5.0,
+        "fullyQualifiedNameParts": 5.0,
+        "messageSchema.schemaText": 7.0,
+        "messageSchema.schemaFields.name.keyword": 5.0,
+        "messageSchema.schemaFields.description": 1.0,
+        "messageSchema.schemaFields.children.name": 7.0,
+        "messageSchema.schemaFields.children.keyword": 5.0
+      },
+      "mustMatch": ["name", "fullyQualifiedName"],
+      "shouldMatch": [
+        "displayName",
+        "description",
+        "messageSchema.schemaText",
+        "messageSchema.schemaFields.name.keyword",
+        "messageSchema.schemaFields.description",
+        "messageSchema.schemaFields.children.name"
+      ],
+      "highlightFields": [],
+      "aggregations": [
+        {
+          "name": "messageSchema",
+          "type": "terms",
+          "field": "messageSchema.schemaText.keyword"
+        },
+        {
+          "name": "schemaFieldNames",
+          "type": "terms",
+          "field": "schemaFieldNames"
+        }
+      ],
+      "boosts": [
+        { "field": "messageSchema.schemaText", "boost": 7.0 },
+        { "field": "messageSchema.schemaFields.name.keyword", "boost": 5.0 },
+        { "field": "messageSchema.schemaFields.description", "boost": 1.0 },
+        { "field": "messageSchema.schemaFields.children.name", "boost": 7.0 },
+        { "field": "messageSchema.schemaFields.children.keyword", "boost": 5.0 }
+      ],
+      "scoreMode": "sum",
+      "boostMode": "multiply"
+    },
+    {
+      "assetType": "dashboard",
+      "fields": {
+        "name": 10.0,
+        "displayName": 10.0,
+        "description": 2.0,
+        "fullyQualifiedName": 5.0,
+        "fullyQualifiedNameParts": 5.0,
+        "charts.name": 7.0,
+        "charts.displayName": 5.0
+      },
+      "mustMatch": ["name", "fullyQualifiedName"],
+      "shouldMatch": [
+        "displayName",
+        "description",
+        "charts.name",
+        "charts.displayName"
+      ],
+      "highlightFields": [],
+      "aggregations": [
+        {
+          "name": "dataModels.displayName.keyword",
+          "type": "terms",
+          "field": "dataModels.displayName.keyword"
+        },
+        {
+          "name": "project.keyword",
+          "type": "terms",
+          "field": "project.keyword"
+        },
+        {
+          "name": "charts.displayName.keyword",
+          "type": "terms",
+          "field": "charts.displayName.keyword"
+        }
+      ],
+      "boosts": [
+        { "field": "charts.name", "boost": 2.0 },
+        { "field": "charts.description", "boost": 5.0 }
+      ],
+      "scoreMode": "sum",
+      "boostMode": "multiply"
+    },
+    {
+      "assetType": "dashboardDataModel",
+      "fields": {
+        "name": 10.0,
+        "displayName": 10.0,
+        "description": 2.0,
+        "fullyQualifiedName": 5.0,
+        "fullyQualifiedNameParts": 5.0
+      },
+      "mustMatch": ["name", "fullyQualifiedName", "query", "query.ngram"],
+      "shouldMatch": ["columns.name", "columns.description", "columns.children.name", "columns.displayName"],
+      "highlightFields": [],
+      "aggregations": [
+        {
+          "name": "dataModelType",
+          "type": "terms",
+          "field": "dataModelType"
+        },
+        {
+            "name": "project.keyword",
+            "type": "terms",
+            "field": "project.keyword"
+        },
+        {
+            "name": "columnNames",
+            "type": "terms",
+            "field": "columnNames"
+        },
+        {
+          "name": "columns.name.keyword",
+          "type": "terms",
+          "field": "columns.name.keyword"
+        }
+      ],
+      "boosts": [
+      ],
+      "scoreMode": "sum",
+      "boostMode": "multiply"
+    },
+    {
+      "assetType": "container",
+      "fields": {
+        "name": 10.0,
+        "displayName": 10.0,
+        "description": 2.0,
+        "fullyQualifiedName": 5.0,
+        "fullyQualifiedNameParts": 5.0
+      },
+      "mustMatch": ["name", "fullyQualifiedName"],
+      "shouldMatch": [
+        "classfiication.name",
+        "description"
+      ],
+      "highlightFields": ["dataModel.columns.name", "dataModel.columns.description", "dataModel.columns.children.name"],
+      "aggregations": [
+        {
+          "name": "dataModel.columns.name.keyword",
+          "type": "terms",
+          "field": "dataModel.columns.name.keyword"
+        },
+        {
+          "name": "columnNames",
+          "type": "terms",
+          "field": "columnNames"
+        }
+      ],
+      "boosts": [
+      ],
+      "scoreMode": "sum",
+      "boostMode": "multiply"
+    },
+    {
+      "assetType": "storedProcedure",
+      "fields": {
+        "name": 10.0,
+        "displayName": 10.0,
+        "description": 2.0,
+        "fullyQualifiedName": 5.0,
+        "fullyQualifiedNameParts": 5.0
+      },
+      "mustMatch": ["name", "fullyQualifiedName", "query", "query.ngram"],
+      "shouldMatch": [],
+      "highlightFields": [],
+      "aggregations": [
+      ],
+      "boosts": [
+      ],
+      "scoreMode": "sum",
+      "boostMode": "multiply"
+    },
+    {
+      "assetType": "apiEndpoint",
+      "fields": {
+        "name": 10.0,
+        "displayName": 10.0,
+        "description": 2.0,
+        "fullyQualifiedName": 5.0,
+        "fullyQualifiedNameParts": 5.0
+      },
+      "mustMatch": ["name", "fullyQualifiedName", "query", "query.ngram"],
+      "shouldMatch": ["responseSchema.schemaFields.name.keyword", "responseSchema.schemaFields.description",
+        "responseSchema.schemaFields.children.name", "responseSchema.schemaFields.children.keyword"],
+      "highlightFields": [],
+      "aggregations": [
+        {
+          "name": "responseSchema.schemaFields.name",
+          "type": "terms",
+          "field": "responseSchema.schemaFields.name.keyword"
+        },
+        {
+          "name": "fieldNames",
+          "type": "terms",
+          "field": "fieldNames"
+        }
+      ],
+      "boosts": [
+      ],
+      "scoreMode": "sum",
+      "boostMode": "multiply"
+    },
+    {
+      "assetType": "query",
+      "fields": {
+        "name": 10.0,
+        "displayName": 10.0,
+        "description": 2.0,
+        "fullyQualifiedName": 5.0,
+        "fullyQualifiedNameParts": 5.0
+      },
+      "mustMatch": ["name", "fullyQualifiedName", "query", "query.ngram"],
+      "highlightFields": [],
+      "aggregations": [
+      ],
+      "boosts": [
+      ],
+      "scoreMode": "sum",
+      "boostMode": "multiply"
+    },
+    {
+      "assetType": "dataAsset",
+      "fields": {
+        "name": 10.0,
+        "displayName": 10.0,
+        "description": 2.0,
+        "fullyQualifiedName": 5.0,
+        "fullyQualifiedNameParts": 5.0
+      },
+      "mustMatch": ["name", "fullyQualifiedName"],
+      "shouldMatch": [
+        "displayName",
+        "description",
+        "charts.name",
+        "charts.displayName"
+      ],
+      "highlightFields": [],
+      "aggregations": [
+      ],
+      "boosts": [
+      ],
+      "scoreMode": "sum",
+      "boostMode": "multiply"
+    },
+    {
+      "assetType": "glossaryTerm",
+      "fields": {
+        "name": 10.0,
+        "displayName": 10.0,
+        "description": 2.0,
+        "fullyQualifiedName": 5.0,
+        "fullyQualifiedNameParts": 5.0
+      },
+      "mustMatch": ["name", "fullyQualifiedName"],
+      "shouldMatch": [
+        "displayName",
+        "description",
+        "synonyms",
+        "synonyms.ngram",
+        "glossary.name",
+        "glossary.displayName"
+      ],
+      "highlightFields": ["synonyms"],
+      "aggregations": [
+        {
+            "name": "glossary.name.keyword",
+            "type": "terms",
+            "field": "glossary.name.keyword"
+        },
+        {
+            "name": "fqnParts_agg",
+            "type": "terms",
+            "field": "fqnParts"
+        }
+      ],
+      "boosts": [
+      ],
+      "scoreMode": "sum",
+      "boostMode": "multiply"
+    },
+    {
+      "assetType": "tag",
+      "fields": {
+        "name": 10.0,
+        "displayName": 10.0,
+        "description": 2.0,
+        "fullyQualifiedName": 5.0,
+        "fullyQualifiedNameParts": 5.0
+      },
+      "mustMatch": ["name", "fullyQualifiedName"],
+      "shouldMatch": [
+        "classfiication.name",
+        "description"
+      ],
+      "highlightFields": [],
+      "aggregations": [
+        {
+          "name": "classification.name.keyword",
+          "type": "terms",
+          "field": "classification.name.keyword"
+        }
+      ],
+      "boosts": [
+      ],
+      "scoreMode": "sum",
+      "boostMode": "multiply"
+    },
+    {
+      "assetType": "testCase",
+      "fields": {
+        "name": 10.0,
+        "displayName": 10.0,
+        "description": 2.0,
+        "fullyQualifiedName": 5.0,
+        "fullyQualifiedNameParts": 5.0
+      },
+      "mustMatch": ["name", "fullyQualifiedName", "query", "query.ngram"],
+      "shouldMatch": ["testSuite.fullyQualifiedName", "testSuite.name", "testSuite.description", "entityLink", "entityFQN"],
+      "highlightFields": ["testSuite.name", "testSuite.description"],
+      "aggregations": [
+      ],
+      "boosts": [
+      ],
+      "scoreMode": "sum",
+      "boostMode": "multiply"
+    }
+  ],
+  "defaultConfiguration": {
+    "assetType": "default",
+    "fields": {
+      "name": 10.0,
+      "displayName": 10.0,
+      "description": 2.0,
+      "fullyQualifiedName": 5.0,
+      "fullyQualifiedNameParts": 5.0
+    },
+    "mustMatch": ["name", "fullyQualifiedName"],
+    "shouldMatch": ["displayName", "description"],
+    "highlightFields": [],
+    "aggregations": [],
+    "scoreMode": "sum",
+    "boostMode": "multiply"
+  }
+}
