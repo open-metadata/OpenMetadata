@@ -355,7 +355,7 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
                     schema = @Schema(implementation = ChangeEvent.class))),
         @ApiResponse(responseCode = "404", description = "model for instance {id} is not found")
       })
-  public Response bulkRemoveGlossaryFromAssets(
+  public Response bulkRemoveAssets(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Name of the Data Product", schema = @Schema(type = "string"))

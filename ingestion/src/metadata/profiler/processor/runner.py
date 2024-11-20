@@ -55,8 +55,8 @@ class QueryRunner:
         self._session = session
         self.table = table
         self._sample = sample
-        self._partition_details = partition_details
-        self._profile_sample_query = profile_sample_query
+        self.partition_details = partition_details
+        self.profile_sample_query = profile_sample_query
 
     def _build_query(self, *entities, **kwargs) -> Query:
         return self._session.query(*entities, **kwargs)
@@ -77,7 +77,7 @@ class QueryRunner:
         filter_ = get_query_filter_for_runner(kwargs)
 
         user_query = self._session.query(self.table).from_statement(
-            text(f"{self._profile_sample_query}")
+            text(f"{self.profile_sample_query}")
         )
 
         query = self._build_query(*entities, **kwargs).select_from(user_query)
@@ -92,7 +92,7 @@ class QueryRunner:
         """Select first row from the table"""
         filter_ = get_query_filter_for_runner(kwargs)
 
-        if self._profile_sample_query:
+        if self.profile_sample_query:
             return self._select_from_user_query(*entities, **kwargs).first()
         query = self._build_query(*entities, **kwargs).select_from(self.table)
 
@@ -106,7 +106,7 @@ class QueryRunner:
         """Select all rows from the table"""
         filter_ = get_query_filter_for_runner(kwargs)
 
-        if self._profile_sample_query:
+        if self.profile_sample_query:
             return self._select_from_user_query(*entities, **kwargs).all()
 
         query = self._build_query(*entities, **kwargs).select_from(self.table)
@@ -126,9 +126,9 @@ class QueryRunner:
 
     def yield_from_sample(self, *entities, **kwargs):
         query = self._select_from_sample(*entities, **kwargs)
-        if self._partition_details:
+        if self.partition_details:
             partition_filter = build_partition_predicate(
-                self._partition_details,
+                self.partition_details,
                 self.table.__table__.c,
             )
             query.filter(partition_filter)

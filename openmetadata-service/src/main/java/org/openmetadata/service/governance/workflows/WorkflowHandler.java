@@ -40,6 +40,10 @@ public class WorkflowHandler {
     ProcessEngineConfiguration processEngineConfiguration =
         new StandaloneProcessEngineConfiguration()
             .setAsyncExecutorActivate(true)
+            .setAsyncExecutorCorePoolSize(50)
+            .setAsyncExecutorMaxPoolSize(100)
+            .setAsyncExecutorThreadPoolQueueSize(1000)
+            .setAsyncExecutorMaxAsyncJobsDuePerAcquisition(20)
             .setJdbcUrl(config.getDataSourceFactory().getUrl())
             .setJdbcUsername(config.getDataSourceFactory().getUser())
             .setJdbcPassword(config.getDataSourceFactory().getPassword())
@@ -233,6 +237,15 @@ public class WorkflowHandler {
       }
     }
     return false;
+  }
+
+  public boolean triggerWorkflow(String workflowName) {
+    try {
+      runtimeService.startProcessInstanceByKey(getTriggerWorkflowId(workflowName));
+      return true;
+    } catch (FlowableObjectNotFoundException ex) {
+      return false;
+    }
   }
 
   public void suspendWorkflow(String workflowName) {
