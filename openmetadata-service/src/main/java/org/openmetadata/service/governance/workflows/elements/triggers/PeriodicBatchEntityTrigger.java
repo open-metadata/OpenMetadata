@@ -4,6 +4,7 @@ import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENT
 import static org.openmetadata.service.governance.workflows.Workflow.getFlowableElementId;
 
 import java.util.List;
+import java.util.Optional;
 import lombok.Getter;
 import org.flowable.bpmn.model.BpmnModel;
 import org.flowable.bpmn.model.CallActivity;
@@ -17,6 +18,7 @@ import org.flowable.bpmn.model.ServiceTask;
 import org.flowable.bpmn.model.StartEvent;
 import org.flowable.bpmn.model.TimerEventDefinition;
 import org.openmetadata.schema.entity.app.AppSchedule;
+import org.openmetadata.schema.entity.app.ScheduleTimeline;
 import org.openmetadata.schema.governance.workflows.elements.nodes.trigger.PeriodicBatchEntityTriggerDefinition;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.governance.workflows.elements.TriggerInterface;
@@ -46,12 +48,12 @@ public class PeriodicBatchEntityTrigger implements TriggerInterface {
     process.setName(triggerWorkflowId);
     attachWorkflowInstanceListeners(process);
 
-    TimerEventDefinition timerDefinition =
-        getTimerEventDefinition(triggerDefinition.getConfig().getSchedule());
+    Optional<TimerEventDefinition> oTimerDefinition =
+        Optional.ofNullable(getTimerEventDefinition(triggerDefinition.getConfig().getSchedule()));
 
     StartEvent startEvent =
         new StartEventBuilder().id(getFlowableElementId(triggerWorkflowId, "startEvent")).build();
-    startEvent.addEventDefinition(timerDefinition);
+    oTimerDefinition.ifPresent(startEvent::addEventDefinition);
     process.addFlowElement(startEvent);
 
     ServiceTask fetchEntitiesTask = getFetchEntitiesTask(triggerWorkflowId, triggerDefinition);
@@ -85,6 +87,10 @@ public class PeriodicBatchEntityTrigger implements TriggerInterface {
   }
 
   private TimerEventDefinition getTimerEventDefinition(AppSchedule schedule) {
+    if (schedule.getScheduleTimeline().equals(ScheduleTimeline.NONE)) {
+      return null;
+    }
+
     // TODO: Using the AppScheduler logic to craft a Flowable compatible Cron Expression. Eventually
     // we should probably avoid this to be dependent that code.
     CronTrigger cronTrigger = (CronTrigger) AppScheduler.getCronSchedule(schedule).build();
