@@ -207,19 +207,19 @@ class SearchServiceSource(TopologyRunnerMixin, Source, ABC):
     def get_search_index_template(self) -> Any:
         if self.source_config.ingestIndexTemplate:
             for index_template_details in self.get_search_index_template_list():
-                search_index_template_name = self.get_search_index_template_name(
+                if search_index_template_name := self.get_search_index_template_name(
                     index_template_details
-                )
-                if filter_by_search_index(
-                    self.source_config.searchIndexFilterPattern,
-                    search_index_template_name,
                 ):
-                    self.status.filter(
+                    if filter_by_search_index(
+                        self.source_config.searchIndexFilterPattern,
                         search_index_template_name,
-                        "Search Index Template Filtered Out",
-                    )
-                    continue
-                yield index_template_details
+                    ):
+                        self.status.filter(
+                            search_index_template_name,
+                            "Search Index Template Filtered Out",
+                        )
+                        continue
+                    yield index_template_details
 
     def yield_create_request_search_service(
         self, config: WorkflowSource
