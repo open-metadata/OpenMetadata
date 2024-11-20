@@ -362,6 +362,7 @@ class TestOMetaGlossary:
                 glossary.name.root,
                 glossary_term_1.name.root,
             ),
+            fields=["reviewers"],
         )
 
         assert patched_glossary_term_1 is not None
