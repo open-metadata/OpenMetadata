@@ -504,6 +504,37 @@ export const approveGlossaryTermTask = async (
   await toastNotification(page, /Task resolved successfully/);
 };
 
+// Show the glossary term edit modal from glossary page tree.
+// Update the description and verify the changes.
+export const updateGlossaryTermDataFromTree = async (
+  page: Page,
+  termFqn: string
+) => {
+  // eslint-disable-next-line no-useless-escape
+  const escapedFqn = termFqn.replace(/\"/g, '\\"');
+  const termRow = page.locator(`[data-row-key="${escapedFqn}"]`);
+  await termRow.getByTestId('edit-button').click();
+
+  await page.waitForSelector('[role="dialog"].edit-glossary-modal');
+
+  await expect(
+    page.locator('[role="dialog"].edit-glossary-modal')
+  ).toBeVisible();
+  await expect(page.locator('.ant-modal-title')).toContainText(
+    'Edit Glossary Term'
+  );
+
+  await page.locator(descriptionBox).fill('Updated description');
+
+  const glossaryTermResponse = page.waitForResponse('/api/v1/glossaryTerms/*');
+  await page.getByTestId('save-glossary-term').click();
+  await glossaryTermResponse;
+
+  await expect(
+    termRow.getByRole('cell', { name: 'Updated description' })
+  ).toBeVisible();
+};
+
 export const validateGlossaryTerm = async (
   page: Page,
   term: GlossaryTermData,
