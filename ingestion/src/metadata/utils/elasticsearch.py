@@ -76,6 +76,7 @@ def get_entity_from_es_result(
     :param entity_list: ES query result
     :return: single entity
     """
+    entity_list = [e for e in entity_list if e is not None]
     if entity_list and len(entity_list):
         if fetch_multiple_entities:
             return entity_list
