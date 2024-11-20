@@ -161,6 +161,29 @@ export const connectEdgeBetweenNodes = async (
   );
 };
 
+export const performExpand = async (
+  page: Page,
+  node: EntityClass,
+  upstream: boolean,
+  newNode?: EntityClass
+) => {
+  const nodeFqn = get(node, 'entityResponseData.fullyQualifiedName');
+  const handleDirection = upstream ? 'left' : 'right';
+  const expandBtn = page
+    .locator(`[data-testid="lineage-node-${nodeFqn}"]`)
+    .locator(`.react-flow__handle-${handleDirection}`)
+    .getByTestId('plus-icon');
+
+  if (newNode) {
+    const expandRes = page.waitForResponse('/api/v1/lineage/getLineage?*');
+    await expandBtn.click();
+    await expandRes;
+    await verifyNodePresent(page, newNode);
+  } else {
+    await expect(expandBtn).toBeVisible();
+  }
+};
+
 export const verifyNodePresent = async (page: Page, node: EntityClass) => {
   const nodeFqn = get(node, 'entityResponseData.fullyQualifiedName');
   const name = get(node, 'entityResponseData.name');
