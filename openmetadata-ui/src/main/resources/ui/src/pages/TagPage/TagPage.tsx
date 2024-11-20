@@ -78,7 +78,6 @@ import { SearchIndex } from '../../enums/search.enum';
 import { ProviderType, Tag } from '../../generated/entity/classification/tag';
 import { Style } from '../../generated/type/tagLabel';
 import { useFqn } from '../../hooks/useFqn';
-import { MOCK_TAG_PERMISSIONS } from '../../mocks/Tags.mock';
 import { searchData } from '../../rest/miscAPI';
 import { deleteTag, getTagByFqn, patchTag } from '../../rest/tagAPI';
 import { getEntityDeleteMessage } from '../../utils/CommonUtils';
@@ -475,7 +474,7 @@ const TagPage = () => {
                   assetCount={assetCount}
                   entityFqn={tagItem?.fullyQualifiedName ?? ''}
                   isSummaryPanelOpen={Boolean(previewAsset)}
-                  permissions={MOCK_TAG_PERMISSIONS}
+                  permissions={tagPermissions}
                   ref={assetTabRef}
                   type={AssetsOfEntity.TAG}
                   onAddAsset={() => setAssetModalVisible(true)}

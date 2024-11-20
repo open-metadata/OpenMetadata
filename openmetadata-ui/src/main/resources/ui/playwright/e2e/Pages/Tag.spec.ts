@@ -22,6 +22,7 @@ import { getApiContext, redirectToHomePage } from '../../utils/common';
 import {
   addAssetsToTag,
   checkAssetsCount,
+  editTagPageDescription,
   removeAssetsFromTag,
   setupAssetsForTag,
   verifyTagPageUI,
@@ -95,7 +96,6 @@ test.describe('Tag Page with Admin Roles', () => {
   test.slow(true);
 
   test('Verify Tag UI', async ({ adminPage }) => {
-    await redirectToHomePage(adminPage);
     await verifyTagPageUI(adminPage, classification.data.name, tag);
   });
 
@@ -161,6 +161,8 @@ test.describe('Tag Page with Admin Roles', () => {
       const updateColor = adminPage.waitForResponse(`/api/v1/tags/*`);
       await adminPage.locator('button[type="submit"]').click();
       updateColor;
+
+      await adminPage.waitForLoadState('networkidle');
 
       await expect(adminPage.getByText(tag.data.name)).toBeVisible();
     } finally {
@@ -273,56 +275,18 @@ test.describe('Tag Page with Data Consumer Roles', () => {
   test.slow(true);
 
   test('Verify Tag UI for Data Consumer', async ({ dataConsumerPage }) => {
-    await redirectToHomePage(dataConsumerPage);
-    await verifyTagPageUI(dataConsumerPage, classification.data.name, tag);
-
-    await expect(
-      dataConsumerPage.getByTestId('data-classification-add-button')
-    ).not.toBeVisible();
-    await expect(
-      dataConsumerPage.getByTestId('manage-button')
-    ).not.toBeVisible();
-    await expect(dataConsumerPage.getByTestId('add-domain')).not.toBeVisible();
+    await verifyTagPageUI(
+      dataConsumerPage,
+      classification.data.name,
+      tag,
+      true
+    );
   });
 
   test('Edit Tag Description or Data Consumer', async ({
     dataConsumerPage,
   }) => {
-    await redirectToHomePage(dataConsumerPage);
-    const { apiContext, afterAction } = await getApiContext(dataConsumerPage);
-    const tag = new TagClass({
-      classification: classification.data.name,
-    });
-    try {
-      await tag.create(apiContext);
-      const res = dataConsumerPage.waitForResponse(`/api/v1/tags/name/*`);
-      await tag.visitPage(dataConsumerPage);
-      await res;
-      await dataConsumerPage.getByTestId('edit-description').click();
-
-      await expect(dataConsumerPage.getByRole('dialog')).toBeVisible();
-
-      await dataConsumerPage
-        .locator('.toastui-editor-pseudo-clipboard')
-        .clear();
-      await dataConsumerPage
-        .locator('.toastui-editor-pseudo-clipboard')
-        .fill(`This is updated test description for tag ${tag.data.name}.`);
-
-      const editDescription =
-        dataConsumerPage.waitForResponse(`/api/v1/tags/*`);
-      await dataConsumerPage.getByTestId('save').click();
-      await editDescription;
-
-      await expect(
-        dataConsumerPage.getByTestId('viewer-container')
-      ).toContainText(
-        `This is updated test description for tag ${tag.data.name}.`
-      );
-    } finally {
-      await tag.delete(apiContext);
-      await afterAction();
-    }
+    await editTagPageDescription(dataConsumerPage, tag);
   });
 });
 
@@ -330,50 +294,10 @@ test.describe('Tag Page with Data Steward Roles', () => {
   test.slow(true);
 
   test('Verify Tag UI for Data Steward', async ({ dataStewardPage }) => {
-    await redirectToHomePage(dataStewardPage);
-    await verifyTagPageUI(dataStewardPage, classification.data.name, tag);
-
-    await expect(
-      dataStewardPage.getByTestId('data-classification-add-button')
-    ).not.toBeVisible();
-    await expect(
-      dataStewardPage.getByTestId('manage-button')
-    ).not.toBeVisible();
-    await expect(dataStewardPage.getByTestId('add-domain')).not.toBeVisible();
+    await verifyTagPageUI(dataStewardPage, classification.data.name, tag, true);
   });
 
   test('Edit Tag Description for Data Steward', async ({ dataStewardPage }) => {
-    await redirectToHomePage(dataStewardPage);
-    const { apiContext, afterAction } = await getApiContext(dataStewardPage);
-    const tag = new TagClass({
-      classification: classification.data.name,
-    });
-    try {
-      await tag.create(apiContext);
-      const res = dataStewardPage.waitForResponse(`/api/v1/tags/name/*`);
-      await tag.visitPage(dataStewardPage);
-      await res;
-      await dataStewardPage.getByTestId('edit-description').click();
-
-      await expect(dataStewardPage.getByRole('dialog')).toBeVisible();
-
-      await dataStewardPage.locator('.toastui-editor-pseudo-clipboard').clear();
-      await dataStewardPage
-        .locator('.toastui-editor-pseudo-clipboard')
-        .fill(`This is updated test description for tag ${tag.data.name}.`);
-
-      const editDescription = dataStewardPage.waitForResponse(`/api/v1/tags/*`);
-      await dataStewardPage.getByTestId('save').click();
-      await editDescription;
-
-      await expect(
-        dataStewardPage.getByTestId('viewer-container')
-      ).toContainText(
-        `This is updated test description for tag ${tag.data.name}.`
-      );
-    } finally {
-      await tag.delete(apiContext);
-      await afterAction();
-    }
+    await editTagPageDescription(dataStewardPage, tag);
   });
 });

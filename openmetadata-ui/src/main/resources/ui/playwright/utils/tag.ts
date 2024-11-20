@@ -232,14 +232,31 @@ export const addTagToTableColumn = async (
 export const verifyTagPageUI = async (
   page: Page,
   classificationName: string,
-  tag: TagClass
+  tag: TagClass,
+  limitedAccess = false
 ) => {
+  await redirectToHomePage(page);
   const res = page.waitForResponse(`/api/v1/tags/name/*`);
   await tag.visitPage(page);
   await res;
 
-  await expect(page.getByText(tag.data.name)).toBeVisible();
+  await expect(page.getByTestId('entity-header-name')).toContainText(
+    tag.data.name
+  );
   await expect(page.getByText(tag.data.description)).toBeVisible();
+
+  if (limitedAccess) {
+    await expect(
+      page.getByTestId('data-classification-add-button')
+    ).not.toBeVisible();
+    await expect(page.getByTestId('manage-button')).not.toBeVisible();
+    await expect(page.getByTestId('add-domain')).not.toBeVisible();
+
+    // Asset tab should show no data placeholder and not add asset button
+    await page.getByTestId('assets').click();
+
+    await expect(page.getByTestId('no-data-placeholder')).toBeVisible();
+  }
 
   const classificationTable = page.waitForResponse(
     `/api/v1/classifications/name/*`
@@ -253,4 +270,27 @@ export const verifyTagPageUI = async (
   const classificationPage = page.waitForResponse(`/api/v1/classifications*`);
   await page.getByRole('link', { name: 'Classifications' }).click();
   await classificationPage;
+};
+
+export const editTagPageDescription = async (page: Page, tag: TagClass) => {
+  await redirectToHomePage(page);
+  const res = page.waitForResponse(`/api/v1/tags/name/*`);
+  await tag.visitPage(page);
+  await res;
+  await page.getByTestId('edit-description').click();
+
+  await expect(page.getByRole('dialog')).toBeVisible();
+
+  await page.locator('.toastui-editor-pseudo-clipboard').clear();
+  await page
+    .locator('.toastui-editor-pseudo-clipboard')
+    .fill(`This is updated test description for tag ${tag.data.name}.`);
+
+  const editDescription = page.waitForResponse(`/api/v1/tags/*`);
+  await page.getByTestId('save').click();
+  await editDescription;
+
+  await expect(page.getByTestId('viewer-container')).toContainText(
+    `This is updated test description for tag ${tag.data.name}.`
+  );
 };
