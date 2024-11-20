@@ -22,11 +22,11 @@ import static org.openmetadata.service.security.DefaultAuthorizer.getSubjectCont
 
 import java.io.IOException;
 import java.security.MessageDigest;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.Date;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -219,7 +219,7 @@ public final class EntityUtil {
               .withDailyStats(stats)
               .withWeeklyStats(stats)
               .withMonthlyStats(stats)
-              .withDate(RestUtil.DATE_FORMAT.format(new Date()));
+              .withDate(RestUtil.DATE_FORMAT.format(LocalDate.now()));
     }
     return details;
   }

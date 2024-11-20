@@ -614,6 +614,8 @@ site_menu:
     url: /how-to-guides/data-discovery
   - category: How-to Guides / Data Discovery / How to Discover Assets of Interest
     url: /how-to-guides/data-discovery/discover
+  - category: How-to Guides / Data Discovery / Steps for Searching Using Hierarchy
+    url: /how-to-guides/data-discovery/hierarchy
   - category: How-to Guides / Data Discovery / Get a Quick Glance of the Data Assets
     url: /how-to-guides/data-discovery/preview
   - category: How-to Guides / Data Discovery / Detailed View of the Data Assets
@@ -1909,9 +1911,8 @@ site_menu:
   - category: SDK / Go
     url: /sdk/go
 
-  - category: Metapilot
-    url: /metapilot
-  
-   category: Metapilot / How to Use MetaPilot
-    url: /metapilot/how-to-use-metapilot
+  - category: Collate AI
+    url: /collateai
+  - category: Collate AI / How to Use Collate AI
+    url: /collateai/how-to-use-collate-ai
 ---
