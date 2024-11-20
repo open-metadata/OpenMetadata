@@ -334,9 +334,13 @@ export const DEFAULT_TEST_VALUE = [
   },
 ];
 
-export const DEFAULT_DIMENSIONS_DATA = Object.values(
-  DataQualityDimensions
-).reduce((acc, item) => {
+export const NO_DIMENSION = 'No Dimension';
+export const DIMENSIONS_DATA = [
+  ...Object.values(DataQualityDimensions),
+  NO_DIMENSION,
+];
+
+export const DEFAULT_DIMENSIONS_DATA = DIMENSIONS_DATA.reduce((acc, item) => {
   return {
     ...acc,
     [item]: {

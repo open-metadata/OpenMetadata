@@ -13,8 +13,13 @@
 import { Card, Col, Row } from 'antd';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
+
 import QueryString from 'qs';
 import React, { useEffect, useMemo, useState } from 'react';
+import {
+  DIMENSIONS_DATA,
+  NO_DIMENSION,
+} from '../../../../constants/profiler.constant';
 import { DataQualityReport } from '../../../../generated/tests/dataQualityReport';
 import { DataQualityDimensions } from '../../../../generated/tests/testDefinition';
 import { DataQualityPageTabs } from '../../../../pages/DataQuality/DataQualityPage.interface';
@@ -38,17 +43,10 @@ const StatusByDimensionCardWidget = ({
   const [dqByDimensionData, setDqByDimensionData] =
     useState<DataQualityReport['data']>();
 
-  const dqDimensionValue = useMemo(() => {
-    const value: string[] = Object.values(DataQualityDimensions);
-    value.push('No Dimension');
-
-    return value;
-  }, []);
-
   const dqDimensions = useMemo(
     () =>
       isUndefined(dqByDimensionData)
-        ? dqDimensionValue.map((item) => ({
+        ? DIMENSIONS_DATA.map((item) => ({
             title: item,
             success: 0,
             failed: 0,
@@ -96,7 +94,7 @@ const StatusByDimensionCardWidget = ({
               icon={getDimensionIcon(dimension.title as DataQualityDimensions)}
               key={dimension.title}
               redirectPath={
-                dimension.title === 'No Dimension'
+                dimension.title === NO_DIMENSION
                   ? undefined
                   : {
                       pathname: getDataQualityPagePath(
