@@ -24,6 +24,7 @@ from metadata.utils.time_utils import (
     get_beginning_of_day_timestamp_mill,
     get_end_of_day_timestamp_mill,
 )
+from metadata.workflow.classification import AutoClassificationWorkflow
 from metadata.workflow.profiler import ProfilerWorkflow
 from metadata.workflow.workflow_output_handler import WorkflowResultStatus
 
@@ -304,6 +305,19 @@ class TestDatalakeProfilerTestE2E:
         assert not [
             p for p in first_name_profile if p.timestamp.root == latest_exc_timestamp
         ]
+
+        ingestion_config["source"]["sourceConfig"]["config"].update(
+            {
+                "type": "AutoClassification",
+            }
+        )
+
+        auto_workflow = AutoClassificationWorkflow.create(ingestion_config)
+        auto_workflow.execute()
+        status = auto_workflow.result_status()
+        auto_workflow.stop()
+
+        assert status == WorkflowResultStatus.SUCCESS
 
         sample_data = metadata.get_sample_data(table)
         assert sorted([c.root for c in sample_data.sampleData.columns]) == sorted(

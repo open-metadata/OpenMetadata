@@ -1,0 +1,27 @@
+{
+  "$id": "https://open-metadata.org/schema/events/api/eventsRecord.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Event Subscription Events Record",
+  "description": "Schema defining the response for event subscription events record, including total, pending, successful, and failed event counts for a specific alert.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.events.EventsRecord",
+  "properties": {
+    "totalEventsCount": {
+      "description": "Count of total events (pendingEventsCount + successfulEventsCount + failedEventsCount) for specific alert.",
+      "existingJavaType": "java.lang.Long"
+    },
+    "pendingEventsCount": {
+      "description": "Count of pending events for specific alert.",
+      "existingJavaType": "java.lang.Long"
+    },
+    "successfulEventsCount": {
+      "description": "Count of successful events for specific alert.",
+      "existingJavaType": "java.lang.Long"
+    },
+    "failedEventsCount": {
+      "description": "Count of failed events for specific alert.",
+      "existingJavaType": "java.lang.Long"
+    }
+  },
+  "additionalProperties": false
+}

@@ -16,6 +16,7 @@ import {
   FIELD_VALUES_CUSTOM_PROPERTIES,
 } from '../constant/glossaryImportExport';
 import { descriptionBox, uuid } from './common';
+import { fillTableColumnInputDetails } from './customProperty';
 
 export const createGlossaryTermRowDetails = () => {
   return {
@@ -172,6 +173,19 @@ const editGlossaryCustomProperty = async (
       .fill(FIELD_VALUES_CUSTOM_PROPERTIES.SQL_QUERY);
 
     await page.getByTestId('inline-save-btn').click();
+  }
+
+  if (type === CUSTOM_PROPERTIES_TYPES.TABLE) {
+    const columns = FIELD_VALUES_CUSTOM_PROPERTIES.TABLE.columns;
+    const values = FIELD_VALUES_CUSTOM_PROPERTIES.TABLE.rows.split(',');
+
+    await page.locator('[data-testid="add-new-row"]').click();
+
+    await fillTableColumnInputDetails(page, values[0], columns[0]);
+
+    await fillTableColumnInputDetails(page, values[1], columns[1]);
+
+    await page.locator('[data-testid="update-table-type-property"]').click();
   }
 };
 

@@ -27,6 +27,7 @@ import {
   formatDateTimeWithTimezone,
   formatTimeDurationFromSeconds,
 } from '../../utils/date-time/DateTimeUtils';
+import { getColumnSorter } from '../../utils/EntityUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
 import Table from '../common/Table/Table';
@@ -73,6 +74,7 @@ const TopActiveUsers: FC<Props> = ({ chartFilter }) => {
         title: t('label.user'),
         dataIndex: 'userName',
         key: 'userName',
+        sorter: getColumnSorter<MostActiveUsers, 'userName'>('userName'),
         render: (userName: string) => (
           <Space>
             <ProfilePicture name={userName} width="24" />

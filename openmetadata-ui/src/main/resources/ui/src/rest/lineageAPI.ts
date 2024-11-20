@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { CSVExportResponse } from '../components/Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
 import { LineageConfig } from '../components/Entity/EntityLineage/EntityLineage.interface';
 import { EntityLineageResponse } from '../components/Lineage/Lineage.interface';
 import { AddLineage } from '../generated/api/lineage/addLineage';
@@ -18,6 +19,30 @@ import APIClient from './index';
 
 export const updateLineageEdge = async (edge: AddLineage) => {
   const response = await APIClient.put<AddLineage>(`/lineage`, edge);
+
+  return response.data;
+};
+
+export const exportLineageAsync = async (
+  fqn: string,
+  entityType: string,
+  config?: LineageConfig,
+  queryFilter?: string
+) => {
+  const { upstreamDepth = 1, downstreamDepth = 1 } = config ?? {};
+  const response = await APIClient.get<CSVExportResponse>(
+    `/lineage/exportAsync`,
+    {
+      params: {
+        fqn,
+        type: entityType,
+        upstreamDepth,
+        downstreamDepth,
+        query_filter: queryFilter,
+        includeDeleted: false,
+      },
+    }
+  );
 
   return response.data;
 };
@@ -39,6 +64,27 @@ export const getLineageDataByFQN = async (
         downstreamDepth,
         query_filter: queryFilter,
         includeDeleted: false,
+      },
+    }
+  );
+
+  return response.data;
+};
+
+export const getDataQualityLineage = async (
+  fqn: string,
+  config?: Partial<LineageConfig>,
+  queryFilter?: string
+) => {
+  const { upstreamDepth = 1 } = config ?? {};
+  const response = await APIClient.get<EntityLineageResponse>(
+    `lineage/getDataQualityLineage`,
+    {
+      params: {
+        fqn,
+        upstreamDepth,
+        includeDeleted: false,
+        query_filter: queryFilter,
       },
     }
   );

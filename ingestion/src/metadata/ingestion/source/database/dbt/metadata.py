@@ -288,10 +288,7 @@ class DbtSource(DbtServiceSource):
                     for tag_name in dbt_tags_list
                 ]
                 yield from get_ometa_tag_and_classification(
-                    tags=[
-                        tag_label.split(fqn.FQN_SEPARATOR)[1]
-                        for tag_label in dbt_tag_labels
-                    ],
+                    tags=[fqn.split(tag_label)[1] for tag_label in dbt_tag_labels],
                     classification_name=self.tag_classification_name,
                     tag_description="dbt Tags",
                     classification_description="dbt classification",
@@ -474,7 +471,7 @@ class DbtSource(DbtServiceSource):
                                     manifest_node=manifest_node,
                                     catalog_node=catalog_node,
                                 ),
-                                tags=dbt_table_tags_list or None,
+                                tags=dbt_table_tags_list or [],
                             ),
                         )
                         yield Either(right=data_model_link)
@@ -620,7 +617,7 @@ class DbtSource(DbtServiceSource):
                         ordinalPosition=catalog_column.index
                         if catalog_column
                         else None,
-                        tags=dbt_column_tag_list or None,
+                        tags=dbt_column_tag_list or [],
                     )
                 )
                 logger.debug(f"Successfully processed DBT column: {key}")

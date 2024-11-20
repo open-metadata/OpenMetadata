@@ -36,10 +36,10 @@ import static org.openmetadata.service.util.LambdaExceptionUtil.rethrowFunction;
 
 import com.google.common.collect.Streams;
 import java.io.IOException;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -1004,7 +1004,7 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   private TableJoins getJoins(Table table) {
-    String today = RestUtil.DATE_FORMAT.format(new Date());
+    String today = RestUtil.DATE_FORMAT.format(LocalDate.now());
     String todayMinus30Days = CommonUtil.getDateStringByOffset(RestUtil.DATE_FORMAT, today, -30);
     return new TableJoins()
         .withStartDate(todayMinus30Days)
@@ -1135,6 +1135,7 @@ public class TableRepository extends EntityRepository<Table> {
       recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl());
       recordChange("retentionPeriod", original.getRetentionPeriod(), updated.getRetentionPeriod());
       recordChange("sourceHash", original.getSourceHash(), updated.getSourceHash());
+      recordChange("locationPath", original.getLocationPath(), updated.getLocationPath());
     }
 
     private void updateConstraints(Table origTable, Table updatedTable) {

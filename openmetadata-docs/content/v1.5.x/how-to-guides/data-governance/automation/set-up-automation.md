@@ -27,11 +27,19 @@ caption="Add Automation"
 /%}
 
 ### Step 3: Fill in Automation Details
+
 In the pop-up window, provide the necessary information to set up the automation:
+
 - **Automation Name**: Give a meaningful name to the automation for easy identification.
 - **Description**: Add a brief description explaining what this automation will do (e.g., "Daily metadata ingestion for database XYZ").
-- **Logic/Conditions**: Define any conditions or specific criteria needed for this automation to work (e.g., specific tables or columns to be included).  
-  Ensure that the logic is set up as per your specific requirements to make the automation useful for your workflows.
+- **Logic/Conditions**: Define any conditions or specific criteria needed for this automation to work (e.g., specific tables or columns to be included). Ensure that the logic is set up as per your specific requirements to make the automation effective for your workflows.
+
+Additionally, use the **Apply to Child** option to add a list of **tags** and **glossary terms** to selected assets at the column level:
+   - If a list of columns is specified, tags will only be applied to columns with matching names.
+   - By default, incoming tags will merge with existing tags. 
+   - To overwrite existing tags with the new list, select the **Overwrite Metadata** option, replacing any previous tags with the incoming ones.
+
+Ensure each setting aligns with your automation requirements to maximize efficiency.
 
 {% image
 src="/images/v1.5/how-to-guides/governance/automation-4.png"

@@ -212,7 +212,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
       case 'markdown': {
         const header = t('label.edit-entity-name', {
           entityType: t('label.property'),
-          entityName: propertyName,
+          entityName: getEntityName(property),
         });
 
         return (
@@ -241,18 +241,21 @@ export const PropertyValue: FC<PropertyValueProps> = ({
           enumValues: (isArray(value) ? value : [value]).filter(Boolean),
         };
 
+        const formId = `enum-form-${propertyName}`;
+
         return (
           <InlineEdit
+            className="custom-property-inline-edit-container"
             isLoading={isLoading}
             saveButtonProps={{
               disabled: isLoading,
               htmlType: 'submit',
-              form: 'enum-form',
+              form: formId,
             }}
             onCancel={onHideInput}
             onSave={noop}>
             <Form
-              id="enum-form"
+              id={formId}
               initialValues={initialValues}
               layout="vertical"
               onFinish={(values: { enumValues: string | string[] }) =>
@@ -284,18 +287,21 @@ export const PropertyValue: FC<PropertyValueProps> = ({
           dateTimeValue: value ? moment(value, format) : undefined,
         };
 
+        const formId = `dateTime-form-${propertyName}`;
+
         return (
           <InlineEdit
+            className="custom-property-inline-edit-container"
             isLoading={isLoading}
             saveButtonProps={{
               disabled: isLoading,
               htmlType: 'submit',
-              form: 'dateTime-form',
+              form: formId,
             }}
             onCancel={onHideInput}
             onSave={noop}>
             <Form
-              id="dateTime-form"
+              id={formId}
               initialValues={initialValues}
               layout="vertical"
               onFinish={(values: { dateTimeValue: Moment }) => {
@@ -327,18 +333,21 @@ export const PropertyValue: FC<PropertyValueProps> = ({
           time: value ? moment(value, format) : undefined,
         };
 
+        const formId = `time-form-${propertyName}`;
+
         return (
           <InlineEdit
+            className="custom-property-inline-edit-container"
             isLoading={isLoading}
             saveButtonProps={{
               disabled: isLoading,
               htmlType: 'submit',
-              form: 'time-form',
+              form: formId,
             }}
             onCancel={onHideInput}
             onSave={noop}>
             <Form
-              id="time-form"
+              id={formId}
               initialValues={initialValues}
               layout="vertical"
               validateMessages={VALIDATION_MESSAGES}
@@ -366,18 +375,21 @@ export const PropertyValue: FC<PropertyValueProps> = ({
           email: value,
         };
 
+        const formId = `email-form-${propertyName}`;
+
         return (
           <InlineEdit
+            className="custom-property-inline-edit-container"
             isLoading={isLoading}
             saveButtonProps={{
               disabled: isLoading,
               htmlType: 'submit',
-              form: 'email-form',
+              form: formId,
             }}
             onCancel={onHideInput}
             onSave={noop}>
             <Form
-              id="email-form"
+              id={formId}
               initialValues={initialValues}
               layout="vertical"
               validateMessages={VALIDATION_MESSAGES}
@@ -411,18 +423,21 @@ export const PropertyValue: FC<PropertyValueProps> = ({
           timestamp: value,
         };
 
+        const formId = `timestamp-form-${propertyName}`;
+
         return (
           <InlineEdit
+            className="custom-property-inline-edit-container"
             isLoading={isLoading}
             saveButtonProps={{
               disabled: isLoading,
               htmlType: 'submit',
-              form: 'timestamp-form',
+              form: formId,
             }}
             onCancel={onHideInput}
             onSave={noop}>
             <Form
-              id="timestamp-form"
+              id={formId}
               initialValues={initialValues}
               layout="vertical"
               onFinish={(values: { timestamp: string }) => {
@@ -461,18 +476,21 @@ export const PropertyValue: FC<PropertyValueProps> = ({
           end: value?.end ? value.end?.toString() : undefined,
         };
 
+        const formId = `timeInterval-form-${propertyName}`;
+
         return (
           <InlineEdit
+            className="custom-property-inline-edit-container"
             isLoading={isLoading}
             saveButtonProps={{
               disabled: isLoading,
               htmlType: 'submit',
-              form: 'timeInterval-form',
+              form: formId,
             }}
             onCancel={onHideInput}
             onSave={noop}>
             <Form
-              id="timeInterval-form"
+              id={formId}
               initialValues={initialValues}
               layout="vertical"
               onFinish={(values: { start: string; end: string }) => {
@@ -534,18 +552,21 @@ export const PropertyValue: FC<PropertyValueProps> = ({
           duration: value,
         };
 
+        const formId = `duration-form-${propertyName}`;
+
         return (
           <InlineEdit
+            className="custom-property-inline-edit-container"
             isLoading={isLoading}
             saveButtonProps={{
               disabled: isLoading,
               htmlType: 'submit',
-              form: 'duration-form',
+              form: formId,
             }}
             onCancel={onHideInput}
             onSave={noop}>
             <Form
-              id="duration-form"
+              id={formId}
               initialValues={initialValues}
               layout="vertical"
               validateMessages={VALIDATION_MESSAGES}
@@ -570,19 +591,21 @@ export const PropertyValue: FC<PropertyValueProps> = ({
           sqlQuery: value,
         };
 
+        const formId = `sqlQuery-form-${propertyName}`;
+
         return (
           <InlineEdit
-            className="sql-query-custom-property"
+            className="custom-property-inline-edit-container sql-query-custom-property"
             isLoading={isLoading}
             saveButtonProps={{
               disabled: isLoading,
               htmlType: 'submit',
-              form: 'sqlQuery-form',
+              form: formId,
             }}
             onCancel={onHideInput}
             onSave={noop}>
             <Form
-              id="sqlQuery-form"
+              id={formId}
               initialValues={initialValues}
               layout="vertical"
               validateMessages={VALIDATION_MESSAGES}
@@ -643,18 +666,21 @@ export const PropertyValue: FC<PropertyValueProps> = ({
           entityReference: initialValue,
         };
 
+        const formId = `entity-reference-form-${propertyName}`;
+
         return (
           <InlineEdit
+            className="custom-property-inline-edit-container"
             isLoading={isLoading}
             saveButtonProps={{
               disabled: isLoading,
               htmlType: 'submit',
-              form: 'entity-reference-form',
+              form: formId,
             }}
             onCancel={onHideInput}
             onSave={noop}>
             <Form
-              id="entity-reference-form"
+              id={formId}
               initialValues={initialValues}
               layout="vertical"
               validateMessages={VALIDATION_MESSAGES}
@@ -710,7 +736,6 @@ export const PropertyValue: FC<PropertyValueProps> = ({
               columns={columns}
               isUpdating={isLoading}
               isVisible={showInput}
-              maxRowCount={config?.rowCount ?? 10}
               property={property}
               rows={value?.rows ?? []}
               onCancel={onHideInput}
@@ -993,7 +1018,9 @@ export const PropertyValue: FC<PropertyValueProps> = ({
             {hasEditPermissions && !showInput && (
               <Tooltip
                 placement="left"
-                title={t('label.edit-entity', { entity: propertyName })}>
+                title={t('label.edit-entity', {
+                  entity: getEntityName(property),
+                })}>
                 <Icon
                   component={EditIconComponent}
                   data-testid={`edit-icon${

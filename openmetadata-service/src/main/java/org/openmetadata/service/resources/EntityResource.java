@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.resources;
 
+import static javax.ws.rs.client.Entity.entity;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.EventType.ENTITY_CREATED;
@@ -27,17 +28,21 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.UUID;
+import java.util.concurrent.ExecutorService;
 import javax.json.JsonPatch;
+import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.BulkAssetsRequestInterface;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
@@ -52,6 +57,9 @@ import org.openmetadata.service.security.policyevaluator.CreateResourceContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
+import org.openmetadata.service.util.AsyncService;
+import org.openmetadata.service.util.BulkAssetsOperationResponse;
+import org.openmetadata.service.util.CSVExportResponse;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.RestUtil;
@@ -59,6 +67,7 @@ import org.openmetadata.service.util.RestUtil.DeleteResponse;
 import org.openmetadata.service.util.RestUtil.PatchResponse;
 import org.openmetadata.service.util.RestUtil.PutResponse;
 import org.openmetadata.service.util.ResultList;
+import org.openmetadata.service.util.WebsocketNotificationHandler;
 
 @Slf4j
 public abstract class EntityResource<T extends EntityInterface, K extends EntityRepository<T>> {
@@ -288,7 +297,6 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
 
   public Response createOrUpdate(UriInfo uriInfo, SecurityContext securityContext, T entity) {
     repository.prepareInternal(entity, true);
-
     // If entity does not exist, this is a create operation, else update operation
     ResourceContext<T> resourceContext = getResourceContextByName(entity.getFullyQualifiedName());
     MetadataOperation operation = createOrUpdateOperation(resourceContext);
@@ -301,6 +309,9 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       entity = addHref(uriInfo, repository.create(uriInfo, entity));
       return new PutResponse<>(Response.Status.CREATED, entity, ENTITY_CREATED).toResponse();
     }
+    resourceContext =
+        getResourceContextByName(
+            entity.getFullyQualifiedName(), ResourceContextInterface.Operation.PUT);
     authorizer.authorize(securityContext, operationContext, resourceContext);
     PutResponse<T> response = repository.createOrUpdate(uriInfo, entity);
     addHref(uriInfo, response.getEntity());
@@ -310,7 +321,10 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
   public Response patchInternal(
       UriInfo uriInfo, SecurityContext securityContext, UUID id, JsonPatch patch) {
     OperationContext operationContext = new OperationContext(entityType, patch);
-    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+    authorizer.authorize(
+        securityContext,
+        operationContext,
+        getResourceContextById(id, ResourceContextInterface.Operation.PATCH));
     PatchResponse<T> response =
         repository.patch(uriInfo, id, securityContext.getUserPrincipal().getName(), patch);
     addHref(uriInfo, response.entity());
@@ -320,7 +334,10 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
   public Response patchInternal(
       UriInfo uriInfo, SecurityContext securityContext, String fqn, JsonPatch patch) {
     OperationContext operationContext = new OperationContext(entityType, patch);
-    authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
+    authorizer.authorize(
+        securityContext,
+        operationContext,
+        getResourceContextByName(fqn, ResourceContextInterface.Operation.PATCH));
     PatchResponse<T> response =
         repository.patch(uriInfo, fqn, securityContext.getUserPrincipal().getName(), patch);
     addHref(uriInfo, response.entity());
@@ -376,6 +393,78 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     return response.toResponse();
   }
 
+  public Response exportCsvInternalAsync(SecurityContext securityContext, String name) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.VIEW_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
+    String jobId = UUID.randomUUID().toString();
+    ExecutorService executorService = AsyncService.getInstance().getExecutorService();
+    executorService.submit(
+        () -> {
+          try {
+            String csvData =
+                repository.exportToCsv(name, securityContext.getUserPrincipal().getName());
+            WebsocketNotificationHandler.sendCsvExportCompleteNotification(
+                jobId, securityContext, csvData);
+          } catch (Exception e) {
+            WebsocketNotificationHandler.sendCsvExportFailedNotification(
+                jobId, securityContext, e.getMessage());
+          }
+        });
+    CSVExportResponse response = new CSVExportResponse(jobId, "Export initiated successfully.");
+    return Response.accepted().entity(response).type(MediaType.APPLICATION_JSON).build();
+  }
+
+  public Response bulkAddToAssetsAsync(
+      SecurityContext securityContext, UUID entityId, BulkAssetsRequestInterface request) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(entityId));
+    String jobId = UUID.randomUUID().toString();
+    ExecutorService executorService = AsyncService.getInstance().getExecutorService();
+    executorService.submit(
+        () -> {
+          try {
+            BulkOperationResult result =
+                repository.bulkAddAndValidateTagsToAssets(entityId, request);
+            WebsocketNotificationHandler.bulkAssetsOperationCompleteNotification(
+                jobId, securityContext, result);
+          } catch (Exception e) {
+            WebsocketNotificationHandler.bulkAssetsOperationFailedNotification(
+                jobId, securityContext, e.getMessage());
+          }
+        });
+    BulkAssetsOperationResponse response =
+        new BulkAssetsOperationResponse(
+            jobId, "Bulk Add tags to Asset operation initiated successfully.");
+    return Response.ok().entity(response).type(MediaType.APPLICATION_JSON).build();
+  }
+
+  public Response bulkRemoveFromAssetsAsync(
+      SecurityContext securityContext, UUID entityId, BulkAssetsRequestInterface request) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(entityId));
+    String jobId = UUID.randomUUID().toString();
+    ExecutorService executorService = AsyncService.getInstance().getExecutorService();
+    executorService.submit(
+        () -> {
+          try {
+            BulkOperationResult result =
+                repository.bulkRemoveAndValidateTagsToAssets(entityId, request);
+            WebsocketNotificationHandler.bulkAssetsOperationCompleteNotification(
+                jobId, securityContext, result);
+          } catch (Exception e) {
+            WebsocketNotificationHandler.bulkAssetsOperationFailedNotification(
+                jobId, securityContext, e.getMessage());
+          }
+        });
+    BulkAssetsOperationResponse response =
+        new BulkAssetsOperationResponse(
+            jobId, "Bulk Remove tags to Asset operation initiated successfully.");
+    return Response.ok().entity(response).type(MediaType.APPLICATION_JSON).build();
+  }
+
   public String exportCsvInternal(SecurityContext securityContext, String name) throws IOException {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_ALL);
@@ -400,8 +489,18 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     return new ResourceContext<>(entityType, id, null);
   }
 
+  protected ResourceContext<T> getResourceContextById(
+      UUID id, ResourceContextInterface.Operation operation) {
+    return new ResourceContext<>(entityType, id, null, operation);
+  }
+
   protected ResourceContext<T> getResourceContextByName(String name) {
     return new ResourceContext<>(entityType, null, name);
+  }
+
+  protected ResourceContext<T> getResourceContextByName(
+      String name, ResourceContextInterface.Operation operation) {
+    return new ResourceContext<>(entityType, null, name, operation);
   }
 
   protected static final MetadataOperation[] VIEW_ALL_OPERATIONS = {MetadataOperation.VIEW_ALL};

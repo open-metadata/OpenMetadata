@@ -172,6 +172,12 @@ site_menu:
     url: /connectors/database/sap-hana
   - category: Connectors / Database / SAP Hana / Run Externally
     url: /connectors/database/sap-hana/yaml
+  - category: Connectors / Database / SAP ERP
+    url: /connectors/database/sap-erp
+  - category: Connectors / Database / SAP ERP / Run Externally
+    url: /connectors/database/sap-erp/yaml
+  - category: Connectors / Database / SAP ERP / Setup SAP ERP APIs
+    url: /connectors/database/sap-erp/setup-sap-apis
   - category: Connectors / Database / SAS
     url: /connectors/database/sas
   - category: Connectors / Database / SAS / Run Externally
@@ -223,6 +229,10 @@ site_menu:
     url: /connectors/dashboard/domo-dashboard
   - category: Connectors / Dashboard / Domo Dashboard / Run Externally
     url: /connectors/dashboard/domo-dashboard/yaml
+  - category: Connectors / Dashboard / Lightdash
+    url: /connectors/dashboard/lightdash
+  - category: Connectors / Dashboard / Lightdash / Run Externally
+    url: /connectors/dashboard/lightdash/yaml
   - category: Connectors / Dashboard / Looker
     url: /connectors/dashboard/looker
   - category: Connectors / Dashboard / Looker / Run Externally
@@ -231,6 +241,10 @@ site_menu:
     url: /connectors/dashboard/metabase
   - category: Connectors / Dashboard / Metabase / Run Externally
     url: /connectors/dashboard/metabase/yaml
+  - category: Connectors / Dashboard / MicroStrategy
+    url: /connectors/dashboard/microstrategy
+  - category: Connectors / Dashboard / MicroStrategy / Run Externally
+    url: /connectors/dashboard/microstrategy/yaml
   - category: Connectors / Dashboard / Mode
     url: /connectors/dashboard/mode
   - category: Connectors / Dashboard / Mode / Run Externally
@@ -241,6 +255,10 @@ site_menu:
     url: /connectors/dashboard/powerbi/yaml
   - category: Connectors / Dashboard / PowerBI / Lineage from pbit files
     url: /connectors/dashboard/powerbi/powerbi-pbit-lineage
+  - category: Connectors / Dashboard / PowerBI Report Server
+    url: /connectors/dashboard/powerbireportserver
+  - category: Connectors / Dashboard / PowerBI Report Server / Run Externally
+    url: /connectors/dashboard/powerbireportserver/yaml
   - category: Connectors / Dashboard / Qlik Sense
     url: /connectors/dashboard/qliksense
   - category: Connectors / Dashboard / Qlik Sense / Run Externally
@@ -526,7 +544,13 @@ site_menu:
   - category: How-to Guides / Admin Guide / How to Add Custom Logo
     url: /how-to-guides/admin-guide/how-to-add-custom-logo
   - category: How-to Guides / Admin Guide / Reindexing Search
-    url: /how-to-guides/admin-guide/Reindexing-Search  
+    url: /how-to-guides/admin-guide/Reindexing-Search
+  - category: How-to Guides / Admin Guide / Persona and Landing Page Customization 
+    url: /how-to-guides/admin-guide/persona-landing-page-customization 
+  - category: How-to Guides / Admin Guide / Persona and Landing Page Customization / How to Customize a Landing Page
+    url: /how-to-guides/admin-guide/persona-landing-page-customization/customizable-landing-page
+  - category: How-to Guides / Admin Guide / Persona and Landing Page Customization / How to Define Personas
+    url: /how-to-guides/admin-guide/persona-landing-page-customization/defining-persona
 
   - category: How-to Guides / Guide for Data Users
     url: /how-to-guides/guide-for-data-users
@@ -567,6 +591,8 @@ site_menu:
     url: /how-to-guides/data-discovery
   - category: How-to Guides / Data Discovery / How to Discover Assets of Interest
     url: /how-to-guides/data-discovery/discover
+  - category: How-to Guides / Data Discovery / Steps for Searching Using Hierarchy
+    url: /how-to-guides/data-discovery/hierarchy
   - category: How-to Guides / Data Discovery / Get a Quick Glance of the Data Assets
     url: /how-to-guides/data-discovery/preview
   - category: How-to Guides / Data Discovery / Detailed View of the Data Assets
@@ -579,6 +605,14 @@ site_menu:
     url: /how-to-guides/data-discovery/import
   - category: How-to Guides / Data Discovery / How to Export Data Asset
     url: /how-to-guides/data-discovery/export
+  - category: How-to Guides / Data Discovery / OpenMetadata Chrome Extension
+    url: /how-to-guides/data-discovery/openmetadata-extension
+  - category: How-to Guides / Data Discovery / OpenMetadata Chrome Extension / Viewing Activity Feeds and Managing Tasks
+    url: /how-to-guides/data-discovery/openmetadata-extension/activity-feeds
+  - category: How-to Guides / Data Discovery / OpenMetadata Chrome Extension / Looking Up Data Assets and Accessing Details
+    url: /how-to-guides/data-discovery/openmetadata-extension/looking-up
+  - category: How-to Guides / Data Discovery / OpenMetadata Chrome Extension / Viewing tasks & add comment directly from the extension
+    url: /how-to-guides/data-discovery/openmetadata-extension/viewing-tasks
 
   - category: How-to Guides / Data Collaboration
     url: /how-to-guides/data-collaboration
@@ -607,7 +641,6 @@ site_menu:
     url: /how-to-guides/data-quality-observability/quality/tab
   - category: How-to Guides / Data Quality and Profiler / Data Quality / Data Quality Overview Section
     url: /how-to-guides/data-quality-observability/quality/overview
-    isCollateOnly: true
   - category: How-to Guides / Data Quality and Profiler / Data Quality / How to Write and Deploy No-Code Test Cases
     url: /how-to-guides/data-quality-observability/quality/test
   - category: How-to Guides / Data Quality and Observability / Data Quality / Configure Data Quality
@@ -642,7 +675,11 @@ site_menu:
     url: /how-to-guides/data-quality-observability/incident-manager/workflow
   - category: How-to Guides / Data Quality and Observability / Incident Manager / Root Cause Analysis
     url: /how-to-guides/data-quality-observability/incident-manager/root-cause-analysis
-    isCollateOnly: true
+  - category: How-to Guides / Data Quality and Observability / Anomaly Detection
+    url: /how-to-guides/data-quality-observability/anomaly-detection
+  - category: How-to Guides / Data Quality and Observability / Anomaly Detection / Steps to Set Up Anomaly Detection
+    url: /how-to-guides/data-quality-observability/anomaly-detection/setting-up
+
 
   - category: How-to Guides / Data Lineage
     url: /how-to-guides/data-lineage
@@ -723,9 +760,7 @@ site_menu:
 
   - category: Enable Security
     url: /security
-
-  - category: Enable Security / Basic Authentication
-    url: /security/basic-auth
+   
   - category: Enable Security / Ldap Authentication
     url: /security/ldap
   - category: Enable Security / Auth0 SSO
@@ -761,6 +796,10 @@ site_menu:
     url: /releases/supported
   - category: Releases / All Releases
     url: /releases/all-releases
+  - category: Releases / All Releases / 1.5.7 Release
+    url: /releases/all-releases/#1.5.7-release
+  - category: Releases / All Releases / 1.5.6 Release
+    url: /releases/all-releases/#1.5.6-release
   - category: Releases / All Releases / 1.5.5 Release
     url: /releases/all-releases/#1.5.5-release
   - category: Releases / All Releases / 1.5.4 Release
@@ -844,8 +883,6 @@ site_menu:
   - category: Releases / All Releases / 0.4.0 Release
     url: /releases/all-releases/#0.4.0-release
 
-  - category: Roadmap
-    url: /roadmap
 
   - category: Main Concepts
     url: /main-concepts
@@ -1860,8 +1897,8 @@ site_menu:
     url: /sdk/java
   - category: SDK / Go
     url: /sdk/go
-  - category: Metapilot
-    url: /metapilot
-  - category: Metapilot / How to Use MetaPilot
-    url: /metapilot/how-to-use-metapilot
+  - category: Collate AI
+    url: /collateai
+  - category: Collate AI / How to Use Collate AI
+    url: /collateai/how-to-use-collate-ai
 ---

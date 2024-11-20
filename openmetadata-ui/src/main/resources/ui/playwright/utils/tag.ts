@@ -11,8 +11,14 @@
  *  limitations under the License.
  */
 import { expect, Page } from '@playwright/test';
+import { get } from 'lodash';
 import { SidebarItem } from '../constant/sidebar';
+import { DashboardClass } from '../support/entity/DashboardClass';
+import { EntityClass } from '../support/entity/EntityClass';
+import { TableClass } from '../support/entity/TableClass';
+import { TopicClass } from '../support/entity/TopicClass';
 import {
+  getApiContext,
   NAME_MIN_MAX_LENGTH_VALIDATION_ERROR,
   NAME_VALIDATION_ERROR,
   redirectToHomePage,
@@ -36,7 +42,88 @@ export const visitClassificationPage = async (
   );
   await sidebarClick(page, SidebarItem.TAGS);
   await classificationResponse;
-  await page.getByRole('menuitem', { name: classificationName }).click();
+  await page
+    .locator(`[data-testid="side-panel-classification"]`)
+    .filter({ hasText: classificationName })
+    .click();
+
+  await expect(page.locator('.activeCategory')).toContainText(
+    classificationName
+  );
+};
+
+export const addAssetsToTag = async (page: Page, assets: EntityClass[]) => {
+  await page.getByTestId('assets').click();
+  await page.getByTestId('data-classification-add-button').click();
+
+  await expect(page.getByRole('dialog')).toBeVisible();
+
+  for (const asset of assets) {
+    const name = get(asset, 'entityResponseData.name');
+    const fqn = get(asset, 'entityResponseData.fullyQualifiedName');
+
+    const searchRes = page.waitForResponse(
+      `/api/v1/search/query?q=${name}&index=all&from=0&size=25&*`
+    );
+    await page
+      .getByTestId('asset-selection-modal')
+      .getByTestId('searchbar')
+      .fill(name);
+    await searchRes;
+
+    await page.locator(`[data-testid="table-data-card_${fqn}"] input`).check();
+  }
+
+  const assetsAddRes = page.waitForResponse(`/api/v1/tags/*/assets/add`);
+  await page.getByTestId('save-btn').click();
+  await assetsAddRes;
+};
+
+export const removeAssetsFromTag = async (
+  page: Page,
+  assets: EntityClass[]
+) => {
+  for (const asset of assets) {
+    const fqn = get(asset, 'entityResponseData.fullyQualifiedName');
+    await page.locator(`[data-testid="table-data-card_${fqn}"] input`).check();
+  }
+
+  const assetsRemoveRes = page.waitForResponse(`/api/v1/tags/*/assets/remove`);
+
+  await page.getByTestId('delete-all-button').click();
+  await assetsRemoveRes;
+};
+
+export const checkAssetsCount = async (page: Page, count: number) => {
+  await expect(
+    page.getByTestId('assets').getByTestId('filter-count')
+  ).toContainText(count.toString());
+};
+
+export const setupAssetsForTag = async (page: Page) => {
+  const { afterAction, apiContext } = await getApiContext(page);
+  const table = new TableClass();
+  const topic = new TopicClass();
+  const dashboard = new DashboardClass();
+  await Promise.all([
+    table.create(apiContext),
+    topic.create(apiContext),
+    dashboard.create(apiContext),
+  ]);
+
+  const assetCleanup = async () => {
+    await Promise.all([
+      table.delete(apiContext),
+      topic.delete(apiContext),
+      dashboard.delete(apiContext),
+    ]);
+    await afterAction();
+  };
+
+  return {
+    assets: [table, topic, dashboard],
+    assetCleanup,
+  };
 };
 
 export async function submitForm(page: Page) {
@@ -89,3 +176,54 @@ export async function validateForm(page: Page) {
 
   await expect(page.getByText(NAME_VALIDATION_ERROR)).toBeVisible();
 }
+
+export const addTagToTableColumn = async (
+  page: Page,
+  {
+    tagName,
+    tagFqn,
+    tagDisplayName,
+    tableId,
+    columnNumber,
+    rowName,
+  }: {
+    tagName: string;
+    tagFqn: string;
+    tagDisplayName: string;
+    tableId: string;
+    columnNumber: number;
+    rowName: string;
+  }
+) => {
+  await page.click(
+    `[data-testid="classification-tags-${columnNumber}"] [data-testid="entity-tags"] [data-testid="add-tag"]`
+  );
+  await page.fill('[data-testid="tag-selector"] input', tagName);
+  await page.click(`[data-testid="tag-${tagFqn}"]`);
+
+  await expect(
+    page.locator('[data-testid="tag-selector"] > .ant-select-selector')
+  ).toContainText(tagDisplayName);
+
+  const saveAssociatedTag = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'PATCH' &&
+      response.url().includes(`/api/v1/tables/${tableId}`)
+  );
+  await page.click('[data-testid="saveAssociatedTag"]');
+  await saveAssociatedTag;
+
+  await page.waitForSelector('.ant-select-dropdown', {
+    state: 'detached',
+  });
+
+  await expect(
+    page.getByRole('row', { name: rowName }).getByTestId('tags-container')
+  ).toContainText(tagDisplayName);
+
+  await expect(
+    page.locator(
+      `[data-testid="classification-tags-${columnNumber}"] [data-testid="tags-container"] [data-testid="tag-${tagFqn}"]`
+    )
+  ).toBeVisible();
+};

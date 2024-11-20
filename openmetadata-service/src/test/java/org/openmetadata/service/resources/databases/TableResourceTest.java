@@ -173,6 +173,7 @@ import org.openmetadata.service.util.TestUtils;
 @Slf4j
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
+@Execution(ExecutionMode.CONCURRENT)
 public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   private final TagResourceTest tagResourceTest = new TagResourceTest();
   private final DatabaseServiceResourceTest dbServiceTest = new DatabaseServiceResourceTest();
@@ -1000,7 +1001,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     // Invalid date older than 30 days
     String invalidColumnFQN4 = table2.getFullyQualifiedName() + ".c1";
     TableJoins tableJoins4 =
-        getTableJoins(getColumnJoin(C1, invalidColumnFQN4)).withStartDate(RestUtil.today(-30));
+        getTableJoins(getColumnJoin(C1, invalidColumnFQN4)).withStartDate(RestUtil.today(-31));
     assertResponse(
         () -> putJoins(table1.getId(), tableJoins4, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
@@ -2471,6 +2472,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     // Create an entity without column description
     CreateTable createWithNullColumnDescription =
         createRequest(test, 1)
+            .withName("tableWithNullColumnDescription")
             .withDatabaseSchema(schema.getFullyQualifiedName())
             .withDescription("description")
             .withColumns(listOf(columnWithNullDescription))
@@ -2480,6 +2482,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     // Create an entity with empty column description
     CreateTable createWithEmptyColumnDescription =
         createRequest(test, 2)
+            .withName("tableWithEmptyColumnDescription")
             .withDatabaseSchema(schema.getFullyQualifiedName())
             .withDescription("description")
             .withColumns(listOf(columnWithEmptyDescription))
@@ -2489,6 +2492,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     // Create an entity with null description but with column description
     CreateTable createWithNullDescription =
         createRequest(test, 6)
+            .withName("tableWithNullDescription")
             .withDatabaseSchema(schema.getFullyQualifiedName())
             .withDescription(null)
             .withColumns(listOf(columnWithDescription))
@@ -2497,6 +2501,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     // Create an entity with description complete
     CreateTable createWithDescription =
         createRequest(test, 4)
+            .withName("tableWithDescription")
             .withDatabaseSchema(schema.getFullyQualifiedName())
             .withDescription("description")
             .withColumns(listOf(columnWithDescription))
@@ -2507,6 +2512,14 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     RestClient searchClient = getSearchClient();
     IndexMapping index = Entity.getSearchRepository().getIndexMapping(TABLE);
     Response response;
+    // lets refresh the indexes before calling search
+    Request refreshRequest =
+        new Request(
+            "POST",
+            String.format(
+                "%s/_refresh", index.getIndexName(Entity.getSearchRepository().getClusterAlias())));
+    searchClient.performRequest(refreshRequest);
+
     // Direct request to es needs to have es clusterAlias appended with indexName
     Request request =
         new Request(
@@ -2514,7 +2527,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
             String.format(
                 "%s/_search", index.getIndexName(Entity.getSearchRepository().getClusterAlias())));
     String query =
-        "{\"size\": 100,\"query\":{\"bool\":{\"must\":[{\"term\":{\"descriptionStatus\":\"INCOMPLETE\"}}]}}}";
+        "{\"size\": 1000,\"query\":{\"bool\":{\"must\":[{\"term\":{\"descriptionStatus\":\"INCOMPLETE\"}}]}}}";
     request.setJsonEntity(query);
     response = searchClient.performRequest(request);
     searchClient.close();
@@ -2541,14 +2554,14 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
                     ((LinkedHashMap<String, Object>) hit.get("_source"))
                         .get("name")
                         .equals(createWithNullDescription.getName())));
-    assertTrue(
+    assertFalse(
         hitsList.stream()
             .anyMatch(
                 hit ->
                     ((LinkedHashMap<String, Object>) hit.get("_source"))
                         .get("name")
                         .equals(createWithEmptyColumnDescription.getName())));
-    assertTrue(
+    assertFalse(
         hitsList.stream()
             .anyMatch(
                 hit ->

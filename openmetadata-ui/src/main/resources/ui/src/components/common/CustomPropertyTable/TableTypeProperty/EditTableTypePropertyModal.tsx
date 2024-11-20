@@ -13,11 +13,12 @@
 import ReactDataGrid from '@inovua/reactdatagrid-community';
 import '@inovua/reactdatagrid-community/index.css';
 import { TypeComputedProps } from '@inovua/reactdatagrid-community/types';
-import { Button, Modal, Tooltip, Typography } from 'antd';
+import { Button, Modal, Typography } from 'antd';
 import { isEmpty, omit } from 'lodash';
 import React, { FC, MutableRefObject, useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CustomProperty } from '../../../../generated/type/customProperty';
+import { getEntityName } from '../../../../utils/EntityUtils';
 import { TableTypePropertyValueType } from '../CustomPropertyTable.interface';
 import './edit-table-type-property.less';
 import TableTypePropertyView from './TableTypePropertyView';
@@ -28,7 +29,6 @@ interface EditTableTypePropertyModalProps {
   property: CustomProperty;
   columns: string[];
   rows: Record<string, string>[];
-  maxRowCount: number;
   onCancel: () => void;
   onSave: (data: TableTypePropertyValueType) => Promise<void>;
 }
@@ -41,7 +41,6 @@ const EditTableTypePropertyModal: FC<EditTableTypePropertyModalProps> = ({
   property,
   columns,
   rows,
-  maxRowCount,
   onCancel,
   onSave,
 }) => {
@@ -168,28 +167,23 @@ const EditTableTypePropertyModal: FC<EditTableTypePropertyModalProps> = ({
       data-testid="edit-table-type-property-modal"
       footer={
         <div className="d-flex justify-between">
-          <Tooltip
-            title={
-              dataSource.length === maxRowCount
-                ? t('message.maximum-count-allowed', {
-                    count: maxRowCount,
-                    label: t('label.row-plural'),
-                  })
-                : t('label.add-entity', { entity: t('label.row') })
-            }>
-            <Button
-              disabled={dataSource.length === maxRowCount || isUpdating}
-              type="primary"
-              onClick={handleAddRow}>
-              {t('label.add-entity', { entity: t('label.row') })}
-            </Button>
-          </Tooltip>
+          <Button
+            data-testid="add-new-row"
+            disabled={isUpdating}
+            type="primary"
+            onClick={handleAddRow}>
+            {t('label.add-entity', { entity: t('label.row') })}
+          </Button>
 
           <div className="d-flex gap-2">
-            <Button disabled={isUpdating} onClick={onCancel}>
+            <Button
+              data-testid="cancel-update-table-type-property"
+              disabled={isUpdating}
+              onClick={onCancel}>
               {t('label.cancel')}
             </Button>
             <Button
+              data-testid="update-table-type-property"
               disabled={isUpdating}
               loading={isUpdating}
               type="primary"
@@ -205,13 +199,13 @@ const EditTableTypePropertyModal: FC<EditTableTypePropertyModalProps> = ({
         <Typography.Text>
           {t('label.edit-entity-name', {
             entityType: t('label.property'),
-            entityName: property.name,
+            entityName: getEntityName(property),
           })}
         </Typography.Text>
       }
       width={800}>
       {isEmpty(dataSource) ? (
-        <TableTypePropertyView isInModal columns={columns} rows={rows} />
+        <TableTypePropertyView columns={columns} rows={rows} />
       ) : (
         <ReactDataGrid
           editable
@@ -222,7 +216,7 @@ const EditTableTypePropertyModal: FC<EditTableTypePropertyModalProps> = ({
           idProperty="id"
           minRowHeight={30}
           showZebraRows={false}
-          style={{ height: '180px' }}
+          style={{ height: '350px' }}
           onEditComplete={onEditComplete}
           onEditStart={onEditStart}
           onEditStop={onEditStop}

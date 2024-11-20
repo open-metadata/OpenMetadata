@@ -19,6 +19,7 @@ import { TestSummary } from '../../../generated/tests/testCase';
 export interface SchemaTableProps {
   hasDescriptionEditAccess: boolean;
   hasTagEditAccess: boolean;
+  hasGlossaryTermEditAccess: boolean;
   searchText?: string;
   isReadOnly?: boolean;
   onUpdate: (columns: Column[]) => Promise<void>;
@@ -40,4 +41,11 @@ export interface DataTypeDisplayCellProps {
 export interface EditColumnTag {
   column: Column;
   index: number;
+}
+
+export interface UpdatedColumnFieldData {
+  fqn: string;
+  field: keyof Column;
+  value?: string;
+  columns: Column[];
 }
