@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { PAGE_SIZE } from '../constants/constants';
+import { queryFilterToRemoveSomeClassification } from '../constants/Tag.constants';
 import { SearchIndex } from '../enums/search.enum';
 import { searchQuery } from '../rest/searchAPI';
 import { escapeESReservedCharacters, getEncodedFqn } from './StringsUtils';
@@ -24,24 +25,7 @@ class TagClassBase {
       filters: 'disabled:false',
       pageNumber: page,
       pageSize: PAGE_SIZE,
-      queryFilter: {
-        query: {
-          bool: {
-            must_not: [
-              {
-                wildcard: {
-                  fullyQualifiedName: '*Certification*',
-                },
-              },
-              {
-                wildcard: {
-                  fullyQualifiedName: '*Tier*',
-                },
-              },
-            ],
-          },
-        },
-      },
+      queryFilter: queryFilterToRemoveSomeClassification,
       searchIndex: SearchIndex.TAG,
     });
 
