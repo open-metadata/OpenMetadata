@@ -35,7 +35,7 @@ Documenting thousands of tables manually is tedious and time-consuming. Collate 
 ### 1. Automatic Data Asset Documentation
 
 {% image
-src="/images/v1.5/Collate AI/reviewing-generated-metadata.png"
+src="/images/v1.5/collate-ai/reviewing-generated-metadata.png"
 alt="Automatic Data Asset Documentation"
 caption="Auto Generate data Asset Documentation"
 /%}
