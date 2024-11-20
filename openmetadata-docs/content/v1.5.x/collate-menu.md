@@ -1897,8 +1897,8 @@ site_menu:
     url: /sdk/java
   - category: SDK / Go
     url: /sdk/go
-  - category: Metapilot
-    url: /metapilot
-  - category: Metapilot / How to Use MetaPilot
-    url: /metapilot/how-to-use-metapilot
+  - category: Collate AI
+    url: /collateai
+  - category: Collate AI / How to Use Collate AI
+    url: /collateai/how-to-use-collate-ai
 ---
