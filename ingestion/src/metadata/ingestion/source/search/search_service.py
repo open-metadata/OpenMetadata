@@ -198,28 +198,28 @@ class SearchServiceSource(TopologyRunnerMixin, Source, ABC):
                 continue
             yield index_details
 
-    @abstractmethod
     def get_search_index_template_list(self) -> Optional[List[Any]]:
         """Get list of all search index templates"""
 
-    def get_search_index_template(self) -> Any:
-        if not self.source_config.ingestIndexTemplate:
-            return None
+    def get_search_index_template_name(self, search_index_details: Any) -> str:
+        """Get Search Index Template Name"""
 
-        for index_template_details in self.get_search_index_template_list():
-            search_index_template_name = self.get_search_index_template_name(
-                index_template_details
-            )
-            if filter_by_search_index(
-                self.source_config.searchIndexFilterPattern,
-                search_index_template_name,
-            ):
-                self.status.filter(
-                    search_index_template_name,
-                    "Search Index Template Filtered Out",
+    def get_search_index_template(self) -> Any:
+        if self.source_config.ingestIndexTemplate:
+            for index_template_details in self.get_search_index_template_list():
+                search_index_template_name = self.get_search_index_template_name(
+                    index_template_details
                 )
-                continue
-            yield index_template_details
+                if filter_by_search_index(
+                    self.source_config.searchIndexFilterPattern,
+                    search_index_template_name,
+                ):
+                    self.status.filter(
+                        search_index_template_name,
+                        "Search Index Template Filtered Out",
+                    )
+                    continue
+                yield index_template_details
 
     def yield_create_request_search_service(
         self, config: WorkflowSource
