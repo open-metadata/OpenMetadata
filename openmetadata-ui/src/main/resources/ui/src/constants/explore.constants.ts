@@ -33,6 +33,7 @@ export const SUPPORTED_EMPTY_FILTER_FIELDS = [
   EntityFields.DOMAIN,
   EntityFields.TIER,
   EntityFields.TAG,
+  EntityFields.CERTIFICATION,
 ];
 
 export const NOT_INCLUDE_AGGREGATION_QUICK_FILTER = [

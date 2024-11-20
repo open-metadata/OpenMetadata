@@ -55,7 +55,7 @@ export enum EntityFields {
   OWNERS = 'owners.displayName.keyword',
   TAG = 'tags.tagFQN',
   TIER = 'tier.tagFQN',
-  CERTIFICATION = 'certification.tagFQN',
+  CERTIFICATION = 'certification.tagLabel.tagFQN',
   SERVICE = 'service.displayName.keyword',
   DATABASE = 'database.displayName.keyword',
   DATABASE_SCHEMA = 'databaseSchema.displayName.keyword',
