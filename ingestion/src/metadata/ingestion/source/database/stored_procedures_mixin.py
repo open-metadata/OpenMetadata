@@ -217,9 +217,24 @@ class StoredProcedureMixin(ABC):
                     for query_by_procedure in (
                         queries_dict.get(procedure.name.root.lower()) or []
                     ):
-                        yield from self.yield_procedure_lineage(
-                            query_by_procedure=query_by_procedure, procedure=procedure
-                        )
-                        yield from self.yield_procedure_query(
-                            query_by_procedure=query_by_procedure, procedure=procedure
-                        )
+                        try:
+                            yield from self.yield_procedure_lineage(
+                                query_by_procedure=query_by_procedure,
+                                procedure=procedure,
+                            )
+                        except Exception as exc:
+                            logger.debug(traceback.format_exc())
+                            logger.warning(
+                                f"Could not get lineage for store procedure '{procedure_fqn}' due to [{exc}]."
+                            )
+
+                        try:
+                            yield from self.yield_procedure_query(
+                                query_by_procedure=query_by_procedure,
+                                procedure=procedure,
+                            )
+                        except Exception as exc:
+                            logger.debug(traceback.format_exc())
+                            logger.warning(
+                                f"Could not get query for store procedure '{procedure_fqn}' due to [{exc}]."
+                            )
