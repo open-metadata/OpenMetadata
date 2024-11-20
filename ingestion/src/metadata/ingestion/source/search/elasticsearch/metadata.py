@@ -21,6 +21,7 @@ from metadata.generated.schema.api.data.createSearchIndex import (
     CreateSearchIndexRequest,
 )
 from metadata.generated.schema.entity.data.searchIndex import (
+    IndexType,
     SearchIndex,
     SearchIndexSampleData,
 )
@@ -103,7 +104,7 @@ class ElasticsearchSource(SearchServiceSource):
                 fields=parse_es_index_mapping(
                     search_index_details.get(index_name, {}).get("mappings")
                 ),
-                indexType="Index",
+                indexType=IndexType.Index,
             )
             yield Either(right=search_index_request)
             self.register_record(search_index_request=search_index_request)
@@ -180,7 +181,7 @@ class ElasticsearchSource(SearchServiceSource):
                     fields=parse_es_index_mapping(
                         index_template.get("template", {}).get("mappings")
                     ),
-                    indexType="Index Template",
+                    indexType=IndexType.Index_Template,
                     description=index_template.get("_meta", {}).get("description"),
                 )
                 yield Either(right=search_index_template_request)

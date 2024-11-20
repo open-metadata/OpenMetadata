@@ -77,7 +77,7 @@
     },
     "indexType": {
       "description": "Whether the entity is index or index template.",
-      "type": "string",
+      "$ref": "../../entity/data/searchIndex.json#/properties/indexType",
       "default": "Index"
     }
   },
