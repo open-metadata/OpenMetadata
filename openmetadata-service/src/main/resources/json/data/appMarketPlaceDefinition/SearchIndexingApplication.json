@@ -54,13 +54,22 @@
       "storedProcedure",
       "dataProduct",
       "testCaseResolutionStatus",
+      "testCaseResult",
       "apiService",
       "apiEndpoint",
-      "apiCollection"
+      "apiCollection",
+      "metric"
     ],
     "recreateIndex": false,
     "batchSize": "100",
     "payLoadSize": 104857600,
+    "producerThreads": 1,
+    "queueSize": 100,
+    "consumerThreads": 1,
+    "maxConcurrentRequests": 100,
+    "maxRetries": 3,
+    "initialBackoff": 1000,
+    "maxBackoff": 10000,
     "searchIndexMappingLanguage": "EN"
   }
 }

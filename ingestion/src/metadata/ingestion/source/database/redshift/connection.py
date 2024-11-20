@@ -24,6 +24,9 @@ from metadata.generated.schema.entity.automations.workflow import (
 from metadata.generated.schema.entity.services.connections.database.redshiftConnection import (
     RedshiftConnection,
 )
+from metadata.generated.schema.entity.services.connections.testConnectionResult import (
+    TestConnectionResult,
+)
 from metadata.ingestion.connections.builders import (
     create_generic_db_connection,
     get_connection_args_common,
@@ -44,6 +47,7 @@ from metadata.ingestion.source.database.redshift.queries import (
     REDSHIFT_TEST_GET_QUERIES,
     REDSHIFT_TEST_PARTITION_DETAILS,
 )
+from metadata.utils.constants import THREE_MIN
 
 
 def get_connection(connection: RedshiftConnection) -> Engine:
@@ -62,7 +66,8 @@ def test_connection(
     engine: Engine,
     service_connection: RedshiftConnection,
     automation_workflow: Optional[AutomationWorkflow] = None,
-) -> None:
+    timeout_seconds: Optional[int] = THREE_MIN,
+) -> TestConnectionResult:
     """
     Test connection. This can be executed either as part
     of a metadata workflow or during an Automation Workflow
@@ -96,11 +101,14 @@ def test_connection(
         ),
     }
 
-    test_connection_steps(
+    result = test_connection_steps(
         metadata=metadata,
         test_fn=test_fn,
         service_type=service_connection.type.value,
         automation_workflow=automation_workflow,
+        timeout_seconds=timeout_seconds,
     )
 
     kill_active_connections(engine)
+
+    return result

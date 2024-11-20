@@ -13,7 +13,7 @@
 
 import { Col, Row, Space, Switch, Table, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
-import { isEmpty, isNil } from 'lodash';
+import { isUndefined } from 'lodash';
 import { EntityTags, ServiceTypes } from 'Models';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -25,12 +25,12 @@ import NextPrevious from '../../components/common/NextPrevious/NextPrevious';
 import { NextPreviousProps } from '../../components/common/NextPrevious/NextPrevious.interface';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import EntityRightPanel from '../../components/Entity/EntityRightPanel/EntityRightPanel';
-import { PAGE_SIZE } from '../../constants/constants';
 import { COMMON_RESIZABLE_PANEL_CONFIG } from '../../constants/ResizablePanel.constants';
 import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../enums/entity.enum';
 import { DatabaseService } from '../../generated/entity/services/databaseService';
 import { Paging } from '../../generated/type/paging';
+import { UsePagingInterface } from '../../hooks/paging/usePaging';
 import { useFqn } from '../../hooks/useFqn';
 import { ServicesType } from '../../interface/service.interface';
 import { getServiceMainTabColumns } from '../../utils/ServiceMainTabContentUtils';
@@ -52,6 +52,7 @@ interface ServiceMainTabContentProps {
   currentPage: number;
   pagingHandler: NextPreviousProps['pagingHandler'];
   saveUpdatedServiceData: (updatedData: ServicesType) => Promise<void>;
+  pagingInfo: UsePagingInterface;
 }
 
 function ServiceMainTabContent({
@@ -67,6 +68,7 @@ function ServiceMainTabContent({
   currentPage,
   serviceDetails,
   saveUpdatedServiceData,
+  pagingInfo,
 }: Readonly<ServiceMainTabContentProps>) {
   const { t } = useTranslation();
   const { serviceCategory } = useParams<{
@@ -139,10 +141,17 @@ function ServiceMainTabContent({
     [serviceCategory]
   );
 
-  const { editTagsPermission, editDescriptionPermission } = useMemo(
+  const {
+    editTagsPermission,
+    editGlossaryTermsPermission,
+    editDescriptionPermission,
+  } = useMemo(
     () => ({
       editTagsPermission:
         (servicePermission.EditTags || servicePermission.EditAll) &&
+        !serviceDetails.deleted,
+      editGlossaryTermsPermission:
+        (servicePermission.EditGlossaryTerms || servicePermission.EditAll) &&
         !serviceDetails.deleted,
       editDescriptionPermission:
         (servicePermission.EditDescription || servicePermission.EditAll) &&
@@ -210,13 +219,15 @@ function ServiceMainTabContent({
                           size="small"
                         />
                       )}
-                      {Boolean(!isNil(paging.after) || !isNil(paging.before)) &&
-                        !isEmpty(data) && (
+                      {!isUndefined(pagingInfo) &&
+                        pagingInfo.showPagination && (
                           <NextPrevious
                             currentPage={currentPage}
-                            pageSize={PAGE_SIZE}
+                            isLoading={isServiceLoading}
+                            pageSize={pagingInfo.pageSize}
                             paging={paging}
                             pagingHandler={pagingHandler}
+                            onShowSizeChange={pagingInfo.handlePageSizeChange}
                           />
                         )}
                     </Space>
@@ -234,6 +245,7 @@ function ServiceMainTabContent({
                     (serviceDetails as DatabaseService)?.dataProducts ?? []
                   }
                   domain={(serviceDetails as DatabaseService)?.domain}
+                  editGlossaryTermsPermission={editGlossaryTermsPermission}
                   editTagPermission={editTagsPermission}
                   entityFQN={serviceFQN}
                   entityId={serviceDetails.id}

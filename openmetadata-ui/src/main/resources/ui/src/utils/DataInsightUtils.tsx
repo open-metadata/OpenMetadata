@@ -22,6 +22,7 @@ import {
   isString,
   isUndefined,
   last,
+  meanBy,
   round,
   startCase,
   sumBy,
@@ -151,7 +152,11 @@ export const CustomTooltip = (props: DataInsightChartTooltipProps) => {
   } = props;
 
   if (active && payload && payload.length) {
-    const timestamp = dateTimeFormatter(payload[0].payload[timeStampKey] || 0);
+    // we need to check if the xAxis is a date or not.
+    const timestamp =
+      timeStampKey === 'term'
+        ? payload[0].payload[timeStampKey]
+        : dateTimeFormatter(payload[0].payload[timeStampKey] || 0);
     const payloadValue = uniqBy(payload, 'dataKey');
 
     return (
@@ -373,14 +378,16 @@ export const getWebChartSummary = (
 
     const { chartType, data } = chartData;
 
+    let latest;
+    if (chartType === DataInsightChartType.DailyActiveUsers) {
+      latest = round(meanBy(data, 'activeUsers'));
+    } else {
+      latest = sumBy(data, 'pageViews');
+    }
+
     updatedSummary.push({
       ...summary,
-      latest: sumBy(
-        data,
-        chartType === DataInsightChartType.DailyActiveUsers
-          ? 'activeUsers'
-          : 'pageViews'
-      ),
+      latest: latest,
     });
   }
 

@@ -101,6 +101,7 @@ public final class CatalogExceptionMessage {
   public static final String INVALID_BOT_USER = "Revoke Token can only be applied to Bot Users.";
   public static final String NO_MANUAL_TRIGGER_ERR = "App does not support manual trigger.";
   public static final String INVALID_APP_TYPE = "Application Type is not valid.";
+  public static final String CSV_EXPORT_FAILED = "CSV Export Failed.";
 
   private CatalogExceptionMessage() {}
 
@@ -318,6 +319,11 @@ public final class CatalogExceptionMessage {
         tag1.getTagFQN(), tag2.getTagFQN());
   }
 
+  public static String disabledTag(TagLabel tag) {
+    return String.format(
+        "Tag label %s is disabled and can't be assigned to a data asset.", tag.getTagFQN());
+  }
+
   public static String csvNotSupported(String entityType) {
     return String.format(
         "Upload/download CSV for bulk operations is not supported for entity [%s]", entityType);
@@ -341,7 +347,8 @@ public final class CatalogExceptionMessage {
 
   public static String eventPublisherFailedToPublish(
       SubscriptionDestination.SubscriptionType type, String message) {
-    return String.format("Failed to publish event %s due to %s ", type.value(), message);
+    return String.format(
+        "Failed to publish event of destination type %s due to %s ", type.value(), message);
   }
 
   public static String invalidTaskField(EntityLink entityLink, TaskType taskType) {

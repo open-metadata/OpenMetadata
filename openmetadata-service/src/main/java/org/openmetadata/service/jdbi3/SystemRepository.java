@@ -4,11 +4,10 @@ import static org.openmetadata.schema.type.EventType.ENTITY_CREATED;
 import static org.openmetadata.schema.type.EventType.ENTITY_DELETED;
 import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
 
-import com.slack.api.bolt.model.builtin.DefaultBot;
-import com.slack.api.bolt.model.builtin.DefaultInstaller;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import javax.json.JsonPatch;
 import javax.json.JsonValue;
 import javax.ws.rs.core.Response;
@@ -16,6 +15,7 @@ import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.api.configuration.UiThemePreference;
+import org.openmetadata.schema.configuration.AssetCertificationSettings;
 import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
 import org.openmetadata.schema.security.client.OpenMetadataJWTClientConfig;
@@ -108,6 +108,15 @@ public class SystemRepository {
       LOG.error("Error while trying fetch Settings ", ex);
     }
     return null;
+  }
+
+  public AssetCertificationSettings getAssetCertificationSettings() {
+    Optional<Settings> oAssetCertificationSettings =
+        Optional.ofNullable(getConfigWithKey(SettingsType.ASSET_CERTIFICATION_SETTINGS.value()));
+
+    return oAssetCertificationSettings
+        .map(settings -> (AssetCertificationSettings) settings.getConfigValue())
+        .orElse(null);
   }
 
   public Settings getEmailConfigInternal() {
@@ -211,12 +220,10 @@ public class SystemRepository {
             JsonUtils.convertValue(setting.getConfigValue(), SlackAppConfiguration.class);
         setting.setConfigValue(encryptSlackAppSetting(appConfiguration));
       } else if (setting.getConfigType() == SettingsType.SLACK_BOT) {
-        DefaultBot appConfiguration =
-            JsonUtils.convertValue(setting.getConfigValue(), DefaultBot.class);
+        String appConfiguration = JsonUtils.convertValue(setting.getConfigValue(), String.class);
         setting.setConfigValue(encryptSlackDefaultBotSetting(appConfiguration));
       } else if (setting.getConfigType() == SettingsType.SLACK_INSTALLER) {
-        DefaultInstaller appConfiguration =
-            JsonUtils.convertValue(setting.getConfigValue(), DefaultInstaller.class);
+        String appConfiguration = JsonUtils.convertValue(setting.getConfigValue(), String.class);
         setting.setConfigValue(encryptSlackDefaultInstallerSetting(appConfiguration));
       } else if (setting.getConfigType() == SettingsType.SLACK_STATE) {
         String slackState = JsonUtils.convertValue(setting.getConfigValue(), String.class);
@@ -240,7 +247,7 @@ public class SystemRepository {
   public Settings getSlackbotConfigInternal() {
     try {
       Settings setting = dao.getConfigWithKey(SettingsType.SLACK_BOT.value());
-      DefaultBot slackBotConfiguration =
+      String slackBotConfiguration =
           SystemRepository.decryptSlackDefaultBotSetting((String) setting.getConfigValue());
       setting.setConfigValue(slackBotConfiguration);
       return setting;
@@ -253,7 +260,7 @@ public class SystemRepository {
   public Settings getSlackInstallerConfigInternal() {
     try {
       Settings setting = dao.getConfigWithKey(SettingsType.SLACK_INSTALLER.value());
-      DefaultInstaller slackInstallerConfiguration =
+      String slackInstallerConfiguration =
           SystemRepository.decryptSlackDefaultInstallerSetting((String) setting.getConfigValue());
       setting.setConfigValue(slackInstallerConfiguration);
       return setting;
@@ -277,7 +284,7 @@ public class SystemRepository {
   }
 
   @SneakyThrows
-  public static String encryptSlackDefaultBotSetting(DefaultBot decryptedSetting) {
+  public static String encryptSlackDefaultBotSetting(String decryptedSetting) {
     String json = JsonUtils.pojoToJson(decryptedSetting);
     if (Fernet.getInstance().isKeyDefined()) {
       return Fernet.getInstance().encryptIfApplies(json);
@@ -286,15 +293,15 @@ public class SystemRepository {
   }
 
   @SneakyThrows
-  public static DefaultBot decryptSlackDefaultBotSetting(String encryptedSetting) {
+  public static String decryptSlackDefaultBotSetting(String encryptedSetting) {
     if (Fernet.getInstance().isKeyDefined()) {
       encryptedSetting = Fernet.getInstance().decryptIfApplies(encryptedSetting);
     }
-    return JsonUtils.readValue(encryptedSetting, DefaultBot.class);
+    return JsonUtils.readValue(encryptedSetting, String.class);
   }
 
   @SneakyThrows
-  public static String encryptSlackDefaultInstallerSetting(DefaultInstaller decryptedSetting) {
+  public static String encryptSlackDefaultInstallerSetting(String decryptedSetting) {
     String json = JsonUtils.pojoToJson(decryptedSetting);
     if (Fernet.getInstance().isKeyDefined()) {
       return Fernet.getInstance().encryptIfApplies(json);
@@ -303,11 +310,11 @@ public class SystemRepository {
   }
 
   @SneakyThrows
-  public static DefaultInstaller decryptSlackDefaultInstallerSetting(String encryptedSetting) {
+  public static String decryptSlackDefaultInstallerSetting(String encryptedSetting) {
     if (Fernet.getInstance().isKeyDefined()) {
       encryptedSetting = Fernet.getInstance().decryptIfApplies(encryptedSetting);
     }
-    return JsonUtils.readValue(encryptedSetting, DefaultInstaller.class);
+    return JsonUtils.readValue(encryptedSetting, String.class);
   }
 
   @SneakyThrows

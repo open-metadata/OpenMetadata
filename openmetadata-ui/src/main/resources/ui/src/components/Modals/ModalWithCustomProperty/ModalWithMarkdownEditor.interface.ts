@@ -11,15 +11,16 @@
  *  limitations under the License.
  */
 import { EntityType } from '../../../enums/entity.enum';
-import { EntityReference, ValueClass } from '../../../generated/entity/type';
+import { EntityReference } from '../../../generated/entity/type';
+import { TableTypePropertyValueType } from '../../common/CustomPropertyTable/CustomPropertyTable.interface';
 
 export type ExtensionDataTypes =
   | string
   | string[]
   | EntityReference
   | EntityReference[]
-  | ValueClass[]
-  | { start: string; end: string };
+  | { start: number; end: number }
+  | Partial<TableTypePropertyValueType>;
 
 export interface ExtensionDataProps {
   [key: string]: ExtensionDataTypes;

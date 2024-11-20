@@ -24,6 +24,7 @@ import React, {
 } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import {
+  CUSTOM_PROPERTIES_ICON_MAP,
   ENTITY_REFERENCE_OPTIONS,
   PROPERTY_TYPES_WITH_ENTITY_REFERENCE,
   PROPERTY_TYPES_WITH_FORMAT,
@@ -50,6 +51,7 @@ import {
   getTypeByFQN,
   getTypeListByCategory,
 } from '../../../../rest/metadataTypeAPI';
+import { getEntityName } from '../../../../utils/EntityUtils';
 import { generateFormFields } from '../../../../utils/formUtils';
 import { getSettingOptionByEntityType } from '../../../../utils/GlobalSettingsUtils';
 import { getSettingPath } from '../../../../utils/RouterUtils';
@@ -95,12 +97,27 @@ const AddCustomProperty = () => {
   );
 
   const propertyTypeOptions = useMemo(() => {
-    return map(propertyTypes, (type) => ({
-      key: type.name,
+    return map(propertyTypes, (type) => {
+      const Icon =
+        CUSTOM_PROPERTIES_ICON_MAP[
+          type.name as keyof typeof CUSTOM_PROPERTIES_ICON_MAP
+        ];
+
       // Remove -cp from the name and convert to start case
-      label: startCase((type.displayName ?? type.name).replace(/-cp/g, '')),
-      value: type.id,
-    }));
+      const title = startCase(getEntityName(type).replace(/-cp/g, ''));
+
+      return {
+        searchField: title,
+        key: type.name,
+        label: (
+          <div className="d-flex gap-2 items-center" title={title}>
+            {Icon && <Icon width={20} />}
+            <span>{title}</span>
+          </div>
+        ),
+        value: type.id,
+      };
+    });
   }, [propertyTypes]);
 
   const {
@@ -171,7 +188,6 @@ const AddCustomProperty = () => {
       formatConfig: string;
       entityReferenceConfig: string[];
       multiSelect?: boolean;
-      rowCount: number;
       columns: string[];
     }
   ) => {
@@ -208,7 +224,6 @@ const AddCustomProperty = () => {
         customPropertyConfig = {
           config: {
             columns: data.columns,
-            rowCount: data.rowCount ?? 10,
           },
         };
       }
@@ -220,7 +235,6 @@ const AddCustomProperty = () => {
             'formatConfig',
             'entityReferenceConfig',
             'enumConfig',
-            'rowCount',
             'columns',
           ]),
           propertyType: {
@@ -269,6 +283,17 @@ const AddCustomProperty = () => {
       ],
     },
     {
+      name: 'displayName',
+      id: 'root/displayName',
+      label: t('label.display-name'),
+      required: false,
+      placeholder: t('label.display-name'),
+      type: FieldTypes.TEXT,
+      props: {
+        'data-testid': 'display-name',
+      },
+    },
+    {
       name: 'propertyType',
       required: true,
       label: t('label.type'),
@@ -281,8 +306,8 @@ const AddCustomProperty = () => {
           field: t('label.type'),
         })}`,
         showSearch: true,
-        filterOption: (input: string, option: { label: string }) => {
-          return (option?.label ?? '')
+        filterOption: (input: string, option: { searchField: string }) => {
+          return (option?.searchField ?? '')
             .toLowerCase()
             .includes(input.toLowerCase());
         },
@@ -312,6 +337,8 @@ const AddCustomProperty = () => {
       'data-testid': 'enumConfig',
       mode: 'tags',
       placeholder: t('label.enum-value-plural'),
+      open: false,
+      className: 'trim-select',
     },
     rules: [
       {
@@ -423,31 +450,6 @@ const AddCustomProperty = () => {
         },
       ],
     },
-    {
-      name: 'rowCount',
-      label: t('label.row-count'),
-      type: FieldTypes.NUMBER,
-      required: false,
-      id: 'root/rowCount',
-      props: {
-        'data-testid': 'rowCount',
-        size: 'default',
-        style: { width: '100%' },
-        placeholder: t('label.row-count'),
-      },
-      rules: [
-        {
-          min: 1,
-          type: 'number',
-          max: 10,
-          message: t('message.entity-size-in-between', {
-            entity: t('label.row-count'),
-            min: 1,
-            max: 10,
-          }),
-        },
-      ],
-    },
   ];
 
   const firstPanelChildren = (
@@ -457,9 +459,6 @@ const AddCustomProperty = () => {
         className="m-t-md"
         data-testid="custom-property-form"
         form={form}
-        initialValues={{
-          rowCount: 10,
-        }}
         layout="vertical"
         onFinish={handleSubmit}
         onFocus={handleFieldFocus}>

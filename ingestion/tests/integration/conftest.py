@@ -72,8 +72,8 @@ def profiler_config(db_service, workflow_config, sink_config):
             "sourceConfig": {
                 "config": {
                     "type": "Profiler",
-                    "generateSampleData": True,
-                    "timeoutSeconds": 30,
+                    "timeoutSeconds": 600,
+                    "threadCount": 1,  # easier for debugging
                 }
             },
         },

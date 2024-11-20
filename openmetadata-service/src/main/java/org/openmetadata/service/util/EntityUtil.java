@@ -22,12 +22,13 @@ import static org.openmetadata.service.security.DefaultAuthorizer.getSubjectCont
 
 import java.io.IOException;
 import java.security.MessageDigest;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.Date;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
@@ -218,7 +219,7 @@ public final class EntityUtil {
               .withDailyStats(stats)
               .withWeeklyStats(stats)
               .withMonthlyStats(stats)
-              .withDate(RestUtil.DATE_FORMAT.format(new Date()));
+              .withDate(RestUtil.DATE_FORMAT.format(LocalDate.now()));
     }
     return details;
   }
@@ -282,7 +283,7 @@ public final class EntityUtil {
     }
   }
 
-  public static class Fields {
+  public static class Fields implements Iterable<String> {
     public static final Fields EMPTY_FIELDS = new Fields(Collections.emptySet());
     @Getter private final Set<String> fieldList;
 
@@ -330,6 +331,11 @@ public final class EntityUtil {
 
     public boolean contains(String field) {
       return fieldList.contains(field);
+    }
+
+    @Override
+    public @org.jetbrains.annotations.NotNull Iterator<String> iterator() {
+      return fieldList.iterator();
     }
   }
 

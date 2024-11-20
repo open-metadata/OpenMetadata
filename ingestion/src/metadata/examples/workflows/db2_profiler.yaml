@@ -11,8 +11,7 @@ source:
   sourceConfig:
     config:
       type: Profiler
-      generateSampleData: true
-      databaseFilterPattern: 
+      databaseFilterPattern:
         includes: 
           - database
       schemaFilterPattern:

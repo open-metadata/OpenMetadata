@@ -22,6 +22,7 @@ export interface FilterDetails {
 
 export interface AlertDetails {
   name: string;
+  displayName: string;
   id: string;
   description: string;
   filteringRules: { resources: Array<string> };
