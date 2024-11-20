@@ -112,10 +112,14 @@ class BaseTestSuiteRunner:
             entity=self.entity, metadata=self.ometa_client
         )
         test_suite_class = import_test_suite_class(
-            ServiceType.Database, source_type=self._interface_type
+            ServiceType.Database,
+            source_type=self._interface_type,
+            source_config_type=self.service_conn_config.type.value,
         )
         sampler_class = import_sampler_class(
-            ServiceType.Database, source_type=self._interface_type
+            ServiceType.Database,
+            source_type=self._interface_type,
+            source_config_type=self.service_conn_config.type.value,
         )
         # This is shared between the sampler and DQ interfaces
         _orm = self._build_table_orm(self.entity)
