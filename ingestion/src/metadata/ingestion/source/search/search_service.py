@@ -166,11 +166,6 @@ class SearchServiceSource(TopologyRunnerMixin, Source, ABC):
     ) -> Iterable[Either[CreateSearchIndexRequest]]:
         """Method to Get Search Index Entity"""
 
-    def yield_search_index_template(
-        self, search_index_details: Any
-    ) -> Iterable[Either[CreateSearchIndexRequest]]:
-        """Method to Get Search Index Templates"""
-
     def yield_search_index_sample_data(
         self, search_index_details: Any
     ) -> Iterable[Either[SearchIndexSampleData]]:
@@ -198,10 +193,15 @@ class SearchServiceSource(TopologyRunnerMixin, Source, ABC):
                 continue
             yield index_details
 
+    def yield_search_index_template(
+        self, search_index_template_details: Any
+    ) -> Iterable[Either[CreateSearchIndexRequest]]:
+        """Method to Get Search Index Templates"""
+
     def get_search_index_template_list(self) -> Optional[List[Any]]:
         """Get list of all search index templates"""
 
-    def get_search_index_template_name(self, search_index_details: Any) -> str:
+    def get_search_index_template_name(self, search_index_template_details: Any) -> str:
         """Get Search Index Template Name"""
 
     def get_search_index_template(self) -> Any:
