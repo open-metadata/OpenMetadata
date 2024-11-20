@@ -14,6 +14,7 @@ from metadata.profiler.interface.profiler_interface import ProfilerInterface
 from metadata.sampler.sampler_interface import SamplerInterface
 from metadata.utils.importer import (
     TYPE_SEPARATOR,
+    DynamicImportException,
     get_class_path,
     get_module_dir,
     import_from_module,
@@ -112,14 +113,34 @@ def import_profiler_class(
 
 
 def import_test_suite_class(
-    service_type: ServiceType, source_type: str
+    service_type: ServiceType,
+    source_type: str,
+    source_config_type: Optional[str] = None,
 ) -> Type[TestSuiteInterface]:
-    class_path = BaseSpec.get_for_source(service_type, source_type).test_suite_class
+    try:
+        class_path = BaseSpec.get_for_source(service_type, source_type).test_suite_class
+    except DynamicImportException:
+        if source_config_type:
+            class_path = BaseSpec.get_for_source(
+                service_type, source_config_type.lower()
+            ).test_suite_class
+        else:
+            raise
     return cast(Type[TestSuiteInterface], import_from_module(class_path))
 
 
 def import_sampler_class(
-    service_type: ServiceType, source_type: str
+    service_type: ServiceType,
+    source_type: str,
+    source_config_type: Optional[str] = None,
 ) -> Type[SamplerInterface]:
-    class_path = BaseSpec.get_for_source(service_type, source_type).sampler_class
+    try:
+        class_path = BaseSpec.get_for_source(service_type, source_type).sampler_class
+    except DynamicImportException:
+        if source_config_type:
+            class_path = BaseSpec.get_for_source(
+                service_type, source_config_type.lower()
+            ).sampler_class
+        else:
+            raise
     return cast(Type[SamplerInterface], import_from_module(class_path))
