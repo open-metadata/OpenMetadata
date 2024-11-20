@@ -38,6 +38,7 @@ jest.mock('../constants/constants', () => ({
 
 jest.mock('./RouterUtils', () => ({
   getDataQualityPagePath: jest.fn(),
+  getDomainPath: jest.fn(),
 }));
 
 describe('EntityUtils unit tests', () => {
