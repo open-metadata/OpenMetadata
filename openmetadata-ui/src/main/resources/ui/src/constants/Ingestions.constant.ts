@@ -40,6 +40,7 @@ export const INGESTION_ACTION_TYPE = {
 
 export const PIPELINE_TYPE_LOCALIZATION = {
   [PipelineType.DataInsight]: 'data-insight',
+  [PipelineType.AutoClassification]: 'auto-classification',
   [PipelineType.Dbt]: 'dbt-lowercase',
   [PipelineType.ElasticSearchReindex]: 'elastic-search-re-index',
   [PipelineType.Lineage]: 'lineage',
