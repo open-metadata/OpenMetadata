@@ -54,8 +54,8 @@ public class SetEntityCertificationImpl implements JavaDelegate {
     if (oCertification.isEmpty()) {
       entity.setCertification(null);
     } else {
-
-      if (oCertification.get().equals(oEntityCertification.get().getTagLabel().getTagFQN())) {
+      if (oEntityCertification.isPresent()
+          && oCertification.get().equals(oEntityCertification.get().getTagLabel().getTagFQN())) {
         return;
       }
 
