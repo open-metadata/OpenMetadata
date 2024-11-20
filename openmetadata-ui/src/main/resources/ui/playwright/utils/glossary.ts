@@ -552,8 +552,8 @@ export const validateGlossaryTerm = async (
   await expect(page.locator(statusSelector)).toContainText(status);
 
   if (status === 'Draft') {
-    // wait for 10 seconds as the flowable which creates task is triggered every 10 seconds
-    await page.waitForTimeout(10000);
+    // wait for 20 seconds as the flowable which creates task is triggered every 10 seconds
+    await page.waitForTimeout(20000);
     await validateGlossaryTermTask(page, term);
     await page.click('[data-testid="terms"]');
   }
