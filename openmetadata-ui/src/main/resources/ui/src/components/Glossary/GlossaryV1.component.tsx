@@ -85,6 +85,7 @@ const GlossaryV1 = ({
   const { getEntityPermission } = usePermissionProvider();
   const [isLoading, setIsLoading] = useState(true);
   const [isTermsLoading, setIsTermsLoading] = useState(false);
+  const [isPermissionLoading, setIsPermissionLoading] = useState(false);
 
   const [isDelete, setIsDelete] = useState<boolean>(false);
 
@@ -351,18 +352,29 @@ const GlossaryV1 = ({
     shouldRefreshTerms && loadGlossaryTerms(true);
   };
 
+  const initPermissions = async () => {
+    setIsPermissionLoading(true);
+    const permissionFetch = isGlossaryActive
+      ? fetchGlossaryPermission
+      : fetchGlossaryTermPermission;
+
+    try {
+      if (isVersionsView) {
+        isGlossaryActive
+          ? setGlossaryPermission(VERSION_VIEW_GLOSSARY_PERMISSION)
+          : setGlossaryTermPermission(VERSION_VIEW_GLOSSARY_PERMISSION);
+      } else {
+        await permissionFetch();
+      }
+    } finally {
+      setIsPermissionLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (id && !action) {
       loadGlossaryTerms();
-      if (isGlossaryActive) {
-        isVersionsView
-          ? setGlossaryPermission(VERSION_VIEW_GLOSSARY_PERMISSION)
-          : fetchGlossaryPermission();
-      } else {
-        isVersionsView
-          ? setGlossaryTermPermission(VERSION_VIEW_GLOSSARY_PERMISSION)
-          : fetchGlossaryTermPermission();
-      }
+      initPermissions();
     }
   }, [id, isGlossaryActive, isVersionsView, action]);
 
@@ -370,8 +382,9 @@ const GlossaryV1 = ({
     <ImportGlossary glossaryName={selectedData.fullyQualifiedName ?? ''} />
   ) : (
     <>
-      {isLoading && <Loader />}
+      {(isLoading || isPermissionLoading) && <Loader />}
       {!isLoading &&
+        !isPermissionLoading &&
         !isEmpty(selectedData) &&
         (isGlossaryActive ? (
           <GlossaryDetails
