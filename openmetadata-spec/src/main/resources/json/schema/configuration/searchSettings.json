@@ -2,7 +2,7 @@
   "$id": "https://open-metadata.org/schema/entity/configuration/searchSettings.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "SearchSettings",
-  "description": "This schema defines the Rbac Search Configuration.",
+  "description": "This schema defines the Search Configuration, including ranking logic and other settings per asset type.",
   "type": "object",
   "javaType": "org.openmetadata.schema.api.search.SearchSettings",
   "properties": {
@@ -10,6 +10,203 @@
       "type": "boolean",
       "description": "Flag to enable or disable the RBAC Search Configuration.",
       "default": false
+    },
+    "globalSettings": {
+      "type": "object",
+      "description": "Global settings for search.",
+      "properties": {
+        "maxAggregateSize": {
+          "type": "integer",
+          "default": 10000
+        },
+        "maxResultHits": {
+          "type": "integer",
+          "default": 10000
+        },
+        "maxAnalyzedOffset": {
+          "type": "integer",
+          "default": 1000
+        },
+        "aggregations": {
+          "type": "array",
+          "description": "List of aggregations to include in the search query.",
+          "items": {
+            "$ref": "#/definitions/aggregation"
+          }
+        },
+        "highlightFields": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Fields to include in the highlights."
+        }
+      },
+      "additionalProperties": false
+    },
+    "assetTypeConfigurations": {
+      "type": "array",
+      "description": "List of search configurations for each asset type.",
+      "items": {
+        "$ref": "#/definitions/assetTypeConfiguration"
+      }
+    },
+    "defaultConfiguration": {
+      "$ref": "#/definitions/assetTypeConfiguration",
+      "description": "Default search configuration when an entity doesn't match."
+    }
+  },
+  "definitions": {
+    "assetTypeConfiguration": {
+      "type": "object",
+      "description": "Defines the search configuration for a specific asset type.",
+      "properties": {
+        "assetType": {
+          "type": "string",
+          "description": "The type of data asset this configuration applies to."
+        },
+        "fields": {
+          "type": "object",
+          "description": "Fields to search with their boosts.",
+          "additionalProperties": {
+            "type": "number"
+          }
+        },
+        "mustMatch": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Fields that must match in the search query."
+        },
+        "shouldMatch": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Fields that should match in the search query."
+        },
+        "mustNotMatch": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Fields that must not match."
+        },
+        "boosts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/fieldBoost"
+          },
+          "description": "Boost factors for specific fields."
+        },
+        "tagBoosts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/tagBoost"
+          },
+          "description": "Boost factors for specific tags."
+        },
+        "fieldValueBoosts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/fieldValueBoost"
+          },
+          "description": "Boost factors based on field values with function modifiers."
+        },
+        "highlightFields": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Fields to include in the highlights."
+        },
+        "aggregations": {
+          "type": "array",
+          "description": "List of aggregations to include in the search query.",
+          "items": {
+            "$ref": "#/definitions/aggregation"
+          }
+        },
+        "scoreMode": {
+          "type": "string",
+          "enum": ["multiply", "sum", "avg", "first", "max", "min"],
+          "description": "Determines how the computed scores are combined."
+        },
+        "boostMode": {
+          "type": "string",
+          "enum": ["multiply", "replace", "sum", "avg", "max", "min"],
+          "description": "Determines how the combined score and the query score are combined."
+        },
+        "additionalSettings": {
+          "type": "object",
+          "description": "Additional settings specific to the asset type.",
+          "additionalProperties": true
+        }
+      },
+      "required": ["assetType", "fields"],
+      "additionalProperties": false
+    },
+    "fieldBoost": {
+      "type": "object",
+      "properties": {
+        "field": { "type": "string", "description": "Field name to boost." },
+        "boost": { "type": "number", "description": "Boost factor for the field." }
+      },
+      "required": ["field", "boost"],
+      "additionalProperties": false
+    },
+    "tagBoost": {
+      "type": "object",
+      "properties": {
+        "tagFQN": { "type": "string", "description": "Fully Qualified Name of the tag." },
+        "boost": { "type": "number", "description": "Boost factor for the tag." }
+      },
+      "required": ["tagFQN", "boost"],
+      "additionalProperties": false
+    },
+    "fieldValueBoost": {
+      "type": "object",
+      "properties": {
+        "field": { "type": "string", "description": "Field name whose value is used for boosting." },
+        "factor": { "type": "number", "description": "Factor by which to multiply the field value." },
+        "modifier": {
+          "type": "string",
+          "enum": ["none", "log", "log1p", "log2p", "ln", "ln1p", "ln2p", "square", "sqrt", "reciprocal"],
+          "description": "Modifier function to apply to the field value."
+        },
+        "missing": { "type": "number", "description": "Value to use if the field is missing." },
+        "condition": {
+          "type": "object",
+          "description": "Condition to apply the boost.",
+          "properties": {
+            "range": {
+              "type": "object",
+              "properties": {
+                "gt": { "type": "number", "description": "Greater than value." },
+                "gte": { "type": "number", "description": "Greater than or equal to value." },
+                "lt": { "type": "number", "description": "Less than value." },
+                "lte": { "type": "number", "description": "Less than or equal to value." }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "required": ["field", "factor"],
+      "additionalProperties": false
+    },
+    "aggregation": {
+      "type": "object",
+      "description": "Defines an aggregation for the search query.",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The name of the aggregation."
+        },
+        "type": {
+          "type": "string",
+          "enum": ["terms", "range", "histogram", "date_histogram", "filters", "missing", "nested", "reverse_nested", "top_hits", "max", "min", "avg", "sum", "stats"],
+          "description": "The type of aggregation."
+        },
+        "field": {
+          "type": "string",
+          "description": "The field to aggregate on."
+        }
+      },
+      "required": ["name", "type", "field"],
+      "additionalProperties": false
     }
   },
   "additionalProperties": false
