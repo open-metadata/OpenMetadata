@@ -13,7 +13,7 @@
 Converter logic to transform an OpenMetadata Table Entity
 to an SQLAlchemy ORM class.
 """
-from typing import Optional, cast
+from typing import Dict, Optional, cast
 
 import sqlalchemy
 from sqlalchemy import MetaData
@@ -22,8 +22,10 @@ from sqlalchemy.orm import DeclarativeMeta, declarative_base
 from metadata.generated.schema.entity.data.database import Database, databaseService
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import Column, Table
+from metadata.ingestion.models.custom_pydantic import BaseModel
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.profiler.orm.converter.converter_registry import converter_registry
+from metadata.utils.constants import NON_SQA_DATABASE_CONNECTIONS
 
 Base = declarative_base()
 
@@ -98,6 +100,9 @@ def build_orm_col(
     )
 
 
+global_orm_registry = {}
+
+
 def ometa_to_sqa_orm(
     table: Table, metadata: OpenMetadata, sqa_metadata_obj: Optional[MetaData] = None
 ) -> DeclarativeMeta:
@@ -109,7 +114,15 @@ def ometa_to_sqa_orm(
     We are building the class dynamically using
     `type` and passing SQLAlchemy `Base` class
     as the bases tuple for inheritance.
+
+    Args:
+        table (Table): OpenMetadata Table instance
+        metadata (OpenMetadata): OpenMetadata connection
+        sqa_metadata_obj (MetaData): For advanced use cases, you can pass a custom MetaData object. For most cases, this
+        can be left as None so that the global_metadata object is used.
     """
+    if table.fullyQualifiedName.root in global_orm_registry:
+        return global_orm_registry[table.fullyQualifiedName.root]
     _metadata = sqa_metadata_obj or Base.metadata
     table.serviceType = cast(
         databaseService.DatabaseServiceType, table.serviceType
@@ -156,7 +169,7 @@ def ometa_to_sqa_orm(
 
     if not isinstance(orm, DeclarativeMeta):
         raise ValueError("OMeta to ORM did not create a DeclarativeMeta")
-
+    global_orm_registry[table.fullyQualifiedName.root] = orm
     return orm
 
 
@@ -198,3 +211,22 @@ def get_orm_database(table: Table, metadata: OpenMetadata) -> str:
     )
 
     return str(database.name.root)
+
+
+class ORMTableRegsitry:
+    # we store the ORM table in a registry to avoid rebuilding the same table. This is required becuase
+    # when using the same table in multiple places, we need to ensure that the ORM object is the same or
+    # the query builder will generate JOIN clauses that are not valid.
+    registry: Dict[str, DeclarativeMeta] = {}
+
+    def build_table_orm(
+        self, table: Table, service_conn_config: BaseModel, ometa_client: OpenMetadata
+    ) -> Optional[DeclarativeMeta]:
+        """Build the ORM table if needed for the sampler and profiler interfaces"""
+        if table.fullyQualifiedName.root in self.registry:
+            return self.registry[table.fullyQualifiedName.root]
+        if service_conn_config.type.value not in NON_SQA_DATABASE_CONNECTIONS:
+            orm_obj = ometa_to_sqa_orm(table, ometa_client)
+            self.registry[table.fullyQualifiedName.root] = orm_obj
+            return orm_obj
+        return None

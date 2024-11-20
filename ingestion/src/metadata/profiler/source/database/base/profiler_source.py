@@ -16,9 +16,6 @@ its interface
 from copy import deepcopy
 from typing import Optional, cast
 
-from sqlalchemy import MetaData
-from sqlalchemy.orm import DeclarativeMeta
-
 from metadata.generated.schema.configuration.profilerConfiguration import (
     ProfilerConfiguration,
 )
@@ -40,7 +37,7 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.profiler.api.models import ProfilerProcessorConfig, TableConfig
 from metadata.profiler.interface.profiler_interface import ProfilerInterface
 from metadata.profiler.metrics.registry import Metrics
-from metadata.profiler.orm.converter.base import ometa_to_sqa_orm
+from metadata.profiler.orm.converter.base import ORMTableRegsitry
 from metadata.profiler.processor.core import Profiler
 from metadata.profiler.processor.default import DefaultProfiler, get_default_metrics
 from metadata.profiler.source.profiler_source_interface import ProfilerSourceInterface
@@ -51,7 +48,6 @@ from metadata.sampler.config import (
 )
 from metadata.sampler.models import SampleConfig
 from metadata.sampler.sampler_interface import SamplerInterface
-from metadata.utils.constants import NON_SQA_DATABASE_CONNECTIONS
 from metadata.utils.logger import profiler_logger
 from metadata.utils.profiler_utils import get_context_entities
 from metadata.utils.service_spec.service_spec import (
@@ -62,7 +58,7 @@ from metadata.utils.service_spec.service_spec import (
 logger = profiler_logger()
 
 
-class ProfilerSource(ProfilerSourceInterface):
+class ProfilerSource(ProfilerSourceInterface, ORMTableRegsitry):
     """
     Base class for the profiler source
     """
@@ -98,12 +94,6 @@ class ProfilerSource(ProfilerSourceInterface):
     def interface(self, interface):
         """Set the interface"""
         self._interface = interface
-
-    def _build_table_orm(self, entity: Table) -> Optional[DeclarativeMeta]:
-        """Build the ORM table if needed for the sampler and profiler interfaces"""
-        if self.service_conn_config.type.value not in NON_SQA_DATABASE_CONNECTIONS:
-            return ometa_to_sqa_orm(entity, self.ometa_client, MetaData())
-        return None
 
     def _copy_service_config(
         self, config: OpenMetadataWorkflowConfig, database: Database
@@ -153,7 +143,7 @@ class ProfilerSource(ProfilerSourceInterface):
             ServiceType.Database, source_type=self._interface_type
         )
         # This is shared between the sampler and profiler interfaces
-        _orm = self._build_table_orm(entity)
+        _orm = self.build_table_orm(entity, self.service_conn_config, self.ometa_client)
         sampler_interface: SamplerInterface = sampler_class.create(
             service_connection_config=self.service_conn_config,
             ometa_client=self.ometa_client,

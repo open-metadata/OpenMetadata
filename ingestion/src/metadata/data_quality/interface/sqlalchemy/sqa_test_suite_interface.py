@@ -19,8 +19,10 @@ from typing import Union
 from sqlalchemy.orm import DeclarativeMeta
 from sqlalchemy.orm.util import AliasedClass
 
-from metadata.data_quality.builders.i_validator_builder import IValidatorBuilder
-from metadata.data_quality.builders.sqa_validator_builder import SQAValidatorBuilder
+from metadata.data_quality.builders.i_validator_builder import (
+    IValidatorBuilder,
+    SourceType,
+)
 from metadata.data_quality.interface.test_suite_interface import TestSuiteInterface
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
@@ -28,6 +30,7 @@ from metadata.generated.schema.tests.testCase import TestCase
 from metadata.ingestion.connections.session import create_and_bind_session
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.mixins.sqalchemy.sqa_mixin import SQAInterfaceMixin
+from metadata.profiler.orm.converter.base import ORMTableRegsitry
 from metadata.profiler.processor.runner import QueryRunner
 from metadata.sampler.sampler_interface import SamplerInterface
 from metadata.utils.constants import TEN_MIN
@@ -38,7 +41,7 @@ from metadata.utils.timeout import cls_timeout
 logger = test_suite_logger()
 
 
-class SQATestSuiteInterface(SQAInterfaceMixin, TestSuiteInterface):
+class SQATestSuiteInterface(SQAInterfaceMixin, TestSuiteInterface, ORMTableRegsitry):
     """
     Sequential interface protocol for testSuite and Profiler. This class
     implements specific operations needed to run profiler and test suite workflow
@@ -51,16 +54,16 @@ class SQATestSuiteInterface(SQAInterfaceMixin, TestSuiteInterface):
         ometa_client: OpenMetadata,
         sampler: SamplerInterface,
         table_entity: Table = None,
-        orm_table=None,
+        **kwargs,
     ):
         super().__init__(
-            service_connection_config,
-            ometa_client,
-            sampler,
-            table_entity,
+            service_connection_config, ometa_client, sampler, table_entity, **kwargs
         )
+        self.source_type = SourceType.SQL
         self.create_session()
-        self._table = orm_table
+        self._table = super().build_table_orm(
+            table_entity, service_connection_config, self.ometa_client
+        )
 
         (
             self.table_sample_query,
@@ -123,4 +126,9 @@ class SQATestSuiteInterface(SQAInterfaceMixin, TestSuiteInterface):
     def _get_validator_builder(
         self, test_case: TestCase, entity_type: str
     ) -> IValidatorBuilder:
-        return SQAValidatorBuilder(self.runner, test_case, entity_type)
+        return self.validator_builder_class(
+            runner=self.runner,
+            test_case=test_case,
+            entity_type=entity_type,
+            source_type=self.source_type,
+        )

@@ -48,12 +48,14 @@ class TestSuiteInterface(ABC):
         ometa_client: OpenMetadata,
         sampler: SamplerInterface,
         table_entity: Table,
+        validator_builder: Type[IValidatorBuilder],
     ):
         """Required attribute for the interface"""
         self.ometa_client = ometa_client
         self.service_connection_config = service_connection_config
         self.table_entity = table_entity
         self.sampler = sampler
+        self.validator_builder_class = validator_builder
 
     @classmethod
     def create(
