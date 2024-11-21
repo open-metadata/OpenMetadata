@@ -12,7 +12,7 @@
  */
 import { ReactComponent as ColumnProfileIcon } from '../../../../assets/svg/column-profile.svg';
 import { ReactComponent as DataQualityIcon } from '../../../../assets/svg/data-quality.svg';
-import { ReactComponent as IncidentIcon } from '../../../../assets/svg/ic-incident-manager.svg';
+import { ReactComponent as IncidentIcon } from '../../../../assets/svg/incident-icon.svg';
 import { ReactComponent as TableProfileIcon } from '../../../../assets/svg/table-profile.svg';
 import i18n from '../../../../utils/i18next/LocalUtil';
 import { TableProfilerTab } from '../ProfilerDashboard/profilerDashboard.interface';
