@@ -52,6 +52,7 @@ class Loggers(Enum):
     OMETA = "OMetaAPI"
     CLI = "Metadata"
     PROFILER = "Profiler"
+    SAMPLER = "Sampler"
     PII = "PII"
     INGESTION = "Ingestion"
     UTILS = "Utils"
@@ -101,6 +102,14 @@ def profiler_logger():
     """
 
     return logging.getLogger(Loggers.PROFILER.value)
+
+
+def sampler_logger():
+    """
+    Method to get the SAMPLER logger
+    """
+
+    return logging.getLogger(Loggers.SAMPLER.value)
 
 
 def pii_logger():

@@ -98,6 +98,7 @@ import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
+import org.testcontainers.shaded.com.google.common.collect.Lists;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @Slf4j
@@ -877,6 +878,27 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
   }
 
   @Test
+  void get_entityWithDifferentFields_200_OK(TestInfo test) throws IOException {
+    CreateGlossaryTerm create =
+        createRequest(
+            getEntityName(test), "description", "displayName", Lists.newArrayList(USER1_REF));
+    create.setReviewers(List.of(USER1_REF));
+    create.setTags(List.of(USER_ADDRESS_TAG_LABEL, GLOSSARY2_TERM1_LABEL));
+
+    GlossaryTerm entity = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+
+    waitForTaskToBeCreated(entity.getFullyQualifiedName(), 60000L * 3);
+
+    entity = validateGetWithDifferentFields(entity, false);
+    validateEntityReferences(entity.getOwners());
+    assertListNotEmpty(entity.getTags());
+
+    entity = validateGetWithDifferentFields(entity, true);
+    validateEntityReferences(entity.getOwners());
+    assertListNotEmpty(entity.getTags());
+  }
+
+  @Test
   void get_glossaryTermsWithPagination_200(TestInfo test) throws IOException {
     // get Pagination results for same name entities
     boolean supportsSoftDelete = true;
@@ -1124,11 +1146,8 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
             ? getEntityByName(term.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(term.getId(), fields, ADMIN_AUTH_HEADERS);
     assertListNull(
-        term.getChildren(),
-        term.getRelatedTerms(),
-        term.getReviewers(),
-        term.getOwners(),
-        term.getTags());
+        term.getChildren(), term.getRelatedTerms(), term.getReviewers(), term.getOwners());
+    assertTrue(term.getTags().isEmpty());
 
     fields = "children,relatedTerms,reviewers,owners,tags";
     term =

@@ -190,7 +190,7 @@
       "items": {
         "$ref": "../../type/tagLabel.json"
       },
-      "default": null
+      "default": []
     },
     "owners": {
       "description": "Owners of this dashboard service.",

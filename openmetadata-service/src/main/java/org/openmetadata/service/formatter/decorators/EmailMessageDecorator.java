@@ -76,8 +76,8 @@ public class EmailMessageDecorator implements MessageDecorator<EmailMessage> {
   }
 
   @Override
-  public EmailMessage buildTestMessage(String publisherName) {
-    return getEmailTestMessage(publisherName);
+  public EmailMessage buildTestMessage() {
+    return getEmailTestMessage();
   }
 
   @Override
@@ -97,22 +97,17 @@ public class EmailMessageDecorator implements MessageDecorator<EmailMessage> {
     throw new UnhandledServerException("No messages found for the event");
   }
 
-  public EmailMessage getEmailTestMessage(String publisherName) {
-    if (!publisherName.isEmpty()) {
-      EmailMessage emailMessage = new EmailMessage();
-      emailMessage.setUserName("test_user");
-      emailMessage.setUpdatedBy("system");
-      emailMessage.setEntityUrl(StringUtils.EMPTY);
-      emailMessage.setChangeMessage(
-          new ArrayList<>(
-              Collections.singleton(
-                  "This is a test alert to verify the destination configuration for alerts. "
-                      + "Publisher: "
-                      + publisherName
-                      + ". If you received this message, your alert "
-                      + "configuration is correct.")));
-      return emailMessage;
-    }
-    throw new UnhandledServerException("Publisher name not found.");
+  public EmailMessage getEmailTestMessage() {
+    EmailMessage emailMessage = new EmailMessage();
+    emailMessage.setUserName("test_user");
+    emailMessage.setUpdatedBy("system");
+    emailMessage.setEntityUrl(StringUtils.EMPTY);
+    emailMessage.setChangeMessage(
+        new ArrayList<>(
+            Collections.singleton(
+                "This is a test alert to verify the destination configuration for alerts. "
+                    + ". If you received this message, your alert "
+                    + "configuration is correct.")));
+    return emailMessage;
   }
 }
