@@ -27,7 +27,7 @@ from metadata.data_quality.validations.table.sqlalchemy.tableDiff import (
 )
 from metadata.generated.schema.entity.data.table import Table
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.profiler.processor.sampler.sqlalchemy.sampler import SQASampler
+from metadata.sampler.sqlalchemy.sampler import SQASampler
 
 
 def removesuffix(s: str, suffix: str) -> str:
