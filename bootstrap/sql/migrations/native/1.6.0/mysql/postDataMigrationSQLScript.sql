@@ -55,3 +55,5 @@ where serviceType in ('Snowflake', 'Redshift', 'BigQuery');
 
 -- Update all rows in the consumers_dlq table to set the source column to 'publisher'
 UPDATE consumers_dlq SET source = 'publisher';
+
+DELETE from apps_marketplace where name = "SlackApplication";
