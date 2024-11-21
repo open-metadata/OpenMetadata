@@ -36,6 +36,24 @@ jest.mock('../StatusCardWidget/StatusCardWidget.component', () =>
     .fn()
     .mockImplementation(() => <div>StatusByDimensionWidget.component</div>)
 );
+jest.mock('../../../../constants/profiler.constant', () => ({
+  DIMENSIONS_DATA: [
+    'Accuracy',
+    'Completeness',
+    'Consistency',
+    'Integrity',
+    'SQL',
+    'Uniqueness',
+    'Validity',
+    'No Dimension',
+  ],
+  NO_DIMENSION: 'No Dimension',
+}));
+jest.mock('../../../../utils/RouterUtils', () => {
+  return {
+    getDataQualityPagePath: jest.fn(),
+  };
+});
 
 const chartFilter: DataQualityDashboardChartFilters = {
   ownerFqn: 'ownerFqn',

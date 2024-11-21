@@ -12,7 +12,7 @@
  */
 import { Card, Typography } from 'antd';
 import classNames from 'classnames';
-import { isUndefined, toLower } from 'lodash';
+import { isUndefined, last, toLower } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { fetchTestCaseStatusMetricsByDays } from '../../../../rest/dataQualityDashboardAPI';
@@ -35,9 +35,7 @@ const TestCaseStatusAreaChartWidget = ({
   const [isChartLoading, setIsChartLoading] = useState(true);
 
   const bodyElement = useMemo(() => {
-    const totalValue = chartData.reduce((acc, curr) => {
-      return acc + curr.count;
-    }, 0);
+    const latestValue = last(chartData)?.count ?? 0;
 
     return (
       <>
@@ -47,7 +45,7 @@ const TestCaseStatusAreaChartWidget = ({
         <Typography.Paragraph
           className="font-medium text-xl m-b-0 chart-widget-link-underline"
           data-testid="total-value">
-          {totalValue}
+          {latestValue}
         </Typography.Paragraph>
         <CustomAreaChart
           colorScheme={chartColorScheme}

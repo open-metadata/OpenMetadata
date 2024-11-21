@@ -12,7 +12,7 @@
  */
 import { Card, Typography } from 'antd';
 import classNames from 'classnames';
-import { isUndefined } from 'lodash';
+import { isUndefined, last } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { fetchCountOfIncidentStatusTypeByDays } from '../../../../rest/dataQualityDashboardAPI';
@@ -31,31 +31,23 @@ const IncidentTypeAreaChartWidget = ({
   const [isChartLoading, setIsChartLoading] = useState(true);
   const [chartData, setChartData] = useState<CustomAreaChartData[]>([]);
 
-  const totalValueElement = useMemo(() => {
-    const totalValue = chartData.reduce((acc, curr) => {
-      return acc + curr.count;
-    }, 0);
-
-    return (
-      <Typography.Paragraph
-        className="font-medium chart-widget-link-underline text-xl m-b-0"
-        data-testid="total-value">
-        {totalValue}
-      </Typography.Paragraph>
-    );
-  }, [chartData]);
-
   const bodyElement = useMemo(() => {
+    const latestValue = last(chartData)?.count ?? 0;
+
     return (
       <>
         <Typography.Paragraph className="text-xs text-grey-muted">
           {title}
         </Typography.Paragraph>
-        {totalValueElement}
+        <Typography.Paragraph
+          className="font-medium chart-widget-link-underline text-xl m-b-0"
+          data-testid="total-value">
+          {latestValue}
+        </Typography.Paragraph>
         <CustomAreaChart data={chartData} name={name} />
       </>
     );
-  }, [title, totalValueElement, chartData, name]);
+  }, [title, chartData, name]);
 
   const getCountOfIncidentStatus = async () => {
     setIsChartLoading(true);
