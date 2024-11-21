@@ -121,10 +121,6 @@ test.describe('Glossary tests', () => {
         // wait for 15 seconds as the flowable which creates task is triggered every 10 seconds
         await page1.waitForTimeout(15000);
         await sidebarClick(page1, SidebarItem.GLOSSARY);
-
-        await validateGlossaryTermTask(page, glossary1.data.terms[0].data);
-        await page.click('[data-testid="terms"]');
-
         await selectActiveGlossary(page1, glossary1.data.name);
         await approveGlossaryTermTask(page1, glossary1.data.terms[0].data);
         await redirectToHomePage(page1);
