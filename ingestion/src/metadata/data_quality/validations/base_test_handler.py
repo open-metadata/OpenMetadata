@@ -19,10 +19,9 @@ import reprlib
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Callable, List, Optional, Type, TypeVar, Union
 
+from pydantic import BaseModel
+
 from metadata.data_quality.validations import utils
-from metadata.data_quality.validations.runtime_param_setter.param_setter import (
-    RuntimeParameterSetter,
-)
 from metadata.generated.schema.tests.basic import (
     TestCaseResult,
     TestCaseStatus,
@@ -37,6 +36,7 @@ if TYPE_CHECKING:
 
 T = TypeVar("T", bound=Callable)
 R = TypeVar("R")
+S = TypeVar("S", bound=BaseModel)
 
 
 class BaseTestValidator(ABC):
@@ -44,8 +44,6 @@ class BaseTestValidator(ABC):
     The runtime_parameter_setter is run after the test case is created to set the runtime parameters.
     This can be useful to resolve complex test parameters based on the parameters gibven by the user.
     """
-
-    runtime_parameter_setter: Optional[Type[RuntimeParameterSetter]] = None
 
     def __init__(
         self,
@@ -168,3 +166,10 @@ class BaseTestValidator(ABC):
     def get_predicted_value(self) -> Optional[str]:
         """Get predicted value"""
         return None
+
+    def get_runtime_parameters(self, setter_class: Type[S]) -> S:
+        """Get runtime parameters"""
+        for param in self.test_case.parameterValues or []:
+            if param.name == setter_class.__name__:
+                return setter_class.model_validate_json(param.value)
+        raise ValueError(f"Runtime parameter {setter_class.__name__} not found")

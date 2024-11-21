@@ -16,7 +16,7 @@ Validators are test classes (e.g. columnValuesToBeBetween, etc.)
 
 from abc import ABC, abstractmethod
 from datetime import datetime, timezone
-from typing import TYPE_CHECKING, Optional, Type, Union
+from typing import TYPE_CHECKING, Set, Type, Union
 
 from metadata.data_quality.validations.base_test_handler import BaseTestValidator
 from metadata.data_quality.validations.runtime_param_setter.param_setter import (
@@ -66,24 +66,20 @@ class IValidatorBuilder(ABC):
         )
         self.reset()
 
-    def set_runtime_params(
-        self, runtime_params_setter: Optional[RuntimeParameterSetter]
-    ):
+    def set_runtime_params(self, runtime_params_setters: Set[RuntimeParameterSetter]):
         """Set the runtime parameters for the validator object
 
-        # TODO: We should support setting n runtime parameters
-
         Args:
-            runtime_params_setter (Optional[RuntimeParameterSetter]): The runtime parameter setter
+            runtime_params_setters (Optional[RuntimeParameterSetter]): The runtime parameter setter
         """
-        if runtime_params_setter:
-            params = runtime_params_setter.get_parameters(self.test_case)
+        for setter in runtime_params_setters:
+            params = setter.get_parameters(self.test_case)
             if not self.test_case.parameterValues:
                 # If there are no parameters, create a new list
                 self.test_case.parameterValues = []
             self.test_case.parameterValues.append(
                 TestCaseParameterValue(
-                    name="runtimeParams", value=params.model_dump_json()
+                    name=type(params).__name__, value=params.model_dump_json()
                 )
             )
 
