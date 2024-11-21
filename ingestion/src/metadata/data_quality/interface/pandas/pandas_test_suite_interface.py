@@ -15,7 +15,7 @@ supporting sqlalchemy abstraction layer
 """
 
 from metadata.data_quality.builders.i_validator_builder import (
-    IValidatorBuilder,
+    ValidatorBuilder,
     SourceType,
 )
 from metadata.data_quality.interface.test_suite_interface import TestSuiteInterface
@@ -68,7 +68,7 @@ class PandasTestSuiteInterface(TestSuiteInterface, PandasInterfaceMixin):
 
     def _get_validator_builder(
         self, test_case: TestCase, entity_type: str
-    ) -> IValidatorBuilder:
+    ) -> ValidatorBuilder:
         return self.validator_builder_class(
             runner=self.dfs,
             test_case=test_case,

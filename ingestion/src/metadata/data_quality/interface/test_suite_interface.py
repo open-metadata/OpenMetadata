@@ -17,7 +17,7 @@ supporting sqlalchemy abstraction layer
 from abc import ABC, abstractmethod
 from typing import Optional, Set, Type
 
-from metadata.data_quality.builders.i_validator_builder import IValidatorBuilder
+from metadata.data_quality.builders.i_validator_builder import ValidatorBuilder
 from metadata.data_quality.validations.base_test_handler import BaseTestValidator
 from metadata.data_quality.validations.runtime_param_setter.param_setter import (
     RuntimeParameterSetter,
@@ -48,7 +48,7 @@ class TestSuiteInterface(ABC):
         ometa_client: OpenMetadata,
         sampler: SamplerInterface,
         table_entity: Table,
-        validator_builder: Type[IValidatorBuilder],
+        validator_builder: Type[ValidatorBuilder],
     ):
         """Required attribute for the interface"""
         self.ometa_client = ometa_client
@@ -79,7 +79,7 @@ class TestSuiteInterface(ABC):
     @abstractmethod
     def _get_validator_builder(
         self, test_case: TestCase, entity_type: str
-    ) -> IValidatorBuilder:
+    ) -> ValidatorBuilder:
         """get the builder class for the validator. Define this in the implementation class
 
         Args:
@@ -87,7 +87,7 @@ class TestSuiteInterface(ABC):
             entity_type (str): type of the entity
 
         Returns:
-            IValidatorBuilder: a validator builder
+            ValidatorBuilder: a validator builder
         """
         raise NotImplementedError
 
