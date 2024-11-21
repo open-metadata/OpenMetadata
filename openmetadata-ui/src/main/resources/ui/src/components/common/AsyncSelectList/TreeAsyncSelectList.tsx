@@ -253,6 +253,7 @@ const TreeAsyncSelectList: FC<Omit<AsyncSelectListProps, 'fetchOptions'>> = ({
 
   const onSearch = debounce(async (value: string) => {
     if (value) {
+      setIsLoading(true);
       const encodedValue = getEncodedFqn(escapeESReservedCharacters(value));
       const results: Glossary[] = await searchGlossaryTerms(encodedValue);
 
@@ -260,6 +261,7 @@ const TreeAsyncSelectList: FC<Omit<AsyncSelectListProps, 'fetchOptions'>> = ({
       setExpandedRowKeys(
         results.map((result) => result.fullyQualifiedName as string)
       );
+      setIsLoading(false);
     } else {
       setSearchOptions(null);
     }
