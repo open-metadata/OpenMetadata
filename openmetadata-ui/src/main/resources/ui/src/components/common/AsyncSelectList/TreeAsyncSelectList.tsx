@@ -306,7 +306,7 @@ const TreeAsyncSelectList: FC<Omit<AsyncSelectListProps, 'fetchOptions'>> = ({
         ) : (
           <Empty
             description={t('label.no-entity-available', {
-              entity: t('label.glossary-plural'),
+              entity: t('label.glossary-term'),
             })}
             image={Empty.PRESENTED_IMAGE_SIMPLE}
           />
