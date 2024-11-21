@@ -15,7 +15,12 @@ DBT service Topology.
 from abc import ABC, abstractmethod
 from typing import Iterable, List
 
-from dbt_artifacts_parser.parser import parse_catalog, parse_manifest, parse_run_results, parse_sources
+from dbt_artifacts_parser.parser import (
+    parse_catalog,
+    parse_manifest,
+    parse_run_results,
+    parse_sources,
+)
 from pydantic import Field
 from typing_extensions import Annotated
 

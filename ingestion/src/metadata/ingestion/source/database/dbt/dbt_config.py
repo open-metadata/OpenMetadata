@@ -297,7 +297,7 @@ def download_dbt_files(
                 dbt_catalog=json.loads(dbt_catalog) if dbt_catalog else None,
                 dbt_manifest=json.loads(dbt_manifest),
                 dbt_run_results=dbt_run_results if dbt_run_results else None,
-                dbt_sources=json.loads(dbt_sources) if dbt_sources else None
+                dbt_sources=json.loads(dbt_sources) if dbt_sources else None,
             )
         except DBTConfigException as exc:
             logger.warning(exc)

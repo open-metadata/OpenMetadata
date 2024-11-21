@@ -325,11 +325,13 @@ class DbtSource(DbtServiceSource):
             None,
         )
 
-    def _add_dbt_freshness_test_from_sources(self, key: str, manifest_node, manifest_entities, dbt_objects: DbtObjects):
+    def _add_dbt_freshness_test_from_sources(
+        self, key: str, manifest_node, manifest_entities, dbt_objects: DbtObjects
+    ):
         # in dbt manifest sources node name is table/view name (not test name like with test nodes)
         # so in order for the test creation to be named precisely I am amending manifest node name within it's deepcopy
         manifest_node_new = deepcopy(manifest_node)
-        manifest_node_new .name = manifest_node_new.name + "_freshness"
+        manifest_node_new.name = manifest_node_new.name + "_freshness"
 
         self.context.get().dbt_tests[key + "_freshness"] = {
             DbtCommonEnum.MANIFEST_NODE.value: manifest_node_new
@@ -337,12 +339,10 @@ class DbtSource(DbtServiceSource):
         self.context.get().dbt_tests[key + "_freshness"][
             DbtCommonEnum.UPSTREAM.value
         ] = self.parse_upstream_nodes(manifest_entities, manifest_node)
-        self.context.get().dbt_tests[key + "_freshness"][DbtCommonEnum.RESULTS.value] = next(
-            (
-                item
-                for item in dbt_objects.dbt_sources.results
-                if item.unique_id == key
-            ),
+        self.context.get().dbt_tests[key + "_freshness"][
+            DbtCommonEnum.RESULTS.value
+        ] = next(
+            (item for item in dbt_objects.dbt_sources.results if item.unique_id == key),
             None,
         )
 
@@ -352,7 +352,9 @@ class DbtSource(DbtServiceSource):
         """
         Method to append dbt test cases based on sources file for later processing
         """
-        self._add_dbt_freshness_test_from_sources(key, manifest_node, manifest_entities, dbt_objects)
+        self._add_dbt_freshness_test_from_sources(
+            key, manifest_node, manifest_entities, dbt_objects
+        )
 
     # pylint: disable=too-many-locals, too-many-branches
     def yield_data_models(
