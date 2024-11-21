@@ -14,6 +14,7 @@ import { CloseOutlined } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
 import {
   Button,
+  Empty,
   Form,
   Space,
   TagProps,
@@ -22,7 +23,7 @@ import {
 } from 'antd';
 import { Key } from 'antd/lib/table/interface';
 import { AxiosError } from 'axios';
-import { debounce, get, isEmpty, isUndefined, pick } from 'lodash';
+import { debounce, get, isEmpty, isNull, isUndefined, pick } from 'lodash';
 import { CustomTagProps } from 'rc-select/lib/BaseSelect';
 import React, { FC, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -74,7 +75,7 @@ const TreeAsyncSelectList: FC<Omit<AsyncSelectListProps, 'fetchOptions'>> = ({
   const [glossaries, setGlossaries] = useState<Glossary[]>([]);
   const expandableKeys = useRef<string[]>([]);
   const [expandedRowKeys, setExpandedRowKeys] = useState<Key[]>([]);
-  const [searchOptions, setSearchOptions] = useState<Glossary[]>([]);
+  const [searchOptions, setSearchOptions] = useState<Glossary[] | null>(null);
 
   const form = Form.useFormInstance();
 
@@ -201,7 +202,7 @@ const TreeAsyncSelectList: FC<Omit<AsyncSelectListProps, 'fetchOptions'>> = ({
       const initialData = findGlossaryTermByFqn(
         [
           ...glossaries,
-          ...searchOptions,
+          ...(isNull(searchOptions) ? [] : searchOptions),
           ...(initialOptions ?? []),
         ] as ModifiedGlossaryTerm[],
         value,
@@ -252,6 +253,7 @@ const TreeAsyncSelectList: FC<Omit<AsyncSelectListProps, 'fetchOptions'>> = ({
 
   const onSearch = debounce(async (value: string) => {
     if (value) {
+      setIsLoading(true);
       const encodedValue = getEncodedFqn(escapeESReservedCharacters(value));
       const results: Glossary[] = await searchGlossaryTerms(encodedValue);
 
@@ -259,8 +261,9 @@ const TreeAsyncSelectList: FC<Omit<AsyncSelectListProps, 'fetchOptions'>> = ({
       setExpandedRowKeys(
         results.map((result) => result.fullyQualifiedName as string)
       );
+      setIsLoading(false);
     } else {
-      setSearchOptions([]);
+      setSearchOptions(null);
     }
   }, 300);
 
@@ -273,7 +276,7 @@ const TreeAsyncSelectList: FC<Omit<AsyncSelectListProps, 'fetchOptions'>> = ({
   const treeData = useMemo(
     () =>
       convertGlossaryTermsToTreeOptions(
-        isEmpty(searchOptions)
+        isNull(searchOptions)
           ? (glossaries as ModifiedGlossaryTerm[])
           : (searchOptions as unknown as ModifiedGlossaryTerm[])
       ),
@@ -299,6 +302,18 @@ const TreeAsyncSelectList: FC<Omit<AsyncSelectListProps, 'fetchOptions'>> = ({
 
         return Promise.resolve();
       }}
+      notFoundContent={
+        isLoading ? (
+          <Loader size="small" />
+        ) : (
+          <Empty
+            description={t('label.no-entity-available', {
+              entity: t('label.glossary-term'),
+            })}
+            image={Empty.PRESENTED_IMAGE_SIMPLE}
+          />
+        )
+      }
       showCheckedStrategy={TreeSelect.SHOW_ALL}
       style={{ width: '100%' }}
       switcherIcon={
