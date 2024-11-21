@@ -43,6 +43,7 @@ from metadata.ingestion.source.database.dbt.constants import (
     DBT_CATALOG_FILE_NAME,
     DBT_MANIFEST_FILE_NAME,
     DBT_RUN_RESULTS_FILE_NAME,
+    DBT_SOURCES_FILE_NAME,
 )
 from metadata.ingestion.source.database.dbt.models import DbtFiles
 from metadata.readers.file.config_source_factory import get_reader
@@ -85,6 +86,7 @@ def _(config: DbtLocalConfig):
             config.dbtManifestFilePath,
             config.dbtCatalogFilePath,
             config.dbtRunResultsFilePath,
+            config.dbtSourcesFilePath,
         ]
         yield from download_dbt_files(
             blob_grouped_by_directory=blob_grouped_by_directory,
@@ -255,6 +257,7 @@ def download_dbt_files(
     ) in blob_grouped_by_directory.items():
         dbt_catalog = None
         dbt_manifest = None
+        dbt_sources = None
         dbt_run_results = []
         kwargs = {}
         if bucket_name:
@@ -285,12 +288,16 @@ def download_dbt_files(
                             logger.warning(
                                 f"{DBT_RUN_RESULTS_FILE_NAME} not found in {key}: {exc}"
                             )
+                    if DBT_SOURCES_FILE_NAME == blob_file_name.lower():
+                        logger.debug(f"{DBT_SOURCES_FILE_NAME} found in {key}")
+                        dbt_sources = reader.read(path=blob, **kwargs)
             if not dbt_manifest:
                 raise DBTConfigException(f"Manifest file not found at: {key}")
             yield DbtFiles(
                 dbt_catalog=json.loads(dbt_catalog) if dbt_catalog else None,
                 dbt_manifest=json.loads(dbt_manifest),
                 dbt_run_results=dbt_run_results if dbt_run_results else None,
+                dbt_sources=json.loads(dbt_sources) if dbt_sources else None
             )
         except DBTConfigException as exc:
             logger.warning(exc)
