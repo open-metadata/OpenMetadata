@@ -64,6 +64,7 @@ export const buildTestCaseParams = (
     ...filterParams('tags', TEST_CASE_FILTERS.tags),
     ...filterParams('tier', TEST_CASE_FILTERS.tier),
     ...filterParams('serviceName', TEST_CASE_FILTERS.service),
+    ...filterParams('dataQualityDimension', TEST_CASE_FILTERS.dimension),
   };
 };
 
@@ -126,7 +127,7 @@ export const transformToTestCaseStatusByDimension = (
     const {
       document_count,
       'testCaseResult.testCaseStatus': status,
-      dataQualityDimension,
+      dataQualityDimension = 'No Dimension',
     } = item;
     const count = parseInt(document_count, 10);
 
