@@ -78,7 +78,9 @@ export const getExpandHandle = (
           ? 'react-flow__handle-right'
           : 'react-flow__handle-left'
       )}
-      icon={<PlusIcon className="lineage-expand-icon" />}
+      icon={
+        <PlusIcon className="lineage-expand-icon" data-testid="plus-icon" />
+      }
       shape="circle"
       size="small"
       onClick={(e) => {
@@ -106,7 +108,9 @@ export const getCollapseHandle = (
           ? 'downstream-collapse-handle'
           : 'upstream-collapse-handle'
       }
-      icon={<MinusIcon className="lineage-expand-icon" />}
+      icon={
+        <MinusIcon className="lineage-expand-icon " data-testid="minus-icon" />
+      }
       shape="circle"
       size="small"
       onClick={(e) => {
