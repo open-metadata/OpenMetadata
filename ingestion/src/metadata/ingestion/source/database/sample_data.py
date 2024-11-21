@@ -899,7 +899,7 @@ class SampleDataSource(
 
                 self.metadata.ingest_table_sample_data(
                     table_entity,
-                    SamplerResponse(
+                    sample_data=SamplerResponse(
                         table=table_entity,
                         sample_data=SampleData(
                             data=TableData(
@@ -908,7 +908,7 @@ class SampleDataSource(
                             ),
                             store=True,
                         ),
-                    ),
+                    ).sample_data.data,
                 )
 
             if table.get("customMetrics"):
