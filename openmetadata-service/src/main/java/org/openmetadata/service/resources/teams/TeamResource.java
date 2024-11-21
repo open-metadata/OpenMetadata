@@ -57,6 +57,7 @@ import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.TeamHierarchy;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.api.BulkAssets;
@@ -71,6 +72,7 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.util.CSVExportResponse;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
@@ -664,6 +666,69 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
       String csv)
       throws IOException {
     return importCsvInternal(securityContext, name, csv, dryRun);
+  }
+
+  @PUT
+  @Path("/{teamId}/users")
+  @Operation(
+      operationId = "updateTeamUsers",
+      summary = "Update team users",
+      description =
+          "Update the list of users for a team. Replaces existing users with the provided list.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Updated team users",
+            content = @Content(mediaType = "application/json")),
+        @ApiResponse(responseCode = "404", description = "Team not found")
+      })
+  public Response updateTeamUsers(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @PathParam("teamId") UUID teamId,
+      List<EntityReference> users) {
+
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(teamId));
+    return repository
+        .updateTeamUsers(securityContext.getUserPrincipal().getName(), teamId, users)
+        .toResponse();
+  }
+
+  @DELETE
+  @Path("/{teamId}/users/{userId}")
+  @Operation(
+      operationId = "deleteTeamUser",
+      summary = "Remove a user from a team",
+      description = "Remove the user identified by `userId` from the team identified by `teamId`.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "User removed from team",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ChangeEvent.class))),
+        @ApiResponse(responseCode = "404", description = "Team or user not found")
+      })
+  public Response deleteTeamUser(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the team", schema = @Schema(type = "UUID"))
+          @PathParam("teamId")
+          UUID teamId,
+      @Parameter(description = "Id of the user being removed", schema = @Schema(type = "string"))
+          @PathParam("userId")
+          String userId) {
+
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(teamId));
+    return repository
+        .deleteTeamUser(
+            securityContext.getUserPrincipal().getName(), teamId, UUID.fromString(userId))
+        .toResponse();
   }
 
   private Team getTeam(CreateTeam ct, String user) {
