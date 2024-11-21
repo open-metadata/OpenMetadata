@@ -286,6 +286,8 @@ export const servicesDisplayName: { [key: string]: string } = {
 
 export const DEF_UI_SCHEMA = {
   supportsMetadataExtraction: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  supportsSystemProfile: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  supportsDataDiff: { 'ui:widget': 'hidden', 'ui:hideError': true },
   supportsUsageExtraction: { 'ui:widget': 'hidden', 'ui:hideError': true },
   supportsLineageExtraction: { 'ui:widget': 'hidden', 'ui:hideError': true },
   supportsViewLineageExtraction: {
