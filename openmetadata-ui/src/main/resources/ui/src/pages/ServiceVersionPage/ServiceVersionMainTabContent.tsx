@@ -25,6 +25,7 @@ import TagsContainerV2 from '../../components/Tag/TagsContainerV2/TagsContainerV
 import { DisplayType } from '../../components/Tag/TagsViewer/TagsViewer.interface';
 import { PAGE_SIZE } from '../../constants/constants';
 import { TABLE_SCROLL_VALUE } from '../../constants/Table.constants';
+import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { TagSource } from '../../generated/type/tagLabel';
 import { useFqn } from '../../hooks/useFqn';
 import { getCommonDiffsFromVersionData } from '../../utils/EntityVersionUtils';
@@ -42,15 +43,24 @@ function ServiceVersionMainTabContent({
   serviceDetails,
   entityType,
   changeDescription,
+  isVersionPage = true,
 }: ServiceVersionMainTabContentProps) {
   const { serviceCategory } = useParams<{
     serviceCategory: ServiceTypes;
   }>();
 
   const { fqn: serviceFQN } = useFqn();
+  const { permissions } = usePermissionProvider();
+
+  const editDisplayNamePermission = useMemo(() => {
+    return !isVersionPage
+      ? permissions.databaseService.EditAll ||
+          permissions.databaseService.EditDisplayName
+      : false;
+  }, [permissions]);
 
   const tableColumn: ColumnsType<ServicePageData> = useMemo(
-    () => getServiceMainTabColumns(serviceCategory),
+    () => getServiceMainTabColumns(serviceCategory, editDisplayNamePermission),
     [serviceCategory]
   );
 

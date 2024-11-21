@@ -17,9 +17,10 @@ import { t } from 'i18next';
 import { isUndefined } from 'lodash';
 import { ServiceTypes } from 'Models';
 import React from 'react';
-import { Link } from 'react-router-dom';
+import DisplayName from '../components/common/DisplayName/DisplayName';
 import UserPopOverCard from '../components/common/PopOverCard/UserPopOverCard';
 import RichTextEditorPreviewer from '../components/common/RichTextEditor/RichTextEditorPreviewer';
+import { EntityName } from '../components/Modals/EntityNameModal/EntityNameModal.interface';
 import TagsViewer from '../components/Tag/TagsViewer/TagsViewer';
 import { NO_DATA_PLACEHOLDER } from '../constants/constants';
 import { ServiceCategory } from '../enums/service.enum';
@@ -28,35 +29,33 @@ import { Database } from '../generated/entity/data/database';
 import { Pipeline } from '../generated/entity/data/pipeline';
 import { EntityReference } from '../generated/entity/type';
 import { ServicePageData } from '../pages/ServiceDetailsPage/ServiceDetailsPage';
-import { getEntityName } from './EntityUtils';
 import { getLinkForFqn } from './ServiceUtils';
 import { getUsagePercentile } from './TableUtils';
 
 export const getServiceMainTabColumns = (
-  serviceCategory: ServiceTypes
+  serviceCategory: ServiceTypes,
+  editDisplayNamePermission: boolean,
+  handleDisplayNameUpdate?: (
+    entityData: EntityName,
+    id?: string
+  ) => Promise<void>
 ): ColumnsType<ServicePageData> => [
   {
     title: t('label.name'),
     dataIndex: 'name',
     key: 'name',
     width: 280,
-    render: (_, record: ServicePageData) => {
-      return (
-        <Link
-          data-testid={record.name}
-          to={getLinkForFqn(serviceCategory, record.fullyQualifiedName ?? '')}>
-          <Typography.Paragraph
-            data-testid="child-asset-name-link"
-            ellipsis={{
-              rows: 2,
-              tooltip: true,
-            }}
-            style={{ width: 280, color: 'inherit' }}>
-            {getEntityName(record)}
-          </Typography.Paragraph>
-        </Link>
-      );
-    },
+    render: (_, record: ServicePageData) => (
+      <DisplayName
+        allowRename={editDisplayNamePermission}
+        displayName={record.displayName}
+        id={record.id}
+        key={record.id}
+        link={getLinkForFqn(serviceCategory, record.fullyQualifiedName ?? '')}
+        name={record.name}
+        onEditDisplayName={handleDisplayNameUpdate}
+      />
+    ),
   },
   {
     title: t('label.description'),
