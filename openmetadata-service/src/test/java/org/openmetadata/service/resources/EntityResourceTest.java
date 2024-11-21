@@ -1010,6 +1010,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   @Test
   @Execution(ExecutionMode.CONCURRENT)
   void get_entityWithDifferentFields_200_OK(TestInfo test) throws IOException {
+    // NOTE: Due to the Async nature of Glossary Approval Workflows, we have a specific test for
+    // Glossary Terms.
+    Assumptions.assumeTrue(!entityType.equals(GLOSSARY_TERM));
     K create =
         createRequest(
             getEntityName(test), "description", "displayName", Lists.newArrayList(USER1_REF));
