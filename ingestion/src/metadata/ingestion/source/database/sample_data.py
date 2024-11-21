@@ -40,8 +40,6 @@ from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequ
 from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
 )
-from metadata.sampler.models import SampleData, SamplerResponse
-
 from metadata.generated.schema.api.data.createMlModel import CreateMlModelRequest
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.data.createSearchIndex import (
@@ -138,6 +136,7 @@ from metadata.parsers.schema_parsers import (
     InvalidSchemaTypeException,
     schema_parser_config_registry,
 )
+from metadata.sampler.models import SampleData, SamplerResponse
 from metadata.utils import entity_link, fqn
 from metadata.utils.constants import UTF_8
 from metadata.utils.fqn import FQN_SEPARATOR
@@ -907,8 +906,8 @@ class SampleDataSource(
                                 rows=table["sampleData"]["rows"],
                                 columns=table["sampleData"]["columns"],
                             ),
-                            store=True
-                        )
+                            store=True,
+                        ),
                     ),
                 )
 
