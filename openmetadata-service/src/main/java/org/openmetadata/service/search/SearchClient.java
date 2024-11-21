@@ -360,6 +360,8 @@ public interface SearchClient {
 
   Object getLowLevelClient();
 
+  Object getClient();
+
   static boolean shouldApplyRbacConditions(
       SubjectContext subjectContext, RBACConditionEvaluator rbacConditionEvaluator) {
     return Boolean.TRUE.equals(
