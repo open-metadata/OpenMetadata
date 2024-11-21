@@ -25,7 +25,7 @@ import {
   InternalAxiosRequestConfig,
 } from 'axios';
 import { CookieStorage } from 'cookie-storage';
-import { isEmpty, isNil, isNumber } from 'lodash';
+import { debounce, isEmpty, isNil, isNumber } from 'lodash';
 import Qs from 'qs';
 import React, {
   ComponentType,
@@ -179,6 +179,9 @@ export const AuthProvider = ({
     removeRefreshToken();
 
     setApplicationLoading(false);
+
+    // Upon logout, redirect to the login page
+    history.push(ROUTES.SIGNIN);
   }, [timeoutId]);
 
   useEffect(() => {
@@ -513,6 +516,7 @@ export const AuthProvider = ({
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       config: InternalAxiosRequestConfig<any>
     ) {
+      // Need to read token from local storage as it might have been updated with refresh
       const token: string = getOidcToken() || '';
       if (token) {
         if (config.headers) {
@@ -543,7 +547,8 @@ export const AuthProvider = ({
               failedLoggedInUserRequest = true;
             }
             handleStoreProtectedRedirectPath();
-            trySilentSignIn(true);
+            // try silent signIn if token is about to expire
+            debounce(() => trySilentSignIn(true), 100);
           }
         }
 

@@ -16,20 +16,17 @@ import { AccessTokenResponse } from '../../../rest/auth-API';
 import { extractDetailsFromToken } from '../../AuthProvider.util';
 import { getOidcToken } from '../../LocalStorageUtils';
 
+type RenewTokenCallback = () =>
+  | Promise<string>
+  | Promise<AccessTokenResponse>
+  | Promise<void>;
+
 class TokenService {
   channel: BroadcastChannel;
-  renewToken: () =>
-    | Promise<string>
-    | Promise<AccessTokenResponse>
-    | Promise<void>;
+  renewToken: RenewTokenCallback;
   tokeUpdateInProgress: boolean;
 
-  constructor(
-    renewToken: () =>
-      | Promise<string>
-      | Promise<AccessTokenResponse>
-      | Promise<void>
-  ) {
+  constructor(renewToken: RenewTokenCallback) {
     this.channel = new BroadcastChannel('auth_channel');
     this.renewToken = renewToken;
     this.channel.onmessage = this.handleTokenUpdate.bind(this);
