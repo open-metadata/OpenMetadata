@@ -115,8 +115,11 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
   public void setFields(TestSuite entity, EntityUtil.Fields fields) {
     entity.setPipelines(
         fields.contains("pipelines") ? getIngestionPipelines(entity) : entity.getPipelines());
-    entity.withTests(fields.contains(UPDATE_FIELDS) ? getTestCases(entity) : entity.getTests());
-    entity.withTestCaseResultSummary(getResultSummary(entity.getId()));
+    entity.setTests(fields.contains(UPDATE_FIELDS) ? getTestCases(entity) : entity.getTests());
+    entity.setTestCaseResultSummary(
+        fields.contains("summary")
+            ? getResultSummary(entity.getId())
+            : entity.getTestCaseResultSummary());
     entity.setSummary(
         fields.contains("summary")
             ? getTestSummary(entity.getTestCaseResultSummary())
@@ -337,7 +340,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
   @SneakyThrows
   private List<ResultSummary> getResultSummary(UUID testSuiteId) {
     List<ResultSummary> resultSummaries = new ArrayList<>();
-    ResultList<TestCaseResult> latestTestCaseResultResults;
+    ResultList<TestCaseResult> latestTestCaseResultResults = null;
     String groupBy = "testCaseFQN.keyword";
     SearchListFilter searchListFilter = new SearchListFilter();
     searchListFilter.addQueryParam("testSuiteId", testSuiteId.toString());
@@ -348,16 +351,12 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
           entityTimeSeriesRepository.listLatestFromSearch(
               EntityUtil.Fields.EMPTY_FIELDS, searchListFilter, groupBy, null);
     } catch (Exception e) {
-      // Index may not exist in the search index (e.g. reindexing with recreate index on). Fall back
-      // to database
       LOG.debug(
           "Error fetching test case result from search. Fetching from test case results from database",
           e);
-      latestTestCaseResultResults =
-          entityTimeSeriesRepository.listLastTestCaseResultsForTestSuite(testSuiteId);
     }
 
-    if (nullOrEmpty(latestTestCaseResultResults.getData())) {
+    if (latestTestCaseResultResults == null || nullOrEmpty(latestTestCaseResultResults.getData())) {
       latestTestCaseResultResults =
           entityTimeSeriesRepository.listLastTestCaseResultsForTestSuite(testSuiteId);
     }
