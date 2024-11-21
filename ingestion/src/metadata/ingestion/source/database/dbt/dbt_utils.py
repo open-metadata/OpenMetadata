@@ -44,6 +44,15 @@ def create_test_case_parameter_definitions(dbt_test):
                 }
             ]
             return test_case_param_definition
+        if hasattr(dbt_test, "freshness"):
+            test_case_param_definition = [
+                {
+                    "name": "freshness",
+                    "displayName": "freshness",
+                    "required": False,
+                }
+            ]
+            return test_case_param_definition
     except Exception as err:  # pylint: disable=broad-except
         logger.debug(traceback.format_exc())
         logger.error(
@@ -65,6 +74,12 @@ def create_test_case_parameter_values(dbt_test):
                 dbt_test_values = ",".join(str(value) for value in values)
             test_case_param_values = [
                 {"name": manifest_node.test_metadata.name, "value": dbt_test_values}
+            ]
+            return test_case_param_values
+        if hasattr(manifest_node, "freshness"):
+            value = ",".join([f"{check}: {spec['count']} {spec['period']}" for check, spec in manifest_node.freshness.items()])
+            test_case_param_values = [
+                {"name": "freshness", "value": value}
             ]
             return test_case_param_values
     except Exception as err:  # pylint: disable=broad-except
