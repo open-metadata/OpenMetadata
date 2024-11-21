@@ -350,7 +350,7 @@ export const DataAssetsHeader = ({
         editOwnerPermission:
           (permissions.EditAll || permissions.EditOwners) && !dataAsset.deleted,
         editTierPermission:
-          (permissions.EditAll || permissions.EditTags) && !dataAsset.deleted,
+          (permissions.EditAll || permissions.EditTier) && !dataAsset.deleted,
       }),
       [permissions, dataAsset]
     );
@@ -370,6 +370,7 @@ export const DataAssetsHeader = ({
             <Col span={24}>
               <EntityHeaderTitle
                 badge={badge}
+                certification={(dataAsset as Table)?.certification}
                 deleted={dataAsset?.deleted}
                 displayName={dataAsset.displayName}
                 icon={icon}

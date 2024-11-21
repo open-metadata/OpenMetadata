@@ -12,6 +12,7 @@
  */
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
+import { t } from 'i18next';
 import { EntityDetailUnion } from 'Models';
 import { MapPatchAPIResponse } from '../../components/DataAssets/AssetsSelectionModal/AssetSelectionModal.interface';
 import { AssetsOfEntity } from '../../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
@@ -71,6 +72,7 @@ import {
   getClassificationByName,
   patchClassification,
 } from '../../rest/tagAPI';
+import { getTagByFqn, patchTag } from '../../rest/tagAPI';
 import { getTeamByName, patchTeamDetail } from '../../rest/teamsAPI';
 import { getTopicByFqn, patchTopicDetails } from '../../rest/topicsAPI';
 import { getUserByName, updateUserDetail } from '../../rest/userAPI';
@@ -108,6 +110,8 @@ export const getAPIfromSource = (
       return patchGlossaries;
     case EntityType.CLASSIFICATION:
       return patchClassification;
+    case EntityType.TAG:
+      return patchTag;
     case EntityType.DATABASE_SCHEMA:
       return patchDatabaseSchemaDetails;
     case EntityType.DATABASE:
@@ -167,6 +171,8 @@ export const getEntityAPIfromSource = (
       return getGlossariesByName;
     case EntityType.CLASSIFICATION:
       return getClassificationByName;
+    case EntityType.TAG:
+      return getTagByFqn;
     case EntityType.DATABASE_SCHEMA:
       return getDatabaseSchemaDetailsByFQN;
     case EntityType.DATABASE:
@@ -231,6 +237,19 @@ const getJsonPatchObject = (entity: Table, activeEntity: Domain) => {
 
   return jsonPatch;
 };
+
+export function getEntityTypeString(type: string) {
+  switch (type) {
+    case AssetsOfEntity.GLOSSARY:
+      return t('label.glossary-term-lowercase');
+    case AssetsOfEntity.DOMAIN:
+      return t('label.domain-lowercase');
+    case AssetsOfEntity.TAG:
+      return t('label.tag-lowercase');
+    default:
+      return t('label.data-product-lowercase');
+  }
+}
 
 export const updateDomainAssets = async (
   activeEntity: EntityDetailUnion | undefined,

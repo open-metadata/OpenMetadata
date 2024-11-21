@@ -116,12 +116,11 @@ public abstract class AbstractEventConsumer
   private void recordSuccessfulChangeEvent(UUID eventSubscriptionId, ChangeEvent event) {
     Entity.getCollectionDAO()
         .eventSubscriptionDAO()
-        .insertSuccessfulChangeEvent(
-            UUID.randomUUID().toString(),
+        .upsertSuccessfulChangeEvent(
             event.getId().toString(),
             eventSubscriptionId.toString(),
             JsonUtils.pojoToJson(event),
-            event.getTimestamp());
+            System.currentTimeMillis());
   }
 
   private EventSubscriptionOffset loadInitialOffset(JobExecutionContext context) {

@@ -98,8 +98,8 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
   }
 
   @Override
-  public SlackMessage buildTestMessage(String publisherName) {
-    return createConnectionTestMessage(publisherName);
+  public SlackMessage buildTestMessage() {
+    return createConnectionTestMessage();
   }
 
   private SlackMessage getSlackMessage(ChangeEvent event, OutgoingMessage outgoingMessage) {
@@ -131,11 +131,7 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
         : createGeneralChangeEventMessage(event, outgoingMessage);
   }
 
-  public SlackMessage createConnectionTestMessage(String publisherName) {
-    if (publisherName.isEmpty()) {
-      throw new UnhandledServerException("Publisher name not found.");
-    }
-
+  public SlackMessage createConnectionTestMessage() {
     List<LayoutBlock> blocks = new ArrayList<>();
 
     // Header Block
@@ -147,15 +143,7 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
                         .text("Connection Successful :white_check_mark: ")
                         .build())));
 
-    // Section Block 1 (Publisher Name)
-    blocks.add(
-        Blocks.section(
-            section ->
-                section.text(
-                    BlockCompositions.markdownText(
-                        applyBoldFormatWithSpace("Publisher :") + publisherName))));
-
-    // Section Block 2 (Test Message)
+    // Section Block 1 (Test Message)
     blocks.add(
         Blocks.section(
             section -> section.text(BlockCompositions.markdownText(CONNECTION_TEST_DESCRIPTION))));

@@ -108,11 +108,23 @@
       "existingJavaType": "java.lang.Long",
       "default": 104857600
     },
-    "numberOfThreads": {
-      "title": "Number of Threads",
-      "description": "Number of threads to use for reindexing",
+    "producerThreads": {
+      "title": "Number of Producer Threads to use",
+      "description": "Number of producer threads to use for reindexing",
       "type": "integer",
-      "default": 5
+      "default": 1
+    },
+    "consumerThreads": {
+      "title": "Number of Consumer Threads to use",
+      "description": "Number of consumer threads to use for reindexing",
+      "type": "integer",
+      "default": 1
+    },
+    "queueSize": {
+      "title": "Queue Size to use.",
+      "description": "Queue Size to use internally for reindexing.",
+      "type": "integer",
+      "default": 100
     },
     "maxConcurrentRequests": {
       "title": "Max Concurrent Requests",

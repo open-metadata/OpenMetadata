@@ -25,6 +25,7 @@ import RichTextEditorPreviewer from '../components/common/RichTextEditor/RichTex
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import { getExplorePath } from '../constants/constants';
 import { SettledStatus } from '../enums/Axios.enum';
+import { EntityType } from '../enums/entity.enum';
 import { ExplorePageTabs } from '../enums/Explore.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { Classification } from '../generated/entity/classification/classification';
@@ -316,3 +317,39 @@ export const createTagObject = (tags: EntityTags[]) => {
       } as TagLabel)
   );
 };
+
+export const getQueryFilterToExcludeTerms = (fqn: string) => ({
+  query: {
+    bool: {
+      must: [
+        {
+          bool: {
+            must_not: [
+              {
+                term: {
+                  'tags.tagFQN': fqn,
+                },
+              },
+            ],
+          },
+        },
+        {
+          bool: {
+            must_not: [
+              {
+                term: {
+                  entityType: EntityType.TAG,
+                },
+              },
+              {
+                term: {
+                  entityType: EntityType.DATA_PRODUCT,
+                },
+              },
+            ],
+          },
+        },
+      ],
+    },
+  },
+});

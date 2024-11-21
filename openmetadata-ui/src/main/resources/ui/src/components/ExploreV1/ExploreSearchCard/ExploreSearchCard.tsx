@@ -24,13 +24,16 @@ import {
   GlossaryTerm,
   Status,
 } from '../../../generated/entity/data/glossaryTerm';
+import { Table } from '../../../generated/entity/data/table';
 import { EntityReference } from '../../../generated/entity/type';
 import { TagLabel } from '../../../generated/tests/testCase';
+import { AssetCertification } from '../../../generated/type/assetCertification';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getDomainPath } from '../../../utils/RouterUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import { stringToHTML } from '../../../utils/StringsUtils';
 import { getUsagePercentile } from '../../../utils/TableUtils';
+import CertificationTag from '../../common/CertificationTag/CertificationTag';
 import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.component';
 import TableDataCardBody from '../../Database/TableDataCardBody/TableDataCardBody';
@@ -221,7 +224,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
                 </Typography.Text>
               </Button>
             ) : (
-              <div className="w-full d-flex items-start">
+              <div className="w-full d-flex items-center">
                 {entityIcon}
 
                 <Link
@@ -248,6 +251,16 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
                     {stringToHTML(searchClassBase.getEntityName(source))}
                   </Typography.Text>
                 </Link>
+
+                {(source as Table)?.certification && (
+                  <div className="p-l-sm">
+                    <CertificationTag
+                      certification={
+                        (source as Table).certification as AssetCertification
+                      }
+                    />
+                  </div>
+                )}
 
                 {hasGlossaryTermStatus && (
                   <GlossaryStatusBadge

@@ -264,7 +264,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
   public Integer reIndex(
       @Option(
               names = {"-b", "--batch-size"},
-              defaultValue = "100",
+              defaultValue = "300",
               description = "Number of records to process in each batch.")
           int batchSize,
       @Option(
@@ -278,10 +278,20 @@ public class OpenMetadataOperations implements Callable<Integer> {
               description = "Flag to determine if indexes should be recreated.")
           boolean recreateIndexes,
       @Option(
-              names = {"--num-threads"},
+              names = {"--producer-threads"},
               defaultValue = "10",
               description = "Number of threads to use for processing.")
-          int numThreads,
+          int producerThreads,
+      @Option(
+              names = {"--consumer-threads"},
+              defaultValue = "5",
+              description = "Number of threads to use for processing.")
+          int consumerThreads,
+      @Option(
+              names = {"--queue-size"},
+              defaultValue = "300",
+              description = "Queue Size to use internally for reindexing.")
+          int queueSize,
       @Option(
               names = {"--back-off"},
               defaultValue = "1000",
@@ -294,7 +304,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
           int maxBackOff,
       @Option(
               names = {"--max-requests"},
-              defaultValue = "100",
+              defaultValue = "1000",
               description = "Maximum number of concurrent search requests.")
           int maxRequests,
       @Option(
@@ -304,10 +314,17 @@ public class OpenMetadataOperations implements Callable<Integer> {
           int retries) {
     try {
       LOG.info(
-          "Running Reindexing with Batch Size: {}, Payload Size: {}, Recreate-Index: {}",
+          "Running Reindexing with Batch Size: {}, Payload Size: {}, Recreate-Index: {}, Producer threads: {}, Consumer threads: {}, Queue Size: {}, Back-off: {}, Max Back-off: {}, Max Requests: {}, Retries: {}",
           batchSize,
           payloadSize,
-          recreateIndexes);
+          recreateIndexes,
+          producerThreads,
+          consumerThreads,
+          queueSize,
+          backOff,
+          maxBackOff,
+          maxRequests,
+          retries);
       parseConfig();
       CollectionRegistry.initialize();
       ApplicationHandler.initialize(config);
@@ -320,7 +337,9 @@ public class OpenMetadataOperations implements Callable<Integer> {
           batchSize,
           payloadSize,
           recreateIndexes,
-          numThreads,
+          producerThreads,
+          consumerThreads,
+          queueSize,
           backOff,
           maxBackOff,
           maxRequests,
@@ -336,7 +355,9 @@ public class OpenMetadataOperations implements Callable<Integer> {
       int batchSize,
       long payloadSize,
       boolean recreateIndexes,
-      int numThreads,
+      int producerThreads,
+      int consumerThreads,
+      int queueSize,
       int backOff,
       int maxBackOff,
       int maxRequests,
@@ -354,7 +375,9 @@ public class OpenMetadataOperations implements Callable<Integer> {
         .withBatchSize(batchSize)
         .withPayLoadSize(payloadSize)
         .withRecreateIndex(recreateIndexes)
-        .withNumberOfThreads(numThreads)
+        .withProducerThreads(producerThreads)
+        .withConsumerThreads(consumerThreads)
+        .withQueueSize(queueSize)
         .withInitialBackoff(backOff)
         .withMaxBackoff(maxBackOff)
         .withMaxConcurrentRequests(maxRequests)

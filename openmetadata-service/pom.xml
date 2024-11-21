@@ -16,7 +16,7 @@
     <sonar.coverage.jacoco.xmlReportPaths>${project.basedir}/target/site/jacoco-aggregate/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
     <sonar.tests>${project.basedir}/src/test/java</sonar.tests>
     <org.testcontainers.version>1.20.3</org.testcontainers.version>
-    <awssdk.version>2.29.1</awssdk.version>
+    <awssdk.version>2.29.15</awssdk.version>
     <azure-identity.version>1.14.0</azure-identity.version>
     <azure-kv.version>4.9.0</azure-kv.version>
     <azure-identity-extensions.version>1.0.0</azure-identity-extensions.version>
@@ -37,6 +37,11 @@
         <artifactId>aws-java-sdk-bom</artifactId>
         <version>${awssdk.version}</version>
         <type>pom</type>
+      </dependency>
+      <dependency>
+        <groupId>software.amazon.awssdk</groupId>
+        <artifactId>checksums</artifactId>
+        <version>${awssdk.version}</version>
       </dependency>
       <dependency>
         <groupId>com.google.cloud</groupId>
@@ -349,6 +354,14 @@
       <artifactId>lombok</artifactId>
     </dependency>
     <dependency>
+      <groupId>com.fasterxml.jackson.core</groupId>
+      <artifactId>jackson-databind</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.github.java-json-tools</groupId>
+      <artifactId>json-patch</artifactId>
+    </dependency>
+    <dependency>
       <groupId>org.testcontainers</groupId>
       <artifactId>testcontainers</artifactId>
       <version>${org.testcontainers.version}</version>
@@ -578,6 +591,11 @@
       <version>1.12.0</version>
     </dependency>
     <dependency>
+      <groupId>com.opencsv</groupId>
+      <artifactId>opencsv</artifactId>
+      <version>5.9</version>
+    </dependency>
+    <dependency>
       <groupId>com.onelogin</groupId>
       <artifactId>java-saml</artifactId>
       <version>${java.saml}</version>
@@ -654,6 +672,18 @@
       <artifactId>jakarta.activation</artifactId>
       <version>2.0.1</version>
     </dependency>
+    <!-- Governance Workflows -->
+    <dependency>
+      <groupId>org.flowable</groupId>
+      <artifactId>flowable-engine</artifactId>
+      <version>7.0.1</version>
+    </dependency>
+    <dependency>
+      <groupId>io.github.jamsesso</groupId>
+      <artifactId>json-logic-java</artifactId>
+      <version>1.0.7</version>
+    </dependency>
+    <!-- ################ -->
     <dependency>
       <groupId>com.microsoft.azure</groupId>
       <artifactId>msal4j</artifactId>
