@@ -40,6 +40,8 @@ from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequ
 from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
 )
+from metadata.sampler.models import SampleData, SamplerResponse
+
 from metadata.generated.schema.api.data.createMlModel import CreateMlModelRequest
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.data.createSearchIndex import (
@@ -898,9 +900,15 @@ class SampleDataSource(
 
                 self.metadata.ingest_table_sample_data(
                     table_entity,
-                    TableData(
-                        rows=table["sampleData"]["rows"],
-                        columns=table["sampleData"]["columns"],
+                    SamplerResponse(
+                        table=table_entity,
+                        sample_data=SampleData(
+                            data=TableData(
+                                rows=table["sampleData"]["rows"],
+                                columns=table["sampleData"]["columns"],
+                            ),
+                            store=True
+                        )
                     ),
                 )
 
