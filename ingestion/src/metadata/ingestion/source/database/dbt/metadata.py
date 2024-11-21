@@ -326,6 +326,8 @@ class DbtSource(DbtServiceSource):
         )
 
     def _add_dbt_freshness_test_from_sources(self, key: str, manifest_node, manifest_entities, dbt_objects: DbtObjects):
+        # in dbt manifest sources node name is table/view name (not test name like with test nodes)
+        # so in order for the test creation to be named precisely I am amending manifest node name within it's deepcopy
         manifest_node_new = deepcopy(manifest_node)
         manifest_node_new .name = manifest_node_new.name + "_freshness"
 
@@ -348,7 +350,7 @@ class DbtSource(DbtServiceSource):
         self, key: str, manifest_node, manifest_entities, dbt_objects: DbtObjects
     ) -> None:
         """
-        Method to append dbt freshness test cases from sources file for later processing
+        Method to append dbt test cases based on sources file for later processing
         """
         self._add_dbt_freshness_test_from_sources(key, manifest_node, manifest_entities, dbt_objects)
 
