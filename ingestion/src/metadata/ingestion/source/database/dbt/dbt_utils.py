@@ -47,8 +47,13 @@ def create_test_case_parameter_definitions(dbt_test):
         if hasattr(dbt_test, "freshness"):
             test_case_param_definition = [
                 {
-                    "name": "freshness",
-                    "displayName": "freshness",
+                    "name": "warn_after",
+                    "displayName": "warn_after",
+                    "required": False,
+                },
+                {
+                    "name": "error_after",
+                    "displayName": "error_after",
                     "required": False,
                 }
             ]
@@ -77,9 +82,12 @@ def create_test_case_parameter_values(dbt_test):
             ]
             return test_case_param_values
         if hasattr(manifest_node, "freshness"):
-            value = ",".join([f"{check}: {spec['count']} {spec['period']}" for check, spec in manifest_node.freshness.items()])
+            warn_after =  manifest_node.freshness.warn_after
+            error_after = manifest_node.freshness.error_after
+
             test_case_param_values = [
-                {"name": "freshness", "value": value}
+                {"name": "error_after", "value": f"{error_after.count} {error_after.period.value}"},
+                {"name": "warn_after", "value": f"{warn_after.count} {warn_after.period.value}"},
             ]
             return test_case_param_values
     except Exception as err:  # pylint: disable=broad-except
