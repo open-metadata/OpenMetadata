@@ -107,7 +107,7 @@ const BulkEntityImport = ({
       setActiveStep(step);
       activeStepRef.current = step;
     },
-    [setActiveStep]
+    [setActiveStep, activeStepRef]
   );
 
   const onCSVReadComplete = useCallback(
@@ -428,7 +428,7 @@ const BulkEntityImport = ({
   }, [socket]);
 
   return (
-    <Row className="p-x-lg" gutter={[16, 16]}>
+    <Row gutter={[16, 16]}>
       <Col span={24}>
         <Stepper activeStep={activeStep} steps={ENTITY_IMPORT_STEPS} />
       </Col>
@@ -503,8 +503,8 @@ const BulkEntityImport = ({
       <Col span={24}>
         {activeAsyncImportJob?.jobId && (
           <Banner
-            isLoading
             className="border-radius"
+            isLoading={!activeAsyncImportJob.error}
             message={
               activeAsyncImportJob.error ?? activeAsyncImportJob.message ?? ''
             }
