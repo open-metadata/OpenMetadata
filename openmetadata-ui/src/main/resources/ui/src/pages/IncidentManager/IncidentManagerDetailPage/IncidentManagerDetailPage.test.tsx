@@ -78,6 +78,8 @@ const mockUseTestCase: UseTestCaseStoreInterface = {
   reset: jest.fn(),
   showAILearningBanner: false,
   setShowAILearningBanner: jest.fn(),
+  dqLineageData: undefined,
+  setDqLineageData: jest.fn(),
 };
 jest.mock('./useTestCase.store', () => ({
   useTestCaseStore: jest.fn().mockImplementation(() => mockUseTestCase),

@@ -334,9 +334,13 @@ export const DEFAULT_TEST_VALUE = [
   },
 ];
 
-export const DEFAULT_DIMENSIONS_DATA = Object.values(
-  DataQualityDimensions
-).reduce((acc, item) => {
+export const NO_DIMENSION = 'No Dimension';
+export const DIMENSIONS_DATA = [
+  ...Object.values(DataQualityDimensions),
+  NO_DIMENSION,
+];
+
+export const DEFAULT_DIMENSIONS_DATA = DIMENSIONS_DATA.reduce((acc, item) => {
   return {
     ...acc,
     [item]: {
@@ -461,12 +465,20 @@ export const TEST_CASE_FILTERS: Record<string, keyof TestCaseSearchParams> = {
   tier: 'tier',
   tags: 'tags',
   service: 'serviceName',
+  dimension: 'dataQualityDimension',
 };
 
 export const TEST_CASE_PLATFORM_OPTION = values(TestPlatform).map((value) => ({
   label: value,
   value: value,
 }));
+
+export const TEST_CASE_DIMENSIONS_OPTION = values(DataQualityDimensions).map(
+  (value) => ({
+    label: value,
+    value: value,
+  })
+);
 
 export const INITIAL_COLUMN_METRICS_VALUE = {
   countMetrics: INITIAL_COUNT_METRIC_VALUE,

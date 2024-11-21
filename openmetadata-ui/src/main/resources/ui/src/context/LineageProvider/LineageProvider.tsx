@@ -238,11 +238,9 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
           queryFilter
         );
 
-        const dqLineageResp =
-          entityType === EntityType.TABLE &&
-          tableClassBase.getAlertEnableStatus()
-            ? await getDataQualityLineage(fqn, config, queryFilter)
-            : { nodes: [], edges: [] };
+        const dqLineageResp = tableClassBase.getAlertEnableStatus()
+          ? await getDataQualityLineage(fqn, config, queryFilter)
+          : { nodes: [], edges: [] };
 
         if (res) {
           const { nodes = [], entity, edges } = res;

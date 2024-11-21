@@ -185,12 +185,13 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
               title: t('label.table'),
               dataIndex: 'entityLink',
               key: 'table',
-              width: 150,
+              width: 200,
               render: (entityLink: string) => {
                 const tableFqn = getEntityFQN(entityLink);
 
                 return (
                   <Link
+                    className="break-word"
                     data-testid="table-link"
                     to={{
                       pathname: getEntityDetailsPath(

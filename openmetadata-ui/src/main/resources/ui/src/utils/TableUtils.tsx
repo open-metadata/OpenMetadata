@@ -88,7 +88,6 @@ import { TabProps } from '../components/common/TabsLabel/TabsLabel.interface';
 import TableProfiler from '../components/Database/Profiler/TableProfiler/TableProfiler';
 import SampleDataTableComponent from '../components/Database/SampleDataTable/SampleDataTable.component';
 import TableQueries from '../components/Database/TableQueries/TableQueries';
-import IncidentManager from '../components/IncidentManager/IncidentManager.component';
 import Lineage from '../components/Lineage/Lineage.component';
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
 import { NON_SERVICE_TYPE_ASSETS } from '../constants/Assets.constants';
@@ -797,7 +796,7 @@ export const getTableDetailPageBaseTabs = ({
       label: (
         <TabsLabel
           id={EntityTabs.PROFILER}
-          name={t('label.profiler-amp-data-quality')}
+          name={t('label.data-observability')}
         />
       ),
       key: EntityTabs.PROFILER,
@@ -810,26 +809,6 @@ export const getTableDetailPageBaseTabs = ({
             table={tableDetails}
             testCaseSummary={testCaseSummary}
           />
-        ),
-    },
-    {
-      label: (
-        <TabsLabel
-          id={EntityTabs.INCIDENTS}
-          name={t('label.incident-plural')}
-        />
-      ),
-      key: EntityTabs.INCIDENTS,
-      children:
-        tablePermissions.ViewAll || tablePermissions.ViewTests ? (
-          <div className="p-x-lg p-b-lg p-t-md">
-            <IncidentManager
-              isIncidentPage={false}
-              tableDetails={tableDetails}
-            />
-          </div>
-        ) : (
-          <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
         ),
     },
     {

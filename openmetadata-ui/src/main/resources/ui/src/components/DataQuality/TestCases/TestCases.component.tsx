@@ -48,6 +48,7 @@ import {
 } from '../../../constants/constants';
 import {
   DEFAULT_SORT_ORDER,
+  TEST_CASE_DIMENSIONS_OPTION,
   TEST_CASE_FILTERS,
   TEST_CASE_PLATFORM_OPTION,
   TEST_CASE_STATUS_OPTION,
@@ -618,6 +619,20 @@ export const TestCases = () => {
                   options={serviceOptions}
                   placeholder={t('label.service')}
                   onSearch={debounceFetchServiceOptions}
+                />
+              </Form.Item>
+            )}
+            {selectedFilter.includes(TEST_CASE_FILTERS.dimension) && (
+              <Form.Item
+                className="m-0 w-80"
+                label={t('label.dimension')}
+                name="dataQualityDimension">
+                <Select
+                  allowClear
+                  showSearch
+                  data-testid="dimension-select-filter"
+                  options={TEST_CASE_DIMENSIONS_OPTION}
+                  placeholder={t('label.dimension')}
                 />
               </Form.Item>
             )}

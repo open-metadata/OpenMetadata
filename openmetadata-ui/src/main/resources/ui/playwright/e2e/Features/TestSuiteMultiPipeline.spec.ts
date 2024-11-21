@@ -33,7 +33,7 @@ test(
     const pipelineName = `test suite pipeline 2`;
 
     await test.step('Create a new pipeline', async () => {
-      await page.getByText('Profiler & Data Quality').click();
+      await page.getByText('Data Observability').click();
       await page
         .getByRole('menuitem', {
           name: 'Table Profile',
@@ -204,7 +204,7 @@ test(
       testCaseNames
     );
     await table.visitEntityPage(page);
-    await page.getByText('Profiler & Data Quality').click();
+    await page.getByText('Data Observability').click();
     await page.getByRole('menuitem', { name: 'Data Quality' }).click();
 
     await page.getByRole('tab', { name: 'Pipeline' }).click();

@@ -74,6 +74,7 @@ export enum TableProfilerTab {
   TABLE_PROFILE = 'Table Profile',
   DATA_QUALITY = 'Data Quality',
   OVERVIEW = 'Overview',
+  INCIDENTS = 'Incidents',
 }
 
 export type ChartData = {

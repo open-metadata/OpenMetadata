@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
+import QueryString from 'qs';
 import React from 'react';
 import { getListTestCaseIncidentStatus } from '../../rest/incidentManagerAPI';
 import IncidentManager from './IncidentManager.component';
@@ -47,6 +48,9 @@ jest.mock('../common/AsyncSelect/AsyncSelect', () => ({
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
   Link: jest.fn().mockImplementation(() => <div>Link</div>),
+  useHistory: jest.fn().mockImplementation(() => ({
+    replace: jest.fn(),
+  })),
 }));
 jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockReturnValue({
@@ -84,6 +88,23 @@ jest.mock('../../rest/searchAPI', () => ({
     .fn()
     .mockImplementation(() => Promise.resolve({ hits: { hits: [] } })),
 }));
+jest.mock('../../hooks/useCustomLocation/useCustomLocation', () => {
+  return jest.fn().mockImplementation(() => ({
+    search: QueryString.stringify({
+      endTs: 1710161424255,
+      startTs: 1709556624254,
+    }),
+  }));
+});
+jest.mock('../../utils/date-time/DateTimeUtils', () => {
+  return {
+    getEpochMillisForPastDays: jest
+      .fn()
+      .mockImplementation(() => 1709556624254),
+    formatDateTime: jest.fn().mockImplementation(() => 'formatted date'),
+    getCurrentMillis: jest.fn().mockImplementation(() => 1710161424255),
+  };
+});
 
 describe('IncidentManagerPage', () => {
   it('should render component', async () => {

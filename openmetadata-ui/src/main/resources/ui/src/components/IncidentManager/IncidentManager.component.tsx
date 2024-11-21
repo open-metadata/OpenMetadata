@@ -14,12 +14,12 @@ import { Col, Row, Select, Space } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { isEqual, pick, startCase } from 'lodash';
+import { isEqual, isUndefined, pick, startCase } from 'lodash';
 import { DateRangeObject } from 'Models';
 import QueryString from 'qs';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { Link, useHistory } from 'react-router-dom';
 import { WILD_CARD_CHAR } from '../../constants/char.constants';
 import {
   getEntityDetailsPath,
@@ -39,6 +39,7 @@ import {
   TestCaseResolutionStatusTypes,
 } from '../../generated/tests/testCaseResolutionStatus';
 import { usePaging } from '../../hooks/paging/usePaging';
+import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import {
   SearchHitBody,
   TestCaseSearchSource,
@@ -86,6 +87,19 @@ const IncidentManager = ({
   isIncidentPage = true,
   tableDetails,
 }: IncidentManagerProps) => {
+  const location = useCustomLocation();
+  const history = useHistory();
+
+  const searchParams = useMemo(() => {
+    const param = location.search;
+    const searchData = QueryString.parse(
+      param.startsWith('?') ? param.substring(1) : param
+    );
+    const data = isUndefined(searchData) ? {} : searchData;
+
+    return data as Partial<TestCaseIncidentStatusParams>;
+  }, [location.search]);
+
   const defaultRange = useMemo(
     () => ({
       key: 'last30days',
@@ -101,6 +115,7 @@ const IncidentManager = ({
   const [filters, setFilters] = useState<TestCaseIncidentStatusParams>({
     startTs: getEpochMillisForPastDays(PROFILER_FILTER_RANGE.last30days.days),
     endTs: getCurrentMillis(),
+    ...searchParams,
   });
   const [users, setUsers] = useState<{
     options: Option[];
@@ -141,12 +156,12 @@ const IncidentManager = ({
         });
         const assigneeOptions = data.reduce((acc, curr) => {
           const assignee = curr.testCaseResolutionStatusDetails?.assignee;
-          const isExist = acc.some((item) => item.value === assignee?.id);
+          const isExist = acc.some((item) => item.value === assignee?.name);
 
           if (assignee && !isExist) {
             acc.push({
               label: getEntityName(assignee),
-              value: assignee.id,
+              value: assignee.name ?? assignee.fullyQualifiedName ?? '',
               type: assignee.type,
               name: assignee.name,
             });
@@ -154,6 +169,7 @@ const IncidentManager = ({
 
           return acc;
         }, [] as Option[]);
+
         setUsers((pre) => ({
           ...pre,
           options: assigneeOptions,
@@ -231,7 +247,7 @@ const IncidentManager = ({
       const hits = res.data.hits.hits;
       const suggestOptions = hits.map((hit) => ({
         label: getEntityName(hit._source),
-        value: hit._id ?? '',
+        value: hit._source.name,
         type: hit._source.entityType,
         name: hit._source.name,
       }));
@@ -326,6 +342,11 @@ const IncidentManager = ({
   useEffect(() => {
     if (testCasePermission?.ViewAll || testCasePermission?.ViewBasic) {
       fetchTestCaseIncidents(filters);
+      if (searchParams) {
+        history.replace({
+          search: QueryString.stringify(filters),
+        });
+      }
     } else {
       setTestCaseListData((prev) => ({ ...prev, isLoading: false }));
     }
@@ -467,6 +488,7 @@ const IncidentManager = ({
             className="w-min-10"
             data-testid="status-select"
             placeholder={t('label.status')}
+            value={filters.testCaseResolutionStatusType}
             onChange={(value) =>
               setFilters((pre) => ({
                 ...pre,
@@ -486,6 +508,7 @@ const IncidentManager = ({
             data-testid="test-case-select"
             placeholder={t('label.test-case')}
             suffixIcon={undefined}
+            value={filters.testCaseFQN}
             onChange={(value) =>
               setFilters((pre) => ({
                 ...pre,

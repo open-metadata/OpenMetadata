@@ -283,7 +283,7 @@ describe('TestDetailsPageV1 component', () => {
       await screen.findByText('label.custom-property-plural')
     ).toBeInTheDocument();
     expect(
-      await screen.findByText('label.profiler-amp-data-quality')
+      await screen.findByText('label.data-observability')
     ).toBeInTheDocument();
   });
 

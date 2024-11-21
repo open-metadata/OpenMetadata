@@ -10,11 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import React from 'react';
+import IncidentManager from '../../../../IncidentManager/IncidentManager.component';
+import { useTableProfiler } from '../TableProfilerProvider';
 
-@import url('../../../../styles/variables.less');
+const IncidentsTab = () => {
+  const { table } = useTableProfiler();
 
-.status-by-dimension-card-widget-container {
-  .dimension-widget-divider {
-    border-right: @global-border;
-  }
-}
+  return (
+    <div className="p-b-lg p-t-md">
+      <IncidentManager isIncidentPage={false} tableDetails={table} />
+    </div>
+  );
+};
+
+export default IncidentsTab;
