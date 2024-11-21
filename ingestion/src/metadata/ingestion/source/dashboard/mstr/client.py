@@ -117,6 +117,21 @@ class MSTRClient:
                 f"Failed to fetch the auth header and cookies due to [{exc}], please validate credentials"
             )
 
+    def close_api_session(self) -> None:
+        """
+        Closes the active api session
+        """
+        try:
+            close_api_session = self.client.post(
+                path="/auth/logout",
+            )
+            if close_api_session.ok:
+                logger.info("API Session Closed Successfully")
+
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Failed to close the api sesison due to [{exc}]")
+
     def is_project_name(self) -> bool:
         return bool(self.config.projectName)
 
@@ -219,9 +234,9 @@ class MSTRClient:
         """
         try:
             headers = {"X-MSTR-ProjectID": project_id} | self.auth_params.auth_header
-            resp_dashboard = self.client._request(
+            resp_dashboard = self.client._request(  # pylint: disable=protected-access
                 "GET", path=f"/v2/dossiers/{dashboard_id}/definition", headers=headers
-            )  # pylint: disable=protected-access
+            )
 
             return MstrDashboardDetails(
                 projectId=project_id, projectName=project_name, **resp_dashboard
