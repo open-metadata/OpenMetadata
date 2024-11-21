@@ -30,9 +30,9 @@ import {
 
 export const verifyColumnLayerInactive = async (page: Page) => {
   await page.click('[data-testid="lineage-layer-btn"]'); // Open Layer popover
-  await page.waitForSelector(
-    '[data-testid="lineage-layer-column-btn"]:not(.active)'
-  );
+
+  await expect(page.getByTestId('lineage-layer-column-btn')).not.toBeFocused;
+
   await page.click('[data-testid="lineage-layer-btn"]'); // Close Layer popover
 };
 
