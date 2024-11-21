@@ -469,7 +469,10 @@ export const fillGlossaryTermDetails = async (
   }
 };
 
-const validateGlossaryTermTask = async (page: Page, term: GlossaryTermData) => {
+export const validateGlossaryTermTask = async (
+  page: Page,
+  term: GlossaryTermData
+) => {
   const taskCountRes = page.waitForResponse('/api/v1/feed/count?*');
   await page.click('[data-testid="activity_feed"]');
   await taskCountRes;
@@ -550,13 +553,6 @@ export const validateGlossaryTerm = async (
 
   await expect(page.locator(termSelector)).toContainText(term.name);
   await expect(page.locator(statusSelector)).toContainText(status);
-
-  if (status === 'Draft') {
-    // wait for 20 seconds as the flowable which creates task is triggered every 10 seconds
-    await page.waitForTimeout(20000);
-    await validateGlossaryTermTask(page, term);
-    await page.click('[data-testid="terms"]');
-  }
 };
 
 export const createGlossaryTerm = async (
