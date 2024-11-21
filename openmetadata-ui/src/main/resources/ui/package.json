@@ -245,6 +245,6 @@
     "path-to-regexp": "1.9.0",
     "terser-webpack-plugin": "5.1.1",
     "cookie": "0.7.0",
-    "jsonpath-plus": "10.0.0"
+    "jsonpath-plus": "10.0.7"
   }
 }

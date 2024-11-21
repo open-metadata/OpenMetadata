@@ -19,15 +19,15 @@ import { ServiceTypes } from 'Models';
 import React from 'react';
 import DisplayName from '../components/common/DisplayName/DisplayName';
 import UserPopOverCard from '../components/common/PopOverCard/UserPopOverCard';
+import { Link } from 'react-router-dom';
+import { OwnerLabel } from '../components/common/OwnerLabel/OwnerLabel.component';
 import RichTextEditorPreviewer from '../components/common/RichTextEditor/RichTextEditorPreviewer';
 import { EntityName } from '../components/Modals/EntityNameModal/EntityNameModal.interface';
 import TagsViewer from '../components/Tag/TagsViewer/TagsViewer';
 import { NO_DATA_PLACEHOLDER } from '../constants/constants';
 import { ServiceCategory } from '../enums/service.enum';
-import { OwnerType } from '../enums/user.enum';
 import { Database } from '../generated/entity/data/database';
 import { Pipeline } from '../generated/entity/data/pipeline';
-import { EntityReference } from '../generated/entity/type';
 import { ServicePageData } from '../pages/ServiceDetailsPage/ServiceDetailsPage';
 import { getLinkForFqn } from './ServiceUtils';
 import { getUsagePercentile } from './TableUtils';
@@ -93,17 +93,7 @@ export const getServiceMainTabColumns = (
     key: 'owners',
     render: (owners: ServicePageData['owners']) =>
       !isUndefined(owners) && owners.length > 0 ? (
-        owners.map((owner: EntityReference) => (
-          <UserPopOverCard
-            showUserName
-            data-testid="owner-data"
-            displayName={owner.displayName}
-            key={owner.id}
-            profileWidth={20}
-            type={owner.type as OwnerType}
-            userName={owner.name ?? ''}
-          />
-        ))
+        <OwnerLabel owners={owners} />
       ) : (
         <Typography.Text data-testid="no-owner-text">--</Typography.Text>
       ),

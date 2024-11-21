@@ -1715,11 +1715,11 @@ WHERE json -> 'offset' IS NOT NULL
 
 -- Create table successful_sent_change_events for storing successfully sent events per alert
 CREATE TABLE IF NOT EXISTS successful_sent_change_events (
-    id VARCHAR(36) PRIMARY KEY,
     change_event_id VARCHAR(36) NOT NULL,
     event_subscription_id VARCHAR(36) NOT NULL,
     json jsonb NOT NULL,
-    timestamp BIGINT NOT NULL
+    timestamp BIGINT NOT NULL,
+    PRIMARY KEY (change_event_id, event_subscription_id)
 );
 
 -- Create an index on the event_subscription_id column in the successful_sent_change_events table
@@ -1729,3 +1729,8 @@ CREATE INDEX idx_event_subscription_id ON successful_sent_change_events (event_s
 UPDATE ingestion_pipeline_entity
 SET json = json::jsonb #- '{sourceConfig,config,overrideViewLineage}'
 WHERE json #>> '{pipelineType}' = 'metadata';
+
+-- classification and sampling configs from the profiler pipelines
+UPDATE ingestion_pipeline_entity
+SET json = json::jsonb #- '{sourceConfig,config,processPiiSensitive}'  #- '{sourceConfig,config,confidence}'  #- '{sourceConfig,config,generateSampleData}'
+WHERE json #>> '{pipelineType}' = 'profiler';
