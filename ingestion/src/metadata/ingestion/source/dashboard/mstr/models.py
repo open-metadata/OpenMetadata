@@ -12,7 +12,7 @@
 MSTR Models
 """
 from datetime import datetime
-from typing import List, Optional
+from typing import Any, List, Optional
 
 from pydantic import BaseModel
 
@@ -69,7 +69,8 @@ class MstrSearchResult(BaseModel):
 
 
 class MstrSearchResultList(BaseModel):
-    results: Optional[List[MstrSearchResult]]
+    totalItems: Optional[int] = 0
+    result: Optional[List[MstrSearchResult]] = None
 
 
 class MstrDashboard(BaseModel):
@@ -142,3 +143,8 @@ class MstrDashboardDetails(BaseModel):
     projectName: str
     currentChapter: str
     chapters: List[MstrChapter]
+
+
+class AuthHeaderCookie(BaseModel):
+    auth_header: dict
+    auth_cookies: Any
