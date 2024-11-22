@@ -43,6 +43,8 @@ import {
   setupEntitiesForLineage,
   verifyColumnLayerActive,
   verifyColumnLayerInactive,
+  verifyColumnLineageInCSV,
+  verifyExportLineageCSV,
   verifyNodePresent,
   visitLineageTab,
 } from '../../utils/lineage';
@@ -122,6 +124,13 @@ for (const EntityClass of entities) {
       }
     });
 
+    await test.step('Verify Lineage Export CSV', async () => {
+      await redirectToHomePage(page);
+      await currentEntity.visitEntityPage(page);
+      await visitLineageTab(page);
+      await verifyExportLineageCSV(page, currentEntity, entities, pipeline);
+    });
+
     await test.step('Remove lineage between nodes for the entity', async () => {
       await redirectToHomePage(page);
       await currentEntity.visitEntityPage(page);
@@ -199,6 +208,13 @@ test('Verify column lineage between table and topic', async ({ browser }) => {
 
   // Add column lineage
   await addColumnLineage(page, sourceCol, targetCol);
+
+  // Verify column lineage
+  await redirectToHomePage(page);
+  await table.visitEntityPage(page);
+  await visitLineageTab(page);
+  await verifyColumnLineageInCSV(page, table, topic, sourceCol, targetCol);
+
   await page.click('[data-testid="edit-lineage"]');
 
   await removeColumnLineage(page, sourceCol, targetCol);
@@ -275,7 +291,6 @@ test('Verify column lineage between table and api endpoint', async ({
   // Add column lineage
   await addColumnLineage(page, sourceCol, targetCol);
   await page.click('[data-testid="edit-lineage"]');
-
   await removeColumnLineage(page, sourceCol, targetCol);
   await page.click('[data-testid="edit-lineage"]');
 
