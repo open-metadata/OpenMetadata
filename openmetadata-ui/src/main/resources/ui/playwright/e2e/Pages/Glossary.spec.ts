@@ -63,11 +63,11 @@ import {
   toggleAllColumnsSelection,
   updateGlossaryTermDataFromTree,
   validateGlossaryTerm,
-  validateGlossaryTermTask,
   verifyAllColumns,
   verifyColumnsVisibility,
   verifyGlossaryDetails,
   verifyGlossaryTermAssets,
+  verifyTaskCreated,
 } from '../../utils/glossary';
 import { sidebarClick } from '../../utils/sidebar';
 import { TaskDetails } from '../../utils/task';
@@ -118,10 +118,14 @@ test.describe('Glossary tests', () => {
       'Approve Glossary Term from Glossary Listing for reviewer user',
       async () => {
         await redirectToHomePage(page1);
-        // wait for 15 seconds as the flowable which creates task is triggered every 10 seconds
-        await page1.waitForTimeout(15000);
         await sidebarClick(page1, SidebarItem.GLOSSARY);
         await selectActiveGlossary(page1, glossary1.data.name);
+        await verifyTaskCreated(
+          page1,
+          glossary1.data.fullyQualifiedName,
+          glossary1.data.terms[0].data.name
+        );
+
         await approveGlossaryTermTask(page1, glossary1.data.terms[0].data);
         await redirectToHomePage(page1);
         await sidebarClick(page1, SidebarItem.GLOSSARY);
@@ -170,14 +174,15 @@ test.describe('Glossary tests', () => {
       'Approve Glossary Term from Glossary Listing for reviewer team',
       async () => {
         await redirectToHomePage(page1);
-        // wait for 15 seconds as the flowable which creates task is triggered every 10 seconds
-        await page1.waitForTimeout(15000);
         await sidebarClick(page1, SidebarItem.GLOSSARY);
-
-        await validateGlossaryTermTask(page, glossary2.data.terms[0].data);
-        await page.click('[data-testid="terms"]');
-
         await selectActiveGlossary(page1, glossary2.data.name);
+
+        await verifyTaskCreated(
+          page1,
+          glossary2.data.fullyQualifiedName,
+          glossary2.data.terms[0].data.name
+        );
+
         await approveGlossaryTermTask(page1, glossary2.data.terms[0].data);
 
         await redirectToHomePage(page1);

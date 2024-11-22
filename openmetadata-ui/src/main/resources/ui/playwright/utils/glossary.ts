@@ -37,6 +37,12 @@ import { addMultiOwner } from './entity';
 import { sidebarClick } from './sidebar';
 import { TaskDetails, TASK_OPEN_FETCH_LINK } from './task';
 
+type TaskEntity = {
+  entityRef: {
+    name: string;
+  };
+};
+
 const GLOSSARY_NAME_VALIDATION_ERROR = 'Name size must be between 1 and 128';
 
 export const descriptionBox =
@@ -467,6 +473,39 @@ export const fillGlossaryTermDetails = async (
       type: 'Users',
     });
   }
+};
+
+export const verifyTaskCreated = async (
+  page: Page,
+  glossaryFqn: string,
+  glossaryTermName: string
+) => {
+  const { apiContext } = await getApiContext(page);
+  const entityLink = encodeURIComponent(`<#E::glossary::${glossaryFqn}>`);
+
+  await expect
+    .poll(
+      async () => {
+        const response = await apiContext
+          .get(
+            `/api/v1/feed?entityLink=${entityLink}&type=Task&taskStatus=Open`
+          )
+          .then((res) => res.json());
+
+        const arr = response.data.map(
+          (item: TaskEntity) => item.entityRef.name
+        );
+
+        return arr;
+      },
+      {
+        // Custom expect message for reporting, optional.
+        message: 'To get the last run execution status as success',
+        timeout: 200_000,
+        intervals: [30_000],
+      }
+    )
+    .toContain(glossaryTermName);
 };
 
 export const validateGlossaryTermTask = async (
