@@ -38,6 +38,7 @@ logger = ingestion_logger()
 
 API_VERSION = "MicroStrategyLibrary/api"
 LOGIN_MODE_GUEST = 8
+APPLICATION_TYPE = 35
 
 
 class MSTRClient:
@@ -81,7 +82,7 @@ class MSTRClient:
                 "username": self.config.username,
                 "password": self.config.password.get_secret_value(),
                 "loginMode": LOGIN_MODE_GUEST,
-                "applicationType": 35,
+                "applicationType": APPLICATION_TYPE,
             }
             response = requests.post(
                 url=self._get_base_url("auth/login"), data=data, timeout=60
