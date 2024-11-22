@@ -338,9 +338,12 @@ public class LineageRepository {
         baseRow.put("toDomain", getDomainFQN(toEntity.path("domain")));
 
         JsonNode columns = edge.path("columns");
-        if (columns.isArray() && !columns.isEmpty()) {
-          List<ColumnMapping> explicitColumnMappings = extractColumnMappingsFromEdge(columns);
-          for (ColumnMapping mapping : explicitColumnMappings) {
+        JsonNode pipeline = edge.path("pipeline");
+
+        if (columns.isArray() && columns.size() > 0) {
+          // Process column mappings
+          List<ColumnMapping> columnMappings = extractColumnMappingsFromEdge(columns);
+          for (ColumnMapping mapping : columnMappings) {
             writeCsvRow(
                 csvWriter,
                 baseRow,
@@ -354,34 +357,14 @@ public class LineageRepository {
                 "",
                 "");
             LOG.debug(
-                "Exported explicit ColumnMapping: from='{}', to='{}'",
+                "Exported ColumnMapping: from='{}', to='{}'",
                 mapping.getFromChildFQN(),
                 mapping.getToChildFQN());
           }
-        }
-
-        JsonNode pipeline = edge.path("pipeline");
-        if (!pipeline.isMissingNode() && !pipeline.isNull()) {
-          String pipelineName = getText(pipeline, "name");
-          String pipelineType = getText(pipeline, "serviceType");
-          String pipelineDescription = getText(pipeline, "description");
-          String pipelineOwners = getOwners(pipeline.path("owners"));
-          String pipelineServiceName = getText(pipeline.path("service"), "name");
-          String pipelineServiceType = getText(pipeline, "serviceType");
-          String pipelineDomain = getDomainFQN(pipeline.path("domain"));
-          writeCsvRow(
-              csvWriter,
-              baseRow,
-              "",
-              "",
-              pipelineName,
-              pipelineType,
-              pipelineDescription,
-              pipelineOwners,
-              pipelineDomain,
-              pipelineServiceName,
-              pipelineServiceType);
-          LOG.debug("Exported Pipeline Information: {}", pipelineName);
+        } else if (!pipeline.isMissingNode() && !pipeline.isNull()) {
+          writePipelineRow(csvWriter, baseRow, pipeline);
+        } else {
+          writeCsvRow(csvWriter, baseRow, "", "", "", "", "", "", "", "", "");
         }
       }
       csvWriter.close();
@@ -389,6 +372,31 @@ public class LineageRepository {
     } catch (IOException e) {
       throw CSVExportException.byMessage("Failed to export lineage data to CSV", e.getMessage());
     }
+  }
+
+  private void writePipelineRow(
+      CSVWriter csvWriter, Map<String, String> baseRow, JsonNode pipeline) {
+    String pipelineName = getText(pipeline, "name");
+    String pipelineType = getText(pipeline, "serviceType");
+    String pipelineDescription = getText(pipeline, "description");
+    String pipelineOwners = getOwners(pipeline.path("owners"));
+    String pipelineServiceName = getText(pipeline.path("service"), "name");
+    String pipelineServiceType = getText(pipeline, "serviceType");
+    String pipelineDomain = getDomainFQN(pipeline.path("domain"));
+
+    writeCsvRow(
+        csvWriter,
+        baseRow,
+        "",
+        "",
+        pipelineName,
+        pipelineType,
+        pipelineDescription,
+        pipelineOwners,
+        pipelineDomain,
+        pipelineServiceName,
+        pipelineServiceType);
+    LOG.debug("Exported Pipeline Information: {}", pipelineName);
   }
 
   private static void writeCsvRow(
