@@ -27,7 +27,7 @@ from metadata.generated.schema.entity.data.table import (
     TableData,
 )
 from metadata.ingestion.connections.session import create_and_bind_thread_safe_session
-from metadata.profiler.orm.converter.base import ORMTableRegsitry
+from metadata.mixins.sqalchemy.sqa_mixin import SQAInterfaceMixin
 from metadata.profiler.orm.functions.modulo import ModuloFn
 from metadata.profiler.orm.functions.random_num import RandomNumFn
 from metadata.profiler.processor.handle_partition import partition_filter_handler
@@ -63,7 +63,7 @@ def _object_value_for_elem(self, elem):
 Enum._object_value_for_elem = _object_value_for_elem  # pylint: disable=protected-access
 
 
-class SQASampler(SamplerInterface, ORMTableRegsitry):
+class SQASampler(SamplerInterface, SQAInterfaceMixin):
     """
     Generates a sample of the data to not
     run the query in the whole table.
