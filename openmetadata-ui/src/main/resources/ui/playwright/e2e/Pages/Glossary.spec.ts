@@ -123,7 +123,7 @@ test.describe('Glossary tests', () => {
         await verifyTaskCreated(
           page1,
           glossary1.data.fullyQualifiedName,
-          glossary1.data.terms[0].data.name
+          glossary1.data.terms[0].data
         );
 
         await approveGlossaryTermTask(page1, glossary1.data.terms[0].data);
@@ -180,7 +180,7 @@ test.describe('Glossary tests', () => {
         await verifyTaskCreated(
           page1,
           glossary2.data.fullyQualifiedName,
-          glossary2.data.terms[0].data.name
+          glossary2.data.terms[0].data
         );
 
         await approveGlossaryTermTask(page1, glossary2.data.terms[0].data);

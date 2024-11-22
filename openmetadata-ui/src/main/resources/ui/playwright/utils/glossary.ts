@@ -478,9 +478,10 @@ export const fillGlossaryTermDetails = async (
 export const verifyTaskCreated = async (
   page: Page,
   glossaryFqn: string,
-  glossaryTermName: string
+  glossaryTermData: GlossaryTermData
 ) => {
   const { apiContext } = await getApiContext(page);
+  const decodedEntityLink = `<#E::glossaryTerm::${glossaryTermData.fullyQualifiedName}>`;
   const entityLink = encodeURIComponent(`<#E::glossary::${glossaryFqn}>`);
 
   await expect
@@ -496,6 +497,34 @@ export const verifyTaskCreated = async (
           (item: TaskEntity) => item.entityRef.name
         );
 
+        // Testing the response
+        const endTs = new Date().getTime();
+        const startTs = endTs - 10 * 60 * 1000;
+
+        const workflowInstances = await apiContext
+          .get(
+            `/api/v1/governance/workflowInstances?startTs=${startTs}&endTs=${endTs}`
+          )
+          .then((res) => res.json());
+
+        // eslint-disable-next-line no-console
+        console.log('workflowInstances', workflowInstances);
+
+        const workflowInstanceId = (workflowInstances.data ?? []).find(
+          (item) => item.variables.relatedEntity === decodedEntityLink
+        )?.id;
+
+        if (workflowInstanceId) {
+          const workflowInstanceDetails = await apiContext
+            .get(
+              `/api/v1/governance/workflowInstanceStates/GlossaryTermApprovalWorkflow/${workflowInstanceId}?startTs=${startTs}&endTs=${endTs}`
+            )
+            .then((res) => res.json());
+
+          // eslint-disable-next-line no-console
+          console.log('workflowInstanceDetails', workflowInstanceDetails);
+        }
+
         return arr;
       },
       {
@@ -505,7 +534,7 @@ export const verifyTaskCreated = async (
         intervals: [30_000],
       }
     )
-    .toContain(glossaryTermName);
+    .toContain(glossaryTermData.name);
 };
 
 export const validateGlossaryTermTask = async (
