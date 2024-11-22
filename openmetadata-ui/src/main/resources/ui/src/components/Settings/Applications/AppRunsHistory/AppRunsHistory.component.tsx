@@ -150,17 +150,16 @@ const AppRunsHistory = forwardRef(
                 {t('label.log-plural')}
               </Button>
               {/* For status running and supportsInterrupt is true, show kill button */}
-              {record.status === Status.Running &&
-                Boolean(appData?.supportsInterrupt) && (
-                  <Button
-                    className="m-l-xs p-0"
-                    data-testid="kill-button"
-                    size="small"
-                    type="link"
-                    onClick={() => setIsKillModalOpen(true)}>
-                    {t('label.kill')}
-                  </Button>
-                )}
+              {Boolean(appData?.supportsInterrupt) && (
+                <Button
+                  className="m-l-xs p-0"
+                  data-testid="kill-button"
+                  size="small"
+                  type="link"
+                  onClick={() => setIsKillModalOpen(true)}>
+                  {t('label.kill')}
+                </Button>
+              )}
             </>
           );
         } else {
