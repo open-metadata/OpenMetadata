@@ -244,7 +244,8 @@ const intervals: [string, number][] = [
  * @returns A human-readable string representation of the time duration.
  */
 export const convertMillisecondsToHumanReadableFormat = (
-  milliseconds: number
+  milliseconds: number,
+  length?: number
 ): string => {
   if (milliseconds <= 0) {
     return '0s';
@@ -260,6 +261,10 @@ export const convertMillisecondsToHumanReadableFormat = (
     const value = Math.floor(remainingMilliseconds / count);
     remainingMilliseconds %= count;
     result.push(`${value}${name}`);
+  }
+
+  if (length && result.length > length) {
+    return result.slice(0, length).join(' ');
   }
 
   return result.join(' ');

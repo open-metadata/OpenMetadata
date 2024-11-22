@@ -151,4 +151,36 @@ describe('convertMillisecondsToHumanReadableFormat', () => {
       expect(convertMillisecondsToHumanReadableFormat(input)).toBe(expected);
     });
   });
+
+  const testCasesWithLength = [
+    {
+      input: 7265000,
+      expected: '2h 1m 5s',
+      expectedWithLength: '2h 1m',
+      length: 2,
+    },
+    {
+      input: 3661000,
+      expected: '1h 1m 1s',
+      expectedWithLength: '1h',
+      length: 1,
+    },
+    {
+      input: 90061000,
+      expected: '1d 1h 1m 1s',
+      expectedWithLength: '1d 1h 1m',
+      length: 3,
+    },
+    { input: 3600000, expected: '1h', expectedWithLength: '1h', length: 4 }, // length > number of parts
+  ];
+  testCasesWithLength.forEach(
+    ({ input, expected, expectedWithLength, length }) => {
+      it(`should return "${expected}" for ${input} milliseconds`, () => {
+        expect(convertMillisecondsToHumanReadableFormat(input)).toBe(expected);
+        expect(convertMillisecondsToHumanReadableFormat(input, length)).toBe(
+          expectedWithLength
+        );
+      });
+    }
+  );
 });
