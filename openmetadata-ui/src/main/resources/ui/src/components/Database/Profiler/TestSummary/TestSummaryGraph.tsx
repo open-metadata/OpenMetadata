@@ -180,7 +180,7 @@ function TestSummaryGraph({
   const formatYAxis = (value: number) => {
     // table freshness will always have output value in seconds
     return testDefinitionName === TABLE_DATA_TO_BE_FRESH || isFreshnessTest
-      ? convertMillisecondsToHumanReadableFormat(value)
+      ? convertMillisecondsToHumanReadableFormat(value, 2)
       : axisTickFormatter(value);
   };
 
