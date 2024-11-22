@@ -433,6 +433,18 @@ const BulkEntityImport = ({
         <Stepper activeStep={activeStep} steps={ENTITY_IMPORT_STEPS} />
       </Col>
       <Col span={24}>
+        {activeAsyncImportJob?.jobId && (
+          <Banner
+            className="border-radius"
+            isLoading={!activeAsyncImportJob.error}
+            message={
+              activeAsyncImportJob.error ?? activeAsyncImportJob.message ?? ''
+            }
+            type={activeAsyncImportJob.error ? 'error' : 'success'}
+          />
+        )}
+      </Col>
+      <Col span={24}>
         {activeStep === 0 && (
           <>
             {validationData?.abortReason ? (
@@ -498,18 +510,6 @@ const BulkEntityImport = ({
               )}
             </Col>
           </Row>
-        )}
-      </Col>
-      <Col span={24}>
-        {activeAsyncImportJob?.jobId && (
-          <Banner
-            className="border-radius"
-            isLoading={!activeAsyncImportJob.error}
-            message={
-              activeAsyncImportJob.error ?? activeAsyncImportJob.message ?? ''
-            }
-            type={activeAsyncImportJob.error ? 'error' : 'success'}
-          />
         )}
       </Col>
       {activeStep > 0 && (
