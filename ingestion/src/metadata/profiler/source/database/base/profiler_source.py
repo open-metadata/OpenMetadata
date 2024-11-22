@@ -34,10 +34,10 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.mixins.sqalchemy.sqa_mixin import SQAInterfaceMixin
 from metadata.profiler.api.models import ProfilerProcessorConfig, TableConfig
 from metadata.profiler.interface.profiler_interface import ProfilerInterface
 from metadata.profiler.metrics.registry import Metrics
-from metadata.profiler.orm.converter.base import ORMTableRegsitry
 from metadata.profiler.processor.core import Profiler
 from metadata.profiler.processor.default import DefaultProfiler, get_default_metrics
 from metadata.profiler.source.profiler_source_interface import ProfilerSourceInterface
@@ -58,7 +58,7 @@ from metadata.utils.service_spec.service_spec import (
 logger = profiler_logger()
 
 
-class ProfilerSource(ProfilerSourceInterface, ORMTableRegsitry):
+class ProfilerSource(ProfilerSourceInterface, SQAInterfaceMixin):
     """
     Base class for the profiler source
     """
@@ -70,6 +70,7 @@ class ProfilerSource(ProfilerSourceInterface, ORMTableRegsitry):
         ometa_client: OpenMetadata,
         global_profiler_configuration: ProfilerConfiguration,
     ):
+        super().__init__()
         self.config = config
         self.service_conn_config = self._copy_service_config(config, database)
         self.profiler_config = ProfilerProcessorConfig.model_validate(
@@ -143,7 +144,6 @@ class ProfilerSource(ProfilerSourceInterface, ORMTableRegsitry):
             ServiceType.Database, source_type=self._interface_type
         )
         # This is shared between the sampler and profiler interfaces
-        _orm = self.build_table_orm(entity, self.service_conn_config, self.ometa_client)
         sampler_interface: SamplerInterface = sampler_class.create(
             service_connection_config=self.service_conn_config,
             ometa_client=self.ometa_client,
@@ -157,7 +157,6 @@ class ProfilerSource(ProfilerSourceInterface, ORMTableRegsitry):
                 sampling_method_type=self.source_config.samplingMethodType,
             ),
             default_sample_data_count=self.source_config.sampleDataCount,
-            orm_table=_orm,
         )
         profiler_interface: ProfilerInterface = profiler_class.create(
             entity=entity,
@@ -165,7 +164,6 @@ class ProfilerSource(ProfilerSourceInterface, ORMTableRegsitry):
             service_connection_config=self.service_conn_config,
             sampler=sampler_interface,
             ometa_client=self.ometa_client,
-            orm_table=_orm,
         )  # type: ignore
 
         self.interface = profiler_interface

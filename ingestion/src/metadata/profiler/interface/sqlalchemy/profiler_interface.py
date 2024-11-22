@@ -25,7 +25,7 @@ from typing import Any, Dict, List, Optional, Type, Union
 
 from sqlalchemy import Column, inspect, text
 from sqlalchemy.exc import DBAPIError, ProgrammingError, ResourceClosedError
-from sqlalchemy.orm import DeclarativeMeta, scoped_session
+from sqlalchemy.orm import scoped_session
 
 from metadata.generated.schema.entity.data.table import (
     CustomMetricProfile,
@@ -92,7 +92,6 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
         sampler: SamplerInterface,
         thread_count: int = 5,
         timeout_seconds: int = 43200,
-        orm_table: Optional[DeclarativeMeta] = None,
         **kwargs,
     ):
         """Instantiate SQA Interface object"""
@@ -109,7 +108,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
             timeout_seconds=timeout_seconds,
         )
 
-        self._table = orm_table
+        self._table = sampler.table
         self.create_session()
         self.system_metrics_computer = self.initialize_system_metrics_computer()
 
