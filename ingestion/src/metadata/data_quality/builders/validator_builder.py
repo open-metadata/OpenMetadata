@@ -46,7 +46,7 @@ class SourceType(Enum):
     SQL = "sqlalchemy"
 
 
-class IValidatorBuilder(TestCaseImporter):
+class ValidatorBuilder(TestCaseImporter):
     """Interface for validator builders"""
 
     def __init__(

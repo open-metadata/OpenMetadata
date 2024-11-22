@@ -20,7 +20,7 @@ from sqlalchemy.orm import DeclarativeMeta
 from sqlalchemy.orm.util import AliasedClass
 
 from metadata.data_quality.builders.i_validator_builder import (
-    IValidatorBuilder,
+    ValidatorBuilder,
     SourceType,
 )
 from metadata.data_quality.interface.test_suite_interface import TestSuiteInterface
@@ -122,7 +122,7 @@ class SQATestSuiteInterface(SQAInterfaceMixin, TestSuiteInterface):
 
     def _get_validator_builder(
         self, test_case: TestCase, entity_type: str
-    ) -> IValidatorBuilder:
+    ) -> ValidatorBuilder:
         return self.validator_builder_class(
             runner=self.runner,
             test_case=test_case,
