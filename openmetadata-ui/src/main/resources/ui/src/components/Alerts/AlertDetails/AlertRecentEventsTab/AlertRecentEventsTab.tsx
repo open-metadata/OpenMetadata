@@ -172,7 +172,9 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
               return (
                 <Panel
                   header={
-                    <Row justify="space-between">
+                    <Row
+                      data-testid={`event-collapse-${changeEventData.id}`}
+                      justify="space-between">
                       <Col>
                         <Row align="middle" gutter={[16, 16]}>
                           <Col>
@@ -211,23 +213,31 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
                     </Row>
                   }
                   key={`${changeEventData.id}-${changeEventData.timestamp}`}>
-                  <Row gutter={[16, 16]}>
+                  <Row
+                    data-testid={`event-details-${changeEventData.id}`}
+                    gutter={[16, 16]}>
                     <Col>
                       <Row gutter={[16, 16]}>
                         {Object.entries(changeEventDataToDisplay).map(
                           ([key, value]) =>
                             isUndefined(value) ? null : (
                               <Col key={key} span={key === 'reason' ? 24 : 8}>
-                                <Row gutter={[4, 4]}>
+                                <Row
+                                  data-testid={`event-data-${key}`}
+                                  gutter={[4, 4]}>
                                   <Col span={24}>
-                                    <Typography.Text className="text-grey-muted">
+                                    <Typography.Text
+                                      className="text-grey-muted"
+                                      data-testid="event-data-key">
                                       {`${getLabelsForEventDetails(
                                         key as keyof AlertEventDetailsToDisplay
                                       )}:`}
                                     </Typography.Text>
                                   </Col>
                                   <Col span={24}>
-                                    <Typography.Text className="font-medium">
+                                    <Typography.Text
+                                      className="font-medium"
+                                      data-testid="event-data-value">
                                       {value}
                                     </Typography.Text>
                                   </Col>
