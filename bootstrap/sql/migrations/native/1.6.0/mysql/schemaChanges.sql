@@ -1743,3 +1743,7 @@ UPDATE ingestion_pipeline_entity
 SET json = JSON_REMOVE(json, '$.sourceConfig.config.overrideViewLineage')
 WHERE JSON_EXTRACT(json, '$.pipelineType') = 'metadata';
 
+-- classification and sampling configs from the profiler pipelines
+UPDATE ingestion_pipeline_entity
+SET json = JSON_REMOVE(json, '$.sourceConfig.config.processPiiSensitive', '$.sourceConfig.config.confidence', '$.sourceConfig.config.generateSampleData')
+WHERE JSON_EXTRACT(json, '$.pipelineType') = 'profiler';

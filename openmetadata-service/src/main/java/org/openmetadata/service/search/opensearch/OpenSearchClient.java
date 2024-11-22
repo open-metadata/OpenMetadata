@@ -51,6 +51,7 @@ import java.util.stream.Stream;
 import javax.json.JsonObject;
 import javax.net.ssl.SSLContext;
 import javax.ws.rs.core.Response;
+import lombok.Getter;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang.WordUtils;
@@ -214,7 +215,7 @@ import os.org.opensearch.search.suggest.completion.context.CategoryQueryContext;
 @Slf4j
 // Not tagged with Repository annotation as it is programmatically initialized
 public class OpenSearchClient implements SearchClient {
-  protected final RestHighLevelClient client;
+  @Getter protected final RestHighLevelClient client;
   public static final NamedXContentRegistry X_CONTENT_REGISTRY;
   private final boolean isClientAvailable;
   private final RBACConditionEvaluator rbacConditionEvaluator;
@@ -777,7 +778,6 @@ public class OpenSearchClient implements SearchClient {
             Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS));
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
     List<String> sourceFieldsToExcludeCopy = new ArrayList<>(SOURCE_FIELDS_TO_EXCLUDE);
-    sourceFieldsToExcludeCopy.add("lineage");
     searchSourceBuilder.fetchSource(null, sourceFieldsToExcludeCopy.toArray(String[]::new));
     searchSourceBuilder.query(
         QueryBuilders.boolQuery().must(QueryBuilders.termQuery("fullyQualifiedName", fqn)));
@@ -1054,7 +1054,6 @@ public class OpenSearchClient implements SearchClient {
       List<Map<String, Object>> lineage =
           (List<Map<String, Object>>) hit.getSourceAsMap().get("lineage");
       HashMap<String, Object> tempMap = new HashMap<>(JsonUtils.getMap(hit.getSourceAsMap()));
-      tempMap.remove("lineage");
       nodes.add(tempMap);
       for (Map<String, Object> lin : lineage) {
         HashMap<String, String> fromEntity = (HashMap<String, String>) lin.get("fromEntity");
@@ -1098,7 +1097,8 @@ public class OpenSearchClient implements SearchClient {
         nodesWithFailures,
         new HashSet<>());
     for (String nodeWithFailure : nodesWithFailures) {
-      traceBackDQLineage(nodeWithFailure, allEdges, allNodes, nodes, edges, new HashSet<>());
+      traceBackDQLineage(
+          nodeWithFailure, nodesWithFailures, allEdges, allNodes, nodes, edges, new HashSet<>());
     }
   }
 
@@ -1155,6 +1155,7 @@ public class OpenSearchClient implements SearchClient {
 
   private void traceBackDQLineage(
       String nodeFailureId,
+      Set<String> nodesWithFailures,
       Map<String, List<Map<String, Object>>> allEdges,
       Map<String, Map<String, Object>> allNodes,
       Set<Map<String, Object>> nodes,
@@ -1165,7 +1166,14 @@ public class OpenSearchClient implements SearchClient {
     }
 
     processedNodes.add(nodeFailureId);
-    nodes.add(allNodes.get(nodeFailureId));
+    if (nodesWithFailures.contains(nodeFailureId)) {
+      Map<String, Object> node = allNodes.get(nodeFailureId);
+      if (node != null) {
+        node.keySet().removeAll(FIELDS_TO_REMOVE);
+        node.remove("lineage");
+        nodes.add(node);
+      }
+    }
     List<Map<String, Object>> edgesForNode = allEdges.get(nodeFailureId);
     if (edgesForNode != null) {
       for (Map<String, Object> edge : edgesForNode) {
@@ -1174,7 +1182,14 @@ public class OpenSearchClient implements SearchClient {
         if (!fromEntityId.equals(nodeFailureId)) continue; // skip if the edge is from the node
         Map<String, String> toEntity = (Map<String, String>) edge.get("toEntity");
         edges.add(edge);
-        traceBackDQLineage(toEntity.get("id"), allEdges, allNodes, nodes, edges, processedNodes);
+        traceBackDQLineage(
+            toEntity.get("id"),
+            nodesWithFailures,
+            allEdges,
+            allNodes,
+            nodes,
+            edges,
+            processedNodes);
       }
     }
   }
@@ -1228,7 +1243,6 @@ public class OpenSearchClient implements SearchClient {
       List<Map<String, Object>> lineage =
           (List<Map<String, Object>>) hit.getSourceAsMap().get("lineage");
       HashMap<String, Object> tempMap = new HashMap<>(JsonUtils.getMap(hit.getSourceAsMap()));
-      tempMap.remove("lineage");
       nodes.add(tempMap);
       for (Map<String, Object> lin : lineage) {
         HashMap<String, String> fromEntity = (HashMap<String, String>) lin.get("fromEntity");
