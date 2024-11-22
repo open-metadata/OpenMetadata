@@ -51,7 +51,7 @@
         },
         "hostPort": {
             "title": "Host and Port",
-            "description": "Host and port of the MongoDB service.",
+            "description": "Host and port of the MongoDB service when using the `mongodb` connection scheme. Only host when using the `mongodb+srv` scheme.",
             "type": "string"
         },
         "connectionOptions": {
