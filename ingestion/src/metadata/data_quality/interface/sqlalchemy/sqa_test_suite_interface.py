@@ -30,7 +30,6 @@ from metadata.generated.schema.tests.testCase import TestCase
 from metadata.ingestion.connections.session import create_and_bind_session
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.mixins.sqalchemy.sqa_mixin import SQAInterfaceMixin
-from metadata.profiler.orm.converter.base import ORMTableRegsitry
 from metadata.profiler.processor.runner import QueryRunner
 from metadata.sampler.sampler_interface import SamplerInterface
 from metadata.utils.constants import TEN_MIN
@@ -41,7 +40,7 @@ from metadata.utils.timeout import cls_timeout
 logger = test_suite_logger()
 
 
-class SQATestSuiteInterface(SQAInterfaceMixin, TestSuiteInterface, ORMTableRegsitry):
+class SQATestSuiteInterface(SQAInterfaceMixin, TestSuiteInterface):
     """
     Sequential interface protocol for testSuite and Profiler. This class
     implements specific operations needed to run profiler and test suite workflow
@@ -61,9 +60,7 @@ class SQATestSuiteInterface(SQAInterfaceMixin, TestSuiteInterface, ORMTableRegsi
         )
         self.source_type = SourceType.SQL
         self.create_session()
-        self._table = super().build_table_orm(
-            table_entity, service_connection_config, self.ometa_client
-        )
+        self._table = sampler.table
 
         (
             self.table_sample_query,
