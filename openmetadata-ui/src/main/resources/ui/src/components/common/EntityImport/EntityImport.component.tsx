@@ -272,10 +272,11 @@ export const EntityImport = ({
               // added extra margin to prevent data lost due to fixed footer at bottom
               <div className="mb-16 m-t-lg">
                 <Row data-testid="import-results" gutter={[16, 16]}>
+                  <Col span={24}>{importStartedBanner}</Col>
                   <Col span={24}>
                     <ImportStatus csvImportResult={csvImportResult} />
                   </Col>
-                  <Col span={24}>{importStartedBanner ?? children}</Col>
+                  <Col span={24}>{children}</Col>
                 </Row>
                 <Affix className="bg-white p-md import-preview-footer">
                   <Space className="justify-end w-full p-r-md">
