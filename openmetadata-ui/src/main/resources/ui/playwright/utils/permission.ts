@@ -105,7 +105,7 @@ export const validateViewPermissions = async (
   await page.waitForLoadState('domcontentloaded');
   await checkNoPermissionPlaceholder(
     page,
-    /Profiler & Data Quality/,
+    /Data Observability/,
     permission?.viewTests
   );
   await page.click('[data-testid="lineage"]');

@@ -1172,9 +1172,11 @@ public class ElasticSearchClient implements SearchClient {
     processedNodes.add(nodeFailureId);
     if (nodesWithFailures.contains(nodeFailureId)) {
       Map<String, Object> node = allNodes.get(nodeFailureId);
-      node.keySet().removeAll(FIELDS_TO_REMOVE);
-      node.remove("lineage");
-      nodes.add(allNodes.get(nodeFailureId));
+      if (node != null) {
+        node.keySet().removeAll(FIELDS_TO_REMOVE);
+        node.remove("lineage");
+        nodes.add(node);
+      }
     }
     List<Map<String, Object>> edgesForNode = allEdges.get(nodeFailureId);
     if (edgesForNode != null) {
