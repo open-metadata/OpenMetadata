@@ -93,6 +93,8 @@ with DAG(
 
 ## Using the Docker Operator
 
+For this operator, we can use the `openmetadata/ingestion-base` image. This is useful to prepare DAGs without any installation required on the environment, although it needs for the host to have access to the Docker commands.
+
 ### Prerequisites
 
 Ensure the Airflow host can run Docker commands. For Docker Compose setups, map the Docker socket as follows:
