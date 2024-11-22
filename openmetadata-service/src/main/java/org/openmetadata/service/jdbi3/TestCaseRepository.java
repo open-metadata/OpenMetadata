@@ -369,7 +369,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
 
   @SneakyThrows
   private TestCaseResult getTestCaseResult(TestCase testCase) {
-    TestCaseResult testCaseResult;
+    TestCaseResult testCaseResult = null;
     if (testCase.getTestCaseResult() != null) {
       // we'll return the saved state if it exists otherwise we'll fetch it from the database
       // Should be the case if listing from the search repo. as the test case result
@@ -387,8 +387,6 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       LOG.debug(
           "Error fetching test case result from search. Fetching from test case results from database",
           e);
-      testCaseResult =
-          timeSeriesRepository.listLastTestCaseResult(testCase.getFullyQualifiedName());
     }
     if (nullOrEmpty(testCaseResult)) {
       testCaseResult =
