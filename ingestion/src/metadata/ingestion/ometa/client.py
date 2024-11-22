@@ -251,7 +251,7 @@ class REST:
             # the content is passed through resp.headers
             if resp.text != "" or resp.status_code == 204:
                 try:
-                    return resp.json() if resp.status_code != 204 else resp
+                    return resp.json() if resp.text != "" else resp
                 except Exception as exc:
                     logger.debug(traceback.format_exc())
                     logger.warning(
