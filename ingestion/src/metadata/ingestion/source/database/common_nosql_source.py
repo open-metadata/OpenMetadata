@@ -54,6 +54,7 @@ from metadata.utils.constants import DEFAULT_DATABASE
 from metadata.utils.datalake.datalake_utils import DataFrameColumnParser
 from metadata.utils.filters import filter_by_schema, filter_by_table
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.ssl_manager import check_ssl_and_init
 
 logger = ingestion_logger()
 
@@ -75,7 +76,13 @@ class CommonNoSQLSource(DatabaseServiceSource, ABC):
         )
         self.metadata = metadata
         self.service_connection = self.config.serviceConnection.root.config
+        self.ssl_manager = check_ssl_and_init(self.service_connection)
+        if self.ssl_manager:
+            self.service_connection = self.ssl_manager.setup_ssl(
+                self.service_connection
+            )
         self.connection_obj = get_connection(self.service_connection)
+
         self.test_connection()
 
     def prepare(self):
