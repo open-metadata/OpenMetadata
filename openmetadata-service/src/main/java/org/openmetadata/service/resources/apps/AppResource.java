@@ -103,7 +103,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
   static final String FIELDS = "owners";
   private SearchRepository searchRepository;
   public static final List<ScheduleType> SCHEDULED_TYPES =
-      List.of(ScheduleType.Scheduled, ScheduleType.ScheduledOrManual);
+      List.of(ScheduleType.Scheduled, ScheduleType.ScheduledOrManual, ScheduleType.NoSchedule);
   public static final String SLACK_APPLICATION = "SlackApplication";
 
   @Override
