@@ -73,6 +73,8 @@ export enum GlobalSettingOptions {
   DATA_PRODUCTS = 'dataProducts',
   DASHBOARD_DATA_MODEL = 'dashboardDataModels',
   METRICS = 'metrics',
+  SEARCH_RBAC = 'search-rbac',
+  LINEAGE_CONFIG = 'lineageConfig',
 }
 
 export const SETTINGS_OPTIONS_PATH = {
@@ -147,10 +149,7 @@ export const SETTINGS_OPTIONS_PATH = {
     GlobalSettingsMenuCategory.MEMBERS,
     `${GlobalSettingsMenuCategory.MEMBERS}.${GlobalSettingOptions.ADMINS}`,
   ],
-  [GlobalSettingOptions.PERSONA]: [
-    GlobalSettingsMenuCategory.MEMBERS,
-    `${GlobalSettingsMenuCategory.MEMBERS}.${GlobalSettingOptions.PERSONA}`,
-  ],
+  [GlobalSettingOptions.PERSONA]: [GlobalSettingOptions.PERSONA],
 
   // Access Control
 
@@ -165,10 +164,6 @@ export const SETTINGS_OPTIONS_PATH = {
 
   // Open-metadata
 
-  [GlobalSettingOptions.CUSTOMIZE_LANDING_PAGE]: [
-    GlobalSettingsMenuCategory.PREFERENCES,
-    `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.CUSTOMIZE_LANDING_PAGE}`,
-  ],
   [GlobalSettingOptions.EMAIL]: [
     GlobalSettingsMenuCategory.PREFERENCES,
     `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.EMAIL}`,
@@ -188,6 +183,15 @@ export const SETTINGS_OPTIONS_PATH = {
   [GlobalSettingOptions.GLOSSARY_TERM]: [
     GlobalSettingsMenuCategory.CUSTOM_PROPERTIES,
     `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.GLOSSARY_TERM}`,
+  ],
+
+  [GlobalSettingOptions.SEARCH_RBAC]: [
+    GlobalSettingsMenuCategory.PREFERENCES,
+    `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.SEARCH_RBAC}`,
+  ],
+  [GlobalSettingOptions.LINEAGE_CONFIG]: [
+    GlobalSettingsMenuCategory.PREFERENCES,
+    `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.LINEAGE_CONFIG}`,
   ],
 };
 

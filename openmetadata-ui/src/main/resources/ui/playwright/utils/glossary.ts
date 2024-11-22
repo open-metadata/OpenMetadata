@@ -37,6 +37,8 @@ import { addMultiOwner } from './entity';
 import { sidebarClick } from './sidebar';
 import { TaskDetails, TASK_OPEN_FETCH_LINK } from './task';
 
+const GLOSSARY_NAME_VALIDATION_ERROR = 'Name size must be between 1 and 128';
+
 export const descriptionBox =
   '.toastui-editor-md-container > .toastui-editor > .ProseMirror';
 
@@ -146,7 +148,7 @@ export const setupGlossaryAndTerms = async (page: Page) => {
   return { glossary, term1, term2, cleanup };
 };
 
-export const validateForm = async (page) => {
+export const validateForm = async (page: Page) => {
   // Error messages
   await expect(page.locator('#name_help')).toHaveText('Name is required');
   await expect(page.locator('#description_help')).toHaveText(
@@ -516,6 +518,8 @@ export const validateGlossaryTerm = async (
   await expect(page.locator(statusSelector)).toContainText(status);
 
   if (status === 'Draft') {
+    // wait for 15 seconds as the flowable which creates task is triggered every 10 seconds
+    await page.waitForTimeout(15000);
     await validateGlossaryTermTask(page, term);
     await page.click('[data-testid="terms"]');
   }
@@ -602,6 +606,13 @@ export const updateNameForGlossaryTerm = async (
   await page.click('[data-testid="rename-button"]');
 
   await expect(page.locator('#name')).toBeVisible();
+
+  // Max length validation
+  await page.locator('#name').fill(INVALID_NAMES.MAX_LENGTH);
+
+  await expect(page.locator('#name_help')).toHaveText(
+    GLOSSARY_NAME_VALIDATION_ERROR
+  );
 
   await page.fill('#name', name);
   const updateNameResponsePromise = page.waitForResponse(
@@ -992,4 +1003,153 @@ export const approveTagsTask = async (
   );
 
   await expect(tagVisibility).toBe(true);
+};
+
+export async function openColumnDropdown(page: Page): Promise<void> {
+  const dropdownButton = page.getByTestId('glossary-column-dropdown');
+
+  await expect(dropdownButton).toBeVisible();
+
+  await dropdownButton.click();
+}
+
+export async function selectColumns(
+  page: Page,
+  checkboxLabels: string[]
+): Promise<void> {
+  for (const label of checkboxLabels) {
+    const checkbox = page.locator('.glossary-dropdown-label', {
+      hasText: label,
+    });
+    await checkbox.click();
+  }
+}
+
+export async function deselectColumns(
+  page: Page,
+  checkboxLabels: string[]
+): Promise<void> {
+  for (const label of checkboxLabels) {
+    const checkbox = page.locator('.glossary-dropdown-label', {
+      hasText: label,
+    });
+    await checkbox.click();
+  }
+}
+
+export async function clickSaveButton(page: Page): Promise<void> {
+  const saveButton = page.locator('.ant-btn-primary', {
+    hasText: 'Save',
+  });
+  await saveButton.click();
+}
+
+export async function verifyColumnsVisibility(
+  page: Page,
+  checkboxLabels: string[],
+  shouldBeVisible: boolean
+): Promise<void> {
+  const glossaryTermsTable = page.getByTestId('glossary-terms-table');
+
+  await expect(glossaryTermsTable).toBeVisible();
+
+  for (const label of checkboxLabels) {
+    const termsColumnHeader = glossaryTermsTable.locator('th', {
+      hasText: label,
+    });
+    if (shouldBeVisible) {
+      await expect(termsColumnHeader).toBeVisible();
+    } else {
+      await expect(termsColumnHeader).toBeHidden();
+    }
+  }
+}
+
+export async function toggleAllColumnsSelection(
+  page: Page,
+  isSelected: boolean
+): Promise<void> {
+  const dropdownButton = page.getByTestId('glossary-column-dropdown');
+
+  await expect(dropdownButton).toBeVisible();
+
+  await dropdownButton.click();
+
+  const checkboxLabel = 'All';
+  const checkbox = page.locator('.custom-glossary-col-sel-checkbox', {
+    hasText: checkboxLabel,
+  });
+  if (isSelected) {
+    await checkbox.click();
+  }
+  await clickSaveButton(page);
+}
+
+export async function verifyAllColumns(
+  page: Page,
+  tableColumns: string[],
+  shouldBeVisible: boolean
+): Promise<void> {
+  const glossaryTermsTable = page.getByTestId('glossary-terms-table');
+
+  await expect(glossaryTermsTable).toBeVisible();
+
+  for (const columnHeader of tableColumns) {
+    const termsColumnHeader = glossaryTermsTable.locator('th', {
+      hasText: columnHeader,
+    });
+
+    if (shouldBeVisible) {
+      await expect(termsColumnHeader).toBeVisible();
+    } else {
+      if (columnHeader !== 'TERMS') {
+        await expect(termsColumnHeader).not.toBeVisible();
+      } else {
+        await expect(termsColumnHeader).toBeVisible();
+      }
+    }
+  }
+}
+export const filterStatus = async (
+  page: Page,
+  statusLabels: string[],
+  expectedStatus: string[]
+): Promise<void> => {
+  const dropdownButton = page.getByTestId('glossary-status-dropdown');
+  await dropdownButton.click();
+
+  for (const label of statusLabels) {
+    const checkbox = page.locator('.glossary-dropdown-label', {
+      hasText: label,
+    });
+    await checkbox.click();
+  }
+
+  const saveButton = page.locator('.ant-btn-primary', {
+    hasText: 'Save',
+  });
+  await saveButton.click();
+
+  const glossaryTermsTable = page.getByTestId('glossary-terms-table');
+  const rows = glossaryTermsTable.locator('tbody tr');
+  const statusColumnIndex = 3;
+
+  for (let i = 0; i < (await rows.count()); i++) {
+    const statusCell = rows
+      .nth(i)
+      .locator(`td:nth-child(${statusColumnIndex + 1})`);
+    const statusText = await statusCell.textContent();
+
+    expect(expectedStatus).toContain(statusText);
+  }
+};
+
+export const dragAndDropColumn = async (
+  page: Page,
+  dragColumn: string,
+  dropColumn: string
+) => {
+  await page
+    .locator('.draggable-menu-item', { hasText: dragColumn })
+    .dragTo(page.locator('.draggable-menu-item', { hasText: dropColumn }));
 };

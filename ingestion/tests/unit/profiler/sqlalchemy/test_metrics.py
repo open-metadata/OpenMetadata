@@ -16,7 +16,6 @@ import datetime
 import math
 import os
 from unittest import TestCase
-from unittest.mock import patch
 from uuid import uuid4
 
 from sqlalchemy import TEXT, Column, Date, DateTime, Float, Integer, String, Time
@@ -34,8 +33,10 @@ from metadata.profiler.interface.sqlalchemy.profiler_interface import (
 )
 from metadata.profiler.metrics.core import add_props
 from metadata.profiler.metrics.registry import Metrics
+from metadata.profiler.metrics.system.system import SystemMetricsComputer
 from metadata.profiler.orm.functions.sum import SumFn
 from metadata.profiler.processor.core import Profiler
+from metadata.sampler.sqlalchemy.sampler import SQASampler
 
 Base = declarative_base()
 
@@ -83,20 +84,23 @@ class MetricsTest(TestCase):
         Prepare Ingredients
         """
 
-        with patch.object(
-            SQAProfilerInterface, "_convert_table_to_orm_object", return_value=User
-        ):
-            cls.sqa_profiler_interface = SQAProfilerInterface(
-                cls.sqlite_conn,
-                None,
-                cls.table_entity,
-                None,
-                None,
-                None,
-                None,
-                None,
-                thread_count=1,
-            )
+        sampler = SQASampler(
+            service_connection_config=cls.sqlite_conn,
+            ometa_client=None,
+            entity=None,
+            orm_table=User,
+        )
+        cls.sqa_profiler_interface = SQAProfilerInterface(
+            cls.sqlite_conn,
+            None,
+            cls.table_entity,
+            None,
+            sampler,
+            1,
+            43200,
+            orm_table=User,
+        )
+
         cls.engine = cls.sqa_profiler_interface.session.get_bind()
 
         User.__table__.create(bind=cls.engine)
@@ -257,21 +261,22 @@ class MetricsTest(TestCase):
             float_col = Column(Float())  # date of employment
 
         NonNumericNumbers.__table__.create(bind=self.engine)
-        with patch.object(
-            SQAProfilerInterface,
-            "_convert_table_to_orm_object",
-            return_value=NonNumericNumbers,
-        ):
-            sqa_profiler_interface = SQAProfilerInterface(
-                self.sqlite_conn,
-                None,
-                self.table_entity,
-                None,
-                None,
-                None,
-                None,
-                None,
-            )
+        sampler = SQASampler(
+            service_connection_config=self.sqlite_conn,
+            ometa_client=None,
+            entity=self.table_entity,
+            orm_table=NonNumericNumbers,
+        )
+        sqa_profiler_interface = SQAProfilerInterface(
+            self.sqlite_conn,
+            None,
+            self.table_entity,
+            None,
+            sampler,
+            1,
+            43200,
+            orm_table=NonNumericNumbers,
+        )
 
         data = [
             NonNumericNumbers(float_col=math.nan),
@@ -791,19 +796,22 @@ class MetricsTest(TestCase):
 
         EmptyUser.__table__.create(bind=self.engine)
 
-        with patch.object(
-            SQAProfilerInterface, "_convert_table_to_orm_object", return_value=EmptyUser
-        ):
-            sqa_profiler_interface = SQAProfilerInterface(
-                self.sqlite_conn,
-                None,
-                self.table_entity,
-                None,
-                None,
-                None,
-                None,
-                None,
-            )
+        sampler = SQASampler(
+            service_connection_config=self.sqlite_conn,
+            ometa_client=None,
+            entity=self.table_entity,
+            orm_table=EmptyUser,
+        )
+        sqa_profiler_interface = SQAProfilerInterface(
+            self.sqlite_conn,
+            None,
+            self.table_entity,
+            None,
+            sampler,
+            1,
+            43200,
+            orm_table=EmptyUser,
+        )
 
         hist = Metrics.HISTOGRAM.value
         res = (
@@ -928,11 +936,7 @@ class MetricsTest(TestCase):
         assert res == 61
 
     def test_system_metric(self):
-        system = add_props(table=User, ometa_client=None, db_service=None)(
-            Metrics.SYSTEM.value
-        )
-        session = self.sqa_profiler_interface.session
-        system().sql(session)
+        assert SystemMetricsComputer().get_system_metrics() == []
 
     def test_table_custom_metric(self):
         table_entity = Table(
@@ -946,7 +950,7 @@ class MetricsTest(TestCase):
             ],
             customMetrics=[
                 CustomMetric(
-                    name="CustomerBornedAfter1991",
+                    name="CustomerBornAfter1991",
                     expression="SELECT COUNT(id) FROM users WHERE dob > '1991-01-01'",
                 ),
                 CustomMetric(
@@ -955,28 +959,30 @@ class MetricsTest(TestCase):
                 ),
             ],
         )
-        with patch.object(
-            SQAProfilerInterface, "_convert_table_to_orm_object", return_value=User
-        ):
-            self.sqa_profiler_interface = SQAProfilerInterface(
-                self.sqlite_conn,
-                None,
-                table_entity,
-                None,
-                None,
-                None,
-                None,
-                None,
-                thread_count=1,
-            )
+        sampler = SQASampler(
+            service_connection_config=self.sqlite_conn,
+            ometa_client=None,
+            entity=None,
+            orm_table=User,
+        )
+        sqa_profiler_interface = SQAProfilerInterface(
+            self.sqlite_conn,
+            None,
+            table_entity,
+            None,
+            sampler,
+            1,
+            43200,
+            orm_table=User,
+        )
 
         profiler = Profiler(
-            profiler_interface=self.sqa_profiler_interface,
+            profiler_interface=sqa_profiler_interface,
         )
         metrics = profiler.compute_metrics()
         for k, v in metrics._table_results.items():
             for metric in v:
-                if metric.name == "CustomerBornedAfter1991":
+                if metric.name == "CustomerBornAfter1991":
                     assert metric.value == 2
                 if metric.name == "AverageAge":
                     assert metric.value == 20.0
@@ -991,7 +997,7 @@ class MetricsTest(TestCase):
                     dataType=DataType.INT,
                     customMetrics=[
                         CustomMetric(
-                            name="CustomerBornedAfter1991",
+                            name="CustomerBornAfter1991",
                             columnName="id",
                             expression="SELECT SUM(id) FROM users WHERE dob > '1991-01-01'",
                         ),
@@ -1004,28 +1010,30 @@ class MetricsTest(TestCase):
                 )
             ],
         )
-        with patch.object(
-            SQAProfilerInterface, "_convert_table_to_orm_object", return_value=User
-        ):
-            self.sqa_profiler_interface = SQAProfilerInterface(
-                self.sqlite_conn,
-                None,
-                table_entity,
-                None,
-                None,
-                None,
-                None,
-                None,
-                thread_count=1,
-            )
+        sampler = SQASampler(
+            service_connection_config=self.sqlite_conn,
+            ometa_client=None,
+            entity=None,
+            orm_table=User,
+        )
+        sqa_profiler_interface = SQAProfilerInterface(
+            self.sqlite_conn,
+            None,
+            table_entity,
+            None,
+            sampler,
+            1,
+            43200,
+            orm_table=User,
+        )
 
         profiler = Profiler(
-            profiler_interface=self.sqa_profiler_interface,
+            profiler_interface=sqa_profiler_interface,
         )
         metrics = profiler.compute_metrics()
         for k, v in metrics._column_results.items():
             for metric in v.get("customMetrics", []):
-                if metric.name == "CustomerBornedAfter1991":
+                if metric.name == "CustomerBornAfter1991":
                     assert metric.value == 3.0
                 if metric.name == "AverageAge":
                     assert metric.value == 20.0

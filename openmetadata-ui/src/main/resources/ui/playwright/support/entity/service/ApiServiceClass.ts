@@ -21,10 +21,10 @@ import { EntityClass } from '../EntityClass';
 export class ApiServiceClass extends EntityClass {
   entity = {
     name: `pw-api-service-${uuid()}`,
-    serviceType: 'REST',
+    serviceType: 'Rest',
     connection: {
       config: {
-        type: 'REST',
+        type: 'Rest',
         openAPISchemaURL: 'https://sandbox-beta.open-metadata.org/swagger.json',
       },
     },

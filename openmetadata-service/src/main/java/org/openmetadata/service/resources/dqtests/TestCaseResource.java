@@ -92,7 +92,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
 
   static final String FIELDS = "owners,testSuite,testDefinition,testSuites,incidentId,domain,tags";
   static final String SEARCH_FIELDS_EXCLUDE =
-      "testPlatforms,table,database,databaseSchema,service,testSuite,dataQualityDimension,testCaseType";
+      "testPlatforms,table,database,databaseSchema,service,testSuite,dataQualityDimension,testCaseType,originEntityFQN";
 
   @Override
   public TestCase addHref(UriInfo uriInfo, TestCase test) {

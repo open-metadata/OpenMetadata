@@ -1,9 +1,10 @@
 ---
 title: Custom Data Insight Dashboards
 slug: /how-to-guides/data-insights/custom-dashboard
+collate: true
 ---
 
-# Custom Data Insight Dashboards (Collate Only)
+# Custom Data Insight Dashboards
 
 The default Data Insight charts in OpenMetadata focus on description, ownership, and tiering. However, documentation needs often vary across organizations. To address this, OpenMetadata now supports the creation of custom Data Insight dashboards and charts. This documentation will guide you through the process of creating these custom dashboards and charts within your OpenMetadata instance, empowering you to tailor insights to your organization's unique documentation goals for enhanced data governance.
 

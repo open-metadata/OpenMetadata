@@ -19,8 +19,9 @@ export type Props = {
   table?: Table;
   hasDescriptionEditAccess: boolean;
   hasTagEditAccess: boolean;
+  hasGlossaryTermEditAccess: boolean;
   isReadOnly?: boolean;
+  testCaseSummary?: TestSummary;
   onThreadLinkSelect: (value: string, threadType?: ThreadType) => void;
   onUpdate: (columns: Table['columns']) => Promise<void>;
-  testCaseSummary?: TestSummary;
 };

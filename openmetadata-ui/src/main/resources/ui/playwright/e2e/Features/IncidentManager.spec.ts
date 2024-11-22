@@ -231,7 +231,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
     await test.step('Resolve task from incident list page', async () => {
       await visitProfilerTab(page, table1);
       const testCaseResponse = page.waitForResponse(
-        '/api/v1/dataQuality/testCases/search/list?fields=*'
+        '/api/v1/dataQuality/testCases/search/list?*fields=*'
       );
       await page
         .getByTestId('profiler-tab-left-panel')
@@ -277,7 +277,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
     await test.step('Task should be closed', async () => {
       await visitProfilerTab(page, table1);
       const testCaseResponse = page.waitForResponse(
-        '/api/v1/dataQuality/testCases/search/list?fields=*'
+        '/api/v1/dataQuality/testCases/search/list?*fields=*'
       );
       await page
         .getByTestId('profiler-tab-left-panel')
@@ -373,7 +373,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
     await test.step("Verify incident's status on DQ page", async () => {
       await visitProfilerTab(page, table1);
       const testCaseResponse = page.waitForResponse(
-        '/api/v1/dataQuality/testCases/search/list?fields=*'
+        '/api/v1/dataQuality/testCases/search/list?*fields=*'
       );
       await page
         .getByTestId('profiler-tab-left-panel')
@@ -392,12 +392,16 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
 
   test('Validate Incident Tab in Entity details page', async ({ page }) => {
     const testCases = table1.testCasesResponseData;
-    await table1.visitEntityPage(page);
+    await visitProfilerTab(page, table1);
+
     const incidentListResponse = page.waitForResponse(
       `/api/v1/dataQuality/testCases/testCaseIncidentStatus?*originEntityFQN=${table1.entityResponseData?.['fullyQualifiedName']}*`
     );
 
-    await page.click('[data-testid="incidents"]');
+    await page
+      .getByTestId('profiler-tab-left-panel')
+      .getByText('Incidents')
+      .click();
     await incidentListResponse;
 
     for (const testCase of testCases) {

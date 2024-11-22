@@ -70,15 +70,16 @@ Ingest some data...
 
 ```shell
 BACKUP_FILE="backup_$(date +%Y%m%d%H%M).sql"
-DOCKER_COMPOSE_FILE="docker/development/docker-compose.yml"
+export COMPOSE_FILE="docker/development/docker-compose.yml"
 # backup
-docker compose -f $DOCKER_COMPOSE_FILE exec ingestion mysqldump --no-tablespaces -u openmetadata_user -popenmetadata_password -h mysql -P 3306 openmetadata_db > $BACKUP_FILE
+docker compose exec ingestion mysqldump --no-tablespaces -u openmetadata_user -popenmetadata_password -h mysql -P 3306 openmetadata_db > $BACKUP_FILE
 # create the restore database
-docker compose -f $DOCKER_COMPOSE_FILE exec mysql  mysql -u root -ppassword -e "create database restore;"
-docker compose -f $DOCKER_COMPOSE_FILE exec mysql  mysql -u root -ppassword -e "grant all privileges on restore.* to 'openmetadata_user'@'%';"
-docker compose -f $DOCKER_COMPOSE_FILE exec mysql  mysql -u root -ppassword -e "flush privileges;"
+docker compose exec mysql  mysql -u root -ppassword -e "create database restore;"
+docker compose exec mysql  mysql -u root -ppassword -e "grant all privileges on restore.* to 'openmetadata_user'@'%';"
+docker compose exec mysql  mysql -u root -ppassword -e "GRANT SUPER, SYSTEM_VARIABLES_ADMIN, SESSION_VARIABLES_ADMIN ON *.* TO 'openmetadata_user'@'%';"
+docker compose exec mysql  mysql -u root -ppassword -e "flush privileges;"
 # restore from the backup
-docker compose -f $DOCKER_COMPOSE_FILE exec -T ingestion mysql -u openmetadata_user -popenmetadata_password -h mysql -P 3306 restore < $BACKUP_FILE
+docker compose exec -T ingestion mysql -u openmetadata_user -popenmetadata_password -h mysql -P 3306 restore < $BACKUP_FILE
 ```
 
 ### 3. Restart the docker deployment with the restored database
@@ -102,14 +103,14 @@ Ingest some data...
 
 ```shell
 BACKUP_FILE="backup_$(date +%Y%m%d%H%M).sql"
-DOCKER_COMPOSE_FILE="docker/development/docker-compose-postgres.yml"
+export COMPOSE_FILE="docker/development/docker-compose-postgres.yml"
 # backup
-docker compose -f $DOCKER_COMPOSE_FILE exec -e PGPASSWORD=openmetadata_password ingestion pg_dump -U openmetadata_user -h postgresql -d openmetadata_db > $BACKUP_FILE
+docker compose exec -e PGPASSWORD=openmetadata_password ingestion pg_dump -U openmetadata_user -h postgresql -d openmetadata_db > $BACKUP_FILE
 # create the restore database
-docker compose -f $DOCKER_COMPOSE_FILE exec -e PGPASSWORD=openmetadata_password postgresql psql -U postgres -c "create database restore;"
-docker compose -f $DOCKER_COMPOSE_FILE exec -e PGPASSWORD=openmetadata_password postgresql psql -U postgres -c "ALTER DATABASE restore OWNER TO openmetadata_user;"
+docker compose exec -e PGPASSWORD=openmetadata_password postgresql psql -U postgres -c "create database restore;"
+docker compose exec -e PGPASSWORD=openmetadata_password postgresql psql -U postgres -c "ALTER DATABASE restore OWNER TO openmetadata_user;"
 # restore from the backup
-docker compose -f $DOCKER_COMPOSE_FILE exec -e PGPASSWORD=openmetadata_password -T ingestion psql -U openmetadata_user -h postgresql -d restore < $BACKUP_FILE
+docker compose exec -e PGPASSWORD=openmetadata_password -T ingestion psql -U openmetadata_user -h postgresql -d restore < $BACKUP_FILE
 ```
 
 ### 3. Restart the docker deployment with the restored database

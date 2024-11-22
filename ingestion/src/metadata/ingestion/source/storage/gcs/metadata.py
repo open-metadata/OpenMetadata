@@ -87,7 +87,7 @@ class GcsSource(StorageServiceSource):
     def create(
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
     ):
-        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
+        config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: GcsConnection = config.serviceConnection.root.config
         if not isinstance(connection, GcsConnection):
             raise InvalidSourceException(
@@ -451,7 +451,7 @@ class GcsSource(StorageServiceSource):
                 verbose=False,
             )
             content = json.loads(response_object)
-            metadata_config = StorageContainerConfig.parse_obj(content)
+            metadata_config = StorageContainerConfig.model_validate(content)
             return metadata_config
         except ReadException:
             logger.warning(

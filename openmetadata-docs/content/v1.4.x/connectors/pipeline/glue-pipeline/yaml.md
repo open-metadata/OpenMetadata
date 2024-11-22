@@ -112,11 +112,11 @@ This is a sample config for Glue:
 
 ```yaml {% isCodeBlock=true %}
 source:
-  type: glue
+  type: gluepipeline 
   serviceName: local_glue
   serviceConnection:
     config:
-      type: Glue
+      type: GluePipeline
       awsConfig:
 ```
 ```yaml {% srNumber=1 %}

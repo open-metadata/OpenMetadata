@@ -22,6 +22,61 @@ REQUIRED_MANIFEST_KEYS = ["name", "schema", "resource_type"]
 # Based on https://schemas.getdbt.com/dbt/catalog/v1.json
 REQUIRED_CATALOG_KEYS = ["name", "type", "index"]
 
+REQUIRED_RESULTS_KEYS = {
+    "status",
+    "timing",
+    "thread_id",
+    "execution_time",
+    "message",
+    "adapter_response",
+    "unique_id",
+}
+
+REQUIRED_NODE_KEYS = {
+    "schema_",
+    "schema",
+    "freshness",
+    "name",
+    "resource_type",
+    "path",
+    "unique_id",
+    "source_name",
+    "source_description",
+    "source_meta",
+    "loader",
+    "identifier",
+    "relation_name",
+    "fqn",
+    "alias",
+    "checksum",
+    "config",
+    "column_name",
+    "test_metadata",
+    "original_file_path",
+    "root_path",
+    "database",
+    "tags",
+    "description",
+    "columns",
+    "meta",
+    "owner",
+    "created_at",
+    "group",
+    "sources",
+    "compiled",
+    "docs",
+    "version",
+    "latest_version",
+    "package_name",
+    "depends_on",
+    "compiled_code",
+    "compiled_sql",
+    "raw_code",
+    "raw_sql",
+    "language",
+}
+
+
 NONE_KEYWORDS_LIST = ["none", "null"]
 
 DBT_CATALOG_FILE_NAME = "catalog.json"

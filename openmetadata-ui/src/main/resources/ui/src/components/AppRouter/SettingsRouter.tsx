@@ -35,6 +35,7 @@ import EditEmailConfigPage from '../../pages/EditEmailConfigPage/EditEmailConfig
 import EmailConfigSettingsPage from '../../pages/EmailConfigSettingsPage/EmailConfigSettingsPage.component';
 import GlobalSettingCategoryPage from '../../pages/GlobalSettingPage/GlobalSettingCategory/GlobalSettingCategoryPage';
 import GlobalSettingPage from '../../pages/GlobalSettingPage/GlobalSettingPage';
+import LineageConfigPage from '../../pages/LineageConfigPage/LineageConfigPage';
 import NotificationListPage from '../../pages/NotificationListPage/NotificationListPage';
 import OmHealthPage from '../../pages/OmHealth/OmHealthPage';
 import { PersonaDetailsPage } from '../../pages/Persona/PersonaDetailsPage/PersonaDetailsPage';
@@ -48,6 +49,7 @@ import ProfilerConfigurationPage from '../../pages/ProfilerConfigurationPage/Pro
 import AddRolePage from '../../pages/RolesPage/AddRolePage/AddRolePage';
 import RolesDetailPage from '../../pages/RolesPage/RolesDetailPage/RolesDetailPage';
 import RolesListPage from '../../pages/RolesPage/RolesListPage/RolesListPage';
+import SearchRBACSettingsPage from '../../pages/SearchRBACSettingsPage/SearchRBACSettingsPage';
 import ServicesPage from '../../pages/ServicesPage/ServicesPage';
 import ImportTeamsPage from '../../pages/TeamsPage/ImportTeamsPage/ImportTeamsPage';
 import TeamsPage from '../../pages/TeamsPage/TeamsPage';
@@ -60,6 +62,10 @@ import {
 } from '../../utils/RouterUtils';
 import AppDetails from '../Settings/Applications/AppDetails/AppDetails.component';
 import AdminProtectedRoute from './AdminProtectedRoute';
+
+const NotificationAlertDetailsPage = () => (
+  <AlertDetailsPage isNotificationAlert />
+);
 
 const SettingsRouter = () => {
   const { permissions } = usePermissionProvider();
@@ -109,19 +115,25 @@ const SettingsRouter = () => {
       <AdminProtectedRoute
         exact
         component={NotificationListPage}
-        hasPermission={false}
+        hasPermission={userPermissions.hasViewPermissions(
+          ResourceEntity.EVENT_SUBSCRIPTION,
+          permissions
+        )}
         path={getSettingPath(GlobalSettingsMenuCategory.NOTIFICATIONS)}
       />
 
       <AdminProtectedRoute
         exact
-        component={() => <AlertDetailsPage isNotificationAlert />}
-        path={ROUTES.NOTIFICATION_ALERT_DETAILS}
+        component={NotificationAlertDetailsPage}
+        hasPermission={userPermissions.hasViewPermissions(
+          ResourceEntity.EVENT_SUBSCRIPTION,
+          permissions
+        )}
+        path={ROUTES.NOTIFICATION_ALERT_DETAILS_WITH_TAB}
       />
-      <AdminProtectedRoute
+      <Route
         exact
         component={AddNotificationPage}
-        hasPermission={false}
         path={[
           getSettingPath(
             GlobalSettingsMenuCategory.NOTIFICATIONS,
@@ -159,6 +171,12 @@ const SettingsRouter = () => {
       />
 
       {/* Setting Page Routes with categories */}
+
+      <AdminProtectedRoute
+        exact
+        component={PersonaPage}
+        path={getSettingPath(GlobalSettingOptions.PERSONA)}
+      />
 
       <Route
         exact
@@ -205,20 +223,8 @@ const SettingsRouter = () => {
       </Route>
       <AdminProtectedRoute
         exact
-        component={PersonaPage}
-        path={getSettingPath(
-          GlobalSettingsMenuCategory.MEMBERS,
-          GlobalSettingOptions.PERSONA
-        )}
-      />
-      <AdminProtectedRoute
-        exact
         component={PersonaDetailsPage}
-        path={getSettingPath(
-          GlobalSettingsMenuCategory.MEMBERS,
-          GlobalSettingOptions.PERSONA,
-          true
-        )}
+        path={getSettingPath(GlobalSettingOptions.PERSONA, '', true)}
       />
       {/* Roles route start
        * Do not change the order of these route
@@ -244,6 +250,24 @@ const SettingsRouter = () => {
       {/* Roles route end
        * Do not change the order of these route
        */}
+
+      <AdminProtectedRoute
+        exact
+        component={SearchRBACSettingsPage}
+        path={getSettingPath(
+          GlobalSettingsMenuCategory.PREFERENCES,
+          GlobalSettingOptions.SEARCH_RBAC
+        )}
+      />
+
+      <AdminProtectedRoute
+        exact
+        component={LineageConfigPage}
+        path={getSettingPath(
+          GlobalSettingsMenuCategory.PREFERENCES,
+          GlobalSettingOptions.LINEAGE_CONFIG
+        )}
+      />
 
       <AdminProtectedRoute
         exact

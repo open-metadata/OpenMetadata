@@ -12,7 +12,7 @@
  */
 
 import { t } from 'i18next';
-import { isEmpty, sortBy } from 'lodash';
+import { debounce, isEmpty, sortBy } from 'lodash';
 import {
   AsyncFetchListValues,
   AsyncFetchListValuesResult,
@@ -27,6 +27,7 @@ import { SearchIndex } from '../enums/search.enum';
 import { getAggregateFieldOptions } from '../rest/miscAPI';
 import { renderAdvanceSearchButtons } from './AdvancedSearchUtils';
 import { getCombinedQueryFilterObject } from './ExplorePage/ExplorePageUtils';
+import { renderQueryBuilderFilterButtons } from './QueryBuilderUtils';
 
 class AdvancedSearchClassBase {
   baseConfig = AntdConfig as BasicConfig;
@@ -114,8 +115,9 @@ class AdvancedSearchClassBase {
     entityField: EntityFields;
     suggestField?: SuggestionField;
   }) => SelectFieldSettings['asyncFetch'] = ({ searchIndex, entityField }) => {
-    return (search) => {
-      return getAggregateFieldOptions(
+    // Wrapping the fetch function in a debounce of 300 ms
+    const debouncedFetch = debounce((search, callback) => {
+      getAggregateFieldOptions(
         searchIndex,
         entityField,
         search ?? '',
@@ -124,13 +126,19 @@ class AdvancedSearchClassBase {
         const buckets =
           response.data.aggregations[`sterms#${entityField}`].buckets;
 
-        return {
+        callback({
           values: buckets.map((bucket) => ({
             value: bucket.key,
             title: bucket.label ?? bucket.key,
           })),
           hasMore: false,
-        };
+        });
+      });
+    }, 300);
+
+    return (search) => {
+      return new Promise((resolve) => {
+        debouncedFetch(search, resolve);
       });
     };
   };
@@ -175,6 +183,25 @@ class AdvancedSearchClassBase {
           entityField: EntityFields.TABLE_TYPE,
         }),
         useAsyncSearch: true,
+      },
+    },
+
+    [EntityFields.COLUMN_DESCRIPTION_STATUS]: {
+      label: t('label.column-description'),
+      type: 'select',
+      operators: [
+        'select_equals',
+        'select_not_equals',
+        'is_null',
+        'is_not_null',
+      ],
+      mainWidgetProps: this.mainWidgetProps,
+      valueSources: ['value'],
+      fieldSettings: {
+        listValues: {
+          INCOMPLETE: t('label.incomplete'),
+          COMPLETE: t('label.complete'),
+        },
       },
     },
   };
@@ -408,7 +435,9 @@ class AdvancedSearchClassBase {
         operatorLabel: t('label.condition') + ':',
         showNot: false,
         valueLabel: t('label.criteria') + ':',
-        renderButton: renderAdvanceSearchButtons,
+        renderButton: isExplorePage
+          ? renderAdvanceSearchButtons
+          : renderQueryBuilderFilterButtons,
       },
     };
 
@@ -448,8 +477,29 @@ class AdvancedSearchClassBase {
         mainWidgetProps: this.mainWidgetProps,
         fieldSettings: {
           asyncFetch: this.autocomplete({
-            searchIndex: entitySearchIndex ?? [SearchIndex.DATA_ASSET],
+            searchIndex: SearchIndex.DATA_ASSET,
             entityField: EntityFields.DISPLAY_NAME_KEYWORD,
+          }),
+          useAsyncSearch: true,
+        },
+        operators: [
+          'select_equals',
+          'select_not_equals',
+          'select_any_in',
+          'select_not_any_in',
+          'like',
+          'not_like',
+          'regexp',
+        ],
+      },
+      [EntityFields.NAME_KEYWORD]: {
+        label: t('label.name'),
+        type: 'select',
+        mainWidgetProps: this.mainWidgetProps,
+        fieldSettings: {
+          asyncFetch: this.autocomplete({
+            searchIndex: SearchIndex.DATA_ASSET,
+            entityField: EntityFields.NAME_KEYWORD,
           }),
           useAsyncSearch: true,
         },
@@ -471,7 +521,7 @@ class AdvancedSearchClassBase {
       },
 
       [EntityFields.OWNERS]: {
-        label: t('label.owner'),
+        label: t('label.owner-plural'),
         type: 'select',
         mainWidgetProps: this.mainWidgetProps,
 
@@ -610,6 +660,7 @@ class AdvancedSearchClassBase {
       [SearchIndex.SEARCH_INDEX]: this.searchIndexQueryBuilderFields,
       [SearchIndex.DASHBOARD_DATA_MODEL]: this.dataModelQueryBuilderFields,
       [SearchIndex.API_ENDPOINT_INDEX]: this.apiEndpointQueryBuilderFields,
+      [SearchIndex.GLOSSARY_TERM]: this.glossaryQueryBuilderFields,
       [SearchIndex.ALL]: {
         ...this.tableQueryBuilderFields,
         ...this.pipelineQueryBuilderFields,

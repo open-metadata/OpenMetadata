@@ -39,7 +39,7 @@ jobs:
         destination-repository-name: 'docs-v1'
         user-email: openmetadata@getcollate.io
         commit-message: See ORIGIN_COMMIT from $GITHUB_REF
-        target-branch: publish
+        target-branch: main
 
     - name: Push images
       id: push_images
@@ -54,7 +54,7 @@ jobs:
         destination-repository-name: 'docs-v1'
         user-email: openmetadata@getcollate.io
         commit-message: See ORIGIN_COMMIT from $GITHUB_REF
-        target-branch: publish
+        target-branch: main
 
     - name: Prepare Collate content and partials
       id: prepare_collate

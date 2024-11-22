@@ -13,7 +13,6 @@
 Interfaces with database for all database engine
 supporting sqlalchemy abstraction layer
 """
-
 from metadata.data_quality.builders.i_validator_builder import IValidatorBuilder
 from metadata.data_quality.builders.pandas_validator_builder import (
     PandasValidatorBuilder,
@@ -25,8 +24,8 @@ from metadata.generated.schema.entity.services.connections.database.datalakeConn
 )
 from metadata.generated.schema.tests.testCase import TestCase
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.connections import get_connection
 from metadata.mixins.pandas.pandas_mixin import PandasInterfaceMixin
+from metadata.sampler.sampler_interface import SamplerInterface
 from metadata.utils.logger import test_suite_logger
 
 logger = test_suite_logger()
@@ -43,13 +42,16 @@ class PandasTestSuiteInterface(TestSuiteInterface, PandasInterfaceMixin):
         self,
         service_connection_config: DatalakeConnection,
         ometa_client: OpenMetadata,
-        table_entity: Table = None,
-        **kwargs,  # pylint: disable=unused-argument
+        sampler: SamplerInterface,
+        table_entity: Table,
+        **__,
     ):
-        self.table_entity = table_entity
-
-        self.ometa_client = ometa_client
-        self.service_connection_config = service_connection_config
+        super().__init__(
+            service_connection_config,
+            ometa_client,
+            sampler,
+            table_entity,
+        )
 
         (
             self.table_sample_query,
@@ -58,12 +60,7 @@ class PandasTestSuiteInterface(TestSuiteInterface, PandasInterfaceMixin):
         ) = self._get_table_config()
 
         # add partition logic to test suite
-        self.dfs = self.return_ometa_dataframes_sampled(
-            service_connection_config=self.service_connection_config,
-            client=get_connection(self.service_connection_config).client._client,
-            table=self.table_entity,
-            profile_sample_config=self.table_sample_config,
-        )
+        self.dfs = self.sampler.table
         if self.dfs and self.table_partition_config:
             self.dfs = self.get_partitioned_df(self.dfs)
 

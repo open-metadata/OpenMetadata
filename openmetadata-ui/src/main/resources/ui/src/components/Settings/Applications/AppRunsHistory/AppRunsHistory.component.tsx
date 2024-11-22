@@ -26,9 +26,11 @@ import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import {
   NO_DATA_PLACEHOLDER,
+  SOCKET_EVENTS,
   STATUS_LABEL,
 } from '../../../../constants/constants';
 import { GlobalSettingOptions } from '../../../../constants/GlobalSettings.constants';
+import { useWebSocketConnector } from '../../../../context/WebSocketProvider/WebSocketProvider';
 import { AppType } from '../../../../generated/entity/applications/app';
 import { Status } from '../../../../generated/entity/applications/appRunRecord';
 import {
@@ -45,7 +47,9 @@ import {
 } from '../../../../utils/ApplicationUtils';
 import {
   formatDateTime,
+  formatDuration,
   getEpochMillisForPastDays,
+  getIntervalInMilliseconds,
 } from '../../../../utils/date-time/DateTimeUtils';
 import { getLogsViewerPath } from '../../../../utils/RouterUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
@@ -67,6 +71,7 @@ const AppRunsHistory = forwardRef(
     { appData, maxRecords, showPagination = true }: AppRunsHistoryProps,
     ref
   ) => {
+    const { socket } = useWebSocketConnector();
     const { t } = useTranslation();
     const { fqn } = useFqn();
     const [isLoading, setIsLoading] = useState(true);
@@ -124,7 +129,7 @@ const AppRunsHistory = forwardRef(
         return true;
       }
 
-      return record.status === Status.Running;
+      return false;
     }, []);
 
     const getActionButton = useCallback(
@@ -180,6 +185,23 @@ const AppRunsHistory = forwardRef(
           render: (runType) => (
             <Typography.Text>{runType ?? NO_DATA_PLACEHOLDER}</Typography.Text>
           ),
+        },
+        {
+          title: t('label.duration'),
+          dataIndex: 'executionTime',
+          key: 'executionTime',
+          render: (_, record: AppRunRecordWithId) => {
+            if (record.startTime && record.endTime) {
+              const ms = getIntervalInMilliseconds(
+                record.startTime,
+                record.endTime
+              );
+
+              return formatDuration(ms);
+            } else {
+              return '-';
+            }
+          },
         },
         {
           title: t('label.status'),
@@ -277,6 +299,25 @@ const AppRunsHistory = forwardRef(
       } as Paging);
     };
 
+    const handleAppHistoryRecordUpdate = (
+      updatedRecord: AppRunRecordWithId
+    ) => {
+      setAppRunsHistoryData((prev) => {
+        const updatedData = prev.map((item) => {
+          if (
+            item.appId === updatedRecord.appId &&
+            item.startTime === updatedRecord.startTime
+          ) {
+            return { ...updatedRecord, id: item.id };
+          }
+
+          return item;
+        });
+
+        return updatedData;
+      });
+    };
+
     useImperativeHandle(ref, () => ({
       refreshAppHistory() {
         fetchAppHistory();
@@ -286,6 +327,31 @@ const AppRunsHistory = forwardRef(
     useEffect(() => {
       fetchAppHistory();
     }, [fqn, pageSize]);
+
+    useEffect(() => {
+      if (socket) {
+        socket.on(SOCKET_EVENTS.SEARCH_INDEX_JOB_BROADCAST_CHANNEL, (data) => {
+          if (data) {
+            const searchIndexJob = JSON.parse(data);
+            handleAppHistoryRecordUpdate(searchIndexJob);
+          }
+        });
+
+        socket.on(SOCKET_EVENTS.DATA_INSIGHTS_JOB_BROADCAST_CHANNEL, (data) => {
+          if (data) {
+            const dataInsightJob = JSON.parse(data);
+            handleAppHistoryRecordUpdate(dataInsightJob);
+          }
+        });
+      }
+
+      return () => {
+        if (socket) {
+          socket.off(SOCKET_EVENTS.SEARCH_INDEX_JOB_BROADCAST_CHANNEL);
+          socket.off(SOCKET_EVENTS.DATA_INSIGHTS_JOB_BROADCAST_CHANNEL);
+        }
+      };
+    }, [socket]);
 
     return (
       <>
@@ -297,7 +363,12 @@ const AppRunsHistory = forwardRef(
               data-testid="app-run-history-table"
               dataSource={appRunsHistoryData}
               expandable={{
-                expandedRowRender: (record) => <AppLogsViewer data={record} />,
+                expandedRowRender: (record) => (
+                  <AppLogsViewer
+                    data={record}
+                    scrollHeight={maxRecords !== 1 ? 200 : undefined}
+                  />
+                ),
                 showExpandColumn: false,
                 rowExpandable: (record) => !showLogAction(record),
                 expandedRowKeys,
@@ -316,6 +387,7 @@ const AppRunsHistory = forwardRef(
               <NextPrevious
                 isNumberBased
                 currentPage={currentPage}
+                isLoading={isLoading}
                 pageSize={pageSize}
                 paging={paging}
                 pagingHandler={handleAppHistoryPageChange}

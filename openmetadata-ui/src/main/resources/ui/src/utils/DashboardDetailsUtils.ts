@@ -12,7 +12,8 @@
  */
 
 import { AxiosError } from 'axios';
-import { TabSpecificField } from '../enums/entity.enum';
+import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
+import { EntityTabs, TabSpecificField } from '../enums/entity.enum';
 import { Dashboard } from '../generated/entity/data/dashboard';
 import { ChartType } from '../pages/DashboardDetailsPage/DashboardDetailsPage.component';
 import { getChartById } from '../rest/chartAPI';
@@ -49,4 +50,140 @@ export const fetchCharts = async (charts: Dashboard['charts']) => {
   }
 
   return chartsData;
+};
+
+export const getDashboardDetailsPageDefaultLayout = (tab: EntityTabs) => {
+  switch (tab) {
+    case EntityTabs.SCHEMA:
+      return [
+        {
+          h: 2,
+          i: DetailPageWidgetKeys.DESCRIPTION,
+          w: 6,
+          x: 0,
+          y: 0,
+          static: false,
+        },
+        {
+          h: 8,
+          i: DetailPageWidgetKeys.TABLE_SCHEMA,
+          w: 6,
+          x: 0,
+          y: 0,
+          static: false,
+        },
+        {
+          h: 1,
+          i: DetailPageWidgetKeys.FREQUENTLY_JOINED_TABLES,
+          w: 2,
+          x: 6,
+          y: 0,
+          static: false,
+        },
+        {
+          h: 1,
+          i: DetailPageWidgetKeys.DATA_PRODUCTS,
+          w: 2,
+          x: 6,
+          y: 1,
+          static: false,
+        },
+        {
+          h: 1,
+          i: DetailPageWidgetKeys.TAGS,
+          w: 2,
+          x: 6,
+          y: 2,
+          static: false,
+        },
+        {
+          h: 1,
+          i: DetailPageWidgetKeys.GLOSSARY_TERMS,
+          w: 2,
+          x: 6,
+          y: 3,
+          static: false,
+        },
+        {
+          h: 3,
+          i: DetailPageWidgetKeys.CUSTOM_PROPERTIES,
+          w: 2,
+          x: 6,
+          y: 4,
+          static: false,
+        },
+      ];
+
+    default:
+      return [];
+  }
+};
+
+export const getDashboardDataModelDetailsPageDefaultLayout = (
+  tab: EntityTabs
+) => {
+  switch (tab) {
+    case EntityTabs.SCHEMA:
+      return [
+        {
+          h: 2,
+          i: DetailPageWidgetKeys.DESCRIPTION,
+          w: 6,
+          x: 0,
+          y: 0,
+          static: false,
+        },
+        {
+          h: 8,
+          i: DetailPageWidgetKeys.TABLE_SCHEMA,
+          w: 6,
+          x: 0,
+          y: 0,
+          static: false,
+        },
+        {
+          h: 1,
+          i: DetailPageWidgetKeys.FREQUENTLY_JOINED_TABLES,
+          w: 2,
+          x: 6,
+          y: 0,
+          static: false,
+        },
+        {
+          h: 1,
+          i: DetailPageWidgetKeys.DATA_PRODUCTS,
+          w: 2,
+          x: 6,
+          y: 1,
+          static: false,
+        },
+        {
+          h: 1,
+          i: DetailPageWidgetKeys.TAGS,
+          w: 2,
+          x: 6,
+          y: 2,
+          static: false,
+        },
+        {
+          h: 1,
+          i: DetailPageWidgetKeys.GLOSSARY_TERMS,
+          w: 2,
+          x: 6,
+          y: 3,
+          static: false,
+        },
+        {
+          h: 3,
+          i: DetailPageWidgetKeys.CUSTOM_PROPERTIES,
+          w: 2,
+          x: 6,
+          y: 4,
+          static: false,
+        },
+      ];
+
+    default:
+      return [];
+  }
 };

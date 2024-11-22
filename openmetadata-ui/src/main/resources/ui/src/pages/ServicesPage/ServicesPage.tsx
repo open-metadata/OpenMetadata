@@ -105,8 +105,7 @@ const ServicesPage = () => {
                       label: 'Services',
                     },
                   ]),
-              // pipelines are not supported for apiServices so don't show pipelines tab for apiServices
-              ...(isAdminUser && serviceName !== 'apiServices'
+              ...(isAdminUser
                 ? [
                     {
                       key: 'pipelines',

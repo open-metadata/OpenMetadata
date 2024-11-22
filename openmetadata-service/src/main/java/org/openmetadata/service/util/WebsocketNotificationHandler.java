@@ -25,6 +25,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import javax.ws.rs.container.ContainerResponseContext;
 import javax.ws.rs.core.Response;
+import javax.ws.rs.core.SecurityContext;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.entity.teams.Team;
@@ -33,6 +34,7 @@ import org.openmetadata.schema.type.AnnouncementDetails;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Post;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.resources.feeds.MessageParser;
@@ -55,6 +57,34 @@ public class WebsocketNotificationHandler {
             LOG.error("[NotificationHandler] Failed to use mapper in converting to Json", ex);
           }
         });
+  }
+
+  public static void sendCsvExportCompleteNotification(
+      String jobId, SecurityContext securityContext, String csvData) {
+    CSVExportMessage message = new CSVExportMessage(jobId, "COMPLETED", csvData, null);
+    String jsonMessage = JsonUtils.pojoToJson(message);
+    UUID userId = getUserIdFromSecurityContext(securityContext);
+    WebSocketManager.getInstance()
+        .sendToOne(userId, WebSocketManager.CSV_EXPORT_CHANNEL, jsonMessage);
+  }
+
+  public static void bulkAssetsOperationCompleteNotification(
+      String jobId, SecurityContext securityContext, BulkOperationResult result) {
+    BulkAssetsOperationMessage message =
+        new BulkAssetsOperationMessage(jobId, "COMPLETED", result, null);
+    String jsonMessage = JsonUtils.pojoToJson(message);
+    UUID userId = getUserIdFromSecurityContext(securityContext);
+    WebSocketManager.getInstance()
+        .sendToOne(userId, WebSocketManager.BULK_ASSETS_CHANNEL, jsonMessage);
+  }
+
+  public static void bulkAssetsOperationFailedNotification(
+      String jobId, SecurityContext securityContext, String errorMessage) {
+    CSVExportMessage message = new CSVExportMessage(jobId, "FAILED", null, errorMessage);
+    String jsonMessage = JsonUtils.pojoToJson(message);
+    UUID userId = getUserIdFromSecurityContext(securityContext);
+    WebSocketManager.getInstance()
+        .sendToOne(userId, WebSocketManager.BULK_ASSETS_CHANNEL, jsonMessage);
   }
 
   private void handleNotifications(ContainerResponseContext responseContext) {
@@ -148,5 +178,20 @@ public class WebsocketNotificationHandler {
                 .sendToManyWithString(records, WebSocketManager.MENTION_CHANNEL, jsonThread);
           }
         });
+  }
+
+  public static void sendCsvExportFailedNotification(
+      String jobId, SecurityContext securityContext, String errorMessage) {
+    CSVExportMessage message = new CSVExportMessage(jobId, "FAILED", null, errorMessage);
+    String jsonMessage = JsonUtils.pojoToJson(message);
+    UUID userId = getUserIdFromSecurityContext(securityContext);
+    WebSocketManager.getInstance()
+        .sendToOne(userId, WebSocketManager.CSV_EXPORT_CHANNEL, jsonMessage);
+  }
+
+  private static UUID getUserIdFromSecurityContext(SecurityContext securityContext) {
+    String username = securityContext.getUserPrincipal().getName();
+    User user = Entity.getCollectionDAO().userDAO().findEntityByName(username);
+    return user.getId();
   }
 }

@@ -89,10 +89,10 @@ describe('Test TreeSelectWidget Component', () => {
       userEvent.click(treeSelectInput);
     });
 
-    await waitForElement(() => screen.getAllByText('Table'));
+    await waitForElement(() => screen.getByText('Table'));
 
     await act(async () => {
-      fireEvent.click(screen.getAllByText('Table')[1]);
+      fireEvent.click(screen.getByText('Table'));
     });
 
     expect(mockOnChange).toHaveBeenCalledTimes(1);

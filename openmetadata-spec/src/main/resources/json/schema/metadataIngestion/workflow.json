@@ -31,6 +31,9 @@
               "$ref": "databaseServiceProfilerPipeline.json"
             },
             {
+              "$ref": "databaseServiceAutoClassificationPipeline.json"
+            },
+            {
               "$ref": "pipelineServiceMetadataPipeline.json"
             },
             {
@@ -162,6 +165,14 @@
         "loggerLevel": {
           "$ref": "#/definitions/logLevels",
           "default": "INFO"
+        },
+        "successThreshold": {
+          "title": "Success Threshold",
+          "description": "The percentage of successfully processed records that must be achieved for the pipeline to be considered successful. Otherwise, the pipeline will be marked as failed.",
+          "type": "integer",
+          "default": 90,
+          "minimum": 0,
+          "maximum": 100
         },
         "openMetadataServerConfig": {
           "$ref": "../entity/services/connections/metadata/openMetadataConnection.json"

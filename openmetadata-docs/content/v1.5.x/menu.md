@@ -5,19 +5,21 @@ site_menu:
 
   - category: Quickstart
     url: /quick-start
-    color: violet-70
-    icon: quickstart
   - category: Quickstart / Try OpenMetadata in Docker
     url: /quick-start/local-docker-deployment
   - category: Quickstart / Try OpenMetadata in Kubernetes
     url: /quick-start/local-kubernetes-deployment
   - category: Quickstart / Try the OpenMetadata Sandbox
     url: /quick-start/sandbox
+  - category: Quickstart / Getting Started  
+    url: /quick-start/getting-started
+  - category: Quickstart / Getting Started / Day 1  
+    url: /quick-start/getting-started/day-1
+  - category: Quickstart / Getting Started / Day 1 / Database Service Setup
+    url: /quick-start/getting-started/day-1/database-service-setup
 
   - category: Deployment
     url: /deployment
-    color: violet-70
-    icon: deployment
   - category: Deployment / Bare Metal Deployment
     url: /deployment/bare-metal
   - category: Deployment / Bare Metal Deployment / Enable Security
@@ -183,6 +185,10 @@ site_menu:
 
   - category: Deployment / How to enable AWS RDS IAM Auth
     url: /deployment/rds-iam-auth
+  - category: Deployment / How to enable Azure Database Auth
+    url: /deployment/azure-auth
+  - category: Deployment / Azure - Enable Passwordless Database Backend Connection
+    url: /deployment/azure-passwordless-auth
   - category: Deployment / Server Configuration Reference
     url: /deployment/configuration
   - category: Deployment / Database Connection Pooling
@@ -215,8 +221,6 @@ site_menu:
 
   - category: Connectors
     url: /connectors
-    color: violet-70
-    icon: openmetadata
 
   - category: Connectors / Database
     url: /connectors/database
@@ -386,12 +390,6 @@ site_menu:
     url: /connectors/database/sqlite
   - category: Connectors / Database / SQLite / Run Externally
     url: /connectors/database/sqlite/yaml
-  - category: Connectors / Database / Synapse
-    url: /connectors/database/synapse
-  - category: Connectors / Database / Synapse / Run Externally
-    url: /connectors/database/synapse/yaml
-  - category: Connectors / Database / Synapse / Troubleshooting
-    url: /connectors/database/synapse/troubleshooting
   - category: Connectors / Database / S3 Datalake
     url: /connectors/database/s3-datalake
   - category: Connectors / Database / S3 Datalake / Run Externally
@@ -425,6 +423,10 @@ site_menu:
     url: /connectors/dashboard/domo-dashboard
   - category: Connectors / Dashboard / Domo Dashboard / Run Externally
     url: /connectors/dashboard/domo-dashboard/yaml
+  - category: Connectors / Dashboard / Lightdash
+    url: /connectors/dashboard/lightdash
+  - category: Connectors / Dashboard / Lightdash / Run Externally
+    url: /connectors/dashboard/lightdash/yaml
   - category: Connectors / Dashboard / Looker
     url: /connectors/dashboard/looker
   - category: Connectors / Dashboard / Looker / Run Externally
@@ -433,6 +435,10 @@ site_menu:
     url: /connectors/dashboard/metabase
   - category: Connectors / Dashboard / Metabase / Run Externally
     url: /connectors/dashboard/metabase/yaml
+  - category: Connectors / Dashboard / MicroStrategy
+    url: /connectors/dashboard/microstrategy
+  - category: Connectors / Dashboard / MicroStrategy / Run Externally
+    url: /connectors/dashboard/microstrategy/yaml
   - category: Connectors / Dashboard / Mode
     url: /connectors/dashboard/mode
   - category: Connectors / Dashboard / Mode / Run Externally
@@ -577,10 +583,6 @@ site_menu:
     url: /connectors/storage/gcs
   - category: Connectors / Storage / GCS / Run Externally
     url: /connectors/storage/gcs/yaml
-  - category: Connectors / Storage / ADLS
-    url: /connectors/storage/adls
-  - category: Connectors / Storage / ADLS / Run Externally
-    url: /connectors/storage/adls/yaml
 
   - category: Connectors / Search
     url: /connectors/search
@@ -599,10 +601,6 @@ site_menu:
     url: /connectors/metadata/atlas
   - category: Connectors / Metadata / Atlas / Run Externally
     url: /connectors/metadata/atlas/yaml
-  - category: Connectors / Metadata / Alation
-    url: /connectors/metadata/alation
-  - category: Connectors / Metadata / Alation / Run Externally
-    url: /connectors/metadata/alation/yaml
   - category: Connectors / Metadata / Alation Sink
     url: /connectors/metadata/alationsink
   - category: Connectors / Metadata / Alation Sink / Run Externally
@@ -694,15 +692,7 @@ site_menu:
 
   - category: How-to Guides
     url: /how-to-guides
-    color: violet-70
-    icon: openmetadata
 
-  - category: How-to Guides / Getting Started  
-    url: /how-to-guides/getting-started
-  - category: How-to Guides / Day 1  
-    url: /how-to-guides/getting-started/day-1
-  - category: How-to Guides / Day 1 / Database Service Setup
-    url: /how-to-guides/getting-started/day-1/database-service-setup
   - category: How-to Guides / Admin Guide
     url: /how-to-guides/admin-guide
   - category: How-to Guides / Admin Guide / How to Ingest Metadata
@@ -735,6 +725,12 @@ site_menu:
     url: /how-to-guides/admin-guide/how-to-add-custom-logo
   - category: How-to Guides / Admin Guide / Reindexing Search
     url: /how-to-guides/admin-guide/Reindexing-Search
+  - category: How-to Guides / Admin Guide / Persona and Landing Page Customization 
+    url: /how-to-guides/admin-guide/persona-landing-page-customization 
+  - category: How-to Guides / Admin Guide / Persona and Landing Page Customization / How to Customize a Landing Page
+    url: /how-to-guides/admin-guide/persona-landing-page-customization/customizable-landing-page
+  - category: How-to Guides / Admin Guide / Persona and Landing Page Customization / How to Define Personas
+    url: /how-to-guides/admin-guide/persona-landing-page-customization/defining-persona
 
   - category: How-to Guides / Guide for Data Users
     url: /how-to-guides/guide-for-data-users
@@ -775,12 +771,22 @@ site_menu:
     url: /how-to-guides/data-discovery
   - category: How-to Guides / Data Discovery / How to Discover Assets of Interest
     url: /how-to-guides/data-discovery/discover
+  - category: How-to Guides / Data Discovery / Steps for Searching Using Hierarchy
+    url: /how-to-guides/data-discovery/hierarchy
   - category: How-to Guides / Data Discovery / Get a Quick Glance of the Data Assets
     url: /how-to-guides/data-discovery/preview
   - category: How-to Guides / Data Discovery / Detailed View of the Data Assets
     url: /how-to-guides/data-discovery/details
   - category: How-to Guides / Data Discovery / Add Complex Queries using Advanced Search
     url: /how-to-guides/data-discovery/advanced
+  - category: How-to Guides / Data Discovery / OpenMetadata Chrome Extension
+    url: /how-to-guides/data-discovery/openmetadata-extension
+  - category: How-to Guides / Data Discovery / OpenMetadata Chrome Extension / Viewing Activity Feeds and Managing Tasks
+    url: /how-to-guides/data-discovery/openmetadata-extension/activity-feeds
+  - category: How-to Guides / Data Discovery / OpenMetadata Chrome Extension / Looking Up Data Assets and Accessing Details
+    url: /how-to-guides/data-discovery/openmetadata-extension/looking-up
+  - category: How-to Guides / Data Discovery / OpenMetadata Chrome Extension / Viewing tasks & add comment directly from the extension
+    url: /how-to-guides/data-discovery/openmetadata-extension/viewing-tasks
 
   - category: How-to Guides / Data Collaboration
     url: /how-to-guides/data-collaboration
@@ -798,8 +804,6 @@ site_menu:
     url: /how-to-guides/data-collaboration/announcements
   - category: How-to Guides / Data Collaboration / How to Create an Announcement
     url: /how-to-guides/data-collaboration/add-announcement
-  - category: How-to Guides / Data Collaboration / Overview of Knowledge Center
-    url: /how-to-guides/data-collaboration/knowledge-center
 
   - category: How-to Guides / Data Quality and Observability
     url: /how-to-guides/data-quality-observability
@@ -807,13 +811,18 @@ site_menu:
     url: /how-to-guides/data-quality-observability/quality
   - category: How-to Guides / Data Quality and Profiler / Data Quality / Data Quality Tab
     url: /how-to-guides/data-quality-observability/quality/tab
-  - category: How-to Guides / Data Quality and Profiler / Data Quality / Data Quality Overview Section
-    url: /how-to-guides/data-quality-observability/quality/overview
-    isCollateOnly: true
   - category: How-to Guides / Data Quality and Profiler / Data Quality / How to Write and Deploy No-Code Test Cases
     url: /how-to-guides/data-quality-observability/quality/test
   - category: How-to Guides / Data Quality and Observability / Data Quality / Configure Data Quality
     url: /how-to-guides/data-quality-observability/quality/configure
+  - category: How-to Guides / Data Quality Observability / Data Quality / Adding Test Cases  
+    url: /how-to-guides/data-quality-observability/quality/adding-test-cases
+  - category: How-to Guides / Data Quality Observability / Data Quality / Adding Test Suites  
+    url: /how-to-guides/data-quality-observability/quality/adding-test-suites
+  - category: How-to Guides / Data Quality Observability / Data Quality / Test Cases From YAML Config  
+    url: /how-to-guides/data-quality-observability/quality/test-cases-from-yaml-config
+  - category: How-to Guides / Data Quality Observability / Data Quality / How to Visualize Test Results
+    url: /how-to-guides/data-quality-observability/quality/visualize
   - category: How-to Guides / Data Quality and Observability / Data Quality / Tests - YAML Config
     url: /how-to-guides/data-quality-observability/quality/tests-yaml
   - category: How-to Guides / Data Quality and Observability / Data Quality / Custom Tests
@@ -842,9 +851,6 @@ site_menu:
     url: /how-to-guides/data-quality-observability/incident-manager
   - category: How-to Guides / Data Quality and Observability / Incident Manager / How to work with the Incident Manager
     url: /how-to-guides/data-quality-observability/incident-manager/workflow
-  - category: How-to Guides / Data Quality and Observability / Incident Manager / Root Cause Analysis
-    url: /how-to-guides/data-quality-observability/incident-manager/root-cause-analysis
-    isCollateOnly: true
 
   - category: How-to Guides / Data Lineage
     url: /how-to-guides/data-lineage
@@ -869,14 +875,10 @@ site_menu:
     url: /how-to-guides/data-insights/elasticsearch-reindex
   - category: How-to Guides / Data Insights / Data Insights Report
     url: /how-to-guides/data-insights/report
-  - category: How-to Guides / Data Insights / Cost Analysis
-    url: /how-to-guides/data-insights/cost-analysis
   - category: How-to Guides / Data Insights / Configure the Data Insights Report
     url: /how-to-guides/data-insights/email-report
   - category: How-to Guides / Data Insights / How to Transform the Data Culture of Your Company
     url: /how-to-guides/data-insights/data-culture
-  - category: How-to Guides / Data Insights / Custom Data Insight Dashboards
-    url: /how-to-guides/data-insights/custom-dashboard
 
   - category: How-to Guides / Data Governance
     url: /how-to-guides/data-governance
@@ -923,14 +925,16 @@ site_menu:
 
   - category: Releases
     url: /releases
-    color: violet-70
-    icon: overview
   - category: Releases / Latest Release
     url: /releases/latest-release
   - category: Releases / Supported Releases
     url: /releases/supported
   - category: Releases / All Releases
     url: /releases/all-releases
+  - category: Releases / All Releases / 1.5.7 Release
+    url: /releases/all-releases/#1.5.7-release
+  - category: Releases / All Releases / 1.5.6 Release
+    url: /releases/all-releases/#1.5.6-release
   - category: Releases / All Releases / 1.5.5 Release
     url: /releases/all-releases/#1.5.5-release
   - category: Releases / All Releases / 1.5.4 Release
@@ -1019,8 +1023,6 @@ site_menu:
 
   - category: Main Concepts
     url: /main-concepts
-    color: violet-70
-    icon: main-concepts
   - category: Main Concepts / High Level Design
     url: /main-concepts/high-level-design
   - category: Main Concepts / Backend DB
@@ -1954,8 +1956,6 @@ site_menu:
 
   - category: Developers
     url: /developers
-    color: violet-70
-    icon: developers
   - category: Developers / Architecture
     url: /developers/architecture
   - category: Developers / Architecture / Understand Code Layout
@@ -2003,8 +2003,6 @@ site_menu:
 
   - category: SDK
     url: /sdk
-    color: violet-70
-    icon: sdk
   - category: SDK / Python SDK
     url: /sdk/python
   - category: SDK / Python SDK / Entities

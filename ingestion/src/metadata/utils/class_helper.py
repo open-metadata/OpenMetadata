@@ -68,7 +68,7 @@ from metadata.generated.schema.metadataIngestion.testSuitePipeline import (
 from metadata.generated.schema.metadataIngestion.workflow import SourceConfig
 
 SERVICE_TYPE_REF = {
-    ServiceType.API.value: "apiService",
+    ServiceType.Api.value: "apiService",
     ServiceType.Database.value: "databaseService",
     ServiceType.Dashboard.value: "dashboardService",
     ServiceType.Pipeline.value: "pipelineService",

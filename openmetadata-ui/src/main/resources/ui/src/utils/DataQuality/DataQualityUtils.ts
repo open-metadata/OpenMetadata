@@ -10,11 +10,25 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { isArray, isUndefined, omit, omitBy } from 'lodash';
+import { cloneDeep, isArray, isUndefined, omit, omitBy } from 'lodash';
+import { ReactComponent as TestCaseIcon } from '../../assets/svg/all-activity-v2.svg';
+import { ReactComponent as AccuracyIcon } from '../../assets/svg/ic-accuracy.svg';
+import { ReactComponent as CompletenessIcon } from '../../assets/svg/ic-completeness.svg';
+import { ReactComponent as ConsistencyIcon } from '../../assets/svg/ic-consistency.svg';
+import { ReactComponent as IntegrityIcon } from '../../assets/svg/ic-integrity.svg';
+import { ReactComponent as SqlIcon } from '../../assets/svg/ic-sql.svg';
+import { ReactComponent as UniquenessIcon } from '../../assets/svg/ic-uniqueness.svg';
+import { ReactComponent as ValidityIcon } from '../../assets/svg/ic-validity.svg';
+import { StatusData } from '../../components/DataQuality/ChartWidgets/StatusCardWidget/StatusCardWidget.interface';
 import { TestCaseSearchParams } from '../../components/DataQuality/DataQuality.interface';
-import { TEST_CASE_FILTERS } from '../../constants/profiler.constant';
+import {
+  DEFAULT_DIMENSIONS_DATA,
+  TEST_CASE_FILTERS,
+} from '../../constants/profiler.constant';
+import { DataQualityReport } from '../../generated/tests/dataQualityReport';
 import { TestCaseParameterValue } from '../../generated/tests/testCase';
 import {
+  DataQualityDimensions,
   TestDataType,
   TestDefinition,
 } from '../../generated/tests/testDefinition';
@@ -50,6 +64,7 @@ export const buildTestCaseParams = (
     ...filterParams('tags', TEST_CASE_FILTERS.tags),
     ...filterParams('tier', TEST_CASE_FILTERS.tier),
     ...filterParams('serviceName', TEST_CASE_FILTERS.service),
+    ...filterParams('dataQualityDimension', TEST_CASE_FILTERS.dimension),
   };
 };
 
@@ -99,4 +114,127 @@ export const getTestCaseFiltersValue = (
   );
 
   return updatedParams;
+};
+
+export const transformToTestCaseStatusByDimension = (
+  inputData: DataQualityReport['data']
+): StatusData[] => {
+  const result: { [key: string]: StatusData } = cloneDeep(
+    DEFAULT_DIMENSIONS_DATA
+  );
+
+  inputData.forEach((item) => {
+    const {
+      document_count,
+      'testCaseResult.testCaseStatus': status,
+      dataQualityDimension = 'No Dimension',
+    } = item;
+    const count = parseInt(document_count, 10);
+
+    if (!result[dataQualityDimension]) {
+      result[dataQualityDimension] = {
+        title: dataQualityDimension,
+        success: 0,
+        failed: 0,
+        aborted: 0,
+        total: 0,
+      };
+    }
+
+    if (status === 'success') {
+      result[dataQualityDimension].success += count;
+    } else if (status === 'failed') {
+      result[dataQualityDimension].failed += count;
+    } else if (status === 'aborted') {
+      result[dataQualityDimension].aborted += count;
+    }
+
+    result[dataQualityDimension].total += count;
+  });
+
+  return Object.values(result);
+};
+
+export const transformToTestCaseStatusObject = (
+  data: DataQualityReport['data']
+) => {
+  // Initialize output data with zeros
+  const outputData = {
+    success: 0,
+    failed: 0,
+    aborted: 0,
+    total: 0,
+  };
+
+  // Use reduce to process input data and calculate the counts
+  const updatedData = data.reduce((acc, item) => {
+    const count = parseInt(item.document_count);
+    const status = item['testCaseResult.testCaseStatus'];
+
+    if (status === 'success') {
+      acc.success += count;
+    } else if (status === 'failed') {
+      acc.failed += count;
+    } else if (status === 'aborted') {
+      acc.aborted += count;
+    }
+
+    acc.total += count; // Update total count
+
+    return acc;
+  }, outputData);
+
+  return updatedData;
+};
+
+export const buildMustEsFilterForTags = (
+  tags: string[],
+  isTestCaseResult = false
+) => {
+  return {
+    nested: {
+      path: isTestCaseResult ? 'testCase.tags' : 'tags',
+      query: {
+        bool: {
+          must: tags.map((tag) => ({
+            match: {
+              [isTestCaseResult ? 'testCase.tags.tagFQN' : 'tags.tagFQN']: tag,
+            },
+          })),
+        },
+      },
+    },
+  };
+};
+
+export const buildMustEsFilterForOwner = (
+  ownerFqn: string,
+  isTestCaseResult = false
+) => {
+  return {
+    term: {
+      [isTestCaseResult ? 'testCase.owners.name' : 'owners.name']: ownerFqn,
+    },
+  };
+};
+
+export const getDimensionIcon = (dimension: DataQualityDimensions) => {
+  switch (dimension) {
+    case DataQualityDimensions.Accuracy:
+      return AccuracyIcon;
+    case DataQualityDimensions.Consistency:
+      return ConsistencyIcon;
+    case DataQualityDimensions.Completeness:
+      return CompletenessIcon;
+    case DataQualityDimensions.Integrity:
+      return IntegrityIcon;
+    case DataQualityDimensions.SQL:
+      return SqlIcon;
+    case DataQualityDimensions.Uniqueness:
+      return UniquenessIcon;
+    case DataQualityDimensions.Validity:
+      return ValidityIcon;
+    default:
+      return TestCaseIcon;
+  }
 };

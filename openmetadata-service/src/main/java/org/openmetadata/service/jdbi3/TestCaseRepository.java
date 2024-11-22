@@ -12,6 +12,7 @@ import static org.openmetadata.service.Entity.TEST_CASE_RESULT;
 import static org.openmetadata.service.Entity.TEST_DEFINITION;
 import static org.openmetadata.service.Entity.TEST_SUITE;
 import static org.openmetadata.service.Entity.getEntityByName;
+import static org.openmetadata.service.Entity.getEntityTimeSeriesRepository;
 import static org.openmetadata.service.Entity.populateEntityFieldTags;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.service.security.mask.PIIMasker.maskSampleData;
@@ -35,7 +36,6 @@ import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.api.tests.CreateTestCaseResult;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.teams.User;
-import org.openmetadata.schema.tests.ResultSummary;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestCaseParameter;
 import org.openmetadata.schema.tests.TestCaseParameterValidationRule;
@@ -47,7 +47,6 @@ import org.openmetadata.schema.tests.type.TestCaseFailureReasonType;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatus;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes;
 import org.openmetadata.schema.tests.type.TestCaseResult;
-import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FieldChange;
@@ -78,7 +77,6 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       "owners,entityLink,testSuite,testSuites,testDefinition";
   private static final String PATCH_FIELDS =
       "owners,entityLink,testSuite,testDefinition,computePassedFailedRowCount,useDynamicAssertion";
-  public static final String TESTCASE_RESULT_EXTENSION = "testCase.testCaseResult";
   public static final String FAILED_ROWS_SAMPLE_EXTENSION = "testCase.failedRowsSample";
 
   public TestCaseRepository() {
@@ -206,7 +204,8 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     return records.stream()
         .map(
             testSuiteId ->
-                Entity.<TestSuite>getEntity(TEST_SUITE, testSuiteId.getId(), "", Include.ALL, false)
+                Entity.<TestSuite>getEntity(
+                        TEST_SUITE, testSuiteId.getId(), "owners,domain", Include.ALL, false)
                     .withInherited(true)
                     .withChangeDescription(null))
         .toList();
@@ -368,16 +367,9 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     testCaseResultRepository.deleteAllTestCaseResults(fqn);
   }
 
-  private ResultSummary getResultSummary(
-      TestCase testCase, Long timestamp, TestCaseStatus testCaseStatus) {
-    return new ResultSummary()
-        .withTestCaseName(testCase.getFullyQualifiedName())
-        .withStatus(testCaseStatus)
-        .withTimestamp(timestamp);
-  }
-
   @SneakyThrows
   private TestCaseResult getTestCaseResult(TestCase testCase) {
+    TestCaseResult testCaseResult = null;
     if (testCase.getTestCaseResult() != null) {
       // we'll return the saved state if it exists otherwise we'll fetch it from the database
       // Should be the case if listing from the search repo. as the test case result
@@ -386,10 +378,21 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     }
     SearchListFilter searchListFilter = new SearchListFilter();
     searchListFilter.addQueryParam("testCaseFQN", testCase.getFullyQualifiedName());
-    EntityTimeSeriesRepository<?> timeSeriesRepository =
-        Entity.getEntityTimeSeriesRepository(TEST_CASE_RESULT);
-    return (TestCaseResult)
-        timeSeriesRepository.latestFromSearch(Fields.EMPTY_FIELDS, searchListFilter, null);
+    TestCaseResultRepository timeSeriesRepository =
+        (TestCaseResultRepository) getEntityTimeSeriesRepository(TEST_CASE_RESULT);
+    try {
+      testCaseResult =
+          timeSeriesRepository.latestFromSearch(Fields.EMPTY_FIELDS, searchListFilter, null);
+    } catch (Exception e) {
+      LOG.debug(
+          "Error fetching test case result from search. Fetching from test case results from database",
+          e);
+    }
+    if (nullOrEmpty(testCaseResult)) {
+      testCaseResult =
+          timeSeriesRepository.listLastTestCaseResult(testCase.getFullyQualifiedName());
+    }
+    return testCaseResult;
   }
 
   public ResultList<TestCaseResult> getTestCaseResults(String fqn, Long startTs, Long endTs) {

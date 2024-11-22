@@ -26,6 +26,12 @@ From the Service Topology you can understand what methods you need to implement:
 
 Can be found in [`ingestion/src/metadata/ingestion/source/database/database_service.py`](https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/src/metadata/ingestion/source/database/database_service.py)
 
+{%inlineCallout icon="description" bold="OpenMetadata 1.6.0 or later" href="/deployment"%}
+Starting from 1.6.0 the OpenMetadata Ingestion Framewotk is using a ServiceSpec specificaiton
+in order to define the entrypoints for the ingestion process.
+{%/inlineCallout%}
+
+
 ```python
 class DatabaseServiceTopology(ServiceTopology):
     """
@@ -49,10 +55,6 @@ class DatabaseServiceTopology(ServiceTopology):
             ),
         ],
         children=["database"],
-        # Note how we have `yield_view_lineage` and `yield_stored_procedure_lineage`
-        # as post_processed. This is because we cannot ensure proper lineage processing
-        # until we have finished ingesting all the metadata from the source.
-        post_process=["yield_view_lineage", "yield_procedure_lineage_and_queries"],
     )
     database = TopologyNode(
         producer="get_database_names",
@@ -324,11 +326,6 @@ class DatabaseServiceSource(
     ) -> Iterable[Either[CreateStoredProcedureRequest]]:
         """Process the stored procedure information"""
 
-    @abstractmethod
-    def yield_procedure_lineage_and_queries(
-        self,
-    ) -> Iterable[Either[Union[AddLineageRequest, CreateQueryRequest]]]:
-        """Extracts the lineage information from Stored Procedures"""
 
     def get_raw_database_schema_names(self) -> Iterable[str]:
         """
