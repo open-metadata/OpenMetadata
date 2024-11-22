@@ -70,6 +70,12 @@
         "supportsProfiler": {
             "title": "Supports Profiler",
             "$ref": "../connectionBasicType.json#/definitions/supportsProfiler"
+        },
+        "sslMode": {
+            "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/sslMode"
+        },
+        "sslConfig": {
+            "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/sslConfig"
         }
     },
     "required": ["hostPort"],
