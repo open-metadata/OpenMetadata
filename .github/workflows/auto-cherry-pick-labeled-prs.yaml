@@ -52,11 +52,14 @@ jobs:
           script: |
             const prNumber = context.payload.pull_request.number;
             const releaseVersion = process.env.CURRENT_RELEASE;
+            const workflowRunUrl = `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`;
             github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: prNumber,
-              body: `Failed to cherry-pick changes to the ${releaseVersion} branch.`
+              body: `Failed to cherry-pick changes to the ${releaseVersion} branch.
+                Please cherry-pick the changes manually.
+                You can find more details [here](${workflowRunUrl}).`
             })
       - name: Post a comment on success
         if: steps.cherry_pick.outcome == 'success' && steps.push_changes.outcome == 'success'
