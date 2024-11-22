@@ -503,7 +503,7 @@ export const verifyTaskCreated = async (
 
         const workflowInstances = await apiContext
           .get(
-            `/api/v1/governance/workflowInstances?startTs=${startTs}&endTs=${endTs}`
+            `/api/v1/governance/workflowInstances?startTs=${startTs}&endTs=${endTs}&limit=25`
           )
           .then((res) => res.json());
 
@@ -517,7 +517,7 @@ export const verifyTaskCreated = async (
         if (workflowInstanceId) {
           const workflowInstanceDetails = await apiContext
             .get(
-              `/api/v1/governance/workflowInstanceStates/GlossaryTermApprovalWorkflow/${workflowInstanceId}?startTs=${startTs}&endTs=${endTs}`
+              `/api/v1/governance/workflowInstanceStates/GlossaryTermApprovalWorkflow/${workflowInstanceId}?startTs=${startTs}&endTs=${endTs}&limit=25`
             )
             .then((res) => res.json());
 
