@@ -69,7 +69,6 @@ class ProfilerSource(ProfilerSourceInterface):
         ometa_client: OpenMetadata,
         global_profiler_configuration: ProfilerConfiguration,
     ):
-        super().__init__()
         self.config = config
         self.service_conn_config = self._copy_service_config(config, database)
         self.profiler_config = ProfilerProcessorConfig.model_validate(
