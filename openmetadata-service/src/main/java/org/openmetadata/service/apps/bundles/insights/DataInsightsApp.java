@@ -288,7 +288,7 @@ public class DataInsightsApp extends AbstractNativeApplication {
     try {
       workflow.process();
     } catch (SearchIndexException ex) {
-      jobData.setStatus(EventPublisherJob.Status.FAILED);
+      jobData.setStatus(EventPublisherJob.Status.RUNNING);
       jobData.setFailure(ex.getIndexingError());
     }
 
@@ -302,7 +302,7 @@ public class DataInsightsApp extends AbstractNativeApplication {
     try {
       workflow.process();
     } catch (SearchIndexException ex) {
-      jobData.setStatus(EventPublisherJob.Status.FAILED);
+      jobData.setStatus(EventPublisherJob.Status.RUNNING);
       jobData.setFailure(ex.getIndexingError());
     }
 
@@ -318,7 +318,7 @@ public class DataInsightsApp extends AbstractNativeApplication {
     try {
       workflow.process();
     } catch (SearchIndexException ex) {
-      jobData.setStatus(EventPublisherJob.Status.FAILED);
+      jobData.setStatus(EventPublisherJob.Status.RUNNING);
       jobData.setFailure(ex.getIndexingError());
     }
 
@@ -350,12 +350,30 @@ public class DataInsightsApp extends AbstractNativeApplication {
     }
   }
 
+  private boolean isPartialSuccess() {
+    try {
+      if (jobData.getStats() != null && jobData.getStats().getJobStats() != null) {
+        float failure = jobData.getStats().getJobStats().getFailedRecords();
+        float success = jobData.getStats().getJobStats().getSuccessRecords();
+        // if success % is >= 90%
+        if (success / (success + failure) >= 0.9) return true;
+      }
+    } catch (ArithmeticException ex) {
+      // ignore in case there are 0 success and failures
+    }
+    return false;
+  }
+
   private void updateJobStatus() {
     if (stopped) {
       jobData.setStatus(EventPublisherJob.Status.STOPPED);
     } else {
       if (jobData.getFailure() != null) {
-        jobData.setStatus(EventPublisherJob.Status.FAILED);
+        if (isPartialSuccess()) {
+          jobData.setStatus(EventPublisherJob.Status.PARTIAL_SUCCESS);
+        } else {
+          jobData.setStatus(EventPublisherJob.Status.FAILED);
+        }
       } else {
         jobData.setStatus(EventPublisherJob.Status.COMPLETED);
       }
