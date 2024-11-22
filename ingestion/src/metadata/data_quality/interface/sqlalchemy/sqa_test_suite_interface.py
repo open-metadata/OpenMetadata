@@ -19,9 +19,9 @@ from typing import Union
 from sqlalchemy.orm import DeclarativeMeta
 from sqlalchemy.orm.util import AliasedClass
 
-from metadata.data_quality.builders.i_validator_builder import (
-    ValidatorBuilder,
+from metadata.data_quality.builders.validator_builder import (
     SourceType,
+    ValidatorBuilder,
 )
 from metadata.data_quality.interface.test_suite_interface import TestSuiteInterface
 from metadata.generated.schema.entity.data.table import Table

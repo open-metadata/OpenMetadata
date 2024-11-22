@@ -14,9 +14,9 @@ Interfaces with database for all database engine
 supporting sqlalchemy abstraction layer
 """
 
-from metadata.data_quality.builders.i_validator_builder import (
-    ValidatorBuilder,
+from metadata.data_quality.builders.validator_builder import (
     SourceType,
+    ValidatorBuilder,
 )
 from metadata.data_quality.interface.test_suite_interface import TestSuiteInterface
 from metadata.generated.schema.entity.data.table import Table

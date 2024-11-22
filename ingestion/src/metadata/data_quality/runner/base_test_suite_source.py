@@ -15,7 +15,7 @@ Base source for the data quality used to instantiate a data quality runner with 
 from copy import deepcopy
 from typing import Optional, cast
 
-from metadata.data_quality.builders.i_validator_builder import ValidatorBuilder
+from metadata.data_quality.builders.validator_builder import ValidatorBuilder
 from metadata.data_quality.interface.test_suite_interface import TestSuiteInterface
 from metadata.data_quality.runner.core import DataTestsRunner
 from metadata.generated.schema.entity.data.table import Table
