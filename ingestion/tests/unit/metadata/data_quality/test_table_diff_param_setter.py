@@ -155,7 +155,6 @@ def test_partitioned_where_clause(input, expected):
             service_connection_config=SERVICE_CONNECTION_CONFIG,
             ometa_client=Mock(),
             entity=Mock(),
-            orm_table=MyTable,
         )
         mock_sampler.partition_details = input
         setter = TableDiffParamsSetter(None, None, MOCK_TABLE, mock_sampler)

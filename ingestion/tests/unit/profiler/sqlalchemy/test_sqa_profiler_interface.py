@@ -78,14 +78,15 @@ class SQAInterfaceTest(TestCase):
         sqlite_conn = SQLiteConnection(
             scheme=SQLiteScheme.sqlite_pysqlite,
         )
-        sampler = SQASampler(
+        sampler = SQASampler.__new__(SQASampler)
+        sampler.build_table_orm = lambda *args, **kwargs: User
+        sampler.__init__(
             service_connection_config=sqlite_conn,
             ometa_client=None,
             entity=None,
-            orm_table=User,
         )
         self.sqa_profiler_interface = SQAProfilerInterface(
-            sqlite_conn, None, table_entity, None, sampler, 5, 43200, orm_table=User
+            sqlite_conn, None, table_entity, None, sampler, 5, 43200
         )
         self.table = User
 
@@ -114,14 +115,15 @@ class SQAInterfaceTestMultiThread(TestCase):
         scheme=SQLiteScheme.sqlite_pysqlite,
         databaseMode=db_path + "?check_same_thread=False",
     )
-    sampler = SQASampler(
+    sampler = SQASampler.__new__(SQASampler)
+    sampler.build_table_orm = lambda *args, **kwargs: User
+    sampler.__init__(
         service_connection_config=sqlite_conn,
         ometa_client=None,
         entity=None,
-        orm_table=User,
     )
     sqa_profiler_interface = SQAProfilerInterface(
-        sqlite_conn, None, table_entity, None, sampler, 5, 43200, orm_table=User
+        sqlite_conn, None, table_entity, None, sampler, 5, 43200
     )
 
     @classmethod

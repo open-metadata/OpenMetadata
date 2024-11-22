@@ -67,6 +67,9 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
     """
     Generates a sample of the data to not
     run the query in the whole table.
+
+    Args:
+        orm_table (Optional[DeclarativeMeta]): ORM Table
     """
 
     def __init__(self, *args, **kwargs):

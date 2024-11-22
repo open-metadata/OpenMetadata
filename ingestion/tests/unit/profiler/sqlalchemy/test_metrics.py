@@ -84,11 +84,12 @@ class MetricsTest(TestCase):
         Prepare Ingredients
         """
 
-        sampler = SQASampler(
+        sampler = SQASampler.__new__(SQASampler)
+        sampler.build_table_orm = lambda *args, **kwargs: User
+        sampler.__init__(
             service_connection_config=cls.sqlite_conn,
             ometa_client=None,
             entity=None,
-            orm_table=User,
         )
         cls.sqa_profiler_interface = SQAProfilerInterface(
             cls.sqlite_conn,
@@ -98,7 +99,6 @@ class MetricsTest(TestCase):
             sampler,
             1,
             43200,
-            orm_table=User,
         )
 
         cls.engine = cls.sqa_profiler_interface.session.get_bind()
@@ -261,11 +261,12 @@ class MetricsTest(TestCase):
             float_col = Column(Float())  # date of employment
 
         NonNumericNumbers.__table__.create(bind=self.engine)
-        sampler = SQASampler(
+        sampler = SQASampler.__new__(SQASampler)
+        sampler.build_table_orm = lambda *args, **kwargs: NonNumericNumbers
+        sampler.__init__(
             service_connection_config=self.sqlite_conn,
             ometa_client=None,
-            entity=self.table_entity,
-            orm_table=NonNumericNumbers,
+            entity=None,
         )
         sqa_profiler_interface = SQAProfilerInterface(
             self.sqlite_conn,
@@ -275,7 +276,6 @@ class MetricsTest(TestCase):
             sampler,
             1,
             43200,
-            orm_table=NonNumericNumbers,
         )
 
         data = [
@@ -796,11 +796,12 @@ class MetricsTest(TestCase):
 
         EmptyUser.__table__.create(bind=self.engine)
 
-        sampler = SQASampler(
+        sampler = SQASampler.__new__(SQASampler)
+        sampler.build_table_orm = lambda *args, **kwargs: User
+        sampler.__init__(
             service_connection_config=self.sqlite_conn,
             ometa_client=None,
-            entity=self.table_entity,
-            orm_table=EmptyUser,
+            entity=None,
         )
         sqa_profiler_interface = SQAProfilerInterface(
             self.sqlite_conn,
@@ -810,7 +811,6 @@ class MetricsTest(TestCase):
             sampler,
             1,
             43200,
-            orm_table=EmptyUser,
         )
 
         hist = Metrics.HISTOGRAM.value
@@ -959,11 +959,12 @@ class MetricsTest(TestCase):
                 ),
             ],
         )
-        sampler = SQASampler(
+        sampler = SQASampler.__new__(SQASampler)
+        sampler.build_table_orm = lambda *args, **kwargs: User
+        sampler.__init__(
             service_connection_config=self.sqlite_conn,
             ometa_client=None,
             entity=None,
-            orm_table=User,
         )
         sqa_profiler_interface = SQAProfilerInterface(
             self.sqlite_conn,
@@ -973,7 +974,6 @@ class MetricsTest(TestCase):
             sampler,
             1,
             43200,
-            orm_table=User,
         )
 
         profiler = Profiler(
@@ -1010,11 +1010,12 @@ class MetricsTest(TestCase):
                 )
             ],
         )
-        sampler = SQASampler(
+        sampler = SQASampler.__new__(SQASampler)
+        sampler.build_table_orm = lambda *args, **kwargs: User
+        sampler.__init__(
             service_connection_config=self.sqlite_conn,
             ometa_client=None,
             entity=None,
-            orm_table=User,
         )
         sqa_profiler_interface = SQAProfilerInterface(
             self.sqlite_conn,
@@ -1024,7 +1025,6 @@ class MetricsTest(TestCase):
             sampler,
             1,
             43200,
-            orm_table=User,
         )
 
         profiler = Profiler(

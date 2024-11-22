@@ -46,15 +46,15 @@ class SampleTest(TestCase):
     snowflake_conn = SnowflakeConnection(
         username="myuser", account="myaccount", warehouse="mywarehouse"
     )
-
-    sampler = SQASampler(
+    sampler = SQASampler.__new__(SQASampler)
+    sampler.build_table_orm = lambda *args, **kwargs: User
+    sampler.__init__(
         service_connection_config=snowflake_conn,
         ometa_client=None,
         entity=None,
-        orm_table=User,
     )
     sqa_profiler_interface = SQAProfilerInterface(
-        snowflake_conn, None, table_entity, None, sampler, 5, 43200, orm_table=User
+        snowflake_conn, None, table_entity, None, sampler, 5, 43200
     )
     session = sqa_profiler_interface.session
 
@@ -62,14 +62,15 @@ class SampleTest(TestCase):
         """
         use BERNOULLI if sampling method type is not specified.
         """
-        sampler = SnowflakeSampler(
+        sampler = SnowflakeSampler.__new__(SnowflakeSampler)
+        sampler.build_table_orm = lambda *args, **kwargs: User
+        sampler.__init__(
             service_connection_config=self.snowflake_conn,
             ometa_client=None,
             entity=self.table_entity,
             sample_config=SampleConfig(
                 profile_sample_type=ProfileSampleType.PERCENTAGE, profile_sample=50.0
             ),
-            orm_table=User,
         )
         query: CTE = sampler.get_sample_query()
         assert "FROM users SAMPLE BERNOULLI" in str(query)
@@ -82,7 +83,9 @@ class SampleTest(TestCase):
             SamplingMethodType.SYSTEM,
             SamplingMethodType.BERNOULLI,
         ]:
-            sampler = SnowflakeSampler(
+            sampler = SnowflakeSampler.__new__(SnowflakeSampler)
+            sampler.build_table_orm = lambda *args, **kwargs: User
+            sampler.__init__(
                 service_connection_config=self.snowflake_conn,
                 ometa_client=None,
                 entity=self.table_entity,
@@ -91,7 +94,6 @@ class SampleTest(TestCase):
                     profile_sample=50.0,
                     sampling_method_type=sampling_method_type,
                 ),
-                orm_table=User,
             )
             query: CTE = sampler.get_sample_query()
             assert f"FROM users SAMPLE {sampling_method_type.value}" in str(query)

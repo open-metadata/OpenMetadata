@@ -97,15 +97,18 @@ class SampleTest(TestCase):
         Prepare Ingredients
         """
 
-        cls.sampler = SQASampler(
+        cls.sampler = SQASampler.__new__(SQASampler)
+        cls.sampler.build_table_orm = lambda *args, **kwargs: User
+        cls.sampler.__init__(
             service_connection_config=cls.sqlite_conn,
             ometa_client=None,
             entity=None,
             sample_config=SampleConfig(profile_sample=50.0),
-            orm_table=User,
         )
         cls.sample = cls.sampler.random_sample()
-        cls.sqa_profiler_interface = SQAProfilerInterface(
+        cls.sqa_profiler_interface = SQAProfilerInterface.__new__(SQAProfilerInterface)
+        cls.sqa_profiler_interface.build_table_orm = lambda *args, **kwargs: User
+        cls.sqa_profiler_interface.__init__(
             cls.sqlite_conn,
             None,
             cls.table_entity,
@@ -113,16 +116,15 @@ class SampleTest(TestCase):
             cls.sampler,
             5,
             43200,
-            orm_table=User,
         )
         cls.engine = cls.sqa_profiler_interface.session.get_bind()
         cls.session = cls.sqa_profiler_interface.session
-
-        cls.full_sampler = SQASampler(
+        cls.full_sampler = SQASampler.__new__(SQASampler)
+        cls.full_sampler.build_table_orm = lambda *args, **kwargs: User
+        cls.full_sampler.__init__(
             service_connection_config=cls.sqlite_conn,
             ometa_client=None,
             entity=None,
-            orm_table=User,
         )
         cls.full_sqa_profiler_interface = SQAProfilerInterface(
             cls.sqlite_conn,
@@ -132,7 +134,6 @@ class SampleTest(TestCase):
             cls.full_sampler,
             5,
             43200,
-            orm_table=User,
         )
 
         User.__table__.create(bind=cls.engine)
@@ -324,11 +325,12 @@ class SampleTest(TestCase):
             self.session.add_all(data)
             self.session.commit()
 
-        sampler = SQASampler(
+        sampler = SQASampler.__new__(SQASampler)
+        sampler.build_table_orm = lambda *args, **kwargs: UserBinary
+        sampler.__init__(
             service_connection_config=self.sqlite_conn,
             ometa_client=None,
             entity=None,
-            orm_table=UserBinary,
         )
 
         sample_data = sampler.fetch_sample_data()
@@ -356,12 +358,13 @@ class SampleTest(TestCase):
         Test sample data are returned based on user query
         """
         stmt = "SELECT id, name FROM users"
-        sampler = SQASampler(
+        sampler = SQASampler.__new__(SQASampler)
+        sampler.build_table_orm = lambda *args, **kwargs: User
+        sampler.__init__(
             service_connection_config=self.sqlite_conn,
             ometa_client=None,
             entity=None,
             sample_config=SampleConfig(profile_sample=50.0),
-            orm_table=User,
             sample_query=stmt,
         )
         sample_data = sampler.fetch_sample_data()

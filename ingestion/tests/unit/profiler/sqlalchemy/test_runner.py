@@ -83,12 +83,13 @@ class RunnerTest(TestCase):
                 return_value=Mock(),
             ),
         ):
-            sampler = SQASampler(
+            sampler = SQASampler.__new__(SQASampler)
+            sampler.build_table_orm = lambda *args, **kwargs: User
+            sampler.__init__(
                 service_connection_config=Mock(),
                 ometa_client=None,
                 entity=None,
                 sample_config=SampleConfig(profile_sample=50.0),
-                orm_table=User,
             )
             cls.sample = sampler.random_sample()
 

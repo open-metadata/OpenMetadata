@@ -93,14 +93,12 @@ def create_sqlite_table():
         service_connection_config=sqlite_conn,
         ometa_client=None,
         entity=TABLE,
-        orm_table=User,
     )
     sqa_profiler_interface = SQATestSuiteInterface(
         sqlite_conn,
         None,
         sampler,
         TABLE,
-        orm_table=User,
     )
 
     runner = sqa_profiler_interface.runner
