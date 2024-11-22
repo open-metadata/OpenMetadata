@@ -60,9 +60,11 @@ import {
   axisTickFormatter,
   updateActiveChartFilter,
 } from '../../../../utils/ChartUtils';
-import { formatTimeFromSeconds } from '../../../../utils/CommonUtils';
 import { prepareChartData } from '../../../../utils/DataQuality/TestSummaryGraphUtils';
-import { formatDateTime } from '../../../../utils/date-time/DateTimeUtils';
+import {
+  convertMillisecondsToHumanReadableFormat,
+  formatDateTime,
+} from '../../../../utils/date-time/DateTimeUtils';
 import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { LineChartRef } from '../ProfilerDashboard/profilerDashboard.interface';
@@ -178,7 +180,7 @@ function TestSummaryGraph({
   const formatYAxis = (value: number) => {
     // table freshness will always have output value in seconds
     return testDefinitionName === TABLE_DATA_TO_BE_FRESH || isFreshnessTest
-      ? formatTimeFromSeconds(value)
+      ? convertMillisecondsToHumanReadableFormat(value, 2)
       : axisTickFormatter(value);
   };
 
