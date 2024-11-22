@@ -174,6 +174,7 @@ gcc python3.9-dev python3.9-distutils
 ```
 ### Example DAG
 
+```python
 from datetime import timedelta
 from airflow import DAG
 
@@ -196,8 +197,8 @@ default_args = {
 
 def metadata_ingestion_workflow():
     from metadata.workflow.metadata import MetadataWorkflow
+     
     import yaml
-
     config = """
         source:
           type: postgres
@@ -223,6 +224,34 @@ def metadata_ingestion_workflow():
             authProvider: openmetadata
             securityConfig:
               jwtToken: "eyJraWQiOiJHYjM4OWEtOWY3Ni1nZGpzLWE5MmotMDI0MmJrOTQzNTYiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsImlzQm90IjpmYWxzZSwiaXNzIjoib3Blbi1tZXRhZGF0YS5vcmciLCJpYXQiOjE2NjM5Mzg0NjIsImVtYWlsIjoiYWRtaW5Ab3Blbm1ldGFkYXRhLm9yZyJ9.tS8um_5DKu7HgzGBzS1VTA5
+    """
+
+    workflow_config = yaml.safe_load(config)
+    workflow = MetadataWorkflow.create(workflow_config)
+    workflow.execute()
+    workflow.raise_from_status()
+    workflow.print_status()
+    workflow.stop()
+
+
+with DAG(
+    "ingestion_dag",
+    default_args=default_args,
+    description="An example DAG which runs a OpenMetadata ingestion workflow",
+    start_date=days_ago(1),
+    is_paused_upon_creation=True,
+    catchup=False,
+) as dag:
+    ingest_task = PythonVirtualenvOperator(
+        task_id="ingest_using_recipe",
+        requirements=[
+            'openmetadata-ingestion[mysql]~=1.3.0',  # Specify any additional Python package dependencies
+        ],
+        system_site_packages=False,  # Set to True if you want to include system site-packages in the virtual environment
+        python_version="3.9",  # Remove if necessary
+        python_callable=metadata_ingestion_workflow
+    )
+```
 
 ### Key Notes
 
