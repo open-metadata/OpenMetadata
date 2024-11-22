@@ -54,7 +54,7 @@ class KafkaConnectClient:
         auth = None
         ssl_verify = config.verifySSL
         if config.KafkaConnectConfig:
-            auth = f"{config.KafkaConnectConfig.username}:{config.KafkaConnectConfig.password}"
+            auth = f"{config.KafkaConnectConfig.username}:{config.KafkaConnectConfig.password.get_secret_value()}"
         self.client = KafkaConnect(url=url, auth=auth, ssl_verify=ssl_verify)
 
     def get_cluster_info(self) -> Optional[dict]:
