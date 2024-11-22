@@ -55,7 +55,7 @@ def create_test_case_parameter_definitions(dbt_test):
                     "name": "error_after",
                     "displayName": "error_after",
                     "required": False,
-                }
+                },
             ]
             return test_case_param_definition
     except Exception as err:  # pylint: disable=broad-except
@@ -82,12 +82,18 @@ def create_test_case_parameter_values(dbt_test):
             ]
             return test_case_param_values
         if hasattr(manifest_node, "freshness"):
-            warn_after =  manifest_node.freshness.warn_after
+            warn_after = manifest_node.freshness.warn_after
             error_after = manifest_node.freshness.error_after
 
             test_case_param_values = [
-                {"name": "error_after", "value": f"{error_after.count} {error_after.period.value}"},
-                {"name": "warn_after", "value": f"{warn_after.count} {warn_after.period.value}"},
+                {
+                    "name": "error_after",
+                    "value": f"{error_after.count} {error_after.period.value}",
+                },
+                {
+                    "name": "warn_after",
+                    "value": f"{warn_after.count} {warn_after.period.value}",
+                },
             ]
             return test_case_param_values
     except Exception as err:  # pylint: disable=broad-except

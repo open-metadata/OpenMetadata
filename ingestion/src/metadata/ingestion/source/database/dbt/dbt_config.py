@@ -125,12 +125,22 @@ def _(config: DbtHttpConfig):
             dbt_catalog = requests.get(  # pylint: disable=missing-timeout
                 config.dbtCatalogHttpPath
             )
+
+        dbt_sources = None
+        if config.dbtSourcesHttpPath:
+            logger.debug(
+                f"Requesting [dbtSourcesHttpPath] to: {config.dbtSourcesHttpPath}"
+            )
+            dbt_sources = requests.get(  # pylint: disable=missing-timeout
+                config.dbtSourcesHttpPath
+            )
         if not dbt_manifest:
             raise DBTConfigException("Manifest file not found in file server")
         yield DbtFiles(
             dbt_catalog=dbt_catalog.json() if dbt_catalog else None,
             dbt_manifest=dbt_manifest.json(),
             dbt_run_results=[dbt_run_results.json()] if dbt_run_results else None,
+            dbt_sources=dbt_sources.json() if dbt_sources else None,
         )
     except DBTConfigException as exc:
         raise exc
