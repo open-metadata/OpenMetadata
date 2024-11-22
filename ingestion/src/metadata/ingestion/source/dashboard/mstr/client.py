@@ -101,25 +101,15 @@ class MSTRClient:
         """
         Set the user api session to active this will keep the connection alive
         """
-        try:
-            api_session = self.client.put(path="/sessions")
-            if api_session.ok:
-                logger.info(
-                    f"Connection Successful User {self.config.username} is Authenticated"
-                )
-                return True
-            raise requests.ConnectionError()
-        except ConnectionError as exc:
-            logger.debug(traceback.format_exc())
-            logger.error(
-                f"Failed to set user session due to [{exc}], please validate credentials"
+        api_session = self.client.put(path="/sessions")
+        if api_session.ok:
+            logger.info(
+                f"Connection Successful User {self.config.username} is Authenticated"
             )
-        except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.error(
-                f"Failed to fetch the auth header and cookies due to [{exc}], please validate credentials"
-            )
-        return False
+            return True
+        raise requests.ConnectionError(
+            "Connection Failed, Unable to set a session, Please validate credentials"
+        )
 
     def close_api_session(self) -> None:
         """
