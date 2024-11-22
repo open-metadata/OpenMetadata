@@ -143,7 +143,7 @@ class REST:
 
         self._limits_reached = TTLCache(config.ttl_cache)
 
-    def _request(  # pylint: disable=too-many-arguments
+    def _request(  # pylint: disable=too-many-arguments,too-many-branches
         self,
         method,
         path,

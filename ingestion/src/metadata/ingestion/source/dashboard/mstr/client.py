@@ -68,7 +68,7 @@ class MSTRClient:
         self.client = REST(client_config)
         self._set_api_session()
 
-    def _get_auth_header_and_cookies(self) -> AuthHeaderCookie:
+    def _get_auth_header_and_cookies(self) -> Optional[AuthHeaderCookie]:
         """
         Send a request to authenticate the user and get headers and
         """
@@ -92,6 +92,7 @@ class MSTRClient:
             logger.error(
                 f"Failed to fetch the auth header and cookies due to [{exc}], please validate credentials"
             )
+        return None
 
     def _set_api_session(self) -> bool:
         """
@@ -104,8 +105,7 @@ class MSTRClient:
                     f"Connection Successful User {self.config.username} is Authenticated"
                 )
                 return True
-            else:
-                raise requests.ConnectionError()
+            raise requests.ConnectionError()
         except ConnectionError as exc:
             logger.debug(traceback.format_exc())
             logger.error(
@@ -116,6 +116,7 @@ class MSTRClient:
             logger.error(
                 f"Failed to fetch the auth header and cookies due to [{exc}], please validate credentials"
             )
+        return False
 
     def close_api_session(self) -> None:
         """
