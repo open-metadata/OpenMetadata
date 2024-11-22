@@ -333,18 +333,21 @@ class DbtSource(DbtServiceSource):
         manifest_node_new = deepcopy(manifest_node)
         manifest_node_new.name = manifest_node_new.name + "_freshness"
 
-        self.context.get().dbt_tests[key + "_freshness"] = {
-            DbtCommonEnum.MANIFEST_NODE.value: manifest_node_new
-        }
-        self.context.get().dbt_tests[key + "_freshness"][
-            DbtCommonEnum.UPSTREAM.value
-        ] = self.parse_upstream_nodes(manifest_entities, manifest_node)
-        self.context.get().dbt_tests[key + "_freshness"][
-            DbtCommonEnum.RESULTS.value
-        ] = next(
+        freshness_test_result = next(
             (item for item in dbt_objects.dbt_sources.results if item.unique_id == key),
             None,
         )
+
+        if freshness_test_result:
+            self.context.get().dbt_tests[key + "_freshness"] = {
+                DbtCommonEnum.MANIFEST_NODE.value: manifest_node_new
+            }
+            self.context.get().dbt_tests[key + "_freshness"][
+                DbtCommonEnum.UPSTREAM.value
+            ] = self.parse_upstream_nodes(manifest_entities, manifest_node)
+            self.context.get().dbt_tests[key + "_freshness"][
+                DbtCommonEnum.RESULTS.value
+            ] = freshness_test_result
 
     def add_dbt_sources(
         self, key: str, manifest_node, manifest_entities, dbt_objects: DbtObjects
