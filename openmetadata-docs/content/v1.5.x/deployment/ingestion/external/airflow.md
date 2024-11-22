@@ -8,40 +8,31 @@ collate: false
 
 # Run the ingestion from your Airflow
 
-We can use Airflow in different ways:
-
-1. We can [extract metadata](/connectors/pipeline/airflow) from it,
-2. And we can [connect it to the OpenMetadata UI](/deployment/ingestion/openmetadata) to deploy Workflows automatically.
-
-In this guide, we will show how to host the ingestion DAGs in your Airflow directly.
+OpenMetadata integrates with Airflow to orchestrate ingestion workflows. You can use Airflow to [extract metadata](/connectors/pipeline/airflow) and [deploy workflows] (/deployment/ingestion/openmetadata) directly. This guide explains how to run ingestion workflows in Airflow using three different operators:
 
 1. [Python Operator](#python-operator)
 2. [Docker Operator](#docker-operator)
 3. [Python Virtualenv Operator](#python-virtualenv-operator)
 
-## Python Operator
+## Using the Python Operator
 
 ### Prerequisites
 
-Building a DAG using the `PythonOperator` requires devs to install the `openmetadata-ingestion` package in your Airflow's
-environment. This is a comfortable approach if you have access to the Airflow host and can freely handle
-dependencies.
+Install the `openmetadata-ingestion` package in your Airflow environment. This approach works best if you have access to the Airflow host and can manage dependencies.
 
-Installing the dependencies' is as easy as:
+#### Installation Command:
 
 ```
 pip3 install openmetadata-ingestion[<plugin>]==x.y.z
 ```
-
-Where `x.y.z` is the version of the OpenMetadata ingestion package. Note that the version needs to match the server version. If we are using the server at 1.1.0, then the ingestion package needs to also be 1.1.0.
-
-The plugin parameter is a list of the sources that we want to ingest. An example would look like this `openmetadata-ingestion[mysql,snowflake,s3]==1.1.0`.
+-Replace [<plugin>](https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/setup.py) with the sources to ingest, such as mysql, snowflake, or s3.
+-Replace x.y.z with the OpenMetadata version matching your server (e.g., 1.5.11).
 
 ### Example
-
-A DAG deployed using a Python Operator would then look like follows
-
-For example, preparing a metadata ingestion DAG with this operator will look as follows:
+```
+pip3 install openmetadata-ingestion[mysql,snowflake,s3]==1.5.11
+```
+### Example DAG
 
 ```python
 import yaml
@@ -95,27 +86,18 @@ with DAG(
     )
 ```
 
-Note how we are preparing the `PythonOperator` by passing the `python_callable=metadata_ingestion_workflow` as
-an argument, where `metadata_ingestion_workflow` is a function that instantiates the `Workflow` class and runs
-the whole process.
+### Key Notes
 
-The drawback here? You need to install some requirements, which is not always possible. Here you have two alternatives,
-either you use the `PythonVirtualenvOperator`, or read below on how to run the ingestion with the `DockerOperator`.
+- **Function Setup**: The `python_callable` argument in the `PythonOperator` executes the `metadata_ingestion_workflow` function, which instantiates the workflow and runs the ingestion process.
+- **Drawback**: This method requires pre-installed dependencies, which may not always be feasible. Consider using the **DockerOperator** or **PythonVirtualenvOperator** as alternatives.
 
-{% partial file="/v1.5/deployment/run-connectors-class.md" /%}
+## Using the Docker Operator
 
-## Docker Operator
-
-For this operator, we can use the `openmetadata/ingestion-base` image.
-This is useful to prepare DAGs without any installation required on the environment, although it needs for the host
-to have access to the Docker commands.
+For this operator, we can use the `openmetadata/ingestion-base` image. This is useful to prepare DAGs without any installation required on the environment, although it needs for the host to have access to the Docker commands.
 
 ### Prerequisites
 
-The airflow host should be able to run Docker commands.
-
-For example, if you are running Airflow in Docker Compose, that can be achieved preparing a volume mapping the
-`docker.sock` file with 600 permissions.
+Ensure the Airflow host can run Docker commands. For Docker Compose setups, map the Docker socket as follows:
 
 ### Example
 
@@ -124,7 +106,7 @@ volumes:
   - /var/run/docker.sock:/var/run/docker.sock:z  # Need 666 permissions to run DockerOperator
 ```
 
-Then, preparing a DAG looks like this:
+### Example DAG
 
 ```python
 from datetime import datetime
@@ -163,9 +145,11 @@ Make sure to tune out the DAG configurations (`schedule_interval`, `start_date`,
 
 {% /note %}
 
-Note that the example uses the image `openmetadata/ingestion-base:0.13.2`. Update that accordingly for higher version
-once they are released. Also, the image version should be aligned with your OpenMetadata server version to avoid
-incompatibilities.
+### Key Notes
+
+- **Image Version**: Ensure the Docker image version matches your OpenMetadata server version (e.g., `openmetadata/ingestion-base:0.13.2`).  
+- **Pipeline Types**: Set the `pipelineType` to `metadata`, `usage`, `lineage`, `profiler`, or other supported values.  
+- **No Installation Required**: The `DockerOperator` eliminates the need to install dependencies directly on the Airflow host.
 
 Another important point here is making sure that the Airflow will be able to run Docker commands to create the task.
 As our example was done with Airflow in Docker Compose, that meant setting `docker_url="unix://var/run/docker.sock"`.
@@ -180,30 +164,16 @@ Other supported values of `pipelineType` are `usage`, `lineage`, `profiler`, `da
 depending on the type of workflow you want to execute. Make sure that the YAML config reflects what ingredients
 are required for your Workflow.
 
-## Python Virtualenv Operator
-
-You can use the [PythonVirtualenvOperator](https://airflow.apache.org/docs/apache-airflow/stable/howto/operator/python.html#pythonvirtualenvoperator)
-when working with an Airflow installation where:
-1. You don't want to install dependencies directly on your Airflow host,
-2. You don't have any Docker runtime,
-3. Your Airflow's Python version is not supported by `openmetadata-ingestion`.
+## Using the Python Virtualenv Operator
 
 ### Prerequisites
 
-As stated in Airflow's [docs](https://airflow.apache.org/docs/apache-airflow/stable/howto/operator/python.html#pythonvirtualenvoperator),
-your Airflow host should have the `virtualenv` package installed.
+As stated in Airflow's [docs](https://airflow.apache.org/docs/apache-airflow/stable/howto/operator/python.html#pythonvirtualenvoperator), install the `virtualenv` package on the Airflow host.If using a different Python version in the virtual environment (e.g., Python 3.9 while Airflow uses 3.7), install additional packages such as:
+```
+gcc python3.9-dev python3.9-distutils
+```
+### Example DAG
 
-Moreover, if you're planning to use a different Python Version in the `virtualenv` than the one your Airflow uses,
-you will need that version to be installed in the Airflow host.
-
-For example, if we use Airflow running with Python 3.7 but want the `virtualenv` to use Python 3.9, we need to install
-in the host the following packages: `gcc python3.9-dev python3.9-distutils`.
-
-### Example
-
-In this example, we will be using a different Python version that the one Airflow is running:
-
-```python
 from datetime import timedelta
 from airflow import DAG
 
@@ -226,40 +196,39 @@ default_args = {
 
 def metadata_ingestion_workflow():
     from metadata.workflow.metadata import MetadataWorkflow
-     
     import yaml
+
     config = """
-        ...
-    """
+        source:
+          type: postgres
+          serviceName: local_postgres
+          serviceConnection:
+            config:
+              type: Postgres
+              username: openmetadata_user
+              authType:
+                password: openmetadata_password
+              hostPort: localhost:5432
+              database: pagila
+          sourceConfig:
+            config:
+              type: DatabaseMetadata
+        sink:
+          type: metadata-rest
+          config: {}
+        workflowConfig:
+          # loggerLevel: INFO # DEBUG, INFO, WARN or ERROR
+          openMetadataServerConfig:
+            hostPort: http://localhost:8585/api
+            authProvider: openmetadata
+            securityConfig:
+              jwtToken: "eyJraWQiOiJHYjM4OWEtOWY3Ni1nZGpzLWE5MmotMDI0MmJrOTQzNTYiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsImlzQm90IjpmYWxzZSwiaXNzIjoib3Blbi1tZXRhZGF0YS5vcmciLCJpYXQiOjE2NjM5Mzg0NjIsImVtYWlsIjoiYWRtaW5Ab3Blbm1ldGFkYXRhLm9yZyJ9.tS8um_5DKu7HgzGBzS1VTA5
 
-    workflow_config = yaml.safe_load(config)
-    workflow = MetadataWorkflow.create(workflow_config)
-    workflow.execute()
-    workflow.raise_from_status()
-    workflow.print_status()
-    workflow.stop()
+### Key Notes
 
+**Function Rules**:  
+- Use a `def` function (not part of a class).  
+- All imports must occur inside the function.  
+- Avoid referencing variables outside the function's scope.
 
-with DAG(
-    "ingestion_dag",
-    default_args=default_args,
-    description="An example DAG which runs a OpenMetadata ingestion workflow",
-    start_date=days_ago(1),
-    is_paused_upon_creation=True,
-    catchup=False,
-) as dag:
-    ingest_task = PythonVirtualenvOperator(
-        task_id="ingest_using_recipe",
-        requirements=[
-            'openmetadata-ingestion[mysql]~=1.3.0',  # Specify any additional Python package dependencies
-        ],
-        system_site_packages=False,  # Set to True if you want to include system site-packages in the virtual environment
-        python_version="3.9",  # Remove if necessary
-        python_callable=metadata_ingestion_workflow
-    )
-```
-
-Note that the function needs to follow this rules:
-- The function must be defined using def, and not be part of a class.
-- All imports must happen inside the function
-- No variables outside of the scope may be referenced.
+{% partial file="/v1.5/deployment/run-connectors-class.md" /%}
