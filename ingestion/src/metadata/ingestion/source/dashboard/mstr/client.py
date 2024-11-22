@@ -71,6 +71,9 @@ class MSTRClient:
     def _get_auth_header_and_cookies(self) -> Optional[AuthHeaderCookie]:
         """
         Send a request to authenticate the user and get headers and
+
+        To know about the data params below please visit
+        https://demo.microstrategy.com/MicroStrategyLibrary/api-docs/index.html#/Authentication/postLogin
         """
         try:
             data = {
@@ -177,6 +180,9 @@ class MSTRClient:
     ) -> List[MstrSearchResult]:
         """
         Get Search Results
+
+        To know about the data params below please visit
+        https://demo.microstrategy.com/MicroStrategyLibrary/api-docs/index.html?#/Browsing/doQuickSearch
         """
         try:
             data = {
