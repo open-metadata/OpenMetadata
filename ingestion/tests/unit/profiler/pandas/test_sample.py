@@ -198,7 +198,7 @@ class DatalakeSampleTest(TestCase):
                 entity=self.table_entity,
                 sample_config=SampleConfig(profile_sample=50.0),
             )
-            random_sample = sampler.random_sample()
+            random_sample = sampler.get_dataset()
             res = sum(len(r) for r in random_sample)
             assert res < 5
 
@@ -239,7 +239,7 @@ class DatalakeSampleTest(TestCase):
                 thread_count=None,
             )
 
-            random_sample = datalake_profiler_interface.sampler.random_sample()
+            random_sample = datalake_profiler_interface.sampler.get_dataset()
             res = sum(len(r) for r in random_sample)
             assert res < 5
 

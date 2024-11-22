@@ -51,7 +51,6 @@ class SQATestSuiteInterface(SQAInterfaceMixin, TestSuiteInterface):
         ometa_client: OpenMetadata,
         sampler: SamplerInterface,
         table_entity: Table = None,
-        orm_table=None,
     ):
         super().__init__(
             service_connection_config,
@@ -60,8 +59,6 @@ class SQATestSuiteInterface(SQAInterfaceMixin, TestSuiteInterface):
             table_entity,
         )
         self.create_session()
-        self._table = orm_table
-
         (
             self.table_sample_query,
             self.table_sample_config,
@@ -98,16 +95,7 @@ class SQATestSuiteInterface(SQAInterfaceMixin, TestSuiteInterface):
         """
         return self._runner
 
-    @property
-    def table(self):
-        """getter method for the table object
-
-        Returns:
-            Table: table object
-        """
-        return self._table
-
-    def _create_runner(self) -> None:
+    def _create_runner(self) -> QueryRunner:
         """Create a QueryRunner Instance"""
 
         return cls_timeout(TEN_MIN)(

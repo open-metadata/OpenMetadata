@@ -13,8 +13,7 @@
 Interfaces with database for all database engine
 supporting sqlalchemy abstraction layer
 """
-from copy import deepcopy
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING
 
 from metadata.data_quality.builders.i_validator_builder import IValidatorBuilder
 from metadata.data_quality.builders.pandas_validator_builder import (
@@ -32,7 +31,7 @@ from metadata.sampler.sampler_interface import SamplerInterface
 from metadata.utils.logger import test_suite_logger
 
 if TYPE_CHECKING:
-    from metadata.profiler.processor.sampler.pandas.sampler import DatalakeSampler
+    pass
 
 
 logger = test_suite_logger()
@@ -67,9 +66,7 @@ class PandasTestSuiteInterface(TestSuiteInterface, PandasInterfaceMixin):
         ) = self._get_table_config()
 
         # add partition logic to test suite
-        self.dfs = self.sampler.table
-        if self.dfs and self.table_partition_config:
-            self.dfs = self.get_partitioned_df(self.dfs)
+        self.dataset = self.sampler.dataset
 
     def _get_validator_builder(
         self, test_case: TestCase, entity_type: str

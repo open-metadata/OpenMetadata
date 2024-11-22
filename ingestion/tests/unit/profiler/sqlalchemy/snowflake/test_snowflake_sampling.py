@@ -1,5 +1,4 @@
 from unittest import TestCase
-from unittest.mock import patch
 from uuid import uuid4
 
 from sqlalchemy import Column, Integer
@@ -10,6 +9,8 @@ from metadata.generated.schema.entity.data.table import Column as EntityColumn
 from metadata.generated.schema.entity.data.table import (
     ColumnName,
     DataType,
+    PartitionIntervalTypes,
+    PartitionProfilerConfig,
     ProfileSampleType,
     SamplingMethodType,
     Table,
@@ -17,14 +18,12 @@ from metadata.generated.schema.entity.data.table import (
 from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
     SnowflakeConnection,
 )
-from metadata.profiler.api.models import ProfileSampleConfig
 from metadata.profiler.interface.sqlalchemy.profiler_interface import (
     SQAProfilerInterface,
 )
-from metadata.profiler.processor.sampler.sqlalchemy.snowflake.sampler import (
-    SnowflakeSampler,
-)
-from metadata.utils.partition import PartitionIntervalTypes, PartitionProfilerConfig
+from metadata.sampler.models import SampleConfig
+from metadata.sampler.sqlalchemy.sampler import SQASampler
+from metadata.sampler.sqlalchemy.snowflake.sampler import SnowflakeSampler
 
 Base = declarative_base()
 
@@ -50,12 +49,16 @@ class SampleTest(TestCase):
         username="myuser", account="myaccount", warehouse="mywarehouse"
     )
 
-    with patch.object(
-        SQAProfilerInterface, "_convert_table_to_orm_object", return_value=User
-    ):
-        sqa_profiler_interface = SQAProfilerInterface(
-            snowflake_conn, None, table_entity, None, None, None, None, None, 5, 43200
-        )
+    sampler = SQASampler(
+        service_connection_config=snowflake_conn,
+        ometa_client=None,
+        entity=None,
+        orm_table=User,
+    )
+    sqa_profiler_interface = SQAProfilerInterface(
+        snowflake_conn, None, table_entity, None, sampler, 5, 43200, orm_table=User
+    )
+
     session = sqa_profiler_interface.session
 
     def test_omit_sampling_method_type(self):
@@ -63,11 +66,13 @@ class SampleTest(TestCase):
         use BERNOULLI if sampling method type is not specified.
         """
         sampler = SnowflakeSampler(
-            client=self.session,
-            table=User,
-            profile_sample_config=ProfileSampleConfig(
+            service_connection_config=self.snowflake_conn,
+            ometa_client=None,
+            entity=self.table_entity,
+            sample_config=SampleConfig(
                 profile_sample_type=ProfileSampleType.PERCENTAGE, profile_sample=50.0
             ),
+            orm_table=User,
         )
         query: CTE = sampler.get_sample_query()
         expected_query = (
@@ -89,13 +94,15 @@ class SampleTest(TestCase):
             SamplingMethodType.BERNOULLI,
         ]:
             sampler = SnowflakeSampler(
-                client=self.session,
-                table=User,
-                profile_sample_config=ProfileSampleConfig(
+                service_connection_config=self.snowflake_conn,
+                ometa_client=None,
+                entity=self.table_entity,
+                sample_config=SampleConfig(
                     profile_sample_type=ProfileSampleType.PERCENTAGE,
                     profile_sample=50.0,
                     sampling_method_type=sampling_method_type,
                 ),
+                orm_table=User,
             )
             query: CTE = sampler.get_sample_query()
             expected_query = (
@@ -115,7 +122,7 @@ class SampleTest(TestCase):
         sampler = SnowflakeSampler(
             client=self.session,
             table=User,
-            profile_sample_config=ProfileSampleConfig(
+            profile_sample_config=SampleConfig(
                 profile_sample_type=ProfileSampleType.ROWS, profile_sample=50
             ),
         )
@@ -137,7 +144,7 @@ class SampleTest(TestCase):
         sampler = SnowflakeSampler(
             client=self.session,
             table=User,
-            profile_sample_config=ProfileSampleConfig(
+            profile_sample_config=SampleConfig(
                 profile_sample_type=ProfileSampleType.PERCENTAGE,
                 profile_sample=50.0,
             ),

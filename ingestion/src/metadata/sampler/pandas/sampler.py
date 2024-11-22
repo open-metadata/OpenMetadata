@@ -30,7 +30,10 @@ from metadata.mixins.pandas.pandas_mixin import PandasInterfaceMixin
 from metadata.sampler.sampler_interface import SamplerInterface
 from metadata.utils.constants import COMPLEX_COLUMN_SEPARATOR
 from metadata.utils.datalake.datalake_utils import GenericDataFrameColumnParser
+from metadata.utils.logger import profiler_logger
 from metadata.utils.sqa_like_column import SQALikeColumn
+
+logger = profiler_logger()
 
 
 class DatalakeSampler(SamplerInterface, PandasInterfaceMixin):
@@ -42,17 +45,18 @@ class DatalakeSampler(SamplerInterface, PandasInterfaceMixin):
     def __init__(self, *args, **kwargs):
         """Init the pandas sampler"""
         super().__init__(*args, **kwargs)
+        self.partition_details = cast(PartitionProfilerConfig, self.partition_details)
         self._table = None
-        self.complex_dataframe_sample = deepcopy(self.random_sample(is_sampled=True))
+        self.dataset = deepcopy(self.get_dataset())
 
     @property
     def table(self):
+        """Get the raw dataset (unpartitioned and unsampled)"""
         if not self._table:
-            self._table = self.return_ometa_dataframes_sampled(
+            self._table = self.get_dataframes(
                 service_connection_config=self.service_connection_config,
                 client=self.client.client,
                 table=self.entity,
-                profile_sample_config=self.sample_config.profile_sample,
             )
         return self._table
 
@@ -61,7 +65,6 @@ class DatalakeSampler(SamplerInterface, PandasInterfaceMixin):
 
     def _partitioned_table(self):
         """Get partitioned table"""
-        self.partition_details = cast(PartitionProfilerConfig, self.partition_details)
         partition_field = self.partition_details.partitionColumnName
         if (
             self.partition_details.partitionIntervalType
@@ -84,16 +87,28 @@ class DatalakeSampler(SamplerInterface, PandasInterfaceMixin):
                 ]
                 for df in self.table
             ]
-        return [
-            df[
-                df[partition_field]
-                >= TableRowInsertedCountToBeBetweenValidator._get_threshold_date(  # pylint: disable=protected-access
-                    self.partition_details.partitionIntervalUnit.value,
-                    self.partition_details.partitionInterval,
-                )
+        if (
+            self.partition_details.partitionIntervalType
+            in {PartitionIntervalTypes.INGESTION_TIME, PartitionIntervalTypes.TIME_UNIT}
+            and self.partition_details.partitionIntervalUnit
+            and self.partition_details.partitionInterval
+        ):
+            return [
+                df[
+                    df[partition_field]
+                    >= TableRowInsertedCountToBeBetweenValidator._get_threshold_date(  # pylint: disable=protected-access
+                        self.partition_details.partitionIntervalUnit.value,
+                        self.partition_details.partitionInterval,
+                    )
+                ]
+                for df in self.table
             ]
-            for df in self.table
-        ]
+        logger.warning(
+            f"{self.partition_details.partitionIntervalType} is not a supported partition type. "
+            "Partitioning will be ignored. Use one of "
+            f"{', '.join(list(PartitionIntervalTypes.__members__))}"
+        )
+        return self.table
 
     def _fetch_sample_data_from_user_query(self) -> TableData:
         """Fetch sample data from user query"""
@@ -112,7 +127,7 @@ class DatalakeSampler(SamplerInterface, PandasInterfaceMixin):
         # sampling data based on profiler config (if any)
         if self.sample_config.profile_sample_type == ProfileSampleType.PERCENTAGE:
             try:
-                profile_sample = self.sample_config.profile_sample / 100
+                profile_sample = self.sample_config.profile_sample or 100 / 100
             except TypeError:
                 # if the profile sample is not a number or is None
                 # we'll set it to 100
@@ -128,7 +143,7 @@ class DatalakeSampler(SamplerInterface, PandasInterfaceMixin):
 
         # we'll distribute the sample size equally among the dataframes
         sample_rows_per_chunk: int = math.floor(
-            self.sample_config.profile_sample / len(self.table)
+            self.sample_config.profile_sample or 100 / len(self.table)
         )
         num_rows = sum(len(df) for df in self.table)
 
@@ -158,11 +173,11 @@ class DatalakeSampler(SamplerInterface, PandasInterfaceMixin):
         # Sample Data should not exceed sample limit
         for chunk in data_frame:
             rows.extend(self._fetch_rows(chunk[cols])[: self.sample_limit])
-            if len(rows) >= self.sample_limit:
+            if len(rows) >= (self.sample_limit or 100):
                 break
         return cols, rows
 
-    def random_sample(self, is_sampled: bool = False, **__):
+    def get_dataset(self, **__):
         """Generate random sample from the table
 
         Returns:
@@ -174,7 +189,7 @@ class DatalakeSampler(SamplerInterface, PandasInterfaceMixin):
         if self.partition_details:
             self._table = self._partitioned_table()
 
-        if not self.sample_config.profile_sample or is_sampled:
+        if not self.sample_config.profile_sample:
             return self.table
         return self._get_sampled_dataframe()
 
@@ -198,15 +213,15 @@ class DatalakeSampler(SamplerInterface, PandasInterfaceMixin):
     def get_columns(self) -> List[Optional[SQALikeColumn]]:
         """Get SQALikeColumns for datalake to be passed for metric computation"""
         sqalike_columns = []
-        if self.complex_dataframe_sample:
-            for column_name in self.complex_dataframe_sample[0].columns:
+        if self.dataset:
+            for column_name in self.dataset[0].columns:
                 complex_col_name = None
                 if COMPLEX_COLUMN_SEPARATOR in column_name:
                     complex_col_name = ".".join(
                         column_name.split(COMPLEX_COLUMN_SEPARATOR)[1:]
                     )
                     if complex_col_name:
-                        for df in self.complex_dataframe_sample:
+                        for df in self.dataset:
                             df.rename(
                                 columns={column_name: complex_col_name}, inplace=True
                             )
@@ -215,7 +230,7 @@ class DatalakeSampler(SamplerInterface, PandasInterfaceMixin):
                     SQALikeColumn(
                         column_name,
                         GenericDataFrameColumnParser.fetch_col_types(
-                            self.complex_dataframe_sample[0], column_name
+                            self.dataset[0], column_name
                         ),
                     )
                 )

@@ -58,7 +58,7 @@ class NoSQLSampler(SamplerInterface):
             rows=[list(map(str, row)) for row in rows], columns=[c.name for c in cols]
         )
 
-    def random_sample(self, **__):
+    def get_dataset(self, **__):
         """No randomization for NoSQL"""
 
     def fetch_sample_data(self, columns: List[SQALikeColumn]) -> TableData:

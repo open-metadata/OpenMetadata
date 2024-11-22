@@ -1,5 +1,4 @@
 from unittest import TestCase
-from unittest.mock import patch
 from uuid import uuid4
 
 from sqlalchemy import Column, Integer
@@ -10,6 +9,8 @@ from metadata.generated.schema.entity.data.table import Column as EntityColumn
 from metadata.generated.schema.entity.data.table import (
     ColumnName,
     DataType,
+    PartitionIntervalTypes,
+    PartitionProfilerConfig,
     ProfileSampleType,
     Table,
 )
@@ -20,15 +21,13 @@ from metadata.generated.schema.security.credentials.gcpCredentials import GCPCre
 from metadata.generated.schema.security.credentials.gcpValues import (
     GcpCredentialsValues,
 )
-from metadata.profiler.api.models import ProfileSampleConfig
 from metadata.profiler.interface.sqlalchemy.profiler_interface import (
     SQAProfilerInterface,
 )
 from metadata.profiler.orm.functions.table_metric_computer import TableType
-from metadata.profiler.processor.sampler.sqlalchemy.bigquery.sampler import (
-    BigQuerySampler,
-)
-from metadata.utils.partition import PartitionIntervalTypes, PartitionProfilerConfig
+from metadata.sampler.models import SampleConfig
+from metadata.sampler.sqlalchemy.bigquery.sampler import BigQuerySampler
+from metadata.sampler.sqlalchemy.sampler import SQASampler
 
 Base = declarative_base()
 
@@ -81,12 +80,15 @@ class SampleTest(TestCase):
         )
     )
 
-    with patch.object(
-        SQAProfilerInterface, "_convert_table_to_orm_object", return_value=User
-    ):
-        sqa_profiler_interface = SQAProfilerInterface(
-            bq_conn, None, table_entity, None, None, None, None, None, 5, 43200
-        )
+    sampler = SQASampler(
+        service_connection_config=bq_conn,
+        ometa_client=None,
+        entity=None,
+        orm_table=User,
+    )
+    sqa_profiler_interface = SQAProfilerInterface(
+        bq_conn, None, table_entity, None, sampler, 5, 43200, orm_table=User
+    )
     session = sqa_profiler_interface.session
 
     def test_sampling(self):
@@ -96,7 +98,7 @@ class SampleTest(TestCase):
         sampler = BigQuerySampler(
             client=self.session,
             table=User,
-            profile_sample_config=ProfileSampleConfig(
+            profile_sample_config=SampleConfig(
                 profile_sample_type=ProfileSampleType.PERCENTAGE, profile_sample=50.0
             ),
             table_type=TableType.Regular,
@@ -117,7 +119,7 @@ class SampleTest(TestCase):
         sampler = BigQuerySampler(
             client=self.session,
             table=User,
-            profile_sample_config=ProfileSampleConfig(
+            profile_sample_config=SampleConfig(
                 profile_sample_type=ProfileSampleType.PERCENTAGE, profile_sample=50.0
             ),
             table_type=TableType.View,
@@ -140,7 +142,7 @@ class SampleTest(TestCase):
         sampler = BigQuerySampler(
             client=self.session,
             table=User,
-            profile_sample_config=ProfileSampleConfig(
+            profile_sample_config=SampleConfig(
                 profile_sample_type=ProfileSampleType.PERCENTAGE, profile_sample=50.0
             ),
             partition_details=PartitionProfilerConfig(
@@ -169,7 +171,7 @@ class SampleTest(TestCase):
         sampler = BigQuerySampler(
             client=self.session,
             table=User,
-            profile_sample_config=ProfileSampleConfig(
+            profile_sample_config=SampleConfig(
                 profile_sample_type=ProfileSampleType.PERCENTAGE, profile_sample=50.0
             ),
             partition_details=PartitionProfilerConfig(

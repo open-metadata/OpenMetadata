@@ -90,6 +90,7 @@ class PandasInterfaceMixin:
                 key=table.name.root,
                 bucket_name=table.databaseSchema.name,
                 file_extension=table.fileFormat,
+                separator=None,
             ),
         )
         if data:

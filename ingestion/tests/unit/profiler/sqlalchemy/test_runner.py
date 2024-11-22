@@ -69,16 +69,6 @@ class RunnerTest(TestCase):
     engine = create_engine("sqlite+pysqlite:///:memory:", echo=False, future=True)
     session = create_and_bind_session(engine)
 
-    sampler = SQASampler(
-        client=session,
-        table=User,
-        profile_sample_config=ProfileSampleConfig(profile_sample=50.0),
-    )
-    dataset = sampler.get_dataset()
-
-    raw_runner = QueryRunner(session=session, dataset=dataset)
-    timeout_runner: Timer = cls_timeout(1)(Timer())
-
     @classmethod
     def setUpClass(cls) -> None:
         """
@@ -100,7 +90,7 @@ class RunnerTest(TestCase):
                 sample_config=SampleConfig(profile_sample=50.0),
                 orm_table=User,
             )
-            cls.sample = sampler.random_sample()
+            cls.sample = sampler.get_dataset()
 
         cls.raw_runner = QueryRunner(session=cls.session, table=User, sample=cls.sample)
         cls.timeout_runner: Timer = cls_timeout(1)(Timer())

@@ -18,7 +18,7 @@ and manage behavior such as timeouts.
 """
 from typing import Dict, Optional, Union
 
-from sqlalchemy import text
+from sqlalchemy import Table, text
 from sqlalchemy.orm import DeclarativeMeta, Query, Session
 from sqlalchemy.orm.util import AliasedClass
 
@@ -53,7 +53,7 @@ class QueryRunner:
         self.profile_sample_query = profile_sample_query
 
     @property
-    def table(self):
+    def table(self) -> Table:
         """Backward compatibility table attribute access"""
         return self._dataset.__table__
 
@@ -61,6 +61,15 @@ class QueryRunner:
     def _sample(self):
         """Backward compatibility _sample attribute access"""
         return self._dataset
+
+    @property
+    def dataset(self):
+        """Dataset attribute access"""
+        return self._dataset
+
+    @dataset.setter
+    def _(self, dataset):
+        self._dataset = dataset
 
     def _build_query(self, *entities, **kwargs) -> Query:
         """Build query object
@@ -98,7 +107,7 @@ class QueryRunner:
         filter_ = get_query_filter_for_runner(kwargs)
 
         user_query = self._session.query(self._dataset).from_statement(
-            text(f"{self._profile_sample_query}")
+            text(f"{self.profile_sample_query}")
         )
 
         query = self._build_query(*entities, **kwargs).select_from(user_query)

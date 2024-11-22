@@ -16,9 +16,8 @@ supporting sqlalchemy abstraction layer
 """
 import traceback
 from collections import defaultdict
-from copy import deepcopy
 from datetime import datetime
-from typing import TYPE_CHECKING, Dict, List, Optional, cast, Union
+from typing import Dict, List, Optional, Union
 
 from sqlalchemy import Column
 
@@ -47,9 +46,6 @@ from metadata.utils.constants import COMPLEX_COLUMN_SEPARATOR
 from metadata.utils.datalake.datalake_utils import GenericDataFrameColumnParser
 from metadata.utils.logger import profiler_interface_registry_logger
 from metadata.utils.sqa_like_column import SQALikeColumn
-
-if TYPE_CHECKING:
-    from metadata.profiler.processor.sampler.pandas.sampler import DatalakeSampler
 
 logger = profiler_interface_registry_logger()
 
@@ -87,10 +83,7 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
         )
 
         self.client = self.sampler.client
-        self.dfs = self.sampler.table
-        self.complex_dataframe_sample = deepcopy(
-            self.sampler.random_sample(is_sampled=True)
-        )
+        self.dataset = self.sampler.dataset
         self.complex_df()
 
     def complex_df(self):
@@ -144,7 +137,7 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
 
         try:
             row_dict = {}
-            df_list = [df.where(pd.notnull(df), None) for df in self.dfs]
+            df_list = [df.where(pd.notnull(df), None) for df in self.dataset]
             for metric in metrics:
                 row_dict[metric.name()] = metric().df_fn(df_list)
             return row_dict

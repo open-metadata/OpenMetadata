@@ -1,5 +1,4 @@
 from unittest import TestCase
-from unittest.mock import patch
 from uuid import uuid4
 
 from sqlalchemy import Column, Integer
@@ -10,20 +9,23 @@ from metadata.generated.schema.entity.data.table import Column as EntityColumn
 from metadata.generated.schema.entity.data.table import (
     ColumnName,
     DataType,
+    PartitionIntervalTypes,
+    PartitionProfilerConfig,
     ProfileSampleType,
+    SamplingMethodType,
     Table,
 )
 from metadata.generated.schema.entity.services.connections.database.postgresConnection import (
     PostgresConnection,
 )
-from metadata.profiler.api.models import ProfileSampleConfig, SamplingMethodType
 from metadata.profiler.interface.sqlalchemy.profiler_interface import (
     SQAProfilerInterface,
 )
 from metadata.profiler.processor.sampler.sqlalchemy.postgres.sampler import (
     PostgresSampler,
 )
-from metadata.utils.partition import PartitionIntervalTypes, PartitionProfilerConfig
+from metadata.sampler.models import SampleConfig
+from metadata.sampler.sqlalchemy.sampler import SQASampler
 
 Base = declarative_base()
 
@@ -51,12 +53,15 @@ class SampleTest(TestCase):
         database="test",
     )
 
-    with patch.object(
-        SQAProfilerInterface, "_convert_table_to_orm_object", return_value=User
-    ):
-        sqa_profiler_interface = SQAProfilerInterface(
-            psql_conn, None, table_entity, None, None, None, None, None, 5, 43200
-        )
+    sampler = SQASampler(
+        service_connection_config=psql_conn,
+        ometa_client=None,
+        entity=None,
+        orm_table=User,
+    )
+    sqa_profiler_interface = SQAProfilerInterface(
+        psql_conn, None, table_entity, None, sampler, 5, 43200, orm_table=User
+    )
     session = sqa_profiler_interface.session
 
     def test_sampling_default(self):
@@ -66,7 +71,7 @@ class SampleTest(TestCase):
         sampler = PostgresSampler(
             client=self.session,
             table=User,
-            profile_sample_config=ProfileSampleConfig(
+            profile_sample_config=SampleConfig(
                 profile_sample_type=ProfileSampleType.PERCENTAGE,
                 profile_sample=50.0,
             ),
@@ -91,7 +96,7 @@ class SampleTest(TestCase):
             sampler = PostgresSampler(
                 client=self.session,
                 table=User,
-                profile_sample_config=ProfileSampleConfig(
+                profile_sample_config=SampleConfig(
                     profile_sample_type=ProfileSampleType.PERCENTAGE,
                     profile_sample=50.0,
                     sampling_method_type=sampling_method_type,
@@ -111,7 +116,7 @@ class SampleTest(TestCase):
         sampler = PostgresSampler(
             client=self.session,
             table=User,
-            profile_sample_config=ProfileSampleConfig(
+            profile_sample_config=SampleConfig(
                 profile_sample_type=ProfileSampleType.PERCENTAGE, profile_sample=50.0
             ),
             partition_details=PartitionProfilerConfig(
