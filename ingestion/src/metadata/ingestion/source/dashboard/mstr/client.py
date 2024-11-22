@@ -103,7 +103,12 @@ class MSTRClient:
         """
         Set the user api session to active this will keep the connection alive
         """
-        api_session = self.client.put(path="/sessions")
+        api_session = requests.put(
+            url=self._get_base_url("sessions"),
+            headers=self.auth_params.auth_header,
+            cookies=self.auth_params.auth_cookies,
+            timeout=60,
+        )
         if api_session.ok:
             logger.info(
                 f"Connection Successful User {self.config.username} is Authenticated"

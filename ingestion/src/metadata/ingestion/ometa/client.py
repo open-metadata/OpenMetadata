@@ -247,11 +247,9 @@ class REST:
             resp = self._session.request(method, url, **opts)
             resp.raise_for_status()
 
-            # resp.status_code: 204 => True when request call is successful with no content returned
-            # the content is passed through resp.headers
-            if resp.text != "" or resp.status_code == 204:
+            if resp.text != "":
                 try:
-                    return resp.json() if resp.text != "" else resp
+                    return resp.json()
                 except Exception as exc:
                     logger.debug(traceback.format_exc())
                     logger.warning(
