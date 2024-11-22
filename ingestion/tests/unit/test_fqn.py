@@ -58,6 +58,7 @@ class TestFqn(TestCase):
             FQNTest(["a.1", "b.2", "c", "d"], '"a.1"."b.2".c.d'),
             FQNTest(["a.1", "b.2", "c.3", "d"], '"a.1"."b.2"."c.3".d'),
             FQNTest(["a.1", "b.2", "c.3", "d.4"], '"a.1"."b.2"."c.3"."d.4"'),
+            FQNTest(["fqn", "test.test.test"], 'fqn."test.test.test"'),
         ]
         for x in xs:
             x.validate(fqn.split(x.fqn), fqn._build(*x.parts))

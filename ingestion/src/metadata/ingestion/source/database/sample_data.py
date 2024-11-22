@@ -136,6 +136,7 @@ from metadata.parsers.schema_parsers import (
     InvalidSchemaTypeException,
     schema_parser_config_registry,
 )
+from metadata.sampler.models import SampleData, SamplerResponse
 from metadata.utils import entity_link, fqn
 from metadata.utils.constants import UTF_8
 from metadata.utils.fqn import FQN_SEPARATOR
@@ -898,10 +899,16 @@ class SampleDataSource(
 
                 self.metadata.ingest_table_sample_data(
                     table_entity,
-                    TableData(
-                        rows=table["sampleData"]["rows"],
-                        columns=table["sampleData"]["columns"],
-                    ),
+                    sample_data=SamplerResponse(
+                        table=table_entity,
+                        sample_data=SampleData(
+                            data=TableData(
+                                rows=table["sampleData"]["rows"],
+                                columns=table["sampleData"]["columns"],
+                            ),
+                            store=True,
+                        ),
+                    ).sample_data.data,
                 )
 
             if table.get("customMetrics"):
