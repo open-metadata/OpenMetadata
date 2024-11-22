@@ -37,6 +37,7 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 API_VERSION = "MicroStrategyLibrary/api"
+LOGIN_MODE_GUEST = 8
 
 
 class MSTRClient:
@@ -79,7 +80,7 @@ class MSTRClient:
             data = {
                 "username": self.config.username,
                 "password": self.config.password.get_secret_value(),
-                "loginMode": 8,
+                "loginMode": LOGIN_MODE_GUEST,
                 "applicationType": 35,
             }
             response = requests.post(
@@ -108,7 +109,7 @@ class MSTRClient:
             )
             return True
         raise requests.ConnectionError(
-            "Connection Failed, Unable to set a session, Please validate credentials"
+            "Connection Failed, Failed to set an api session, Please validate the credentials"
         )
 
     def close_api_session(self) -> None:
