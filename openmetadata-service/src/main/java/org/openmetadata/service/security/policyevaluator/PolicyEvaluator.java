@@ -84,7 +84,9 @@ public class PolicyEvaluator {
       @NonNull ResourceContextInterface resourceContext,
       OperationContext operationContext) {
     // If the Resource Does not belong to any Domain, then evaluate via other permissions
-    if (!nullOrEmpty(resourceContext.getDomain())) {
+    if (!nullOrEmpty(resourceContext.getDomain())
+        && !subjectContext.isAdmin()
+        && !subjectContext.isBot()) {
       EntityReference domain = resourceContext.getDomain();
       if (!subjectContext.hasDomain(domain)) {
         throw new AuthorizationException(
