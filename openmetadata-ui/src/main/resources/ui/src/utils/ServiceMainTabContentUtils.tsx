@@ -18,8 +18,6 @@ import { isUndefined } from 'lodash';
 import { ServiceTypes } from 'Models';
 import React from 'react';
 import DisplayName from '../components/common/DisplayName/DisplayName';
-import UserPopOverCard from '../components/common/PopOverCard/UserPopOverCard';
-import { Link } from 'react-router-dom';
 import { OwnerLabel } from '../components/common/OwnerLabel/OwnerLabel.component';
 import RichTextEditorPreviewer from '../components/common/RichTextEditor/RichTextEditorPreviewer';
 import { EntityName } from '../components/Modals/EntityNameModal/EntityNameModal.interface';
@@ -29,6 +27,14 @@ import { ServiceCategory } from '../enums/service.enum';
 import { Database } from '../generated/entity/data/database';
 import { Pipeline } from '../generated/entity/data/pipeline';
 import { ServicePageData } from '../pages/ServiceDetailsPage/ServiceDetailsPage';
+import { patchApiCollection } from '../rest/apiCollectionsAPI';
+import { patchDashboardDetails } from '../rest/dashboardAPI';
+import { patchDatabaseDetails } from '../rest/databaseAPI';
+import { patchMlModelDetails } from '../rest/mlModelAPI';
+import { patchPipelineDetails } from '../rest/pipelineAPI';
+import { patchSearchIndexDetails } from '../rest/SearchIndexAPI';
+import { patchContainerDetails } from '../rest/storageAPI';
+import { patchTopicDetails } from '../rest/topicsAPI';
 import { getLinkForFqn } from './ServiceUtils';
 import { getUsagePercentile } from './TableUtils';
 
@@ -124,3 +130,30 @@ export const getServiceMainTabColumns = (
       ]
     : []),
 ];
+
+export const callServicePatchAPI = async (
+  serviceCategory: ServiceTypes,
+  id: string,
+  jsonPatch: any
+) => {
+  switch (serviceCategory) {
+    case ServiceCategory.DATABASE_SERVICES:
+      return await patchDatabaseDetails(id, jsonPatch);
+    case ServiceCategory.MESSAGING_SERVICES:
+      return await patchTopicDetails(id, jsonPatch);
+    case ServiceCategory.DASHBOARD_SERVICES:
+      return await patchDashboardDetails(id, jsonPatch);
+    case ServiceCategory.PIPELINE_SERVICES:
+      return await patchPipelineDetails(id, jsonPatch);
+    case ServiceCategory.ML_MODEL_SERVICES:
+      return await patchMlModelDetails(id, jsonPatch);
+    case ServiceCategory.STORAGE_SERVICES:
+      return await patchContainerDetails(id, jsonPatch);
+    case ServiceCategory.SEARCH_SERVICES:
+      return await patchSearchIndexDetails(id, jsonPatch);
+    case ServiceCategory.API_SERVICES:
+      return await patchApiCollection(id, jsonPatch);
+    default:
+      throw new Error('Unsupported service category');
+  }
+};

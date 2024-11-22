@@ -91,7 +91,7 @@ function SchemaTablesTab({
       try {
         const tableDetails = localTableData.find((table) => table.id === id);
         if (!tableDetails) {
-          throw new Error(t('error.tableNotFound'));
+          return;
         }
 
         const updatedData = { ...tableDetails, displayName: data.displayName };
@@ -109,7 +109,7 @@ function SchemaTablesTab({
         showErrorToast(error as AxiosError);
       }
     },
-    [localTableData, t]
+    [localTableData]
   );
 
   useEffect(() => {

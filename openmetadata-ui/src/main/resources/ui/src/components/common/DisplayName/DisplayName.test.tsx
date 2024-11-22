@@ -29,14 +29,9 @@ jest.mock('../../../constants/constants', () => ({
   ICON_DIMENSION: { width: 16, height: 16 },
 }));
 
-jest.mock('../../Modals/EntityNameModal/EntityNameModal.component', () => {
-  return {
-    __esModule: true,
-    default: jest.fn(() => (
-      <div data-testid="entity-name-modal">Mocked Modal</div>
-    )),
-  };
-});
+jest.mock('../../Modals/EntityNameModal/EntityNameModal.component', () =>
+  jest.fn().mockImplementation(() => <p>Mocked Modal</p>)
+);
 
 const mockOnEditDisplayName = jest.fn();
 
@@ -63,7 +58,7 @@ describe('Test DisplayName Component', () => {
       expect(displayNameField).toBeInTheDocument();
       expect(displayNameField).toHaveTextContent('Sample Display Name');
 
-      const editButton = await screen.queryByTestId('edit-displayName-button');
+      const editButton = screen.queryByTestId('edit-displayName-button');
 
       expect(editButton).toBeInTheDocument();
     });
@@ -77,7 +72,7 @@ describe('Test DisplayName Component', () => {
         </MemoryRouter>
       );
 
-      const nameField = await screen.getByTestId('column-name');
+      const nameField = screen.getByTestId('column-name');
 
       expect(nameField).toBeInTheDocument();
       expect(nameField).toHaveTextContent('Sample Entity');

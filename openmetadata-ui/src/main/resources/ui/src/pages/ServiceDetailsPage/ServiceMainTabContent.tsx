@@ -37,15 +37,10 @@ import { Paging } from '../../generated/type/paging';
 import { UsePagingInterface } from '../../hooks/paging/usePaging';
 import { useFqn } from '../../hooks/useFqn';
 import { ServicesType } from '../../interface/service.interface';
-import { patchApiCollection } from '../../rest/apiCollectionsAPI';
-import { patchDashboardDetails } from '../../rest/dashboardAPI';
-import { patchDatabaseDetails } from '../../rest/databaseAPI';
-import { patchMlModelDetails } from '../../rest/mlModelAPI';
-import { patchPipelineDetails } from '../../rest/pipelineAPI';
-import { patchSearchIndexDetails } from '../../rest/SearchIndexAPI';
-import { patchContainerDetails } from '../../rest/storageAPI';
-import { patchTopicDetails } from '../../rest/topicsAPI';
-import { getServiceMainTabColumns } from '../../utils/ServiceMainTabContentUtils';
+import {
+  callServicePatchAPI,
+  getServiceMainTabColumns,
+} from '../../utils/ServiceMainTabContentUtils';
 import { getEntityTypeFromServiceCategory } from '../../utils/ServiceUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { createTagObject } from '../../utils/TagsUtils';
@@ -149,39 +144,12 @@ function ServiceMainTabContent({
     setIsEdit(false);
   };
 
-  const callServicePatchAPI = async (
-    serviceCategory: ServiceTypes,
-    id: string,
-    jsonPatch: any
-  ) => {
-    switch (serviceCategory) {
-      case 'databaseServices':
-        return await patchDatabaseDetails(id, jsonPatch);
-      case 'messagingServices':
-        return await patchTopicDetails(id, jsonPatch);
-      case 'dashboardServices':
-        return await patchDashboardDetails(id, jsonPatch);
-      case 'pipelineServices':
-        return await patchPipelineDetails(id, jsonPatch);
-      case 'mlmodelServices':
-        return await patchMlModelDetails(id, jsonPatch);
-      case 'storageServices':
-        return await patchContainerDetails(id, jsonPatch);
-      case 'searchServices':
-        return await patchSearchIndexDetails(id, jsonPatch);
-      case 'apiServices':
-        return await patchApiCollection(id, jsonPatch);
-      default:
-        throw new Error('Unsupported service category');
-    }
-  };
-
   const handleDisplayNameUpdate = useCallback(
     async (entityData: EntityName, id?: string) => {
       try {
         const pageDataDetails = pageData.find((data) => data.id === id);
         if (!pageDataDetails) {
-          throw new Error(t('error.databaseNotFound'));
+          return;
         }
         const updatedData = {
           ...pageDataDetails,

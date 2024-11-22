@@ -15,7 +15,7 @@ import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { t } from 'i18next';
-import { isEmpty, isUndefined } from 'lodash';
+import { isEmpty } from 'lodash';
 import QueryString from 'qs';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useHistory } from 'react-router-dom';
@@ -69,8 +69,9 @@ export const DatabaseSchemaTable = ({
 
   const allowEditDisplayNamePermission = useMemo(() => {
     return (
-      (!isVersionPage && permissions.databaseSchema.EditAll) ||
-      permissions.databaseSchema.EditDisplayName
+      !isVersionPage &&
+      (permissions.databaseSchema.EditAll ||
+        permissions.databaseSchema.EditDisplayName)
     );
   }, [permissions, isVersionPage]);
 
@@ -189,11 +190,11 @@ export const DatabaseSchemaTable = ({
       try {
         const schemaDetails = schemas.find((schema) => schema.id === id);
         if (!schemaDetails) {
-          throw new Error(t('error.tableNotFound'));
+          return;
         }
         const updatedData = { ...schemaDetails, displayName: data.displayName };
         const jsonPatch = compare(schemaDetails, updatedData);
-        await patchDatabaseSchemaDetails(schemaDetails.id, jsonPatch);
+        await patchDatabaseSchemaDetails(schemaDetails.id ?? '', jsonPatch);
         setSchemas((prevData) =>
           prevData.map((schema) =>
             schema.id === id
@@ -205,7 +206,7 @@ export const DatabaseSchemaTable = ({
         showErrorToast(error as AxiosError);
       }
     },
-    [schemas, t]
+    [schemas]
   );
 
   const schemaTableColumns: ColumnsType<DatabaseSchema> = useMemo(
@@ -219,7 +220,7 @@ export const DatabaseSchemaTable = ({
           <DisplayName
             allowRename={allowEditDisplayNamePermission}
             displayName={record.displayName}
-            id={record.id}
+            id={record.id ?? ''}
             key={record.id}
             link={
               record.fullyQualifiedName
@@ -253,7 +254,7 @@ export const DatabaseSchemaTable = ({
         key: 'owners',
         width: 120,
         render: (owners: EntityReference[]) =>
-          !isUndefined(owners) && owners.length > 0 ? (
+          !isEmpty(owners) && owners.length > 0 ? (
             owners.map((owner: EntityReference) => getEntityName(owner))
           ) : (
             <Typography.Text data-testid="no-owner-text">

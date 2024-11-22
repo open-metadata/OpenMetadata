@@ -44,12 +44,9 @@ const DisplayName: React.FC<DisplayNameProps> = ({
   const [isDisplayNameEditing, setIsDisplayNameEditing] = useState(false);
 
   const handleDisplayNameUpdate = async (data: EntityName) => {
-    if (!onEditDisplayName) {
-      return;
-    }
     setIsDisplayNameEditing(true);
     try {
-      await onEditDisplayName(data, id);
+      await onEditDisplayName?.(data, id);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -59,44 +56,40 @@ const DisplayName: React.FC<DisplayNameProps> = ({
 
   return (
     <div className="d-inline-flex flex-column hover-icon-group w-max-90">
-      <div className="d-inline-flex items-baseline">
-        <Typography.Text
-          className="m-b-0 d-block text-grey-muted break-word"
-          data-testid="column-name">
-          {isEmpty(displayName) ? (
-            <Link className="break-word" data-testid={name} to={link}>
-              {name}
-            </Link>
-          ) : (
-            name
-          )}
-        </Typography.Text>
-      </div>
-      {!isEmpty(displayName) ? (
-        // It will render displayName fallback to name
-        <Typography.Text
-          className="m-b-0 d-block break-word"
-          data-testid="column-display-name">
+      <Typography.Text
+        className="m-b-0 d-block text-grey-muted break-word"
+        data-testid="column-name">
+        {isEmpty(displayName) ? (
           <Link className="break-word" data-testid={name} to={link}>
-            {displayName}
+            {name}
           </Link>
-        </Typography.Text>
-      ) : null}
+        ) : (
+          <>
+            {name}
+            <Typography.Text
+              className="m-b-0 d-block break-word"
+              data-testid="column-display-name">
+              <Link className="break-word" data-testid={displayName} to={link}>
+                {displayName}
+              </Link>
+            </Typography.Text>
+          </>
+        )}
+      </Typography.Text>
 
       {allowRename ? (
         <Tooltip placement="right" title={t('label.edit')}>
           <Button
-            className="cursor-pointer hover-cell-icon w-fit-content"
+            className="cursor-pointer hover-cell-icon w-fit-content display-name-edit-button"
             data-testid="edit-displayName-button"
+            icon={
+              <IconEdit style={{ color: DE_ACTIVE_COLOR, ...ICON_DIMENSION }} />
+            }
             style={{
-              color: DE_ACTIVE_COLOR,
-              padding: 0,
-              border: 'none',
               background: 'transparent',
             }}
-            onClick={() => setIsDisplayNameEditing(true)}>
-            <IconEdit style={{ color: DE_ACTIVE_COLOR, ...ICON_DIMENSION }} />
-          </Button>
+            onClick={() => setIsDisplayNameEditing(true)}
+          />
         </Tooltip>
       ) : null}
       {isDisplayNameEditing && (
