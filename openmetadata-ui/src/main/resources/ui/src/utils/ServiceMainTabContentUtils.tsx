@@ -154,6 +154,6 @@ export const callServicePatchAPI = async (
     case ServiceCategory.API_SERVICES:
       return await patchApiCollection(id, jsonPatch);
     default:
-      throw new Error('Unsupported service category');
+      return;
   }
 };

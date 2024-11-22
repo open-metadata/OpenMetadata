@@ -80,7 +80,7 @@ const DisplayName: React.FC<DisplayNameProps> = ({
       {allowRename ? (
         <Tooltip placement="right" title={t('label.edit')}>
           <Button
-            className="cursor-pointer hover-cell-icon w-fit-content display-name-edit-button"
+            className="display-name-edit-button"
             data-testid="edit-displayName-button"
             icon={
               <IconEdit style={{ color: DE_ACTIVE_COLOR, ...ICON_DIMENSION }} />
