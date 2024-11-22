@@ -94,11 +94,14 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
             ? getLatestPipelineStatus(ingestionPipeline)
             : ingestionPipeline.getPipelineStatuses());
 
-    JSONObject sourceConfigJson =
-        new JSONObject(JsonUtils.pojoToJson(ingestionPipeline.getSourceConfig().getConfig()));
-    Optional.ofNullable(sourceConfigJson.optJSONObject("appConfig"))
-        .map(appConfig -> appConfig.optString("type", null))
-        .ifPresent(ingestionPipeline::setApplicationType);
+    if (ingestionPipeline.getSourceConfig() != null
+        && ingestionPipeline.getSourceConfig().getConfig() != null) {
+      JSONObject sourceConfigJson =
+          new JSONObject(JsonUtils.pojoToJson(ingestionPipeline.getSourceConfig().getConfig()));
+      Optional.ofNullable(sourceConfigJson.optJSONObject("appConfig"))
+          .map(appConfig -> appConfig.optString("type", null))
+          .ifPresent(ingestionPipeline::setApplicationType);
+    }
   }
 
   @Override
