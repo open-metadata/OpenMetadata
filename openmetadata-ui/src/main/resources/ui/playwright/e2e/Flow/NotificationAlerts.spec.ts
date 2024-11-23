@@ -24,6 +24,7 @@ import {
   createAlert,
   deleteAlert,
   generateAlertName,
+  inputBasicAlertInformation,
   verifyAlertDetails,
   visitAlertDetailsPage,
   visitEditAlertPage,
@@ -41,6 +42,7 @@ import {
   editSingleFilterAlert,
   visitNotificationAlertPage,
 } from '../../utils/notificationAlert';
+import { addExternalDestination } from '../../utils/observabilityAlert';
 
 const dashboard = new DashboardClass();
 const table = new TableClass();
@@ -376,5 +378,67 @@ test('Alert operations for a user with and without permissions', async ({
 
   await test.step('Delete alert', async () => {
     await deleteAlert(userWithPermissionsPage, data.alertDetails);
+  });
+});
+
+test('destination should work properly', async ({ page }) => {
+  await visitNotificationAlertPage(page);
+
+  await inputBasicAlertInformation({
+    page,
+    name: 'test-name',
+    sourceName: SOURCE_NAME_1,
+    sourceDisplayName: SOURCE_DISPLAY_NAME_1,
+  });
+
+  await page.click('[data-testid="add-destination-button"]');
+  await addInternalDestination({
+    page,
+    destinationNumber: 0,
+    category: 'Owners',
+    type: 'G Chat',
+  });
+
+  await test.expect(page.getByTestId('test-destination-button')).toBeDisabled();
+
+  await addExternalDestination({
+    page,
+    destinationNumber: 0,
+    category: 'G Chat',
+    input: 'https://google.com',
+  });
+
+  await page.click('[data-testid="add-destination-button"]');
+  await addExternalDestination({
+    page,
+    destinationNumber: 1,
+    category: 'Slack',
+    input: 'https://slack.com',
+  });
+
+  const testDestinations = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/events/subscriptions/testDestination') &&
+      response.request().method() === 'POST' &&
+      response.status() === 200
+  );
+
+  await page.click('[data-testid="test-destination-button"]');
+
+  await testDestinations.then(async (response) => {
+    const testResults = await response.json();
+
+    for (const testResult of testResults) {
+      const isGChat = testResult.type === 'GChat';
+
+      await test
+        .expect(
+          page
+            .getByTestId(`destination-${isGChat ? 0 : 1}`)
+            .getByRole('alert')
+            .getByText(testResult.statusDetails.status)
+        )
+        .toBeAttached();
+    }
   });
 });

@@ -104,6 +104,8 @@ export const addExternalDestination = async ({
       secretKey
     );
   }
+
+  await clickOutside(page);
 };
 
 export const getObservabilityCreationDetails = ({
