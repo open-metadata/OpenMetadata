@@ -134,7 +134,11 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
       return (
         <Collapse className="recent-events-collapse" expandIconPosition="end">
           {Array.from({ length: 5 }).map((_, index) => (
-            <Panel header={<Skeleton active paragraph={false} />} key={index} />
+            <Panel
+              data-testid="skeleton-loading-panel"
+              header={<Skeleton active paragraph={false} />}
+              key={index}
+            />
           ))}
         </Collapse>
       );
@@ -158,10 +162,9 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
 
     return (
       <Row gutter={[16, 16]}>
-        <Col span={24}>
+        <Col data-testid="recent-events-list" span={24}>
           <Collapse
             className="recent-events-collapse"
-            data-testid="recent-events-list"
             defaultActiveKey={['1']}
             expandIconPosition="end">
             {alertRecentEvents?.map((typedEvent) => {
@@ -336,7 +339,9 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
                 data-testid="filter-button"
                 icon={<FilterIcon height={16} />}>
                 {filter !== AlertRecentEventFilters.ALL && (
-                  <Typography.Text className="font-medium">{` : ${getAlertEventsFilterLabels(
+                  <Typography.Text
+                    className="font-medium"
+                    data-testid="applied-filter-text">{` : ${getAlertEventsFilterLabels(
                     filter as AlertRecentEventFilters
                   )}`}</Typography.Text>
                 )}
