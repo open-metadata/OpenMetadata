@@ -102,6 +102,15 @@ jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
       EditDisplayName: true,
       EditCustomFields: true,
     }),
+    getResourcePermission: jest.fn().mockReturnValue({
+      Create: true,
+      Delete: true,
+      ViewAll: true,
+      EditAll: true,
+      EditDescription: true,
+      EditDisplayName: true,
+      EditCustomFields: true,
+    }),
   }),
 }));
 
@@ -225,9 +234,18 @@ describe('Observability Alerts Page Tests', () => {
     expect(mockPush).toHaveBeenCalledWith('/observability/alerts/add');
   });
 
-  it('should not render edit and delete buttons for alerts without permissions', async () => {
+  it('should not render add, edit and delete buttons for alerts without permissions', async () => {
     (usePermissionProvider as jest.Mock).mockImplementation(() => ({
       getEntityPermissionByFqn: jest.fn().mockImplementation(() => ({
+        Create: false,
+        Delete: false,
+        ViewAll: true,
+        EditAll: false,
+        EditDescription: false,
+        EditDisplayName: false,
+        EditCustomFields: false,
+      })),
+      getResourcePermission: jest.fn().mockImplementation(() => ({
         Create: false,
         Delete: false,
         ViewAll: true,
@@ -244,9 +262,11 @@ describe('Observability Alerts Page Tests', () => {
       });
     });
 
+    const addButton = screen.queryByText(/label.add-entity/);
     const editButton = screen.queryByTestId('alert-edit-alert-test');
     const deleteButton = screen.queryByTestId('alert-delete-alert-test');
 
+    expect(addButton).not.toBeInTheDocument();
     expect(editButton).not.toBeInTheDocument();
     expect(deleteButton).not.toBeInTheDocument();
   });

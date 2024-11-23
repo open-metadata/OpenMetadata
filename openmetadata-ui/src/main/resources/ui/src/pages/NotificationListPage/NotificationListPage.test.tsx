@@ -126,6 +126,15 @@ jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
       EditDisplayName: true,
       EditCustomFields: true,
     }),
+    getResourcePermission: jest.fn().mockReturnValue({
+      Create: true,
+      Delete: true,
+      ViewAll: true,
+      EditAll: true,
+      EditDescription: true,
+      EditDisplayName: true,
+      EditCustomFields: true,
+    }),
   }),
 }));
 
@@ -265,6 +274,15 @@ describe('Notification Alerts Page Tests', () => {
         EditDisplayName: false,
         EditCustomFields: false,
       })),
+      getResourcePermission: jest.fn().mockImplementation(() => ({
+        Create: false,
+        Delete: false,
+        ViewAll: true,
+        EditAll: false,
+        EditDescription: false,
+        EditDisplayName: false,
+        EditCustomFields: false,
+      })),
     }));
 
     await act(async () => {
@@ -273,9 +291,11 @@ describe('Notification Alerts Page Tests', () => {
       });
     });
 
+    const addButton = screen.queryByText(/label.add-entity/);
     const editButton = screen.queryByTestId('alert-edit-alert-test');
     const deleteButton = screen.queryByTestId('alert-delete-alert-test');
 
+    expect(addButton).not.toBeInTheDocument();
     expect(editButton).not.toBeInTheDocument();
     expect(deleteButton).not.toBeInTheDocument();
   });
