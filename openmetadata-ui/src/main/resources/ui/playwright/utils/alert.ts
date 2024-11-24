@@ -763,6 +763,7 @@ export const saveAlertAndVerifyResponse = async (page: Page) => {
 
     expect(response.status()).toEqual(201);
   });
+  await toastNotification(page, 'Alerts created successfully.');
 
   // Check if the alert details page is visible
   await getAlertDetails;

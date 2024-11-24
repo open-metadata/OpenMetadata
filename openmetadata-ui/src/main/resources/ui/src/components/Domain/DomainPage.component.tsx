@@ -188,7 +188,9 @@ const DomainPage = () => {
 
   return (
     <PageLayoutV1 pageTitle={t('label.domain-plural')}>
-      {isEmpty(rootDomains) ? (
+      {domainLoading ? (
+        <Loader />
+      ) : isEmpty(rootDomains) ? (
         <ErrorPlaceHolder
           buttonId="add-domain"
           className="mt-44"
@@ -204,7 +206,7 @@ const DomainPage = () => {
         </ErrorPlaceHolder>
       ) : (
         <ResizableLeftPanels
-          className="content-height-with-resizable-panel"
+          className="content-height-with-resizable-panel mt--1"
           firstPanel={{
             className: 'content-resizable-panel-container',
             minWidth: 280,
@@ -220,8 +222,6 @@ const DomainPage = () => {
           }}
         />
       )}
-
-      {domainLoading && <Loader />}
     </PageLayoutV1>
   );
 };
