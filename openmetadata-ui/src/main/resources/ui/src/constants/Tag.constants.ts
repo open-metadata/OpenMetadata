@@ -39,12 +39,12 @@ export const queryFilterToRemoveSomeClassification = {
       must_not: [
         {
           prefix: {
-            fullyQualifiedName: 'Certification',
+            fullyQualifiedName: 'Certification.',
           },
         },
         {
           prefix: {
-            fullyQualifiedName: 'Tier',
+            fullyQualifiedName: 'Tier.',
           },
         },
       ],
