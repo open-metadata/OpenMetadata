@@ -22,6 +22,7 @@ import {
 } from '../generated/type/tagLabel';
 import {
   digitFormatter,
+  filterSelectOptions,
   getBase64EncodedString,
   getIsErrorMatch,
   getNameFromFQN,
@@ -292,6 +293,57 @@ describe('Tests for CommonUtils', () => {
       expect(isDeleted('false')).toBe(false);
       expect(isDeleted(undefined)).toBe(false);
       expect(isDeleted(null)).toBe(false);
+    });
+  });
+
+  describe('filterSelectOptions', () => {
+    it('should return true if input matches option labelValue', () => {
+      const input = 'test';
+      const option = {
+        labelValue: 'Test Label',
+        value: 'testValue',
+        label: 'Test Label',
+      };
+
+      expect(filterSelectOptions(input, option)).toBe(true);
+    });
+
+    it('should return true if input matches option value', () => {
+      const input = 'test';
+      const option = {
+        labelValue: 'Label',
+        label: 'Label',
+        value: 'testValue',
+      };
+
+      expect(filterSelectOptions(input, option)).toBe(true);
+    });
+
+    it('should return false if input does not match option labelValue or value', () => {
+      const input = 'test';
+      const option = { labelValue: 'Label', value: 'value', label: 'Label' };
+
+      expect(filterSelectOptions(input, option)).toBe(false);
+    });
+
+    it('should return false if option is undefined', () => {
+      const input = 'test';
+
+      expect(filterSelectOptions(input)).toBe(false);
+    });
+
+    it('should handle non-string option value gracefully', () => {
+      const input = 'test';
+      const option = { labelValue: 'Label', value: 123, label: 'Label' };
+
+      expect(filterSelectOptions(input, option)).toBe(false);
+    });
+
+    it('should handle empty input gracefully', () => {
+      const input = '';
+      const option = { labelValue: 'Label', value: 'value', label: 'Label' };
+
+      expect(filterSelectOptions(input, option)).toBe(true);
     });
   });
 });

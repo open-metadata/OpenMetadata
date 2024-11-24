@@ -13,6 +13,7 @@
 
 /* eslint-disable @typescript-eslint/ban-types */
 
+import { DefaultOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { t } from 'i18next';
@@ -845,11 +846,13 @@ export const getServiceTypeExploreQueryFilter = (serviceType: string) => {
 
 export const filterSelectOptions = (
   input: string,
-  option?: { label: string; value: string }
+  option?: DefaultOptionType
 ) => {
   return (
-    toLower(option?.label).includes(toLower(input)) ||
-    toLower(option?.value).includes(toLower(input))
+    toLower(option?.labelValue).includes(toLower(input)) ||
+    toLower(isString(option?.value) ? option?.value : '').includes(
+      toLower(input)
+    )
   );
 };
 
