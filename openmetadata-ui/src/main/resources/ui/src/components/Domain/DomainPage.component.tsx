@@ -206,7 +206,7 @@ const DomainPage = () => {
         </ErrorPlaceHolder>
       ) : (
         <ResizableLeftPanels
-          className="content-height-with-resizable-panel mt--1"
+          className="content-height-with-resizable-panel domain-page"
           firstPanel={{
             className: 'content-resizable-panel-container',
             minWidth: 280,
