@@ -90,6 +90,10 @@ const ImportTeamsPage = () => {
     return <TeamImportResult csvImportResult={csvImportResult} />;
   }, [csvImportResult, type]);
 
+  const handleCsvImportResultUpdate = (result: CSVImportResult) => {
+    setCsvImportResult(result);
+  };
+
   const fetchPermissions = async (entityFqn: string) => {
     setIsPageLoading(true);
     try {
@@ -130,7 +134,6 @@ const ImportTeamsPage = () => {
     const api = type === ImportType.USERS ? importUserInTeam : importTeam;
     try {
       const response = await api(name, data, dryRun);
-      setCsvImportResult(response);
 
       return response;
     } catch (error) {
@@ -207,6 +210,7 @@ const ImportTeamsPage = () => {
           <EntityImport
             entityName={team.name}
             onCancel={handleViewClick}
+            onCsvResultUpdate={handleCsvImportResultUpdate}
             onImport={handleImportCsv}
             onSuccess={handleViewClick}>
             {importResult}
