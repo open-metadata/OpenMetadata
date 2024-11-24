@@ -700,6 +700,7 @@ public class ElasticSearchClient implements SearchClient {
       String index,
       String query,
       String filter,
+      String[] fields,
       SearchSortFilter searchSortFilter,
       int size,
       Object[] searchAfter)
@@ -710,6 +711,10 @@ public class ElasticSearchClient implements SearchClient {
     if (!nullOrEmpty(query)) {
       searchSourceBuilder = getSearchSourceBuilder(index, query, 0, size);
     }
+    if (!nullOrEmpty(fields)) {
+      searchSourceBuilder.fetchSource(fields, null);
+    }
+
     if (Optional.ofNullable(filter).isPresent()) {
       getSearchFilter(filter, searchSourceBuilder, !nullOrEmpty(query));
     }

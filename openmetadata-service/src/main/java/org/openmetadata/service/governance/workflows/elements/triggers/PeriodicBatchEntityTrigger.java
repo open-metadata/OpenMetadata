@@ -53,6 +53,7 @@ public class PeriodicBatchEntityTrigger implements TriggerInterface {
 
     StartEvent startEvent =
         new StartEventBuilder().id(getFlowableElementId(triggerWorkflowId, "startEvent")).build();
+    startEvent.setAsynchronousLeave(true);
     oTimerDefinition.ifPresent(startEvent::addEventDefinition);
     process.addFlowElement(startEvent);
 

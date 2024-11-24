@@ -174,6 +174,7 @@ public interface SearchClient {
       String index,
       String query,
       String filter,
+      String[] fields,
       SearchSortFilter searchSortFilter,
       int size,
       Object[] searchAfter)
