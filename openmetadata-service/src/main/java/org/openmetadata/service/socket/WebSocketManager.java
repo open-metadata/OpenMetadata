@@ -29,6 +29,7 @@ public class WebSocketManager {
   public static final String MENTION_CHANNEL = "mentionChannel";
   public static final String ANNOUNCEMENT_CHANNEL = "announcementChannel";
   public static final String CSV_EXPORT_CHANNEL = "csvExportChannel";
+  public static final String CSV_IMPORT_CHANNEL = "csvImportChannel";
 
   public static final String BULK_ASSETS_CHANNEL = "bulkAssetsChannel";
 

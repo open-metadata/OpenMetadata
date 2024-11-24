@@ -301,6 +301,7 @@ export const SOCKET_EVENTS = {
   SEARCH_INDEX_JOB_BROADCAST_CHANNEL: 'searchIndexJobStatus',
   DATA_INSIGHTS_JOB_BROADCAST_CHANNEL: 'dataInsightsJobStatus',
   BULK_ASSETS_CHANNEL: 'bulkAssetsChannel',
+  CSV_IMPORT_CHANNEL: 'csvImportChannel',
 };
 
 export const IN_PAGE_SEARCH_ROUTES: Record<string, Array<string>> = {
