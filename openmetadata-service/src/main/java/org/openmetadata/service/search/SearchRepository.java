@@ -54,7 +54,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang.exception.ExceptionUtils;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
-import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.EntityTimeSeriesInterface;
 import org.openmetadata.schema.analytics.ReportData;
@@ -90,11 +89,7 @@ public class SearchRepository {
   @Getter @Setter public SearchIndexFactory searchIndexFactory = new SearchIndexFactory();
 
   private final List<String> inheritableFields =
-      List.of(
-          Entity.FIELD_OWNERS,
-          Entity.FIELD_DOMAIN,
-          Entity.FIELD_DISABLED,
-          Entity.FIELD_TEST_SUITES);
+      List.of(FIELD_OWNERS, Entity.FIELD_DOMAIN, Entity.FIELD_DISABLED, Entity.FIELD_TEST_SUITES);
   private final List<String> propagateFields = List.of(Entity.FIELD_TAGS);
 
   @Getter private final ElasticSearchConfiguration elasticSearchConfiguration;
@@ -371,6 +366,9 @@ public class SearchRepository {
             entityType, entityId, entity.getChangeDescription(), indexMapping, entity);
         propagateGlossaryTags(
             entityType, entity.getFullyQualifiedName(), entity.getChangeDescription());
+
+        propagatetoRelatedEntities(
+            entityType, entityId, entity.getChangeDescription(), indexMapping, entity);
       } catch (Exception ie) {
         LOG.error(
             "Issue in Updating the search document for entity [{}] and entityType [{}]. Reason[{}], Cause[{}], Stack [{}]",
@@ -451,6 +449,58 @@ public class SearchRepository {
           GLOBAL_SEARCH_ALIAS,
           new ImmutablePair<>("tags.tagFQN", glossaryFQN),
           new ImmutablePair<>(UPDATE_ADDED_DELETE_GLOSSARY_TAGS, fieldData));
+    }
+  }
+
+  public void propagatetoRelatedEntities(
+      String entityType,
+      String entityId,
+      ChangeDescription changeDescription,
+      IndexMapping indexMapping,
+      EntityInterface entity) {
+
+    if (changeDescription != null) {
+      for (FieldChange field : changeDescription.getFieldsAdded()) {
+        if (field.getName().contains("parent")) {
+          if (entityType.equalsIgnoreCase(Entity.PAGE)) {
+            String indexName = indexMapping.getIndexName(clusterAlias);
+            String oldParentFQN = entity.getName();
+            String newParentFQN = entity.getFullyQualifiedName();
+            // Propagate FQN updates to all subchildren
+            searchClient.updateByFqnPrefix(indexName, oldParentFQN, newParentFQN);
+          }
+        }
+      }
+
+      for (FieldChange field : changeDescription.getFieldsUpdated()) {
+        if (field.getName().contains("parent")) {
+          if (entityType.equalsIgnoreCase(Entity.PAGE)) {
+            String indexName = indexMapping.getIndexName(clusterAlias);
+            EntityReference newEntityReference =
+                JsonUtils.readValue(field.getNewValue().toString(), EntityReference.class);
+            EntityReference entityReferenceBeforeUpdate =
+                JsonUtils.readValue(field.getOldValue().toString(), EntityReference.class);
+            // Propagate FQN updates to all subchildren
+            searchClient.updateByFqnPrefix(
+                indexName,
+                entityReferenceBeforeUpdate.getFullyQualifiedName(),
+                newEntityReference.getFullyQualifiedName());
+          }
+        }
+      }
+
+      for (FieldChange field : changeDescription.getFieldsDeleted()) {
+        if (field.getName().contains("parent")) {
+          if (entityType.equalsIgnoreCase(Entity.PAGE)) {
+            String indexName = indexMapping.getIndexName(clusterAlias);
+            EntityReference entityReferenceBeforeUpdate =
+                JsonUtils.readValue(field.getOldValue().toString(), EntityReference.class);
+            // Propagate FQN updates to all subchildren
+            searchClient.updateByFqnPrefix(
+                indexName, entityReferenceBeforeUpdate.getFullyQualifiedName(), "");
+          }
+        }
+      }
     }
   }
 
@@ -979,7 +1029,7 @@ public class SearchRepository {
         String id = JsonUtils.extractValue(jsonNode, "_source", "id");
         String fqn = JsonUtils.extractValue(jsonNode, "_source", "fullyQualifiedName");
         String type = JsonUtils.extractValue(jsonNode, "_source", "entityType");
-        if (!CommonUtil.nullOrEmpty(fqn) && !CommonUtil.nullOrEmpty(type)) {
+        if (!nullOrEmpty(fqn) && !nullOrEmpty(type)) {
           fqns.add(
               new EntityReference()
                   .withId(UUID.fromString(id))
