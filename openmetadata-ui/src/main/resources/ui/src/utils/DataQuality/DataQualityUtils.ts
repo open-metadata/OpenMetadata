@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { cloneDeep, isArray, isUndefined, omit, omitBy } from 'lodash';
-import { ReactComponent as TestCaseIcon } from '../../assets/svg/all-activity-v2.svg';
 import { ReactComponent as AccuracyIcon } from '../../assets/svg/ic-accuracy.svg';
 import { ReactComponent as CompletenessIcon } from '../../assets/svg/ic-completeness.svg';
 import { ReactComponent as ConsistencyIcon } from '../../assets/svg/ic-consistency.svg';
@@ -19,6 +18,7 @@ import { ReactComponent as IntegrityIcon } from '../../assets/svg/ic-integrity.s
 import { ReactComponent as SqlIcon } from '../../assets/svg/ic-sql.svg';
 import { ReactComponent as UniquenessIcon } from '../../assets/svg/ic-uniqueness.svg';
 import { ReactComponent as ValidityIcon } from '../../assets/svg/ic-validity.svg';
+import { ReactComponent as NoDimensionIcon } from '../../assets/svg/no-dimension-icon.svg';
 import { StatusData } from '../../components/DataQuality/ChartWidgets/StatusCardWidget/StatusCardWidget.interface';
 import { TestCaseSearchParams } from '../../components/DataQuality/DataQuality.interface';
 import {
@@ -235,6 +235,6 @@ export const getDimensionIcon = (dimension: DataQualityDimensions) => {
     case DataQualityDimensions.Validity:
       return ValidityIcon;
     default:
-      return TestCaseIcon;
+      return NoDimensionIcon;
   }
 };
