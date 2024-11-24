@@ -294,7 +294,7 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
     () =>
       testDefinitions.map((suite) => ({
         label: (
-          <div>
+          <div data-testid={suite.fullyQualifiedName}>
             <Typography.Paragraph className="m-b-0">
               {getEntityName(suite)}
             </Typography.Paragraph>
