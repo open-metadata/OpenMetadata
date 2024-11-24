@@ -44,7 +44,7 @@ test('Table difference test case', async ({ page }) => {
       table1.entityResponseData?.['fullyQualifiedName']
     )}/tableProfile/latest`
   );
-  await page.getByText('Profiler & Data Quality').click();
+  await page.getByText('Data Observability').click();
   await profileResponse;
   await page.getByRole('menuitem', { name: 'Table Profile' }).click();
 
@@ -167,7 +167,7 @@ test('Custom SQL Query', async ({ page }) => {
       table.entityResponseData?.['fullyQualifiedName']
     )}/tableProfile/latest`
   );
-  await page.getByText('Profiler & Data Quality').click();
+  await page.getByText('Data Observability').click();
   await profileResponse;
   await page.getByRole('menuitem', { name: 'Table Profile' }).click();
 
