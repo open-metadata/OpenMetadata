@@ -149,17 +149,19 @@ const AppRunsHistory = forwardRef(
                 onClick={() => handleRowExpandable(record.id)}>
                 {t('label.log-plural')}
               </Button>
-              {/* For status running and supportsInterrupt is true, show kill button */}
-              {Boolean(appData?.supportsInterrupt) && (
-                <Button
-                  className="m-l-xs p-0"
-                  data-testid="kill-button"
-                  size="small"
-                  type="link"
-                  onClick={() => setIsKillModalOpen(true)}>
-                  {t('label.kill')}
-                </Button>
-              )}
+              {/* For status running or activewitherror and supportsInterrupt is true, show kill button */}
+              {(record.status === Status.Running ||
+                record.status === Status.ActiveError) &&
+                Boolean(appData?.supportsInterrupt) && (
+                  <Button
+                    className="m-l-xs p-0"
+                    data-testid="stop-button"
+                    size="small"
+                    type="link"
+                    onClick={() => setIsKillModalOpen(true)}>
+                    {t('label.stop')}
+                  </Button>
+                )}
             </>
           );
         } else {

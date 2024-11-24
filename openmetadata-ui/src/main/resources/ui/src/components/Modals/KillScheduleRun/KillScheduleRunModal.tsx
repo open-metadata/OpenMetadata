@@ -35,7 +35,7 @@ const KillScheduleModal: FC<KillScheduleRunModalProps> = ({
       const { status } = await killApp(appName);
       if (status === 200) {
         showSuccessToast(
-          t('message.pipeline-killed-successfully', {
+          t('message.application-stop', {
             pipelineName: displayName,
           })
         );
@@ -65,7 +65,7 @@ const KillScheduleModal: FC<KillScheduleRunModalProps> = ({
       onOk={handleConfirm}>
       <Typography.Text data-testid="kill-modal-body">
         {t('message.are-you-sure-action-property', {
-          action: 'Kill',
+          action: 'Stop',
           propertyName: displayName,
         })}
       </Typography.Text>
