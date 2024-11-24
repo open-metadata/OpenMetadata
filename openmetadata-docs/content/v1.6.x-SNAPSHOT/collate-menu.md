@@ -358,6 +358,10 @@ site_menu:
 
   - category: Connectors / Pipeline / DataFactory / Run Externally
     url: /connectors/pipeline/datafactory/yaml
+  - category: Connectors / Pipeline / Stitch
+    url: /connectors/pipeline/stitch
+  - category: Connectors / Pipeline / Stitch / Run Externally
+    url: /connectors/pipeline/stitch/yaml
   - category: Connectors / Pipeline / Databricks Pipeline
     url: /connectors/pipeline/databricks-pipeline
   - category: Connectors / Pipeline / Databricks Pipeline / Run Externally
