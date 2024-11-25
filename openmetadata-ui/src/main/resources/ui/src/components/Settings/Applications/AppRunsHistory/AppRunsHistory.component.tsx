@@ -59,7 +59,7 @@ import { PagingHandlerParams } from '../../../common/NextPrevious/NextPrevious.i
 import StatusBadge from '../../../common/StatusBadge/StatusBadge.component';
 import { StatusType } from '../../../common/StatusBadge/StatusBadge.interface';
 import Table from '../../../common/Table/Table';
-import KillScheduleModal from '../../../Modals/KillScheduleRun/KillScheduleRunModal';
+import StopScheduleModal from '../../../Modals/StopScheduleRun/StopScheduleRunModal';
 import AppLogsViewer from '../AppLogsViewer/AppLogsViewer.component';
 import {
   AppRunRecordWithId,
@@ -79,7 +79,7 @@ const AppRunsHistory = forwardRef(
       AppRunRecordWithId[]
     >([]);
     const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
-    const [isKillModalOpen, setIsKillModalOpen] = useState<boolean>(false);
+    const [isStopModalOpen, setIsStopModalOpen] = useState<boolean>(false);
 
     const {
       currentPage,
@@ -149,7 +149,7 @@ const AppRunsHistory = forwardRef(
                 onClick={() => handleRowExpandable(record.id)}>
                 {t('label.log-plural')}
               </Button>
-              {/* For status running or activewitherror and supportsInterrupt is true, show kill button */}
+              {/* For status running or activewitherror and supportsInterrupt is true, show stop button */}
               {(record.status === Status.Running ||
                 record.status === Status.ActiveError) &&
                 Boolean(appData?.supportsInterrupt) && (
@@ -158,7 +158,7 @@ const AppRunsHistory = forwardRef(
                     data-testid="stop-button"
                     size="small"
                     type="link"
-                    onClick={() => setIsKillModalOpen(true)}>
+                    onClick={() => setIsStopModalOpen(true)}>
                     {t('label.stop')}
                   </Button>
                 )}
@@ -397,15 +397,15 @@ const AppRunsHistory = forwardRef(
             )}
           </Col>
         </Row>
-        {isKillModalOpen && (
-          <KillScheduleModal
+        {isStopModalOpen && (
+          <StopScheduleModal
             appName={fqn}
             displayName={appData?.displayName ?? ''}
-            isModalOpen={isKillModalOpen}
+            isModalOpen={isStopModalOpen}
             onClose={() => {
-              setIsKillModalOpen(false);
+              setIsStopModalOpen(false);
             }}
-            onKillWorkflowsUpdate={() => {
+            onStopWorkflowsUpdate={() => {
               fetchAppHistory();
             }}
           />

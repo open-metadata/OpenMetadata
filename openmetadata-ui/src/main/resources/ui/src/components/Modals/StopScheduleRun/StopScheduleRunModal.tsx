@@ -15,16 +15,16 @@ import { Modal, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import React, { FC, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { killApp } from '../../../rest/applicationAPI';
+import { stopApp } from '../../../rest/applicationAPI';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
-import { KillScheduleRunModalProps } from './KillScheduleRunModal.interface';
+import { StopScheduleRunModalProps } from './StopScheduleRunModal.interface';
 
-const KillScheduleModal: FC<KillScheduleRunModalProps> = ({
+const StopScheduleModal: FC<StopScheduleRunModalProps> = ({
   appName,
   isModalOpen,
   displayName,
   onClose,
-  onKillWorkflowsUpdate,
+  onStopWorkflowsUpdate,
 }) => {
   const { t } = useTranslation();
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -32,14 +32,14 @@ const KillScheduleModal: FC<KillScheduleRunModalProps> = ({
   const handleConfirm = async () => {
     setIsLoading(true);
     try {
-      const { status } = await killApp(appName);
+      const { status } = await stopApp(appName);
       if (status === 200) {
         showSuccessToast(
           t('message.application-stop', {
             pipelineName: displayName,
           })
         );
-        onKillWorkflowsUpdate?.();
+        onStopWorkflowsUpdate?.();
       }
     } catch (error) {
       // catch block error is unknown type so we have to cast it to respective type
@@ -56,14 +56,14 @@ const KillScheduleModal: FC<KillScheduleRunModalProps> = ({
       cancelText={t('label.cancel')}
       closable={false}
       confirmLoading={isLoading}
-      data-testid="kill-modal"
+      data-testid="stop-modal"
       maskClosable={false}
       okText={t('label.confirm')}
       open={isModalOpen}
-      title={`${t('label.kill')} ${displayName} ?`}
+      title={`${t('label.stop')} ${displayName} ?`}
       onCancel={onClose}
       onOk={handleConfirm}>
-      <Typography.Text data-testid="kill-modal-body">
+      <Typography.Text data-testid="stop-modal-body">
         {t('message.are-you-sure-action-property', {
           action: 'Stop',
           propertyName: displayName,
@@ -73,4 +73,4 @@ const KillScheduleModal: FC<KillScheduleRunModalProps> = ({
   );
 };
 
-export default KillScheduleModal;
+export default StopScheduleModal;

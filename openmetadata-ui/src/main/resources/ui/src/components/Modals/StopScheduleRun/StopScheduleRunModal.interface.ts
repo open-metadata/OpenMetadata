@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 
-export interface KillScheduleRunModalProps {
+export interface StopScheduleRunModalProps {
   appName: string;
   isModalOpen: boolean;
   displayName: string;
   onClose: () => void;
-  onKillWorkflowsUpdate?: () => void;
+  onStopWorkflowsUpdate?: () => void;
 }
