@@ -791,9 +791,8 @@ test.describe('Glossary tests', () => {
         '[data-testid="viewer-container"]'
       );
 
-      await expect(viewerContainerText).toContain('Updated description');
+      expect(viewerContainerText).toContain('Updated description');
     } finally {
-      await user1.delete(apiContext);
       await glossary1.delete(apiContext);
       await afterAction();
     }
@@ -838,9 +837,8 @@ test.describe('Glossary tests', () => {
         '[data-testid="viewer-container"]'
       );
 
-      await expect(viewerContainerText).toContain('Updated description');
+      expect(viewerContainerText).toContain('Updated description');
     } finally {
-      await user1.delete(apiContext);
       await glossaryTerm1.delete(apiContext);
       await glossary1.delete(apiContext);
       await afterAction();
