@@ -52,13 +52,13 @@ class SQAInterfaceMixin(Root):
         Returns:
             sqlalchemy engine
         """
-        engine = get_connection(self.service_connection_config)
+        engine = get_connection(super().service_connection_config)
 
         return engine
 
     def get_columns(self) -> Column:
         """get columns from an orm object"""
-        return inspect(self.table).c
+        return inspect(super().table).c
 
     def set_session_tag(self, session) -> None:
         """
