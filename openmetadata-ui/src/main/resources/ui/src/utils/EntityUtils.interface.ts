@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+import { LinkProps } from 'react-router-dom';
+
 export interface BasicEntityOverviewInfo {
   name: string;
   value: string | number | React.ReactNode;
@@ -18,6 +20,7 @@ export interface BasicEntityOverviewInfo {
   isExternal?: boolean;
   isIcon?: boolean;
   url?: string;
+  linkProps?: LinkProps['to'];
   visible?: Array<string>;
   dataTestId?: string;
 }

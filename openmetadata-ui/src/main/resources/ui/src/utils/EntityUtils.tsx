@@ -22,12 +22,14 @@ import {
   startCase,
 } from 'lodash';
 import { Bucket, EntityDetailUnion } from 'Models';
+import QueryString from 'qs';
 import React, { Fragment } from 'react';
 import { Link } from 'react-router-dom';
 import { OwnerLabel } from '../components/common/OwnerLabel/OwnerLabel.component';
 import QueryCount from '../components/common/QueryCount/QueryCount.component';
 import { TitleLink } from '../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import { DataAssetsWithoutServiceField } from '../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
+import { TableProfilerTab } from '../components/Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
 import { QueryVoteType } from '../components/Database/TableQueries/TableQueries.interface';
 import {
   LeafNodes,
@@ -298,7 +300,7 @@ const getTableOverview = (
     domain,
   } = getTableFieldsFromTableDetails(tableDetails);
 
-  const overview = [
+  const overview: BasicEntityOverviewInfo[] = [
     ...getCommonOverview({ owners, domain }),
     {
       name: i18next.t('label.type'),
@@ -385,11 +387,16 @@ const getTableOverview = (
       name: i18next.t('label.incident-plural'),
       value: additionalInfo?.incidentCount ?? 0,
       isLink: true,
-      url: getEntityDetailsPath(
-        EntityType.TABLE,
-        fullyQualifiedName ?? '',
-        EntityTabs.INCIDENTS
-      ),
+      linkProps: {
+        pathname: getEntityDetailsPath(
+          EntityType.TABLE,
+          fullyQualifiedName ?? '',
+          EntityTabs.PROFILER
+        ),
+        search: QueryString.stringify({
+          activeTab: TableProfilerTab.INCIDENTS,
+        }),
+      },
       visible: [
         DRAWER_NAVIGATION_OPTIONS.lineage,
         DRAWER_NAVIGATION_OPTIONS.explore,
@@ -411,7 +418,7 @@ const getTopicOverview = (topicDetails: Topic) => {
     messageSchema,
   } = topicDetails;
 
-  const overview = [
+  const overview: BasicEntityOverviewInfo[] = [
     ...getCommonOverview({ domain }, false),
     {
       name: i18next.t('label.partition-plural'),
@@ -478,7 +485,7 @@ const getPipelineOverview = (pipelineDetails: Pipeline) => {
   const tier = getTierTags(tags ?? []);
   const serviceDisplayName = getEntityName(service);
 
-  const overview = [
+  const overview: BasicEntityOverviewInfo[] = [
     ...getCommonOverview({ owners, domain }),
     {
       name: `${i18next.t('label.pipeline')} ${i18next.t(
@@ -522,7 +529,7 @@ const getDashboardOverview = (dashboardDetails: Dashboard) => {
   const tier = getTierTags(tags ?? []);
   const serviceDisplayName = getEntityName(service);
 
-  const overview = [
+  const overview: BasicEntityOverviewInfo[] = [
     ...getCommonOverview({ owners, domain }),
     {
       name: `${i18next.t('label.dashboard')} ${i18next.t(
@@ -575,7 +582,7 @@ export const getSearchIndexOverview = (
   const { owners, tags, service, domain } = searchIndexDetails;
   const tier = getTierTags(tags ?? []);
 
-  const overview = [
+  const overview: BasicEntityOverviewInfo[] = [
     ...getCommonOverview({ owners, domain }),
     {
       name: i18next.t('label.tier'),
@@ -604,7 +611,7 @@ const getMlModelOverview = (mlModelDetails: Mlmodel) => {
   const { algorithm, target, server, dashboard, owners, domain } =
     mlModelDetails;
 
-  const overview = [
+  const overview: BasicEntityOverviewInfo[] = [
     ...getCommonOverview({ owners, domain }),
     {
       name: i18next.t('label.algorithm'),
@@ -665,7 +672,7 @@ const getContainerOverview = (containerDetails: Container) => {
     DRAWER_NAVIGATION_OPTIONS.explore,
   ];
 
-  const overview = [
+  const overview: BasicEntityOverviewInfo[] = [
     ...getCommonOverview({ owners, domain }),
     {
       name: i18next.t('label.object-plural'),
@@ -705,7 +712,7 @@ const getChartOverview = (chartDetails: Chart) => {
   } = chartDetails;
   const serviceDisplayName = getEntityName(service);
 
-  const overview = [
+  const overview: BasicEntityOverviewInfo[] = [
     ...getCommonOverview({ owners, domain }),
     {
       name: `${i18next.t('label.chart')} ${i18next.t('label.url-uppercase')}`,
@@ -767,7 +774,7 @@ const getDataModelOverview = (dataModelDetails: DashboardDataModel) => {
   } = dataModelDetails;
   const tier = getTierTags(tags ?? []);
 
-  const overview = [
+  const overview: BasicEntityOverviewInfo[] = [
     ...getCommonOverview({ owners, domain }),
     {
       name: `${i18next.t('label.data-model')} ${i18next.t(
@@ -837,7 +844,7 @@ const getStoredProcedureOverview = (
 
   const tier = getTierTags(tags ?? []);
 
-  const overview = [
+  const overview: BasicEntityOverviewInfo[] = [
     ...getCommonOverview({ owners, domain }),
     {
       name: i18next.t('label.service'),
@@ -911,7 +918,7 @@ const getDatabaseOverview = (databaseDetails: Database) => {
 
   const tier = getTierTags(tags ?? []);
 
-  const overview = [
+  const overview: BasicEntityOverviewInfo[] = [
     {
       name: i18next.t('label.owner-plural'),
       value: <OwnerLabel hasPermission={false} owners={owners} />,
@@ -952,7 +959,7 @@ const getDatabaseSchemaOverview = (databaseSchemaDetails: DatabaseSchema) => {
 
   const tier = getTierTags(tags ?? []);
 
-  const overview = [
+  const overview: BasicEntityOverviewInfo[] = [
     {
       name: i18next.t('label.owner-plural'),
       value: <OwnerLabel hasPermission={false} owners={owners} />,
@@ -1001,7 +1008,7 @@ const getEntityServiceOverview = (serviceDetails: EntityServiceUnion) => {
 
   const tier = getTierTags(tags ?? []);
 
-  const overview = [
+  const overview: BasicEntityOverviewInfo[] = [
     {
       name: i18next.t('label.owner-plural'),
       value: <OwnerLabel hasPermission={false} owners={owners} />,
@@ -1032,7 +1039,7 @@ const getApiCollectionOverview = (apiCollection: APICollection) => {
 
   const { service, domain } = apiCollection;
 
-  const overview = [
+  const overview: BasicEntityOverviewInfo[] = [
     ...getCommonOverview({ domain }, false),
     {
       name: i18next.t('label.endpoint-url'),
@@ -1062,7 +1069,7 @@ const getApiEndpointOverview = (apiEndpoint: APIEndpoint) => {
   }
   const { domain, service, apiCollection } = apiEndpoint;
 
-  const overview = [
+  const overview: BasicEntityOverviewInfo[] = [
     ...getCommonOverview({ domain }, false),
     {
       name: i18next.t('label.endpoint-url'),
@@ -1119,7 +1126,7 @@ const getMetricOverview = (metric: Metric) => {
     return [];
   }
 
-  const overview = [
+  const overview: BasicEntityOverviewInfo[] = [
     ...getCommonOverview({ domain: metric.domain }, false),
     {
       name: i18next.t('label.metric-type'),
