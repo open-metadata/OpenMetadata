@@ -104,13 +104,13 @@ def get_connection(connection: AirflowConnection) -> Engine:
         raise SourceConnectionException(msg) from exc
 
 
-class AirflowPipelineNotFound(Exception):
+class AirflowPipelineDetailsAccessError(Exception):
     """
     Raise when Pipeline information is not retrieved
     """
 
 
-class AirflowTaskDetailsNotFound(Exception):
+class AirflowTaskDetailsAccessError(Exception):
     """
     Raise when Task detail information is not retrieved
     """
@@ -134,11 +134,11 @@ def test_connection(
     def test_pipeline_details_access(session):
         try:
             result = session.query(SerializedDagModel).first()
-            if result:
-                return result
-            raise AirflowPipelineNotFound("No Pipeline found")
+            return result
         except Exception as e:
-            raise AirflowPipelineNotFound(f"Pipeline details access error : {e}")
+            raise AirflowPipelineDetailsAccessError(
+                f"Pipeline details access error: {e}"
+            )
 
     def test_task_detail_access(session):
         try:
@@ -148,13 +148,11 @@ def test_connection(
                 else SerializedDagModel.data  # For 2.2.5 and 2.1.4
             )
             result = session.query(json_data_column).first()
-            if result:
-                retrieved_tasks = result[0]["dag"]["tasks"]
-                if retrieved_tasks:
-                    return retrieved_tasks
-            raise AirflowTaskDetailsNotFound("No task found")
+
+            retrieved_tasks = result[0]["dag"]["tasks"]
+            return retrieved_tasks
         except Exception as e:
-            raise AirflowTaskDetailsNotFound(f"Task details access error : {e}")
+            raise AirflowTaskDetailsAccessError(f"Task details access error : {e}")
 
     test_fn = {
         "CheckAccess": partial(test_connection_engine_step, engine),
