@@ -484,7 +484,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
                 jobId, securityContext, e.getMessage());
           }
         });
-    CSVImportResponse response = new CSVImportResponse(jobId, "Import initiated successfully.");
+    CSVImportResponse response = new CSVImportResponse(jobId, "Import is in progress.");
     return Response.ok().entity(response).type(MediaType.APPLICATION_JSON).build();
   }
 
