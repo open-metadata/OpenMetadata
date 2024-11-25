@@ -18,6 +18,7 @@ import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.DASHBOARD;
 import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
+import static org.openmetadata.service.Entity.FIELD_USAGE_SUMMARY;
 import static org.openmetadata.service.util.EntityUtil.entityListToUUID;
 
 import java.util.ArrayList;
@@ -59,7 +60,10 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
         DASHBOARD_PATCH_FIELDS,
         DASHBOARD_UPDATE_FIELDS);
     supportsSearch = true;
-    fieldFetchers.put("usageSummary", this::fetchAndSetUsageSummary);
+    fieldFetchers.put(FIELD_USAGE_SUMMARY, this::fetchAndSetUsageSummary);
+    fieldFetchers.put("service", this::fetchAndSetContainer);
+    fieldFetchers.put("charts", this::fetchAndSetCharts);
+    fieldFetchers.put("dataModels", this::fetchAndSetDataModels);
   }
 
   @Override
@@ -152,7 +156,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
   }
 
   private void fetchAndSetUsageSummary(List<Dashboard> entities, Fields fields) {
-    if (!fields.contains("usageSummary")) {
+    if (!fields.contains(FIELD_USAGE_SUMMARY)) {
       return;
     }
     Map<UUID, UsageDetails> entityUsage =
@@ -162,6 +166,27 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
         entity.setUsageSummary(entityUsage.get(entity.getId()));
       }
     }
+  }
+
+  protected void fetchAndSetContainer(List<Dashboard> entities, Fields fields) {
+    setFieldFromMapSingleRelation(
+        fields.contains("service"), entities, getContainers(entities), Dashboard::setService);
+  }
+
+  protected void fetchAndSetCharts(List<Dashboard> entities, Fields fields) {
+    setFieldFromMap(
+        fields.contains("charts"),
+        entities,
+        batchFetchFromIdsManyToOne(entities, Relationship.HAS, Entity.CHART),
+        Dashboard::setCharts);
+  }
+
+  protected void fetchAndSetDataModels(List<Dashboard> entities, Fields fields) {
+    setFieldFromMap(
+        fields.contains("dataModels"),
+        entities,
+        batchFetchFromIdsManyToOne(entities, Relationship.HAS, Entity.DASHBOARD_DATA_MODEL),
+        Dashboard::setCharts);
   }
 
   @Override

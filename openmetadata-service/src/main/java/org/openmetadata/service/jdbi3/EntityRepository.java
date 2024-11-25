@@ -450,6 +450,16 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
+  //  protected void setInheritedFieldsInBulk(List<T> entities, Fields fields) {
+  //    if(supportsDomain){
+  //      List<EntityInterface> parents = getParentEntities(entities, "domain");
+  //    }
+  //    EntityInterface parent = supportsDomain ? getParentEntity(entity, "domain") : null;
+  //    if (parent != null) {
+  //      inheritDomain(entity, fields, parent);
+  //    }
+  //  }
+
   protected final void addServiceRelationship(T entity, EntityReference service) {
     if (service != null) {
       addRelationship(
@@ -764,23 +774,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     int total = dao.listCount(filter);
     if (limitParam > 0) {
       List<String> jsons = dao.listAfter(filter, limitParam, currentOffset);
-      for (String json : jsons) {
-        T parsedEntity = JsonUtils.readValue(json, entityClass);
-        try {
-          entities.add(withHref(uriInfo, parsedEntity));
-        } catch (Exception e) {
-          clearFieldsInternal(parsedEntity, fields);
-          EntityError entityError =
-              new EntityError().withMessage(e.getMessage()).withEntity(parsedEntity);
-          errors.add(entityError);
-          LOG.error("[ListForIndexing] Failed for Entity : {}", entityError);
-        }
-      }
-      fetchAndSetFields(entities, fields);
-      for (T entity : entities) {
-        setInheritedFields(entity, fields);
-        clearFieldsInternal(entity, fields);
-      }
+      setFieldsInBulk(jsons, fields, entities);
       currentOffset = currentOffset + limitParam;
       String newAfter = currentOffset > total ? null : String.valueOf(currentOffset);
       return getResultList(entities, errors, String.valueOf(beforeOffset), newAfter, total);
@@ -1893,6 +1887,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   public final EntityReference getContainer(UUID toId) {
     return getFromEntityRef(toId, Relationship.CONTAINS, null, true);
+  }
+
+  public final Map<UUID, EntityReference> getContainers(List<T> entities) {
+    return batchFetchToIdsAndRelationSingleRelation(entities, Relationship.CONTAINS);
   }
 
   public final EntityReference getContainer(UUID toId, String fromEntityType) {
@@ -3922,6 +3920,44 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return entityToRefsMaps;
   }
 
+  public Map<UUID, List<EntityReference>> batchFetchToIdsAndRelation(
+      List<T> fromIds, Relationship relationship) {
+    List<CollectionDAO.EntityRelationshipObject> records =
+        daoCollection
+            .relationshipDAO()
+            .findFromBatch(entityListToStrings(fromIds), relationship.ordinal());
+
+    Map<UUID, List<EntityReference>> entityToRefsMaps = new HashMap<>();
+
+    for (CollectionDAO.EntityRelationshipObject rec : records) {
+      UUID entityId = UUID.fromString(rec.getToId());
+      EntityReference fromRef =
+          Entity.getEntityReferenceById(rec.getFromEntity(), UUID.fromString(rec.getFromId()), ALL);
+      entityToRefsMaps.computeIfAbsent(entityId, k -> new ArrayList<>()).add(fromRef);
+    }
+
+    return entityToRefsMaps;
+  }
+
+  public Map<UUID, EntityReference> batchFetchToIdsAndRelationSingleRelation(
+      List<T> fromIds, Relationship relationship) {
+    List<CollectionDAO.EntityRelationshipObject> records =
+        daoCollection
+            .relationshipDAO()
+            .findFromBatch(entityListToStrings(fromIds), relationship.ordinal());
+
+    Map<UUID, EntityReference> entityToRefsMaps = new HashMap<>();
+
+    for (CollectionDAO.EntityRelationshipObject rec : records) {
+      UUID entityId = UUID.fromString(rec.getToId());
+      EntityReference fromRef =
+          Entity.getEntityReferenceById(rec.getFromEntity(), UUID.fromString(rec.getFromId()), ALL);
+      entityToRefsMaps.put(entityId, fromRef);
+    }
+
+    return entityToRefsMaps;
+  }
+
   public Map<UUID, EntityReference> batchFetchFromIdsAndRelationSingleRelation(
       List<T> fromIds, Relationship relationship) {
     List<CollectionDAO.EntityRelationshipObject> records =
@@ -3935,7 +3971,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
       UUID entityId = UUID.fromString(rec.getToId());
       EntityReference fromRef =
           Entity.getEntityReferenceById(rec.getFromEntity(), UUID.fromString(rec.getFromId()), ALL);
-      entityToRefsMaps.put(entityId, fromRef);
+      if (fromRef != null) {
+        entityToRefsMaps.put(entityId, fromRef);
+      }
     }
     return entityToRefsMaps;
   }

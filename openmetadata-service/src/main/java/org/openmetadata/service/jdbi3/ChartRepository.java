@@ -48,6 +48,26 @@ public class ChartRepository extends EntityRepository<Chart> {
         CHART_PATCH_FIELDS,
         CHART_UPDATE_FIELDS);
     supportsSearch = true;
+    fieldFetchers.put("service", this::fetchAndSetContainer);
+    fieldFetchers.put("dashboards", this::fetchAndSetDashboards);
+  }
+
+  protected void fetchAndSetContainer(List<Chart> entities, Fields fields) {
+    if (!fields.contains("service")) {
+      return;
+    }
+    setFieldFromMapSingleRelation(true, entities, getContainers(entities), Chart::setService);
+  }
+
+  protected void fetchAndSetDashboards(List<Chart> entities, Fields fields) {
+    if (!fields.contains("dashboards")) {
+      return;
+    }
+    setFieldFromMap(
+        fields.contains("dashboards"),
+        entities,
+        batchFetchFromIdsManyToOne(entities, Relationship.HAS, Entity.CHART),
+        Chart::setDashboards);
   }
 
   @Override
