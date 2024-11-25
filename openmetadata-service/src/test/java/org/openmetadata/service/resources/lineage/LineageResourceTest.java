@@ -493,7 +493,6 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
     deleteEdge(TABLES.get(6), TABLES.get(7));
   }
 
-
   public Edge getEdge(Table from, Table to) {
     return getEdge(from.getId(), to.getId(), null);
   }
