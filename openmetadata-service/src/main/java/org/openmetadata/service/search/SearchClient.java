@@ -174,6 +174,7 @@ public interface SearchClient {
       String index,
       String query,
       String filter,
+      String[] fields,
       SearchSortFilter searchSortFilter,
       int size,
       Object[] searchAfter)
@@ -359,6 +360,8 @@ public interface SearchClient {
   }
 
   Object getLowLevelClient();
+
+  Object getClient();
 
   static boolean shouldApplyRbacConditions(
       SubjectContext subjectContext, RBACConditionEvaluator rbacConditionEvaluator) {

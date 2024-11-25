@@ -1001,7 +1001,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     // Invalid date older than 30 days
     String invalidColumnFQN4 = table2.getFullyQualifiedName() + ".c1";
     TableJoins tableJoins4 =
-        getTableJoins(getColumnJoin(C1, invalidColumnFQN4)).withStartDate(RestUtil.today(-30));
+        getTableJoins(getColumnJoin(C1, invalidColumnFQN4)).withStartDate(RestUtil.today(-31));
     assertResponse(
         () -> putJoins(table1.getId(), tableJoins4, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,

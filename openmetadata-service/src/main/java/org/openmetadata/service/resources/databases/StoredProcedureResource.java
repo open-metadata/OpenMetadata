@@ -533,6 +533,7 @@ public class StoredProcedureResource
         .copy(new StoredProcedure(), create, user)
         .withDatabaseSchema(getEntityReference(Entity.DATABASE_SCHEMA, create.getDatabaseSchema()))
         .withStoredProcedureCode(create.getStoredProcedureCode())
+        .withStoredProcedureType(create.getStoredProcedureType())
         .withSourceUrl(create.getSourceUrl())
         .withSourceHash(create.getSourceHash());
   }

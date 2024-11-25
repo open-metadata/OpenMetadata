@@ -36,11 +36,13 @@ import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.BulkAssetsRequestInterface;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
@@ -56,7 +58,9 @@ import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.service.util.AsyncService;
+import org.openmetadata.service.util.BulkAssetsOperationResponse;
 import org.openmetadata.service.util.CSVExportResponse;
+import org.openmetadata.service.util.CSVImportResponse;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.RestUtil;
@@ -410,6 +414,78 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
         });
     CSVExportResponse response = new CSVExportResponse(jobId, "Export initiated successfully.");
     return Response.accepted().entity(response).type(MediaType.APPLICATION_JSON).build();
+  }
+
+  public Response bulkAddToAssetsAsync(
+      SecurityContext securityContext, UUID entityId, BulkAssetsRequestInterface request) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(entityId));
+    String jobId = UUID.randomUUID().toString();
+    ExecutorService executorService = AsyncService.getInstance().getExecutorService();
+    executorService.submit(
+        () -> {
+          try {
+            BulkOperationResult result =
+                repository.bulkAddAndValidateTagsToAssets(entityId, request);
+            WebsocketNotificationHandler.bulkAssetsOperationCompleteNotification(
+                jobId, securityContext, result);
+          } catch (Exception e) {
+            WebsocketNotificationHandler.bulkAssetsOperationFailedNotification(
+                jobId, securityContext, e.getMessage());
+          }
+        });
+    BulkAssetsOperationResponse response =
+        new BulkAssetsOperationResponse(
+            jobId, "Bulk Add tags to Asset operation initiated successfully.");
+    return Response.ok().entity(response).type(MediaType.APPLICATION_JSON).build();
+  }
+
+  public Response bulkRemoveFromAssetsAsync(
+      SecurityContext securityContext, UUID entityId, BulkAssetsRequestInterface request) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(entityId));
+    String jobId = UUID.randomUUID().toString();
+    ExecutorService executorService = AsyncService.getInstance().getExecutorService();
+    executorService.submit(
+        () -> {
+          try {
+            BulkOperationResult result =
+                repository.bulkRemoveAndValidateTagsToAssets(entityId, request);
+            WebsocketNotificationHandler.bulkAssetsOperationCompleteNotification(
+                jobId, securityContext, result);
+          } catch (Exception e) {
+            WebsocketNotificationHandler.bulkAssetsOperationFailedNotification(
+                jobId, securityContext, e.getMessage());
+          }
+        });
+    BulkAssetsOperationResponse response =
+        new BulkAssetsOperationResponse(
+            jobId, "Bulk Remove tags to Asset operation initiated successfully.");
+    return Response.ok().entity(response).type(MediaType.APPLICATION_JSON).build();
+  }
+
+  public Response importCsvInternalAsync(
+      SecurityContext securityContext, String name, String csv, boolean dryRun) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
+    String jobId = UUID.randomUUID().toString();
+    ExecutorService executorService = AsyncService.getInstance().getExecutorService();
+    executorService.submit(
+        () -> {
+          try {
+            CsvImportResult result = importCsvInternal(securityContext, name, csv, dryRun);
+            WebsocketNotificationHandler.sendCsvImportCompleteNotification(
+                jobId, securityContext, result);
+          } catch (Exception e) {
+            WebsocketNotificationHandler.sendCsvImportFailedNotification(
+                jobId, securityContext, e.getMessage());
+          }
+        });
+    CSVImportResponse response = new CSVImportResponse(jobId, "Import is in progress.");
+    return Response.ok().entity(response).type(MediaType.APPLICATION_JSON).build();
   }
 
   public String exportCsvInternal(SecurityContext securityContext, String name) throws IOException {

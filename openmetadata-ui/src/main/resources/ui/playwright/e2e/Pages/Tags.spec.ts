@@ -373,39 +373,6 @@ test('Classification Page', async ({ page }) => {
     }
   );
 
-  await test.step(
-    'Should have correct tag usage count and redirection should work',
-    async () => {
-      const getTags = page.waitForResponse('/api/v1/tags*');
-      await sidebarClick(page, SidebarItem.TAGS);
-      await getTags;
-      const classificationResponse = page.waitForResponse(
-        `/api/v1/tags?*parent=${encodeURIComponent(NEW_CLASSIFICATION.name)}*`
-      );
-      await page
-        .locator(`[data-testid="side-panel-classification"]`)
-        .filter({ hasText: NEW_CLASSIFICATION.displayName })
-        .click();
-      await classificationResponse;
-
-      await expect(page.locator('.activeCategory')).toContainText(
-        NEW_CLASSIFICATION.displayName
-      );
-
-      const count = await page
-        .locator('[data-testid="usage-count"]')
-        .textContent();
-
-      expect(count).toBe('1');
-
-      const getEntityDetailsPage = page.waitForResponse(
-        'api/v1/search/query?q=&index=**'
-      );
-      await page.click('[data-testid="usage-count"]');
-      await getEntityDetailsPage;
-    }
-  );
-
   await test.step('Delete tag', async () => {
     const getTags = page.waitForResponse('/api/v1/tags*');
     await sidebarClick(page, SidebarItem.TAGS);

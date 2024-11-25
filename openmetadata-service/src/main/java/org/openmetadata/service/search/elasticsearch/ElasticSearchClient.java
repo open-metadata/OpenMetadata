@@ -131,6 +131,7 @@ import java.util.stream.Stream;
 import javax.json.JsonObject;
 import javax.net.ssl.SSLContext;
 import javax.ws.rs.core.Response;
+import lombok.Getter;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang.WordUtils;
@@ -217,6 +218,7 @@ import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 public class ElasticSearchClient implements SearchClient {
 
   @SuppressWarnings("deprecated")
+  @Getter
   protected final RestHighLevelClient client;
 
   private final RBACConditionEvaluator rbacConditionEvaluator;
@@ -698,6 +700,7 @@ public class ElasticSearchClient implements SearchClient {
       String index,
       String query,
       String filter,
+      String[] fields,
       SearchSortFilter searchSortFilter,
       int size,
       Object[] searchAfter)
@@ -708,6 +711,10 @@ public class ElasticSearchClient implements SearchClient {
     if (!nullOrEmpty(query)) {
       searchSourceBuilder = getSearchSourceBuilder(index, query, 0, size);
     }
+    if (!nullOrEmpty(fields)) {
+      searchSourceBuilder.fetchSource(fields, null);
+    }
+
     if (Optional.ofNullable(filter).isPresent()) {
       getSearchFilter(filter, searchSourceBuilder, !nullOrEmpty(query));
     }
@@ -781,7 +788,6 @@ public class ElasticSearchClient implements SearchClient {
             Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS));
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
     List<String> sourceFieldsToExcludeCopy = new ArrayList<>(SOURCE_FIELDS_TO_EXCLUDE);
-    sourceFieldsToExcludeCopy.add("lineage");
     searchSourceBuilder.fetchSource(null, sourceFieldsToExcludeCopy.toArray(String[]::new));
     searchSourceBuilder.query(
         QueryBuilders.boolQuery().must(QueryBuilders.termQuery("fullyQualifiedName", fqn)));
@@ -1057,7 +1063,6 @@ public class ElasticSearchClient implements SearchClient {
       List<Map<String, Object>> lineage =
           (List<Map<String, Object>>) hit.getSourceAsMap().get("lineage");
       HashMap<String, Object> tempMap = new HashMap<>(JsonUtils.getMap(hit.getSourceAsMap()));
-      tempMap.remove("lineage");
       nodes.add(tempMap);
       for (Map<String, Object> lin : lineage) {
         Map<String, String> fromEntity = (HashMap<String, String>) lin.get("fromEntity");
@@ -1172,9 +1177,11 @@ public class ElasticSearchClient implements SearchClient {
     processedNodes.add(nodeFailureId);
     if (nodesWithFailures.contains(nodeFailureId)) {
       Map<String, Object> node = allNodes.get(nodeFailureId);
-      node.keySet().removeAll(FIELDS_TO_REMOVE);
-      node.remove("lineage");
-      nodes.add(allNodes.get(nodeFailureId));
+      if (node != null) {
+        node.keySet().removeAll(FIELDS_TO_REMOVE);
+        node.remove("lineage");
+        nodes.add(node);
+      }
     }
     List<Map<String, Object>> edgesForNode = allEdges.get(nodeFailureId);
     if (edgesForNode != null) {
@@ -1247,7 +1254,6 @@ public class ElasticSearchClient implements SearchClient {
       List<Map<String, Object>> lineage =
           (List<Map<String, Object>>) hit.getSourceAsMap().get("lineage");
       HashMap<String, Object> tempMap = new HashMap<>(JsonUtils.getMap(hit.getSourceAsMap()));
-      tempMap.remove("lineage");
       nodes.add(tempMap);
       for (Map<String, Object> lin : lineage) {
         HashMap<String, String> fromEntity = (HashMap<String, String>) lin.get("fromEntity");

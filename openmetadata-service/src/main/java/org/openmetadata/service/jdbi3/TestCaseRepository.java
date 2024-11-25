@@ -36,7 +36,6 @@ import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.api.tests.CreateTestCaseResult;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.teams.User;
-import org.openmetadata.schema.tests.ResultSummary;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestCaseParameter;
 import org.openmetadata.schema.tests.TestCaseParameterValidationRule;
@@ -48,7 +47,6 @@ import org.openmetadata.schema.tests.type.TestCaseFailureReasonType;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatus;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes;
 import org.openmetadata.schema.tests.type.TestCaseResult;
-import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FieldChange;
@@ -79,7 +77,6 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       "owners,entityLink,testSuite,testSuites,testDefinition";
   private static final String PATCH_FIELDS =
       "owners,entityLink,testSuite,testDefinition,computePassedFailedRowCount,useDynamicAssertion";
-  public static final String TESTCASE_RESULT_EXTENSION = "testCase.testCaseResult";
   public static final String FAILED_ROWS_SAMPLE_EXTENSION = "testCase.failedRowsSample";
 
   public TestCaseRepository() {
@@ -370,17 +367,9 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     testCaseResultRepository.deleteAllTestCaseResults(fqn);
   }
 
-  private ResultSummary getResultSummary(
-      TestCase testCase, Long timestamp, TestCaseStatus testCaseStatus) {
-    return new ResultSummary()
-        .withTestCaseName(testCase.getFullyQualifiedName())
-        .withStatus(testCaseStatus)
-        .withTimestamp(timestamp);
-  }
-
   @SneakyThrows
   private TestCaseResult getTestCaseResult(TestCase testCase) {
-    TestCaseResult testCaseResult;
+    TestCaseResult testCaseResult = null;
     if (testCase.getTestCaseResult() != null) {
       // we'll return the saved state if it exists otherwise we'll fetch it from the database
       // Should be the case if listing from the search repo. as the test case result
@@ -395,11 +384,11 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       testCaseResult =
           timeSeriesRepository.latestFromSearch(Fields.EMPTY_FIELDS, searchListFilter, null);
     } catch (Exception e) {
-      // Index may not exist in the search index (e.g. reindexing with recreate index on). Fall back
-      // to database
       LOG.debug(
           "Error fetching test case result from search. Fetching from test case results from database",
           e);
+    }
+    if (nullOrEmpty(testCaseResult)) {
       testCaseResult =
           timeSeriesRepository.listLastTestCaseResult(testCase.getFullyQualifiedName());
     }
