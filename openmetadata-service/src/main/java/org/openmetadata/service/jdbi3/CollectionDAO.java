@@ -722,6 +722,12 @@ public interface CollectionDAO {
     String getExtension(@BindUUID("id") UUID id, @Bind("extension") String extension);
 
     @SqlQuery(
+        "SELECT id, json FROM entity_extension WHERE id IN (<ids>) AND extension = :extension")
+    @RegisterRowMapper(EntityTableProfilerConfigMapper.class)
+    List<EntityTableProfilerConfig> getExtensions(
+        @BindList("ids") List<String> ids, @Bind("extension") String extension);
+
+    @SqlQuery(
         "SELECT id, extension, json "
             + "FROM entity_extension "
             + "WHERE id IN (<ids>) AND extension LIKE CONCAT(:extensionPrefix, '.%') "
@@ -758,6 +764,15 @@ public interface CollectionDAO {
 
     @SqlUpdate("DELETE FROM entity_extension WHERE id = :id")
     void deleteAll(@BindUUID("id") UUID id);
+
+    record EntityTableProfilerConfig(String id, String json) {}
+
+    class EntityTableProfilerConfigMapper implements RowMapper<EntityTableProfilerConfig> {
+      @Override
+      public EntityTableProfilerConfig map(ResultSet rs, StatementContext ctx) throws SQLException {
+        return new EntityTableProfilerConfig(rs.getString("id"), rs.getString("json"));
+      }
+    }
   }
 
   class EntityVersionPair {

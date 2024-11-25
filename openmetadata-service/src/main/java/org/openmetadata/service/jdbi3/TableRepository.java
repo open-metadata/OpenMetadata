@@ -192,31 +192,33 @@ public class TableRepository extends EntityRepository<Table> {
     }
     // TODO: Fix this to do batch fetch
     for (Table entity : entities) {
-      entity.setJoins(getJoins(entity));
-    }
-  }
-
-  private void fetchAndTableProfilerConfig(List<Table> entities, Fields fields) {
-    if (!fields.contains(COLUMN_FIELD)) {
-      return;
-    }
-    // TODO: Fix this to do batch fetch
-    for (Table entity : entities) {
-      entity.setTableProfilerConfig(getTableProfilerConfig(entity));
-    }
-  }
-
-  private void fetchAndSetJoins(List<Table> entities, Fields fields) {
-    if (!fields.contains(COLUMN_FIELD)) {
-      return;
-    }
-    // TODO: Fix this to do batch fetch
-    for (Table entity : entities) {
       populateEntityFieldTags(
           entityType,
           entity.getColumns(),
           entity.getFullyQualifiedName(),
           fields.contains(FIELD_TAGS));
+    }
+  }
+
+  private void fetchAndSetJoins(List<Table> entities, Fields fields) {
+    if (!fields.contains("joins")) {
+      return;
+    }
+    // TODO: Fix this to do batch fetch
+    for (Table entity : entities) {
+      entity.setJoins(getJoins(entity));
+    }
+  }
+
+  private void fetchAndTableProfilerConfig(List<Table> entities, Fields fields) {
+    if (!fields.contains(TABLE_PROFILER_CONFIG)) {
+      return;
+    }
+    Map<UUID, TableProfilerConfig> result = getTableProfilerConfigInBulk(entities);
+    for (Table entity : entities) {
+      if (result.containsKey(entity.getId()) && result.get(entity.getId()) != null) {
+        entity.setTableProfilerConfig(result.get(entity.getId()));
+      }
     }
   }
 
@@ -445,6 +447,20 @@ public class TableRepository extends EntityRepository<Table> {
             .entityExtensionDAO()
             .getExtension(table.getId(), TABLE_PROFILER_CONFIG_EXTENSION),
         TableProfilerConfig.class);
+  }
+
+  public Map<UUID, TableProfilerConfig> getTableProfilerConfigInBulk(List<Table> table) {
+    Map<UUID, TableProfilerConfig> result = new HashMap<>();
+    List<CollectionDAO.EntityExtensionDAO.EntityTableProfilerConfig> profilerConfigs =
+        daoCollection
+            .entityExtensionDAO()
+            .getExtensions(EntityUtil.entityListToStrings(table), TABLE_PROFILER_CONFIG_EXTENSION);
+    for (CollectionDAO.EntityExtensionDAO.EntityTableProfilerConfig config : profilerConfigs) {
+      TableProfilerConfig tableProfilerConfig =
+          JsonUtils.readValue(config.json(), TableProfilerConfig.class);
+      result.put(UUID.fromString(config.id()), tableProfilerConfig);
+    }
+    return result;
   }
 
   public EntityReference getTestSuite(Table table) {
