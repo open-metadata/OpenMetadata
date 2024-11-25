@@ -10,7 +10,7 @@
   "definitions": {
     "storedProcedureType": {
       "properties": {
-        "language": {
+        "procedureType": {
           "javaType": "org.openmetadata.schema.type.StoredProcedureType",
           "description": "This schema defines the type of the type of Procedures",
           "type": "string",
