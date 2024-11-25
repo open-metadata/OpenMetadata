@@ -12,7 +12,6 @@
  */
 import React from 'react';
 import { CSVImportResult } from '../../../generated/type/csvImportResult';
-import { CSVImportAsyncResponse } from '../../BulkImport/BulkEntityImport.interface';
 
 export interface EntityImportProps {
   entityName: string;
@@ -20,9 +19,8 @@ export interface EntityImportProps {
     name: string,
     data: string,
     dryRun?: boolean
-  ) => Promise<CSVImportAsyncResponse | undefined>;
+  ) => Promise<CSVImportResult | undefined>;
   onSuccess: () => void;
   onCancel: () => void;
-  onCsvResultUpdate?: (result: CSVImportResult) => void;
   children: React.ReactNode;
 }

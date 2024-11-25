@@ -1482,41 +1482,6 @@ public class UserResource extends EntityResource<User, UserRepository> {
     return importCsvInternal(securityContext, team, csv, dryRun);
   }
 
-  @PUT
-  @Path("/importAsync")
-  @Consumes(MediaType.TEXT_PLAIN)
-  @Valid
-  @Operation(
-      operationId = "importTeamsAsync",
-      summary = "Import from CSV to create, and update teams asynchronously.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "Import result",
-            content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = CsvImportResult.class)))
-      })
-  public Response importCsvAsync(
-      @Context SecurityContext securityContext,
-      @Parameter(
-              description = "Name of the team to under which the users are imported to",
-              required = true,
-              schema = @Schema(type = "string"))
-          @QueryParam("team")
-          String team,
-      @Parameter(
-              description =
-                  "Dry-run when true is used for validating the CSV without really importing it. (default=true)",
-              schema = @Schema(type = "boolean"))
-          @DefaultValue("true")
-          @QueryParam("dryRun")
-          boolean dryRun,
-      String csv) {
-    return importCsvInternalAsync(securityContext, team, csv, dryRun);
-  }
-
   public void validateEmailAlreadyExists(String email) {
     if (repository.checkEmailAlreadyExists(email)) {
       throw new CustomExceptionMessage(

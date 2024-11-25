@@ -19,28 +19,6 @@ export interface BulkImportProps {
   onValidateCsvString: (
     data: string,
     dryRun?: boolean
-  ) => Promise<CSVImportAsyncResponse | undefined>;
+  ) => Promise<CSVImportResult | undefined>;
   onSuccess: () => void;
 }
-
-export type CSVImportAsyncResponse = {
-  jobId: string;
-  message: string;
-};
-
-export type CSVImportAsyncWebsocketResponse = {
-  jobId: string;
-  status: 'COMPLETED' | 'FAILED';
-  result: CSVImportResult;
-  error: string | null;
-};
-
-export type CSVImportAsyncJob = Partial<CSVImportAsyncWebsocketResponse> &
-  CSVImportAsyncResponse;
-
-export type CSVImportJobType =
-  | (Partial<CSVImportAsyncJob> & {
-      type: 'initialLoad';
-      initialResult: string;
-    })
-  | (Partial<CSVImportAsyncJob> & { type: 'onValidate' });

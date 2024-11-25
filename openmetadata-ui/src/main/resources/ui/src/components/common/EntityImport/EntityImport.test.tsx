@@ -18,7 +18,6 @@ import {
   waitForElement,
 } from '@testing-library/react';
 import React from 'react';
-import { useWebSocketConnector } from '../../../context/WebSocketProvider/WebSocketProvider';
 import {
   CSVImportResult,
   Status,
@@ -36,16 +35,11 @@ let mockCsvImportResult = {
   success,Entity created,,Glossary2 term2,Glossary2 term2,Description data.,,,,\r`,
 } as CSVImportResult;
 
-const mockAsyncImportJob = {
-  jobId: '123',
-  message: 'Import initiated successfully',
-};
-
 const mockProps = {
   entityName: 'Business Glossary',
   onImport: jest
     .fn()
-    .mockImplementation(() => Promise.resolve(mockAsyncImportJob)),
+    .mockImplementation(() => Promise.resolve(mockCsvImportResult)),
   onSuccess: jest.fn(),
   onCancel: jest.fn(),
 };
@@ -71,26 +65,7 @@ jest.mock('./ImportStatus/ImportStatus.component', () => ({
   ImportStatus: jest.fn().mockImplementation(() => <div>ImportStatus</div>),
 }));
 
-jest.mock('../../../context/WebSocketProvider/WebSocketProvider', () => ({
-  useWebSocketConnector: jest.fn(),
-}));
-
-const mockSocket = {
-  on: jest.fn(),
-  off: jest.fn(),
-};
-
 describe('EntityImport component', () => {
-  beforeEach(() => {
-    (useWebSocketConnector as jest.Mock).mockReturnValue({
-      socket: mockSocket,
-    });
-  });
-
-  afterEach(() => {
-    jest.clearAllMocks();
-  });
-
   it('Component should render', async () => {
     render(<EntityImport {...mockProps}>ImportTableData</EntityImport>);
 
@@ -136,22 +111,6 @@ describe('EntityImport component', () => {
       await flushPromises();
     });
 
-    expect(
-      await screen.findByText(mockAsyncImportJob.message)
-    ).toBeInTheDocument();
-
-    const mockResponse = {
-      jobId: mockAsyncImportJob.jobId,
-      status: 'COMPLETED',
-      result: mockCsvImportResult,
-      error: null,
-    };
-
-    const callback = mockSocket.on.mock.calls[0][1];
-    act(() => {
-      callback(JSON.stringify(mockResponse));
-    });
-
     const importButton = await screen.findByTestId('import-button');
 
     expect(await screen.findByTestId('import-results')).toBeInTheDocument();
@@ -159,11 +118,6 @@ describe('EntityImport component', () => {
 
     await act(async () => {
       fireEvent.click(importButton);
-    });
-
-    const callback1 = mockSocket.on.mock.calls[0][1];
-    act(() => {
-      callback1(JSON.stringify(mockResponse));
     });
 
     const successBadge = await screen.findByTestId('success-badge');
@@ -207,22 +161,6 @@ describe('EntityImport component', () => {
       await flushPromises();
     });
 
-    expect(
-      await screen.findByText(mockAsyncImportJob.message)
-    ).toBeInTheDocument();
-
-    const mockResponse = {
-      jobId: mockAsyncImportJob.jobId,
-      status: 'COMPLETED',
-      result: mockCsvImportResult,
-      error: null,
-    };
-
-    const callback = mockSocket.on.mock.calls[0][1];
-    act(() => {
-      callback(JSON.stringify(mockResponse));
-    });
-
     const importButton = await screen.findByTestId('import-button');
 
     expect(await screen.findByTestId('import-results')).toBeInTheDocument();
@@ -230,11 +168,6 @@ describe('EntityImport component', () => {
 
     await act(async () => {
       fireEvent.click(importButton);
-    });
-
-    const callback1 = mockSocket.on.mock.calls[0][1];
-    act(() => {
-      callback1(JSON.stringify(mockResponse));
     });
 
     const successBadge = await screen.findByTestId('success-badge');
@@ -276,22 +209,6 @@ describe('EntityImport component', () => {
       await flushPromises();
     });
 
-    expect(
-      await screen.findByText(mockAsyncImportJob.message)
-    ).toBeInTheDocument();
-
-    const mockResponse = {
-      jobId: mockAsyncImportJob.jobId,
-      status: 'COMPLETED',
-      result: mockCsvImportResult,
-      error: null,
-    };
-
-    const callback = mockSocket.on.mock.calls[0][1];
-    act(() => {
-      callback(JSON.stringify(mockResponse));
-    });
-
     const importButton = screen.queryByTestId('import-button');
     const cancelPreviewButton = await screen.findByTestId(
       'preview-cancel-button'
@@ -330,22 +247,6 @@ describe('EntityImport component', () => {
     });
     await act(async () => {
       await flushPromises();
-    });
-
-    expect(
-      await screen.findByText(mockAsyncImportJob.message)
-    ).toBeInTheDocument();
-
-    const mockResponse = {
-      jobId: mockAsyncImportJob.jobId,
-      status: 'COMPLETED',
-      result: mockCsvImportResult,
-      error: null,
-    };
-
-    const callback = mockSocket.on.mock.calls[0][1];
-    act(() => {
-      callback(JSON.stringify(mockResponse));
     });
 
     const abortedReason = await screen.findByTestId('abort-reason');

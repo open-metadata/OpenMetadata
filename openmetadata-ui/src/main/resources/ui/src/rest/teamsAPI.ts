@@ -14,11 +14,11 @@
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { PagingResponse, RestoreRequestType } from 'Models';
-import { CSVImportAsyncResponse } from '../components/BulkImport/BulkEntityImport.interface';
 import { CSVExportResponse } from '../components/Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
 import { CreateTeam } from '../generated/api/teams/createTeam';
 import { Team } from '../generated/entity/teams/team';
 import { TeamHierarchy } from '../generated/entity/teams/teamHierarchy';
+import { CSVImportResult } from '../generated/type/csvImportResult';
 import { ListParams } from '../interface/API.interface';
 import { getEncodedFqn } from '../utils/StringsUtils';
 import APIClient from './index';
@@ -120,10 +120,11 @@ export const importTeam = async (
       dryRun,
     },
   };
-  const response = await APIClient.put<
-    string,
-    AxiosResponse<CSVImportAsyncResponse>
-  >(`/teams/name/${getEncodedFqn(teamName)}/importAsync`, data, configOptions);
+  const response = await APIClient.put<string, AxiosResponse<CSVImportResult>>(
+    `/teams/name/${getEncodedFqn(teamName)}/import`,
+    data,
+    configOptions
+  );
 
   return response.data;
 };
@@ -140,10 +141,11 @@ export const importUserInTeam = async (
       dryRun,
     },
   };
-  const response = await APIClient.put<
-    string,
-    AxiosResponse<CSVImportAsyncResponse>
-  >(`/users/importAsync`, data, configOptions);
+  const response = await APIClient.put<string, AxiosResponse<CSVImportResult>>(
+    `/users/import`,
+    data,
+    configOptions
+  );
 
   return response.data;
 };
