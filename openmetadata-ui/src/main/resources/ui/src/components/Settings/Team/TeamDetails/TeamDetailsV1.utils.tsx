@@ -29,7 +29,7 @@ export const getTabs = (
     },
     users: {
       name: t('label.user-plural'),
-      count: currentTeam.users?.length ?? 0,
+      count: currentTeam.userCount ?? 0,
       key: TeamsPageTab.USERS,
     },
     assets: {
