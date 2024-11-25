@@ -22,7 +22,7 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
 
 Entity = BaseModel
 
-T = TypeVar("T", bound=BaseModel)
+T = TypeVar("T")
 
 
 class Either(BaseModel, Generic[T]):
