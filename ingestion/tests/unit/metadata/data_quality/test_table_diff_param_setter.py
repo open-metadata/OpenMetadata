@@ -151,7 +151,9 @@ def test_partitioned_where_clause(input, expected):
 
     with patch.object(SQASampler, "get_client") as mock_get_client:
         mock_get_client.return_value = session
-        mock_sampler = SQASampler(
+        mock_sampler = SQASampler.__new__(SQASampler)
+        mock_sampler.build_table_orm = lambda *args, **kwargs: MyTable
+        mock_sampler.__init__(
             service_connection_config=SERVICE_CONNECTION_CONFIG,
             ometa_client=Mock(),
             entity=Mock(),
