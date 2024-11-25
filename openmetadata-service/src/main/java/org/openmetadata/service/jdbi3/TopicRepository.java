@@ -41,6 +41,7 @@ import org.openmetadata.schema.entity.services.MessagingService;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Field;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.type.topic.CleanupPolicy;
@@ -123,6 +124,24 @@ public class TopicRepository extends EntityRepository<Topic> {
           topic.getMessageSchema().getSchemaFields(),
           topic.getFullyQualifiedName(),
           fields.contains(FIELD_TAGS));
+    }
+  }
+
+  protected void setFieldsInBulk(List<Topic> entities, Fields fields) {
+    setFieldFromMapSingleRelation(
+        true,
+        entities,
+        batchFetchFromIdsAndRelationSingleRelation(entities, Relationship.CONTAINS),
+        Topic::setService);
+    // TODO: optimize this
+    for (Topic t : entities) {
+      if (t.getMessageSchema() != null) {
+        populateEntityFieldTags(
+            entityType,
+            t.getMessageSchema().getSchemaFields(),
+            t.getFullyQualifiedName(),
+            fields.contains(FIELD_TAGS));
+      }
     }
   }
 

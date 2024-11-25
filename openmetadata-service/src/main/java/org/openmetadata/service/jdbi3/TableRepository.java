@@ -29,6 +29,8 @@ import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.TABLE;
 import static org.openmetadata.service.Entity.TEST_SUITE;
 import static org.openmetadata.service.Entity.populateEntityFieldTags;
+import static org.openmetadata.service.util.EntityUtil.entityListToStrings;
+import static org.openmetadata.service.util.EntityUtil.entityListToUUID;
 import static org.openmetadata.service.util.EntityUtil.getLocalColumnName;
 import static org.openmetadata.service.util.FullyQualifiedName.getColumnName;
 import static org.openmetadata.service.util.LambdaExceptionUtil.ignoringComparator;
@@ -40,6 +42,7 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -85,6 +88,7 @@ import org.openmetadata.schema.type.TableProfile;
 import org.openmetadata.schema.type.TableProfilerConfig;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TaskType;
+import org.openmetadata.schema.type.UsageDetails;
 import org.openmetadata.schema.type.csv.CsvDocumentation;
 import org.openmetadata.schema.type.csv.CsvFile;
 import org.openmetadata.schema.type.csv.CsvHeader;
@@ -141,6 +145,13 @@ public class TableRepository extends EntityRepository<Table> {
         PATCH_FIELDS,
         UPDATE_FIELDS);
     supportsSearch = true;
+    fieldFetchers.put(DATABASE_SCHEMA, this::fetchAndSetDatabaseSchema);
+    fieldFetchers.put("usageSummary", this::fetchAndSetUsageSummary);
+    fieldFetchers.put(COLUMN_FIELD, this::fetchAndColumnTags);
+    fieldFetchers.put("joins", this::fetchAndSetJoins);
+    fieldFetchers.put(TABLE_PROFILER_CONFIG, this::fetchAndTableProfilerConfig);
+    fieldFetchers.put(TEST_SUITE, this::fetchAndSetTestSuite);
+    fieldFetchers.put(CUSTOM_METRICS, this::fetchAndSetCustomMetrics);
   }
 
   @Override
@@ -173,6 +184,117 @@ public class TableRepository extends EntityRepository<Table> {
         column.setCustomMetrics(getCustomMetrics(table, column.getName()));
       }
     }
+  }
+
+  private void fetchAndColumnTags(List<Table> entities, Fields fields) {
+    if (!fields.contains(COLUMN_FIELD)) {
+      return;
+    }
+    // TODO: Fix this to do batch fetch
+    for (Table entity : entities) {
+      entity.setJoins(getJoins(entity));
+    }
+  }
+
+  private void fetchAndTableProfilerConfig(List<Table> entities, Fields fields) {
+    if (!fields.contains(COLUMN_FIELD)) {
+      return;
+    }
+    // TODO: Fix this to do batch fetch
+    for (Table entity : entities) {
+      entity.setTableProfilerConfig(getTableProfilerConfig(entity));
+    }
+  }
+
+  private void fetchAndSetJoins(List<Table> entities, Fields fields) {
+    if (!fields.contains(COLUMN_FIELD)) {
+      return;
+    }
+    // TODO: Fix this to do batch fetch
+    for (Table entity : entities) {
+      populateEntityFieldTags(
+          entityType,
+          entity.getColumns(),
+          entity.getFullyQualifiedName(),
+          fields.contains(FIELD_TAGS));
+    }
+  }
+
+  private void fetchAndSetDatabaseSchema(List<Table> entities, Fields fields) {
+    if (!fields.contains(DATABASE_SCHEMA)) {
+      return;
+    }
+    Map<UUID, DatabaseSchema> schemaMap = batchFetchDatabaseSchema(entities);
+    for (Table entity : entities) {
+      DatabaseSchema schema = schemaMap.get(entity.getId());
+      entity.setDatabaseSchema(schema.getEntityReference());
+      entity.setDatabase(schema.getDatabase());
+      entity.setService(schema.getService());
+    }
+  }
+
+  private void fetchAndSetUsageSummary(List<Table> entities, Fields fields) {
+    if (!fields.contains("usageSummary")) {
+      return;
+    }
+    Map<UUID, UsageDetails> entityUsage =
+        EntityUtil.getLatestUsageForEntities(daoCollection.usageDAO(), entityListToUUID(entities));
+    for (Table entity : entities) {
+      if (entityUsage.containsKey(entity.getId())) {
+        entity.setUsageSummary(entityUsage.get(entity.getId()));
+      }
+    }
+  }
+
+  private void fetchAndSetTestSuite(List<Table> entities, Fields fields) {
+    if (!fields.contains(TEST_SUITE)) {
+      return;
+    }
+    setFieldFromMapSingleRelation(
+        true,
+        entities,
+        batchFetchFromIdsManyToOneSingleRelation(entities, Relationship.CONTAINS, TEST_SUITE),
+        Table::setTestSuite);
+  }
+
+  private void fetchAndSetCustomMetrics(List<Table> entities, Fields fields) {
+    if (!fields.contains(CUSTOM_METRICS)) {
+      return;
+    }
+    for (Table entity : entities) {
+      entity.setCustomMetrics(getCustomMetrics(entity, null));
+      if ((fields.contains(COLUMN_FIELD))) {
+        for (Column column : entity.getColumns()) {
+          column.setCustomMetrics(getCustomMetrics(entity, column.getName()));
+        }
+      }
+    }
+  }
+
+  private Map<UUID, DatabaseSchema> batchFetchDatabaseSchema(List<Table> entities) {
+    Map<UUID, DatabaseSchema> schemaMap = new HashMap<>();
+
+    if (entities == null || entities.isEmpty()) {
+      return schemaMap;
+    }
+    List<CollectionDAO.EntityRelationshipObject> records =
+        daoCollection
+            .relationshipDAO()
+            .findFromBatch(
+                entityListToStrings(entities),
+                Relationship.CONTAINS.ordinal(),
+                DATABASE_SCHEMA,
+                entityType);
+    for (CollectionDAO.EntityRelationshipObject rec : records) {
+      UUID toId = UUID.fromString(rec.getToId());
+      // TODO: maybe a better approach can be to get a list of databaseSchemas in one go
+      DatabaseSchema schema =
+          Entity.getEntity(
+              rec.getFromEntity(), UUID.fromString(rec.getFromId()), "database,service", ALL);
+      schemaMap.put(toId, schema);
+    }
+
+    return schemaMap;
   }
 
   @Override

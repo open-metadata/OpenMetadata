@@ -7,6 +7,7 @@ import static org.openmetadata.schema.type.EventType.LOGICAL_TEST_CASE_ADDED;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
+import static org.openmetadata.service.Entity.FIELD_TEST_SUITES;
 import static org.openmetadata.service.Entity.TEST_CASE;
 import static org.openmetadata.service.Entity.TEST_CASE_RESULT;
 import static org.openmetadata.service.Entity.TEST_DEFINITION;
@@ -18,6 +19,7 @@ import static org.openmetadata.service.exception.CatalogExceptionMessage.entityN
 import static org.openmetadata.service.security.mask.PIIMasker.maskSampleData;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -92,12 +94,17 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     // As test case result` does not have its own repository
     EntityTimeSeriesInterface.CANONICAL_ENTITY_NAME_MAP.put(
         Entity.TEST_CASE_RESULT.toLowerCase(Locale.ROOT), Entity.TEST_CASE_RESULT);
+    fieldFetchers.put(FIELD_TEST_SUITES, this::fetchAndSetTestSuites);
+    fieldFetchers.put(TEST_DEFINITION, this::fetchAndSetTestDefinitions);
+    fieldFetchers.put(TEST_CASE_RESULT, this::fetchAndSetTestCaseResult);
+    fieldFetchers.put(INCIDENTS_FIELD, this::fetchAndSetIncidentId);
+    fieldFetchers.put(FIELD_TAGS, this::fetchAndSetTags);
   }
 
   @Override
   public void setFields(TestCase test, Fields fields) {
     test.setTestSuites(
-        fields.contains(Entity.FIELD_TEST_SUITES) ? getTestSuites(test) : test.getTestSuites());
+        fields.contains(FIELD_TEST_SUITES) ? getTestSuites(test) : test.getTestSuites());
     test.setTestSuite(fields.contains(TEST_SUITE_FIELD) ? getTestSuite(test) : test.getTestSuite());
     test.setTestDefinition(
         fields.contains(TEST_DEFINITION) ? getTestDefinition(test) : test.getTestDefinition());
@@ -106,6 +113,70 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     test.setIncidentId(
         fields.contains(INCIDENTS_FIELD) ? getIncidentId(test) : test.getIncidentId());
     test.setTags(fields.contains(FIELD_TAGS) ? getTestCaseTags(test) : test.getTags());
+  }
+
+  private void fetchAndSetTestSuites(List<TestCase> entities, Fields fields) {
+    if (!fields.contains(FIELD_TEST_SUITES) || entities.isEmpty()) {
+      return;
+    }
+    Map<UUID, List<EntityReference>> testSuitesMap =
+        batchFetchToIdsOneToMany(entities, Relationship.CONTAINS, TEST_SUITE);
+    for (TestCase entity : entities) {
+      List<EntityReference> testSuitesRef =
+          testSuitesMap.getOrDefault(entity.getId(), Collections.emptyList());
+      entity.setTestSuites(
+          testSuitesRef.stream()
+              .map(
+                  testSuiteId ->
+                      Entity.<TestSuite>getEntity(
+                              TEST_SUITE, testSuiteId.getId(), "owners,domain", Include.ALL, false)
+                          .withInherited(true)
+                          .withChangeDescription(null))
+              .toList());
+    }
+
+    // TODO: Also here we can use the same map above to set the executable TestSuites
+  }
+
+  private void fetchAndSetTestDefinitions(List<TestCase> entities, Fields fields) {
+    if (!fields.contains(TEST_DEFINITION) || entities.isEmpty()) {
+      return;
+    }
+    Map<UUID, List<EntityReference>> testSuitesMap =
+        batchFetchToIdsOneToMany(entities, Relationship.CONTAINS, TEST_DEFINITION);
+    for (TestCase entity : entities) {
+      List<EntityReference> definitionRef =
+          testSuitesMap.getOrDefault(entity.getId(), Collections.emptyList());
+      // TODO: Check if this is correct
+      entity.setTestDefinition(definitionRef.get(0));
+    }
+  }
+
+  private void fetchAndSetTestCaseResult(List<TestCase> entities, Fields fields) {
+    if (!fields.contains(TEST_CASE_RESULT) || entities.isEmpty()) {
+      return;
+    }
+    for (TestCase entity : entities) {
+      entity.setTestCaseResult(getTestCaseResult(entity));
+    }
+  }
+
+  private void fetchAndSetIncidentId(List<TestCase> entities, Fields fields) {
+    if (!fields.contains(INCIDENTS_FIELD) || entities.isEmpty()) {
+      return;
+    }
+    for (TestCase entity : entities) {
+      entity.setIncidentId(getIncidentId(entity));
+    }
+  }
+
+  private void fetchAndSetTags(List<TestCase> entities, Fields fields) {
+    if (!fields.contains(FIELD_TAGS) || entities.isEmpty()) {
+      return;
+    }
+    for (TestCase entity : entities) {
+      entity.setTags(getTestCaseTags(entity));
+    }
   }
 
   @Override

@@ -18,10 +18,13 @@ import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.DASHBOARD;
 import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
+import static org.openmetadata.service.util.EntityUtil.entityListToUUID;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.Chart;
@@ -31,6 +34,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TaskType;
+import org.openmetadata.schema.type.UsageDetails;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
@@ -55,6 +59,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
         DASHBOARD_PATCH_FIELDS,
         DASHBOARD_UPDATE_FIELDS);
     supportsSearch = true;
+    fieldFetchers.put("usageSummary", this::fetchAndSetUsageSummary);
   }
 
   @Override
@@ -120,6 +125,42 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
           fields.contains("usageSummary")
               ? EntityUtil.getLatestUsage(daoCollection.usageDAO(), dashboard.getId())
               : null);
+    }
+  }
+
+  protected void setFieldsInBulk(List<Dashboard> entities, Fields fields) {
+    setFieldFromMapSingleRelation(
+        true,
+        entities,
+        batchFetchFromIdsAndRelationSingleRelation(entities, Relationship.CONTAINS),
+        Dashboard::setService);
+    setFieldFromMap(
+        fields.contains("charts"),
+        entities,
+        batchFetchFromIdsManyToOne(entities, Relationship.HAS, Entity.CHART),
+        Dashboard::setCharts);
+    setFieldFromMap(
+        fields.contains("dataModels"),
+        entities,
+        batchFetchFromIdsManyToOne(entities, Relationship.HAS, Entity.DASHBOARD_DATA_MODEL),
+        Dashboard::setCharts);
+    setUsageDetails(
+        fields.contains("usageSummary"),
+        entities,
+        EntityUtil.getLatestUsageForEntities(daoCollection.usageDAO(), entityListToUUID(entities)),
+        Dashboard::setUsageSummary);
+  }
+
+  private void fetchAndSetUsageSummary(List<Dashboard> entities, Fields fields) {
+    if (!fields.contains("usageSummary")) {
+      return;
+    }
+    Map<UUID, UsageDetails> entityUsage =
+        EntityUtil.getLatestUsageForEntities(daoCollection.usageDAO(), entityListToUUID(entities));
+    for (Dashboard entity : entities) {
+      if (entityUsage.containsKey(entity.getId())) {
+        entity.setUsageSummary(entityUsage.get(entity.getId()));
+      }
     }
   }
 

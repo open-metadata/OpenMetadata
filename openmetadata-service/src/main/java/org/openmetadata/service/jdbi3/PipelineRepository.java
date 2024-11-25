@@ -42,6 +42,7 @@ import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.Status;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.Task;
@@ -147,6 +148,14 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
         fields.contains("pipelineStatus")
             ? getPipelineStatus(pipeline)
             : pipeline.getPipelineStatus());
+  }
+
+  protected void setFieldsInBulk(List<Pipeline> entities, Fields fields) {
+    setFieldFromMapSingleRelation(
+        true,
+        entities,
+        batchFetchFromIdsAndRelationSingleRelation(entities, Relationship.CONTAINS),
+        Pipeline::setService);
   }
 
   @Override

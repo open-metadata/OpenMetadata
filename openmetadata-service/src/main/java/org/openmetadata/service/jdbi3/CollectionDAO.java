@@ -806,6 +806,7 @@ public interface CollectionDAO {
     private String toId;
     private String fromEntity;
     private String toEntity;
+    private String json;
     private int relation;
   }
 
@@ -899,7 +900,7 @@ public interface CollectionDAO {
     }
 
     @SqlQuery(
-        "SELECT fromId, toId, fromEntity, toEntity, relation "
+        "SELECT fromId, toId, fromEntity, toEntity, relation, json "
             + "FROM entity_relationship "
             + "WHERE fromId IN (<fromIds>) "
             + "AND relation = :relation "
@@ -953,7 +954,7 @@ public interface CollectionDAO {
         @Bind("fromEntity") String fromEntity);
 
     @SqlQuery(
-        "SELECT fromId, toId, fromEntity, toEntity, relation "
+        "SELECT fromId, toId, fromEntity, toEntity, relation, json "
             + "FROM entity_relationship "
             + "WHERE toId IN (<toIds>) "
             + "AND relation = :relation "
@@ -963,7 +964,17 @@ public interface CollectionDAO {
         @BindList("toIds") List<String> toIds, @Bind("relation") int relation);
 
     @SqlQuery(
-        "SELECT fromId, toId, fromEntity, toEntity, relation "
+        "SELECT fromId, toId, fromEntity, toEntity, relation, json "
+            + "FROM entity_relationship "
+            + "WHERE fromId IN (<fromIds>) "
+            + "AND relation = :relation "
+            + "AND deleted = FALSE")
+    @UseRowMapper(RelationshipObjectMapper.class)
+    List<EntityRelationshipObject> findToBatch(
+        @BindList("fromIds") List<String> fromIds, @Bind("relation") int relation);
+
+    @SqlQuery(
+        "SELECT fromId, toId, fromEntity, toEntity, relation, json "
             + "FROM entity_relationship "
             + "WHERE toId IN (<toIds>) "
             + "AND relation = :relation "
@@ -989,6 +1000,19 @@ public interface CollectionDAO {
         @Bind("relation") int relation);
 
     @SqlQuery(
+        "SELECT fromId, toId, fromEntity, toEntity, relation, json "
+            + "FROM entity_relationship "
+            + "WHERE fromId IN (<fromIds>) "
+            + "AND relation = :relation "
+            + "AND fromEntity = :toEntityType "
+            + "AND deleted = FALSE")
+    @UseRowMapper(RelationshipObjectMapper.class)
+    List<EntityRelationshipObject> findToBatch(
+        @BindList("fromIds") List<String> fromIds,
+        @Bind("toEntityType") String toEntityType,
+        @Bind("relation") int relation);
+
+    @SqlQuery(
         "SELECT fromId, fromEntity, json FROM entity_relationship "
             + "WHERE toId = :toId AND toEntity = :toEntity AND relation = :relation")
     @RegisterRowMapper(FromRelationshipMapper.class)
@@ -998,7 +1022,7 @@ public interface CollectionDAO {
         @Bind("relation") int relation);
 
     @SqlQuery(
-        "SELECT fromId, toId, fromEntity, toEntity, relation "
+        "SELECT fromId, toId, fromEntity, toEntity, relation, json "
             + "FROM entity_relationship "
             + "WHERE toId IN (<toIds>) "
             + "AND relation = :relation "
@@ -1196,6 +1220,7 @@ public interface CollectionDAO {
             .toEntity(rs.getString("toEntity"))
             .toId(rs.getString("toId"))
             .relation(rs.getInt("relation"))
+            .json(rs.getString("json"))
             .build();
       }
     }
@@ -3662,6 +3687,14 @@ public interface CollectionDAO {
             + "WHERE usageDate IN (SELECT MAX(usageDate) FROM entity_usage WHERE id = :id) AND id = :id")
     UsageDetails getLatestUsage(@Bind("id") String id);
 
+    @SqlQuery(
+        "SELECT id, usageDate, entityType, count1, count7, count30, "
+            + "percentile1, percentile7, percentile30 FROM entity_usage "
+            + "WHERE usageDate IN (SELECT MAX(usageDate) FROM entity_usage WHERE id IN (<entityIds>)) AND id IN (<entityIds>)")
+    @RegisterRowMapper(EntityUsageDetailsMapper.class)
+    List<EntityUsageDetails> getLatestUsageFromEntities(
+        @BindList("entityIds") List<String> entityIds);
+
     @SqlUpdate("DELETE FROM entity_usage WHERE id = :id")
     void delete(@BindUUID("id") UUID id);
 
@@ -3723,6 +3756,41 @@ public interface CollectionDAO {
             .withDailyStats(dailyStats)
             .withWeeklyStats(weeklyStats)
             .withMonthlyStats(monthlyStats);
+      }
+    }
+
+    @Getter
+    @Setter
+    @Builder
+    class EntityUsageDetails {
+      private String id;
+      private UsageDetails usageDetails;
+    }
+
+    class EntityUsageDetailsMapper implements RowMapper<EntityUsageDetails> {
+      @Override
+      public EntityUsageDetails map(ResultSet r, StatementContext ctx) throws SQLException {
+        UsageStats dailyStats =
+            new UsageStats()
+                .withCount(r.getInt("count1"))
+                .withPercentileRank(r.getDouble("percentile1"));
+        UsageStats weeklyStats =
+            new UsageStats()
+                .withCount(r.getInt("count7"))
+                .withPercentileRank(r.getDouble("percentile7"));
+        UsageStats monthlyStats =
+            new UsageStats()
+                .withCount(r.getInt("count30"))
+                .withPercentileRank(r.getDouble("percentile30"));
+        return new EntityUsageDetails.EntityUsageDetailsBuilder()
+            .id(r.getString("id"))
+            .usageDetails(
+                new UsageDetails()
+                    .withDate(r.getString("usageDate"))
+                    .withDailyStats(dailyStats)
+                    .withWeeklyStats(weeklyStats)
+                    .withMonthlyStats(monthlyStats))
+            .build();
       }
     }
   }
