@@ -404,9 +404,7 @@ MOCK_REST_CONFIG = {
                 "type": "Iceberg",
                 "catalog": {
                     "name": "Batata",
-                    "connection": {
-                        "uri": "http://localhost:8181",
-                    },
+                    "connection": {"uri": "http://localhost:8181"},
                 },
             }
         },

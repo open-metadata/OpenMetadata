@@ -211,7 +211,7 @@ plugins: Dict[str, Set[str]] = {
     },
     "datalake-s3": {
         # vendoring 'boto3' to keep all dependencies aligned (s3fs, boto3, botocore, aiobotocore)
-        "s3fs[boto3]",
+        "s3fs",
         *COMMONS["datalake"],
     },
     "deltalake": {
