@@ -349,7 +349,7 @@ test = {
     "coverage==7.6.1",
     # Install GE because it's not in the `all` plugin
     VERSIONS["great-expectations"],
-    "basedpyright~=1.14",
+    "basedpyright<1.21.1",
     "pytest==7.0.0",
     "pytest-cov",
     "pytest-order",
