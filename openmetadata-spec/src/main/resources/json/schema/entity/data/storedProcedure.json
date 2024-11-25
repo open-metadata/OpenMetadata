@@ -9,25 +9,22 @@
   "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
   "definitions": {
     "storedProcedureType": {
-      "properties": {
-        "procedureType": {
-          "javaType": "org.openmetadata.schema.type.StoredProcedureType",
-          "description": "This schema defines the type of the type of Procedures",
-          "type": "string",
-          "enum": [
-            "StoredProcedure",
-            "UDF"
-          ],
-          "javaEnums": [
-            {
-              "name": "StoredProcedure"
-            },
-            {
-              "name": "UDF"
-            }
-          ]
+      "javaType": "org.openmetadata.schema.type.StoredProcedureType",
+      "description": "This schema defines the type of the type of Procedures",
+      "type": "string",
+      "default": "StoredProcedure",
+      "enum": [
+        "StoredProcedure",
+        "UDF"
+      ],
+      "javaEnums": [
+        {
+          "name": "StoredProcedure"
+        },
+        {
+          "name": "UDF"
         }
-      }
+      ]
     },
     "storedProcedureCode": {
       "properties": {
