@@ -19,6 +19,8 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
     StackTraceError,
 )
 
+Entity = BaseModel
+
 T = TypeVar("T", bound=BaseModel)
 
 
