@@ -57,7 +57,7 @@ test('Table difference test case', async ({ page }) => {
       const tableListSearchResponse = page.waitForResponse(
         `/api/v1/search/query?q=*index=table_search_index*`
       );
-      await page.getByTitle('Compare 2 tables for').click();
+      await page.getByTestId('tableDiff').click();
       await tableListSearchResponse;
       await page.click('#tableTestForm_params_table2');
       const tableSearchResponse = page.waitForResponse(
@@ -177,7 +177,7 @@ test('Custom SQL Query', async ({ page }) => {
       await page.getByTestId('test-case').click();
       await page.getByTestId('test-case-name').fill(testCase.name);
       await page.getByTestId('test-type').click();
-      await page.getByTitle('Custom SQL Query').click();
+      await page.getByTestId('tableCustomSQLQuery').click();
       await page.click('#tableTestForm_params_strategy');
       await page.locator('.CodeMirror-scroll').click();
       await page
@@ -282,7 +282,7 @@ test('Column Values To Be Not Null', async ({ page }) => {
         NEW_COLUMN_TEST_CASE_WITH_NULL_TYPE.type
       );
       await page.click(
-        `[title="${NEW_COLUMN_TEST_CASE_WITH_NULL_TYPE.label}"]`
+        `[data-testid="${NEW_COLUMN_TEST_CASE_WITH_NULL_TYPE.type}"]`
       );
       await page.fill(
         descriptionBox,
