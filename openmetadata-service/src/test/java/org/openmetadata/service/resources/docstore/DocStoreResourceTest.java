@@ -291,7 +291,7 @@ public class DocStoreResourceTest extends EntityResourceTest<Document, CreateDoc
 
     page =
         new Page()
-            .withPageType(PageType.GLOSSARY_TERM_LANDING_PAGE)
+            .withPageType(PageType.GLOSSARY_TERM)
             .withKnowledgePanels(
                 List.of(activityFeed.getEntityReference(), myData.getEntityReference()));
     fqn =

@@ -40,7 +40,7 @@
       "items": {
         "$ref": "../../type/tagLabel.json"
       },
-      "default": null
+      "default": []
     },
     "version": {
       "description": "Metadata version of the entity.",
@@ -159,6 +159,6 @@
       }
     }
   },
-  "required": ["name", "service"],
+  "required": ["id", "name", "service"],
   "additionalProperties": false
 }

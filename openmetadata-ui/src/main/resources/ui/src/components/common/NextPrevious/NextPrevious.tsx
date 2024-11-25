@@ -25,11 +25,8 @@ import {
   PAGE_SIZE_MEDIUM,
 } from '../../../constants/constants';
 import { CursorType } from '../../../enums/pagination.enum';
+import { computeTotalPages } from '../../../utils/PaginationUtils';
 import { NextPreviousProps, PagingProps } from './NextPrevious.interface';
-
-const computeTotalPages = (pSize: number, total: number) => {
-  return Math.ceil(total / pSize);
-};
 
 const NextPrevious: FC<NextPreviousProps> = ({
   paging,
@@ -101,7 +98,7 @@ const NextPrevious: FC<NextPreviousProps> = ({
       <span data-testid="page-indicator">{`${currentPage}/${computeTotalPages(
         pageSize,
         paging.total
-      )} Page`}</span>
+      )} ${t('label.page')}`}</span>
       <Button
         ghost
         className="hover-button text-sm flex-center"
@@ -117,14 +114,14 @@ const NextPrevious: FC<NextPreviousProps> = ({
           disabled={isLoading}
           menu={{
             items: pageSizeOptions.map((size) => ({
-              label: `${size} / Page`,
+              label: `${size} / ${t('label.page')}`,
               value: size,
               key: size,
               onClick: () => onShowSizeChange(size),
             })),
           }}>
           <Button onClick={(e) => e.preventDefault()}>
-            {`${pageSize} / Page`}
+            {`${pageSize} / ${t('label.page')}`}
             <DownOutlined />
           </Button>
         </Dropdown>

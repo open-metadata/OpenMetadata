@@ -12,7 +12,7 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Space, Tabs } from 'antd';
+import { Col, Row, Space, Tabs, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
@@ -20,7 +20,8 @@ import { isEmpty, isEqual, isUndefined } from 'lodash';
 import { EntityTags } from 'Models';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { Link, useHistory, useParams } from 'react-router-dom';
+import { ReactComponent as RedAlertIcon } from '../../assets/svg/ic-alert-red.svg';
 import { useActivityFeedProvider } from '../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import ActivityThreadPanel from '../../components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
@@ -60,11 +61,7 @@ import {
 } from '../../enums/entity.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { Tag } from '../../generated/entity/classification/tag';
-import {
-  JoinedWith,
-  Table,
-  TableType,
-} from '../../generated/entity/data/table';
+import { Table, TableType } from '../../generated/entity/data/table';
 import { Suggestion } from '../../generated/entity/feed/suggestion';
 import { ThreadType } from '../../generated/entity/feed/thread';
 import { TestSummary } from '../../generated/tests/testCase';
@@ -75,6 +72,7 @@ import { useFqn } from '../../hooks/useFqn';
 import { useSub } from '../../hooks/usePubSub';
 import { FeedCounts } from '../../interface/feed.interface';
 import { postThread } from '../../rest/feedsAPI';
+import { getDataQualityLineage } from '../../rest/lineageAPI';
 import { getQueriesList } from '../../rest/queryAPI';
 import {
   addFollower,
@@ -89,7 +87,6 @@ import {
   addToRecentViewed,
   getFeedCounts,
   getPartialNameFromTableFQN,
-  getTableFQNFromColumnFQN,
   sortTagsCaseInsensitive,
 } from '../../utils/CommonUtils';
 import { defaultFields } from '../../utils/DatasetDetailsUtils';
@@ -98,9 +95,14 @@ import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import tableClassBase from '../../utils/TableClassBase';
-import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
+import {
+  getJoinsFromTableJoins,
+  getTagsWithoutTier,
+  getTierTags,
+} from '../../utils/TableUtils';
 import { createTagObject, updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import { useTestCaseStore } from '../IncidentManager/IncidentManagerDetailPage/useTestCase.store';
 import { FrequentlyJoinedTables } from './FrequentlyJoinedTables/FrequentlyJoinedTables.component';
 import './table-details-page-v1.less';
 import TableConstraints from './TableConstraints/TableConstraints';
@@ -109,6 +111,7 @@ const TableDetailsPageV1: React.FC = () => {
   const { isTourOpen, activeTabForTourDatasetPage, isTourPage } =
     useTourProvider();
   const { currentUser } = useApplicationStore();
+  const { setDqLineageData } = useTestCaseStore();
   const [tableDetails, setTableDetails] = useState<Table>();
   const { tab: activeTab = EntityTabs.SCHEMA } =
     useParams<{ tab: EntityTabs }>();
@@ -131,6 +134,7 @@ const TableDetailsPageV1: React.FC = () => {
     DEFAULT_ENTITY_PERMISSION
   );
   const [testCaseSummary, setTestCaseSummary] = useState<TestSummary>();
+  const [dqFailureCount, setDqFailureCount] = useState(0);
 
   const tableFqn = useMemo(
     () =>
@@ -141,6 +145,23 @@ const TableDetailsPageV1: React.FC = () => {
       ),
     [datasetFQN]
   );
+
+  const alertBadge = useMemo(() => {
+    return tableClassBase.getAlertEnableStatus() && dqFailureCount > 0 ? (
+      <Tooltip
+        placement="right"
+        title={t('label.check-active-data-quality-incident-plural')}>
+        <Link
+          to={getEntityDetailsPath(
+            EntityType.TABLE,
+            tableFqn,
+            EntityTabs.PROFILER
+          )}>
+          <RedAlertIcon className="text-red-3" height={24} width={24} />
+        </Link>
+      </Tooltip>
+    ) : undefined;
+  }, [dqFailureCount, tableFqn]);
 
   const extraDropdownContent = useMemo(
     () =>
@@ -198,16 +219,52 @@ const TableDetailsPageV1: React.FC = () => {
     }
   }, [tableFqn, viewUsagePermission]);
 
-  const fetchTestCaseSummary = async () => {
-    if (isUndefined(tableDetails?.testSuite?.id)) {
-      return;
+  const fetchDQFailureCount = async () => {
+    if (!tableClassBase.getAlertEnableStatus()) {
+      setDqFailureCount(0);
     }
 
+    // Todo: Remove this once we have support for count in API
     try {
+      const data = await getDataQualityLineage(tableFqn, {
+        upstreamDepth: 1,
+      });
+      setDqLineageData(data);
+      const updatedNodes =
+        data.nodes?.filter((node) => node?.fullyQualifiedName !== tableFqn) ??
+        [];
+      setDqFailureCount(updatedNodes.length);
+    } catch (error) {
+      setDqFailureCount(0);
+    }
+  };
+
+  const fetchTestCaseSummary = async () => {
+    try {
+      if (isUndefined(tableDetails?.testSuite?.id)) {
+        setTestCaseSummary(undefined);
+        await fetchDQFailureCount();
+
+        return;
+      }
+
       const response = await getTestCaseExecutionSummary(
         tableDetails?.testSuite?.id
       );
       setTestCaseSummary(response);
+
+      const failureCount =
+        response.columnTestSummary?.reduce((acc, curr) => {
+          return acc + (curr.failed ?? 0);
+        }, response.failed ?? 0) ??
+        response.failed ??
+        0;
+
+      if (failureCount === 0) {
+        await fetchDQFailureCount();
+      } else {
+        setDqFailureCount(failureCount);
+      }
     } catch (error) {
       setTestCaseSummary(undefined);
     }
@@ -251,44 +308,13 @@ const TableDetailsPageV1: React.FC = () => {
       const { tags } = tableDetails;
 
       const { joins } = tableDetails ?? {};
-      const tableFQNGrouping = [
-        ...(joins?.columnJoins?.flatMap(
-          (cjs) =>
-            cjs.joinedWith?.map<JoinedWith>((jw) => ({
-              fullyQualifiedName: getTableFQNFromColumnFQN(
-                jw.fullyQualifiedName
-              ),
-              joinCount: jw.joinCount,
-            })) ?? []
-        ) ?? []),
-        ...(joins?.directTableJoins ?? []),
-      ].reduce(
-        (result, jw) => ({
-          ...result,
-          [jw.fullyQualifiedName]:
-            (result[jw.fullyQualifiedName] ?? 0) + jw.joinCount,
-        }),
-        {} as Record<string, number>
-      );
 
       return {
         ...tableDetails,
         tier: getTierTags(tags ?? []),
         tableTags: getTagsWithoutTier(tags ?? []),
         entityName: getEntityName(tableDetails),
-        joinedTables: Object.entries(tableFQNGrouping)
-          .map<JoinedWith & { name: string }>(
-            ([fullyQualifiedName, joinCount]) => ({
-              fullyQualifiedName,
-              joinCount,
-              name: getPartialNameFromTableFQN(
-                fullyQualifiedName,
-                [FqnPart.Database, FqnPart.Table],
-                FQN_SEPARATOR_CHAR
-              ),
-            })
-          )
-          .sort((a, b) => b.joinCount - a.joinCount),
+        joinedTables: getJoinsFromTableJoins(joins),
       };
     }
 
@@ -332,6 +358,10 @@ const TableDetailsPageV1: React.FC = () => {
     if (tableFqn) {
       fetchResourcePermission(tableFqn);
     }
+
+    return () => {
+      setDqLineageData(undefined);
+    };
   }, [tableFqn]);
 
   const handleFeedCount = useCallback((data: FeedCounts) => {
@@ -510,6 +540,7 @@ const TableDetailsPageV1: React.FC = () => {
 
   const {
     editTagsPermission,
+    editGlossaryTermsPermission,
     editDescriptionPermission,
     editCustomAttributePermission,
     editAllPermission,
@@ -523,6 +554,9 @@ const TableDetailsPageV1: React.FC = () => {
     () => ({
       editTagsPermission:
         (tablePermissions.EditTags || tablePermissions.EditAll) && !deleted,
+      editGlossaryTermsPermission:
+        (tablePermissions.EditGlossaryTerms || tablePermissions.EditAll) &&
+        !deleted,
       editDescriptionPermission:
         (tablePermissions.EditDescription || tablePermissions.EditAll) &&
         !deleted,
@@ -580,6 +614,7 @@ const TableDetailsPageV1: React.FC = () => {
                   />
                   <SchemaTab
                     hasDescriptionEditAccess={editDescriptionPermission}
+                    hasGlossaryTermEditAccess={editGlossaryTermsPermission}
                     hasTagEditAccess={editTagsPermission}
                     isReadOnly={deleted}
                     table={tableDetails}
@@ -618,6 +653,7 @@ const TableDetailsPageV1: React.FC = () => {
                     editCustomAttributePermission={
                       editCustomAttributePermission
                     }
+                    editGlossaryTermsPermission={editGlossaryTermsPermission}
                     editTagPermission={editTagsPermission}
                     entityFQN={tableFqn}
                     entityId={tableDetails?.id ?? ''}
@@ -652,6 +688,7 @@ const TableDetailsPageV1: React.FC = () => {
       onDescriptionUpdate,
       testCaseSummary,
       editTagsPermission,
+      editGlossaryTermsPermission,
       editDescriptionPermission,
       editAllPermission,
       viewAllPermission,
@@ -958,6 +995,7 @@ const TableDetailsPageV1: React.FC = () => {
             isRecursiveDelete
             afterDeleteAction={afterDeleteAction}
             afterDomainUpdateAction={updateTableDetailsState}
+            badge={alertBadge}
             dataAsset={tableDetails}
             entityType={EntityType.TABLE}
             extraDropdownContent={extraDropdownContent}

@@ -492,12 +492,32 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
   @Path("/documentation/csv")
   @Valid
   @Operation(operationId = "getCsvDocumentation", summary = "Get CSV documentation")
-  public String getCsvDocumentation(
+  public String getCsvDocumentation(@Context SecurityContext securityContext) {
+    return JsonUtils.pojoToJson(GlossaryCsv.DOCUMENTATION);
+  }
+
+  @GET
+  @Path("/name/{name}/exportAsync")
+  @Produces(MediaType.TEXT_PLAIN)
+  @Valid
+  @Operation(
+      operationId = "exportGlossary",
+      summary = "Export glossary in CSV format",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Exported csv with glossary terms",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = CSVExportResponse.class)))
+      })
+  public Response exportCsvAsync(
       @Context SecurityContext securityContext,
       @Parameter(description = "Name of the glossary", schema = @Schema(type = "string"))
           @PathParam("name")
           String name) {
-    return JsonUtils.pojoToJson(GlossaryCsv.DOCUMENTATION);
+    return exportCsvInternalAsync(securityContext, name);
   }
 
   @GET
@@ -514,9 +534,9 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = CSVExportResponse.class)))
+                    schema = @Schema(implementation = String.class)))
       })
-  public Response exportCsv(
+  public String exportCsv(
       @Context SecurityContext securityContext,
       @Parameter(description = "Name of the glossary", schema = @Schema(type = "string"))
           @PathParam("name")
@@ -556,6 +576,36 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
       String csv)
       throws IOException {
     return importCsvInternal(securityContext, name, csv, dryRun);
+  }
+
+  @PUT
+  @Path("/name/{name}/importAsync")
+  @Consumes(MediaType.TEXT_PLAIN)
+  @Produces(MediaType.APPLICATION_JSON)
+  @Valid
+  @Operation(
+      operationId = "importGlossaryAsync",
+      summary = "Import glossary in CSV format asynchronously",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Import initiated successfully",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = CsvImportResult.class)))
+      })
+  public Response importCsvAsync(
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the glossary", schema = @Schema(type = "string"))
+          @PathParam("name")
+          String name,
+      @RequestBody(description = "CSV data to import", required = true) String csv,
+      @Parameter(description = "Dry run the import", schema = @Schema(type = "boolean"))
+          @QueryParam("dryRun")
+          @DefaultValue("true")
+          boolean dryRun) {
+    return importCsvInternalAsync(securityContext, name, csv, dryRun);
   }
 
   private Glossary getGlossary(CreateGlossary create, String user) {

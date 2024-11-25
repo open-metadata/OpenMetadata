@@ -61,7 +61,7 @@ const TableProfiler = (props: TableProfilerProps) => {
 
       return {
         ...tab,
-        icon: <SvgIcon width={16} />,
+        icon: <SvgIcon height={18} width={18} />,
       };
     });
   }, [viewTest, viewProfiler]);

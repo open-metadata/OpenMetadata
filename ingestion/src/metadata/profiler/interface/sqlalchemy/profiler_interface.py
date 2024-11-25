@@ -21,23 +21,31 @@ import threading
 import traceback
 from collections import defaultdict
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Type
+from typing import Any, Dict, List, Optional, Type, Union
 
 from sqlalchemy import Column, inspect, text
 from sqlalchemy.exc import DBAPIError, ProgrammingError, ResourceClosedError
-from sqlalchemy.orm import scoped_session
+from sqlalchemy.orm import DeclarativeMeta, scoped_session
 
 from metadata.generated.schema.entity.data.table import (
     CustomMetricProfile,
     SystemProfile,
-    TableData,
+    Table,
+)
+from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
+    DatalakeConnection,
+)
+from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
+from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline import (
+    DatabaseServiceProfilerPipeline,
 )
 from metadata.generated.schema.tests.customMetric import CustomMetric
 from metadata.ingestion.connections.session import create_and_bind_thread_safe_session
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.mixins.sqalchemy.sqa_mixin import SQAInterfaceMixin
 from metadata.profiler.api.models import ThreadPoolMetrics
 from metadata.profiler.interface.profiler_interface import ProfilerInterface
-from metadata.profiler.metrics.core import MetricTypes
+from metadata.profiler.metrics.core import HybridMetric, MetricTypes
 from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.metrics.static.mean import Mean
 from metadata.profiler.metrics.static.stddev import StdDev
@@ -47,7 +55,7 @@ from metadata.profiler.orm.functions.table_metric_computer import TableMetricCom
 from metadata.profiler.orm.registry import Dialects
 from metadata.profiler.processor.metric_filter import MetricFilter
 from metadata.profiler.processor.runner import QueryRunner
-from metadata.utils.constants import SAMPLE_DATA_DEFAULT_COUNT
+from metadata.sampler.sampler_interface import SamplerInterface
 from metadata.utils.custom_thread_pool import CustomThreadPoolExecutor
 from metadata.utils.helpers import is_safe_sql_query
 from metadata.utils.logger import profiler_interface_registry_logger
@@ -75,40 +83,33 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
     """
 
     # pylint: disable=too-many-arguments
-
     def __init__(
         self,
-        service_connection_config,
-        ometa_client,
-        entity,
-        storage_config,
-        profile_sample_config,
-        source_config,
-        sample_query,
-        table_partition_config,
+        service_connection_config: Union[DatabaseConnection, DatalakeConnection],
+        ometa_client: OpenMetadata,
+        entity: Table,
+        source_config: DatabaseServiceProfilerPipeline,
+        sampler: SamplerInterface,
         thread_count: int = 5,
         timeout_seconds: int = 43200,
-        sqa_metadata=None,
-        sample_data_count: Optional[int] = SAMPLE_DATA_DEFAULT_COUNT,
+        orm_table: Optional[DeclarativeMeta] = None,
         **kwargs,
     ):
         """Instantiate SQA Interface object"""
+        self.session_factory = None
+        self.session = None
 
         super().__init__(
-            service_connection_config,
-            ometa_client,
-            entity,
-            storage_config,
-            profile_sample_config,
-            source_config,
-            sample_query,
-            table_partition_config,
-            thread_count,
-            timeout_seconds,
-            sample_data_count,
+            service_connection_config=service_connection_config,
+            ometa_client=ometa_client,
+            entity=entity,
+            source_config=source_config,
+            sampler=sampler,
+            thread_count=thread_count,
+            timeout_seconds=timeout_seconds,
         )
 
-        self._table = self._convert_table_to_orm_object(sqa_metadata)
+        self._table = orm_table
         self.create_session()
         self.system_metrics_computer = self.initialize_system_metrics_computer()
 
@@ -125,25 +126,6 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
     @property
     def table(self):
         return self._table
-
-    def _get_sampler(self, **kwargs):
-        """get sampler object"""
-        from metadata.profiler.processor.sampler.sampler_factory import (  # pylint: disable=import-outside-toplevel
-            sampler_factory_,
-        )
-
-        session = kwargs.get("session")
-        table = kwargs["table"]
-
-        return sampler_factory_.create(
-            self.service_connection_config.__class__.__name__,
-            client=session or self.session,
-            table=table,
-            profile_sample_config=self.profile_sample_config,
-            partition_details=self.partition_details,
-            profile_sample_query=self.profile_query,
-            sample_data_count=self.sample_data_count,
-        )
 
     def _session_factory(self) -> scoped_session:
         """Create thread safe session that will be automatically
@@ -186,7 +168,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
         session,
         *args,
         **kwargs,
-    ):
+    ) -> Optional[Dict[str, Any]]:
         """Given a list of metrics, compute the given results
         and returns the values
 
@@ -391,20 +373,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
             dictionnary of results
         """
         logger.debug(f"Computing system metrics for {runner.table.__tablename__}")
-        return self.system_metrics_computer.get_system_metrics(runner.table)
-
-    def _create_thread_safe_sampler(
-        self,
-        session,
-        table,
-    ):
-        """Create thread safe runner"""
-        if not hasattr(thread_local, "sampler"):
-            thread_local.sampler = self._get_sampler(
-                table=table,
-                session=session,
-            )
-        return thread_local.sampler
+        return self.system_metrics_computer.get_system_metrics(table=runner.table)
 
     def _create_thread_safe_runner(
         self,
@@ -418,8 +387,8 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
                 session=session,
                 table=table,
                 sample=sample,
-                partition_details=self.partition_details,
-                profile_sample_query=self.profile_query,
+                partition_details=self.sampler.partition_details,
+                profile_sample_query=self.sampler.sample_query,
             )
             return thread_local.runner
         thread_local.runner._sample = sample  # pylint: disable=protected-access
@@ -437,11 +406,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
         with Session() as session:
             self.set_session_tag(session)
             self.set_catalog(session)
-            sampler = self._create_thread_safe_sampler(
-                session,
-                metric_func.table,
-            )
-            sample = sampler.random_sample(metric_func.column)
+            sample = self.sampler.random_sample(metric_func.column)
             runner = self._create_thread_safe_runner(
                 session,
                 metric_func.table,
@@ -546,21 +511,6 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
 
         return profile_results
 
-    def fetch_sample_data(self, table, columns) -> TableData:
-        """Fetch sample data from database
-
-        Args:
-            table: ORM declarative table
-
-        Returns:
-            TableData: sample table data
-        """
-        sampler = self._get_sampler(
-            table=table,
-        )
-
-        return sampler.fetch_sample_data(columns)
-
     def get_composed_metrics(
         self, column: Column, metric: Metrics, column_results: Dict
     ):
@@ -582,19 +532,23 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
             return None
 
     def get_hybrid_metrics(
-        self, column: Column, metric: Metrics, column_results: Dict, **kwargs
+        self,
+        column: Column,
+        metric: Type[HybridMetric],
+        column_results: Dict[str, Any],
+        **kwargs,
     ):
         """Given a list of metrics, compute the given results
         and returns the values
 
         Args:
             column: the column to compute the metrics against
-            metrics: list of metrics to compute
+            metric: metric to compute
+            column_results: results of the column
         Returns:
             dictionnary of results
         """
-        sampler = self._get_sampler(table=kwargs.get("table"))
-        sample = sampler.random_sample(column)
+        sample = self.sampler.random_sample(column)
         try:
             return metric(column).fn(sample, column_results, self.session)
         except Exception as exc:

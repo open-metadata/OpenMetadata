@@ -124,3 +124,33 @@ workflow as successful. However, any errors when sending the information to Open
 
 Now, we're changing this behavior to consider the success rate of all the steps involved in the workflow. The UI will
 then show more `Partial Success` statuses rather than `Failed`, properly reflecting the real state of the workflow.
+
+### Profiler & Auto Classification Workflow
+
+We are creating a new `Auto Classification` workflow that will take care of managing the sample data and PII classification,
+which was previously done by the Profiler workflow. This change will allow us to have a more modular and scalable system.
+
+The Profiler workflow will now only focus on the profiling part of the data, while the Auto Classification will take care
+of the rest.
+
+This means that we are removing these properties from the `DatabaseServiceProfilerPipeline` schema:
+- `generateSampleData`
+- `processPiiSensitive`
+- `confidence`
+which will be moved to the new `DatabaseServiceAutoClassificationPipeline` schema.
+
+What you will need to do:
+- If you are using the **EXTERNAL** ingestion for the profiler (YAML configuration), you will need to update your configuration,
+removing these properties as well.
+- If you still want to use the Auto PII Classification and sampling features, you can create the new workflow
+from the UI.
+
+### Service Spec for the Ingestion Framework
+
+This impacts users who maintain their own connectors for the ingestion framework that are **NOT** part of the
+[OpenMetadata python library (openmetadata-ingestion)](https://github.com/open-metadata/OpenMetadata/tree/ff261fb3738f3a56af1c31f7151af9eca7a602d5/ingestion/src/metadata/ingestion/source).
+Introducing the ["connector specifcication class (`ServiceSpec`)"](https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/src/metadata/utils/service_spec/service_spec.py). 
+The `ServiceSpec` class serves as the entrypoint for the connector and holds the references for the classes that will be used
+to ingest and process the metadata from the source.
+You can see [postgres](https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/src/metadata/ingestion/source/database/postgres/service_spec.py) for an
+implementation example.

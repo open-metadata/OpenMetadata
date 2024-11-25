@@ -53,6 +53,7 @@ import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useFqn } from '../../../hooks/useFqn';
 import { getPartialNameFromTableFQN } from '../../../utils/CommonUtils';
 import {
+  getColumnSorter,
   getEntityName,
   getFrequentlyJoinedColumns,
   searchInColumns,
@@ -92,6 +93,7 @@ const SchemaTable = ({
   searchText,
   hasDescriptionEditAccess,
   hasTagEditAccess,
+  hasGlossaryTermEditAccess,
   isReadOnly = false,
   table,
   testCaseSummary,
@@ -361,6 +363,7 @@ const SchemaTable = ({
         accessor: 'name',
         width: 200,
         fixed: 'left',
+        sorter: getColumnSorter<Column, 'name'>('name'),
         render: (name: Column['name'], record: Column) => {
           const { displayName } = record;
 
@@ -479,7 +482,7 @@ const SchemaTable = ({
             entityFqn={tableFqn}
             entityType={EntityType.TABLE}
             handleTagSelection={handleTagSelection}
-            hasTagEditAccess={hasTagEditAccess}
+            hasTagEditAccess={hasGlossaryTermEditAccess}
             index={index}
             isReadOnly={isReadOnly}
             record={record}
@@ -516,6 +519,7 @@ const SchemaTable = ({
       isReadOnly,
       tableConstraints,
       hasTagEditAccess,
+      hasGlossaryTermEditAccess,
       handleUpdate,
       handleTagSelection,
       renderDataTypeDisplay,

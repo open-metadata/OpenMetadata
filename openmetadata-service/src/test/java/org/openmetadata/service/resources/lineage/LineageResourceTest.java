@@ -31,11 +31,14 @@ import java.net.URLEncoder;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Response.Status;
+import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.BeforeAll;
@@ -569,6 +572,42 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
     deleteEdge(TABLES.get(6), TABLES.get(7));
   }
 
+  @Order(7)
+  @Test
+  void get_SearchLineage(TestInfo testInfo) throws HttpResponseException {
+    // our lineage is
+    //                  0
+    //            +-----+-----+
+    //            v           v
+    //            2           4
+    //        +---+---+       v
+    //        v       |       5
+    //        1       |       v
+    //                |       6
+    //                |       v
+    //                +-----> 7
+
+    addEdge(TABLES.get(4), TABLES.get(5));
+    addEdge(TABLES.get(5), TABLES.get(6));
+    addEdge(TABLES.get(0), TABLES.get(4));
+    addEdge(TABLES.get(0), TABLES.get(2));
+    addEdge(TABLES.get(2), TABLES.get(1));
+    addEdge(TABLES.get(2), TABLES.get(7));
+    addEdge(TABLES.get(6), TABLES.get(7));
+
+    Map<String, List<Map<String, Object>>> entity =
+        searchLineage(TABLES.get(5).getEntityReference(), 1, 1);
+    assertSearchLineageResponseFields(entity);
+
+    deleteEdge(TABLES.get(4), TABLES.get(5));
+    deleteEdge(TABLES.get(5), TABLES.get(6));
+    deleteEdge(TABLES.get(0), TABLES.get(4));
+    deleteEdge(TABLES.get(0), TABLES.get(2));
+    deleteEdge(TABLES.get(2), TABLES.get(1));
+    deleteEdge(TABLES.get(2), TABLES.get(7));
+    deleteEdge(TABLES.get(6), TABLES.get(7));
+  }
+
   public Edge getEdge(Table from, Table to) {
     return getEdge(from.getId(), to.getId(), null);
   }
@@ -738,6 +777,32 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
     assertEquals(lineageById, lineageByName);
   }
 
+  private void assertSearchLineageResponseFields(Map<String, List<Map<String, Object>>> entity) {
+    List<Map<String, Object>> entities = entity.get("nodes");
+    Set<String> nodesFields = Set.of("id", "name", "displayName", "fullyQualifiedName", "lineage");
+    Set<String> nodesColumnsFields = Set.of("name", "fullyQualifiedName");
+    entities.forEach(
+        e -> {
+          Set<String> keys = e.keySet();
+          Set<String> missingKeys = new HashSet<>(nodesFields);
+          missingKeys.removeAll(keys);
+          String err = String.format("Nodes keys not found in the response: %s", missingKeys);
+          assertTrue(keys.containsAll(nodesFields), err);
+
+          List<Map<String, Object>> columns = (List<Map<String, Object>>) e.get("columns");
+          columns.forEach(
+              c -> {
+                Set<String> columnsKeys = c.keySet();
+                Set<String> missingColumnKeys = new HashSet<>(nodesColumnsFields);
+                missingColumnKeys.removeAll(columnsKeys);
+                String columnErr =
+                    String.format(
+                        "Column nodes keys not found in the response: %s", missingColumnKeys);
+                assertTrue(columnsKeys.containsAll(nodesColumnsFields), columnErr);
+              });
+        });
+  }
+
   public EntityLineage getLineage(
       String entity,
       UUID id,
@@ -752,6 +817,21 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
     EntityLineage lineage = TestUtils.get(target, EntityLineage.class, authHeaders);
     validateLineage((lineage));
     return lineage;
+  }
+
+  public Map<String, List<Map<String, Object>>> searchLineage(
+      @NonNull EntityReference entityReference,
+      @NonNull int upstreamDepth,
+      @NonNull int downstreamDepth)
+      throws HttpResponseException {
+    WebTarget target = getResource("lineage/getLineage");
+    target = target.queryParam("fqn", entityReference.getFullyQualifiedName());
+    target = target.queryParam("type", entityReference.getType());
+    target = target.queryParam("upstreamDepth", upstreamDepth);
+    target = target.queryParam("downstreamDepth", downstreamDepth);
+    Map<String, List<Map<String, Object>>> entity =
+        TestUtils.get(target, Map.class, ADMIN_AUTH_HEADERS);
+    return entity;
   }
 
   public EntityLineage getLineageByName(

@@ -255,6 +255,10 @@ site_menu:
     url: /connectors/dashboard/powerbi/yaml
   - category: Connectors / Dashboard / PowerBI / Lineage from pbit files
     url: /connectors/dashboard/powerbi/powerbi-pbit-lineage
+  - category: Connectors / Dashboard / PowerBI Report Server
+    url: /connectors/dashboard/powerbireportserver
+  - category: Connectors / Dashboard / PowerBI Report Server / Run Externally
+    url: /connectors/dashboard/powerbireportserver/yaml
   - category: Connectors / Dashboard / Qlik Sense
     url: /connectors/dashboard/qliksense
   - category: Connectors / Dashboard / Qlik Sense / Run Externally
@@ -587,6 +591,8 @@ site_menu:
     url: /how-to-guides/data-discovery
   - category: How-to Guides / Data Discovery / How to Discover Assets of Interest
     url: /how-to-guides/data-discovery/discover
+  - category: How-to Guides / Data Discovery / Steps for Searching Using Hierarchy
+    url: /how-to-guides/data-discovery/hierarchy
   - category: How-to Guides / Data Discovery / Get a Quick Glance of the Data Assets
     url: /how-to-guides/data-discovery/preview
   - category: How-to Guides / Data Discovery / Detailed View of the Data Assets
@@ -635,7 +641,6 @@ site_menu:
     url: /how-to-guides/data-quality-observability/quality/tab
   - category: How-to Guides / Data Quality and Profiler / Data Quality / Data Quality Overview Section
     url: /how-to-guides/data-quality-observability/quality/overview
-    isCollateOnly: true
   - category: How-to Guides / Data Quality and Profiler / Data Quality / How to Write and Deploy No-Code Test Cases
     url: /how-to-guides/data-quality-observability/quality/test
   - category: How-to Guides / Data Quality and Observability / Data Quality / Configure Data Quality
@@ -670,7 +675,11 @@ site_menu:
     url: /how-to-guides/data-quality-observability/incident-manager/workflow
   - category: How-to Guides / Data Quality and Observability / Incident Manager / Root Cause Analysis
     url: /how-to-guides/data-quality-observability/incident-manager/root-cause-analysis
-    isCollateOnly: true
+  - category: How-to Guides / Data Quality and Observability / Anomaly Detection
+    url: /how-to-guides/data-quality-observability/anomaly-detection
+  - category: How-to Guides / Data Quality and Observability / Anomaly Detection / Steps to Set Up Anomaly Detection
+    url: /how-to-guides/data-quality-observability/anomaly-detection/setting-up
+
 
   - category: How-to Guides / Data Lineage
     url: /how-to-guides/data-lineage
@@ -874,8 +883,6 @@ site_menu:
   - category: Releases / All Releases / 0.4.0 Release
     url: /releases/all-releases/#0.4.0-release
 
-  - category: Roadmap
-    url: /roadmap
 
   - category: Main Concepts
     url: /main-concepts
@@ -1890,8 +1897,8 @@ site_menu:
     url: /sdk/java
   - category: SDK / Go
     url: /sdk/go
-  - category: Metapilot
-    url: /metapilot
-  - category: Metapilot / How to Use MetaPilot
-    url: /metapilot/how-to-use-metapilot
+  - category: Collate AI
+    url: /collateai
+  - category: Collate AI / How to Use Collate AI
+    url: /collateai/how-to-use-collate-ai
 ---

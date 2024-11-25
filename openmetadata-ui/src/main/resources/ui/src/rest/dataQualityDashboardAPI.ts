@@ -122,6 +122,14 @@ export const fetchTestCaseSummary = (
     );
   }
 
+  if (filters?.entityFQN) {
+    mustFilter.push({
+      term: {
+        entityFQN: filters.entityFQN,
+      },
+    });
+  }
+
   return getDataQualityReport({
     q: JSON.stringify({
       query: {
@@ -163,6 +171,37 @@ export const fetchTestCaseSummaryByDimension = (
     index: 'testCase',
     aggregationQuery:
       'bucketName=dimension:aggType=terms:field=dataQualityDimension,bucketName=status:aggType=terms:field=testCaseResult.testCaseStatus',
+  });
+};
+
+export const fetchTestCaseSummaryByNoDimension = (
+  filters?: DataQualityDashboardChartFilters
+) => {
+  const mustFilter = [];
+  if (filters?.ownerFqn) {
+    mustFilter.push(buildMustEsFilterForOwner(filters.ownerFqn));
+  }
+  if (filters?.tags || filters?.tier) {
+    mustFilter.push(
+      buildMustEsFilterForTags([
+        ...(filters?.tags ?? []),
+        ...(filters?.tier ?? []),
+      ])
+    );
+  }
+
+  return getDataQualityReport({
+    q: JSON.stringify({
+      query: {
+        bool: {
+          must: mustFilter,
+          must_not: [{ exists: { field: 'dataQualityDimension' } }],
+        },
+      },
+    }),
+    index: 'testCase',
+    aggregationQuery:
+      'bucketName=status:aggType=terms:field=testCaseResult.testCaseStatus',
   });
 };
 
@@ -274,6 +313,13 @@ export const fetchTestCaseStatusMetricsByDays = (
         true
       )
     );
+  }
+  if (filters?.entityFQN) {
+    mustFilter.push({
+      term: {
+        'testCase.entityFQN': filters.entityFQN,
+      },
+    });
   }
 
   return getDataQualityReport({

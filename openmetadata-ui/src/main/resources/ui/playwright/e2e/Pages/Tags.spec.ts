@@ -209,6 +209,7 @@ test('Classification Page', async ({ page }) => {
   });
 
   await test.step('Create classification with validation checks', async () => {
+    await redirectToHomePage(page);
     await classification.visitPage(page);
     await page.click('[data-testid="add-classification"]');
     await page.waitForSelector('.ant-modal-content', {
@@ -369,39 +370,6 @@ test('Classification Page', async ({ page }) => {
       );
       await page.click('[data-testid="saveAssociatedTag"]');
       await removeTags;
-    }
-  );
-
-  await test.step(
-    'Should have correct tag usage count and redirection should work',
-    async () => {
-      const getTags = page.waitForResponse('/api/v1/tags*');
-      await sidebarClick(page, SidebarItem.TAGS);
-      await getTags;
-      const classificationResponse = page.waitForResponse(
-        `/api/v1/tags?*parent=${encodeURIComponent(NEW_CLASSIFICATION.name)}*`
-      );
-      await page
-        .locator(`[data-testid="side-panel-classification"]`)
-        .filter({ hasText: NEW_CLASSIFICATION.displayName })
-        .click();
-      await classificationResponse;
-
-      await expect(page.locator('.activeCategory')).toContainText(
-        NEW_CLASSIFICATION.displayName
-      );
-
-      const count = await page
-        .locator('[data-testid="usage-count"]')
-        .textContent();
-
-      expect(count).toBe('1');
-
-      const getEntityDetailsPage = page.waitForResponse(
-        'api/v1/search/query?q=&index=**'
-      );
-      await page.click('[data-testid="usage-count"]');
-      await getEntityDetailsPage;
     }
   );
 

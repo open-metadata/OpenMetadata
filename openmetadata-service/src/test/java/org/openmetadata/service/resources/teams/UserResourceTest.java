@@ -140,6 +140,7 @@ import org.openmetadata.service.resources.teams.UserResource.UserList;
 import org.openmetadata.service.security.AuthenticationException;
 import org.openmetadata.service.security.mask.PIIMasker;
 import org.openmetadata.service.util.CSVExportResponse;
+import org.openmetadata.service.util.CSVImportResponse;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.PasswordUtil;
@@ -1561,12 +1562,29 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   }
 
   @Override
-  protected String initiateExport(String teamName) throws HttpResponseException {
+  protected String exportCsv(String teamName) throws HttpResponseException {
     WebTarget target = getCollection().path("/export");
+    target = target.queryParam("team", teamName);
+    return TestUtils.get(target, String.class, ADMIN_AUTH_HEADERS);
+  }
+
+  @Override
+  protected String initiateExport(String teamName) throws HttpResponseException {
+    WebTarget target = getCollection().path("/exportAsync");
     target = target.queryParam("team", teamName);
     CSVExportResponse response =
         TestUtils.getWithResponse(
             target, CSVExportResponse.class, ADMIN_AUTH_HEADERS, Status.ACCEPTED.getStatusCode());
+    return response.getJobId();
+  }
+
+  @Override
+  protected String initiateImport(String teamName, String csv, boolean dryRun) throws IOException {
+    WebTarget target = getCollection().path("/importAsync");
+    target = target.queryParam("team", teamName);
+    target = !dryRun ? target.queryParam("dryRun", false) : target;
+    CSVImportResponse response =
+        TestUtils.putCsv(target, csv, CSVImportResponse.class, Status.OK, ADMIN_AUTH_HEADERS);
     return response.getJobId();
   }
 }

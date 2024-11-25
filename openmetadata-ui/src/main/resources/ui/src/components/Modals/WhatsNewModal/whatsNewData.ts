@@ -17,7 +17,7 @@ import incidentManagerSampleData from '../../../assets/img/incidentManagerSample
 import profilerConfigPage from '../../../assets/img/profilerConfigPage.png';
 import collateIcon from '../../../assets/svg/ic-collate.svg';
 
-export const COOKIE_VERSION = 'VERSION_1_5_10'; // To be changed with each release.
+export const COOKIE_VERSION = 'VERSION_1_5_12'; // To be changed with each release.
 
 // for youtube video make isImage = false and path = {video embed id}
 // embed:- youtube video => share => click on embed and take {url with id} from it
@@ -1123,6 +1123,47 @@ To continue pursuing this objective, the application was completely refactored t
 - **Fix**: Disable empty rule for query builder widget.
 - **Fix**: Unable to add more enum values for enum cp.
 - **Fix**: Navigate to listing for deleting a service.
+`,
+    },
+  },
+  {
+    id: 53,
+    version: 'v1.5.11',
+    description: 'Released on 15th November 2024.',
+    features: [],
+    changeLogs: {
+      Improvements: `- **Improvement**: Parallelize the search indexing process.
+- **Fix**: Return s3 endpoint as str() instead of Url.
+- **Improvement**: Databricks query run optimisation.
+- **Fix**: Make Export CSV Async API, websocket to push data back.
+- **Improvement**: Add Column Value to be At Expected Location Test.
+- **Fix**: User count doesn't update on adding to the team while using search.
+- **Improvement**: Added support for lineage default depth settings.
+- **Fix**: Materialised View Lineage.
+- **Improvement**: Add PowerBI Report Server Connector ${CollateIconWithLinkMD}
+- **Improvement**: Mask SQL Queries in Usage & Lineage Workflow.
+- **Fix**: Sample data overlapping issue.
+- **Fix**: Checkmark saves wrong custom property field 
+`,
+    },
+  },
+  {
+    id: 54,
+    version: 'v1.5.12',
+    description: 'Released on 25th November 2024.',
+    features: [],
+    changeLogs: {
+      Improvements: `- **Improvement**: Added async apis for csv import.
+- **Improvement**: Skip domain check for bots and admin
+- **Improvement**: MYSQL lineage and usage.
+- **Minor**: Added Lineage Field back to SearchLineage.
+- **Fix**: Database is missing from the search dropdown
+- **Fix**: Bad Representation of owners.
+- **Fix**: The Daily Active Users Summary Card in Data Insights.
+- **Fix**: The processing of URL Encoded Assets in Data Insights.
+- **Fix**: Column Level Lineage export.
+- **Fix**: Store procedure yielding by adding Try/Except.
+- **Fix**: Lineage export when there is no column / pipeline edge.
 `,
     },
   },

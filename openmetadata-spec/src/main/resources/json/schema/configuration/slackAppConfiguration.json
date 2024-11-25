@@ -17,20 +17,8 @@
     "signingSecret": {
       "description": "Signing Secret of the Application. Confirm that each request comes from Slack by verifying its unique signature.",
       "type": "string"
-    },
-    "scopes": {
-      "description": "Scopes to Request in OAuth",
-      "type": "string"
-    },
-    "callbackUrl": {
-      "description": "The callback URL where temporary authorization code is exchanged for access tokens",
-      "type": "string"
-    },
-    "callbackRedirectURL": {
-      "description": "The URL where the application redirects after handling the OAuth callback",
-      "type": "string"
     }
   },
-  "required": ["clientId", "clientSecret","signingSecret","scopes","callbackUrl","callbackRedirectURL"],
+  "required": ["clientId", "clientSecret","signingSecret"],
   "additionalProperties": false
 }

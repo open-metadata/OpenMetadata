@@ -1,4 +1,6 @@
 import { DateRangeObject } from 'Models';
+import { SVGAttributes } from 'react';
+import { LinkProps } from 'react-router-dom';
 import { TestCaseStatus } from '../../generated/tests/testCase';
 import { TestCaseResolutionStatusTypes } from '../../generated/tests/testCaseResolutionStatus';
 import { TestPlatform } from '../../generated/tests/testDefinition';
@@ -41,6 +43,7 @@ export type TestCaseSearchParams = {
   tier?: string;
   tags?: string;
   serviceName?: string;
+  dataQualityDimension?: string;
 };
 
 export interface IncidentTypeAreaChartWidgetProps {
@@ -48,6 +51,7 @@ export interface IncidentTypeAreaChartWidgetProps {
   incidentStatusType: TestCaseResolutionStatusTypes;
   name: string;
   chartFilter?: DataQualityDashboardChartFilters;
+  redirectPath?: LinkProps['to'];
 }
 
 export interface IncidentTimeChartWidgetProps {
@@ -55,6 +59,8 @@ export interface IncidentTimeChartWidgetProps {
   incidentMetricType: IncidentTimeMetricsType;
   name: string;
   chartFilter?: DataQualityDashboardChartFilters;
+  height?: number;
+  redirectPath?: LinkProps['to'];
 }
 export interface TestCaseStatusAreaChartWidgetProps {
   title: string;
@@ -62,8 +68,22 @@ export interface TestCaseStatusAreaChartWidgetProps {
   name: string;
   chartColorScheme?: AreaChartColorScheme;
   chartFilter?: DataQualityDashboardChartFilters;
+  height?: number;
+  redirectPath?: LinkProps['to'];
 }
 
 export interface PieChartWidgetCommonProps {
   chartFilter?: DataQualityDashboardChartFilters;
+}
+
+export interface DataStatisticWidgetProps {
+  name: string;
+  title: string;
+  icon: SvgComponent;
+  dataLabel: string;
+  countValue: number;
+  redirectPath: LinkProps['to'];
+  linkLabel: string;
+  isLoading?: boolean;
+  iconProps?: SVGAttributes<SVGElement>;
 }
