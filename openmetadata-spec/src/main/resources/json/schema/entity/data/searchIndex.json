@@ -266,8 +266,8 @@
     "indexType": {
       "description": "Whether the entity is index or index template.",
       "type": "string",
-      "javaType": "org.openmetadata.schema.entity.type.indexType",
-      "enum": ["Index", "Index Template"],
+      "javaType": "org.openmetadata.schema.entity.type.SearchIndexType",
+      "enum": ["Index", "IndexTemplate"],
       "default": "Index"
     }
   },

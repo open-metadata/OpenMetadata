@@ -51,9 +51,9 @@
       "type": "boolean",
       "default": false
     },
-    "ingestIndexTemplate":{
-      "title": "Ingest Index Template",
-      "description": "Enable the 'Ingest Index Template' toggle to manage the ingestion of index template data.",
+    "includeIndexTemplate":{
+      "title": "Include Index Template",
+      "description": "Enable the 'Include Index Template' toggle to manage the ingestion of index template data.",
       "type": "boolean",
       "default": false
     }

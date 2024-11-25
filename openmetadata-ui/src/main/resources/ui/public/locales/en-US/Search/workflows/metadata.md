@@ -54,9 +54,9 @@ This is applicable for fields like description, tags, owner and displayName
 $$
 
 $$section
-### Ingest Index Template $(id="ingestIndexTemplate")
+### Include Index Template $(id="includeIndexTemplate")
 
-`Ingest Index Template` toggle to manage the ingestion of index templates metadata from the source.
+`Include Index Template` toggle to manage the ingestion of index templates metadata from the source.
 
 If the toggle is `enabled`, index templates metadata will be ingested from the source.
 

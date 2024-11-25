@@ -149,7 +149,7 @@ class ElasticsearchSource(SearchServiceSource):
         """
         Get List of all search index template
         """
-        yield from self.client.indices.get_index_template()["index_templates"]
+        yield from self.client.indices.get_index_template().get("index_templates", [])
 
     def get_search_index_template_name(
         self, search_index_template_details: dict
@@ -165,7 +165,7 @@ class ElasticsearchSource(SearchServiceSource):
         """
         Method to Get Search Index Template Entity
         """
-        if self.source_config.ingestIndexTemplate:
+        if self.source_config.includeIndexTemplate:
             index_name = self.get_search_index_template_name(
                 search_index_template_details
             )
@@ -181,7 +181,7 @@ class ElasticsearchSource(SearchServiceSource):
                     fields=parse_es_index_mapping(
                         index_template.get("template", {}).get("mappings")
                     ),
-                    indexType=IndexType.Index_Template,
+                    indexType=IndexType.IndexTemplate,
                     description=index_template.get("_meta", {}).get("description"),
                 )
                 yield Either(right=search_index_template_request)

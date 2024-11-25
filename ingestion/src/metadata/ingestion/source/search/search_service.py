@@ -205,7 +205,7 @@ class SearchServiceSource(TopologyRunnerMixin, Source, ABC):
         """Get Search Index Template Name"""
 
     def get_search_index_template(self) -> Any:
-        if self.source_config.ingestIndexTemplate:
+        if self.source_config.includeIndexTemplate:
             for index_template_details in self.get_search_index_template_list():
                 if search_index_template_name := self.get_search_index_template_name(
                     index_template_details
