@@ -15,6 +15,7 @@ import {
   calculateInterval,
   convertMillisecondsToHumanReadableFormat,
   customFormatDateTime,
+  DATE_TIME_12_HOUR_FORMAT,
   formatDate,
   formatDateTime,
   formatDateTimeLong,
@@ -58,6 +59,9 @@ describe('DateTimeUtils tests', () => {
 
   it(`customFormatDateTime should formate date and time both`, () => {
     expect(customFormatDateTime(0, 'yyyy/MM/dd')).toBe(`1970/01/01`);
+    expect(customFormatDateTime(0, DATE_TIME_12_HOUR_FORMAT)).toBe(
+      `Jan 01, 1970, 12:00 AM`
+    );
   });
 });
 
