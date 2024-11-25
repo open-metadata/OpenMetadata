@@ -146,6 +146,7 @@ class ServiceUtilClassBase {
     MlModelServiceType.VertexAI,
     PipelineServiceType.Matillion,
     PipelineServiceType.DataFactory,
+    PipelineServiceType.Stitch,
   ];
 
   DatabaseServiceTypeSmallCase = this.convertEnumToLowerCase<
