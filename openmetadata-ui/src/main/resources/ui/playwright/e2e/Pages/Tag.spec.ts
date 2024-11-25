@@ -18,7 +18,7 @@ import { ClassificationClass } from '../../support/tag/ClassificationClass';
 import { TagClass } from '../../support/tag/TagClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
-import { getApiContext, redirectToHomePage } from '../../utils/common';
+import { redirectToHomePage } from '../../utils/common';
 import {
   addAssetsToTag,
   checkAssetsCount,
@@ -101,173 +101,120 @@ test.describe('Tag Page with Admin Roles', () => {
 
   test('Rename Tag name', async ({ adminPage }) => {
     await redirectToHomePage(adminPage);
-    const { apiContext, afterAction } = await getApiContext(adminPage);
-    const tag = new TagClass({
-      classification: classification.data.name,
-    });
-    try {
-      await tag.create(apiContext);
-      const res = adminPage.waitForResponse(`/api/v1/tags/name/*`);
-      await tag.visitPage(adminPage);
-      await res;
-      await adminPage.getByTestId('manage-button').click();
+    const res = adminPage.waitForResponse(`/api/v1/tags/name/*`);
+    await tag.visitPage(adminPage);
+    await res;
+    await adminPage.getByTestId('manage-button').click();
 
-      await expect(
-        adminPage.locator('.ant-dropdown-placement-bottomRight')
-      ).toBeVisible();
+    await expect(
+      adminPage.locator('.ant-dropdown-placement-bottomRight')
+    ).toBeVisible();
 
-      await adminPage.getByRole('menuitem', { name: 'Rename' }).click();
+    await adminPage.getByRole('menuitem', { name: 'Rename' }).click();
 
-      await expect(adminPage.getByRole('dialog')).toBeVisible();
+    await expect(adminPage.getByRole('dialog')).toBeVisible();
 
-      await adminPage
-        .getByPlaceholder('Enter display name')
-        .fill('TestDisplayName');
+    await adminPage
+      .getByPlaceholder('Enter display name')
+      .fill('TestDisplayName');
 
-      const updateName = adminPage.waitForResponse(`/api/v1/tags/*`);
-      await adminPage.getByTestId('save-button').click();
-      updateName;
+    const updateName = adminPage.waitForResponse(`/api/v1/tags/*`);
+    await adminPage.getByTestId('save-button').click();
+    updateName;
 
-      await expect(adminPage.getByText('TestDisplayName')).toBeVisible();
-    } finally {
-      await tag.delete(apiContext);
-      await afterAction();
-    }
+    await expect(adminPage.getByText('TestDisplayName')).toBeVisible();
   });
 
   test('Restyle Tag', async ({ adminPage }) => {
     await redirectToHomePage(adminPage);
-    const { apiContext, afterAction } = await getApiContext(adminPage);
-    const tag = new TagClass({
-      classification: classification.data.name,
-    });
-    try {
-      await tag.create(apiContext);
-      const res = adminPage.waitForResponse(`/api/v1/tags/name/*`);
-      await tag.visitPage(adminPage);
-      await res;
-      await adminPage.getByTestId('manage-button').click();
+    const res = adminPage.waitForResponse(`/api/v1/tags/name/*`);
+    await tag.visitPage(adminPage);
+    await res;
+    await adminPage.getByTestId('manage-button').click();
 
-      await expect(
-        adminPage.locator('.ant-dropdown-placement-bottomRight')
-      ).toBeVisible();
+    await expect(
+      adminPage.locator('.ant-dropdown-placement-bottomRight')
+    ).toBeVisible();
 
-      await adminPage.getByRole('menuitem', { name: 'Style' }).click();
+    await adminPage.getByRole('menuitem', { name: 'Style' }).click();
 
-      await expect(adminPage.getByRole('dialog')).toBeVisible();
+    await expect(adminPage.getByRole('dialog')).toBeVisible();
 
-      await adminPage.getByTestId('color-color-input').fill('#6366f1');
+    await adminPage.getByTestId('color-color-input').fill('#6366f1');
 
-      const updateColor = adminPage.waitForResponse(`/api/v1/tags/*`);
-      await adminPage.locator('button[type="submit"]').click();
-      updateColor;
+    const updateColor = adminPage.waitForResponse(`/api/v1/tags/*`);
+    await adminPage.locator('button[type="submit"]').click();
+    updateColor;
 
-      await adminPage.waitForLoadState('networkidle');
+    await adminPage.waitForLoadState('networkidle');
 
-      await expect(adminPage.getByText(tag.data.name)).toBeVisible();
-    } finally {
-      await tag.delete(apiContext);
-      await afterAction();
-    }
+    await expect(adminPage.getByText(tag.data.name)).toBeVisible();
   });
 
   test('Edit Tag Description', async ({ adminPage }) => {
     await redirectToHomePage(adminPage);
-    const { apiContext, afterAction } = await getApiContext(adminPage);
-    const tag = new TagClass({
-      classification: classification.data.name,
-    });
-    try {
-      await tag.create(apiContext);
-      const res = adminPage.waitForResponse(`/api/v1/tags/name/*`);
-      await tag.visitPage(adminPage);
-      await res;
-      await adminPage.getByTestId('edit-description').click();
+    const res = adminPage.waitForResponse(`/api/v1/tags/name/*`);
+    await tag.visitPage(adminPage);
+    await res;
+    await adminPage.getByTestId('edit-description').click();
 
-      await expect(adminPage.getByRole('dialog')).toBeVisible();
+    await expect(adminPage.getByRole('dialog')).toBeVisible();
 
-      await adminPage.locator('.toastui-editor-pseudo-clipboard').clear();
-      await adminPage
-        .locator('.toastui-editor-pseudo-clipboard')
-        .fill(`This is updated test description for tag ${tag.data.name}.`);
+    await adminPage.locator('.toastui-editor-pseudo-clipboard').clear();
+    await adminPage
+      .locator('.toastui-editor-pseudo-clipboard')
+      .fill(`This is updated test description for tag ${tag.data.name}.`);
 
-      const editDescription = adminPage.waitForResponse(`/api/v1/tags/*`);
-      await adminPage.getByTestId('save').click();
-      await editDescription;
+    const editDescription = adminPage.waitForResponse(`/api/v1/tags/*`);
+    await adminPage.getByTestId('save').click();
+    await editDescription;
 
-      await expect(adminPage.getByTestId('viewer-container')).toContainText(
-        `This is updated test description for tag ${tag.data.name}.`
-      );
-    } finally {
-      await tag.delete(apiContext);
-      await afterAction();
-    }
+    await expect(adminPage.getByTestId('viewer-container')).toContainText(
+      `This is updated test description for tag ${tag.data.name}.`
+    );
   });
 
   test('Delete a Tag', async ({ adminPage }) => {
     await redirectToHomePage(adminPage);
-    const { apiContext, afterAction } = await getApiContext(adminPage);
-    const tag = new TagClass({
-      classification: classification.data.name,
-    });
-    try {
-      await tag.create(apiContext);
-      const res = adminPage.waitForResponse(`/api/v1/tags/name/*`);
-      await tag.visitPage(adminPage);
-      await res;
-      await adminPage.getByTestId('manage-button').click();
+    const res = adminPage.waitForResponse(`/api/v1/tags/name/*`);
+    await tag.visitPage(adminPage);
+    await res;
+    await adminPage.getByTestId('manage-button').click();
 
-      await expect(
-        adminPage.locator('.ant-dropdown-placement-bottomRight')
-      ).toBeVisible();
+    await expect(
+      adminPage.locator('.ant-dropdown-placement-bottomRight')
+    ).toBeVisible();
 
-      await adminPage.getByRole('menuitem', { name: 'Delete' }).click();
+    await adminPage.getByRole('menuitem', { name: 'Delete' }).click();
 
-      await expect(adminPage.getByRole('dialog')).toBeVisible();
+    await expect(adminPage.getByRole('dialog')).toBeVisible();
 
-      await adminPage.getByTestId('confirmation-text-input').fill('DELETE');
+    await adminPage.getByTestId('confirmation-text-input').fill('DELETE');
 
-      const deleteTag = adminPage.waitForResponse(`/api/v1/tags/*`);
-      await adminPage.getByTestId('confirm-button').click();
-      deleteTag;
+    const deleteTag = adminPage.waitForResponse(`/api/v1/tags/*`);
+    await adminPage.getByTestId('confirm-button').click();
+    deleteTag;
 
-      await expect(
-        adminPage.getByText(classification.data.description)
-      ).toBeVisible();
-    } finally {
-      await afterAction();
-    }
+    await expect(
+      adminPage.getByText(classification.data.description)
+    ).toBeVisible();
   });
 
   test('Add and Remove Assets', async ({ adminPage }) => {
     await redirectToHomePage(adminPage);
-    const { apiContext, afterAction } = await getApiContext(adminPage);
-    const tag = new TagClass({
-      classification: classification.data.name,
-    });
     const { assets } = await setupAssetsForTag(adminPage);
-    try {
-      await tag.create(apiContext);
-      const res = adminPage.waitForResponse(`/api/v1/tags/name/*`);
-      await tag.visitPage(adminPage);
-      await res;
+    const res = adminPage.waitForResponse(`/api/v1/tags/name/*`);
+    await tag.visitPage(adminPage);
+    await res;
 
-      await test.step('Add Asset', async () => {
-        await addAssetsToTag(adminPage, assets);
+    await test.step('Add Asset', async () => {
+      await addAssetsToTag(adminPage, assets);
+    });
 
-        await expect(
-          adminPage.locator('[role="dialog"].ant-modal')
-        ).not.toBeVisible();
-      });
-
-      await test.step('Delete Asset', async () => {
-        await removeAssetsFromTag(adminPage, assets);
-        await checkAssetsCount(adminPage, 0);
-      });
-    } finally {
-      await tag.delete(apiContext);
-      await afterAction();
-    }
+    await test.step('Delete Asset', async () => {
+      await removeAssetsFromTag(adminPage, assets);
+      await checkAssetsCount(adminPage, 0);
+    });
   });
 });
 

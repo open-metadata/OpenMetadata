@@ -91,7 +91,10 @@ import {
   escapeESReservedCharacters,
   getEncodedFqn,
 } from '../../utils/StringsUtils';
-import { getQueryFilterToExcludeTerms } from '../../utils/TagsUtils';
+import {
+  getQueryFilterToExcludeTerms,
+  getTagAssetsQueryFilter,
+} from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import './tag-page.less';
 import { TagTabs } from './TagPage.inteface';
@@ -313,7 +316,7 @@ const TagPage = () => {
         '',
         1,
         0,
-        `(tags.tagFQN:"${encodedFqn}")`,
+        getTagAssetsQueryFilter(encodedFqn),
         '',
         '',
         SearchIndex.ALL
