@@ -38,6 +38,10 @@
       "description": "SQL Query definition.",
       "$ref": "../../entity/data/storedProcedure.json#/definitions/storedProcedureCode"
     },
+    "storedProcedureType": {
+      "description": "Type of the Stored Procedure.",
+      "$ref": "../../entity/data/storedProcedure.json#/definitions/storedProcedureType"
+    },
     "databaseSchema": {
       "description": "Link to the database schema fully qualified name where this stored procedure is hosted in",
       "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
