@@ -76,12 +76,14 @@ import { performUserLogin } from '../../utils/user';
 const user1 = new UserClass();
 const user2 = new UserClass();
 const team = new TeamClass();
+const user3 = new UserClass();
 
 test.describe('Glossary tests', () => {
   test.beforeAll(async ({ browser }) => {
     const { afterAction, apiContext } = await performAdminLogin(browser);
     await user2.create(apiContext);
     await user1.create(apiContext);
+    await user3.create(apiContext);
     team.data.users = [user2.responseData.id];
     await team.create(apiContext);
     await afterAction();
@@ -94,12 +96,12 @@ test.describe('Glossary tests', () => {
 
     const { page, afterAction, apiContext } = await performAdminLogin(browser);
     const { page: page1, afterAction: afterActionUser1 } =
-      await performUserLogin(browser, user1);
+      await performUserLogin(browser, user3);
     const glossary1 = new Glossary();
     glossary1.data.owners = [{ name: 'admin', type: 'user' }];
     glossary1.data.mutuallyExclusive = true;
     glossary1.data.reviewers = [
-      { name: `${user1.data.firstName}${user1.data.lastName}`, type: 'user' },
+      { name: `${user3.data.firstName}${user3.data.lastName}`, type: 'user' },
     ];
     glossary1.data.terms = [new GlossaryTerm(glossary1)];
 
@@ -1117,6 +1119,7 @@ test.describe('Glossary tests', () => {
     const { afterAction, apiContext } = await performAdminLogin(browser);
     await user1.delete(apiContext);
     await user2.delete(apiContext);
+    await user3.create(apiContext);
     await team.delete(apiContext);
     await afterAction();
   });
