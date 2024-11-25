@@ -186,9 +186,7 @@ const DomainPage = () => {
     );
   }
 
-  const pageContent = domainLoading ? (
-    <Loader />
-  ) : isEmpty(rootDomains) ? (
+  const pageContent = isEmpty(rootDomains) ? (
     <ErrorPlaceHolder
       buttonId="add-domain"
       className="mt-44"
@@ -223,7 +221,7 @@ const DomainPage = () => {
 
   return (
     <PageLayoutV1 pageTitle={t('label.domain-plural')}>
-      {pageContent}
+      {domainLoading ? <Loader /> : pageContent}
     </PageLayoutV1>
   );
 };
