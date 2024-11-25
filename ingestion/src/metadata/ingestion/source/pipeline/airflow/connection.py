@@ -17,6 +17,7 @@ from typing import Optional
 
 from airflow import settings
 from sqlalchemy.engine import Engine
+from sqlalchemy.orm import sessionmaker
 
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
@@ -46,6 +47,9 @@ from metadata.ingestion.connections.test_connections import (
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.constants import THREE_MIN
+
+
+from airflow.models.serialized_dag import SerializedDagModel
 
 
 # Only import when needed
@@ -114,8 +118,34 @@ def test_connection(
     of a metadata workflow or during an Automation Workflow
     """
 
-    test_fn = {"CheckAccess": partial(test_connection_engine_step, engine)}
+    Session = sessionmaker(bind=engine)
+    session = Session()
 
+    def test_pipeline_details_access(session):
+        try:
+            result = session.query(SerializedDagModel).limit(1)
+            if result:
+                return result
+        except Exception as e:
+            raise Exception(f"Pipeline details access error : {e}")
+        
+    def test_task_detail_access(session):
+        try:
+            json_data_column = (
+            SerializedDagModel._data  # For 2.3.0 onwards # pylint: disable=protected-access
+            if hasattr(SerializedDagModel, "_data")
+            else SerializedDagModel.data  # For 2.2.5 and 2.1.4
+        )
+            result = session.query(json_data_column).limit(1).all()
+            retrieved_tasks = result[0][0]['dag']['tasks']
+            if retrieved_tasks:
+                return retrieved_tasks      
+        except Exception as e:
+            raise Exception(f"Task details access error : {e}")
+
+    test_fn = {"CheckAccess": partial(test_connection_engine_step, engine),
+               "PipelineDetailsAccess": partial(test_pipeline_details_access, session),
+               "TaskDetailAccess": partial(test_task_detail_access, session)}
     return test_connection_steps(
         metadata=metadata,
         test_fn=test_fn,
