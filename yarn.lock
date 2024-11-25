@@ -43,7 +43,13 @@
   integrity sha512-jI48mSnRgFQxXiE/UTUCVCpX8lK3wCFKLF1Ss2aEreboKNuLQGt3e0/YFqWVHe/WENxOaqiJvwOz+L/SrN2+qQ==
   dependencies:
     "@types/json-schema" "^7.0.9"
-	@@ -53,126 +53,126 @@
+    "@types/node" "^16.9.2"
+    glob "^7.1.7"
+    path-equal "^1.1.2"
+    safe-stable-stringify "^2.2.0"
+    ts-node "^10.9.1"
+    typescript "4.9.4"
+    yargs "^17.1.1"
 
 "@tsconfig/node10@^1.0.7":
   version "1.0.11"
@@ -170,7 +176,8 @@ chalk@^2.4.2:
   integrity sha512-Mti+f9lpJNcwF4tWV8/OrTTtF1gZi+f8FqlyAdouralcFWFQWF2+NgCHShjkCb+IFBLq9buZwE1xckQU4peSuQ==
   dependencies:
     ansi-styles "^3.2.1"
-	@@ -181,15 +181,15 @@ chalk@^2.4.2:
+    escape-string-regexp "^1.0.5"
+    supports-color "^5.3.0"
 
 chalk@^4.1.2:
   version "4.1.2"
@@ -186,7 +193,8 @@ cliui@^8.0.1:
   integrity sha512-BSeNnyus75C4//NQ9gQt1/csTXyo/8Sb+afLAkzAptFuMsod9HFokGNudZpi/oQV73hnVK+sR+5PVRMd+Dr7YQ==
   dependencies:
     string-width "^4.2.0"
-	@@ -198,36 +198,36 @@ cliui@^8.0.1:
+    strip-ansi "^6.0.1"
+    wrap-ansi "^7.0.0"
 
 collection-utils@^1.0.1:
   version "1.0.1"
@@ -223,7 +231,9 @@ command-line-args@^5.2.1:
   integrity sha512-H4UfQhZyakIjC74I9d34fGYDwk3XpSr17QhEd0Q3I9Xq1CETHo4Hcuo87WyWHpAF1aSLjLRf5lD9ZGX2qStUvg==
   dependencies:
     array-back "^3.1.0"
-	@@ -237,7 +237,7 @@ command-line-args@^5.2.1:
+    find-replace "^3.0.0"
+    lodash.camelcase "^4.3.0"
+    typical "^4.0.0"
 
 command-line-usage@^6.1.3:
   version "6.1.3"
@@ -231,7 +241,9 @@ command-line-usage@^6.1.3:
   integrity sha512-sH5ZSPr+7UStsloltmDh7Ce5fb8XPlHyoPzTpyyMuYCtervL65+ubVZ6Q61cFtFl62UyJlc8/JwERRbAFPUqgw==
   dependencies:
     array-back "^4.0.2"
-	@@ -247,76 +247,76 @@ command-line-usage@^6.1.3:
+    chalk "^2.4.2"
+    table-layout "^1.0.2"
+    typical "^5.2.0"
 
 concat-map@0.0.1:
   version "0.0.1"
@@ -308,7 +320,11 @@ glob@^7.1.7:
   integrity sha512-nFR0zLpU2YCaRxwoCJvL6UvCH2JFyFVIvwTLsIf21AuHlMskA1hhTdk+LlYJtOlYt9v6dvszD2BGRqBL+iQK9Q==
   dependencies:
     fs.realpath "^1.0.0"
-	@@ -328,133 +328,133 @@ glob@^7.1.7:
+    inflight "^1.0.4"
+    inherits "2"
+    minimatch "^3.1.1"
+    once "^1.3.0"
+    path-is-absolute "^1.0.0"
 
 graphql@^0.11.7:
   version "0.11.7"
@@ -442,7 +458,20 @@ quicktype-core@20.0.27:
   integrity sha512-1lTJ7t2Zx8ivO0KLPo4Fta/GniFgclXi46O3wyA60IFHoFjyDdVRNs/PYFwtwnqCIziI6ZXgdwRNQYNEZOSjJg==
   dependencies:
     "@glideapps/ts-necessities" "2.1.2"
-	@@ -475,7 +475,7 @@ quicktype-core@20.0.27:
+    "@types/urijs" "^1.19.19"
+    browser-or-node "^2.1.1"
+    collection-utils "^1.0.1"
+    cross-fetch "^3.1.5"
+    is-url "^1.2.4"
+    js-base64 "^2.4.3"
+    lodash "^4.17.21"
+    pako "^1.0.6"
+    pluralize "^8.0.0"
+    readable-stream "4.3.0"
+    unicode-properties "^1.4.1"
+    urijs "^1.19.1"
+    wordwrap "^1.0.0"
+    yaml "^2.2.1"
 
 quicktype-graphql-input@20.0.27:
   version "20.0.27"
@@ -450,7 +479,8 @@ quicktype-graphql-input@20.0.27:
   integrity sha512-G3vIIH7pSDk9AuoTSLylLvYQhhrxha1xHdOpELk7ww0C3WU1GChYHhB0bW+1dLl8pi8nLU+XmL/hfgNA+2gSRA==
   dependencies:
     collection-utils "^1.0.1"
-	@@ -484,7 +484,7 @@ quicktype-graphql-input@20.0.27:
+    graphql "^0.11.7"
+    quicktype-core "20.0.27"
 
 quicktype-typescript-input@20.0.27:
   version "20.0.27"
@@ -458,7 +488,8 @@ quicktype-typescript-input@20.0.27:
   integrity sha512-XmJphPzB6fWE7kJP2vTMsjEsnnGk7dRJAkpLqMLo5mE33ubhwQ3o2hOpBb2J/qcMrsPdKlMfCDVR2ZmVDoy98w==
   dependencies:
     "@mark.probst/typescript-json-schema" "0.55.0"
-	@@ -493,7 +493,7 @@ quicktype-typescript-input@20.0.27:
+    quicktype-core "20.0.27"
+    typescript "4.9.4"
 
 quicktype@20.0.27:
   version "20.0.27"
@@ -466,7 +497,20 @@ quicktype@20.0.27:
   integrity sha512-1a+15T/pNxPTA5wkr7FArqifuk3aRU2P2qE2sbUYYlb0PUQ7wSYxD39khoR7X304DOGmMLAHiX0tduuqxQRVcQ==
   dependencies:
     "@glideapps/ts-necessities" "^2.1.2"
-	@@ -514,7 +514,7 @@ quicktype@20.0.27:
+    chalk "^4.1.2"
+    command-line-args "^5.2.1"
+    command-line-usage "^6.1.3"
+    cross-fetch "^3.1.5"
+    graphql "^0.11.7"
+    lodash "^4.17.21"
+    moment "^2.29.4"
+    quicktype-core "20.0.27"
+    quicktype-graphql-input "20.0.27"
+    quicktype-typescript-input "20.0.27"
+    readable-stream "^4.3.0"
+    stream-json "1.7.5"
+    string-to-stream "^3.0.1"
+    typescript "4.9.4"
 
 readable-stream@4.3.0:
   version "4.3.0"
@@ -474,7 +518,9 @@ readable-stream@4.3.0:
   integrity sha512-MuEnA0lbSi7JS8XM+WNJlWZkHAAdm7gETHdFK//Q/mChGyj2akEFtdLZh32jSdkWGbRwCW9pn6g3LWDdDeZnBQ==
   dependencies:
     abort-controller "^3.0.0"
-	@@ -524,7 +524,7 @@ readable-stream@4.3.0:
+    buffer "^6.0.3"
+    events "^3.3.0"
+    process "^0.11.10"
 
 readable-stream@^3.4.0:
   version "3.6.2"
@@ -482,7 +528,8 @@ readable-stream@^3.4.0:
   integrity sha512-9u/sniCrY3D5WdsERHzHE4G2YCXqoG5FTHUiCC4SIbr6XcLZBY05ya9EKjYek9O5xOAwjGq+1JdGBAS7Q9ScoA==
   dependencies:
     inherits "^2.0.3"
-	@@ -533,7 +533,7 @@ readable-stream@^3.4.0:
+    string_decoder "^1.1.1"
+    util-deprecate "^1.0.1"
 
 readable-stream@^4.3.0:
   version "4.5.2"
@@ -490,7 +537,10 @@ readable-stream@^4.3.0:
   integrity sha512-yjavECdqeZ3GLXNgRXgeQEdz9fvDDkNKyHnbHRFtOr7/LcfgBcmct7t/ET+HaCTqfh06OzoAxrkN/IfjJBVe+g==
   dependencies:
     abort-controller "^3.0.0"
-	@@ -544,46 +544,46 @@ readable-stream@^4.3.0:
+    buffer "^6.0.3"
+    events "^3.3.0"
+    process "^0.11.10"
+    string_decoder "^1.3.0"
 
 reduce-flatten@^2.0.0:
   version "2.0.0"
@@ -537,7 +587,8 @@ string-width@^4.1.0, string-width@^4.2.0, string-width@^4.2.3:
   integrity sha512-wKyQRQpjJ0sIp62ErSZdGsjMJWsap5oRNihHhu6G7JVO/9jIB6UyevL+tXuOqrng8j/cxKTWyWUwvSTriiZz/g==
   dependencies:
     emoji-regex "^8.0.0"
-	@@ -592,35 +592,35 @@ string-width@^4.1.0, string-width@^4.2.0, string-width@^4.2.3:
+    is-fullwidth-code-point "^3.0.0"
+    strip-ansi "^6.0.1"
 
 string_decoder@^1.1.1, string_decoder@^1.3.0:
   version "1.3.0"
@@ -573,7 +624,9 @@ table-layout@^1.0.2:
   integrity sha512-qd/R7n5rQTRFi+Zf2sk5XVVd9UQl6ZkduPFC3S7WEGJAmetDTjY3qPN50eSKzwuzEyQKy5TN2TiZdkIjos2L6A==
   dependencies:
     array-back "^4.0.1"
-	@@ -630,17 +630,17 @@ table-layout@^1.0.2:
+    deep-extend "~0.6.0"
+    typical "^5.2.0"
+    wordwrapjs "^4.0.0"
 
 tiny-inflate@^1.0.0:
   version "1.0.3"
@@ -591,7 +644,18 @@ ts-node@^10.9.1:
   integrity sha512-f0FFpIdcHgn8zcPSbf1dRevwt047YMnaiJM3u2w2RewrB+fob/zePZcrOyQoLMMO7aBIddLcQIEK5dYjkLnGrQ==
   dependencies:
     "@cspotcode/source-map-support" "^0.8.0"
-	@@ -659,79 +659,79 @@ ts-node@^10.9.1:
+    "@tsconfig/node10" "^1.0.7"
+    "@tsconfig/node12" "^1.0.7"
+    "@tsconfig/node14" "^1.0.0"
+    "@tsconfig/node16" "^1.0.2"
+    acorn "^8.4.1"
+    acorn-walk "^8.1.1"
+    arg "^4.1.0"
+    create-require "^1.1.0"
+    diff "^4.0.1"
+    make-error "^1.1.1"
+    v8-compile-cache-lib "^3.0.1"
+    yn "3.1.1"
 
 typescript@4.9.4:
   version "4.9.4"
@@ -671,7 +735,8 @@ wrap-ansi@^7.0.0:
   integrity sha512-YVGIj2kamLSTxw6NsZjoBxfSwsn0ycdesmc4p+Q21c5zPuZ1pl+NfxVdxPtdHvmNVOQ6XSYG4AUtyt/Fi7D16Q==
   dependencies:
     ansi-styles "^4.0.0"
-	@@ -740,27 +740,27 @@ wrap-ansi@^7.0.0:
+    string-width "^4.1.0"
+    strip-ansi "^6.0.0"
 
 wrappy@1:
   version "1.0.2"
@@ -699,7 +764,12 @@ yargs@^17.1.1:
   integrity sha512-7dSzzRQ++CKnNI/krKnYRV7JKKPUXMEh61soaHKg9mrWEhzFWhFnxPxGl+69cD1Ou63C13NUPCnmIcrvqCuM6w==
   dependencies:
     cliui "^8.0.1"
-	@@ -773,5 +773,5 @@ yargs@^17.1.1:
+    escalade "^3.1.1"
+    get-caller-file "^2.0.5"
+    require-directory "^2.1.1"
+    string-width "^4.2.3"
+    y18n "^5.0.5"
+    yargs-parser "^21.1.1"
 
 yn@3.1.1:
   version "3.1.1"
