@@ -274,15 +274,16 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
         ).with_schema()
         result = []
         for column in table1.key_columns + table1.extra_columns:
-            col1_type = self._get_column_python_type(
-                table1._schema[column]  # pylint: disable=protected-access
-            )
-            # Skip columns that are not in the second table. We cover this case in get_changed_added_columns.
-            if table2._schema.get(column) is None:  # pylint: disable=protected-access
+            col1 = table1._schema.get(column)  # pylint: disable=protected-access
+            if col1 is None:
+                # Skip columns that are not in the first table. We cover this case in get_changed_added_columns.
                 continue
-            col2_type = self._get_column_python_type(
-                table2._schema[column]  # pylint: disable=protected-access
-            )
+            col2 = table2._schema.get(column)  # pylint: disable=protected-access
+            if col2 is None:
+                # Skip columns that are not in the second table. We cover this case in get_changed_added_columns.
+                continue
+            col1_type = self._get_column_python_type(col1)
+            col2_type = self._get_column_python_type(col2)
             if is_numeric(col1_type) and is_numeric(col2_type):
                 continue
             if col1_type != col2_type:
