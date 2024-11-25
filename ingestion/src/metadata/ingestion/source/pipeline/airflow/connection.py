@@ -149,7 +149,7 @@ def test_connection(
             )
             result = session.query(json_data_column).first()
             if result:
-                retrieved_tasks = result[0]['dag']['tasks']
+                retrieved_tasks = result[0]["dag"]["tasks"]
                 if retrieved_tasks:
                     return retrieved_tasks
             raise AirflowTaskDetailsNotFound("No task found")
