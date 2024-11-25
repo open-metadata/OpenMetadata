@@ -36,3 +36,10 @@ ORDER BY event_time desc
 LIMIT {result_limit};
 """
 )
+
+
+MYSQL_TEST_GET_QUERIES = textwrap.dedent(
+    """
+SELECT `argument` from mysql.general_log limit 1;
+"""
+)
