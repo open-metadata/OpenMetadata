@@ -45,13 +45,22 @@ public class WorkflowInstanceListener implements JavaDelegate {
         workflowInstanceId,
         System.currentTimeMillis(),
         execution.getVariables());
+    LOG.debug(
+        String.format(
+            "Workflow '%s' Triggered. Instance: '%s'", workflowDefinitionName, workflowInstanceId));
   }
 
   private void updateWorkflowInstance(
       DelegateExecution execution, WorkflowInstanceRepository workflowInstanceRepository) {
+    String workflowDefinitionName =
+        getMainWorkflowDefinitionNameFromTrigger(
+            getProcessDefinitionKeyFromId(execution.getProcessDefinitionId()));
     UUID workflowInstanceId = UUID.fromString(execution.getProcessInstanceBusinessKey());
     workflowInstanceRepository.updateWorkflowInstance(
         workflowInstanceId, System.currentTimeMillis());
+    LOG.debug(
+        String.format(
+            "Workflow '%s' Finished. Instance: '%s'", workflowDefinitionName, workflowInstanceId));
   }
 
   private String getMainWorkflowDefinitionNameFromTrigger(String triggerWorkflowDefinitionName) {
