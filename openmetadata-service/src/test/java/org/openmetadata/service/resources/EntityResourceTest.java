@@ -219,6 +219,8 @@ import org.openmetadata.service.search.models.IndexMapping;
 import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.util.CSVExportMessage;
 import org.openmetadata.service.util.CSVExportResponse;
+import org.openmetadata.service.util.CSVImportMessage;
+import org.openmetadata.service.util.CSVImportResponse;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
@@ -4069,6 +4071,78 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     return null;
   }
 
+  private String receiveCsvImportViaSocketIO(String entityName, String csv, boolean dryRun)
+      throws Exception {
+    UUID userId = getAdminUserId();
+    String uri = String.format("http://localhost:%d", APP.getLocalPort());
+
+    IO.Options options = new IO.Options();
+    options.path = "/api/v1/push/feed";
+    options.query = "userId=" + userId.toString();
+    options.transports = new String[] {"websocket"};
+    options.reconnection = false;
+    options.timeout = 10000; // 10 seconds
+
+    Socket socket = IO.socket(uri, options);
+
+    CountDownLatch connectLatch = new CountDownLatch(1);
+    CountDownLatch messageLatch = new CountDownLatch(1);
+    final String[] receivedMessage = new String[1];
+
+    socket
+        .on(
+            Socket.EVENT_CONNECT,
+            args -> {
+              System.out.println("Connected to Socket.IO server");
+              connectLatch.countDown();
+            })
+        .on(
+            "csvImportChannel",
+            args -> {
+              receivedMessage[0] = (String) args[0];
+              System.out.println("Received message: " + receivedMessage[0]);
+              messageLatch.countDown();
+              socket.disconnect();
+            })
+        .on(
+            Socket.EVENT_CONNECT_ERROR,
+            args -> {
+              System.err.println("Socket.IO connect error: " + args[0]);
+              connectLatch.countDown();
+              messageLatch.countDown();
+            })
+        .on(
+            Socket.EVENT_DISCONNECT,
+            args -> {
+              System.out.println("Disconnected from Socket.IO server");
+            });
+
+    socket.connect();
+    if (!connectLatch.await(10, TimeUnit.SECONDS)) {
+      fail("Could not connect to Socket.IO server");
+    }
+    String jobId = initiateImport(entityName, csv, dryRun);
+
+    if (!messageLatch.await(45, TimeUnit.SECONDS)) {
+      fail("Did not receive CSV import result via Socket.IO within the expected time.");
+    }
+
+    String receivedJson = receivedMessage[0];
+    if (receivedJson == null) {
+      fail("Received message is null.");
+    }
+
+    CSVImportMessage csvImportMessage = JsonUtils.readValue(receivedJson, CSVImportMessage.class);
+    if ("COMPLETED".equals(csvImportMessage.getStatus())) {
+      return JsonUtils.pojoToJson(csvImportMessage.getResult());
+    } else if ("FAILED".equals(csvImportMessage.getStatus())) {
+      fail("CSV import failed: " + csvImportMessage.getError());
+    } else {
+      fail("Unknown status received: " + csvImportMessage.getStatus());
+    }
+    return null;
+  }
+
   private UUID getAdminUserId() throws HttpResponseException {
     UserResourceTest userResourceTest = new UserResourceTest();
     User adminUser = userResourceTest.getEntityByName("admin", ADMIN_AUTH_HEADERS);
@@ -4083,6 +4157,15 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     return response.getJobId();
   }
 
+  protected String initiateImport(String entityName, String csv, boolean dryRun)
+      throws IOException {
+    WebTarget target = getResourceByName(entityName + "/importAsync");
+    target = !dryRun ? target.queryParam("dryRun", false) : target;
+    CSVImportResponse response =
+        TestUtils.putCsv(target, csv, CSVImportResponse.class, Status.OK, ADMIN_AUTH_HEADERS);
+    return response.getJobId();
+  }
+
   @SneakyThrows
   protected void importCsvAndValidate(
       String entityName,
@@ -4092,26 +4175,38 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     createRecords = listOrEmpty(createRecords);
     updateRecords = listOrEmpty(updateRecords);
 
-    // Import CSV to create new records and update existing records with dryRun=true first
     String csv = EntityCsvTest.createCsv(csvHeaders, createRecords, updateRecords);
-    Awaitility.await().atMost(4, TimeUnit.SECONDS).until(() -> true);
-    CsvImportResult dryRunResult = importCsv(entityName, csv, true);
-    Awaitility.await().atMost(4, TimeUnit.SECONDS).until(() -> true);
+
+    CsvImportResult dryRunResultAsync =
+        JsonUtils.readValue(
+            receiveCsvImportViaSocketIO(entityName, csv, true), CsvImportResult.class);
+    CsvImportResult dryRunResultSync = importCsv(entityName, csv, true);
 
     // Validate the imported result summary - it should include both created and updated records
     int totalRows = 1 + createRecords.size() + updateRecords.size();
-    assertSummary(dryRunResult, ApiStatus.SUCCESS, totalRows, totalRows, 0);
+    assertSummary(dryRunResultSync, ApiStatus.SUCCESS, totalRows, totalRows, 0);
+    assertSummary(dryRunResultAsync, ApiStatus.SUCCESS, totalRows, totalRows, 0);
     String expectedResultsCsv =
         EntityCsvTest.createCsvResult(csvHeaders, createRecords, updateRecords);
-    assertEquals(expectedResultsCsv, dryRunResult.getImportResultsCsv());
+    assertEquals(expectedResultsCsv, dryRunResultSync.getImportResultsCsv());
+    assertEquals(expectedResultsCsv, dryRunResultAsync.getImportResultsCsv());
 
-    // Import CSV to create new records and update existing records with dryRun=false to really
-    // import the data
-    CsvImportResult result = importCsv(entityName, csv, false);
-    Awaitility.await().atMost(4, TimeUnit.SECONDS).until(() -> true);
-    assertEquals(dryRunResult.withDryRun(false), result);
+    CsvImportResult finalResultAsync =
+        JsonUtils.readValue(
+            receiveCsvImportViaSocketIO(entityName, csv, false), CsvImportResult.class);
+    CsvImportResult finalResultSync = importCsv(entityName, csv, false);
 
-    // Finally, export CSV and ensure the exported CSV is same as imported CSV
+    assertEquals(dryRunResultAsync.withDryRun(false), finalResultAsync);
+    // entities have created in the earlier sync import (dryRun=false) so the next import agan will
+    // have entities updated
+    assertEquals(
+        dryRunResultSync
+            .withImportResultsCsv(
+                dryRunResultSync.getImportResultsCsv().replace("Entity created", "Entity updated"))
+            .withDryRun(false),
+        finalResultSync);
+
+    // Finally, export CSV and ensure the exported CSV is the same as imported CSV
     String exportedCsvAsync = receiveCsvViaSocketIO(entityName);
     CsvUtilTest.assertCsv(csv, exportedCsvAsync);
     String exportedCsvSync = exportCsv(entityName);
