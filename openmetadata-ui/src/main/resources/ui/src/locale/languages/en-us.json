@@ -1748,6 +1748,7 @@
     "no-token-available": "No token available",
     "no-total-data-assets": "Data Insights provide a clear understanding of the evolving data landscape in your organization. They offer answers to questions like how many data assets you have, the rate at which new assets are added, and more. Discover more about <0>{{setup}}</0> to leverage these insights",
     "no-user-available": "No user available",
+    "no-user-part-of-team": "No user is part of this {{team}} Team",
     "no-username-available": "No user available with name <0>{{user}}</0>",
     "no-users": "There are no users {{text}}",
     "no-version-type-available": "No {{type}} version available",

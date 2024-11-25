@@ -1748,6 +1748,7 @@
     "no-token-available": "Токен недоступен",
     "no-total-data-assets": "Data Insights provide a clear understanding of the evolving data landscape in your organization. They offer answers to questions like how many data assets you have, the rate at which new assets are added, and more. Discover more about <0>{{setup}}</0> to leverage these insights",
     "no-user-available": "Нет доступных пользователей",
+    "no-user-part-of-team": "Ни один пользователь не является частью команды {{team}}",
     "no-username-available": "Нет доступных пользователей с именем",
     "no-users": "Нет пользователей {{text}}",
     "no-version-type-available": "Версия {{type}} недоступна",

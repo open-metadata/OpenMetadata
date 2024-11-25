@@ -1748,6 +1748,7 @@
     "no-token-available": "无可用令牌",
     "no-total-data-assets": "数据洞察可让您清楚地了解组织内不断变化的数据状况。数据洞察可回答您拥有多少数据资产、新增资产的速度等问题。了解有关<0>{{setup}}</0>更多信息，以利用这些洞察力",
     "no-user-available": "无可用用户",
+    "no-user-part-of-team": "没有用户是 {{team}} 团队的一部分",
     "no-username-available": "没有用户名为 <0>{{user}}</0>",
     "no-users": "没有用户{{text}}",
     "no-version-type-available": "无{{type}}版本可用",

@@ -1748,6 +1748,7 @@
     "no-token-available": "Geen token beschikbaar",
     "no-total-data-assets": "Data-inzicht biedt een duidelijk inzicht in het zich ontwikkelende datalandschap in uw organisatie. Ze geven antwoord op vragen als hoeveel data-assets je hebt, de snelheid waarmee nieuwe assets worden toegevoegd en meer. Ontdek meer over <0>{{setup}}</0> om deze inzichten te benutten",
     "no-user-available": "Geen gebruiker beschikbaar",
+    "no-user-part-of-team": "Geen enkele gebruiker maakt deel uit van dit {{team}}-team",
     "no-username-available": "Geen gebruiker beschikbaar met de naam <0>{{user}}</0>",
     "no-users": "Er zijn geen gebruikers {{text}}",
     "no-version-type-available": "Geen {{type}} versie beschikbaar",

@@ -1748,6 +1748,7 @@
     "no-token-available": "אין טוקן זמין",
     "no-total-data-assets": "Data Insights provide a clear understanding of the evolving data landscape in your organization. They offer answers to questions like how many data assets you have, the rate at which new assets are added, and more. Discover more about <0>{{setup}}</0> to leverage these insights",
     "no-user-available": "אין משתמש זמין",
+    "no-user-part-of-team": "אין משתמש חלק מצוות {{team}}",
     "no-username-available": "אין משתמש זמין בשם <0>{{user}}</0>",
     "no-users": "אין משתמשים {{text}}",
     "no-version-type-available": "לא קיימת גרסה של {{type}}",
