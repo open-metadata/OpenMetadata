@@ -21,6 +21,7 @@ import pytest
 import sqlalchemy as sqa
 from sqlalchemy.orm import declarative_base
 
+from metadata.data_quality.builders.validator_builder import ValidatorBuilder
 from metadata.data_quality.interface.sqlalchemy.sqa_test_suite_interface import (
     SQATestSuiteInterface,
 )
@@ -89,7 +90,9 @@ def create_sqlite_table():
         databaseMode=db_path + "?check_same_thread=False",
     )  # type: ignore
 
-    sampler = SQASampler(
+    sampler = SQASampler.__new__(SQASampler)
+    sampler.build_table_orm = lambda *args, **kwargs: User
+    sampler.__init__(
         service_connection_config=sqlite_conn,
         ometa_client=None,
         entity=TABLE,
@@ -99,6 +102,7 @@ def create_sqlite_table():
         None,
         sampler,
         TABLE,
+        validator_builder=ValidatorBuilder,
     )
 
     runner = sqa_profiler_interface.runner
