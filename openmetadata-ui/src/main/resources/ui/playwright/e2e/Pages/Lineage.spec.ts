@@ -35,11 +35,14 @@ import {
   deleteEdge,
   deleteNode,
   fillLineageConfigForm,
+  performExpand,
   performZoomOut,
   removeColumnLineage,
   setupEntitiesForLineage,
   verifyColumnLayerActive,
   verifyColumnLayerInactive,
+  verifyColumnLineageInCSV,
+  verifyExportLineageCSV,
   verifyNodePresent,
   visitLineageTab,
 } from '../../utils/lineage';
@@ -115,6 +118,13 @@ for (const EntityClass of entities) {
       for (const entity of entities) {
         await applyPipelineFromModal(page, currentEntity, entity, pipeline);
       }
+    });
+
+    await test.step('Verify Lineage Export CSV', async () => {
+      await redirectToHomePage(page);
+      await currentEntity.visitEntityPage(page);
+      await visitLineageTab(page);
+      await verifyExportLineageCSV(page, currentEntity, entities, pipeline);
     });
 
     await test.step('Remove lineage between nodes for the entity', async () => {
@@ -194,6 +204,13 @@ test('Verify column lineage between table and topic', async ({ browser }) => {
 
   // Add column lineage
   await addColumnLineage(page, sourceCol, targetCol);
+
+  // Verify column lineage
+  await redirectToHomePage(page);
+  await table.visitEntityPage(page);
+  await visitLineageTab(page);
+  await verifyColumnLineageInCSV(page, table, topic, sourceCol, targetCol);
+
   await page.click('[data-testid="edit-lineage"]');
 
   await removeColumnLineage(page, sourceCol, targetCol);
@@ -270,7 +287,6 @@ test('Verify column lineage between table and api endpoint', async ({
   // Add column lineage
   await addColumnLineage(page, sourceCol, targetCol);
   await page.click('[data-testid="edit-lineage"]');
-
   await removeColumnLineage(page, sourceCol, targetCol);
   await page.click('[data-testid="edit-lineage"]');
 
@@ -353,7 +369,7 @@ test('Verify function data in edge drawer', async ({ browser }) => {
 
     await page.locator('.edge-info-drawer').isVisible();
 
-    await expect(await page.locator('[data-testid="Function"]')).toContainText(
+    await expect(page.locator('[data-testid="Function"]')).toContainText(
       'count'
     );
   } finally {
@@ -370,57 +386,88 @@ test('Verify global lineage config', async ({ browser }) => {
   const topic = new TopicClass();
   const dashboard = new DashboardClass();
   const mlModel = new MlModelClass();
+  const searchIndex = new SearchIndexClass();
 
   try {
     await table.create(apiContext);
     await topic.create(apiContext);
     await dashboard.create(apiContext);
     await mlModel.create(apiContext);
+    await searchIndex.create(apiContext);
 
     await addPipelineBetweenNodes(page, table, topic);
     await addPipelineBetweenNodes(page, topic, dashboard);
     await addPipelineBetweenNodes(page, dashboard, mlModel);
+    await addPipelineBetweenNodes(page, mlModel, searchIndex);
 
-    await topic.visitEntityPage(page);
-    await visitLineageTab(page);
+    await test.step(
+      'Update global lineage config and verify lineage',
+      async () => {
+        await settingClick(page, GlobalSettingOptions.LINEAGE_CONFIG);
+        await fillLineageConfigForm(page, {
+          upstreamDepth: 1,
+          downstreamDepth: 1,
+          layer: 'Column Level Lineage',
+        });
 
-    await verifyNodePresent(page, table);
-    await verifyNodePresent(page, dashboard);
-    await verifyNodePresent(page, mlModel);
+        await topic.visitEntityPage(page);
+        await visitLineageTab(page);
+        await verifyNodePresent(page, table);
+        await verifyNodePresent(page, dashboard);
+        const mlModelFqn = get(
+          mlModel,
+          'entityResponseData.fullyQualifiedName'
+        );
+        const mlModelNode = page.locator(
+          `[data-testid="lineage-node-${mlModelFqn}"]`
+        );
 
-    await settingClick(page, GlobalSettingOptions.LINEAGE_CONFIG);
-    await fillLineageConfigForm(page, {
-      upstreamDepth: 1,
-      downstreamDepth: 1,
-      layer: 'Column Level Lineage',
-    });
+        await expect(mlModelNode).not.toBeVisible();
 
-    await topic.visitEntityPage(page);
-    await visitLineageTab(page);
-
-    await verifyNodePresent(page, table);
-    await verifyNodePresent(page, dashboard);
-
-    const mlModelFqn = get(mlModel, 'entityResponseData.fullyQualifiedName');
-    const mlModelNode = page.locator(
-      `[data-testid="lineage-node-${mlModelFqn}"]`
+        await verifyColumnLayerActive(page);
+      }
     );
 
-    await expect(mlModelNode).not.toBeVisible();
+    await test.step(
+      'Verify Upstream and Downstream expand collapse buttons',
+      async () => {
+        await dashboard.visitEntityPage(page);
+        await visitLineageTab(page);
+        await page.getByTestId('entity-panel-close-icon').click();
+        await performZoomOut(page);
+        await verifyNodePresent(page, topic);
+        await verifyNodePresent(page, mlModel);
+        await performExpand(page, mlModel, false, searchIndex);
+        await performExpand(page, topic, true);
+      }
+    );
 
-    await verifyColumnLayerActive(page);
+    await test.step(
+      'Reset global lineage config and verify lineage',
+      async () => {
+        await settingClick(page, GlobalSettingOptions.LINEAGE_CONFIG);
+        await fillLineageConfigForm(page, {
+          upstreamDepth: 2,
+          downstreamDepth: 2,
+          layer: 'Entity Lineage',
+        });
 
-    await settingClick(page, GlobalSettingOptions.LINEAGE_CONFIG);
-    await fillLineageConfigForm(page, {
-      upstreamDepth: 2,
-      downstreamDepth: 2,
-      layer: 'Entity Lineage',
-    });
+        await dashboard.visitEntityPage(page);
+        await visitLineageTab(page);
+
+        await verifyNodePresent(page, table);
+        await verifyNodePresent(page, dashboard);
+        await verifyNodePresent(page, mlModel);
+        await verifyNodePresent(page, searchIndex);
+        await verifyNodePresent(page, topic);
+      }
+    );
   } finally {
     await table.delete(apiContext);
     await topic.delete(apiContext);
     await dashboard.delete(apiContext);
     await mlModel.delete(apiContext);
+    await searchIndex.delete(apiContext);
 
     await afterAction();
   }

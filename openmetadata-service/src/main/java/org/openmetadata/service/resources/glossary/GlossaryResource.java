@@ -577,6 +577,36 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
     return importCsvInternal(securityContext, name, csv, dryRun);
   }
 
+  @PUT
+  @Path("/name/{name}/importAsync")
+  @Consumes(MediaType.TEXT_PLAIN)
+  @Produces(MediaType.APPLICATION_JSON)
+  @Valid
+  @Operation(
+      operationId = "importGlossaryAsync",
+      summary = "Import glossary in CSV format asynchronously",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Import initiated successfully",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = CsvImportResult.class)))
+      })
+  public Response importCsvAsync(
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the glossary", schema = @Schema(type = "string"))
+          @PathParam("name")
+          String name,
+      @RequestBody(description = "CSV data to import", required = true) String csv,
+      @Parameter(description = "Dry run the import", schema = @Schema(type = "boolean"))
+          @QueryParam("dryRun")
+          @DefaultValue("true")
+          boolean dryRun) {
+    return importCsvInternalAsync(securityContext, name, csv, dryRun);
+  }
+
   private Glossary getGlossary(CreateGlossary create, String user) {
     return getGlossary(repository, create, user);
   }

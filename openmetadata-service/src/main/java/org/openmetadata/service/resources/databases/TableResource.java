@@ -531,6 +531,38 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     return importCsvInternal(securityContext, name, csv, dryRun);
   }
 
+  @PUT
+  @Path("/name/{name}/importAsync")
+  @Consumes(MediaType.TEXT_PLAIN)
+  @Valid
+  @Operation(
+      operationId = "importTableAsync",
+      summary = "Import columns from CSV to update table asynchronously (no creation allowed)",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Import result",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = CsvImportResult.class)))
+      })
+  public Response importCsvAsync(
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the table", schema = @Schema(type = "string"))
+          @PathParam("name")
+          String name,
+      @Parameter(
+              description =
+                  "Dry-run when true is used for validating the CSV without really importing it. (default=true)",
+              schema = @Schema(type = "boolean"))
+          @DefaultValue("true")
+          @QueryParam("dryRun")
+          boolean dryRun,
+      String csv) {
+    return importCsvInternalAsync(securityContext, name, csv, dryRun);
+  }
+
   @DELETE
   @Path("/{id}")
   @Operation(

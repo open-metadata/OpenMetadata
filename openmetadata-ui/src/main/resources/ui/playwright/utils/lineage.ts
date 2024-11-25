@@ -12,6 +12,7 @@
  */
 import { expect, Page } from '@playwright/test';
 import { get } from 'lodash';
+import { parseCSV } from '../../src/utils/EntityImport/EntityImportUtils';
 import { ApiEndpointClass } from '../support/entity/ApiEndpointClass';
 import { ContainerClass } from '../support/entity/ContainerClass';
 import { DashboardClass } from '../support/entity/DashboardClass';
@@ -26,6 +27,38 @@ import {
   getEntityTypeSearchIndexMapping,
   toastNotification,
 } from './common';
+
+type LineageCSVRecord = {
+  fromEntityFQN: string;
+  fromServiceName: string;
+  fromServiceType: string;
+  toEntityFQN: string;
+  toServiceName: string;
+  toServiceType: string;
+  pipelineName: string;
+};
+
+export const LINEAGE_CSV_HEADERS = [
+  'fromEntityFQN',
+  'fromServiceName',
+  'fromServiceType',
+  'fromOwners',
+  'fromDomain',
+  'toEntityFQN',
+  'toServiceName',
+  'toServiceType',
+  'toOwners',
+  'toDomain',
+  'fromChildEntityFQN',
+  'toChildEntityFQN',
+  'pipelineName',
+  'pipelineType',
+  'pipelineDescription',
+  'pipelineOwners',
+  'pipelineDomain',
+  'pipelineServiceName',
+  'pipelineServiceType',
+];
 
 export const verifyColumnLayerInactive = async (page: Page) => {
   await page.click('[data-testid="lineage-layer-btn"]'); // Open Layer popover
@@ -136,6 +169,29 @@ export const connectEdgeBetweenNodes = async (
     `lineage-node-${fromNodeFqn}`,
     `lineage-node-${toNodeFqn}`
   );
+};
+
+export const performExpand = async (
+  page: Page,
+  node: EntityClass,
+  upstream: boolean,
+  newNode?: EntityClass
+) => {
+  const nodeFqn = get(node, 'entityResponseData.fullyQualifiedName');
+  const handleDirection = upstream ? 'left' : 'right';
+  const expandBtn = page
+    .locator(`[data-testid="lineage-node-${nodeFqn}"]`)
+    .locator(`.react-flow__handle-${handleDirection}`)
+    .getByTestId('plus-icon');
+
+  if (newNode) {
+    const expandRes = page.waitForResponse('/api/v1/lineage/getLineage?*');
+    await expandBtn.click();
+    await expandRes;
+    await verifyNodePresent(page, newNode);
+  } else {
+    await expect(expandBtn).toBeVisible();
+  }
 };
 
 export const verifyNodePresent = async (page: Page, node: EntityClass) => {
@@ -424,4 +480,123 @@ export const verifyColumnLayerActive = async (page: Page) => {
   await page.click('[data-testid="lineage-layer-btn"]'); // Open Layer popover
   await page.waitForSelector('[data-testid="lineage-layer-column-btn"].active');
   await page.click('[data-testid="lineage-layer-btn"]'); // Close Layer popover
+};
+
+export const verifyCSVHeaders = async (page: Page, headers: string[]) => {
+  LINEAGE_CSV_HEADERS.forEach((expectedHeader) => {
+    expect(headers).toContain(expectedHeader);
+  });
+};
+
+export const getLineageCSVData = async (page: Page) => {
+  await page.getByTestId('lineage-export').click();
+
+  await expect(page.getByRole('dialog', { name: 'Export' })).toBeVisible();
+
+  const [download] = await Promise.all([
+    page.waitForEvent('download'),
+    page.click('button#submit-button'),
+  ]);
+
+  const filePath = await download.path();
+
+  expect(filePath).not.toBeNull();
+
+  const fileContent = await download.createReadStream();
+
+  let fileData = '';
+  for await (const item of fileContent) {
+    fileData += item.toString();
+  }
+
+  const csvRows = fileData
+    .split('\n')
+    .map((row) => row.split(',').map((cell) => cell.replace(/"/g, '').trim()));
+
+  const headers = csvRows[0];
+  await verifyCSVHeaders(page, headers);
+
+  return parseCSV(csvRows);
+};
+
+export const verifyExportLineageCSV = async (
+  page: Page,
+  currentEntity: EntityClass,
+  entities: readonly [
+    TableClass,
+    DashboardClass,
+    TopicClass,
+    MlModelClass,
+    ContainerClass,
+    SearchIndexClass,
+    ApiEndpointClass,
+    MetricClass
+  ],
+  pipeline: PipelineClass
+) => {
+  const parsedData = await getLineageCSVData(page);
+  const currentEntityFQN = get(
+    currentEntity,
+    'entityResponseData.fullyQualifiedName'
+  );
+
+  const arr = [];
+  for (let i = 0; i < entities.length; i++) {
+    arr.push({
+      fromEntityFQN: currentEntityFQN,
+      fromServiceName: get(
+        currentEntity,
+        'entityResponseData.service.name',
+        ''
+      ),
+      fromServiceType: get(currentEntity, 'entityResponseData.serviceType', ''),
+      toEntityFQN: get(
+        entities[i],
+        'entityResponseData.fullyQualifiedName',
+        ''
+      ),
+      toServiceName: get(entities[i], 'entityResponseData.service.name', ''),
+      toServiceType: get(entities[i], 'entityResponseData.serviceType', ''),
+      pipelineName: get(pipeline, 'entityResponseData.name', ''),
+    });
+  }
+
+  arr.forEach((expectedRow: LineageCSVRecord) => {
+    const matchingRow = parsedData.find((row) =>
+      Object.keys(expectedRow).every(
+        (key) => row[key] === expectedRow[key as keyof LineageCSVRecord]
+      )
+    );
+
+    expect(matchingRow).toBeDefined(); // Ensure a matching row exists
+  });
+};
+
+export const verifyColumnLineageInCSV = async (
+  page: Page,
+  sourceEntity: EntityClass,
+  targetEntity: EntityClass,
+  sourceColFqn: string,
+  targetColFqn: string
+) => {
+  const parsedData = await getLineageCSVData(page);
+  const expectedRow = {
+    fromEntityFQN: get(sourceEntity, 'entityResponseData.fullyQualifiedName'),
+    fromServiceName: get(sourceEntity, 'entityResponseData.service.name', ''),
+    fromServiceType: get(sourceEntity, 'entityResponseData.serviceType', ''),
+    toEntityFQN: get(targetEntity, 'entityResponseData.fullyQualifiedName', ''),
+    toServiceName: get(targetEntity, 'entityResponseData.service.name', ''),
+    toServiceType: get(targetEntity, 'entityResponseData.serviceType', ''),
+    fromChildEntityFQN: sourceColFqn,
+    toChildEntityFQN: targetColFqn,
+    pipelineName: '',
+  };
+
+  const matchingRow = parsedData.find((row) =>
+    Object.keys(expectedRow).every(
+      (key) => row[key] === expectedRow[key as keyof LineageCSVRecord]
+    )
+  );
+
+  expect(matchingRow).toBeDefined(); // Ensure a matching row exists
 };

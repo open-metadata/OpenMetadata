@@ -16,6 +16,7 @@ import { t } from 'i18next';
 import { isUndefined, toLower } from 'lodash';
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { OwnerLabel } from '../../components/common/OwnerLabel/OwnerLabel.component';
 import RichTextEditorPreviewer from '../../components/common/RichTextEditor/RichTextEditorPreviewer';
 import {
   getEntityDetailsPath,
@@ -98,7 +99,7 @@ export const schemaTableColumns: ColumnsType<DatabaseSchema> = [
 
     render: (owners: EntityReference[]) =>
       !isUndefined(owners) && owners.length > 0 ? (
-        owners.map((owner: EntityReference) => getEntityName(owner))
+        <OwnerLabel owners={owners} />
       ) : (
         <Typography.Text data-testid="no-owner-text">
           {NO_DATA_PLACEHOLDER}
