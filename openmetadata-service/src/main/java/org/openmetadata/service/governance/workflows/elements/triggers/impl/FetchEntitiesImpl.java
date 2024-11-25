@@ -64,7 +64,13 @@ public class FetchEntitiesImpl implements JavaDelegate {
 
     try {
       return searchRepository.listWithDeepPagination(
-          entityType, null, searchFilter, searchSortFilter, batchSize, searchAfter);
+          entityType,
+          null,
+          searchFilter,
+          new String[] {"fullyQualifiedName"},
+          searchSortFilter,
+          batchSize,
+          searchAfter);
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
