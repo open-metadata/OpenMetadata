@@ -80,6 +80,7 @@ import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
 
+@Slf4j
 @Repository
 public class LineageRepository {
   private final CollectionDAO dao;
