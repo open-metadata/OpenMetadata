@@ -39,7 +39,10 @@ export type OidcUser = {
 export interface AuthenticatorRef {
   invokeLogin: () => void;
   invokeLogout: () => void;
-  renewIdToken: () => Promise<string> | Promise<AccessTokenResponse>;
+  renewIdToken: () =>
+    | Promise<string>
+    | Promise<AccessTokenResponse>
+    | Promise<void>;
 }
 
 export enum JWT_PRINCIPAL_CLAIMS {

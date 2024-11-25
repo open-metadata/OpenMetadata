@@ -340,6 +340,7 @@ export const extractDetailsFromToken = (token: string) => {
         return {
           exp,
           isExpired: false,
+          timeoutExpiry: 0,
         };
       }
       const threshouldMillis = EXPIRY_THRESHOLD_MILLES;
