@@ -147,8 +147,10 @@ const TableConstraints: FC<TableConstraintsProps> = ({
                 <Space className="constraint-columns" key={index}>
                   <ForeignKeyConstraint />
                   <Space direction="vertical" size={16}>
-                    <Typography.Text>{columns?.join(', ')}</Typography.Text>
-                    <div data-testid="referred-column-name">
+                    <Typography.Text data-testid="constraint-column-name">
+                      {columns?.join(', ')}
+                    </Typography.Text>
+                    <div data-testid="referred-column-name-fqn">
                       {map(referredColumns, (referredColumn) => (
                         <Tooltip
                           placement="top"
