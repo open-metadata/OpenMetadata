@@ -459,46 +459,38 @@ public class SearchRepository {
       IndexMapping indexMapping,
       EntityInterface entity) {
 
-    if (changeDescription != null) {
+    if (changeDescription != null && entityType.equalsIgnoreCase(Entity.PAGE)) {
+      String indexName = indexMapping.getIndexName(clusterAlias);
       for (FieldChange field : changeDescription.getFieldsAdded()) {
         if (field.getName().contains("parent")) {
-          if (entityType.equalsIgnoreCase(Entity.PAGE)) {
-            String indexName = indexMapping.getIndexName(clusterAlias);
-            String oldParentFQN = entity.getName();
-            String newParentFQN = entity.getFullyQualifiedName();
-            // Propagate FQN updates to all subchildren
-            searchClient.updateByFqnPrefix(indexName, oldParentFQN, newParentFQN);
-          }
+          String oldParentFQN = entity.getName();
+          String newParentFQN = entity.getFullyQualifiedName();
+          // Propagate FQN updates to all subchildren
+          searchClient.updateByFqnPrefix(indexName, oldParentFQN, newParentFQN);
         }
       }
 
       for (FieldChange field : changeDescription.getFieldsUpdated()) {
         if (field.getName().contains("parent")) {
-          if (entityType.equalsIgnoreCase(Entity.PAGE)) {
-            String indexName = indexMapping.getIndexName(clusterAlias);
-            EntityReference newEntityReference =
-                JsonUtils.readValue(field.getNewValue().toString(), EntityReference.class);
-            EntityReference entityReferenceBeforeUpdate =
-                JsonUtils.readValue(field.getOldValue().toString(), EntityReference.class);
-            // Propagate FQN updates to all subchildren
-            searchClient.updateByFqnPrefix(
-                indexName,
-                entityReferenceBeforeUpdate.getFullyQualifiedName(),
-                newEntityReference.getFullyQualifiedName());
-          }
+          EntityReference newEntityReference =
+              JsonUtils.readValue(field.getNewValue().toString(), EntityReference.class);
+          EntityReference entityReferenceBeforeUpdate =
+              JsonUtils.readValue(field.getOldValue().toString(), EntityReference.class);
+          // Propagate FQN updates to all subchildren
+          searchClient.updateByFqnPrefix(
+              indexName,
+              entityReferenceBeforeUpdate.getFullyQualifiedName(),
+              newEntityReference.getFullyQualifiedName());
         }
       }
 
       for (FieldChange field : changeDescription.getFieldsDeleted()) {
         if (field.getName().contains("parent")) {
-          if (entityType.equalsIgnoreCase(Entity.PAGE)) {
-            String indexName = indexMapping.getIndexName(clusterAlias);
-            EntityReference entityReferenceBeforeUpdate =
-                JsonUtils.readValue(field.getOldValue().toString(), EntityReference.class);
-            // Propagate FQN updates to all subchildren
-            searchClient.updateByFqnPrefix(
-                indexName, entityReferenceBeforeUpdate.getFullyQualifiedName(), "");
-          }
+          EntityReference entityReferenceBeforeUpdate =
+              JsonUtils.readValue(field.getOldValue().toString(), EntityReference.class);
+          // Propagate FQN updates to all subchildren
+          searchClient.updateByFqnPrefix(
+              indexName, entityReferenceBeforeUpdate.getFullyQualifiedName(), "");
         }
       }
     }
