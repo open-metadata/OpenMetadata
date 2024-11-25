@@ -133,7 +133,7 @@ def test_connection(
 
     def test_pipeline_details_access(session):
         try:
-            result = session.query(SerializedDagModel).limit(1)
+            result = session.query(SerializedDagModel).first()
             if result:
                 return result
             raise AirflowPipelineNotFound("No Pipeline found")
@@ -147,9 +147,9 @@ def test_connection(
                 if hasattr(SerializedDagModel, "_data")
                 else SerializedDagModel.data  # For 2.2.5 and 2.1.4
             )
-            result = session.query(json_data_column).limit(1).all()
+            result = session.query(json_data_column).first()
             if result:
-                retrieved_tasks = result[0][0]["dag"]["tasks"]
+                retrieved_tasks = result[0]['dag']['tasks']
                 if retrieved_tasks:
                     return retrieved_tasks
             raise AirflowTaskDetailsNotFound("No task found")
