@@ -346,7 +346,7 @@ test = {
     VERSIONS["airflow"],
     "boto3-stubs",
     "mypy-boto3-glue",
-    "coverage==7.6.7",
+    "coverage==7.6.1",
     # Install GE because it's not in the `all` plugin
     VERSIONS["great-expectations"],
     "basedpyright~=1.14",
