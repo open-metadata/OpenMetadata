@@ -90,9 +90,20 @@ export const CustomEdge = ({
     activeLayer,
     onAddPipelineClick,
     onColumnEdgeRemove,
+    dataQualityLineage,
   } = useLineageProvider();
 
   const { theme } = useApplicationStore();
+
+  const showDqTracing = useMemo(() => {
+    return (
+      (activeLayer.includes(LineageLayer.DataObservability) &&
+        dataQualityLineage?.edges?.some(
+          (dqEdge) => dqEdge?.doc_id === edge?.doc_id
+        )) ??
+      false
+    );
+  }, [activeLayer, dataQualityLineage, edge]);
 
   const isColumnHighlighted = useMemo(() => {
     if (!isColumnLineage) {
@@ -154,7 +165,7 @@ export const CustomEdge = ({
 
     let stroke = isStrokeNeeded ? theme.primaryColor : undefined;
 
-    if (edge?.isDqTestFailure) {
+    if (showDqTracing) {
       stroke = RED_3;
     }
 
@@ -172,6 +183,7 @@ export const CustomEdge = ({
     isColumnHighlighted,
     isColumnLineage,
     tracedColumns,
+    showDqTracing,
   ]);
 
   const isPipelineEdgeAllowed = (
