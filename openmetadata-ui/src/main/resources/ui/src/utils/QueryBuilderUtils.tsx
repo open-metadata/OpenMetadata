@@ -16,6 +16,7 @@ import { t } from 'i18next';
 import { isUndefined } from 'lodash';
 import React from 'react';
 import { Fields, RenderSettings } from 'react-awesome-query-builder';
+import { EntityReferenceFields } from '../enums/AdvancedSearch.enum';
 import {
   EsBoolQuery,
   EsExistsQuery,
@@ -26,6 +27,31 @@ import {
 } from '../pages/ExplorePage/ExplorePage.interface';
 import { generateUUID } from './StringsUtils';
 
+export const JSONLOGIC_FIELDS_TO_IGNORE_SPLIT = [
+  EntityReferenceFields.EXTENSION,
+];
+
+const resolveFieldType = (fields: any, field: string): string | undefined => {
+  // Split the field into parts (e.g., "extension.expert")
+  const fieldParts = field.split('.');
+  let currentField = fields[fieldParts[0]];
+
+  // If the top-level field doesn't exist, return undefined
+  if (!currentField) {
+    return undefined;
+  }
+
+  // Traverse nested subfields if there are more parts
+  for (let i = 1; i < fieldParts.length; i++) {
+    if (!currentField?.subfields?.[fieldParts[i]]) {
+      return undefined; // Subfield not found
+    }
+    currentField = currentField.subfields[fieldParts[i]];
+  }
+
+  return currentField?.type;
+};
+
 export const getSelectEqualsNotEqualsProperties = (
   parentPath: Array<string>,
   field: string,
@@ -33,6 +59,12 @@ export const getSelectEqualsNotEqualsProperties = (
   operator: string
 ) => {
   const id = generateUUID();
+  const isEqualNotEqualOp = ['equal', 'not_equal'].includes(operator);
+  const valueType = isEqualNotEqualOp
+    ? ['text']
+    : Array.isArray(value)
+    ? ['multiselect']
+    : ['select'];
 
   return {
     [id]: {
@@ -43,20 +75,12 @@ export const getSelectEqualsNotEqualsProperties = (
         value: [value],
         valueSrc: ['value'],
         operatorOptions: null,
-        valueType: Array.isArray(value) ? ['multiselect'] : ['select'],
-        asyncListValues: Array.isArray(value)
-          ? value.map((valueItem) => ({
-              key: valueItem,
-              value: valueItem,
-              children: valueItem,
-            }))
-          : [
-              {
-                key: value,
-                value,
-                children: value,
-              },
-            ],
+        valueType: valueType,
+        asyncListValues: isEqualNotEqualOp
+          ? undefined
+          : Array.isArray(value)
+          ? value.map((item) => ({ key: item, value: item, children: item }))
+          : [{ key: value, value, children: value }],
       },
       id,
       path: [...parentPath, id],
@@ -177,7 +201,8 @@ export const getEqualFieldProperties = (
 
 export const getJsonTreePropertyFromQueryFilter = (
   parentPath: Array<string>,
-  queryFilter: QueryFieldInterface[]
+  queryFilter: QueryFieldInterface[],
+  fields?: Fields
 ) => {
   const convertedObj = queryFilter.reduce(
     (acc, curr: QueryFieldInterface): Record<string, any> => {
@@ -187,27 +212,34 @@ export const getJsonTreePropertyFromQueryFilter = (
           ...getEqualFieldProperties(parentPath, curr.term?.deleted as boolean),
         };
       } else if (!isUndefined(curr.term)) {
+        const [field, value] = Object.entries(curr.term)[0];
+        const fieldType = resolveFieldType(fields, field);
+        const op = fieldType === 'text' ? 'equal' : 'select_equals';
+
         return {
           ...acc,
           ...getSelectEqualsNotEqualsProperties(
             parentPath,
-            Object.keys(curr.term)[0],
-            Object.values(curr.term)[0] as string,
-            'select_equals'
+            field,
+            value as string,
+            op
           ),
         };
       } else if (
         !isUndefined((curr.bool?.must_not as QueryFieldInterface)?.term)
       ) {
         const value = Object.values((curr.bool?.must_not as EsTerm)?.term)[0];
+        const key = Object.keys((curr.bool?.must_not as EsTerm)?.term)[0];
+        const fieldType = resolveFieldType(fields, key);
+        const op = fieldType === 'text' ? 'not_equal' : 'select_not_equals';
 
         return {
           ...acc,
           ...getSelectEqualsNotEqualsProperties(
             parentPath,
-            Object.keys((curr.bool?.must_not as EsTerm)?.term)[0],
+            key,
             value as string,
-            Array.isArray(value) ? 'select_not_any_in' : 'select_not_equals'
+            Array.isArray(value) ? 'select_not_any_in' : op
           ),
         };
       } else if (
@@ -292,7 +324,8 @@ export const getJsonTreePropertyFromQueryFilter = (
 };
 
 export const getJsonTreeFromQueryFilter = (
-  queryFilter: QueryFilterInterface
+  queryFilter: QueryFilterInterface,
+  fields?: Fields
 ) => {
   try {
     const id1 = generateUUID();
@@ -309,7 +342,8 @@ export const getJsonTreeFromQueryFilter = (
           children1: getJsonTreePropertyFromQueryFilter(
             [id1, id2],
             (mustFilters?.[0]?.bool as EsBoolQuery)
-              .must as QueryFieldInterface[]
+              .must as QueryFieldInterface[],
+            fields
           ),
           id: id2,
           path: [id1, id2],
@@ -437,36 +471,41 @@ export const elasticsearchToJsonLogic = (
 
   if (query.term) {
     const termQuery = query.term;
-    const field = Object.keys(termQuery)[0];
-    const value = termQuery[field];
+    const [field, value] = Object.entries(termQuery)[0];
     const op = Array.isArray(value) ? 'in' : '==';
+
     if (field.includes('.')) {
       const [parentField, childField] = field.split('.');
 
-      return {
-        some: [
-          { var: parentField },
-          {
-            [op]: [{ var: childField }, value],
-          },
-        ],
-      };
+      return JSONLOGIC_FIELDS_TO_IGNORE_SPLIT.includes(
+        parentField as EntityReferenceFields
+      )
+        ? { '==': [{ var: field }, value] }
+        : {
+            some: [
+              { var: parentField },
+              { [op]: [{ var: childField }, value] },
+            ],
+          };
     }
 
-    return {
-      '==': [{ var: field }, value],
-    };
+    return { '==': [{ var: field }, value] };
   }
 
   if (query.exists) {
-    const existsQuery = query.exists;
-    const field = existsQuery.field;
+    const { field } = query.exists;
 
     if (field.includes('.')) {
       const [parentField] = field.split('.');
 
       return {
-        '!!': { var: parentField },
+        '!!': {
+          var: JSONLOGIC_FIELDS_TO_IGNORE_SPLIT.includes(
+            parentField as EntityReferenceFields
+          )
+            ? field
+            : parentField,
+        },
       };
     }
 
@@ -478,12 +517,21 @@ export const elasticsearchToJsonLogic = (
   if (query.wildcard) {
     const wildcardQuery = query.wildcard;
     const field = Object.keys(wildcardQuery)[0];
-    // const value = field.value;
     const value = wildcardQuery[field].value;
 
     if (field.includes('.')) {
       // use in operator for wildcards
       const [parentField, childField] = field.split('.');
+
+      if (
+        JSONLOGIC_FIELDS_TO_IGNORE_SPLIT.includes(
+          parentField as EntityReferenceFields
+        )
+      ) {
+        return {
+          in: [{ var: field }, value],
+        };
+      }
 
       return {
         some: [
@@ -556,7 +604,15 @@ export const jsonLogicToElasticsearch = (
   if (logic['==']) {
     const [field, value] = logic['=='];
     const fieldVar = parentField ? `${parentField}.${field.var}` : field.var;
-    if (typeof field === 'object' && field.var && field.var.includes('.')) {
+    const [parentKey] = field.var.split('.');
+    if (
+      typeof field === 'object' &&
+      field.var &&
+      field.var.includes('.') &&
+      !JSONLOGIC_FIELDS_TO_IGNORE_SPLIT.includes(
+        parentKey as EntityReferenceFields
+      )
+    ) {
       return {
         bool: {
           must: [
