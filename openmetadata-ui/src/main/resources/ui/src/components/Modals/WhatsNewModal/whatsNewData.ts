@@ -1154,7 +1154,6 @@ To continue pursuing this objective, the application was completely refactored t
     features: [],
     changeLogs: {
       Improvements: `- **Improvement**: Added async apis for csv import.
-- **Improvement**: Teams api to update and remove users.
 - **Improvement**: Skip domain check for bots and admin
 - **Improvement**: MYSQL lineage and usage.
 - **Minor**: Added Lineage Field back to SearchLineage.
