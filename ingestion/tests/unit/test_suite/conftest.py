@@ -100,7 +100,6 @@ def create_sqlite_table():
         None,
         sampler,
         TABLE,
-        orm_table=User,
     )
 
     runner = sqa_profiler_interface.runner

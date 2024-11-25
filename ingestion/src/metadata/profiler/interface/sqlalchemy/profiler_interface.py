@@ -25,7 +25,7 @@ from typing import Any, Dict, List, Optional, Type, Union
 
 from sqlalchemy import Column, inspect, text
 from sqlalchemy.exc import DBAPIError, ProgrammingError, ResourceClosedError
-from sqlalchemy.orm import DeclarativeMeta, scoped_session
+from sqlalchemy.orm import scoped_session
 
 from metadata.generated.schema.entity.data.table import (
     CustomMetricProfile,
@@ -92,7 +92,6 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
         sampler: SamplerInterface,
         thread_count: int = 5,
         timeout_seconds: int = 43200,
-        orm_table: Optional[DeclarativeMeta] = None,
         **kwargs,
     ):
         """Instantiate SQA Interface object"""
@@ -109,7 +108,9 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
             timeout_seconds=timeout_seconds,
         )
 
-        self._table = orm_table
+        self._table = self.build_table_orm(
+            self.table_entity, self.service_connection_config, self.ometa_client
+        )
         self.create_session()
         self.system_metrics_computer = self.initialize_system_metrics_computer()
 
@@ -375,17 +376,17 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
         logger.debug(f"Computing system metrics for {runner.table.name}")
         return self.system_metrics_computer.get_system_metrics(table=runner.table)
 
-    def _create_thread_safe_runner(self, session):
+    def _create_thread_safe_runner(self, session, column=None):
         """Create thread safe runner"""
         if not hasattr(thread_local, "runner"):
             thread_local.runner = QueryRunner(
                 session=session,
-                dataset=self.sampler.dataset,
+                dataset=self.sampler.get_dataset(column=column),
                 partition_details=self.sampler.partition_details,
                 profile_sample_query=self.sampler.sample_query,
             )
             return thread_local.runner
-        thread_local.runner.dataset = self.sampler.dataset
+        thread_local.runner.dataset = self.sampler.get_dataset(column=column)
         return thread_local.runner
 
     def compute_metrics_in_thread(
@@ -400,7 +401,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
         with Session() as session:
             self.set_session_tag(session)
             self.set_catalog(session)
-            runner = self._create_thread_safe_runner(session)
+            runner = self._create_thread_safe_runner(session, metric_func.column)
             row = None
             try:
                 row = self._get_metric_fn[metric_func.metric_type.value](
@@ -408,7 +409,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
                     runner=runner,
                     session=session,
                     column=metric_func.column,
-                    sample=self.sampler.dataset,
+                    sample=runner.dataset,
                 )
                 if isinstance(row, dict):
                     row = self._validate_nulls(row)
@@ -525,7 +526,6 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
         column: Column,
         metric: Type[HybridMetric],
         column_results: Dict[str, Any],
-        **kwargs,
     ):
         """Given a list of metrics, compute the given results
         and returns the values

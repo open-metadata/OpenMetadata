@@ -48,6 +48,7 @@ from metadata.generated.schema.tests.basic import (
     TestCaseStatus,
     TestResultValue,
 )
+from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.orm.converter.base import build_orm_col
 from metadata.profiler.orm.functions.md5 import MD5
 from metadata.profiler.orm.functions.substr import Substr
@@ -429,7 +430,7 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
             self.runtime_params.table_profile_config.profileSampleType
             == ProfileSampleType.ROWS
         ):
-            row_count = self.get_row_count()
+            row_count = self.get_total_row_count()
             if row_count is None:
                 raise ValueError("Row count is required for ROWS profile sample type")
             return int(
@@ -633,5 +634,13 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
         )
 
     def get_row_count(self) -> Optional[int]:
-        self.runner._sample = None  # pylint: disable=protected-access
         return self._compute_row_count(self.runner, None)
+
+    def get_total_row_count(self) -> Optional[int]:
+        row_count = Metrics.ROW_COUNT()
+        try:
+            row = self.runner.select_first_from_table(row_count.fn())
+            return dict(row).get(Metrics.ROW_COUNT.name)
+        except Exception as e:
+            logger.error(f"Error getting row count: {e}")
+            return None

@@ -65,8 +65,7 @@ class PandasTestSuiteInterface(TestSuiteInterface, PandasInterfaceMixin):
             self.partition_details,
         ) = self._get_table_config()
 
-        # add partition logic to test suite
-        self.dataset = self.sampler.dataset
+        self.dataset = self.sampler.get_dataset()
 
     def _get_validator_builder(
         self, test_case: TestCase, entity_type: str

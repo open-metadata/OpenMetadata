@@ -27,6 +27,7 @@ from metadata.generated.schema.entity.data.table import (
     TableData,
 )
 from metadata.ingestion.connections.session import create_and_bind_thread_safe_session
+from metadata.mixins.sqalchemy.sqa_mixin import SQAInterfaceMixin
 from metadata.profiler.orm.functions.modulo import ModuloFn
 from metadata.profiler.orm.functions.random_num import RandomNumFn
 from metadata.profiler.processor.handle_partition import build_partition_predicate
@@ -55,7 +56,7 @@ def _object_value_for_elem(self, elem):
 Enum._object_value_for_elem = _object_value_for_elem  # pylint: disable=protected-access
 
 
-class SQASampler(SamplerInterface):
+class SQASampler(SamplerInterface, SQAInterfaceMixin):
     """
     Generates a sample of the data to not
     run the query in the whole table.
@@ -63,10 +64,12 @@ class SQASampler(SamplerInterface):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._table = kwargs["orm_table"]
+        self._table = self.build_table_orm(
+            self.entity, self.service_connection_config, self.ometa_client
+        )
 
     @property
-    def dataset(self):
+    def raw_dataset(self):
         return self._table
 
     def get_client(self):
@@ -91,7 +94,7 @@ class SQASampler(SamplerInterface):
         Returns:
         """
         # only sample the column if we are computing a column metric to limit the amount of data scaned
-        selectable = self.set_tablesample(self.dataset.__table__)
+        selectable = self.set_tablesample(self.raw_dataset.__table__)
 
         entity = selectable if column is None else selectable.c.get(column.key)
         if label is not None:
@@ -109,13 +112,13 @@ class SQASampler(SamplerInterface):
             rnd = self._base_sample_query(
                 column,
                 (ModuloFn(RandomNumFn(), 100)).label(RANDOM_LABEL),
-            ).cte(f"{self.dataset.__tablename__}_rnd")
+            ).cte(f"{self.raw_dataset.__tablename__}_rnd")
             session_query = self.client.query(rnd)
             return session_query.where(
                 rnd.c.random <= self.sample_config.profile_sample
-            ).cte(f"{self.dataset.__tablename__}_sample")
+            ).cte(f"{self.raw_dataset.__tablename__}_sample")
 
-        table_query = self.client.query(self.dataset)
+        table_query = self.client.query(self.raw_dataset)
         session_query = self._base_sample_query(
             column,
             (ModuloFn(RandomNumFn(), table_query.count())).label(RANDOM_LABEL),
@@ -123,7 +126,7 @@ class SQASampler(SamplerInterface):
         return (
             session_query.order_by(RANDOM_LABEL)
             .limit(self.sample_config.profile_sample)
-            .cte(f"{self.dataset.__tablename__}_rnd")
+            .cte(f"{self.raw_dataset.__tablename__}_rnd")
         )
 
     def get_dataset(self, column=None, **__) -> Union[DeclarativeMeta, AliasedClass]:
@@ -141,11 +144,11 @@ class SQASampler(SamplerInterface):
             if self.partition_details:
                 return self._partitioned_table()
 
-            return self.dataset
+            return self.raw_dataset
 
         sampled = self.get_sample_query(column=column)
 
-        return aliased(self.dataset, sampled)
+        return aliased(self.raw_dataset, sampled)
 
     def fetch_sample_data(self, columns: Optional[List[Column]] = None) -> TableData:
         """
@@ -164,8 +167,8 @@ class SQASampler(SamplerInterface):
         if not columns:
             sqa_columns = [col for col in inspect(rnd).c if col.name != RANDOM_LABEL]
         else:
-            # we can't directly use columns as it is bound to self.dataset and not the rnd table.
-            # If we use it, it will result in a cross join between self.dataset and rnd table
+            # we can't directly use columns as it is bound to self.raw_dataset and not the rnd table.
+            # If we use it, it will result in a cross join between self.raw_dataset and rnd table
             names = [col.name for col in columns]
             sqa_columns = [
                 col
@@ -185,10 +188,10 @@ class SQASampler(SamplerInterface):
                 "Cannot fetch sample data with random sampling. Falling back to 100 rows."
             )
             logger.debug(traceback.format_exc())
-            sqa_columns = list(inspect(self.dataset).c)
+            sqa_columns = list(inspect(self.raw_dataset).c)
             sqa_sample = (
                 self.client.query(*sqa_columns)
-                .select_from(self.dataset)
+                .select_from(self.raw_dataset)
                 .limit(100)
                 .all()
             )
@@ -218,13 +221,13 @@ class SQASampler(SamplerInterface):
         if not is_safe_sql_query(self.sample_query):
             raise RuntimeError(f"SQL expression is not safe\n\n{self.sample_query}")
 
-        return self.client.query(self.dataset).from_statement(
+        return self.client.query(self.raw_dataset).from_statement(
             text(f"{self.sample_query}")
         )
 
     def _partitioned_table(self) -> Query:
         """Return the Query object for partitioned tables"""
-        return aliased(self.get_partitioned_query().subquery())
+        return aliased(self.raw_dataset, self.get_partitioned_query().subquery())
 
     def get_partitioned_query(self, query=None) -> Query:
         """Return the partitioned query"""
@@ -233,12 +236,12 @@ class SQASampler(SamplerInterface):
         )  # satisfying type checker
         partition_filter = build_partition_predicate(
             self.partition_details,
-            self.dataset.__table__.c,
+            self.raw_dataset.__table__.c,
         )
         if query is not None:
             return query.filter(partition_filter)
-        return self.client.query(self.dataset).filter(partition_filter)
+        return self.client.query(self.raw_dataset).filter(partition_filter)
 
     def get_columns(self):
         """get columns from entity"""
-        return list(inspect(self.dataset).c)
+        return list(inspect(self.raw_dataset).c)

@@ -169,7 +169,7 @@ class PandasInterfaceTest(TestCase):
         with (
             patch.object(
                 DatalakeSampler,
-                "table",
+                "raw_dataset",
                 new_callable=lambda: [
                     cls.df1,
                     pd.concat([cls.df2, pd.DataFrame(index=cls.df1.index)]),

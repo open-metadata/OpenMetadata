@@ -260,6 +260,7 @@ class TestE2EWorkflow(unittest.TestCase):
 
                 workflow = TestSuiteWorkflow.create(test_suite_config)
                 workflow.execute()
+                workflow.print_status()
                 workflow.raise_from_status()
 
                 test_case_1 = self.metadata.get_by_name(
@@ -387,6 +388,7 @@ class TestE2EWorkflow(unittest.TestCase):
 
         workflow = TestSuiteWorkflow.create(test_suite_config)
         workflow.execute()
+        workflow.print_status()
         workflow.raise_from_status()
 
         test_case_1 = self.metadata.get_by_name(

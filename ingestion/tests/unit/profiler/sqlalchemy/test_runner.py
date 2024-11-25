@@ -90,9 +90,9 @@ class RunnerTest(TestCase):
                 sample_config=SampleConfig(profile_sample=50.0),
                 orm_table=User,
             )
-            cls.sample = sampler.get_dataset()
+            cls.dataset = sampler.get_dataset()
 
-        cls.raw_runner = QueryRunner(session=cls.session, table=User, sample=cls.sample)
+        cls.raw_runner = QueryRunner(session=cls.session, dataset=cls.dataset)
         cls.timeout_runner: Timer = cls_timeout(1)(Timer())
 
         # Insert 30 rows

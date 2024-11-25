@@ -96,9 +96,11 @@ class SampleTest(TestCase):
         Test sampling
         """
         sampler = BigQuerySampler(
-            client=self.session,
-            table=User,
-            profile_sample_config=SampleConfig(
+            service_connection_config=self.bq_conn,
+            ometa_client=None,
+            entity=self.table_entity,
+            orm_table=User,
+            sample_config=SampleConfig(
                 profile_sample_type=ProfileSampleType.PERCENTAGE, profile_sample=50.0
             ),
             table_type=TableType.Regular,
@@ -117,9 +119,11 @@ class SampleTest(TestCase):
         Test view sampling
         """
         sampler = BigQuerySampler(
-            client=self.session,
-            table=User,
-            profile_sample_config=SampleConfig(
+            service_connection_config=self.bq_conn,
+            ometa_client=None,
+            entity=self.table_entity,
+            orm_table=User,
+            sample_config=SampleConfig(
                 profile_sample_type=ProfileSampleType.PERCENTAGE, profile_sample=50.0
             ),
             table_type=TableType.View,
@@ -140,9 +144,11 @@ class SampleTest(TestCase):
         Test view sampling with partition
         """
         sampler = BigQuerySampler(
-            client=self.session,
-            table=User,
-            profile_sample_config=SampleConfig(
+            service_connection_config=self.bq_conn,
+            ometa_client=None,
+            entity=self.table_entity,
+            orm_table=User,
+            sample_config=SampleConfig(
                 profile_sample_type=ProfileSampleType.PERCENTAGE, profile_sample=50.0
             ),
             partition_details=PartitionProfilerConfig(
@@ -169,9 +175,11 @@ class SampleTest(TestCase):
         Test sampling with partiton.
         """
         sampler = BigQuerySampler(
-            client=self.session,
-            table=User,
-            profile_sample_config=SampleConfig(
+            service_connection_config=self.bq_conn,
+            ometa_client=None,
+            entity=self.table_entity,
+            orm_table=User,
+            sample_config=SampleConfig(
                 profile_sample_type=ProfileSampleType.PERCENTAGE, profile_sample=50.0
             ),
             partition_details=PartitionProfilerConfig(

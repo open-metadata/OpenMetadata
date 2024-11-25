@@ -83,7 +83,7 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
         )
 
         self.client = self.sampler.client
-        self.dataset = self.sampler.dataset
+        self.dataset = self.sampler.get_dataset()
         self.complex_df()
 
     def complex_df(self):
@@ -320,9 +320,7 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
             logger.warning(f"Unexpected exception computing metrics: {exc}")
             return None
 
-    def get_hybrid_metrics(
-        self, column: Column, metric: Metrics, column_results: Dict, **kwargs
-    ):
+    def get_hybrid_metrics(self, column: Column, metric: Metrics, column_results: Dict):
         """Given a list of metrics, compute the given results
         and returns the values
 

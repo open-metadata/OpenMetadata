@@ -68,7 +68,7 @@ class QueryRunner:
         return self._dataset
 
     @dataset.setter
-    def _(self, dataset):
+    def dataset(self, dataset):
         self._dataset = dataset
 
     def _build_query(self, *entities, **kwargs) -> Query:

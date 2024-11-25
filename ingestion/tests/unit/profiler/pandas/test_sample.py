@@ -158,7 +158,7 @@ class DatalakeSampleTest(TestCase):
         """
         with (
             patch.object(
-                DatalakeSampler, "table", new_callable=lambda: [cls.df1, cls.df2]
+                DatalakeSampler, "raw_dataset", new_callable=lambda: [cls.df1, cls.df2]
             ),
             patch.object(DatalakeSampler, "get_client", return_value=Mock()),
         ):
@@ -188,7 +188,9 @@ class DatalakeSampleTest(TestCase):
         """
         with (
             patch.object(
-                DatalakeSampler, "table", new_callable=lambda: [self.df1, self.df2]
+                DatalakeSampler,
+                "raw_dataset",
+                new_callable=lambda: [self.df1, self.df2],
             ),
             patch.object(DatalakeSampler, "get_client", return_value=Mock()),
         ):
@@ -220,7 +222,9 @@ class DatalakeSampleTest(TestCase):
         """
         with (
             patch.object(
-                DatalakeSampler, "table", new_callable=lambda: [self.df1, self.df2]
+                DatalakeSampler,
+                "raw_dataset",
+                new_callable=lambda: [self.df1, self.df2],
             ),
             patch.object(DatalakeSampler, "get_client", return_value=Mock()),
         ):
@@ -255,7 +259,7 @@ class DatalakeSampleTest(TestCase):
         )
         res = profiler.compute_metrics()._table_results
         # We expect the full count of the table
-        assert res.get(Metrics.ROW_COUNT.name) == 4
+        assert res.get(Metrics.ROW_COUNT.name) == 2
 
     @pytest.mark.skip(reason="Flaky test due to small sample size")
     def test_random_sample_histogram(self):
@@ -295,7 +299,9 @@ class DatalakeSampleTest(TestCase):
         """
         with (
             patch.object(
-                DatalakeSampler, "table", new_callable=lambda: [self.df1, self.df2]
+                DatalakeSampler,
+                "raw_dataset",
+                new_callable=lambda: [self.df1, self.df2],
             ),
             patch.object(DatalakeSampler, "get_client", return_value=Mock()),
         ):
@@ -321,7 +327,9 @@ class DatalakeSampleTest(TestCase):
         """
         with (
             patch.object(
-                DatalakeSampler, "table", new_callable=lambda: [self.df1, self.df2]
+                DatalakeSampler,
+                "raw_dataset",
+                new_callable=lambda: [self.df1, self.df2],
             ),
             patch.object(DatalakeSampler, "get_client", return_value=Mock()),
         ):

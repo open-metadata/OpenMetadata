@@ -135,12 +135,10 @@ class ProfilerWithStatistics(SQAProfilerInterface, StoredStatisticsSource):
             result.update(super_table_metrics)
         return result
 
-    def get_hybrid_metrics(
-        self, column: Column, metric: Metric, column_results: Dict, **kwargs
-    ):
+    def get_hybrid_metrics(self, column: Column, metric: Metric, column_results: Dict):
         # this metrics might have been computed in a previous step
         return column_results.get(metric.name()) or super().get_hybrid_metrics(
-            column, metric, column_results, **kwargs
+            column, metric, column_results
         )
 
     def is_statistic_metric(self, metric: Metric) -> bool:

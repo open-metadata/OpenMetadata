@@ -115,7 +115,7 @@ class TestDatalakeProfilerTestE2E:
         table_profile = profile.profile
         column_profile = profile.columns[0].profile
 
-        assert table_profile.rowCount == 3.0
+        assert table_profile.rowCount == 1.0
         assert column_profile.valuesCount == 1.0
 
     def test_datetime_partitioned_datalake_profiler_workflow(
@@ -162,7 +162,7 @@ class TestDatalakeProfilerTestE2E:
         table_profile = profile.profile
         column_profile = profile.columns[0].profile
 
-        assert table_profile.rowCount == 3.0
+        assert table_profile.rowCount == 2.0
         assert column_profile.valuesCount == 2.0
 
     def test_integer_range_partitioned_datalake_profiler_workflow(
@@ -210,7 +210,7 @@ class TestDatalakeProfilerTestE2E:
         table_profile = profile.profile
         column_profile = profile.columns[0].profile
 
-        assert table_profile.rowCount == 3.0
+        assert table_profile.rowCount == 2.0
         assert column_profile.valuesCount == 2.0
 
     def test_datalake_profiler_workflow_with_custom_profiler_config(

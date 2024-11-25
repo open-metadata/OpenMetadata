@@ -21,10 +21,8 @@ from metadata.generated.schema.entity.services.connections.database.postgresConn
 from metadata.profiler.interface.sqlalchemy.profiler_interface import (
     SQAProfilerInterface,
 )
-from metadata.profiler.processor.sampler.sqlalchemy.postgres.sampler import (
-    PostgresSampler,
-)
 from metadata.sampler.models import SampleConfig
+from metadata.sampler.sqlalchemy.postgres.sampler import PostgresSampler
 from metadata.sampler.sqlalchemy.sampler import SQASampler
 
 Base = declarative_base()
@@ -69,12 +67,14 @@ class SampleTest(TestCase):
         Test sampling
         """
         sampler = PostgresSampler(
-            client=self.session,
-            table=User,
-            profile_sample_config=SampleConfig(
+            service_connection_config=self.psql_conn,
+            ometa_client=None,
+            entity=self.table_entity,
+            sample_config=SampleConfig(
                 profile_sample_type=ProfileSampleType.PERCENTAGE,
                 profile_sample=50.0,
             ),
+            orm_table=User,
         )
         query: CTE = sampler.get_sample_query()
         expected_query = (
@@ -94,9 +94,11 @@ class SampleTest(TestCase):
             SamplingMethodType.BERNOULLI,
         ]:
             sampler = PostgresSampler(
-                client=self.session,
-                table=User,
-                profile_sample_config=SampleConfig(
+                service_connection_config=self.psql_conn,
+                ometa_client=None,
+                entity=self.table_entity,
+                orm_table=User,
+                sample_config=SampleConfig(
                     profile_sample_type=ProfileSampleType.PERCENTAGE,
                     profile_sample=50.0,
                     sampling_method_type=sampling_method_type,
@@ -114,9 +116,11 @@ class SampleTest(TestCase):
         Test sampling with partiton.
         """
         sampler = PostgresSampler(
-            client=self.session,
-            table=User,
-            profile_sample_config=SampleConfig(
+            service_connection_config=self.psql_conn,
+            ometa_client=None,
+            entity=self.table_entity,
+            orm_table=User,
+            sample_config=SampleConfig(
                 profile_sample_type=ProfileSampleType.PERCENTAGE, profile_sample=50.0
             ),
             partition_details=PartitionProfilerConfig(

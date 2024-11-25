@@ -68,7 +68,7 @@ class BigQuerySampler(SQASampler):
             sample_data_count=sample_data_count,
             **kwargs,
         )
-        self.dataset_type: TableType = table_type
+        self.raw_dataset_type: TableType = table_type
 
     def set_tablesample(self, selectable: SqaTable):
         """Set the TABLESAMPLE clause for BigQuery
@@ -77,7 +77,7 @@ class BigQuerySampler(SQASampler):
         """
         if (
             self.sample_config.profile_sample_type == ProfileSampleType.PERCENTAGE
-            and self.dataset_type != TableType.View
+            and self.raw_dataset_type != TableType.View
         ):
             return selectable.tablesample(
                 text(f"{self.sample_config.profile_sample or 100} PERCENT")
@@ -107,7 +107,7 @@ class BigQuerySampler(SQASampler):
                 # FROM sample TABLESAMPLE SYSTEM (n PERCENT)
                 column = Column(column_parts[0], STRUCT)
                 # pylint: disable=protected-access
-                column._set_parent(self.dataset.__table__)
+                column._set_parent(self.raw_dataset.__table__)
                 # pylint: enable=protected-access
 
         return super()._base_sample_query(column, label=label)
@@ -117,10 +117,10 @@ class BigQuerySampler(SQASampler):
         # TABLESAMPLE SYSTEM is not supported for views
         if (
             self.sample_config.profile_sample_type == ProfileSampleType.PERCENTAGE
-            and self.dataset_type != TableType.View
+            and self.raw_dataset_type != TableType.View
         ):
             return self._base_sample_query(column).cte(
-                f"{self.dataset.__tablename__}_sample"
+                f"{self.raw_dataset.__tablename__}_sample"
             )
 
         return super().get_sample_query(column=column)

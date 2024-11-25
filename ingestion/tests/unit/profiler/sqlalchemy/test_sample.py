@@ -104,7 +104,7 @@ class SampleTest(TestCase):
             sample_config=SampleConfig(profile_sample=50.0),
             orm_table=User,
         )
-        cls.sample = cls.sampler.get_dataset()
+        cls.dataset = cls.sampler.get_dataset()
         cls.sqa_profiler_interface = SQAProfilerInterface(
             cls.sqlite_conn,
             None,
@@ -179,7 +179,7 @@ class SampleTest(TestCase):
         Sample property should be properly generated
         """
 
-        sample = self.sqa_profiler_interface.sampler.get_dataset()
+        dataset = self.sqa_profiler_interface.sampler.get_dataset()
 
         res = self.session.query(func.count()).select_from(dataset).first()
         assert res[0] < 30

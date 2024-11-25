@@ -311,7 +311,7 @@ def test_workflow_sample_profile(ingest, metadata, service_name):
         {
             "type": "Profiler",
             "profileSample": 50,
-            "tableFilterPattern": {"includes": ["new/users"]},
+            "tableFilterPattern": {"includes": ["newUsers"]},
         }
     )
     workflow_config["processor"] = {"type": "orm-profiler", "config": {}}
@@ -323,7 +323,7 @@ def test_workflow_sample_profile(ingest, metadata, service_name):
 
     table = metadata.get_by_name(
         entity=Table,
-        fqn=f"{service_name}.main.main.new/users",
+        fqn=f"{service_name}.main.main.newUsers",
         fields=["tableProfilerConfig"],
     )
     # setting sampleProfile from config has been temporarly removed

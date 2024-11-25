@@ -120,11 +120,13 @@ class SampleTest(TestCase):
         use ROW sampling if profile sample type is ROW.
         """
         sampler = SnowflakeSampler(
-            client=self.session,
-            table=User,
-            profile_sample_config=SampleConfig(
+            service_connection_config=self.snowflake_conn,
+            ometa_client=None,
+            entity=self.table_entity,
+            sample_config=SampleConfig(
                 profile_sample_type=ProfileSampleType.ROWS, profile_sample=50
             ),
+            orm_table=User,
         )
         query: CTE = sampler.get_sample_query()
         expected_query = (
@@ -142,9 +144,10 @@ class SampleTest(TestCase):
         use specified partition columns.
         """
         sampler = SnowflakeSampler(
-            client=self.session,
-            table=User,
-            profile_sample_config=SampleConfig(
+            service_connection_config=self.snowflake_conn,
+            ometa_client=None,
+            entity=self.table_entity,
+            sample_config=SampleConfig(
                 profile_sample_type=ProfileSampleType.PERCENTAGE,
                 profile_sample=50.0,
             ),
@@ -154,6 +157,7 @@ class SampleTest(TestCase):
                 partitionIntervalType=PartitionIntervalTypes.COLUMN_VALUE,
                 partitionValues=["1", "2"],
             ),
+            orm_table=User,
         )
         query: CTE = sampler.get_sample_query()
         expected_query = (
