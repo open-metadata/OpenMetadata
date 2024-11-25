@@ -14,6 +14,7 @@ Test Sample behavior
 """
 import os
 from unittest import TestCase
+from unittest.mock import patch
 from uuid import uuid4
 
 from sqlalchemy import TEXT, Column, Integer, String, func
@@ -47,6 +48,8 @@ class User(Base):
     age = Column(Integer)
 
 
+@patch.object(SQASampler, "build_table_orm", return_value=User)
+@patch.object(SQAProfilerInterface, "build_table_orm", return_value=User)
 class SampleTest(TestCase):
     """
     Run checks on different metrics
@@ -92,11 +95,12 @@ class SampleTest(TestCase):
     )
 
     @classmethod
-    def setUpClass(cls) -> None:
+    @patch.object(SQASampler, "build_table_orm", return_value=User)
+    @patch.object(SQAProfilerInterface, "build_table_orm", return_value=User)
+    def setUpClass(cls, profiler_mock, sampler_mock) -> None:
         """
         Prepare Ingredients
         """
-
         cls.sampler = SQASampler(
             service_connection_config=cls.sqlite_conn,
             ometa_client=None,
@@ -113,7 +117,6 @@ class SampleTest(TestCase):
             cls.sampler,
             5,
             43200,
-            orm_table=User,
         )
         cls.engine = cls.sqa_profiler_interface.session.get_bind()
         cls.session = cls.sqa_profiler_interface.session
@@ -134,6 +137,9 @@ class SampleTest(TestCase):
             43200,
             orm_table=User,
         )
+
+        sampler_mock.assert_called()
+        profiler_mock.assert_called()
 
         User.__table__.create(bind=cls.engine)
 
@@ -165,7 +171,7 @@ class SampleTest(TestCase):
             cls.session.add_all(data)
             cls.session.commit()
 
-    def test_sampler(self):
+    def test_sampler(self, profiler_mock, sampler_mock):
         """
         The random sampler should be able to
         generate a random subset of data
@@ -174,7 +180,7 @@ class SampleTest(TestCase):
         res = self.session.query(func.count()).select_from(random_sample).first()
         assert res[0] < 30
 
-    def test_sample_property(self):
+    def test_sample_property(self, profiler_mock, sampler_mock):
         """
         Sample property should be properly generated
         """
@@ -184,7 +190,7 @@ class SampleTest(TestCase):
         res = self.session.query(func.count()).select_from(dataset).first()
         assert res[0] < 30
 
-    def test_table_row_count(self):
+    def test_table_row_count(self, profiler_mock, sampler_mock):
         """
         Profile sample should be ignored in row count
         """
@@ -197,7 +203,7 @@ class SampleTest(TestCase):
         res = profiler.compute_metrics()._table_results
         assert res.get(Metrics.ROW_COUNT.name) == 30
 
-    def test_random_sample_count(self):
+    def test_random_sample_count(self, profiler_mock, sampler_mock):
         """
         Check we can properly sample data.
 
@@ -211,7 +217,7 @@ class SampleTest(TestCase):
         res = profiler.compute_metrics()._column_results
         assert res.get(User.name.name)[Metrics.COUNT.name] < 30
 
-    def test_random_sample_histogram(self):
+    def test_random_sample_histogram(self, profiler_mock, sampler_mock):
         """
         Histogram should run correctly
         """
@@ -253,7 +259,7 @@ class SampleTest(TestCase):
         # The sum of all frequencies should be sampled
         assert sum(res.get(User.id.name)[Metrics.HISTOGRAM.name]["frequencies"]) == 30.0
 
-    def test_random_sample_unique_count(self):
+    def test_random_sample_unique_count(self, profiler_mock, sampler_mock):
         """
         Unique count should run correctly
         """
@@ -279,7 +285,7 @@ class SampleTest(TestCase):
         # This tests might very rarely, fail, depending on the sampled random data.
         assert res.get(User.name.name)[Metrics.UNIQUE_COUNT.name] == 0
 
-    def test_sample_data(self):
+    def test_sample_data(self, profiler_mock, sampler_mock):
         """
         We should be able to pick up sample data from the sampler
         """
@@ -292,7 +298,7 @@ class SampleTest(TestCase):
         names = [str(col.root) for col in sample_data.columns]
         assert names == ["id", "name", "fullname", "nickname", "comments", "age"]
 
-    def test_sample_data_binary(self):
+    def test_sample_data_binary(self, profiler_mock, sampler_mock):
         """
         We should be able to pick up sample data from the sampler
         """
@@ -324,12 +330,13 @@ class SampleTest(TestCase):
             self.session.add_all(data)
             self.session.commit()
 
-        sampler = SQASampler(
-            service_connection_config=self.sqlite_conn,
-            ometa_client=None,
-            entity=None,
-            orm_table=UserBinary,
-        )
+        with patch.object(SQASampler, "build_table_orm", return_value=UserBinary):
+            sampler = SQASampler(
+                service_connection_config=self.sqlite_conn,
+                ometa_client=None,
+                entity=None,
+                orm_table=UserBinary,
+            )
 
         sample_data = sampler.fetch_sample_data()
 
@@ -351,7 +358,7 @@ class SampleTest(TestCase):
 
         UserBinary.__table__.drop(bind=self.engine)
 
-    def test_sample_from_user_query(self):
+    def test_sample_from_user_query(self, profiler_mock, sampler_mock):
         """
         Test sample data are returned based on user query
         """

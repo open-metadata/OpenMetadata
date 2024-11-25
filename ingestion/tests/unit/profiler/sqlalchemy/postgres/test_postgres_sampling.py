@@ -1,4 +1,5 @@
 from unittest import TestCase
+from unittest.mock import patch
 from uuid import uuid4
 
 from sqlalchemy import Column, Integer
@@ -33,36 +34,49 @@ class User(Base):
     id = Column(Integer, primary_key=True)
 
 
+@patch.object(SQASampler, "build_table_orm", return_value=User)
+@patch.object(SQAProfilerInterface, "build_table_orm", return_value=User)
 class SampleTest(TestCase):
-    table_entity = Table(
-        id=uuid4(),
-        name="user",
-        columns=[
-            EntityColumn(
-                name=ColumnName("id"),
-                dataType=DataType.INT,
-            ),
-        ],
-    )
+    @classmethod
+    @patch.object(SQASampler, "build_table_orm", return_value=User)
+    @patch.object(SQAProfilerInterface, "build_table_orm", return_value=User)
+    def setUpClass(cls, profiler_mock, sampler_mock):
+        cls.table_entity = Table(
+            id=uuid4(),
+            name="user",
+            columns=[
+                EntityColumn(
+                    name=ColumnName("id"),
+                    dataType=DataType.INT,
+                ),
+            ],
+        )
 
-    psql_conn = PostgresConnection(
-        username="test",
-        hostPort="localhost:5432",
-        database="test",
-    )
+        cls.psql_conn = PostgresConnection(
+            username="test",
+            hostPort="localhost:5432",
+            database="test",
+        )
 
-    sampler = SQASampler(
-        service_connection_config=psql_conn,
-        ometa_client=None,
-        entity=None,
-        orm_table=User,
-    )
-    sqa_profiler_interface = SQAProfilerInterface(
-        psql_conn, None, table_entity, None, sampler, 5, 43200, orm_table=User
-    )
-    session = sqa_profiler_interface.session
+        cls.sampler = SQASampler(
+            service_connection_config=cls.psql_conn,
+            ometa_client=None,
+            entity=None,
+            orm_table=User,
+        )
+        cls.sqa_profiler_interface = SQAProfilerInterface(
+            cls.psql_conn,
+            None,
+            cls.table_entity,
+            None,
+            cls.sampler,
+            5,
+            43200,
+            orm_table=User,
+        )
+        cls.session = cls.sqa_profiler_interface.session
 
-    def test_sampling_default(self):
+    def test_sampling_default(self, profiler_mock, sampler_mock):
         """
         Test sampling
         """
@@ -85,7 +99,7 @@ class SampleTest(TestCase):
             == str(query.compile(compile_kwargs={"literal_binds": True})).casefold()
         )
 
-    def test_sampling(self):
+    def test_sampling(self, profiler_mock, sampler_mock):
         """
         Test sampling
         """
@@ -111,7 +125,7 @@ class SampleTest(TestCase):
             == str(query.compile(compile_kwargs={"literal_binds": True})).casefold()
         )
 
-    def test_sampling_with_partition(self):
+    def test_sampling_with_partition(self, profiler_mock, sampler_mock):
         """
         Test sampling with partiton.
         """

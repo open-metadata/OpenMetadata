@@ -1,4 +1,5 @@
 from unittest import TestCase
+from unittest.mock import patch
 from uuid import uuid4
 
 from sqlalchemy import Column, Integer
@@ -54,44 +55,57 @@ class User(Base):
     id = Column(Integer, primary_key=True)
 
 
+@patch.object(SQASampler, "build_table_orm", return_value=User)
+@patch.object(SQAProfilerInterface, "build_table_orm", return_value=User)
 class SampleTest(TestCase):
-    table_entity = Table(
-        id=uuid4(),
-        name="user",
-        columns=[
-            EntityColumn(
-                name=ColumnName("id"),
-                dataType=DataType.INT,
-            ),
-        ],
-    )
+    @classmethod
+    @patch.object(SQASampler, "build_table_orm", return_value=User)
+    @patch.object(SQAProfilerInterface, "build_table_orm", return_value=User)
+    def setUpClass(cls, profiler_mock, sampler_mock) -> None:
+        cls.table_entity = Table(
+            id=uuid4(),
+            name="user",
+            columns=[
+                EntityColumn(
+                    name=ColumnName("id"),
+                    dataType=DataType.INT,
+                ),
+            ],
+        )
 
-    bq_conn = BigQueryConnection(
-        credentials=GCPCredentials(
-            gcpConfig=GcpCredentialsValues(
-                type="service_account",
-                projectId="myproject",
-                privateKeyId="mykey",
-                privateKey=PRIVATE_KEY,
-                clientEmail="myclientemail",
-                clientId="myclientid",
-                clientX509CertUrl="https://www.googleapis.com/oauth2/v1/certs",
+        cls.bq_conn = BigQueryConnection(
+            credentials=GCPCredentials(
+                gcpConfig=GcpCredentialsValues(
+                    type="service_account",
+                    projectId="myproject",
+                    privateKeyId="mykey",
+                    privateKey=PRIVATE_KEY,
+                    clientEmail="myclientemail",
+                    clientId="myclientid",
+                    clientX509CertUrl="https://www.googleapis.com/oauth2/v1/certs",
+                )
             )
         )
-    )
 
-    sampler = SQASampler(
-        service_connection_config=bq_conn,
-        ometa_client=None,
-        entity=None,
-        orm_table=User,
-    )
-    sqa_profiler_interface = SQAProfilerInterface(
-        bq_conn, None, table_entity, None, sampler, 5, 43200, orm_table=User
-    )
-    session = sqa_profiler_interface.session
+        cls.sampler = SQASampler(
+            service_connection_config=cls.bq_conn,
+            ometa_client=None,
+            entity=None,
+            orm_table=User,
+        )
+        cls.sqa_profiler_interface = SQAProfilerInterface(
+            cls.bq_conn,
+            None,
+            cls.table_entity,
+            None,
+            cls.sampler,
+            5,
+            43200,
+            orm_table=User,
+        )
+        cls.session = cls.sqa_profiler_interface.session
 
-    def test_sampling(self):
+    def test_sampling(self, profiler_mock, sampler_mock):
         """
         Test sampling
         """
@@ -114,7 +128,7 @@ class SampleTest(TestCase):
             == str(query.compile(compile_kwargs={"literal_binds": True})).casefold()
         )
 
-    def test_sampling_for_views(self):
+    def test_sampling_for_views(self, profiler_mock, sampler_mock):
         """
         Test view sampling
         """
@@ -139,7 +153,7 @@ class SampleTest(TestCase):
             == str(query.compile(compile_kwargs={"literal_binds": True})).casefold()
         )
 
-    def test_sampling_view_with_partition(self):
+    def test_sampling_view_with_partition(self, profiler_mock, sampler_mock):
         """
         Test view sampling with partition
         """
@@ -170,7 +184,7 @@ class SampleTest(TestCase):
             == str(query.compile(compile_kwargs={"literal_binds": True})).casefold()
         )
 
-    def test_sampling_with_partition(self):
+    def test_sampling_with_partition(self, profiler_mock, sampler_mock):
         """
         Test sampling with partiton.
         """

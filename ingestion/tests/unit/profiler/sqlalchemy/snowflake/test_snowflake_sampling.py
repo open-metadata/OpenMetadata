@@ -1,4 +1,5 @@
 from unittest import TestCase
+from unittest.mock import patch
 from uuid import uuid4
 
 from sqlalchemy import Column, Integer
@@ -33,35 +34,48 @@ class User(Base):
     id = Column(Integer, primary_key=True)
 
 
+@patch.object(SQASampler, "build_table_orm", return_value=User)
+@patch.object(SQAProfilerInterface, "build_table_orm", return_value=User)
 class SampleTest(TestCase):
-    table_entity = Table(
-        id=uuid4(),
-        name="user",
-        columns=[
-            EntityColumn(
-                name=ColumnName("id"),
-                dataType=DataType.INT,
-            ),
-        ],
-    )
+    @classmethod
+    @patch.object(SQASampler, "build_table_orm", return_value=User)
+    @patch.object(SQAProfilerInterface, "build_table_orm", return_value=User)
+    def setUpClass(cls, profiler_mock, sampler_mock):
+        cls.table_entity = Table(
+            id=uuid4(),
+            name="user",
+            columns=[
+                EntityColumn(
+                    name=ColumnName("id"),
+                    dataType=DataType.INT,
+                ),
+            ],
+        )
 
-    snowflake_conn = SnowflakeConnection(
-        username="myuser", account="myaccount", warehouse="mywarehouse"
-    )
+        cls.snowflake_conn = SnowflakeConnection(
+            username="myuser", account="myaccount", warehouse="mywarehouse"
+        )
 
-    sampler = SQASampler(
-        service_connection_config=snowflake_conn,
-        ometa_client=None,
-        entity=None,
-        orm_table=User,
-    )
-    sqa_profiler_interface = SQAProfilerInterface(
-        snowflake_conn, None, table_entity, None, sampler, 5, 43200, orm_table=User
-    )
+        sampler = SQASampler(
+            service_connection_config=cls.snowflake_conn,
+            ometa_client=None,
+            entity=None,
+            orm_table=User,
+        )
+        cls.sqa_profiler_interface = SQAProfilerInterface(
+            cls.snowflake_conn,
+            None,
+            cls.table_entity,
+            None,
+            sampler,
+            5,
+            43200,
+            orm_table=User,
+        )
 
-    session = sqa_profiler_interface.session
+        cls.session = cls.sqa_profiler_interface.session
 
-    def test_omit_sampling_method_type(self):
+    def test_omit_sampling_method_type(self, profiler_mock, sampler_mock):
         """
         use BERNOULLI if sampling method type is not specified.
         """
@@ -85,7 +99,7 @@ class SampleTest(TestCase):
             == str(query.compile(compile_kwargs={"literal_binds": True})).casefold()
         )
 
-    def test_specify_sampling_method_type(self):
+    def test_specify_sampling_method_type(self, profiler_mock, sampler_mock):
         """
         use specified sampling method type.
         """
@@ -115,7 +129,7 @@ class SampleTest(TestCase):
                 == str(query.compile(compile_kwargs={"literal_binds": True})).casefold()
             )
 
-    def test_row_sampling(self):
+    def test_row_sampling(self, profiler_mock, sampler_mock):
         """
         use ROW sampling if profile sample type is ROW.
         """
@@ -139,7 +153,7 @@ class SampleTest(TestCase):
             == str(query.compile(compile_kwargs={"literal_binds": True})).casefold()
         )
 
-    def test_sampling_with_partition(self):
+    def test_sampling_with_partition(self, profiler_mock, sampler_mock):
         """
         use specified partition columns.
         """
