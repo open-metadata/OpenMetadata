@@ -27,6 +27,7 @@ mock_doris_config = {
         "serviceName": "local_doris1",
         "serviceConnection": {
             "config": {
+                "type": "Doris",
                 "username": "root",
                 "hostPort": "localhost:3308",
                 "password": "test",

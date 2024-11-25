@@ -731,6 +731,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
   }
 
   @Test
+  @Order(Integer.MAX_VALUE)
   void delete_recursive(TestInfo test) throws IOException {
     Glossary g1 = createGlossary(test, null, emptyList());
 
