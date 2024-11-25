@@ -305,7 +305,7 @@ class TestParameters(BaseModel):
                     testCaseStatus=TestCaseStatus.Failed,
                     testResultValue=[
                         TestResultValue(name="removedColumns", value="1"),
-                        TestResultValue(name="addedColumns", value="0"),
+                        TestResultValue(name="addedColumns", value="1"),
                         TestResultValue(name="changedColumns", value="0"),
                     ],
                 ),
