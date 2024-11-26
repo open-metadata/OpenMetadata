@@ -43,6 +43,15 @@ jest.mock('react-router-dom', () => ({
   }),
 }));
 
+jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => {
+  return jest.fn(({ children, pageTitle }) => (
+    <div data-testid="page-layout-v1">
+      <h1>{pageTitle}</h1>
+      <div>{children}</div>
+    </div>
+  ));
+});
+
 jest.mock('../../rest/observabilityAPI', () => ({
   getObservabilityAlertByFQN: jest
     .fn()
