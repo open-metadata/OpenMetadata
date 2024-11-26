@@ -114,6 +114,7 @@
     "authentication-uri": "آدرس URI احراز هویت",
     "authority": "مرجع",
     "authorize-app": "مجوز دادن به {{app}}",
+    "auto-classification": "طبقه‌بندی خودکار",
     "auto-pii-confidence-score": "امتیاز اعتماد PII خودکار",
     "auto-tag-pii-uppercase": "برچسب PII خودکار",
     "automatically-generate": "تولید خودکار",
