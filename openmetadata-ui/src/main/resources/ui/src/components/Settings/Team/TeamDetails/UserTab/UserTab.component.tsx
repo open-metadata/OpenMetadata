@@ -316,7 +316,7 @@ export const UserTab = ({
           <Space>
             <UserSelectableList
               hasPermission
-              selectedUsers={usersList ?? []}
+              selectedUsers={currentTeam?.users ?? []}
               onUpdate={onAddUser}>
               <Tooltip placement="topRight" title={addUserButtonTitle}>
                 <Button
@@ -372,7 +372,7 @@ export const UserTab = ({
                 {users.length > 0 && permission.EditAll && (
                   <UserSelectableList
                     hasPermission
-                    selectedUsers={usersList ?? []}
+                    selectedUsers={currentTeam?.users ?? []}
                     onUpdate={onAddUser}>
                     <Button data-testid="add-new-user" type="primary">
                       {t('label.add-entity', { entity: t('label.user') })}

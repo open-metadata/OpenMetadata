@@ -243,6 +243,7 @@ const TeamsPage = () => {
     try {
       const data = await getTeamByName(name, {
         fields: [
+          TabSpecificField.USERS,
           TabSpecificField.USER_COUNT,
           TabSpecificField.DEFAULT_ROLES,
           TabSpecificField.POLICIES,
@@ -397,12 +398,14 @@ const TeamsPage = () => {
    * @param id - user id
    */
   const removeUserFromTeam = async (id: string) => {
+    const updatedUsers = selectedTeam?.users?.filter((user) => user.id !== id);
     try {
       const res = await deleteUserFromTeam(selectedTeam.id, id);
       if (res) {
         setSelectedTeam((prev) => ({
           ...prev,
-          userCount: (prev.userCount || 0) - 1,
+          users: updatedUsers,
+          userCount: updatedUsers?.length,
         }));
       } else {
         throw new Error(t('server.unexpected-response'));
