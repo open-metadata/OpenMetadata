@@ -69,6 +69,26 @@ public class TopicRepository extends EntityRepository<Topic> {
         "",
         "");
     supportsSearch = true;
+    fieldFetchers.put("service", this::fetchAndSetContainer);
+    fieldFetchers.put("messageSchema", this::fetchAndPopulateTags);
+  }
+
+  protected void fetchAndSetContainer(List<Topic> entities, Fields fields) {
+    setFieldFromMapSingleRelation(
+        fields.contains("service"), entities, getContainers(entities), Topic::setService);
+  }
+
+  protected void fetchAndPopulateTags(List<Topic> entities, Fields fields) {
+    // TODO: Fix and optimize
+    for (Topic entity : entities) {
+      if (entity.getMessageSchema() != null) {
+        populateEntityFieldTags(
+            entityType,
+            entity.getMessageSchema().getSchemaFields(),
+            entity.getFullyQualifiedName(),
+            fields.contains(FIELD_TAGS));
+      }
+    }
   }
 
   @Override
