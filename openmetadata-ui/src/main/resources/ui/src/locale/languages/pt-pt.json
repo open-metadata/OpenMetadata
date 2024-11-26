@@ -1750,6 +1750,7 @@
     "no-token-available": "Nenhum token disponível",
     "no-total-data-assets": "Data Insights fornecem uma compreensão clara do cenário de dados em evolução em sua organização. Elas oferecem respostas a perguntas como quantos ativos de dados você possui, a taxa de adição de novos ativos e muito mais. Descubra mais sobre <0>{{setup}}</0> para aproveitar essas informações",
     "no-user-available": "Nenhum utilizador disponível",
+    "no-user-part-of-team": "Nenhum usuário faz parte desta equipe {{team}}",
     "no-username-available": "Nenhum utilizador disponível com o nome <0>{{user}}</0>",
     "no-users": "Não há Utilizadores {{text}}",
     "no-version-type-available": "Nenhuma versão {{type}} disponível",

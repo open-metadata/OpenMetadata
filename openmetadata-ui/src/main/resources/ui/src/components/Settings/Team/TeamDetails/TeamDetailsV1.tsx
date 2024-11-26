@@ -917,6 +917,7 @@ const TeamDetailsV1 = ({
     () =>
       !isOrganization &&
       !isUndefined(currentUser) &&
+      isGroupType &&
       (isAlreadyJoinedTeam ? (
         <Button
           ghost
@@ -937,7 +938,14 @@ const TeamDetailsV1 = ({
         )
       )),
 
-    [currentUser, isAlreadyJoinedTeam, isAdminUser, joinTeam, deleteUserHandler]
+    [
+      currentUser,
+      isAlreadyJoinedTeam,
+      isGroupType,
+      isAdminUser,
+      joinTeam,
+      deleteUserHandler,
+    ]
   );
 
   const teamsCollapseHeader = useMemo(
@@ -1074,7 +1082,13 @@ const TeamDetailsV1 = ({
 
   const tabs = useMemo(
     () =>
-      getTabs(currentTeam, isGroupType, teamCount, assetsCount).map((tab) => ({
+      getTabs(
+        currentTeam,
+        isGroupType,
+        isOrganization,
+        teamCount,
+        assetsCount
+      ).map((tab) => ({
         ...tab,
         label: (
           <TabsLabel
@@ -1089,6 +1103,7 @@ const TeamDetailsV1 = ({
     [
       currentTeam,
       searchTerm,
+      isOrganization,
       teamCount,
       currentTab,
       assetsCount,
