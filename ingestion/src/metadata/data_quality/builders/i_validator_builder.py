@@ -59,7 +59,7 @@ class IValidatorBuilder(ABC):
         """
         self._test_case = test_case
         self.runner = runner
-        # TODO this will be revmoved on https://github.com/open-metadata/OpenMetadata/pull/18716
+        # TODO this will be removed on https://github.com/open-metadata/OpenMetadata/pull/18716
         self.validator_cls: Type[BaseTestValidator] = importer.import_test_case_class(
             entity_type,
             self._get_source_type(),
