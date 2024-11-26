@@ -21,7 +21,9 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.Pair;
 import org.openmetadata.schema.alert.type.EmailAlertConfig;
+import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
+import org.openmetadata.schema.entity.events.TestDestinationStatus;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.changeEvent.Destination;
@@ -30,8 +32,8 @@ import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.formatter.decorators.EmailMessageDecorator;
 import org.openmetadata.service.formatter.decorators.MessageDecorator;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.util.EmailUtil;
 import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.service.util.email.EmailUtil;
 
 @Slf4j
 public class EmailPublisher implements Destination<ChangeEvent> {
@@ -40,12 +42,15 @@ public class EmailPublisher implements Destination<ChangeEvent> {
   private final CollectionDAO daoCollection;
 
   @Getter private final SubscriptionDestination subscriptionDestination;
+  private final EventSubscription eventSubscription;
 
-  public EmailPublisher(SubscriptionDestination subscription) {
-    if (subscription.getType() == EMAIL) {
-      this.subscriptionDestination = subscription;
+  public EmailPublisher(
+      EventSubscription eventSubscription, SubscriptionDestination subscriptionDestination) {
+    if (subscriptionDestination.getType() == EMAIL) {
+      this.eventSubscription = eventSubscription;
+      this.subscriptionDestination = subscriptionDestination;
       this.emailAlertConfig =
-          JsonUtils.convertValue(subscription.getConfig(), EmailAlertConfig.class);
+          JsonUtils.convertValue(subscriptionDestination.getConfig(), EmailAlertConfig.class);
       this.daoCollection = Entity.getCollectionDAO();
     } else {
       throw new IllegalArgumentException("Email Alert Invoked with Illegal Type and Settings.");
@@ -57,9 +62,10 @@ public class EmailPublisher implements Destination<ChangeEvent> {
     try {
       Set<String> receivers =
           getTargetsForAlert(emailAlertConfig, subscriptionDestination.getCategory(), EMAIL, event);
-      EmailMessage emailMessage = emailDecorator.buildOutgoingMessage(event);
+      EmailMessage emailMessage =
+          emailDecorator.buildOutgoingMessage(getDisplayNameOrFqn(eventSubscription), event);
       for (String email : receivers) {
-        EmailUtil.sendChangeEventMail(email, emailMessage);
+        EmailUtil.sendChangeEventMail(getDisplayNameOrFqn(eventSubscription), email, emailMessage);
       }
       setSuccessStatus(System.currentTimeMillis());
     } catch (Exception e) {
@@ -67,8 +73,36 @@ public class EmailPublisher implements Destination<ChangeEvent> {
       String message =
           CatalogExceptionMessage.eventPublisherFailedToPublish(EMAIL, event, e.getMessage());
       LOG.error(message);
-      throw new EventPublisherException(message, Pair.of(subscriptionDestination.getId(), event));
+      throw new EventPublisherException(
+          CatalogExceptionMessage.eventPublisherFailedToPublish(EMAIL, e.getMessage()),
+          Pair.of(subscriptionDestination.getId(), event));
     }
+  }
+
+  @Override
+  public void sendTestMessage() throws EventPublisherException {
+    try {
+      Set<String> receivers = emailAlertConfig.getReceivers();
+      EmailUtil.testConnection();
+
+      for (String email : receivers) {
+        EmailUtil.sendTestEmail(email, false);
+      }
+      setSuccessStatus(System.currentTimeMillis());
+      this.setStatusForTestDestination(
+          TestDestinationStatus.Status.SUCCESS, 200, System.currentTimeMillis());
+    } catch (Exception e) {
+      this.setStatusForTestDestination(
+          TestDestinationStatus.Status.FAILED, 500, System.currentTimeMillis());
+      String message = CatalogExceptionMessage.eventPublisherFailedToPublish(EMAIL, e.getMessage());
+      LOG.error(message);
+      throw new EventPublisherException(message);
+    }
+  }
+
+  @Override
+  public EventSubscription getEventSubscriptionForDestination() {
+    return eventSubscription;
   }
 
   @Override

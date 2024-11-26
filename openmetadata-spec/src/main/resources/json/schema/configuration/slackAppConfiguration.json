@@ -4,7 +4,7 @@
   "title": "SlackAppConfiguration",
   "description": "This schema defines the Slack App Information",
   "type": "object",
-  "javaType": "org.openmetadata.schema.api.configuration.SlackAppConfiguration",
+  "javaType": "org.openmetadata.schema.service.configuration.slackApp.SlackAppConfiguration",
   "properties": {
     "clientId": {
       "description": "Client Id of the Application",
@@ -14,15 +14,11 @@
       "description": "Client Secret of the Application.",
       "type": "string"
     },
-    "signingCertificate": {
-      "description": "Signing Certificate of the Application.",
-      "type": "string"
-    },
-    "scopes": {
-      "description": "Scopes to Request in OAuth",
+    "signingSecret": {
+      "description": "Signing Secret of the Application. Confirm that each request comes from Slack by verifying its unique signature.",
       "type": "string"
     }
   },
-  "required": ["clientId", "clientSecret", "signingCertificate"],
+  "required": ["clientId", "clientSecret","signingSecret"],
   "additionalProperties": false
 }

@@ -14,6 +14,7 @@
 package org.openmetadata.service.apps.bundles.changeEvent.gchat;
 
 import static org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionType.G_CHAT;
+import static org.openmetadata.service.util.SubscriptionUtil.deliverTestWebhookMessage;
 import static org.openmetadata.service.util.SubscriptionUtil.getClient;
 import static org.openmetadata.service.util.SubscriptionUtil.getTargetsForWebhookAlert;
 import static org.openmetadata.service.util.SubscriptionUtil.postWebhookMessage;
@@ -25,6 +26,7 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.Pair;
 import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.Webhook;
@@ -45,13 +47,18 @@ public class GChatPublisher implements Destination<ChangeEvent> {
 
   @Getter private final SubscriptionDestination subscriptionDestination;
 
-  public GChatPublisher(SubscriptionDestination subscription) {
-    if (subscription.getType() == G_CHAT) {
-      this.subscriptionDestination = subscription;
-      this.webhook = JsonUtils.convertValue(subscription.getConfig(), Webhook.class);
+  private final EventSubscription eventSubscription;
+
+  public GChatPublisher(
+      EventSubscription eventSubscription, SubscriptionDestination subscriptionDestination) {
+    if (subscriptionDestination.getType() == G_CHAT) {
+      this.eventSubscription = eventSubscription;
+      this.subscriptionDestination = subscriptionDestination;
+      this.webhook = JsonUtils.convertValue(subscriptionDestination.getConfig(), Webhook.class);
 
       // Build Client
-      client = getClient(subscription.getTimeout(), subscription.getReadTimeout());
+      client =
+          getClient(subscriptionDestination.getTimeout(), subscriptionDestination.getReadTimeout());
 
       // Build Target
       if (webhook != null && webhook.getEndpoint() != null) {
@@ -67,8 +74,11 @@ public class GChatPublisher implements Destination<ChangeEvent> {
 
   @Override
   public void sendMessage(ChangeEvent event) throws EventPublisherException {
+
     try {
-      GChatMessage gchatMessage = gChatMessageMessageDecorator.buildOutgoingMessage(event);
+      GChatMessage gchatMessage =
+          gChatMessageMessageDecorator.buildOutgoingMessage(
+              getDisplayNameOrFqn(eventSubscription), event);
       List<Invocation.Builder> targets =
           getTargetsForWebhookAlert(
               webhook, subscriptionDestination.getCategory(), G_CHAT, client, event);
@@ -82,8 +92,31 @@ public class GChatPublisher implements Destination<ChangeEvent> {
       String message =
           CatalogExceptionMessage.eventPublisherFailedToPublish(G_CHAT, event, e.getMessage());
       LOG.error(message);
-      throw new EventPublisherException(message, Pair.of(subscriptionDestination.getId(), event));
+      throw new EventPublisherException(
+          CatalogExceptionMessage.eventPublisherFailedToPublish(G_CHAT, e.getMessage()),
+          Pair.of(subscriptionDestination.getId(), event));
     }
+  }
+
+  @Override
+  public void sendTestMessage() throws EventPublisherException {
+    try {
+      GChatMessage gchatMessage = gChatMessageMessageDecorator.buildOutgoingTestMessage();
+
+      if (target != null) {
+        deliverTestWebhookMessage(this, target, gchatMessage);
+      }
+    } catch (Exception e) {
+      String message =
+          CatalogExceptionMessage.eventPublisherFailedToPublish(G_CHAT, e.getMessage());
+      LOG.error(message);
+      throw new EventPublisherException(message);
+    }
+  }
+
+  @Override
+  public EventSubscription getEventSubscriptionForDestination() {
+    return eventSubscription;
   }
 
   @Override

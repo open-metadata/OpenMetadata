@@ -130,4 +130,12 @@ describe('Test EntityLink', () => {
       '<#E::table::sample_data.ecommerce_db.shopify.dim_address::columns::address_id>'
     );
   });
+
+  it('should return column name if column name is "type"', () => {
+    const entityLink =
+      '<#E::table::pw-database-service-69e197ad.pw-database-76212f52.pw-database-schema-473d89b5.pw-table-c0cfe45a::columns::type>';
+    const columnName = EntityLink.getTableColumnName(entityLink);
+
+    expect(columnName).toStrictEqual('type');
+  });
 });

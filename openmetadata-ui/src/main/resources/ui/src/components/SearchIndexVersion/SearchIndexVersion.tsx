@@ -45,7 +45,7 @@ const SearchIndexVersion: React.FC<SearchIndexVersionProps> = ({
   version,
   currentVersionData,
   isVersionLoading,
-  owner,
+  owners,
   domain,
   dataProducts,
   tier,
@@ -73,11 +73,11 @@ const SearchIndexVersion: React.FC<SearchIndexVersionProps> = ({
       () =>
         getCommonExtraInfoForVersionDetails(
           changeDescription,
-          owner,
+          owners,
           tier,
           domain
         ),
-      [changeDescription, owner, tier, domain]
+      [changeDescription, owners, tier, domain]
     );
 
   const fields = useMemo(() => {
@@ -234,6 +234,7 @@ const SearchIndexVersion: React.FC<SearchIndexVersionProps> = ({
 
       <EntityVersionTimeLine
         currentVersion={toString(version)}
+        entityType={EntityType.SEARCH_INDEX}
         versionHandler={versionHandler}
         versionList={versionList}
         onBack={backHandler}

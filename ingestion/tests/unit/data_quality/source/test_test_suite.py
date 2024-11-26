@@ -6,6 +6,9 @@ import pytest
 
 from metadata.data_quality.source.test_suite import TestSuiteSource
 from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.services.databaseService import (
+    DatabaseServiceType,
+)
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
@@ -171,8 +174,36 @@ def test_logical_test_suite(parameters, expected, monkeypatch, mock_metadata):
     }
     monkeypatch.setattr(TestSuiteSource, "test_connection", Mock())
 
+    mock_metadata = Mock(spec=OpenMetadata)
+    mock_metadata.get_by_name.return_value = Table(
+        id=UUID(int=0),
+        name="test_table",
+        columns=[],
+        testSuite=MOCK_ENTITY_REFERENCE,
+        serviceType=DatabaseServiceType.Postgres,
+    )
+    mock_metadata.list_all_entities.return_value = [
+        TestCase(
+            name="test_case1",
+            id=UUID(int=0),
+            testDefinition=MOCK_ENTITY_REFERENCE,
+            testSuite=MOCK_ENTITY_REFERENCE,
+            entityLink="<#E::some::link>",
+        ),
+        TestCase(
+            name="test_case2",
+            id=UUID(int=0),
+            testDefinition=MOCK_ENTITY_REFERENCE,
+            testSuite=MOCK_ENTITY_REFERENCE,
+            entityLink="<#E::some::link>",
+        ),
+    ]
+    mock_metadata.get_by_id.return_value = TestSuite(
+        name="test_suite", executable=True, id=UUID(int=0)
+    )
+
     source = TestSuiteSource(
-        OpenMetadataWorkflowConfig.parse_obj(workflow_config), mock_metadata
+        OpenMetadataWorkflowConfig.model_validate(workflow_config), mock_metadata
     )
     result = list(source._iter())
     for item in result:
@@ -181,3 +212,5 @@ def test_logical_test_suite(parameters, expected, monkeypatch, mock_metadata):
     test_cases = [r.test_cases for r in results]
     by_name = [[tc.name.root for tc in t] for t in test_cases]
     assert sorted(map(sorted, by_name)) == sorted(map(sorted, expected))
+    test_cases = list(source._iter())[0].right.test_cases
+    assert [t.name.root for t in test_cases] == expected

@@ -11,9 +11,10 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { getTeamsHierarchy } from '../../../../rest/teamsAPI';
 import TeamsSelectable from './TeamsSelectable';
 
 const mockSelChange = jest.fn();
@@ -28,6 +29,7 @@ jest.mock('antd', () => ({
     .mockImplementation(({ onChange }) => (
       <div onClick={() => onChange([])}>TreeSelect.component</div>
     )),
+  Alert: jest.fn().mockImplementation(() => <div>Alert</div>),
 }));
 
 jest.mock('../../../../rest/teamsAPI', () => ({
@@ -70,5 +72,34 @@ describe('TeamsSelectable component test', () => {
 
     expect(treeSelect).toBeInTheDocument();
     expect(mockSelChange).toHaveBeenCalled();
+  });
+
+  it('should show no teams alert when API returns no data', async () => {
+    await act(async () => {
+      render(<TeamsSelectable {...mockProps} showTeamsAlert />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    const noTeamsAlert = screen.getByText('Alert');
+
+    expect(noTeamsAlert).toBeInTheDocument();
+  });
+
+  it('should not show no teams alert when API returns teams data', async () => {
+    (getTeamsHierarchy as jest.Mock).mockImplementation(() =>
+      Promise.resolve({
+        data: [{ name: 'testTeam' }],
+      })
+    );
+    await act(async () => {
+      render(<TeamsSelectable {...mockProps} showTeamsAlert />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    const noTeamsAlert = screen.queryByText('Alert');
+
+    expect(noTeamsAlert).toBeNull();
   });
 });

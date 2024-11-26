@@ -30,6 +30,7 @@ import {
 } from '../../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { PIPELINE_TASK_TABS } from '../../../constants/pipeline.constants';
+import { COMMON_RESIZABLE_PANEL_CONFIG } from '../../../constants/ResizablePanel.constants';
 import LineageProvider from '../../../context/LineageProvider/LineageProvider';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
@@ -44,12 +45,13 @@ import {
 } from '../../../generated/entity/data/pipeline';
 import { ThreadType } from '../../../generated/entity/feed/thread';
 import { TagSource } from '../../../generated/type/schema';
+import LimitWrapper from '../../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { postThread } from '../../../rest/feedsAPI';
 import { restorePipeline } from '../../../rest/pipelineAPI';
 import { getFeedCounts } from '../../../utils/CommonUtils';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getColumnSorter, getEntityName } from '../../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import {
   getAllTags,
@@ -105,7 +107,7 @@ const PipelineDetails = ({
   const userID = currentUser?.id ?? '';
   const {
     deleted,
-    owner,
+    owners,
     description,
     pipelineStatus,
     entityName,
@@ -115,7 +117,7 @@ const PipelineDetails = ({
   } = useMemo(() => {
     return {
       deleted: pipelineDetails.deleted,
-      owner: pipelineDetails.owner,
+      owners: pipelineDetails.owners,
       serviceType: pipelineDetails.serviceType,
       description: pipelineDetails.description,
       version: pipelineDetails.version,
@@ -223,14 +225,14 @@ const PipelineDetails = ({
   };
 
   const onOwnerUpdate = useCallback(
-    async (newOwner?: Pipeline['owner']) => {
+    async (newOwners?: Pipeline['owners']) => {
       const updatedPipelineDetails = {
         ...pipelineDetails,
-        owner: newOwner,
+        owners: newOwners,
       };
       await settingsUpdateHandler(updatedPipelineDetails);
     },
-    [owner]
+    [owners]
   );
 
   const onTierUpdate = async (newTier?: Tag) => {
@@ -350,6 +352,7 @@ const PipelineDetails = ({
 
   const {
     editTagsPermission,
+    editGlossaryTermsPermission,
     editDescriptionPermission,
     editCustomAttributePermission,
     editLineagePermission,
@@ -358,6 +361,10 @@ const PipelineDetails = ({
     () => ({
       editTagsPermission:
         (pipelinePermissions.EditTags || pipelinePermissions.EditAll) &&
+        !deleted,
+      editGlossaryTermsPermission:
+        (pipelinePermissions.EditGlossaryTerms ||
+          pipelinePermissions.EditAll) &&
         !deleted,
       editDescriptionPermission:
         (pipelinePermissions.EditDescription || pipelinePermissions.EditAll) &&
@@ -381,6 +388,7 @@ const PipelineDetails = ({
         title: t('label.name'),
         width: 220,
         fixed: 'left',
+        sorter: getColumnSorter<Task, 'name'>('name'),
         render: (_, record) =>
           isEmpty(record.sourceUrl) ? (
             <span>{getEntityName(record)}</span>
@@ -432,9 +440,9 @@ const PipelineDetails = ({
         ),
       },
       {
-        title: t('label.owner'),
-        dataIndex: 'owner',
-        key: 'owner',
+        title: t('label.owner-plural'),
+        dataIndex: 'owners',
+        key: 'owners',
         width: 120,
         accessor: 'owner',
         filterIcon: (filtered) => (
@@ -445,7 +453,7 @@ const PipelineDetails = ({
             }}
           />
         ),
-        render: (owner) => <OwnerLabel hasPermission={false} owner={owner} />,
+        render: (owner) => <OwnerLabel hasPermission={false} owners={owner} />,
       },
       {
         title: t('label.tag-plural'),
@@ -501,7 +509,7 @@ const PipelineDetails = ({
             entityFqn={pipelineFQN}
             entityType={EntityType.PIPELINE}
             handleTagSelection={handleTableTagSelection}
-            hasTagEditAccess={editTagsPermission}
+            hasTagEditAccess={editGlossaryTermsPermission}
             index={index}
             isReadOnly={deleted}
             record={record}
@@ -516,6 +524,7 @@ const PipelineDetails = ({
       deleted,
       editTask,
       editTagsPermission,
+      editGlossaryTermsPermission,
       getEntityName,
       onThreadLinkSelect,
       handleTableTagSelection,
@@ -592,10 +601,10 @@ const PipelineDetails = ({
         key: EntityTabs.TASKS,
         children: (
           <Row gutter={[0, 16]} wrap={false}>
-            <Col className="tab-content-height" span={24}>
+            <Col className="tab-content-height-with-resizable-panel" span={24}>
               <ResizablePanels
-                applyDefaultStyle={false}
                 firstPanel={{
+                  className: 'entity-resizable-panel-container',
                   children: (
                     <div className="p-t-sm m-x-lg">
                       <Row gutter={[0, 16]}>
@@ -608,7 +617,7 @@ const PipelineDetails = ({
                             hasEditAccess={editDescriptionPermission}
                             isDescriptionExpanded={isEmpty(tasksInternal)}
                             isEdit={isEdit}
-                            owner={owner}
+                            owner={owners}
                             showActions={!deleted}
                             onCancel={onCancel}
                             onDescriptionEdit={onDescriptionEdit}
@@ -647,8 +656,7 @@ const PipelineDetails = ({
                       </Row>
                     </div>
                   ),
-                  minWidth: 800,
-                  flex: 0.87,
+                  ...COMMON_RESIZABLE_PANEL_CONFIG.LEFT_PANEL,
                 }}
                 secondPanel={{
                   children: (
@@ -659,6 +667,9 @@ const PipelineDetails = ({
                         domain={pipelineDetails?.domain}
                         editCustomAttributePermission={
                           editCustomAttributePermission
+                        }
+                        editGlossaryTermsPermission={
+                          editGlossaryTermsPermission
                         }
                         editTagPermission={editTagsPermission}
                         entityFQN={pipelineFQN}
@@ -672,9 +683,9 @@ const PipelineDetails = ({
                       />
                     </div>
                   ),
-                  minWidth: 320,
-                  flex: 0.13,
-                  className: 'entity-resizable-right-panel-container',
+                  ...COMMON_RESIZABLE_PANEL_CONFIG.RIGHT_PANEL,
+                  className:
+                    'entity-resizable-right-panel-container entity-resizable-panel-container',
                 }}
               />
             </Col>
@@ -759,7 +770,7 @@ const PipelineDetails = ({
       feedCount.totalCount,
       isEdit,
       deleted,
-      owner,
+      owners,
       entityName,
       pipelineFQN,
       pipelineDetails,
@@ -775,6 +786,7 @@ const PipelineDetails = ({
       onThreadLinkSelect,
       editDescriptionPermission,
       editTagsPermission,
+      editGlossaryTermsPermission,
       editLineagePermission,
       editCustomAttributePermission,
       viewAllPermission,
@@ -836,6 +848,10 @@ const PipelineDetails = ({
           onSave={onTaskUpdate}
         />
       )}
+
+      <LimitWrapper resource="pipeline">
+        <></>
+      </LimitWrapper>
 
       {threadLink ? (
         <ActivityThreadPanel

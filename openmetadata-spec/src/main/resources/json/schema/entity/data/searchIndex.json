@@ -123,7 +123,7 @@
           "items": {
             "$ref": "../../type/tagLabel.json"
           },
-          "default": null
+          "default": []
         },
         "children": {
           "description": "Child columns if dataType has properties.",
@@ -199,9 +199,9 @@
       "$ref": "#/definitions/searchIndexSampleData",
       "default": null
     },
-    "owner": {
-      "description": "Owner of this searchIndex.",
-      "$ref": "../../type/entityReference.json"
+    "owners": {
+      "description": "Owners of this searchIndex.",
+      "$ref": "../../type/entityReferenceList.json"
     },
     "followers": {
       "description": "Followers of this searchIndex.",
@@ -247,6 +247,9 @@
     "lifeCycle": {
       "description": "Life Cycle of the entity",
       "$ref": "../../type/lifeCycle.json"
+    },
+    "certification": {
+      "$ref": "../../type/assetCertification.json"
     },
     "sourceHash": {
       "description": "Source hash of the entity",

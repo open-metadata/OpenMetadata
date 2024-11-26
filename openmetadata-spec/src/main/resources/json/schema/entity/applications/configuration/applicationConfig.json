@@ -8,23 +8,29 @@
     "appConfig": {
       "oneOf": [
         {
-          "$ref": "external/metaPilotAppConfig.json"
+          "$ref": "external/collateAIAppConfig.json"
         },
         {
           "$ref": "external/automatorAppConfig.json"
+        },
+        {
+          "$ref": "internal/dataInsightsAppConfig.json"
         },
         {
           "$ref": "internal/dataInsightsReportAppConfig.json"
         },
         {
           "$ref": "internal/searchIndexingAppConfig.json"
+        },
+        {
+          "$ref": "external/slackAppTokenConfiguration.json"
         }
       ]
     },
     "privateConfig": {
       "oneOf": [
         {
-          "$ref": "./private/external/metaPilotAppPrivateConfig.json"
+          "$ref": "private/external/collateAIAppPrivateConfig.json"
         }
       ]
     }

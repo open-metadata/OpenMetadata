@@ -17,7 +17,7 @@ import { EntityReference } from '../../../../generated/entity/type';
 
 export type TaskTabProps = {
   taskThread: Thread;
-  owner?: EntityReference;
+  owners?: EntityReference[];
   isForFeedTab?: boolean;
   hasGlossaryReviewer?: boolean;
   onUpdateEntityDetails?: () => void;

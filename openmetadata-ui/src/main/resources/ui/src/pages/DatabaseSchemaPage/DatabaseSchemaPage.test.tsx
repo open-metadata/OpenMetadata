@@ -177,7 +177,7 @@ const mockParams = {
 };
 
 const API_FIELDS = [
-  'owner',
+  'owners',
   'usageSummary',
   'tags',
   'domain',

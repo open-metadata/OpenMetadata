@@ -110,7 +110,9 @@ public class StoredProcedureResourceTest
     // Create a database schema with owner data consumer
     DatabaseSchemaResourceTest schemaTest = new DatabaseSchemaResourceTest();
     CreateDatabaseSchema createDatabaseSchema =
-        schemaTest.createRequest(getEntityName(test)).withOwner(DATA_CONSUMER.getEntityReference());
+        schemaTest
+            .createRequest(getEntityName(test))
+            .withOwners(List.of(DATA_CONSUMER.getEntityReference()));
     DatabaseSchema schema = schemaTest.createEntity(createDatabaseSchema, ADMIN_AUTH_HEADERS);
 
     // Data consumer as an owner of the database schema can create stored procedure under it
@@ -161,10 +163,10 @@ public class StoredProcedureResourceTest
         storedProcedure.getDatabase(),
         storedProcedure.getDatabaseSchema(),
         storedProcedure.getStoredProcedureCode());
-    assertListNull(
-        storedProcedure.getOwner(), storedProcedure.getTags(), storedProcedure.getFollowers());
+    assertListNull(storedProcedure.getOwners(), storedProcedure.getFollowers());
+    assertTrue(storedProcedure.getTags().isEmpty());
 
-    String fields = "owner,tags,followers";
+    String fields = "owners,tags,followers";
     storedProcedure =
         byName
             ? getEntityByName(storedProcedure.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)

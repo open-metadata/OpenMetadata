@@ -26,8 +26,11 @@ import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.schema.type.Relationship.ADDRESSED_TO;
 import static org.openmetadata.schema.type.Relationship.CREATED;
 import static org.openmetadata.schema.type.Relationship.IS_ABOUT;
+import static org.openmetadata.schema.type.Relationship.MENTIONED_IN;
 import static org.openmetadata.schema.type.Relationship.REPLIED_TO;
 import static org.openmetadata.schema.type.TaskStatus.Open;
+import static org.openmetadata.service.Entity.GLOSSARY;
+import static org.openmetadata.service.Entity.GLOSSARY_TERM;
 import static org.openmetadata.service.Entity.USER;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.ANNOUNCEMENT_INVALID_START_TIME;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.ANNOUNCEMENT_OVERLAP;
@@ -158,7 +161,7 @@ public class FeedRepository {
       this.aboutEntity = Entity.getEntity(about, getFields(), ALL);
       this.createdBy =
           Entity.getEntityReferenceByName(Entity.USER, thread.getCreatedBy(), NON_DELETED);
-      thread.withEntityId(aboutEntity.getId()); // Add entity id to thread
+      thread.withEntityRef(aboutEntity.getEntityReference()); // Add entity id to thread
     }
 
     ThreadContext(Thread thread, ChangeEvent event) {
@@ -173,7 +176,7 @@ public class FeedRepository {
       }
       this.createdBy =
           Entity.getEntityReferenceByName(Entity.USER, thread.getCreatedBy(), NON_DELETED);
-      thread.withEntityId(aboutEntity.getId()); // Add entity id to thread
+      thread.withEntityRef(aboutEntity.getEntityReference()); // Add entity id to thread
     }
 
     public TaskWorkflow getTaskWorkflow() {
@@ -188,8 +191,8 @@ public class FeedRepository {
     private String getFields() {
       EntityRepository<?> repository = getEntityRepository();
       List<String> fieldList = new ArrayList<>();
-      if (repository.supportsOwner) {
-        fieldList.add("owner");
+      if (repository.supportsOwners) {
+        fieldList.add("owners");
       }
       if (repository.supportsTags) {
         fieldList.add("tags");
@@ -272,15 +275,17 @@ public class FeedRepository {
 
     // Add the owner also as addressedTo as the entity he owns when addressed, the owner is
     // actually being addressed
-    EntityReference entityOwner = threadContext.getAboutEntity().getOwner();
-    if (entityOwner != null) {
-      dao.relationshipDAO()
-          .insert(
-              thread.getId(),
-              entityOwner.getId(),
-              Entity.THREAD,
-              entityOwner.getType(),
-              ADDRESSED_TO.ordinal());
+    List<EntityReference> entityOwners = threadContext.getAboutEntity().getOwners();
+    if (!nullOrEmpty(entityOwners)) {
+      for (EntityReference entityOwner : entityOwners) {
+        dao.relationshipDAO()
+            .insert(
+                thread.getId(),
+                entityOwner.getId(),
+                Entity.THREAD,
+                entityOwner.getType(),
+                ADDRESSED_TO.ordinal());
+      }
     }
 
     // Add mentions to field relationship table
@@ -288,6 +293,10 @@ public class FeedRepository {
   }
 
   public Thread getTask(EntityLink about, TaskType taskType) {
+    return getTask(about, taskType, null);
+  }
+
+  public Thread getTask(EntityLink about, TaskType taskType, TaskStatus taskStatus) {
     List<Triple<String, String, String>> tasks =
         dao.fieldRelationshipDAO()
             .findFrom(
@@ -299,8 +308,16 @@ public class FeedRepository {
         UUID threadId = UUID.fromString(task.getLeft());
         Thread thread =
             EntityUtil.validate(threadId, dao.feedDAO().findById(threadId), Thread.class);
-        if (thread.getTask() != null && thread.getTask().getType() == taskType) {
-          return thread;
+        if (Optional.ofNullable(taskStatus).isPresent()) {
+          if (thread.getTask() != null
+              && thread.getTask().getType() == taskType
+              && thread.getTask().getStatus() == taskStatus) {
+            return thread;
+          }
+        } else {
+          if (thread.getTask() != null && thread.getTask().getType() == taskType) {
+            return thread;
+          }
         }
       }
     }
@@ -547,11 +564,11 @@ public class FeedRepository {
     if (reference.getType().equals(USER) || reference.getType().equals(Entity.TEAM)) {
       if (reference.getType().equals(USER)) {
         UUID userId = reference.getId();
-        User user = Entity.getEntity(USER, userId, TEAMS_FIELD, NON_DELETED);
+        User user = Entity.getEntity(USER, userId, TEAMS_FIELD, ALL);
         List<String> teamIds = getTeamIds(user);
         List<String> teamNames = getTeamNames(user);
         String userTeamJsonMysql = getUserTeamJsonMysql(userId, teamIds);
-        List<String> userTeamJsonPostgres = getUserTeamJsonPostgres(userId, teamIds);
+        String userTeamJsonPostgres = getUserTeamJsonPostgres(userId, teamIds);
         result =
             dao.feedDAO()
                 .listCountByOwner(
@@ -587,6 +604,30 @@ public class FeedRepository {
           });
       computeTotalTaskCount(threadCount);
       threadCounts.add(threadCount);
+    } else if (reference.getType().equals(GLOSSARY)) {
+      mentions = 0;
+      result = dao.feedDAO().listCountThreadsByGlossaryAndTerms(entityLink, reference);
+      result.forEach(
+          l -> {
+            ThreadCount threadCount = new ThreadCount().withMentionCount(mentions);
+            String eLink = l.get(0);
+            String type = l.get(1);
+            String taskStatus = l.get(2);
+            threadCount.setEntityLink(eLink);
+            int count = Integer.parseInt(l.get(3));
+            if (type.equalsIgnoreCase("Conversation")) {
+              threadCount.setConversationCount(count);
+            } else if (type.equalsIgnoreCase("Task")) {
+              if (taskStatus.equals("Open")) {
+                threadCount.setOpenTaskCount(count);
+              } else if (taskStatus.equals("Closed")) {
+                threadCount.setClosedTaskCount(count);
+              }
+            }
+            computeTotalTaskCount(threadCount);
+            threadCounts.add(threadCount);
+          });
+
     } else {
       mentions = 0;
       result =
@@ -652,10 +693,16 @@ public class FeedRepository {
           FilteredThreads filteredThreads = getThreadsByOwner(filter, reference.getId(), limit + 1);
           threads = filteredThreads.threads();
           total = filteredThreads.totalCount();
+        } else if (reference.getType().equals(GLOSSARY)
+            && ThreadType.Task.equals(filter.getThreadType())) {
+          // Get tasks associated with the glossary term and glossary at glossary level
+          FilteredThreads filteredThreads =
+              getThreadsForGlossary(filter, userId, limit + 1, entityLink);
+          threads = filteredThreads.threads();
+          total = filteredThreads.totalCount();
         } else {
           // Only data assets are added as about
-          User user =
-              userId != null ? Entity.getEntity(USER, userId, TEAMS_FIELD, NON_DELETED) : null;
+          User user = userId != null ? Entity.getEntity(USER, userId, TEAMS_FIELD, ALL) : null;
           List<String> teamNameHash = getTeamNames(user);
           String userName = user == null ? null : user.getFullyQualifiedName();
           List<String> jsons =
@@ -821,10 +868,10 @@ public class FeedRepository {
     // Allow if user is an assignee of the resolve/close task
     // Allow if user is the owner of the resource for which task is created to resolve/close task
     // Allow if user created the task to close task (and not resolve task)
-    EntityReference owner = Entity.getOwner(aboutRef);
+    List<EntityReference> owners = Entity.getOwners(aboutRef);
     List<EntityReference> assignees = thread.getTask().getAssignees();
-    if (owner != null
-        && (owner.getName().equals(userName)
+    if (!nullOrEmpty(owners)
+        && (owners.stream().anyMatch(owner -> owner.getName().equals(userName))
             || closeTask && thread.getCreatedBy().equals(userName))) {
       return;
     }
@@ -852,7 +899,8 @@ public class FeedRepository {
     List<EntityReference> teams = user.getTeams();
     List<String> teamNames = teams.stream().map(EntityReference::getName).toList();
     if (assignees.stream().anyMatch(assignee -> teamNames.contains(assignee.getName()))
-        || teamNames.contains(owner.getName())) {
+        || teamNames.stream()
+            .anyMatch(team -> owners.stream().anyMatch(owner -> team.equals(owner.getName())))) {
       return;
     }
 
@@ -877,7 +925,8 @@ public class FeedRepository {
     // TODO fix this - overlapping announcements should be allowed
     List<String> announcements =
         dao.feedDAO()
-            .listAnnouncementBetween(thread.getId(), thread.getEntityId(), startTime, endTime);
+            .listAnnouncementBetween(
+                thread.getId(), thread.getEntityRef().getId(), startTime, endTime);
     if (!announcements.isEmpty()) {
       // There is already an announcement that overlaps the new one
       throw new IllegalArgumentException(ANNOUNCEMENT_OVERLAP);
@@ -1050,14 +1099,14 @@ public class FeedRepository {
     return result.toString();
   }
 
-  private List<String> getUserTeamJsonPostgres(UUID userId, List<String> teamIds) {
-    // Build a list of objects like this for the tasks filter
-    // [{"id":"9e78b924-b75c-4141-9845-1b3eb81fdc1b","type":"team"}]','[{"id":"fe21e1ba-ce00-49fa-8b62-3c9a6669a11b","type":"user"}]
-    List<String> result = new ArrayList<>();
-    JSONObject json = getUserTeamJson(userId, "user");
-    result.add(List.of(json.toString()).toString());
-    teamIds.forEach(id -> result.add(List.of(getUserTeamJson(id, "team").toString()).toString()));
-    return result;
+  private String getUserTeamJsonPostgres(UUID userId, List<String> teamIds) {
+    StringBuilder result = new StringBuilder();
+    result.append(userId.toString());
+    for (String id : teamIds) {
+      result.append(" | ").append(id);
+    }
+    LOG.info("result {}", result);
+    return result.toString();
   }
 
   private JSONObject getUserTeamJson(UUID userId, String type) {
@@ -1071,7 +1120,7 @@ public class FeedRepository {
   /** Return the tasks assigned to the user. */
   private FilteredThreads getTasksAssignedTo(FeedFilter filter, UUID userId, int limit) {
     List<String> teamIds = getTeamIds(userId);
-    List<String> userTeamJsonPostgres = getUserTeamJsonPostgres(userId, teamIds);
+    String userTeamJsonPostgres = getUserTeamJsonPostgres(userId, teamIds);
     String userTeamJsonMysql = getUserTeamJsonMysql(userId, teamIds);
     List<String> jsons =
         dao.feedDAO()
@@ -1116,9 +1165,9 @@ public class FeedRepository {
 
   /** Return the tasks created by or assigned to the user. */
   private FilteredThreads getTasksOfUser(FeedFilter filter, UUID userId, int limit) {
-    String username = Entity.getEntityReferenceById(Entity.USER, userId, NON_DELETED).getName();
+    String username = Entity.getEntityReferenceById(Entity.USER, userId, ALL).getName();
     List<String> teamIds = getTeamIds(userId);
-    List<String> userTeamJsonPostgres = getUserTeamJsonPostgres(userId, teamIds);
+    String userTeamJsonPostgres = getUserTeamJsonPostgres(userId, teamIds);
     String userTeamJsonMysql = getUserTeamJsonMysql(userId, teamIds);
     List<String> jsons =
         dao.feedDAO()
@@ -1134,7 +1183,7 @@ public class FeedRepository {
 
   /** Return the tasks created by the user. */
   private FilteredThreads getTasksAssignedBy(FeedFilter filter, UUID userId, int limit) {
-    String username = Entity.getEntityReferenceById(Entity.USER, userId, NON_DELETED).getName();
+    String username = Entity.getEntityReferenceById(Entity.USER, userId, ALL).getName();
     List<String> jsons = dao.feedDAO().listTasksAssigned(username, limit, filter.getCondition());
     List<Thread> threads = JsonUtils.readObjects(jsons, Thread.class);
     int totalCount = dao.feedDAO().listCountTasksAssignedBy(username, filter.getCondition(false));
@@ -1157,12 +1206,43 @@ public class FeedRepository {
     return new FilteredThreads(threads, totalCount);
   }
 
+  private FilteredThreads getThreadsForGlossary(
+      FeedFilter filter, UUID userId, int limit, EntityLink entityLink) {
+
+    User user = userId != null ? Entity.getEntity(USER, userId, TEAMS_FIELD, ALL) : null;
+    List<String> teamNameHash = getTeamNames(user);
+    String userName = user == null ? null : user.getFullyQualifiedName();
+    int filterRelation = -1;
+    if (userName != null && filter.getFilterType() == FilterType.MENTIONS) {
+      filterRelation = MENTIONED_IN.ordinal();
+    }
+    EntityLink glossaryTermLink =
+        new EntityLink(GLOSSARY_TERM, entityLink.getFullyQualifiedFieldValue());
+
+    List<String> jsons =
+        dao.feedDAO()
+            .listThreadsByGlossaryAndTerms(
+                entityLink.getFullyQualifiedFieldValue(),
+                entityLink.getFullyQualifiedFieldType(),
+                glossaryTermLink.getFullyQualifiedFieldType(),
+                limit + 1,
+                IS_ABOUT.ordinal(),
+                userName,
+                teamNameHash,
+                filterRelation,
+                filter.getCondition());
+
+    List<Thread> threads = JsonUtils.readObjects(jsons, Thread.class);
+
+    return new FilteredThreads(threads, jsons.size());
+  }
+
   /**
    * Returns the threads where the user or the team they belong to were mentioned by other users
    * with @mention.
    */
   private FilteredThreads getThreadsByMentions(FeedFilter filter, UUID userId, int limit) {
-    User user = Entity.getEntity(Entity.USER, userId, TEAMS_FIELD, NON_DELETED);
+    User user = Entity.getEntity(Entity.USER, userId, TEAMS_FIELD, ALL);
     String userNameHash = getUserNameHash(user);
     // Return the threads where the user or team was mentioned
     List<String> teamNamesHash = getTeamNames(user);
@@ -1191,7 +1271,7 @@ public class FeedRepository {
   private List<String> getTeamIds(UUID userId) {
     List<String> teamIds = null;
     if (userId != null) {
-      User user = Entity.getEntity(Entity.USER, userId, TEAMS_FIELD, NON_DELETED);
+      User user = Entity.getEntity(Entity.USER, userId, TEAMS_FIELD, ALL);
       teamIds = getTeamIds(user);
     }
     return nullOrEmpty(teamIds) ? List.of(StringUtils.EMPTY) : teamIds;

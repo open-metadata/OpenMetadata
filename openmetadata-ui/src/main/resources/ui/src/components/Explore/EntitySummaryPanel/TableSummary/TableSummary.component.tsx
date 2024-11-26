@@ -21,9 +21,9 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useLocation } from 'react-router-dom';
 import { ROUTES } from '../../../../constants/constants';
 import { mockTablePermission } from '../../../../constants/mockTourData.constants';
+import { PROFILER_FILTER_RANGE } from '../../../../constants/profiler.constant';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
@@ -33,9 +33,14 @@ import { SummaryEntityType } from '../../../../enums/EntitySummary.enum';
 import { ExplorePageTabs } from '../../../../enums/Explore.enum';
 import { Table } from '../../../../generated/entity/data/table';
 import { TestSummary } from '../../../../generated/tests/testCase';
+import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
+import { getListTestCaseIncidentStatus } from '../../../../rest/incidentManagerAPI';
 import { getLatestTableProfileByFqn } from '../../../../rest/tableAPI';
 import { getTestCaseExecutionSummary } from '../../../../rest/testAPI';
-import { formTwoDigitNumber } from '../../../../utils/CommonUtils';
+import {
+  getCurrentMillis,
+  getEpochMillisForPastDays,
+} from '../../../../utils/date-time/DateTimeUtils';
 import {
   getFormattedEntityData,
   getSortedTagsWithHighlight,
@@ -64,11 +69,12 @@ function TableSummary({
   highlights,
 }: TableSummaryProps) {
   const { t } = useTranslation();
-  const location = useLocation();
+  const location = useCustomLocation();
   const isTourPage = location.pathname.includes(ROUTES.TOUR);
   const { getEntityPermission } = usePermissionProvider();
 
   const [profileData, setProfileData] = useState<TableProfileDetails>();
+  const [incidentCount, setIncidentCount] = useState(0);
   const [testSuiteSummary, setTestSuiteSummary] = useState<TestSummary>();
   const [tablePermissions, setTablePermissions] = useState<OperationPermission>(
     DEFAULT_ENTITY_PERMISSION
@@ -96,6 +102,26 @@ function TableSummary({
         setTestSuiteSummary(res);
       } catch (error) {
         // Error
+      }
+    }
+  };
+
+  const fetchIncidentCount = async () => {
+    if (tableDetails?.fullyQualifiedName) {
+      try {
+        const { paging } = await getListTestCaseIncidentStatus({
+          limit: 0,
+          latest: true,
+          originEntityFQN: tableDetails?.fullyQualifiedName,
+          startTs: getEpochMillisForPastDays(
+            PROFILER_FILTER_RANGE.last30days.days
+          ),
+          endTs: getCurrentMillis(),
+        });
+
+        setIncidentCount(paging.total);
+      } catch (error) {
+        setIncidentCount(0);
       }
     }
   };
@@ -134,7 +160,7 @@ function TableSummary({
           <div
             className="font-semibold text-lg"
             data-testid="test-passed-value">
-            {formTwoDigitNumber(testSuiteSummary?.success ?? 0)}
+            {testSuiteSummary?.success ?? 0}
           </div>
           <div className="text-xs text-grey-muted">{`${t(
             'label.test-plural'
@@ -144,7 +170,7 @@ function TableSummary({
           <div
             className="font-semibold text-lg"
             data-testid="test-aborted-value">
-            {formTwoDigitNumber(testSuiteSummary?.aborted ?? 0)}
+            {testSuiteSummary?.aborted ?? 0}
           </div>
           <div className="text-xs text-grey-muted">{`${t(
             'label.test-plural'
@@ -154,7 +180,7 @@ function TableSummary({
           <div
             className="font-semibold text-lg"
             data-testid="test-failed-value">
-            {formTwoDigitNumber(testSuiteSummary?.failed ?? 0)}
+            {testSuiteSummary?.failed ?? 0}
           </div>
           <div className="text-xs text-grey-muted">{`${t(
             'label.test-plural'
@@ -165,8 +191,11 @@ function TableSummary({
   }, [tableDetails, testSuiteSummary, viewProfilerPermission]);
 
   const entityInfo = useMemo(
-    () => getEntityOverview(ExplorePageTabs.TABLES, tableDetails),
-    [tableDetails]
+    () =>
+      getEntityOverview(ExplorePageTabs.TABLES, tableDetails, {
+        incidentCount,
+      }),
+    [tableDetails, incidentCount]
   );
 
   const formattedColumnsData: BasicEntityInfo[] = useMemo(
@@ -196,6 +225,7 @@ function TableSummary({
       if (shouldFetchProfilerData) {
         fetchProfilerData();
         fetchAllTests();
+        fetchIncidentCount();
       }
     } else {
       setTablePermissions(mockTablePermission as OperationPermission);

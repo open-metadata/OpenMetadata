@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-// common css utils file
 @import (reference) url('./variables.less');
 
 /* Generic */
@@ -38,7 +37,7 @@ p {
 // Global css
 
 .global-search-select-menu {
-  width: 110px !important;
+  width: 200px !important;
 }
 
 .appbar-search .rc-virtual-list-holder {
@@ -155,6 +154,9 @@ a[href].link-text-grey,
 .text-underline {
   text-decoration: underline;
 }
+.text-line-through {
+  text-decoration: line-through;
+}
 
 // image property
 
@@ -257,6 +259,14 @@ a[href].link-text-grey,
   display: -webkit-box;
   -webkit-line-clamp: 2;
   line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.max-one-line {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  line-clamp: 1;
   -webkit-box-orient: vertical;
 }
 
@@ -414,6 +424,9 @@ a[href].link-text-grey,
 .opacity-0 {
   opacity: 0;
 }
+.opacity-30 {
+  opacity: 0.3;
+}
 .opacity-50 {
   opacity: 0.5;
 }
@@ -534,9 +547,27 @@ a[href].link-text-grey,
 // beta tag for service page
 .service-beta-tag {
   sup {
+    height: auto;
     padding: 0 4px;
     margin-left: 2px;
     font-size: 10px;
+    background: @primary-1;
+    border: 1px solid @primary-color;
+    color: @primary-color;
+  }
+}
+
+// beta tag for page header
+.service-beta-page-header {
+  sup {
+    height: auto;
+    padding: 2px 6px;
+    border-radius: 30px;
+    margin-left: 2px;
+    font-size: 10px;
+    background: @primary-1;
+    border: 1px solid @primary-color;
+    color: @primary-color;
   }
 }
 
@@ -550,6 +581,10 @@ a[href].link-text-grey,
   .ant-tabs-nav {
     margin: 0 !important;
     padding: 0 20px;
+
+    .ant-tabs-nav-wrap {
+      overflow: initial;
+    }
   }
 }
 .entity-tag-right-panel-container {
@@ -559,33 +594,12 @@ a[href].link-text-grey,
   padding: 12px 8px 0 8px;
 }
 
-.reflex-container {
-  .entity-resizable-right-panel-container {
-    overflow-y: auto;
-    padding: 48px 8px 0 8px;
-  }
-}
-
-.reflex-container {
-  .entity-summary-resizable-right-panel-container {
-    .summary-panel-container {
-      height: 100%;
-    }
-    .ant-drawer-content-wrapper {
-      padding-top: 30px;
-    }
-    z-index: 10;
-    overflow-y: auto;
-    padding: 48px 8px 0 8px;
-  }
-}
-
 .global-border-radius {
   border-radius: 10px;
 }
 
 .full-height {
-  height: calc(100vh - 64px); // removing only navbar height
+  height: calc(100vh - @om-navbar-height); // removing only navbar height
 }
 
 .tab-content-height {
@@ -807,4 +821,34 @@ a[href].link-text-grey,
   align-items: center;
   flex-direction: column;
   height: 100%;
+}
+
+.alert-icon {
+  .anticon {
+    font-size: 18px;
+  }
+}
+
+.reserve-right-sidebar {
+  .feed-editor {
+    // Right side padding 20 + 64 width of sidebar
+    margin-right: 84px;
+  }
+  .test-case-table-container,
+  .test-suite-pipeline-tab {
+    margin-right: 64px;
+  }
+
+  .appearance-cta-buttons {
+    padding-right: 64px;
+  }
+  .activity-feed-editor-drawer,
+  .policies-list-table,
+  .roles-list-table,
+  .list-table,
+  .kpi-table,
+  .custom-properties-card,
+  .entity-custom-properties-table {
+    margin-right: 64px;
+  }
 }

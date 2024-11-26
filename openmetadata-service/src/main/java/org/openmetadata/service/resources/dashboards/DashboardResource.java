@@ -57,6 +57,7 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.DashboardRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
@@ -74,7 +75,7 @@ import org.openmetadata.service.util.ResultList;
 public class DashboardResource extends EntityResource<Dashboard, DashboardRepository> {
   public static final String COLLECTION_PATH = "v1/dashboards/";
   protected static final String FIELDS =
-      "owner,charts,followers,tags,usageSummary,extension,dataModels,domain,dataProducts,sourceHash";
+      "owners,charts,followers,tags,usageSummary,extension,dataModels,domain,dataProducts,sourceHash";
 
   @Override
   public Dashboard addHref(UriInfo uriInfo, Dashboard dashboard) {
@@ -85,8 +86,8 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
     return dashboard;
   }
 
-  public DashboardResource(Authorizer authorizer) {
-    super(Entity.DASHBOARD, authorizer);
+  public DashboardResource(Authorizer authorizer, Limits limits) {
+    super(Entity.DASHBOARD, authorizer, limits);
   }
 
   @Override

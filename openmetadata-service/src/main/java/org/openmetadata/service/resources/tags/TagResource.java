@@ -50,20 +50,24 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.api.AddTagToAssetsRequest;
 import org.openmetadata.schema.api.classification.CreateTag;
 import org.openmetadata.schema.api.classification.LoadTags;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
+import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.ClassificationRepository;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TagRepository;
+import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
@@ -94,8 +98,8 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
     /* Required for serde */
   }
 
-  public TagResource(Authorizer authorizer) {
-    super(Entity.TAG, authorizer);
+  public TagResource(Authorizer authorizer, Limits limits) {
+    super(Entity.TAG, authorizer, limits);
   }
 
   @Override
@@ -500,6 +504,56 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
+  }
+
+  @PUT
+  @Path("/{id}/assets/add")
+  @Operation(
+      operationId = "bulkAddTagToAssets",
+      summary = "Bulk Add Classification Tag to Assets",
+      description = "Bulk Add Classification Tag to Assets",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "OK",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = BulkOperationResult.class))),
+        @ApiResponse(responseCode = "404", description = "model for instance {id} is not found")
+      })
+  public Response bulkAddTagToAssets(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id,
+      @Valid AddTagToAssetsRequest request) {
+    return bulkAddToAssetsAsync(securityContext, id, request);
+  }
+
+  @PUT
+  @Path("/{id}/assets/remove")
+  @Operation(
+      operationId = "bulkRemoveTagFromAssets",
+      summary = "Bulk Remove Tag from Assets",
+      description = "Bulk Remove Tag from Assets",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "OK",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ChangeEvent.class))),
+        @ApiResponse(responseCode = "404", description = "model for instance {id} is not found")
+      })
+  public Response bulkRemoveTagFromAssets(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id,
+      @Valid AddTagToAssetsRequest request) {
+    return bulkRemoveFromAssetsAsync(securityContext, id, request);
   }
 
   @Override

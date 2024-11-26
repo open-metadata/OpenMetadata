@@ -21,7 +21,6 @@ from pydantic import BaseModel
 from requests.exceptions import HTTPError
 
 from metadata.config.common import ConfigModel
-from metadata.data_insight.source.metadata import DataInsightRecord
 from metadata.data_quality.api.models import TestCaseResultResponse, TestCaseResults
 from metadata.generated.schema.analytics.reportData import ReportData
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -51,6 +50,7 @@ from metadata.generated.schema.tests.testCaseResolutionStatus import (
     TestCaseResolutionStatus,
 )
 from metadata.generated.schema.tests.testSuite import TestSuite
+from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.schema import Topic
 from metadata.ingestion.api.models import Either, Entity, StackTraceError
 from metadata.ingestion.api.steps import Sink
@@ -59,6 +59,7 @@ from metadata.ingestion.models.data_insight import OMetaDataInsightSample
 from metadata.ingestion.models.delete_entity import DeleteEntity
 from metadata.ingestion.models.life_cycle import OMetaLifeCycleData
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
+from metadata.ingestion.models.ometa_lineage import OMetaLineageRequest
 from metadata.ingestion.models.ometa_topic_data import OMetaTopicSampleData
 from metadata.ingestion.models.patch_request import (
     ALLOWED_COMMON_PATCH_FIELDS,
@@ -83,6 +84,7 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardUsage
 from metadata.ingestion.source.database.database_service import DataModelLink
 from metadata.profiler.api.models import ProfilerResponse
+from metadata.sampler.models import SamplerResponse
 from metadata.utils.execution_time_tracker import calculate_execution_time
 from metadata.utils.logger import get_log_name, ingestion_logger
 
@@ -186,6 +188,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
             allowed_fields=ALLOWED_COMMON_PATCH_FIELDS,
             restrict_update_fields=RESTRICT_UPDATE_LIST,
             array_entity_fields=ARRAY_ENTITY_FIELDS,
+            override_metadata=record.override_metadata,
         )
         patched_entity = PatchedEntity(new_entity=entity) if entity else None
         return Either(right=patched_entity)
@@ -248,6 +251,44 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
     def write_lineage(self, add_lineage: AddLineageRequest) -> Either[Dict[str, Any]]:
         created_lineage = self.metadata.add_lineage(add_lineage, check_patch=True)
         return Either(right=created_lineage["entity"]["fullyQualifiedName"])
+
+    @_run_dispatch.register
+    def write_override_lineage(
+        self, add_lineage: OMetaLineageRequest
+    ) -> Either[Dict[str, Any]]:
+        """
+        Writes the override lineage for the given lineage request.
+
+        Args:
+            add_lineage (OMetaLineageRequest): The lineage request containing the override lineage information.
+
+        Returns:
+            Either[Dict[str, Any]]: The result of the dispatch operation.
+        """
+        if (
+            add_lineage.override_lineage is True
+            and add_lineage.lineage_request.edge.lineageDetails
+            and add_lineage.lineage_request.edge.lineageDetails.source
+        ):
+            if (
+                add_lineage.lineage_request.edge.lineageDetails.pipeline
+                and add_lineage.lineage_request.edge.lineageDetails.source
+                == LineageSource.PipelineLineage
+            ):
+                self.metadata.delete_lineage_by_source(
+                    entity_type="pipeline",
+                    entity_id=str(
+                        add_lineage.lineage_request.edge.lineageDetails.pipeline.id.root
+                    ),
+                    source=add_lineage.lineage_request.edge.lineageDetails.source.value,
+                )
+            else:
+                self.metadata.delete_lineage_by_source(
+                    entity_type=add_lineage.lineage_request.edge.toEntity.type,
+                    entity_id=str(add_lineage.lineage_request.edge.toEntity.id.root),
+                    source=add_lineage.lineage_request.edge.lineageDetails.source.value,
+                )
+        return self._run_dispatch(add_lineage.lineage_request)
 
     def _create_role(self, create_role: CreateRoleRequest) -> Optional[Role]:
         """
@@ -448,14 +489,6 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         return Either(right=record.record)
 
     @_run_dispatch.register
-    def write_data_insight(self, record: DataInsightRecord) -> Either[ReportData]:
-        """
-        Use the /dataQuality/testCases endpoint to ingest sample test suite
-        """
-        self.metadata.add_data_insight_report_data(record.data)
-        return Either(left=None, right=record.data)
-
-    @_run_dispatch.register
     def write_data_insight_kpi(self, record: KpiResult) -> Either[KpiResult]:
         """
         Use the /dataQuality/testCases endpoint to ingest sample test suite
@@ -517,6 +550,41 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         )
 
     @_run_dispatch.register
+    def write_sampler_response(self, record: SamplerResponse) -> Either[Table]:
+        """Ingest the sample data - if needed - and the PII tags"""
+        if record.sample_data and record.sample_data.store:
+            table_data = self.metadata.ingest_table_sample_data(
+                table=record.table, sample_data=record.sample_data.data
+            )
+            if not table_data:
+                self.status.failed(
+                    StackTraceError(
+                        name=record.table.fullyQualifiedName.root,
+                        error="Error trying to ingest sample data for table",
+                    )
+                )
+            else:
+                logger.debug(
+                    f"Successfully ingested sample data for {record.table.fullyQualifiedName.root}"
+                )
+
+        if record.column_tags:
+            patched = self.metadata.patch_column_tags(
+                table=record.table, column_tags=record.column_tags
+            )
+            if not patched:
+                self.status.warning(
+                    key=record.table.fullyQualifiedName.root,
+                    reason="Error patching tags for table",
+                )
+            else:
+                logger.debug(
+                    f"Successfully patched tag {record.column_tags} for {record.table.fullyQualifiedName.root}"
+                )
+
+        return Either(right=record.table)
+
+    @_run_dispatch.register
     def write_profiler_response(self, record: ProfilerResponse) -> Either[Table]:
         """Cleanup "`" character in columns and ingest"""
         column_profile = record.profile.columnProfile
@@ -532,39 +600,6 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         logger.debug(
             f"Successfully ingested profile metrics for {record.table.fullyQualifiedName.root}"
         )
-
-        if record.sample_data:
-            table_data = self.metadata.ingest_table_sample_data(
-                table=record.table, sample_data=record.sample_data
-            )
-            if not table_data:
-                self.status.failed(
-                    StackTraceError(
-                        name=table.fullyQualifiedName.root,
-                        error="Error trying to ingest sample data for table",
-                    )
-                )
-            else:
-                logger.debug(
-                    f"Successfully ingested sample data for {record.table.fullyQualifiedName.root}"
-                )
-
-        if record.column_tags:
-            patched = self.metadata.patch_column_tags(
-                table=record.table, column_tags=record.column_tags
-            )
-            if not patched:
-                self.status.failed(
-                    StackTraceError(
-                        name=table.fullyQualifiedName.root,
-                        error="Error patching tags for table",
-                    )
-                )
-            else:
-                logger.debug(
-                    f"Successfully patched tag {record.column_tags} for {record.table.fullyQualifiedName.root}"
-                )
-
         return Either(right=table)
 
     @_run_dispatch.register

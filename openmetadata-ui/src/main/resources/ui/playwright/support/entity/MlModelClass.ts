@@ -11,12 +11,15 @@
  *  limitations under the License.
  */
 import { APIRequestContext, Page } from '@playwright/test';
+import { Operation } from 'fast-json-patch';
+import { SERVICE_TYPE } from '../../constant/service';
 import { uuid } from '../../utils/common';
 import { visitEntityPage } from '../../utils/entity';
-import { EntityTypeEndpoint } from './Entity.interface';
+import { EntityTypeEndpoint, ResponseDataType } from './Entity.interface';
 import { EntityClass } from './EntityClass';
 
 export class MlModelClass extends EntityClass {
+  private mlModelName = `pw-mlmodel-${uuid()}`;
   service = {
     name: `pw-ml-model-service-${uuid()}`,
     serviceType: 'Mlflow',
@@ -29,27 +32,33 @@ export class MlModelClass extends EntityClass {
       },
     },
   };
+
+  children = [
+    {
+      name: 'sales',
+      dataType: 'numerical',
+      description: 'Sales amount',
+    },
+  ];
+
   entity = {
-    name: `pw.mlmodel%${uuid()}`,
-    displayName: `pw-mlmodel-${uuid()}`,
+    name: this.mlModelName,
+    displayName: this.mlModelName,
     service: this.service.name,
     algorithm: 'Time Series',
-    mlFeatures: [
-      {
-        name: 'sales',
-        dataType: 'numerical',
-        description: 'Sales amount',
-      },
-    ],
+    mlFeatures: this.children,
   };
 
-  serviceResponseData: unknown;
-  entityResponseData: unknown;
+  serviceResponseData: ResponseDataType;
+  entityResponseData: ResponseDataType;
 
   constructor(name?: string) {
     super(EntityTypeEndpoint.MlModel);
     this.service.name = name ?? this.service.name;
     this.type = 'MlModel';
+    this.childrenTabId = 'features';
+    this.childrenSelectorId = `feature-card-${this.children[0].name}`;
+    this.serviceCategory = SERVICE_TYPE.MLModels;
   }
 
   async create(apiContext: APIRequestContext) {
@@ -69,6 +78,30 @@ export class MlModelClass extends EntityClass {
     return {
       service: serviceResponse.body,
       entity: entityResponse.body,
+    };
+  }
+
+  async patch({
+    apiContext,
+    patchData,
+  }: {
+    apiContext: APIRequestContext;
+    patchData: Operation[];
+  }) {
+    const response = await apiContext.patch(
+      `/api/v1/mlmodels/${this.entityResponseData.id}`,
+      {
+        data: patchData,
+        headers: {
+          'Content-Type': 'application/json-patch+json',
+        },
+      }
+    );
+
+    this.entityResponseData = await response.json();
+
+    return {
+      entity: response.body,
     };
   }
 

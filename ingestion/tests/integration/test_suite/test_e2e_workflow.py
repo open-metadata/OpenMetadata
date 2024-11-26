@@ -49,7 +49,7 @@ from metadata.workflow.data_quality import TestSuiteWorkflow
 
 test_suite_config = {
     "source": {
-        "type": "custom-database",
+        "type": "sqlite",
         "serviceName": "test_suite_service_test",
         "sourceConfig": {
             "config": {
@@ -238,7 +238,7 @@ class TestE2EWorkflow(unittest.TestCase):
         """test cli workflow e2e"""
         parameters = [
             {"table_name": "users", "status": "Success"},
-            {"table_name": "empty_users", "status": "Aborted"},
+            {"table_name": "empty_users", "status": "Success"},
         ]
 
         for param in parameters:

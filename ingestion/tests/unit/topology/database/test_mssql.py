@@ -151,7 +151,7 @@ EXPECTED_DATABASE = [
         displayName=None,
         description=None,
         tags=None,
-        owner=None,
+        owners=None,
         service=FullyQualifiedEntityName("mssql_source_test"),
         dataProducts=None,
         default=False,
@@ -169,7 +169,7 @@ EXPECTED_DATABASE_SCHEMA = [
         name=EntityName("sample.schema"),
         displayName=None,
         description=None,
-        owner=None,
+        owners=None,
         database=FullyQualifiedEntityName("mssql_source_test.sample_database"),
         dataProducts=None,
         tags=None,
@@ -269,7 +269,7 @@ EXPECTED_TABLE = [
         tableConstraints=[],
         tablePartition=None,
         tableProfilerConfig=None,
-        owner=None,
+        owners=None,
         databaseSchema=FullyQualifiedEntityName(
             'mssql_source_test.sample_database."sample.schema"'
         ),

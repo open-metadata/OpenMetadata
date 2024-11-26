@@ -23,9 +23,11 @@ import {
   getVersionPath,
 } from '../../../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../../constants/entity.constants';
+import { COMMON_RESIZABLE_PANEL_CONFIG } from '../../../../constants/ResizablePanel.constants';
 import LineageProvider from '../../../../context/LineageProvider/LineageProvider';
 import { CSMode } from '../../../../enums/codemirror.enum';
 import { EntityTabs, EntityType } from '../../../../enums/entity.enum';
+import { DashboardDataModel } from '../../../../generated/entity/data/dashboardDataModel';
 import { TagLabel } from '../../../../generated/type/tagLabel';
 import { useFqn } from '../../../../hooks/useFqn';
 import { FeedCounts } from '../../../../interface/feed.interface';
@@ -39,6 +41,7 @@ import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvi
 import { ActivityFeedTab } from '../../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import ActivityThreadPanel from '../../../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import { withActivityFeed } from '../../../AppRouter/withActivityFeed';
+import { CustomPropertyTable } from '../../../common/CustomPropertyTable/CustomPropertyTable';
 import DescriptionV1 from '../../../common/EntityDescription/DescriptionV1';
 import ResizablePanels from '../../../common/ResizablePanels/ResizablePanels';
 import TabsLabel from '../../../common/TabsLabel/TabsLabel.component';
@@ -81,11 +84,11 @@ const DataModelDetails = ({
     FEED_COUNT_INITIAL_DATA
   );
 
-  const { deleted, owner, description, version, entityName, tags } =
+  const { deleted, owners, description, version, entityName, tags } =
     useMemo(() => {
       return {
         deleted: dataModelData?.deleted,
-        owner: dataModelData?.owner,
+        owners: dataModelData?.owners,
         description: dataModelData?.description,
         version: dataModelData?.version,
         entityName: getEntityName(dataModelData),
@@ -188,12 +191,17 @@ const DataModelDetails = ({
   const {
     editDescriptionPermission,
     editTagsPermission,
+    editGlossaryTermsPermission,
     editLineagePermission,
   } = useMemo(() => {
     return {
       editDescriptionPermission:
         (dataModelPermissions.EditAll ||
           dataModelPermissions.EditDescription) &&
+        !deleted,
+      editGlossaryTermsPermission:
+        (dataModelPermissions.EditGlossaryTerms ||
+          dataModelPermissions.EditAll) &&
         !deleted,
       editTagsPermission:
         (dataModelPermissions.EditAll || dataModelPermissions.EditTags) &&
@@ -209,14 +217,26 @@ const DataModelDetails = ({
 
     setIsEditDescription(false);
   };
+  const handelExtensionUpdate = useCallback(
+    async (updatedDataModel: DashboardDataModel) => {
+      await onUpdateDataModel(
+        {
+          ...dataModelData,
+          extension: updatedDataModel.extension,
+        },
+        'extension'
+      );
+    },
+    [onUpdateDataModel, dataModelData]
+  );
 
   const modelComponent = useMemo(() => {
     return (
       <Row gutter={[0, 16]} wrap={false}>
-        <Col className="tab-content-height" span={24}>
+        <Col className="tab-content-height-with-resizable-panel" span={24}>
           <ResizablePanels
-            applyDefaultStyle={false}
             firstPanel={{
+              className: 'entity-resizable-panel-container',
               children: (
                 <div className="d-flex flex-col gap-4 p-t-sm m-x-lg">
                   <DescriptionV1
@@ -227,7 +247,7 @@ const DataModelDetails = ({
                     hasEditAccess={editDescriptionPermission}
                     isDescriptionExpanded={isEmpty(dataModelData.columns)}
                     isEdit={isEditDescription}
-                    owner={owner}
+                    owner={owners}
                     showActions={!deleted}
                     onCancel={() => setIsEditDescription(false)}
                     onDescriptionEdit={() => setIsEditDescription(true)}
@@ -238,6 +258,7 @@ const DataModelDetails = ({
                     data={dataModelData?.columns || []}
                     entityFqn={decodedDataModelFQN}
                     hasEditDescriptionPermission={editDescriptionPermission}
+                    hasEditGlossaryTermPermission={editGlossaryTermsPermission}
                     hasEditTagsPermission={editTagsPermission}
                     isReadOnly={Boolean(deleted)}
                     onThreadLinkSelect={onThreadLinkSelect}
@@ -245,28 +266,36 @@ const DataModelDetails = ({
                   />
                 </div>
               ),
-              minWidth: 800,
-              flex: 0.87,
+              ...COMMON_RESIZABLE_PANEL_CONFIG.LEFT_PANEL,
             }}
             secondPanel={{
               children: (
                 <div data-testid="entity-right-panel">
-                  <EntityRightPanel
+                  <EntityRightPanel<EntityType.DASHBOARD_DATA_MODEL>
+                    customProperties={dataModelData}
                     dataProducts={dataModelData?.dataProducts ?? []}
                     domain={dataModelData?.domain}
+                    editCustomAttributePermission={
+                      (dataModelPermissions.EditAll ||
+                        dataModelPermissions.EditCustomFields) &&
+                      !deleted
+                    }
+                    editGlossaryTermsPermission={editGlossaryTermsPermission}
                     editTagPermission={editTagsPermission}
                     entityFQN={decodedDataModelFQN}
                     entityId={dataModelData.id}
                     entityType={EntityType.DASHBOARD_DATA_MODEL}
                     selectedTags={tags}
+                    viewAllPermission={dataModelPermissions.ViewAll}
+                    onExtensionUpdate={handelExtensionUpdate}
                     onTagSelectionChange={handleTagSelection}
                     onThreadLinkSelect={onThreadLinkSelect}
                   />
                 </div>
               ),
-              minWidth: 320,
-              flex: 0.13,
-              className: 'entity-resizable-right-panel-container',
+              ...COMMON_RESIZABLE_PANEL_CONFIG.RIGHT_PANEL,
+              className:
+                'entity-resizable-right-panel-container entity-resizable-panel-container',
             }}
           />
         </Col>
@@ -278,6 +307,7 @@ const DataModelDetails = ({
     description,
     decodedDataModelFQN,
     editTagsPermission,
+    editGlossaryTermsPermission,
     deleted,
     editDescriptionPermission,
     isEditDescription,
@@ -294,7 +324,7 @@ const DataModelDetails = ({
         label: (
           <TabsLabel
             data-testid={EntityTabs.MODEL}
-            id={EntityTabs.DETAILS}
+            id={EntityTabs.MODEL}
             name={t('label.model')}
           />
         ),
@@ -368,6 +398,30 @@ const DataModelDetails = ({
               hasEditAccess={editLineagePermission}
             />
           </LineageProvider>
+        ),
+      },
+      {
+        label: (
+          <TabsLabel
+            id={EntityTabs.CUSTOM_PROPERTIES}
+            name={t('label.custom-property-plural')}
+          />
+        ),
+        key: EntityTabs.CUSTOM_PROPERTIES,
+        children: (
+          <div className="p-md">
+            <CustomPropertyTable<EntityType.DASHBOARD_DATA_MODEL>
+              entityDetails={dataModelData}
+              entityType={EntityType.DASHBOARD_DATA_MODEL}
+              handleExtensionUpdate={handelExtensionUpdate}
+              hasEditAccess={
+                dataModelPermissions.EditAll ||
+                dataModelPermissions.EditCustomFields
+              }
+              hasPermission={dataModelPermissions.ViewAll}
+              isVersionView={false}
+            />
+          </div>
         ),
       },
     ];

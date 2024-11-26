@@ -15,8 +15,10 @@ import traceback
 from copy import deepcopy
 from typing import Iterable, Optional, Tuple, Union
 
+from pydantic import EmailStr
+from pydantic_core import PydanticCustomError
 from pyhive.sqlalchemy_hive import _type_map
-from sqlalchemy import types, util
+from sqlalchemy import exc, types, util
 from sqlalchemy.engine import reflection
 from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy.exc import DatabaseError
@@ -35,6 +37,7 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
@@ -62,6 +65,8 @@ from metadata.utils.filters import filter_by_database
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import (
     get_all_view_definitions,
+    get_table_comment_result_wrapper,
+    get_table_comment_results,
     get_view_definition_wrapper,
 )
 from metadata.utils.tag_utils import get_ometa_tag_and_classification
@@ -108,10 +113,56 @@ _type_map.update(
 )
 
 
-def _get_column_rows(self, connection, table_name, schema):
+def format_schema_name(schema):
+    # Adds back quotes(``) if hyphen(-) in schema name
+    return f"`{schema}`" if "-" in schema else schema
+
+
+# This method is from hive dialect originally but
+# is overridden to optimize DESCRIBE query execution
+def _get_table_columns(self, connection, table_name, schema, db_name):
+    full_table = table_name
+    if schema:
+        full_table = schema + "." + table_name
+    # TODO using TGetColumnsReq hangs after sending TFetchResultsReq.
+    # Using DESCRIBE works but is uglier.
+    try:
+        # This needs the table name to be unescaped (no backticks).
+        query = DATABRICKS_GET_TABLE_COMMENTS.format(
+            database_name=db_name, schema_name=schema, table_name=table_name
+        )
+        cursor = get_table_comment_result(
+            self,
+            connection=connection,
+            query=query,
+            database=db_name,
+            table_name=table_name,
+            schema=schema,
+        )
+
+        rows = cursor.fetchall()
+
+    except exc.OperationalError as e:
+        # Does the table exist?
+        regex_fmt = r"TExecuteStatementResp.*SemanticException.*Table not found {}"
+        regex = regex_fmt.format(re.escape(full_table))
+        if re.search(regex, e.args[0]):
+            raise exc.NoSuchTableError(full_table)
+        else:
+            raise
+    else:
+        # Hive is stupid: this is what I get from DESCRIBE some_schema.does_not_exist
+        regex = r"Table .* does not exist"
+        if len(rows) == 1 and re.match(regex, rows[0].col_name):
+            raise exc.NoSuchTableError(full_table)
+        return rows
+
+
+def _get_column_rows(self, connection, table_name, schema, db_name):
     # get columns and strip whitespace
-    table_columns = self._get_table_columns(  # pylint: disable=protected-access
-        connection, table_name, schema
+    schema = format_schema_name(schema=schema)
+    table_columns = _get_table_columns(  # pylint: disable=protected-access
+        self, connection, table_name, schema, db_name
     )
     column_rows = [
         [col.strip() if col else None for col in row] for row in table_columns
@@ -131,7 +182,7 @@ def get_columns(self, connection, table_name, schema=None, **kw):
     Databricks ingest config file.
     """
 
-    rows = _get_column_rows(self, connection, table_name, schema)
+    rows = _get_column_rows(self, connection, table_name, schema, kw.get("db_name"))
     result = []
     for col_name, col_type, _comment in rows:
         # Handle both oss hive and Databricks' hive partition header, respectively
@@ -139,6 +190,8 @@ def get_columns(self, connection, table_name, schema=None, **kw):
             "# Partition Information",
             "# Partitioning",
             "# Clustering Information",
+            "# Delta Statistics Columns",
+            "# Detailed Table Information",
         ):
             break
         # Take out the more detailed type information
@@ -161,16 +214,20 @@ def get_columns(self, connection, table_name, schema=None, **kw):
             "system_data_type": raw_col_type,
         }
         if col_type in {"array", "struct", "map"}:
-            rows = dict(
-                connection.execute(
-                    f"DESCRIBE {schema}.{table_name} {col_name}"
-                    if schema
-                    else f"DESCRIBE {table_name} {col_name}"
-                ).fetchall()
-            )
-
-            col_info["system_data_type"] = rows["data_type"]
-            col_info["is_complex"] = True
+            col_name = f"`{col_name}`" if "." in col_name else col_name
+            try:
+                rows = dict(
+                    connection.execute(
+                        f"DESCRIBE TABLE {kw.get('db_name')}.{schema}.{table_name} {col_name}"
+                    ).fetchall()
+                )
+                col_info["system_data_type"] = rows["data_type"]
+                col_info["is_complex"] = True
+            except DatabaseError as err:
+                logger.error(
+                    f"Failed to fetch column details for column {col_name} in table {table_name} due to: {err}"
+                )
+                logger.debug(traceback.format_exc())
         result.append(col_info)
     return result
 
@@ -218,10 +275,18 @@ def get_table_comment(  # pylint: disable=unused-argument
     """
     Returns comment of table
     """
-    cursor = connection.execute(
-        DATABRICKS_GET_TABLE_COMMENTS.format(
-            schema_name=schema_name, table_name=table_name
-        )
+    query = DATABRICKS_GET_TABLE_COMMENTS.format(
+        database_name=self.context.get().database,
+        schema_name=schema_name,
+        table_name=table_name,
+    )
+    cursor = self.get_table_comment_result(
+        self,
+        connection=connection,
+        query=query,
+        database=self.context.get().database,
+        table_name=table_name,
+        schema=schema_name,
     )
     try:
         for result in list(cursor):
@@ -250,6 +315,26 @@ def get_view_definition(
 
 
 @reflection.cache
+def get_table_comment_result(
+    self,
+    connection,
+    query,
+    database,
+    table_name,
+    schema=None,
+    **kw,  # pylint: disable=unused-argument
+):
+    return get_table_comment_result_wrapper(
+        self,
+        connection,
+        query=query,
+        database=database,
+        table_name=table_name,
+        schema=schema,
+    )
+
+
+@reflection.cache
 def get_table_ddl(
     self, connection, table_name, schema=None, **kw
 ):  # pylint: disable=unused-argument
@@ -268,12 +353,77 @@ def get_table_ddl(
     return None
 
 
+@reflection.cache
+def get_table_names(
+    self, connection, schema=None, **kw
+):  # pylint: disable=unused-argument
+    query = "SHOW TABLES"
+    if schema:
+        query += " IN " + self.identifier_preparer.quote_identifier(schema)
+    tables_in_schema = connection.execute(query)
+    tables = []
+    for row in tables_in_schema:
+        # check number of columns in result
+        # if it is > 1, we use spark thrift server with 3 columns in the result (schema, table, is_temporary)
+        # else it is hive with 1 column in the result
+        if len(row) > 1:
+            table_name = row[1]
+        else:
+            table_name = row[0]
+        if schema:
+            database = kw.get("db_name")
+            table_type = get_table_type(self, connection, database, schema, table_name)
+            if not table_type or table_type == "FOREIGN":
+                # skip the table if it's foreign table / error in fetching table_type
+                logger.debug(
+                    f"Skipping metadata ingestion for unsupported foreign table {table_name}"
+                )
+                continue
+        tables.append(table_name)
+
+    # "SHOW TABLES" command in hive also fetches view names
+    # Below code filters out view names from table names
+    views = self.get_view_names(connection, schema)
+    return [table for table in tables if table not in views]
+
+
+def get_table_type(self, connection, database, schema, table):
+    """get table type (regular/foreign)"""
+    try:
+        if database:
+            query = DATABRICKS_GET_TABLE_COMMENTS.format(
+                database_name=database, schema_name=schema, table_name=table
+            )
+        else:
+            schema = format_schema_name(schema=schema)
+            query = f"DESCRIBE TABLE EXTENDED {schema}.{table}"
+        rows = get_table_comment_result(
+            self,
+            connection=connection,
+            query=query,
+            database=database,
+            table_name=table,
+            schema=schema,
+        )
+        for row in rows:
+            row_dict = dict(row)
+            if row_dict.get("col_name") == "Type":
+                # get type of table
+                return row_dict.get("data_type")
+    except DatabaseError as err:
+        logger.error(f"Failed to fetch table type for table {table} due to: {err}")
+    return
+
+
 DatabricksDialect.get_table_comment = get_table_comment
 DatabricksDialect.get_view_names = get_view_names
 DatabricksDialect.get_columns = get_columns
 DatabricksDialect.get_schema_names = get_schema_names
 DatabricksDialect.get_view_definition = get_view_definition
+DatabricksDialect.get_table_names = get_table_names
 DatabricksDialect.get_all_view_definitions = get_all_view_definitions
+DatabricksDialect.get_table_comment_results = get_table_comment_results
+DatabricksDialect.get_table_comment_result = get_table_comment_result
 reflection.Inspector.get_schema_names = get_schema_names_reflection
 reflection.Inspector.get_table_ddl = get_table_ddl
 
@@ -451,9 +601,11 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
                 )
                 if filter_by_database(
                     self.source_config.databaseFilterPattern,
-                    database_fqn
-                    if self.source_config.useFqnForFiltering
-                    else new_catalog,
+                    (
+                        database_fqn
+                        if self.source_config.useFqnForFiltering
+                        else new_catalog
+                    ),
                 ):
                     self.status.filter(database_fqn, "Database Filtered Out")
                     continue
@@ -611,10 +763,18 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
     ) -> str:
         description = None
         try:
-            cursor = self.connection.execute(
-                DATABRICKS_GET_TABLE_COMMENTS.format(
-                    schema_name=schema_name, table_name=table_name
-                )
+            schema_name = format_schema_name(schema=schema_name)
+            query = DATABRICKS_GET_TABLE_COMMENTS.format(
+                database_name=self.context.get().database,
+                schema_name=schema_name,
+                table_name=table_name,
+            )
+            cursor = inspector.dialect.get_table_comment_result(
+                connection=self.connection,
+                query=query,
+                database=self.context.get().database,
+                table_name=table_name,
+                schema=schema_name,
             )
             for result in list(cursor):
                 data = result.values()
@@ -636,3 +796,58 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
                 f"Table description error for table [{schema_name}.{table_name}]: {exc}"
             )
         return description
+
+    def get_location_path(self, table_name: str, schema_name: str) -> Optional[str]:
+        """
+        Method to fetch the location path of the table
+        """
+        return self.external_location_map.get(
+            (self.context.get().database, schema_name, table_name)
+        )
+
+    def _filter_owner_name(self, owner_name: str) -> str:
+        """remove unnecessary keyword from name"""
+        pattern = r"\(Unknown\)"
+        filtered_name = re.sub(pattern, "", owner_name).strip()
+        return filtered_name
+
+    def get_owner_ref(self, table_name: str) -> Optional[EntityReferenceList]:
+        """
+        Method to process the table owners
+        """
+        try:
+            query = DATABRICKS_GET_TABLE_COMMENTS.format(
+                database_name=self.context.get().database,
+                schema_name=format_schema_name(
+                    schema=self.context.get().database_schema
+                ),
+                table_name=table_name,
+            )
+            result = self.inspector.dialect.get_table_comment_result(
+                connection=self.connection,
+                query=query,
+                database=self.context.get().database,
+                table_name=table_name,
+                schema=self.context.get().database_schema,
+            )
+            owner = None
+            for row in result:
+                row_dict = dict(row)
+                if row_dict.get("col_name") == "Owner":
+                    owner = row_dict.get("data_type")
+                    break
+            if not owner:
+                return
+
+            owner = self._filter_owner_name(owner)
+            owner_ref = None
+            try:
+                owner_email = EmailStr._validate(owner)
+                owner_ref = self.metadata.get_reference_by_email(email=owner_email)
+            except PydanticCustomError:
+                owner_ref = self.metadata.get_reference_by_name(name=owner)
+            return owner_ref
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Error processing owner for table {table_name}: {exc}")
+        return

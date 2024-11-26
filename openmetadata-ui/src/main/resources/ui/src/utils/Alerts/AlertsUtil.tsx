@@ -11,46 +11,102 @@
  *  limitations under the License.
  */
 
-import { Checkbox, Col, Input, Select, Switch, Tooltip } from 'antd';
+import {
+  CheckCircleOutlined,
+  CloseOutlined,
+  ExclamationCircleOutlined,
+  PlusOutlined,
+} from '@ant-design/icons';
+import {
+  AlertProps,
+  Button,
+  Checkbox,
+  Col,
+  Collapse,
+  Divider,
+  Input,
+  MenuProps,
+  Radio,
+  Row,
+  Select,
+  Skeleton,
+  Switch,
+  Tooltip,
+  Typography,
+} from 'antd';
 import Form, { RuleObject } from 'antd/lib/form';
 import { AxiosError } from 'axios';
+import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
+import { compare, Operation } from 'fast-json-patch';
 import i18next, { t } from 'i18next';
-import { isEqual, isUndefined, map, startCase, uniqBy } from 'lodash';
-import React from 'react';
+import {
+  isEmpty,
+  isEqual,
+  isUndefined,
+  map,
+  omitBy,
+  startCase,
+  trim,
+  uniqBy,
+} from 'lodash';
+import React, { Fragment } from 'react';
+import { ReactComponent as AlertIcon } from '../../assets/svg/alert.svg';
 import { ReactComponent as AllActivityIcon } from '../../assets/svg/all-activity.svg';
+import { ReactComponent as ClockIcon } from '../../assets/svg/clock.svg';
+import { ReactComponent as ConfigIcon } from '../../assets/svg/configuration-icon.svg';
+import { ReactComponent as CheckIcon } from '../../assets/svg/ic-check.svg';
 import { ReactComponent as MailIcon } from '../../assets/svg/ic-mail.svg';
 import { ReactComponent as MSTeamsIcon } from '../../assets/svg/ms-teams.svg';
 import { ReactComponent as SlackIcon } from '../../assets/svg/slack.svg';
 import { ReactComponent as WebhookIcon } from '../../assets/svg/webhook.svg';
+import { AlertEventDetailsToDisplay } from '../../components/Alerts/AlertDetails/AlertRecentEventsTab/AlertRecentEventsTab.interface';
+import TeamAndUserSelectItem from '../../components/Alerts/DestinationFormItem/TeamAndUserSelectItem/TeamAndUserSelectItem';
 import { AsyncSelect } from '../../components/common/AsyncSelect/AsyncSelect';
+import { InlineAlertProps } from '../../components/common/InlineAlert/InlineAlert.interface';
+import { ExtraInfoLabel } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import {
   DESTINATION_DROPDOWN_TABS,
   DESTINATION_SOURCE_ITEMS,
   DESTINATION_TYPE_BASED_PLACEHOLDERS,
   EXTERNAL_CATEGORY_OPTIONS,
 } from '../../constants/Alerts.constants';
-import { HTTP_STATUS_CODE } from '../../constants/Auth.constants';
 import { PAGE_SIZE_LARGE } from '../../constants/constants';
+import { OPEN_METADATA } from '../../constants/Services.constant';
+import { AlertRecentEventFilters } from '../../enums/Alerts.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { StatusType } from '../../generated/entity/data/pipeline';
 import { PipelineState } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { CreateEventSubscription } from '../../generated/events/api/createEventSubscription';
+import { EventsRecord } from '../../generated/events/api/eventsRecord';
+import {
+  ChangeEvent,
+  Status,
+  TypedEvent,
+} from '../../generated/events/api/typedEvent';
 import {
   EventFilterRule,
   EventSubscription,
+  HTTPMethod,
   InputType,
   SubscriptionCategory,
   SubscriptionType,
+  Webhook,
 } from '../../generated/events/eventSubscription';
+import { Status as DestinationStatus } from '../../generated/events/testDestinationStatus';
 import { TestCaseStatus } from '../../generated/tests/testCase';
 import { EventType } from '../../generated/type/changeEvent';
-import TeamAndUserSelectItem from '../../pages/AddObservabilityPage/DestinationFormItem/TeamAndUserSelectItem/TeamAndUserSelectItem';
+import {
+  ModifiedCreateEventSubscription,
+  ModifiedDestination,
+  ModifiedEventSubscription,
+} from '../../pages/AddObservabilityPage/AddObservabilityPage.interface';
 import { searchData } from '../../rest/miscAPI';
 import { getEntityName, getEntityNameLabel } from '../EntityUtils';
+import { handleEntityCreationError } from '../formUtils';
 import { getConfigFieldFromDestinationType } from '../ObservabilityUtils';
 import searchClassBase from '../SearchClassBase';
-import { getEntityIcon } from '../TableUtils';
-import { showErrorToast, showSuccessToast } from '../ToastUtils';
+import { showSuccessToast } from '../ToastUtils';
+import './alerts-util.less';
 
 export const getAlertsActionTypeIcon = (type?: SubscriptionType) => {
   switch (type) {
@@ -73,7 +129,7 @@ export const getFunctionDisplayName = (func: string): string => {
     case 'matchAnyEntityFqn':
       return i18next.t('label.fqn-uppercase');
     case 'matchAnyOwnerName':
-      return i18next.t('label.owner');
+      return i18next.t('label.owner-plural');
     case 'matchAnyEventType':
       return i18next.t('label.event-type');
     case 'matchTestResult':
@@ -292,6 +348,30 @@ export const getSupportedFilterOptions = (
     disabled: selectedFilters?.some((d) => d.name === func.name),
   }));
 
+export const getConnectionTimeoutField = () => (
+  <>
+    <Row align="middle">
+      <Col span={7}>{`${t('label.connection-timeout')} (${t(
+        'label.second-plural'
+      )})`}</Col>
+      <Col span={1}>:</Col>
+      <Col data-testid="connection-timeout" span={16}>
+        <Form.Item name="timeout">
+          <Input
+            data-testid="connection-timeout-input"
+            defaultValue={10}
+            placeholder={`${t('label.connection-timeout')} (${t(
+              'label.second-plural'
+            )})`}
+            type="number"
+          />
+        </Form.Item>
+      </Col>
+    </Row>
+    <Divider className="p-x-xs" />
+  </>
+);
+
 export const getDestinationConfigField = (
   type: SubscriptionType | SubscriptionCategory,
   fieldName: number
@@ -302,23 +382,176 @@ export const getDestinationConfigField = (
     case SubscriptionType.GChat:
     case SubscriptionType.Webhook:
       return (
-        <Col span={12}>
-          <Form.Item
-            name={[fieldName, 'config', 'endpoint']}
-            rules={[
-              {
-                required: true,
-                message: t('message.field-text-is-required', {
-                  fieldText: t('label.endpoint-url'),
-                }),
-              },
-            ]}>
-            <Input
-              data-testid={`endpoint-input-${fieldName}`}
-              placeholder={DESTINATION_TYPE_BASED_PLACEHOLDERS[type] ?? ''}
-            />
-          </Form.Item>
-        </Col>
+        <>
+          <Col span={12}>
+            <Form.Item
+              name={[fieldName, 'config', 'endpoint']}
+              rules={[
+                {
+                  required: true,
+                  message: t('message.field-text-is-required', {
+                    fieldText: t('label.endpoint-url'),
+                  }),
+                },
+              ]}>
+              <Input
+                data-testid={`endpoint-input-${fieldName}`}
+                placeholder={DESTINATION_TYPE_BASED_PLACEHOLDERS[type] ?? ''}
+              />
+            </Form.Item>
+          </Col>
+          {type === SubscriptionType.Webhook && (
+            <Col span={24}>
+              <Collapse
+                className="webhook-config-collapse"
+                expandIconPosition="end">
+                <Collapse.Panel
+                  header={
+                    <Row align="middle" gutter={[8, 8]}>
+                      <Col>
+                        <ConfigIcon className="configuration-icon" />
+                      </Col>
+                      <Col>
+                        <Typography.Text>
+                          {t('label.advanced-configuration')}
+                        </Typography.Text>
+                      </Col>
+                    </Row>
+                  }
+                  key={`advanced-configuration-${fieldName}`}>
+                  <Row align="middle" gutter={[8, 8]}>
+                    <Col data-testid="secret-key" span={24}>
+                      <Form.Item
+                        label={
+                          <Typography.Text>{`${t(
+                            'label.secret-key'
+                          )}:`}</Typography.Text>
+                        }
+                        labelCol={{ span: 24 }}
+                        name={[fieldName, 'config', 'secretKey']}>
+                        <Input.Password
+                          data-testid={`secret-key-input-${fieldName}`}
+                          placeholder={`${t('label.secret-key')} (${t(
+                            'label.optional'
+                          )})`}
+                        />
+                      </Form.Item>
+                    </Col>
+                    <Col span={24}>
+                      <Form.List name={[fieldName, 'config', 'headers']}>
+                        {(fields, { add, remove }, { errors }) => (
+                          <Row
+                            data-testid={`webhook-${fieldName}-headers-list`}
+                            gutter={[8, 8]}
+                            key="headers">
+                            <Col span={24}>
+                              <Row align="middle" justify="space-between">
+                                <Col>
+                                  <Typography.Text>
+                                    {`${t('label.header-plural')}:`}
+                                  </Typography.Text>
+                                </Col>
+                                <Col>
+                                  <Col>
+                                    <Button
+                                      icon={<PlusOutlined />}
+                                      type="primary"
+                                      onClick={() => add({})}
+                                    />
+                                  </Col>
+                                </Col>
+                              </Row>
+                            </Col>
+                            {fields.map(({ key, name }) => (
+                              <Col key={key} span={24}>
+                                <div className="flex gap-4">
+                                  <div className="flex-1 w-min-0">
+                                    <Row gutter={[8, 8]}>
+                                      <Col span={12}>
+                                        <Form.Item
+                                          required
+                                          name={[name, 'key']}
+                                          rules={[
+                                            {
+                                              required: true,
+                                              message: t(
+                                                'message.field-text-is-required',
+                                                {
+                                                  fieldText: t('label.key'),
+                                                }
+                                              ),
+                                            },
+                                          ]}>
+                                          <Input
+                                            data-testid={`header-key-input-${name}`}
+                                            placeholder={t('label.key')}
+                                          />
+                                        </Form.Item>
+                                      </Col>
+                                      <Col span={12}>
+                                        <Form.Item
+                                          required
+                                          name={[name, 'value']}
+                                          rules={[
+                                            {
+                                              required: true,
+                                              message: t(
+                                                'message.field-text-is-required',
+                                                {
+                                                  fieldText: t('label.value'),
+                                                }
+                                              ),
+                                            },
+                                          ]}>
+                                          <Input
+                                            data-testid={`header-value-input-${name}`}
+                                            placeholder={t('label.value')}
+                                          />
+                                        </Form.Item>
+                                      </Col>
+                                    </Row>
+                                  </div>
+
+                                  <Button
+                                    icon={<CloseOutlined />}
+                                    onClick={() => remove(name)}
+                                  />
+                                </div>
+                              </Col>
+                            ))}
+
+                            <Col span={24}>
+                              <Form.ErrorList errors={errors} />
+                            </Col>
+                          </Row>
+                        )}
+                      </Form.List>
+                    </Col>
+                    <Col data-testid="http-method" span={24}>
+                      <Form.Item
+                        label={
+                          <Typography.Text>{`${t(
+                            'label.http-method'
+                          )}:`}</Typography.Text>
+                        }
+                        labelCol={{ span: 24 }}
+                        name={[fieldName, 'config', 'httpMethod']}>
+                        <Radio.Group
+                          data-testid={`http-method-${fieldName}`}
+                          defaultValue={HTTPMethod.Post}
+                          options={[
+                            { label: HTTPMethod.Post, value: HTTPMethod.Post },
+                            { label: HTTPMethod.Put, value: HTTPMethod.Put },
+                          ]}
+                        />
+                      </Form.Item>
+                    </Col>
+                  </Row>
+                </Collapse.Panel>
+              </Collapse>
+            </Col>
+          )}
+        </>
       );
     case SubscriptionType.Email:
       return (
@@ -423,7 +656,7 @@ export const getMessageFromArgumentName = (argumentName: string) => {
       return t('message.field-text-is-required', {
         fieldText: t('label.entity-list', {
           entity: t('label.entity-name', {
-            entity: t('label.owner'),
+            entity: t('label.owner-plural'),
           }),
         }),
       });
@@ -560,7 +793,7 @@ export const getFieldByArgumentType = (
           data-testid="owner-name-select"
           mode="multiple"
           placeholder={t('label.search-by-type', {
-            type: t('label.owner-lowercase'),
+            type: t('label.owner-lowercase-plural'),
           })}
         />
       );
@@ -747,63 +980,136 @@ export const getConditionalField = (
   );
 };
 
+export const getRandomizedAlertName = () => {
+  return `${OPEN_METADATA}_alert_${cryptoRandomString({
+    length: 9,
+    type: 'alphanumeric',
+  })}`;
+};
+
+/**
+ * @description Function to get header object of webhook config from the form data
+ * Since the form data is in the form of { key: string, value: string }[]
+ */
+export const getConfigHeaderObjectFromArray = (
+  headers?: {
+    key: string;
+    value: string;
+  }[]
+) =>
+  headers?.reduce(
+    (prev, curr) => ({
+      ...prev,
+      [curr.key]: curr.value,
+    }),
+    {} as { [key: string]: string }
+  );
+
+/**
+ * @description Function to get header webhook config converted from an object
+ * in the form of { key: string, value: string }[]
+ * to render Form.List
+ */
+export const getConfigHeaderArrayFromObject = (headers?: Webhook['headers']) =>
+  isUndefined(headers)
+    ? headers
+    : Object.entries(headers).map(([key, value]) => ({
+        key,
+        value,
+      }));
+
+export const getFormattedDestinations = (
+  destinations?: ModifiedDestination[]
+) => {
+  const formattedDestinations = destinations?.map((destination) => {
+    const { destinationType, config, ...otherData } = destination;
+
+    const headers = getConfigHeaderObjectFromArray(config?.headers);
+
+    return {
+      ...otherData,
+      config: {
+        ...config,
+        headers: isEmpty(headers) ? undefined : headers,
+      },
+    };
+  });
+
+  return formattedDestinations;
+};
+
 export const handleAlertSave = async ({
   data,
   fqn,
+  initialData,
   createAlertAPI,
   updateAlertAPI,
   afterSaveAction,
+  setInlineAlertDetails,
 }: {
-  data: CreateEventSubscription;
+  initialData?: EventSubscription;
+  data: ModifiedCreateEventSubscription;
   createAlertAPI: (
     alert: CreateEventSubscription
   ) => Promise<EventSubscription>;
-  updateAlertAPI: (
-    alert: CreateEventSubscription
-  ) => Promise<EventSubscription>;
-  afterSaveAction: () => void;
+  updateAlertAPI: (id: string, data: Operation[]) => Promise<EventSubscription>;
+  afterSaveAction: (fqn: string) => Promise<void>;
+  setInlineAlertDetails: (alertDetails?: InlineAlertProps | undefined) => void;
   fqn?: string;
 }) => {
   try {
-    const destinations = data.destinations?.map((d) => ({
-      type: d.type,
-      config: d.config,
-      category: d.category,
-    }));
+    const destinations = data.destinations?.map((d) => {
+      const initialDestination = initialData?.destinations?.find(
+        (destination) => destination.type === d.type
+      );
 
-    if (fqn && !isUndefined(alert)) {
-      const {
-        alertType,
-        description,
-        displayName,
-        enabled,
-        input,
-        name,
-        owner,
-        provider,
-        resources,
-        trigger,
-      } = data;
+      return {
+        ...(initialDestination ?? {}),
+        type: d.type,
+        config: {
+          ...d.config,
+          headers: getConfigHeaderObjectFromArray(d.config?.headers),
+        },
+        category: d.category,
+        timeout: data.timeout,
+      };
+    });
+    let alertDetails;
+    const alertName = trim(initialData?.name ?? getRandomizedAlertName());
+    const alertDisplayName = trim(getEntityName(data));
 
-      const newData = {
-        alertType,
+    if (fqn && !isUndefined(initialData)) {
+      const { description, input, owners, resources } = data;
+
+      const newAlertData: EventSubscription = {
+        ...initialData,
         description,
-        destinations,
-        displayName,
-        enabled,
-        input,
-        name,
-        owner,
-        provider,
-        resources,
-        trigger,
+        displayName: alertDisplayName,
+        name: alertName,
+        input: {
+          actions: input?.actions ?? [],
+          filters: input?.filters ?? [],
+        },
+        owners,
+        filteringRules: {
+          ...initialData.filteringRules,
+          resources: resources ?? [],
+        },
+        destinations: destinations ?? [],
       };
 
-      await updateAlertAPI(newData);
+      const jsonPatch = compare(omitBy(initialData, isUndefined), newAlertData);
+
+      alertDetails = await updateAlertAPI(initialData.id, jsonPatch);
     } else {
-      await createAlertAPI({
-        ...data,
+      // Remove timeout from alert object since it's only for UI
+      const { timeout, ...finalData } = data;
+
+      alertDetails = await createAlertAPI({
+        ...finalData,
         destinations,
+        name: alertName,
+        displayName: alertDisplayName,
       });
     }
 
@@ -812,24 +1118,17 @@ export const handleAlertSave = async ({
         entity: t('label.alert-plural'),
       })
     );
-    afterSaveAction();
+    afterSaveAction(alertDetails.fullyQualifiedName ?? '');
   } catch (error) {
-    if ((error as AxiosError).response?.status === HTTP_STATUS_CODE.CONFLICT) {
-      showErrorToast(
-        t('server.entity-already-exist', {
-          entity: t('label.alert'),
-          entityPlural: t('label.alert-lowercase-plural'),
-          name: data.name,
-        })
-      );
-    } else {
-      showErrorToast(
-        error as AxiosError,
-        t(`server.${'entity-creation-error'}`, {
-          entity: t('label.alert-lowercase'),
-        })
-      );
-    }
+    handleEntityCreationError({
+      error: error as AxiosError,
+      entity: t('label.alert'),
+      entityLowercase: t('label.alert-lowercase'),
+      entityLowercasePlural: t('label.alert-lowercase-plural'),
+      setInlineAlertDetails,
+      name: data.name,
+      defaultErrorType: 'create',
+    });
   }
 };
 
@@ -883,17 +1182,217 @@ export const getSourceOptionsFromResourceList = (
   showCheckbox?: boolean,
   selectedResource?: string[]
 ) =>
-  resources.map((resource) => ({
-    label: (
-      <div
-        className="d-flex items-center gap-2"
-        data-testid={`${resource}-option`}>
-        {showCheckbox && (
-          <Checkbox checked={selectedResource?.includes(resource)} />
-        )}
-        <div className="d-flex h-4 w-4">{getEntityIcon(resource ?? '')}</div>
-        <span>{getEntityNameLabel(resource ?? '')}</span>
-      </div>
-    ),
-    value: resource ?? '',
-  }));
+  resources.map((resource) => {
+    const sourceIcon = searchClassBase.getEntityIcon(resource ?? '');
+
+    return {
+      label: (
+        <div
+          className="d-flex items-center gap-2"
+          data-testid={`${resource}-option`}>
+          {showCheckbox && (
+            <Checkbox checked={selectedResource?.includes(resource)} />
+          )}
+          {sourceIcon && <div className="d-flex h-4 w-4">{sourceIcon}</div>}
+          <span>{getEntityNameLabel(resource ?? '')}</span>
+        </div>
+      ),
+      value: resource ?? '',
+    };
+  });
+
+export const getAlertEventsFilterLabels = (status: AlertRecentEventFilters) => {
+  switch (status) {
+    case AlertRecentEventFilters.SUCCESSFUL:
+      return t('label.successful');
+    case AlertRecentEventFilters.FAILED:
+      return t('label.failed');
+    case AlertRecentEventFilters.ALL:
+      return t('label.all');
+    default:
+      return '';
+  }
+};
+
+export const getAlertRecentEventsFilterOptions = () => {
+  const filters: MenuProps['items'] = Object.values(
+    AlertRecentEventFilters
+  ).map((status) => {
+    const label = getAlertEventsFilterLabels(status);
+
+    return {
+      label: <Typography.Text>{label}</Typography.Text>,
+      key: status,
+    };
+  });
+
+  return filters;
+};
+
+export const getAlertStatusIcon = (status: Status): JSX.Element | null => {
+  switch (status) {
+    case Status.Successful:
+      return <CheckIcon className="status-icon successful-icon" />;
+    case Status.Failed:
+      return <AlertIcon className="status-icon failed-icon" />;
+    case Status.Unprocessed:
+      return <ClockIcon className="status-icon unprocessed-icon" />;
+    default:
+      return null;
+  }
+};
+
+export const getLabelsForEventDetails = (
+  prop: keyof AlertEventDetailsToDisplay
+) => {
+  switch (prop) {
+    case 'eventType':
+      return t('label.event-type');
+    case 'entityId':
+      return t('label.entity-id', { entity: t('label.entity') });
+    case 'userName':
+      return t('label.user-name');
+    case 'previousVersion':
+      return t('label.previous-version');
+    case 'currentVersion':
+      return t('label.current-version');
+    case 'reason':
+      return t('label.reason');
+    case 'source':
+      return t('label.source');
+    case 'failingSubscriptionId':
+      return t('label.failing-subscription-id');
+    default:
+      return '';
+  }
+};
+
+export const getChangeEventDataFromTypedEvent = (
+  typedEvent: TypedEvent
+): {
+  changeEventData: ChangeEvent;
+  changeEventDataToDisplay: AlertEventDetailsToDisplay;
+} => {
+  let changeEventData = typedEvent.data[0];
+
+  // If the event is failed, the changeEventData object is nested inside the changeEventData object.
+  if (
+    typedEvent.status === Status.Failed &&
+    !isUndefined(changeEventData.changeEvent)
+  ) {
+    changeEventData = changeEventData.changeEvent;
+  }
+
+  const { eventType, entityId, userName, previousVersion, currentVersion } =
+    changeEventData;
+
+  // Extracting the reason, source, and failingSubscriptionId from the failed changeEventData object.
+  const { reason, source, failingSubscriptionId } = typedEvent.data[0];
+
+  return {
+    changeEventData,
+    changeEventDataToDisplay: {
+      reason,
+      source,
+      failingSubscriptionId,
+      eventType,
+      entityId,
+      userName,
+      previousVersion,
+      currentVersion,
+    },
+  };
+};
+
+export const getAlertExtraInfo = (
+  alertEventCountsLoading: boolean,
+  alertEventCounts?: EventsRecord
+) => {
+  if (alertEventCountsLoading) {
+    return (
+      <>
+        {Array(3)
+          .fill(null)
+          .map((_, id) => (
+            <Fragment key={id}>
+              <Divider className="self-center" type="vertical" />
+              <Skeleton.Button active className="extra-info-skeleton" />
+            </Fragment>
+          ))}
+      </>
+    );
+  }
+
+  return (
+    <>
+      <ExtraInfoLabel
+        label={t('label.total-entity', {
+          entity: t('label.event-plural'),
+        })}
+        value={alertEventCounts?.totalEventsCount ?? 0}
+      />
+      <ExtraInfoLabel
+        label={t('label.pending-entity', {
+          entity: t('label.event-plural'),
+        })}
+        value={alertEventCounts?.pendingEventsCount ?? 0}
+      />
+      <ExtraInfoLabel
+        label={t('label.failed-entity', {
+          entity: t('label.event-plural'),
+        })}
+        value={alertEventCounts?.failedEventsCount ?? 0}
+      />
+    </>
+  );
+};
+
+export const getDestinationStatusAlertData = (destinationStatus?: string) => {
+  const statusLabel =
+    destinationStatus === DestinationStatus.Success
+      ? t('label.success')
+      : t('label.failed');
+  const alertType: AlertProps['type'] =
+    destinationStatus === DestinationStatus.Success ? 'success' : 'error';
+  const alertClassName =
+    destinationStatus === DestinationStatus.Success
+      ? 'destination-success-status'
+      : 'destination-error-status';
+  const alertIcon =
+    destinationStatus === DestinationStatus.Success ? (
+      <CheckCircleOutlined height={14} />
+    ) : (
+      <ExclamationCircleOutlined height={14} />
+    );
+
+  return {
+    alertClassName,
+    alertType,
+    statusLabel,
+    alertIcon,
+  };
+};
+
+export const getModifiedAlertDataForForm = (
+  alertData: EventSubscription
+): ModifiedEventSubscription => {
+  return {
+    ...alertData,
+    timeout: alertData.destinations[0].timeout ?? 10,
+    destinations: alertData.destinations.map((destination) => {
+      const isExternalDestination =
+        destination.category === SubscriptionCategory.External;
+
+      return {
+        ...destination,
+        destinationType: isExternalDestination
+          ? destination.type
+          : destination.category,
+        config: {
+          ...destination.config,
+          headers: getConfigHeaderArrayFromObject(destination.config?.headers),
+        },
+      };
+    }),
+  };
+};

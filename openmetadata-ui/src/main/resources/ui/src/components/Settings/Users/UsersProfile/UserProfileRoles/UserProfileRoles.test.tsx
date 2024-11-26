@@ -30,6 +30,7 @@ import { UserProfileRolesProps } from './UserProfileRoles.interface';
 
 const mockPropsData: UserProfileRolesProps = {
   userRoles: [],
+  isDeletedUser: false,
   updateUserDetails: jest.fn(),
 };
 
@@ -85,6 +86,14 @@ describe('Test User Profile Roles Component', () => {
 
   it('should not render roles edit button if non admin user', async () => {
     render(<UserProfileRoles {...mockPropsData} />);
+
+    expect(screen.getByTestId('user-profile-roles')).toBeInTheDocument();
+
+    expect(screen.queryByTestId('edit-roles-button')).not.toBeInTheDocument();
+  });
+
+  it('should not render roles edit button if user is deleted', async () => {
+    render(<UserProfileRoles {...mockPropsData} isDeletedUser />);
 
     expect(screen.getByTestId('user-profile-roles')).toBeInTheDocument();
 

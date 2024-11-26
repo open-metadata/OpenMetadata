@@ -51,6 +51,7 @@ class PostgresUsageSource(PostgresQueryParserSource, UsageSource):
                     try:
                         queries.append(
                             TableQuery(
+                                dialect=self.dialect.value,
                                 query=row["query_text"],
                                 userName=row["usename"],
                                 analysisDate=DateTime(datetime.now()),
@@ -73,3 +74,9 @@ class PostgresUsageSource(PostgresQueryParserSource, UsageSource):
                 )
             logger.error(f"Source usage processing error - {err}")
             logger.debug(traceback.format_exc())
+
+    def get_filters(self) -> str:
+        if filter_condition := self.source_config.filterCondition:
+            filter_condition = filter_condition.replace("%", "%%")
+            return f"{self.filters} AND s.{filter_condition}"
+        return self.filters

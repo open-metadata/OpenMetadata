@@ -18,10 +18,12 @@ import { isArray, isEmpty } from 'lodash';
 import React from 'react';
 import {
   AsyncFetchListValues,
+  ListValues,
   RenderSettings,
 } from 'react-awesome-query-builder';
 import { ReactComponent as IconDeleteColored } from '../assets/svg/ic-delete-colored.svg';
 import ProfilePicture from '../components/common/ProfilePicture/ProfilePicture';
+import { SearchOutputType } from '../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
 import { AssetsOfEntity } from '../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import { SearchDropdownOption } from '../components/SearchDropdown/SearchDropdown.interface';
 import {
@@ -30,7 +32,9 @@ import {
   GLOSSARY_ASSETS_DROPDOWN_ITEMS,
   LINEAGE_DROPDOWN_ITEMS,
 } from '../constants/AdvancedSearch.constants';
+import { NOT_INCLUDE_AGGREGATION_QUICK_FILTER } from '../constants/explore.constants';
 import { AdvancedFields } from '../enums/AdvancedSearch.enum';
+import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import {
   Bucket,
@@ -45,7 +49,9 @@ import {
 } from '../interface/search.interface';
 import { getTags } from '../rest/tagAPI';
 import { getCountBadge } from '../utils/CommonUtils';
+import advancedSearchClassBase from './AdvancedSearchClassBase';
 import { getEntityName } from './EntityUtils';
+import jsonLogicSearchClassBase from './JSONLogicSearchClassBase';
 import searchClassBase from './SearchClassBase';
 
 export const getDropDownItems = (index: string) => {
@@ -113,6 +119,7 @@ export const renderAdvanceSearchButtons: RenderSettings['renderButton'] = (
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           CloseCircleOutlined as React.ForwardRefExoticComponent<any>
         }
+        data-testid="advanced-search-delete-rule"
         onClick={props?.onClick}
       />
     );
@@ -121,6 +128,7 @@ export const renderAdvanceSearchButtons: RenderSettings['renderButton'] = (
       <Button
         ghost
         className="action action--ADD-RULE"
+        data-testid="advanced-search-add-rule"
         icon={<PlusOutlined />}
         type="primary"
         onClick={props?.onClick}>
@@ -131,6 +139,7 @@ export const renderAdvanceSearchButtons: RenderSettings['renderButton'] = (
     return (
       <Button
         className="action action--ADD-GROUP"
+        data-testid="advanced-search-add-group"
         icon={<PlusOutlined />}
         type="primary"
         onClick={props?.onClick}>
@@ -145,6 +154,7 @@ export const renderAdvanceSearchButtons: RenderSettings['renderButton'] = (
         })}
         className="action action--DELETE cursor-pointer align-middle"
         component={IconDeleteColored}
+        data-testid="advanced-search-delete-group"
         style={{ fontSize: '16px' }}
         onClick={props?.onClick as () => void}
       />
@@ -395,17 +405,23 @@ export const getOptionsFromAggregationBucket = (buckets: Bucket[]) => {
     return [];
   }
 
-  return buckets.map((option) => ({
-    key: option.key,
-    label: option.key,
-    count: option.doc_count ?? 0,
-  }));
+  return buckets
+    .filter(
+      (item) =>
+        !NOT_INCLUDE_AGGREGATION_QUICK_FILTER.includes(item.key as EntityType)
+    )
+    .map((option) => ({
+      key: option.key,
+      label: option.key,
+      count: option.doc_count ?? 0,
+    }));
 };
 
 export const getTierOptions: () => Promise<AsyncFetchListValues> = async () => {
   try {
     const { data: tiers } = await getTags({
       parent: 'Tier',
+      limit: 50,
     });
 
     const tierFields = tiers.map((tier) => ({
@@ -417,4 +433,22 @@ export const getTierOptions: () => Promise<AsyncFetchListValues> = async () => {
   } catch (error) {
     return [];
   }
+};
+
+export const getTreeConfig = ({
+  searchOutputType,
+  searchIndex,
+  isExplorePage,
+  tierOptions,
+}: {
+  searchOutputType: SearchOutputType;
+  searchIndex: SearchIndex | SearchIndex[];
+  tierOptions: Promise<ListValues>;
+  isExplorePage: boolean;
+}) => {
+  const index = isArray(searchIndex) ? searchIndex : [searchIndex];
+
+  return searchOutputType === SearchOutputType.ElasticSearch
+    ? advancedSearchClassBase.getQbConfigs(tierOptions, index, isExplorePage)
+    : jsonLogicSearchClassBase.getQbConfigs(tierOptions, index, isExplorePage);
 };

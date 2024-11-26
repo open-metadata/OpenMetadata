@@ -15,6 +15,7 @@ import { TestCaseResolutionStatus } from '../../generated/tests/testCaseResoluti
 
 export enum IncidentManagerTabs {
   TEST_CASE_RESULTS = 'test-case-results',
+  SQL_QUERY = 'sql-query',
   ISSUES = 'issues',
 }
 export interface TestCaseIncidentStatusData {

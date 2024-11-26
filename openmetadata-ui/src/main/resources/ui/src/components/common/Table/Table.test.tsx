@@ -18,25 +18,25 @@ describe('Table component', () => {
   it('should display skeleton loader if loading is true', async () => {
     render(<Table loading />);
 
-    expect(await screen.findByTestId('skeleton-table')).toBeInTheDocument();
+    expect(await screen.findByTestId('loader')).toBeInTheDocument();
   });
 
   it('should display skeleton loader if spinning is true', async () => {
     render(<Table loading={{ spinning: true }} />);
 
-    expect(await screen.findByTestId('skeleton-table')).toBeInTheDocument();
+    expect(await screen.findByTestId('loader')).toBeInTheDocument();
   });
 
   it('should not display skeleton loader if loading is false', () => {
     render(<Table loading={false} />);
 
-    expect(screen.queryByTestId('skeleton-table')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('loader')).not.toBeInTheDocument();
   });
 
   it('should not display skeleton loader if spinning is false', () => {
     render(<Table loading={{ spinning: false }} />);
 
-    expect(screen.queryByTestId('skeleton-table')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('loader')).not.toBeInTheDocument();
   });
 
   it('should render column label while loading', async () => {

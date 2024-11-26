@@ -42,6 +42,7 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.PersonaRepository;
+import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
@@ -69,8 +70,8 @@ public class PersonaResource extends EntityResource<Persona, PersonaRepository> 
     return persona;
   }
 
-  public PersonaResource(Authorizer authorizer) {
-    super(Entity.PERSONA, authorizer);
+  public PersonaResource(Authorizer authorizer, Limits limits) {
+    super(Entity.PERSONA, authorizer, limits);
   }
 
   @Override

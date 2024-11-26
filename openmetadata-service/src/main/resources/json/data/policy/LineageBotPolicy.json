@@ -1,0 +1,25 @@
+{
+  "name": "LineageBotPolicy",
+  "displayName": "Lineage Bot Policy",
+  "fullyQualifiedName": "LineageBotPolicy",
+  "description": "Policy for Lineage Bot to perform operations on metadata entities.",
+  "enabled": true,
+  "allowDelete": false,
+  "provider": "system",
+  "rules": [
+    {
+      "name": "UsageBotRule-Allow-Query",
+      "description" : "Allow creating and updated Queries.",
+      "resources" : ["query"],
+      "operations": ["Create", "EditAll", "ViewAll"],
+      "effect": "allow"
+    },
+    {
+      "name": "LineageBotRule-Allow",
+      "description" : "Allow creating and updating lineage",
+      "resources" : ["All"],
+      "operations": ["EditLineage", "EditQueries", "ViewAll"],
+      "effect": "allow"
+    }
+  ]
+}

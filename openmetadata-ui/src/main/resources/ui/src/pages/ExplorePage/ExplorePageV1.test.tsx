@@ -38,9 +38,14 @@ jest.mock('../../hooks/useApplicationStore', () => ({
   })),
 }));
 
+jest.mock('../../hooks/useCustomLocation/useCustomLocation', () => {
+  return jest
+    .fn()
+    .mockImplementation(() => ({ pathname: 'pathname', search: '' }));
+});
+
 jest.mock('react-router-dom', () => ({
   useHistory: jest.fn().mockReturnValue({ push: jest.fn(), listen: jest.fn() }),
-  useLocation: jest.fn().mockReturnValue({ pathname: 'pathname', search: '' }),
   useParams: jest.fn().mockImplementation(() => {
     return {
       tab: 'tables',

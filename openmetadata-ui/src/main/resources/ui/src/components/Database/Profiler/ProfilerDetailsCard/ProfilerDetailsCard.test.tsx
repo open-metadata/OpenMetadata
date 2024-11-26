@@ -32,6 +32,11 @@ jest.mock('../../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => {
     return <div>ErrorPlaceHolder</div>;
   });
 });
+jest.mock('../../../../utils/DataInsightUtils', () => {
+  return jest.fn().mockImplementation(() => {
+    return <div>CustomTooltip</div>;
+  });
+});
 
 describe('ProfilerDetailsCard Test', () => {
   it('Component should render', async () => {

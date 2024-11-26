@@ -17,6 +17,7 @@ import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.schema.type.ColumnDataType.BIGINT;
 import static org.openmetadata.schema.type.ColumnDataType.INT;
@@ -176,7 +177,7 @@ public class DashboardDataModelResourceTest
     CreateDashboardService createDashboardService =
         serviceTest
             .createRequest(getEntityName(test))
-            .withOwner(DATA_CONSUMER.getEntityReference());
+            .withOwners(List.of(DATA_CONSUMER.getEntityReference()));
     DashboardService service = serviceTest.createEntity(createDashboardService, ADMIN_AUTH_HEADERS);
 
     // Data consumer as an owner of the service can create dashboard data model under it
@@ -196,13 +197,11 @@ public class DashboardDataModelResourceTest
                 dashboardDataModel.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(dashboardDataModel.getId(), fields, ADMIN_AUTH_HEADERS);
     assertListNotNull(dashboardDataModel.getService(), dashboardDataModel.getServiceType());
-    assertListNull(
-        dashboardDataModel.getOwner(),
-        dashboardDataModel.getFollowers(),
-        dashboardDataModel.getTags());
+    assertListNull(dashboardDataModel.getOwners(), dashboardDataModel.getFollowers());
+    assertTrue(dashboardDataModel.getTags().isEmpty());
 
     // .../datamodels?fields=owner
-    fields = "owner,followers,tags";
+    fields = "owners,followers,tags";
     dashboardDataModel =
         byName
             ? getEntityByName(

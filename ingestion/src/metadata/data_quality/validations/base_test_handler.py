@@ -17,29 +17,39 @@ from __future__ import annotations
 
 import reprlib
 from abc import ABC, abstractmethod
-from datetime import datetime
-from typing import Callable, List, Optional, TypeVar, Union
+from typing import TYPE_CHECKING, Callable, List, Optional, Type, TypeVar, Union
 
+from pydantic import BaseModel
+
+from metadata.data_quality.validations import utils
 from metadata.generated.schema.tests.basic import (
     TestCaseResult,
     TestCaseStatus,
     TestResultValue,
 )
 from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
+from metadata.generated.schema.type.basic import Timestamp
 from metadata.profiler.processor.runner import QueryRunner
+
+if TYPE_CHECKING:
+    from pandas import DataFrame
 
 T = TypeVar("T", bound=Callable)
 R = TypeVar("R")
+S = TypeVar("S", bound=BaseModel)
 
 
 class BaseTestValidator(ABC):
-    """Abstract class for test case handlers"""
+    """Abstract class for test case handlers
+    The runtime_parameter_setter is run after the test case is created to set the runtime parameters.
+    This can be useful to resolve complex test parameters based on the parameters gibven by the user.
+    """
 
     def __init__(
         self,
-        runner: QueryRunner,
+        runner: Union[QueryRunner, List["DataFrame"]],
         test_case: TestCase,
-        execution_date: Union[datetime, float],
+        execution_date: Timestamp,
     ) -> None:
         self.runner = runner
         self.test_case = test_case
@@ -54,40 +64,21 @@ class BaseTestValidator(ABC):
         """
         raise NotImplementedError
 
+    @staticmethod
     def get_test_case_param_value(
-        self,
-        test_case_param_vals: list[TestCaseParameterValue],
+        test_case_param_vals: List[TestCaseParameterValue],
         name: str,
         type_: T,
         default: Optional[R] = None,
         pre_processor: Optional[Callable] = None,
     ) -> Optional[Union[R, T]]:
-        """Give a column and a type return the value with the appropriate type casting for the
-        test case definition.
-
-        Args:
-            test_case: the test case
-            type_ (Union[float, int, str]): type for the value
-            name (str): column name
-            default (_type_, optional): Default value to return if column is not found
-            pre_processor: pre processor function/type to use against the value before casting to type_
-        """
-        value = next(
-            (param.value for param in test_case_param_vals if param.name == name), None
+        return utils.get_test_case_param_value(
+            test_case_param_vals, name, type_, default, pre_processor
         )
-
-        if not value:
-            return default if default is not None else None
-
-        if not pre_processor:
-            return type_(value)
-
-        pre_processed_value = pre_processor(value)
-        return type_(pre_processed_value)
 
     def get_test_case_result_object(  # pylint: disable=too-many-arguments
         self,
-        execution_date: Union[datetime, float],
+        execution_date: Timestamp,
         status: TestCaseStatus,
         result: str,
         test_result_value: List[TestResultValue],
@@ -171,3 +162,14 @@ class BaseTestValidator(ABC):
             float,
             default=float("inf"),
         )
+
+    def get_predicted_value(self) -> Optional[str]:
+        """Get predicted value"""
+        return None
+
+    def get_runtime_parameters(self, setter_class: Type[S]) -> S:
+        """Get runtime parameters"""
+        for param in self.test_case.parameterValues or []:
+            if param.name == setter_class.__name__:
+                return setter_class.model_validate_json(param.value)
+        raise ValueError(f"Runtime parameter {setter_class.__name__} not found")

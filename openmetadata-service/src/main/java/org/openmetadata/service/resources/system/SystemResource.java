@@ -1,8 +1,8 @@
 package org.openmetadata.service.resources.system;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.schema.settings.SettingsType.LINEAGE_SETTINGS;
 
-import freemarker.template.TemplateException;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Operation;
@@ -13,7 +13,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import java.io.IOException;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
 import javax.ws.rs.Consumes;
@@ -36,9 +35,10 @@ import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.system.ValidationResponse;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.util.EntitiesCount;
 import org.openmetadata.schema.util.ServicesCount;
-import org.openmetadata.sdk.PipelineServiceClient;
+import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
@@ -48,8 +48,10 @@ import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.JwtFilter;
-import org.openmetadata.service.util.EmailUtil;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.util.ResultList;
+import org.openmetadata.service.util.email.EmailUtil;
 
 @Path("/v1/system")
 @Tag(name = "System", description = "APIs related to System configuration and settings.")
@@ -63,7 +65,7 @@ public class SystemResource {
   private final SystemRepository systemRepository;
   private final Authorizer authorizer;
   private OpenMetadataApplicationConfig applicationConfig;
-  private PipelineServiceClient pipelineServiceClient;
+  private PipelineServiceClientInterface pipelineServiceClient;
   private JwtFilter jwtFilter;
 
   public SystemResource(Authorizer authorizer) {
@@ -127,7 +129,9 @@ public class SystemResource {
       @Parameter(description = "Name of the setting", schema = @Schema(type = "string"))
           @PathParam("name")
           String name) {
-    authorizer.authorizeAdmin(securityContext);
+    if (!name.equalsIgnoreCase(LINEAGE_SETTINGS.toString())) {
+      authorizer.authorizeAdmin(securityContext);
+    }
     return systemRepository.getConfigWithKey(name);
   }
 
@@ -147,8 +151,18 @@ public class SystemResource {
                     schema = @Schema(implementation = Settings.class)))
       })
   public Settings getProfilerConfigurationSetting(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
-    authorizer.authorizeAdminOrBot(securityContext);
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Entity type for which to get the global profiler configuration",
+              schema = @Schema(type = "string"))
+          @QueryParam("entityType")
+          @DefaultValue("table")
+          String entityType) {
+    ResourceContext resourceContext = new ResourceContext(entityType);
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.VIEW_PROFILER_GLOBAL_CONFIGURATION);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
     return systemRepository.getConfigWithKey(SettingsType.PROFILER_CONFIGURATION.value());
   }
 
@@ -193,8 +207,7 @@ public class SystemResource {
   public Response sendTestEmail(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Valid EmailRequest emailRequest)
-      throws TemplateException, IOException {
+      @Valid EmailRequest emailRequest) {
     if (nullOrEmpty(emailRequest.getEmail())) {
       throw new IllegalArgumentException("Email address is required.");
     }

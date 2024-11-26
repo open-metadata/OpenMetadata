@@ -18,8 +18,7 @@ import { isUndefined } from 'lodash';
 import { ServiceTypes } from 'Models';
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { UserTeam } from '../components/common/AssigneeList/AssigneeList.interface';
-import UserPopOverCard from '../components/common/PopOverCard/UserPopOverCard';
+import { OwnerLabel } from '../components/common/OwnerLabel/OwnerLabel.component';
 import RichTextEditorPreviewer from '../components/common/RichTextEditor/RichTextEditorPreviewer';
 import TagsViewer from '../components/Tag/TagsViewer/TagsViewer';
 import { NO_DATA_PLACEHOLDER } from '../constants/constants';
@@ -88,19 +87,12 @@ export const getServiceMainTabColumns = (
       ]
     : []),
   {
-    title: t('label.owner'),
-    dataIndex: 'owner',
-    key: 'owner',
-    render: (owner: ServicePageData['owner']) =>
-      !isUndefined(owner) ? (
-        <UserPopOverCard
-          showUserName
-          data-testid="owner-data"
-          displayName={owner.displayName}
-          profileWidth={20}
-          type={owner.type as UserTeam}
-          userName={owner.name ?? ''}
-        />
+    title: t('label.owner-plural'),
+    dataIndex: 'owners',
+    key: 'owners',
+    render: (owners: ServicePageData['owners']) =>
+      !isUndefined(owners) && owners.length > 0 ? (
+        <OwnerLabel owners={owners} />
       ) : (
         <Typography.Text data-testid="no-owner-text">--</Typography.Text>
       ),

@@ -11,6 +11,7 @@
 """
 Bigquery source module
 """
+import ast
 import os
 import traceback
 from typing import Dict, Iterable, List, Optional, Tuple
@@ -76,7 +77,6 @@ from metadata.ingestion.source.database.bigquery.models import (
     BigQueryStoredProcedure,
 )
 from metadata.ingestion.source.database.bigquery.queries import (
-    BIGQUERY_GET_STORED_PROCEDURE_QUERIES,
     BIGQUERY_GET_STORED_PROCEDURES,
     BIGQUERY_LIFE_CYCLE_QUERY,
     BIGQUERY_SCHEMA_DESCRIPTION,
@@ -94,14 +94,9 @@ from metadata.ingestion.source.database.life_cycle_query_mixin import (
     LifeCycleQueryMixin,
 )
 from metadata.ingestion.source.database.multi_db_source import MultiDBSource
-from metadata.ingestion.source.database.stored_procedures_mixin import (
-    QueryByProcedure,
-    StoredProcedureMixin,
-)
 from metadata.utils import fqn
 from metadata.utils.credentials import GOOGLE_CREDENTIALS
 from metadata.utils.filters import filter_by_database, filter_by_schema
-from metadata.utils.helpers import get_start_and_end
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import (
     get_all_table_ddls,
@@ -222,9 +217,7 @@ Inspector.get_all_table_ddls = get_all_table_ddls
 Inspector.get_table_ddl = get_table_ddl
 
 
-class BigquerySource(
-    LifeCycleQueryMixin, StoredProcedureMixin, CommonDbSourceService, MultiDBSource
-):
+class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
     """
     Implements the necessary methods to extract
     Database metadata from Bigquery Source
@@ -412,7 +405,10 @@ class BigquerySource(
             )
 
             query_result = [result.schema_description for result in query_resp.result()]
-            return fqn.unquote_name(query_result[0])
+
+            return str(
+                ast.literal_eval(query_result[0])
+            )  # To safely evaluate the string, unquote and interpret escaped characters
         except IndexError:
             logger.debug(f"No dataset description found for {schema_name}")
         except Exception as err:
@@ -641,49 +637,82 @@ class BigquerySource(
             logger.warning("Schema definition not implemented")
         return None
 
+    def _get_partition_column_name(
+        self, columns: List[Dict], partition_field_name: str
+    ):
+        """
+        Method to get the correct partition column name
+        """
+        try:
+            for column in columns or []:
+                column_name = column.get("name")
+                if column_name and (
+                    column_name.lower() == partition_field_name.lower()
+                ):
+                    return column_name
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Error getting partition column name for {partition_field_name}: {exc}"
+            )
+        return None
+
     def get_table_partition_details(
         self, table_name: str, schema_name: str, inspector: Inspector
     ) -> Tuple[bool, Optional[TablePartition]]:
         """
         check if the table is partitioned table and return the partition details
         """
-        database = self.context.get().database
-        table = self.client.get_table(fqn._build(database, schema_name, table_name))
-        if table.time_partitioning is not None:
-            if table.time_partitioning.field:
-                table_partition = TablePartition(
+        try:
+            database = self.context.get().database
+            table = self.client.get_table(fqn._build(database, schema_name, table_name))
+            columns = inspector.get_columns(table_name, schema_name, db_name=database)
+            if table.time_partitioning is not None:
+                if table.time_partitioning.field:
+                    table_partition = TablePartition(
+                        columns=[
+                            PartitionColumnDetails(
+                                columnName=self._get_partition_column_name(
+                                    columns=columns,
+                                    partition_field_name=table.time_partitioning.field,
+                                ),
+                                interval=str(table.time_partitioning.type_),
+                                intervalType=PartitionIntervalTypes.TIME_UNIT,
+                            )
+                        ]
+                    )
+                    return True, table_partition
+                return True, TablePartition(
                     columns=[
                         PartitionColumnDetails(
-                            columnName=table.time_partitioning.field,
+                            columnName="_PARTITIONTIME"
+                            if table.time_partitioning.type_ == "HOUR"
+                            else "_PARTITIONDATE",
                             interval=str(table.time_partitioning.type_),
-                            intervalType=PartitionIntervalTypes.TIME_UNIT,
+                            intervalType=PartitionIntervalTypes.INGESTION_TIME,
                         )
                     ]
                 )
-                return True, table_partition
-            return True, TablePartition(
-                columns=[
-                    PartitionColumnDetails(
-                        columnName="_PARTITIONTIME"
-                        if table.time_partitioning.type_ == "HOUR"
-                        else "_PARTITIONDATE",
-                        interval=str(table.time_partitioning.type_),
-                        intervalType=PartitionIntervalTypes.INGESTION_TIME,
-                    )
-                ]
+            if table.range_partitioning:
+                table_partition = PartitionColumnDetails(
+                    columnName=self._get_partition_column_name(
+                        columns=columns,
+                        partition_field_name=table.range_partitioning.field,
+                    ),
+                    intervalType=PartitionIntervalTypes.INTEGER_RANGE,
+                    interval=None,
+                )
+                if hasattr(table.range_partitioning, "range_") and hasattr(
+                    table.range_partitioning.range_, "interval"
+                ):
+                    table_partition.interval = table.range_partitioning.range_.interval
+                table_partition.columnName = table.range_partitioning.field
+                return True, TablePartition(columns=[table_partition])
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Error getting table partition details for {table_name}: {exc}"
             )
-        if table.range_partitioning:
-            table_partition = PartitionColumnDetails(
-                columnName=table.range_partitioning.field,
-                intervalType=PartitionIntervalTypes.INTEGER_RANGE,
-                interval=None,
-            )
-            if hasattr(table.range_partitioning, "range_") and hasattr(
-                table.range_partitioning.range_, "interval"
-            ):
-                table_partition.interval = table.range_partitioning.range_.interval
-            table_partition.columnName = table.range_partitioning.field
-            return True, TablePartition(columns=[table_partition])
         return False, None
 
     def clean_raw_data_type(self, raw_data_type):
@@ -812,22 +841,6 @@ class BigquerySource(
                     stackTrace=traceback.format_exc(),
                 )
             )
-
-    def get_stored_procedure_queries_dict(self) -> Dict[str, List[QueryByProcedure]]:
-        """
-        Pick the stored procedure name from the context
-        and return the list of associated queries
-        """
-        start, _ = get_start_and_end(self.source_config.queryLogDuration)
-        query = BIGQUERY_GET_STORED_PROCEDURE_QUERIES.format(
-            start_date=start,
-            region=self.service_connection.usageLocation,
-        )
-        queries_dict = self.procedure_queries_dict(
-            query=query,
-        )
-
-        return queries_dict
 
     def mark_tables_as_deleted(self):
         """

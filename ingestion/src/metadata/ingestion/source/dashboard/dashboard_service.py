@@ -55,9 +55,13 @@ from metadata.ingestion.api.delete import delete_entity_from_source
 from metadata.ingestion.api.models import Either, Entity
 from metadata.ingestion.api.steps import Source
 from metadata.ingestion.api.topology_runner import C, TopologyRunnerMixin
+from metadata.ingestion.connections.test_connections import (
+    raise_test_connection_exception,
+)
 from metadata.ingestion.lineage.sql_lineage import get_column_fqn
 from metadata.ingestion.models.delete_entity import DeleteEntity
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
+from metadata.ingestion.models.ometa_lineage import OMetaLineageRequest
 from metadata.ingestion.models.patch_request import PatchRequest
 from metadata.ingestion.models.topology import (
     NodeStage,
@@ -205,7 +209,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
     config: WorkflowSource
     metadata: OpenMetadata
     # Big union of types we want to fetch dynamically
-    service_connection: DashboardConnection.__fields__["config"].annotation
+    service_connection: DashboardConnection.model_fields["config"].annotation
 
     topology = DashboardServiceTopology()
     context = TopologyContextManager(topology)
@@ -330,7 +334,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
                 except Exception as err:
                     logger.debug(traceback.format_exc())
                     logger.error(
-                        f"Error to yield dashboard lineage details for data model name [{datamodel.name}]: {err}"
+                        f"Error to yield dashboard lineage details for data model name [{str(datamodel)}]: {err}"
                     )
 
     def get_db_service_names(self) -> List[str]:
@@ -345,17 +349,25 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
 
     def yield_dashboard_lineage(
         self, dashboard_details: Any
-    ) -> Iterable[Either[AddLineageRequest]]:
+    ) -> Iterable[Either[OMetaLineageRequest]]:
         """
         Yields lineage if config is enabled.
 
         We will look for the data in all the services
         we have informed.
         """
-        yield from self.yield_datamodel_dashboard_lineage() or []
+        for lineage in self.yield_datamodel_dashboard_lineage() or []:
+            if lineage.right is not None:
+                yield Either(
+                    right=OMetaLineageRequest(
+                        lineage_request=lineage.right,
+                        override_lineage=self.source_config.overrideLineage,
+                    )
+                )
+            else:
+                yield lineage
 
         db_service_names = self.get_db_service_names()
-
         for db_service_name in db_service_names or []:
             yield from self.yield_dashboard_lineage_details(
                 dashboard_details, db_service_name
@@ -425,7 +437,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
 
     def get_owner_ref(  # pylint: disable=unused-argument, useless-return
         self, dashboard_details
-    ) -> Optional[EntityReference]:
+    ) -> Optional[EntityReferenceList]:
         """
         Method to process the dashboard owners
         """
@@ -545,32 +557,13 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
 
     def test_connection(self) -> None:
         test_connection_fn = get_test_connection_fn(self.service_connection)
-        test_connection_fn(self.metadata, self.connection_obj, self.service_connection)
+        result = test_connection_fn(
+            self.metadata, self.connection_obj, self.service_connection
+        )
+        raise_test_connection_exception(result)
 
     def prepare(self):
         """By default, nothing to prepare"""
-
-    def fqn_from_context(self, stage: NodeStage, entity_name: C) -> str:
-        """
-        We are overriding this method since CreateDashboardDataModelRequest needs to add an extra value to the context
-        names.
-
-        Read the context
-        :param stage: Topology node being processed
-        :param entity_request: Request sent to the sink
-        :return: Entity FQN derived from context
-        """
-        context_names = [
-            self.context.get().__dict__[dependency]
-            for dependency in stage.consumer or []  # root nodes do not have consumers
-        ]
-
-        if isinstance(stage.type_, DashboardDataModel):
-            context_names.append("model")
-
-        return fqn._build(  # pylint: disable=protected-access
-            *context_names, entity_name
-        )
 
     def check_database_schema_name(self, database_schema_name: str):
         """
@@ -608,7 +601,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         """
         patch_request = PatchRequest(
             original_entity=original_entity,
-            new_entity=original_entity.copy(update=create_request.__dict__),
+            new_entity=original_entity.model_copy(update=create_request.__dict__),
         )
         if isinstance(original_entity, Dashboard):
             # For patch the charts need to be entity ref instead of fqn

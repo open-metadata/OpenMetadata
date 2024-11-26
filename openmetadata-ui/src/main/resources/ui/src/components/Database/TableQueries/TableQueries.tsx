@@ -33,7 +33,7 @@ import { isEmpty, isUndefined, uniqBy } from 'lodash';
 import Qs from 'qs';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useLocation } from 'react-router-dom';
+import { useHistory } from 'react-router-dom';
 import { WILD_CARD_CHAR } from '../../../constants/char.constants';
 import { INITIAL_PAGING_VALUE, PAGE_SIZE } from '../../../constants/constants';
 import { USAGE_DOCS } from '../../../constants/docs.constants';
@@ -50,9 +50,11 @@ import {
   ResourceEntity,
 } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE, SORT_ORDER } from '../../../enums/common.enum';
+import { TabSpecificField } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { Query } from '../../../generated/entity/data/query';
 import { usePaging } from '../../../hooks/paging/usePaging';
+import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../hooks/useFqn';
 import {
   getQueryById,
@@ -60,6 +62,7 @@ import {
   updateQueryVote,
 } from '../../../rest/queryAPI';
 import { searchQuery } from '../../../rest/searchAPI';
+import { getEntityName } from '../../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import {
   createQueryFilter,
@@ -89,7 +92,7 @@ const TableQueries: FC<TableQueriesProp> = ({
   tableId,
 }: TableQueriesProp) => {
   const { t } = useTranslation();
-  const location = useLocation();
+  const location = useCustomLocation();
   const { fqn: datasetFQN } = useFqn();
   const history = useHistory();
 
@@ -191,7 +194,13 @@ const TableQueries: FC<TableQueriesProp> = ({
     try {
       await updateQueryVote(id ?? '', data);
       const response = await getQueryById(id ?? '', {
-        fields: 'owner,votes,tags,queryUsedIn,users',
+        fields: [
+          TabSpecificField.OWNERS,
+          TabSpecificField.VOTES,
+          TabSpecificField.TAGS,
+          TabSpecificField.QUERY_USED_IN,
+          TabSpecificField.USERS,
+        ],
       });
       setSelectedQuery(response);
       setTableQueries((pre) => {
@@ -281,11 +290,16 @@ const TableQueries: FC<TableQueriesProp> = ({
   };
 
   const fetchTags = async (searchText = WILD_CARD_CHAR) => {
-    return fetchFilterOptions(
+    const data = await fetchFilterOptions(
       searchText,
       'disabled:false AND !classification.name:Tier',
       SearchIndex.TAG
     );
+
+    return data.hits.hits.map((hit) => ({
+      key: hit._source.fullyQualifiedName ?? hit._source.name,
+      label: getEntityName(hit._source),
+    }));
   };
 
   const setTagsDefaultOption = () => {
@@ -336,10 +350,15 @@ const TableQueries: FC<TableQueriesProp> = ({
   };
 
   const fetchOwner = async (searchText = WILD_CARD_CHAR) => {
-    return fetchFilterOptions(searchText, 'isBot:false', [
+    const data = await fetchFilterOptions(searchText, 'isBot:false', [
       SearchIndex.USER,
       SearchIndex.TEAM,
     ]);
+
+    return data.hits.hits.map((hit) => ({
+      key: hit._source.name,
+      label: getEntityName(hit._source),
+    }));
   };
 
   const setOwnerDefaultOption = () => {
@@ -532,10 +551,10 @@ const TableQueries: FC<TableQueriesProp> = ({
 
   return (
     <Row className="m-b-md" gutter={8} id="tablequeries" wrap={false}>
-      <Col span={24}>
+      <Col className="tab-content-height-with-resizable-panel" span={24}>
         <ResizablePanels
-          applyDefaultStyle={false}
           firstPanel={{
+            className: 'entity-resizable-panel-container',
             children: (
               <Row
                 className="p-x-md m-t-md"
@@ -665,7 +684,8 @@ const TableQueries: FC<TableQueriesProp> = ({
             ),
             minWidth: 400,
             flex: 0.13,
-            className: 'entity-summary-resizable-right-panel-container',
+            className:
+              'entity-summary-resizable-right-panel-container entity-resizable-panel-container',
           }}
         />
       </Col>

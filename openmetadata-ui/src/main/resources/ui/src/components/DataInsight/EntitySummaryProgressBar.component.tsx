@@ -21,7 +21,6 @@ type EntitySummaryProgressBarProps = {
   isActive?: boolean;
   progress: number;
   entity: string;
-  latestData: Record<string, number>;
   label?: ReactNode;
   strokeColor?: string;
 };
@@ -30,7 +29,6 @@ const EntitySummaryProgressBar = ({
   isActive = true,
   pluralize = true,
   entity,
-  latestData,
   progress,
   label,
   strokeColor,
@@ -58,7 +56,7 @@ const EntitySummaryProgressBar = ({
         <Typography.Paragraph
           className="m-b-0 entity-summary-value"
           data-testid="entity-value">
-          {label ?? round(latestData[entity] || 0, 2)}
+          {label ?? round(progress || 0, 2)}
         </Typography.Paragraph>
       </Col>
       <Col md={12} sm={24}>

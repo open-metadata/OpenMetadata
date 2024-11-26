@@ -13,6 +13,7 @@
 
 import { isUndefined } from 'lodash';
 import { ServiceTypes } from 'Models';
+import process from 'process';
 import {
   getServiceDetailsPath,
   IN_PAGE_SEARCH_ROUTES,
@@ -37,6 +38,7 @@ import {
   GlobalSettingsMenuCategory,
 } from '../constants/GlobalSettings.constants';
 import { arrServiceTypes } from '../constants/Services.constant';
+import { AlertDetailTabs } from '../enums/Alerts.enum';
 import { EntityAction } from '../enums/entity.enum';
 import { ProfilerDashboardType } from '../enums/table.enum';
 import { PipelineType } from '../generated/api/services/ingestionPipelines/createIngestionPipeline';
@@ -121,7 +123,7 @@ export const getEditIngestionPath = (
   path = path
     .replace(PLACEHOLDER_ROUTE_SERVICE_CAT, serviceCategory)
     .replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(serviceFQN))
-    .replace(PLACEHOLDER_ROUTE_INGESTION_FQN, ingestionFQN)
+    .replace(PLACEHOLDER_ROUTE_INGESTION_FQN, getEncodedFqn(ingestionFQN))
     .replace(PLACEHOLDER_ROUTE_INGESTION_TYPE, ingestionType);
 
   return path;
@@ -323,7 +325,8 @@ export const getEditPolicyRulePath = (fqn: string, ruleName: string) => {
 
   path = path
     .replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(fqn))
-    .replace(PLACEHOLDER_RULE_NAME, ruleName);
+    // rule name is same as entity fqn so we need to encode it to pass it as a param
+    .replace(PLACEHOLDER_RULE_NAME, getEncodedFqn(ruleName));
 
   return path;
 };
@@ -554,6 +557,17 @@ export const getClassificationDetailsPath = (classificationFqn: string) => {
   return path;
 };
 
+export const getClassificationTagPath = (tagFqn: string, tab?: string) => {
+  let path = tab ? ROUTES.TAG_ITEM_WITH_TAB : ROUTES.TAG_ITEM;
+
+  if (tab) {
+    path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
+  }
+  path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(tagFqn));
+
+  return path;
+};
+
 export const getClassificationVersionsPath = (
   classificationFqn: string,
   version: string
@@ -567,11 +581,10 @@ export const getClassificationVersionsPath = (
 };
 
 export const getPersonaDetailsPath = (fqn: string) => {
-  let path = ROUTES.SETTINGS_WITH_TAB_FQN;
+  let path = ROUTES.SETTINGS_WITH_CATEGORY_FQN;
 
   path = path
-    .replace(PLACEHOLDER_SETTING_CATEGORY, GlobalSettingsMenuCategory.MEMBERS)
-    .replace(PLACEHOLDER_ROUTE_TAB, GlobalSettingOptions.PERSONA)
+    .replace(PLACEHOLDER_SETTING_CATEGORY, GlobalSettingOptions.PERSONA)
     .replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(fqn));
 
   return path;
@@ -593,18 +606,34 @@ export const getNotificationAlertsEditPath = (fqn: string) => {
   return path;
 };
 
-export const getObservabilityAlertDetailsPath = (fqn: string) => {
-  let path = ROUTES.OBSERVABILITY_ALERT_DETAILS;
+export const getObservabilityAlertDetailsPath = (fqn: string, tab?: string) => {
+  let path = ROUTES.OBSERVABILITY_ALERT_DETAILS_WITH_TAB.replace(
+    PLACEHOLDER_ROUTE_FQN,
+    getEncodedFqn(fqn)
+  );
 
-  path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(fqn));
+  path = path.replace(
+    PLACEHOLDER_ROUTE_TAB,
+    tab ?? AlertDetailTabs.CONFIGURATION
+  );
 
   return path;
 };
 
-export const getNotificationAlertDetailsPath = (fqn: string) => {
-  let path = ROUTES.NOTIFICATION_ALERT_DETAILS;
+export const getNotificationAlertDetailsPath = (fqn: string, tab?: string) => {
+  let path = ROUTES.NOTIFICATION_ALERT_DETAILS_WITH_TAB.replace(
+    PLACEHOLDER_ROUTE_FQN,
+    getEncodedFqn(fqn)
+  );
 
-  path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(fqn));
+  path = path.replace(
+    PLACEHOLDER_ROUTE_TAB,
+    tab ?? AlertDetailTabs.CONFIGURATION
+  );
 
   return path;
+};
+
+export const getPathNameFromWindowLocation = () => {
+  return window.location.pathname.replace(process.env.APP_SUB_PATH ?? '', '');
 };

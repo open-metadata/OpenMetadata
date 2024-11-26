@@ -22,7 +22,7 @@ We support
 
 - MySQL engine version 8 or higher
 - PostgreSQL engine version 12 or higher
-- ElasticSearch version 8.X (upto 8.10.2) or OpenSearch Version 2.X (upto 2.7)
+- ElasticSearch version 8.X (upto 8.11.4) or OpenSearch Version 2.X (upto 2.7)
 
 Once you have the External Database and Search Engine configured, you can update the environment variables below for OpenMetadata kubernetes deployments to connect with Database and ElasticSearch.
 
@@ -63,7 +63,7 @@ openmetadata:
 
 Make sure to create database and search engine credentials as Kubernetes Secrets mentioned [here](/quick-start/local-kubernetes-deployment#2.-create-kubernetes-secrets-required-for-helm-charts).
 
-Also, disable MySQL and ElasticSearch from OpenMetadata Dependencies Helm Charts as mentioned in the FAQs [here](/deployment/kubernetes/faqs#how-to-disable-mysql-and-elasticsearch-from-openmetadata-dependencies-helm-charts).
+Also, disable MySQL and ElasticSearch from OpenMetadata Dependencies Helm Charts as mentioned in the FAQs [here](#how-to-disable-mysql-and-elasticsearch-from-openmetadata-dependencies-helm-charts).
 
 ### Persistent Volumes with ReadWriteMany Access Modes
 
@@ -264,3 +264,7 @@ helm install openmetadata open-metadata/openmetadata
 
 Again, this uses the values defined [here](https://github.com/open-metadata/openmetadata-helm-charts/blob/main/charts/openmetadata/values.yaml).
 Use the `--values` flag to point to your own YAML configuration if needed.
+
+# FAQs
+
+{% partial file="/v1.4/deployment/faqs.md" /%}

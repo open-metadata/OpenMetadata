@@ -17,14 +17,14 @@ import textwrap
 SNOWFLAKE_SQL_STATEMENT = textwrap.dedent(
     """
     SELECT
-      query_type,
-      query_text,
-      user_name,
-      database_name,
-      schema_name,
-      start_time,
-      end_time,
-      total_elapsed_time duration
+      query_type "query_type",
+      query_text "query_text",
+      user_name "user_name",
+      database_name "database_name",
+      schema_name "schema_name",
+      start_time "start_time",
+      end_time "end_time",
+      total_elapsed_time "duration"
     from snowflake.account_usage.query_history
     WHERE query_text NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
     AND query_text NOT LIKE '/* {{"app": "dbt", %%}} */%%'
@@ -245,6 +245,10 @@ SNOWFLAKE_TEST_GET_TABLES = """
 SELECT TABLE_NAME FROM "{database_name}".information_schema.tables LIMIT 1
 """
 
+SNOWFLAKE_TEST_GET_VIEWS = """
+SELECT TABLE_NAME FROM "{database_name}".information_schema.views LIMIT 1
+"""
+
 SNOWFLAKE_GET_DATABASES = "SHOW DATABASES"
 
 
@@ -354,4 +358,27 @@ ORDER BY PROCEDURE_START_TIME DESC
 
 SNOWFLAKE_GET_TABLE_DDL = """
 SELECT GET_DDL('TABLE','{table_name}') AS \"text\"
+"""
+SNOWFLAKE_QUERY_LOG_QUERY = """
+    SELECT
+        QUERY_ID,
+        QUERY_TEXT,
+        QUERY_TYPE,
+        START_TIME,
+        DATABASE_NAME,
+        SCHEMA_NAME,
+        ROWS_INSERTED,
+        ROWS_UPDATED,
+        ROWS_DELETED
+    FROM "SNOWFLAKE"."ACCOUNT_USAGE"."QUERY_HISTORY"
+    WHERE
+    start_time>= DATEADD('DAY', -1, CURRENT_TIMESTAMP)
+    AND QUERY_TEXT ILIKE '%{tablename}%'
+    AND QUERY_TYPE IN (
+        '{insert}',
+        '{update}',
+        '{delete}',
+        '{merge}'
+    )
+    AND EXECUTION_STATUS = 'SUCCESS';
 """

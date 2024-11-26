@@ -22,32 +22,50 @@ import {
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
-import { MOCK_SELECT_WIDGET } from '../../../../../mocks/SelectWidget.mock';
+import {
+  MOCK_SELECT_WIDGET,
+  MOCK_TREE_SELECT_WIDGET,
+} from '../../../../../mocks/SelectWidget.mock';
 import SelectWidget from './SelectWidget';
+
+jest.mock('./TreeSelectWidget', () =>
+  jest.fn().mockImplementation(() => <p>TreeSelectWidget</p>)
+);
 
 const mockOnFocus = jest.fn();
 const mockOnBlur = jest.fn();
 const mockOnChange = jest.fn();
 
-const mockProps: WidgetProps = {
+const mockBaseProps = {
   onFocus: mockOnFocus,
   onBlur: mockOnBlur,
   onChange: mockOnChange,
   registry: {} as Registry,
+};
+
+const mockSelectProps: WidgetProps = {
+  ...mockBaseProps,
   ...MOCK_SELECT_WIDGET,
+};
+
+const mockTreeSelectProps: WidgetProps = {
+  ...mockBaseProps,
+  ...MOCK_TREE_SELECT_WIDGET,
 };
 
 describe('Test SelectWidget Component', () => {
   it('Should render select component', async () => {
-    render(<SelectWidget {...mockProps} />);
+    render(<SelectWidget {...mockSelectProps} />);
 
     const selectInput = screen.getByTestId('select-widget');
+    const treeSelectWidget = screen.queryByText('TreeSelectWidget');
 
     expect(selectInput).toBeInTheDocument();
+    expect(treeSelectWidget).not.toBeInTheDocument();
   });
 
   it('Should be disabled', async () => {
-    render(<SelectWidget {...mockProps} disabled />);
+    render(<SelectWidget {...mockSelectProps} disabled />);
 
     const selectInput = await findByRole(
       screen.getByTestId('select-widget'),
@@ -58,7 +76,7 @@ describe('Test SelectWidget Component', () => {
   });
 
   it('Should call onFocus', async () => {
-    render(<SelectWidget {...mockProps} />);
+    render(<SelectWidget {...mockSelectProps} />);
 
     const selectInput = screen.getByTestId('select-widget');
 
@@ -68,7 +86,7 @@ describe('Test SelectWidget Component', () => {
   });
 
   it('Should call onBlur', async () => {
-    render(<SelectWidget {...mockProps} />);
+    render(<SelectWidget {...mockSelectProps} />);
 
     const selectInput = screen.getByTestId('select-widget');
 
@@ -78,7 +96,7 @@ describe('Test SelectWidget Component', () => {
   });
 
   it('Should call onChange', async () => {
-    render(<SelectWidget {...mockProps} />);
+    render(<SelectWidget {...mockSelectProps} />);
 
     const selectInput = await findByRole(
       screen.getByTestId('select-widget'),
@@ -96,5 +114,15 @@ describe('Test SelectWidget Component', () => {
     });
 
     expect(mockOnChange).toHaveBeenCalledTimes(1);
+  });
+
+  it('Should render TreeSelectWidget component if uiFieldType is treeSelect', async () => {
+    render(<SelectWidget {...mockTreeSelectProps} />);
+
+    const selectWidget = screen.queryByTestId('select-widget');
+    const treeSelectWidget = screen.getByText('TreeSelectWidget');
+
+    expect(treeSelectWidget).toBeInTheDocument();
+    expect(selectWidget).not.toBeInTheDocument();
   });
 });

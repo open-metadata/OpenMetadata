@@ -24,10 +24,14 @@ import java.nio.charset.StandardCharsets;
 import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.Base64;
-import java.util.Date;
 import java.util.TimeZone;
 import java.util.UUID;
+import javax.ws.rs.BadRequestException;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.ResponseBuilder;
 import javax.ws.rs.core.Response.Status;
@@ -41,15 +45,14 @@ public final class RestUtil {
   public static final String CHANGE_CUSTOM_HEADER = "X-OpenMetadata-Change";
   public static final String SIGNATURE_HEADER = "X-OM-Signature";
   public static final DateFormat DATE_TIME_FORMAT;
-  public static final DateFormat DATE_FORMAT;
+  public static final DateTimeFormatter DATE_FORMAT;
 
   static {
     // Quoted "Z" to indicate UTC, no timezone offset
     DATE_TIME_FORMAT = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z'");
     DATE_TIME_FORMAT.setTimeZone(TimeZone.getTimeZone("UTC"));
 
-    DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd");
-    DATE_FORMAT.setTimeZone(TimeZone.getTimeZone("UTC"));
+    DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd").withZone(ZoneId.of("UTC"));
   }
 
   private RestUtil() {}
@@ -90,12 +93,13 @@ public final class RestUtil {
   }
 
   public static int compareDates(String date1, String date2) throws ParseException {
-    return DATE_FORMAT.parse(date1).compareTo(DATE_FORMAT.parse(date2));
+    return LocalDateTime.parse(date1, DATE_FORMAT)
+        .compareTo(LocalDateTime.parse(date2, DATE_FORMAT));
   }
 
   public static String today(int offsetDays) {
-    Date date = CommonUtil.getDateByOffset(new Date(), offsetDays);
-    return DATE_FORMAT.format(date);
+    LocalDate localDate = CommonUtil.getDateByOffset(LocalDate.now(), offsetDays);
+    return localDate.format(DATE_FORMAT);
   }
 
   public static void validateCursors(String before, String after) {
@@ -166,6 +170,21 @@ public final class RestUtil {
       ResponseBuilder responseBuilder =
           Response.status(Status.OK).header(CHANGE_CUSTOM_HEADER, changeType.value());
       return responseBuilder.entity(entity).build();
+    }
+  }
+
+  public static void validateTimestampMilliseconds(Long timestamp) {
+    if (timestamp == null) {
+      throw new IllegalArgumentException("Timestamp is required");
+    }
+    // check if timestamp has 12 or more digits
+    // timestamp ms between 2001-09-09 and 2286-11-20 will have 13 digits
+    // timestamp ms between 1973-03-03 and 2001-09-09 will have 12 digits
+    boolean isMilliseconds = String.valueOf(timestamp).length() >= 12;
+    if (!isMilliseconds) {
+      throw new BadRequestException(
+          String.format(
+              "Timestamp %s is not valid, it should be in milliseconds since epoch", timestamp));
     }
   }
 }

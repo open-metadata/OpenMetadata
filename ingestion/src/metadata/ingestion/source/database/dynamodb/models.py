@@ -11,7 +11,7 @@
 """
 DynamoDB Models
 """
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel
 
@@ -22,4 +22,4 @@ class TableResponse(BaseModel):
     """
 
     Items: Optional[List[Dict]] = []
-    LastEvaluatedKey: Optional[str] = None
+    LastEvaluatedKey: Optional[Any] = None

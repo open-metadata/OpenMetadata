@@ -19,7 +19,8 @@ import {
   PAGE_SIZE_MEDIUM,
   VALIDATION_MESSAGES,
 } from '../../../../constants/constants';
-import { ENTITY_NAME_REGEX } from '../../../../constants/regex.constants';
+import { NAME_FIELD_RULES } from '../../../../constants/Form.constants';
+import { TabSpecificField } from '../../../../enums/entity.enum';
 import { TestSuite } from '../../../../generated/tests/testSuite';
 import { DataQualityPageTabs } from '../../../../pages/DataQuality/DataQualityPage.interface';
 import { getListTestSuites } from '../../../../rest/testAPI';
@@ -42,7 +43,7 @@ const AddTestSuiteForm: React.FC<AddTestSuiteFormProps> = ({
     try {
       setIsLoading(true);
       const response = await getListTestSuites({
-        fields: 'owner,tests',
+        fields: [TabSpecificField.OWNERS, TabSpecificField.TESTS],
         limit: PAGE_SIZE_MEDIUM,
       });
       setTestSuites(response.data);
@@ -78,22 +79,7 @@ const AddTestSuiteForm: React.FC<AddTestSuiteFormProps> = ({
         label={t('label.name')}
         name="name"
         rules={[
-          {
-            required: true,
-          },
-          {
-            pattern: ENTITY_NAME_REGEX,
-            message: t('message.entity-name-validation'),
-          },
-          {
-            min: 1,
-            max: 256,
-            message: `${t('message.entity-size-in-between', {
-              entity: `${t('label.name')}`,
-              max: '256',
-              min: '1',
-            })}`,
-          },
+          ...NAME_FIELD_RULES,
           {
             validator: (_, value) => {
               if (testSuites.some((suite) => suite.name === value)) {

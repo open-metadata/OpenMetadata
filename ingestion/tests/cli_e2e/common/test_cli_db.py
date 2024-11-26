@@ -13,12 +13,18 @@
 Test database connectors which extend from `CommonDbSourceService` with CLI
 """
 import json
+import os
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Optional
 
 from sqlalchemy.engine import Engine
 
+from metadata.config.common import load_config_file
+from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.metadataIngestion.workflow import (
+    OpenMetadataWorkflowConfig,
+)
 from metadata.ingestion.api.status import Status
 from metadata.workflow.metadata import MetadataWorkflow
 
@@ -44,6 +50,19 @@ class CliCommonDB:
             cls.test_file_path = str(
                 Path(PATH_TO_RESOURCES + f"/database/{connector}/test.yaml")
             )
+
+        @classmethod
+        def tearDownClass(cls):
+            workflow = OpenMetadataWorkflowConfig.model_validate(
+                load_config_file(Path(cls.config_file_path))
+            )
+            db_service: DatabaseService = cls.openmetadata.get_by_name(
+                DatabaseService, workflow.source.serviceName
+            )
+            if db_service and os.getenv("E2E_CLEAN_DB", "false") == "true":
+                cls.openmetadata.delete(
+                    DatabaseService, db_service.id, hard_delete=True, recursive=True
+                )
 
         def tearDown(self) -> None:
             self.engine.dispose()
@@ -78,32 +97,32 @@ class CliCommonDB:
                 (len(sink_status.records) + len(sink_status.updated_records)),
                 self.expected_profiled_tables(),
             )
+            # Since we removed view lineage from metadata workflow as part
+            # of https://github.com/open-metadata/OpenMetadata/pull/18558
+            # we need to introduce Lineage E2E base and add view lineage check there.
+
+        def assert_auto_classification_sample_data(
+            self, source_status: Status, sink_status: Status
+        ):
+            self.assertEqual(len(source_status.failures), 0)
+            self.assertGreaterEqual(
+                (len(source_status.records) + len(source_status.updated_records)),
+                self.expected_profiled_tables(),
+            )
             sample_data = self.retrieve_sample_data(self.fqn_created_table()).sampleData
-            lineage = self.retrieve_lineage(self.fqn_created_table())
             self.assertEqual(len(sample_data.rows), self.inserted_rows_count())
-            if self.view_column_lineage_count() is not None:
-                self.assertEqual(
-                    len(
-                        lineage["downstreamEdges"][0]["lineageDetails"][
-                            "columnsLineage"
-                        ]
-                    ),
-                    self.view_column_lineage_count(),
-                )
 
         def assert_for_table_with_profiler_time_partition(
             self, source_status: Status, sink_status: Status
         ):
             self.assertEqual(len(source_status.failures), 0)
             self.assertEqual(len(sink_status.failures), 0)
-            sample_data = self.retrieve_sample_data(self.fqn_created_table()).sampleData
-            self.assertLessEqual(len(sample_data.rows), self.inserted_rows_count())
             profile = self.retrieve_profile(self.fqn_created_table())
             expected_profiler_time_partition_results = (
                 self.get_profiler_time_partition_results()
             )
             if expected_profiler_time_partition_results:
-                table_profile = profile.profile.dict()
+                table_profile = profile.profile.model_dump()
                 for key in expected_profiler_time_partition_results["table_profile"]:
                     self.assertEqual(
                         table_profile[key],
@@ -122,7 +141,7 @@ class CliCommonDB:
                         None,
                     )
                     if expected_column_profile:
-                        column_profile = column.profile.dict()
+                        column_profile = column.profile.model_dump()
                         for key in expected_column_profile:  # type: ignore
                             if key == "nonParametricSkew":
                                 self.assertEqual(

@@ -20,10 +20,18 @@ import logging
 from typing import Any, Dict, Literal, Optional, Union
 
 from pydantic import BaseModel as PydanticBaseModel
-from pydantic import PlainSerializer
+from pydantic import PlainSerializer, model_validator
 from pydantic.main import IncEx
 from pydantic.types import SecretStr
 from typing_extensions import Annotated
+
+from metadata.ingestion.models.custom_basemodel_validation import (
+    CREATE_ADJACENT_MODELS,
+    FETCH_MODELS,
+    replace_separators,
+    revert_separators,
+    validate_name_and_transform,
+)
 
 logger = logging.getLogger("metadata")
 
@@ -37,6 +45,30 @@ class BaseModel(PydanticBaseModel):
     Specified as `--base-class BASE_CLASS` in the generator.
     """
 
+    @model_validator(mode="after")
+    @classmethod
+    def parse_name(cls, values):  # pylint: disable=inconsistent-return-statements
+        """
+        Primary entry point to process values based on their class.
+        """
+
+        if not values:
+            return
+
+        try:
+
+            if cls.__name__ in CREATE_ADJACENT_MODELS or cls.__name__.startswith(
+                "Create"
+            ):
+                values = validate_name_and_transform(values, replace_separators)
+            elif cls.__name__ in FETCH_MODELS:
+                values = validate_name_and_transform(values, revert_separators)
+
+        except Exception as exc:
+            logger.warning("Exception while parsing Basemodel: %s", exc)
+            raise exc
+        return values
+
     def model_dump_json(  # pylint: disable=too-many-arguments
         self,
         *,
@@ -46,7 +78,7 @@ class BaseModel(PydanticBaseModel):
         context: Optional[Dict[str, Any]] = None,
         by_alias: bool = False,
         exclude_unset: bool = True,
-        exclude_defaults: bool = True,
+        exclude_defaults: bool = False,
         exclude_none: bool = True,
         round_trip: bool = False,
         warnings: Union[bool, Literal["none", "warn", "error"]] = True,

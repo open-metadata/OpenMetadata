@@ -21,7 +21,7 @@ import React, {
   useMemo,
   useState,
 } from 'react';
-import { useHistory, useLocation, useParams } from 'react-router-dom';
+import { useHistory, useParams } from 'react-router-dom';
 import { withAdvanceSearch } from '../../components/AppRouter/withAdvanceSearch';
 import { useAdvanceSearch } from '../../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
 import {
@@ -47,14 +47,15 @@ import { SORT_ORDER } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
+import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { Aggregations, SearchResponse } from '../../interface/search.interface';
 import { searchQuery } from '../../rest/searchAPI';
 import { getCountBadge } from '../../utils/CommonUtils';
+import { getCombinedQueryFilterObject } from '../../utils/ExplorePage/ExplorePageUtils';
 import {
   extractTermKeys,
   findActiveSearchIndex,
-} from '../../utils/Explore.utils';
-import { getCombinedQueryFilterObject } from '../../utils/ExplorePage/ExplorePageUtils';
+} from '../../utils/ExploreUtils';
 import searchClassBase from '../../utils/SearchClassBase';
 import { escapeESReservedCharacters } from '../../utils/StringsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -67,7 +68,7 @@ const ExplorePageV1: FunctionComponent = () => {
   const tabsInfo = searchClassBase.getTabsInfo();
   const EntityTypeSearchIndexMapping =
     searchClassBase.getEntityTypeSearchIndexMapping();
-  const location = useLocation();
+  const location = useCustomLocation();
   const history = useHistory();
   const { isTourOpen } = useTourProvider();
   const TABS_SEARCH_INDEXES = Object.keys(tabsInfo) as ExploreSearchIndex[];
@@ -233,6 +234,10 @@ const ExplorePageV1: FunctionComponent = () => {
   };
 
   const searchIndex = useMemo(() => {
+    if (!searchQueryParam) {
+      return SearchIndex.DATA_ASSET;
+    }
+
     const tabInfo = Object.entries(tabsInfo).find(
       ([, tabInfo]) => tabInfo.path === tab
     );
@@ -245,7 +250,7 @@ const ExplorePageV1: FunctionComponent = () => {
     return !isNil(tabInfo)
       ? (tabInfo[0] as ExploreSearchIndex)
       : SearchIndex.TABLE;
-  }, [tab, searchHitCounts]);
+  }, [tab, searchHitCounts, searchQueryParam]);
 
   const tabItems = useMemo(() => {
     const items = Object.entries(tabsInfo).map(
@@ -352,25 +357,27 @@ const ExplorePageV1: FunctionComponent = () => {
     );
 
     setIsLoading(true);
-    Promise.all([
-      searchQuery({
-        query: !isEmpty(searchQueryParam)
-          ? escapeESReservedCharacters(searchQueryParam)
-          : '',
-        searchIndex,
-        queryFilter: combinedQueryFilter,
-        sortField: sortValue,
-        sortOrder: sortOrder,
-        pageNumber: page,
-        pageSize: size,
-        includeDeleted: showDeleted,
-      })
-        .then((res) => res)
-        .then((res) => {
-          setSearchResults(res);
-          setUpdatedAggregations(res.aggregations);
-        }),
-      searchQuery({
+
+    const searchAPICall = searchQuery({
+      query: !isEmpty(searchQueryParam)
+        ? escapeESReservedCharacters(searchQueryParam)
+        : '',
+      searchIndex,
+      queryFilter: combinedQueryFilter,
+      sortField: sortValue,
+      sortOrder: sortOrder,
+      pageNumber: page,
+      pageSize: size,
+      includeDeleted: showDeleted,
+    }).then((res) => {
+      setSearchResults(res as SearchResponse<ExploreSearchIndex>);
+      setUpdatedAggregations(res.aggregations);
+    });
+
+    const apiCalls = [searchAPICall];
+
+    if (searchQueryParam) {
+      const countAPICall = searchQuery({
         query: escapeESReservedCharacters(searchQueryParam),
         pageNumber: 0,
         pageSize: 0,
@@ -395,8 +402,11 @@ const ExplorePageV1: FunctionComponent = () => {
           }
         });
         setSearchHitCounts(counts as SearchHitCounts);
-      }),
-    ])
+      });
+      apiCalls.push(countAPICall);
+    }
+
+    Promise.all(apiCalls)
       .catch((error) => {
         if (
           error.response?.data.message.includes(FAILED_TO_FIND_INDEX_ERROR) ||
@@ -407,7 +417,6 @@ const ExplorePageV1: FunctionComponent = () => {
           showErrorToast(error);
         }
       })
-
       .finally(() => setIsLoading(false));
   };
 

@@ -4,6 +4,7 @@ import es.org.elasticsearch.search.aggregations.Aggregations;
 import es.org.elasticsearch.search.aggregations.bucket.histogram.Histogram;
 import es.org.elasticsearch.search.aggregations.bucket.histogram.Histogram.Bucket;
 import es.org.elasticsearch.search.aggregations.metrics.Sum;
+import java.time.ZonedDateTime;
 import java.util.List;
 import org.openmetadata.service.dataInsight.AggregatedUnusedAssetsSizeAggregator;
 
@@ -24,8 +25,8 @@ public class ElasticSearchAggregatedUnusedAssetsSizeAggregator
   }
 
   @Override
-  protected String getKeyAsString(Bucket bucket) {
-    return bucket.getKeyAsString();
+  protected long getKeyAsEpochTimestamp(Bucket bucket) {
+    return ((ZonedDateTime) bucket.getKey()).toInstant().toEpochMilli();
   }
 
   @Override

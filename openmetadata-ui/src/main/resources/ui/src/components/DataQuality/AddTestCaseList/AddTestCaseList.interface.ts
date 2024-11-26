@@ -10,12 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { EntityReference } from '../../../generated/tests/testCase';
+import { EntityReference, TestCase } from '../../../generated/tests/testCase';
 
 export interface AddTestCaseModalProps {
   onCancel?: () => void;
-  onSubmit: (testCaseIds: string[]) => void;
+  onSubmit?: (testCases: TestCase[]) => void;
+  onChange?: (testCases: TestCase[]) => void;
   existingTest?: EntityReference[];
   cancelText?: string;
   submitText?: string;
+  filters?: string;
+  selectedTest?: string[];
+  showButton?: boolean;
 }

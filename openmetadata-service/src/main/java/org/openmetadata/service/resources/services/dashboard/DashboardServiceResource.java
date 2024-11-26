@@ -48,7 +48,6 @@ import javax.ws.rs.core.UriInfo;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.services.CreateDashboardService;
 import org.openmetadata.schema.entity.services.DashboardService;
-import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.entity.services.connections.TestConnectionResult;
 import org.openmetadata.schema.type.DashboardConnection;
@@ -57,6 +56,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.DashboardServiceRepository;
+import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.services.ServiceEntityResource;
 import org.openmetadata.service.security.Authorizer;
@@ -73,10 +73,10 @@ public class DashboardServiceResource
     extends ServiceEntityResource<
         DashboardService, DashboardServiceRepository, DashboardConnection> {
   public static final String COLLECTION_PATH = "v1/services/dashboardServices";
-  static final String FIELDS = "owner,domain";
+  static final String FIELDS = "owners,domain";
 
-  public DashboardServiceResource(Authorizer authorizer) {
-    super(Entity.DASHBOARD_SERVICE, authorizer, ServiceType.DASHBOARD);
+  public DashboardServiceResource(Authorizer authorizer, Limits limits) {
+    super(Entity.DASHBOARD_SERVICE, authorizer, limits, ServiceType.DASHBOARD);
   }
 
   public static class DashboardServiceList extends ResultList<DashboardService> {
@@ -225,7 +225,7 @@ public class DashboardServiceResource
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = DatabaseService.class)))
+                    schema = @Schema(implementation = DashboardService.class)))
       })
   public DashboardService addTestConnectionResult(
       @Context UriInfo uriInfo,

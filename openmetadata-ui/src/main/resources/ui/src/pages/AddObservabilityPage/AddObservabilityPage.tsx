@@ -11,77 +11,78 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Form, Input, Row, Typography } from 'antd';
+import { Button, Col, Divider, Form, Input, Row, Typography } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
-import { isEmpty } from 'lodash';
+import { isEmpty, isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
+import AlertFormSourceItem from '../../components/Alerts/AlertFormSourceItem/AlertFormSourceItem';
+import DestinationFormItem from '../../components/Alerts/DestinationFormItem/DestinationFormItem.component';
+import ObservabilityFormFiltersItem from '../../components/Alerts/ObservabilityFormFiltersItem/ObservabilityFormFiltersItem';
+import ObservabilityFormTriggerItem from '../../components/Alerts/ObservabilityFormTriggerItem/ObservabilityFormTriggerItem';
+import InlineAlert from '../../components/common/InlineAlert/InlineAlert';
 import Loader from '../../components/common/Loader/Loader';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import RichTextEditor from '../../components/common/RichTextEditor/RichTextEditor';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
-import { ROUTES } from '../../constants/constants';
-import { ENTITY_NAME_REGEX } from '../../constants/regex.constants';
+import { ROUTES, VALIDATION_MESSAGES } from '../../constants/constants';
+import { NAME_FIELD_RULES } from '../../constants/Form.constants';
+import { useLimitStore } from '../../context/LimitsProvider/useLimitsStore';
 import { CreateEventSubscription } from '../../generated/events/api/createEventSubscription';
 import {
   AlertType,
+  EventSubscription,
   ProviderType,
-  SubscriptionCategory,
 } from '../../generated/events/eventSubscription';
 import { FilterResourceDescriptor } from '../../generated/events/filterResourceDescriptor';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
 import {
   createObservabilityAlert,
   getObservabilityAlertByFQN,
   getResourceFunctions,
-  updateObservabilityAlertWithPut,
+  updateObservabilityAlert,
 } from '../../rest/observabilityAPI';
-import { handleAlertSave } from '../../utils/Alerts/AlertsUtil';
+import {
+  getModifiedAlertDataForForm,
+  handleAlertSave,
+} from '../../utils/Alerts/AlertsUtil';
+import { getEntityName } from '../../utils/EntityUtils';
 import { getObservabilityAlertDetailsPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import { ModifiedEventSubscription } from './AddObservabilityPage.interface';
-import { default as AlertFormSourceItem } from './AlertFormSourceItem/AlertFormSourceItem';
-import DestinationFormItem from './DestinationFormItem/DestinationFormItem.component';
-import ObservabilityFormFiltersItem from './ObservabilityFormFiltersItem/ObservabilityFormFiltersItem';
-import ObservabilityFormTriggerItem from './ObservabilityFormTriggerItem/ObservabilityFormTriggerItem';
+import {
+  ModifiedCreateEventSubscription,
+  ModifiedEventSubscription,
+} from './AddObservabilityPage.interface';
 
 function AddObservabilityPage() {
   const { t } = useTranslation();
   const history = useHistory();
-  const [form] = useForm<CreateEventSubscription>();
+  const [form] = useForm<ModifiedCreateEventSubscription>();
   const { fqn } = useFqn();
+  const { setInlineAlertDetails, inlineAlertDetails } = useApplicationStore();
 
   const [filterResources, setFilterResources] = useState<
     FilterResourceDescriptor[]
   >([]);
 
   const [alert, setAlert] = useState<ModifiedEventSubscription>();
+  const [initialData, setInitialData] = useState<EventSubscription>();
   const [fetching, setFetching] = useState<number>(0);
   const [saving, setSaving] = useState<boolean>(false);
 
   const isEditMode = useMemo(() => !isEmpty(fqn), [fqn]);
+  const { getResourceLimit } = useLimitStore();
 
   const fetchAlert = async () => {
     try {
       setFetching((prev) => prev + 1);
 
       const observabilityAlert = await getObservabilityAlertByFQN(fqn);
-      const modifiedAlertData: ModifiedEventSubscription = {
-        ...observabilityAlert,
-        destinations: observabilityAlert.destinations.map((destination) => {
-          const isExternalDestination =
-            destination.category === SubscriptionCategory.External;
+      const modifiedAlertData = getModifiedAlertDataForForm(observabilityAlert);
 
-          return {
-            ...destination,
-            destinationType: isExternalDestination
-              ? destination.type
-              : destination.category,
-          };
-        }),
-      };
-
+      setInitialData(observabilityAlert);
       setAlert(modifiedAlertData);
     } catch (error) {
       // Error handling
@@ -134,18 +135,21 @@ function AddObservabilityPage() {
   );
 
   const handleSave = useCallback(
-    async (data: CreateEventSubscription) => {
+    async (data: ModifiedCreateEventSubscription) => {
       try {
         setSaving(true);
 
         await handleAlertSave({
           data,
           fqn,
+          initialData,
           createAlertAPI: createObservabilityAlert,
-          updateAlertAPI: updateObservabilityAlertWithPut,
-          afterSaveAction: () => {
-            history.push(getObservabilityAlertDetailsPath(data.name));
+          updateAlertAPI: updateObservabilityAlert,
+          afterSaveAction: async (fqn: string) => {
+            !fqn && (await getResourceLimit('eventsubscription', true, true));
+            history.push(getObservabilityAlertDetailsPath(fqn));
           },
+          setInlineAlertDetails,
         });
       } catch {
         // Error handling done in "handleAlertSave"
@@ -153,7 +157,7 @@ function AddObservabilityPage() {
         setSaving(false);
       }
     },
-    [fqn, history]
+    [fqn, history, initialData]
   );
 
   const [selectedTrigger] =
@@ -191,7 +195,9 @@ function AddObservabilityPage() {
   return (
     <ResizablePanels
       hideSecondPanel
+      className="content-height-with-resizable-panel"
       firstPanel={{
+        className: 'content-resizable-panel-container',
         children: (
           <div className="steps-form-container">
             <Row className="p-x-lg p-t-md" gutter={[16, 16]}>
@@ -211,30 +217,23 @@ function AddObservabilityPage() {
               </Col>
 
               <Col span={24}>
-                <Form<CreateEventSubscription>
+                <Form<ModifiedCreateEventSubscription>
                   form={form}
                   initialValues={{
                     ...alert,
+                    displayName: getEntityName(alert),
                     resources: alert?.filteringRules?.resources,
                   }}
+                  validateMessages={VALIDATION_MESSAGES}
                   onFinish={handleSave}>
                   <Row gutter={[20, 20]}>
                     <Col span={24}>
                       <Form.Item
                         label={t('label.name')}
                         labelCol={{ span: 24 }}
-                        name="name"
-                        rules={[
-                          { required: true },
-                          {
-                            pattern: ENTITY_NAME_REGEX,
-                            message: t('message.entity-name-validation'),
-                          },
-                        ]}>
-                        <Input
-                          disabled={isEditMode}
-                          placeholder={t('label.name')}
-                        />
+                        name="displayName"
+                        rules={NAME_FIELD_RULES}>
+                        <Input placeholder={t('label.name')} />
                       </Form.Item>
                     </Col>
                     <Col span={24}>
@@ -252,22 +251,44 @@ function AddObservabilityPage() {
                       </Form.Item>
                     </Col>
                     <Col span={24}>
-                      <AlertFormSourceItem filterResources={filterResources} />
+                      <Row justify="center">
+                        <Col span={24}>
+                          <AlertFormSourceItem
+                            filterResources={filterResources}
+                          />
+                        </Col>
+                        {shouldShowFiltersSection && (
+                          <>
+                            <Col>
+                              <Divider dashed type="vertical" />
+                            </Col>
+                            <Col span={24}>
+                              <ObservabilityFormFiltersItem
+                                supportedFilters={supportedFilters}
+                              />
+                            </Col>
+                          </>
+                        )}
+                        {shouldShowActionsSection && (
+                          <>
+                            <Col>
+                              <Divider dashed type="vertical" />
+                            </Col>
+                            <Col span={24}>
+                              <ObservabilityFormTriggerItem
+                                supportedTriggers={supportedTriggers}
+                              />
+                            </Col>
+                          </>
+                        )}
+                        <Col>
+                          <Divider dashed type="vertical" />
+                        </Col>
+                        <Col span={24}>
+                          <DestinationFormItem />
+                        </Col>
+                      </Row>
                     </Col>
-                    {shouldShowFiltersSection && (
-                      <Col span={24}>
-                        <ObservabilityFormFiltersItem
-                          supportedFilters={supportedFilters}
-                        />
-                      </Col>
-                    )}
-                    {shouldShowActionsSection && (
-                      <Col span={24}>
-                        <ObservabilityFormTriggerItem
-                          supportedTriggers={supportedTriggers}
-                        />
-                      </Col>
-                    )}
                     <Form.Item
                       hidden
                       initialValue={AlertType.Observability}
@@ -278,9 +299,13 @@ function AddObservabilityPage() {
                       initialValue={ProviderType.User}
                       name="provider"
                     />
-                    <Col span={24}>
-                      <DestinationFormItem />
-                    </Col>
+
+                    {!isUndefined(inlineAlertDetails) && (
+                      <Col span={24}>
+                        <InlineAlert {...inlineAlertDetails} />
+                      </Col>
+                    )}
+
                     <Col flex="auto" />
                     <Col flex="300px" pull="right">
                       <Button
@@ -308,7 +333,11 @@ function AddObservabilityPage() {
         flex: 0.7,
       }}
       pageTitle={t('label.entity-detail-plural', { entity: t('label.alert') })}
-      secondPanel={{ children: <></>, minWidth: 0 }}
+      secondPanel={{
+        children: <></>,
+        minWidth: 0,
+        className: 'content-resizable-panel-container',
+      }}
     />
   );
 }

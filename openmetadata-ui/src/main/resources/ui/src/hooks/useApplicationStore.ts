@@ -43,12 +43,20 @@ export const useApplicationStore = create<ApplicationStore>()(
       authorizerConfig: undefined,
       isSigningUp: false,
       jwtPrincipalClaims: [],
+      jwtPrincipalClaimsMapping: [],
       userProfilePics: {},
       cachedEntityData: {},
       selectedPersona: {} as EntityReference,
       oidcIdToken: '',
       refreshTokenKey: '',
       searchCriteria: '',
+      inlineAlertDetails: undefined,
+      applications: [],
+      appPreferences: {},
+
+      setInlineAlertDetails: (inlineAlertDetails) => {
+        set({ inlineAlertDetails });
+      },
 
       setHelperFunctionsRef: (helperFunctions: HelperFunctions) => {
         set({ ...helperFunctions });
@@ -74,6 +82,11 @@ export const useApplicationStore = create<ApplicationStore>()(
         claims: AuthenticationConfiguration['jwtPrincipalClaims']
       ) => {
         set({ jwtPrincipalClaims: claims });
+      },
+      setJwtPrincipalClaimsMapping: (
+        claimMapping: AuthenticationConfiguration['jwtPrincipalClaimsMapping']
+      ) => {
+        set({ jwtPrincipalClaimsMapping: claimMapping });
       },
       setIsAuthenticated: (authenticated: boolean) => {
         set({ isAuthenticated: authenticated });
@@ -138,6 +151,16 @@ export const useApplicationStore = create<ApplicationStore>()(
       setRefreshToken: (refreshToken) => {
         set({ refreshTokenKey: refreshToken });
       },
+      setAppPreferences: (
+        preferences: Partial<ApplicationStore['appPreferences']>
+      ) => {
+        set((state) => ({
+          appPreferences: {
+            ...state.appPreferences,
+            ...preferences,
+          },
+        }));
+      },
       getOidcToken: () => {
         return get()?.oidcIdToken;
       },
@@ -152,6 +175,9 @@ export const useApplicationStore = create<ApplicationStore>()(
       },
       updateSearchCriteria: (criteria) => {
         set({ searchCriteria: criteria });
+      },
+      setApplicationsName: (applications: string[]) => {
+        set({ applications: applications });
       },
     }),
     {

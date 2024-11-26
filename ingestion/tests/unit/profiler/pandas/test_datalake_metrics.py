@@ -13,9 +13,12 @@
 Test Metrics behavior
 """
 import os
+import sys
 from unittest import TestCase, mock
+from unittest.mock import Mock, patch
 from uuid import uuid4
 
+import pytest
 from sqlalchemy import TEXT, Column, Date, DateTime, Integer, String, Time
 from sqlalchemy.orm import declarative_base
 
@@ -31,8 +34,16 @@ from metadata.profiler.interface.pandas.profiler_interface import (
 from metadata.profiler.metrics.core import add_props
 from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.processor.core import Profiler
+from metadata.sampler.pandas.sampler import DatalakeSampler
 
 Base = declarative_base()
+
+
+if sys.version_info < (3, 9):
+    pytest.skip(
+        "requires python 3.9+ due to incompatibility with object patch",
+        allow_module_level=True,
+    )
 
 
 class User(Base):
@@ -48,9 +59,14 @@ class User(Base):
     doe = Column(Date)  # date of employment
 
 
+class FakeClient:
+    def __init__(self):
+        self._client = None
+
+
 class FakeConnection:
-    def client(self):
-        return None
+    def __init__(self):
+        self.client = FakeClient()
 
 
 class DatalakeMetricsTest(TestCase):
@@ -84,17 +100,23 @@ class DatalakeMetricsTest(TestCase):
     @classmethod
     @mock.patch(
         "metadata.profiler.interface.profiler_interface.get_ssl_connection",
-        return_value=FakeConnection,
+        return_value=FakeConnection(),
+    )
+    @mock.patch(
+        "metadata.sampler.sampler_interface.get_ssl_connection",
+        return_value=FakeConnection(),
     )
     @mock.patch(
         "metadata.mixins.pandas.pandas_mixin.fetch_dataframe",
         return_value=[df1, pd.concat([df2, pd.DataFrame(index=df1.index)])],
     )
-    def setUpClass(cls, mock_get_connection, mocked_dfs):
+    def setUpClass(cls, mock_get_connection, mock_sample_get_connection, mocked_dfs):
         """
         Setup the test class. We won't mock S3 with moto as we want to test that metrics are computed
         correctly on a list of dataframes.
         """
+        import pandas as pd
+
         table_entity = Table(
             id=uuid4(),
             name="user",
@@ -146,17 +168,30 @@ class DatalakeMetricsTest(TestCase):
             ],
         )
 
-        cls.datalake_profiler_interface = PandasProfilerInterface(
-            entity=table_entity,
-            service_connection_config=DatalakeConnection(configSource={}),
-            storage_config=None,
-            ometa_client=None,
-            thread_count=None,
-            profile_sample_config=None,
-            source_config=None,
-            sample_query=None,
-            table_partition_config=None,
-        )
+        with (
+            patch.object(
+                DatalakeSampler,
+                "table",
+                new_callable=lambda: [
+                    cls.df1,
+                    pd.concat([cls.df2, pd.DataFrame(index=cls.df1.index)]),
+                ],
+            ),
+            patch.object(DatalakeSampler, "get_client", return_value=Mock()),
+        ):
+            sampler = DatalakeSampler(
+                service_connection_config=DatalakeConnection(configSource={}),
+                ometa_client=None,
+                entity=table_entity,
+            )
+            cls.datalake_profiler_interface = PandasProfilerInterface(
+                service_connection_config=DatalakeConnection(configSource={}),
+                ometa_client=None,
+                entity=table_entity,
+                source_config=None,
+                sampler=sampler,
+                thread_count=None,
+            )
 
     def test_count(self):
         """

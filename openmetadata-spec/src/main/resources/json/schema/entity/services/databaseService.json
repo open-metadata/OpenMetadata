@@ -55,7 +55,10 @@
         "UnityCatalog",
         "SAS",
         "Iceberg",
-        "Teradata"
+        "Teradata",
+        "SapErp",
+        "Synapse",
+        "Exasol"
       ],
       "javaEnums": [
         {
@@ -180,6 +183,15 @@
         },
         {
           "name": "Teradata"
+        },
+        {
+          "name": "SapErp"
+        },
+        {
+          "name": "Synapse"
+        },
+        {
+          "name": "Exasol"
         }
       ]
     },
@@ -309,6 +321,15 @@
             },
             {
               "$ref": "./connections/database/teradataConnection.json"
+            },
+            {
+              "$ref": "./connections/database/sapErpConnection.json"
+            },
+            {
+              "$ref": "./connections/database/synapseConnection.json"
+            },
+            {
+              "$ref": "./connections/database/exasolConnection.json"
             }
           ]
         }
@@ -358,7 +379,7 @@
       "items": {
         "$ref": "../../type/tagLabel.json"
       },
-      "default": null
+      "default": []
     },
     "version": {
       "description": "Metadata version of the entity.",
@@ -372,9 +393,9 @@
       "description": "User who made the update.",
       "type": "string"
     },
-    "owner": {
-      "description": "Owner of this database service.",
-      "$ref": "../../type/entityReference.json"
+    "owners": {
+      "description": "Owners of this database service.",
+      "$ref": "../../type/entityReferenceList.json"
     },
     "href": {
       "description": "Link to the resource corresponding to this database service.",

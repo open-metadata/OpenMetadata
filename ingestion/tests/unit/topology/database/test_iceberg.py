@@ -64,6 +64,7 @@ from metadata.generated.schema.type.basic import (
     Markdown,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.api.parser import parse_workflow_config_gracefully
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -463,6 +464,7 @@ MOCK_DYNAMO_CONFIG = {
                     "connection": {
                         "tableName": "table",
                         "awsConfig": {
+                            "endPointURL": "http://example.com",
                             "awsAccessKeyId": "access_key",
                             "awsSecretAccessKey": "secret",
                             "awsRegion": "us-east-2",
@@ -683,7 +685,7 @@ class IcebergUnitTest(TestCase):
 
         # When the Owner is present on the PyIceberg Table
         # Then EntityReference needs to be searched for
-        ref = EntityReference(id=uuid.uuid4(), type="user")
+        ref = EntityReferenceList(root=[EntityReference(id=uuid.uuid4(), type="user")])
 
         iceberg_table_with_owner = {
             "identifier": (
@@ -831,14 +833,14 @@ class IcebergUnitTest(TestCase):
 
         fq_database_schema = "FullyQualifiedDatabaseSchema"
 
-        ref = EntityReference(id=uuid.uuid4(), type="user")
+        ref = EntityReferenceList(root=[EntityReference(id=uuid.uuid4(), type="user")])
         self.iceberg.context.get().iceberg_table = PyIcebergTable(**iceberg_table)
 
         expected = CreateTableRequest(
             name=EntityName(table_name),
             tableType=table_type,
             description=Markdown("Table Description"),
-            owner=ref,
+            owners=ref,
             columns=[
                 MOCK_COLUMN_MAP[field]["ometa"] for field in MOCK_COLUMN_MAP.keys()
             ],

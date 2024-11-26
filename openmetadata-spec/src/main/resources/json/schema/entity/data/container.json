@@ -88,9 +88,9 @@
       "description": "Link to the resource corresponding to this entity.",
       "$ref": "../../type/basic.json#/definitions/href"
     },
-    "owner": {
-      "description": "Owner of this container.",
-      "$ref": "../../type/entityReference.json"
+    "owners": {
+      "description": "Owners of this container.",
+      "$ref": "../../type/entityReferenceList.json"
     },
     "service": {
       "description": "Link to the storage service where this container is hosted in.",
@@ -146,7 +146,7 @@
       "items": {
         "$ref": "../../type/tagLabel.json"
       },
-      "default": null
+      "default": []
     },
     "changeDescription": {
       "description": "Change that lead to this version of the entity.",
@@ -188,6 +188,9 @@
     "lifeCycle": {
       "description": "Life Cycle properties of the entity",
       "$ref": "../../type/lifeCycle.json"
+    },
+    "certification": {
+      "$ref": "../../type/assetCertification.json"
     },
     "sourceHash": {
       "description": "Source hash of the entity",

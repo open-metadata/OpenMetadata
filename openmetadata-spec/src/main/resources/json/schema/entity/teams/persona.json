@@ -38,6 +38,10 @@
       "description": "Link to the resource corresponding to this entity.",
       "$ref": "../../type/basic.json#/definitions/href"
     },
+    "uiCustomization": {
+      "description": "Reference to the UI customization configuration.",
+      "$ref": "../../type/entityReference.json"
+    },
     "users": {
       "description": "Users that are assigned a persona.",
       "$ref": "../../type/entityReferenceList.json",
@@ -50,6 +54,10 @@
     "changeDescription": {
       "description": "Change that lead to this version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "domain" : {
+      "description": "Domain the asset belongs to. When not set, the asset inherits the domain from the parent it belongs to.",
+      "$ref": "../../type/entityReference.json"
     }
   },
   "required": ["id", "name"],

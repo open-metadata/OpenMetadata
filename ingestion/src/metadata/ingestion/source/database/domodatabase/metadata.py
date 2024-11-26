@@ -14,18 +14,16 @@ Domo Database source to extract metadata
 """
 
 import traceback
-from typing import Any, Iterable, List, Optional, Tuple, Union
+from typing import Any, Iterable, Optional, Tuple
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
 )
-from metadata.generated.schema.api.data.createQuery import CreateQueryRequest
 from metadata.generated.schema.api.data.createStoredProcedure import (
     CreateStoredProcedureRequest,
 )
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
-from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import (
@@ -47,7 +45,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.basic import EntityName, FullyQualifiedEntityName
-from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
@@ -57,6 +55,7 @@ from metadata.ingestion.source.database.database_service import DatabaseServiceS
 from metadata.ingestion.source.database.domodatabase.models import (
     OutputDataset,
     Owner,
+    Schema,
     SchemaColumn,
     User,
 )
@@ -175,7 +174,7 @@ class DomodatabaseSource(DatabaseServiceSource):
                 )
             )
 
-    def get_owners(self, owner: Owner) -> Optional[EntityReference]:
+    def get_owners(self, owner: Owner) -> Optional[EntityReferenceList]:
         try:
             owner_details = User(**self.domo_client.users_get(owner.id))
             if owner_details.email:
@@ -191,18 +190,14 @@ class DomodatabaseSource(DatabaseServiceSource):
         try:
             table_constraints = None
             table_object = OutputDataset(**self.domo_client.datasets.get(table_id))
-            columns = (
-                self.get_columns(table_object.schemas.columns)
-                if table_object.columns
-                else []
-            )
+            columns = self.get_columns(table_object)
             table_request = CreateTableRequest(
                 name=EntityName(table_object.name),
                 displayName=table_object.name,
                 tableType=table_type,
                 description=table_object.description,
                 columns=columns,
-                owner=self.get_owners(owner=table_object.owner),
+                owners=self.get_owners(owner=table_object.owner),
                 tableConstraints=table_constraints,
                 databaseSchema=FullyQualifiedEntityName(
                     fqn.build(
@@ -228,19 +223,57 @@ class DomodatabaseSource(DatabaseServiceSource):
                 )
             )
 
-    def get_columns(self, table_object: List[SchemaColumn]):
+    def get_columns_from_federated_dataset(self, table_name: str, dataset_id: str):
+        """
+        Method to retrieve the column metadata from federated datasets
+        """
+        try:
+            # SQL query to get all columns without fetching any rows
+            sql_query = f'SELECT * FROM "{table_name}" LIMIT 1'
+            schema_columns = []
+            response = self.domo_client.datasets.query(dataset_id, sql_query)
+            if response:
+                for i, column_name in enumerate(response["columns"] or []):
+                    schema_column = SchemaColumn(
+                        name=column_name, type=response["metadata"][i]["type"]
+                    )
+                    schema_columns.append(schema_column)
+            if schema_columns:
+                return Schema(columns=schema_columns)
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Error while fetching columns from federated dataset {table_name} - {exc}"
+            )
+        return None
+
+    def get_columns(self, table_object: OutputDataset):
+        """
+        Method to get domo table columns
+        """
         row_order = 1
         columns = []
-        for column in table_object:
-            columns.append(
-                Column(
-                    name=ColumnName(column.name),
-                    description=column.description,
-                    dataType=column.type,
-                    ordinalPosition=row_order,
-                )
+        if not table_object.schemas or not table_object.schemas.columns:
+            table_object.schemas = self.get_columns_from_federated_dataset(
+                table_name=table_object.name, dataset_id=table_object.id
             )
-            row_order += 1
+
+        for column in table_object.schemas.columns or []:
+            try:
+                columns.append(
+                    Column(
+                        name=ColumnName(column.name),
+                        description=column.description,
+                        dataType=column.type,
+                        ordinalPosition=row_order,
+                    )
+                )
+                row_order += 1
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.warning(
+                    f"Error while fetching details of column {column} - {exc}"
+                )
         return columns
 
     def yield_tag(
@@ -258,15 +291,6 @@ class DomodatabaseSource(DatabaseServiceSource):
 
     def get_stored_procedure_queries(self) -> Iterable[QueryByProcedure]:
         """Not Implemented"""
-
-    def yield_procedure_lineage_and_queries(
-        self,
-    ) -> Iterable[Either[Union[AddLineageRequest, CreateQueryRequest]]]:
-        """Not Implemented"""
-        yield from []
-
-    def yield_view_lineage(self) -> Iterable[Either[AddLineageRequest]]:
-        yield from []
 
     def get_source_url(
         self,

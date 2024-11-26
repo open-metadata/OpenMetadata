@@ -13,6 +13,8 @@
 import { capitalize, isNil, toInteger, toNumber } from 'lodash';
 import { DateTime, Duration } from 'luxon';
 
+export const DATE_TIME_12_HOUR_FORMAT = 'MMM dd, yyyy, hh:mm a'; // e.g. Jan 01, 12:00 AM
+
 /**
  * @param date EPOCH millis
  * @returns Formatted date for valid input. Format: MMM DD, YYYY, HH:MM AM/PM
@@ -31,14 +33,16 @@ export const formatDateTime = (date?: number) => {
  * @param date EPOCH millis
  * @returns Formatted date for valid input. Format: MMM DD, YYYY
  */
-export const formatDate = (date?: number) => {
+export const formatDate = (date?: number, supportUTC = false) => {
   if (isNil(date)) {
     return '';
   }
 
   const dateTime = DateTime.fromMillis(date, { locale: 'en-US' });
 
-  return dateTime.setLocale('en-US').toLocaleString(DateTime.DATE_MED);
+  return supportUTC
+    ? dateTime.toUTC().toLocaleString(DateTime.DATE_MED)
+    : dateTime.setLocale('en-US').toLocaleString(DateTime.DATE_MED);
 };
 
 /**
@@ -185,3 +189,108 @@ export const isValidDateFormat = (format: string) => {
     return false;
   }
 };
+
+export const getIntervalInMilliseconds = (
+  startTime: number,
+  endTime: number
+) => {
+  const startDateTime = DateTime.fromMillis(startTime);
+  const endDateTime = DateTime.fromMillis(endTime);
+
+  const interval = endDateTime.diff(startDateTime);
+
+  return interval.milliseconds;
+};
+
+/**
+ * Calculates the interval between two timestamps in milliseconds
+ * and returns the result as a formatted string "X Days, Y Hours".
+ *
+ * @param startTime - The start time in milliseconds.
+ * @param endTime - The end time in milliseconds.
+ * @returns A formatted string representing the interval in "X Days, Y Hours".
+ */
+export const calculateInterval = (
+  startTime: number,
+  endTime: number
+): string => {
+  try {
+    const intervalInMilliseconds = getIntervalInMilliseconds(
+      startTime,
+      endTime
+    );
+
+    const duration = Duration.fromMillis(intervalInMilliseconds);
+    const days = Math.floor(duration.as('days'));
+    const hours = Math.floor(duration.as('hours')) % 24;
+
+    return `${days} Days, ${hours} Hours`;
+  } catch (error) {
+    return 'Invalid interval';
+  }
+};
+
+const intervals: [string, number][] = [
+  ['Y', 933120000000], // 1000 * 60 * 60 * 24 * 30 * 360
+  ['M', 2592000000], // 1000 * 60 * 60 * 24 * 30
+  ['d', 86400000], // 1000 * 60 * 60 * 24
+  ['h', 3600000], // 1000 * 60 * 60
+  ['m', 60000], // 1000 * 60
+  ['s', 1000], // 1000
+];
+
+/**
+ * Converts a given time in milliseconds to a human-readable format.
+ *
+ * @param milliseconds - The time duration in milliseconds to be converted.
+ * @returns A human-readable string representation of the time duration.
+ */
+export const convertMillisecondsToHumanReadableFormat = (
+  milliseconds: number,
+  length?: number
+): string => {
+  if (milliseconds <= 0) {
+    return '0s';
+  }
+
+  const result: string[] = [];
+  let remainingMilliseconds = milliseconds;
+
+  for (const [name, count] of intervals) {
+    if (remainingMilliseconds < count) {
+      continue; // Skip smaller units
+    }
+    const value = Math.floor(remainingMilliseconds / count);
+    remainingMilliseconds %= count;
+    result.push(`${value}${name}`);
+  }
+
+  if (length && result.length > length) {
+    return result.slice(0, length).join(' ');
+  }
+
+  return result.join(' ');
+};
+
+export const formatDuration = (ms: number) => {
+  const seconds = ms / 1000;
+  const minutes = seconds / 60;
+  const hours = minutes / 60;
+
+  const pluralize = (value: number, unit: string) =>
+    `${value.toFixed(2)} ${unit}${value !== 1 ? 's' : ''}`;
+
+  if (seconds < 60) {
+    return pluralize(seconds, 'second');
+  } else if (minutes < 60) {
+    return pluralize(minutes, 'minute');
+  } else {
+    return pluralize(hours, 'hour');
+  }
+};
+
+export const getStartOfDayInMillis = (timestamp: number) =>
+  DateTime.fromMillis(timestamp).toUTC().startOf('day').toMillis();
+
+export const getEndOfDayInMillis = (timestamp: number) =>
+  DateTime.fromMillis(timestamp).toUTC().endOf('day').toMillis();

@@ -25,7 +25,7 @@
     },
     "status": {
       "type": "string",
-      "enum": ["Draft", "Approved", "Deprecated", "Rejected"]
+      "enum": ["Draft", "In Review", "Approved", "Deprecated", "Rejected"]
     }
   },
   "properties": {
@@ -102,9 +102,9 @@
       "description": "User names of the reviewers for this glossary.",
       "$ref": "../../type/entityReferenceList.json"
     },
-    "owner": {
-      "description": "Owner of this glossary term.",
-      "$ref": "../../type/entityReference.json"
+    "owners": {
+      "description": "Owners of this glossary term.",
+      "$ref": "../../type/entityReferenceList.json"
     },
     "usageCount": {
       "description": "Count of how many times this and it's children glossary terms are used as labels.",
@@ -116,7 +116,7 @@
       "items": {
         "$ref": "../../type/tagLabel.json"
       },
-      "default": null
+      "default": []
     },
     "changeDescription": {
       "description": "Change that lead to this version of the entity.",

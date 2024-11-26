@@ -13,14 +13,16 @@
 
 import { LabelType, State, TagSource } from '../generated/type/tagLabel';
 
-export const mockOwner = {
-  id: '38be030f-f817-4712-bc3b-ff7b9b9b805e',
-  type: 'user',
-  name: 'aaron_johnson0',
-  fullyQualifiedName: 'aaron_johnson0',
-  displayName: 'Aaron Johnson',
-  deleted: false,
-};
+export const mockOwner = [
+  {
+    id: '38be030f-f817-4712-bc3b-ff7b9b9b805e',
+    type: 'user',
+    name: 'aaron_johnson0',
+    fullyQualifiedName: 'aaron_johnson0',
+    displayName: 'Aaron Johnson',
+    deleted: false,
+  },
+];
 
 export const mockDomain = {
   id: '9602ed54-451d-4539-9b08-af611533f38b',

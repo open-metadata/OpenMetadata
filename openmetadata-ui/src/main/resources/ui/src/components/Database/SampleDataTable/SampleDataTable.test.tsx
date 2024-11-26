@@ -21,7 +21,7 @@ import SampleDataTable from './SampleDataTable.component';
 
 const mockProps = {
   tableId: 'id',
-  ownerId: 'ownerId',
+  owners: [{ type: 'user', id: 'ownerId' }],
   permissions: {
     Create: true,
     Delete: true,
@@ -35,7 +35,6 @@ const mockProps = {
 
 jest.mock('react-router-dom', () => ({
   Link: jest.fn().mockImplementation(({ children }) => <span>{children}</span>),
-  useLocation: jest.fn().mockImplementation(() => ({ pathname: 'test' })),
 }));
 
 jest.mock('../../../rest/tableAPI', () => ({

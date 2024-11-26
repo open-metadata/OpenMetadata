@@ -8,9 +8,12 @@ from unittest.mock import patch
 
 from pydantic import AnyUrl
 
+from metadata.generated.schema.entity.services.connections.database.deltalake.metastoreConfig import (
+    MetastoreConfig,
+    MetastoreHostPortConnection,
+)
 from metadata.generated.schema.entity.services.connections.database.deltaLakeConnection import (
     DeltaLakeConnection,
-    MetastoreHostPortConnection,
 )
 from metadata.generated.schema.entity.services.connections.database.dynamoDBConnection import (
     DynamoDBConnection,
@@ -81,6 +84,7 @@ EXPECTED_SERVICE = [
                 connectionOptions=None,
                 connectionArguments=None,
                 supportsMetadataExtraction=True,
+                supportsViewLineageExtraction=True,
                 supportsProfiler=True,
                 supportsDBTExtraction=True,
             )
@@ -89,7 +93,7 @@ EXPECTED_SERVICE = [
         version=2.5,
         updatedAt=1667892646744,
         updatedBy="admin",
-        owner=None,
+        owners=None,
         href=Href(
             AnyUrl(
                 "http://localhost:8585/api/v1/services/databaseServices/05f98ea5-1a30-480c-9bfc-55d1eabc45c7",
@@ -108,8 +112,10 @@ EXPECTED_SERVICE = [
         connection=DatabaseConnection(
             config=DeltaLakeConnection(
                 type="DeltaLake",
-                metastoreConnection=MetastoreHostPortConnection(
-                    metastoreHostPort="http://localhost:9083"
+                configSource=MetastoreConfig(
+                    connection=MetastoreHostPortConnection(
+                        metastoreHostPort="http://localhost:9083"
+                    )
                 ),
                 connectionArguments=None,
                 supportsMetadataExtraction=True,
@@ -120,7 +126,7 @@ EXPECTED_SERVICE = [
         version=2.5,
         updatedAt=1667892646744,
         updatedBy="admin",
-        owner=None,
+        owners=None,
         href=Href(
             AnyUrl(
                 "http://localhost:8585/api/v1/services/databaseServices/e856d239-4e74-4a7d-844b-d61c3e73b81d",
@@ -149,7 +155,7 @@ EXPECTED_SERVICE = [
         version=2.5,
         updatedAt=1667892646744,
         updatedBy="admin",
-        owner=None,
+        owners=None,
         href=Href(
             AnyUrl(
                 "http://localhost:8585/api/v1/services/databaseServices/836ff98d-a241-4d06-832d-745f96ac88fc",
@@ -192,7 +198,10 @@ class AmundsenUnitTest(TestCase):
         ):
             original.id = expected.id = "836ff98d-a241-4d06-832d-745f96ac88fc"
             original.href = expected.href = None
+            original.owners = expected.owners = None
             original.updatedAt = expected.updatedAt = datetime.datetime.now()
             original.version = expected.version = 2.5
             original.changeDescription = None
+            print(original)
+            print(expected)
             self.assertEqual(expected, original)

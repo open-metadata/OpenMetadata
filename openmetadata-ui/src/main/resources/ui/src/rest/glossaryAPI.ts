@@ -14,8 +14,11 @@
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { PagingResponse } from 'Models';
+import { CSVImportAsyncResponse } from '../components/BulkImport/BulkEntityImport.interface';
+import { CSVExportResponse } from '../components/Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
 import { VotingDataProps } from '../components/Entity/Voting/voting.interface';
 import { ES_MAX_PAGE_SIZE, PAGE_SIZE_MEDIUM } from '../constants/constants';
+import { TabSpecificField } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { AddGlossaryToAssetsRequest } from '../generated/api/addGlossaryToAssetsRequest';
 import { CreateGlossary } from '../generated/api/data/createGlossary';
@@ -24,7 +27,6 @@ import { EntityReference, Glossary } from '../generated/entity/data/glossary';
 import { GlossaryTerm } from '../generated/entity/data/glossaryTerm';
 import { BulkOperationResult } from '../generated/type/bulkOperationResult';
 import { ChangeEvent } from '../generated/type/changeEvent';
-import { CSVImportResult } from '../generated/type/csvImportResult';
 import { EntityHistory } from '../generated/type/entityHistory';
 import { ListParams } from '../interface/API.interface';
 import { getEncodedFqn } from '../utils/StringsUtils';
@@ -171,8 +173,8 @@ export const deleteGlossaryTerm = (id: string) => {
 };
 
 export const exportGlossaryInCSVFormat = async (glossaryName: string) => {
-  const response = await APIClient.get<string>(
-    `/glossaries/name/${getEncodedFqn(glossaryName)}/export`
+  const response = await APIClient.get<CSVExportResponse>(
+    `/glossaries/name/${getEncodedFqn(glossaryName)}/exportAsync`
   );
 
   return response.data;
@@ -186,8 +188,13 @@ export const importGlossaryInCSVFormat = async (
   const configOptions = {
     headers: { 'Content-type': 'text/plain' },
   };
-  const response = await APIClient.put<string, AxiosResponse<CSVImportResult>>(
-    `/glossaries/name/${getEncodedFqn(glossaryName)}/import?dryRun=${dryRun}`,
+  const response = await APIClient.put<
+    string,
+    AxiosResponse<CSVImportAsyncResponse>
+  >(
+    `/glossaries/name/${getEncodedFqn(
+      glossaryName
+    )}/importAsync?dryRun=${dryRun}`,
     data,
     configOptions
   );
@@ -333,7 +340,11 @@ export const getFirstLevelGlossaryTerms = async (parentFQN: string) => {
   >(apiUrl, {
     params: {
       directChildrenOf: parentFQN,
-      fields: 'childrenCount,owner',
+      fields: [
+        TabSpecificField.CHILDREN_COUNT,
+        TabSpecificField.OWNERS,
+        TabSpecificField.REVIEWERS,
+      ],
       limit: 100000,
     },
   });

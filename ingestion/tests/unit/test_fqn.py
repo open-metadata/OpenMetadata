@@ -17,6 +17,8 @@ from unittest.mock import MagicMock
 import pytest
 
 from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.type.basic import FullyQualifiedEntityName
+from metadata.ingestion.ometa.utils import quote
 from metadata.utils import fqn
 
 
@@ -56,6 +58,7 @@ class TestFqn(TestCase):
             FQNTest(["a.1", "b.2", "c", "d"], '"a.1"."b.2".c.d'),
             FQNTest(["a.1", "b.2", "c.3", "d"], '"a.1"."b.2"."c.3".d'),
             FQNTest(["a.1", "b.2", "c.3", "d.4"], '"a.1"."b.2"."c.3"."d.4"'),
+            FQNTest(["fqn", "test.test.test"], 'fqn."test.test.test"'),
         ]
         for x in xs:
             x.validate(fqn.split(x.fqn), fqn._build(*x.parts))
@@ -85,7 +88,7 @@ class TestFqn(TestCase):
 
     def test_invalid(self):
         with self.assertRaises(Exception):
-            fqn.split('a"')
+            fqn.split('a.."')
 
     def test_build_table(self):
         """
@@ -145,3 +148,11 @@ class TestFqn(TestCase):
 
         with pytest.raises(ValueError):
             fqn.split_test_case_fqn("local_redshift.dev.dbt_jaffle.customers")
+
+    def test_quote_fqns(self):
+        """We can properly quote FQNs for URL usage"""
+        assert quote(FullyQualifiedEntityName("a.b.c")) == "a.b.c"
+        # Works with strings directly
+        assert quote("a.b.c") == "a.b.c"
+        assert quote(FullyQualifiedEntityName('"foo.bar".baz')) == "%22foo.bar%22.baz"
+        assert quote('"foo.bar/baz".hello') == "%22foo.bar%2Fbaz%22.hello"

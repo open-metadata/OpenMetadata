@@ -21,7 +21,7 @@ export interface TableVersionProp {
   version: string;
   currentVersionData: Table;
   isVersionLoading: boolean;
-  owner: Table['owner'];
+  owners: Table['owners'];
   domain: Table['domain'];
   dataProducts: Table['dataProducts'];
   tier: TagLabel;

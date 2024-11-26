@@ -21,7 +21,7 @@ export interface StoredProcedureVersionProp {
   version: string;
   currentVersionData: StoredProcedure;
   isVersionLoading: boolean;
-  owner: StoredProcedure['owner'];
+  owners: StoredProcedure['owners'];
   domain: StoredProcedure['domain'];
   dataProducts: StoredProcedure['dataProducts'];
   tier: TagLabel;

@@ -14,7 +14,6 @@
 package org.openmetadata.service;
 
 import static java.lang.String.format;
-import static org.openmetadata.service.util.TablesInitializer.validateAndRunSystemDataMigrations;
 
 import es.org.elasticsearch.client.RestClient;
 import es.org.elasticsearch.client.RestClientBuilder;
@@ -48,11 +47,16 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.TestInstance;
 import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration;
+import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.type.IndexMappingLanguage;
+import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
+import org.openmetadata.service.migration.api.MigrationWorkflow;
 import org.openmetadata.service.resources.CollectionRegistry;
+import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.resources.events.MSTeamsCallbackResource;
 import org.openmetadata.service.resources.events.SlackCallbackResource;
 import org.openmetadata.service.resources.events.WebhookCallbackResource;
@@ -75,6 +79,7 @@ public abstract class OpenMetadataApplicationTest {
   public static final Integer ELASTIC_BATCH_SIZE = 10;
   public static final IndexMappingLanguage ELASTIC_SEARCH_INDEX_MAPPING_LANGUAGE =
       IndexMappingLanguage.EN;
+  public static final String ELASTIC_SEARCH_CLUSTER_ALIAS = "openmetadata";
   public static final ElasticSearchConfiguration.SearchType ELASTIC_SEARCH_TYPE =
       ElasticSearchConfiguration.SearchType.ELASTICSEARCH;
   public static DropwizardAppExtension<OpenMetadataApplicationConfig> APP;
@@ -94,7 +99,7 @@ public abstract class OpenMetadataApplicationTest {
       "org.testcontainers.containers.MySQLContainer";
   private static final String JDBC_CONTAINER_IMAGE = "mysql:8";
   private static final String ELASTIC_SEARCH_CONTAINER_IMAGE =
-      "docker.elastic.co/elasticsearch/elasticsearch:8.10.2";
+      "docker.elastic.co/elasticsearch/elasticsearch:8.11.4";
 
   private static String HOST;
   private static String PORT;
@@ -197,16 +202,48 @@ public abstract class OpenMetadataApplicationTest {
     jdbi.installPlugin(new SqlObjectPlugin());
     jdbi.getConfig(SqlObjects.class)
         .setSqlLocator(new ConnectionAwareAnnotationSqlLocator(sqlContainer.getDriverClassName()));
+    // jdbi.setSqlLogger(new DebugSqlLogger());
     validateAndRunSystemDataMigrations(
         jdbi,
         config,
         ConnectionType.from(sqlContainer.getDriverClassName()),
         nativeMigrationScriptsLocation,
         extensionMigrationScripsLocation,
+        null,
+        null,
         false);
     createIndices();
     APP.before();
     createClient();
+  }
+
+  public static void validateAndRunSystemDataMigrations(
+      Jdbi jdbi,
+      OpenMetadataApplicationConfig config,
+      ConnectionType connType,
+      String nativeMigrationSQLPath,
+      String extensionSQLScriptRootPath,
+      PipelineServiceClientConfiguration pipelineServiceClientConfiguration,
+      AuthenticationConfiguration authenticationConfiguration,
+      boolean forceMigrations) {
+    DatasourceConfig.initialize(connType.label);
+    MigrationWorkflow workflow =
+        new MigrationWorkflow(
+            jdbi,
+            nativeMigrationSQLPath,
+            connType,
+            extensionSQLScriptRootPath,
+            pipelineServiceClientConfiguration,
+            authenticationConfiguration,
+            forceMigrations);
+    // Initialize search repository
+    SearchRepository searchRepository = new SearchRepository(getEsConfig());
+    Entity.setSearchRepository(searchRepository);
+    Entity.setCollectionDAO(jdbi.onDemand(CollectionDAO.class));
+    Entity.initializeRepositories(config, jdbi);
+    workflow.loadMigrations();
+    workflow.runMigrationWorkflows();
+    Entity.cleanup();
   }
 
   @NotNull
@@ -243,19 +280,7 @@ public abstract class OpenMetadataApplicationTest {
   }
 
   private void createIndices() {
-    ElasticSearchConfiguration esConfig = new ElasticSearchConfiguration();
-    esConfig
-        .withHost(HOST)
-        .withPort(ELASTIC_SEARCH_CONTAINER.getMappedPort(9200))
-        .withUsername(ELASTIC_USER)
-        .withPassword(ELASTIC_PASSWORD)
-        .withScheme(ELASTIC_SCHEME)
-        .withConnectionTimeoutSecs(ELASTIC_CONNECT_TIMEOUT)
-        .withSocketTimeoutSecs(ELASTIC_SOCKET_TIMEOUT)
-        .withKeepAliveTimeoutSecs(ELASTIC_KEEP_ALIVE_TIMEOUT)
-        .withBatchSize(ELASTIC_BATCH_SIZE)
-        .withSearchIndexMappingLanguage(ELASTIC_SEARCH_INDEX_MAPPING_LANGUAGE)
-        .withSearchType(ELASTIC_SEARCH_TYPE);
+    ElasticSearchConfiguration esConfig = getEsConfig();
     SearchRepository searchRepository = new SearchRepository(esConfig);
     LOG.info("creating indexes.");
     searchRepository.createIndexes();
@@ -313,6 +338,8 @@ public abstract class OpenMetadataApplicationTest {
             "elasticsearch.searchIndexMappingLanguage",
             ELASTIC_SEARCH_INDEX_MAPPING_LANGUAGE.value()));
     configOverrides.add(
+        ConfigOverride.config("elasticsearch.clusterAlias", ELASTIC_SEARCH_CLUSTER_ALIAS));
+    configOverrides.add(
         ConfigOverride.config("elasticsearch.searchType", ELASTIC_SEARCH_TYPE.value()));
   }
 
@@ -323,5 +350,23 @@ public abstract class OpenMetadataApplicationTest {
     configOverrides.add(ConfigOverride.config("database.url", sqlContainer.getJdbcUrl()));
     configOverrides.add(ConfigOverride.config("database.user", sqlContainer.getUsername()));
     configOverrides.add(ConfigOverride.config("database.password", sqlContainer.getPassword()));
+  }
+
+  private static ElasticSearchConfiguration getEsConfig() {
+    ElasticSearchConfiguration esConfig = new ElasticSearchConfiguration();
+    esConfig
+        .withHost(HOST)
+        .withPort(ELASTIC_SEARCH_CONTAINER.getMappedPort(9200))
+        .withUsername(ELASTIC_USER)
+        .withPassword(ELASTIC_PASSWORD)
+        .withScheme(ELASTIC_SCHEME)
+        .withConnectionTimeoutSecs(ELASTIC_CONNECT_TIMEOUT)
+        .withSocketTimeoutSecs(ELASTIC_SOCKET_TIMEOUT)
+        .withKeepAliveTimeoutSecs(ELASTIC_KEEP_ALIVE_TIMEOUT)
+        .withBatchSize(ELASTIC_BATCH_SIZE)
+        .withSearchIndexMappingLanguage(ELASTIC_SEARCH_INDEX_MAPPING_LANGUAGE)
+        .withClusterAlias(ELASTIC_SEARCH_CLUSTER_ALIAS)
+        .withSearchType(ELASTIC_SEARCH_TYPE);
+    return esConfig;
   }
 }

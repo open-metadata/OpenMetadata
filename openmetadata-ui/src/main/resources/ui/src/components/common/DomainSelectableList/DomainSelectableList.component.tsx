@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Button, Popover, Tooltip, Typography } from 'antd';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as DomainIcon } from '../../../assets/svg/ic-domain.svg';
@@ -32,12 +32,16 @@ import {
   getEntityName,
   getEntityReferenceListFromEntities,
 } from '../../../utils/EntityUtils';
+import Fqn from '../../../utils/Fqn';
 import { getDomainPath } from '../../../utils/RouterUtils';
 import { SelectableList } from '../SelectableList/SelectableList.component';
 import './domain-select-dropdown.less';
 import { DomainSelectableListProps } from './DomainSelectableList.interface';
 
 export const DomainListItemRenderer = (props: EntityReference) => {
+  const isSubDomain = Fqn.split(props.fullyQualifiedName ?? '').length > 1;
+  const fqn = `(${props.fullyQualifiedName ?? ''})`;
+
   return (
     <div className="d-flex items-center gap-2">
       <DomainIcon
@@ -46,7 +50,17 @@ export const DomainListItemRenderer = (props: EntityReference) => {
         name="folder"
         width={20}
       />
-      <Typography.Text>{getEntityName(props)}</Typography.Text>
+      <div className="d-flex items-center w-max-400">
+        <Typography.Text ellipsis>{getEntityName(props)}</Typography.Text>
+        {isSubDomain && (
+          <Typography.Text
+            ellipsis
+            className="m-l-xss text-xs"
+            type="secondary">
+            {fqn}
+          </Typography.Text>
+        )}
+      </div>
     </div>
   );
 };
@@ -57,12 +71,21 @@ const DomainSelectableList = ({
   hasPermission,
   popoverProps,
   selectedDomain,
+  multiple = false,
 }: DomainSelectableListProps) => {
   const { t } = useTranslation();
   const { theme } = useApplicationStore();
   const [popupVisible, setPopupVisible] = useState(false);
 
-  const fetchOptions = async (searchText: string) => {
+  const selectedDomainsList = useMemo(() => {
+    if (selectedDomain) {
+      return Array.isArray(selectedDomain) ? selectedDomain : [selectedDomain];
+    }
+
+    return [];
+  }, [selectedDomain]);
+
+  const fetchOptions = async (searchText: string, after?: string) => {
     if (searchText) {
       try {
         const res = await searchData(
@@ -88,6 +111,7 @@ const DomainSelectableList = ({
       try {
         const { data, paging } = await getDomainList({
           limit: PAGE_SIZE_MEDIUM,
+          after: after ?? undefined,
         });
         const filterData = getEntityReferenceListFromEntities(
           data,
@@ -103,10 +127,14 @@ const DomainSelectableList = ({
 
   const handleUpdate = useCallback(
     async (domains: EntityReference[]) => {
-      await onUpdate(domains[0]);
+      if (multiple) {
+        await onUpdate(domains);
+      } else {
+        await onUpdate(domains[0]);
+      }
       setPopupVisible(false);
     },
-    [onUpdate]
+    [onUpdate, multiple]
   );
 
   return (
@@ -137,14 +165,14 @@ const DomainSelectableList = ({
               />
             }
             fetchOptions={fetchOptions}
-            multiSelect={false}
+            multiSelect={multiple}
             removeIconTooltipLabel={t('label.remove-entity', {
               entity: t('label.domain-lowercase'),
             })}
             searchPlaceholder={t('label.search-for-type', {
               type: t('label.domain'),
             })}
-            selectedItems={selectedDomain ? [selectedDomain] : []}
+            selectedItems={selectedDomainsList}
             onCancel={() => setPopupVisible(false)}
             onUpdate={handleUpdate}
           />

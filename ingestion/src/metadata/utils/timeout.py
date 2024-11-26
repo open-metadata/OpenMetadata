@@ -18,6 +18,7 @@ import inspect
 import os
 import platform
 import signal
+import threading
 from typing import Callable
 
 from metadata.utils.constants import TEN_MIN
@@ -47,7 +48,11 @@ def timeout(seconds: int = TEN_MIN) -> Callable:
     def decorator(fn):
         @functools.wraps(fn)
         def inner(*args, **kwargs):
-            if platform.system() != "Windows":  # SIGALRM not supported on Windows
+            # SIGALRM is not supported on Windows or sub-threads
+            if (
+                platform.system() != "Windows"
+                and threading.current_thread() == threading.main_thread()
+            ):
                 signal.signal(signal.SIGALRM, _handle_timeout)
                 signal.alarm(seconds)
                 try:

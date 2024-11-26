@@ -16,7 +16,7 @@ Kinesis Models
 from enum import Enum
 from typing import List, Optional
 
-from pydantic import BaseModel, Extra
+from pydantic import BaseModel, ConfigDict
 
 
 class KinesisEnum(Enum):
@@ -66,8 +66,7 @@ class KinesisArgs(BaseModel):
     Model for Kinesis API Arguments
     """
 
-    class Config:
-        extra = Extra.allow
+    model_config = ConfigDict(extra="allow")
 
     Limit: int = 100
 
@@ -77,8 +76,7 @@ class KinesisStreamArgs(BaseModel):
     Model for Kinesis Stream API Arguments
     """
 
-    class Config:
-        extra = Extra.allow
+    model_config = ConfigDict(extra="allow")
 
     StreamName: str
 

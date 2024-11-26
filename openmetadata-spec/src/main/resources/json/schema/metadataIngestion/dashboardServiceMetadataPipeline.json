@@ -88,6 +88,18 @@
       "description": "Optional Configuration to include/exclude draft dashboards. By default it will include draft dashboards",
       "type":"boolean",
       "default": true
+    },
+    "overrideMetadata":{
+      "title": "Override Metadata",
+      "description": "Set the 'Override Metadata' toggle to control whether to override the existing metadata in the OpenMetadata server with the metadata fetched from the source. If the toggle is set to true, the metadata fetched from the source will override the existing metadata in the OpenMetadata server. If the toggle is set to false, the metadata fetched from the source will not override the existing metadata in the OpenMetadata server. This is applicable for fields like description, tags, owner and displayName",
+      "type": "boolean",
+      "default": false
+    },
+    "overrideLineage":{
+      "title": "Override Lineage",
+      "description": "Set the 'Override Lineage' toggle to control whether to override the existing lineage.",
+      "type": "boolean",
+      "default": false
     }
   },
   "additionalProperties": false

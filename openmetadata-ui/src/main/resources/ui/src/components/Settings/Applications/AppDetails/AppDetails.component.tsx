@@ -43,10 +43,13 @@ import { ReactComponent as IconRestore } from '../../../../assets/svg/ic-restore
 import { ReactComponent as IconDropdown } from '../../../../assets/svg/menu.svg';
 import { ICON_DIMENSION } from '../../../../constants/constants';
 import { GlobalSettingOptions } from '../../../../constants/GlobalSettings.constants';
+import { useLimitStore } from '../../../../context/LimitsProvider/useLimitsStore';
+import { TabSpecificField } from '../../../../enums/entity.enum';
 import { ServiceCategory } from '../../../../enums/service.enum';
 import {
   App,
   ScheduleTimeline,
+  ScheduleType,
 } from '../../../../generated/entity/applications/app';
 import { Include } from '../../../../generated/type/include';
 import { useFqn } from '../../../../hooks/useFqn';
@@ -93,13 +96,14 @@ const AppDetails = () => {
     isRunLoading: false,
     isSaveLoading: false,
   });
+  const { getResourceLimit } = useLimitStore();
   const UiSchema = applicationsClassBase.getJSONUISchema();
 
   const fetchAppDetails = useCallback(async () => {
     setLoadingState((prev) => ({ ...prev, isFetchLoading: true }));
     try {
       const data = await getApplicationByName(fqn, {
-        fields: 'owner,pipelines',
+        fields: [TabSpecificField.OWNERS, TabSpecificField.PIPELINES],
         include: Include.All,
       });
       setAppData(data);
@@ -152,6 +156,9 @@ const AppDetails = () => {
             ? t('message.app-disabled-successfully')
             : t('message.app-uninstalled-successfully')
         );
+
+        // Update current count when Create / Delete operation performed
+        await getResourceLimit('app', true, true);
 
         onBrowseAppsClick();
       }
@@ -353,31 +360,40 @@ const AppDetails = () => {
           ]
         : [];
 
+    const showScheduleTab = appData?.scheduleType !== ScheduleType.NoSchedule;
+
     return [
-      {
-        label: (
-          <TabsLabel id={ApplicationTabs.SCHEDULE} name={t('label.schedule')} />
-        ),
-        key: ApplicationTabs.SCHEDULE,
-        children: (
-          <div className="p-lg">
-            {appData && (
-              <AppSchedule
-                appData={appData}
-                loading={{
-                  isRunLoading: loadingState.isRunLoading,
-                  isDeployLoading: loadingState.isDeployLoading,
-                }}
-                onDemandTrigger={onDemandTrigger}
-                onDeployTrigger={onDeployTrigger}
-                onSave={onAppScheduleSave}
-              />
-            )}
-          </div>
-        ),
-      },
+      ...(showScheduleTab
+        ? [
+            {
+              label: (
+                <TabsLabel
+                  id={ApplicationTabs.SCHEDULE}
+                  name={t('label.schedule')}
+                />
+              ),
+              key: ApplicationTabs.SCHEDULE,
+              children: (
+                <div className="p-lg">
+                  {appData && (
+                    <AppSchedule
+                      appData={appData}
+                      loading={{
+                        isRunLoading: loadingState.isRunLoading,
+                        isDeployLoading: loadingState.isDeployLoading,
+                      }}
+                      onDemandTrigger={onDemandTrigger}
+                      onDeployTrigger={onDeployTrigger}
+                      onSave={onAppScheduleSave}
+                    />
+                  )}
+                </div>
+              ),
+            },
+          ]
+        : []),
       ...tabConfiguration,
-      ...(!appData?.deleted
+      ...(!appData?.deleted && showScheduleTab
         ? [
             {
               label: (

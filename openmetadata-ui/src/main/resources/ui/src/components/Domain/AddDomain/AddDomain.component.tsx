@@ -10,16 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from 'antd';
+import { Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import React, { useCallback, useState } from 'react';
+import React, { Fragment, useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
-import { ERROR_MESSAGE } from '../../../constants/constants';
+import { ERROR_MESSAGE, ES_MAX_PAGE_SIZE } from '../../../constants/constants';
+import { DOMAIN_TYPE_DATA } from '../../../constants/Domain.constants';
 import { CreateDataProduct } from '../../../generated/api/domains/createDataProduct';
 import { CreateDomain } from '../../../generated/api/domains/createDomain';
 import { useDomainStore } from '../../../hooks/useDomainStore';
-import { addDomains } from '../../../rest/domainAPI';
+import { addDomains, getDomainList } from '../../../rest/domainAPI';
 import { getIsErrorMatch } from '../../../utils/CommonUtils';
 import { getDomainPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -33,7 +34,22 @@ const AddDomain = () => {
   const { t } = useTranslation();
   const history = useHistory();
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const { refreshDomains } = useDomainStore();
+  const { updateDomainLoading, updateDomains } = useDomainStore();
+
+  const refreshDomains = useCallback(async () => {
+    try {
+      updateDomainLoading(true);
+      const { data } = await getDomainList({
+        limit: ES_MAX_PAGE_SIZE,
+        fields: 'parent',
+      });
+      updateDomains(data);
+    } catch (error) {
+      // silent fail
+    } finally {
+      updateDomainLoading(false);
+    }
+  }, []);
 
   const goToDomain = (name = '') => {
     history.push(getDomainPath(name));
@@ -86,7 +102,7 @@ const AddDomain = () => {
 
   const rightPanel = (
     <div data-testid="right-panel">
-      <Typography.Title level={5}>
+      <Typography.Title level={3}>
         {t('label.configure-entity', {
           entity: t('label.domain'),
         })}
@@ -94,12 +110,31 @@ const AddDomain = () => {
       <Typography.Text className="mb-5">
         {t('message.create-new-domain-guide')}
       </Typography.Text>
+
+      <Typography.Title level={4}>{t('label.domain-type')}</Typography.Title>
+      <Typography.Text className="mb-5">
+        {t('message.domain-type-guide')}
+      </Typography.Text>
+      <Space className="m-t-md" direction="vertical" size="middle">
+        {DOMAIN_TYPE_DATA.map(({ type, description }) => (
+          <Fragment key={type}>
+            <Space direction="vertical" size={0}>
+              <Typography.Title level={5}>{`${type} :`}</Typography.Title>
+              <Typography.Paragraph className="m-0">
+                {description}
+              </Typography.Paragraph>
+            </Space>
+          </Fragment>
+        ))}
+      </Space>
     </div>
   );
 
   return (
     <ResizablePanels
+      className="content-height-with-resizable-panel"
       firstPanel={{
+        className: 'content-resizable-panel-container',
         children: (
           <div className="max-width-md w-9/10 domain-form-container">
             <TitleBreadcrumb titleLinks={slashedBreadcrumb} />
@@ -128,7 +163,7 @@ const AddDomain = () => {
       })}
       secondPanel={{
         children: rightPanel,
-        className: 'p-md p-t-xl',
+        className: 'p-md p-t-xl content-resizable-panel-container',
         minWidth: 400,
         flex: 0.3,
       }}

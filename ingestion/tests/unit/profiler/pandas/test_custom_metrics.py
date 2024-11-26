@@ -12,16 +12,14 @@
 """
 Test Metrics behavior
 """
-# import datetime
 import os
-from unittest import TestCase
-from unittest.mock import patch
+import sys
+from unittest import TestCase, mock
+from unittest.mock import Mock, patch
 from uuid import uuid4
 
-import boto3
-import botocore
 import pandas as pd
-from moto import mock_aws
+import pytest
 
 from metadata.generated.schema.entity.data.table import Column as EntityColumn
 from metadata.generated.schema.entity.data.table import ColumnName, DataType, Table
@@ -38,11 +36,29 @@ from metadata.profiler.interface.pandas.profiler_interface import (
     PandasProfilerInterface,
 )
 from metadata.profiler.processor.core import Profiler
+from metadata.sampler.pandas.sampler import DatalakeSampler
 
 BUCKET_NAME = "MyBucket"
+REGION = "us-west-1"
 
 
-@mock_aws
+if sys.version_info < (3, 9):
+    pytest.skip(
+        "requires python 3.9+ due to incompatibility with object patch",
+        allow_module_level=True,
+    )
+
+
+class FakeClient:
+    def __init__(self):
+        self._client = None
+
+
+class FakeConnection:
+    def __init__(self):
+        self.client = FakeClient()
+
+
 class MetricsTest(TestCase):
     """
     Run checks on different metrics
@@ -56,7 +72,7 @@ class MetricsTest(TestCase):
             securityConfig=AWSCredentials(
                 awsAccessKeyId="fake_access_key",
                 awsSecretAccessKey="fake_secret_key",
-                awsRegion="us-west-1",
+                awsRegion=REGION,
             )
         )
     )
@@ -101,63 +117,42 @@ class MetricsTest(TestCase):
         ],
     )
 
-    def setUp(self):
-        # Mock our S3 bucket and ingest a file
-        boto3.DEFAULT_SESSION = None
-        self.client = boto3.client(
-            "s3",
-            region_name="us-weat-1",
-        )
-
-        # check that we are not running our test against a real bucket
-        try:
-            s3 = boto3.resource(
-                "s3",
-                region_name="us-west-1",
-                aws_access_key_id="fake_access_key",
-                aws_secret_access_key="fake_secret_key",
-            )
-            s3.meta.client.head_bucket(Bucket=BUCKET_NAME)
-        except botocore.exceptions.ClientError:
-            pass
-        else:
-            err = f"{BUCKET_NAME} should not exist."
-            raise EnvironmentError(err)
-        self.client.create_bucket(
-            Bucket=BUCKET_NAME,
-            CreateBucketConfiguration={"LocationConstraint": "us-west-1"},
-        )
-
-        resources_paths = [
-            os.path.join(path, filename)
-            for path, _, files in os.walk(self.resources_dir)
-            for filename in files
-        ]
-
-        self.s3_keys = []
-
-        for path in resources_paths:
-            key = os.path.relpath(path, self.resources_dir)
-            self.s3_keys.append(key)
-            self.client.upload_file(Filename=path, Bucket=BUCKET_NAME, Key=key)
-
-        with patch(
-            "metadata.mixins.pandas.pandas_mixin.fetch_dataframe",
-            return_value=self.dfs,
+    @mock.patch(
+        "metadata.profiler.interface.profiler_interface.get_ssl_connection",
+        return_value=FakeConnection(),
+    )
+    @mock.patch(
+        "metadata.sampler.sampler_interface.get_ssl_connection",
+        return_value=FakeConnection(),
+    )
+    def setUp(self, *_):
+        with (
+            patch.object(DatalakeSampler, "table", new_callable=lambda: self.dfs),
+            patch.object(DatalakeSampler, "get_client", return_value=Mock()),
         ):
-            self.sqa_profiler_interface = PandasProfilerInterface(
-                self.datalake_conn,
-                None,
-                self.table_entity,
-                None,
-                None,
-                None,
-                None,
-                None,
+            self.sampler = DatalakeSampler(
+                service_connection_config=DatalakeConnection(configSource={}),
+                ometa_client=None,
+                entity=self.table_entity,
+            )
+            self.datalake_profiler_interface = PandasProfilerInterface(
+                service_connection_config=DatalakeConnection(configSource={}),
+                ometa_client=None,
+                entity=self.table_entity,
+                source_config=None,
+                sampler=self.sampler,
                 thread_count=1,
             )
 
-    def test_table_custom_metric(self):
+    @mock.patch(
+        "metadata.profiler.interface.profiler_interface.get_ssl_connection",
+        return_value=FakeConnection(),
+    )
+    @mock.patch(
+        "metadata.sampler.sampler_interface.get_ssl_connection",
+        return_value=FakeConnection(),
+    )
+    def test_table_custom_metric(self, *_):
         table_entity = Table(
             id=uuid4(),
             name="user",
@@ -205,34 +200,44 @@ class MetricsTest(TestCase):
                 ),
             ],
         )
-        with patch(
-            "metadata.mixins.pandas.pandas_mixin.fetch_dataframe",
-            return_value=self.dfs,
+
+        with (
+            patch.object(DatalakeSampler, "table", new_callable=lambda: self.dfs),
+            patch.object(DatalakeSampler, "get_client", return_value=Mock()),
         ):
-            self.sqa_profiler_interface = PandasProfilerInterface(
-                self.datalake_conn,
-                None,
-                table_entity,
-                None,
-                None,
-                None,
-                None,
-                None,
+            sampler = DatalakeSampler(
+                service_connection_config=DatalakeConnection(configSource={}),
+                ometa_client=None,
+                entity=table_entity,
+            )
+            datalake_profiler_interface = PandasProfilerInterface(
+                service_connection_config=DatalakeConnection(configSource={}),
+                ometa_client=None,
+                entity=table_entity,
+                source_config=None,
+                sampler=sampler,
                 thread_count=1,
             )
+            profiler = Profiler(
+                profiler_interface=datalake_profiler_interface,
+            )
+            metrics = profiler.compute_metrics()
+            for k, v in metrics._table_results.items():
+                for metric in v:
+                    if metric.name == "LastNameFilter":
+                        assert metric.value == 1
+                    if metric.name == "notUS":
+                        assert metric.value == 2
 
-        profiler = Profiler(
-            profiler_interface=self.sqa_profiler_interface,
-        )
-        metrics = profiler.compute_metrics()
-        for k, v in metrics._table_results.items():
-            for metric in v:
-                if metric.name == "LastNameFilter":
-                    assert metric.value == 1
-                if metric.name == "notUS":
-                    assert metric.value == 2
-
-    def test_column_custom_metric(self):
+    @mock.patch(
+        "metadata.profiler.interface.profiler_interface.get_ssl_connection",
+        return_value=FakeConnection(),
+    )
+    @mock.patch(
+        "metadata.sampler.sampler_interface.get_ssl_connection",
+        return_value=FakeConnection(),
+    )
+    def test_column_custom_metric(self, *_):
         table_entity = Table(
             id=uuid4(),
             name="user",
@@ -258,29 +263,31 @@ class MetricsTest(TestCase):
                 )
             ],
         )
-        with patch(
-            "metadata.mixins.pandas.pandas_mixin.fetch_dataframe",
-            return_value=self.dfs,
+        with (
+            patch.object(DatalakeSampler, "table", new_callable=lambda: self.dfs),
+            patch.object(DatalakeSampler, "get_client", return_value=Mock()),
         ):
-            self.sqa_profiler_interface = PandasProfilerInterface(
-                self.datalake_conn,
-                None,
-                table_entity,
-                None,
-                None,
-                None,
-                None,
-                None,
+            sampler = DatalakeSampler(
+                service_connection_config=DatalakeConnection(configSource={}),
+                ometa_client=None,
+                entity=table_entity,
+            )
+            datalake_profiler_interface = PandasProfilerInterface(
+                service_connection_config=DatalakeConnection(configSource={}),
+                ometa_client=None,
+                entity=table_entity,
+                source_config=None,
+                sampler=sampler,
                 thread_count=1,
             )
 
-        profiler = Profiler(
-            profiler_interface=self.sqa_profiler_interface,
-        )
-        metrics = profiler.compute_metrics()
-        for k, v in metrics._column_results.items():
-            for metric in v.get("customMetrics", []):
-                if metric.name == "CustomerBornedAfter1991":
-                    assert metric.value == 1
-                if metric.name == "AverageAge":
-                    assert metric.value == 2
+            profiler = Profiler(
+                profiler_interface=datalake_profiler_interface,
+            )
+            metrics = profiler.compute_metrics()
+            for k, v in metrics._column_results.items():
+                for metric in v.get("customMetrics", []):
+                    if metric.name == "CustomerBornAfter1991":
+                        assert metric.value == 1
+                    if metric.name == "AverageAge":
+                        assert metric.value == 2

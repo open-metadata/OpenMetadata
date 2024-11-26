@@ -1,28 +1,41 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.EventType.ENTITY_DELETED;
 import static org.openmetadata.schema.type.EventType.ENTITY_SOFT_DELETED;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.TABLE;
 import static org.openmetadata.service.Entity.TEST_CASE;
+import static org.openmetadata.service.Entity.TEST_CASE_RESULT;
 import static org.openmetadata.service.Entity.TEST_SUITE;
+import static org.openmetadata.service.Entity.getEntity;
+import static org.openmetadata.service.Entity.getEntityTimeSeriesRepository;
 import static org.openmetadata.service.util.FullyQualifiedName.quoteName;
 
+import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import javax.json.JsonArray;
 import javax.json.JsonObject;
 import javax.json.JsonValue;
 import javax.ws.rs.core.SecurityContext;
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.tests.DataQualityReport;
 import org.openmetadata.schema.tests.ResultSummary;
+import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.tests.type.ColumnTestSummaryDefinition;
+import org.openmetadata.schema.tests.type.TestCaseResult;
 import org.openmetadata.schema.tests.type.TestSummary;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
@@ -30,48 +43,22 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.dqtests.TestSuiteResource;
 import org.openmetadata.service.resources.feeds.MessageParser;
+import org.openmetadata.service.search.SearchAggregation;
 import org.openmetadata.service.search.SearchClient;
+import org.openmetadata.service.search.SearchIndexUtils;
+import org.openmetadata.service.search.SearchListFilter;
+import org.openmetadata.service.search.indexes.SearchIndex;
+import org.openmetadata.service.search.models.IndexMapping;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
+import org.openmetadata.service.util.ResultList;
 
 @Slf4j
 public class TestSuiteRepository extends EntityRepository<TestSuite> {
   private static final String UPDATE_FIELDS = "tests";
   private static final String PATCH_FIELDS = "tests";
-
-  private static final String EXECUTION_SUMMARY_AGGS =
-      """
-        {
-          "aggregations": {
-              "status_counts": {
-                "terms": {
-                  "field": "testCaseResult.testCaseStatus"
-                }
-              }
-            }
-        }
-        """;
-
-  private static final String ENTITY_EXECUTION_SUMMARY_AGGS =
-      """
-  {
-    "aggregations": {
-      "entityLinks": {
-        "terms": {
-          "field": "entityLink.nonNormalized"
-        },
-        "aggs": {
-          "status_counts": {
-            "terms": {
-              "field": "testCaseResult.testCaseStatus"
-            }
-          }
-        }
-      }
-    }
-  }""";
 
   private static final String ENTITY_EXECUTION_SUMMARY_FILTER =
       """
@@ -121,23 +108,32 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
         UPDATE_FIELDS);
     quoteFqn = false;
     supportsSearch = true;
+    parent = true;
   }
 
   @Override
   public void setFields(TestSuite entity, EntityUtil.Fields fields) {
     entity.setPipelines(
         fields.contains("pipelines") ? getIngestionPipelines(entity) : entity.getPipelines());
+    entity.setTests(fields.contains(UPDATE_FIELDS) ? getTestCases(entity) : entity.getTests());
+    entity.setTestCaseResultSummary(
+        fields.contains("summary")
+            ? getResultSummary(entity.getId())
+            : entity.getTestCaseResultSummary());
     entity.setSummary(
-        fields.contains("summary") ? getTestSummary(entity.getId()) : entity.getSummary());
-    entity.withTests(fields.contains(UPDATE_FIELDS) ? getTestCases(entity) : entity.getTests());
+        fields.contains("summary")
+            ? getTestSummary(entity.getTestCaseResultSummary())
+            : entity.getSummary());
   }
 
   @Override
   public void setInheritedFields(TestSuite testSuite, EntityUtil.Fields fields) {
     if (Boolean.TRUE.equals(testSuite.getExecutable())) {
       Table table =
-          Entity.getEntity(TABLE, testSuite.getExecutableEntityReference().getId(), "owner", ALL);
-      inheritOwner(testSuite, fields, table);
+          Entity.getEntity(
+              TABLE, testSuite.getExecutableEntityReference().getId(), "owners,domain", ALL);
+      inheritOwners(testSuite, fields, table);
+      inheritDomain(testSuite, fields, table);
     }
   }
 
@@ -225,20 +221,89 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
         .orElse(testSummary);
   }
 
+  public DataQualityReport getDataQualityReport(String q, String aggQuery, String index)
+      throws IOException {
+    SearchAggregation searchAggregation = SearchIndexUtils.buildAggregationTree(aggQuery);
+    return searchRepository.genericAggregation(q, index, searchAggregation);
+  }
+
+  public TestSummary getTestSummary(List<ResultSummary> testCaseResults) {
+    Map<String, Map<String, Integer>> summaries =
+        testCaseResults.stream()
+            .collect(
+                Collectors.groupingBy(
+                    result -> {
+                      TestCase testCase =
+                          Entity.getEntityByName(TEST_CASE, result.getTestCaseName(), "", ALL);
+                      MessageParser.EntityLink entityLink =
+                          MessageParser.EntityLink.parse(testCase.getEntityLink());
+                      return entityLink.getFieldName() == null
+                          ? "table"
+                          : entityLink.getLinkString();
+                    },
+                    Collectors.groupingBy(
+                        result -> result.getStatus().toString(),
+                        Collectors.collectingAndThen(Collectors.counting(), Long::intValue))));
+
+    Map<String, Integer> testSummaryMap = summaries.getOrDefault("table", new HashMap<>());
+    TestSummary testSummary = createTestSummary(testSummaryMap);
+    testSummary.setTotal(testCaseResults.size());
+
+    List<ColumnTestSummaryDefinition> columnTestSummaryDefinitions =
+        summaries.entrySet().stream()
+            .filter(entry -> !entry.getKey().equals("table"))
+            .map(
+                entry -> {
+                  Map<String, Integer> columnSummaryMap = entry.getValue();
+                  ColumnTestSummaryDefinition columnTestSummaryDefinition =
+                      createColumnSummary(columnSummaryMap);
+                  columnTestSummaryDefinition.setEntityLink(entry.getKey());
+                  return columnTestSummaryDefinition;
+                })
+            .toList();
+    testSummary.setColumnTestSummary(columnTestSummaryDefinitions);
+    return testSummary;
+  }
+
+  private TestSummary createTestSummary(Map<String, Integer> summaryMap) {
+    TestSummary summary = new TestSummary();
+    summary.setSuccess(summaryMap.getOrDefault("Success", 0));
+    summary.setFailed(summaryMap.getOrDefault("Failed", 0));
+    summary.setAborted(summaryMap.getOrDefault("Aborted", 0));
+    summary.setQueued(summaryMap.getOrDefault("Queued", 0));
+    return summary;
+  }
+
+  private ColumnTestSummaryDefinition createColumnSummary(Map<String, Integer> summaryMap) {
+    ColumnTestSummaryDefinition summary = new ColumnTestSummaryDefinition();
+    summary.setSuccess(summaryMap.getOrDefault("Success", 0));
+    summary.setFailed(summaryMap.getOrDefault("Failed", 0));
+    summary.setAborted(summaryMap.getOrDefault("Aborted", 0));
+    summary.setQueued(summaryMap.getOrDefault("Queued", 0));
+    summary.setTotal(summaryMap.values().stream().mapToInt(Integer::intValue).sum());
+    return summary;
+  }
+
   public TestSummary getTestSummary(UUID testSuiteId) {
-    JsonObject aggregationJson = JsonUtils.readJson(EXECUTION_SUMMARY_AGGS).asJsonObject();
     try {
+      // TODO: Delete with https://github.com/open-metadata/OpenMetadata/pull/18323
       TestSummary testSummary;
       if (testSuiteId == null) {
+        String aggregationStr =
+            "bucketName=status_counts:aggType=terms:field=testCaseResult.testCaseStatus";
+        SearchAggregation searchAggregation = SearchIndexUtils.buildAggregationTree(aggregationStr);
         JsonObject testCaseResultSummary =
-            searchRepository.aggregate(null, TEST_CASE, aggregationJson);
+            searchRepository.aggregate(null, TEST_CASE, searchAggregation, new SearchListFilter());
         testSummary = getTestCasesExecutionSummary(testCaseResultSummary);
       } else {
+        String aggregationStr =
+            "bucketName=entityLinks:aggType=terms:field=entityLink.nonNormalized,"
+                + "bucketName=status_counts:aggType=terms:field=testCaseResult.testCaseStatus";
+        SearchAggregation searchAggregation = SearchIndexUtils.buildAggregationTree(aggregationStr);
         String query = ENTITY_EXECUTION_SUMMARY_FILTER.formatted(testSuiteId);
         // don't want to get it from the cache as test results summary may be stale
-        aggregationJson = JsonUtils.readJson(ENTITY_EXECUTION_SUMMARY_AGGS).asJsonObject();
         JsonObject testCaseResultSummary =
-            searchRepository.aggregate(query, TEST_CASE, aggregationJson);
+            searchRepository.aggregate(query, TEST_CASE, searchAggregation, new SearchListFilter());
         testSummary = getEntityTestCasesExecutionSummary(testCaseResultSummary);
       }
       return testSummary;
@@ -246,6 +311,68 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
       LOG.error("Error reading aggregation query", e);
     }
     return null;
+  }
+
+  @Override
+  protected void postCreate(TestSuite entity) {
+    super.postCreate(entity);
+    if (Boolean.TRUE.equals(entity.getExecutable())
+        && entity.getExecutableEntityReference() != null) {
+      // Update table index with test suite field
+      EntityInterface entityInterface =
+          getEntity(entity.getExecutableEntityReference(), "testSuite", ALL);
+      IndexMapping indexMapping =
+          searchRepository.getIndexMapping(entity.getExecutableEntityReference().getType());
+      SearchClient searchClient = searchRepository.getSearchClient();
+      SearchIndex index =
+          searchRepository
+              .getSearchIndexFactory()
+              .buildIndex(entity.getExecutableEntityReference().getType(), entityInterface);
+      Map<String, Object> doc = index.buildSearchIndexDoc();
+      searchClient.updateEntity(
+          indexMapping.getIndexName(searchRepository.getClusterAlias()),
+          entity.getExecutableEntityReference().getId().toString(),
+          doc,
+          "ctx._source.testSuite = params.testSuite;");
+    }
+  }
+
+  @SneakyThrows
+  private List<ResultSummary> getResultSummary(UUID testSuiteId) {
+    List<ResultSummary> resultSummaries = new ArrayList<>();
+    ResultList<TestCaseResult> latestTestCaseResultResults = null;
+    String groupBy = "testCaseFQN.keyword";
+    SearchListFilter searchListFilter = new SearchListFilter();
+    searchListFilter.addQueryParam("testSuiteId", testSuiteId.toString());
+    TestCaseResultRepository entityTimeSeriesRepository =
+        (TestCaseResultRepository) getEntityTimeSeriesRepository(TEST_CASE_RESULT);
+    try {
+      latestTestCaseResultResults =
+          entityTimeSeriesRepository.listLatestFromSearch(
+              EntityUtil.Fields.EMPTY_FIELDS, searchListFilter, groupBy, null);
+    } catch (Exception e) {
+      LOG.debug(
+          "Error fetching test case result from search. Fetching from test case results from database",
+          e);
+    }
+
+    if (latestTestCaseResultResults == null || nullOrEmpty(latestTestCaseResultResults.getData())) {
+      latestTestCaseResultResults =
+          entityTimeSeriesRepository.listLastTestCaseResultsForTestSuite(testSuiteId);
+    }
+
+    latestTestCaseResultResults
+        .getData()
+        .forEach(
+            testCaseResult -> {
+              ResultSummary resultSummary =
+                  new ResultSummary()
+                      .withTestCaseName(testCaseResult.getTestCaseFQN())
+                      .withStatus(testCaseResult.getTestCaseStatus())
+                      .withTimestamp(testCaseResult.getTimestamp());
+              resultSummaries.add(resultSummary);
+            });
+    return resultSummaries;
   }
 
   @Override
@@ -321,18 +448,10 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
     String key = bucket.getString("key");
     Integer count = bucket.getJsonNumber("doc_count").intValue();
     switch (key) {
-      case "success":
-        testSummary.setSuccess(testSummary.getSuccess() + count);
-        break;
-      case "failed":
-        testSummary.setFailed(testSummary.getFailed() + count);
-        break;
-      case "aborted":
-        testSummary.setAborted(testSummary.getAborted() + count);
-        break;
-      case "queued":
-        testSummary.setQueued(testSummary.getQueued() + count);
-        break;
+      case "success" -> testSummary.setSuccess(testSummary.getSuccess() + count);
+      case "failed" -> testSummary.setFailed(testSummary.getFailed() + count);
+      case "aborted" -> testSummary.setAborted(testSummary.getAborted() + count);
+      case "queued" -> testSummary.setQueued(testSummary.getQueued() + count);
     }
     testSummary.setTotal(testSummary.getTotal() + count);
   }
@@ -342,18 +461,10 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
     String key = bucket.getString("key");
     Integer count = bucket.getJsonNumber("doc_count").intValue();
     switch (key) {
-      case "success":
-        columnTestSummary.setSuccess(columnTestSummary.getSuccess() + count);
-        break;
-      case "failed":
-        columnTestSummary.setFailed(columnTestSummary.getFailed() + count);
-        break;
-      case "aborted":
-        columnTestSummary.setAborted(columnTestSummary.getAborted() + count);
-        break;
-      case "queued":
-        columnTestSummary.setQueued(columnTestSummary.getQueued() + count);
-        break;
+      case "success" -> columnTestSummary.setSuccess(columnTestSummary.getSuccess() + count);
+      case "failed" -> columnTestSummary.setFailed(columnTestSummary.getFailed() + count);
+      case "aborted" -> columnTestSummary.setAborted(columnTestSummary.getAborted() + count);
+      case "queued" -> columnTestSummary.setQueued(columnTestSummary.getQueued() + count);
     }
     columnTestSummary.setTotal(columnTestSummary.getTotal() + count);
   }
@@ -372,7 +483,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
         .withExecutable(testSuite.getExecutable())
         .withExecutableEntityReference(testSuite.getExecutableEntityReference())
         .withServiceType(testSuite.getServiceType())
-        .withOwner(testSuite.getOwner())
+        .withOwners(testSuite.getOwners())
         .withUpdatedBy(testSuite.getUpdatedBy())
         .withUpdatedAt(testSuite.getUpdatedAt())
         .withVersion(testSuite.getVersion());

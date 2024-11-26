@@ -23,6 +23,7 @@ from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
 )
+from metadata.generated.schema.entity.services.serviceType import ServiceType
 from metadata.generated.schema.metadataIngestion.testSuitePipeline import (
     TestSuitePipeline,
 )
@@ -36,8 +37,11 @@ from metadata.ingestion.api.parser import parse_workflow_config_gracefully
 from metadata.ingestion.api.step import Step
 from metadata.ingestion.api.steps import Source
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.utils import fqn
+from metadata.utils.constants import CUSTOM_CONNECTOR_PREFIX
 from metadata.utils import entity_link, fqn
 from metadata.utils.logger import test_suite_logger
+from metadata.utils.service_spec.service_spec import import_source_class
 
 logger = test_suite_logger()
 
@@ -76,7 +80,7 @@ class TestSuiteSource(Source):
         table: Table = self.metadata.get_by_name(
             entity=Table,
             fqn=self.source_config.entityFullyQualifiedName.root,
-            fields=["tableProfilerConfig", "testSuite"],
+            fields=["tableProfilerConfig", "testSuite", "serviceType"],
         )
 
         return table
@@ -92,10 +96,12 @@ class TestSuiteSource(Source):
                 params={"testSuiteId": test_suite.id.root},
             )
             test_cases = cast(List[TestCase], test_cases)  # satisfy type checker
-
+            if self.source_config.testCases is not None:
+                test_cases = [
+                    t for t in test_cases if t.name in self.source_config.testCases
+                ]
             return test_cases
-
-        return None
+        return []
 
     def prepare(self):
         """Nothing to prepare"""
@@ -105,8 +111,16 @@ class TestSuiteSource(Source):
 
     def _iter(self) -> Iterable[Either[TableAndTests]]:
         table: Table = self._get_table_entity()
-
         if table:
+            source_type = table.serviceType.value.lower()
+            if source_type.startswith(CUSTOM_CONNECTOR_PREFIX):
+                logger.warning(
+                    "Data quality tests might not work as expected with custom sources"
+                )
+            else:
+                import_source_class(
+                    service_type=ServiceType.Database, source_type=source_type
+                )
             yield from self._process_table_suite(table)
 
         else:
@@ -126,7 +140,7 @@ class TestSuiteSource(Source):
                 ),
                 displayName=f"{self.source_config.entityFullyQualifiedName.root} Test Suite",
                 description="Test Suite created from YAML processor config file",
-                owner=None,
+                owners=None,
                 executableEntityReference=self.source_config.entityFullyQualifiedName.root,
             )
             yield Either(

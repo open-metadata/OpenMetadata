@@ -28,7 +28,7 @@ import {
 } from '../../../../utils/CommonUtils';
 import entityUtilClassBase from '../../../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../../../utils/EntityUtils';
-import { getEntityIcon } from '../../../../utils/TableUtils';
+import searchClassBase from '../../../../utils/SearchClassBase';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import EntityListSkeleton from '../../../common/Skeleton/MyData/EntityListSkeleton/EntityListSkeleton.component';
 import './recently-viewed.less';
@@ -143,7 +143,7 @@ const RecentlyViewed = ({
                           className="entity-button flex-center p-0 m--ml-1"
                           icon={
                             <div className="entity-button-icon m-r-xs">
-                              {getEntityIcon(item.type || '')}
+                              {searchClassBase.getEntityIcon(item.type ?? '')}
                             </div>
                           }
                           title={getEntityName(

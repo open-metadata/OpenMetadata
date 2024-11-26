@@ -28,6 +28,9 @@ from metadata.generated.schema.security.credentials.bitbucketCredentials import 
 from metadata.generated.schema.security.credentials.githubCredentials import (
     GitHubCredentials,
 )
+from metadata.generated.schema.security.credentials.gitlabCredentials import (
+    GitlabCredentials,
+)
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -38,9 +41,7 @@ def _clone_repo(
     path: str,
     credential: Optional[
         Union[
-            NoGitCredentials,
-            GitHubCredentials,
-            BitBucketCredentials,
+            NoGitCredentials, GitHubCredentials, BitBucketCredentials, GitlabCredentials
         ]
     ],
     overwrite: Optional[bool] = False,
@@ -60,6 +61,8 @@ def _clone_repo(
         elif isinstance(credential, BitBucketCredentials):
             url = f"https://x-token-auth:{credential.token.root.get_secret_value()}@bitbucket.org/{repo_name}.git"
             allow_unsafe_protocols = True
+        elif isinstance(credential, GitlabCredentials):
+            url = f"https://x-token-auth:{credential.token.root.get_secret_value()}@gitlab.com/{repo_name}.git"
 
         assert url is not None
 

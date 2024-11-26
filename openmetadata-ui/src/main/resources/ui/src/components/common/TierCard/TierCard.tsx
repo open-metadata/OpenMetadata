@@ -52,11 +52,12 @@ const TierCard = ({
     try {
       const { data } = await getTags({
         parent: 'Tier',
+        limit: 50,
       });
 
       if (data) {
         const tierData: CardWithListItems[] =
-          data.map((tier: { name: string; description: string }) => ({
+          data.map((tier) => ({
             id: `Tier${FQN_SEPARATOR_CHAR}${tier.name}`,
             title: getEntityName(tier),
             description: tier.description.substring(
@@ -66,6 +67,7 @@ const TierCard = ({
             data: tier.description.substring(
               tier.description.indexOf('\n\n') + 1
             ),
+            style: tier.style,
           })) ?? [];
         setTierCardData(tierData);
         setTiers(data);
@@ -130,7 +132,7 @@ const TierCard = ({
             <Radio.Group value={currentTier} onChange={handleTierSelection}>
               <Collapse
                 accordion
-                className="bg-white border-none"
+                className="bg-white border-none tier-card-content"
                 collapsible="icon"
                 defaultActiveKey={currentTier}
                 expandIconPosition="end">
@@ -143,7 +145,9 @@ const TierCard = ({
                         data-testid={`radio-btn-${card.title}`}
                         value={card.id}>
                         <Space direction="vertical" size={0}>
-                          <Typography.Paragraph className="m-b-0 font-regular text-grey-body">
+                          <Typography.Paragraph
+                            className="m-b-0 font-regular text-grey-body"
+                            style={{ color: card.style?.color }}>
                             {card.title}
                           </Typography.Paragraph>
                           <Typography.Paragraph className="m-b-0 font-regular text-xs text-grey-muted">

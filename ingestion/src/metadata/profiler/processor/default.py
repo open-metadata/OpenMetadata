@@ -77,9 +77,12 @@ class DefaultProfiler(Profiler):
         include_columns: Optional[List[ColumnProfilerConfig]] = None,
         exclude_columns: Optional[List[str]] = None,
         global_profiler_configuration: Optional[ProfilerConfiguration] = None,
+        db_service=None,
     ):
         _metrics = get_default_metrics(
-            table=profiler_interface.table, ometa_client=profiler_interface.ometa_client
+            table=profiler_interface.table,
+            ometa_client=profiler_interface.ometa_client,
+            db_service=db_service,
         )
 
         super().__init__(

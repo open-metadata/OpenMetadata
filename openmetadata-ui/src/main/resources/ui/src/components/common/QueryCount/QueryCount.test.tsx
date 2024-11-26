@@ -22,10 +22,9 @@ jest.mock('../../../rest/searchAPI', () => ({
     ),
 }));
 
-jest.mock('react-router-dom', () => ({
-  ...jest.requireActual('react-router-dom'),
-  useLocation: jest.fn().mockReturnValue({ pathname: '/explore' }),
-}));
+jest.mock('../../../hooks/useCustomLocation/useCustomLocation', () => {
+  return jest.fn().mockImplementation(() => ({ pathname: '/explore' }));
+});
 
 jest.mock('../../../constants/constants', () => ({
   ROUTES: {},

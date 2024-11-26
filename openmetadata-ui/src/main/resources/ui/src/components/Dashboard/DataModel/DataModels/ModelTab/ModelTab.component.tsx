@@ -20,7 +20,10 @@ import { EntityType } from '../../../../../enums/entity.enum';
 import { Column } from '../../../../../generated/entity/data/dashboardDataModel';
 import { TagLabel, TagSource } from '../../../../../generated/type/tagLabel';
 import { updateDataModelColumnDescription } from '../../../../../utils/DataModelsUtils';
-import { getEntityName } from '../../../../../utils/EntityUtils';
+import {
+  getColumnSorter,
+  getEntityName,
+} from '../../../../../utils/EntityUtils';
 import {
   getAllTags,
   searchTagInData,
@@ -38,6 +41,7 @@ const ModelTab = ({
   isReadOnly,
   hasEditDescriptionPermission,
   hasEditTagsPermission,
+  hasEditGlossaryTermPermission,
   onUpdate,
   entityFqn,
   onThreadLinkSelect,
@@ -93,6 +97,7 @@ const ModelTab = ({
         key: 'name',
         width: 250,
         fixed: 'left',
+        sorter: getColumnSorter<Column, 'name'>('name'),
         render: (_, record) => (
           <Typography.Text>{getEntityName(record)}</Typography.Text>
         ),
@@ -168,7 +173,7 @@ const ModelTab = ({
             entityFqn={entityFqn}
             entityType={EntityType.DASHBOARD_DATA_MODEL}
             handleTagSelection={handleFieldTagsChange}
-            hasTagEditAccess={hasEditTagsPermission}
+            hasTagEditAccess={hasEditGlossaryTermPermission}
             index={index}
             isReadOnly={isReadOnly}
             record={record}
@@ -184,6 +189,7 @@ const ModelTab = ({
       isReadOnly,
       tagFilter,
       hasEditTagsPermission,
+      hasEditGlossaryTermPermission,
       editColumnDescription,
       hasEditDescriptionPermission,
       onThreadLinkSelect,

@@ -70,6 +70,7 @@
           },
           "keyword": {
             "type": "keyword",
+            "normalizer": "lowercase_normalizer",
             "ignore_above": 256
           }
         }
@@ -121,7 +122,7 @@
             "type": "text"
           },
           "deleted": {
-            "type": "text"
+            "type": "boolean"
           },
           "href": {
             "type": "text"
@@ -167,6 +168,16 @@
               }
             }
           },
+          "displayName": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "normalizer": "lowercase_normalizer",
+                "ignore_above": 256
+              }
+            }
+          },
           "fullyQualifiedName": {
             "type": "keyword"
           },
@@ -174,7 +185,7 @@
             "type": "text"
           },
           "deleted": {
-            "type": "text"
+            "type": "boolean"
           },
           "href": {
             "type": "text"
@@ -214,7 +225,7 @@
           }
         }
       },
-      "owner": {
+      "owners": {
         "properties": {
           "id": {
             "type": "keyword",
@@ -242,6 +253,7 @@
             "fields": {
               "keyword": {
                 "type": "keyword",
+                "normalizer": "lowercase_normalizer",
                 "ignore_above": 256
               }
             }
@@ -253,7 +265,7 @@
             "type": "text"
           },
           "deleted": {
-            "type": "text"
+            "type": "boolean"
           },
           "href": {
             "type": "text"
@@ -283,6 +295,16 @@
               }
             }
           },
+          "displayName": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "normalizer": "lowercase_normalizer",
+                "ignore_above": 256
+              }
+            }
+          },
           "fullyQualifiedName": {
             "type": "text"
           },
@@ -290,7 +312,7 @@
             "type": "text"
           },
           "deleted": {
-            "type": "text"
+            "type": "boolean"
           },
           "href": {
             "type": "text"
@@ -298,7 +320,7 @@
         }
       },
       "deleted": {
-        "type": "text"
+        "type": "boolean"
       },
       "followers": {
         "type": "keyword"
@@ -325,7 +347,8 @@
       "tags": {
         "properties": {
           "tagFQN": {
-            "type": "keyword"
+            "type": "keyword",
+            "normalizer": "lowercase_normalizer"
           },
           "labelType": {
             "type": "keyword"
@@ -345,20 +368,11 @@
         "type": "object"
       },
       "serviceType": {
-        "type": "keyword"
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
       },
       "entityType": {
         "type": "keyword"
-      },
-      "suggest": {
-        "type": "completion",
-        "contexts": [
-          {
-            "name": "deleted",
-            "type": "category",
-            "path": "deleted"
-          }
-        ]
       },
       "task_suggest": {
         "type": "completion"
@@ -366,8 +380,49 @@
       "service_suggest": {
         "type": "completion"
       },
+      "totalVotes": {
+        "type": "long",
+        "null_value": 0
+      },
+      "votes" : {
+        "type": "object"
+      },
       "descriptionStatus": {
         "type": "keyword"
+      },
+      "certification": {
+        "type": "object",
+        "properties": {
+          "tagLabel": {
+            "type": "object",
+            "properties": {
+              "tagFQN": {
+                "type": "keyword",
+                "normalizer": "lowercase_normalizer"
+              },
+              "labelType": {
+                "type": "keyword"
+              },
+              "description": {
+                "type": "text"
+              },
+              "source": {
+                "type": "keyword"
+              },
+              "state": {
+                "type": "keyword"
+              }
+            }
+          },
+          "appliedDate": {
+            "type": "date",
+            "format": "strict_date_optional_time||epoch_millis"
+          },
+          "expiryDate": {
+            "type": "date",
+            "format": "strict_date_optional_time||epoch_millis"
+          }
+        }
       }
     }
   }

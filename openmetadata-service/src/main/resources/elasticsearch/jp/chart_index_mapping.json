@@ -68,6 +68,7 @@
           },
           "keyword": {
             "type": "keyword",
+            "normalizer": "lowercase_normalizer",
             "ignore_above": 256
           }
         }
@@ -85,16 +86,6 @@
       },
       "entityType": {
         "type": "keyword"
-      },
-      "suggest": {
-        "type": "completion",
-        "contexts": [
-          {
-            "name": "deleted",
-            "type": "category",
-            "path": "deleted"
-          }
-        ]
       },
       "version": {
         "type": "float"
@@ -115,7 +106,7 @@
       "href": {
         "type": "text"
       },
-      "owner": {
+      "owners": {
         "properties": {
           "id": {
             "type": "keyword",
@@ -143,6 +134,7 @@
             "fields": {
               "keyword": {
                 "type": "keyword",
+                "normalizer": "lowercase_normalizer",
                 "ignore_above": 256
               }
             }
@@ -154,7 +146,7 @@
             "type": "text"
           },
           "deleted": {
-            "type": "text"
+            "type": "boolean"
           },
           "href": {
             "type": "text"
@@ -191,7 +183,7 @@
             "type": "text"
           },
           "deleted": {
-            "type": "text"
+            "type": "boolean"
           },
           "href": {
             "type": "text"
@@ -201,7 +193,8 @@
       "tags": {
         "properties": {
           "tagFQN": {
-            "type": "keyword"
+            "type": "keyword",
+            "normalizer": "lowercase_normalizer"
           },
           "labelType": {
             "type": "keyword"
@@ -240,6 +233,16 @@
               }
             }
           },
+          "displayName": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "normalizer": "lowercase_normalizer",
+                "ignore_above": 256
+              }
+            }
+          },
           "fullyQualifiedName": {
             "type": "text"
           },
@@ -247,7 +250,7 @@
             "type": "text"
           },
           "deleted": {
-            "type": "text"
+            "type": "boolean"
           },
           "href": {
             "type": "text"
@@ -255,10 +258,11 @@
         }
       },
       "serviceType": {
-        "type": "keyword"
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
       },
       "deleted": {
-        "type": "text"
+        "type": "boolean"
       },
       "domain" : {
         "properties": {
@@ -283,6 +287,16 @@
               }
             }
           },
+          "displayName": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "normalizer": "lowercase_normalizer",
+                "ignore_above": 256
+              }
+            }
+          },
           "fullyQualifiedName": {
             "type": "keyword"
           },
@@ -290,7 +304,7 @@
             "type": "text"
           },
           "deleted": {
-            "type": "text"
+            "type": "boolean"
           },
           "href": {
             "type": "text"
@@ -340,15 +354,104 @@
             "type": "text"
           },
           "deleted": {
-            "type": "text"
+            "type": "boolean"
           },
           "href": {
             "type": "text"
           }
         }
       },
+      "totalVotes": {
+        "type": "long",
+        "null_value": 0
+      },
+      "votes" : {
+        "type": "object"
+      },
       "descriptionStatus": {
         "type": "keyword"
+      },
+      "dashboards": {
+        "properties": {
+          "id": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 36
+              }
+            }
+          },
+          "type": {
+            "type": "text"
+          },
+          "name": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256
+              }
+            }
+          },
+          "displayName": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "normalizer": "lowercase_normalizer",
+                "ignore_above": 256
+              }
+            }
+          },
+          "fullyQualifiedName": {
+            "type": "text"
+          },
+          "description": {
+            "type": "text",
+            "analyzer": "om_analyzer"
+          },
+          "deleted": {
+            "type": "boolean"
+          },
+          "href": {
+            "type": "text"
+          }
+        }
+      },
+      "certification": {
+        "type": "object",
+        "properties": {
+          "tagLabel": {
+            "type": "object",
+            "properties": {
+              "tagFQN": {
+                "type": "keyword",
+                "normalizer": "lowercase_normalizer"
+              },
+              "labelType": {
+                "type": "keyword"
+              },
+              "description": {
+                "type": "text"
+              },
+              "source": {
+                "type": "keyword"
+              },
+              "state": {
+                "type": "keyword"
+              }
+            }
+          },
+          "appliedDate": {
+            "type": "date",
+            "format": "strict_date_optional_time||epoch_millis"
+          },
+          "expiryDate": {
+            "type": "date",
+            "format": "strict_date_optional_time||epoch_millis"
+          }
+        }
       }
     }
   }

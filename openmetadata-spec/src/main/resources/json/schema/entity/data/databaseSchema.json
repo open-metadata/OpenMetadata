@@ -51,9 +51,9 @@
       "description": "Link to the resource corresponding to this entity.",
       "$ref": "../../type/basic.json#/definitions/href"
     },
-    "owner": {
+    "owners": {
       "description": "Owner of this schema.",
-      "$ref": "../../type/entityReference.json"
+      "$ref": "../../type/entityReferenceList.json"
     },
     "service": {
       "description": "Link to the database cluster/service where this schema is hosted in.",
@@ -82,7 +82,7 @@
       "items": {
         "$ref": "../../type/tagLabel.json"
       },
-      "default": null
+      "default": []
     },
     "changeDescription": {
       "description": "Change that lead to this version of the entity.",
@@ -117,6 +117,9 @@
       "description": "Life Cycle properties of the entity",
       "$ref": "../../type/lifeCycle.json"
     },
+    "certification": {
+      "$ref": "../../type/assetCertification.json"
+    },
     "sourceHash": {
       "description": "Source hash of the entity",
       "type": "string",
@@ -141,6 +144,9 @@
           "type": "integer",
           "default": 50,
           "title": "Sample Data Rows Count"
+        },
+        "samplingMethodType": {
+          "$ref": "./table.json#/definitions/samplingMethodType"
         },
         "sampleDataStorageConfig": {
           "title": "Storage Config for Sample Data",

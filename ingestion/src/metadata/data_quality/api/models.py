@@ -18,13 +18,14 @@ multiple test cases per workflow.
 
 from typing import List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import Field
 
 from metadata.config.common import ConfigModel
 from metadata.generated.schema.api.tests.createTestSuite import CreateTestSuiteRequest
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.tests.basic import TestCaseResult
 from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
+from metadata.ingestion.models.custom_pydantic import BaseModel
 
 
 class TestCaseDefinition(ConfigModel):
@@ -56,7 +57,7 @@ class TableAndTests(BaseModel):
 
     table: Table = Field(None, description="Table being processed by the DQ workflow")
     service_type: str = Field(..., description="Service type the table belongs to")
-    test_cases: Optional[List[TestCase]] = Field(
+    test_cases: List[TestCase] = Field(
         None, description="Test Cases already existing in the Test Suite, if any"
     )
     executable_test_suite: Optional[CreateTestSuiteRequest] = Field(

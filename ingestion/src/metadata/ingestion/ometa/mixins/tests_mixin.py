@@ -17,7 +17,6 @@ To be used by OpenMetadata class
 import traceback
 from datetime import datetime
 from typing import List, Optional, Type, Union
-from urllib.parse import quote
 from uuid import UUID
 
 from metadata.generated.schema.api.tests.createLogicalTestCases import (
@@ -46,7 +45,7 @@ from metadata.generated.schema.tests.testDefinition import (
 from metadata.generated.schema.tests.testSuite import TestSuite
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.client import REST
-from metadata.ingestion.ometa.utils import model_str
+from metadata.ingestion.ometa.utils import model_str, quote
 from metadata.utils.logger import ometa_logger
 
 logger = ometa_logger()
@@ -76,7 +75,7 @@ class OMetaTestsMixin:
             _type_: _description_
         """
         resp = self.client.put(
-            f"{self.get_suffix(TestCase)}/{quote(test_case_fqn,safe='')}/testCaseResult",
+            f"{self.get_suffix(TestCase)}/{quote(test_case_fqn)}/testCaseResult",
             test_results.model_dump_json(),
         )
 
@@ -325,7 +324,10 @@ class OMetaTestsMixin:
         return TestCaseResolutionStatus(**response)
 
     def ingest_failed_rows_sample(
-        self, test_case: TestCase, failed_rows: TableData
+        self,
+        test_case: TestCase,
+        failed_rows: TableData,
+        validate=True,
     ) -> Optional[TableData]:
         """
         PUT sample failed data for a test case.
@@ -335,8 +337,9 @@ class OMetaTestsMixin:
         """
         resp = None
         try:
+            params = "" if validate else "validate=false"
             resp = self.client.put(
-                f"{self.get_suffix(TestCase)}/{test_case.id.root}/failedRowsSample",
+                f"{self.get_suffix(TestCase)}/{test_case.id.root}/failedRowsSample?{params}",
                 data=failed_rows.model_dump_json(),
             )
         except Exception as exc:

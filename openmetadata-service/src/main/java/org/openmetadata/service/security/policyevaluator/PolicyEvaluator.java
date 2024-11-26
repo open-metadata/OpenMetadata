@@ -13,6 +13,8 @@
 
 package org.openmetadata.service.security.policyevaluator;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -67,10 +69,32 @@ public class PolicyEvaluator {
     // Next run through all the ALLOW policies based on the user
     evaluateAllowSubjectPolicies(subjectContext, resourceContext, operationContext);
 
-    if (!operationContext.getOperations().isEmpty()) { // Some operations have not been allowed
+    if (!operationContext
+        .getOperations(resourceContext)
+        .isEmpty()) { // Some operations have not been allowed
       throw new AuthorizationException(
           CatalogExceptionMessage.permissionNotAllowed(
-              subjectContext.user().getName(), operationContext.getOperations()));
+              subjectContext.user().getName(), operationContext.getOperations(resourceContext)));
+    }
+  }
+
+  /** Checks if the subjectContext has the domain permissions for the resourceContext. */
+  public static void hasDomainPermission(
+      @NonNull SubjectContext subjectContext,
+      @NonNull ResourceContextInterface resourceContext,
+      OperationContext operationContext) {
+    // If the Resource Does not belong to any Domain, then evaluate via other permissions
+    if (!nullOrEmpty(resourceContext.getDomain())
+        && !subjectContext.isAdmin()
+        && !subjectContext.isBot()) {
+      EntityReference domain = resourceContext.getDomain();
+      if (!subjectContext.hasDomain(domain)) {
+        throw new AuthorizationException(
+            CatalogExceptionMessage.domainPermissionNotAllowed(
+                subjectContext.user().getName(),
+                domain.getName(),
+                operationContext.getOperations(resourceContext)));
+      }
     }
   }
 
@@ -78,7 +102,8 @@ public class PolicyEvaluator {
       SubjectContext subjectContext,
       ResourceContextInterface resourceContext,
       OperationContext operationContext) {
-    Iterator<PolicyContext> policyIterator = subjectContext.getPolicies(resourceContext.getOwner());
+    Iterator<PolicyContext> policyIterator =
+        subjectContext.getPolicies(resourceContext.getOwners());
     evaluatePolicies(policyIterator, subjectContext, resourceContext, operationContext, true);
   }
 
@@ -86,7 +111,8 @@ public class PolicyEvaluator {
       SubjectContext subjectContext,
       ResourceContextInterface resourceContext,
       OperationContext operationContext) {
-    Iterator<PolicyContext> policyIterator = subjectContext.getPolicies(resourceContext.getOwner());
+    Iterator<PolicyContext> policyIterator =
+        subjectContext.getPolicies(resourceContext.getOwners());
     evaluatePolicies(policyIterator, subjectContext, resourceContext, operationContext, false);
   }
 
@@ -98,7 +124,7 @@ public class PolicyEvaluator {
       boolean evaluateDeny) {
     // When an operation is allowed by a rule, it is removed from operation context
     // When list of operations is empty in the operation context, all operations have been allowed
-    while (policies.hasNext() && !operationContext.getOperations().isEmpty()) {
+    while (policies.hasNext() && !operationContext.getOperations(resourceContext).isEmpty()) {
       PolicyContext context = policies.next();
       for (CompiledRule rule : context.getRules()) {
         LOG.debug(
@@ -184,7 +210,7 @@ public class PolicyEvaluator {
 
     // Iterate through policies and set the permissions to DENY, ALLOW, CONDITIONAL_DENY, or
     // CONDITIONAL_ALLOW
-    Iterator<PolicyContext> policies = subjectContext.getPolicies(resourceContext.getOwner());
+    Iterator<PolicyContext> policies = subjectContext.getPolicies(resourceContext.getOwners());
     while (policies.hasNext()) {
       PolicyContext policyContext = policies.next();
       for (CompiledRule rule : policyContext.getRules()) {

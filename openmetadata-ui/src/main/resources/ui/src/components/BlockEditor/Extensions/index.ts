@@ -28,11 +28,13 @@ import { Hashtag } from './hashtag';
 import { hashtagSuggestion } from './hashtag/hashtagSuggestion';
 import { Image } from './image/image';
 import { LinkExtension } from './link';
+import MathEquation from './MathEquation/MathEquation';
 import { Mention } from './mention';
 import { mentionSuggestion } from './mention/mentionSuggestions';
 import slashCommand from './slash-command';
 import { getSuggestionItems } from './slash-command/items';
 import renderItems from './slash-command/renderItems';
+import { TrailingNode } from './trailing-node';
 
 export const extensions = [
   StarterKit.configure({
@@ -144,4 +146,6 @@ export const extensions = [
       'data-om-table-cell': 'om-table-cell',
     },
   }),
+  MathEquation,
+  TrailingNode,
 ];

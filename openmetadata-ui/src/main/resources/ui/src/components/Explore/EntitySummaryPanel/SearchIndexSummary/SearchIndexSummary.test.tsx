@@ -71,7 +71,7 @@ describe('SearchIndexSummary component tests', () => {
     const ownerLabel = screen.queryByTestId('label.owner-label');
     const tierLabel = screen.getByText('label.tier');
     const serviceLabel = screen.getByText('label.service');
-    const tierValue = screen.getByText('-');
+    const tierValue = screen.getByTestId('label.tier-value');
     const serviceValue = screen.getByText('testES');
     const summaryList = screen.getByTestId('SummaryList');
 
@@ -80,7 +80,7 @@ describe('SearchIndexSummary component tests', () => {
     expect(fieldsHeader).toBeInTheDocument();
     expect(tierLabel).toBeInTheDocument();
     expect(serviceLabel).toBeInTheDocument();
-    expect(tierValue).toBeInTheDocument();
+    expect(tierValue).toContainHTML('-');
     expect(serviceValue).toBeInTheDocument();
     expect(summaryList).toBeInTheDocument();
   });
@@ -143,6 +143,7 @@ describe('SearchIndexSummary component tests', () => {
             ...mockSearchIndexEntityDetails,
             tags: [
               {
+                name: 'Tier1',
                 tagFQN: 'Tier.Tier1',
                 labelType: LabelType.Manual,
                 description: '',

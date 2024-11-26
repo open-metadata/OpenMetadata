@@ -28,6 +28,7 @@ import {
   getEntityDetailsPath,
 } from '../../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
+import { COMMON_RESIZABLE_PANEL_CONFIG } from '../../../constants/ResizablePanel.constants';
 import LineageProvider from '../../../context/LineageProvider/LineageProvider';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
@@ -37,12 +38,13 @@ import { Dashboard } from '../../../generated/entity/data/dashboard';
 import { ThreadType } from '../../../generated/entity/feed/thread';
 import { TagSource } from '../../../generated/type/schema';
 import { TagLabel } from '../../../generated/type/tagLabel';
+import LimitWrapper from '../../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { restoreDashboard } from '../../../rest/dashboardAPI';
 import { getFeedCounts } from '../../../utils/CommonUtils';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getColumnSorter, getEntityName } from '../../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import {
   getAllTags,
@@ -121,7 +123,7 @@ const DashboardDetails = ({
   >([]);
 
   const {
-    owner,
+    owners,
     description,
     entityName,
     followers = [],
@@ -263,14 +265,14 @@ const DashboardDetails = ({
   };
 
   const onOwnerUpdate = useCallback(
-    async (newOwner?: Dashboard['owner']) => {
+    async (newOwners?: Dashboard['owners']) => {
       const updatedDashboard = {
         ...dashboardDetails,
-        owner: newOwner,
+        owners: newOwners,
       };
-      await onDashboardUpdate(updatedDashboard, 'owner');
+      await onDashboardUpdate(updatedDashboard, 'owners');
     },
-    [owner]
+    [owners]
   );
 
   const onTierUpdate = async (newTier?: Tag) => {
@@ -402,6 +404,17 @@ const DashboardDetails = ({
     );
   };
 
+  const hasEditGlossaryTermAccess = (record: ChartType) => {
+    const permissionsObject = chartsPermissionsArray?.find(
+      (chart) => chart.id === record.id
+    )?.permissions;
+
+    return (
+      !isUndefined(permissionsObject) &&
+      (permissionsObject.EditGlossaryTerms || permissionsObject.EditAll)
+    );
+  };
+
   const handleTagSelection = async (selectedTags: EntityTags[]) => {
     const updatedTags: TagLabel[] | undefined = createTagObject(selectedTags);
 
@@ -437,6 +450,7 @@ const DashboardDetails = ({
         key: 'chartName',
         width: 220,
         fixed: 'left',
+        sorter: getColumnSorter<ChartType, 'name'>('name'),
         render: (_, record) => {
           const chartName = getEntityName(record);
 
@@ -549,7 +563,7 @@ const DashboardDetails = ({
             entityFqn={decodedDashboardFQN}
             entityType={EntityType.DASHBOARD}
             handleTagSelection={handleChartTagSelection}
-            hasTagEditAccess={hasEditTagAccess(record)}
+            hasTagEditAccess={hasEditGlossaryTermAccess(record)}
             index={index}
             isReadOnly={deleted}
             record={record}
@@ -576,6 +590,7 @@ const DashboardDetails = ({
 
   const {
     editTagsPermission,
+    editGlossaryTermsPermission,
     editDescriptionPermission,
     editCustomAttributePermission,
     editAllPermission,
@@ -585,6 +600,10 @@ const DashboardDetails = ({
     () => ({
       editTagsPermission:
         (dashboardPermissions.EditTags || dashboardPermissions.EditAll) &&
+        !deleted,
+      editGlossaryTermsPermission:
+        (dashboardPermissions.EditGlossaryTerms ||
+          dashboardPermissions.EditAll) &&
         !deleted,
       editDescriptionPermission:
         (dashboardPermissions.EditDescription ||
@@ -612,10 +631,10 @@ const DashboardDetails = ({
         key: EntityTabs.DETAILS,
         children: (
           <Row gutter={[0, 16]} wrap={false}>
-            <Col className="tab-content-height" span={24}>
+            <Col className="tab-content-height-with-resizable-panel" span={24}>
               <ResizablePanels
-                applyDefaultStyle={false}
                 firstPanel={{
+                  className: 'entity-resizable-panel-container',
                   children: (
                     <div className="d-flex flex-col gap-4 p-t-sm m-x-lg">
                       <DescriptionV1
@@ -626,7 +645,7 @@ const DashboardDetails = ({
                         hasEditAccess={editDescriptionPermission}
                         isDescriptionExpanded={isEmpty(charts)}
                         isEdit={isEdit}
-                        owner={dashboardDetails.owner}
+                        owner={dashboardDetails.owners}
                         showActions={!deleted}
                         onCancel={onCancel}
                         onDescriptionEdit={onDescriptionEdit}
@@ -651,8 +670,7 @@ const DashboardDetails = ({
                       )}
                     </div>
                   ),
-                  minWidth: 800,
-                  flex: 0.87,
+                  ...COMMON_RESIZABLE_PANEL_CONFIG.LEFT_PANEL,
                 }}
                 secondPanel={{
                   children: (
@@ -663,6 +681,9 @@ const DashboardDetails = ({
                         domain={dashboardDetails?.domain}
                         editCustomAttributePermission={
                           editCustomAttributePermission
+                        }
+                        editGlossaryTermsPermission={
+                          editGlossaryTermsPermission
                         }
                         editTagPermission={editTagsPermission}
                         entityFQN={decodedDashboardFQN}
@@ -676,9 +697,9 @@ const DashboardDetails = ({
                       />
                     </div>
                   ),
-                  minWidth: 320,
-                  flex: 0.13,
-                  className: 'entity-resizable-right-panel-container',
+                  ...COMMON_RESIZABLE_PANEL_CONFIG.RIGHT_PANEL,
+                  className:
+                    'entity-resizable-right-panel-container entity-resizable-panel-container',
                 }}
               />
             </Col>
@@ -759,6 +780,7 @@ const DashboardDetails = ({
       onThreadLinkSelect,
       handleTagSelection,
       editTagsPermission,
+      editGlossaryTermsPermission,
       editLineagePermission,
       editDescriptionPermission,
       editCustomAttributePermission,
@@ -818,6 +840,9 @@ const DashboardDetails = ({
           onSave={onChartUpdate}
         />
       )}
+      <LimitWrapper resource="dashboard">
+        <></>
+      </LimitWrapper>
       {threadLink ? (
         <ActivityThreadPanel
           createThread={createThread}

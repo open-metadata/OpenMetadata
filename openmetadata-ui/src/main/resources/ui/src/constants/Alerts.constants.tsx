@@ -41,7 +41,10 @@ export const INTERNAL_CATEGORY_OPTIONS = filter(
 
 export const EXTERNAL_CATEGORY_OPTIONS = filter(
   SubscriptionType,
-  (value) => value !== SubscriptionType.ActivityFeed
+  (value) =>
+    // Exclude the following categories from the external dropdown
+    value !== SubscriptionType.ActivityFeed &&
+    value !== SubscriptionType.GovernanceWorkflowChangeEvent
 ).map((value) => ({
   label: (
     <div
@@ -67,5 +70,5 @@ export const DESTINATION_TYPE_BASED_PLACEHOLDERS = {
   [SubscriptionType.GChat]:
     'https://chat.googleapis.com/v1/spaces/XXXXX/messages?key=XXXXX',
   [SubscriptionType.Webhook]: 'https://example.com',
-  [SubscriptionType.Email]: 'Add ↵ seprated Email addresses',
+  [SubscriptionType.Email]: 'Add ↵ separated Email addresses',
 };

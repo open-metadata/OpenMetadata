@@ -1,8 +1,8 @@
 # Profiler
 
-This workflow allows you to profile your table assets and gain insights into their structure (e.g. of metrics computed: `max`, `min`, `mean`, etc. The full list can be found [here](https://docs.open-metadata.org/connectors/ingestion/workflows/profiler/metrics)).
+This workflow allows you to profile your table assets and gain insights into their structure (e.g. of metrics computed: `max`, `min`, `mean`, etc. The full list can be found [here](https://docs.open-metadata.org/how-to-guides/data-quality-observability/profiler/metrics)).
 
-We recommend to check the [best practices](https://docs.open-metadata.org/connectors/ingestion/workflows/profiler#profiler-best-practices) before creating a profiler workflow to avoid long-running pipelines and unexpected costs.
+We recommend to check the [best practices](https://docs.open-metadata.org/how-to-guides/data-quality-observability/profiler/workflow#profiler-best-practices) before creating a profiler workflow to avoid long-running pipelines and unexpected costs.
 
 ## Configuration
 
@@ -106,6 +106,16 @@ $$
 $$section
 ### Profile Sample $(id="profileSample")
 Percentage of data or number of rows to use when sampling tables to compute the profiler metrics. By default (i.e. if left blank), the profiler will run against the entire table.
+$$
+
+$$section
+### Sampling Method Type $(id="samplingMethodType")
+
+**This parameter is effective for Snowflake only**
+
+The sampling method type can be set to **BERNOULLI** or **SYSTEM**. You can find the difference of two values in the document of the Snowflake. When you choice **BERNOULLI**, it will scan full rows in the table even though small value is set at the **Profile Sample**. However, it has less restlictions than **SYSTEM**.
+
+If no option is choiced, the default is **BERNOULLI**.
 $$
 
 $$section

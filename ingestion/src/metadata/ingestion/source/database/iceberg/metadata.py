@@ -12,7 +12,7 @@
 Iceberg source methods.
 """
 import traceback
-from typing import Any, Iterable, Optional, Tuple, Union
+from typing import Any, Iterable, Optional, Tuple
 
 import pyiceberg
 import pyiceberg.exceptions
@@ -21,12 +21,10 @@ from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequ
 from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
 )
-from metadata.generated.schema.api.data.createQuery import CreateQueryRequest
 from metadata.generated.schema.api.data.createStoredProcedure import (
     CreateStoredProcedureRequest,
 )
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
-from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import Table, TableType
@@ -43,7 +41,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.basic import EntityName, FullyQualifiedEntityName
-from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
@@ -228,7 +226,7 @@ class IcebergSource(DatabaseServiceSource):
                     )
                 )
 
-    def get_owner_ref(self, table_name: str) -> Optional[EntityReference]:
+    def get_owner_ref(self, table_name: str) -> Optional[EntityReferenceList]:
         owner = get_owner_from_table(
             self.context.get().iceberg_table, self.service_connection.ownershipProperty
         )
@@ -253,15 +251,15 @@ class IcebergSource(DatabaseServiceSource):
         table_name, table_type = table_name_and_type
         iceberg_table = self.context.get().iceberg_table
         try:
-            owner = self.get_owner_ref(table_name)
+            owners = self.get_owner_ref(table_name)
             table = IcebergTable.from_pyiceberg(
-                table_name, table_type, owner, iceberg_table
+                table_name, table_type, owners, iceberg_table
             )
             table_request = CreateTableRequest(
                 name=EntityName(table.name),
                 tableType=table.tableType,
                 description=table.description,
-                owner=table.owner,
+                owners=table.owners,
                 columns=table.columns,
                 tablePartition=table.tablePartition,
                 databaseSchema=FullyQualifiedEntityName(
@@ -293,13 +291,6 @@ class IcebergSource(DatabaseServiceSource):
         """
         yield from []
 
-    def yield_view_lineage(self) -> Iterable[Either[AddLineageRequest]]:
-        """
-        From topology.
-        Parses view definition to get lineage information
-        """
-        yield from []
-
     def get_stored_procedures(self) -> Iterable[Any]:
         """Not Implemented"""
 
@@ -307,12 +298,6 @@ class IcebergSource(DatabaseServiceSource):
         self, stored_procedure: Any
     ) -> Iterable[Either[CreateStoredProcedureRequest]]:
         """Process the stored procedure information"""
-        yield from []
-
-    def yield_procedure_lineage_and_queries(
-        self,
-    ) -> Iterable[Either[Union[AddLineageRequest, CreateQueryRequest]]]:
-        """Extracts the lineage information from Stored Procedures"""
         yield from []
 
     def close(self):

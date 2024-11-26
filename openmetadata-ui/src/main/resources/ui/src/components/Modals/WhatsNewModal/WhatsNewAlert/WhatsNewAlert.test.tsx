@@ -12,13 +12,13 @@
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
-import { useLocation } from 'react-router-dom';
 import { useAuth } from '../../../../hooks/authHooks';
+import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
 import WhatsNewAlert from './WhatsNewAlert.component';
 
-jest.mock('react-router-dom', () => ({
-  useLocation: jest.fn().mockImplementation(() => ({ pathname: '/my-data' })),
-}));
+jest.mock('../../../../hooks/useCustomLocation/useCustomLocation', () => {
+  return jest.fn().mockImplementation(() => ({ pathname: '/my-data' }));
+});
 
 jest.mock('../../../../hooks/authHooks', () => ({
   useAuth: jest.fn().mockImplementation(() => ({
@@ -63,7 +63,7 @@ describe('WhatsNewAlert', () => {
   });
 
   it('should not render the alert when the user is not on the home page', () => {
-    (useLocation as jest.Mock).mockImplementation(() => ({
+    (useCustomLocation as jest.Mock).mockImplementation(() => ({
       pathname: '/',
     }));
 

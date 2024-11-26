@@ -11,12 +11,15 @@
 """
 Workflow definition for the profiler
 """
+
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.ingestion.api.steps import Processor, Sink
+from metadata.ingestion.connections.test_connections import (
+    raise_test_connection_exception,
+)
 from metadata.ingestion.source.connections import get_test_connection_fn
-from metadata.pii.processor import PIIProcessor
 from metadata.profiler.processor.processor import ProfilerProcessor
 from metadata.profiler.source.metadata import OpenMetadataSource
 from metadata.profiler.source.metadata_ext import OpenMetadataSourceExt
@@ -44,10 +47,11 @@ class ProfilerWorkflow(IngestionWorkflow):
 
     def _get_source_class(self):
         if self.config.source.serviceName:
+            self.import_source_class()
             return OpenMetadataSource
         logger.info(
-            "Database Service name not provided, we will scan all the tables"
-            "available within data source and locate table entity in OpenMetadata"
+            "Database Service name not provided, we will scan all the tables "
+            "available within data source and locate table entity in OpenMetadata "
             "to ingest profiler data."
         )
         return OpenMetadataSourceExt
@@ -57,16 +61,17 @@ class ProfilerWorkflow(IngestionWorkflow):
         self.source = source_class.create(self.config.model_dump(), self.metadata)
 
         profiler_processor = self._get_profiler_processor()
-        pii_processor = self._get_pii_processor()
         sink = self._get_sink()
-        self.steps = (profiler_processor, pii_processor, sink)
 
-    def test_connection(self):
+        self.steps = (profiler_processor, sink)
+
+    def test_connection(self) -> None:
         service_config = self.config.source.serviceConnection.root.config
         conn = get_ssl_connection(service_config)
 
         test_connection_fn = get_test_connection_fn(service_config)
-        test_connection_fn(self.metadata, conn, service_config)
+        result = test_connection_fn(self.metadata, conn, service_config)
+        raise_test_connection_exception(result)
 
     def _get_sink(self) -> Sink:
         sink_type = self.config.sink.type
@@ -79,6 +84,3 @@ class ProfilerWorkflow(IngestionWorkflow):
 
     def _get_profiler_processor(self) -> Processor:
         return ProfilerProcessor.create(self.config.model_dump(), self.metadata)
-
-    def _get_pii_processor(self) -> Processor:
-        return PIIProcessor.create(self.config.model_dump(), self.metadata)

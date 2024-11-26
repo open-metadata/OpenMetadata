@@ -22,31 +22,38 @@ import { useHistory } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import FormBuilder from '../../components/common/FormBuilder/FormBuilder';
 import Loader from '../../components/common/Loader/Loader';
-import { TestSuiteIngestionDataType } from '../../components/DataQuality/AddDataQualityTest/AddDataQualityTest.interface';
-import TestSuiteScheduler from '../../components/DataQuality/AddDataQualityTest/components/TestSuiteScheduler';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import applicationSchemaClassBase from '../../components/Settings/Applications/AppDetails/ApplicationsClassBase';
+import {
+  default as applicationSchemaClassBase,
+  default as applicationsClassBase,
+} from '../../components/Settings/Applications/AppDetails/ApplicationsClassBase';
 import AppInstallVerifyCard from '../../components/Settings/Applications/AppInstallVerifyCard/AppInstallVerifyCard.component';
+import ScheduleInterval from '../../components/Settings/Services/AddIngestion/Steps/ScheduleInterval';
+import { WorkflowExtraConfig } from '../../components/Settings/Services/AddIngestion/Steps/ScheduleInterval.interface';
 import IngestionStepper from '../../components/Settings/Services/Ingestion/IngestionStepper/IngestionStepper.component';
 import { STEPS_FOR_APP_INSTALL } from '../../constants/Applications.constant';
 import { GlobalSettingOptions } from '../../constants/GlobalSettings.constants';
+import { useLimitStore } from '../../context/LimitsProvider/useLimitsStore';
+import { TabSpecificField } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
-import { AppType } from '../../generated/entity/applications/app';
 import {
   CreateAppRequest,
   ScheduleTimeline,
 } from '../../generated/entity/applications/createAppRequest';
-import { AppMarketPlaceDefinition } from '../../generated/entity/applications/marketplace/appMarketPlaceDefinition';
+import {
+  AppMarketPlaceDefinition,
+  ScheduleType,
+} from '../../generated/entity/applications/marketplace/appMarketPlaceDefinition';
 import { useFqn } from '../../hooks/useFqn';
 import { installApplication } from '../../rest/applicationAPI';
 import { getMarketPlaceApplicationByFqn } from '../../rest/applicationMarketPlaceAPI';
 import { getEntityMissingError } from '../../utils/CommonUtils';
-import { getCronInitialValue } from '../../utils/CronUtils';
 import { formatFormDataForSubmit } from '../../utils/JSONSchemaFormUtils';
 import {
   getMarketPlaceAppDetailsPath,
   getSettingPath,
 } from '../../utils/RouterUtils';
+import { getCronDefaultValue } from '../../utils/SchedularUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import './app-install.less';
 
@@ -61,40 +68,47 @@ const AppInstall = () => {
   const [appConfiguration, setAppConfiguration] = useState();
   const [jsonSchema, setJsonSchema] = useState<RJSFSchema>();
   const UiSchema = applicationSchemaClassBase.getJSONUISchema();
+  const { config, getResourceLimit } = useLimitStore();
 
-  const stepperList = useMemo(
-    () =>
-      !appData?.allowConfiguration
-        ? STEPS_FOR_APP_INSTALL.filter((item) => item.step !== 2)
-        : STEPS_FOR_APP_INSTALL,
-    [appData]
-  );
+  const { pipelineSchedules } =
+    config?.limits?.config.featureLimits.find(
+      (feature) => feature.name === 'app'
+    ) ?? {};
 
-  const { initialOptions, initialValue } = useMemo(() => {
-    let initialOptions;
-
-    if (appData?.name === 'DataInsightsReportApplication') {
-      initialOptions = ['Week'];
-    } else if (appData?.appType === AppType.External) {
-      initialOptions = ['Day'];
+  const stepperList = useMemo(() => {
+    if (appData?.scheduleType === ScheduleType.NoSchedule) {
+      return STEPS_FOR_APP_INSTALL.filter((item) => item.step !== 3);
     }
+
+    if (!appData?.allowConfiguration) {
+      return STEPS_FOR_APP_INSTALL.filter((item) => item.step !== 2);
+    }
+
+    return STEPS_FOR_APP_INSTALL;
+  }, [appData]);
+
+  const { initialOptions, defaultValue } = useMemo(() => {
+    if (!appData) {
+      return {};
+    }
+
+    const initialOptions = applicationsClassBase.getScheduleOptionsForApp(
+      appData?.name,
+      appData?.appType,
+      pipelineSchedules
+    );
 
     return {
       initialOptions,
-      initialValue: {
-        repeatFrequency: getCronInitialValue(
-          appData?.appType ?? AppType.Internal,
-          appData?.name ?? ''
-        ),
-      },
+      defaultValue: getCronDefaultValue(appData?.name ?? ''),
     };
-  }, [appData?.name, appData?.appType]);
+  }, [appData?.name, appData?.appType, pipelineSchedules, config?.enable]);
 
   const fetchAppDetails = useCallback(async () => {
     setIsLoading(true);
     try {
       const data = await getMarketPlaceApplicationByFqn(fqn, {
-        fields: 'owner',
+        fields: TabSpecificField.OWNERS,
       });
       setAppData(data);
 
@@ -116,25 +130,16 @@ const AppInstall = () => {
     history.push(getSettingPath(GlobalSettingOptions.APPLICATIONS));
   };
 
-  const onSubmit = async (updatedValue: TestSuiteIngestionDataType) => {
-    const { repeatFrequency } = updatedValue;
+  const installApp = async (data: CreateAppRequest) => {
     try {
       setIsSavingLoading(true);
-      const data: CreateAppRequest = {
-        appConfiguration: appConfiguration ?? appData?.appConfiguration,
-        appSchedule: {
-          scheduleTimeline: isEmpty(repeatFrequency)
-            ? ScheduleTimeline.None
-            : ScheduleTimeline.Custom,
-          ...(repeatFrequency ? { cronExpression: repeatFrequency } : {}),
-        },
-        name: fqn,
-        description: appData?.description,
-        displayName: appData?.displayName,
-      };
+
       await installApplication(data);
 
       showSuccessToast(t('message.app-installed-successfully'));
+
+      // Update current count when Create / Delete operation performed
+      await getResourceLimit('app', true, true);
 
       goToAppPage();
     } catch (error) {
@@ -144,10 +149,37 @@ const AppInstall = () => {
     }
   };
 
+  const onSubmit = async (updatedValue: WorkflowExtraConfig) => {
+    const { cron } = updatedValue;
+    const data: CreateAppRequest = {
+      appConfiguration: appConfiguration ?? appData?.appConfiguration,
+      appSchedule: {
+        scheduleTimeline: isEmpty(cron)
+          ? ScheduleTimeline.None
+          : ScheduleTimeline.Custom,
+        ...(cron ? { cronExpression: cron } : {}),
+      },
+      name: fqn,
+      description: appData?.description,
+      displayName: appData?.displayName,
+    };
+    installApp(data);
+  };
+
   const onSaveConfiguration = (data: IChangeEvent) => {
     const updatedFormData = formatFormDataForSubmit(data.formData);
     setAppConfiguration(updatedFormData);
-    setActiveServiceStep(3);
+    if (appData?.scheduleType !== ScheduleType.NoSchedule) {
+      setActiveServiceStep(3);
+    } else {
+      const data: CreateAppRequest = {
+        appConfiguration: updatedFormData,
+        name: fqn,
+        description: appData?.description,
+        displayName: appData?.displayName,
+      };
+      installApp(data);
+    }
   };
 
   const RenderSelectedTab = useCallback(() => {
@@ -174,7 +206,7 @@ const AppInstall = () => {
 
       case 2:
         return (
-          <div className="w-500 p-md border rounded-4">
+          <div className="w-4/5 p-md border rounded-4">
             <FormBuilder
               showFormHeader
               useSelectWidget
@@ -193,21 +225,28 @@ const AppInstall = () => {
         return (
           <div className="w-500 p-md border rounded-4">
             <Typography.Title level={5}>{t('label.schedule')}</Typography.Title>
-            <TestSuiteScheduler
+            <ScheduleInterval
+              defaultSchedule={defaultValue}
               includePeriodOptions={initialOptions}
-              initialData={initialValue}
-              isLoading={isSavingLoading}
-              onCancel={() =>
+              status={isSavingLoading ? 'waiting' : 'initial'}
+              onBack={() =>
                 setActiveServiceStep(appData.allowConfiguration ? 2 : 1)
               }
-              onSubmit={onSubmit}
+              onDeploy={onSubmit}
             />
           </div>
         );
       default:
         return <></>;
     }
-  }, [activeServiceStep, appData, jsonSchema, initialOptions, isSavingLoading]);
+  }, [
+    activeServiceStep,
+    appData,
+    jsonSchema,
+    initialOptions,
+    defaultValue,
+    isSavingLoading,
+  ]);
 
   useEffect(() => {
     fetchAppDetails();

@@ -23,6 +23,8 @@ import { Operation } from '../../generated/entity/policies/policy';
 import AddCustomMetricPage from '../../pages/AddCustomMetricPage/AddCustomMetricPage';
 import { CustomizablePage } from '../../pages/CustomizablePage/CustomizablePage';
 import DataQualityPage from '../../pages/DataQuality/DataQualityPage';
+import ForbiddenPage from '../../pages/ForbiddenPage/ForbiddenPage';
+import TagPage from '../../pages/TagPage/TagPage';
 import { checkPermission, userPermissions } from '../../utils/PermissionsUtils';
 import AdminProtectedRoute from './AdminProtectedRoute';
 import withSuspenseFallback from './withSuspenseFallback';
@@ -253,6 +255,18 @@ const AddObservabilityPage = withSuspenseFallback(
   )
 );
 
+const MetricListPage = withSuspenseFallback(
+  React.lazy(
+    () => import('../../pages/MetricsPage/MetricListPage/MetricListPage')
+  )
+);
+
+const AddMetricPage = withSuspenseFallback(
+  React.lazy(
+    () => import('../../pages/MetricsPage/AddMetricPage/AddMetricPage')
+  )
+);
+
 const AuthenticatedAppRouter: FunctionComponent = () => {
   const { permissions } = usePermissionProvider();
 
@@ -265,6 +279,8 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
 
   return (
     <Switch>
+      <Route exact component={ForbiddenPage} path={ROUTES.FORBIDDEN} />
+
       <Route exact component={MyDataPage} path={ROUTES.MY_DATA} />
       <Route exact component={TourPageComponent} path={ROUTES.TOUR} />
       <Route exact component={ExplorePageV1} path={ROUTES.EXPLORE} />
@@ -444,16 +460,24 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <AdminProtectedRoute
         exact
         component={ObservabilityAlertsPage}
+        hasPermission={userPermissions.hasViewPermissions(
+          ResourceEntity.EVENT_SUBSCRIPTION,
+          permissions
+        )}
         path={ROUTES.OBSERVABILITY_ALERTS}
       />
 
       <AdminProtectedRoute
         exact
         component={AlertDetailsPage}
-        path={ROUTES.OBSERVABILITY_ALERT_DETAILS}
+        hasPermission={userPermissions.hasViewPermissions(
+          ResourceEntity.EVENT_SUBSCRIPTION,
+          permissions
+        )}
+        path={ROUTES.OBSERVABILITY_ALERT_DETAILS_WITH_TAB}
       />
 
-      <AdminProtectedRoute
+      <Route
         exact
         component={AddObservabilityPage}
         path={[
@@ -483,11 +507,20 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
 
       <Route component={ClassificationRouter} path="/tags" />
       <Route
+        exact
+        component={TagPage}
+        path={[ROUTES.TAG_ITEM, ROUTES.TAG_ITEM_WITH_TAB]}
+      />
+      <Route
         component={GlossaryRouter}
         path={['/glossary', '/glossary-term']}
       />
+
       <Route component={SettingsRouter} path="/settings" />
       <Route component={DomainRouter} path="/domain" />
+
+      <Route exact component={MetricListPage} path={ROUTES.METRICS} />
+      <Route exact component={AddMetricPage} path={ROUTES.ADD_METRIC} />
 
       <Route
         component={EntityRouter}

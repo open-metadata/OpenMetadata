@@ -19,14 +19,15 @@ from abc import ABC, abstractmethod
 from typing import IO, Any, Optional
 
 import yaml
-from pydantic import BaseModel
+from pydantic import ConfigDict
+
+from metadata.ingestion.models.custom_pydantic import BaseModel
 
 
 class ConfigModel(BaseModel):
     """Class definition for config model"""
 
-    class Config:
-        extra = "forbid"
+    model_config = ConfigDict(extra="forbid")
 
 
 class DynamicTypedConfig(ConfigModel):

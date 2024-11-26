@@ -20,6 +20,7 @@ import userEvent from '@testing-library/user-event';
 import { Table as AntdTable } from 'antd';
 import React from 'react';
 import { AppType } from '../../../../generated/entity/applications/app';
+import { Status } from '../../../../generated/entity/applications/appRunRecord';
 import { mockApplicationData } from '../../../../mocks/rests/applicationAPI.mock';
 import AppRunsHistory from './AppRunsHistory.component';
 
@@ -122,6 +123,9 @@ jest.mock('react-router-dom', () => ({
 
 jest.mock('../../../../constants/constants', () => ({
   NO_DATA_PLACEHOLDER: '--',
+  STATUS_LABEL: {
+    [Status.Success]: 'Success',
+  },
 }));
 
 const mockProps1 = {
@@ -135,6 +139,15 @@ const mockProps2 = {
   appData: {
     ...mockProps1.appData,
     appType: AppType.External,
+  },
+};
+
+const mockProps3 = {
+  ...mockProps1,
+  appData: {
+    ...mockProps1.appData,
+    supportsInterrupt: true,
+    status: Status.Running,
   },
 };
 
@@ -156,6 +169,11 @@ describe('AppRunsHistory component', () => {
     expect(screen.queryByText('--')).not.toBeInTheDocument();
 
     expect(screen.getByText('NextPrevious')).toBeInTheDocument();
+
+    // Verify Stop button is not present as initial status is success
+    const stopButton = screen.queryByTestId('stop-button');
+
+    expect(stopButton).not.toBeInTheDocument();
   });
 
   it('should show the error toast if fail in fetching app history', async () => {
@@ -185,9 +203,13 @@ describe('AppRunsHistory component', () => {
 
   it('should fetch data based on startTs and endTs for external app onclick of NextPrevious', async () => {
     jest.useFakeTimers('modern').setSystemTime(new Date('2024-02-05'));
-
     render(<AppRunsHistory {...mockProps2} />);
     await waitForElementToBeRemoved(() => screen.getByText('TableLoader'));
+
+    expect(mockGetApplicationRuns).toHaveBeenCalledWith('mockFQN', {
+      startTs: 'startDay',
+      endTs: new Date('2024-02-05').valueOf(),
+    });
 
     userEvent.click(screen.getByRole('button', { name: 'NextPrevious' }));
     await waitForElementToBeRemoved(() => screen.getByText('TableLoader'));
@@ -195,10 +217,8 @@ describe('AppRunsHistory component', () => {
     expect(mockHandlePageChange).toHaveBeenCalledWith(6);
     expect(mockGetApplicationRuns).toHaveBeenCalledWith('mockFQN', {
       startTs: 'startDay',
-      endTs: Date.now(),
+      endTs: new Date('2024-02-05').valueOf(),
     });
-
-    jest.useRealTimers();
   });
 
   it('should expose children method to parent using ref', async () => {
@@ -240,5 +260,33 @@ describe('AppRunsHistory component', () => {
     await waitForElementToBeRemoved(() => screen.getByText('TableLoader'));
 
     expect(screen.getByText('--')).toBeInTheDocument();
+  });
+
+  it('should render the stop button when conditions are met', async () => {
+    const mockRunRecordWithStopButton = {
+      ...mockApplicationData,
+      status: Status.Running, // Ensures Stop button condition is met
+      supportsInterrupt: true,
+    };
+    mockGetApplicationRuns.mockReturnValueOnce({
+      data: [mockRunRecordWithStopButton],
+      paging: {
+        offset: 0,
+        total: 1,
+      },
+    });
+
+    render(<AppRunsHistory {...mockProps3} />);
+    await waitForElementToBeRemoved(() => screen.getByText('TableLoader'));
+
+    const stopButton = screen.getByTestId('stop-button');
+
+    expect(stopButton).toBeInTheDocument();
+
+    act(() => {
+      userEvent.click(stopButton);
+    });
+
+    expect(screen.getByTestId('stop-modal')).toBeInTheDocument();
   });
 });

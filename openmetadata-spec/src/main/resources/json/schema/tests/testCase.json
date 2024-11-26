@@ -73,13 +73,17 @@
       "description": "Latest test case result obtained for this test case.",
       "$ref": "./basic.json#/definitions/testCaseResult"
     },
+    "testCaseStatus": {
+      "description": "Status of Test Case run.",
+      "$ref": "./basic.json#/definitions/testCaseStatus"
+    },
     "version": {
       "description": "Metadata version of the entity.",
       "$ref": "../type/entityHistory.json#/definitions/entityVersion"
     },
-    "owner": {
-      "description": "Owner of this Pipeline.",
-      "$ref": "../type/entityReference.json",
+    "owners": {
+      "description": "Owners of this Pipeline.",
+      "$ref": "../type/entityReferenceList.json",
       "default": null
     },
     "updatedAt": {
@@ -135,7 +139,7 @@
       "items": {
         "$ref": "../type/tagLabel.json"
       },
-      "default": null
+      "default": []
     }
   },
   "required": [

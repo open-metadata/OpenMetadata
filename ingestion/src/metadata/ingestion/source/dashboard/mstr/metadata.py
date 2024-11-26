@@ -91,6 +91,18 @@ class MstrSource(DashboardServiceSource):
         """
         return dashboard.name
 
+    def get_project_name(self, dashboard_details: MstrDashboard) -> Optional[str]:
+        """
+        Get dashboard project name
+        """
+        try:
+            return dashboard_details.projectName
+        except Exception as exc:
+            logger.debug(
+                f"Cannot get project name from dashboard [{dashboard_details.name}] - [{exc}]"
+            )
+        return None
+
     def get_dashboard_details(self, dashboard: MstrDashboard) -> MstrDashboardDetails:
         """
         Get Dashboard Details
@@ -106,40 +118,41 @@ class MstrSource(DashboardServiceSource):
         """
         Method to Get Dashboard Entity
         """
-        try:
-            dashboard_url = (
-                f"{clean_uri(self.service_connection.hostPort)}/MicroStrategyLibrary/app/"
-                f"{dashboard_details.projectId}/{dashboard_details.id}"
-            )
-            dashboard_request = CreateDashboardRequest(
-                name=EntityName(dashboard_details.id),
-                displayName=dashboard_details.name,
-                sourceUrl=SourceUrl(dashboard_url),
-                project=dashboard_details.projectName,
-                charts=[
-                    FullyQualifiedEntityName(
-                        fqn.build(
-                            self.metadata,
-                            entity_type=Chart,
-                            service_name=self.context.get().dashboard_service,
-                            chart_name=chart,
-                        )
-                    )
-                    for chart in self.context.get().charts or []
-                ],
-                service=self.context.get().dashboard_service,
-                owner=self.get_owner_ref(dashboard_details=dashboard_details),
-            )
-            yield Either(right=dashboard_request)
-            self.register_record(dashboard_request=dashboard_request)
-        except Exception as exc:
-            yield Either(
-                left=StackTraceError(
-                    name=dashboard_details.id,
-                    error=f"Error yielding dashboard for {dashboard_details}: {exc}",
-                    stackTrace=traceback.format_exc(),
+        if dashboard_details:
+            try:
+                dashboard_url = (
+                    f"{clean_uri(self.service_connection.hostPort)}/MicroStrategyLibrary/app/"
+                    f"{dashboard_details.projectId}/{dashboard_details.id}"
                 )
-            )
+                dashboard_request = CreateDashboardRequest(
+                    name=EntityName(dashboard_details.id),
+                    displayName=dashboard_details.name,
+                    sourceUrl=SourceUrl(dashboard_url),
+                    project=dashboard_details.projectName,
+                    charts=[
+                        FullyQualifiedEntityName(
+                            fqn.build(
+                                self.metadata,
+                                entity_type=Chart,
+                                service_name=self.context.get().dashboard_service,
+                                chart_name=chart,
+                            )
+                        )
+                        for chart in self.context.get().charts or []
+                    ],
+                    service=self.context.get().dashboard_service,
+                    owners=self.get_owner_ref(dashboard_details=dashboard_details),
+                )
+                yield Either(right=dashboard_request)
+                self.register_record(dashboard_request=dashboard_request)
+            except Exception as exc:
+                yield Either(
+                    left=StackTraceError(
+                        name=dashboard_details.id,
+                        error=f"Error yielding dashboard for {dashboard_details}: {exc}",
+                        stackTrace=traceback.format_exc(),
+                    )
+                )
 
     def yield_dashboard_lineage_details(
         self, dashboard_details: MstrDashboardDetails, db_service_name: str
@@ -156,14 +169,15 @@ class MstrSource(DashboardServiceSource):
         Returns:
             Iterable[CreateChartRequest]
         """
-        try:
-            for chapter in dashboard_details.chapters:
-                for page in chapter.pages:
-                    yield from self._yield_chart_from_visualization(page)
+        if dashboard_details:
+            try:
+                for chapter in dashboard_details.chapters:
+                    for page in chapter.pages:
+                        yield from self._yield_chart_from_visualization(page)
 
-        except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.warning(f"Error creating dashboard: {exc}")
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.warning(f"Error creating dashboard: {exc}")
 
     def _yield_chart_from_visualization(
         self, page: MstrPage
@@ -192,3 +206,8 @@ class MstrSource(DashboardServiceSource):
                         stackTrace=traceback.format_exc(),
                     )
                 )
+
+    def close(self):
+        # close the api session
+        self.client.close_api_session()
+        self.metadata.close()

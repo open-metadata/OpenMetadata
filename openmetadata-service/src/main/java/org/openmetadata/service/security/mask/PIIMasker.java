@@ -184,7 +184,7 @@ public class PIIMasker {
                         Entity.getEntityByName(
                             Entity.TABLE,
                             testCaseLink.getEntityFQN(),
-                            "owner,tags,columns",
+                            "owners,tags,columns",
                             Include.NON_DELETED);
                     entityFQNToTable.put(testCaseLink.getEntityFQN(), table);
                   }
@@ -205,7 +205,7 @@ public class PIIMasker {
                     Column col = referencedColumn.get();
                     // We need the table owner to know if we can authorize the access
                     boolean authorizePII =
-                        authorizer.authorizePII(securityContext, table.getOwner());
+                        authorizer.authorizePII(securityContext, table.getOwners());
                     if (!authorizePII) return PIIMasker.getTestCase(col, testCase);
                     return testCase;
                   }
@@ -232,7 +232,8 @@ public class PIIMasker {
         queries.getData().stream()
             .map(
                 query -> {
-                  boolean authorizePII = authorizer.authorizePII(securityContext, query.getOwner());
+                  boolean authorizePII =
+                      authorizer.authorizePII(securityContext, query.getOwners());
                   if (!authorizePII) return PIIMasker.getQuery(query);
                   return query;
                 })

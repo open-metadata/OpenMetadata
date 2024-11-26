@@ -72,7 +72,7 @@ After clicking Next, you will be redirected to the Scheduling form. This will be
 
 ## dbt Ingestion
 
-We can also generate lineage through [dbt ingestion](/connectors/ingestion/workflows/dbt/ingest-dbt-ui). The dbt workflow can fetch queries that carry lineage information. For a dbt ingestion pipeline, the path to the Catalog and Manifest files must be specified. We also fetch the column level lineage through dbt.
+We can also generate lineage through [dbt ingestion](/connectors/ingestion/workflows/dbt/configure-dbt-workflow-from-ui). The dbt workflow can fetch queries that carry lineage information. For a dbt ingestion pipeline, the path to the Catalog and Manifest files must be specified. We also fetch the column level lineage through dbt.
 
 You can learn more about [lineage ingestion here](/connectors/ingestion/lineage).
 

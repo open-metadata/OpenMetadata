@@ -12,7 +12,7 @@
  */
 
 import { isEmpty } from 'lodash';
-import { UserManager, WebStorageStateStore } from 'oidc-client';
+import { User, UserManager, WebStorageStateStore } from 'oidc-client';
 import React, {
   ComponentType,
   forwardRef,
@@ -25,6 +25,7 @@ import { Callback, makeAuthenticator, makeUserManager } from 'react-oidc';
 import { Redirect, Route, Switch, useHistory } from 'react-router-dom';
 import { ROUTES } from '../../../constants/constants';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import SignInPage from '../../../pages/LoginPage/SignInPage';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import Loader from '../../common/Loader/Loader';
@@ -74,6 +75,7 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
       isApplicationLoading,
     } = useApplicationStore();
     const history = useHistory();
+    const location = useCustomLocation();
     const userManager = useMemo(
       () => makeUserManager({ ...userConfig, silentRequestTimeout: 20000 }),
       [userConfig]
@@ -95,22 +97,28 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
 
     // Performs silent signIn and returns with IDToken
     const signInSilently = async () => {
-      const user = await userManager.signinSilent();
-      setOidcToken(user.id_token);
+      // For OIDC token will be coming as silent-callback as an IFram hence not returning new token here
+      await userManager.signinSilent();
+    };
 
-      return user.id_token;
+    const handleSilentSignInSuccess = (user: User) => {
+      // On success update token in store and update axios interceptors
+      setOidcToken(user.id_token);
+      updateAxiosInterceptors();
+    };
+
+    const handleSilentSignInFailure = (error: unknown) => {
+      // eslint-disable-next-line no-console
+      console.error(error);
+
+      onLogoutSuccess();
+      history.push(ROUTES.SIGNIN);
     };
 
     useImperativeHandle(ref, () => ({
-      invokeLogin() {
-        login();
-      },
-      invokeLogout() {
-        logout();
-      },
-      renewIdToken() {
-        return signInSilently();
-      },
+      invokeLogin: login,
+      invokeLogout: logout,
+      renewIdToken: signInSilently,
     }));
 
     const AppWithAuth = getAuthenticator(childComponentType, userManager);
@@ -158,28 +166,18 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
           <Route
             path={ROUTES.SILENT_CALLBACK}
             render={() => (
-              <>
-                <Callback
-                  userManager={userManager}
-                  onError={(error) => {
-                    // eslint-disable-next-line no-console
-                    console.error(error);
-
-                    history.push(ROUTES.SIGNIN);
-                  }}
-                  onSuccess={(user) => {
-                    setOidcToken(user.id_token);
-                    updateAxiosInterceptors();
-                  }}
-                />
-              </>
+              <Callback
+                userManager={userManager}
+                onError={handleSilentSignInFailure}
+                onSuccess={handleSilentSignInSuccess}
+              />
             )}
           />
 
-          {!window.location.pathname.includes(ROUTES.SILENT_CALLBACK) &&
+          {!location.pathname.includes(ROUTES.SILENT_CALLBACK) &&
             // render the children only if user is authenticated
             (isAuthenticated ? (
-              !window.location.pathname.includes(ROUTES.SILENT_CALLBACK) && (
+              !location.pathname.includes(ROUTES.SILENT_CALLBACK) && (
                 <Fragment>{children}</Fragment>
               )
             ) : // render the sign in page if user is not authenticated and not signing up

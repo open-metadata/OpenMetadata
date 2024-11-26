@@ -15,15 +15,9 @@ import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import QueryString from 'qs';
-import React, {
-  ReactNode,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useHistory, useLocation, useParams } from 'react-router-dom';
+import { Link, useHistory } from 'react-router-dom';
 import {
   getEntityDetailsPath,
   INITIAL_PAGING_VALUE,
@@ -35,11 +29,17 @@ import {
   ERROR_PLACEHOLDER_TYPE,
   SORT_ORDER,
 } from '../../../../enums/common.enum';
-import { EntityTabs, EntityType } from '../../../../enums/entity.enum';
+import {
+  EntityTabs,
+  EntityType,
+  TabSpecificField,
+} from '../../../../enums/entity.enum';
 import { EntityReference } from '../../../../generated/entity/type';
 import { TestSuite, TestSummary } from '../../../../generated/tests/testCase';
 import { usePaging } from '../../../../hooks/paging/usePaging';
+import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
 import { DataQualityPageTabs } from '../../../../pages/DataQuality/DataQualityPage.interface';
+import { useDataQualityProvider } from '../../../../pages/DataQuality/DataQualityProvider';
 import {
   getListTestSuitesBySearch,
   ListTestSuitePramsBySearch,
@@ -58,14 +58,18 @@ import Table from '../../../common/Table/Table';
 import { UserTeamSelectableList } from '../../../common/UserTeamSelectableList/UserTeamSelectableList.component';
 import { TableProfilerTab } from '../../../Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
 import ProfilerProgressWidget from '../../../Database/Profiler/TableProfiler/ProfilerProgressWidget/ProfilerProgressWidget';
-import { DataQualitySearchParams } from '../../DataQuality.interface';
+import { TestSuiteSearchParams } from '../../DataQuality.interface';
+import { SummaryPanel } from '../../SummaryPannel/SummaryPanel.component';
 
-export const TestSuites = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
+export const TestSuites = () => {
   const { t } = useTranslation();
-  const { tab = DataQualityPageTabs.TABLES } =
-    useParams<{ tab: DataQualityPageTabs }>();
   const history = useHistory();
-  const location = useLocation();
+  const location = useCustomLocation();
+  const {
+    isTestCaseSummaryLoading,
+    testCaseSummary,
+    activeTab: tab,
+  } = useDataQualityProvider();
 
   const params = useMemo(() => {
     const search = location.search;
@@ -74,7 +78,7 @@ export const TestSuites = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
       search.startsWith('?') ? search.substring(1) : search
     );
 
-    return params as DataQualitySearchParams;
+    return params as TestSuiteSearchParams;
   }, [location]);
   const { searchValue, owner } = params;
   const selectedOwner = useMemo(
@@ -177,10 +181,10 @@ export const TestSuites = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
         },
       },
       {
-        title: t('label.owner'),
-        dataIndex: 'owner',
-        key: 'owner',
-        render: (owner: EntityReference) => <OwnerLabel owner={owner} />,
+        title: t('label.owner-plural'),
+        dataIndex: 'owners',
+        key: 'owners',
+        render: (owners: EntityReference[]) => <OwnerLabel owners={owners} />,
       },
     ];
 
@@ -195,7 +199,7 @@ export const TestSuites = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
     try {
       const result = await getListTestSuitesBySearch({
         ...params,
-        fields: 'owner,summary',
+        fields: [TabSpecificField.OWNERS, TabSpecificField.SUMMARY],
         q: searchValue ? `*${searchValue}*` : undefined,
         owner: ownerFilterValue?.key,
         offset: (currentPage - 1) * pageSize,
@@ -228,7 +232,7 @@ export const TestSuites = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
 
   const handleSearchParam = (
     value: string,
-    key: keyof DataQualitySearchParams
+    key: keyof TestSuiteSearchParams
   ) => {
     history.push({
       search: QueryString.stringify({
@@ -238,8 +242,11 @@ export const TestSuites = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
     });
   };
 
-  const handleOwnerSelect = (owner?: EntityReference) => {
-    handleSearchParam(owner ? JSON.stringify(owner) : '', 'owner');
+  const handleOwnerSelect = (owners: EntityReference[] = []) => {
+    handleSearchParam(
+      owners?.length > 0 ? JSON.stringify(owners?.[0]) : '',
+      'owner'
+    );
   };
 
   useEffect(() => {
@@ -258,7 +265,7 @@ export const TestSuites = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
 
   return (
     <Row
-      className="p-x-lg p-y-md"
+      className="p-x-md"
       data-testid="test-suite-container"
       gutter={[16, 16]}>
       <Col span={24}>
@@ -285,9 +292,7 @@ export const TestSuites = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
                   <UserTeamSelectableList
                     hasPermission
                     owner={selectedOwner}
-                    onUpdate={(updatedUser) =>
-                      handleOwnerSelect(updatedUser as EntityReference)
-                    }>
+                    onUpdate={(updatedUser) => handleOwnerSelect(updatedUser)}>
                     <Select
                       data-testid="owner-select-filter"
                       open={false}
@@ -314,7 +319,12 @@ export const TestSuites = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
         </Row>
       </Col>
 
-      <Col span={24}>{summaryPanel}</Col>
+      <Col span={24}>
+        <SummaryPanel
+          isLoading={isTestCaseSummaryLoading}
+          testSummary={testCaseSummary}
+        />
+      </Col>
       <Col span={24}>
         <Table
           bordered
@@ -334,6 +344,7 @@ export const TestSuites = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
           <NextPrevious
             isNumberBased
             currentPage={currentPage}
+            isLoading={isLoading}
             pageSize={pageSize}
             paging={paging}
             pagingHandler={handleTestSuitesPageChange}

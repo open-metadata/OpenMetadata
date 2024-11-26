@@ -19,8 +19,8 @@ import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getU
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
 import lombok.Getter;
-import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.glassfish.jersey.internal.util.ExceptionUtils;
 import org.openmetadata.schema.EntityInterface;
@@ -36,35 +36,56 @@ import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.workflows.interfaces.Source;
 
 @Slf4j
+@Getter
 public class PaginatedEntitiesSource implements Source<ResultList<? extends EntityInterface>> {
-  @Getter private final int batchSize;
-  @Getter private final String entityType;
-  @Getter private final List<String> fields;
-  @Getter private final List<String> readerErrors = new ArrayList<>();
-  @Getter private final StepStats stats = new StepStats();
-  @Getter private String lastFailedCursor = null;
-  @Setter private String cursor = RestUtil.encodeCursor("0");
-  @Getter private boolean isDone = false;
+  private String name = "PaginatedEntitiesSource";
+  private final int batchSize;
+  private final String entityType;
+  private final List<String> fields;
+  private final List<String> readerErrors = new ArrayList<>();
+  private final StepStats stats = new StepStats();
+  private final ListFilter filter;
+  private String lastFailedCursor = null;
+  private final AtomicReference<String> cursor = new AtomicReference<>(RestUtil.encodeCursor("0"));
+  private final AtomicReference<Boolean> isDone = new AtomicReference<>(false);
 
   public PaginatedEntitiesSource(String entityType, int batchSize, List<String> fields) {
     this.entityType = entityType;
     this.batchSize = batchSize;
     this.fields = fields;
+    this.filter = new ListFilter(Include.ALL);
     this.stats
         .withTotalRecords(Entity.getEntityRepository(entityType).getDao().listTotalCount())
         .withSuccessRecords(0)
         .withFailedRecords(0);
   }
 
+  public PaginatedEntitiesSource(
+      String entityType, int batchSize, List<String> fields, ListFilter filter) {
+    this.entityType = entityType;
+    this.batchSize = batchSize;
+    this.fields = fields;
+    this.filter = filter;
+    this.stats
+        .withTotalRecords(Entity.getEntityRepository(entityType).getDao().listCount(filter))
+        .withSuccessRecords(0)
+        .withFailedRecords(0);
+  }
+
+  public PaginatedEntitiesSource withName(String name) {
+    this.name = name;
+    return this;
+  }
+
   @Override
   public ResultList<? extends EntityInterface> readNext(Map<String, Object> contextData)
       throws SearchIndexException {
     ResultList<? extends EntityInterface> data = null;
-    if (!isDone) {
-      data = read(cursor);
-      cursor = data.getPaging().getAfter();
-      if (cursor == null) {
-        isDone = true;
+    if (Boolean.FALSE.equals(isDone.get())) {
+      data = read(cursor.get());
+      cursor.set(data.getPaging().getAfter());
+      if (cursor.get() == null) {
+        isDone.set(true);
       }
     }
     return data;
@@ -77,41 +98,38 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
     try {
       result =
           entityRepository.listAfterWithSkipFailure(
-              null,
-              Entity.getFields(entityType, fields),
-              new ListFilter(Include.ALL),
-              batchSize,
-              cursor);
+              null, Entity.getFields(entityType, fields), filter, batchSize, cursor);
       if (!result.getErrors().isEmpty()) {
-        lastFailedCursor = this.cursor;
+        lastFailedCursor = this.cursor.get();
         if (result.getPaging().getAfter() == null) {
-          isDone = true;
+          this.cursor.set(null);
+          this.isDone.set(true);
         } else {
-          this.cursor = result.getPaging().getAfter();
+          this.cursor.set(result.getPaging().getAfter());
         }
-        // updateStats(result.getData().size(), result.getErrors().size());
+        updateStats(result.getData().size(), result.getErrors().size());
         return result;
       }
 
       LOG.debug(
           "[PaginatedEntitiesSource] Batch Stats :- %n Submitted : {} Success: {} Failed: {}",
           batchSize, result.getData().size(), result.getErrors().size());
-      // updateStats(result.getData().size(), result.getErrors().size());
+      updateStats(result.getData().size(), result.getErrors().size());
     } catch (Exception e) {
-      lastFailedCursor = this.cursor;
+      lastFailedCursor = this.cursor.get();
       int remainingRecords =
           stats.getTotalRecords() - stats.getFailedRecords() - stats.getSuccessRecords();
       int submittedRecords;
       if (remainingRecords - batchSize <= 0) {
         submittedRecords = remainingRecords;
         updateStats(0, remainingRecords);
-        this.cursor = null;
-        this.isDone = true;
+        this.cursor.set(null);
+        this.isDone.set(true);
       } else {
         submittedRecords = batchSize;
         String decodedCursor = RestUtil.decodeCursor(cursor);
-        this.cursor =
-            RestUtil.encodeCursor(String.valueOf(Integer.parseInt(decodedCursor) + batchSize));
+        this.cursor.set(
+            RestUtil.encodeCursor(String.valueOf(Integer.parseInt(decodedCursor) + batchSize)));
         updateStats(0, batchSize);
       }
       IndexingError indexingError =
@@ -130,10 +148,42 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
     return result;
   }
 
+  public ResultList<? extends EntityInterface> readWithCursor(String currentCursor)
+      throws SearchIndexException {
+    LOG.debug("[PaginatedEntitiesSource] Fetching a Batch of Size: {} ", batchSize);
+    EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
+    ResultList<? extends EntityInterface> result;
+    try {
+      result =
+          entityRepository.listAfterWithSkipFailure(
+              null, Entity.getFields(entityType, fields), filter, batchSize, currentCursor);
+      LOG.debug(
+          "[PaginatedEntitiesSource] Batch Stats :- %n Submitted : {} Success: {} Failed: {}",
+          batchSize, result.getData().size(), result.getErrors().size());
+
+    } catch (Exception e) {
+      IndexingError indexingError =
+          new IndexingError()
+              .withErrorSource(READER)
+              .withSuccessCount(0)
+              .withMessage(
+                  "Issues in Reading A Batch For Entities. No Relationship Issue , Json Processing or DB issue.")
+              .withStackTrace(ExceptionUtils.exceptionStackTraceAsString(e));
+      LOG.debug(indexingError.getMessage());
+      throw new SearchIndexException(indexingError);
+    }
+    return result;
+  }
+
   @Override
   public void reset() {
-    cursor = null;
-    isDone = false;
+    cursor.set(null);
+    isDone.set(Boolean.FALSE);
+  }
+
+  @Override
+  public AtomicReference<Boolean> isDone() {
+    return isDone;
   }
 
   @Override

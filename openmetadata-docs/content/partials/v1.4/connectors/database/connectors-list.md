@@ -11,6 +11,7 @@
 {% connectorInfoCard name="DB2" stage="PROD" href="/connectors/database/db2" platform="OpenMetadata" / %}
 {% connectorInfoCard name="Delta Lake" stage="PROD" href="/connectors/database/deltalake" platform="OpenMetadata" / %}
 {% connectorInfoCard name="Domo" stage="PROD" href="/connectors/database/domo-database" platform="OpenMetadata" / %}
+{% connectorInfoCard name="Doris" stage="PROD" href="/connectors/database/doris" platform="OpenMetadata" / %}
 {% connectorInfoCard name="Druid" stage="PROD" href="/connectors/database/druid" platform="OpenMetadata" / %}
 {% connectorInfoCard name="DynamoDB" stage="PROD" href="/connectors/database/dynamodb" platform="OpenMetadata" / %}
 {% connectorInfoCard name="Glue" stage="PROD" href="/connectors/database/glue" platform="OpenMetadata" / %}
@@ -33,6 +34,7 @@
 {% connectorInfoCard name="SingleStore" stage="PROD" href="/connectors/database/singlestore" platform="OpenMetadata" / %}
 {% connectorInfoCard name="Snowflake" stage="PROD" href="/connectors/database/snowflake" platform="OpenMetadata" / %}
 {% connectorInfoCard name="SQLite" stage="PROD" href="/connectors/database/sqlite" platform="OpenMetadata" / %}
+{% connectorInfoCard name="Teradata" stage="PROD" href="/connectors/database/teradata" platform="OpenMetadata" / %}
 {% connectorInfoCard name="Trino" stage="PROD" href="/connectors/database/trino" platform="OpenMetadata" / %}
 {% connectorInfoCard name="Unity Catalog" stage="PROD" href="/connectors/database/unity-catalog" platform="OpenMetadata" / %}
 {% connectorInfoCard name="Vertica" stage="PROD" href="/connectors/database/vertica" platform="OpenMetadata" / %}

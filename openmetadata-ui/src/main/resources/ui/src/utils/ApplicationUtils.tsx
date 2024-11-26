@@ -29,11 +29,15 @@ export const getStatusTypeForApplication = (status: Status) => {
     case Status.Completed:
       return StatusType.Success;
 
+    case Status.Active:
     case Status.Running:
       return StatusType.Warning;
 
+    case Status.Started:
+      return StatusType.Started;
+
     default:
-      return StatusType.Failure;
+      return StatusType.Stopped;
   }
 };
 
@@ -54,8 +58,19 @@ export const getStatusFromPipelineState = (status: PipelineState) => {
 };
 
 export const getEntityStatsData = (data: EntityStats): EntityStatsData[] => {
-  return Object.keys(data).map((key) => ({
-    name: upperFirst(key),
-    ...data[key as EntityTypeSearchIndex],
-  }));
+  const filteredRow = ['failedRecords', 'totalRecords', 'successRecords'];
+
+  return Object.keys(data).reduce((acc, key) => {
+    if (filteredRow.includes(key)) {
+      return acc;
+    }
+
+    return [
+      ...acc,
+      {
+        name: upperFirst(key),
+        ...data[key as EntityTypeSearchIndex],
+      },
+    ];
+  }, [] as EntityStatsData[]);
 };

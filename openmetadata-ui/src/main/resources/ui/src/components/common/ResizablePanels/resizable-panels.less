@@ -98,7 +98,6 @@ body.reflex-row-resize {
 
 .reflex-container.vertical > .reflex-splitter {
   cursor: col-resize;
-  height: 100%;
   width: 2px;
 }
 
@@ -209,7 +208,7 @@ h2.rotated-header {
 }
 
 .panel-grabber-vertical {
-  height: calc(100vh - 64px);
+  height: calc(100vh - @om-navbar-height);
   width: 10px;
   display: flex;
   flex-direction: row;
@@ -231,6 +230,16 @@ h2.rotated-header {
   margin: auto 0 auto auto;
   height: 30px;
   width: 3px;
+}
+
+.left-panel-splitter {
+  .panel-grabber-vertical {
+    margin-left: -10px;
+
+    .handle-icon-vertical {
+      margin-left: 0px;
+    }
+  }
 }
 
 .handle-icon-horizontal {
@@ -281,4 +290,9 @@ h2.rotated-header {
 .right-panel-collapsed {
   flex: 0 !important;
   padding: 0 !important;
+}
+
+.left-panel-collapse-button.collapsed {
+  right: initial;
+  left: -16px;
 }

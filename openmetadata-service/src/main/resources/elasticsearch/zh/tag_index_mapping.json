@@ -17,6 +17,14 @@
             "lowercase",
             "om_stemmer"
           ]
+        },
+        "om_ngram": {
+          "tokenizer": "ngram",
+          "min_gram": 2,
+          "max_gram": 3,
+          "filter": [
+            "lowercase"
+          ]
         }
       },
       "filter": {
@@ -62,6 +70,7 @@
         "fields": {
           "keyword": {
             "type": "keyword",
+            "normalizer": "lowercase_normalizer",
             "ignore_above": 256
           },
           "ngram": {
@@ -95,7 +104,10 @@
         "type": "text"
       },
       "deleted": {
-        "type": "text"
+        "type": "boolean"
+      },
+      "disabled": {
+        "type": "boolean"
       },
       "classification": {
         "properties": {
@@ -127,25 +139,22 @@
             "type": "text"
           },
           "deleted": {
-            "type": "text"
+            "type": "boolean"
           },
           "href": {
             "type": "text"
           }
         }
       },
-      "suggest": {
-        "type": "completion",
-        "contexts": [
-          {
-            "name": "deleted",
-            "type": "category",
-            "path": "deleted"
-          }
-        ]
-      },
       "entityType": {
         "type": "keyword"
+      },
+      "totalVotes": {
+        "type": "long",
+        "null_value": 0
+      },
+      "votes" : {
+        "type": "object"
       },
       "descriptionStatus": {
         "type": "keyword"

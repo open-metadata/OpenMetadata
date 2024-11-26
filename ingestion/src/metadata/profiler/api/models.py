@@ -15,8 +15,10 @@ Return types for Profiler workflow execution.
 We need to define this class as we end up having
 multiple profilers per table and columns.
 """
+
 from typing import List, Optional, Type, Union
 
+from pydantic import ConfigDict
 from sqlalchemy import Column
 from sqlalchemy.orm import DeclarativeMeta
 
@@ -24,71 +26,12 @@ from metadata.config.common import ConfigModel
 from metadata.generated.schema.api.data.createTableProfile import (
     CreateTableProfileRequest,
 )
-from metadata.generated.schema.entity.data.table import (
-    ColumnProfilerConfig,
-    PartitionProfilerConfig,
-    ProfileSampleType,
-    Table,
-    TableData,
-)
-from metadata.generated.schema.entity.services.connections.connectionBasicType import (
-    SampleDataStorageConfig,
-)
+from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.tests.customMetric import CustomMetric
-from metadata.generated.schema.type.basic import FullyQualifiedEntityName
-from metadata.ingestion.models.table_metadata import ColumnTag
 from metadata.profiler.metrics.core import Metric, MetricTypes
 from metadata.profiler.processor.models import ProfilerDef
+from metadata.sampler.models import DatabaseAndSchemaConfig, TableConfig
 from metadata.utils.sqa_like_column import SQALikeColumn
-
-
-class ColumnConfig(ConfigModel):
-    """Column config for profiler"""
-
-    excludeColumns: Optional[List[str]] = None
-    includeColumns: Optional[List[ColumnProfilerConfig]] = None
-
-
-class BaseProfileConfig(ConfigModel):
-    """base profile config"""
-
-    fullyQualifiedName: FullyQualifiedEntityName
-    profileSample: Optional[Union[float, int]] = None
-    profileSampleType: Optional[ProfileSampleType] = None
-    sampleDataCount: Optional[int] = 100
-
-
-class TableConfig(BaseProfileConfig):
-    """table profile config"""
-
-    profileQuery: Optional[str] = None
-    partitionConfig: Optional[PartitionProfilerConfig] = None
-    columnConfig: Optional[ColumnConfig] = None
-
-    @classmethod
-    def from_database_and_schema_config(
-        cls, config: "DatabaseAndSchemaConfig", table_fqn: str
-    ):
-        table_config = TableConfig(
-            fullyQualifiedName=table_fqn,
-            profileSample=config.profileSample,
-            profileSampleType=config.profileSampleType,
-            sampleDataCount=config.sampleDataCount,
-        )
-        return table_config
-
-
-class DatabaseAndSchemaConfig(BaseProfileConfig):
-    """schema profile config"""
-
-    sampleDataStorageConfig: Optional[SampleDataStorageConfig] = None
-
-
-class ProfileSampleConfig(ConfigModel):
-    """Profile Sample Config"""
-
-    profile_sample: Optional[Union[float, int]] = None
-    profile_sample_type: Optional[ProfileSampleType] = ProfileSampleType.PERCENTAGE
 
 
 class ProfilerProcessorConfig(ConfigModel):
@@ -113,8 +56,6 @@ class ProfilerResponse(ConfigModel):
 
     table: Table
     profile: CreateTableProfileRequest
-    sample_data: Optional[TableData] = None
-    column_tags: Optional[List[ColumnTag]] = None
 
     def __str__(self):
         """Return the table name being processed"""
@@ -124,10 +65,9 @@ class ProfilerResponse(ConfigModel):
 class ThreadPoolMetrics(ConfigModel):
     """A container for all metrics to be computed on the same thread."""
 
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
     metrics: Union[List[Union[Type[Metric], CustomMetric]], Type[Metric]]
     metric_type: MetricTypes
     column: Optional[Union[Column, SQALikeColumn]] = None
     table: Union[Table, DeclarativeMeta]
-
-    class Config:
-        arbitrary_types_allowed = True

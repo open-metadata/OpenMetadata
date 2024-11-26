@@ -13,7 +13,7 @@ Base class for ingesting database services
 """
 import traceback
 from abc import ABC, abstractmethod
-from typing import Any, Iterable, List, Optional, Set, Tuple, Union
+from typing import Any, Iterable, List, Optional, Set, Tuple
 
 from pydantic import BaseModel, Field
 from sqlalchemy.engine import Inspector
@@ -23,7 +23,6 @@ from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequ
 from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
 )
-from metadata.generated.schema.api.data.createQuery import CreateQueryRequest
 from metadata.generated.schema.api.data.createStoredProcedure import (
     CreateStoredProcedureRequest,
 )
@@ -52,12 +51,15 @@ from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.api.delete import delete_entity_from_source
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import Source
 from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
+from metadata.ingestion.connections.test_connections import (
+    raise_test_connection_exception,
+)
 from metadata.ingestion.models.life_cycle import OMetaLifeCycleData
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.models.topology import (
@@ -109,13 +111,9 @@ class DatabaseServiceTopology(ServiceTopology):
             ),
         ],
         children=["database"],
-        # Note how we have `yield_view_lineage` and `yield_stored_procedure_lineage`
-        # as post_processed. This is because we cannot ensure proper lineage processing
-        # until we have finished ingesting all the metadata from the source.
         post_process=[
-            "yield_view_lineage",
-            "yield_procedure_lineage_and_queries",
             "yield_external_table_lineage",
+            "yield_table_constraints",
         ],
     )
     database: Annotated[
@@ -223,7 +221,7 @@ class DatabaseServiceSource(
     database_source_state: Set = set()
     stored_procedure_source_state: Set = set()
     # Big union of types we want to fetch dynamically
-    service_connection: DatabaseConnection.__fields__["config"].annotation
+    service_connection: DatabaseConnection.model_fields["config"].annotation
 
     # When processing the database, the source will update the inspector if needed
     inspector: Inspector
@@ -316,7 +314,7 @@ class DatabaseServiceSource(
         """
 
     def yield_table_tag_details(
-        self, table_name_and_type: str
+        self, table_name_and_type: Tuple[str, TableType]
     ) -> Iterable[Either[OMetaTagAndClassification]]:
         """
         From topology. To be run for each table
@@ -342,15 +340,14 @@ class DatabaseServiceSource(
         if self.source_config.includeTags:
             yield from self.yield_database_tag(database_name) or []
 
-    @abstractmethod
-    def yield_view_lineage(self) -> Iterable[Either[AddLineageRequest]]:
-        """
-        From topology.
-        Parses view definition to get lineage information
-        """
-
     def update_table_constraints(
-        self, table_constraints: List[TableConstraint], foreign_columns: []
+        self,
+        table_name,
+        schema_name,
+        db_name,
+        table_constraints: List[TableConstraint],
+        foreign_columns: [],
+        columns,
     ) -> List[TableConstraint]:
         """
         process the table constraints of all tables
@@ -377,12 +374,6 @@ class DatabaseServiceSource(
         self, stored_procedure: Any
     ) -> Iterable[Either[CreateStoredProcedureRequest]]:
         """Process the stored procedure information"""
-
-    @abstractmethod
-    def yield_procedure_lineage_and_queries(
-        self,
-    ) -> Iterable[Either[Union[AddLineageRequest, CreateQueryRequest]]]:
-        """Extracts the lineage information from Stored Procedures"""
 
     def get_raw_database_schema_names(self) -> Iterable[str]:
         """
@@ -527,7 +518,7 @@ class DatabaseServiceSource(
             yield schema_fqn if return_fqn else schema_name
 
     @calculate_execution_time()
-    def get_owner_ref(self, table_name: str) -> Optional[EntityReference]:
+    def get_owner_ref(self, table_name: str) -> Optional[EntityReferenceList]:
         """
         Method to process the table owners
         """
@@ -536,11 +527,13 @@ class DatabaseServiceSource(
                 self.inspector, "get_table_owner"
             ):
                 owner_name = self.inspector.get_table_owner(
-                    connection=self.connection,  # pylint: disable=no-member.fetchall()
+                    connection=self.connection,  # pylint: disable=no-member
                     table_name=table_name,
                     schema=self.context.get().database_schema,
                 )
-                owner_ref = self.metadata.get_reference_by_name(name=owner_name)
+                owner_ref = self.metadata.get_reference_by_name(
+                    name=owner_name, is_owner=True
+                )
                 return owner_ref
         except Exception as exc:
             logger.debug(traceback.format_exc())
@@ -605,6 +598,14 @@ class DatabaseServiceSource(
         Process external table lineage
         """
 
+    def yield_table_constraints(self) -> Iterable[Either[AddLineageRequest]]:
+        """
+        Process remaining table constraints by patching the table
+        """
+
     def test_connection(self) -> None:
         test_connection_fn = get_test_connection_fn(self.service_connection)
-        test_connection_fn(self.metadata, self.connection_obj, self.service_connection)
+        result = test_connection_fn(
+            self.metadata, self.connection_obj, self.service_connection
+        )
+        raise_test_connection_exception(result)

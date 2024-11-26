@@ -22,8 +22,10 @@ import { TAG_START_WITH } from '../../../constants/Tag.constants';
 import { TagSource } from '../../../generated/type/tagLabel';
 import { reduceColorOpacity } from '../../../utils/CommonUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
-import Fqn from '../../../utils/Fqn';
-import { getGlossaryPath, getTagPath } from '../../../utils/RouterUtils';
+import {
+  getClassificationTagPath,
+  getGlossaryPath,
+} from '../../../utils/RouterUtils';
 import { getTagDisplay, getTagTooltip } from '../../../utils/TagsUtils';
 import { HighlightedTagLabel } from '../../Explore/EntitySummaryPanel/SummaryList/SummaryList.interface';
 import { TagsV1Props } from './TagsV1.interface';
@@ -83,14 +85,14 @@ const TagsV1 = ({
               .join(FQN_SEPARATOR_CHAR)
           : tag.tagFQN
       ),
-    [showOnlyName, tag.tagFQN]
+    [showOnlyName, tag]
   );
 
   const redirectLink = useMemo(
     () =>
       (tagType ?? tag.source) === TagSource.Glossary
         ? getGlossaryPath(tag.tagFQN)
-        : getTagPath(Fqn.split(tag.tagFQN)[0]),
+        : getClassificationTagPath(tag.tagFQN),
     [tagType, tag.source, tag.tagFQN]
   );
 
@@ -153,7 +155,7 @@ const TagsV1 = ({
         {...tagProps}>
         {/* Wrap only content to avoid redirect on closeable icons  */}
         <Link
-          className="no-underline h-full"
+          className="no-underline h-full w-max-stretch"
           data-testid="tag-redirect-link"
           to={redirectLink}>
           {tagContent}

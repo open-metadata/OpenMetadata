@@ -45,10 +45,11 @@ class DatabricksUsageSource(DatabricksQueryParserSource, UsageSource):
                 if self.client.is_query_valid(row):
                     queries.append(
                         TableQuery(
+                            dialect=self.dialect.value,
                             query=row.get("query_text"),
                             userName=row.get("user_name"),
-                            startTime=row.get("query_start_time_ms"),
-                            endTime=row.get("execution_end_time_ms"),
+                            startTime=str(row.get("query_start_time_ms")),
+                            endTime=str(row.get("execution_end_time_ms")),
                             analysisDate=DateTime(datetime.now()),
                             serviceName=self.config.serviceName,
                             duration=row.get("duration")

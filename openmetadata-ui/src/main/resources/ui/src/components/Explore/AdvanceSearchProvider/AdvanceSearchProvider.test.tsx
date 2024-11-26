@@ -20,7 +20,7 @@ import {
 } from './AdvanceSearchProvider.component';
 
 jest.mock('../../../rest/metadataTypeAPI', () => ({
-  getTypeByFQN: jest.fn().mockResolvedValue({}),
+  getAllCustomProperties: jest.fn().mockResolvedValue({}),
 }));
 
 jest.mock('../../../rest/tagAPI', () => ({
@@ -49,11 +49,14 @@ jest.mock('../../common/Loader/Loader', () =>
 
 const mockPush = jest.fn();
 
-jest.mock('react-router-dom', () => ({
-  useLocation: jest.fn().mockImplementation(() => ({
+jest.mock('../../../hooks/useCustomLocation/useCustomLocation', () => {
+  return jest.fn().mockImplementation(() => ({
     search: 'queryFilter={"some":"value"}',
     pathname: ROUTES.EXPLORE,
-  })),
+  }));
+});
+
+jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockReturnValue({
     tab: 'tabValue',
   }),

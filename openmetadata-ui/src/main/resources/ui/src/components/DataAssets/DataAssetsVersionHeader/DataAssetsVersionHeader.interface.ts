@@ -12,6 +12,7 @@
  */
 
 import { EntityType } from '../../../enums/entity.enum';
+import { APICollection } from '../../../generated/entity/data/apiCollection';
 import { Database } from '../../../generated/entity/data/database';
 import { DatabaseSchema } from '../../../generated/entity/data/databaseSchema';
 import { EntityReference } from '../../../generated/entity/type';
@@ -25,11 +26,16 @@ export interface DataAssetsVersionHeaderProps {
   deleted: boolean;
   displayName: string;
   serviceName?: string;
-  currentVersionData: VersionData | ServicesType | Database | DatabaseSchema;
-  ownerDisplayName: React.ReactNode;
+  currentVersionData:
+    | VersionData
+    | ServicesType
+    | Database
+    | DatabaseSchema
+    | APICollection;
+  ownerDisplayName: React.ReactNode[];
   domainDisplayName?: React.ReactNode;
   tierDisplayName: React.ReactNode;
-  ownerRef: EntityReference | undefined;
+  ownerRef?: EntityReference[];
   onVersionClick: () => void;
   entityType: EntityType;
 }

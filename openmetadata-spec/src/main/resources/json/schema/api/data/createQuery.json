@@ -21,9 +21,9 @@
       "description": "Description of the query instance.",
       "$ref": "../../type/basic.json#/definitions/markdown"
     },
-    "owner": {
-      "description": "Owner of this entity",
-      "$ref": "../../type/entityReference.json",
+    "owners": {
+      "description": "Owners of this entity",
+      "$ref": "../../type/entityReferenceList.json",
       "default": null
     },
     "tags": {
@@ -65,6 +65,10 @@
       },
       "uniqueItems": true
     },
+    "dialect": {
+      "description": "SQL dialect.",
+      "type": "string"
+    },
     "queryDate": {
       "description": "Date on which the query ran.",
       "$ref": "../../type/basic.json#/definitions/timestamp"
@@ -85,6 +89,10 @@
     "service": {
       "description": "Link to the database service fully qualified name where this query has been run",
       "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "domain" : {
+      "description": "Fully qualified name of the domain the Table belongs to.",
+      "type": "string"
     }
   },
   "required": ["query", "service"],

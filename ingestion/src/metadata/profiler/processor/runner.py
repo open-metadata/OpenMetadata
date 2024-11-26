@@ -22,7 +22,10 @@ from sqlalchemy import text
 from sqlalchemy.orm import DeclarativeMeta, Query, Session
 from sqlalchemy.orm.util import AliasedClass
 
-from metadata.profiler.processor.handle_partition import partition_filter_handler
+from metadata.profiler.processor.handle_partition import (
+    build_partition_predicate,
+    partition_filter_handler,
+)
 from metadata.utils.logger import query_runner_logger
 from metadata.utils.sqa_utils import get_query_filter_for_runner
 
@@ -52,8 +55,8 @@ class QueryRunner:
         self._session = session
         self.table = table
         self._sample = sample
-        self._partition_details = partition_details
-        self._profile_sample_query = profile_sample_query
+        self.partition_details = partition_details
+        self.profile_sample_query = profile_sample_query
 
     def _build_query(self, *entities, **kwargs) -> Query:
         return self._session.query(*entities, **kwargs)
@@ -74,7 +77,7 @@ class QueryRunner:
         filter_ = get_query_filter_for_runner(kwargs)
 
         user_query = self._session.query(self.table).from_statement(
-            text(f"{self._profile_sample_query}")
+            text(f"{self.profile_sample_query}")
         )
 
         query = self._build_query(*entities, **kwargs).select_from(user_query)
@@ -89,7 +92,7 @@ class QueryRunner:
         """Select first row from the table"""
         filter_ = get_query_filter_for_runner(kwargs)
 
-        if self._profile_sample_query:
+        if self.profile_sample_query:
             return self._select_from_user_query(*entities, **kwargs).first()
         query = self._build_query(*entities, **kwargs).select_from(self.table)
 
@@ -103,7 +106,7 @@ class QueryRunner:
         """Select all rows from the table"""
         filter_ = get_query_filter_for_runner(kwargs)
 
-        if self._profile_sample_query:
+        if self.profile_sample_query:
             return self._select_from_user_query(*entities, **kwargs).all()
 
         query = self._build_query(*entities, **kwargs).select_from(self.table)
@@ -120,6 +123,22 @@ class QueryRunner:
     @partition_filter_handler(first=False, sampled=True)
     def select_all_from_sample(self, *entities, **kwargs):
         return self._select_from_sample(*entities, **kwargs).all()
+
+    def yield_from_sample(self, *entities, **kwargs):
+        query = self._select_from_sample(*entities, **kwargs)
+        if self.partition_details:
+            partition_filter = build_partition_predicate(
+                self.partition_details,
+                self.table.__table__.c,
+            )
+            query.filter(partition_filter)
+
+        result = self._session.execute(self._select_from_sample(*entities, **kwargs))
+        while True:
+            rows = result.fetchmany(1000)
+            if not rows:
+                break
+            yield from rows
 
     def dispatch_query_select_first(self, *entities, **kwargs):
         """dispatch query to sample or all table"""

@@ -13,7 +13,7 @@
 import { Button, Col, Row, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
-import { capitalize, isNull } from 'lodash';
+import { isNull } from 'lodash';
 import React, {
   forwardRef,
   useCallback,
@@ -24,8 +24,13 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
-import { NO_DATA_PLACEHOLDER } from '../../../../constants/constants';
+import {
+  NO_DATA_PLACEHOLDER,
+  SOCKET_EVENTS,
+  STATUS_LABEL,
+} from '../../../../constants/constants';
 import { GlobalSettingOptions } from '../../../../constants/GlobalSettings.constants';
+import { useWebSocketConnector } from '../../../../context/WebSocketProvider/WebSocketProvider';
 import { AppType } from '../../../../generated/entity/applications/app';
 import { Status } from '../../../../generated/entity/applications/appRunRecord';
 import {
@@ -42,7 +47,9 @@ import {
 } from '../../../../utils/ApplicationUtils';
 import {
   formatDateTime,
+  formatDuration,
   getEpochMillisForPastDays,
+  getIntervalInMilliseconds,
 } from '../../../../utils/date-time/DateTimeUtils';
 import { getLogsViewerPath } from '../../../../utils/RouterUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
@@ -52,6 +59,7 @@ import { PagingHandlerParams } from '../../../common/NextPrevious/NextPrevious.i
 import StatusBadge from '../../../common/StatusBadge/StatusBadge.component';
 import { StatusType } from '../../../common/StatusBadge/StatusBadge.interface';
 import Table from '../../../common/Table/Table';
+import StopScheduleModal from '../../../Modals/StopScheduleRun/StopScheduleRunModal';
 import AppLogsViewer from '../AppLogsViewer/AppLogsViewer.component';
 import {
   AppRunRecordWithId,
@@ -63,6 +71,7 @@ const AppRunsHistory = forwardRef(
     { appData, maxRecords, showPagination = true }: AppRunsHistoryProps,
     ref
   ) => {
+    const { socket } = useWebSocketConnector();
     const { t } = useTranslation();
     const { fqn } = useFqn();
     const [isLoading, setIsLoading] = useState(true);
@@ -70,6 +79,7 @@ const AppRunsHistory = forwardRef(
       AppRunRecordWithId[]
     >([]);
     const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
+    const [isStopModalOpen, setIsStopModalOpen] = useState<boolean>(false);
 
     const {
       currentPage,
@@ -119,34 +129,40 @@ const AppRunsHistory = forwardRef(
         return true;
       }
 
-      return record.status === Status.Running;
+      return false;
     }, []);
 
     const getActionButton = useCallback(
       (record: AppRunRecordWithId, index: number) => {
-        if (appData?.appType === AppType.Internal) {
+        if (
+          appData?.appType === AppType.Internal ||
+          (isExternalApp && index === 0)
+        ) {
           return (
-            <Button
-              className="p-0"
-              data-testid="logs"
-              disabled={showLogAction(record)}
-              size="small"
-              type="link"
-              onClick={() => handleRowExpandable(record.id)}>
-              {t('label.log-plural')}
-            </Button>
-          );
-        } else if (isExternalApp && index === 0) {
-          return (
-            <Button
-              className="p-0"
-              data-testid="logs"
-              disabled={showLogAction(record)}
-              size="small"
-              type="link"
-              onClick={() => handleRowExpandable(record.id)}>
-              {t('label.log-plural')}
-            </Button>
+            <>
+              <Button
+                className="p-0"
+                data-testid="logs"
+                disabled={showLogAction(record)}
+                size="small"
+                type="link"
+                onClick={() => handleRowExpandable(record.id)}>
+                {t('label.log-plural')}
+              </Button>
+              {/* For status running or activewitherror and supportsInterrupt is true, show stop button */}
+              {(record.status === Status.Running ||
+                record.status === Status.ActiveError) &&
+                Boolean(appData?.supportsInterrupt) && (
+                  <Button
+                    className="m-l-xs p-0"
+                    data-testid="stop-button"
+                    size="small"
+                    type="link"
+                    onClick={() => setIsStopModalOpen(true)}>
+                    {t('label.stop')}
+                  </Button>
+                )}
+            </>
           );
         } else {
           return NO_DATA_PLACEHOLDER;
@@ -172,20 +188,39 @@ const AppRunsHistory = forwardRef(
           ),
         },
         {
+          title: t('label.duration'),
+          dataIndex: 'executionTime',
+          key: 'executionTime',
+          render: (_, record: AppRunRecordWithId) => {
+            if (record.startTime && record.endTime) {
+              const ms = getIntervalInMilliseconds(
+                record.startTime,
+                record.endTime
+              );
+
+              return formatDuration(ms);
+            } else {
+              return '-';
+            }
+          },
+        },
+        {
           title: t('label.status'),
           dataIndex: 'status',
           key: 'status',
           render: (_, record: AppRunRecordWithId) => {
             const status: StatusType = getStatusTypeForApplication(
-              record.status ?? Status.Failed
+              record.status ?? Status.Stopped
             );
 
-            return (
+            return record.status ? (
               <StatusBadge
                 dataTestId="pipeline-status"
-                label={capitalize(record.status)}
+                label={STATUS_LABEL[record.status]}
                 status={status}
               />
+            ) : (
+              NO_DATA_PLACEHOLDER
             );
           },
         },
@@ -265,6 +300,25 @@ const AppRunsHistory = forwardRef(
       } as Paging);
     };
 
+    const handleAppHistoryRecordUpdate = (
+      updatedRecord: AppRunRecordWithId
+    ) => {
+      setAppRunsHistoryData((prev) => {
+        const updatedData = prev.map((item) => {
+          if (
+            item.appId === updatedRecord.appId &&
+            item.startTime === updatedRecord.startTime
+          ) {
+            return { ...updatedRecord, id: item.id };
+          }
+
+          return item;
+        });
+
+        return updatedData;
+      });
+    };
+
     useImperativeHandle(ref, () => ({
       refreshAppHistory() {
         fetchAppHistory();
@@ -275,42 +329,88 @@ const AppRunsHistory = forwardRef(
       fetchAppHistory();
     }, [fqn, pageSize]);
 
+    useEffect(() => {
+      if (socket) {
+        socket.on(SOCKET_EVENTS.SEARCH_INDEX_JOB_BROADCAST_CHANNEL, (data) => {
+          if (data) {
+            const searchIndexJob = JSON.parse(data);
+            handleAppHistoryRecordUpdate(searchIndexJob);
+          }
+        });
+
+        socket.on(SOCKET_EVENTS.DATA_INSIGHTS_JOB_BROADCAST_CHANNEL, (data) => {
+          if (data) {
+            const dataInsightJob = JSON.parse(data);
+            handleAppHistoryRecordUpdate(dataInsightJob);
+          }
+        });
+      }
+
+      return () => {
+        if (socket) {
+          socket.off(SOCKET_EVENTS.SEARCH_INDEX_JOB_BROADCAST_CHANNEL);
+          socket.off(SOCKET_EVENTS.DATA_INSIGHTS_JOB_BROADCAST_CHANNEL);
+        }
+      };
+    }, [socket]);
+
     return (
-      <Row gutter={[16, 16]}>
-        <Col span={24}>
-          <Table
-            bordered
-            columns={tableColumn}
-            data-testid="app-run-history-table"
-            dataSource={appRunsHistoryData}
-            expandable={{
-              expandedRowRender: (record) => <AppLogsViewer data={record} />,
-              showExpandColumn: false,
-              rowExpandable: (record) => !showLogAction(record),
-              expandedRowKeys,
-            }}
-            loading={isLoading}
-            locale={{
-              emptyText: <ErrorPlaceHolder className="m-y-md" />,
-            }}
-            pagination={false}
-            rowKey="id"
-            size="small"
-          />
-        </Col>
-        <Col span={24}>
-          {showPagination && paginationVisible && (
-            <NextPrevious
-              isNumberBased
-              currentPage={currentPage}
-              pageSize={pageSize}
-              paging={paging}
-              pagingHandler={handleAppHistoryPageChange}
-              onShowSizeChange={handlePageSizeChange}
+      <>
+        <Row gutter={[16, 16]}>
+          <Col span={24}>
+            <Table
+              bordered
+              columns={tableColumn}
+              data-testid="app-run-history-table"
+              dataSource={appRunsHistoryData}
+              expandable={{
+                expandedRowRender: (record) => (
+                  <AppLogsViewer
+                    data={record}
+                    scrollHeight={maxRecords !== 1 ? 200 : undefined}
+                  />
+                ),
+                showExpandColumn: false,
+                rowExpandable: (record) => !showLogAction(record),
+                expandedRowKeys,
+              }}
+              loading={isLoading}
+              locale={{
+                emptyText: <ErrorPlaceHolder className="m-y-md" />,
+              }}
+              pagination={false}
+              rowKey="id"
+              size="small"
             />
-          )}
-        </Col>
-      </Row>
+          </Col>
+          <Col span={24}>
+            {showPagination && paginationVisible && (
+              <NextPrevious
+                isNumberBased
+                currentPage={currentPage}
+                isLoading={isLoading}
+                pageSize={pageSize}
+                paging={paging}
+                pagingHandler={handleAppHistoryPageChange}
+                onShowSizeChange={handlePageSizeChange}
+              />
+            )}
+          </Col>
+        </Row>
+        {isStopModalOpen && (
+          <StopScheduleModal
+            appName={fqn}
+            displayName={appData?.displayName ?? ''}
+            isModalOpen={isStopModalOpen}
+            onClose={() => {
+              setIsStopModalOpen(false);
+            }}
+            onStopWorkflowsUpdate={() => {
+              fetchAppHistory();
+            }}
+          />
+        )}
+      </>
     );
   }
 );

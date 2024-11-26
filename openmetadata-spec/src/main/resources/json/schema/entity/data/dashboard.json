@@ -85,9 +85,9 @@
       "description": "Link to the resource corresponding to this entity.",
       "$ref": "../../type/basic.json#/definitions/href"
     },
-    "owner": {
-      "description": "Owner of this dashboard.",
-      "$ref": "../../type/entityReference.json"
+    "owners": {
+      "description": "Owners of this dashboard.",
+      "$ref": "../../type/entityReferenceList.json"
     },
     "followers": {
       "description": "Followers of this dashboard.",
@@ -99,7 +99,7 @@
       "items": {
         "$ref": "../../type/tagLabel.json"
       },
-      "default": null
+      "default": []
     },
     "service": {
       "description": "Link to service where this dashboard is hosted in.",
@@ -142,6 +142,9 @@
     "lifeCycle": {
       "description": "Life Cycle properties of the entity",
       "$ref": "../../type/lifeCycle.json"
+    },
+    "certification": {
+      "$ref": "../../type/assetCertification.json"
     },
     "sourceHash": {
       "description": "Source hash of the entity",

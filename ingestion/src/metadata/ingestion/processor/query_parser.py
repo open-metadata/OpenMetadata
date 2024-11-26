@@ -26,7 +26,7 @@ from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper, Diale
 from metadata.ingestion.lineage.parser import LineageParser
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.logger import ingestion_logger
-from metadata.utils.time_utils import convert_timestamp_to_milliseconds
+from metadata.utils.time_utils import datetime_to_timestamp
 
 logger = ingestion_logger()
 
@@ -46,7 +46,7 @@ def parse_sql_statement(record: TableQuery, dialect: Dialect) -> Optional[Parsed
         start_date = start_time.root.date()
         start_time = datetime.datetime.strptime(str(start_date.isoformat()), "%Y-%m-%d")
 
-    start_time = convert_timestamp_to_milliseconds(int(start_time.timestamp()))
+    start_time = datetime_to_timestamp(start_time, milliseconds=True)
 
     lineage_parser = LineageParser(record.query, dialect=dialect)
 
@@ -61,6 +61,7 @@ def parse_sql_statement(record: TableQuery, dialect: Dialect) -> Optional[Parsed
         sql=record.query,
         query_type=record.query_type,
         exclude_usage=record.exclude_usage,
+        dialect=dialect.value,
         userName=record.userName,
         date=str(start_time),
         serviceName=record.serviceName,

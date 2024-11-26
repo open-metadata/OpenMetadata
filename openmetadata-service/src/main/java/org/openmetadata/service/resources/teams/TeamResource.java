@@ -67,9 +67,11 @@ import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TeamRepository;
 import org.openmetadata.service.jdbi3.TeamRepository.TeamCsv;
+import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.util.CSVExportResponse;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
@@ -90,7 +92,7 @@ import org.openmetadata.service.util.ResultList;
 public class TeamResource extends EntityResource<Team, TeamRepository> {
   public static final String COLLECTION_PATH = "/v1/teams/";
   static final String FIELDS =
-      "owner,profile,users,owns,defaultRoles,parents,children,policies,userCount,childrenCount,domain";
+      "owners,profile,users,owns,defaultRoles,parents,children,policies,userCount,childrenCount,domains";
 
   @Override
   public Team addHref(UriInfo uriInfo, Team team) {
@@ -103,8 +105,8 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
     return team;
   }
 
-  public TeamResource(Authorizer authorizer) {
-    super(Entity.TEAM, authorizer);
+  public TeamResource(Authorizer authorizer, Limits limits) {
+    super(Entity.TEAM, authorizer, limits);
   }
 
   @Override
@@ -442,7 +444,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
                     schema = @Schema(implementation = ChangeEvent.class))),
         @ApiResponse(responseCode = "404", description = "model for instance {id} is not found")
       })
-  public Response bulkRemoveGlossaryFromAssets(
+  public Response bulkRemoveAssets(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Name of the Team", schema = @Schema(type = "string"))
@@ -592,6 +594,27 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
   }
 
   @GET
+  @Path("/name/{name}/exportAsync")
+  @Produces(MediaType.TEXT_PLAIN)
+  @Valid
+  @Operation(
+      operationId = "exportTeams",
+      summary = "Export teams in CSV format",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Exported csv with teams information",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = CSVExportResponse.class)))
+      })
+  public Response exportCsvAsync(
+      @Context SecurityContext securityContext, @PathParam("name") String name) throws IOException {
+    return exportCsvInternalAsync(securityContext, name);
+  }
+
+  @GET
   @Path("/name/{name}/export")
   @Produces(MediaType.TEXT_PLAIN)
   @Valid
@@ -643,6 +666,37 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
     return importCsvInternal(securityContext, name, csv, dryRun);
   }
 
+  @PUT
+  @Path("/name/{name}/importAsync")
+  @Consumes(MediaType.TEXT_PLAIN)
+  @Produces(MediaType.APPLICATION_JSON)
+  @Valid
+  @Operation(
+      operationId = "importTeamsAsync",
+      summary = "Import from CSV to create, and update teams asynchronously.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Import initiated successfully",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = CsvImportResult.class)))
+      })
+  public Response importCsvAsync(
+      @Context SecurityContext securityContext,
+      @PathParam("name") String name,
+      @Parameter(
+              description =
+                  "Dry-run when true is used for validating the CSV without really importing it. (default=true)",
+              schema = @Schema(type = "boolean"))
+          @DefaultValue("true")
+          @QueryParam("dryRun")
+          boolean dryRun,
+      String csv) {
+    return importCsvInternalAsync(securityContext, name, csv, dryRun);
+  }
+
   private Team getTeam(CreateTeam ct, String user) {
     if (ct.getTeamType().equals(TeamType.ORGANIZATION)) {
       throw new IllegalArgumentException(CREATE_ORGANIZATION);
@@ -660,6 +714,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
         .withParents(EntityUtil.toEntityReferences(ct.getParents(), Entity.TEAM))
         .withChildren(EntityUtil.toEntityReferences(ct.getChildren(), Entity.TEAM))
         .withPolicies(EntityUtil.toEntityReferences(ct.getPolicies(), Entity.POLICY))
-        .withEmail(ct.getEmail());
+        .withEmail(ct.getEmail())
+        .withDomains(EntityUtil.getEntityReferences(Entity.DOMAIN, ct.getDomains()));
   }
 }

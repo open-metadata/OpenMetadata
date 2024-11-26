@@ -13,50 +13,152 @@
 
 package org.openmetadata.service.util;
 
-import static org.openmetadata.common.utils.CommonUtil.listOf;
-
-import java.util.ArrayList;
-import java.util.Arrays;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.github.fge.jsonpatch.JsonPatchException;
+import java.io.IOException;
+import java.util.Collections;
 import java.util.HashSet;
-import java.util.List;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 import javax.json.JsonPatch;
 import javax.json.JsonValue;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.ResourceRegistry;
+import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 
 @Slf4j
 public class JsonPatchUtils {
+  private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+
   private JsonPatchUtils() {}
 
-  public static List<MetadataOperation> getMetadataOperations(JsonPatch jsonPatch) {
-    Set<MetadataOperation> uniqueValues = new HashSet<>();
+  public static Set<MetadataOperation> getMetadataOperations(
+      ResourceContextInterface resourceContextInterface, JsonPatch jsonPatch) {
+    Set<MetadataOperation> uniqueOperations = new HashSet<>();
+    EntityInterface originalEntity = resourceContextInterface.getEntity();
+    boolean tagsAffected = false;
+
     for (JsonValue jsonValue : jsonPatch.toJsonArray()) {
       MetadataOperation metadataOperation = getMetadataOperation(jsonValue);
       if (metadataOperation.equals(MetadataOperation.EDIT_ALL)) {
-        return listOf(
-            MetadataOperation.EDIT_ALL); // No need to process each individual edit operation
+        return Collections.singleton(MetadataOperation.EDIT_ALL);
       }
-      uniqueValues.add(metadataOperation);
+      if (metadataOperation.equals(MetadataOperation.EDIT_TAGS)) {
+        tagsAffected = true;
+      } else {
+        uniqueOperations.add(metadataOperation);
+      }
     }
-    LOG.debug("Returning patch operations {}", Arrays.toString(uniqueValues.toArray()));
-    return new ArrayList<>(uniqueValues);
+    if (tagsAffected) {
+      try {
+        JsonNode originalEntityJson = JsonUtils.pojoToJsonNode(originalEntity);
+        JsonNode patchedEntityJson = applyPatch(originalEntityJson, jsonPatch);
+        Set<TagLabel> originalTags = extractTags(originalEntityJson);
+        Set<TagLabel> patchedTags = extractTags(patchedEntityJson);
+        Set<TagLabel> addedTags = new HashSet<>(patchedTags);
+        addedTags.removeAll(originalTags);
+
+        Set<TagLabel> removedTags = new HashSet<>(originalTags);
+        removedTags.removeAll(patchedTags);
+
+        for (TagLabel addedTag : addedTags) {
+          uniqueOperations.add(mapTagToOperation(addedTag));
+        }
+        for (TagLabel removedTag : removedTags) {
+          uniqueOperations.add(mapTagToOperation(removedTag));
+        }
+        LOG.debug("Returning patch operations {}", uniqueOperations);
+      } catch (JsonPatchException | IOException e) {
+        LOG.error("Failed to process JSON Patch for MetadataOperations", e);
+        throw new RuntimeException("Error processing JSON Patch", e);
+      }
+    }
+
+    return uniqueOperations;
+  }
+
+  private static JsonNode applyPatch(JsonNode targetJson, JsonPatch patch)
+      throws JsonPatchException, IOException {
+    String patchString = patch.toString();
+    JsonNode patchNode = OBJECT_MAPPER.readTree(patchString);
+    com.github.fge.jsonpatch.JsonPatch jacksonPatch =
+        com.github.fge.jsonpatch.JsonPatch.fromJson(patchNode);
+    return jacksonPatch.apply(targetJson);
+  }
+
+  private static Set<TagLabel> extractTags(JsonNode entityJson) {
+    Set<TagLabel> tags = new HashSet<>();
+    traverseForTags(entityJson, tags);
+    return tags;
+  }
+
+  private static void traverseForTags(JsonNode node, Set<TagLabel> tags) {
+    if (node == null || node.isNull()) {
+      return;
+    }
+
+    if (node.isObject()) {
+      if (node.has("tags") && node.get("tags").isArray()) {
+        for (JsonNode tagNode : node.get("tags")) {
+          try {
+            TagLabel tag = OBJECT_MAPPER.treeToValue(tagNode, TagLabel.class);
+            tags.add(tag);
+          } catch (JsonProcessingException e) {
+            LOG.warn("Failed to parse TagLabel from node: {}", tagNode, e);
+          }
+        }
+      }
+
+      Iterator<Map.Entry<String, JsonNode>> fields = node.fields();
+      while (fields.hasNext()) {
+        Map.Entry<String, JsonNode> entry = fields.next();
+        traverseForTags(entry.getValue(), tags);
+      }
+    } else if (node.isArray()) {
+      for (JsonNode arrayItem : node) {
+        traverseForTags(arrayItem, tags);
+      }
+    }
+  }
+
+  private static MetadataOperation mapTagToOperation(TagLabel tag) {
+    if (tag == null) {
+      return null;
+    }
+    String source = tag.getSource().value();
+    String tagFQN = tag.getTagFQN();
+    if (isTierClassification(tagFQN)) {
+      return MetadataOperation.EDIT_TIER;
+    } else if ("Classification".equalsIgnoreCase(source)) {
+      return MetadataOperation.EDIT_TAGS;
+    } else if ("Glossary".equalsIgnoreCase(source)) {
+      return MetadataOperation.EDIT_GLOSSARY_TERMS;
+    }
+    // Default to EDIT_ALL if the tag is not recognized
+    return MetadataOperation.EDIT_ALL;
+  }
+
+  private static boolean isTierClassification(String tagFQN) {
+    return tagFQN != null && tagFQN.startsWith("Tier.");
   }
 
   public static MetadataOperation getMetadataOperation(Object jsonPatchObject) {
-    // JsonPatch operation example - {"op":"add","path":"/defaultRoles/0","value"..."}
     Map<String, Object> jsonPatchMap = JsonUtils.getMap(jsonPatchObject);
     String path = jsonPatchMap.get("path").toString(); // Get "path" node - "/defaultRoles/0"
     return getMetadataOperation(path);
   }
 
   public static MetadataOperation getMetadataOperation(String path) {
-    String[] fields = ResourceRegistry.getEditableFields(); // Get editable fields of an entity
-    for (String field : fields) {
-      if (path.contains(field)) { // If path contains the editable field
-        return ResourceRegistry.getEditOperation(field); // Return the corresponding operation
+    String[] paths = path.contains("/") ? path.split("/") : new String[] {path};
+    for (String p : paths) {
+      if (ResourceRegistry.hasEditOperation(p)) {
+        return ResourceRegistry.getEditOperation(p);
       }
     }
     LOG.warn("Failed to find specific operation for patch path {}", path);

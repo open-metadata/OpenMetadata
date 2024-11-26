@@ -86,7 +86,7 @@ class OMetaPipelineMixin:
             startDate=pipeline.startDate,
             service=pipeline.service.fullyQualifiedName,
             tasks=all_tasks,
-            owner=pipeline.owner,
+            owners=pipeline.owners,
             tags=pipeline.tags,
         )
 
@@ -113,7 +113,7 @@ class OMetaPipelineMixin:
             startDate=pipeline.startDate,
             service=pipeline.service.fullyQualifiedName,
             tasks=[task for task in pipeline.tasks if task.name in task_ids],
-            owner=pipeline.owner,
+            owners=pipeline.owners,
             tags=pipeline.tags,
         )
 

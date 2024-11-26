@@ -14,6 +14,7 @@ import { act, render, screen } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { ROUTES } from '../../constants/constants';
+import LimitWrapper from '../../hoc/LimitWrapper';
 import { getAllAlerts } from '../../rest/alertsAPI';
 import NotificationListPage from './NotificationListPage';
 
@@ -84,6 +85,12 @@ jest.mock(
   }
 );
 
+jest.mock('../../hoc/LimitWrapper', () => {
+  return jest
+    .fn()
+    .mockImplementation(({ children }) => <>LimitWrapper{children}</>);
+});
+
 describe('Notification Alerts Page Tests', () => {
   it('Title should be rendered', async () => {
     await act(async () => {
@@ -147,5 +154,18 @@ describe('Notification Alerts Page Tests', () => {
     const alertNameElement = await screen.findByText('label.no-entity');
 
     expect(alertNameElement).toBeInTheDocument();
+  });
+
+  it('should call LimitWrapper with resource as eventsubscription', async () => {
+    await act(async () => {
+      render(<NotificationListPage />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    expect(LimitWrapper).toHaveBeenCalledWith(
+      expect.objectContaining({ resource: 'eventsubscription' }),
+      {}
+    );
   });
 });

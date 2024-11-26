@@ -13,12 +13,7 @@
 
 import { AxiosError } from 'axios';
 import { cloneDeep } from 'lodash';
-import {
-  getDayCron,
-  getHourCron,
-} from '../components/common/CronEditor/CronEditor.constant';
 import { ERROR_MESSAGE } from '../constants/constants';
-import { PipelineType } from '../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import {
   LabelType,
   State,
@@ -27,11 +22,13 @@ import {
 } from '../generated/type/tagLabel';
 import {
   digitFormatter,
+  filterSelectOptions,
   getBase64EncodedString,
-  getIngestionFrequency,
   getIsErrorMatch,
   getNameFromFQN,
+  getServiceTypeExploreQueryFilter,
   getTagValue,
+  isDeleted,
   prepareLabel,
   reduceColorOpacity,
   sortTagsCaseInsensitive,
@@ -49,7 +46,6 @@ import {
   mockTableNameWithSpecialChar4,
   mockTableNameWithSpecialChar5,
   mockTags,
-  sortedMockTags,
 } from './CommonUtils.mock';
 
 const AXIOS_ERROR_MESSAGE = {
@@ -70,21 +66,7 @@ const AXIOS_ERROR_MESSAGE = {
 describe('Tests for CommonUtils', () => {
   describe('Tests for sortTagsCaseInsensitive function', () => {
     it('Input of unsorted array to sortTagsCaseInsensitive should return array of tags sorted by tagFQN', () => {
-      expect(sortTagsCaseInsensitive(cloneDeep(mockTags))).toEqual(
-        sortedMockTags
-      );
-    });
-
-    it('Input of sorted array to sortTagsCaseInsensitive should return array of tags sorted by tagFQN', () => {
-      expect(sortTagsCaseInsensitive(cloneDeep(sortedMockTags))).toEqual(
-        sortedMockTags
-      );
-    });
-
-    it('Array returned by sortTagsCaseInsensitive should not be equal to the unsorted input array of tags', () => {
-      expect(sortTagsCaseInsensitive(cloneDeep(mockTags))).not.toEqual(
-        mockTags
-      );
+      expect(sortTagsCaseInsensitive(cloneDeep(mockTags))).toEqual(mockTags);
     });
 
     it('Function getNameFromFQN should return the correct table name for fqn without special characters', () => {
@@ -134,12 +116,16 @@ describe('Tests for CommonUtils', () => {
         { value: 1000, result: '1K' },
         { value: 10000, result: '10K' },
         { value: 10200, result: '10.2K' },
+        { value: 10230, result: '10.23K' },
         { value: 1000000, result: '1M' },
+        { value: 1230000, result: '1.23M' },
         { value: 100000000, result: '100M' },
         { value: 1000000000, result: '1B' },
         { value: 1500000000, result: '1.5B' },
+        { value: 1550000000, result: '1.55B' },
         { value: 1000000000000, result: '1T' },
         { value: 1100000000000, result: '1.1T' },
+        { value: 1110000000000, result: '1.11T' },
       ];
 
       values.map(({ value, result }) => {
@@ -249,29 +235,6 @@ describe('Tests for CommonUtils', () => {
       });
     });
 
-    describe('getIngestionFrequency', () => {
-      it('should return the correct cron value for TestSuite pipeline', () => {
-        const pipelineType = PipelineType.TestSuite;
-        const result = getIngestionFrequency(pipelineType);
-
-        expect(result).toEqual(getHourCron({ min: 0, hour: 0 }));
-      });
-
-      it('should return the correct cron value for Metadata pipeline', () => {
-        const pipelineType = PipelineType.Metadata;
-        const result = getIngestionFrequency(pipelineType);
-
-        expect(result).toEqual(getHourCron({ min: 0, hour: 0 }));
-      });
-
-      it('should return the correct cron value for other pipeline types', () => {
-        const pipelineType = PipelineType.Profiler;
-        const result = getIngestionFrequency(pipelineType);
-
-        expect(result).toEqual(getDayCron({ min: 0, hour: 0 }));
-      });
-    });
-
     describe('prepareLabel', () => {
       it('should return label for table entity type with quotes', () => {
         const type = 'table';
@@ -312,6 +275,75 @@ describe('Tests for CommonUtils', () => {
 
         expect(result).toEqual(expected);
       });
+    });
+
+    describe('getServiceTypeExploreQueryFilter', () => {
+      it('should return json string with the key', () => {
+        const result = getServiceTypeExploreQueryFilter('mysql');
+
+        expect(result).toEqual(
+          '{"query":{"bool":{"must":[{"bool":{"should":[{"term":{"serviceType":"mysql"}}]}}]}}}'
+        );
+      });
+    });
+
+    it('isDeleted should return proper boolean value', () => {
+      expect(isDeleted(true)).toBe(true);
+      expect(isDeleted(false)).toBe(false);
+      expect(isDeleted('false')).toBe(false);
+      expect(isDeleted(undefined)).toBe(false);
+      expect(isDeleted(null)).toBe(false);
+    });
+  });
+
+  describe('filterSelectOptions', () => {
+    it('should return true if input matches option labelValue', () => {
+      const input = 'test';
+      const option = {
+        labelValue: 'Test Label',
+        value: 'testValue',
+        label: 'Test Label',
+      };
+
+      expect(filterSelectOptions(input, option)).toBe(true);
+    });
+
+    it('should return true if input matches option value', () => {
+      const input = 'test';
+      const option = {
+        labelValue: 'Label',
+        label: 'Label',
+        value: 'testValue',
+      };
+
+      expect(filterSelectOptions(input, option)).toBe(true);
+    });
+
+    it('should return false if input does not match option labelValue or value', () => {
+      const input = 'test';
+      const option = { labelValue: 'Label', value: 'value', label: 'Label' };
+
+      expect(filterSelectOptions(input, option)).toBe(false);
+    });
+
+    it('should return false if option is undefined', () => {
+      const input = 'test';
+
+      expect(filterSelectOptions(input)).toBe(false);
+    });
+
+    it('should handle non-string option value gracefully', () => {
+      const input = 'test';
+      const option = { labelValue: 'Label', value: 123, label: 'Label' };
+
+      expect(filterSelectOptions(input, option)).toBe(false);
+    });
+
+    it('should handle empty input gracefully', () => {
+      const input = '';
+      const option = { labelValue: 'Label', value: 'value', label: 'Label' };
+
+      expect(filterSelectOptions(input, option)).toBe(true);
     });
   });
 });

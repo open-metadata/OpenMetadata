@@ -28,7 +28,14 @@
     height: 200px;
   }
 }
-.full-screen-editor-height > .CodeMirror {
+
+.query-editor-min-h-60 {
+  .CodeMirror {
+    min-height: 60px;
+  }
+}
+.full-screen-editor-height > .CodeMirror,
+.full-screen-editor-height > .react-codemirror2 > .CodeMirror {
   height: calc(100vh - 250px) !important;
 }
 
@@ -45,5 +52,8 @@
   }
   .CodeMirror-linenumber {
     color: @text-color;
+  }
+  .CodeMirror-sizer {
+    margin-left: 40px !important;
   }
 }

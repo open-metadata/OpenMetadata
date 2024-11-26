@@ -29,22 +29,37 @@
       "dashboardService",
       "pipelineService",
       "mlmodelService",
+      "storageService",
+      "metadataService",
       "searchService",
       "entityReportData",
       "webAnalyticEntityViewReportData",
       "webAnalyticUserActivityReportData",
       "domain",
       "storedProcedure",
-      "storageService",
       "dataProduct",
-      "testCaseResolutionStatus"
+      "testCaseResolutionStatus",
+      "testCaseResult",
+      "apiService",
+      "apiEndpoint",
+      "apiCollection",
+      "metric"
     ],
-    "recreateIndex": true,
+    "recreateIndex": false,
     "batchSize": "100",
+    "payLoadSize": 104857600,
+    "producerThreads": 1,
+    "consumerThreads": 1,
+    "queueSize": 100,
+    "maxConcurrentRequests": 100,
+    "maxRetries": 3,
+    "initialBackoff": 1000,
+    "maxBackoff": 10000,
     "searchIndexMappingLanguage": "EN"
   },
   "appSchedule": {
     "scheduleTimeline": "Custom",
     "cronExpression": "0 0 * * *"
-  }
+  },
+  "supportsInterrupt": true
 }

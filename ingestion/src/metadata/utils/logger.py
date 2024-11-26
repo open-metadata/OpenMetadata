@@ -13,10 +13,11 @@ Module centralising logger configs
 """
 
 import logging
+from copy import deepcopy
 from enum import Enum
 from functools import singledispatch
 from types import DynamicClassAttribute
-from typing import Optional, Union
+from typing import Dict, Optional, Union
 
 from metadata.data_quality.api.models import (
     TableAndTests,
@@ -24,7 +25,10 @@ from metadata.data_quality.api.models import (
     TestCaseResults,
 )
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
+from metadata.generated.schema.type.queryParserData import QueryParserData
+from metadata.generated.schema.type.tableQuery import TableQueries
 from metadata.ingestion.api.models import Entity
+from metadata.ingestion.lineage.masker import mask_query
 from metadata.ingestion.models.delete_entity import DeleteEntity
 from metadata.ingestion.models.life_cycle import OMetaLifeCycleData
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
@@ -37,6 +41,8 @@ BASE_LOGGING_FORMAT = (
 )
 logging.basicConfig(format=BASE_LOGGING_FORMAT, datefmt="%Y-%m-%d %H:%M:%S")
 
+REDACTED_KEYS = {"serviceConnection", "securityConfig"}
+
 
 class Loggers(Enum):
     """
@@ -46,13 +52,13 @@ class Loggers(Enum):
     OMETA = "OMetaAPI"
     CLI = "Metadata"
     PROFILER = "Profiler"
+    SAMPLER = "Sampler"
     PII = "PII"
     INGESTION = "Ingestion"
     UTILS = "Utils"
     GREAT_EXPECTATIONS = "GreatExpectations"
     PROFILER_INTERFACE = "ProfilerInterface"
     TEST_SUITE = "TestSuite"
-    DATA_INSIGHT = "DataInsight"
     QUERY_RUNNER = "QueryRunner"
     APP = "App"
 
@@ -98,6 +104,14 @@ def profiler_logger():
     return logging.getLogger(Loggers.PROFILER.value)
 
 
+def sampler_logger():
+    """
+    Method to get the SAMPLER logger
+    """
+
+    return logging.getLogger(Loggers.SAMPLER.value)
+
+
 def pii_logger():
     """
     Method to get the PROFILER logger
@@ -128,14 +142,6 @@ def ingestion_logger():
     """
 
     return logging.getLogger(Loggers.INGESTION.value)
-
-
-def data_insight_logger():
-    """
-    Function to get the DATA INSIGHT logger
-    """
-
-    return logging.getLogger(Loggers.DATA_INSIGHT.value)
 
 
 def utils_logger():
@@ -179,10 +185,14 @@ def set_loggers_level(level: Union[int, str] = logging.INFO):
 
 
 def log_ansi_encoded_string(
-    color: Optional[ANSI] = None, bold: bool = False, message: str = ""
+    color: Optional[ANSI] = None,
+    bold: bool = False,
+    message: str = "",
+    level=logging.INFO,
 ):
-    utils_logger().info(
-        f"{ANSI.BOLD.value if bold else ''}{color.value if color else ''}{message}{ANSI.ENDC.value}"
+    utils_logger().log(
+        level=level,
+        msg=f"{ANSI.BOLD.value if bold else ''}{color.value if color else ''}{message}{ANSI.ENDC.value}",
     )
 
 
@@ -269,3 +279,39 @@ def _(record: OMetaPipelineStatus) -> str:
 def _(record: PatchRequest) -> str:
     """Get the log of the new entity"""
     return get_log_name(record.new_entity)
+
+
+@get_log_name.register
+def _(record: TableQueries) -> str:
+    """Get the log of the TableQuery"""
+    queries = "\n------\n".join(
+        mask_query(query.query, query.dialect) for query in record.queries
+    )
+    return f"Table Queries [{queries}]"
+
+
+@get_log_name.register
+def _(record: QueryParserData) -> str:
+    """Get the log of the ParsedData"""
+    queries = "\n------\n".join(
+        mask_query(query.sql, query.dialect) for query in record.parsedData
+    )
+    return f"Usage ParsedData [{queries}]"
+
+
+def redacted_config(config: Dict[str, Union[str, dict]]) -> Dict[str, Union[str, dict]]:
+    config_copy = deepcopy(config)
+
+    def traverse_and_modify(obj):
+        if isinstance(obj, dict):
+            for key, value in obj.items():
+                if key in REDACTED_KEYS:
+                    obj[key] = "REDACTED"
+                else:
+                    traverse_and_modify(value)
+        elif isinstance(obj, list):
+            for item in obj:
+                traverse_and_modify(item)
+
+    traverse_and_modify(config_copy)
+    return config_copy

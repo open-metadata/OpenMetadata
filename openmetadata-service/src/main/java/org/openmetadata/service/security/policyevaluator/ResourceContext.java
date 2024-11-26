@@ -28,6 +28,7 @@ public class ResourceContext<T extends EntityInterface> implements ResourceConte
   private final UUID id;
   private final String name;
   private T entity; // Will be lazily initialized
+  private ResourceContextInterface.Operation operation = ResourceContextInterface.Operation.NONE;
 
   public ResourceContext(@NonNull String resource) {
     this.resource = resource;
@@ -43,6 +44,18 @@ public class ResourceContext<T extends EntityInterface> implements ResourceConte
     this.entityRepository = (EntityRepository<T>) Entity.getEntityRepository(resource);
   }
 
+  public ResourceContext(
+      @NonNull String resource,
+      UUID id,
+      String name,
+      ResourceContextInterface.Operation operation) {
+    this.resource = resource;
+    this.id = id;
+    this.name = name;
+    this.operation = operation;
+    this.entityRepository = (EntityRepository<T>) Entity.getEntityRepository(resource);
+  }
+
   @VisibleForTesting
   public ResourceContext(@NonNull String resource, T entity, EntityRepository<T> repository) {
     this.resource = resource;
@@ -53,14 +66,14 @@ public class ResourceContext<T extends EntityInterface> implements ResourceConte
   }
 
   @Override
-  public EntityReference getOwner() {
+  public List<EntityReference> getOwners() {
     resolveEntity();
     if (entity == null) {
       return null;
     } else if (Entity.USER.equals(entityRepository.getEntityType())) {
-      return entity.getEntityReference(); // Owner for a user is same as the user
+      return List.of(entity.getEntityReference()); // Owner for a user is same as the user
     }
-    return entity.getOwner();
+    return entity.getOwners();
   }
 
   @Override
@@ -74,22 +87,44 @@ public class ResourceContext<T extends EntityInterface> implements ResourceConte
     return resolveEntity();
   }
 
+  @Override
+  public EntityReference getDomain() {
+    resolveEntity();
+    if (entity == null) {
+      return null;
+    } else if (Entity.DOMAIN.equals(entityRepository.getEntityType())) {
+      return entity.getEntityReference(); // Domain for a domain is same as the domain
+    }
+    return entity.getDomain();
+  }
+
   private EntityInterface resolveEntity() {
     if (entity == null) {
+      Fields fieldList;
       String fields = "";
-      if (entityRepository.isSupportsOwner()) {
-        fields = EntityUtil.addField(fields, Entity.FIELD_OWNER);
+      if (operation == ResourceContextInterface.Operation.PATCH) {
+        fieldList = entityRepository.getPatchFields();
+      } else if (operation == ResourceContextInterface.Operation.PUT) {
+        fieldList = entityRepository.getPutFields();
+      } else {
+        if (entityRepository.isSupportsOwners()) {
+          fields = EntityUtil.addField(fields, Entity.FIELD_OWNERS);
+        }
+        if (entityRepository.isSupportsTags()) {
+          fields = EntityUtil.addField(fields, Entity.FIELD_TAGS);
+        }
+        if (entityRepository.isSupportsDomain()) {
+          fields = EntityUtil.addField(fields, Entity.FIELD_DOMAIN);
+        }
+        if (entityRepository.isSupportsReviewers()) {
+          fields = EntityUtil.addField(fields, Entity.FIELD_REVIEWERS);
+        }
+        if (entityRepository.isSupportsDomain()) {
+          fields = EntityUtil.addField(fields, Entity.FIELD_DOMAIN);
+        }
+        fieldList = entityRepository.getFields(fields);
       }
-      if (entityRepository.isSupportsTags()) {
-        fields = EntityUtil.addField(fields, Entity.FIELD_TAGS);
-      }
-      if (entityRepository.isSupportsDomain()) {
-        fields = EntityUtil.addField(fields, Entity.FIELD_DOMAIN);
-      }
-      if (entityRepository.isSupportsReviewers()) {
-        fields = EntityUtil.addField(fields, Entity.FIELD_REVIEWERS);
-      }
-      Fields fieldList = entityRepository.getFields(fields);
+
       try {
         if (id != null) {
           entity = entityRepository.get(null, id, fieldList, Include.ALL, true);

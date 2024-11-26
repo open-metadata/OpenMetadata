@@ -11,17 +11,31 @@
  *  limitations under the License.
  */
 
+import { CreateEventSubscription } from '../../generated/events/api/createEventSubscription';
 import {
   Destination,
   EventSubscription,
   SubscriptionCategory,
   SubscriptionType,
+  Webhook,
 } from '../../generated/events/eventSubscription';
+
+export interface ModifiedWebhookConfig extends Webhook {
+  headers?: { key: string; value: string }[];
+}
 
 export interface ModifiedDestination extends Destination {
   destinationType: SubscriptionType | SubscriptionCategory;
+  config?: ModifiedWebhookConfig;
 }
 
 export interface ModifiedEventSubscription extends EventSubscription {
   destinations: ModifiedDestination[];
+  timeout: number;
+}
+
+export interface ModifiedCreateEventSubscription
+  extends CreateEventSubscription {
+  destinations: ModifiedDestination[];
+  timeout: number;
 }

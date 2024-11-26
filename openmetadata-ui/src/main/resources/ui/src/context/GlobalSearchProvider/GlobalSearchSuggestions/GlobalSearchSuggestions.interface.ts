@@ -72,6 +72,16 @@ export interface GlossarySource extends CommonSource {
   glossary_name: string;
 }
 
+export interface DatabaseSource extends CommonSource {
+  database_id: string;
+  database_name: string;
+}
+
+export interface DatabaseSchemaSource extends CommonSource {
+  database_schema_id: string;
+  database_schema_name: string;
+}
+
 export interface TagSource extends CommonSource {
   tag_id: string;
   tag_name: string;
@@ -91,21 +101,45 @@ export interface DataProductSource extends CommonSource {
   data_product_name: string;
 }
 
+export interface ChartSource extends CommonSource {
+  chart_id: string;
+  chart_name: string;
+}
+
+export interface APIEndpointSource extends CommonSource {
+  api_endpoint_id: string;
+  api_endpoint_name: string;
+}
+export interface MetricSource extends CommonSource {
+  metric_id: string;
+  metric_name: string;
+}
+
+export interface APICollectionSource extends CommonSource {
+  api_collection_id: string;
+  api_collection_name: string;
+}
+
 export interface Option {
   _index: string;
   _id: string;
-  _source: TableSource &
-    DashboardSource &
-    TopicSource &
-    PipelineSource &
-    MlModelSource &
-    ContainerSearchSource &
-    StoredProcedureSearchSource &
-    DashboardDataModelSearchSource &
-    GlossarySource &
-    TagSource &
-    SearchIndexSource &
-    DataProductSource;
+  _source:
+    | TableSource &
+        DashboardSource &
+        TopicSource &
+        PipelineSource &
+        MlModelSource &
+        ContainerSearchSource &
+        StoredProcedureSearchSource &
+        DashboardDataModelSearchSource &
+        GlossarySource &
+        TagSource &
+        SearchIndexSource &
+        DataProductSource &
+        ChartSource &
+        APIEndpointSource &
+        APICollectionSource &
+        MetricSource;
 }
 
 export type SearchSuggestions =
@@ -120,4 +154,10 @@ export type SearchSuggestions =
   | SearchIndexSource[]
   | StoredProcedureSearchSource[]
   | DashboardDataModelSearchSource[]
-  | DataProductSource[];
+  | DataProductSource[]
+  | ChartSource[]
+  | APIEndpointSource[]
+  | APICollectionSource[]
+  | MetricSource[]
+  | DatabaseSource[]
+  | DatabaseSchemaSource[];

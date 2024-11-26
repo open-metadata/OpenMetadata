@@ -72,7 +72,7 @@ describe('UsersTab', () => {
       });
     });
 
-    expect(await screen.findByText('Aaron Johnson')).toBeInTheDocument();
+    expect(await screen.findAllByText('Aaron Johnson')).toHaveLength(2);
     expect(await screen.findByText('Sales')).toBeInTheDocument();
     expect(await screen.findByText('Data Steward')).toBeInTheDocument();
   });

@@ -18,7 +18,6 @@ import {
   TestSummary,
 } from '../../../../generated/tests/testCase';
 import { getTestCaseExecutionSummary } from '../../../../rest/testAPI';
-import { formTwoDigitNumber } from '../../../../utils/CommonUtils';
 
 const TestSuiteSummaryWidget = ({
   testSuite,
@@ -49,24 +48,24 @@ const TestSuiteSummaryWidget = ({
   }, [testSuite]);
 
   if (isLoading) {
-    return <Skeleton.Input active />;
+    return <Skeleton.Input active data-tesid="loader" />;
   }
 
   return (
     <div className="d-flex justify-end">
       <div className="profiler-item green" data-testid="test-passed">
         <div className="font-medium" data-testid="test-passed-value">
-          {formTwoDigitNumber(summary?.success ?? 0)}
+          {summary?.success ?? 0}
         </div>
       </div>
       <div className="profiler-item amber" data-testid="test-aborted">
         <div className="font-medium" data-testid="test-aborted-value">
-          {formTwoDigitNumber(summary?.aborted ?? 0)}
+          {summary?.aborted ?? 0}
         </div>
       </div>
       <div className="profiler-item red" data-testid="test-failed">
         <div className="font-medium" data-testid="test-failed-value">
-          {formTwoDigitNumber(summary?.failed ?? 0)}
+          {summary?.failed ?? 0}
         </div>
       </div>
     </div>

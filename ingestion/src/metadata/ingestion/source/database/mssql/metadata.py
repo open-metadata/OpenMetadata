@@ -10,7 +10,7 @@
 #  limitations under the License.
 """MSSQL source module"""
 import traceback
-from typing import Dict, Iterable, List, Optional
+from typing import Iterable, Optional
 
 from sqlalchemy.dialects.mssql.base import MSDialect, ischema_names
 from sqlalchemy.engine.reflection import Inspector
@@ -41,7 +41,6 @@ from metadata.ingestion.source.database.mssql.models import (
 )
 from metadata.ingestion.source.database.mssql.queries import (
     MSSQL_GET_DATABASE,
-    MSSQL_GET_STORED_PROCEDURE_QUERIES,
     MSSQL_GET_STORED_PROCEDURES,
 )
 from metadata.ingestion.source.database.mssql.utils import (
@@ -55,13 +54,8 @@ from metadata.ingestion.source.database.mssql.utils import (
     get_view_names,
 )
 from metadata.ingestion.source.database.multi_db_source import MultiDBSource
-from metadata.ingestion.source.database.stored_procedures_mixin import (
-    QueryByProcedure,
-    StoredProcedureMixin,
-)
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database
-from metadata.utils.helpers import get_start_and_end
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqa_utils import update_mssql_ischema_names
 from metadata.utils.sqlalchemy_utils import (
@@ -94,7 +88,7 @@ Inspector.get_all_table_ddls = get_all_table_ddls
 Inspector.get_table_ddl = get_table_ddl
 
 
-class MssqlSource(StoredProcedureMixin, CommonDbSourceService, MultiDBSource):
+class MssqlSource(CommonDbSourceService, MultiDBSource):
     """
     Implements the necessary methods to extract
     Database metadata from MSSQL Source
@@ -208,19 +202,3 @@ class MssqlSource(StoredProcedureMixin, CommonDbSourceService, MultiDBSource):
                     stackTrace=traceback.format_exc(),
                 )
             )
-
-    def get_stored_procedure_queries_dict(self) -> Dict[str, List[QueryByProcedure]]:
-        """
-        Return the dictionary associating stored procedures to the
-        queries they triggered
-        """
-        start, _ = get_start_and_end(self.source_config.queryLogDuration)
-        query = MSSQL_GET_STORED_PROCEDURE_QUERIES.format(
-            start_date=start,
-        )
-
-        queries_dict = self.procedure_queries_dict(
-            query=query,
-        )
-
-        return queries_dict

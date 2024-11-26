@@ -10,43 +10,67 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { APIRequestContext } from '@playwright/test';
-import { uuid } from '../../utils/common';
-import { getRandomFirstName } from '../../utils/user';
-
-type ResponseDataType = {
-  name: string;
-  displayName: string;
-  description: string;
-  reviewers: unknown[];
-  tags: unknown[];
-  mutuallyExclusive: boolean;
-  id: string;
-  fullyQualifiedName: string;
-};
+import { APIRequestContext, expect, Page } from '@playwright/test';
+import { omit } from 'lodash';
+import {
+  getRandomFirstName,
+  uuid,
+  visitGlossaryPage,
+} from '../../utils/common';
+import { GlossaryData, GlossaryResponseDataType } from './Glossary.interface';
 
 export class Glossary {
   randomName = getRandomFirstName();
-  data = {
-    name: `PW%${uuid()}.${this.randomName}`,
-    displayName: `PW % ${uuid()} ${this.randomName}`,
+  randomId = uuid();
+  data: GlossaryData = {
+    name: `PW%${this.randomId}.${this.randomName}`,
+    displayName: `PW % ${this.randomId} ${this.randomName}`,
     description:
-      'Glossary terms that describe general conceptual terms. **Note that these conceptual terms are used for automatically labeling the data.**',
+      'Glossary terms that describe general conceptual terms. Note that these conceptual terms are used for automatically labeling the data.',
     reviewers: [],
     tags: [],
     mutuallyExclusive: false,
+    terms: [],
+    owners: [],
+    // eslint-disable-next-line no-useless-escape
+    fullyQualifiedName: `\"PW%${this.randomId}.${this.randomName}\"`,
   };
 
-  responseData: ResponseDataType;
+  responseData: GlossaryResponseDataType;
 
   constructor(name?: string) {
     this.data.name = name ?? this.data.name;
   }
 
+  async visitPage(page: Page) {
+    await visitGlossaryPage(page, this.data.displayName);
+
+    await expect(page.getByTestId('entity-header-display-name')).toHaveText(
+      this.data.displayName
+    );
+  }
+
   async create(apiContext: APIRequestContext) {
+    const apiData = omit(this.data, ['fullyQualifiedName', 'terms', 'owners']);
     const response = await apiContext.post('/api/v1/glossaries', {
-      data: this.data,
+      data: apiData,
     });
+
+    this.responseData = await response.json();
+
+    return this.responseData;
+  }
+
+  async patch(apiContext: APIRequestContext, data: Record<string, unknown>[]) {
+    const response = await apiContext.patch(
+      `/api/v1/glossaries/${this.responseData.id}`,
+      {
+        data,
+        headers: {
+          'Content-Type': 'application/json-patch+json',
+        },
+      }
+    );
 
     this.responseData = await response.json();
 
@@ -58,9 +82,12 @@ export class Glossary {
   }
 
   async delete(apiContext: APIRequestContext) {
+    const fqn =
+      this?.responseData?.fullyQualifiedName ?? this.data.fullyQualifiedName;
+
     const response = await apiContext.delete(
       `/api/v1/glossaries/name/${encodeURIComponent(
-        this.responseData.fullyQualifiedName
+        fqn
       )}?recursive=true&hardDelete=true`
     );
 
