@@ -23,7 +23,7 @@ import {
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { cloneDeep } from 'lodash';
+import { cloneDeep, isEmpty } from 'lodash';
 import React, {
   useCallback,
   useEffect,
@@ -92,7 +92,10 @@ import {
   escapeESReservedCharacters,
   getEncodedFqn,
 } from '../../utils/StringsUtils';
-import { getQueryFilterToExcludeTerms } from '../../utils/TagsUtils';
+import {
+  getExcludedIndexesBasedOnEntityTypeEditTagPermission,
+  getQueryFilterToExcludeTermsAndEntities,
+} from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import './tag-page.less';
 import { TagTabs } from './TagPage.inteface';
@@ -102,7 +105,7 @@ const TagPage = () => {
   const { fqn: tagFqn } = useFqn();
   const history = useHistory();
   const { tab: activeTab = TagTabs.OVERVIEW } = useParams<{ tab?: string }>();
-  const { getEntityPermission } = usePermissionProvider();
+  const { permissions, getEntityPermission } = usePermissionProvider();
   const [isLoading, setIsLoading] = useState(false);
   const [tagItem, setTagItem] = useState<Tag>();
   const [assetModalVisible, setAssetModalVisible] = useState(false);
@@ -161,6 +164,11 @@ const TagPage = () => {
 
     return { editTagsPermission: false, editDescriptionPermission: false };
   }, [tagPermissions, tagItem?.deleted]);
+
+  const editEntitiesTagPermission = useMemo(
+    () => getExcludedIndexesBasedOnEntityTypeEditTagPermission(permissions),
+    [permissions]
+  );
 
   const fetchCurrentTagPermission = async () => {
     if (!tagItem?.id) {
@@ -592,48 +600,49 @@ const TagPage = () => {
                 titleColor={tagItem.style?.color ?? BLACK_COLOR}
               />
             </Col>
-            {editTagsPermission && (
-              <Col className="p-x-md">
-                <div className="d-flex self-end">
-                  <Button
-                    data-testid="data-classification-add-button"
-                    type="primary"
-                    onClick={() => setAssetModalVisible(true)}>
-                    {t('label.add-entity', {
-                      entity: t('label.asset-plural'),
-                    })}
-                  </Button>
-                  {manageButtonContent.length > 0 && (
-                    <Dropdown
-                      align={{ targetOffset: [-12, 0] }}
-                      className="m-l-xs"
-                      menu={{
-                        items: manageButtonContent,
-                      }}
-                      open={showActions}
-                      overlayStyle={{ width: '350px' }}
-                      placement="bottomRight"
-                      trigger={['click']}
-                      onOpenChange={setShowActions}>
-                      <Tooltip
-                        placement="topRight"
-                        title={t('label.manage-entity', {
-                          entity: t('label.tag-lowercase'),
-                        })}>
-                        <Button
-                          className="flex-center"
-                          data-testid="manage-button"
-                          icon={
-                            <IconDropdown className="manage-dropdown-icon" />
-                          }
-                          onClick={() => setShowActions(true)}
-                        />
-                      </Tooltip>
-                    </Dropdown>
-                  )}
-                </div>
-              </Col>
-            )}
+            {editTagsPermission ||
+              (!isEmpty(editEntitiesTagPermission.entitiesHavingPermission) && (
+                <Col className="p-x-md">
+                  <div className="d-flex self-end">
+                    <Button
+                      data-testid="data-classification-add-button"
+                      type="primary"
+                      onClick={() => setAssetModalVisible(true)}>
+                      {t('label.add-entity', {
+                        entity: t('label.asset-plural'),
+                      })}
+                    </Button>
+                    {manageButtonContent.length > 0 && (
+                      <Dropdown
+                        align={{ targetOffset: [-12, 0] }}
+                        className="m-l-xs"
+                        menu={{
+                          items: manageButtonContent,
+                        }}
+                        open={showActions}
+                        overlayStyle={{ width: '350px' }}
+                        placement="bottomRight"
+                        trigger={['click']}
+                        onOpenChange={setShowActions}>
+                        <Tooltip
+                          placement="topRight"
+                          title={t('label.manage-entity', {
+                            entity: t('label.tag-lowercase'),
+                          })}>
+                          <Button
+                            className="flex-center"
+                            data-testid="manage-button"
+                            icon={
+                              <IconDropdown className="manage-dropdown-icon" />
+                            }
+                            onClick={() => setShowActions(true)}
+                          />
+                        </Tooltip>
+                      </Dropdown>
+                    )}
+                  </div>
+                </Col>
+              ))}
           </Row>
         </Col>
 
@@ -688,7 +697,10 @@ const TagPage = () => {
         <AssetSelectionModal
           entityFqn={tagItem.fullyQualifiedName}
           open={assetModalVisible}
-          queryFilter={getQueryFilterToExcludeTerms(tagItem.fullyQualifiedName)}
+          queryFilter={getQueryFilterToExcludeTermsAndEntities(
+            tagItem.fullyQualifiedName,
+            editEntitiesTagPermission.entitiesNotHavingPermission
+          )}
           type={AssetsOfEntity.TAG}
           onCancel={() => setAssetModalVisible(false)}
           onSave={handleAssetSave}

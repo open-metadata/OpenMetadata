@@ -24,6 +24,10 @@ import Loader from '../components/common/Loader/Loader';
 import RichTextEditorPreviewer from '../components/common/RichTextEditor/RichTextEditorPreviewer';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import { getExplorePath } from '../constants/constants';
+import {
+  ResourceEntity,
+  UIPermission,
+} from '../context/PermissionProvider/PermissionProvider.interface';
 import { SettledStatus } from '../enums/Axios.enum';
 import { EntityType } from '../enums/entity.enum';
 import { ExplorePageTabs } from '../enums/Explore.enum';
@@ -32,6 +36,7 @@ import { Classification } from '../generated/entity/classification/classificatio
 import { Tag } from '../generated/entity/classification/tag';
 import { GlossaryTerm } from '../generated/entity/data/glossaryTerm';
 import { Column } from '../generated/entity/data/table';
+import { Operation } from '../generated/entity/policies/policy';
 import { Paging } from '../generated/type/paging';
 import { LabelType, State, TagLabel } from '../generated/type/tagLabel';
 import { searchQuery } from '../rest/searchAPI';
@@ -41,6 +46,7 @@ import {
   getTags,
 } from '../rest/tagAPI';
 import { getQueryFilterToIncludeApprovedTerm } from './GlossaryUtils';
+import { checkPermission } from './PermissionsUtils';
 import { getTagsWithoutTier } from './TableUtils';
 
 export const getClassifications = async (
@@ -318,7 +324,10 @@ export const createTagObject = (tags: EntityTags[]) => {
   );
 };
 
-export const getQueryFilterToExcludeTerms = (fqn: string) => ({
+export const getQueryFilterToExcludeTermsAndEntities = (
+  fqn: string,
+  excludeEntityIndex: string[] = []
+) => ({
   query: {
     bool: {
       must: [
@@ -349,7 +358,158 @@ export const getQueryFilterToExcludeTerms = (fqn: string) => ({
             ],
           },
         },
+        {
+          bool: {
+            must_not: [
+              {
+                terms: {
+                  _index: excludeEntityIndex,
+                },
+              },
+            ],
+          },
+        },
       ],
     },
   },
 });
+
+export const getExcludedIndexesBasedOnEntityTypeEditTagPermission = (
+  permissions: UIPermission
+) => {
+  const entityPermission = {
+    [ResourceEntity.TABLE]: checkPermission(
+      Operation.EditTags,
+      ResourceEntity.TABLE,
+      permissions
+    ),
+    [ResourceEntity.TOPIC]: checkPermission(
+      Operation.EditTags,
+      ResourceEntity.TOPIC,
+      permissions
+    ),
+    [ResourceEntity.DASHBOARD]: checkPermission(
+      Operation.EditTags,
+      ResourceEntity.DASHBOARD,
+      permissions
+    ),
+    [ResourceEntity.ML_MODEL]: checkPermission(
+      Operation.EditTags,
+      ResourceEntity.ML_MODEL,
+      permissions
+    ),
+    [ResourceEntity.PIPELINE]: checkPermission(
+      Operation.EditTags,
+      ResourceEntity.PIPELINE,
+      permissions
+    ),
+    [ResourceEntity.CONTAINER]: checkPermission(
+      Operation.EditTags,
+      ResourceEntity.CONTAINER,
+      permissions
+    ),
+    [ResourceEntity.SEARCH_INDEX]: checkPermission(
+      Operation.EditTags,
+      ResourceEntity.SEARCH_INDEX,
+      permissions
+    ),
+    [ResourceEntity.API_SERVICE]: checkPermission(
+      Operation.EditTags,
+      ResourceEntity.API_SERVICE,
+      permissions
+    ),
+    [ResourceEntity.API_ENDPOINT]: checkPermission(
+      Operation.EditTags,
+      ResourceEntity.API_ENDPOINT,
+      permissions
+    ),
+    [ResourceEntity.API_COLLECTION]: checkPermission(
+      Operation.EditTags,
+      ResourceEntity.API_COLLECTION,
+      permissions
+    ),
+    [ResourceEntity.DASHBOARD_DATA_MODEL]: checkPermission(
+      Operation.EditTags,
+      ResourceEntity.DASHBOARD_DATA_MODEL,
+      permissions
+    ),
+    [ResourceEntity.STORED_PROCEDURE]: checkPermission(
+      Operation.EditTags,
+      ResourceEntity.STORED_PROCEDURE,
+      permissions
+    ),
+    [ResourceEntity.DATABASE]: checkPermission(
+      Operation.EditTags,
+      ResourceEntity.DATABASE,
+      permissions
+    ),
+    [ResourceEntity.DATABASE_SERVICE]: checkPermission(
+      Operation.EditTags,
+      ResourceEntity.DATABASE_SERVICE,
+      permissions
+    ),
+    [ResourceEntity.DATABASE_SCHEMA]: checkPermission(
+      Operation.EditTags,
+      ResourceEntity.DATABASE_SCHEMA,
+      permissions
+    ),
+    [ResourceEntity.MESSAGING_SERVICE]: checkPermission(
+      Operation.EditTags,
+      ResourceEntity.PIPELINE_SERVICE,
+      permissions
+    ),
+    [ResourceEntity.DASHBOARD_SERVICE]: checkPermission(
+      Operation.EditTags,
+      ResourceEntity.DASHBOARD_SERVICE,
+      permissions
+    ),
+    [ResourceEntity.ML_MODEL_SERVICE]: checkPermission(
+      Operation.EditTags,
+      ResourceEntity.ML_MODEL_SERVICE,
+      permissions
+    ),
+    [ResourceEntity.PIPELINE_SERVICE]: checkPermission(
+      Operation.EditTags,
+      ResourceEntity.PIPELINE_SERVICE,
+      permissions
+    ),
+    [ResourceEntity.STORAGE_SERVICE]: checkPermission(
+      Operation.EditTags,
+      ResourceEntity.STORAGE_SERVICE,
+      permissions
+    ),
+    [ResourceEntity.SEARCH_SERVICE]: checkPermission(
+      Operation.EditTags,
+      ResourceEntity.SEARCH_SERVICE,
+      permissions
+    ),
+  };
+
+  return (Object.keys(entityPermission) as ResourceEntity[]).reduce(
+    (
+      acc: {
+        entitiesHavingPermission: ResourceEntity[];
+        entitiesNotHavingPermission: ResourceEntity[];
+      },
+      cv: ResourceEntity
+    ) => {
+      const currentEntityPermission =
+        entityPermission[cv as keyof typeof entityPermission];
+      if (currentEntityPermission) {
+        return {
+          ...acc,
+          entitiesHavingPermission: [...acc.entitiesHavingPermission, cv],
+        };
+      }
+
+      return {
+        ...acc,
+        entitiesNotHavingPermission: [...acc.entitiesNotHavingPermission, cv],
+      };
+    },
+    {
+      entitiesHavingPermission: [],
+      entitiesNotHavingPermission: [],
+    }
+  );
+};
