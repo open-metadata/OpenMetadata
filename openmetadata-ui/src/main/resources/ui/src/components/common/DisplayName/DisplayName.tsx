@@ -80,12 +80,14 @@ const DisplayName: React.FC<DisplayNameProps> = ({
       {allowRename ? (
         <Tooltip placement="right" title={t('label.edit')}>
           <Button
-            className="display-name-edit-button"
+            className="hover-cell-icon"
             data-testid="edit-displayName-button"
             icon={
               <IconEdit style={{ color: DE_ACTIVE_COLOR, ...ICON_DIMENSION }} />
             }
             style={{
+              padding: '0',
+              border: 'none',
               background: 'transparent',
             }}
             onClick={() => setIsDisplayNameEditing(true)}
