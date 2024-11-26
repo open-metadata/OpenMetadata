@@ -12,11 +12,10 @@
  */
 /* eslint-disable @typescript-eslint/ban-ts-comment */
 
-import { ShortNameEmoji, TextAreaEmoji } from '@windmillcode/quill-emoji';
+import { TextAreaEmoji } from '@windmillcode/quill-emoji';
 import classNames from 'classnames';
 import { debounce, isNil } from 'lodash';
 import { Parchment } from 'quill';
-import 'quill-emoji/dist/quill-emoji.css';
 import 'quill-mention/autoregister';
 import QuillMarkdown from 'quilljs-markdown';
 import React, {
@@ -54,10 +53,10 @@ import searchClassBase from '../../../utils/SearchClassBase';
 import { editorRef } from '../../common/RichTextEditor/RichTextEditor.interface';
 import './feed-editor.less';
 import { FeedEditorProp, MentionSuggestionsItem } from './FeedEditor.interface';
+import './quill-emoji.css';
 
 Quill.register('modules/markdownOptions', QuillMarkdown);
 Quill.register(LinkBlot as unknown as Parchment.RegistryDefinition);
-Quill.register('modules/emoji-shortname', ShortNameEmoji, true);
 Quill.register('modules/emoji-textarea', TextAreaEmoji, true);
 const Delta = Quill.import('delta');
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -133,31 +132,6 @@ export const FeedEditor = forwardRef<editorRef, FeedEditorProp>(
         renderList(newMatches, searchTerm);
       }
     };
-    useEffect(() => {
-      const handleClickOutside = (event: MouseEvent) => {
-        const emojiContainer = document.querySelector(
-          '#om-quill-editor #textarea-emoji'
-        ) as HTMLElement;
-        const emojiToggleButton = document.querySelector(
-          '#om-quill-editor .textarea-emoji-control.ql-list'
-        ) as HTMLElement;
-
-        if (
-          emojiContainer &&
-          !emojiContainer.contains(event.target as Node) &&
-          emojiToggleButton &&
-          !emojiToggleButton.contains(event.target as Node)
-        ) {
-          emojiToggleButton.click(); // Simulates a click to close the emoji container
-        }
-      };
-
-      document.addEventListener('mousedown', handleClickOutside);
-
-      return () => {
-        document.removeEventListener('mousedown', handleClickOutside);
-      };
-    }, []);
 
     const renderItems = useCallback(
       (item: MentionSuggestionsItem) => {
@@ -213,18 +187,7 @@ export const FeedEditor = forwardRef<editorRef, FeedEditorProp>(
             insertRef: insertRef,
           },
         },
-        'emoji-shortname': {
-          fuse: {
-            shouldSort: true,
-            threshold: 0.1,
-            location: 0,
-            distance: 100,
-            maxPatternLength: 32,
-            minMatchCharLength: 1,
-            keys: ['shortname'],
-          },
-        },
-        'emoji-textarea': {},
+        'emoji-textarea': true,
         mention: {
           allowedChars: MENTION_ALLOWED_CHARS,
           mentionDenotationChars: MENTION_DENOTATION_CHARS,
@@ -291,16 +254,6 @@ export const FeedEditor = forwardRef<editorRef, FeedEditorProp>(
         // so it's still advisable to check keyCode as well, although it's deprecated.
         if (e.nativeEvent.isComposing || e.keyCode === 229) {
           return;
-        }
-        const emojiContainer = document.querySelector(
-          '#om-quill-editor #textarea-emoji'
-        ) as HTMLElement;
-        const emojiToggleButton = document.querySelector(
-          '#om-quill-editor .textarea-emoji-control.ql-list'
-        ) as HTMLElement;
-
-        if (emojiContainer && emojiToggleButton) {
-          emojiToggleButton.click();
         }
         // handle enter keybinding for save
         if (!e.shiftKey && !isMentionListOpen) {
