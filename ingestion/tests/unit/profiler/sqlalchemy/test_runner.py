@@ -78,7 +78,7 @@ class RunnerTest(TestCase):
 
         with (
             patch.object(SQASampler, "get_client", return_value=cls.session),
-            patch.object(SQASampler, "build_tasble_orm", return_value=User),
+            patch.object(SQASampler, "build_table_orm", return_value=User),
             mock.patch(
                 "metadata.sampler.sampler_interface.get_ssl_connection",
                 return_value=Mock(),
