@@ -141,31 +141,38 @@ export const getBreadCrumbsArray = (
 };
 
 export const getSupportedPipelineTypes = (serviceDetails: ServicesType) => {
-  let pipelineType = [];
+  const pipelineType: PipelineType[] = [];
   const config = serviceDetails?.connection?.config as Connection;
+
   if (config) {
-    config?.supportsMetadataExtraction &&
+    if (config.supportsMetadataExtraction) {
       pipelineType.push(PipelineType.Metadata);
-    config?.supportsUsageExtraction && pipelineType.push(PipelineType.Usage);
-    (config?.supportsLineageExtraction ||
-      config?.supportsViewLineageExtraction) &&
+    }
+    if (config.supportsUsageExtraction) {
+      pipelineType.push(PipelineType.Usage);
+    }
+    if (
+      config.supportsLineageExtraction ||
+      config.supportsViewLineageExtraction
+    ) {
       pipelineType.push(PipelineType.Lineage);
-    // AutoClassification is added if Profiler is supported
-    config?.supportsProfiler &&
+    }
+    if (config.supportsProfiler) {
       pipelineType.push(PipelineType.Profiler, PipelineType.AutoClassification);
-    config?.supportsDBTExtraction && pipelineType.push(PipelineType.Dbt);
-    (config as MetadataConnection)?.supportsDataInsightExtraction &&
+    }
+    if (config.supportsDBTExtraction) {
+      pipelineType.push(PipelineType.Dbt);
+    }
+    if ((config as MetadataConnection).supportsDataInsightExtraction) {
       pipelineType.push(PipelineType.DataInsight);
-    (config as MetadataConnection)?.supportsElasticSearchReindexingExtraction &&
+    }
+    if (
+      (config as MetadataConnection).supportsElasticSearchReindexingExtraction
+    ) {
       pipelineType.push(PipelineType.ElasticSearchReindex);
+    }
   } else {
-    pipelineType = [
-      PipelineType.Metadata,
-      PipelineType.Usage,
-      PipelineType.Lineage,
-      PipelineType.Profiler,
-      PipelineType.Dbt,
-    ];
+    pipelineType.push(PipelineType.Metadata);
   }
 
   return pipelineType;
