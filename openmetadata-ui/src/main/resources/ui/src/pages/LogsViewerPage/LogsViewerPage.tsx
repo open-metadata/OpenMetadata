@@ -149,6 +149,11 @@ const LogsViewerPage = () => {
 
           break;
 
+        case PipelineType.AutoClassification:
+          setLogs(logs.concat(res.data?.auto_classification_task || ''));
+
+          break;
+
         default:
           setLogs('');
 
