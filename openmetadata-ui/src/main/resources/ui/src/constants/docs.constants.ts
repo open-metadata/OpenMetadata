@@ -76,7 +76,7 @@ export const AIRFLOW_DOCS =
   'https://docs.open-metadata.org/latest/deployment/ingestion/external/airflow';
 
 export const CUSTOM_LOGO_DOCS =
-  'https://docs.open-metadata.org/how-to-guides/how-to-add-custom-logo';
+  'https://docs.open-metadata.org/latest/how-to-guides/admin-guide/how-to-add-custom-logo';
 
 export const FOLLOW_DATA_ASSET =
   'https://docs.open-metadata.org/how-to-guides/guide-for-data-users/follow-data-asset';
