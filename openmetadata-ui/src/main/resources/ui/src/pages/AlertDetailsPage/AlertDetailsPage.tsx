@@ -39,6 +39,7 @@ import ResizablePanels from '../../components/common/ResizablePanels/ResizablePa
 import RichTextEditorPreviewer from '../../components/common/RichTextEditor/RichTextEditorPreviewer';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import EntityHeaderTitle from '../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
+import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { ROUTES } from '../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
@@ -301,136 +302,140 @@ function AlertDetailsPage({
   }
 
   return (
-    <ResizablePanels
-      hideSecondPanel
-      className="content-height-with-resizable-panel"
-      firstPanel={{
-        className: 'content-resizable-panel-container',
-        children: loadingCount ? (
-          <Loader />
-        ) : (
-          <div
-            className="steps-form-container"
-            data-testid="alert-details-container">
-            <Row
-              className="add-notification-container p-x-lg p-t-md"
-              gutter={[0, 16]}>
-              <Col span={24}>
-                <TitleBreadcrumb titleLinks={breadcrumb} />
-              </Col>
+    <PageLayoutV1 pageTitle={t('label.alert-details')}>
+      <ResizablePanels
+        hideSecondPanel
+        className="content-height-with-resizable-panel"
+        firstPanel={{
+          className: 'content-resizable-panel-container',
+          children: loadingCount ? (
+            <Loader />
+          ) : (
+            <div
+              className="steps-form-container"
+              data-testid="alert-details-container">
+              <Row
+                className="add-notification-container p-x-lg p-t-md"
+                gutter={[0, 16]}>
+                <Col span={24}>
+                  <TitleBreadcrumb titleLinks={breadcrumb} />
+                </Col>
 
-              <Col span={24}>
-                <Row justify="space-between">
-                  <Col span={21}>
-                    <Row gutter={[16, 16]}>
-                      <Col span={24}>
-                        <EntityHeaderTitle
-                          displayName={alertDetails?.displayName}
-                          icon={alertIcon}
-                          name={alertDetails?.name ?? ''}
-                          serviceName=""
-                        />
-                      </Col>
-                      <Col span={24}>
-                        <div className="d-flex items-center flex-wrap gap-2">
-                          {ownerLoading ? (
-                            <Skeleton.Button
-                              active
-                              className="extra-info-skeleton"
-                            />
-                          ) : (
-                            <OwnerLabel
-                              hasPermission={editOwnersPermission}
-                              owners={alertDetails?.owners}
-                              onUpdate={onOwnerUpdate}
-                            />
-                          )}
-                          {extraInfo}
-                        </div>
-                      </Col>
-                    </Row>
-                  </Col>
-                  <Col>
-                    <Space align="center" size={8}>
-                      {editPermission && (
-                        <Tooltip
-                          title={t('label.edit-entity', {
-                            entity: t('label.alert'),
-                          })}>
-                          <Button
-                            className="flex flex-center"
-                            data-testid="edit-button"
-                            disabled={
-                              alertDetails?.provider === ProviderType.System
-                            }
-                            icon={<EditIcon height={16} width={16} />}
-                            onClick={handleAlertEdit}
+                <Col span={24}>
+                  <Row justify="space-between">
+                    <Col span={21}>
+                      <Row gutter={[16, 16]}>
+                        <Col span={24}>
+                          <EntityHeaderTitle
+                            displayName={alertDetails?.displayName}
+                            icon={alertIcon}
+                            name={alertDetails?.name ?? ''}
+                            serviceName=""
                           />
-                        </Tooltip>
-                      )}
-                      {deletePermission && (
-                        <Tooltip
-                          title={t('label.delete-entity', {
-                            entity: t('label.alert'),
-                          })}>
-                          <Button
-                            className="flex flex-center"
-                            data-testid="delete-button"
-                            disabled={
-                              alertDetails?.provider === ProviderType.System
-                            }
-                            icon={<DeleteIcon height={16} width={16} />}
-                            onClick={() => setShowDeleteModal(true)}
-                          />
-                        </Tooltip>
-                      )}
-                    </Space>
-                  </Col>
-                </Row>
-              </Col>
+                        </Col>
+                        <Col span={24}>
+                          <div className="d-flex items-center flex-wrap gap-2">
+                            {ownerLoading ? (
+                              <Skeleton.Button
+                                active
+                                className="extra-info-skeleton"
+                              />
+                            ) : (
+                              <OwnerLabel
+                                hasPermission={editOwnersPermission}
+                                owners={alertDetails?.owners}
+                                onUpdate={onOwnerUpdate}
+                              />
+                            )}
+                            {extraInfo}
+                          </div>
+                        </Col>
+                      </Row>
+                    </Col>
+                    <Col>
+                      <Space align="center" size={8}>
+                        {editPermission && (
+                          <Tooltip
+                            title={t('label.edit-entity', {
+                              entity: t('label.alert'),
+                            })}>
+                            <Button
+                              className="flex flex-center"
+                              data-testid="edit-button"
+                              disabled={
+                                alertDetails?.provider === ProviderType.System
+                              }
+                              icon={<EditIcon height={16} width={16} />}
+                              onClick={handleAlertEdit}
+                            />
+                          </Tooltip>
+                        )}
+                        {deletePermission && (
+                          <Tooltip
+                            title={t('label.delete-entity', {
+                              entity: t('label.alert'),
+                            })}>
+                            <Button
+                              className="flex flex-center"
+                              data-testid="delete-button"
+                              disabled={
+                                alertDetails?.provider === ProviderType.System
+                              }
+                              icon={<DeleteIcon height={16} width={16} />}
+                              onClick={() => setShowDeleteModal(true)}
+                            />
+                          </Tooltip>
+                        )}
+                      </Space>
+                    </Col>
+                  </Row>
+                </Col>
 
-              {alertDetails?.description && (
-                <Col data-testid="alert-description" span={24}>
-                  <Typography.Text className="font-medium">{`${t(
-                    'label.description'
-                  )} :`}</Typography.Text>
-                  <RichTextEditorPreviewer
-                    className="p-t-xs"
-                    markdown={alertDetails.description}
+                {alertDetails?.description && (
+                  <Col data-testid="alert-description" span={24}>
+                    <Typography.Text className="font-medium">{`${t(
+                      'label.description'
+                    )} :`}</Typography.Text>
+                    <RichTextEditorPreviewer
+                      className="p-t-xs"
+                      markdown={alertDetails.description}
+                    />
+                  </Col>
+                )}
+
+                <Col span={24}>
+                  <Tabs
+                    activeKey={tab}
+                    className="m-b-lg"
+                    items={tabItems}
+                    onTabClick={handleTabChange}
                   />
                 </Col>
-              )}
-
-              <Col span={24}>
-                <Tabs
-                  activeKey={tab}
-                  className="m-b-lg"
-                  items={tabItems}
-                  onTabClick={handleTabChange}
-                />
-              </Col>
-            </Row>
-            <DeleteWidgetModal
-              afterDeleteAction={handleAlertDelete}
-              allowSoftDelete={false}
-              entityId={alertDetails?.id ?? ''}
-              entityName={getEntityName(alertDetails)}
-              entityType={EntityType.SUBSCRIPTION}
-              visible={showDeleteModal}
-              onCancel={hideDeleteModal}
-            />
-          </div>
-        ),
-        minWidth: 700,
-        flex: 0.7,
-      }}
-      pageTitle={t('label.entity-detail-plural', { entity: t('label.alert') })}
-      secondPanel={{
-        children: <></>,
-        minWidth: 0,
-        className: 'content-resizable-panel-container',
-      }}
-    />
+              </Row>
+              <DeleteWidgetModal
+                afterDeleteAction={handleAlertDelete}
+                allowSoftDelete={false}
+                entityId={alertDetails?.id ?? ''}
+                entityName={getEntityName(alertDetails)}
+                entityType={EntityType.SUBSCRIPTION}
+                visible={showDeleteModal}
+                onCancel={hideDeleteModal}
+              />
+            </div>
+          ),
+          minWidth: 700,
+          flex: 0.7,
+        }}
+        pageTitle={t('label.entity-detail-plural', {
+          entity: t('label.alert'),
+        })}
+        secondPanel={{
+          children: <></>,
+          minWidth: 0,
+          className: 'content-resizable-panel-container',
+        }}
+      />
+    </PageLayoutV1>
   );
 }
 
