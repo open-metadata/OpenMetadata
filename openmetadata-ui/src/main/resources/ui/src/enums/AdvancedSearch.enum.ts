@@ -82,4 +82,5 @@ export enum EntityReferenceFields {
   TAG = 'tags.tagFQN',
   TIER = 'tier.tagFQN',
   TABLE_TYPE = 'tableType',
+  EXTENSION = 'extension',
 }

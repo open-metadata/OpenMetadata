@@ -21,6 +21,7 @@ import React, {
 } from 'react';
 import {
   Config,
+  Field,
   FieldGroup,
   ImmutableTree,
   JsonTree,
@@ -28,7 +29,10 @@ import {
   ValueField,
 } from 'react-awesome-query-builder';
 import { useHistory, useParams } from 'react-router-dom';
-import { emptyJsonTree } from '../../../constants/AdvancedSearch.constants';
+import {
+  emptyJsonTree,
+  TEXT_FIELD_OPERATORS,
+} from '../../../constants/AdvancedSearch.constants';
 import { SearchIndex } from '../../../enums/search.enum';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { TabsInfoData } from '../../../pages/ExplorePage/ExplorePage.interface';
@@ -214,7 +218,7 @@ export const AdvanceSearchProvider = ({
   }, [history, location.pathname]);
 
   const fetchCustomPropertyType = async () => {
-    const subfields: Record<string, ValueField> = {};
+    const subfields: Record<string, Field> = {};
 
     try {
       const res = await getAllCustomProperties();
@@ -226,6 +230,7 @@ export const AdvanceSearchProvider = ({
               subfields[field.name] = {
                 type: 'text',
                 valueSources: ['value'],
+                operators: TEXT_FIELD_OPERATORS,
               };
             }
           });
