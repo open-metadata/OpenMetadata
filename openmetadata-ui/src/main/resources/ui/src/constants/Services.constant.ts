@@ -493,5 +493,6 @@ export const SERVICE_INGESTION_PIPELINE_TYPES = [
   PipelineType.Usage,
   PipelineType.Lineage,
   PipelineType.Profiler,
+  PipelineType.AutoClassification,
   PipelineType.Dbt,
 ];

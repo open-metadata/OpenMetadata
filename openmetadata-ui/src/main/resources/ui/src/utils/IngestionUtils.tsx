@@ -150,7 +150,9 @@ export const getSupportedPipelineTypes = (serviceDetails: ServicesType) => {
     (config?.supportsLineageExtraction ||
       config?.supportsViewLineageExtraction) &&
       pipelineType.push(PipelineType.Lineage);
-    config?.supportsProfiler && pipelineType.push(PipelineType.Profiler);
+    // AutoClassification is added if Profiler is supported
+    config?.supportsProfiler &&
+      pipelineType.push(PipelineType.Profiler, PipelineType.AutoClassification);
     config?.supportsDBTExtraction && pipelineType.push(PipelineType.Dbt);
     (config as MetadataConnection)?.supportsDataInsightExtraction &&
       pipelineType.push(PipelineType.DataInsight);
