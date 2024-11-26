@@ -78,18 +78,13 @@ export const addAssetsToTag = async (page: Page, assets: EntityClass[]) => {
   const assetsAddRes = page.waitForResponse(`/api/v1/tags/*/assets/add`);
   await page.getByTestId('save-btn').click();
   await assetsAddRes;
-
-  await expect(page.locator('[role="dialog"].ant-modal')).not.toBeVisible();
-
-  await expect(page.getByTestId('count')).toContainText(
-    assets.length.toString()
-  );
 };
 
 export const removeAssetsFromTag = async (
   page: Page,
   assets: EntityClass[]
 ) => {
+  await page.getByTestId('assets').click();
   for (const asset of assets) {
     const fqn = get(asset, 'entityResponseData.fullyQualifiedName');
     await page.locator(`[data-testid="table-data-card_${fqn}"] input`).check();

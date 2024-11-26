@@ -203,15 +203,19 @@ test.describe('Tag Page with Admin Roles', () => {
   test('Add and Remove Assets', async ({ adminPage }) => {
     await redirectToHomePage(adminPage);
     const { assets } = await setupAssetsForTag(adminPage);
-    const res = adminPage.waitForResponse(`/api/v1/tags/name/*`);
-    await tag.visitPage(adminPage);
-    await res;
 
     await test.step('Add Asset', async () => {
+      const res = adminPage.waitForResponse(`/api/v1/tags/name/*`);
+      await tag.visitPage(adminPage);
+      await res;
       await addAssetsToTag(adminPage, assets);
     });
 
     await test.step('Delete Asset', async () => {
+      const res = adminPage.waitForResponse(`/api/v1/tags/name/*`);
+      await tag.visitPage(adminPage);
+      await res;
+
       await removeAssetsFromTag(adminPage, assets);
       await checkAssetsCount(adminPage, 0);
     });
