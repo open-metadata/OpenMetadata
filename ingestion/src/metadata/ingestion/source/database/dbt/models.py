@@ -20,7 +20,7 @@ from pydantic import BaseModel
 class DbtFiles(BaseModel):
     dbt_catalog: Optional[dict] = None
     dbt_manifest: dict
-    dbt_sources: Optional[dict]
+    dbt_sources: Optional[dict] = None
     dbt_run_results: Optional[List[dict]] = None
 
 
