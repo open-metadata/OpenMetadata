@@ -35,12 +35,10 @@ class User(Base):
 
 
 @patch.object(SQASampler, "build_table_orm", return_value=User)
-@patch.object(SQAProfilerInterface, "build_table_orm", return_value=User)
 class SampleTest(TestCase):
     @classmethod
     @patch.object(SQASampler, "build_table_orm", return_value=User)
-    @patch.object(SQAProfilerInterface, "build_table_orm", return_value=User)
-    def setUpClass(cls, profiler_mock, sampler_mock):
+    def setUpClass(cls, sampler_mock):
         cls.table_entity = Table(
             id=uuid4(),
             name="user",
@@ -60,7 +58,6 @@ class SampleTest(TestCase):
             service_connection_config=cls.snowflake_conn,
             ometa_client=None,
             entity=None,
-            orm_table=User,
         )
         cls.sqa_profiler_interface = SQAProfilerInterface(
             cls.snowflake_conn,
@@ -70,12 +67,11 @@ class SampleTest(TestCase):
             sampler,
             5,
             43200,
-            orm_table=User,
         )
 
         cls.session = cls.sqa_profiler_interface.session
 
-    def test_omit_sampling_method_type(self, profiler_mock, sampler_mock):
+    def test_omit_sampling_method_type(self, sampler_mock):
         """
         use BERNOULLI if sampling method type is not specified.
         """
@@ -86,7 +82,6 @@ class SampleTest(TestCase):
             sample_config=SampleConfig(
                 profile_sample_type=ProfileSampleType.PERCENTAGE, profile_sample=50.0
             ),
-            orm_table=User,
         )
         query: CTE = sampler.get_sample_query()
         expected_query = (
@@ -99,7 +94,7 @@ class SampleTest(TestCase):
             == str(query.compile(compile_kwargs={"literal_binds": True})).casefold()
         )
 
-    def test_specify_sampling_method_type(self, profiler_mock, sampler_mock):
+    def test_specify_sampling_method_type(self, sampler_mock):
         """
         use specified sampling method type.
         """
@@ -116,7 +111,6 @@ class SampleTest(TestCase):
                     profile_sample=50.0,
                     sampling_method_type=sampling_method_type,
                 ),
-                orm_table=User,
             )
             query: CTE = sampler.get_sample_query()
             expected_query = (
@@ -129,7 +123,7 @@ class SampleTest(TestCase):
                 == str(query.compile(compile_kwargs={"literal_binds": True})).casefold()
             )
 
-    def test_row_sampling(self, profiler_mock, sampler_mock):
+    def test_row_sampling(self, sampler_mock):
         """
         use ROW sampling if profile sample type is ROW.
         """
@@ -140,7 +134,6 @@ class SampleTest(TestCase):
             sample_config=SampleConfig(
                 profile_sample_type=ProfileSampleType.ROWS, profile_sample=50
             ),
-            orm_table=User,
         )
         query: CTE = sampler.get_sample_query()
         expected_query = (
@@ -153,7 +146,7 @@ class SampleTest(TestCase):
             == str(query.compile(compile_kwargs={"literal_binds": True})).casefold()
         )
 
-    def test_sampling_with_partition(self, profiler_mock, sampler_mock):
+    def test_sampling_with_partition(self, sampler_mock):
         """
         use specified partition columns.
         """
@@ -171,7 +164,6 @@ class SampleTest(TestCase):
                 partitionIntervalType=PartitionIntervalTypes.COLUMN_VALUE,
                 partitionValues=["1", "2"],
             ),
-            orm_table=User,
         )
         query: CTE = sampler.get_sample_query()
         expected_query = (

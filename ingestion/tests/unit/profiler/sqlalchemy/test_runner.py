@@ -78,6 +78,7 @@ class RunnerTest(TestCase):
 
         with (
             patch.object(SQASampler, "get_client", return_value=cls.session),
+            patch.object(SQASampler, "build_tasble_orm", return_value=User),
             mock.patch(
                 "metadata.sampler.sampler_interface.get_ssl_connection",
                 return_value=Mock(),
@@ -88,7 +89,6 @@ class RunnerTest(TestCase):
                 ometa_client=None,
                 entity=None,
                 sample_config=SampleConfig(profile_sample=50.0),
-                orm_table=User,
             )
             cls.dataset = sampler.get_dataset()
 

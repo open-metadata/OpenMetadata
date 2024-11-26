@@ -108,9 +108,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
             timeout_seconds=timeout_seconds,
         )
 
-        self._table = self.build_table_orm(
-            self.table_entity, self.service_connection_config, self.ometa_client
-        )
+        self._table = self.sampler.raw_dataset
         self.create_session()
         self.system_metrics_computer = self.initialize_system_metrics_computer()
 

@@ -56,12 +56,10 @@ class User(Base):
 
 
 @patch.object(SQASampler, "build_table_orm", return_value=User)
-@patch.object(SQAProfilerInterface, "build_table_orm", return_value=User)
 class SampleTest(TestCase):
     @classmethod
     @patch.object(SQASampler, "build_table_orm", return_value=User)
-    @patch.object(SQAProfilerInterface, "build_table_orm", return_value=User)
-    def setUpClass(cls, profiler_mock, sampler_mock) -> None:
+    def setUpClass(cls, sampler_mock) -> None:
         cls.table_entity = Table(
             id=uuid4(),
             name="user",
@@ -91,7 +89,6 @@ class SampleTest(TestCase):
             service_connection_config=cls.bq_conn,
             ometa_client=None,
             entity=None,
-            orm_table=User,
         )
         cls.sqa_profiler_interface = SQAProfilerInterface(
             cls.bq_conn,
@@ -101,11 +98,10 @@ class SampleTest(TestCase):
             cls.sampler,
             5,
             43200,
-            orm_table=User,
         )
         cls.session = cls.sqa_profiler_interface.session
 
-    def test_sampling(self, profiler_mock, sampler_mock):
+    def test_sampling(self, sampler_mock):
         """
         Test sampling
         """
@@ -113,7 +109,6 @@ class SampleTest(TestCase):
             service_connection_config=self.bq_conn,
             ometa_client=None,
             entity=self.table_entity,
-            orm_table=User,
             sample_config=SampleConfig(
                 profile_sample_type=ProfileSampleType.PERCENTAGE, profile_sample=50.0
             ),
@@ -128,7 +123,7 @@ class SampleTest(TestCase):
             == str(query.compile(compile_kwargs={"literal_binds": True})).casefold()
         )
 
-    def test_sampling_for_views(self, profiler_mock, sampler_mock):
+    def test_sampling_for_views(self, sampler_mock):
         """
         Test view sampling
         """
@@ -136,7 +131,6 @@ class SampleTest(TestCase):
             service_connection_config=self.bq_conn,
             ometa_client=None,
             entity=self.table_entity,
-            orm_table=User,
             sample_config=SampleConfig(
                 profile_sample_type=ProfileSampleType.PERCENTAGE, profile_sample=50.0
             ),
@@ -153,7 +147,7 @@ class SampleTest(TestCase):
             == str(query.compile(compile_kwargs={"literal_binds": True})).casefold()
         )
 
-    def test_sampling_view_with_partition(self, profiler_mock, sampler_mock):
+    def test_sampling_view_with_partition(self, sampler_mock):
         """
         Test view sampling with partition
         """
@@ -161,7 +155,6 @@ class SampleTest(TestCase):
             service_connection_config=self.bq_conn,
             ometa_client=None,
             entity=self.table_entity,
-            orm_table=User,
             sample_config=SampleConfig(
                 profile_sample_type=ProfileSampleType.PERCENTAGE, profile_sample=50.0
             ),
@@ -184,7 +177,7 @@ class SampleTest(TestCase):
             == str(query.compile(compile_kwargs={"literal_binds": True})).casefold()
         )
 
-    def test_sampling_with_partition(self, profiler_mock, sampler_mock):
+    def test_sampling_with_partition(self, sampler_mock):
         """
         Test sampling with partiton.
         """
@@ -192,7 +185,6 @@ class SampleTest(TestCase):
             service_connection_config=self.bq_conn,
             ometa_client=None,
             entity=self.table_entity,
-            orm_table=User,
             sample_config=SampleConfig(
                 profile_sample_type=ProfileSampleType.PERCENTAGE, profile_sample=50.0
             ),

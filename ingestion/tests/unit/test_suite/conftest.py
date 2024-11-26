@@ -15,6 +15,7 @@ shared test cases
 
 import os
 from datetime import datetime, timedelta
+from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
@@ -89,12 +90,12 @@ def create_sqlite_table():
         databaseMode=db_path + "?check_same_thread=False",
     )  # type: ignore
 
-    sampler = SQASampler(
-        service_connection_config=sqlite_conn,
-        ometa_client=None,
-        entity=TABLE,
-        orm_table=User,
-    )
+    with patch.object(SQASampler, "build_table_orm", return_value=User):
+        sampler = SQASampler(
+            service_connection_config=sqlite_conn,
+            ometa_client=None,
+            entity=TABLE,
+        )
     sqa_profiler_interface = SQATestSuiteInterface(
         sqlite_conn,
         None,
