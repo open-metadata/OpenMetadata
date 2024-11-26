@@ -118,7 +118,8 @@ test.describe('Teams drag and drop should work properly', () => {
       await dragAndDropElement(page, team, teamNameGroup);
       await toastNotification(
         page,
-        `You cannot move to this team as Team Type ${TEAM_TYPE_BY_NAME[team]} can't be Group children`
+        `You cannot move to this team as Team Type ${TEAM_TYPE_BY_NAME[team]} can't be Group children`,
+        'error'
       );
     }
   });
@@ -132,7 +133,8 @@ test.describe('Teams drag and drop should work properly', () => {
       await dragAndDropElement(page, team, teamNameDepartment);
       await toastNotification(
         page,
-        `You cannot move to this team as Team Type ${TEAM_TYPE_BY_NAME[team]} can't be Department children`
+        `You cannot move to this team as Team Type ${TEAM_TYPE_BY_NAME[team]} can't be Department children`,
+        'error'
       );
     }
   });
@@ -143,7 +145,8 @@ test.describe('Teams drag and drop should work properly', () => {
     await dragAndDropElement(page, teamNameBusiness, teamNameDivision);
     await toastNotification(
       page,
-      "You cannot move to this team as Team Type BusinessUnit can't be Division children"
+      "You cannot move to this team as Team Type BusinessUnit can't be Division children",
+      'error'
     );
   });
 
