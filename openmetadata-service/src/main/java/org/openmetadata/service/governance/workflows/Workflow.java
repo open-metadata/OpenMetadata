@@ -13,6 +13,8 @@ public class Workflow {
   public static final String STAGE_INSTANCE_STATE_ID_VARIABLE = "stageInstanceStateId";
   public static final String WORKFLOW_INSTANCE_EXECUTION_ID_VARIABLE =
       "workflowInstanceExecutionId";
+  public static final String WORKFLOW_RUNTIME_EXCEPTION = "workflowRuntimeException";
+  public static final String EXCEPTION_VARIABLE = "exception";
   private final TriggerWorkflow triggerWorkflow;
   private final MainWorkflow mainWorkflow;
 

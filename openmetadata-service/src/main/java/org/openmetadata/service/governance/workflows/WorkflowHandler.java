@@ -50,6 +50,9 @@ public class WorkflowHandler {
             .setJdbcDriver(config.getDataSourceFactory().getDriverClass())
             .setDatabaseSchemaUpdate(ProcessEngineConfiguration.DB_SCHEMA_UPDATE_FALSE);
 
+    // Add Global Failure Listener
+    processEngineConfiguration.setEventListeners(List.of(new WorkflowFailureListener()));
+
     if (ConnectionType.MYSQL.label.equals(config.getDataSourceFactory().getDriverClass())) {
       processEngineConfiguration.setDatabaseType(ProcessEngineConfiguration.DATABASE_TYPE_MYSQL);
     } else {
@@ -255,5 +258,17 @@ public class WorkflowHandler {
   public void resumeWorkflow(String workflowName) {
     repositoryService.activateProcessDefinitionByKey(
         getTriggerWorkflowId(workflowName), true, null);
+  }
+
+  public void terminateWorkflow(String workflowName) {
+    runtimeService
+        .createProcessInstanceQuery()
+        .processDefinitionKey(getTriggerWorkflowId(workflowName))
+        .list()
+        .forEach(
+            instance -> {
+              runtimeService.deleteProcessInstance(
+                  instance.getId(), "Terminating all instances due to user request.");
+            });
   }
 }

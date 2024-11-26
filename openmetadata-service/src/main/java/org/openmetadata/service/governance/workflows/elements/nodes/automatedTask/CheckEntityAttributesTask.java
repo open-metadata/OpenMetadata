@@ -2,6 +2,7 @@ package org.openmetadata.service.governance.workflows.elements.nodes.automatedTa
 
 import static org.openmetadata.service.governance.workflows.Workflow.getFlowableElementId;
 
+import org.flowable.bpmn.model.BoundaryEvent;
 import org.flowable.bpmn.model.BpmnModel;
 import org.flowable.bpmn.model.EndEvent;
 import org.flowable.bpmn.model.FieldExtension;
@@ -21,6 +22,7 @@ import org.openmetadata.service.governance.workflows.flowable.builders.SubProces
 
 public class CheckEntityAttributesTask implements NodeInterface {
   private final SubProcess subProcess;
+  private final BoundaryEvent runtimeExceptionBoundaryEvent;
 
   public CheckEntityAttributesTask(CheckEntityAttributesTaskDefinition nodeDefinition) {
     String subProcessId = nodeDefinition.getName();
@@ -45,7 +47,13 @@ public class CheckEntityAttributesTask implements NodeInterface {
 
     attachWorkflowInstanceStageListeners(subProcess);
 
+    this.runtimeExceptionBoundaryEvent = getRuntimeExceptionBoundaryEvent(subProcess);
     this.subProcess = subProcess;
+  }
+
+  @Override
+  public BoundaryEvent getRuntimeExceptionBoundaryEvent() {
+    return runtimeExceptionBoundaryEvent;
   }
 
   private ServiceTask getCheckEntityAttributesServiceTask(String subProcessId, String rules) {
@@ -63,5 +71,6 @@ public class CheckEntityAttributesTask implements NodeInterface {
 
   public void addToWorkflow(BpmnModel model, Process process) {
     process.addFlowElement(subProcess);
+    process.addFlowElement(runtimeExceptionBoundaryEvent);
   }
 }

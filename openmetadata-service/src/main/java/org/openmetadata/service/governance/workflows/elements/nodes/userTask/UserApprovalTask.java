@@ -34,6 +34,7 @@ import org.openmetadata.service.util.JsonUtils;
 
 public class UserApprovalTask implements NodeInterface {
   private final SubProcess subProcess;
+  private final BoundaryEvent runtimeExceptionBoundaryEvent;
   private final List<Message> messages = new ArrayList<>();
 
   public UserApprovalTask(UserApprovalTaskDefinition nodeDefinition) {
@@ -92,7 +93,13 @@ public class UserApprovalTask implements NodeInterface {
 
     attachWorkflowInstanceStageListeners(subProcess);
 
+    this.runtimeExceptionBoundaryEvent = getRuntimeExceptionBoundaryEvent(subProcess);
     this.subProcess = subProcess;
+  }
+
+  @Override
+  public BoundaryEvent getRuntimeExceptionBoundaryEvent() {
+    return runtimeExceptionBoundaryEvent;
   }
 
   private ServiceTask getSetAssigneesVariableServiceTask(
@@ -146,6 +153,7 @@ public class UserApprovalTask implements NodeInterface {
 
   public void addToWorkflow(BpmnModel model, Process process) {
     process.addFlowElement(subProcess);
+    process.addFlowElement(runtimeExceptionBoundaryEvent);
     for (Message message : messages) {
       model.addMessage(message);
     }
