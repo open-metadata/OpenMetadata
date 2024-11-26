@@ -22,12 +22,19 @@ from metadata.data_quality.validations.runtime_param_setter.param_setter import 
 from metadata.data_quality.validations.runtime_param_setter.table_diff_params_setter import (
     TableDiffParamsSetter,
 )
-from metadata.data_quality.validations.table.sqlalchemy.tableDiff import (
-    TableDiffValidator,
-)
 from metadata.generated.schema.entity.data.table import Table
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.sampler.sqlalchemy.sampler import SQASampler
+
+# We want to use the explicit class name here but the packages might not exist
+try:
+    from metadata.data_quality.validations.table.sqlalchemy.tableDiff import (
+        TableDiffValidator,
+    )
+except ImportError:
+
+    class TableDiffValidator:
+        pass
 
 
 def removesuffix(s: str, suffix: str) -> str:
