@@ -397,14 +397,12 @@ const TeamsPage = () => {
    * @param id - user id
    */
   const removeUserFromTeam = async (id: string) => {
-    const newUsers = selectedTeam?.users?.filter((user) => user.id !== id);
     try {
       const res = await deleteUserFromTeam(selectedTeam.id, id);
       if (res) {
         setSelectedTeam((prev) => ({
           ...prev,
-          users: newUsers,
-          userCount: newUsers?.length,
+          userCount: (prev.userCount || 0) - 1,
         }));
       } else {
         throw new Error(t('server.unexpected-response'));
