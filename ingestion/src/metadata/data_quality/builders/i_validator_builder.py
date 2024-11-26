@@ -25,7 +25,7 @@ from metadata.data_quality.validations.runtime_param_setter.param_setter import 
 from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
 from metadata.generated.schema.type.basic import Timestamp
 from metadata.profiler.processor.runner import QueryRunner
-from metadata.utils.importer import import_test_case_class
+from metadata.utils import importer
 
 if TYPE_CHECKING:
     from pandas import DataFrame
@@ -59,7 +59,8 @@ class IValidatorBuilder(ABC):
         """
         self._test_case = test_case
         self.runner = runner
-        self.validator_cls: Type[BaseTestValidator] = import_test_case_class(
+        # TODO this will be revmoved on https://github.com/open-metadata/OpenMetadata/pull/18716
+        self.validator_cls: Type[BaseTestValidator] = importer.import_test_case_class(
             entity_type,
             self._get_source_type(),
             self.test_case.testDefinition.fullyQualifiedName,  # type: ignore
