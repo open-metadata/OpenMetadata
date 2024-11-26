@@ -1750,6 +1750,7 @@
     "no-token-available": "Non hai tokens dispoñibles",
     "no-total-data-assets": "Os Insights de Datos proporcionan unha comprensión clara da paisaxe de datos en evolución na túa organización. Ofrecen respostas a preguntas como cantos activos de datos tes, a taxa á que se engaden novos activos, e máis. Descubre máis sobre <0>{{setup}}</0> para aproveitar estes insights",
     "no-user-available": "Non hai usuarios dispoñibles",
+    "no-user-part-of-team": "Ningún usuario forma parte deste equipo {{team}}",
     "no-username-available": "Non hai usuarios dispoñibles co nome <0>{{user}}</0>",
     "no-users": "Non hai usuarios {{text}}",
     "no-version-type-available": "Non hai versións de {{type}} dispoñibles",
