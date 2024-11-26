@@ -35,6 +35,7 @@ const mockTable = {
 const mockPush = jest.fn();
 const mockUseTableProfiler = {
   tableProfiler: MOCK_TABLE,
+  onSettingButtonClick: jest.fn(),
   permissions: {
     EditAll: true,
     EditDataProfile: true,
@@ -136,6 +137,9 @@ describe('QualityTab', () => {
       'message.page-sub-header-for-data-quality'
     );
     expect(await screen.findByTestId('mock-searchbar')).toBeInTheDocument();
+    expect(
+      await screen.findByTestId('profiler-setting-btn')
+    ).toBeInTheDocument();
     expect(
       await screen.findByText('label.test-case-plural')
     ).toBeInTheDocument();
@@ -261,5 +265,21 @@ describe('QualityTab', () => {
     expect(await screen.findByText('label.total-entity')).toBeInTheDocument();
     expect(await screen.findByText('label.success')).toBeInTheDocument();
     expect(await screen.findByText('label.aborted')).toBeInTheDocument();
+  });
+
+  it('should call onSettingButtonClick', async () => {
+    await act(async () => {
+      render(<QualityTab />);
+    });
+
+    const profilerSettingBtn = await screen.findByTestId(
+      'profiler-setting-btn'
+    );
+
+    await act(async () => {
+      fireEvent.click(profilerSettingBtn);
+    });
+
+    expect(mockUseTableProfiler.onSettingButtonClick).toHaveBeenCalled();
   });
 });
