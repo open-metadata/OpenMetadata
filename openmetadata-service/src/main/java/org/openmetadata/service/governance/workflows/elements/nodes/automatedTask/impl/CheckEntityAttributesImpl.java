@@ -8,7 +8,6 @@ import static org.openmetadata.service.governance.workflows.WorkflowHandler.getP
 
 import io.github.jamsesso.jsonlogic.JsonLogic;
 import io.github.jamsesso.jsonlogic.JsonLogicException;
-import java.util.Random;
 import lombok.extern.slf4j.Slf4j;
 import org.flowable.common.engine.api.delegate.Expression;
 import org.flowable.engine.delegate.BpmnError;
@@ -31,10 +30,6 @@ public class CheckEntityAttributesImpl implements JavaDelegate {
       MessageParser.EntityLink entityLink =
           MessageParser.EntityLink.parse((String) execution.getVariable(RELATED_ENTITY_VARIABLE));
       execution.setVariable(RESULT_VARIABLE, checkAttributes(entityLink, rules));
-      // TODO: Remove after Testing
-      if (new Random().nextDouble() >= 0.7) {
-        throw new Exception("Random Error");
-      }
     } catch (Exception exc) {
       LOG.error(
           String.format(
