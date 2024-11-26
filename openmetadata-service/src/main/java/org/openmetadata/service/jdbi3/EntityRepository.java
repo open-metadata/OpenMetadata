@@ -266,7 +266,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   protected boolean supportsSearch = false;
   @Getter protected boolean parent = false;
-  protected final Map<String, BiConsumer<List<T>, Fields>> fieldFetchers = new LinkedHashMap<>();
+  protected final Map<String, List<BiConsumer<List<T>, Fields>>> fieldFetchers =
+      new LinkedHashMap<>();
 
   protected EntityRepository(
       String collectionPath,
@@ -369,7 +370,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       BiConsumer<List<T>, Fields> fetcher = entry.getValue().getRight();
 
       if (supportsField) {
-        this.fieldFetchers.put(fieldName, fetcher);
+        this.fieldFetchers.put(fieldName, List.of(fetcher));
         this.patchFields.addField(allowedFields, fieldName);
         this.putFields.addField(allowedFields, fieldName);
       }
@@ -3526,9 +3527,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   private void fetchAndSetFields(List<T> entities, Fields fields) {
     for (String field : fields) {
-      BiConsumer<List<T>, Fields> fetcher = fieldFetchers.get(field);
-      if (fetcher != null) {
-        fetcher.accept(entities, fields);
+      List<BiConsumer<List<T>, Fields>> fetchers = fieldFetchers.get(field);
+      if (!nullOrEmpty(fieldFetchers)) {
+        fetchers.forEach(fetcher -> fetcher.accept(entities, fields));
       }
     }
   }

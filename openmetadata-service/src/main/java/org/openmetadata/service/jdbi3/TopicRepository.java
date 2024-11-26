@@ -69,8 +69,8 @@ public class TopicRepository extends EntityRepository<Topic> {
         "",
         "");
     supportsSearch = true;
-    fieldFetchers.put("service", this::fetchAndSetContainer);
-    fieldFetchers.put("messageSchema", this::fetchAndPopulateTags);
+    fieldFetchers.put("service", List.of(this::fetchAndSetContainer));
+    fieldFetchers.put("messageSchema", List.of(this::fetchAndPopulateTags));
   }
 
   protected void fetchAndSetContainer(List<Topic> entities, Fields fields) {

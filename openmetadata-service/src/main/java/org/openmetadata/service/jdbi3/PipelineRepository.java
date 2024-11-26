@@ -76,6 +76,9 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
         PIPELINE_PATCH_FIELDS,
         PIPELINE_UPDATE_FIELDS);
     supportsSearch = true;
+    fieldFetchers.put("service", List.of(this::fetchAndSetContainer));
+    fieldFetchers.put("tasks", List.of(this::fetchAndSetTaskTags, this::fetchAndSetTaskOwners));
+    fieldFetchers.put("pipelineStatus", List.of(this::fetchAndSetPipelineStatus));
   }
 
   @Override
@@ -148,6 +151,35 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
         fields.contains("pipelineStatus")
             ? getPipelineStatus(pipeline)
             : pipeline.getPipelineStatus());
+  }
+
+  protected void fetchAndSetContainer(List<Pipeline> entities, Fields fields) {
+    setFieldFromMapSingleRelation(
+        fields.contains("service"), entities, getContainers(entities), Pipeline::setService);
+  }
+
+  protected void fetchAndSetTaskTags(List<Pipeline> entities, Fields fields) {
+    if (fields.contains(FIELD_TAGS)) {
+      for (Pipeline pipeline : entities) {
+        getTaskTags(true, pipeline.getTasks());
+      }
+    }
+  }
+
+  protected void fetchAndSetTaskOwners(List<Pipeline> entities, Fields fields) {
+    if (fields.contains(FIELD_OWNERS)) {
+      for (Pipeline pipeline : entities) {
+        getTaskOwners(fields.contains(FIELD_OWNERS), pipeline.getTasks());
+      }
+    }
+  }
+
+  protected void fetchAndSetPipelineStatus(List<Pipeline> entities, Fields fields) {
+    if (fields.contains("pipelineStatus")) {
+      for (Pipeline pipeline : entities) {
+        pipeline.setPipelineStatus(getPipelineStatus(pipeline));
+      }
+    }
   }
 
   protected void setFieldsInBulk(List<Pipeline> entities, Fields fields) {

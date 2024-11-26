@@ -70,7 +70,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
         "");
     supportsSearch = true;
     parent = true;
-    fieldFetchers.put("name", this::fetchAndSetService);
+    fieldFetchers.put("name", List.of(this::fetchAndSetService));
   }
 
   @Override

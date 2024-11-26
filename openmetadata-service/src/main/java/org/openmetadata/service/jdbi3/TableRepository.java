@@ -145,13 +145,13 @@ public class TableRepository extends EntityRepository<Table> {
         PATCH_FIELDS,
         UPDATE_FIELDS);
     supportsSearch = true;
-    fieldFetchers.put(DATABASE_SCHEMA, this::fetchAndSetDatabaseSchema);
-    fieldFetchers.put("usageSummary", this::fetchAndSetUsageSummary);
-    fieldFetchers.put(COLUMN_FIELD, this::fetchAndColumnTags);
-    fieldFetchers.put("joins", this::fetchAndSetJoins);
-    fieldFetchers.put(TABLE_PROFILER_CONFIG, this::fetchAndTableProfilerConfig);
-    fieldFetchers.put(TEST_SUITE, this::fetchAndSetTestSuite);
-    fieldFetchers.put(CUSTOM_METRICS, this::fetchAndSetCustomMetrics);
+    fieldFetchers.put(DATABASE_SCHEMA, List.of(this::fetchAndSetDatabaseSchema));
+    fieldFetchers.put("usageSummary", List.of(this::fetchAndSetUsageSummary));
+    fieldFetchers.put(COLUMN_FIELD, List.of(this::fetchAndColumnTags));
+    fieldFetchers.put("joins", List.of(this::fetchAndSetJoins));
+    fieldFetchers.put(TABLE_PROFILER_CONFIG, List.of(this::fetchAndTableProfilerConfig));
+    fieldFetchers.put(TEST_SUITE, List.of(this::fetchAndSetTestSuite));
+    fieldFetchers.put(CUSTOM_METRICS, List.of(this::fetchAndSetCustomMetrics));
   }
 
   @Override

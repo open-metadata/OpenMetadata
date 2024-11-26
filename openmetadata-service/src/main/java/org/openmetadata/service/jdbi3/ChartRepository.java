@@ -48,8 +48,8 @@ public class ChartRepository extends EntityRepository<Chart> {
         CHART_PATCH_FIELDS,
         CHART_UPDATE_FIELDS);
     supportsSearch = true;
-    fieldFetchers.put("service", this::fetchAndSetContainer);
-    fieldFetchers.put("dashboards", this::fetchAndSetDashboards);
+    fieldFetchers.put("service", List.of(this::fetchAndSetContainer));
+    fieldFetchers.put("dashboards", List.of(this::fetchAndSetDashboards));
   }
 
   protected void fetchAndSetContainer(List<Chart> entities, Fields fields) {

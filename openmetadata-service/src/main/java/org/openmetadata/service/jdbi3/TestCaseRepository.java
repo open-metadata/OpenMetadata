@@ -94,11 +94,11 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     // As test case result` does not have its own repository
     EntityTimeSeriesInterface.CANONICAL_ENTITY_NAME_MAP.put(
         Entity.TEST_CASE_RESULT.toLowerCase(Locale.ROOT), Entity.TEST_CASE_RESULT);
-    fieldFetchers.put(FIELD_TEST_SUITES, this::fetchAndSetTestSuites);
-    fieldFetchers.put(TEST_DEFINITION, this::fetchAndSetTestDefinitions);
-    fieldFetchers.put(TEST_CASE_RESULT, this::fetchAndSetTestCaseResult);
-    fieldFetchers.put(INCIDENTS_FIELD, this::fetchAndSetIncidentId);
-    fieldFetchers.put(FIELD_TAGS, this::fetchAndSetTags);
+    fieldFetchers.put(FIELD_TEST_SUITES, List.of(this::fetchAndSetTestSuites));
+    fieldFetchers.put(TEST_DEFINITION, List.of(this::fetchAndSetTestDefinitions));
+    fieldFetchers.put(TEST_CASE_RESULT, List.of(this::fetchAndSetTestCaseResult));
+    fieldFetchers.put(INCIDENTS_FIELD, List.of(this::fetchAndSetIncidentId));
+    fieldFetchers.put(FIELD_TAGS, List.of(this::fetchAndSetTags));
   }
 
   @Override

@@ -60,10 +60,10 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
         DASHBOARD_PATCH_FIELDS,
         DASHBOARD_UPDATE_FIELDS);
     supportsSearch = true;
-    fieldFetchers.put(FIELD_USAGE_SUMMARY, this::fetchAndSetUsageSummary);
-    fieldFetchers.put("service", this::fetchAndSetContainer);
-    fieldFetchers.put("charts", this::fetchAndSetCharts);
-    fieldFetchers.put("dataModels", this::fetchAndSetDataModels);
+    fieldFetchers.put(FIELD_USAGE_SUMMARY, List.of(this::fetchAndSetUsageSummary));
+    fieldFetchers.put("service", List.of(this::fetchAndSetContainer));
+    fieldFetchers.put("charts", List.of(this::fetchAndSetCharts));
+    fieldFetchers.put("dataModels", List.of(this::fetchAndSetDataModels));
   }
 
   @Override
