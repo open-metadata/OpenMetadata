@@ -81,15 +81,18 @@ export const hashCode = (str: string) => {
  * @param autoCloseTimer Set the delay in ms to close the toast automatically.
  */
 export const showErrorToast = (
-  error: AxiosError | string,
+  error: AxiosError | string | JSX.Element,
   fallbackText?: string,
   autoCloseTimer?: number,
-  callback?: (value: React.SetStateAction<string>) => void
+  callback?: (value: React.SetStateAction<string | JSX.Element>) => void
 ) => {
-  let errorMessage;
-  if (isString(error)) {
+  let errorMessage: string | JSX.Element;
+
+  if (React.isValidElement(error)) {
+    errorMessage = error;
+  } else if (isString(error)) {
     errorMessage = error.toString();
-  } else {
+  } else if ('config' in error && 'response' in error) {
     const method = error.config?.method?.toUpperCase();
     const fallback =
       fallbackText && fallbackText.length > 0
@@ -108,8 +111,12 @@ export const showErrorToast = (
     ) {
       return;
     }
+  } else {
+    errorMessage = fallbackText || i18n.t('server.unexpected-error');
   }
+
   callback && callback(errorMessage);
+
   useAlertStore
     .getState()
     .addAlert({ type: 'error', message: errorMessage }, autoCloseTimer);

@@ -15,7 +15,7 @@ import { create } from 'zustand';
 
 type AlertType = {
   type: AlertProps['type'];
-  message: string;
+  message: string | JSX.Element;
 };
 
 interface AlertStore {
