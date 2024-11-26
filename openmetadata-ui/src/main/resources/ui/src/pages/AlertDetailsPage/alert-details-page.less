@@ -11,9 +11,18 @@
  *  limitations under the License.
  */
 
+@import (reference) url('../../styles/variables.less');
+
 .ant-skeleton-active .ant-skeleton-button.extra-info-skeleton {
   display: flex;
   align-items: center;
   height: 24px;
   width: 120px;
+}
+
+.alert-description {
+  margin-top: 8px;
+  .right-panel-label {
+    color: @text-color;
+  }
 }

@@ -361,12 +361,31 @@ export class TableClass extends EntityClass {
     );
   }
 
-  async delete(apiContext: APIRequestContext) {
+  async delete(apiContext: APIRequestContext, hardDelete = true) {
     const serviceResponse = await apiContext.delete(
       `/api/v1/services/databaseServices/name/${encodeURIComponent(
         this.serviceResponseData?.['fullyQualifiedName']
-      )}?recursive=true&hardDelete=true`
+      )}?recursive=true&hardDelete=${hardDelete}`
     );
+
+    return {
+      service: serviceResponse.body,
+      entity: this.entityResponseData,
+    };
+  }
+
+  async deleteTable(apiContext: APIRequestContext, hardDelete = true) {
+    const tableResponse = await apiContext.delete(
+      `/api/v1/tables/${this.entityResponseData?.['id']}?recursive=true&hardDelete=${hardDelete}`
+    );
+
+    return tableResponse;
+  }
+
+  async restore(apiContext: APIRequestContext) {
+    const serviceResponse = await apiContext.put('/api/v1/tables/restore', {
+      data: { id: this.entityResponseData?.['id'] },
+    });
 
     return {
       service: serviceResponse.body,

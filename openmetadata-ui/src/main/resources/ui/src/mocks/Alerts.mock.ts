@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { PagingResponse } from 'Models';
 import {
   EventType,
   Status,
@@ -305,4 +306,11 @@ export const mockAlertEventDiagnosticCounts = {
   pendingEventsCount: 3,
   successfulEventsCount: 9,
   failedEventsCount: 1,
+};
+
+export const MOCK_TYPED_EVENT_LIST_RESPONSE: PagingResponse<TypedEvent[]> = {
+  data: MOCK_ALERT_RECENT_EVENTS,
+  paging: {
+    offset: 0,
+  },
 };
