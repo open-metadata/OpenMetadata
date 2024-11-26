@@ -116,6 +116,7 @@ module.exports = {
     },
     alias: {
       process: 'process/browser',
+      Quill: path.resolve(__dirname, 'node_modules/quill'), // Alias for the 'quill' library in node_modules
     },
   },
 

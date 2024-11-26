@@ -12,6 +12,7 @@
  */
 /* eslint-disable @typescript-eslint/ban-ts-comment */
 
+import { TextAreaEmoji } from '@windmillcode/quill-emoji';
 import classNames from 'classnames';
 import { debounce, isNil } from 'lodash';
 import { Parchment } from 'quill';
@@ -52,9 +53,11 @@ import searchClassBase from '../../../utils/SearchClassBase';
 import { editorRef } from '../../common/RichTextEditor/RichTextEditor.interface';
 import './feed-editor.less';
 import { FeedEditorProp, MentionSuggestionsItem } from './FeedEditor.interface';
+import './quill-emoji.css';
 
 Quill.register('modules/markdownOptions', QuillMarkdown);
 Quill.register(LinkBlot as unknown as Parchment.RegistryDefinition);
+Quill.register('modules/emoji-textarea', TextAreaEmoji, true);
 const Delta = Quill.import('delta');
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const strikethrough = (_node: any, delta: typeof Delta) => {
@@ -172,7 +175,6 @@ export const FeedEditor = forwardRef<editorRef, FeedEditorProp>(
       },
       [userProfilePics]
     );
-
     /**
      * Prepare modules for editor
      */
@@ -185,7 +187,7 @@ export const FeedEditor = forwardRef<editorRef, FeedEditorProp>(
             insertRef: insertRef,
           },
         },
-        'emoji-toolbar': false,
+        'emoji-textarea': true,
         mention: {
           allowedChars: MENTION_ALLOWED_CHARS,
           mentionDenotationChars: MENTION_DENOTATION_CHARS,
