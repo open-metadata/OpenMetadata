@@ -13,8 +13,6 @@
 Interfaces with database for all database engine
 supporting sqlalchemy abstraction layer
 """
-from typing import TYPE_CHECKING
-
 from metadata.data_quality.builders.i_validator_builder import IValidatorBuilder
 from metadata.data_quality.builders.pandas_validator_builder import (
     PandasValidatorBuilder,
@@ -29,10 +27,6 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.mixins.pandas.pandas_mixin import PandasInterfaceMixin
 from metadata.sampler.sampler_interface import SamplerInterface
 from metadata.utils.logger import test_suite_logger
-
-if TYPE_CHECKING:
-    pass
-
 
 logger = test_suite_logger()
 
