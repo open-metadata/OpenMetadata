@@ -318,12 +318,22 @@ export const removeTier = async (page: Page) => {
   await expect(page.getByTestId('Tier')).toContainText('No Tier');
 };
 
-export const updateDescription = async (page: Page, description: string) => {
+export const updateDescription = async (
+  page: Page,
+  description: string,
+  isModal = false
+) => {
   await page.getByTestId('edit-description').click();
   await page.locator('.ProseMirror').first().click();
   await page.locator('.ProseMirror').first().clear();
   await page.locator('.ProseMirror').first().fill(description);
   await page.getByTestId('save').click();
+
+  if (isModal) {
+    await page.waitForSelector('[role="dialog"].description-markdown-editor', {
+      state: 'hidden',
+    });
+  }
 
   isEmpty(description)
     ? await expect(
