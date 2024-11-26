@@ -112,7 +112,7 @@ export const showErrorToast = (
       return;
     }
   } else {
-    errorMessage = fallbackText || i18n.t('server.unexpected-error');
+    errorMessage = fallbackText ?? i18n.t('server.unexpected-error');
   }
 
   callback && callback(errorMessage);
