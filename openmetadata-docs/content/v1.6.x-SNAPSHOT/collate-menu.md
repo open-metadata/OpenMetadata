@@ -358,6 +358,10 @@ site_menu:
 
   - category: Connectors / Pipeline / DataFactory / Run Externally
     url: /connectors/pipeline/datafactory/yaml
+  - category: Connectors / Pipeline / Stitch
+    url: /connectors/pipeline/stitch
+  - category: Connectors / Pipeline / Stitch / Run Externally
+    url: /connectors/pipeline/stitch/yaml
   - category: Connectors / Pipeline / Databricks Pipeline
     url: /connectors/pipeline/databricks-pipeline
   - category: Connectors / Pipeline / Databricks Pipeline / Run Externally
@@ -1911,9 +1915,8 @@ site_menu:
   - category: SDK / Go
     url: /sdk/go
 
-  - category: Metapilot
-    url: /metapilot
-  
-   category: Metapilot / How to Use MetaPilot
-    url: /metapilot/how-to-use-metapilot
+  - category: Collate AI
+    url: /collateai
+  - category: Collate AI / How to Use Collate AI
+    url: /collateai/how-to-use-collate-ai
 ---

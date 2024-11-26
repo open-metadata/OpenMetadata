@@ -178,7 +178,7 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
     runtime_params: TableDiffRuntimeParameters
 
     def run_validation(self) -> TestCaseResult:
-        self.runtime_params = self.get_runtime_params()
+        self.runtime_params = self.get_runtime_parameters(TableDiffRuntimeParameters)
         try:
             self._validate_dialects()
             return self._run()
@@ -273,15 +273,16 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
         ).with_schema()
         result = []
         for column in table1.key_columns + table1.extra_columns:
-            col1_type = self._get_column_python_type(
-                table1._schema[column]  # pylint: disable=protected-access
-            )
-            # Skip columns that are not in the second table. We cover this case in get_changed_added_columns.
-            if table2._schema.get(column) is None:  # pylint: disable=protected-access
+            col1 = table1._schema.get(column)  # pylint: disable=protected-access
+            if col1 is None:
+                # Skip columns that are not in the first table. We cover this case in get_changed_added_columns.
                 continue
-            col2_type = self._get_column_python_type(
-                table2._schema[column]  # pylint: disable=protected-access
-            )
+            col2 = table2._schema.get(column)  # pylint: disable=protected-access
+            if col2 is None:
+                # Skip columns that are not in the second table. We cover this case in get_changed_added_columns.
+                continue
+            col1_type = self._get_column_python_type(col1)
+            col2_type = self._get_column_python_type(col2)
             if is_numeric(col1_type) and is_numeric(col2_type):
                 continue
             if col1_type != col2_type:
@@ -437,13 +438,6 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
                 * (self.runtime_params.table_profile_config.profileSample / row_count)
             )
         raise ValueError("Invalid profile sample type")
-
-    def get_runtime_params(self) -> TableDiffRuntimeParameters:
-        raw = self.get_test_case_param_value(
-            self.test_case.parameterValues, "runtimeParams", str
-        )
-        runtime_params = TableDiffRuntimeParameters.model_validate_json(raw)
-        return runtime_params
 
     def get_row_diff_test_case_result(
         self,
