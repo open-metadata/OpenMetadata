@@ -323,6 +323,7 @@ export const INGESTION_WORKFLOW_UI_SCHEMA = {
     'databaseFilterPattern',
     'schemaFilterPattern',
     'tableFilterPattern',
+    'classificationFilterPattern',
     'enableDebugLog',
     '*',
   ],
