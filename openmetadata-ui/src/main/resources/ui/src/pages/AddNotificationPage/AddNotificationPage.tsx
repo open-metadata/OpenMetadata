@@ -75,7 +75,8 @@ const AddNotificationPage = () => {
   const [form] = useForm<ModifiedCreateEventSubscription>();
   const history = useHistory();
   const { fqn } = useFqn();
-  const { setInlineAlertDetails, inlineAlertDetails } = useApplicationStore();
+  const { setInlineAlertDetails, inlineAlertDetails, currentUser } =
+    useApplicationStore();
   const { getResourceLimit } = useLimitStore();
 
   const [loadingCount, setLoadingCount] = useState(0);
@@ -166,6 +167,7 @@ const AddNotificationPage = () => {
           data,
           fqn,
           initialData,
+          currentUser,
           createAlertAPI: createNotificationAlert,
           updateAlertAPI: updateNotificationAlert,
           afterSaveAction: async (fqn: string) => {
@@ -180,7 +182,7 @@ const AddNotificationPage = () => {
         setIsButtonLoading(false);
       }
     },
-    [fqn, history, initialData]
+    [fqn, history, initialData, currentUser]
   );
 
   const [selectedTrigger] =
