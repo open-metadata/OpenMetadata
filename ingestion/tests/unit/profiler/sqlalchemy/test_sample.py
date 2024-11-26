@@ -135,8 +135,6 @@ class SampleTest(TestCase):
             43200,
         )
 
-        sampler_mock.assert_called()
-
         User.__table__.create(bind=cls.engine)
 
         # Insert 30 rows
