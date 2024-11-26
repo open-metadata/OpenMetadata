@@ -25,7 +25,7 @@ VERSIONS = {
     "boto3": "boto3>=1.20,<2.0",  # No need to add botocore separately. It's a dep from boto3
     "geoalchemy2": "GeoAlchemy2~=0.12",
     "google-cloud-monitoring": "google-cloud-monitoring>=2.0.0",
-    "google-cloud-storage": "google-cloud-storage==1.43.0",
+    "google-cloud-storage": "google-cloud-storage>=1.43.0",
     "gcsfs": "gcsfs>=2023.1.0",
     "great-expectations": "great-expectations>=0.18.0,<0.18.14",
     "grpc-tools": "grpcio-tools>=1.47.2",
@@ -211,7 +211,8 @@ plugins: Dict[str, Set[str]] = {
     },
     "datalake-s3": {
         # vendoring 'boto3' to keep all dependencies aligned (s3fs, boto3, botocore, aiobotocore)
-        "s3fs",
+        "s3fs[boto3]",
+        VERSIONS["boto3"],
         *COMMONS["datalake"],
     },
     "deltalake": {
