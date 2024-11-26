@@ -20,6 +20,7 @@ import frFR from '../../locale/languages/fr-fr.json';
 import glES from '../../locale/languages/gl-es.json';
 import heHE from '../../locale/languages/he-he.json';
 import jaJP from '../../locale/languages/ja-jp.json';
+import mrIN from '../../locale/languages/mr-in.json';
 import nlNL from '../../locale/languages/nl-nl.json';
 import prPR from '../../locale/languages/pr-pr.json';
 import ptBR from '../../locale/languages/pt-br.json';
@@ -43,6 +44,7 @@ export enum SupportedLocales {
   Nederlands = 'nl-NL',
   Persian = 'pr-PR',
   Thai = 'th-TH',
+  India = 'mr-IN',
 }
 
 export const languageSelectOptions = map(SupportedLocales, (value, key) => ({
@@ -69,6 +71,7 @@ export const getInitOptions = (): InitOptions => {
       'nl-NL': { translation: nlNL },
       'pr-PR': { translation: prPR },
       'th-TH': { translation: thTH },
+      'mr-IN': { translation: mrIN },
     },
     fallbackLng: ['en-US'],
     detection: {
