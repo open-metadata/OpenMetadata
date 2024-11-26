@@ -1,5 +1,5 @@
 /*
- *  Copyright 2023 Collate.
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,16 +11,10 @@
  *  limitations under the License.
  */
 
-import { LinkProps } from 'react-router-dom';
-
-export interface BasicEntityOverviewInfo {
-  name: string;
-  value: string | number | React.ReactNode;
-  isLink?: boolean;
-  isExternal?: boolean;
-  isIcon?: boolean;
-  url?: string;
-  linkProps?: LinkProps['to'];
-  visible?: Array<string>;
-  dataTestId?: string;
+export interface StopScheduleRunModalProps {
+  appName: string;
+  isModalOpen: boolean;
+  displayName: string;
+  onClose: () => void;
+  onStopWorkflowsUpdate?: () => void;
 }
