@@ -3528,8 +3528,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
   private void fetchAndSetFields(List<T> entities, Fields fields) {
     for (String field : fields) {
       List<BiConsumer<List<T>, Fields>> fetchers = fieldFetchers.get(field);
-      if (!nullOrEmpty(fieldFetchers)) {
-        fetchers.forEach(fetcher -> fetcher.accept(entities, fields));
+      if (!nullOrEmpty(fetchers)) {
+        fetchers.forEach(
+            fetcher -> {
+              if (fetcher != null) {
+                fetcher.accept(entities, fields);
+              }
+            });
       }
     }
   }
