@@ -142,6 +142,7 @@ base_requirements = {
     "typing-inspect",
     "packaging",  # For version parsing
     "shapely",
+    "collate-data-diff",
 }
 
 plugins: Dict[str, Set[str]] = {
