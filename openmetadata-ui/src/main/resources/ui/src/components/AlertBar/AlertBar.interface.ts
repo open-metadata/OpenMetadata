@@ -14,5 +14,5 @@ import { AlertProps } from 'antd';
  */
 export interface AlertBarProps {
   type: AlertProps['type'];
-  message: string;
+  message: string | JSX.Element;
 }
