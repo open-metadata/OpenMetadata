@@ -161,12 +161,13 @@ public class SearchIndexApp extends AbstractNativeApplication {
 
   @Getter private EventPublisherJob jobData;
   private final Object jobDataLock = new Object();
-  private volatile boolean stopped = false;
   private ExecutorService producerExecutor;
   private final ExecutorService jobExecutor = Executors.newCachedThreadPool();
   private BlockingQueue<Runnable> producerQueue = new LinkedBlockingQueue<>(100);
   private final AtomicReference<Stats> searchIndexStats = new AtomicReference<>();
   private final AtomicReference<Integer> batchSize = new AtomicReference<>(5);
+  private JobExecutionContext jobExecutionContext;
+  private volatile boolean stopped = false;
 
   public SearchIndexApp(CollectionDAO collectionDAO, SearchRepository searchRepository) {
     super(collectionDAO, searchRepository);
@@ -190,6 +191,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
   @Override
   public void startApp(JobExecutionContext jobExecutionContext) {
     try {
+      this.jobExecutionContext = jobExecutionContext;
       initializeJob(jobExecutionContext);
       String runType =
           (String) jobExecutionContext.getJobDetail().getJobDataMap().get("triggerType");
@@ -533,11 +535,17 @@ public class SearchIndexApp extends AbstractNativeApplication {
   }
 
   @SuppressWarnings("unused")
-  public void stopJob() {
+  @Override
+  public void stop() {
     LOG.info("Stopping reindexing job.");
     stopped = true;
+    jobData.setStatus(EventPublisherJob.Status.STOP_IN_PROGRESS);
+    sendUpdates(jobExecutionContext);
     shutdownExecutor(jobExecutor, "JobExecutor", 60, TimeUnit.SECONDS);
     shutdownExecutor(producerExecutor, "ProducerExecutor", 60, TimeUnit.SECONDS);
+    LOG.info("Stopped reindexing job.");
+    jobData.setStatus(EventPublisherJob.Status.STOPPED);
+    sendUpdates(jobExecutionContext);
   }
 
   private void processTask(IndexingTask<?> task, JobExecutionContext jobExecutionContext) {
@@ -596,7 +604,9 @@ public class SearchIndexApp extends AbstractNativeApplication {
       }
       LOG.error("Unexpected error during processing task for entity {}", entityType, e);
     } finally {
-      sendUpdates(jobExecutionContext);
+      if (!stopped) {
+        sendUpdates(jobExecutionContext);
+      }
     }
   }
 

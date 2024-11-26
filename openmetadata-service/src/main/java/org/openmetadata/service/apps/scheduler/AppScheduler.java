@@ -263,30 +263,52 @@ public class AppScheduler {
   }
 
   public void stopApplicationRun(App application) {
-    if (application.getFullyQualifiedName() == null) {
-      throw new IllegalArgumentException("Application's fullyQualifiedName is null.");
-    }
     try {
-      // Interrupt any scheduled job
       JobDetail jobDetailScheduled =
           scheduler.getJobDetail(new JobKey(application.getName(), APPS_JOB_GROUP));
-      if (jobDetailScheduled != null) {
-        LOG.debug("Stopping Scheduled Execution for App : {}", application.getName());
-        scheduler.interrupt(jobDetailScheduled.getKey());
-      }
-
-      // Interrupt any on-demand job
       JobDetail jobDetailOnDemand =
           scheduler.getJobDetail(
               new JobKey(
                   String.format("%s-%s", application.getName(), ON_DEMAND_JOB), APPS_JOB_GROUP));
-
-      if (jobDetailOnDemand != null) {
-        LOG.debug("Stopping On Demand Execution for App : {}", application.getName());
-        scheduler.interrupt(jobDetailOnDemand.getKey());
+      boolean isJobRunning = false;
+      // Check if the job is already running
+      List<JobExecutionContext> currentJobs = scheduler.getCurrentlyExecutingJobs();
+      for (JobExecutionContext context : currentJobs) {
+        if ((jobDetailScheduled != null
+                && context.getJobDetail().getKey().equals(jobDetailScheduled.getKey()))
+            || (jobDetailOnDemand != null
+                && context.getJobDetail().getKey().equals(jobDetailOnDemand.getKey()))) {
+          isJobRunning = true;
+        }
       }
-    } catch (Exception ex) {
-      LOG.error("Failed to stop job execution.", ex);
+      if (!isJobRunning) {
+        throw new UnhandledServerException("There is no job running for the application.");
+      }
+      JobKey scheduledJobKey = new JobKey(application.getName(), APPS_JOB_GROUP);
+      if (jobDetailScheduled != null) {
+        LOG.debug("Stopping Scheduled Execution for App: {}", application.getName());
+        scheduler.interrupt(scheduledJobKey);
+        try {
+          scheduler.deleteJob(scheduledJobKey);
+        } catch (SchedulerException ex) {
+          LOG.error("Failed to delete scheduled job: {}", scheduledJobKey, ex);
+        }
+      } else {
+        JobKey onDemandJobKey =
+            new JobKey(
+                String.format("%s-%s", application.getName(), ON_DEMAND_JOB), APPS_JOB_GROUP);
+        if (jobDetailOnDemand != null) {
+          LOG.debug("Stopping On Demand Execution for App: {}", application.getName());
+          scheduler.interrupt(onDemandJobKey);
+          try {
+            scheduler.deleteJob(onDemandJobKey);
+          } catch (SchedulerException ex) {
+            LOG.error("Failed to delete on-demand job: {}", onDemandJobKey, ex);
+          }
+        }
+      }
+    } catch (SchedulerException ex) {
+      LOG.error("Failed to stop job execution for app: {}", application.getName(), ex);
     }
   }
 }
