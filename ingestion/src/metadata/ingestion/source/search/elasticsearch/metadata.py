@@ -12,6 +12,7 @@
 Elasticsearch source to extract metadata
 """
 import shutil
+import traceback
 from pathlib import Path
 from typing import Any, Iterable, Optional
 
@@ -165,27 +166,35 @@ class ElasticsearchSource(SearchServiceSource):
         """
         Method to Get Search Index Template Entity
         """
-        if self.source_config.includeIndexTemplate:
-            index_name = self.get_search_index_template_name(
-                search_index_template_details
-            )
-            index_template = search_index_template_details["index_template"]
-            if index_name:
-                search_index_template_request = CreateSearchIndexRequest(
-                    name=EntityName(index_name),
-                    displayName=index_name,
-                    searchIndexSettings=index_template.get("template", {}).get(
-                        "settings", {}
-                    ),
-                    service=FullyQualifiedEntityName(self.context.get().search_service),
-                    fields=parse_es_index_mapping(
-                        index_template.get("template", {}).get("mappings")
-                    ),
-                    indexType=IndexType.IndexTemplate,
-                    description=index_template.get("_meta", {}).get("description"),
+        try:
+            if self.source_config.includeIndexTemplate:
+                index_name = self.get_search_index_template_name(
+                    search_index_template_details
                 )
-                yield Either(right=search_index_template_request)
-                self.register_record(search_index_request=search_index_template_request)
+                index_template = search_index_template_details["index_template"]
+                if index_name:
+                    search_index_template_request = CreateSearchIndexRequest(
+                        name=EntityName(index_name),
+                        displayName=index_name,
+                        searchIndexSettings=index_template.get("template", {}).get(
+                            "settings", {}
+                        ),
+                        service=FullyQualifiedEntityName(
+                            self.context.get().search_service
+                        ),
+                        fields=parse_es_index_mapping(
+                            index_template.get("template", {}).get("mappings")
+                        ),
+                        indexType=IndexType.IndexTemplate,
+                        description=index_template.get("_meta", {}).get("description"),
+                    )
+                    yield Either(right=search_index_template_request)
+                    self.register_record(
+                        search_index_request=search_index_template_request
+                    )
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.error(f"Could not include index templates due to {exc}")
 
     def close(self):
         try:
