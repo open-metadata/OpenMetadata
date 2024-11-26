@@ -22,7 +22,7 @@ from metadata.generated.schema.entity.data.table import (
     TableProfilerConfig,
 )
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
-from metadata.sampler.models import SampleConfig
+from metadata.sampler.models import PartitionProfilerConfig
 from metadata.workflow.classification import AutoClassificationWorkflow
 from metadata.workflow.data_quality import TestSuiteWorkflow
 from metadata.workflow.metadata import MetadataWorkflow
@@ -236,7 +236,7 @@ def run_partitioned_test_suite_workflow(metadata, run_ingestion, ingestion_confi
     metadata.create_or_update_table_profiler_config(
         fqn='datalake_for_integration_tests.default.my-bucket."users.csv"',
         table_profiler_config=TableProfilerConfig(
-            partitioning=SampleConfig(
+            partitioning=PartitionProfilerConfig(
                 enablePartitioning=True,
                 partitionIntervalType=PartitionIntervalTypes.COLUMN_VALUE,
                 partitionValues=["Los Angeles"],
