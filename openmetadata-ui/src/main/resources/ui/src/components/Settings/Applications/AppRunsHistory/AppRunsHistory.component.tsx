@@ -192,11 +192,9 @@ const AppRunsHistory = forwardRef(
           dataIndex: 'executionTime',
           key: 'executionTime',
           render: (_, record: AppRunRecordWithId) => {
-            if (record.startTime && record.endTime) {
-              const ms = getIntervalInMilliseconds(
-                record.startTime,
-                record.endTime
-              );
+            if (record.startTime) {
+              const endTime = record.endTime || Date.now(); // Use current time in epoch milliseconds if endTime is not present
+              const ms = getIntervalInMilliseconds(record.startTime, endTime);
 
               return formatDuration(ms);
             } else {
