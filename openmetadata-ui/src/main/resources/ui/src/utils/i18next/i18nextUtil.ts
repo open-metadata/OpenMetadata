@@ -44,7 +44,7 @@ export enum SupportedLocales {
   Nederlands = 'nl-NL',
   Persian = 'pr-PR',
   Thai = 'th-TH',
-  India = 'mr-IN',
+  मराठी = 'mr-IN',
 }
 
 export const languageSelectOptions = map(SupportedLocales, (value, key) => ({
