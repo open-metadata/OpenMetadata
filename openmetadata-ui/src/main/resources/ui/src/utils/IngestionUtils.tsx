@@ -14,7 +14,7 @@
 import { Typography } from 'antd';
 import { ExpandableConfig } from 'antd/lib/table/interface';
 import { t } from 'i18next';
-import { isEmpty, isUndefined, startCase } from 'lodash';
+import { isEmpty, isUndefined, startCase, uniq } from 'lodash';
 import { ServiceTypes } from 'Models';
 import React from 'react';
 import ErrorPlaceHolder from '../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -44,7 +44,6 @@ import {
   IngestionPipeline,
   StepSummary,
 } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { Connection as MetadataConnection } from '../generated/entity/services/metadataService';
 import { SearchSourceAlias } from '../interface/search.interface';
 import { DataObj, ServicesType } from '../interface/service.interface';
 import { Transi18next } from './CommonUtils';
@@ -144,38 +143,30 @@ export const getSupportedPipelineTypes = (serviceDetails: ServicesType) => {
   const pipelineType: PipelineType[] = [];
   const config = serviceDetails?.connection?.config as Connection;
 
-  if (config) {
-    if (config.supportsMetadataExtraction) {
-      pipelineType.push(PipelineType.Metadata);
-    }
-    if (config.supportsUsageExtraction) {
-      pipelineType.push(PipelineType.Usage);
-    }
-    if (
-      config.supportsLineageExtraction ||
-      config.supportsViewLineageExtraction
-    ) {
-      pipelineType.push(PipelineType.Lineage);
-    }
-    if (config.supportsProfiler) {
-      pipelineType.push(PipelineType.Profiler, PipelineType.AutoClassification);
-    }
-    if (config.supportsDBTExtraction) {
-      pipelineType.push(PipelineType.Dbt);
-    }
-    if ((config as MetadataConnection).supportsDataInsightExtraction) {
-      pipelineType.push(PipelineType.DataInsight);
-    }
-    if (
-      (config as MetadataConnection).supportsElasticSearchReindexingExtraction
-    ) {
-      pipelineType.push(PipelineType.ElasticSearchReindex);
-    }
-  } else {
-    pipelineType.push(PipelineType.Metadata);
+  if (isUndefined(config)) {
+    return [PipelineType.Metadata];
   }
 
-  return pipelineType;
+  const pipelineMapping: { [key: string]: PipelineType[] } = {
+    supportsMetadataExtraction: [PipelineType.Metadata],
+    supportsUsageExtraction: [PipelineType.Usage],
+    supportsLineageExtraction: [PipelineType.Lineage],
+    supportsViewLineageExtraction: [PipelineType.Lineage],
+    supportsProfiler: [PipelineType.Profiler, PipelineType.AutoClassification],
+    supportsDBTExtraction: [PipelineType.Dbt],
+    supportsDataInsightExtraction: [PipelineType.DataInsight],
+    supportsElasticSearchReindexingExtraction: [
+      PipelineType.ElasticSearchReindex,
+    ],
+  };
+
+  Object.keys(pipelineMapping).forEach((key) => {
+    if (config[key as keyof Connection]) {
+      pipelineType.push(...pipelineMapping[key]);
+    }
+  });
+
+  return uniq(pipelineType);
 };
 
 export const getIngestionTypes = (

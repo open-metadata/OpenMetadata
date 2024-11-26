@@ -37,6 +37,7 @@ describe('getSupportedPipelineTypes', () => {
           supportsLineageExtraction: true,
           supportsProfiler: true,
           supportsDBTExtraction: true,
+          supportsViewLineageExtraction: true,
         },
       },
     };
