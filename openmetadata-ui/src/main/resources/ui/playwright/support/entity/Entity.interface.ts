@@ -41,6 +41,7 @@ export enum EntityTypeEndpoint {
   METRIC = 'metrics',
   TestSuites = 'dataQuality/testSuites',
   Teams = 'teams',
+  NotificationAlert = 'events/subscriptions',
 }
 
 export type EntityDataType = {

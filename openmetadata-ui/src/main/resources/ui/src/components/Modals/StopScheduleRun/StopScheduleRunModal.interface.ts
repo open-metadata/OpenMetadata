@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,18 +11,10 @@
  *  limitations under the License.
  */
 
-@import (reference) url('../../styles/variables.less');
-
-.ant-skeleton-active .ant-skeleton-button.extra-info-skeleton {
-  display: flex;
-  align-items: center;
-  height: 24px;
-  width: 120px;
-}
-
-.alert-description {
-  margin-top: 8px;
-  .right-panel-label {
-    color: @text-color;
-  }
+export interface StopScheduleRunModalProps {
+  appName: string;
+  isModalOpen: boolean;
+  displayName: string;
+  onClose: () => void;
+  onStopWorkflowsUpdate?: () => void;
 }

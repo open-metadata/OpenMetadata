@@ -165,7 +165,10 @@ const QueryBuilderWidget: FC<WidgetProps> = ({
           const updatedQ = {
             query: query,
           };
-          const parsedTree = getJsonTreeFromQueryFilter(updatedQ) as JsonTree;
+          const parsedTree = getJsonTreeFromQueryFilter(
+            updatedQ,
+            config.fields
+          ) as JsonTree;
 
           if (Object.keys(parsedTree).length > 0) {
             const tree1 = QbUtils.checkTree(
