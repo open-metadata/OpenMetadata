@@ -78,7 +78,6 @@ import { SearchIndex } from '../../enums/search.enum';
 import { ProviderType, Tag } from '../../generated/entity/classification/tag';
 import { Style } from '../../generated/type/tagLabel';
 import { useFqn } from '../../hooks/useFqn';
-import { MOCK_TAG_PERMISSIONS } from '../../mocks/Tags.mock';
 import { searchData } from '../../rest/miscAPI';
 import { deleteTag, getTagByFqn, patchTag } from '../../rest/tagAPI';
 import { getEntityDeleteMessage } from '../../utils/CommonUtils';
@@ -92,7 +91,10 @@ import {
   escapeESReservedCharacters,
   getEncodedFqn,
 } from '../../utils/StringsUtils';
-import { getQueryFilterToExcludeTerms } from '../../utils/TagsUtils';
+import {
+  getQueryFilterToExcludeTerms,
+  getTagAssetsQueryFilter,
+} from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import './tag-page.less';
 import { TagTabs } from './TagPage.inteface';
@@ -149,13 +151,10 @@ const TagPage = () => {
       const isEditable = !tagItem.disabled && !tagItem.deleted;
 
       return {
-        editTagsPermission:
-          isEditable && (tagPermissions.EditTags || tagPermissions.EditAll),
+        editTagsPermission: isEditable && tagPermissions.EditAll,
         editDescriptionPermission:
           isEditable &&
-          (tagPermissions.EditDescription ||
-            tagPermissions.EditAll ||
-            tagPermissions.EditTags),
+          (tagPermissions.EditDescription || tagPermissions.EditAll),
       };
     }
 
@@ -317,7 +316,7 @@ const TagPage = () => {
         '',
         1,
         0,
-        `(tags.tagFQN:"${encodedFqn}")`,
+        getTagAssetsQueryFilter(encodedFqn),
         '',
         '',
         SearchIndex.ALL
@@ -478,7 +477,7 @@ const TagPage = () => {
                   assetCount={assetCount}
                   entityFqn={tagItem?.fullyQualifiedName ?? ''}
                   isSummaryPanelOpen={Boolean(previewAsset)}
-                  permissions={MOCK_TAG_PERMISSIONS}
+                  permissions={tagPermissions}
                   ref={assetTabRef}
                   type={AssetsOfEntity.TAG}
                   onAddAsset={() => setAssetModalVisible(true)}
@@ -573,7 +572,7 @@ const TagPage = () => {
             <Col className="p-x-md" flex="auto">
               <EntityHeader
                 badge={
-                  !editTagsPermission && (
+                  tagItem.disabled && (
                     <Space>
                       <Divider className="m-x-xs h-6" type="vertical" />
                       <StatusBadge

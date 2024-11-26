@@ -89,6 +89,7 @@ import {
   escapeESReservedCharacters,
   getEncodedFqn,
 } from '../../../../utils/StringsUtils';
+import { getTagAssetsQueryFilter } from '../../../../utils/TagsUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { ManageButtonItemLabel } from '../../../common/ManageButtonContentItem/ManageButtonContentItem.component';
@@ -215,7 +216,7 @@ const AssetsTabs = forwardRef(
           return queryFilter ?? '';
 
         default:
-          return `(tags.tagFQN:"${encodedFqn}")`;
+          return getTagAssetsQueryFilter(encodedFqn);
       }
     }, [type, fqn, entityFqn]);
 
