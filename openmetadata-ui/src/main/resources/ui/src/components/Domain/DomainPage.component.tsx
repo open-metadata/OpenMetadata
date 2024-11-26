@@ -37,6 +37,7 @@ import { getDomainPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import Loader from '../common/Loader/Loader';
 import ResizableLeftPanels from '../common/ResizablePanels/ResizableLeftPanels';
+import PageLayoutV1 from '../PageLayoutV1/PageLayoutV1';
 import './domain.less';
 import DomainDetailsPage from './DomainDetailsPage/DomainDetailsPage.component';
 import DomainsLeftPanel from './DomainLeftPanel/DomainLeftPanel.component';
@@ -176,10 +177,6 @@ const DomainPage = () => {
     }
   }, [rootDomains, domainFqn]);
 
-  if (domainLoading) {
-    return <Loader />;
-  }
-
   if (!(viewBasicDomainPermission || viewAllDomainPermission)) {
     return (
       <ErrorPlaceHolder
@@ -189,27 +186,23 @@ const DomainPage = () => {
     );
   }
 
-  if (isEmpty(rootDomains)) {
-    return (
-      <ErrorPlaceHolder
-        buttonId="add-domain"
-        className="mt-0-important"
-        heading={t('label.domain')}
-        permission={createDomainPermission}
-        type={
-          createDomainPermission
-            ? ERROR_PLACEHOLDER_TYPE.CREATE
-            : ERROR_PLACEHOLDER_TYPE.CUSTOM
-        }
-        onClick={handleAddDomainClick}>
-        {t('message.domains-not-configured')}
-      </ErrorPlaceHolder>
-    );
-  }
-
-  return (
+  const pageContent = isEmpty(rootDomains) ? (
+    <ErrorPlaceHolder
+      buttonId="add-domain"
+      className="mt-44"
+      heading={t('label.domain')}
+      permission={createDomainPermission}
+      type={
+        createDomainPermission
+          ? ERROR_PLACEHOLDER_TYPE.CREATE
+          : ERROR_PLACEHOLDER_TYPE.CUSTOM
+      }
+      onClick={handleAddDomainClick}>
+      {t('message.domains-not-configured')}
+    </ErrorPlaceHolder>
+  ) : (
     <ResizableLeftPanels
-      className="content-height-with-resizable-panel"
+      className="content-height-with-resizable-panel domain-page"
       firstPanel={{
         className: 'content-resizable-panel-container',
         minWidth: 280,
@@ -224,6 +217,12 @@ const DomainPage = () => {
         flex: 0.87,
       }}
     />
+  );
+
+  return (
+    <PageLayoutV1 pageTitle={t('label.domain-plural')}>
+      {domainLoading ? <Loader /> : pageContent}
+    </PageLayoutV1>
   );
 };
 

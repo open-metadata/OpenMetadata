@@ -1,5 +1,7 @@
+import { AlertProps } from 'antd';
+
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2024 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,12 +12,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-import { ToastOptions } from 'react-toastify';
-
-export const TOAST_OPTIONS: ToastOptions = {
-  autoClose: false,
-  hideProgressBar: true,
-  draggable: false,
-  closeOnClick: false,
-};
+export interface AlertBarProps {
+  type: AlertProps['type'];
+  message: string | JSX.Element;
+}
