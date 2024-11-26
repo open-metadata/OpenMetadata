@@ -280,3 +280,4 @@ ignore = [
 reportDeprecated = false
 reportMissingTypeStubs = false
 reportAny = false
+reportExplicitAny = false
