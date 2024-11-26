@@ -15,7 +15,11 @@ import { Button } from 'antd';
 import { t } from 'i18next';
 import { isUndefined } from 'lodash';
 import React from 'react';
-import { Fields, RenderSettings } from 'react-awesome-query-builder';
+import {
+  FieldGroup,
+  Fields,
+  RenderSettings,
+} from 'react-awesome-query-builder';
 import { EntityReferenceFields } from '../enums/AdvancedSearch.enum';
 import {
   EsBoolQuery,
@@ -31,7 +35,10 @@ export const JSONLOGIC_FIELDS_TO_IGNORE_SPLIT = [
   EntityReferenceFields.EXTENSION,
 ];
 
-const resolveFieldType = (fields: any, field: string): string | undefined => {
+const resolveFieldType = (
+  fields: Fields,
+  field: string
+): string | undefined => {
   // Split the field into parts (e.g., "extension.expert")
   const fieldParts = field.split('.');
   let currentField = fields[fieldParts[0]];
@@ -43,10 +50,10 @@ const resolveFieldType = (fields: any, field: string): string | undefined => {
 
   // Traverse nested subfields if there are more parts
   for (let i = 1; i < fieldParts.length; i++) {
-    if (!currentField?.subfields?.[fieldParts[i]]) {
+    if (!(currentField as FieldGroup)?.subfields?.[fieldParts[i]]) {
       return undefined; // Subfield not found
     }
-    currentField = currentField.subfields[fieldParts[i]];
+    currentField = (currentField as FieldGroup).subfields[fieldParts[i]];
   }
 
   return currentField?.type;
@@ -213,7 +220,7 @@ export const getJsonTreePropertyFromQueryFilter = (
         };
       } else if (!isUndefined(curr.term)) {
         const [field, value] = Object.entries(curr.term)[0];
-        const fieldType = resolveFieldType(fields, field);
+        const fieldType = fields ? resolveFieldType(fields, field) : '';
         const op = fieldType === 'text' ? 'equal' : 'select_equals';
 
         return {
@@ -230,7 +237,7 @@ export const getJsonTreePropertyFromQueryFilter = (
       ) {
         const value = Object.values((curr.bool?.must_not as EsTerm)?.term)[0];
         const key = Object.keys((curr.bool?.must_not as EsTerm)?.term)[0];
-        const fieldType = resolveFieldType(fields, key);
+        const fieldType = fields ? resolveFieldType(fields, key) : '';
         const op = fieldType === 'text' ? 'not_equal' : 'select_not_equals';
 
         return {
