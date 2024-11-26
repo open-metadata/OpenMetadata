@@ -176,7 +176,7 @@ def _(config: DbtCloudConfig):  # pylint: disable=too-many-locals
         logger.debug(
             "Requesting [dbt_catalog], [dbt_manifest] and [dbt_run_results] data"
         )
-        params_data = {"order_by": "-finished_at", "limit": "1", "status": "10"}
+        params_data = {"order_by": "-finished_at", "limit": "1"}
         if project_id:
             params_data["project_id"] = project_id
 

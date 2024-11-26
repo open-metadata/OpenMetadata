@@ -841,13 +841,20 @@ public class SearchRepository {
       String entityType,
       String query,
       String filter,
+      String[] fields,
       SearchSortFilter searchSortFilter,
       int size,
       Object[] searchAfter)
       throws IOException {
     IndexMapping index = entityIndexMap.get(entityType);
     return searchClient.listWithDeepPagination(
-        index.getIndexName(clusterAlias), query, filter, searchSortFilter, size, searchAfter);
+        index.getIndexName(clusterAlias),
+        query,
+        filter,
+        fields,
+        searchSortFilter,
+        size,
+        searchAfter);
   }
 
   public Response searchBySourceUrl(String sourceUrl) throws IOException {
