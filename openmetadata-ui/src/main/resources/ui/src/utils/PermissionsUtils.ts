@@ -54,6 +54,23 @@ export const checkPermission = (
 
 /**
  *
+ * @param operation operation like Edit, Delete
+ * @param resourceType Resource type like "bot", "table"
+ * @param permissions UIPermission
+ * @returns boolean - true/false
+ */
+export const checkPermissionEntityResource = (
+  operation: Operation,
+  resourceType: ResourceEntity,
+  permissions: UIPermission
+) => {
+  const entityResource = permissions?.[resourceType];
+
+  return entityResource && entityResource[operation];
+};
+
+/**
+ *
  * @param permission ResourcePermission
  * @returns OperationPermission - {Operation:true/false}
  */

@@ -46,7 +46,7 @@ import {
   getTags,
 } from '../rest/tagAPI';
 import { getQueryFilterToIncludeApprovedTerm } from './GlossaryUtils';
-import { checkPermission } from './PermissionsUtils';
+import { checkPermissionEntityResource } from './PermissionsUtils';
 import { getTagsWithoutTier } from './TableUtils';
 
 export const getClassifications = async (
@@ -378,120 +378,120 @@ export const getExcludedIndexesBasedOnEntityTypeEditTagPermission = (
   permissions: UIPermission
 ) => {
   const entityPermission = {
-    [ResourceEntity.TABLE]: checkPermission(
+    [SearchIndex.TABLE]: checkPermissionEntityResource(
       Operation.EditTags,
       ResourceEntity.TABLE,
       permissions
     ),
-    [ResourceEntity.TOPIC]: checkPermission(
+    [SearchIndex.TOPIC]: checkPermissionEntityResource(
       Operation.EditTags,
       ResourceEntity.TOPIC,
       permissions
     ),
-    [ResourceEntity.DASHBOARD]: checkPermission(
+    [SearchIndex.DASHBOARD]: checkPermissionEntityResource(
       Operation.EditTags,
       ResourceEntity.DASHBOARD,
       permissions
     ),
-    [ResourceEntity.ML_MODEL]: checkPermission(
+    [SearchIndex.MLMODEL]: checkPermissionEntityResource(
       Operation.EditTags,
       ResourceEntity.ML_MODEL,
       permissions
     ),
-    [ResourceEntity.PIPELINE]: checkPermission(
+    [SearchIndex.PIPELINE]: checkPermissionEntityResource(
       Operation.EditTags,
       ResourceEntity.PIPELINE,
       permissions
     ),
-    [ResourceEntity.CONTAINER]: checkPermission(
+    [SearchIndex.CONTAINER]: checkPermissionEntityResource(
       Operation.EditTags,
       ResourceEntity.CONTAINER,
       permissions
     ),
-    [ResourceEntity.SEARCH_INDEX]: checkPermission(
+    [SearchIndex.SEARCH_INDEX]: checkPermissionEntityResource(
       Operation.EditTags,
       ResourceEntity.SEARCH_INDEX,
       permissions
     ),
-    [ResourceEntity.API_SERVICE]: checkPermission(
+    [SearchIndex.API_SERVICE_INDEX]: checkPermissionEntityResource(
       Operation.EditTags,
       ResourceEntity.API_SERVICE,
       permissions
     ),
-    [ResourceEntity.API_ENDPOINT]: checkPermission(
+    [SearchIndex.API_ENDPOINT_INDEX]: checkPermissionEntityResource(
       Operation.EditTags,
       ResourceEntity.API_ENDPOINT,
       permissions
     ),
-    [ResourceEntity.API_COLLECTION]: checkPermission(
+    [SearchIndex.API_COLLECTION_INDEX]: checkPermissionEntityResource(
       Operation.EditTags,
       ResourceEntity.API_COLLECTION,
       permissions
     ),
-    [ResourceEntity.DASHBOARD_DATA_MODEL]: checkPermission(
+    [SearchIndex.DASHBOARD_DATA_MODEL]: checkPermissionEntityResource(
       Operation.EditTags,
       ResourceEntity.DASHBOARD_DATA_MODEL,
       permissions
     ),
-    [ResourceEntity.STORED_PROCEDURE]: checkPermission(
+    [SearchIndex.STORED_PROCEDURE]: checkPermissionEntityResource(
       Operation.EditTags,
       ResourceEntity.STORED_PROCEDURE,
       permissions
     ),
-    [ResourceEntity.DATABASE]: checkPermission(
+    [SearchIndex.DATABASE]: checkPermissionEntityResource(
       Operation.EditTags,
       ResourceEntity.DATABASE,
       permissions
     ),
-    [ResourceEntity.DATABASE_SERVICE]: checkPermission(
+    [SearchIndex.DATABASE_SERVICE]: checkPermissionEntityResource(
       Operation.EditTags,
       ResourceEntity.DATABASE_SERVICE,
       permissions
     ),
-    [ResourceEntity.DATABASE_SCHEMA]: checkPermission(
+    [SearchIndex.DATABASE_SCHEMA]: checkPermissionEntityResource(
       Operation.EditTags,
       ResourceEntity.DATABASE_SCHEMA,
       permissions
     ),
-    [ResourceEntity.MESSAGING_SERVICE]: checkPermission(
+    [SearchIndex.MESSAGING_SERVICE]: checkPermissionEntityResource(
       Operation.EditTags,
       ResourceEntity.PIPELINE_SERVICE,
       permissions
     ),
-    [ResourceEntity.DASHBOARD_SERVICE]: checkPermission(
+    [SearchIndex.DASHBOARD_SERVICE]: checkPermissionEntityResource(
       Operation.EditTags,
       ResourceEntity.DASHBOARD_SERVICE,
       permissions
     ),
-    [ResourceEntity.ML_MODEL_SERVICE]: checkPermission(
+    [SearchIndex.ML_MODEL_SERVICE]: checkPermissionEntityResource(
       Operation.EditTags,
       ResourceEntity.ML_MODEL_SERVICE,
       permissions
     ),
-    [ResourceEntity.PIPELINE_SERVICE]: checkPermission(
+    [SearchIndex.PIPELINE_SERVICE]: checkPermissionEntityResource(
       Operation.EditTags,
       ResourceEntity.PIPELINE_SERVICE,
       permissions
     ),
-    [ResourceEntity.STORAGE_SERVICE]: checkPermission(
+    [SearchIndex.STORAGE_SERVICE]: checkPermissionEntityResource(
       Operation.EditTags,
       ResourceEntity.STORAGE_SERVICE,
       permissions
     ),
-    [ResourceEntity.SEARCH_SERVICE]: checkPermission(
+    [SearchIndex.SEARCH_SERVICE]: checkPermissionEntityResource(
       Operation.EditTags,
       ResourceEntity.SEARCH_SERVICE,
       permissions
     ),
   };
 
-  return (Object.keys(entityPermission) as ResourceEntity[]).reduce(
+  return (Object.keys(entityPermission) as SearchIndex[]).reduce(
     (
       acc: {
-        entitiesHavingPermission: ResourceEntity[];
-        entitiesNotHavingPermission: ResourceEntity[];
+        entitiesHavingPermission: SearchIndex[];
+        entitiesNotHavingPermission: SearchIndex[];
       },
-      cv: ResourceEntity
+      cv: SearchIndex
     ) => {
       const currentEntityPermission =
         entityPermission[cv as keyof typeof entityPermission];
