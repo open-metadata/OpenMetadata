@@ -158,7 +158,7 @@ test.describe('Teams Page', () => {
         )
       ).toHaveClass(/active/);
 
-      const updateTeamResponse = page.waitForResponse('/api/v1/teams/*');
+      const updateTeamResponse = page.waitForResponse('/api/v1/users*');
 
       // Update the team with the new user
       await page.locator('[data-testid="selectable-list-update-btn"]').click();
@@ -188,7 +188,7 @@ test.describe('Teams Page', () => {
         )
         .click();
 
-      const updateTeamResponse = page.waitForResponse('/api/v1/teams/*');
+      const updateTeamResponse = page.waitForResponse('/api/v1/users*');
       await page.locator('[data-testid="selectable-list-update-btn"]').click();
       await updateTeamResponse;
 
