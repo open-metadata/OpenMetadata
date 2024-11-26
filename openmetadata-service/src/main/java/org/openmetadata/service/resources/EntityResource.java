@@ -418,9 +418,6 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
 
   public Response bulkAddToAssetsAsync(
       SecurityContext securityContext, UUID entityId, BulkAssetsRequestInterface request) {
-    OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
-    authorizer.authorize(securityContext, operationContext, getResourceContextById(entityId));
     String jobId = UUID.randomUUID().toString();
     ExecutorService executorService = AsyncService.getInstance().getExecutorService();
     executorService.submit(
@@ -443,9 +440,6 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
 
   public Response bulkRemoveFromAssetsAsync(
       SecurityContext securityContext, UUID entityId, BulkAssetsRequestInterface request) {
-    OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
-    authorizer.authorize(securityContext, operationContext, getResourceContextById(entityId));
     String jobId = UUID.randomUUID().toString();
     ExecutorService executorService = AsyncService.getInstance().getExecutorService();
     executorService.submit(
