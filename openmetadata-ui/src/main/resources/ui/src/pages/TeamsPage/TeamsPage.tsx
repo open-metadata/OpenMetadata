@@ -243,7 +243,6 @@ const TeamsPage = () => {
     try {
       const data = await getTeamByName(name, {
         fields: [
-          TabSpecificField.USERS,
           TabSpecificField.USER_COUNT,
           TabSpecificField.DEFAULT_ROLES,
           TabSpecificField.POLICIES,
@@ -370,7 +369,7 @@ const TeamsPage = () => {
    * @param data
    */
   const addUsersToTeam = async (data: Array<EntityReference>) => {
-    if (!isUndefined(selectedTeam) && !isUndefined(selectedTeam.users)) {
+    if (!isUndefined(selectedTeam)) {
       try {
         const res = await updateUsersFromTeam(selectedTeam.id, data);
         if (res) {

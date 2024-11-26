@@ -77,7 +77,7 @@ export const UserTab = ({
   const [deletingUser, setDeletingUser] = useState<EntityReference>();
   const { showModal } = useEntityExportModalProvider();
   const handleRemoveClick = (id: string) => {
-    const user = currentTeam.users?.find((u) => u.id === id);
+    const user = usersList?.find((u) => u.id === id);
     setDeletingUser(user);
   };
   const [isLoading, setIsLoading] = useState(true);
