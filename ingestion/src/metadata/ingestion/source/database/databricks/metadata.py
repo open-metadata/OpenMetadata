@@ -684,11 +684,13 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
                     table_name=table_name,
                 )
             )
+            found_location = False
             for result in list(cursor):
                 data = result.values()
                 if data[0] and data[0].strip() == "Comment":
                     description = data[1] if data and data[1] else None
                 elif data[0] and data[0].strip() == "Location":
+                    found_location = True
                     self.external_location_map[
                         (self.context.get().database, schema_name, table_name)
                     ] = (
@@ -696,6 +698,10 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
                         if data and data[1] and not data[1].startswith("dbfs")
                         else None
                     )
+            if not found_location:
+                logger.debug(
+                    f"Location not found for table {self.context.get().database}.{schema_name}.{table_name}"
+                )
 
         # Catch any exception without breaking the ingestion
         except Exception as exc:  # pylint: disable=broad-except
@@ -709,9 +715,14 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
         """
         Method to fetch the location path of the table
         """
-        return self.external_location_map.get(
+        location = self.external_location_map.get(
             (self.context.get().database, schema_name, table_name)
         )
+        if not location:
+            logger.debug(
+                f"Location not found in map for table {self.context.get().database}.{schema_name}.{table_name}"
+            )
+        return location
 
     def _filter_owner_name(self, owner_name: str) -> str:
         """remove unnecessary keyword from name"""
