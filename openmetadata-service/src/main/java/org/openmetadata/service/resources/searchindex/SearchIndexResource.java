@@ -628,11 +628,14 @@ public class SearchIndexResource extends EntityResource<SearchIndex, SearchIndex
   }
 
   private SearchIndex getSearchIndex(CreateSearchIndex create, String user) {
-    return repository
-        .copy(new SearchIndex(), create, user)
-        .withService(getEntityReference(Entity.SEARCH_SERVICE, create.getService()))
-        .withFields(create.getFields())
-        .withSearchIndexSettings(create.getSearchIndexSettings())
-        .withSourceHash(create.getSourceHash());
+    SearchIndex searchIndex =
+        repository
+            .copy(new SearchIndex(), create, user)
+            .withService(getEntityReference(Entity.SEARCH_SERVICE, create.getService()))
+            .withFields(create.getFields())
+            .withSearchIndexSettings(create.getSearchIndexSettings())
+            .withSourceHash(create.getSourceHash())
+            .withIndexType(create.getIndexType());
+    return searchIndex;
   }
 }

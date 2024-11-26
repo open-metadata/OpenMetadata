@@ -74,6 +74,11 @@
       "type": "string",
       "minLength": 1,
       "maxLength": 32
+    },
+    "indexType": {
+      "description": "Whether the entity is index or index template.",
+      "$ref": "../../entity/data/searchIndex.json#/properties/indexType",
+      "default": "Index"
     }
   },
   "required": ["name", "service", "fields"],

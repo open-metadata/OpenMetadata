@@ -31,6 +31,7 @@ public record SearchEntityIndex(org.openmetadata.schema.entity.data.SearchIndex 
     doc.put("tags", parseTags.getTags());
     doc.put("tier", parseTags.getTierTag());
     doc.put("service", getEntityWithDisplayName(searchIndex.getService()));
+    doc.put("indexType", searchIndex.getIndexType());
     doc.put("lineage", SearchIndex.getLineageData(searchIndex.getEntityReference()));
     return doc;
   }
