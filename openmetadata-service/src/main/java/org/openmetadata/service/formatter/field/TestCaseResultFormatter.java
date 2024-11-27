@@ -63,7 +63,7 @@ public class TestCaseResultFormatter extends DefaultFieldFormatter {
             thread.getEntityRef().getId(),
             "id,testSuite",
             Include.ALL);
-    TestSuite testSuiteEntity = Entity.getEntity(testCaseEntity.getTestSuite(), "id", Include.ALL);
+    TestSuite testSuiteEntity = Entity.getEntity(testCaseEntity.getTestSuites().get(0), "id", Include.ALL);
     ResultList<TestCaseResult> testCaseResultResultList =
         testCaseRepository.getTestCaseResults(
             testCaseEntity.getFullyQualifiedName(), lastWeekTime, currentTime);

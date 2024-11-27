@@ -1,7 +1,7 @@
 # Test cases for data quality workflow
 import sys
 from dataclasses import dataclass
-from typing import List, Tuple
+from typing import List, Tuple, Type, TypeVar
 
 import pytest
 
@@ -23,16 +23,14 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.tests.basic import (
     TestCaseResult,
-    TestCaseStatus,
     TestResultValue,
 )
-from metadata.generated.schema.tests.testCase import TestCase
-from metadata.generated.schema.tests.testSuite import TestSuite
 from metadata.generated.schema.tests.basic import TestCaseStatus
 from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
 from metadata.generated.schema.tests.testSuite import TestSuite
 from metadata.generated.schema.type.basic import ComponentConfig
 from metadata.ingestion.api.status import TruncatedStackTraceError
+from metadata.ingestion.models.custom_pydantic import BaseModel
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils import entity_link
 from metadata.workflow.data_quality import TestSuiteWorkflow
@@ -41,28 +39,47 @@ from metadata.workflow.metadata import MetadataWorkflow
 if not sys.version_info >= (3, 9):
     pytest.skip("requires python 3.9+", allow_module_level=True)
 
+T = TypeVar("T", bound=BaseModel)
 
-@pytest.fixture(scope="module")
-def create_logical_test_suite(metadata):
-    test_suites = []
 
-    def factory(*args, **kwargs):
-        test_suite = metadata.get_or_create_test_suite(*args, **kwargs)
-        test_suites.append(test_suite)
-        return test_suite
+class Cleaner:
+    def __init__(self, metadata: OpenMetadata):
+        self.metadata = metadata
+        self.fqns = []
 
-    yield factory
-    for ts in test_suites:
-        metadata.delete(TestSuite, ts.id, recursive=True, hard_delete=True)
+    def register(self, entity_type: Type[T], fqn: str):
+        self.fqns.append((entity_type, fqn))
+
+    def cleanup(self):
+        for entity_type, fqn in self.fqns:
+            entity = self.metadata.get_by_name(entity_type, fqn, nullable=True)
+            if entity:
+                self.metadata.delete(entity_type, entity.id, recursive=True, hard_delete=True)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.cleanup()
+
+
+@pytest.fixture
+def cleanup_fqns(metadata: OpenMetadata):
+    cleaner = Cleaner(metadata)
+    yield cleaner.register
+    cleaner.cleanup()
 
 
 @pytest.fixture(scope="module")
 def run_logical_test_suite_workflow(
-    ingest_metadata,
     metadata: OpenMetadata,
     db_service: DatabaseService,
-    create_logical_test_suite,
+    ingestion_config,
+    run_workflow,
+    workflow_config,
+    sink_config,
 ):
+    run_workflow(MetadataWorkflow, ingestion_config)
     test_cases: List[Tuple[Table, TestCaseDefinition]] = [
         (
             metadata.get_by_name(
@@ -89,9 +106,9 @@ def run_logical_test_suite_workflow(
             ),
         ),
     ]
-    test_suite = create_logical_test_suite(
-        "logical_test_suite",
-    )
+    cleaner = Cleaner(metadata)
+    test_suite = metadata.get_or_create_test_suite("logical_test_suite")
+    cleaner.register(TestSuite, test_suite.fullyQualifiedName.root)
     for table, tc in test_cases:
         metadata.get_or_create_test_case(
             tc.name,
@@ -102,8 +119,9 @@ def run_logical_test_suite_workflow(
             test_definition_fqn=tc.testDefinitionName,
             test_case_parameter_values=tc.parameterValues,
         )
+        cleaner.register(TestCase, f"{table.fullyQualifiedName.root}.{tc.name}")
 
-    workflow_config = OpenMetadataWorkflowConfig(
+    workflow_config_dict = OpenMetadataWorkflowConfig(
         source=Source(
             type=TestSuiteConfigType.TestSuite.value,
             serviceName="logical_test_suite",
@@ -118,18 +136,15 @@ def run_logical_test_suite_workflow(
             type="orm-test-runner",
             config=ComponentConfig({}),
         ),
-        sink=Sink(
-            type="metadata-rest",
-            config={},
-        ),
-        workflowConfig=WorkflowConfig(
-            loggerLevel=LogLevels.DEBUG, openMetadataServerConfig=metadata.config
-        ),
+        sink=sink_config,
+        workflowConfig=workflow_config,
     )
-    test_suite_procesor = TestSuiteWorkflow.create(workflow_config)
+    test_suite_procesor = TestSuiteWorkflow.create(workflow_config_dict)
     test_suite_procesor.execute()
     test_suite_procesor.raise_from_status()
     test_suite_procesor.stop()
+    yield
+    cleaner.cleanup()
 
 
 @pytest.fixture(scope="module")

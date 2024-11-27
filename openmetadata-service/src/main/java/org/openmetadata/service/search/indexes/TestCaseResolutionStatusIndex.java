@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatus;
@@ -47,7 +48,7 @@ public record TestCaseResolutionStatusIndex(TestCaseResolutionStatus testCaseRes
     // denormalize the parent relationships for search
     EntityReference testCaseReference = testCaseResolutionStatus.getTestCaseReference();
     TestCase testCase =
-        Entity.getEntityOrNull(testCaseReference, "testSuite,domain,tags,owners", Include.ALL);
+        Entity.getEntityOrNull(testCaseReference, "testSuites,domain,tags,owners", Include.ALL);
     if (testCase == null) return;
     testCase =
         new TestCase()
@@ -62,10 +63,19 @@ public record TestCaseResolutionStatusIndex(TestCaseResolutionStatus testCaseRes
             .withEntityFQN(testCase.getEntityFQN())
             .withOwners(testCase.getOwners());
     doc.put("testCase", testCase);
-    TestSuite testSuite = Entity.getEntityOrNull(testCase.getTestSuite(), "", Include.ALL);
-    if (testSuite == null) return;
-    doc.put("testSuite", testSuite.getEntityReference());
-    TestSuiteIndex.addTestSuiteParentEntityRelations(testSuite.getExecutableEntityReference(), doc);
+    List<TestSuite> testSuites =
+        testCase.getTestSuites().stream()
+            .map(
+                testSuiteReference ->
+                    (TestSuite) Entity.getEntityOrNull(testSuiteReference, "", Include.ALL))
+            .filter(Objects::nonNull)
+            .toList();
+    doc.put("testSuites", testSuites);
+    testSuites.forEach(
+        testSuite -> {
+          TestSuiteIndex.addTestSuiteParentEntityRelations(
+              testSuite.getExecutableEntityReference(), doc);
+        });
   }
 
   public static Map<String, Float> getFields() {

@@ -237,6 +237,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   @Getter protected final CollectionDAO daoCollection;
   @Getter protected final SearchRepository searchRepository;
   @Getter protected final Set<String> allowedFields;
+  @Getter protected final Set<String> deprecatedFields = new HashSet<>();
   public final boolean supportsSoftDelete;
   @Getter protected final boolean supportsTags;
   @Getter protected final boolean supportsOwners;

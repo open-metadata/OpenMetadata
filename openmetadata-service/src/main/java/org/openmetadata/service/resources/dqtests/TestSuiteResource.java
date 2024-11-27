@@ -557,7 +557,6 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
         create.withExecutableEntityReference(
             null); // entity reference is not applicable for logical test suites
     TestSuite testSuite = getTestSuite(create, securityContext.getUserPrincipal().getName());
-    testSuite.setExecutable(false);
     return create(uriInfo, securityContext, testSuite);
   }
 
@@ -582,7 +581,6 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
       @Context SecurityContext securityContext,
       @Valid CreateTestSuite create) {
     TestSuite testSuite = getTestSuite(create, securityContext.getUserPrincipal().getName());
-    testSuite.setExecutable(true);
     return create(uriInfo, securityContext, testSuite);
   }
 
@@ -638,7 +636,6 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
         create.withExecutableEntityReference(
             null); // entity reference is not applicable for logical test suites
     TestSuite testSuite = getTestSuite(create, securityContext.getUserPrincipal().getName());
-    testSuite.setExecutable(false);
     return createOrUpdate(uriInfo, securityContext, testSuite);
   }
 
@@ -663,7 +660,6 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
       @Context SecurityContext securityContext,
       @Valid CreateTestSuite create) {
     TestSuite testSuite = getTestSuite(create, securityContext.getUserPrincipal().getName());
-    testSuite.setExecutable(true);
     return createOrUpdate(uriInfo, securityContext, testSuite);
   }
 
@@ -692,7 +688,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.DELETE);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     TestSuite testSuite = Entity.getEntity(Entity.TEST_SUITE, id, "*", ALL);
-    if (Boolean.TRUE.equals(testSuite.getExecutable())) {
+    if (testSuite.getExecutableEntityReference() != null) {
       throw new IllegalArgumentException(NON_EXECUTABLE_TEST_SUITE_DELETION_ERROR);
     }
     RestUtil.DeleteResponse<TestSuite> response =
@@ -727,7 +723,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.DELETE);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
     TestSuite testSuite = Entity.getEntityByName(Entity.TEST_SUITE, name, "*", ALL);
-    if (Boolean.TRUE.equals(testSuite.getExecutable())) {
+    if (testSuite.getExecutableEntityReference() != null) {
       throw new IllegalArgumentException(NON_EXECUTABLE_TEST_SUITE_DELETION_ERROR);
     }
     RestUtil.DeleteResponse<TestSuite> response =
@@ -766,7 +762,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.DELETE);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
     TestSuite testSuite = Entity.getEntityByName(Entity.TEST_SUITE, name, "*", ALL);
-    if (Boolean.FALSE.equals(testSuite.getExecutable())) {
+    if (testSuite.getExecutableEntityReference() == null) {
       throw new IllegalArgumentException(EXECUTABLE_TEST_SUITE_DELETION_ERROR);
     }
     return deleteByName(uriInfo, securityContext, name, recursive, hardDelete);
@@ -802,7 +798,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.DELETE);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     TestSuite testSuite = Entity.getEntity(Entity.TEST_SUITE, id, "*", ALL);
-    if (Boolean.FALSE.equals(testSuite.getExecutable())) {
+    if (testSuite.getExecutableEntityReference() == null) {
       throw new IllegalArgumentException(EXECUTABLE_TEST_SUITE_DELETION_ERROR);
     }
     return delete(uriInfo, securityContext, id, recursive, hardDelete);

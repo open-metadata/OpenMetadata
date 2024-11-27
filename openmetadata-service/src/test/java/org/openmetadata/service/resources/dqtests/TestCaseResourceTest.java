@@ -834,7 +834,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     allEntities = listEntitiesFromSearch(queryParams, testCasesNum, 0, ADMIN_AUTH_HEADERS);
     TestCase testCase = allEntities.getData().get(0);
     assertNull(testCase.getDescription());
-    assertNull(testCase.getTestSuite());
+    assertEquals(testCase.getTestSuites().size(), 0);
     assertNotNull(testCase.getEntityLink());
     assertNotNull(testCase.getName());
     assertNotNull(testCase.getId());
@@ -1149,7 +1149,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
         getEntityByName(testCase.getFullyQualifiedName(), "*", ADMIN_AUTH_HEADERS);
     assertEquals(
         executableTestSuite.getFullyQualifiedName(),
-        testCaseWithSuites.getTestSuite().getFullyQualifiedName());
+        testCaseWithSuites.getTestSuites().get(0).getFullyQualifiedName());
     assertEquals(2, testCaseWithSuites.getTestSuites().size());
 
     // Verify both our testSuites are in the list of TestSuite Entities
@@ -1157,7 +1157,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     testSuiteFQNs.put(logicalTestSuite.getFullyQualifiedName(), logicalTestSuite);
     testSuiteFQNs.put(executableTestSuite.getFullyQualifiedName(), executableTestSuite);
 
-    for (TestSuite testSuite : testCaseWithSuites.getTestSuites()) {
+    for (EntityReference testSuite : testCaseWithSuites.getTestSuites()) {
       assertNotNull(testSuiteFQNs.get(testSuite.getFullyQualifiedName()));
     }
   }
@@ -1740,13 +1740,8 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
             .withChangeDescription(new ChangeDescription())
             .withTestSuites(
                 List.of(
-                    new TestSuite()
-                        .withId(UUID.randomUUID())
-                        .withChangeDescription(new ChangeDescription()),
-                    new TestSuite()
-                        .withId(UUID.randomUUID())
-                        .withChangeDescription(new ChangeDescription())));
-
+                    new EntityReference().withId(UUID.randomUUID()),
+                    new EntityReference().withId(UUID.randomUUID())));
     Map<String, Object> doc = JsonUtils.convertValue(testCase, Map.class);
 
     TestCaseIndex testCaseIndex = new TestCaseIndex(testCase);
@@ -2176,7 +2171,8 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
             .withTestSuite(testSuite.getFullyQualifiedName())
             .withTestDefinition(TEST_DEFINITION1.getFullyQualifiedName());
     TestCase testCase = createAndCheckEntity(createTestCase, ADMIN_AUTH_HEADERS);
-    UUID testSuiteId = testCase.getTestSuite().getId();
+    // TODO process all test suites
+    UUID testSuiteId = testCase.getTestSuites().get(0).getId();
 
     String dateStr = "2023-08-";
     for (int i = 11; i <= 15; i++) {
@@ -2270,7 +2266,8 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     CreateTestCase create = createRequest(test, 3);
     create
         .withEntityLink(testCase.getEntityLink())
-        .withTestSuite(testCase.getTestSuite().getFullyQualifiedName());
+        // TODO handle this for all test suites
+        .withTestSuite(testCase.getTestSuites().get(0).getFullyQualifiedName());
     TestCase testCase1 = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
 
     for (int i = 19; i <= 20; i++) {
@@ -2459,10 +2456,12 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     testCaseIds.add(testCase1.getId());
     testSuiteResourceTest.addTestCasesToLogicalTestSuite(logicalTestSuite, testCaseIds);
 
-    testSuiteResourceTest.getEntity(testCase.getTestSuite().getId(), "*", ADMIN_AUTH_HEADERS);
+    // TODO process all test suites
+    testSuiteResourceTest.getEntity(testCase.getTestSuites().get(0).getId(), "*", ADMIN_AUTH_HEADERS);
     if (supportsSearchIndex) {
       // test we get the right summary for the executable test suite
-      getAndValidateTestSummary(testCase.getTestSuite().getId().toString());
+      // TODO process all test suites
+      getAndValidateTestSummary(testCase.getTestSuites().get(0).getId().toString());
     }
 
     // test we get the right summary for the logical test suite
@@ -2487,7 +2486,8 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
         resultList.getData().size(), 0); // soft deletion should not delete existing results
 
     if (supportsSearchIndex) {
-      getAndValidateTestSummary(testCase.getTestSuite().getId().toString());
+      // TODO handle all test suites
+      getAndValidateTestSummary(testCase.getTestSuites().get(0).getId().toString());
       getAndValidateTestSummary(logicalTestSuite.getId().toString());
     }
 
@@ -2501,7 +2501,8 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     assertEquals(resultList.getData().size(), 0); // hard deletion should delete existing results
 
     if (supportsSearchIndex) {
-      getAndValidateTestSummary(testCase.getTestSuite().getId().toString());
+      // TODO process all test suites
+      getAndValidateTestSummary(testCase.getTestSuites().get(0).getId().toString());
       getAndValidateTestSummary(logicalTestSuite.getId().toString());
     }
     // check the deletion of the test case from the executable test suite
@@ -2888,9 +2889,8 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
       TestCase createdEntity, CreateTestCase request, Map<String, String> authHeaders) {
     validateCommonEntityFields(createdEntity, request, getPrincipalName(authHeaders));
     assertEquals(request.getEntityLink(), createdEntity.getEntityLink());
-    assertReference(request.getTestSuite(), createdEntity.getTestSuite());
     assertReference(request.getTestDefinition(), createdEntity.getTestDefinition());
-    assertReference(request.getTestSuite(), createdEntity.getTestSuite());
+    assertReference(request.getTestSuite(), createdEntity.getTestSuites().get(0));
     assertEquals(request.getParameterValues(), createdEntity.getParameterValues());
   }
 
@@ -2899,9 +2899,8 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
       TestCase expected, TestCase updated, Map<String, String> authHeaders) {
     validateCommonEntityFields(expected, updated, getPrincipalName(authHeaders));
     assertEquals(expected.getEntityLink(), updated.getEntityLink());
-    assertEquals(expected.getTestSuite(), updated.getTestSuite());
     assertEquals(expected.getTestDefinition(), updated.getTestDefinition());
-    assertEquals(expected.getTestSuite(), updated.getTestSuite());
+    assertEquals(expected.getTestSuites().get(0), updated.getTestSuites().get(0));
     assertEquals(expected.getParameterValues(), updated.getParameterValues());
   }
 
@@ -2913,14 +2912,14 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
         byName
             ? getEntityByName(entity.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(entity.getId(), null, ADMIN_AUTH_HEADERS);
-    assertListNull(entity.getOwners(), entity.getTestSuite(), entity.getTestDefinition());
+    assertListNull(entity.getOwners(), entity.getTestDefinition());
 
-    fields = "owners,testSuite,testDefinition";
+    fields = "owners,testSuites,testDefinition";
     entity =
         byName
             ? getEntityByName(entity.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(entity.getId(), fields, ADMIN_AUTH_HEADERS);
-    assertListNotNull(entity.getOwners(), entity.getTestSuite(), entity.getTestDefinition());
+    assertListNotNull(entity.getOwners(), entity.getTestSuites(), entity.getTestDefinition());
     return entity;
   }
 

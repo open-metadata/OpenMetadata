@@ -22,6 +22,7 @@ import static org.openmetadata.schema.type.MetadataOperation.VIEW_BASIC;
 import static org.openmetadata.service.util.EntityUtil.createOrUpdateOperation;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -29,6 +30,7 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
+import java.util.stream.Collectors;
 import javax.json.JsonPatch;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
@@ -75,6 +77,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
   protected final Class<T> entityClass;
   protected final String entityType;
   protected final Set<String> allowedFields;
+  protected final Set<String> deprecatedFields;
   @Getter protected final K repository;
   protected final Authorizer authorizer;
   protected final Limits limits;
@@ -85,6 +88,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     this.repository = (K) Entity.getEntityRepository(entityType);
     this.entityClass = (Class<T>) Entity.getEntityClassFromType(entityType);
     allowedFields = repository.getAllowedFields();
+    deprecatedFields = repository.getDeprecatedFields();
     this.authorizer = authorizer;
     this.limits = limits;
     addViewOperation(
@@ -104,7 +108,24 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
   }
 
   public final Fields getFields(String fields) {
+    fields = removeDeprecatedFields(fields, repository.getDeprecatedFields());
     return repository.getFields(fields);
+  }
+
+  public String removeDeprecatedFields(String fields, Set<String> deprecatedFields) {
+    if (fields == null) {
+      return fields;
+    }
+    return Arrays.stream(fields.split(","))
+        .filter(
+            f -> {
+              if (deprecatedFields.contains(f)) {
+                LOG.warn("Deprecated field {} has been removed", f);
+                return false;
+              }
+              return true;
+            })
+        .collect(Collectors.joining(","));
   }
 
   protected T addHref(UriInfo uriInfo, T entity) {

@@ -15,6 +15,7 @@ import static org.openmetadata.service.Entity.THREAD;
 import static org.openmetadata.service.Entity.USER;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -115,8 +116,9 @@ public class AlertsRuleEvaluator {
               entity.getId(),
               "testSuites,owners",
               Include.NON_DELETED);
-      Optional<List<TestSuite>> testSuites = Optional.ofNullable(testCase.getTestSuites());
-      return testSuites.filter(suites -> testSuiteOwnerMatcher(suites, ownerNameList)).isPresent();
+      return Optional.ofNullable(testCase.getTestSuites()).orElse(List.of()).stream()
+          .map(ref -> (TestSuite) Entity.getEntity(ref, "*", Include.ALL))
+          .anyMatch(ts -> matchOwners(ts.getOwners(), ownerNameList));
     }
     return false;
   }
@@ -151,8 +153,10 @@ public class AlertsRuleEvaluator {
       // If we did not match on the entity FQN and are dealing with a test case,
       // check if the match happens on the test suite FQN
       TestCase testCase = ((TestCase) entity);
-      Optional<List<TestSuite>> testSuites = Optional.ofNullable(testCase.getTestSuites());
-      return testSuites.filter(suites -> testSuiteMatcher(suites, entityNames)).isPresent();
+      return testCase.getTestSuites().stream()
+          .map(ref -> (TestSuite) Entity.getEntity(ref, "*", Include.ALL))
+          .filter(Objects::nonNull)
+          .anyMatch(suites -> testSuiteMatcher(suites, entityNames));
     }
 
     return false;
@@ -468,8 +472,9 @@ public class AlertsRuleEvaluator {
       // If we did not match on the domain and are dealing with a test case,
       // check if the match happens on the test suite domain
       TestCase testCase = ((TestCase) entity);
-      Optional<List<TestSuite>> testSuites = Optional.ofNullable(testCase.getTestSuites());
-      return testSuites.filter(suites -> testSuiteMatcher(suites, fieldChangeUpdate)).isPresent();
+      return Optional.ofNullable(testCase.getTestSuites()).orElse(List.of()).stream()
+          .map(testSuiteReference -> (TestSuite) Entity.getEntity(testSuiteReference, "*", Include.ALL))
+          .anyMatch(ts -> testSuiteMatcher(ts, fieldChangeUpdate));
     }
     return false;
   }
@@ -560,27 +565,15 @@ public class AlertsRuleEvaluator {
     }
   }
 
-  private boolean testSuiteMatcher(List<TestSuite> testSuites, List<String> entityNames) {
-    for (TestSuite testSuite : testSuites) {
-      for (String name : entityNames) {
-        Pattern pattern = Pattern.compile(name);
-        Matcher matcherTestSuiteFQN = pattern.matcher(testSuite.getFullyQualifiedName());
-        if (matcherTestSuiteFQN.find()) return true;
-        if (testSuite.getDomain() != null) {
-          Matcher matcherDomainFQN = pattern.matcher(testSuite.getDomain().getFullyQualifiedName());
-          if (matcherDomainFQN.find()) return true;
-        }
+  private boolean testSuiteMatcher(TestSuite testSuite, List<String> entityNames) {
+    for (String name : entityNames) {
+      Pattern pattern = Pattern.compile(name);
+      Matcher matcherTestSuiteFQN = pattern.matcher(testSuite.getFullyQualifiedName());
+      if (matcherTestSuiteFQN.find()) return true;
+      if (testSuite.getDomain() != null) {
+        Matcher matcherDomainFQN = pattern.matcher(testSuite.getDomain().getFullyQualifiedName());
+        if (matcherDomainFQN.find()) return true;
       }
-    }
-    return false;
-  }
-
-  private boolean testSuiteOwnerMatcher(List<TestSuite> testSuites, List<String> ownerNameList) {
-    boolean match;
-    for (TestSuite testSuite : testSuites) {
-      List<EntityReference> owners = testSuite.getOwners();
-      match = matchOwners(owners, ownerNameList);
-      if (match) return true;
     }
     return false;
   }

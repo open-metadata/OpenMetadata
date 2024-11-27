@@ -681,7 +681,7 @@ public class SearchRepository {
       }
       case Entity.TEST_SUITE -> {
         TestSuite testSuite = (TestSuite) entity;
-        if (Boolean.TRUE.equals(testSuite.getExecutable())) {
+        if (testSuite.getExecutableEntityReference() != null) {
           searchClient.deleteEntityByFields(
               indexMapping.getChildAliases(clusterAlias),
               List.of(new ImmutablePair<>("testSuite.id", docId)));

@@ -128,7 +128,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
 
   @Override
   public void setInheritedFields(TestSuite testSuite, EntityUtil.Fields fields) {
-    if (Boolean.TRUE.equals(testSuite.getExecutable())) {
+    if (testSuite.getExecutableEntityReference() != null) {
       Table table =
           Entity.getEntity(
               TABLE, testSuite.getExecutableEntityReference().getId(), "owners,domain", ALL);
@@ -401,7 +401,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
 
   @Override
   public void storeRelationships(TestSuite entity) {
-    if (Boolean.TRUE.equals(entity.getExecutable())) {
+    if (entity.getExecutableEntityReference() != null) {
       storeExecutableRelationship(entity);
     }
   }
@@ -480,7 +480,6 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
         .withHref(testSuite.getHref())
         .withId(testSuite.getId())
         .withName(testSuite.getName())
-        .withExecutable(testSuite.getExecutable())
         .withExecutableEntityReference(testSuite.getExecutableEntityReference())
         .withServiceType(testSuite.getServiceType())
         .withOwners(testSuite.getOwners())

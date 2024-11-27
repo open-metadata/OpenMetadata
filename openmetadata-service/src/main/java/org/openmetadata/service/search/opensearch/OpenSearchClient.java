@@ -1732,7 +1732,7 @@ public class OpenSearchClient implements SearchClient {
     QueryStringQueryBuilder queryStringBuilder =
         buildSearchQueryBuilder(query, TestCaseIndex.getFields());
     FunctionScoreQueryBuilder queryBuilder = boostScore(queryStringBuilder);
-    HighlightBuilder hb = buildHighlights(List.of("testSuite.name", "testSuite.description"));
+    HighlightBuilder hb = buildHighlights(List.of("testSuites.name", "testSuites.description"));
     return searchBuilder(queryBuilder, hb, from, size);
   }
 

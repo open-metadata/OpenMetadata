@@ -90,14 +90,14 @@ import org.openmetadata.service.util.ResultList;
 public class TestCaseResource extends EntityResource<TestCase, TestCaseRepository> {
   public static final String COLLECTION_PATH = "/v1/dataQuality/testCases";
 
-  static final String FIELDS = "owners,testSuite,testDefinition,testSuites,incidentId,domain,tags";
+  static final String FIELDS = "owners,testSuites,testDefinition,testSuites,incidentId,domain,tags";
   static final String SEARCH_FIELDS_EXCLUDE =
       "testPlatforms,table,database,databaseSchema,service,testSuite,dataQualityDimension,testCaseType,originEntityFQN";
 
   @Override
   public TestCase addHref(UriInfo uriInfo, TestCase test) {
     super.addHref(uriInfo, test);
-    Entity.withHref(uriInfo, test.getTestSuite());
+    Entity.withHref(uriInfo, test.getTestSuites());
     Entity.withHref(uriInfo, test.getTestDefinition());
     return test;
   }
@@ -108,7 +108,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
 
   @Override
   protected List<MetadataOperation> getEntitySpecificOperations() {
-    addViewOperation("testSuite,testDefinition", MetadataOperation.VIEW_BASIC);
+    addViewOperation("testDefinition", MetadataOperation.VIEW_BASIC);
     return null;
   }
 
@@ -645,7 +645,6 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
         new CreateResourceContext<>(entityType, test),
         new OperationContext(Entity.TEST_CASE, MetadataOperation.EDIT_TESTS));
     authorizer.authorize(securityContext, operationContext, resourceContext);
-    repository.isTestSuiteExecutable(create.getTestSuite());
     test = addHref(uriInfo, repository.create(uriInfo, test));
     return Response.created(test.getHref()).entity(test).build();
   }
@@ -760,7 +759,6 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
         new OperationContext(Entity.TABLE, MetadataOperation.EDIT_TESTS);
     authorizer.authorize(securityContext, operationContext, resourceContext);
     TestCase test = getTestCase(create, securityContext.getUserPrincipal().getName(), entityLink);
-    repository.isTestSuiteExecutable(create.getTestSuite());
     repository.prepareInternal(test, true);
     PutResponse<TestCase> response = repository.createOrUpdate(uriInfo, test);
     addHref(uriInfo, response.getEntity());
@@ -1146,9 +1144,10 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     ResourceContextInterface resourceContext =
         TestCaseResourceContext.builder().entity(testSuite).build();
     authorizer.authorize(securityContext, operationContext, resourceContext);
-    if (Boolean.TRUE.equals(testSuite.getExecutable())) {
+    if (testSuite.getExecutableEntityReference() != null) {
       throw new IllegalArgumentException(
-          "You are trying to add test cases to an executable test suite.");
+          "Cannot add a tes case to a non-logical test suite: "
+              + testSuite.getFullyQualifiedName());
     }
     List<UUID> testCaseIds = createLogicalTestCases.getTestCaseIds();
 
@@ -1189,7 +1188,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
         .withComputePassedFailedRowCount(create.getComputePassedFailedRowCount())
         .withUseDynamicAssertion(create.getUseDynamicAssertion())
         .withEntityFQN(entityLink.getFullyQualifiedFieldValue())
-        .withTestSuite(getEntityReference(Entity.TEST_SUITE, create.getTestSuite()))
+        .withTestSuites(List.of(getEntityReference(Entity.TEST_SUITE, create.getTestSuite())))
         .withTestDefinition(getEntityReference(Entity.TEST_DEFINITION, create.getTestDefinition()));
   }
 }
