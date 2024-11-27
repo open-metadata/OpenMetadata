@@ -125,7 +125,7 @@ def _get_table_columns(self, connection, table_name, schema, db_name):
         query = DATABRICKS_GET_TABLE_COMMENTS.format(
             database_name=db_name, schema_name=schema, table_name=table_name
         )
-        cursor = get_table_comment_result(
+        rows = get_table_comment_result(
             self,
             connection=connection,
             query=query,
@@ -133,8 +133,6 @@ def _get_table_columns(self, connection, table_name, schema, db_name):
             table_name=table_name,
             schema=schema,
         )
-
-        rows = cursor.fetchall()
 
     except exc.OperationalError as e:
         # Does the table exist?
