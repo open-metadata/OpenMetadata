@@ -115,6 +115,7 @@
     "authentication-uri": "URI การรับรอง",
     "authority": "อำนาจ",
     "authorize-app": "อนุญาต {{app}}",
+    "auto-classification": "การจำแนกประเภทอัตโนมัติ",
     "auto-pii-confidence-score": "คะแนนความมั่นใจ PII อัตโนมัติ",
     "auto-tag-pii-uppercase": "แท็ก PII อัตโนมัติ",
     "automatically-generate": "สร้างโดยอัตโนมัติ",
