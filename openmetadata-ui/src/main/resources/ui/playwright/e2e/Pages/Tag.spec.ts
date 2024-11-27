@@ -11,18 +11,18 @@
  *  limitations under the License.
  */
 import { expect, Page, test as base } from '@playwright/test';
-import { DATA_STEWARD_RULES } from '../../constant/permission';
 import { PolicyClass } from '../../support/access-control/PoliciesClass';
 import { RolesClass } from '../../support/access-control/RolesClass';
 import { ClassificationClass } from '../../support/tag/ClassificationClass';
 import { TagClass } from '../../support/tag/TagClass';
+import { TeamClass } from '../../support/team/TeamClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
-import { redirectToHomePage } from '../../utils/common';
+import { getApiContext, redirectToHomePage, uuid } from '../../utils/common';
 import {
   addAssetsToTag,
-  checkAssetsCount,
   editTagPageDescription,
+  LIMITED_USER_RULES,
   removeAssetsFromTag,
   setupAssetsForTag,
   verifyTagPageUI,
@@ -31,8 +31,8 @@ import {
 const adminUser = new UserClass();
 const dataConsumerUser = new UserClass();
 const dataStewardUser = new UserClass();
-const policy = new PolicyClass();
-const role = new RolesClass();
+const limitedAccessUser = new UserClass();
+
 const classification = new ClassificationClass({
   provider: 'system',
   mutuallyExclusive: true,
@@ -45,6 +45,7 @@ const test = base.extend<{
   adminPage: Page;
   dataConsumerPage: Page;
   dataStewardPage: Page;
+  limitedAccessPage: Page;
 }>({
   adminPage: async ({ browser }, use) => {
     const adminPage = await browser.newPage();
@@ -64,6 +65,12 @@ const test = base.extend<{
     await use(page);
     await page.close();
   },
+  limitedAccessPage: async ({ browser }, use) => {
+    const page = await browser.newPage();
+    await limitedAccessUser.login(page);
+    await use(page);
+    await page.close();
+  },
 });
 
 base.beforeAll('Setup pre-requests', async ({ browser }) => {
@@ -73,8 +80,7 @@ base.beforeAll('Setup pre-requests', async ({ browser }) => {
   await dataConsumerUser.create(apiContext);
   await dataStewardUser.create(apiContext);
   await dataStewardUser.setDataStewardRole(apiContext);
-  await policy.create(apiContext, DATA_STEWARD_RULES);
-  await role.create(apiContext, [policy.responseData.name]);
+  await limitedAccessUser.create(apiContext);
   await classification.create(apiContext);
   await tag.create(apiContext);
   await afterAction();
@@ -85,8 +91,7 @@ base.afterAll('Cleanup', async ({ browser }) => {
   await adminUser.delete(apiContext);
   await dataConsumerUser.delete(apiContext);
   await dataStewardUser.delete(apiContext);
-  await policy.delete(apiContext);
-  await role.delete(apiContext);
+  await limitedAccessUser.delete(apiContext);
   await classification.delete(apiContext);
   await tag.delete(apiContext);
   await afterAction();
@@ -204,20 +209,12 @@ test.describe('Tag Page with Admin Roles', () => {
     await redirectToHomePage(adminPage);
     const { assets } = await setupAssetsForTag(adminPage);
 
-    await test.step('Add Asset', async () => {
-      const res = adminPage.waitForResponse(`/api/v1/tags/name/*`);
-      await tag.visitPage(adminPage);
-      await res;
-      await addAssetsToTag(adminPage, assets);
+    await test.step('Add Asset ', async () => {
+      await addAssetsToTag(adminPage, assets, tag);
     });
 
     await test.step('Delete Asset', async () => {
-      const res = adminPage.waitForResponse(`/api/v1/tags/name/*`);
-      await tag.visitPage(adminPage);
-      await res;
-
-      await removeAssetsFromTag(adminPage, assets);
-      await checkAssetsCount(adminPage, 0);
+      await removeAssetsFromTag(adminPage, assets, tag);
     });
   });
 });
@@ -234,10 +231,26 @@ test.describe('Tag Page with Data Consumer Roles', () => {
     );
   });
 
-  test('Edit Tag Description or Data Consumer', async ({
+  test('Edit Tag Description for Data Consumer', async ({
     dataConsumerPage,
   }) => {
     await editTagPageDescription(dataConsumerPage, tag);
+  });
+
+  test('Add and Remove Assets for Data Consumer', async ({
+    adminPage,
+    dataConsumerPage,
+  }) => {
+    const { assets } = await setupAssetsForTag(adminPage);
+    await redirectToHomePage(dataConsumerPage);
+
+    await test.step('Add Asset ', async () => {
+      await addAssetsToTag(dataConsumerPage, assets, tag);
+    });
+
+    await test.step('Delete Asset', async () => {
+      await removeAssetsFromTag(dataConsumerPage, assets, tag);
+    });
   });
 });
 
@@ -250,5 +263,70 @@ test.describe('Tag Page with Data Steward Roles', () => {
 
   test('Edit Tag Description for Data Steward', async ({ dataStewardPage }) => {
     await editTagPageDescription(dataStewardPage, tag);
+  });
+
+  test('Add and Remove Assets for Data Steward', async ({
+    adminPage,
+    dataStewardPage,
+  }) => {
+    const { assets } = await setupAssetsForTag(adminPage);
+    await redirectToHomePage(dataStewardPage);
+
+    await test.step('Add Asset ', async () => {
+      await addAssetsToTag(dataStewardPage, assets, tag);
+    });
+
+    await test.step('Delete Asset', async () => {
+      await removeAssetsFromTag(dataStewardPage, assets, tag);
+    });
+  });
+});
+
+test.describe('Tag Page with Limited EditTag Permission', () => {
+  test.slow(true);
+
+  test('Add and Remove Assets and Check Restricted Entity', async ({
+    adminPage,
+    limitedAccessPage,
+  }) => {
+    const { apiContext, afterAction } = await getApiContext(adminPage);
+    const { assets, otherAsset } = await setupAssetsForTag(adminPage);
+    const id = uuid();
+    const policy = new PolicyClass();
+    const role = new RolesClass();
+    let limitedAccessTeam: TeamClass | null = null;
+
+    try {
+      await policy.create(apiContext, LIMITED_USER_RULES);
+      await role.create(apiContext, [policy.responseData.name]);
+
+      limitedAccessTeam = new TeamClass({
+        name: `PW%limited_user_access_team-${id}`,
+        displayName: `PW Limited User Access Team ${id}`,
+        description: 'playwright data steward team description',
+        teamType: 'Group',
+        users: [limitedAccessUser.responseData.id],
+        defaultRoles: role.responseData.id ? [role.responseData.id] : [],
+      });
+      await limitedAccessTeam.create(apiContext);
+
+      await redirectToHomePage(limitedAccessPage);
+
+      await test.step('Add Asset ', async () => {
+        await addAssetsToTag(limitedAccessPage, assets, tag, otherAsset);
+      });
+
+      await test.step('Delete Asset', async () => {
+        await removeAssetsFromTag(limitedAccessPage, assets, tag);
+      });
+    } finally {
+      await tag.delete(apiContext);
+      await policy.delete(apiContext);
+      await role.delete(apiContext);
+      if (limitedAccessTeam) {
+        await limitedAccessTeam.delete(apiContext);
+      }
+      await afterAction();
+    }
   });
 });
