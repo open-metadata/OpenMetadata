@@ -15,10 +15,12 @@ supporting sqlalchemy abstraction layer
 """
 
 
-from typing import List
+from typing import List, Optional
 
-from sqlalchemy import Column, inspect
+from sqlalchemy import Column, MetaData, inspect
+from sqlalchemy.orm import DeclarativeMeta
 
+from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.database.databricksConnection import (
     DatabricksConnection,
 )
@@ -28,11 +30,15 @@ from metadata.generated.schema.entity.services.connections.database.snowflakeCon
 from metadata.generated.schema.entity.services.connections.database.unityCatalogConnection import (
     UnityCatalogConnection,
 )
+from metadata.generated.schema.tests.basic import BaseModel
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection
 from metadata.ingestion.source.database.snowflake.queries import (
     SNOWFLAKE_SESSION_TAG_QUERY,
 )
+from metadata.profiler.orm.converter.base import ometa_to_sqa_orm
 from metadata.utils.collaborative_super import Root
+from metadata.utils.constants import NON_SQA_DATABASE_CONNECTIONS
 
 
 class SQAInterfaceMixin(Root):
@@ -46,13 +52,13 @@ class SQAInterfaceMixin(Root):
         Returns:
             sqlalchemy engine
         """
-        engine = get_connection(self.service_connection_config)
+        engine = get_connection(super().service_connection_config)
 
         return engine
 
     def get_columns(self) -> Column:
         """get columns from an orm object"""
-        return inspect(self.table).c
+        return inspect(super().table).c
 
     def set_session_tag(self, session) -> None:
         """
@@ -100,3 +106,12 @@ class SQAInterfaceMixin(Root):
             for column in self.table.__table__.columns
             if column.name in {col.name.root for col in self.table_entity.columns}
         ]
+
+    def build_table_orm(
+        self, table: Table, service_conn_config: BaseModel, ometa_client: OpenMetadata
+    ) -> Optional[DeclarativeMeta]:
+        """Build the ORM table if needed for the sampler and profiler interfaces"""
+        if service_conn_config.type.value not in NON_SQA_DATABASE_CONNECTIONS:
+            orm_obj = ometa_to_sqa_orm(table, ometa_client, MetaData())
+            return orm_obj
+        return None
