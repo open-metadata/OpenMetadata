@@ -279,6 +279,11 @@ public final class CatalogExceptionMessage {
         "Team of type %s can't own entities. Only Team of type Group can own entities.", teamType);
   }
 
+  public static String invalidTeamUpdateUsers(TeamType teamType) {
+    return String.format(
+        "Team is of type %s. Users can be updated only in team of type Group.", teamType);
+  }
+
   public static String invalidOwnerType(String entityType) {
     return String.format(
         "Entity of type %s can't be the owner. Only Team of type Group or a User can own entities.",
