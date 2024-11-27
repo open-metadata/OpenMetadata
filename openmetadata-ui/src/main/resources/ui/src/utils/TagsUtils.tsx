@@ -513,3 +513,13 @@ export const getExcludedIndexesBasedOnEntityTypeEditTagPermission = (
     }
   );
 };
+
+export const getTagAssetsQueryFilter = (fqn: string) => {
+  if (fqn.includes('Tier.')) {
+    return `(tier.tagFQN:"${fqn}")`;
+  } else if (fqn.includes('Certification.')) {
+    return `(certification.tagLabel.tagFQN:"${fqn}")`;
+  } else {
+    return `(tags.tagFQN:"${fqn}")`;
+  }
+};

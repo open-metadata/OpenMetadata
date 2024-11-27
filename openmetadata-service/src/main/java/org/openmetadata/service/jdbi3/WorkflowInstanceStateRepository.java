@@ -1,5 +1,7 @@
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.service.governance.workflows.Workflow.EXCEPTION_VARIABLE;
+
 import java.util.Map;
 import java.util.UUID;
 import org.openmetadata.schema.governance.workflows.Stage;
@@ -60,6 +62,10 @@ public class WorkflowInstanceStateRepository
     Stage stage = workflowInstanceState.getStage();
     stage.setEndedAt(endedAt);
     stage.setVariables(variables);
+
+    if (variables.containsKey(EXCEPTION_VARIABLE)) {
+      workflowInstanceState.setException(true);
+    }
 
     workflowInstanceState.setStage(stage);
 
