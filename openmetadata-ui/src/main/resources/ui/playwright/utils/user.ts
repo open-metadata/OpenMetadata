@@ -138,7 +138,11 @@ export const softDeleteUserProfilePage = async (
 
   await deleteResponse;
 
-  await toastNotification(page, /deleted successfully!/);
+  await expect(page.locator('.Toastify__toast-body')).toHaveText(
+    /deleted successfully!/
+  );
+
+  await page.click('.Toastify__close-button');
 
   await deletedUserChecks(page);
 };
@@ -715,8 +719,7 @@ const resetPasswordModal = async (
     page,
     isOldPasswordCorrect
       ? 'Password updated successfully.'
-      : 'Old Password is not correct',
-    isOldPasswordCorrect ? 'success' : 'error'
+      : 'Old Password is not correct'
   );
 };
 
