@@ -27,7 +27,7 @@ class DbtFiles(BaseModel):
 class DbtObjects(BaseModel):
     dbt_catalog: Optional[Any] = None
     dbt_manifest: Any
-    dbt_sources: Any
+    dbt_sources: Optional[Any] = None
     dbt_run_results: Optional[List[Any]] = None
 
 
