@@ -84,11 +84,7 @@ test.describe('Domains', () => {
       await deleteRes;
 
       await expect(
-        page.getByText(
-          `"${
-            domain.data.displayName ?? domain.data.name
-          }" deleted successfully!`
-        )
+        page.getByText(`"${domain.data.displayName}" deleted`)
       ).toBeVisible();
     });
 
