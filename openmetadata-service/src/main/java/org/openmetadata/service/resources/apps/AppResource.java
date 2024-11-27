@@ -53,6 +53,7 @@ import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.app.AppType;
 import org.openmetadata.schema.entity.app.CreateApp;
 import org.openmetadata.schema.entity.app.ScheduleType;
+import org.openmetadata.schema.entity.applications.configuration.SlackAppTokenConfiguration;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
@@ -69,6 +70,7 @@ import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
@@ -84,6 +86,7 @@ import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 import org.openmetadata.service.util.ResultList;
 import org.quartz.SchedulerException;
@@ -1135,8 +1138,33 @@ public class AppResource extends EntityResource<App, AppRepository> {
 
     // validate Bot if provided
     validateAndAddBot(app, createAppRequest.getBot());
+    encryptSlackAppConfig(app, app.getAppConfiguration());
 
     return app;
+  }
+
+  public static Object encryptSlackAppConfig(App app, Object appConfiguration) {
+    if (SLACK_APPLICATION.equals(app.getName())) {
+      SlackAppTokenConfiguration slackAppTokenConfiguration =
+          JsonUtils.convertValue(app.getAppConfiguration(), SlackAppTokenConfiguration.class);
+
+      String botToken = slackAppTokenConfiguration.getBotToken();
+      String userToken = slackAppTokenConfiguration.getUserToken();
+
+      if (CommonUtil.nullOrEmpty(userToken) || CommonUtil.nullOrEmpty(botToken)) {
+        throw new IllegalArgumentException(
+            "Slack app requires both userToken and botToken in the configuration.");
+      }
+
+      Fernet instance = Fernet.getInstance();
+
+      slackAppTokenConfiguration.setBotToken(instance.encryptIfApplies(botToken));
+      slackAppTokenConfiguration.setUserToken(instance.encryptIfApplies(userToken));
+      app.withAppConfiguration(slackAppTokenConfiguration);
+
+      return slackAppTokenConfiguration;
+    }
+    return appConfiguration;
   }
 
   private void validateAndAddBot(App app, String botName) {
