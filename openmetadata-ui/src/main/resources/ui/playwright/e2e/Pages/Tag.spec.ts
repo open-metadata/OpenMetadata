@@ -214,7 +214,7 @@ test.describe('Tag Page with Admin Roles', () => {
 
   test('Add and Remove Assets', async ({ adminPage }) => {
     await redirectToHomePage(adminPage);
-    const { assets } = await setupAssetsForTag(adminPage);
+    const { assets, assetCleanup } = await setupAssetsForTag(adminPage);
 
     await test.step('Add Asset ', async () => {
       await addAssetsToTag(adminPage, assets, tag);
@@ -222,6 +222,7 @@ test.describe('Tag Page with Admin Roles', () => {
 
     await test.step('Delete Asset', async () => {
       await removeAssetsFromTag(adminPage, assets, tag);
+      await assetCleanup();
     });
   });
 });
@@ -254,7 +255,7 @@ test.describe('Tag Page with Data Consumer Roles', () => {
     adminPage,
     dataConsumerPage,
   }) => {
-    const { assets } = await setupAssetsForTag(adminPage);
+    const { assets, assetCleanup } = await setupAssetsForTag(adminPage);
     await redirectToHomePage(dataConsumerPage);
 
     await test.step('Add Asset ', async () => {
@@ -263,6 +264,7 @@ test.describe('Tag Page with Data Consumer Roles', () => {
 
     await test.step('Delete Asset', async () => {
       await removeAssetsFromTag(dataConsumerPage, assets, tag);
+      await assetCleanup();
     });
   });
 });
@@ -288,7 +290,7 @@ test.describe('Tag Page with Data Steward Roles', () => {
     adminPage,
     dataStewardPage,
   }) => {
-    const { assets } = await setupAssetsForTag(adminPage);
+    const { assets, assetCleanup } = await setupAssetsForTag(adminPage);
     await redirectToHomePage(dataStewardPage);
 
     await test.step('Add Asset ', async () => {
@@ -297,6 +299,7 @@ test.describe('Tag Page with Data Steward Roles', () => {
 
     await test.step('Delete Asset', async () => {
       await removeAssetsFromTag(dataStewardPage, assets, tag);
+      await assetCleanup();
     });
   });
 });
@@ -309,7 +312,9 @@ test.describe('Tag Page with Limited EditTag Permission', () => {
     limitedAccessPage,
   }) => {
     const { apiContext, afterAction } = await getApiContext(adminPage);
-    const { assets, otherAsset } = await setupAssetsForTag(adminPage);
+    const { assets, otherAsset, assetCleanup } = await setupAssetsForTag(
+      adminPage
+    );
     const id = uuid();
     const policy = new PolicyClass();
     const role = new RolesClass();
@@ -345,6 +350,7 @@ test.describe('Tag Page with Limited EditTag Permission', () => {
       if (limitedAccessTeam) {
         await limitedAccessTeam.delete(apiContext);
       }
+      await assetCleanup();
       await afterAction();
     }
   });
