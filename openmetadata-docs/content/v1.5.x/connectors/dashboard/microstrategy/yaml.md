@@ -85,7 +85,7 @@ For example, you might set it to https://demo.microstrategy.com.
 
 {% codeInfo srNumber=5 %}
 
-- **Login Mode**: Login Mode for Microstrategy's REST API connection. You can authenticate with one of the following authentication modes: `Standard (1)`, `Anonymous (8)`. Default will be `Anonymous (8)`.
+- **Login Mode**: Login Mode for Microstrategy's REST API connection. You can authenticate with one of the following authentication modes: `Standard (1)`, `Anonymous (8)`. Default will be `Standard (1)`.
 If you're using demo account for Microstrategy, it will be needed to authenticate through loginMode `8`.
 
 {% /codeInfo %}
@@ -121,7 +121,7 @@ source:
       projectName: project
 ```
 ```yaml {% srNumber=5 %}
-      loginMode: "8"
+      loginMode: "1"
 ```
 
 {% partial file="/v1.5/connectors/yaml/dashboard/source-config.md" /%}

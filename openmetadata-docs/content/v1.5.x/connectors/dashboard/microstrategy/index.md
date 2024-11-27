@@ -24,6 +24,16 @@ Configure and schedule MicroStrategy metadata and profiler workflows from the Op
 
 To integrate MicroStrategy, ensure you are using OpenMetadata version 1.2.x or higher.
 
+When a service user is created, it is already provisioned with the necessary permissions.
+However, if the user still cannot access the APIs, the following should be checked as part of the troubleshooting process:
+- Required DSS Privileges for MicroStrategy REST/JSON API:
+- Web Services API: Essential for REST API usage.
+- Login to MicroStrategy: User authentication.
+- Use Project Sources: Access to project sources.
+- View Metadata: Metadata browsing and viewing.
+- Access Administration Objects: Global metadata access (connections, DB instances).
+- Browse Repository: Object navigation within projects/folders.
+
 ## Metadata Ingestion
 
 {% partial 
@@ -51,7 +61,7 @@ For example, you might set it to https://demo.microstrategy.com.
 
 - **Project Name**: The name of the project within MicroStrategy that OpenMetadata will connect to, linking to the relevant dashboards and reports for metadata retrieval.
 
-- **Login Mode**: Login Mode for Microstrategy's REST API connection. You can authenticate with one of the following authentication modes: `Standard (1)`, `Anonymous (8)`. Default will be `Anonymous (8)`.
+- **Login Mode**: Login Mode for Microstrategy's REST API connection. You can authenticate with one of the following authentication modes: `Standard (1)`, `Anonymous (8)`. Default will be `Standard (1)`.
 If you're using demo account for Microstrategy, it will be needed to authenticate through loginMode `8`.
 {% /extraContent %}
 
