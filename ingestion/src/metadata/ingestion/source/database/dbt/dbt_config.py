@@ -254,14 +254,14 @@ def get_blobs_grouped_by_dir(blobs: List[str]) -> Dict[str, List[str]]:
             blob_grouped_by_directory[subdirectory].append(blob)
     return blob_grouped_by_directory
 
-
+# pylint: disable=too-many-locals, too-many-branches
 def download_dbt_files(
     blob_grouped_by_directory: Dict, config, client, bucket_name: Optional[str]
 ) -> Iterable[DbtFiles]:
     """
     Method to download the files from sources
     """
-    for (  # pylint: disable=too-many-nested-blocks, too-many-locals, too-many-branches
+    for (  # pylint: disable=too-many-nested-blocks
         key,
         blobs,
     ) in blob_grouped_by_directory.items():
