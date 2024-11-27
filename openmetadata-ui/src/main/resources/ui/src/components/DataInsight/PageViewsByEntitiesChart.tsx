@@ -34,13 +34,13 @@ import {
   BAR_CHART_MARGIN,
   DI_STRUCTURE,
   GRAPH_HEIGHT,
-  TOTAL_ENTITY_CHART_COLOR,
 } from '../../constants/DataInsight.constants';
 import { DataReportIndex } from '../../generated/dataInsight/dataInsightChart';
 import { DataInsightChartType } from '../../generated/dataInsight/dataInsightChartResult';
 import { PageViewsByEntities } from '../../generated/dataInsight/type/pageViewsByEntities';
 import { ChartFilter } from '../../interface/data-insight.interface';
 import { getAggregateChartData } from '../../rest/DataInsightAPI';
+import { entityChartColor } from '../../utils/CommonUtils';
 import {
   CustomTooltip,
   getGraphDataByEntityType,
@@ -152,7 +152,7 @@ const PageViewsByEntitiesChart: FC<Props> = ({ chartFilter, selectedDays }) => {
                       : false
                   }
                   key={entity}
-                  stroke={TOTAL_ENTITY_CHART_COLOR[i]}
+                  stroke={entityChartColor(i)}
                   strokeOpacity={
                     isEmpty(activeMouseHoverKey) ||
                     entity === activeMouseHoverKey
