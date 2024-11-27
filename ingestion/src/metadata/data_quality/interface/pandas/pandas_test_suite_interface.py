@@ -13,9 +13,10 @@
 Interfaces with database for all database engine
 supporting sqlalchemy abstraction layer
 """
-from metadata.data_quality.builders.i_validator_builder import IValidatorBuilder
-from metadata.data_quality.builders.pandas_validator_builder import (
-    PandasValidatorBuilder,
+
+from metadata.data_quality.builders.validator_builder import (
+    SourceType,
+    ValidatorBuilder,
 )
 from metadata.data_quality.interface.test_suite_interface import TestSuiteInterface
 from metadata.generated.schema.entity.data.table import Table
@@ -44,13 +45,14 @@ class PandasTestSuiteInterface(TestSuiteInterface, PandasInterfaceMixin):
         ometa_client: OpenMetadata,
         sampler: SamplerInterface,
         table_entity: Table,
-        **__,
+        **kwargs,
     ):
         super().__init__(
             service_connection_config,
             ometa_client,
             sampler,
             table_entity,
+            **kwargs,
         )
 
         (
@@ -63,5 +65,10 @@ class PandasTestSuiteInterface(TestSuiteInterface, PandasInterfaceMixin):
 
     def _get_validator_builder(
         self, test_case: TestCase, entity_type: str
-    ) -> IValidatorBuilder:
-        return PandasValidatorBuilder(self.dataset, test_case, entity_type)
+    ) -> ValidatorBuilder:
+        return self.validator_builder_class(
+            runner=self.dataset,
+            test_case=test_case,
+            entity_type=entity_type,
+            source_type=SourceType.PANDAS,
+        )
