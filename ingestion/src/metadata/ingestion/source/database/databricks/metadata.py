@@ -140,7 +140,6 @@ def _get_table_columns(self, connection, table_name, schema, db_name):
             schema=schema,
         )
 
-
     except exc.OperationalError as e:
         # Does the table exist?
         regex_fmt = r"TExecuteStatementResp.*SemanticException.*Table not found {}"
