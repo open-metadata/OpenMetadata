@@ -225,7 +225,7 @@ def execute_inspector_func(engine_wrapper: SnowflakeEngineWrapper, func_name: st
     the function with name `func_name` and executes it
     """
     _init_database(engine_wrapper)
-    engine_wrapper.engine.execute(f"USE DATABASE {engine_wrapper.database_name}")
+    engine_wrapper.engine.execute(f"USE DATABASE \"{engine_wrapper.database_name}\"")
     inspector = inspect(engine_wrapper.engine)
     inspector_fn = getattr(inspector, func_name)
     inspector_fn()
