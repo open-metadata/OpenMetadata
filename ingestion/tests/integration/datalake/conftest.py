@@ -16,7 +16,14 @@ from copy import deepcopy
 
 import pytest
 
+from metadata.generated.schema.entity.data.table import (
+    PartitionIntervalTypes,
+    ProfileSampleType,
+    TableProfilerConfig,
+)
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.sampler.models import PartitionProfilerConfig
+from metadata.workflow.classification import AutoClassificationWorkflow
 from metadata.workflow.data_quality import TestSuiteWorkflow
 from metadata.workflow.metadata import MetadataWorkflow
 from metadata.workflow.profiler import ProfilerWorkflow
@@ -100,6 +107,7 @@ DATA_QUALITY_CONFIG = {
                     "name": "first_name_is_john",
                     "testDefinitionName": "columnValuesToBeInSet",
                     "columnName": "first_name",
+                    "computePassedFailedRowCount": True,
                     "parameterValues": [
                         {
                             "name": "allowedValues",
@@ -197,6 +205,60 @@ def run_test_suite_workflow(run_ingestion, ingestion_config):
 
 
 @pytest.fixture(scope="class")
+def run_sampled_test_suite_workflow(metadata, run_ingestion, ingestion_config):
+    metadata.create_or_update_table_profiler_config(
+        fqn='datalake_for_integration_tests.default.my-bucket."users.csv"',
+        table_profiler_config=TableProfilerConfig(
+            profileSampleType=ProfileSampleType.PERCENTAGE,
+            profileSample=50.0,
+            partitioning=None,
+        ),
+    )
+    workflow_config = deepcopy(DATA_QUALITY_CONFIG)
+    workflow_config["source"]["serviceConnection"] = ingestion_config["source"][
+        "serviceConnection"
+    ]
+    ingestion_workflow = TestSuiteWorkflow.create(workflow_config)
+    ingestion_workflow.execute()
+    ingestion_workflow.raise_from_status()
+    ingestion_workflow.stop()
+    metadata.create_or_update_table_profiler_config(
+        fqn='datalake_for_integration_tests.default.my-bucket."users.csv"',
+        table_profiler_config=TableProfilerConfig(
+            profileSampleType=ProfileSampleType.PERCENTAGE,
+            profileSample=100.0,
+        ),
+    )
+
+
+@pytest.fixture(scope="class")
+def run_partitioned_test_suite_workflow(metadata, run_ingestion, ingestion_config):
+    metadata.create_or_update_table_profiler_config(
+        fqn='datalake_for_integration_tests.default.my-bucket."users.csv"',
+        table_profiler_config=TableProfilerConfig(
+            partitioning=PartitionProfilerConfig(
+                enablePartitioning=True,
+                partitionIntervalType=PartitionIntervalTypes.COLUMN_VALUE,
+                partitionValues=["Los Angeles"],
+                partitionColumnName="city",
+            )
+        ),
+    )
+    workflow_config = deepcopy(DATA_QUALITY_CONFIG)
+    workflow_config["source"]["serviceConnection"] = ingestion_config["source"][
+        "serviceConnection"
+    ]
+    ingestion_workflow = TestSuiteWorkflow.create(workflow_config)
+    ingestion_workflow.execute()
+    ingestion_workflow.raise_from_status()
+    ingestion_workflow.stop()
+    metadata.create_or_update_table_profiler_config(
+        fqn='datalake_for_integration_tests.default.my-bucket."users.csv"',
+        table_profiler_config=TableProfilerConfig(partitioning=None),
+    )
+
+
+@pytest.fixture(scope="class")
 def profiler_workflow_config(ingestion_config, workflow_config):
     ingestion_config["source"]["sourceConfig"]["config"].update(
         {
@@ -211,7 +273,30 @@ def profiler_workflow_config(ingestion_config, workflow_config):
     return ingestion_config
 
 
+@pytest.fixture(scope="class")
+def auto_classification_workflow_config(ingestion_config, workflow_config):
+    ingestion_config["source"]["sourceConfig"]["config"].update(
+        {
+            "type": "AutoClassification",
+        }
+    )
+    ingestion_config["processor"] = {
+        "type": "orm-profiler",
+        "config": {},
+    }
+    ingestion_config["workflowConfig"] = workflow_config
+    return ingestion_config
+
+
 @pytest.fixture()
 def run_profiler(run_ingestion, run_workflow, profiler_workflow_config):
     """Test profiler ingestion"""
     run_workflow(ProfilerWorkflow, profiler_workflow_config)
+
+
+@pytest.fixture()
+def run_auto_classification(
+    run_ingestion, run_workflow, auto_classification_workflow_config
+):
+    """Test profiler ingestion"""
+    run_workflow(AutoClassificationWorkflow, auto_classification_workflow_config)

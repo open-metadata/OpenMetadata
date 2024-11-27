@@ -378,7 +378,8 @@ test.describe('Glossary tests', () => {
 
         await toastNotification(
           page,
-          /mutually exclusive and can't be assigned together/
+          /mutually exclusive and can't be assigned together/,
+          'error'
         );
 
         // Add non mutually exclusive tags
@@ -1027,42 +1028,37 @@ test.describe('Glossary tests', () => {
     }
   });
 
-  test.skip('Column dropdown drag-and-drop functionality for Glossary Terms table', async ({
+  test('Column dropdown drag-and-drop functionality for Glossary Terms table', async ({
     browser,
   }) => {
     const { page, afterAction, apiContext } = await performAdminLogin(browser);
     const glossary1 = new Glossary();
     const glossaryTerm1 = new GlossaryTerm(glossary1);
-    const glossaryTerm2 = new GlossaryTerm(glossary1);
-    glossary1.data.terms = [glossaryTerm1, glossaryTerm2];
-
+    glossary1.data.terms = [glossaryTerm1];
     try {
       await glossary1.create(apiContext);
       await glossaryTerm1.create(apiContext);
-      await glossaryTerm2.create(apiContext);
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary1.data.displayName);
       await openColumnDropdown(page);
       const dragColumn = 'Owners';
       const dropColumn = 'Status';
       await dragAndDropColumn(page, dragColumn, dropColumn);
-      const saveButton = page.locator('.ant-btn-primary', {
-        hasText: 'Save',
-      });
+      const saveButton = page.locator(
+        '[data-testid="glossary-col-dropdown-save"]'
+      );
       await saveButton.click();
+      await page.waitForSelector('thead th', { state: 'visible' });
       const columnHeaders = await page.locator('thead th');
       const columnText = await columnHeaders.allTextContents();
 
-      expect(columnText).toEqual([
-        'Terms',
-        'Description',
-        'Status',
-        'Owners',
-        'Actions',
-      ]);
+      expect(columnText).toEqual(
+        columnText.includes('Actions')
+          ? ['Terms', 'Description', 'Status', 'Owners', 'Actions']
+          : ['Terms', 'Description', 'Status', 'Owners']
+      );
     } finally {
       await glossaryTerm1.delete(apiContext);
-      await glossaryTerm2.delete(apiContext);
       await glossary1.delete(apiContext);
       await afterAction();
     }

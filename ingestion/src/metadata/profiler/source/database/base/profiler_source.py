@@ -14,19 +14,14 @@ Base source for the profiler used to instantiate a profiler runner with
 its interface
 """
 from copy import deepcopy
-from typing import List, Optional, Tuple, Type, cast
-
-from sqlalchemy import MetaData
+from typing import Optional, cast
 
 from metadata.generated.schema.configuration.profilerConfiguration import (
     ProfilerConfiguration,
 )
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
-from metadata.generated.schema.entity.data.table import ColumnProfilerConfig, Table
-from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
-    DatalakeConnection,
-)
+from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseConnection,
     DatabaseService,
@@ -45,11 +40,19 @@ from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.processor.core import Profiler
 from metadata.profiler.processor.default import DefaultProfiler, get_default_metrics
 from metadata.profiler.source.profiler_source_interface import ProfilerSourceInterface
-from metadata.utils.importer import import_from_module
+from metadata.sampler.config import (
+    get_config_for_table,
+    get_exclude_columns,
+    get_include_columns,
+)
+from metadata.sampler.models import SampleConfig
+from metadata.sampler.sampler_interface import SamplerInterface
 from metadata.utils.logger import profiler_logger
-from metadata.utils.service_spec.service_spec import BaseSpec
-
-NON_SQA_DATABASE_CONNECTIONS = (DatalakeConnection,)
+from metadata.utils.profiler_utils import get_context_entities
+from metadata.utils.service_spec.service_spec import (
+    import_profiler_class,
+    import_sampler_class,
+)
 
 logger = profiler_logger()
 
@@ -62,21 +65,21 @@ class ProfilerSource(ProfilerSourceInterface):
     def __init__(
         self,
         config: OpenMetadataWorkflowConfig,
-        database: DatabaseService,
+        database: Database,
         ometa_client: OpenMetadata,
         global_profiler_configuration: ProfilerConfiguration,
     ):
+        self.config = config
         self.service_conn_config = self._copy_service_config(config, database)
-        self.source_config = DatabaseServiceProfilerPipeline.model_validate(
-            config.source.sourceConfig.config
-        )
         self.profiler_config = ProfilerProcessorConfig.model_validate(
             config.processor.model_dump().get("config")
         )
         self.ometa_client = ometa_client
-        self.profiler_interface_type: str = config.source.type.lower()
-        self.sqa_metadata = self._set_sqa_metadata()
+        self._interface_type: str = config.source.type.lower()
         self._interface = None
+        # We define this in create_profiler_interface to help us reuse
+        # this method for the sampler, which does not have a DatabaseServiceProfilerPipeline
+        self.source_config = None
         self.global_profiler_configuration = global_profiler_configuration
 
     @property
@@ -91,68 +94,8 @@ class ProfilerSource(ProfilerSourceInterface):
         """Set the interface"""
         self._interface = interface
 
-    def _set_sqa_metadata(self):
-        """Set sqlalchemy metadata"""
-        if not isinstance(self.service_conn_config, NON_SQA_DATABASE_CONNECTIONS):
-            return MetaData()
-        return None
-
-    @staticmethod
-    def get_config_for_table(entity: Table, profiler_config) -> Optional[TableConfig]:
-        """Get config for a specific entity
-
-        Args:
-            entity: table entity
-        """
-        for table_config in profiler_config.tableConfig or []:
-            if table_config.fullyQualifiedName.root == entity.fullyQualifiedName.root:
-                return table_config
-
-        for schema_config in profiler_config.schemaConfig or []:
-            if (
-                schema_config.fullyQualifiedName.root
-                == entity.databaseSchema.fullyQualifiedName
-            ):
-                return TableConfig.from_database_and_schema_config(
-                    schema_config, entity.fullyQualifiedName.root
-                )
-        for database_config in profiler_config.databaseConfig or []:
-            if (
-                database_config.fullyQualifiedName.root
-                == entity.database.fullyQualifiedName
-            ):
-                return TableConfig.from_database_and_schema_config(
-                    database_config, entity.fullyQualifiedName.root
-                )
-
-        return None
-
-    def _get_include_columns(
-        self, entity, entity_config: Optional[TableConfig]
-    ) -> Optional[List[ColumnProfilerConfig]]:
-        """get included columns"""
-        if entity_config and entity_config.columnConfig:
-            return entity_config.columnConfig.includeColumns
-
-        if entity.tableProfilerConfig:
-            return entity.tableProfilerConfig.includeColumns
-
-        return None
-
-    def _get_exclude_columns(
-        self, entity, entity_config: Optional[TableConfig]
-    ) -> Optional[List[str]]:
-        """get included columns"""
-        if entity_config and entity_config.columnConfig:
-            return entity_config.columnConfig.excludeColumns
-
-        if entity.tableProfilerConfig:
-            return entity.tableProfilerConfig.excludeColumns
-
-        return None
-
     def _copy_service_config(
-        self, config: OpenMetadataWorkflowConfig, database: DatabaseService
+        self, config: OpenMetadataWorkflowConfig, database: Database
     ) -> DatabaseConnection:
         """Make a copy of the service config and update the database name
 
@@ -189,65 +132,41 @@ class ProfilerSource(ProfilerSourceInterface):
         db_service: Optional[DatabaseService],
     ) -> ProfilerInterface:
         """Create sqlalchemy profiler interface"""
-        profiler_class = self.import_profiler_class(
-            ServiceType.Database, source_type=self.profiler_interface_type
+        self.source_config = DatabaseServiceProfilerPipeline.model_validate(
+            self.config.source.sourceConfig.config
         )
+        profiler_class = import_profiler_class(
+            ServiceType.Database, source_type=self._interface_type
+        )
+        sampler_class = import_sampler_class(
+            ServiceType.Database, source_type=self._interface_type
+        )
+        # This is shared between the sampler and profiler interfaces
+        sampler_interface: SamplerInterface = sampler_class.create(
+            service_connection_config=self.service_conn_config,
+            ometa_client=self.ometa_client,
+            entity=entity,
+            schema_entity=schema_entity,
+            database_entity=database_entity,
+            table_config=config,
+            default_sample_config=SampleConfig(
+                profile_sample=self.source_config.profileSample,
+                profile_sample_type=self.source_config.profileSampleType,
+                sampling_method_type=self.source_config.samplingMethodType,
+            ),
+            default_sample_data_count=self.source_config.sampleDataCount,
+        )
+
         profiler_interface: ProfilerInterface = profiler_class.create(
-            entity,
-            schema_entity,
-            database_entity,
-            db_service,
-            config,
-            profiler_config,
-            self.source_config,
-            self.service_conn_config,
-            self.ometa_client,
-            sqa_metadata=self.sqa_metadata,
+            entity=entity,
+            source_config=self.source_config,
+            service_connection_config=self.service_conn_config,
+            sampler=sampler_interface,
+            ometa_client=self.ometa_client,
         )  # type: ignore
 
         self.interface = profiler_interface
         return self.interface
-
-    def import_profiler_class(
-        self, service_type: ServiceType, source_type: str
-    ) -> Type[ProfilerInterface]:
-        class_path = BaseSpec.get_for_source(service_type, source_type).profiler_class
-        return cast(Type[ProfilerInterface], import_from_module(class_path))
-
-    def _get_context_entities(
-        self, entity: Table
-    ) -> Tuple[DatabaseSchema, Database, DatabaseService]:
-        schema_entity = None
-        database_entity = None
-        db_service = None
-
-        if entity.databaseSchema:
-            schema_entity_list = self.ometa_client.es_search_from_fqn(
-                entity_type=DatabaseSchema,
-                fqn_search_string=entity.databaseSchema.fullyQualifiedName,
-                fields="databaseSchemaProfilerConfig",
-            )
-            if schema_entity_list:
-                schema_entity = schema_entity_list[0]
-
-        if entity.database:
-            database_entity_list = self.ometa_client.es_search_from_fqn(
-                entity_type=Database,
-                fqn_search_string=entity.database.fullyQualifiedName,
-                fields="databaseProfilerConfig",
-            )
-            if database_entity_list:
-                database_entity = database_entity_list[0]
-
-        if entity.service:
-            db_service_list = self.ometa_client.es_search_from_fqn(
-                entity_type=DatabaseService,
-                fqn_search_string=entity.service.fullyQualifiedName,
-            )
-            if db_service_list:
-                db_service = db_service_list[0]
-
-        return schema_entity, database_entity, db_service
 
     def get_profiler_runner(
         self, entity: Table, profiler_config: ProfilerProcessorConfig
@@ -255,9 +174,9 @@ class ProfilerSource(ProfilerSourceInterface):
         """
         Returns the runner for the profiler
         """
-        table_config = self.get_config_for_table(entity, profiler_config)
-        schema_entity, database_entity, db_service = self._get_context_entities(
-            entity=entity
+        table_config = get_config_for_table(entity, profiler_config)
+        schema_entity, database_entity, db_service = get_context_entities(
+            entity=entity, metadata=self.ometa_client
         )
         profiler_interface = self.create_profiler_interface(
             entity,
@@ -271,8 +190,8 @@ class ProfilerSource(ProfilerSourceInterface):
         if not profiler_config.profiler:
             return DefaultProfiler(
                 profiler_interface=profiler_interface,
-                include_columns=self._get_include_columns(entity, table_config),
-                exclude_columns=self._get_exclude_columns(entity, table_config),
+                include_columns=get_include_columns(entity, table_config),
+                exclude_columns=get_exclude_columns(entity, table_config),
                 global_profiler_configuration=self.global_profiler_configuration,
                 db_service=db_service,
             )
@@ -290,7 +209,7 @@ class ProfilerSource(ProfilerSourceInterface):
         return Profiler(
             *metrics,  # type: ignore
             profiler_interface=profiler_interface,
-            include_columns=self._get_include_columns(entity, table_config),
-            exclude_columns=self._get_exclude_columns(entity, table_config),
+            include_columns=get_include_columns(entity, table_config),
+            exclude_columns=get_exclude_columns(entity, table_config),
             global_profiler_configuration=self.global_profiler_configuration,
         )

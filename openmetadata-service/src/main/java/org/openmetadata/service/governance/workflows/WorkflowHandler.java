@@ -40,11 +40,18 @@ public class WorkflowHandler {
     ProcessEngineConfiguration processEngineConfiguration =
         new StandaloneProcessEngineConfiguration()
             .setAsyncExecutorActivate(true)
+            .setAsyncExecutorCorePoolSize(50)
+            .setAsyncExecutorMaxPoolSize(100)
+            .setAsyncExecutorThreadPoolQueueSize(1000)
+            .setAsyncExecutorMaxAsyncJobsDuePerAcquisition(20)
             .setJdbcUrl(config.getDataSourceFactory().getUrl())
             .setJdbcUsername(config.getDataSourceFactory().getUser())
             .setJdbcPassword(config.getDataSourceFactory().getPassword())
             .setJdbcDriver(config.getDataSourceFactory().getDriverClass())
             .setDatabaseSchemaUpdate(ProcessEngineConfiguration.DB_SCHEMA_UPDATE_FALSE);
+
+    // Add Global Failure Listener
+    processEngineConfiguration.setEventListeners(List.of(new WorkflowFailureListener()));
 
     if (ConnectionType.MYSQL.label.equals(config.getDataSourceFactory().getDriverClass())) {
       processEngineConfiguration.setDatabaseType(ProcessEngineConfiguration.DATABASE_TYPE_MYSQL);
@@ -235,6 +242,15 @@ public class WorkflowHandler {
     return false;
   }
 
+  public boolean triggerWorkflow(String workflowName) {
+    try {
+      runtimeService.startProcessInstanceByKey(getTriggerWorkflowId(workflowName));
+      return true;
+    } catch (FlowableObjectNotFoundException ex) {
+      return false;
+    }
+  }
+
   public void suspendWorkflow(String workflowName) {
     repositoryService.suspendProcessDefinitionByKey(getTriggerWorkflowId(workflowName), true, null);
   }
@@ -242,5 +258,17 @@ public class WorkflowHandler {
   public void resumeWorkflow(String workflowName) {
     repositoryService.activateProcessDefinitionByKey(
         getTriggerWorkflowId(workflowName), true, null);
+  }
+
+  public void terminateWorkflow(String workflowName) {
+    runtimeService
+        .createProcessInstanceQuery()
+        .processDefinitionKey(getTriggerWorkflowId(workflowName))
+        .list()
+        .forEach(
+            instance -> {
+              runtimeService.deleteProcessInstance(
+                  instance.getId(), "Terminating all instances due to user request.");
+            });
   }
 }

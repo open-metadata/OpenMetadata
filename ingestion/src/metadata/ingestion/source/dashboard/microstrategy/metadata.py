@@ -91,9 +91,19 @@ class MicrostrategySource(DashboardServiceSource):
         """
         return dashboard.name
 
-    def get_dashboard_details(
-        self, dashboard: MicroStrategyDashboard
-    ) -> MicroStrategyDashboardDetails:
+    def get_project_name(self, dashboard_details: MstrDashboard) -> Optional[str]:
+        """
+        Get dashboard project name
+        """
+        try:
+            return dashboard_details.projectName
+        except Exception as exc:
+            logger.debug(
+                f"Cannot get project name from dashboard [{dashboard_details.name}] - [{exc}]"
+            )
+        return None
+
+    def get_dashboard_details(self, dashboard: MstrDashboard) -> MstrDashboardDetails:
         """
         Get Dashboard Details
         """
@@ -196,3 +206,8 @@ class MicrostrategySource(DashboardServiceSource):
                         stackTrace=traceback.format_exc(),
                     )
                 )
+
+    def close(self):
+        # close the api session
+        self.client.close_api_session()
+        self.metadata.close()

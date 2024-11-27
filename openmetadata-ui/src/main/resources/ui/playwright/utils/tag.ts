@@ -11,8 +11,15 @@
  *  limitations under the License.
  */
 import { expect, Page } from '@playwright/test';
+import { get } from 'lodash';
 import { SidebarItem } from '../constant/sidebar';
+import { DashboardClass } from '../support/entity/DashboardClass';
+import { EntityClass } from '../support/entity/EntityClass';
+import { TableClass } from '../support/entity/TableClass';
+import { TopicClass } from '../support/entity/TopicClass';
+import { TagClass } from '../support/tag/TagClass';
 import {
+  getApiContext,
   NAME_MIN_MAX_LENGTH_VALIDATION_ERROR,
   NAME_VALIDATION_ERROR,
   redirectToHomePage,
@@ -36,7 +43,89 @@ export const visitClassificationPage = async (
   );
   await sidebarClick(page, SidebarItem.TAGS);
   await classificationResponse;
-  await page.getByRole('menuitem', { name: classificationName }).click();
+  await page
+    .locator(`[data-testid="side-panel-classification"]`)
+    .filter({ hasText: classificationName })
+    .click();
+
+  await expect(page.locator('.activeCategory')).toContainText(
+    classificationName
+  );
+};
+
+export const addAssetsToTag = async (page: Page, assets: EntityClass[]) => {
+  await page.getByTestId('assets').click();
+  await page.getByTestId('data-classification-add-button').click();
+
+  await expect(page.getByRole('dialog')).toBeVisible();
+
+  for (const asset of assets) {
+    const name = get(asset, 'entityResponseData.name');
+    const fqn = get(asset, 'entityResponseData.fullyQualifiedName');
+
+    const searchRes = page.waitForResponse(
+      `/api/v1/search/query?q=${name}&index=all&from=0&size=25&*`
+    );
+    await page
+      .getByTestId('asset-selection-modal')
+      .getByTestId('searchbar')
+      .fill(name);
+    await searchRes;
+
+    await page.locator(`[data-testid="table-data-card_${fqn}"] input`).check();
+  }
+
+  const assetsAddRes = page.waitForResponse(`/api/v1/tags/*/assets/add`);
+  await page.getByTestId('save-btn').click();
+  await assetsAddRes;
+};
+
+export const removeAssetsFromTag = async (
+  page: Page,
+  assets: EntityClass[]
+) => {
+  await page.getByTestId('assets').click();
+  for (const asset of assets) {
+    const fqn = get(asset, 'entityResponseData.fullyQualifiedName');
+    await page.locator(`[data-testid="table-data-card_${fqn}"] input`).check();
+  }
+
+  const assetsRemoveRes = page.waitForResponse(`/api/v1/tags/*/assets/remove`);
+
+  await page.getByTestId('delete-all-button').click();
+  await assetsRemoveRes;
+};
+
+export const checkAssetsCount = async (page: Page, count: number) => {
+  await expect(
+    page.getByTestId('assets').getByTestId('filter-count')
+  ).toContainText(count.toString());
+};
+
+export const setupAssetsForTag = async (page: Page) => {
+  const { afterAction, apiContext } = await getApiContext(page);
+  const table = new TableClass();
+  const topic = new TopicClass();
+  const dashboard = new DashboardClass();
+  await Promise.all([
+    table.create(apiContext),
+    topic.create(apiContext),
+    dashboard.create(apiContext),
+  ]);
+
+  const assetCleanup = async () => {
+    await Promise.all([
+      table.delete(apiContext),
+      topic.delete(apiContext),
+      dashboard.delete(apiContext),
+    ]);
+    await afterAction();
+  };
+
+  return {
+    assets: [table, topic, dashboard],
+    assetCleanup,
+  };
 };
 
 export async function submitForm(page: Page) {
@@ -139,4 +228,70 @@ export const addTagToTableColumn = async (
       `[data-testid="classification-tags-${columnNumber}"] [data-testid="tags-container"] [data-testid="tag-${tagFqn}"]`
     )
   ).toBeVisible();
+};
+
+export const verifyTagPageUI = async (
+  page: Page,
+  classificationName: string,
+  tag: TagClass,
+  limitedAccess = false
+) => {
+  await redirectToHomePage(page);
+  const res = page.waitForResponse(`/api/v1/tags/name/*`);
+  await tag.visitPage(page);
+  await res;
+
+  await expect(page.getByTestId('entity-header-name')).toContainText(
+    tag.data.name
+  );
+  await expect(page.getByText(tag.data.description)).toBeVisible();
+
+  if (limitedAccess) {
+    await expect(
+      page.getByTestId('data-classification-add-button')
+    ).not.toBeVisible();
+    await expect(page.getByTestId('manage-button')).not.toBeVisible();
+    await expect(page.getByTestId('add-domain')).not.toBeVisible();
+
+    // Asset tab should show no data placeholder and not add asset button
+    await page.getByTestId('assets').click();
+
+    await expect(page.getByTestId('no-data-placeholder')).toBeVisible();
+  }
+
+  const classificationTable = page.waitForResponse(
+    `/api/v1/classifications/name/*`
+  );
+  await page.getByRole('link', { name: classificationName }).click();
+  classificationTable;
+
+  await page.getByTestId(tag.data.name).click();
+  await res;
+
+  const classificationPage = page.waitForResponse(`/api/v1/classifications*`);
+  await page.getByRole('link', { name: 'Classifications' }).click();
+  await classificationPage;
+};
+
+export const editTagPageDescription = async (page: Page, tag: TagClass) => {
+  await redirectToHomePage(page);
+  const res = page.waitForResponse(`/api/v1/tags/name/*`);
+  await tag.visitPage(page);
+  await res;
+  await page.getByTestId('edit-description').click();
+
+  await expect(page.getByRole('dialog')).toBeVisible();
+
+  await page.locator('.toastui-editor-pseudo-clipboard').clear();
+  await page
+    .locator('.toastui-editor-pseudo-clipboard')
+    .fill(`This is updated test description for tag ${tag.data.name}.`);
+
+  const editDescription = page.waitForResponse(`/api/v1/tags/*`);
+  await page.getByTestId('save').click();
+  await editDescription;
+
+  await expect(page.getByTestId('viewer-container')).toContainText(
+    `This is updated test description for tag ${tag.data.name}.`
+  );
 };

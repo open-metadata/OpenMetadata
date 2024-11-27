@@ -29,7 +29,7 @@ from metadata.ingestion.connections.session import create_and_bind_session
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.mixins.sqalchemy.sqa_mixin import SQAInterfaceMixin
 from metadata.profiler.processor.runner import QueryRunner
-from metadata.profiler.processor.sampler.sqlalchemy.sampler import SQASampler
+from metadata.sampler.sampler_interface import SamplerInterface
 from metadata.utils.constants import TEN_MIN
 from metadata.utils.logger import test_suite_logger
 from metadata.utils.ssl_manager import get_ssl_connection
@@ -49,23 +49,22 @@ class SQATestSuiteInterface(SQAInterfaceMixin, TestSuiteInterface):
         self,
         service_connection_config: DatabaseConnection,
         ometa_client: OpenMetadata,
+        sampler: SamplerInterface,
         table_entity: Table = None,
-        sqa_metadata=None,
     ):
-        super().__init__()
-        self.ometa_client = ometa_client
-        self.table_entity = table_entity
-        self.service_connection_config = service_connection_config
+        super().__init__(
+            service_connection_config,
+            ometa_client,
+            sampler,
+            table_entity,
+        )
         self.create_session()
-        self._table = self._convert_table_to_orm_object(sqa_metadata)
-
         (
             self.table_sample_query,
             self.table_sample_config,
             self.table_partition_config,
         ) = self._get_table_config()
 
-        self._sampler = self._create_sampler()
         self._runner = self._create_runner()
 
     def create_session(self):
@@ -74,7 +73,7 @@ class SQATestSuiteInterface(SQAInterfaceMixin, TestSuiteInterface):
         )
 
     @property
-    def sample(self) -> Union[DeclarativeMeta, AliasedClass]:
+    def dataset(self) -> Union[DeclarativeMeta, AliasedClass]:
         """_summary_
 
         Returns:
@@ -85,7 +84,7 @@ class SQATestSuiteInterface(SQAInterfaceMixin, TestSuiteInterface):
                 "You must create a sampler first `<instance>.create_sampler(...)`."
             )
 
-        return self.sampler.random_sample()
+        return self.sampler.get_dataset()
 
     @property
     def runner(self) -> QueryRunner:
@@ -96,47 +95,13 @@ class SQATestSuiteInterface(SQAInterfaceMixin, TestSuiteInterface):
         """
         return self._runner
 
-    @property
-    def sampler(self) -> SQASampler:
-        """getter method for the Runner object
-
-        Returns:
-            Sampler: sampler object
-        """
-        return self._sampler
-
-    @property
-    def table(self):
-        """getter method for the table object
-
-        Returns:
-            Table: table object
-        """
-        return self._table
-
-    def _create_sampler(self) -> SQASampler:
-        """Create sampler instance"""
-        from metadata.profiler.processor.sampler.sampler_factory import (  # pylint: disable=import-outside-toplevel
-            sampler_factory_,
-        )
-
-        return sampler_factory_.create(
-            self.service_connection_config.__class__.__name__,
-            client=self.session,
-            table=self.table,
-            profile_sample_config=self.table_sample_config,
-            partition_details=self.table_partition_config,
-            profile_sample_query=self.table_sample_query,
-        )
-
-    def _create_runner(self) -> None:
+    def _create_runner(self) -> QueryRunner:
         """Create a QueryRunner Instance"""
 
         return cls_timeout(TEN_MIN)(
             QueryRunner(
                 session=self.session,
-                table=self.table,
-                sample=self.sample,
+                dataset=self.dataset,
                 partition_details=self.table_partition_config,
                 profile_sample_query=self.table_sample_query,
             )

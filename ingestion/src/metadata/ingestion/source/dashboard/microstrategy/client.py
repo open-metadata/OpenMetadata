@@ -15,20 +15,21 @@ import traceback
 from typing import List, Optional
 
 import requests
-from mstrio.connection import Connection
 
 from metadata.generated.schema.entity.services.connections.dashboard.microStrategyConnection import (
     MicroStrategyConnection,
 )
 from metadata.ingestion.connections.test_connections import SourceConnectionException
-from metadata.ingestion.source.dashboard.microstrategy.models import (
-    MicroStrategyDashboard,
-    MicroStrategyDashboardDetails,
-    MicroStrategyDashboardList,
-    MicroStrategyProject,
-    MicroStrategyProjectList,
-    MicroStrategySearchResult,
-    MicroStrategySearchResultList,
+from metadata.ingestion.ometa.client import REST, ClientConfig
+from metadata.ingestion.source.dashboard.mstr.models import (
+    AuthHeaderCookie,
+    MstrDashboard,
+    MstrDashboardDetails,
+    MstrDashboardList,
+    MstrProject,
+    MstrProjectList,
+    MstrSearchResult,
+    MstrSearchResultList,
 )
 from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import ingestion_logger
@@ -36,6 +37,8 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 API_VERSION = "MicroStrategyLibrary/api"
+LOGIN_MODE_GUEST = 8
+APPLICATION_TYPE = 35
 
 
 class MicroStrategyClient:
@@ -48,30 +51,87 @@ class MicroStrategyClient:
             return f"{clean_uri(self.config.hostPort)}/{API_VERSION}"
         return f"{clean_uri(self.config.hostPort)}/{API_VERSION}/{path}"
 
-    def _get_mstr_session(self) -> Connection:
-        try:
-            session = Connection(
-                base_url=self._get_base_url(),
-                username=self.config.username,
-                password=self.config.password.get_secret_value(),
-                login_mode=8,
-            )
-            return session
-
-        except KeyError as exe:
-            msg = "Failed to fetch MicroStrategy session, please validate credentials"
-            raise SourceConnectionException(msg) from exe
-
-        except Exception as exc:
-            msg = f"Unknown error in connection: {exc}."
-            raise SourceConnectionException(msg) from exc
-
     def __init__(
         self,
         config: MicroStrategyConnection,
     ):
         self.config = config
-        self.session = self._get_mstr_session()
+
+        self.auth_params: AuthHeaderCookie = self._get_auth_header_and_cookies()
+
+        client_config = ClientConfig(
+            base_url=clean_uri(config.hostPort),
+            api_version=API_VERSION,
+            extra_headers=self.auth_params.auth_header,
+            allow_redirects=True,
+            cookies=self.auth_params.auth_cookies,
+        )
+
+        self.client = REST(client_config)
+        self._set_api_session()
+
+    def _get_auth_header_and_cookies(self) -> Optional[AuthHeaderCookie]:
+        """
+        Send a request to authenticate the user and get headers and
+
+        To know about the data params below please visit
+        https://demo.microstrategy.com/MicroStrategyLibrary/api-docs/index.html#/Authentication/postLogin
+        """
+        try:
+            data = {
+                "username": self.config.username,
+                "password": self.config.password.get_secret_value(),
+                "loginMode": LOGIN_MODE_GUEST,
+                "applicationType": APPLICATION_TYPE,
+            }
+            response = requests.post(
+                url=self._get_base_url("auth/login"), data=data, timeout=60
+            )
+            if not response:
+                raise SourceConnectionException()
+            return AuthHeaderCookie(
+                auth_header=response.headers, auth_cookies=response.cookies
+            )
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.error(
+                f"Failed to fetch the auth header and cookies due to [{exc}], please validate credentials"
+            )
+        return None
+
+    def _set_api_session(self) -> bool:
+        """
+        Set the user api session to active this will keep the connection alive
+        """
+        api_session = requests.put(
+            url=self._get_base_url("sessions"),
+            headers=self.auth_params.auth_header,
+            cookies=self.auth_params.auth_cookies,
+            timeout=60,
+        )
+        if api_session.ok:
+            logger.info(
+                f"Connection Successful User {self.config.username} is Authenticated"
+            )
+            return True
+        raise requests.ConnectionError(
+            "Connection Failed, Failed to set an api session, Please validate the credentials"
+        )
+
+    def close_api_session(self) -> None:
+        """
+        Closes the active api session
+        """
+        try:
+            close_api_session = self.client.post(
+                path="/auth/logout",
+            )
+            if close_api_session.ok:
+                logger.info("API Session Closed Successfully")
+
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Failed to close the api sesison due to [{exc}]")
 
     def is_project_name(self) -> bool:
         return bool(self.config.projectName)
@@ -81,14 +141,11 @@ class MicroStrategyClient:
         Get List of all projects
         """
         try:
-            resp_projects = self.session.get(
-                url=self._get_base_url("projects"),
+            resp_projects = self.client.get(
+                path="/projects",
             )
 
-            if not resp_projects.ok:
-                raise requests.ConnectionError()
-
-            project_list = MicroStrategyProjectList(projects=resp_projects.json())
+            project_list = MstrProjectList(projects=resp_projects)
             return project_list.projects
 
         except Exception as exc:
@@ -102,14 +159,11 @@ class MicroStrategyClient:
         Get Project By Name
         """
         try:
-            resp_projects = self.session.get(
-                url=self._get_base_url(f"projects/{self.config.projectName}"),
+            resp_projects = self.client.get(
+                path=f"/projects/{self.config.projectName}",
             )
 
-            if not resp_projects.ok:
-                raise requests.ConnectionError()
-
-            project = MicroStrategyProject(**resp_projects.json())
+            project = MstrProject.model_validate(resp_projects)
             return project
 
         except Exception:
@@ -123,31 +177,28 @@ class MicroStrategyClient:
     ) -> List[MicroStrategySearchResult]:
         """
         Get Search Results
+
+        To know about the data params below please visit
+        https://demo.microstrategy.com/MicroStrategyLibrary/api-docs/index.html?#/Browsing/doQuickSearch
         """
         try:
-            resp_results = self.session.get(
-                url=self._get_base_url("searches/results"),
-                params={
-                    "project_id": project_id,
-                    "type": object_type,
-                    "getAncestors": False,
-                    "offset": 0,
-                    "limit": -1,
-                    "certifiedStatus": "ALL",
-                    "isCrossCluster": False,
-                    "result.hidden": False,
-                },
+            data = {
+                "project_id": project_id,
+                "type": object_type,
+                "getAncestors": False,
+                "offset": 0,
+                "limit": -1,
+                "certifiedStatus": "ALL",
+                "isCrossCluster": False,
+                "result.hidden": False,
+            }
+            resp_results = self.client.get(
+                path="/searches/results",
+                data=data,
             )
 
-            if not resp_results.ok:
-                raise requests.ConnectionError()
-
-            results = []
-            for resp_result in resp_results.json()["result"]:
-                results.append(resp_result)
-
-            results_list = MicroStrategySearchResultList(results=results)
-            return results_list.results
+            results_list = MstrSearchResultList.model_validate(resp_results).result
+            return results_list
 
         except Exception:
             logger.debug(traceback.format_exc())
@@ -190,16 +241,13 @@ class MicroStrategyClient:
         Get Dashboard Details
         """
         try:
-            resp_dashboard = self.session.get(
-                url=self._get_base_url(f"v2/dossiers/{dashboard_id}/definition"),
-                headers={"X-MSTR-ProjectID": project_id},
+            headers = {"X-MSTR-ProjectID": project_id} | self.auth_params.auth_header
+            resp_dashboard = self.client._request(  # pylint: disable=protected-access
+                "GET", path=f"/v2/dossiers/{dashboard_id}/definition", headers=headers
             )
 
-            if not resp_dashboard.ok:
-                raise requests.ConnectionError()
-
-            return MicroStrategyDashboardDetails(
-                projectId=project_id, projectName=project_name, **resp_dashboard.json()
+            return MstrDashboardDetails(
+                projectId=project_id, projectName=project_name, **resp_dashboard
             )
 
         except Exception:

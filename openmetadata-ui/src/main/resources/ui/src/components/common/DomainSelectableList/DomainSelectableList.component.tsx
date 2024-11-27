@@ -32,12 +32,16 @@ import {
   getEntityName,
   getEntityReferenceListFromEntities,
 } from '../../../utils/EntityUtils';
+import Fqn from '../../../utils/Fqn';
 import { getDomainPath } from '../../../utils/RouterUtils';
 import { SelectableList } from '../SelectableList/SelectableList.component';
 import './domain-select-dropdown.less';
 import { DomainSelectableListProps } from './DomainSelectableList.interface';
 
 export const DomainListItemRenderer = (props: EntityReference) => {
+  const isSubDomain = Fqn.split(props.fullyQualifiedName ?? '').length > 1;
+  const fqn = `(${props.fullyQualifiedName ?? ''})`;
+
   return (
     <div className="d-flex items-center gap-2">
       <DomainIcon
@@ -46,7 +50,17 @@ export const DomainListItemRenderer = (props: EntityReference) => {
         name="folder"
         width={20}
       />
-      <Typography.Text>{getEntityName(props)}</Typography.Text>
+      <div className="d-flex items-center w-max-400">
+        <Typography.Text ellipsis>{getEntityName(props)}</Typography.Text>
+        {isSubDomain && (
+          <Typography.Text
+            ellipsis
+            className="m-l-xss text-xs"
+            type="secondary">
+            {fqn}
+          </Typography.Text>
+        )}
+      </div>
     </div>
   );
 };
@@ -71,7 +85,7 @@ const DomainSelectableList = ({
     return [];
   }, [selectedDomain]);
 
-  const fetchOptions = async (searchText: string) => {
+  const fetchOptions = async (searchText: string, after?: string) => {
     if (searchText) {
       try {
         const res = await searchData(
@@ -97,6 +111,7 @@ const DomainSelectableList = ({
       try {
         const { data, paging } = await getDomainList({
           limit: PAGE_SIZE_MEDIUM,
+          after: after ?? undefined,
         });
         const filterData = getEntityReferenceListFromEntities(
           data,

@@ -305,7 +305,7 @@ class TestParameters(BaseModel):
                     testCaseStatus=TestCaseStatus.Failed,
                     testResultValue=[
                         TestResultValue(name="removedColumns", value="1"),
-                        TestResultValue(name="addedColumns", value="0"),
+                        TestResultValue(name="addedColumns", value="1"),
                         TestResultValue(name="changedColumns", value="0"),
                     ],
                 ),
@@ -392,7 +392,7 @@ def test_happy_paths(
         )
     workflow_config = {
         "source": {
-            "type": TestSuiteConfigType.TestSuite.value,
+            "type": "postgres",
             "serviceName": "MyTestSuite",
             "sourceConfig": {
                 "config": {
@@ -518,7 +518,7 @@ def test_error_paths(
             )
     workflow_config = {
         "source": {
-            "type": TestSuiteConfigType.TestSuite.value,
+            "type": "postgres",
             "serviceName": "MyTestSuite",
             "sourceConfig": {
                 "config": {

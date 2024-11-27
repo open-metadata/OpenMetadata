@@ -112,6 +112,7 @@ export class TableClass extends EntityClass {
   testSuitePipelineResponseData: unknown[] = [];
   testCasesResponseData: unknown[] = [];
   queryResponseData: unknown[] = [];
+  additionalEntityTableResponseData: unknown[] = [];
 
   constructor(name?: string) {
     super(EntityTypeEndpoint.Table);
@@ -155,6 +156,31 @@ export class TableClass extends EntityClass {
       schema,
       entity,
     };
+  }
+
+  async createAdditionalTable(
+    tableData: {
+      name: string;
+      displayName: string;
+      description?: string;
+      columns?: any[];
+      databaseSchema?: string;
+    },
+    apiContext: APIRequestContext
+  ) {
+    const entityResponse = await apiContext.post('/api/v1/tables', {
+      data: {
+        ...this.entity,
+        ...tableData,
+      },
+    });
+    const entity = await entityResponse.json();
+    this.additionalEntityTableResponseData = [
+      ...this.additionalEntityTableResponseData,
+      entity,
+    ];
+
+    return entity;
   }
 
   get() {
@@ -335,12 +361,31 @@ export class TableClass extends EntityClass {
     );
   }
 
-  async delete(apiContext: APIRequestContext) {
+  async delete(apiContext: APIRequestContext, hardDelete = true) {
     const serviceResponse = await apiContext.delete(
       `/api/v1/services/databaseServices/name/${encodeURIComponent(
         this.serviceResponseData?.['fullyQualifiedName']
-      )}?recursive=true&hardDelete=true`
+      )}?recursive=true&hardDelete=${hardDelete}`
     );
+
+    return {
+      service: serviceResponse.body,
+      entity: this.entityResponseData,
+    };
+  }
+
+  async deleteTable(apiContext: APIRequestContext, hardDelete = true) {
+    const tableResponse = await apiContext.delete(
+      `/api/v1/tables/${this.entityResponseData?.['id']}?recursive=true&hardDelete=${hardDelete}`
+    );
+
+    return tableResponse;
+  }
+
+  async restore(apiContext: APIRequestContext) {
+    const serviceResponse = await apiContext.put('/api/v1/tables/restore', {
+      data: { id: this.entityResponseData?.['id'] },
+    });
 
     return {
       service: serviceResponse.body,

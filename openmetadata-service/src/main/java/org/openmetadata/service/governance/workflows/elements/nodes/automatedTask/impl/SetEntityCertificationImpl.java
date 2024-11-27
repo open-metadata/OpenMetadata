@@ -1,11 +1,16 @@
 package org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.impl;
 
+import static org.openmetadata.service.governance.workflows.Workflow.EXCEPTION_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.RESOLVED_BY_VARIABLE;
+import static org.openmetadata.service.governance.workflows.Workflow.WORKFLOW_RUNTIME_EXCEPTION;
+import static org.openmetadata.service.governance.workflows.WorkflowHandler.getProcessDefinitionKeyFromId;
 
 import java.util.Optional;
 import javax.json.JsonPatch;
+import lombok.extern.slf4j.Slf4j;
 import org.flowable.common.engine.api.delegate.Expression;
+import org.flowable.engine.delegate.BpmnError;
 import org.flowable.engine.delegate.DelegateExecution;
 import org.flowable.engine.delegate.JavaDelegate;
 import org.openmetadata.schema.EntityInterface;
@@ -18,25 +23,35 @@ import org.openmetadata.service.resources.tags.TagLabelUtil;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
 
+@Slf4j
 public class SetEntityCertificationImpl implements JavaDelegate {
   private Expression certificationExpr;
 
   @Override
   public void execute(DelegateExecution execution) {
-    MessageParser.EntityLink entityLink =
-        MessageParser.EntityLink.parse((String) execution.getVariable(RELATED_ENTITY_VARIABLE));
-    String entityType = entityLink.getEntityType();
-    EntityInterface entity = Entity.getEntity(entityLink, "*", Include.ALL);
+    try {
+      MessageParser.EntityLink entityLink =
+          MessageParser.EntityLink.parse((String) execution.getVariable(RELATED_ENTITY_VARIABLE));
+      String entityType = entityLink.getEntityType();
+      EntityInterface entity = Entity.getEntity(entityLink, "*", Include.ALL);
 
-    String certification =
-        Optional.ofNullable(certificationExpr)
-            .map(certificationExpr -> (String) certificationExpr.getValue(execution))
-            .orElse(null);
-    String user =
-        Optional.ofNullable((String) execution.getVariable(RESOLVED_BY_VARIABLE))
-            .orElse(entity.getUpdatedBy());
+      String certification =
+          Optional.ofNullable(certificationExpr)
+              .map(certificationExpr -> (String) certificationExpr.getValue(execution))
+              .orElse(null);
+      String user =
+          Optional.ofNullable((String) execution.getVariable(RESOLVED_BY_VARIABLE))
+              .orElse(entity.getUpdatedBy());
 
-    setStatus(entity, entityType, user, certification);
+      setStatus(entity, entityType, user, certification);
+    } catch (Exception exc) {
+      LOG.error(
+          String.format(
+              "[%s] Failure: ", getProcessDefinitionKeyFromId(execution.getProcessDefinitionId())),
+          exc);
+      execution.setVariable(EXCEPTION_VARIABLE, exc.toString());
+      throw new BpmnError(WORKFLOW_RUNTIME_EXCEPTION, exc.getMessage());
+    }
   }
 
   private void setStatus(
@@ -44,10 +59,21 @@ public class SetEntityCertificationImpl implements JavaDelegate {
     String originalJson = JsonUtils.pojoToJson(entity);
 
     Optional<String> oCertification = Optional.ofNullable(certification);
+    Optional<AssetCertification> oEntityCertification =
+        Optional.ofNullable(entity.getCertification());
+
+    if (oCertification.isEmpty() && oEntityCertification.isEmpty()) {
+      return;
+    }
 
     if (oCertification.isEmpty()) {
       entity.setCertification(null);
     } else {
+      if (oEntityCertification.isPresent()
+          && oCertification.get().equals(oEntityCertification.get().getTagLabel().getTagFQN())) {
+        return;
+      }
+
       AssetCertification assetCertification =
           new AssetCertification()
               .withTagLabel(EntityUtil.toTagLabel(TagLabelUtil.getTag(certification)));

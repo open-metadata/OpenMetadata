@@ -1730,6 +1730,11 @@ UPDATE ingestion_pipeline_entity
 SET json = json::jsonb #- '{sourceConfig,config,overrideViewLineage}'
 WHERE json #>> '{pipelineType}' = 'metadata';
 
+-- classification and sampling configs from the profiler pipelines
+UPDATE ingestion_pipeline_entity
+SET json = json::jsonb #- '{sourceConfig,config,processPiiSensitive}'  #- '{sourceConfig,config,confidence}'  #- '{sourceConfig,config,generateSampleData}'
+WHERE json #>> '{pipelineType}' = 'profiler';
+
 -- Update serviceType in dashboard_entity table
 UPDATE dashboard_entity
 SET json = jsonb_set(json, '{serviceType}', '"MicroStrategy"')

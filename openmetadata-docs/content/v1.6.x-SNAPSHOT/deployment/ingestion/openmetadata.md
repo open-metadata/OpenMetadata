@@ -175,6 +175,12 @@ with versions `1.0.0.*`, e.g., `1.0.0.0`, `1.0.0.1`, etc., but not `1.0.1.x`.
 
 ### 3. Configure the Airflow environment
 
+{% note %}
+
+The ingestion image is built on Airflow's base image, ensuring it includes all necessary requirements to run Airflow. For Kubernetes deployments, the setup uses community Airflow charts with a modified base image, enabling it to function seamlessly as a **scheduler**, **webserver**, and **worker**.
+
+{% /note %}
+
 We need a couple of settings:
 
 #### AIRFLOW_HOME

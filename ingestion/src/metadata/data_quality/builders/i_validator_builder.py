@@ -16,7 +16,7 @@ Validators are test classes (e.g. columnValuesToBeBetween, etc.)
 
 from abc import ABC, abstractmethod
 from datetime import datetime, timezone
-from typing import TYPE_CHECKING, Optional, Type, Union
+from typing import TYPE_CHECKING, Set, Type, Union
 
 from metadata.data_quality.validations.base_test_handler import BaseTestValidator
 from metadata.data_quality.validations.runtime_param_setter.param_setter import (
@@ -25,7 +25,7 @@ from metadata.data_quality.validations.runtime_param_setter.param_setter import 
 from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
 from metadata.generated.schema.type.basic import Timestamp
 from metadata.profiler.processor.runner import QueryRunner
-from metadata.utils.importer import import_test_case_class
+from metadata.utils import importer
 
 if TYPE_CHECKING:
     from pandas import DataFrame
@@ -59,31 +59,28 @@ class IValidatorBuilder(ABC):
         """
         self._test_case = test_case
         self.runner = runner
-        self.validator_cls: Type[BaseTestValidator] = import_test_case_class(
+        # TODO this will be removed on https://github.com/open-metadata/OpenMetadata/pull/18716
+        self.validator_cls: Type[BaseTestValidator] = importer.import_test_case_class(
             entity_type,
             self._get_source_type(),
             self.test_case.testDefinition.fullyQualifiedName,  # type: ignore
         )
         self.reset()
 
-    def set_runtime_params(
-        self, runtime_params_setter: Optional[RuntimeParameterSetter]
-    ):
+    def set_runtime_params(self, runtime_params_setters: Set[RuntimeParameterSetter]):
         """Set the runtime parameters for the validator object
 
-        # TODO: We should support setting n runtime parameters
-
         Args:
-            runtime_params_setter (Optional[RuntimeParameterSetter]): The runtime parameter setter
+            runtime_params_setters (Optional[RuntimeParameterSetter]): The runtime parameter setter
         """
-        if runtime_params_setter:
-            params = runtime_params_setter.get_parameters(self.test_case)
+        for setter in runtime_params_setters:
+            params = setter.get_parameters(self.test_case)
             if not self.test_case.parameterValues:
                 # If there are no parameters, create a new list
                 self.test_case.parameterValues = []
             self.test_case.parameterValues.append(
                 TestCaseParameterValue(
-                    name="runtimeParams", value=params.model_dump_json()
+                    name=type(params).__name__, value=params.model_dump_json()
                 )
             )
 

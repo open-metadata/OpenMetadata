@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
+import QueryString from 'qs';
 import React, { useEffect } from 'react';
 import { Edge } from 'reactflow';
 import { EdgeTypeEnum } from '../../components/Entity/EntityLineage/EntityLineage.interface';
@@ -162,6 +163,9 @@ describe('LineageProvider', () => {
   });
 
   it('getDataQualityLineage should be called if alert is supported', async () => {
+    mockLocation.search = QueryString.stringify({
+      layers: ['DataObservability'],
+    });
     mockIsAlertSupported = true;
     (getLineageDataByFQN as jest.Mock).mockImplementationOnce(() =>
       Promise.resolve({
@@ -190,6 +194,7 @@ describe('LineageProvider', () => {
     );
 
     mockIsAlertSupported = false;
+    mockLocation.search = '';
   });
 
   it('should call loadChildNodesHandler', async () => {

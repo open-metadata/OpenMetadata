@@ -12,7 +12,7 @@
 MicroStrategy Models
 """
 from datetime import datetime
-from typing import List, Optional
+from typing import Any, List, Optional
 
 from pydantic import BaseModel
 
@@ -68,8 +68,9 @@ class MicroStrategySearchResult(BaseModel):
     projectId: str
 
 
-class MicroStrategySearchResultList(BaseModel):
-    results: Optional[List[MicroStrategySearchResult]]
+class MstrSearchResultList(BaseModel):
+    totalItems: Optional[int] = 0
+    result: Optional[List[MstrSearchResult]] = None
 
 
 class MicroStrategyDashboard(BaseModel):
@@ -141,4 +142,9 @@ class MicroStrategyDashboardDetails(BaseModel):
     projectId: str
     projectName: str
     currentChapter: str
-    chapters: List[MicroStrategyChapter]
+    chapters: List[MstrChapter]
+
+
+class AuthHeaderCookie(BaseModel):
+    auth_header: dict
+    auth_cookies: Any
