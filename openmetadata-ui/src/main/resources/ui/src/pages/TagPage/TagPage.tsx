@@ -167,6 +167,13 @@ const TagPage = () => {
     [permissions]
   );
 
+  const haveAssetEditPermission = useMemo(
+    () =>
+      editTagsPermission ||
+      !isEmpty(editEntitiesTagPermission.entitiesHavingPermission),
+    [editTagsPermission, editEntitiesTagPermission.entitiesHavingPermission]
+  );
+
   const fetchCurrentTagPermission = async () => {
     if (!tagItem?.id) {
       return;
@@ -483,7 +490,12 @@ const TagPage = () => {
                   assetCount={assetCount}
                   entityFqn={tagItem?.fullyQualifiedName ?? ''}
                   isSummaryPanelOpen={Boolean(previewAsset)}
-                  permissions={tagPermissions}
+                  permissions={
+                    {
+                      Create: haveAssetEditPermission,
+                      EditAll: haveAssetEditPermission,
+                    } as OperationPermission
+                  }
                   ref={assetTabRef}
                   type={AssetsOfEntity.TAG}
                   onAddAsset={() => setAssetModalVisible(true)}
@@ -597,49 +609,48 @@ const TagPage = () => {
                 titleColor={tagItem.style?.color ?? BLACK_COLOR}
               />
             </Col>
-            {editTagsPermission ||
-              (!isEmpty(editEntitiesTagPermission.entitiesHavingPermission) && (
-                <Col className="p-x-md">
-                  <div className="d-flex self-end">
-                    <Button
-                      data-testid="data-classification-add-button"
-                      type="primary"
-                      onClick={() => setAssetModalVisible(true)}>
-                      {t('label.add-entity', {
-                        entity: t('label.asset-plural'),
-                      })}
-                    </Button>
-                    {manageButtonContent.length > 0 && (
-                      <Dropdown
-                        align={{ targetOffset: [-12, 0] }}
-                        className="m-l-xs"
-                        menu={{
-                          items: manageButtonContent,
-                        }}
-                        open={showActions}
-                        overlayStyle={{ width: '350px' }}
-                        placement="bottomRight"
-                        trigger={['click']}
-                        onOpenChange={setShowActions}>
-                        <Tooltip
-                          placement="topRight"
-                          title={t('label.manage-entity', {
-                            entity: t('label.tag-lowercase'),
-                          })}>
-                          <Button
-                            className="flex-center"
-                            data-testid="manage-button"
-                            icon={
-                              <IconDropdown className="manage-dropdown-icon" />
-                            }
-                            onClick={() => setShowActions(true)}
-                          />
-                        </Tooltip>
-                      </Dropdown>
-                    )}
-                  </div>
-                </Col>
-              ))}
+            {haveAssetEditPermission && (
+              <Col className="p-x-md">
+                <div className="d-flex self-end">
+                  <Button
+                    data-testid="data-classification-add-button"
+                    type="primary"
+                    onClick={() => setAssetModalVisible(true)}>
+                    {t('label.add-entity', {
+                      entity: t('label.asset-plural'),
+                    })}
+                  </Button>
+                  {manageButtonContent.length > 0 && (
+                    <Dropdown
+                      align={{ targetOffset: [-12, 0] }}
+                      className="m-l-xs"
+                      menu={{
+                        items: manageButtonContent,
+                      }}
+                      open={showActions}
+                      overlayStyle={{ width: '350px' }}
+                      placement="bottomRight"
+                      trigger={['click']}
+                      onOpenChange={setShowActions}>
+                      <Tooltip
+                        placement="topRight"
+                        title={t('label.manage-entity', {
+                          entity: t('label.tag-lowercase'),
+                        })}>
+                        <Button
+                          className="flex-center"
+                          data-testid="manage-button"
+                          icon={
+                            <IconDropdown className="manage-dropdown-icon" />
+                          }
+                          onClick={() => setShowActions(true)}
+                        />
+                      </Tooltip>
+                    </Dropdown>
+                  )}
+                </div>
+              </Col>
+            )}
           </Row>
         </Col>
 

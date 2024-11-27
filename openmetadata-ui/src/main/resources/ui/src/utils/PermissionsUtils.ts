@@ -57,16 +57,24 @@ export const checkPermission = (
  * @param operation operation like Edit, Delete
  * @param resourceType Resource type like "bot", "table"
  * @param permissions UIPermission
+ * @param checkEditAllPermission boolean to check EditALL permission as well
  * @returns boolean - true/false
  */
 export const checkPermissionEntityResource = (
   operation: Operation,
   resourceType: ResourceEntity,
-  permissions: UIPermission
+  permissions: UIPermission,
+  checkEditAllPermission = false
 ) => {
   const entityResource = permissions?.[resourceType];
+  let hasPermission = entityResource && entityResource[operation];
 
-  return entityResource && entityResource[operation];
+  if (checkEditAllPermission) {
+    hasPermission =
+      hasPermission || (entityResource && entityResource[Operation.EditAll]);
+  }
+
+  return hasPermission;
 };
 
 /**
