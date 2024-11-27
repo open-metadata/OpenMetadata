@@ -28,5 +28,4 @@ export interface ServiceVersionMainTabContentProps {
   pagingHandler: NextPreviousProps['pagingHandler'];
   entityType: EntityType;
   changeDescription: ChangeDescription;
-  isVersionPage?: boolean;
 }

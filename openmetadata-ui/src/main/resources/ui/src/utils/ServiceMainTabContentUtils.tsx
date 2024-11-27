@@ -40,7 +40,7 @@ import { getUsagePercentile } from './TableUtils';
 
 export const getServiceMainTabColumns = (
   serviceCategory: ServiceTypes,
-  editDisplayNamePermission: boolean,
+  editDisplayNamePermission?: boolean,
   handleDisplayNameUpdate?: (
     entityData: EntityName,
     id?: string

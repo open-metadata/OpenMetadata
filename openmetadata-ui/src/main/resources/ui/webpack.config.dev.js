@@ -19,8 +19,7 @@ const process = require('process');
 
 const outputPath = path.join(__dirname, 'build');
 const subPath = process.env.APP_SUB_PATH ?? '';
-const devServerTarget =
-  process.env.DEV_SERVER_TARGET ?? 'http://localhost:8585/';
+const devServerTarget = process.env.DEV_SERVER_TARGET ?? 'http://localhost:8585/';
 
 module.exports = {
   // Development mode

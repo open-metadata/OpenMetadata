@@ -93,8 +93,9 @@ function SchemaTablesTab({
         if (!tableDetails) {
           return;
         }
-
-        const updatedData = { ...tableDetails, displayName: data.displayName };
+        const updatedData = data.displayName
+          ? { ...tableDetails, displayName: data.displayName }
+          : { ...tableDetails, displayName: undefined };
         const jsonPatch = compare(tableDetails, updatedData);
         await patchTableDetails(tableDetails.id, jsonPatch);
 

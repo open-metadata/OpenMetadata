@@ -151,10 +151,9 @@ function ServiceMainTabContent({
         if (!pageDataDetails) {
           return;
         }
-        const updatedData = {
-          ...pageDataDetails,
-          displayName: entityData.displayName,
-        };
+        const updatedData = entityData.displayName
+          ? { ...pageDataDetails, displayName: entityData.displayName }
+          : { ...pageDataDetails, displayName: undefined };
         const jsonPatch = compare(pageDataDetails, updatedData);
         await callServicePatchAPI(
           serviceCategory,

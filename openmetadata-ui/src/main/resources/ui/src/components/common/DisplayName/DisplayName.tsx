@@ -21,15 +21,7 @@ import { DE_ACTIVE_COLOR, ICON_DIMENSION } from '../../../constants/constants';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import EntityNameModal from '../../Modals/EntityNameModal/EntityNameModal.component';
 import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
-
-export interface DisplayNameProps {
-  id: string;
-  name?: string;
-  displayName?: string;
-  link: string;
-  onEditDisplayName?: (data: EntityName, id?: string) => Promise<void>;
-  allowRename: boolean;
-}
+import { DisplayNameProps } from './DisplayName.interface';
 
 const DisplayName: React.FC<DisplayNameProps> = ({
   id,

@@ -192,7 +192,9 @@ export const DatabaseSchemaTable = ({
         if (!schemaDetails) {
           return;
         }
-        const updatedData = { ...schemaDetails, displayName: data.displayName };
+        const updatedData = data.displayName
+          ? { ...schemaDetails, displayName: data.displayName }
+          : { ...schemaDetails, displayName: undefined };
         const jsonPatch = compare(schemaDetails, updatedData);
         await patchDatabaseSchemaDetails(schemaDetails.id ?? '', jsonPatch);
         setSchemas((prevData) =>
