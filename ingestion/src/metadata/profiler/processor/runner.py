@@ -18,14 +18,10 @@ and manage behavior such as timeouts.
 """
 from typing import Dict, Optional, Union
 
-from sqlalchemy import text
+from sqlalchemy import Table, text
 from sqlalchemy.orm import DeclarativeMeta, Query, Session
 from sqlalchemy.orm.util import AliasedClass
 
-from metadata.profiler.processor.handle_partition import (
-    build_partition_predicate,
-    partition_filter_handler,
-)
 from metadata.utils.logger import query_runner_logger
 from metadata.utils.sqa_utils import get_query_filter_for_runner
 
@@ -47,25 +43,54 @@ class QueryRunner:
     def __init__(
         self,
         session: Session,
-        table: DeclarativeMeta,
-        sample: Union[DeclarativeMeta, AliasedClass],
+        dataset: Union[DeclarativeMeta, AliasedClass],
         partition_details: Optional[Dict] = None,
         profile_sample_query: Optional[str] = None,
     ):
         self._session = session
-        self.table = table
-        self._sample = sample
+        self._dataset = dataset
         self.partition_details = partition_details
         self.profile_sample_query = profile_sample_query
 
+    @property
+    def table(self) -> Table:
+        """Backward compatibility table attribute access"""
+        return self._dataset.__table__
+
+    @property
+    def _sample(self):
+        """Backward compatibility _sample attribute access"""
+        return self._dataset
+
+    @property
+    def dataset(self):
+        """Dataset attribute access"""
+        return self._dataset
+
+    @dataset.setter
+    def dataset(self, dataset):
+        self._dataset = dataset
+
     def _build_query(self, *entities, **kwargs) -> Query:
+        """Build query object
+
+        Args:
+            *entities: entities to select
+            **kwargs: kwargs to pass to the query
+        """
         return self._session.query(*entities, **kwargs)
 
     def _select_from_sample(self, *entities, **kwargs):
-        """Run select statement against sample data"""
+        """This method will use the sample data
+        and the partitioning logic if available otherwise it will use the raw table.
+
+        Args:
+            *entities: entities to select
+            **kwargs: kwargs to pass to the query
+        """
         filter_ = get_query_filter_for_runner(kwargs)
 
-        query = self._build_query(*entities, **kwargs).select_from(self._sample)
+        query = self._build_query(*entities, **kwargs).select_from(self._dataset)
 
         if filter_ is not None:
             return query.filter(filter_)
@@ -73,10 +98,15 @@ class QueryRunner:
         return query
 
     def _select_from_user_query(self, *entities, **kwargs):
-        """Run select statement against user defined query"""
+        """Use the user query to select data from the table
+
+        Args:
+            *entities: entities to select
+            **kwargs: kwargs to pass to the query
+        """
         filter_ = get_query_filter_for_runner(kwargs)
 
-        user_query = self._session.query(self.table).from_statement(
+        user_query = self._session.query(self._dataset).from_statement(
             text(f"{self.profile_sample_query}")
         )
 
@@ -87,9 +117,14 @@ class QueryRunner:
 
         return query
 
-    @partition_filter_handler()
     def select_first_from_table(self, *entities, **kwargs):
-        """Select first row from the table"""
+        """Select first row from the table. This method will use the raw table and
+        omit any sampling or partitioning logic.
+
+        Args:
+            *entities: entities to select
+            **kwargs: kwargs to pass to the query
+        """
         filter_ = get_query_filter_for_runner(kwargs)
 
         if self.profile_sample_query:
@@ -101,9 +136,14 @@ class QueryRunner:
 
         return query.first()
 
-    @partition_filter_handler(first=False)
     def select_all_from_table(self, *entities, **kwargs):
-        """Select all rows from the table"""
+        """Select all rows from the table. This method will use the raw table and
+        omit any sampling or partitioning logic.
+
+        Args:
+            *entities: entities to select
+            **kwargs: kwargs to pass to the query
+        """
         filter_ = get_query_filter_for_runner(kwargs)
 
         if self.profile_sample_query:
@@ -116,23 +156,33 @@ class QueryRunner:
 
         return query.all()
 
-    @partition_filter_handler(sampled=True)
     def select_first_from_sample(self, *entities, **kwargs):
+        """Select first row from the sample data. This method will use the sample data
+        and the partitioning logic if available otherwise it will use the raw table.
+
+        Args:
+            *entities: entities to select
+            **kwargs: kwargs to pass to the query
+        """
         return self._select_from_sample(*entities, **kwargs).first()
 
-    @partition_filter_handler(first=False, sampled=True)
     def select_all_from_sample(self, *entities, **kwargs):
+        """Select all rows from the sample data. This method will use the sample data
+        and the partitioning logic if available otherwise it will use the raw table.
+
+        Args:
+            *entities: entities to select
+            **kwargs: kwargs to pass to the query
+        """
         return self._select_from_sample(*entities, **kwargs).all()
 
     def yield_from_sample(self, *entities, **kwargs):
-        query = self._select_from_sample(*entities, **kwargs)
-        if self.partition_details:
-            partition_filter = build_partition_predicate(
-                self.partition_details,
-                self.table.__table__.c,
-            )
-            query.filter(partition_filter)
+        """Yield rows from the sample data
 
+        Args:
+            *entities: entities to select
+            **kwargs: kwargs to pass to the query
+        """
         result = self._session.execute(self._select_from_sample(*entities, **kwargs))
         while True:
             rows = result.fetchmany(1000)
@@ -141,15 +191,29 @@ class QueryRunner:
             yield from rows
 
     def dispatch_query_select_first(self, *entities, **kwargs):
-        """dispatch query to sample or all table"""
-        if isinstance(self._sample, AliasedClass):
-            return self.select_first_from_sample(*entities, **kwargs)
-        return self.select_first_from_table(*entities, **kwargs)
+        """Dispatch query to sample or all table.
+        Note: Kept for backward compatibility
+
+        Args:
+            *entities: entities to select
+            **kwargs: kwargs to pass to the query
+        """
+        return self.select_first_from_sample(*entities, **kwargs)
 
     @staticmethod
     def select_first_from_query(query: Query):
+        """Given a query object, return the first row
+
+        Args:
+            query (Query): query object
+        """
         return query.first()
 
     @staticmethod
     def select_all_from_query(query: Query):
+        """Given a query object, return all the rows
+
+        Args:
+            query (Query): query object
+        """
         return query.all()

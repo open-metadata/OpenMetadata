@@ -91,8 +91,8 @@ class AbstractTableMetricComputer(ABC):
             table (DeclarativeMeta): _description_
         """
         try:
-            self._schema_name = self.table.__table_args__.get("schema")
-            self._table_name = self.table.__tablename__
+            self._schema_name = self.table.schema
+            self._table_name = self.table.name
         except AttributeError:
             raise AttributeError(ERROR_MSG)
 
@@ -147,7 +147,8 @@ class BaseTableMetricComputer(AbstractTableMetricComputer):
     """Base table computer"""
 
     def compute(self):
-        """Default compute behavior for table metrics"""
+        """Default compute behavior for table metrics. This method will use the raw table
+        to compute metrics and omit any sampling or partitioning logic."""
         return self.runner.select_first_from_table(
             *[metric().fn() for metric in self.metrics]
         )
