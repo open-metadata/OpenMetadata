@@ -237,33 +237,31 @@ public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCas
     if (fqns != null) {
       for (String fqn : fqns) {
         TestSuite testSuite = Entity.getEntityByName(TEST_SUITE, fqn, "*", Include.ALL);
-        if (testSuite == null) {
-          continue;
-        }
+        if (testSuite != null) {
+          TestSuite original = JsonUtils.deepCopy(testSuite, TestSuite.class);
+          List<ResultSummary> resultSummaries = testSuite.getTestCaseResultSummary();
 
-        TestSuite original = JsonUtils.deepCopy(testSuite, TestSuite.class);
-        List<ResultSummary> resultSummaries = testSuite.getTestCaseResultSummary();
-
-        if (resultSummaries != null) {
-          resultSummaries.stream()
-              .filter(s -> s.getTestCaseName().equals(testCase.getFullyQualifiedName()))
-                  .findFirst()
-                  .ifPresent(
-                      s -> {
-                        s.setStatus(testCase.getTestCaseStatus());
-                        s.setTimestamp(testCase.getTestCaseResult().getTimestamp());
-                      });
-        } else {
-          testSuite.setTestCaseResultSummary(
-              List.of(
-                  new ResultSummary()
-                      .withTestCaseName(testCase.getFullyQualifiedName())
-                      .withStatus(testCase.getTestCaseStatus())
-                      .withTimestamp(testCase.getTestCaseResult().getTimestamp())));
+          if (resultSummaries != null) {
+            resultSummaries.stream()
+                .filter(s -> s.getTestCaseName().equals(testCase.getFullyQualifiedName()))
+                .findFirst()
+                .ifPresent(
+                    s -> {
+                      s.setStatus(testCase.getTestCaseStatus());
+                      s.setTimestamp(testCase.getTestCaseResult().getTimestamp());
+                    });
+          } else {
+            testSuite.setTestCaseResultSummary(
+                List.of(
+                    new ResultSummary()
+                        .withTestCaseName(testCase.getFullyQualifiedName())
+                        .withStatus(testCase.getTestCaseStatus())
+                        .withTimestamp(testCase.getTestCaseResult().getTimestamp())));
+          }
+          EntityRepository.EntityUpdater entityUpdater =
+              testSuiteRepository.getUpdater(original, testSuite, EntityRepository.Operation.PATCH);
+          entityUpdater.update();
         }
-        EntityRepository.EntityUpdater entityUpdater =
-            testSuiteRepository.getUpdater(original, testSuite, EntityRepository.Operation.PATCH);
-        entityUpdater.update();
       }
     }
   }
