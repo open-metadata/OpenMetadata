@@ -176,7 +176,7 @@ const TagPage = () => {
 
   const isCertificationClassification = useMemo(
     () => startsWith(tagFqn, 'Certification.'),
-    []
+    [tagFqn]
   );
 
   const fetchCurrentTagPermission = async () => {
