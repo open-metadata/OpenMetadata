@@ -144,3 +144,13 @@ What you will need to do:
 removing these properties as well.
 - If you still want to use the Auto PII Classification and sampling features, you can create the new workflow
 from the UI.
+
+### Service Spec for the Ingestion Framework
+
+This impacts users who maintain their own connectors for the ingestion framework that are **NOT** part of the
+[OpenMetadata python library (openmetadata-ingestion)](https://github.com/open-metadata/OpenMetadata/tree/ff261fb3738f3a56af1c31f7151af9eca7a602d5/ingestion/src/metadata/ingestion/source).
+Introducing the ["connector specifcication class (`ServiceSpec`)"](https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/src/metadata/utils/service_spec/service_spec.py). 
+The `ServiceSpec` class serves as the entrypoint for the connector and holds the references for the classes that will be used
+to ingest and process the metadata from the source.
+You can see [postgres](https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/src/metadata/ingestion/source/database/postgres/service_spec.py) for an
+implementation example.
