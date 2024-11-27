@@ -800,7 +800,6 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
         """
         Method to fetch the location path of the table
         """
-        # return None
         return self.external_location_map.get(
             (self.context.get().database, schema_name, table_name)
         )
