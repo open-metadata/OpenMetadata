@@ -36,7 +36,6 @@ import {
 } from 'recharts';
 import { ReactComponent as IconDropdown } from '../../../../../assets/svg/menu.svg';
 import { GRAPH_BACKGROUND_COLOR } from '../../../../../constants/constants';
-import { TOTAL_ENTITY_CHART_COLOR } from '../../../../../constants/DataInsight.constants';
 import { PAGE_HEADERS } from '../../../../../constants/PageHeaders.constant';
 import { EntityType } from '../../../../../enums/entity.enum';
 import { CustomMetric } from '../../../../../generated/entity/data/table';
@@ -48,6 +47,7 @@ import {
   axisTickFormatter,
   tooltipFormatter,
 } from '../../../../../utils/ChartUtils';
+import { entityChartColor } from '../../../../../utils/CommonUtils';
 import {
   CustomTooltip,
   getRandomHexColor,
@@ -190,7 +190,7 @@ const CustomMetricGraphs = ({
         const metricDetails = customMetrics?.find(
           (metric) => metric.name === key
         );
-        const color = TOTAL_ENTITY_CHART_COLOR[i] ?? getRandomHexColor();
+        const color = entityChartColor(i) ?? getRandomHexColor();
 
         return isUndefined(metricDetails) ? null : (
           <Col key={key} span={24}>

@@ -40,7 +40,6 @@ import { getExplorePath } from '../../constants/constants';
 import {
   DI_STRUCTURE,
   GRAPH_HEIGHT,
-  TOTAL_ENTITY_CHART_COLOR,
 } from '../../constants/DataInsight.constants';
 import {
   INCOMPLETE_DESCRIPTION_ADVANCE_SEARCH_FILTER,
@@ -56,6 +55,7 @@ import {
   SystemChartType,
 } from '../../rest/DataInsightAPI';
 import { updateActiveChartFilter } from '../../utils/ChartUtils';
+import { entityChartColor } from '../../utils/CommonUtils';
 import {
   getQueryFilterForDataInsightChart,
   isPercentageSystemGraph,
@@ -553,7 +553,7 @@ export const DataInsightChartCard = ({
                           ].includes(type)
                         }
                         progress={latestData[entity]}
-                        strokeColor={TOTAL_ENTITY_CHART_COLOR[i]}
+                        strokeColor={entityChartColor(i)}
                       />
                     </Col>
                   );
