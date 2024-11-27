@@ -4,6 +4,7 @@ import static org.openmetadata.schema.type.EventType.ENTITY_DELETED;
 import static org.openmetadata.service.Entity.TEST_CASE;
 import static org.openmetadata.service.Entity.TEST_CASE_RESULT;
 import static org.openmetadata.service.Entity.TEST_DEFINITION;
+import static org.openmetadata.service.Entity.TEST_SUITE;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -17,7 +18,9 @@ import javax.ws.rs.core.UriInfo;
 import lombok.SneakyThrows;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.tests.CreateTestCaseResult;
+import org.openmetadata.schema.tests.ResultSummary;
 import org.openmetadata.schema.tests.TestCase;
+import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.tests.type.TestCaseResult;
 import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.schema.type.EntityReference;
@@ -222,6 +225,46 @@ public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCas
     EntityRepository.EntityUpdater entityUpdater =
         testCaseRepository.getUpdater(original, updated, EntityRepository.Operation.PATCH);
     entityUpdater.update();
+    updateTestSuiteSummary(updated);
+  }
+
+  private void updateTestSuiteSummary(TestCase testCase) {
+    List<String> fqns =
+        testCase.getTestSuites() != null
+            ? testCase.getTestSuites().stream().map(TestSuite::getFullyQualifiedName).toList()
+            : null;
+    TestSuiteRepository testSuiteRepository = new TestSuiteRepository();
+    if (fqns != null) {
+      for (String fqn : fqns) {
+        TestSuite testSuite = Entity.getEntityByName(TEST_SUITE, fqn, "*", Include.ALL);
+        if (testSuite == null) {
+          continue;
+        }
+
+        TestSuite original = JsonUtils.deepCopy(testSuite, TestSuite.class);
+        List<ResultSummary> resultSummaries = testSuite.getTestCaseResultSummary();
+
+        if (resultSummaries != null) {
+          resultSummaries.stream()
+              .filter(s -> s.getTestCaseName().equals(testCase.getFullyQualifiedName()))
+              .forEach(
+                  s -> {
+                    s.setStatus(testCase.getTestCaseStatus());
+                    s.setTimestamp(testCase.getTestCaseResult().getTimestamp());
+                  });
+        } else {
+          testSuite.setTestCaseResultSummary(
+              List.of(
+                  new ResultSummary()
+                      .withTestCaseName(testCase.getFullyQualifiedName())
+                      .withStatus(testCase.getTestCaseStatus())
+                      .withTimestamp(testCase.getTestCaseResult().getTimestamp())));
+        }
+        EntityRepository.EntityUpdater entityUpdater =
+            testSuiteRepository.getUpdater(original, testSuite, EntityRepository.Operation.PATCH);
+        entityUpdater.update();
+      }
+    }
   }
 
   @Override
