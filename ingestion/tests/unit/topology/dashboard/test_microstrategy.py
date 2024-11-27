@@ -26,7 +26,7 @@ from metadata.ingestion.source.dashboard.microstrategy.metadata import (
 from metadata.ingestion.source.dashboard.microstrategy.models import (
     MstrDashboard,
     MstrOwner,
-    MstrProject
+    MstrProject,
 )
 
 mock_micro_config = {
@@ -66,9 +66,7 @@ MOCK_PROJECT_LIST = [
         description="fun",
         dateCreated=datetime(2015, 6, 30, 21, 55, 35),
         dateModified=datetime(2024, 10, 1, 21, 42, 50),
-        owner=MstrOwner(
-            name="Administrator", id="54F3D26011D2896560009A8E67019608"
-        ),
+        owner=MstrOwner(name="Administrator", id="54F3D26011D2896560009A8E67019608"),
     )
 ]
 
@@ -83,9 +81,7 @@ MOCK_DASHBORD_LIST = [
         dateModified="2024-11-06T14:14:42.000+0000",
         version="3E367000E84DD4AA9B501EAD892EB2E1",
         acg=199,
-        owner=MstrOwner(
-            name="Administrator", id="54F3D26011D2896560009A8E67019608"
-        ),
+        owner=MstrOwner(name="Administrator", id="54F3D26011D2896560009A8E67019608"),
         extType=0,
         viewMedia=1879072805,
         certifiedInfo={"certified": False},
