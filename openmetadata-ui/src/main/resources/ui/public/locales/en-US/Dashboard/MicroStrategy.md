@@ -19,7 +19,14 @@ $$
 $$section
 ### Host Port $(id="hostPort")
 
-This parameter specifies the host and port of the MicroStrategy instance. This should be specified as a URI string in the format `http://hostname:port` or `https://hostname:port`. 
+This parameter specifies the host of the MicroStrategy instance. This should be specified as a URI string in the format http://hostname or https://hostname.
 
-For example, you might set it to `https://demo.microstrategy.com`.
+For example, you might set it to https://demo.microstrategy.com.
+$$
+
+$$section
+### Login Mode $(id="loginMode")
+
+Login Mode for Microstrategy's REST API connection. You can authenticate with one of the following authentication modes: `Standard (1)`, `Anonymous (8)`. Default will be `Anonymous (8)`.
+If you're using demo account for Microstrategy, it will be needed to authenticate through loginMode `8`.
 $$

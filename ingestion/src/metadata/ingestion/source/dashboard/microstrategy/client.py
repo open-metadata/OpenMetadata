@@ -47,8 +47,8 @@ class MicroStrategyClient:
 
     def _get_base_url(self, path=None):
         if not path:
-            return f"{clean_uri(self.config.hostPort)}/{API_VERSION}"
-        return f"{clean_uri(self.config.hostPort)}/{API_VERSION}/{path}"
+            return f"{clean_uri(self.config.hostPort._url)}/{API_VERSION}"
+        return f"{clean_uri(self.config.hostPort._url)}/{API_VERSION}/{path}"
 
     def __init__(
         self,
@@ -59,7 +59,7 @@ class MicroStrategyClient:
         self.auth_params: AuthHeaderCookie = self._get_auth_header_and_cookies()
 
         client_config = ClientConfig(
-            base_url=clean_uri(config.hostPort),
+            base_url=clean_uri(self.config.hostPort._url),
             api_version=API_VERSION,
             extra_headers=self.auth_params.auth_header,
             allow_redirects=True,

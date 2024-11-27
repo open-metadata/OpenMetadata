@@ -121,7 +121,7 @@ class MicrostrategySource(DashboardServiceSource):
         if dashboard_details:
             try:
                 dashboard_url = (
-                    f"{clean_uri(self.service_connection.hostPort)}/MicroStrategyLibrary/app/"
+                    f"{clean_uri(self.service_connection.hostPort._url)}/MicroStrategyLibrary/app/"
                     f"{dashboard_details.projectId}/{dashboard_details.id}"
                 )
                 dashboard_request = CreateDashboardRequest(

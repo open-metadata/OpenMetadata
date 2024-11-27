@@ -24,9 +24,9 @@ from metadata.ingestion.source.dashboard.microstrategy.metadata import (
     MicrostrategySource,
 )
 from metadata.ingestion.source.dashboard.microstrategy.models import (
-    MicroStrategyDashboard,
-    MicroStrategyOwner,
-    MicroStrategyProject,
+    MstrDashboard,
+    MstrOwner,
+    MstrProject
 )
 
 mock_micro_config = {
@@ -57,7 +57,7 @@ mock_micro_config = {
 }
 
 MOCK_PROJECT_LIST = [
-    MicroStrategyProject(
+    MstrProject(
         acg=5,
         id="B7CA92F04B9FAE8D941C3E9B7E0CD754",
         name="MicroStrategy Tutorial",
@@ -66,14 +66,14 @@ MOCK_PROJECT_LIST = [
         description="fun",
         dateCreated=datetime(2015, 6, 30, 21, 55, 35),
         dateModified=datetime(2024, 10, 1, 21, 42, 50),
-        owner=MicroStrategyOwner(
+        owner=MstrOwner(
             name="Administrator", id="54F3D26011D2896560009A8E67019608"
         ),
     )
 ]
 
 MOCK_DASHBORD_LIST = [
-    MicroStrategyDashboard(
+    MstrDashboard(
         name="Library of Demos",
         id="925FB4A311EA52FF3EA80080EF059105",
         type=55,
@@ -83,7 +83,7 @@ MOCK_DASHBORD_LIST = [
         dateModified="2024-11-06T14:14:42.000+0000",
         version="3E367000E84DD4AA9B501EAD892EB2E1",
         acg=199,
-        owner=MicroStrategyOwner(
+        owner=MstrOwner(
             name="Administrator", id="54F3D26011D2896560009A8E67019608"
         ),
         extType=0,
