@@ -45,11 +45,14 @@ To integrate MicroStrategy, ensure you are using OpenMetadata version 1.2.x or h
 
 - **Password**: Password of the user account to connect with MicroStrategy.
 
-- **Host Port**: This parameter specifies the host and port of the MicroStrategy instance. This should be specified as a URI string in the format http://hostname:port or https://hostname:port.
+- **Host Port**: This parameter specifies the host of the MicroStrategy instance. This should be specified as a URI string in the format http://hostname or https://hostname.
 
 For example, you might set it to https://demo.microstrategy.com.
 
 - **Project Name**: The name of the project within MicroStrategy that OpenMetadata will connect to, linking to the relevant dashboards and reports for metadata retrieval.
+
+- **Login Mode**: Login Mode for Microstrategy's REST API connection. You can authenticate with one of the following authentication modes: `Standard (1)`, `Anonymous (8)`. Default will be `Anonymous (8)`.
+If you're using demo account for Microstrategy, it will be needed to authenticate through loginMode `8`.
 
 {% /extraContent %}
 

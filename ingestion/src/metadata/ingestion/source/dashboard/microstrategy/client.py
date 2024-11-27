@@ -21,7 +21,7 @@ from metadata.generated.schema.entity.services.connections.dashboard.microStrate
 )
 from metadata.ingestion.connections.test_connections import SourceConnectionException
 from metadata.ingestion.ometa.client import REST, ClientConfig
-from metadata.ingestion.source.dashboard.mstr.models import (
+from metadata.ingestion.source.dashboard.microstrategy.models import (
     AuthHeaderCookie,
     MstrDashboard,
     MstrDashboardDetails,
@@ -37,7 +37,6 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 API_VERSION = "MicroStrategyLibrary/api"
-LOGIN_MODE_GUEST = 8
 APPLICATION_TYPE = 35
 
 
@@ -81,7 +80,7 @@ class MicroStrategyClient:
             data = {
                 "username": self.config.username,
                 "password": self.config.password.get_secret_value(),
-                "loginMode": LOGIN_MODE_GUEST,
+                "loginMode": self.config.loginMode,
                 "applicationType": APPLICATION_TYPE,
             }
             response = requests.post(
@@ -136,7 +135,7 @@ class MicroStrategyClient:
     def is_project_name(self) -> bool:
         return bool(self.config.projectName)
 
-    def get_projects_list(self) -> List[MicroStrategyProject]:
+    def get_projects_list(self) -> List[MstrProject]:
         """
         Get List of all projects
         """
@@ -154,7 +153,7 @@ class MicroStrategyClient:
 
         return []
 
-    def get_project_by_name(self) -> Optional[MicroStrategyProject]:
+    def get_project_by_name(self) -> Optional[MstrProject]:
         """
         Get Project By Name
         """
@@ -174,7 +173,7 @@ class MicroStrategyClient:
 
     def get_search_results_list(
         self, project_id, object_type
-    ) -> List[MicroStrategySearchResult]:
+    ) -> List[MstrSearchResult]:
         """
         Get Search Results
 
@@ -206,9 +205,7 @@ class MicroStrategyClient:
 
         return []
 
-    def get_dashboards_list(
-        self, project_id, project_name
-    ) -> List[MicroStrategyDashboard]:
+    def get_dashboards_list(self, project_id, project_name) -> List[MstrDashboard]:
         """
         Get Dashboard
         """
@@ -220,12 +217,10 @@ class MicroStrategyClient:
             dashboards = []
             for result in results:
                 dashboards.append(
-                    MicroStrategyDashboard(
-                        projectName=project_name, **result.model_dump()
-                    )
+                    MstrDashboard(projectName=project_name, **result.model_dump())
                 )
 
-            dashboards_list = MicroStrategyDashboardList(dashboards=dashboards)
+            dashboards_list = MstrDashboardList(dashboards=dashboards)
             return dashboards_list.dashboards
 
         except Exception:
@@ -236,7 +231,7 @@ class MicroStrategyClient:
 
     def get_dashboard_details(
         self, project_id, project_name, dashboard_id
-    ) -> Optional[MicroStrategyDashboardDetails]:
+    ) -> Optional[MstrDashboardDetails]:
         """
         Get Dashboard Details
         """

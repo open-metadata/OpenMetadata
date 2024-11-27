@@ -17,18 +17,18 @@ from typing import Any, List, Optional
 from pydantic import BaseModel
 
 
-class MicroStrategyOwner(BaseModel):
+class MstrOwner(BaseModel):
     """
-    MicroStrategy owner model
+    MSTR owner model
     """
 
     name: str
     id: str
 
 
-class MicroStrategyProject(BaseModel):
+class MstrProject(BaseModel):
     """
-    MicroStrategy project model
+    MSTR project model
     """
 
     acg: int
@@ -39,16 +39,16 @@ class MicroStrategyProject(BaseModel):
     description: str
     dateCreated: datetime
     dateModified: datetime
-    owner: MicroStrategyOwner
+    owner: MstrOwner
 
 
-class MicroStrategyProjectList(BaseModel):
-    projects: Optional[List[MicroStrategyProject]] = None
+class MstrProjectList(BaseModel):
+    projects: Optional[List[MstrProject]] = None
 
 
-class MicroStrategySearchResult(BaseModel):
+class MstrSearchResult(BaseModel):
     """
-    MicroStrategy Search Results model
+    Mstr Search Results model
     """
 
     name: str
@@ -60,7 +60,7 @@ class MicroStrategySearchResult(BaseModel):
     dateModified: str
     version: str
     acg: int
-    owner: MicroStrategyOwner
+    owner: MstrOwner
     extType: int
     viewMedia: int
     certifiedInfo: dict
@@ -73,9 +73,9 @@ class MstrSearchResultList(BaseModel):
     result: Optional[List[MstrSearchResult]] = None
 
 
-class MicroStrategyDashboard(BaseModel):
+class MstrDashboard(BaseModel):
     """
-    MicroStrategy Dashboard model
+    Mstr Dashboard model
     """
 
     name: str
@@ -87,7 +87,7 @@ class MicroStrategyDashboard(BaseModel):
     dateModified: str
     version: str
     acg: int
-    owner: MicroStrategyOwner
+    owner: MstrOwner
     extType: int
     viewMedia: int
     certifiedInfo: dict
@@ -96,47 +96,47 @@ class MicroStrategyDashboard(BaseModel):
     projectName: str
 
 
-class MicroStrategyDashboardList(BaseModel):
-    dashboards: Optional[List[MicroStrategyDashboard]] = None
+class MstrDashboardList(BaseModel):
+    dashboards: Optional[List[MstrDashboard]] = None
 
 
-class MicroStrategyAttribute(BaseModel):
+class MstrAttribute(BaseModel):
     id: str
     type: int
     name: str
 
 
-class MicroStrategyMetric(BaseModel):
+class MstrMetric(BaseModel):
     id: str
     type: int
     name: str
 
 
-class MicroStrategyVisualization(BaseModel):
+class MstrVisualization(BaseModel):
     key: str
     name: str
     visualizationType: str
 
 
-class MicroStrategyPage(BaseModel):
+class MstrPage(BaseModel):
     key: str
     name: str
-    visualizations: List[MicroStrategyVisualization]
+    visualizations: List[MstrVisualization]
 
 
-class MicroStrategyChapter(BaseModel):
+class MstrChapter(BaseModel):
     key: str
     name: str
-    pages: List[MicroStrategyPage]
+    pages: List[MstrPage]
 
 
-class MicroStrategyAvailableObject(BaseModel):
+class MstrAvailableObject(BaseModel):
     id: str
     name: str
     type: str
 
 
-class MicroStrategyDashboardDetails(BaseModel):
+class MstrDashboardDetails(BaseModel):
     id: str
     name: str
     projectId: str

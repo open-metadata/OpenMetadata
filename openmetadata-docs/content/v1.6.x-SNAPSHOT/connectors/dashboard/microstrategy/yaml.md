@@ -71,7 +71,7 @@ This is a sample config for MicroStrategy:
 
 {% codeInfo srNumber=3 %}
 
-- **Host Port**: This parameter specifies the host and port of the MicroStrategy instance. This should be specified as a URI string in the format http://hostname:port or https://hostname:port.
+- **Host Port**: This parameter specifies the host of the MicroStrategy instance. This should be specified as a URI string in the format http://hostname or https://hostname.
 
 For example, you might set it to https://demo.microstrategy.com.
 
@@ -80,6 +80,13 @@ For example, you might set it to https://demo.microstrategy.com.
 {% codeInfo srNumber=4 %}
 
 - **Project Name**: The name of the project within MicroStrategy that OpenMetadata will connect to, linking to the relevant dashboards and reports for metadata retrieval.
+
+{% /codeInfo %}
+
+{% codeInfo srNumber=5 %}
+
+- **Login Mode**: Login Mode for Microstrategy's REST API connection. You can authenticate with one of the following authentication modes: `Standard (1)`, `Anonymous (8)`. Default will be `Anonymous (8)`.
+If you're using demo account for Microstrategy, it will be needed to authenticate through loginMode `8`.
 
 {% /codeInfo %}
 
@@ -112,6 +119,9 @@ source:
 ```
 ```yaml {% srNumber=4 %}
       projectName: project
+```
+```yaml {% srNumber=5 %}
+      loginMode: "8"
 ```
 
 {% partial file="/v1.6/connectors/yaml/dashboard/source-config.md" /%}

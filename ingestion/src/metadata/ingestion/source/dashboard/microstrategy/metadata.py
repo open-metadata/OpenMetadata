@@ -35,9 +35,9 @@ from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
 from metadata.ingestion.source.dashboard.microstrategy.models import (
-    MicroStrategyDashboard,
-    MicroStrategyDashboardDetails,
-    MicroStrategyPage,
+    MstrDashboard,
+    MstrDashboardDetails,
+    MstrPage,
 )
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_chart
@@ -49,7 +49,7 @@ logger = ingestion_logger()
 
 class MicrostrategySource(DashboardServiceSource):
     """
-    MicroStrategy Source Class
+    Microstrategy Source Class
     """
 
     @classmethod
@@ -67,7 +67,7 @@ class MicrostrategySource(DashboardServiceSource):
             )
         return cls(config, metadata)
 
-    def get_dashboards_list(self) -> Optional[List[MicroStrategyDashboard]]:
+    def get_dashboards_list(self) -> Optional[List[MstrDashboard]]:
         """
         Get List of all dashboards
         """
@@ -85,7 +85,7 @@ class MicrostrategySource(DashboardServiceSource):
 
         return dashboards
 
-    def get_dashboard_name(self, dashboard: MicroStrategyDashboard) -> str:
+    def get_dashboard_name(self, dashboard: MstrDashboard) -> str:
         """
         Get Dashboard Name
         """
@@ -113,7 +113,7 @@ class MicrostrategySource(DashboardServiceSource):
         return dashboard_details
 
     def yield_dashboard(
-        self, dashboard_details: MicroStrategyDashboardDetails
+        self, dashboard_details: MstrDashboardDetails
     ) -> Iterable[Either[CreateDashboardRequest]]:
         """
         Method to Get Dashboard Entity
@@ -155,12 +155,12 @@ class MicrostrategySource(DashboardServiceSource):
                 )
 
     def yield_dashboard_lineage_details(
-        self, dashboard_details: MicroStrategyDashboardDetails, db_service_name: str
+        self, dashboard_details: MstrDashboardDetails, db_service_name: str
     ) -> Optional[Iterable[AddLineageRequest]]:
         """Not Implemented"""
 
     def yield_dashboard_chart(
-        self, dashboard_details: MicroStrategyDashboardDetails
+        self, dashboard_details: MstrDashboardDetails
     ) -> Optional[Iterable[CreateChartRequest]]:
         """Get chart method
 
@@ -180,7 +180,7 @@ class MicrostrategySource(DashboardServiceSource):
                 logger.warning(f"Error creating dashboard: {exc}")
 
     def _yield_chart_from_visualization(
-        self, page: MicroStrategyPage
+        self, page: MstrPage
     ) -> Iterable[Either[CreateChartRequest]]:
         for chart in page.visualizations:
             try:
