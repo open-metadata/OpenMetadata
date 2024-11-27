@@ -190,7 +190,7 @@ const CustomMetricGraphs = ({
         const metricDetails = customMetrics?.find(
           (metric) => metric.name === key
         );
-        const color = TOTAL_ENTITY_CHART_COLOR[i] ?? getRandomHexColor();
+        const color = TOTAL_ENTITY_CHART_COLOR(i) ?? getRandomHexColor();
 
         return isUndefined(metricDetails) ? null : (
           <Col key={key} span={24}>

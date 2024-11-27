@@ -498,7 +498,7 @@ export const renderDataInsightLineChart = (
           }
           key={s}
           name={s}
-          stroke={TOTAL_ENTITY_CHART_COLOR[i] ?? getRandomHexColor()}
+          stroke={TOTAL_ENTITY_CHART_COLOR(i) ?? getRandomHexColor()}
           strokeOpacity={
             isEmpty(activeMouseHoverKey) || s === activeMouseHoverKey
               ? DEFAULT_CHART_OPACITY

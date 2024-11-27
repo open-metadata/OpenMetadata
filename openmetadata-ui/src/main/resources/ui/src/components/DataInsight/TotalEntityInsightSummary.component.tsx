@@ -120,7 +120,7 @@ const TotalEntityInsightSummary = ({
                   }
                   label={latestData[entity]}
                   progress={progress}
-                  strokeColor={TOTAL_ENTITY_CHART_COLOR[i]}
+                  strokeColor={TOTAL_ENTITY_CHART_COLOR(i)}
                 />
               </Col>
             );

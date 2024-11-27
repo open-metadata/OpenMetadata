@@ -553,7 +553,7 @@ export const DataInsightChartCard = ({
                           ].includes(type)
                         }
                         progress={latestData[entity]}
-                        strokeColor={TOTAL_ENTITY_CHART_COLOR[i]}
+                        strokeColor={TOTAL_ENTITY_CHART_COLOR(i)}
                       />
                     </Col>
                   );

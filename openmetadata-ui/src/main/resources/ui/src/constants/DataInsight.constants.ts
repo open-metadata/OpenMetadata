@@ -135,35 +135,62 @@ export const KPI_DATES = {
   endDate: '',
 };
 
-export const TOTAL_ENTITY_CHART_COLOR = [
-  '#1FA1F0',
-  '#416BB3',
-  '#5CAE95',
-  '#2269F5',
-  '#76E9C6',
-  '#FEB019',
-  '#9747FF',
-  '#FF7C50',
-  '#AD4F82',
-  '#C870C5',
-  '#ED7014',
-  '#FCAE1E',
-  '#B56727',
-  '#F9E076',
-  '#3CB043',
-  '#48AAAD',
-  '#0492C2',
-  '#A1045A',
-  '#B65FCF',
-  '#67032F',
-  '#4E2A84',
-  '#78184A',
-  '#563C5C',
-  '#5F5498',
-  '#4E8C9C',
-  '#F4F2FF',
-  '#ECFBFF',
+const BASE_COLORS = [
+  '#E57373',
+  '#BA68C8',
+  '#64B5F6',
+  '#4DB6AC',
+  '#81C784',
+  '#FFD54F',
+  '#FF8A65',
+  '#A1887F',
+  '#90A4AE',
+  '#7986CB',
+  '#F06292',
+  '#4FC3F7',
+  '#FFD740',
+  '#AED581',
+  '#CE93D8',
+  '#B39DDB',
+  '#EF5350',
+  '#FF7043',
+  '#7986CB',
+  '#FFCA28',
+  '#FFB74D',
+  '#A5D6A7',
+  '#80CBC4',
+  '#F48FB1',
 ];
+
+/**
+ * Generate a color with decreasing opacity after the first 24 colors.
+ * @param index - The index of the label
+ * @returns {string} - RGBA color string
+ */
+export const TOTAL_ENTITY_CHART_COLOR = (index: number): string => {
+  const baseColor = BASE_COLORS[index % BASE_COLORS.length]; // Cycle through base colors
+  const opacity =
+    index < BASE_COLORS.length
+      ? 1 // Full opacity for the first 24 labels
+      : Math.max(1 - Math.floor(index / BASE_COLORS.length) * 0.1, 0.1); // Decrease opacity for subsequent labels
+
+  return hexToRgba(baseColor, opacity);
+};
+
+/**
+ * Convert hex color to RGBA
+ * @param hex - Hex color string
+ * @param opacity - Opacity value (0-1)
+ * @returns {string} - RGBA color string
+ */
+const hexToRgba = (hex: string, opacity: number): string => {
+  const bigint = parseInt(hex.replace('#', ''), 16);
+  const r = (bigint >> 16) & 255;
+  const g = (bigint >> 8) & 255;
+  const b = bigint & 255;
+
+  return `rgba(${r}, ${g}, ${b}, ${opacity.toFixed(2)})`;
+};
 
 export const KPI_WIDGET_GRAPH_COLORS = ['#5F5498', '#4E8C9C'];
 export const KPI_WIDGET_GRAPH_BG_COLORS = ['#F4F2FF', '#ECFBFF'];

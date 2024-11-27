@@ -229,11 +229,11 @@ const TotalDataAssetsWidget = ({
                   {rightSideEntityList.map((label, i) => (
                     <Area
                       dataKey={label}
-                      fill={TOTAL_ENTITY_CHART_COLOR[i] ?? getRandomHexColor()}
+                      fill={TOTAL_ENTITY_CHART_COLOR(i) ?? getRandomHexColor()}
                       key={label}
                       name={label}
                       stroke={
-                        TOTAL_ENTITY_CHART_COLOR[i] ?? getRandomHexColor()
+                        TOTAL_ENTITY_CHART_COLOR(i) ?? getRandomHexColor()
                       }
                     />
                   ))}

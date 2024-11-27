@@ -152,7 +152,7 @@ const PageViewsByEntitiesChart: FC<Props> = ({ chartFilter, selectedDays }) => {
                       : false
                   }
                   key={entity}
-                  stroke={TOTAL_ENTITY_CHART_COLOR[i]}
+                  stroke={TOTAL_ENTITY_CHART_COLOR(i)}
                   strokeOpacity={
                     isEmpty(activeMouseHoverKey) ||
                     entity === activeMouseHoverKey
