@@ -323,6 +323,7 @@ export const INGESTION_WORKFLOW_UI_SCHEMA = {
     'databaseFilterPattern',
     'schemaFilterPattern',
     'tableFilterPattern',
+    'classificationFilterPattern',
     'enableDebugLog',
     '*',
   ],
@@ -493,5 +494,6 @@ export const SERVICE_INGESTION_PIPELINE_TYPES = [
   PipelineType.Usage,
   PipelineType.Lineage,
   PipelineType.Profiler,
+  PipelineType.AutoClassification,
   PipelineType.Dbt,
 ];

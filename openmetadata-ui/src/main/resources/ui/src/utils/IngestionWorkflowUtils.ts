@@ -19,6 +19,7 @@ import {
 } from '../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import apiServiceMetadataPipeline from '../jsons/ingestionSchemas/apiServiceMetadataPipeline.json';
 import dashboardMetadataPipeline from '../jsons/ingestionSchemas/dashboardServiceMetadataPipeline.json';
+import databaseAutoClassificationPipeline from '../jsons/ingestionSchemas/databaseServiceAutoClassificationPipeline.json';
 import databaseMetadataPipeline from '../jsons/ingestionSchemas/databaseServiceMetadataPipeline.json';
 import databaseProfilerPipeline from '../jsons/ingestionSchemas/databaseServiceProfilerPipeline.json';
 import databaseLineagePipeline from '../jsons/ingestionSchemas/databaseServiceQueryLineagePipeline.json';
@@ -96,6 +97,12 @@ export const getSchemaByWorkflowType = (
     case WorkflowType.Profiler:
       schema = {
         ...databaseProfilerPipeline,
+      };
+
+      break;
+    case WorkflowType.AutoClassification:
+      schema = {
+        ...databaseAutoClassificationPipeline,
       };
 
       break;
