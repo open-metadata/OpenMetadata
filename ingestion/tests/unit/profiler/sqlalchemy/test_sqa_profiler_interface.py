@@ -16,6 +16,7 @@ Test SQA Interface
 import os
 from datetime import datetime
 from unittest import TestCase
+from unittest.mock import patch
 from uuid import uuid4
 
 from sqlalchemy import TEXT, Column, Integer, String, inspect
@@ -78,15 +79,18 @@ class SQAInterfaceTest(TestCase):
         sqlite_conn = SQLiteConnection(
             scheme=SQLiteScheme.sqlite_pysqlite,
         )
-        sampler = SQASampler(
-            service_connection_config=sqlite_conn,
-            ometa_client=None,
-            entity=None,
-            orm_table=User,
-        )
-        self.sqa_profiler_interface = SQAProfilerInterface(
-            sqlite_conn, None, table_entity, None, sampler, 5, 43200, orm_table=User
-        )
+
+        with patch.object(SQASampler, "build_table_orm", return_value=User):
+            sampler = SQASampler(
+                service_connection_config=sqlite_conn,
+                ometa_client=None,
+                entity=None,
+            )
+
+        with patch.object(SQASampler, "build_table_orm", return_value=User):
+            self.sqa_profiler_interface = SQAProfilerInterface(
+                sqlite_conn, None, table_entity, None, sampler, 5, 43200
+            )
         self.table = User
 
     def test_init_interface(self):
@@ -114,14 +118,22 @@ class SQAInterfaceTestMultiThread(TestCase):
         scheme=SQLiteScheme.sqlite_pysqlite,
         databaseMode=db_path + "?check_same_thread=False",
     )
-    sampler = SQASampler(
-        service_connection_config=sqlite_conn,
-        ometa_client=None,
-        entity=None,
-        orm_table=User,
-    )
+
+    with patch.object(SQASampler, "build_table_orm", return_value=User):
+        sampler = SQASampler(
+            service_connection_config=sqlite_conn,
+            ometa_client=None,
+            entity=None,
+        )
+
     sqa_profiler_interface = SQAProfilerInterface(
-        sqlite_conn, None, table_entity, None, sampler, 5, 43200, orm_table=User
+        sqlite_conn,
+        None,
+        table_entity,
+        None,
+        sampler,
+        5,
+        43200,
     )
 
     @classmethod

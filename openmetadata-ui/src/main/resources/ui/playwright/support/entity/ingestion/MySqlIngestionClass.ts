@@ -33,17 +33,18 @@ import {
 import ServiceBaseClass from './ServiceBaseClass';
 
 class MysqlIngestionClass extends ServiceBaseClass {
-  name: string;
+  name = '';
   tableFilter: string[];
   profilerTable = 'alert_entity';
-  constructor() {
-    super(
-      Services.Database,
-      `pw-mysql-with-%-${uuid()}`,
-      'Mysql',
-      'bot_entity'
-    );
-    this.tableFilter = ['bot_entity', 'alert_entity', 'chart_entity'];
+  constructor(tableFilter?: string[]) {
+    const serviceName = `pw-mysql-with-%-${uuid()}`;
+    super(Services.Database, serviceName, 'Mysql', 'bot_entity');
+    this.name = serviceName;
+    this.tableFilter = tableFilter ?? [
+      'bot_entity',
+      'alert_entity',
+      'chart_entity',
+    ];
   }
 
   async createService(page: Page) {

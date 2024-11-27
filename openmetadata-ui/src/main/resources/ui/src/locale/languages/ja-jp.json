@@ -114,6 +114,7 @@
     "authentication-uri": "認証URI",
     "authority": "Authority",
     "authorize-app": "Authorize {{app}}",
+    "auto-classification": "自動分類",
     "auto-pii-confidence-score": "Auto PII Confidence Score",
     "auto-tag-pii-uppercase": "自動PIIタグ",
     "automatically-generate": "自動生成",
