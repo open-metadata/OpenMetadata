@@ -25,7 +25,7 @@ from typing import Any, Dict, List, Optional, Type, Union
 
 from sqlalchemy import Column, inspect, text
 from sqlalchemy.exc import DBAPIError, ProgrammingError, ResourceClosedError
-from sqlalchemy.orm import DeclarativeMeta, scoped_session
+from sqlalchemy.orm import scoped_session
 
 from metadata.generated.schema.entity.data.table import (
     CustomMetricProfile,
@@ -92,7 +92,6 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
         sampler: SamplerInterface,
         thread_count: int = 5,
         timeout_seconds: int = 43200,
-        orm_table: Optional[DeclarativeMeta] = None,
         **kwargs,
     ):
         """Instantiate SQA Interface object"""
@@ -109,7 +108,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
             timeout_seconds=timeout_seconds,
         )
 
-        self._table = orm_table
+        self._table = self.sampler.raw_dataset
         self.create_session()
         self.system_metrics_computer = self.initialize_system_metrics_computer()
 
@@ -157,7 +156,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
             )
             return dict(row)
         except Exception as exc:
-            msg = f"Error trying to compute profile for {runner.table.__tablename__}.{column.name}: {exc}"
+            msg = f"Error trying to compute profile for {runner.table.name}.{column.name}: {exc}"
             handle_query_exception(msg, exc, session)
         return None
 
@@ -195,7 +194,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(
-                f"Error trying to compute profile for {runner.table.__tablename__}: {exc}"  # type: ignore
+                f"Error trying to compute profile for {runner.table.name}: {exc}"  # type: ignore
             )
             session.rollback()
             raise RuntimeError(exc)
@@ -232,7 +231,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
                 runner, column, exc, session, metrics
             )
         except Exception as exc:
-            msg = f"Error trying to compute profile for {runner.table.__tablename__}.{column.name}: {exc}"
+            msg = f"Error trying to compute profile for {runner.table.name}.{column.name}: {exc}"
             handle_query_exception(msg, exc, session)
         return None
 
@@ -275,10 +274,10 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
                 runner._session.get_bind().dialect.name
                 != Dialects.Druid
             ):
-                msg = f"Error trying to compute profile for {runner.table.__tablename__}.{column.name}: {exc}"
+                msg = f"Error trying to compute profile for {runner.table.name}.{column.name}: {exc}"
                 handle_query_exception(msg, exc, session)
         except Exception as exc:
-            msg = f"Error trying to compute profile for {runner.table.__tablename__}.{column.name}: {exc}"
+            msg = f"Error trying to compute profile for {runner.table.name}.{column.name}: {exc}"
             handle_query_exception(msg, exc, session)
         return None
 
@@ -311,10 +310,10 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
                 return dict(row)
         except ProgrammingError as exc:
             logger.info(
-                f"Skipping metrics for {runner.table.__tablename__}.{column.name} due to {exc}"
+                f"Skipping metrics for {runner.table.name}.{column.name} due to {exc}"
             )
         except Exception as exc:
-            msg = f"Error trying to compute profile for {runner.table.__tablename__}.{column.name}: {exc}"
+            msg = f"Error trying to compute profile for {runner.table.name}.{column.name}: {exc}"
             handle_query_exception(msg, exc, session)
         return None
 
@@ -348,7 +347,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
                 )
 
             except Exception as exc:
-                msg = f"Error trying to compute profile for {runner.table.__tablename__}.{metric.columnName}: {exc}"
+                msg = f"Error trying to compute profile for {runner.table.name}.{metric.columnName}: {exc}"
                 logger.debug(traceback.format_exc())
                 logger.warning(msg)
         if custom_metrics:
@@ -372,26 +371,20 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
         Returns:
             dictionnary of results
         """
-        logger.debug(f"Computing system metrics for {runner.table.__tablename__}")
+        logger.debug(f"Computing system metrics for {runner.table.name}")
         return self.system_metrics_computer.get_system_metrics(table=runner.table)
 
-    def _create_thread_safe_runner(
-        self,
-        session,
-        table,
-        sample,
-    ):
+    def _create_thread_safe_runner(self, session, column=None):
         """Create thread safe runner"""
         if not hasattr(thread_local, "runner"):
             thread_local.runner = QueryRunner(
                 session=session,
-                table=table,
-                sample=sample,
+                dataset=self.sampler.get_dataset(column=column),
                 partition_details=self.sampler.partition_details,
                 profile_sample_query=self.sampler.sample_query,
             )
             return thread_local.runner
-        thread_local.runner._sample = sample  # pylint: disable=protected-access
+        thread_local.runner.dataset = self.sampler.get_dataset(column=column)
         return thread_local.runner
 
     def compute_metrics_in_thread(
@@ -406,12 +399,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
         with Session() as session:
             self.set_session_tag(session)
             self.set_catalog(session)
-            sample = self.sampler.random_sample(metric_func.column)
-            runner = self._create_thread_safe_runner(
-                session,
-                metric_func.table,
-                sample,
-            )
+            runner = self._create_thread_safe_runner(session, metric_func.column)
             row = None
             try:
                 row = self._get_metric_fn[metric_func.metric_type.value](
@@ -419,7 +407,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
                     runner=runner,
                     session=session,
                     column=metric_func.column,
-                    sample=sample,
+                    sample=runner.dataset,
                 )
                 if isinstance(row, dict):
                     row = self._validate_nulls(row)
@@ -536,7 +524,6 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
         column: Column,
         metric: Type[HybridMetric],
         column_results: Dict[str, Any],
-        **kwargs,
     ):
         """Given a list of metrics, compute the given results
         and returns the values
@@ -548,9 +535,9 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
         Returns:
             dictionnary of results
         """
-        sample = self.sampler.random_sample(column)
+        dataset = self.sampler.get_dataset(column=column)
         try:
-            return metric(column).fn(sample, column_results, self.session)
+            return metric(column).fn(dataset, column_results, self.session)
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Unexpected exception computing metrics: {exc}")

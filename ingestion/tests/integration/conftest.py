@@ -92,6 +92,7 @@ def run_workflow():
         workflow: IngestionWorkflow = workflow_type.create(config)
         workflow.execute()
         if raise_from_status:
+            workflow.print_status()
             workflow.raise_from_status()
         return workflow
 

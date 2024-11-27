@@ -52,7 +52,7 @@ class TableRowInsertedCountToBeBetweenValidator(
         date_or_datetime_fn = dispatch_to_date_or_datetime(
             range_interval,
             text(range_type),
-            get_partition_col_type(column_name.name, self.runner.table.__table__.c),  # type: ignore
+            get_partition_col_type(column_name.name, self.runner.table.c),  # type: ignore
         )
 
         return dict(

@@ -308,7 +308,6 @@ class Profiler(Generic[TMetric]):
                 col,
                 metric,
                 current_col_results,
-                table=self.table,
             )
 
     def _prepare_table_metrics(self) -> List:

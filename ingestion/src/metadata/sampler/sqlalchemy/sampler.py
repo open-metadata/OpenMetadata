@@ -18,28 +18,22 @@ from typing import List, Optional, Union, cast
 from sqlalchemy import Column, inspect, text
 from sqlalchemy.orm import DeclarativeMeta, Query, aliased
 from sqlalchemy.orm.util import AliasedClass
+from sqlalchemy.schema import Table
 from sqlalchemy.sql.sqltypes import Enum
 
 from metadata.generated.schema.entity.data.table import (
-    PartitionIntervalTypes,
     PartitionProfilerConfig,
     ProfileSampleType,
     TableData,
 )
 from metadata.ingestion.connections.session import create_and_bind_thread_safe_session
+from metadata.mixins.sqalchemy.sqa_mixin import SQAInterfaceMixin
 from metadata.profiler.orm.functions.modulo import ModuloFn
 from metadata.profiler.orm.functions.random_num import RandomNumFn
-from metadata.profiler.processor.handle_partition import partition_filter_handler
+from metadata.profiler.processor.handle_partition import build_partition_predicate
 from metadata.sampler.sampler_interface import SamplerInterface
 from metadata.utils.helpers import is_safe_sql_query
 from metadata.utils.logger import profiler_interface_registry_logger
-from metadata.utils.sqa_utils import (
-    build_query_filter,
-    dispatch_to_date_or_datetime,
-    get_integer_range_filter,
-    get_partition_col_type,
-    get_value_filter,
-)
 
 logger = profiler_interface_registry_logger()
 
@@ -62,7 +56,7 @@ def _object_value_for_elem(self, elem):
 Enum._object_value_for_elem = _object_value_for_elem  # pylint: disable=protected-access
 
 
-class SQASampler(SamplerInterface):
+class SQASampler(SamplerInterface, SQAInterfaceMixin):
     """
     Generates a sample of the data to not
     run the query in the whole table.
@@ -70,16 +64,25 @@ class SQASampler(SamplerInterface):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._table = kwargs["orm_table"]
+        self._table = self.build_table_orm(
+            self.entity, self.service_connection_config, self.ometa_client
+        )
 
     @property
-    def table(self):
+    def raw_dataset(self):
         return self._table
 
     def get_client(self):
         """Build the SQA Client"""
         session_factory = create_and_bind_thread_safe_session(self.connection)
         return session_factory()
+
+    def set_tablesample(self, selectable: Table):
+        """Set the tablesample for the table. To be implemented by the child SQA sampler class
+        Args:
+            selectable (Table): a selectable table
+        """
+        return selectable
 
     def _base_sample_query(self, column: Optional[Column], label=None):
         """Base query for sampling
@@ -91,25 +94,31 @@ class SQASampler(SamplerInterface):
         Returns:
         """
         # only sample the column if we are computing a column metric to limit the amount of data scaned
-        entity = self.table if column is None else column
-        if label is not None:
-            return self.client.query(entity, label)
-        return self.client.query(entity)
+        selectable = self.set_tablesample(self.raw_dataset.__table__)
 
-    @partition_filter_handler(build_sample=True)
+        entity = selectable if column is None else selectable.c.get(column.key)
+        if label is not None:
+            query = self.client.query(entity, label)
+        else:
+            query = self.client.query(entity)
+
+        if self.partition_details:
+            query = self.get_partitioned_query(query)
+        return query
+
     def get_sample_query(self, *, column=None) -> Query:
         """get query for sample data"""
         if self.sample_config.profile_sample_type == ProfileSampleType.PERCENTAGE:
             rnd = self._base_sample_query(
                 column,
                 (ModuloFn(RandomNumFn(), 100)).label(RANDOM_LABEL),
-            ).cte(f"{self.table.__tablename__}_rnd")
+            ).cte(f"{self.raw_dataset.__tablename__}_rnd")
             session_query = self.client.query(rnd)
             return session_query.where(
                 rnd.c.random <= self.sample_config.profile_sample
-            ).cte(f"{self.table.__tablename__}_sample")
+            ).cte(f"{self.raw_dataset.__tablename__}_sample")
 
-        table_query = self.client.query(self.table)
+        table_query = self.client.query(self.raw_dataset)
         session_query = self._base_sample_query(
             column,
             (ModuloFn(RandomNumFn(), table_query.count())).label(RANDOM_LABEL),
@@ -117,10 +126,10 @@ class SQASampler(SamplerInterface):
         return (
             session_query.order_by(RANDOM_LABEL)
             .limit(self.sample_config.profile_sample)
-            .cte(f"{self.table.__tablename__}_rnd")
+            .cte(f"{self.raw_dataset.__tablename__}_rnd")
         )
 
-    def random_sample(self, ccolumn=None, **__) -> Union[DeclarativeMeta, AliasedClass]:
+    def get_dataset(self, column=None, **__) -> Union[DeclarativeMeta, AliasedClass]:
         """
         Either return a sampled CTE of table, or
         the full table if no sampling is required.
@@ -128,20 +137,18 @@ class SQASampler(SamplerInterface):
         if self.sample_query:
             return self._rdn_sample_from_user_query()
 
-        if (
-            not self.sample_config.profile_sample
-            or int(self.sample_config.profile_sample) == 100
+        if not self.sample_config.profile_sample or (
+            int(self.sample_config.profile_sample) == 100
+            and self.sample_config.profile_sample_type == ProfileSampleType.PERCENTAGE
         ):
             if self.partition_details:
                 return self._partitioned_table()
 
-            return self.table
+            return self.raw_dataset
 
-        # Add new RandomNumFn column
-        sampled = self.get_sample_query(column=ccolumn)
+        sampled = self.get_sample_query(column=column)
 
-        # Assign as an alias
-        return aliased(self.table, sampled)
+        return aliased(self.raw_dataset, sampled)
 
     def fetch_sample_data(self, columns: Optional[List[Column]] = None) -> TableData:
         """
@@ -160,8 +167,8 @@ class SQASampler(SamplerInterface):
         if not columns:
             sqa_columns = [col for col in inspect(rnd).c if col.name != RANDOM_LABEL]
         else:
-            # we can't directly use columns as it is bound to self.table and not the rnd table.
-            # If we use it, it will result in a cross join between self.table and rnd table
+            # we can't directly use columns as it is bound to self.raw_dataset and not the rnd table.
+            # If we use it, it will result in a cross join between self.raw_dataset and rnd table
             names = [col.name for col in columns]
             sqa_columns = [
                 col
@@ -181,9 +188,12 @@ class SQASampler(SamplerInterface):
                 "Cannot fetch sample data with random sampling. Falling back to 100 rows."
             )
             logger.debug(traceback.format_exc())
-            sqa_columns = list(inspect(self.table).c)
+            sqa_columns = list(inspect(self.raw_dataset).c)
             sqa_sample = (
-                self.client.query(*sqa_columns).select_from(self.table).limit(100).all()
+                self.client.query(*sqa_columns)
+                .select_from(self.raw_dataset)
+                .limit(100)
+                .all()
             )
 
         return TableData(
@@ -211,64 +221,27 @@ class SQASampler(SamplerInterface):
         if not is_safe_sql_query(self.sample_query):
             raise RuntimeError(f"SQL expression is not safe\n\n{self.sample_query}")
 
-        return self.client.query(self.table).from_statement(
+        return self.client.query(self.raw_dataset).from_statement(
             text(f"{self.sample_query}")
         )
 
     def _partitioned_table(self) -> Query:
         """Return the Query object for partitioned tables"""
-        return aliased(self.get_partitioned_query().subquery())
+        return aliased(self.raw_dataset, self.get_partitioned_query().subquery())
 
-    def get_partitioned_query(self) -> Query:
+    def get_partitioned_query(self, query=None) -> Query:
         """Return the partitioned query"""
         self.partition_details = cast(
             PartitionProfilerConfig, self.partition_details
         )  # satisfying type checker
-        partition_field = self.partition_details.partitionColumnName
-
-        type_ = get_partition_col_type(
-            partition_field,
-            self.table.__table__.c,
+        partition_filter = build_partition_predicate(
+            self.partition_details,
+            self.raw_dataset.__table__.c,
         )
-
-        if (
-            self.partition_details.partitionIntervalType
-            == PartitionIntervalTypes.COLUMN_VALUE
-        ):
-            return self.client.query(self.table).filter(
-                get_value_filter(
-                    Column(partition_field),
-                    self.partition_details.partitionValues,
-                )
-            )
-        if (
-            self.partition_details.partitionIntervalType
-            == PartitionIntervalTypes.INTEGER_RANGE
-        ):
-            return self.client.query(self.table).filter(
-                get_integer_range_filter(
-                    Column(partition_field),
-                    self.partition_details.partitionIntegerRangeStart,
-                    self.partition_details.partitionIntegerRangeEnd,
-                )
-            )
-        return self.client.query(self.table).filter(
-            build_query_filter(
-                [
-                    (
-                        Column(partition_field),
-                        "ge",
-                        dispatch_to_date_or_datetime(
-                            self.partition_details.partitionInterval,
-                            text(self.partition_details.partitionIntervalUnit.value),
-                            type_,
-                        ),
-                    )
-                ],
-                False,
-            )
-        )
+        if query is not None:
+            return query.filter(partition_filter)
+        return self.client.query(self.raw_dataset).filter(partition_filter)
 
     def get_columns(self):
         """get columns from entity"""
-        return list(inspect(self.table).c)
+        return list(inspect(self.raw_dataset).c)

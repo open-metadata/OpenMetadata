@@ -180,7 +180,7 @@ class SamplerInterface(ABC):
 
     @property
     @abstractmethod
-    def table(self):
+    def raw_dataset(self):
         """Table object to run the sampling"""
         raise NotImplementedError
 
@@ -200,7 +200,7 @@ class SamplerInterface(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def random_sample(self, **kwargs):
+    def get_dataset(self, **kwargs):
         """Get random sample"""
         raise NotImplementedError
 

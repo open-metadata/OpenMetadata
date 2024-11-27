@@ -157,9 +157,7 @@ class NoSQLProfilerInterface(ProfilerInterface):
     ):
         return None
 
-    def get_hybrid_metrics(
-        self, column: Column, metric: Metrics, column_results: Dict, **kwargs
-    ):
+    def get_hybrid_metrics(self, column: Column, metric: Metrics, column_results: Dict):
         return None
 
     def get_all_metrics(

@@ -54,17 +54,14 @@ class PandasTestSuiteInterface(TestSuiteInterface, PandasInterfaceMixin):
         )
 
         (
-            self.table_sample_query,
-            self.table_sample_config,
-            self.table_partition_config,
+            self.sample_query,
+            self.profile_sample_config,
+            self.partition_details,
         ) = self._get_table_config()
 
-        # add partition logic to test suite
-        self.dfs = self.sampler.table
-        if self.dfs and self.table_partition_config:
-            self.dfs = self.get_partitioned_df(self.dfs)
+        self.dataset = self.sampler.get_dataset()
 
     def _get_validator_builder(
         self, test_case: TestCase, entity_type: str
     ) -> IValidatorBuilder:
-        return PandasValidatorBuilder(self.dfs, test_case, entity_type)
+        return PandasValidatorBuilder(self.dataset, test_case, entity_type)

@@ -13,9 +13,9 @@ Helper module to handle data sampling
 for the profiler
 """
 
-from typing import Dict, Optional, Union, cast
+from typing import Dict, Optional, Union
 
-from sqlalchemy import Table
+from sqlalchemy import Table, func, text
 from sqlalchemy.sql.selectable import CTE
 
 from metadata.generated.schema.entity.data.table import (
@@ -30,7 +30,6 @@ from metadata.generated.schema.entity.services.connections.database.datalakeConn
 )
 from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.profiler.processor.handle_partition import partition_filter_handler
 from metadata.sampler.models import SampleConfig
 from metadata.sampler.sqlalchemy.sampler import SQASampler
 from metadata.utils.constants import SAMPLE_DATA_DEFAULT_COUNT
@@ -66,33 +65,31 @@ class SnowflakeSampler(SQASampler):
             sample_data_count=sample_data_count,
             **kwargs,
         )
-        self.sampling_method_type = SamplingMethodType.BERNOULLI
-        if sample_config and sample_config.sampling_method_type:
-            self.sampling_method_type = sample_config.sampling_method_type
+        self.sampling_method_type = func.bernoulli
+        if (
+            sample_config
+            and sample_config.sampling_method_type == SamplingMethodType.SYSTEM
+        ):
+            self.sampling_method_type = func.system
 
-    @partition_filter_handler(build_sample=True)
+    def set_tablesample(self, selectable: Table):
+        """Set the TABLESAMPLE clause for Snowflake
+        Args:
+            selectable (Table): _description_
+        """
+        if self.sample_config.profile_sample_type == ProfileSampleType.PERCENTAGE:
+            return selectable.tablesample(
+                self.sampling_method_type(self.sample_config.profile_sample or 100)
+            )
+
+        return selectable.tablesample(
+            func.ROW(text(f"{self.sample_config.profile_sample or 100} ROWS"))
+        )
+
     def get_sample_query(self, *, column=None) -> CTE:
         """get query for sample data"""
-        # TABLESAMPLE SYSTEM is not supported for views
-        self._table = cast(Table, self.table)
-
-        if self.sample_config.profile_sample_type == ProfileSampleType.PERCENTAGE:
-            rnd = (
-                self._base_sample_query(
-                    column,
-                )
-                .suffix_with(
-                    f"SAMPLE {self.sampling_method_type.value} ({self.sample_config.profile_sample or 100})",
-                )
-                .cte(f"{self.table.__tablename__}_rnd")
-            )
-            session_query = self.client.query(rnd)
-            return session_query.cte(f"{self.table.__tablename__}_sample")
-
-        return (
-            self._base_sample_query(column)
-            .suffix_with(
-                f"TABLESAMPLE ({self.sample_config.profile_sample or 100} ROWS)",
-            )
-            .cte(f"{self.table.__tablename__}_sample")
+        rnd = self._base_sample_query(column).cte(
+            f"{self.raw_dataset.__tablename__}_rnd"
         )
+        query = self.client.query(rnd)
+        return query.cte(f"{self.raw_dataset.__tablename__}_sample")

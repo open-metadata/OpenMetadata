@@ -245,6 +245,6 @@ def test_sample_where_clauses(config, expected):
         config.table_profile_config
         and config.table_profile_config.profileSampleType == ProfileSampleType.ROWS
     ):
-        validator.get_row_count = Mock(return_value=10_000)
+        validator.get_total_row_count = Mock(return_value=10_000)
     with patch("random.choices", Mock(return_value=["a"])):
         assert validator.sample_where_clause() == expected

@@ -127,7 +127,7 @@ class MetricsTest(TestCase):
     )
     def setUp(self, *_):
         with (
-            patch.object(DatalakeSampler, "table", new_callable=lambda: self.dfs),
+            patch.object(DatalakeSampler, "raw_dataset", new_callable=lambda: self.dfs),
             patch.object(DatalakeSampler, "get_client", return_value=Mock()),
         ):
             self.sampler = DatalakeSampler(
@@ -202,7 +202,7 @@ class MetricsTest(TestCase):
         )
 
         with (
-            patch.object(DatalakeSampler, "table", new_callable=lambda: self.dfs),
+            patch.object(DatalakeSampler, "raw_dataset", new_callable=lambda: self.dfs),
             patch.object(DatalakeSampler, "get_client", return_value=Mock()),
         ):
             sampler = DatalakeSampler(
@@ -264,7 +264,7 @@ class MetricsTest(TestCase):
             ],
         )
         with (
-            patch.object(DatalakeSampler, "table", new_callable=lambda: self.dfs),
+            patch.object(DatalakeSampler, "raw_dataset", new_callable=lambda: self.dfs),
             patch.object(DatalakeSampler, "get_client", return_value=Mock()),
         ):
             sampler = DatalakeSampler(
