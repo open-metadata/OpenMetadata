@@ -120,7 +120,6 @@
     "react-quill-new": "^3.3.2",
     "react-reflex": "^4.0.12",
     "react-router-dom": "^5.2.0",
-    "react-toastify": "^8.2.0",
     "reactflow": "^11.10.2",
     "reactjs-localstorage": "^1.0.1",
     "recharts": "2.10.3",
@@ -245,6 +244,7 @@
     "path-to-regexp": "1.9.0",
     "terser-webpack-plugin": "5.1.1",
     "cookie": "0.7.0",
-    "jsonpath-plus": "10.0.7"
+    "jsonpath-plus": "10.0.7",
+    "cross-spawn": "7.0.5"
   }
 }

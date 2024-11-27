@@ -156,6 +156,7 @@ class ProfilerSource(ProfilerSourceInterface):
             ),
             default_sample_data_count=self.source_config.sampleDataCount,
         )
+
         profiler_interface: ProfilerInterface = profiler_class.create(
             entity=entity,
             source_config=self.source_config,

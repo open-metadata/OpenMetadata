@@ -78,6 +78,7 @@ class RunnerTest(TestCase):
 
         with (
             patch.object(SQASampler, "get_client", return_value=cls.session),
+            patch.object(SQASampler, "build_table_orm", return_value=User),
             mock.patch(
                 "metadata.sampler.sampler_interface.get_ssl_connection",
                 return_value=Mock(),
@@ -91,9 +92,9 @@ class RunnerTest(TestCase):
                 entity=None,
                 sample_config=SampleConfig(profile_sample=50.0),
             )
-            cls.sample = sampler.random_sample()
+            cls.dataset = sampler.get_dataset()
 
-        cls.raw_runner = QueryRunner(session=cls.session, table=User, sample=cls.sample)
+        cls.raw_runner = QueryRunner(session=cls.session, dataset=cls.dataset)
         cls.timeout_runner: Timer = cls_timeout(1)(Timer())
 
         # Insert 30 rows
@@ -154,7 +155,7 @@ class RunnerTest(TestCase):
         res = self.raw_runner.select_first_from_query(query)
         assert res[0] == 30
 
-        query = self.session.query(func.count()).select_from(self.sample)
+        query = self.session.query(func.count()).select_from(self.dataset)
         res = self.raw_runner.select_first_from_query(query)
         assert res[0] < 30
 
@@ -162,7 +163,7 @@ class RunnerTest(TestCase):
         res = self.raw_runner.select_all_from_query(query)
         assert len(res) == 30
 
-        query = self.session.query(func.count()).select_from(self.sample)
+        query = self.session.query(func.count()).select_from(self.dataset)
         res = self.raw_runner.select_all_from_query(query)
         assert len(res) < 30
 

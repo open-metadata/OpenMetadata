@@ -16,6 +16,7 @@ import os
 from concurrent.futures import TimeoutError
 from datetime import datetime
 from unittest import TestCase
+from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
@@ -107,13 +108,13 @@ class ProfilerTest(TestCase):
             ),
         ],
     )
-    sampler = SQASampler.__new__(SQASampler)
-    sampler.build_table_orm = lambda *args, **kwargs: User
-    sampler.__init__(
-        service_connection_config=sqlite_conn,
-        ometa_client=None,
-        entity=table_entity,
-    )
+
+    with patch.object(SQASampler, "build_table_orm", return_value=User):
+        sampler = SQASampler(
+            service_connection_config=sqlite_conn,
+            ometa_client=None,
+            entity=table_entity,
+        )
 
     sqa_profiler_interface = SQAProfilerInterface(
         sqlite_conn, None, table_entity, None, sampler, 5, 43200

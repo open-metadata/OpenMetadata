@@ -60,7 +60,6 @@ class SQATestSuiteInterface(SQAInterfaceMixin, TestSuiteInterface):
         )
         self.source_type = SourceType.SQL
         self.create_session()
-        self._table = sampler.table
 
         (
             self.table_sample_query,
@@ -76,7 +75,7 @@ class SQATestSuiteInterface(SQAInterfaceMixin, TestSuiteInterface):
         )
 
     @property
-    def sample(self) -> Union[DeclarativeMeta, AliasedClass]:
+    def dataset(self) -> Union[DeclarativeMeta, AliasedClass]:
         """_summary_
 
         Returns:
@@ -87,7 +86,7 @@ class SQATestSuiteInterface(SQAInterfaceMixin, TestSuiteInterface):
                 "You must create a sampler first `<instance>.create_sampler(...)`."
             )
 
-        return self.sampler.random_sample()
+        return self.sampler.get_dataset()
 
     @property
     def runner(self) -> QueryRunner:
@@ -98,23 +97,13 @@ class SQATestSuiteInterface(SQAInterfaceMixin, TestSuiteInterface):
         """
         return self._runner
 
-    @property
-    def table(self):
-        """getter method for the table object
-
-        Returns:
-            Table: table object
-        """
-        return self._table
-
-    def _create_runner(self) -> None:
+    def _create_runner(self) -> QueryRunner:
         """Create a QueryRunner Instance"""
 
         return cls_timeout(TEN_MIN)(
             QueryRunner(
                 session=self.session,
-                table=self.table,
-                sample=self.sample,
+                dataset=self.dataset,
                 partition_details=self.table_partition_config,
                 profile_sample_query=self.table_sample_query,
             )
