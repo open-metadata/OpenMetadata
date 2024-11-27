@@ -55,7 +55,7 @@ const DisplayName: React.FC<DisplayNameProps> = ({
   };
 
   return (
-    <div className="d-inline-flex flex-column hover-icon-group w-max-90">
+    <div className="flex-column hover-icon-group w-max-full">
       <Typography.Text
         className="m-b-0 d-block text-grey-muted break-word"
         data-testid="column-name">
@@ -80,16 +80,11 @@ const DisplayName: React.FC<DisplayNameProps> = ({
       {allowRename ? (
         <Tooltip placement="right" title={t('label.edit')}>
           <Button
+            ghost
             className="hover-cell-icon"
             data-testid="edit-displayName-button"
-            icon={
-              <IconEdit style={{ color: DE_ACTIVE_COLOR, ...ICON_DIMENSION }} />
-            }
-            style={{
-              padding: '0',
-              border: 'none',
-              background: 'transparent',
-            }}
+            icon={<IconEdit color={DE_ACTIVE_COLOR} {...ICON_DIMENSION} />}
+            type="text"
             onClick={() => setIsDisplayNameEditing(true)}
           />
         </Tooltip>
