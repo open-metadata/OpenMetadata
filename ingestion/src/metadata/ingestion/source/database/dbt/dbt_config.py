@@ -254,6 +254,7 @@ def get_blobs_grouped_by_dir(blobs: List[str]) -> Dict[str, List[str]]:
             blob_grouped_by_directory[subdirectory].append(blob)
     return blob_grouped_by_directory
 
+
 # pylint: disable=too-many-locals, too-many-branches
 def download_dbt_files(
     blob_grouped_by_directory: Dict, config, client, bucket_name: Optional[str]
