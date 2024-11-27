@@ -63,6 +63,10 @@ jest.mock('../../components/common/ResizablePanels/ResizableLeftPanels', () => {
   ));
 });
 
+jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => {
+  return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
+});
+
 jest.mock('react-router-dom', () => {
   return {
     ...jest.requireActual('react-router-dom'),

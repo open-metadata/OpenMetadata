@@ -598,6 +598,9 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     @Override
     public EntityInterface performTask(String user, ResolveTask resolveTask) {
       // TODO: Resolve this outside
+      GlossaryTerm glossaryTerm = (GlossaryTerm) threadContext.getAboutEntity();
+      checkUpdatedByReviewer(glossaryTerm, user);
+
       UUID taskId = threadContext.getThread().getId();
       Map<String, Object> variables = new HashMap<>();
       variables.put(RESULT_VARIABLE, resolveTask.getNewValue().equalsIgnoreCase("approved"));
@@ -607,7 +610,6 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
 
       // TODO: performTask returns the updated Entity and the flow applies the new value.
       // This should be changed with the new Governance Workflows.
-      GlossaryTerm glossaryTerm = (GlossaryTerm) threadContext.getAboutEntity();
       //      glossaryTerm.setStatus(Status.APPROVED);
       return glossaryTerm;
     }
@@ -652,7 +654,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     }
   }
 
-  private void checkUpdatedByReviewer(GlossaryTerm term, String updatedBy) {
+  public static void checkUpdatedByReviewer(GlossaryTerm term, String updatedBy) {
     // Only list of allowed reviewers can change the status from DRAFT to APPROVED
     List<EntityReference> reviewers = term.getReviewers();
     if (!nullOrEmpty(reviewers)) {

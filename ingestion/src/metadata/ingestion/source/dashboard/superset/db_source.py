@@ -201,7 +201,7 @@ class SupersetDBSource(SupersetSourceMixin):
             except Exception as exc:
                 yield Either(
                     left=StackTraceError(
-                        name=chart_json.id,
+                        name=str(chart_json.id),
                         error=f"Error yielding Chart [{chart_json.id} - {chart_json.slice_name}]: {exc}",
                         stackTrace=traceback.format_exc(),
                     )
