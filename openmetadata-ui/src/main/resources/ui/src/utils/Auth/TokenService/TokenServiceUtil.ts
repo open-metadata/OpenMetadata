@@ -10,19 +10,23 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { AxiosError } from 'axios';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { AccessTokenResponse } from '../../../rest/auth-API';
 import { extractDetailsFromToken } from '../../AuthProvider.util';
 import { getOidcToken } from '../../LocalStorageUtils';
 
+type RenewTokenCallback = () =>
+  | Promise<string>
+  | Promise<AccessTokenResponse>
+  | Promise<void>;
+
 class TokenService {
   channel: BroadcastChannel;
-  renewToken: () => Promise<string> | Promise<AccessTokenResponse>;
+  renewToken: RenewTokenCallback;
   tokeUpdateInProgress: boolean;
 
-  constructor(
-    renewToken: () => Promise<string> | Promise<AccessTokenResponse>
-  ) {
+  constructor(renewToken: RenewTokenCallback) {
     this.channel = new BroadcastChannel('auth_channel');
     this.renewToken = renewToken;
     this.channel.onmessage = this.handleTokenUpdate.bind(this);
@@ -50,9 +54,10 @@ class TokenService {
   // Refresh the token if it is expired
   async refreshToken() {
     const token = getOidcToken();
-    const { isExpired } = extractDetailsFromToken(token);
+    const { isExpired, timeoutExpiry } = extractDetailsFromToken(token);
 
-    if (isExpired) {
+    // If token is expired or timeoutExpiry is less than 0 then try to silent signIn
+    if (isExpired || timeoutExpiry <= 0) {
       // Logic to refresh the token
       const newToken = await this.fetchNewToken();
       // To update all the tabs on updating channel token
@@ -66,14 +71,17 @@ class TokenService {
 
   // Call renewal method according to the provider
   async fetchNewToken() {
-    let response: string | AccessTokenResponse | null = null;
+    let response: string | AccessTokenResponse | null | void = null;
     if (typeof this.renewToken === 'function') {
       try {
         this.tokeUpdateInProgress = true;
         response = await this.renewToken();
-        this.tokeUpdateInProgress = false;
       } catch (error) {
-        useApplicationStore.getState().onLogoutHandler();
+        // Silent Frame window timeout error since it doesn't affect refresh token process
+        if ((error as AxiosError).message !== 'Frame window timed out') {
+          // Perform logout for any error
+          useApplicationStore.getState().onLogoutHandler();
+        }
         // Do nothing
       } finally {
         this.tokeUpdateInProgress = false;
