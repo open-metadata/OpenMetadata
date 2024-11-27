@@ -73,9 +73,11 @@ import {
 import { PAGE_SIZE_LARGE } from '../../constants/constants';
 import { OPEN_METADATA } from '../../constants/Services.constant';
 import { AlertRecentEventFilters } from '../../enums/Alerts.enum';
+import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { StatusType } from '../../generated/entity/data/pipeline';
 import { PipelineState } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { User } from '../../generated/entity/teams/user';
 import { CreateEventSubscription } from '../../generated/events/api/createEventSubscription';
 import { EventsRecord } from '../../generated/events/api/eventsRecord';
 import {
@@ -1046,6 +1048,7 @@ export const handleAlertSave = async ({
   updateAlertAPI,
   afterSaveAction,
   setInlineAlertDetails,
+  currentUser,
 }: {
   initialData?: EventSubscription;
   data: ModifiedCreateEventSubscription;
@@ -1056,6 +1059,7 @@ export const handleAlertSave = async ({
   afterSaveAction: (fqn: string) => Promise<void>;
   setInlineAlertDetails: (alertDetails?: InlineAlertProps | undefined) => void;
   fqn?: string;
+  currentUser?: User;
 }) => {
   try {
     const destinations = data.destinations?.map((d) => {
@@ -1110,6 +1114,16 @@ export const handleAlertSave = async ({
         destinations,
         name: alertName,
         displayName: alertDisplayName,
+        ...(currentUser?.id
+          ? {
+              owners: [
+                {
+                  id: currentUser.id,
+                  type: EntityType.USER,
+                },
+              ],
+            }
+          : {}),
       });
     }
 
@@ -1326,18 +1340,21 @@ export const getAlertExtraInfo = (
   return (
     <>
       <ExtraInfoLabel
+        dataTestId="total-events-count"
         label={t('label.total-entity', {
           entity: t('label.event-plural'),
         })}
         value={alertEventCounts?.totalEventsCount ?? 0}
       />
       <ExtraInfoLabel
+        dataTestId="pending-events-count"
         label={t('label.pending-entity', {
           entity: t('label.event-plural'),
         })}
         value={alertEventCounts?.pendingEventsCount ?? 0}
       />
       <ExtraInfoLabel
+        dataTestId="failed-events-count"
         label={t('label.failed-entity', {
           entity: t('label.event-plural'),
         })}

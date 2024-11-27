@@ -74,7 +74,9 @@ This is a sample config for MongoDB:
 
 {% codeInfo srNumber=3 %}
 
-**hostPort**: The hostPort parameter specifies the host and port of the MongoDB. This should be specified as a string in the format `hostname:port`. E.g., `localhost:27017`.
+**hostPort**: When using the `mongodb` connecion schema, the hostPort parameter specifies the host and port of the MongoDB. This should be specified as a string in the format `hostname:port`. E.g., `localhost:27017`. When using the `mongodb+srv` connection schema, the hostPort parameter specifies the host and port of the MongoDB. This should be specified as a string in the format `hostname`. E.g., `cluster0-abcde.mongodb.net`.
+
+Using Atlas? Follow [this guide](https://www.mongodb.com/docs/guides/atlas/connection-string/) to get the connection string.
 
 {% /codeInfo %}
 

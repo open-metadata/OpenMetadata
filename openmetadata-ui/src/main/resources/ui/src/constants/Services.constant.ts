@@ -286,6 +286,8 @@ export const servicesDisplayName: { [key: string]: string } = {
 
 export const DEF_UI_SCHEMA = {
   supportsMetadataExtraction: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  supportsSystemProfile: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  supportsDataDiff: { 'ui:widget': 'hidden', 'ui:hideError': true },
   supportsUsageExtraction: { 'ui:widget': 'hidden', 'ui:hideError': true },
   supportsLineageExtraction: { 'ui:widget': 'hidden', 'ui:hideError': true },
   supportsViewLineageExtraction: {
@@ -321,6 +323,7 @@ export const INGESTION_WORKFLOW_UI_SCHEMA = {
     'databaseFilterPattern',
     'schemaFilterPattern',
     'tableFilterPattern',
+    'classificationFilterPattern',
     'enableDebugLog',
     '*',
   ],
@@ -491,5 +494,6 @@ export const SERVICE_INGESTION_PIPELINE_TYPES = [
   PipelineType.Usage,
   PipelineType.Lineage,
   PipelineType.Profiler,
+  PipelineType.AutoClassification,
   PipelineType.Dbt,
 ];

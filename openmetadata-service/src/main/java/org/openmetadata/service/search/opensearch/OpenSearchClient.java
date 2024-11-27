@@ -691,6 +691,7 @@ public class OpenSearchClient implements SearchClient {
       String index,
       String query,
       String filter,
+      String[] fields,
       SearchSortFilter searchSortFilter,
       int size,
       Object[] searchAfter)
@@ -698,6 +699,9 @@ public class OpenSearchClient implements SearchClient {
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
     if (!nullOrEmpty(query)) {
       searchSourceBuilder = getSearchSourceBuilder(index, query, 0, size);
+    }
+    if (!nullOrEmpty(fields)) {
+      searchSourceBuilder.fetchSource(fields, null);
     }
 
     List<Map<String, Object>> results = new ArrayList<>();

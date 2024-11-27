@@ -16,6 +16,7 @@ import {
   descriptionBox,
   getApiContext,
   redirectToHomePage,
+  toastNotification,
 } from '../../utils/common';
 import { deleteTestCase, visitDataQualityTab } from '../../utils/testCases';
 
@@ -43,7 +44,7 @@ test('Table difference test case', async ({ page }) => {
       table1.entityResponseData?.['fullyQualifiedName']
     )}/tableProfile/latest`
   );
-  await page.getByText('Profiler & Data Quality').click();
+  await page.getByText('Data Observability').click();
   await profileResponse;
   await page.getByRole('menuitem', { name: 'Table Profile' }).click();
 
@@ -56,7 +57,7 @@ test('Table difference test case', async ({ page }) => {
       const tableListSearchResponse = page.waitForResponse(
         `/api/v1/search/query?q=*index=table_search_index*`
       );
-      await page.getByTitle('Compare 2 tables for').click();
+      await page.getByTestId('tableDiff').click();
       await tableListSearchResponse;
       await page.click('#tableTestForm_params_table2');
       const tableSearchResponse = page.waitForResponse(
@@ -133,11 +134,7 @@ test('Table difference test case', async ({ page }) => {
       await page.getByTitle('name', { exact: true }).click();
       await page.getByRole('button', { name: 'Submit' }).click();
 
-      await expect(page.getByRole('alert')).toContainText(
-        'Test case updated successfully.'
-      );
-
-      await page.getByLabel('close', { exact: true }).click();
+      await toastNotification(page, 'Test case updated successfully.');
     });
 
     await test.step('Delete', async () => {
@@ -170,7 +167,7 @@ test('Custom SQL Query', async ({ page }) => {
       table.entityResponseData?.['fullyQualifiedName']
     )}/tableProfile/latest`
   );
-  await page.getByText('Profiler & Data Quality').click();
+  await page.getByText('Data Observability').click();
   await profileResponse;
   await page.getByRole('menuitem', { name: 'Table Profile' }).click();
 
@@ -180,7 +177,7 @@ test('Custom SQL Query', async ({ page }) => {
       await page.getByTestId('test-case').click();
       await page.getByTestId('test-case-name').fill(testCase.name);
       await page.getByTestId('test-type').click();
-      await page.getByTitle('Custom SQL Query').click();
+      await page.getByTestId('tableCustomSQLQuery').click();
       await page.click('#tableTestForm_params_strategy');
       await page.locator('.CodeMirror-scroll').click();
       await page
@@ -233,11 +230,7 @@ test('Custom SQL Query', async ({ page }) => {
       await page.getByPlaceholder('Enter a Threshold').fill('244');
       await page.getByRole('button', { name: 'Submit' }).click();
 
-      await expect(page.getByRole('alert')).toContainText(
-        'Test case updated successfully.'
-      );
-
-      await page.getByLabel('close', { exact: true }).click();
+      await toastNotification(page, 'Test case updated successfully.');
     });
 
     await test.step('Delete', async () => {
@@ -289,7 +282,7 @@ test('Column Values To Be Not Null', async ({ page }) => {
         NEW_COLUMN_TEST_CASE_WITH_NULL_TYPE.type
       );
       await page.click(
-        `[title="${NEW_COLUMN_TEST_CASE_WITH_NULL_TYPE.label}"]`
+        `[data-testid="${NEW_COLUMN_TEST_CASE_WITH_NULL_TYPE.type}"]`
       );
       await page.fill(
         descriptionBox,
@@ -334,11 +327,7 @@ test('Column Values To Be Not Null', async ({ page }) => {
       await page.keyboard.type(' update');
       await page.getByRole('button', { name: 'Submit' }).click();
 
-      await expect(page.getByRole('alert')).toContainText(
-        'Test case updated successfully.'
-      );
-
-      await page.getByLabel('close', { exact: true }).click();
+      await toastNotification(page, 'Test case updated successfully.');
     });
 
     await test.step('Delete', async () => {

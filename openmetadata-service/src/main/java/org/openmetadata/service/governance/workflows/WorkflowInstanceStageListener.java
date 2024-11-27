@@ -16,17 +16,25 @@ import org.openmetadata.service.jdbi3.WorkflowInstanceStateRepository;
 public class WorkflowInstanceStageListener implements JavaDelegate {
   @Override
   public void execute(DelegateExecution execution) {
-    WorkflowInstanceStateRepository workflowInstanceStateRepository =
-        (WorkflowInstanceStateRepository)
-            Entity.getEntityTimeSeriesRepository(Entity.WORKFLOW_INSTANCE_STATE);
+    try {
+      WorkflowInstanceStateRepository workflowInstanceStateRepository =
+          (WorkflowInstanceStateRepository)
+              Entity.getEntityTimeSeriesRepository(Entity.WORKFLOW_INSTANCE_STATE);
 
-    switch (execution.getEventName()) {
-      case "start" -> addNewStage(execution, workflowInstanceStateRepository);
-      case "end" -> updateStage(execution, workflowInstanceStateRepository);
-      default -> LOG.debug(
+      switch (execution.getEventName()) {
+        case "start" -> addNewStage(execution, workflowInstanceStateRepository);
+        case "end" -> updateStage(execution, workflowInstanceStateRepository);
+        default -> LOG.debug(
+            String.format(
+                "WorkflowStageUpdaterListener does not support listening for the event: '%s'",
+                execution.getEventName()));
+      }
+    } catch (Exception exc) {
+      LOG.error(
           String.format(
-              "WorkflowStageUpdaterListener does not support listening for the event: '%s'",
-              execution.getEventName()));
+              "[%s] Failed due to: %s ",
+              getProcessDefinitionKeyFromId(execution.getProcessDefinitionId()), exc.getMessage()),
+          exc);
     }
   }
 
