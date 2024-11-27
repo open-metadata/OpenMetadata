@@ -158,7 +158,7 @@ test.describe('Teams Page', () => {
         )
       ).toHaveClass(/active/);
 
-      const updateTeamResponse = page.waitForResponse('/api/v1/teams/*');
+      const updateTeamResponse = page.waitForResponse('/api/v1/users*');
 
       // Update the team with the new user
       await page.locator('[data-testid="selectable-list-update-btn"]').click();
@@ -188,7 +188,7 @@ test.describe('Teams Page', () => {
         )
         .click();
 
-      const updateTeamResponse = page.waitForResponse('/api/v1/teams/*');
+      const updateTeamResponse = page.waitForResponse('/api/v1/users*');
       await page.locator('[data-testid="selectable-list-update-btn"]').click();
       await updateTeamResponse;
 
@@ -561,5 +561,78 @@ test.describe('Teams Page', () => {
       await team4.delete(apiContext);
       await afterAction();
     }
+  });
+
+  test('Delete a user from the table', async ({ page }) => {
+    const { apiContext, afterAction } = await getApiContext(page);
+    const id = uuid();
+
+    const table1 = new TableClass();
+
+    const team1 = new TeamClass({
+      name: `pw%percent-${id}`,
+      displayName: `pw team percent ${id}`,
+      description: 'playwright team with percent description',
+      teamType: 'Group',
+    });
+
+    await table1.create(apiContext);
+    await team1.create(apiContext);
+
+    await addTeamOwnerToEntity(page, table1, team1);
+    await verifyAssetsInTeamsPage(page, table1, team1, 1);
+
+    // Navigate to users tab and add new user
+    await page.locator('[data-testid="users"]').click();
+
+    const fetchUsersResponse = page.waitForResponse(
+      '/api/v1/users?limit=25&isBot=false'
+    );
+    await page.locator('[data-testid="add-new-user"]').click();
+    await fetchUsersResponse;
+
+    // Search and select the user
+    await page
+      .locator('[data-testid="selectable-list"] [data-testid="searchbar"]')
+      .fill(user.getUserName());
+
+    await page
+      .locator(
+        `[data-testid="selectable-list"] [title="${user.getUserName()}"]`
+      )
+      .click();
+
+    await expect(
+      page.locator(
+        `[data-testid="selectable-list"] [title="${user.getUserName()}"]`
+      )
+    ).toHaveClass(/active/);
+
+    const updateTeamResponse = page.waitForResponse('/api/v1/users*');
+
+    // Update the team with the new user
+    await page.locator('[data-testid="selectable-list-update-btn"]').click();
+    await updateTeamResponse;
+
+    // Verify the user is added to the team
+    await expect(
+      page.locator(`[data-row-key="${userName.toLowerCase()}"]`)
+    ).toBeVisible();
+
+    await page
+      .locator(`[data-row-key="${userName.toLowerCase()}"]`)
+      .getByTestId('remove-user-btn')
+      .click();
+
+    const updatedTeamResponse = page.waitForResponse('api/v1/users*');
+
+    await page.getByRole('button', { name: 'confirm' }).click();
+    await updatedTeamResponse;
+
+    await expect(
+      page.locator(`[data-row-key="${userName.toLowerCase()}"]`)
+    ).not.toBeVisible();
+
+    await afterAction();
   });
 });

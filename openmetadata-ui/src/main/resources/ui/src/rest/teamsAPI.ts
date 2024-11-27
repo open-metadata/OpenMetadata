@@ -17,6 +17,7 @@ import { PagingResponse, RestoreRequestType } from 'Models';
 import { CSVImportAsyncResponse } from '../components/BulkImport/BulkEntityImport.interface';
 import { CSVExportResponse } from '../components/Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
 import { CreateTeam } from '../generated/api/teams/createTeam';
+import { EntityReference } from '../generated/entity/data/table';
 import { Team } from '../generated/entity/teams/team';
 import { TeamHierarchy } from '../generated/entity/teams/teamHierarchy';
 import { ListParams } from '../interface/API.interface';
@@ -69,6 +70,26 @@ export const createTeam = async (data: CreateTeam) => {
 export const patchTeamDetail = async (id: string, data: Operation[]) => {
   const response = await APIClient.patch<Operation[], AxiosResponse<Team>>(
     `/teams/${id}`,
+    data
+  );
+
+  return response.data;
+};
+
+export const deleteUserFromTeam = async (teamId: string, userId: string) => {
+  const response = await APIClient.delete<Operation[], AxiosResponse<Team>>(
+    `/teams/${teamId}/users/${userId}`
+  );
+
+  return response.data;
+};
+
+export const updateUsersFromTeam = async (
+  id: string,
+  data: EntityReference[]
+) => {
+  const response = await APIClient.put<Operation[], AxiosResponse<Team>>(
+    `/teams/${id}/users`,
     data
   );
 
