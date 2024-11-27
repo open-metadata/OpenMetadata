@@ -261,7 +261,7 @@ def download_dbt_files(
     """
     Method to download the files from sources
     """
-    for (  # pylint: disable=too-many-nested-blocks
+    for (  # pylint: disable=too-many-nested-blocks, too-many-locals, too-many-branches
         key,
         blobs,
     ) in blob_grouped_by_directory.items():

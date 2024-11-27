@@ -359,7 +359,7 @@ class DbtSource(DbtServiceSource):
             key, manifest_node, manifest_entities, dbt_objects
         )
 
-    # pylint: disable=too-many-locals, too-many-branches
+    # pylint: disable=too-many-locals, too-many-branches, too-many-statements
     def yield_data_models(
         self, dbt_objects: DbtObjects
     ) -> Iterable[Either[DataModelLink]]:
