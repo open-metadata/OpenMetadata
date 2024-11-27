@@ -115,6 +115,7 @@
     "authentication-uri": "Authentifizierungs-URI",
     "authority": "Behörde",
     "authorize-app": "Authorize {{app}}",
+    "auto-classification": "Automatische Klassifizierung",
     "auto-pii-confidence-score": "Auto PII-Vertrauensscore",
     "auto-tag-pii-uppercase": "Auto PII-Tag",
     "automatically-generate": "Automatisch generieren",
