@@ -23,7 +23,7 @@ import {
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { cloneDeep, isEmpty } from 'lodash';
+import { cloneDeep, isEmpty, startsWith } from 'lodash';
 import React, {
   useCallback,
   useEffect,
@@ -172,6 +172,11 @@ const TagPage = () => {
       editTagsPermission ||
       !isEmpty(editEntitiesTagPermission.entitiesHavingPermission),
     [editTagsPermission, editEntitiesTagPermission.entitiesHavingPermission]
+  );
+
+  const isCertificationClassification = useMemo(
+    () => startsWith(tagFqn, 'Certification.'),
+    []
   );
 
   const fetchCurrentTagPermission = async () => {
@@ -492,8 +497,12 @@ const TagPage = () => {
                   isSummaryPanelOpen={Boolean(previewAsset)}
                   permissions={
                     {
-                      Create: haveAssetEditPermission,
-                      EditAll: haveAssetEditPermission,
+                      Create:
+                        haveAssetEditPermission &&
+                        !isCertificationClassification,
+                      EditAll:
+                        haveAssetEditPermission &&
+                        !isCertificationClassification,
                     } as OperationPermission
                   }
                   ref={assetTabRef}
@@ -612,14 +621,16 @@ const TagPage = () => {
             {haveAssetEditPermission && (
               <Col className="p-x-md">
                 <div className="d-flex self-end">
-                  <Button
-                    data-testid="data-classification-add-button"
-                    type="primary"
-                    onClick={() => setAssetModalVisible(true)}>
-                    {t('label.add-entity', {
-                      entity: t('label.asset-plural'),
-                    })}
-                  </Button>
+                  {!isCertificationClassification && (
+                    <Button
+                      data-testid="data-classification-add-button"
+                      type="primary"
+                      onClick={() => setAssetModalVisible(true)}>
+                      {t('label.add-entity', {
+                        entity: t('label.asset-plural'),
+                      })}
+                    </Button>
+                  )}
                   {manageButtonContent.length > 0 && (
                     <Dropdown
                       align={{ targetOffset: [-12, 0] }}

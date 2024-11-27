@@ -25,6 +25,7 @@ import {
   LIMITED_USER_RULES,
   removeAssetsFromTag,
   setupAssetsForTag,
+  verifyCertificationTagPageUI,
   verifyTagPageUI,
 } from '../../utils/tag';
 
@@ -102,6 +103,12 @@ test.describe('Tag Page with Admin Roles', () => {
 
   test('Verify Tag UI', async ({ adminPage }) => {
     await verifyTagPageUI(adminPage, classification.data.name, tag);
+  });
+
+  test('Certification Page should not have Asset button', async ({
+    adminPage,
+  }) => {
+    await verifyCertificationTagPageUI(adminPage);
   });
 
   test('Rename Tag name', async ({ adminPage }) => {
@@ -231,6 +238,12 @@ test.describe('Tag Page with Data Consumer Roles', () => {
     );
   });
 
+  test('Certification Page should not have Asset button for Data Consumer', async ({
+    dataConsumerPage,
+  }) => {
+    await verifyCertificationTagPageUI(dataConsumerPage);
+  });
+
   test('Edit Tag Description for Data Consumer', async ({
     dataConsumerPage,
   }) => {
@@ -259,6 +272,12 @@ test.describe('Tag Page with Data Steward Roles', () => {
 
   test('Verify Tag UI for Data Steward', async ({ dataStewardPage }) => {
     await verifyTagPageUI(dataStewardPage, classification.data.name, tag, true);
+  });
+
+  test('Certification Page should not have Asset button for Data Steward', async ({
+    dataStewardPage,
+  }) => {
+    await verifyCertificationTagPageUI(dataStewardPage);
   });
 
   test('Edit Tag Description for Data Steward', async ({ dataStewardPage }) => {

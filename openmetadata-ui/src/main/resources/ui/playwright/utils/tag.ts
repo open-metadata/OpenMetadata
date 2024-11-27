@@ -343,6 +343,21 @@ export const editTagPageDescription = async (page: Page, tag: TagClass) => {
   );
 };
 
+export const verifyCertificationTagPageUI = async (page: Page) => {
+  await redirectToHomePage(page);
+  const res = page.waitForResponse(`/api/v1/tags/name/*`);
+  await visitClassificationPage(page, 'Certification');
+  await page.getByTestId('Gold').click();
+  await res;
+
+  await page.getByTestId('assets').click();
+
+  await expect(
+    page.getByTestId('data-classification-add-button')
+  ).not.toBeVisible();
+  await expect(page.getByTestId('no-data-placeholder')).toBeVisible();
+};
+
 export const LIMITED_USER_RULES: PolicyRulesType[] = [
   {
     name: 'limitedUserEditTagRole',
