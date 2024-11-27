@@ -56,7 +56,6 @@
     "aggregate": "รวม",
     "airflow-config-plural": "การกำหนดค่าของ airflow",
     "alert": "การแจ้งเตือน",
-    "alert-details": "Alert Details",
     "alert-lowercase": "การแจ้งเตือน",
     "alert-lowercase-plural": "การแจ้งเตือนหลายอย่าง",
     "alert-plural": "การแจ้งเตือนหลายอย่าง",

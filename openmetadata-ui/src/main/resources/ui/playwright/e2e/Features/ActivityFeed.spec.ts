@@ -363,15 +363,13 @@ test.describe('Activity feed', () => {
     await page.getByText('OK').click();
     await resolveTask;
 
-    await toastNotification(page, /Task resolved successfully/, 'success');
+    await toastNotification(page, /Task resolved successfully/);
 
     // Task 1 - Resolved the task
 
-    const resolveTask2 = page.waitForResponse('/api/v1/feed/tasks/*/resolve');
     await page.getByText('Accept Suggestion').click();
-    await resolveTask2;
 
-    await toastNotification(page, /Task resolved successfully/, 'success');
+    await toastNotification(page, /Task resolved successfully/);
 
     await checkTaskCount(page, 0, 2);
   });
@@ -414,11 +412,7 @@ test.describe('Activity feed', () => {
 
     await page.getByRole('menuitem', { name: 'close' }).click();
 
-    await toastNotification(
-      page,
-      'Task cannot be closed without a comment.',
-      'error'
-    );
+    await toastNotification(page, 'Task cannot be closed without a comment.');
 
     // Close the task from the Button.Group, with comment is added.
     await page.fill(
@@ -677,8 +671,7 @@ base.describe('Activity feed with Data Consumer User', () => {
       //   await toastNotification(page1, 'Task closed successfully.');
       await toastNotification(
         page1,
-        'An exception with message [Cannot invoke "java.util.List.stream()" because "owners" is null] was thrown while processing request.',
-        'error'
+        'An exception with message [Cannot invoke "java.util.List.stream()" because "owners" is null] was thrown while processing request.'
       );
 
       // TODO: Ashish - Enable them once issue is resolved from Backend https://github.com/open-metadata/OpenMetadata/issues/17059
@@ -991,8 +984,7 @@ base.describe('Activity feed with Data Consumer User', () => {
             await toastNotification(
               page2,
               // eslint-disable-next-line max-len
-              `Principal: CatalogPrincipal{name='${viewAllUser.responseData.name}'} operation EditDescription denied by role ${viewAllRoles.responseData.name}, policy ${viewAllPolicy.responseData.name}, rule editNotAllowed`,
-              'error'
+              `Principal: CatalogPrincipal{name='${viewAllUser.responseData.name}'} operation EditDescription denied by role ${viewAllRoles.responseData.name}, policy ${viewAllPolicy.responseData.name}, rule editNotAllowed`
             );
 
             await afterActionUser2();

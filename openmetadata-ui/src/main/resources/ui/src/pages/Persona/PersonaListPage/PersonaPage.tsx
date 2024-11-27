@@ -120,73 +120,75 @@ export const PersonaPage = () => {
     }
   };
 
+  if (isEmpty(persona) && !isLoading) {
+    return (
+      <>
+        {errorPlaceHolder}
+        {Boolean(addEditPersona) && (
+          <AddEditPersonaForm
+            persona={addEditPersona}
+            onCancel={handlePersonalAddEditCancel}
+            onSave={handlePersonaAddEditSave}
+          />
+        )}
+      </>
+    );
+  }
+
   return (
     <PageLayoutV1 pageTitle={t('label.persona-plural')}>
-      {isEmpty(persona) && !isLoading ? (
-        <div className="mt-44">
-          {errorPlaceHolder}
-          {Boolean(addEditPersona) && (
-            <AddEditPersonaForm
-              persona={addEditPersona}
-              onCancel={handlePersonalAddEditCancel}
-              onSave={handlePersonaAddEditSave}
-            />
-          )}
-        </div>
-      ) : (
-        <Row className="user-listing page-container p-b-md" gutter={[16, 16]}>
+      <Row className="user-listing page-container p-b-md" gutter={[16, 16]}>
+        <Col span={24}>
+          <TitleBreadcrumb titleLinks={breadcrumbs} />
+        </Col>
+        <Col span={18}>
+          <PageHeader data={PAGE_HEADERS.PERSONAS} />
+        </Col>
+        <Col span={6}>
+          <Space align="center" className="w-full justify-end" size={16}>
+            <Button
+              data-testid="add-persona-button"
+              type="primary"
+              onClick={handleAddNewPersona}>
+              {t('label.add-entity', { entity: t('label.persona') })}
+            </Button>
+          </Space>
+        </Col>
+
+        {isLoading
+          ? [1, 2, 3].map((key) => (
+              <Col key={key} span={8}>
+                <Card>
+                  <Skeleton active paragraph title />
+                </Card>
+              </Col>
+            ))
+          : persona?.map((persona) => (
+              <Col key={persona.id} span={8}>
+                <PersonaDetailsCard persona={persona} />
+              </Col>
+            ))}
+
+        {showPagination && (
           <Col span={24}>
-            <TitleBreadcrumb titleLinks={breadcrumbs} />
-          </Col>
-          <Col span={18}>
-            <PageHeader data={PAGE_HEADERS.PERSONAS} />
-          </Col>
-          <Col span={6}>
-            <Space align="center" className="w-full justify-end" size={16}>
-              <Button
-                data-testid="add-persona-button"
-                type="primary"
-                onClick={handleAddNewPersona}>
-                {t('label.add-entity', { entity: t('label.persona') })}
-              </Button>
-            </Space>
-          </Col>
-
-          {isLoading
-            ? [1, 2, 3].map((key) => (
-                <Col key={key} span={8}>
-                  <Card>
-                    <Skeleton active paragraph title />
-                  </Card>
-                </Col>
-              ))
-            : persona?.map((persona) => (
-                <Col key={persona.id} span={8}>
-                  <PersonaDetailsCard persona={persona} />
-                </Col>
-              ))}
-
-          {showPagination && (
-            <Col span={24}>
-              <NextPrevious
-                currentPage={currentPage}
-                isLoading={isLoading}
-                pageSize={pageSize}
-                paging={paging}
-                pagingHandler={handlePersonaPageChange}
-                onShowSizeChange={handlePageSizeChange}
-              />
-            </Col>
-          )}
-          {Boolean(addEditPersona) && (
-            <AddEditPersonaForm
-              persona={addEditPersona}
-              onCancel={handlePersonalAddEditCancel}
-              onSave={handlePersonaAddEditSave}
+            <NextPrevious
+              currentPage={currentPage}
+              isLoading={isLoading}
+              pageSize={pageSize}
+              paging={paging}
+              pagingHandler={handlePersonaPageChange}
+              onShowSizeChange={handlePageSizeChange}
             />
-          )}
-        </Row>
-      )}
+          </Col>
+        )}
+        {Boolean(addEditPersona) && (
+          <AddEditPersonaForm
+            persona={addEditPersona}
+            onCancel={handlePersonalAddEditCancel}
+            onSave={handlePersonaAddEditSave}
+          />
+        )}
+      </Row>
     </PageLayoutV1>
   );
 };

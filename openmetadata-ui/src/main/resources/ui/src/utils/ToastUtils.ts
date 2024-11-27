@@ -11,52 +11,13 @@
  *  limitations under the License.
  */
 
-import { AlertProps } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isString } from 'lodash';
 import React from 'react';
-import { ReactComponent as ErrorIcon } from '../assets/svg/ic-error.svg';
-import { ReactComponent as InfoIcon } from '../assets/svg/ic-info-tag.svg';
-import { ReactComponent as SuccessIcon } from '../assets/svg/ic-success.svg';
-import { ReactComponent as WarningIcon } from '../assets/svg/ic-warning-tag.svg';
+import { toast } from 'react-toastify';
 import { ClientErrors } from '../enums/Axios.enum';
-import { useAlertStore } from '../hooks/useAlertStore';
 import i18n from './i18next/LocalUtil';
 import { getErrorText } from './StringsUtils';
-
-export const getIconAndClassName = (type: AlertProps['type']) => {
-  switch (type) {
-    case 'info':
-      return {
-        icon: InfoIcon,
-        className: 'info',
-      };
-
-    case 'success':
-      return {
-        icon: SuccessIcon,
-        className: 'success',
-      };
-
-    case 'warning':
-      return {
-        icon: WarningIcon,
-        className: 'warning',
-      };
-
-    case 'error':
-      return {
-        icon: ErrorIcon,
-        className: 'error',
-      };
-
-    default:
-      return {
-        icon: null,
-        className: '',
-      };
-  }
-};
 
 export const hashCode = (str: string) => {
   let hash = 0,
@@ -81,18 +42,15 @@ export const hashCode = (str: string) => {
  * @param autoCloseTimer Set the delay in ms to close the toast automatically.
  */
 export const showErrorToast = (
-  error: AxiosError | string | JSX.Element,
+  error: AxiosError | string,
   fallbackText?: string,
   autoCloseTimer?: number,
-  callback?: (value: React.SetStateAction<string | JSX.Element>) => void
+  callback?: (value: React.SetStateAction<string>) => void
 ) => {
-  let errorMessage: string | JSX.Element;
-
-  if (React.isValidElement(error)) {
-    errorMessage = error;
-  } else if (isString(error)) {
+  let errorMessage;
+  if (isString(error)) {
     errorMessage = error.toString();
-  } else if ('config' in error && 'response' in error) {
+  } else {
     const method = error.config?.method?.toUpperCase();
     const fallback =
       fallbackText && fallbackText.length > 0
@@ -111,15 +69,12 @@ export const showErrorToast = (
     ) {
       return;
     }
-  } else {
-    errorMessage = fallbackText ?? i18n.t('server.unexpected-error');
   }
-
   callback && callback(errorMessage);
-
-  useAlertStore
-    .getState()
-    .addAlert({ type: 'error', message: errorMessage }, autoCloseTimer);
+  toast.error(errorMessage, {
+    toastId: hashCode(errorMessage),
+    autoClose: autoCloseTimer,
+  });
 };
 
 /**
@@ -128,9 +83,9 @@ export const showErrorToast = (
  * @param autoCloseTimer Set the delay in ms to close the toast automatically. `Default: 5000`
  */
 export const showSuccessToast = (message: string, autoCloseTimer = 5000) => {
-  useAlertStore
-    .getState()
-    .addAlert({ type: 'success', message }, autoCloseTimer);
+  toast.success(message, {
+    autoClose: autoCloseTimer,
+  });
 };
 
 /**
@@ -139,5 +94,15 @@ export const showSuccessToast = (message: string, autoCloseTimer = 5000) => {
  * @param autoCloseTimer Set the delay in ms to close the toast automatically. `Default: 5000`
  */
 export const showInfoToast = (message: string, autoCloseTimer = 5000) => {
-  useAlertStore.getState().addAlert({ type: 'info', message }, autoCloseTimer);
+  toast.info(message, {
+    autoClose: autoCloseTimer,
+  });
+};
+
+/**
+ * Clear all the toast messages.
+ */
+export const clearAllToasts = () => {
+  toast.clearWaitingQueue();
+  toast.dismiss();
 };

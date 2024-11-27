@@ -12,12 +12,7 @@
  */
 import { expect, test } from '@playwright/test';
 import { GlobalSettingOptions } from '../../constant/settings';
-import {
-  descriptionBox,
-  redirectToHomePage,
-  toastNotification,
-  uuid,
-} from '../../utils/common';
+import { descriptionBox, redirectToHomePage, uuid } from '../../utils/common';
 import { removePolicyFromRole } from '../../utils/roles';
 import { settingClick } from '../../utils/sidebar';
 
@@ -206,12 +201,9 @@ test('Roles page should work properly', async ({ page }) => {
     // Removing the last policy and validating the error message
     await removePolicyFromRole(page, policies.dataConsumerPolicy, roleName);
 
-    await toastNotification(
-      page,
-      errorMessageValidation.lastPolicyCannotBeRemoved,
-      'error'
+    await expect(page.locator('.Toastify__toast-body')).toContainText(
+      errorMessageValidation.lastPolicyCannotBeRemoved
     );
-
     await expect(page.locator('.ant-table-row')).toContainText(
       policies.dataConsumerPolicy
     );
