@@ -56,7 +56,6 @@
     "aggregate": "Aggregate",
     "airflow-config-plural": "конфиги airflow",
     "alert": "Предупреждение",
-    "alert-details": "Alert Details",
     "alert-lowercase": "предупреждение",
     "alert-lowercase-plural": "предупреждения",
     "alert-plural": "Предупреждения",
