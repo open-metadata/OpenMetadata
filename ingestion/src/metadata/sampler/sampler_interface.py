@@ -51,7 +51,10 @@ logger = sampler_logger()
 
 
 class SamplerInterface(ABC):
-    """Sampler interface"""
+    """Sampler interface
+    This should be the entrypoint for computing any metrics that are required downstream for
+    data quality, profiling, etc.
+    """
 
     # pylint: disable=too-many-instance-attributes, too-many-arguments
     def __init__(
