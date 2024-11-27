@@ -33,6 +33,8 @@ import static org.openmetadata.service.Entity.ORGANIZATION_NAME;
 import static org.openmetadata.service.Entity.POLICY;
 import static org.openmetadata.service.Entity.ROLE;
 import static org.openmetadata.service.Entity.TEAM;
+import static org.openmetadata.service.Entity.USER;
+import static org.openmetadata.service.Entity.getEntityReferenceByName;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.CREATE_GROUP;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.DELETE_ORGANIZATION;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.INVALID_GROUP_TEAM_CHILDREN_UPDATE;
@@ -68,6 +70,7 @@ import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.TeamHierarchy;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
@@ -81,6 +84,7 @@ import org.openmetadata.schema.type.csv.CsvErrorType;
 import org.openmetadata.schema.type.csv.CsvFile;
 import org.openmetadata.schema.type.csv.CsvHeader;
 import org.openmetadata.schema.type.csv.CsvImportResult;
+import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -89,6 +93,8 @@ import org.openmetadata.service.resources.teams.TeamResource;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
@@ -102,6 +108,7 @@ public class TeamRepository extends EntityRepository<Team> {
       "profile,users,defaultRoles,parents,children,policies,teamType,email,domains";
   private static final String DEFAULT_ROLES = "defaultRoles";
   private Team organization = null;
+  private final CollectionDAO dao;
 
   public TeamRepository() {
     super(
@@ -114,6 +121,7 @@ public class TeamRepository extends EntityRepository<Team> {
     this.quoteFqn = true;
     supportsSearch = true;
     parent = true;
+    this.dao = Entity.getCollectionDAO();
   }
 
   @Override
@@ -721,6 +729,95 @@ public class TeamRepository extends EntityRepository<Team> {
             .withPreviousVersion(change.getPreviousVersion());
 
     return new RestUtil.PutResponse<>(Response.Status.OK, changeEvent, ENTITY_FIELDS_CHANGED);
+  }
+
+  public ResultList<User> listTeamUsers(ListFilter filter, int limit, String before, String after) {
+    ResultList<User> users;
+    RestUtil.validateCursors(before, after);
+    String team = EntityInterfaceUtil.quoteName(filter.getQueryParam("team"));
+    TeamRepository repository = (TeamRepository) Entity.getEntityRepository(TEAM);
+    EntityReference teamRef = getEntityReferenceByName(TEAM, team, ALL);
+
+    if (teamRef != null) {
+      List<String> childTeamIds = getAllTeamChildrenIds(teamRef.getId());
+      childTeamIds.add(teamRef.getId().toString());
+      filter.addQueryParam("teamIds", String.join(",", childTeamIds));
+      if (before != null) { // Reverse paging
+        users = repository.listTeamUsersBefore(filter, limit, before);
+      } else { // Forward paging or first page
+        users = repository.listTeamUsersAfter(filter, limit, after);
+      }
+    } else {
+      throw new IllegalArgumentException("Team not found");
+    }
+    return users;
+  }
+
+  private ResultList<User> listTeamUsersBefore(ListFilter filter, int limit, String before) {
+    // Reverse scrolling - Get one extra result used for computing before cursor
+    EntityRepository<User> userRepository =
+        (EntityRepository<User>) Entity.getEntityRepository(USER);
+    Map<String, String> cursorMap = parseCursorMap(RestUtil.decodeCursor(before));
+    String beforeName = FullyQualifiedName.unquoteName(cursorMap.get("name"));
+    String beforeId = cursorMap.get("id");
+
+    List<String> jsons = dao.teamDAO().listTeamUsersBefore(filter, limit + 1, beforeName, beforeId);
+    List<User> users = JsonUtils.readObjects(jsons, User.class);
+    int total = dao.teamDAO().listTeamUsersCount(filter);
+
+    String beforeCursor = null;
+    String afterCursor;
+    if (users.size()
+        > limit) { // If extra result exists, then previous page exists - return before cursor
+      users.remove(0);
+      beforeCursor = userRepository.getCursorValue(users.get(0));
+    }
+    afterCursor = userRepository.getCursorValue(users.get(users.size() - 1));
+    return new ResultList<>(users, beforeCursor, afterCursor, total);
+  }
+
+  public ResultList<User> listTeamUsersAfter(ListFilter filter, int limit, String after) {
+
+    EntityRepository<User> userRepository =
+        (EntityRepository<User>) Entity.getEntityRepository(USER);
+    int total = 0;
+    List<User> users = new ArrayList<>();
+    if (limit > 0) {
+      // forward scrolling, if after == null then first page is being asked
+      Map<String, String> cursorMap =
+          parseCursorMap(after == null ? "" : RestUtil.decodeCursor(after));
+      String afterName = FullyQualifiedName.unquoteName(cursorMap.get("name"));
+      String afterId = cursorMap.get("id");
+      List<String> jsons = dao.teamDAO().listTeamUsersAfter(filter, limit + 1, afterName, afterId);
+      users = JsonUtils.readObjects(jsons, User.class);
+      total = dao.teamDAO().listTeamUsersCount(filter);
+
+      String beforeCursor;
+      String afterCursor = null;
+      beforeCursor = after == null ? null : userRepository.getCursorValue(users.get(0));
+      if (users.size()
+          > limit) { // If extra result exists, then next page exists - return after cursor
+        users.remove(limit);
+        afterCursor = userRepository.getCursorValue(users.get(limit - 1));
+      }
+      return new ResultList<>(users, beforeCursor, afterCursor, total);
+    } else {
+      // limit == 0 , return total count of entity.
+      return new ResultList<>(users, null, null, total);
+    }
+  }
+
+  /** Retrieves all child teams (at all levels) for the given team.*/
+  public List<String> getAllTeamChildrenIds(UUID teamId) {
+    List<String> allChildren = new ArrayList<>();
+    List<EntityReference> directChildren = getChildren(teamId);
+
+    for (EntityReference child : directChildren) {
+      allChildren.add(child.getId().toString());
+      allChildren.addAll(getAllTeamChildrenIds(child.getId()));
+    }
+
+    return allChildren;
   }
 
   public void initOrganization() {

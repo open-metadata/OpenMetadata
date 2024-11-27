@@ -820,7 +820,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
   /**
    * This method returns the cursor value for pagination.
    * By default, it uses the entity's name. However, in cases where the name can be the same for different entities,
-   * it is recommended to override this method to use the (name,id) key  instead.
    * The id is always unique, which helps to avoid pagination issues caused by duplicate names and have unique ordering.
    */
   public String getCursorValue(T entity) {

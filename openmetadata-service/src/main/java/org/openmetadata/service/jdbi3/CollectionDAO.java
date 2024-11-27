@@ -3589,6 +3589,107 @@ public interface CollectionDAO {
             + "WHERE fromId != :teamId AND fromEntity = 'team' AND relation = :relation AND toEntity = 'team')")
     List<String> listTeamsUnderOrganization(
         @BindUUID("teamId") UUID teamId, @Bind("relation") int relation);
+
+    default List<String> listTeamUsersBefore(
+        ListFilter filter, int limit, String beforeName, String beforeId) {
+      String teamIdsString = filter.getQueryParam("teamIds");
+      List<String> teamIds =
+          (teamIdsString != null && !teamIdsString.isEmpty())
+              ? Arrays.asList(teamIdsString.split(","))
+              : Collections.emptyList();
+      return listTeamUsersBefore(
+          getTableName(),
+          filter.getQueryParam("team"),
+          limit,
+          beforeName,
+          beforeId,
+          Relationship.HAS.ordinal(),
+          teamIds);
+    }
+
+    default List<String> listTeamUsersAfter(
+        ListFilter filter, int limit, String afterName, String afterId) {
+      String teamIdsString = filter.getQueryParam("teamIds");
+      List<String> teamIds =
+          (teamIdsString != null && !teamIdsString.isEmpty())
+              ? Arrays.asList(teamIdsString.split(","))
+              : Collections.emptyList();
+      return listTeamUsersAfter(
+          getTableName(),
+          filter.getQueryParam("team"),
+          limit,
+          afterName,
+          afterId,
+          Relationship.HAS.ordinal(),
+          teamIds);
+    }
+
+    default int listTeamUsersCount(ListFilter filter) {
+      String teamIdsString = filter.getQueryParam("teamIds");
+      List<String> teamIds =
+          (teamIdsString != null && !teamIdsString.isEmpty())
+              ? Arrays.asList(teamIdsString.split(","))
+              : Collections.emptyList();
+      return listTeamUsersCount(
+          getTableName(), filter.getQueryParam("team"), Relationship.HAS.ordinal(), teamIds);
+    }
+
+    @SqlQuery(
+        value =
+            "SELECT json FROM ("
+                + "SELECT ue.name, ue.id, ue.json "
+                + "FROM user_entity ue "
+                + "LEFT JOIN entity_relationship er ON ue.id = er.toId AND er.relation = :relation "
+                + "LEFT JOIN team_entity te ON te.id = er.fromId "
+                + "WHERE (:team IS NULL OR te.nameHash = :team OR er.fromId IN (<teamIds>)) "
+                + "AND (ue.name < :beforeName OR (ue.name = :beforeName AND ue.id < :beforeId)) "
+                + "GROUP BY ue.name, ue.id, ue.json "
+                + "ORDER BY ue.name DESC, ue.id DESC "
+                + "LIMIT :limit"
+                + ") last_rows_subquery ORDER BY name, id")
+    List<String> listTeamUsersBefore(
+        @Define("table") String table,
+        @BindFQN("team") String team,
+        @Bind("limit") int limit,
+        @Bind("beforeName") String beforeName,
+        @Bind("beforeId") String beforeId,
+        @Bind("relation") int relation,
+        @BindList("teamIds") List<String> teamIds);
+
+    @SqlQuery(
+        value =
+            "SELECT ue.json "
+                + "FROM user_entity ue "
+                + "LEFT JOIN entity_relationship er ON ue.id = er.toId AND er.relation = :relation "
+                + "LEFT JOIN team_entity te ON te.id = er.fromId "
+                + "WHERE (:team IS NULL OR te.nameHash = :team OR er.fromId IN (<teamIds>)) "
+                + "AND (ue.name > :afterName OR (ue.name = :afterName AND ue.id > :afterId)) "
+                + "GROUP BY ue.name, ue.id, ue.json "
+                + "ORDER BY ue.name, ue.id "
+                + "LIMIT :limit")
+    List<String> listTeamUsersAfter(
+        @Define("table") String table,
+        @BindFQN("team") String team,
+        @Bind("limit") int limit,
+        @Bind("afterName") String afterName,
+        @Bind("afterId") String afterId,
+        @Bind("relation") int relation,
+        @BindList("teamIds") List<String> teamIds);
+
+    @SqlQuery(
+        value =
+            "SELECT COUNT(id) FROM ("
+                + "SELECT ue.id "
+                + "FROM user_entity ue "
+                + "LEFT JOIN entity_relationship er ON ue.id = er.toId AND er.relation = :relation "
+                + "LEFT JOIN team_entity te ON te.id = er.fromId "
+                + "WHERE (:team IS NULL OR te.nameHash = :team OR er.fromId IN (<childTeamIds>)) "
+                + "GROUP BY ue.id) subquery")
+    int listTeamUsersCount(
+        @Define("table") String table,
+        @BindFQN("team") String team,
+        @Bind("relation") int relation,
+        @BindList("childTeamIds") List<String> childTeamIds);
   }
 
   interface TopicDAO extends EntityDAO<Topic> {
