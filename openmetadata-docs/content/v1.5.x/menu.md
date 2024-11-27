@@ -931,7 +931,7 @@ site_menu:
     url: /releases/supported
   - category: Releases / All Releases
     url: /releases/all-releases
-   - category: Releases / All Releases / 1.5.11 Release
+  - category: Releases / All Releases / 1.5.11 Release
     url: /releases/all-releases/#1.5.11-release
   - category: Releases / All Releases / 1.5.10 Release
     url: /releases/all-releases/#1.5.10-release
