@@ -7,8 +7,8 @@ source:
       host: https://account_prefix.account_region.dbt.com 
       discoveryAPI: https://metadata.cloud.getdbt.com/graphql
       accountId: "numeric_account_id"
-      # jobIds: "comma_seperated_numeric_job_ids"
-      # projectIds: "comma_seperated_numeric_project_ids"
+      # jobIds: ["job_id_1", "job_id_2", "job_id_3"]
+      # projectIds: ["project_id_1", "project_id_2", "project_id_3"]
       token: auth_token
   sourceConfig:
     config:
