@@ -46,8 +46,8 @@ class DBTCloudClient:
     def __init__(self, config: DBTCloudConnection):
         self.config = config
 
-        self.job_ids = self.parse_string_to_list(self.config.jobIds)
-        self.project_ids = self.parse_string_to_list(self.config.projectIds)
+        self.job_ids = self.config.jobIds
+        self.project_ids = self.config.projectIds
 
         client_config: ClientConfig = ClientConfig(
             base_url=clean_uri(self.config.host),
@@ -107,22 +107,6 @@ class DBTCloudClient:
         result = self.client.get(f"/accounts/{self.config.accountId}/runs/")
         run_list = DBTRunList.model_validate(result).Runs
         return run_list
-
-    def parse_string_to_list(self, filter_string: str) -> Optional[List[str]]:
-        """
-        Takes comma seperated values and return it as a list
-        """
-        try:
-            if filter_string:
-                ids = [filter_id.strip() for filter_id in str(filter_string).split(",")]
-                return ids
-        except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Failed to parse jobs/projects list, make sure you have passed comma seperated ids :{exc}"
-                f"Continuing without applying the filter: {filter_string}"
-            )
-        return None
 
     def get_jobs(self) -> Optional[List[DBTJob]]:
         """

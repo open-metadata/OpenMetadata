@@ -42,14 +42,18 @@
       "jobIds": {
         "title": "Job Ids",
         "description": "List of IDs of your DBT cloud jobs seperated by comma `,`",
-        "type": "string",
-        "default": null
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
       },
       "projectIds": {
         "title": "Project Ids",
         "description": "List of IDs of your DBT cloud projects seperated by comma `,`",
-        "type": "string",
-        "default": null
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
       },
       "token": {
         "title": "Token",
@@ -61,4 +65,3 @@
     "additionalProperties": false,
     "required": ["host", "discoveryAPI", "accountId", "token"]
   }
-  

@@ -70,13 +70,13 @@ This is a sample config for dbt Cloud:
 
 {% codeInfo srNumber=4 %}
 
-**jobIds**: Optional. Comma Seperated Job IDs of your DBT cloud Jobs in your Project to fetch metadata for. Look for the segment after "jobs" in the URL. For instance, in a URL like `https://cloud.getdbt.com/accounts/123/projects/87477/jobs/73659994`, the job ID is `73659994`. This will be a numeric value but in openmetadata we parse it as a string. If not passed all Jobs under the Account id will be ingested. For Example if you want to ingest only Jobs with Ids `73659994` and `73659993` then pass it as `73659994,73659993` or if you want to ingest only one Job with Id `73659994` then pass it as `73659994` directly.
+**jobIds**: Optional. Job IDs of your DBT cloud Jobs in your Project to fetch metadata for. Look for the segment after "jobs" in the URL. For instance, in a URL like `https://cloud.getdbt.com/accounts/123/projects/87477/jobs/73659994`, the job ID is `73659994`. This will be a numeric value but in openmetadata we parse it as a string. If not passed all Jobs under the Account id will be ingested.
 
 {% /codeInfo %}
 
 {% codeInfo srNumber=5 %}
 
-**projectIds**: Optional. Comma Seperated Project IDs of your DBT cloud Account to fetch metadata for. Look for the segment after "projects" in the URL. For instance, in a URL like `https://cloud.getdbt.com/accounts/123/projects/87477/jobs/73659994`, the job ID is `87477`. This will be a numeric value but in openmetadata we parse it as a string. If not passed all Projects under the Account id will be ingested. For Example if you want to ingest only Projects with Ids `87477` and `87478` then pass it as `87477,87478` or if you want to ingest only one Project with Id `87477` then pass it as `87477` directly.
+**projectIds**: Optional.  Project IDs of your DBT cloud Account to fetch metadata for. Look for the segment after "projects" in the URL. For instance, in a URL like `https://cloud.getdbt.com/accounts/123/projects/87477/jobs/73659994`, the job ID is `87477`. This will be a numeric value but in openmetadata we parse it as a string. If not passed all Projects under the Account id will be ingested.
 
 Note that if both `Job Ids` and `Project Ids` are passed then it will filter out the jobs from the passed projects. any `Job Ids` not belonging to the `Project Ids` will also be filtered out.
 
@@ -119,10 +119,10 @@ source:
         accountId: "numeric_account_id"
 ```
 ```yaml {% srNumber=4 %}
-        # jobIds: "comma_seperated_numeric_job_ids"
+        # jobIds: ["job_id_1", "job_id_2", "job_id_3"]
 ```
 ```yaml {% srNumber=5 %}
-        # projectIds: "comma_seperated_numeric_project_ids"
+        # projectIds: ["project_id_1", "project_id_2", "project_id_3"]
 ```
 ```yaml {% srNumber=6 %}
         token: auth_token

@@ -27,12 +27,12 @@ $$
 
 $$section
 ### Job Ids $(id="jobIds")
-Comma Seperated Job IDs of your DBT cloud Jobs in your Project to fetch metadata for. Look for the segment after "jobs" in the URL. For instance, in a URL like `https://cloud.getdbt.com/accounts/123/projects/87477/jobs/73659994`, the job ID is `73659994`. This will be a numeric value but in openmetadata we parse it as a string. If not passed all Jobs under the Account id will be ingested. For Example if you want to ingest only Jobs with Ids `73659994` and `73659993` then pass it as `73659994,73659993` or if you want to ingest only one Job with Id `73659994` then pass it as `73659994` directly. `Optional`
+Job IDs of your DBT cloud Jobs in your Project to fetch metadata for. Look for the segment after "jobs" in the URL. For instance, in a URL like `https://cloud.getdbt.com/accounts/123/projects/87477/jobs/73659994`, the job ID is `73659994`. This will be a numeric value but in openmetadata we parse it as a string. If not passed all Jobs under the Account Id will be ingested. `Optional`
 $$
 
 $$section
 ### Project Ids $(id="projectIds")
-Comma Seperated Project IDs of your DBT cloud Account to fetch metadata for. Look for the segment after "projects" in the URL. For instance, in a URL like `https://cloud.getdbt.com/accounts/123/projects/87477/jobs/73659994`, the job ID is `87477`. This will be a numeric value but in openmetadata we parse it as a string. If not passed all Projects under the Account id will be ingested. For Example if you want to ingest only Projects with Ids `87477` and `87478` then pass it as `87477,87478` or if you want to ingest only one Project with Id `87477` then pass it as `87477` directly. `Optional`
+Project IDs of your DBT cloud Account to fetch metadata for. Look for the segment after "projects" in the URL. For instance, in a URL like `https://cloud.getdbt.com/accounts/123/projects/87477/jobs/73659994`, the job ID is `87477`. This will be a numeric value but in openmetadata we parse it as a string. If not passed all Projects under the Account Id will be ingested. `Optional`
 
 Note that if both `Job Ids` and `Project Ids` are passed then it will filter out the jobs from the passed projects. any `Job Ids` not belonging to the `Project Ids` will also be filtered out.
 $$
