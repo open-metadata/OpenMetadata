@@ -180,7 +180,7 @@ def get_table_comment_results(
     """
     self.table_comment_result: Dict[Tuple[str, str], str] = {}
     self.current_db: str = database
-    result = connection.execute(query)
+    result = connection.execute(query).fetchall()
     self.table_comment_result[(table_name, schema)] = result
 
 
