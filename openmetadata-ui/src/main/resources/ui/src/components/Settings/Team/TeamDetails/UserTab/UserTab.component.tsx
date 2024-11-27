@@ -37,6 +37,7 @@ import {
   TabSpecificField,
 } from '../../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../../enums/search.enum';
+import { TeamType } from '../../../../../generated/entity/teams/team';
 import { User } from '../../../../../generated/entity/teams/user';
 import { EntityReference } from '../../../../../generated/entity/type';
 import { Paging } from '../../../../../generated/type/paging';
@@ -93,11 +94,17 @@ export const UserTab = ({
     showPagination,
   } = usePaging(PAGE_SIZE_MEDIUM);
 
+
   const usersList = useMemo(() => {
     return users.map((item) =>
       getEntityReferenceFromEntity(item, EntityType.USER)
     );
   }, [users]);
+  
+  const isGroupType = useMemo(
+    () => currentTeam.teamType === TeamType.Group,
+    [currentTeam.teamType]
+  );
 
   /**
    * Make API call to fetch current team user data
@@ -310,7 +317,7 @@ export const UserTab = ({
   }, [permission, isTeamDeleted]);
 
   if (isEmpty(users) && !searchText && !isLoading) {
-    return (
+    return isGroupType ? (
       <ErrorPlaceHolder
         button={
           <Space>
@@ -347,6 +354,12 @@ export const UserTab = ({
         heading={t('label.user')}
         permission={permission.EditAll}
         type={ERROR_PLACEHOLDER_TYPE.ASSIGN}
+      />
+    ) : (
+      <ErrorPlaceHolder
+        placeholderText={t('message.no-user-part-of-team', {
+          team: getEntityName(currentTeam),
+        })}
       />
     );
   }

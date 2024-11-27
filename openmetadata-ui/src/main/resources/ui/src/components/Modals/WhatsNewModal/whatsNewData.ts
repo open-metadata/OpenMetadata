@@ -17,7 +17,7 @@ import incidentManagerSampleData from '../../../assets/img/incidentManagerSample
 import profilerConfigPage from '../../../assets/img/profilerConfigPage.png';
 import collateIcon from '../../../assets/svg/ic-collate.svg';
 
-export const COOKIE_VERSION = 'VERSION_1_5_11'; // To be changed with each release.
+export const COOKIE_VERSION = 'VERSION_1_5_12'; // To be changed with each release.
 
 // for youtube video make isImage = false and path = {video embed id}
 // embed:- youtube video => share => click on embed and take {url with id} from it
@@ -1144,6 +1144,26 @@ To continue pursuing this objective, the application was completely refactored t
 - **Improvement**: Mask SQL Queries in Usage & Lineage Workflow.
 - **Fix**: Sample data overlapping issue.
 - **Fix**: Checkmark saves wrong custom property field 
+`,
+    },
+  },
+  {
+    id: 54,
+    version: 'v1.5.12',
+    description: 'Released on 25th November 2024.',
+    features: [],
+    changeLogs: {
+      Improvements: `- **Improvement**: Added async apis for csv import.
+- **Improvement**: Skip domain check for bots and admin
+- **Improvement**: MYSQL lineage and usage.
+- **Minor**: Added Lineage Field back to SearchLineage.
+- **Fix**: Database is missing from the search dropdown
+- **Fix**: Bad Representation of owners.
+- **Fix**: The Daily Active Users Summary Card in Data Insights.
+- **Fix**: The processing of URL Encoded Assets in Data Insights.
+- **Fix**: Column Level Lineage export.
+- **Fix**: Store procedure yielding by adding Try/Except.
+- **Fix**: Lineage export when there is no column / pipeline edge.
 `,
     },
   },

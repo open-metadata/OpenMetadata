@@ -79,6 +79,7 @@ const ScheduleInterval = <T,>({
   defaultSchedule,
   topChildren,
   showActionButtons = true,
+  schedularOptions = SCHEDULAR_OPTIONS,
 }: ScheduleIntervalProps<T>) => {
   const { t } = useTranslation();
   // Since includePeriodOptions can limit the schedule options
@@ -224,7 +225,7 @@ const ScheduleInterval = <T,>({
             className="schedular-card-container"
             data-testid="schedular-card-container"
             value={selectedSchedular}>
-            {SCHEDULAR_OPTIONS.map(({ description, title, value }) => (
+            {schedularOptions.map(({ description, title, value }) => (
               <Card
                 className={classNames('schedular-card', {
                   active: value === selectedSchedular,

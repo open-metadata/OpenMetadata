@@ -155,7 +155,7 @@ export const TableProfilerProvider = ({
         value: profile?.createDateTime
           ? DateTime.fromJSDate(new Date(profile?.createDateTime))
               .toUTC()
-              .toFormat('MMM dd, yyyy HH:mm')
+              .toLocaleString(DateTime.DATE_MED)
           : '--',
       },
     ];
