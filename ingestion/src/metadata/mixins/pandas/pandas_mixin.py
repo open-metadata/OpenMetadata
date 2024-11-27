@@ -13,7 +13,6 @@
 Interfaces with database for all database engine
 supporting sqlalchemy abstraction layer
 """
-import math
 import random
 from typing import cast
 
@@ -23,7 +22,6 @@ from metadata.data_quality.validations.table.pandas.tableRowInsertedCountToBeBet
 from metadata.generated.schema.entity.data.table import (
     PartitionIntervalTypes,
     PartitionProfilerConfig,
-    ProfileSampleType,
 )
 from metadata.readers.dataframe.models import DatalakeTableSchemaWrapper
 from metadata.utils.datalake.datalake_utils import fetch_dataframe
@@ -81,9 +79,7 @@ class PandasInterfaceMixin:
             for df in dfs
         ]
 
-    def return_ometa_dataframes_sampled(
-        self, service_connection_config, client, table, profile_sample_config
-    ):
+    def get_dataframes(self, service_connection_config, client, table):
         """
         returns sampled ometa dataframes
         """
@@ -94,35 +90,10 @@ class PandasInterfaceMixin:
                 key=table.name.root,
                 bucket_name=table.databaseSchema.name,
                 file_extension=table.fileFormat,
+                separator=None,
             ),
         )
         if data:
             random.shuffle(data)
-            # sampling data based on profiler config (if any)
-            if hasattr(profile_sample_config, "profile_sample"):
-                if (
-                    profile_sample_config.profile_sample_type
-                    == ProfileSampleType.PERCENTAGE
-                ):
-                    return [
-                        df.sample(
-                            frac=profile_sample_config.profile_sample / 100,
-                            random_state=random.randint(0, 100),
-                            replace=True,
-                        )
-                        for df in data
-                    ]
-                if profile_sample_config.profile_sample_type == ProfileSampleType.ROWS:
-                    sample_rows_per_chunk: int = math.floor(
-                        profile_sample_config.profile_sample / len(data)
-                    )
-                    return [
-                        df.sample(
-                            n=sample_rows_per_chunk,
-                            random_state=random.randint(0, 100),
-                            replace=True,
-                        )
-                        for df in data
-                    ]
             return data
         raise TypeError(f"Couldn't fetch {table.name.root}")
