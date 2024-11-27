@@ -16,8 +16,8 @@ import classNames from 'classnames';
 import { includes, toLower } from 'lodash';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { TOTAL_ENTITY_CHART_COLOR } from '../../constants/DataInsight.constants';
 import { updateActiveChartFilter } from '../../utils/ChartUtils';
+import { entityChartColor } from '../../utils/CommonUtils';
 import { sortEntityByValue } from '../../utils/DataInsightUtils';
 import Searchbar from '../common/SearchBarComponent/SearchBar.component';
 import CustomStatistic from './CustomStatistic';
@@ -120,7 +120,7 @@ const TotalEntityInsightSummary = ({
                   }
                   label={latestData[entity]}
                   progress={progress}
-                  strokeColor={TOTAL_ENTITY_CHART_COLOR[i]}
+                  strokeColor={entityChartColor(i)}
                 />
               </Col>
             );
