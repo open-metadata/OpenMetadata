@@ -46,7 +46,7 @@ import { SearchResponse } from '../../../../../interface/search.interface';
 import { ImportType } from '../../../../../pages/TeamsPage/ImportTeamsPage/ImportTeamsPage.interface';
 import { searchData } from '../../../../../rest/miscAPI';
 import { exportUserOfTeam } from '../../../../../rest/teamsAPI';
-import { getUsers } from '../../../../../rest/userAPI';
+import { getTeamUsers } from '../../../../../rest/userAPI';
 import { formatUsersResponse } from '../../../../../utils/APIUtils';
 import {
   getEntityName,
@@ -94,13 +94,12 @@ export const UserTab = ({
     showPagination,
   } = usePaging(PAGE_SIZE_MEDIUM);
 
-
   const usersList = useMemo(() => {
     return users.map((item) =>
       getEntityReferenceFromEntity(item, EntityType.USER)
     );
   }, [users]);
-  
+
   const isGroupType = useMemo(
     () => currentTeam.teamType === TeamType.Group,
     [currentTeam.teamType]
@@ -111,10 +110,9 @@ export const UserTab = ({
    */
   const getCurrentTeamUsers = (team: string, paging: Partial<Paging> = {}) => {
     setIsLoading(true);
-    getUsers({
+    getTeamUsers(team, {
       fields: `${TabSpecificField.ROLES}`,
       limit: pageSize,
-      team,
       ...paging,
     })
       .then((res) => {

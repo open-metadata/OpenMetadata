@@ -43,6 +43,20 @@ export interface UsersQueryParams {
   include?: Include;
 }
 
+export const getTeamUsers = async (
+  teamName: string,
+  params: UsersQueryParams
+) => {
+  const response = await APIClient.get<PagingResponse<User[]>>(
+    `/teams/name/${teamName}/users`,
+    {
+      params,
+    }
+  );
+
+  return response.data;
+};
+
 export const getUsers = async (params: UsersQueryParams) => {
   const response = await APIClient.get<PagingResponse<User[]>>('/users', {
     params,
