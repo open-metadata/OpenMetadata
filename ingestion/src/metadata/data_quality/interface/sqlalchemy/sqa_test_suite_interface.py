@@ -19,8 +19,10 @@ from typing import Union
 from sqlalchemy.orm import DeclarativeMeta
 from sqlalchemy.orm.util import AliasedClass
 
-from metadata.data_quality.builders.i_validator_builder import IValidatorBuilder
-from metadata.data_quality.builders.sqa_validator_builder import SQAValidatorBuilder
+from metadata.data_quality.builders.validator_builder import (
+    SourceType,
+    ValidatorBuilder,
+)
 from metadata.data_quality.interface.test_suite_interface import TestSuiteInterface
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
@@ -51,14 +53,14 @@ class SQATestSuiteInterface(SQAInterfaceMixin, TestSuiteInterface):
         ometa_client: OpenMetadata,
         sampler: SamplerInterface,
         table_entity: Table = None,
+        **kwargs,
     ):
         super().__init__(
-            service_connection_config,
-            ometa_client,
-            sampler,
-            table_entity,
+            service_connection_config, ometa_client, sampler, table_entity, **kwargs
         )
+        self.source_type = SourceType.SQL
         self.create_session()
+
         (
             self.table_sample_query,
             self.table_sample_config,
@@ -109,5 +111,10 @@ class SQATestSuiteInterface(SQAInterfaceMixin, TestSuiteInterface):
 
     def _get_validator_builder(
         self, test_case: TestCase, entity_type: str
-    ) -> IValidatorBuilder:
-        return SQAValidatorBuilder(self.runner, test_case, entity_type)
+    ) -> ValidatorBuilder:
+        return self.validator_builder_class(
+            runner=self.runner,
+            test_case=test_case,
+            entity_type=entity_type,
+            source_type=self.source_type,
+        )
