@@ -247,11 +247,12 @@ public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCas
         if (resultSummaries != null) {
           resultSummaries.stream()
               .filter(s -> s.getTestCaseName().equals(testCase.getFullyQualifiedName()))
-              .forEach(
-                  s -> {
-                    s.setStatus(testCase.getTestCaseStatus());
-                    s.setTimestamp(testCase.getTestCaseResult().getTimestamp());
-                  });
+                  .findFirst()
+                  .ifPresent(
+                      s -> {
+                        s.setStatus(testCase.getTestCaseStatus());
+                        s.setTimestamp(testCase.getTestCaseResult().getTimestamp());
+                      });
         } else {
           testSuite.setTestCaseResultSummary(
               List.of(
