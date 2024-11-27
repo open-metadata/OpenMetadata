@@ -282,6 +282,16 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
     return entityRecord;
   }
 
+  public T getLatestRecord(String recordFQN, String extension) {
+    String jsonRecord = timeSeriesDao.getLatestExtension(recordFQN, extension);
+    if (jsonRecord == null) {
+      return null;
+    }
+    T entityRecord = JsonUtils.readValue(jsonRecord, entityClass);
+    setInheritedFields(entityRecord);
+    return entityRecord;
+  }
+
   public T getById(UUID id) {
     String jsonRecord = timeSeriesDao.getById(id);
     if (jsonRecord == null) {
