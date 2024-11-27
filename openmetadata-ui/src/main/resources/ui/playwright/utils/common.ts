@@ -116,11 +116,12 @@ export const toastNotification = async (
   message: string | RegExp,
   type: 'info' | 'success' | 'warning' | 'error' = 'success'
 ) => {
-  await expect(page.locator(`.alert-container.${type}`)).toHaveText(message);
+  await expect(page.getByTestId('alert-bar')).toHaveClass(type);
+  await expect(page.getByTestId('alert-bar')).toHaveText(message);
 
-  await expect(page.locator('.ant-alert-icon')).toBeVisible();
+  await expect(page.getByTestId('alert-icon')).toBeVisible();
 
-  await expect(page.locator('.alert-container button')).toBeVisible();
+  await expect(page.getByTestId('alert-close-icon')).toBeVisible();
 };
 
 export const clickOutside = async (page: Page) => {
