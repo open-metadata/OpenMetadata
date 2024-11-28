@@ -223,7 +223,7 @@ const AppInstall = () => {
         );
       case 3:
         return (
-          <div className="w-500 p-md border rounded-4">
+          <div className="w-3/5 p-md border rounded-4">
             <Typography.Title level={5}>{t('label.schedule')}</Typography.Title>
             <ScheduleInterval
               defaultSchedule={defaultValue}

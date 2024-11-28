@@ -163,6 +163,8 @@ public class PeriodicBatchEntityTrigger implements TriggerInterface {
     serviceTask.getFieldExtensions().add(searchFilterExpr);
     serviceTask.getFieldExtensions().add(batchSizeExpr);
 
+    serviceTask.setAsynchronousLeave(true);
+
     return serviceTask;
   }
 
