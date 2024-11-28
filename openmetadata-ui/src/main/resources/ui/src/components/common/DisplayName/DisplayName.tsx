@@ -61,7 +61,7 @@ const DisplayName: React.FC<DisplayNameProps> = ({
             <Typography.Text
               className="m-b-0 d-block break-word"
               data-testid="column-display-name">
-              <Link className="break-word" data-testid={displayName} to={link}>
+              <Link className="break-word" data-testid={name} to={link}>
                 {displayName}
               </Link>
             </Typography.Text>
