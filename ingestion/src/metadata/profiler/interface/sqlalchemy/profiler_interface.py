@@ -372,7 +372,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
             dictionnary of results
         """
         logger.debug(f"Computing system metrics for {runner.table.name}")
-        return self.system_metrics_computer.get_system_metrics(table=runner.table)
+        return self.system_metrics_computer.get_system_metrics(table=runner.dataset)
 
     def _create_thread_safe_runner(self, session, column=None):
         """Create thread safe runner"""
@@ -380,6 +380,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
             thread_local.runner = QueryRunner(
                 session=session,
                 dataset=self.sampler.get_dataset(column=column),
+                raw_dataset=self.sampler.raw_dataset,
                 partition_details=self.sampler.partition_details,
                 profile_sample_query=self.sampler.sample_query,
             )
