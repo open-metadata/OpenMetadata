@@ -30,7 +30,12 @@ const CertificationTag = ({
         className="cursor-pointer"
         title={getTagTooltip(name, certification.tagLabel.description)}
         trigger="hover">
-        <img alt="certification" src={certification.tagLabel.style?.iconURL} />
+        <div data-testid={`certification-${certification.tagLabel.tagFQN}`}>
+          <img
+            alt="certification"
+            src={certification.tagLabel.style?.iconURL}
+          />
+        </div>
       </Tooltip>
     );
   }
@@ -38,6 +43,7 @@ const CertificationTag = ({
   return (
     <Tag
       className="certification-tag"
+      data-testid={`certification-${certification.tagLabel.tagFQN}`}
       style={{
         borderColor: certification.tagLabel.style?.color,
         backgroundColor: certification.tagLabel.style?.color
