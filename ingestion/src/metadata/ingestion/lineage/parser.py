@@ -15,12 +15,12 @@ import traceback
 from collections import defaultdict
 from copy import deepcopy
 from logging.config import DictConfigurator
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import sqlparse
 from cached_property import cached_property
 from collate_sqllineage import SQLPARSE_DIALECT
-from collate_sqllineage.core.models import Column, Table
+from collate_sqllineage.core.models import Column, DataFunction, Table
 from collate_sqllineage.exceptions import SQLLineageException
 from collate_sqllineage.runner import LineageRunner
 from sqlparse.sql import Comparison, Identifier, Parenthesis, Statement
@@ -110,7 +110,7 @@ class LineageParser:
         return []
 
     @cached_property
-    def source_tables(self) -> List[Table]:
+    def source_tables(self) -> List[Union[Table, DataFunction]]:
         """
         Get a list of source tables
         """
@@ -374,7 +374,9 @@ class LineageParser:
         if not self._clean_query:
             return []
         return [
-            self.clean_table_name(table) for table in tables if isinstance(table, Table)
+            self.clean_table_name(table)
+            for table in tables
+            if isinstance(table, Table) or isinstance(table, DataFunction)
         ]
 
     @classmethod
