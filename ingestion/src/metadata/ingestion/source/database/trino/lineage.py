@@ -57,9 +57,9 @@ class TrinoLineageSource(TrinoQueryParserSource, LineageSource):
         """
         Method to check whether the table1 and table2 are same
         """
-        return table1.name.root==table2.name.root and {column.name.root for column in table1.columns} == {
-            column.name.root for column in table2.columns
-        }
+        return table1.name.root == table2.name.root and {
+            column.name.root for column in table1.columns
+        } == {column.name.root for column in table2.columns}
 
     def get_lineage_details(self) -> List[Tuple[Table, Table]]:
         """
