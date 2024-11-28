@@ -401,43 +401,43 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
   }
 
   public Response exportCsvInternalAsync(SecurityContext securityContext, String name) {
-    LOG.debug(
+    LOG.info(
         "Starting CSV export for entity: {}, requested by user: {}",
         name,
         securityContext.getUserPrincipal().getName());
 
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_ALL);
-    LOG.debug("Created OperationContext: {}", operationContext);
+    LOG.info("Created OperationContext: {}", operationContext);
 
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
-    LOG.debug(
+    LOG.info(
         "Authorization successful for user: {}", securityContext.getUserPrincipal().getName());
 
     String jobId = UUID.randomUUID().toString();
-    LOG.debug("Generated jobId for CSV export: {}", jobId);
+    LOG.info("Generated jobId for CSV export: {}", jobId);
 
     ExecutorService executorService = AsyncService.getInstance().getExecutorService();
-    LOG.debug("Submitting CSV export task to ExecutorService");
+    LOG.info("Submitting CSV export task to ExecutorService");
 
     executorService.submit(
         () -> {
           try {
-            LOG.debug("Processing CSV export for jobId: {}", jobId);
+            LOG.info("Processing CSV export for jobId: {}", jobId);
             String csvData =
                 repository.exportToCsv(name, securityContext.getUserPrincipal().getName());
-            LOG.debug("CSV data successfully exported for jobId: {}", jobId);
+            LOG.info("CSV data successfully exported for jobId: {}", jobId);
             WebsocketNotificationHandler.sendCsvExportCompleteNotification(
                 jobId, securityContext, csvData);
           } catch (Exception e) {
-            LOG.error("CSV export failed for jobId: {} with error: {}", jobId, e.getMessage(), e);
+            LOG.info("CSV export failed for jobId: {} with error: {}", jobId, e.getMessage(), e);
             WebsocketNotificationHandler.sendCsvExportFailedNotification(
                 jobId, securityContext, e.getMessage());
           }
         });
 
     CSVExportResponse response = new CSVExportResponse(jobId, "Export initiated successfully.");
-    LOG.debug("CSV export initiation response: {}", response);
+    LOG.info("CSV export initiation response: {}", response);
     return Response.accepted().entity(response).type(MediaType.APPLICATION_JSON).build();
   }
 

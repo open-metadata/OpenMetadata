@@ -62,20 +62,20 @@ public class WebsocketNotificationHandler {
 
   public static void sendCsvExportCompleteNotification(
       String jobId, SecurityContext securityContext, String csvData) {
-    LOG.debug("Preparing CSV export completion notification for jobId: {}", jobId);
+    LOG.info("Preparing CSV export completion notification for jobId: {}", jobId);
 
     CSVExportMessage message = new CSVExportMessage(jobId, "COMPLETED", csvData, null);
-    LOG.debug("CSVExportMessage created: {}", message);
+    LOG.info("CSVExportMessage created: {}", message);
 
     String jsonMessage = JsonUtils.pojoToJson(message);
-    LOG.debug("Serialized CSVExportMessage to JSON: {}", jsonMessage);
+    LOG.info("Serialized CSVExportMessage to JSON: {}", jsonMessage);
 
     UUID userId = getUserIdFromSecurityContext(securityContext);
-    LOG.debug("UserId extracted from SecurityContext: {}", userId);
+    LOG.info("UserId extracted from SecurityContext: {}", userId);
 
     WebSocketManager.getInstance()
         .sendToOne(userId, WebSocketManager.CSV_EXPORT_CHANNEL, jsonMessage);
-    LOG.debug(
+    LOG.info(
         "Notification sent to WebSocket channel: {} for userId: {}",
         WebSocketManager.CSV_EXPORT_CHANNEL,
         userId);
@@ -195,20 +195,20 @@ public class WebsocketNotificationHandler {
 
   public static void sendCsvExportFailedNotification(
       String jobId, SecurityContext securityContext, String errorMessage) {
-    LOG.debug("Preparing CSV export failure notification for jobId: {}", jobId);
+    LOG.info("Preparing CSV export failure notification for jobId: {}", jobId);
 
     CSVExportMessage message = new CSVExportMessage(jobId, "FAILED", null, errorMessage);
-    LOG.debug("CSVExportMessage created for failure: {}", message);
+    LOG.info("CSVExportMessage created for failure: {}", message);
 
     String jsonMessage = JsonUtils.pojoToJson(message);
-    LOG.debug("Serialized CSVExportMessage to JSON: {}", jsonMessage);
+    LOG.info("Serialized CSVExportMessage to JSON: {}", jsonMessage);
 
     UUID userId = getUserIdFromSecurityContext(securityContext);
-    LOG.debug("UserId extracted from SecurityContext for failure notification: {}", userId);
+    LOG.info("UserId extracted from SecurityContext for failure notification: {}", userId);
 
     WebSocketManager.getInstance()
         .sendToOne(userId, WebSocketManager.CSV_EXPORT_CHANNEL, jsonMessage);
-    LOG.debug(
+    LOG.info(
         "Failure notification sent to WebSocket channel: {} for userId: {}",
         WebSocketManager.CSV_EXPORT_CHANNEL,
         userId);
