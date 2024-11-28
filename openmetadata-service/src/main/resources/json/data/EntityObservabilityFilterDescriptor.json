@@ -395,6 +395,18 @@
       }
     ],
     "supportedActions" : [
+      {
+        "name": "GetTestSuiteStatusUpdates",
+        "fullyQualifiedName": "eventSubscription.GetTestSuiteStatusUpdates",
+        "displayName": "Get Test Suite Status Updates",
+        "description" : "Get Status Updates Test Suite",
+        "effect" : "include",
+        "condition": "matchTestResult(${testResultList})",
+        "arguments": [
+          "testResultList"
+        ],
+        "inputType": "runtime"
+      }
     ]
   }
 ]
