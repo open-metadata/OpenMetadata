@@ -104,6 +104,7 @@ For high-performance systems, consider the following values as a starting point:
   "queueSize": 500,
   "producerThreads": 20,
   "maxConcurrentRequests": 500
-}```
+}
+```
 
 Monitor system performance and adjust these parameters to optimize throughput and resource usage.
