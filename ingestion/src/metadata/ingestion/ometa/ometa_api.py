@@ -378,12 +378,13 @@ class OpenMetadata(
         logger.debug("Cannot find the Entity %s", fqn)
         return None
 
-    # pylint: disable=too-many-locals
+    # pylint: disable=too-many-locals, too-many-arguments
     def list_entities(
         self,
         entity: Type[T],
         fields: Optional[List[str]] = None,
         after: Optional[str] = None,
+        before: Optional[str] = None,
         limit: int = 100,
         params: Optional[Dict[str, str]] = None,
         skip_on_failure: bool = False,
@@ -395,9 +396,10 @@ class OpenMetadata(
         suffix = self.get_suffix(entity)
         url_limit = f"?limit={limit}"
         url_after = f"&after={after}" if after else ""
+        url_before = f"&before={before}" if before else ""
         url_fields = f"&fields={','.join(fields)}" if fields else ""
         resp = self.client.get(
-            path=f"{suffix}{url_limit}{url_after}{url_fields}", data=params
+            path=f"{suffix}{url_limit}{url_after}{url_before}{url_fields}", data=params
         )
 
         if self._use_raw_data:
@@ -421,7 +423,8 @@ class OpenMetadata(
 
         total = resp["paging"]["total"]
         after = resp["paging"]["after"] if "after" in resp["paging"] else None
-        return EntityList(entities=entities, total=total, after=after)
+        before = resp["paging"]["before"] if "before" in resp["paging"] else None
+        return EntityList(entities=entities, total=total, after=after, before=before)
 
     def list_all_entities(
         self,

@@ -299,7 +299,7 @@ class OMetaTableTest(TestCase):
         )
         assert data
 
-    def test_list_all(self):
+    def test_list_all_and_paginate(self):
         """
         Validate generator utility to fetch all tables
         """
@@ -314,6 +314,17 @@ class OMetaTableTest(TestCase):
         assert (
             len(list(all_entities)) >= 10
         )  # In case the default testing entity is not present
+
+        entity_list = self.metadata.list_entities(entity=Table, limit=2)
+        assert len(entity_list.entities) == 2
+        after_entity_list = self.metadata.list_entities(
+            entity=Table, limit=2, after=entity_list.after
+        )
+        assert len(after_entity_list.entities) == 2
+        before_entity_list = self.metadata.list_entities(
+            entity=Table, limit=2, before=after_entity_list.before
+        )
+        assert before_entity_list.entities == entity_list.entities
 
     def test_delete(self):
         """

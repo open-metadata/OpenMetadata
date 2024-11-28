@@ -30,3 +30,4 @@ class EntityList(BaseModel, Generic[T]):
     entities: List[T]
     total: int
     after: Optional[str] = None
+    before: Optional[str] = None
