@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { CloseOutlined } from '@ant-design/icons';
+import { CloseOutlined, PlusOutlined } from '@ant-design/icons';
 import { Button } from 'antd';
 import { t } from 'i18next';
 import { isUndefined } from 'lodash';
@@ -403,6 +403,43 @@ export const renderQueryBuilderFilterButtons: RenderSettings['renderButton'] = (
 
   return <></>;
 };
+
+export const renderJSONLogicQueryBuilderButtons: RenderSettings['renderButton'] =
+  (props) => {
+    const type = props?.type;
+
+    if (type === 'delRule') {
+      return (
+        <Button
+          className="action action--DELETE ant-btn-sm"
+          data-testid="delete-condition-button"
+          icon={<CloseOutlined width={14} />}
+          onClick={props?.onClick}
+        />
+      );
+    } else if (type === 'delRuleGroup') {
+      return (
+        <Button
+          className="action action--DELETE-GROUP ant-btn-sm"
+          data-testid="delete-group-condition-button"
+          icon={<CloseOutlined width={14} />}
+          onClick={props?.onClick}
+        />
+      );
+    } else if (type === 'addRule') {
+      return (
+        <Button
+          className="action action--ADD-RULE ant-btn-sm"
+          data-testid="add-condition-button"
+          icon={<PlusOutlined width={14} />}
+          type="primary"
+          onClick={props?.onClick}
+        />
+      );
+    }
+
+    return <></>;
+  };
 
 interface ElasticsearchQuery {
   bool?: {
