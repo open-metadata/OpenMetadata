@@ -1,0 +1,17 @@
+{
+  "$id": "https://open-metadata.org/schema/system/onboarding/checklist.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Checklist",
+  "type": "object",
+  "description": "Contains a list of checklist items for the onboarding process.",
+  "properties": {
+    "items": {
+      "type": "array",
+      "items": {
+        "$ref": "checklistItem.json"
+      },
+      "description": "List of top-level checklist items."
+    }
+  },
+  "required": ["items"]
+}
