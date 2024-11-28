@@ -114,6 +114,7 @@
     "authentication-uri": "URI аутентификации",
     "authority": "Власть",
     "authorize-app": "Authorize {{app}}",
+    "auto-classification": "Автоклассификация",
     "auto-pii-confidence-score": "Оценка достоверности Auto PII",
     "auto-tag-pii-uppercase": "Автотег PII",
     "automatically-generate": "Автоматически генерировать",

@@ -69,3 +69,13 @@ export interface ObservabilityCreationDetails {
     secretKey?: string;
   }>;
 }
+
+export interface EventDetails {
+  status: 'successful' | 'failed';
+  data: {
+    id: string;
+    entityType: string;
+    eventType: string;
+    entityId: string;
+  }[];
+}

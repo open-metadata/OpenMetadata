@@ -109,6 +109,12 @@ def ometa_to_sqa_orm(
     We are building the class dynamically using
     `type` and passing SQLAlchemy `Base` class
     as the bases tuple for inheritance.
+
+    Args:
+        table (Table): OpenMetadata Table instance
+        metadata (OpenMetadata): OpenMetadata connection
+        sqa_metadata_obj (MetaData): For advanced use cases, you can pass a custom MetaData object. For most cases, this
+        can be left as None so that the global_metadata object is used.
     """
     _metadata = sqa_metadata_obj or Base.metadata
     table.serviceType = cast(
@@ -156,7 +162,6 @@ def ometa_to_sqa_orm(
 
     if not isinstance(orm, DeclarativeMeta):
         raise ValueError("OMeta to ORM did not create a DeclarativeMeta")
-
     return orm
 
 
