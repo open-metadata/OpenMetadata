@@ -43,7 +43,6 @@ class TrinoLineageSource(TrinoQueryParserSource, LineageSource):
         )
     """
 
-    # TODO: Need to fix params issue
     def get_cross_database_fqn_from_service_names(self):
         database_service_names = self.source_config.crossDatabaseServiceNames
         return [
@@ -54,12 +53,11 @@ class TrinoLineageSource(TrinoQueryParserSource, LineageSource):
             )
         ]
 
-    # TODO: Need to discuss column datatype issue (varchar-string, int-integer). Using column names for now
     def check_same_table(self, table1, table2):
-        # table1_column_mapping = {column.name.root: (column.dataType, column.arrayDataType) for column in table1.columns}
-        # table2_column_mapping = {column.name.root: (column.dataType, column.arrayDataType) for column in table2.columns}
-        # return table1_column_mapping==table2_column_mapping
-        return {column.name.root for column in table1.columns} == {
+        """
+        Method to check whether the table1 and table2 are same
+        """
+        return table1.name.root==table2.name.root and {column.name.root for column in table1.columns} == {
             column.name.root for column in table2.columns
         }
 
@@ -131,7 +129,6 @@ class TrinoLineageSource(TrinoQueryParserSource, LineageSource):
                     column_lineage = self._get_column_lineage(
                         from_table=source, to_table=target, columns_list=columns_list
                     )
-
                 yield self._get_add_lineage_request(
                     from_entity=source, to_entity=target, column_lineage=column_lineage
                 )
