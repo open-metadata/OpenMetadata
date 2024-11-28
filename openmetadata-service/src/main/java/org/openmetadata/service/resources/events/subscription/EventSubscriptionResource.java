@@ -588,8 +588,6 @@ public class EventSubscriptionResource
       @Parameter(description = "AlertType", schema = @Schema(type = "string"))
           @PathParam("alertType")
           CreateEventSubscription.AlertType alertType) {
-    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.CREATE);
-    authorizer.authorize(securityContext, operationContext, getResourceContext());
 
     if (alertType.equals(NOTIFICATION)) {
       return new ResultList<>(EventsSubscriptionRegistry.listEntityNotificationDescriptors());

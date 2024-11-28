@@ -26,11 +26,11 @@ Install the `openmetadata-ingestion` package in your Airflow environment. This a
 pip3 install openmetadata-ingestion[<plugin>]==x.y.z
 ```
 -Replace [<plugin>](https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/setup.py) with the sources to ingest, such as mysql, snowflake, or s3.
--Replace x.y.z with the OpenMetadata version matching your server (e.g., 1.5.11).
+-Replace x.y.z with the OpenMetadata version matching your server (e.g., 1.5.12).
 
 ### Example
 ```
-pip3 install openmetadata-ingestion[mysql,snowflake,s3]==1.5.11
+pip3 install openmetadata-ingestion[mysql,snowflake,s3]==1.5.12
 ```
 ### Example DAG
 

@@ -12,7 +12,16 @@
  */
 import { InfoCircleOutlined } from '@ant-design/icons';
 import { WidgetProps } from '@rjsf/utils';
-import { Alert, Button, Card, Col, Row, Skeleton, Typography } from 'antd';
+import {
+  Alert,
+  Button,
+  Card,
+  Col,
+  Divider,
+  Row,
+  Skeleton,
+  Typography,
+} from 'antd';
 import classNames from 'classnames';
 import { t } from 'i18next';
 import { debounce, isEmpty, isUndefined } from 'lodash';
@@ -29,6 +38,10 @@ import {
 import { getExplorePath } from '../../../../../../constants/constants';
 import { EntityType } from '../../../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../../../enums/search.enum';
+import {
+  EsBoolQuery,
+  QueryFieldInterface,
+} from '../../../../../../pages/ExplorePage/ExplorePage.interface';
 import { searchQuery } from '../../../../../../rest/searchAPI';
 import {
   elasticSearchFormat,
@@ -124,6 +137,22 @@ const QueryBuilderWidget: FC<WidgetProps> = ({
         query: data,
       };
       if (data) {
+        if (entityType !== EntityType.ALL) {
+          // Scope the search to the passed entity type
+          if (
+            Array.isArray(
+              ((qFilter.query as QueryFieldInterface)?.bool as EsBoolQuery)
+                ?.must
+            )
+          ) {
+            (
+              (qFilter.query as QueryFieldInterface)?.bool
+                ?.must as QueryFieldInterface[]
+            )?.push({
+              term: { entityType: entityType },
+            });
+          }
+        }
         debouncedFetchEntityCount(qFilter);
       }
 
@@ -165,7 +194,10 @@ const QueryBuilderWidget: FC<WidgetProps> = ({
           const updatedQ = {
             query: query,
           };
-          const parsedTree = getJsonTreeFromQueryFilter(updatedQ) as JsonTree;
+          const parsedTree = getJsonTreeFromQueryFilter(
+            updatedQ,
+            config.fields
+          ) as JsonTree;
 
           if (Object.keys(parsedTree).length > 0) {
             const tree1 = QbUtils.checkTree(
@@ -205,7 +237,19 @@ const QueryBuilderWidget: FC<WidgetProps> = ({
       data-testid="query-builder-form-field">
       <Card className={classNames('query-builder-card', outputType)}>
         <Row gutter={[8, 8]}>
-          <Col className="p-t-sm" span={24}>
+          <Col
+            className={classNames({
+              'p-t-sm': outputType === SearchOutputType.ElasticSearch,
+            })}
+            span={24}>
+            {outputType === SearchOutputType.JSONLogic && (
+              <>
+                <Typography.Text className="query-filter-label text-grey-muted">
+                  {props.label}
+                </Typography.Text>
+                <Divider className="m-y-sm" />
+              </>
+            )}
             <Query
               {...config}
               renderBuilder={(props) => (
