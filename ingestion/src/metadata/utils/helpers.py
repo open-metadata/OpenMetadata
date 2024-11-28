@@ -359,12 +359,8 @@ def clean_uri(uri: Union[str, Url]) -> str:
     then remove the end / and
     make it http://localhost:9000
     """
-    print("CLEANING URI")
-    print(type(uri))
-    print(uri)
     # force a string of the given Uri if needed
-    if isinstance(uri, Url):
-        uri = str(uri)
+    uri = str(uri)
     return uri[:-1] if uri.endswith("/") else uri
 
 
