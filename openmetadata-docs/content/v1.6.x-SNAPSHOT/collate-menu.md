@@ -358,6 +358,10 @@ site_menu:
 
   - category: Connectors / Pipeline / DataFactory / Run Externally
     url: /connectors/pipeline/datafactory/yaml
+  - category: Connectors / Pipeline / Stitch
+    url: /connectors/pipeline/stitch
+  - category: Connectors / Pipeline / Stitch / Run Externally
+    url: /connectors/pipeline/stitch/yaml
   - category: Connectors / Pipeline / Databricks Pipeline
     url: /connectors/pipeline/databricks-pipeline
   - category: Connectors / Pipeline / Databricks Pipeline / Run Externally
@@ -809,6 +813,14 @@ site_menu:
     url: /releases/supported
   - category: Releases / All Releases
     url: /releases/all-releases
+  - category: Releases / All Releases / 1.5.11 Release
+    url: /releases/all-releases/#1.5.11-release
+  - category: Releases / All Releases / 1.5.10 Release
+    url: /releases/all-releases/#1.5.10-release
+  - category: Releases / All Releases / 1.5.9 Release
+    url: /releases/all-releases/#1.5.9-release
+  - category: Releases / All Releases / 1.5.8 Release
+    url: /releases/all-releases/#1.5.8-release
   - category: Releases / All Releases / 1.5.7 Release
     url: /releases/all-releases/#1.5.7-release
   - category: Releases / All Releases / 1.5.6 Release
