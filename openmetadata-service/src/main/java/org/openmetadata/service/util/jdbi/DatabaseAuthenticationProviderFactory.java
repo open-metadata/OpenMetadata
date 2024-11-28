@@ -35,7 +35,7 @@ public class DatabaseAuthenticationProviderFactory {
       URI uri = new URI(jdbcURL.substring(jdbcURL.indexOf(":") + 1));
       Map<String, String> queryPairs = new LinkedHashMap<>();
       String query = uri.getQuery();
-      if (query != null) {
+      if (query != null && !query.isEmpty()) {
         String[] pairs = query.split("&");
         for (String pair : pairs) {
           int idx = pair.indexOf("=");
