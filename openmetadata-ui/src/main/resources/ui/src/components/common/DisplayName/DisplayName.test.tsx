@@ -13,7 +13,8 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import DisplayName, { DisplayNameProps } from './DisplayName';
+import DisplayName from './DisplayName';
+import { DisplayNameProps } from './DisplayName.interface';
 
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
