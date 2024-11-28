@@ -64,6 +64,9 @@ class TrinoLineageSource(TrinoQueryParserSource, LineageSource):
         }
 
     def get_lineage_details(self) -> List[Tuple[Table, Table]]:
+        """
+        Method to fetch database lineage details.
+        """
         all_cross_database_fqns = self.get_cross_database_fqn_from_service_names()
         cross_database_table_fqn_mapping = {}
         lineage_details = []
