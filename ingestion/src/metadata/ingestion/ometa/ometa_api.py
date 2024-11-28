@@ -378,7 +378,7 @@ class OpenMetadata(
         logger.debug("Cannot find the Entity %s", fqn)
         return None
 
-    # pylint: disable=too-many-locals
+    # pylint: disable=too-many-locals, too-many-arguments
     def list_entities(
         self,
         entity: Type[T],
