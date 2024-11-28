@@ -37,6 +37,12 @@ import { addMultiOwner } from './entity';
 import { sidebarClick } from './sidebar';
 import { TaskDetails, TASK_OPEN_FETCH_LINK } from './task';
 
+type TaskEntity = {
+  entityRef: {
+    name: string;
+  };
+};
+
 const GLOSSARY_NAME_VALIDATION_ERROR = 'Name size must be between 1 and 128';
 
 export const descriptionBox =
@@ -469,8 +475,47 @@ export const fillGlossaryTermDetails = async (
   }
 };
 
-const validateGlossaryTermTask = async (page: Page, term: GlossaryTermData) => {
+export const verifyTaskCreated = async (
+  page: Page,
+  glossaryFqn: string,
+  glossaryTermData: GlossaryTermData
+) => {
+  const { apiContext } = await getApiContext(page);
+  const entityLink = encodeURIComponent(`<#E::glossary::${glossaryFqn}>`);
+
+  await expect
+    .poll(
+      async () => {
+        const response = await apiContext
+          .get(
+            `/api/v1/feed?entityLink=${entityLink}&type=Task&taskStatus=Open`
+          )
+          .then((res) => res.json());
+
+        const arr = response.data.map(
+          (item: TaskEntity) => item.entityRef.name
+        );
+
+        return arr;
+      },
+      {
+        // Custom expect message for reporting, optional.
+        message: 'To get the last run execution status as success',
+        timeout: 200_000,
+        intervals: [30_000],
+      }
+    )
+    .toContain(glossaryTermData.name);
+};
+
+export const validateGlossaryTermTask = async (
+  page: Page,
+  term: GlossaryTermData
+) => {
+  const taskCountRes = page.waitForResponse('/api/v1/feed/count?*');
   await page.click('[data-testid="activity_feed"]');
+  await taskCountRes;
+
   const taskFeeds = page.waitForResponse(TASK_OPEN_FETCH_LINK);
   await page
     .getByTestId('global-setting-left-panel')
@@ -504,6 +549,37 @@ export const approveGlossaryTermTask = async (
   await toastNotification(page, /Task resolved successfully/);
 };
 
+// Show the glossary term edit modal from glossary page tree.
+// Update the description and verify the changes.
+export const updateGlossaryTermDataFromTree = async (
+  page: Page,
+  termFqn: string
+) => {
+  // eslint-disable-next-line no-useless-escape
+  const escapedFqn = termFqn.replace(/\"/g, '\\"');
+  const termRow = page.locator(`[data-row-key="${escapedFqn}"]`);
+  await termRow.getByTestId('edit-button').click();
+
+  await page.waitForSelector('[role="dialog"].edit-glossary-modal');
+
+  await expect(
+    page.locator('[role="dialog"].edit-glossary-modal')
+  ).toBeVisible();
+  await expect(page.locator('.ant-modal-title')).toContainText(
+    'Edit Glossary Term'
+  );
+
+  await page.locator(descriptionBox).fill('Updated description');
+
+  const glossaryTermResponse = page.waitForResponse('/api/v1/glossaryTerms/*');
+  await page.getByTestId('save-glossary-term').click();
+  await glossaryTermResponse;
+
+  await expect(
+    termRow.getByRole('cell', { name: 'Updated description' })
+  ).toBeVisible();
+};
+
 export const validateGlossaryTerm = async (
   page: Page,
   term: GlossaryTermData,
@@ -516,13 +592,6 @@ export const validateGlossaryTerm = async (
 
   await expect(page.locator(termSelector)).toContainText(term.name);
   await expect(page.locator(statusSelector)).toContainText(status);
-
-  if (status === 'Draft') {
-    // wait for 15 seconds as the flowable which creates task is triggered every 10 seconds
-    await page.waitForTimeout(15000);
-    await validateGlossaryTermTask(page, term);
-    await page.click('[data-testid="terms"]');
-  }
 };
 
 export const createGlossaryTerm = async (

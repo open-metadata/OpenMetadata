@@ -41,6 +41,7 @@ import {
   patchGlossaryTerm,
 } from '../../rest/glossaryAPI';
 import { getEntityDeleteMessage } from '../../utils/CommonUtils';
+import { updateGlossaryTermByFqn } from '../../utils/GlossaryUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useActivityFeedProvider } from '../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
@@ -84,6 +85,7 @@ const GlossaryV1 = ({
   const { getEntityPermission } = usePermissionProvider();
   const [isLoading, setIsLoading] = useState(true);
   const [isTermsLoading, setIsTermsLoading] = useState(false);
+  const [isPermissionLoading, setIsPermissionLoading] = useState(false);
 
   const [isDelete, setIsDelete] = useState<boolean>(false);
 
@@ -97,7 +99,8 @@ const GlossaryV1 = ({
 
   const [editMode, setEditMode] = useState(false);
 
-  const { activeGlossary, setGlossaryChildTerms } = useGlossaryStore();
+  const { activeGlossary, glossaryChildTerms, setGlossaryChildTerms } =
+    useGlossaryStore();
 
   const { id, fullyQualifiedName } = activeGlossary ?? {};
 
@@ -206,6 +209,17 @@ const GlossaryV1 = ({
     setIsEditModalOpen(true);
   };
 
+  const updateGlossaryTermInStore = (updatedTerm: GlossaryTerm) => {
+    const clonedTerms = cloneDeep(glossaryChildTerms);
+    const updatedGlossaryTerms = updateGlossaryTermByFqn(
+      clonedTerms,
+      updatedTerm.fullyQualifiedName ?? '',
+      updatedTerm as ModifiedGlossary
+    );
+
+    setGlossaryChildTerms(updatedGlossaryTerms);
+  };
+
   const updateGlossaryTerm = async (
     currentData: GlossaryTerm,
     updatedData: GlossaryTerm
@@ -217,8 +231,10 @@ const GlossaryV1 = ({
         throw t('server.entity-updating-error', {
           entity: t('label.glossary-term'),
         });
+      } else {
+        updateGlossaryTermInStore(response);
+        setIsEditModalOpen(false);
       }
-      onTermModalSuccess();
     } catch (error) {
       if (
         (error as AxiosError).response?.status === HTTP_STATUS_CODE.CONFLICT
@@ -336,18 +352,29 @@ const GlossaryV1 = ({
     shouldRefreshTerms && loadGlossaryTerms(true);
   };
 
+  const initPermissions = async () => {
+    setIsPermissionLoading(true);
+    const permissionFetch = isGlossaryActive
+      ? fetchGlossaryPermission
+      : fetchGlossaryTermPermission;
+
+    try {
+      if (isVersionsView) {
+        isGlossaryActive
+          ? setGlossaryPermission(VERSION_VIEW_GLOSSARY_PERMISSION)
+          : setGlossaryTermPermission(VERSION_VIEW_GLOSSARY_PERMISSION);
+      } else {
+        await permissionFetch();
+      }
+    } finally {
+      setIsPermissionLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (id && !action) {
       loadGlossaryTerms();
-      if (isGlossaryActive) {
-        isVersionsView
-          ? setGlossaryPermission(VERSION_VIEW_GLOSSARY_PERMISSION)
-          : fetchGlossaryPermission();
-      } else {
-        isVersionsView
-          ? setGlossaryTermPermission(VERSION_VIEW_GLOSSARY_PERMISSION)
-          : fetchGlossaryTermPermission();
-      }
+      initPermissions();
     }
   }, [id, isGlossaryActive, isVersionsView, action]);
 
@@ -355,8 +382,9 @@ const GlossaryV1 = ({
     <ImportGlossary glossaryName={selectedData.fullyQualifiedName ?? ''} />
   ) : (
     <>
-      {isLoading && <Loader />}
+      {(isLoading || isPermissionLoading) && <Loader />}
       {!isLoading &&
+        !isPermissionLoading &&
         !isEmpty(selectedData) &&
         (isGlossaryActive ? (
           <GlossaryDetails
