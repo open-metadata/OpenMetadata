@@ -101,7 +101,7 @@ python3 -m venv env
 source env/bin/activate
 pip install pre-commit
 make install_dev
-make install_test precommit_install
+make precommit_install
 ```
 
 ### OpenMetadata API Backend

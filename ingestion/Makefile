@@ -15,7 +15,7 @@ install:  ## Install the ingestion module to the current environment
 
 .PHONY: install_dev
 install_dev:  ## Install the ingestion module with dev dependencies
-	python -m pip install "$(INGESTION_DIR)[dev]/"
+	python -m pip install "$(INGESTION_DIR)[dev,test]/"
 
 .PHONY: install_test
 install_test:  ## Install the ingestion module with test dependencies
@@ -24,10 +24,6 @@ install_test:  ## Install the ingestion module with test dependencies
 .PHONY: install_all
 install_all:  ## Install the ingestion module with all dependencies
 	python -m pip install "$(INGESTION_DIR)[all]/"
-
-.PHONY: install_apis
-install_apis:  ## Install the REST APIs module to the current environment
-	python -m pip install $(ROOT_DIR)/openmetadata-airflow-apis/ setuptools~=70.3.0
 
 .PHONY: lint
 lint:  ## Run pylint on the Python sources to analyze the codebase
@@ -56,21 +52,15 @@ py_format_check:  ## Check if Python sources are correctly formatted
 	black --check --diff $(INGESTION_DIR)/ $(ROOT_DIR)/openmetadata-airflow-apis/ --config $(INGESTION_DIR)/pyproject.toml
 	PYTHONPATH="${PYTHONPATH}:$(INGESTION_DIR)/plugins" pylint --rcfile=$(INGESTION_DIR)/pyproject.toml --fail-under=10 $(PY_SOURCE)/metadata || (echo "PyLint error code $$?"; exit 1)
 
-.PHONY: unit_ingestion
-unit_ingestion:  ## Run Python unit tests
-	coverage run --rcfile $(INGESTION_DIR)/pyproject.toml -a --branch -m pytest -c $(INGESTION_DIR)/pyproject.toml --junitxml=$(INGESTION_DIR)/junit/test-results-unit.xml $(INGESTION_DIR)/tests/unit
-
-## Ingestion tests & QA
-.PHONY: run_ometa_integration_tests
-run_ometa_integration_tests:  ## Run Python integration tests
-	coverage run --rcfile $(INGESTION_DIR)/pyproject.toml -a --branch -m pytest -c $(INGESTION_DIR)/pyproject.toml --junitxml=$(INGESTION_DIR)/junit/test-results-integration.xml $(INGESTION_DIR)/tests/integration
+.PHONY: run_integration_and_unit_tests
+run_integration_and_unit_tests:  ## Run Python unite and integration tests
+	coverage run --rcfile $(INGESTION_DIR)/pyproject.toml -a --branch -m pytest -c $(INGESTION_DIR)/pyproject.toml --junitxml=$(INGESTION_DIR)/junit/test-results-all.xml $(INGESTION_DIR)/tests/unit $(INGESTION_DIR)/tests/integration
 
 .PHONY: run_python_tests
 run_python_tests:  ## Run all Python tests with coverage
 	coverage erase
 	$(MAKE) static-checks
-	$(MAKE) unit_ingestion
-	$(MAKE) run_ometa_integration_tests
+	$(MAKE) run_integration_and_unit_tests
 	coverage report --rcfile $(INGESTION_DIR)/pyproject.toml || true
 
 .PHONY: sonar_ingestion
@@ -83,18 +73,6 @@ sonar_ingestion:  ## Run the Sonar analysis based on the tests results and push 
 		-v ${PWD}/$(INGESTION_DIR):/usr/src \
 		sonarsource/sonar-scanner-cli \
 		-Dproject.settings=sonar-project.properties
-
-.PHONY: run_apis_tests
-run_apis_tests:  ## Run the openmetadata airflow apis tests
-	coverage erase
-	coverage run --rcfile $(ROOT_DIR)/openmetadata-airflow-apis/pyproject.toml -a --branch -m pytest -c $(INGESTION_DIR)/pyproject.toml --junitxml=$(ROOT_DIR)/openmetadata-airflow-apis/junit/test-results.xml $(ROOT_DIR)/openmetadata-airflow-apis/tests
-	coverage report --rcfile $(ROOT_DIR)/openmetadata-airflow-apis/pyproject.toml
-
-.PHONY: coverage_apis
-coverage_apis:  ## Run the python tests on openmetadata-airflow-apis
-	$(MAKE) run_apis_tests
-	coverage xml --rcfile $(ROOT_DIR)/openmetadata-airflow-apis/pyproject.toml -o $(ROOT_DIR)/openmetadata-airflow-apis/coverage.xml
-	sed -e "s/$(shell python -c "import site; import os; from pathlib import Path; print(os.path.relpath(site.getsitepackages()[0], str(Path.cwd())).replace('/','\/'))")\///g" $(ROOT_DIR)/openmetadata-airflow-apis/coverage.xml >> $(ROOT_DIR)/openmetadata-airflow-apis/ci-coverage.xml
 
 .PHONY: coverage
 coverage:  ## Run all Python tests and generate the coverage XML report
