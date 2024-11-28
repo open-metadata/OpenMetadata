@@ -166,6 +166,7 @@ from metadata.generated.schema.type.entityLineage import EntitiesEdge
 add_lineage_request = AddLineageRequest(
     edge=EntitiesEdge(
         description="test lineage",
+        from metadata.generated.schema.type.entityReference import EntityReference
         fromEntity=EntityReference(id=table_a_entity.id, type="table"),
         toEntity=EntityReference(id=table_b_entity.id, type="table"),
     ),
@@ -325,6 +326,7 @@ lineage_details = LineageDetails(
 
 add_lineage_request = AddLineageRequest(
     edge=EntitiesEdge(
+        from metadata.generated.schema.type.entityReference import EntityReference
         fromEntity=EntityReference(id=table_a_entity.id, type="table"),
         toEntity=EntityReference(id=table_c_entity.id, type="table"),
         lineageDetails=lineage_details,
