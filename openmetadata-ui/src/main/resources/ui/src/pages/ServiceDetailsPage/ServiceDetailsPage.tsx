@@ -513,44 +513,45 @@ const ServiceDetailsPage: FunctionComponent = () => {
     async (paging?: PagingWithoutTotal) => {
       try {
         setIsServiceLoading(true);
+        const pagingParams = { ...paging, limit: pageSize };
         switch (serviceCategory) {
           case ServiceCategory.DATABASE_SERVICES: {
-            await fetchDatabases({ ...paging, limit: pageSize });
+            await fetchDatabases(pagingParams);
 
             break;
           }
           case ServiceCategory.MESSAGING_SERVICES: {
-            await fetchTopics({ ...paging, limit: pageSize });
+            await fetchTopics(pagingParams);
 
             break;
           }
           case ServiceCategory.DASHBOARD_SERVICES: {
-            await fetchDashboards({ ...paging, limit: pageSize });
+            await fetchDashboards(pagingParams);
 
             break;
           }
           case ServiceCategory.PIPELINE_SERVICES: {
-            await fetchPipeLines({ ...paging, limit: pageSize });
+            await fetchPipeLines(pagingParams);
 
             break;
           }
           case ServiceCategory.ML_MODEL_SERVICES: {
-            await fetchMlModal({ ...paging, limit: pageSize });
+            await fetchMlModal(pagingParams);
 
             break;
           }
           case ServiceCategory.STORAGE_SERVICES: {
-            await fetchContainers({ ...paging, limit: pageSize });
+            await fetchContainers(pagingParams);
 
             break;
           }
           case ServiceCategory.SEARCH_SERVICES: {
-            await fetchSearchIndexes({ ...paging, limit: pageSize });
+            await fetchSearchIndexes(pagingParams);
 
             break;
           }
           case ServiceCategory.API_SERVICES: {
-            await fetchCollections({ ...paging, limit: pageSize });
+            await fetchCollections(pagingParams);
 
             break;
           }
