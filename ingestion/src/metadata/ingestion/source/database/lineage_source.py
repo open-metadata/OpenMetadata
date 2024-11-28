@@ -17,15 +17,27 @@ import traceback
 from abc import ABC
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from functools import partial
-from typing import Callable, Iterable, Iterator, Union
+from typing import Callable, Iterable, Iterator, List, Optional, Union
 
 from metadata.generated.schema.api.data.createQuery import CreateQueryRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
-from metadata.generated.schema.type.basic import FullyQualifiedEntityName, SqlQuery
+from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.type.basic import (
+    FullyQualifiedEntityName,
+    SqlQuery,
+    Uuid,
+)
+from metadata.generated.schema.type.entityLineage import (
+    ColumnLineage,
+    EntitiesEdge,
+    LineageDetails,
+    Source,
+)
+from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.tableQuery import TableQuery
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper, Dialect
-from metadata.ingestion.lineage.sql_lineage import get_lineage_by_query
+from metadata.ingestion.lineage.sql_lineage import get_column_fqn, get_lineage_by_query
 from metadata.ingestion.models.ometa_lineage import OMetaLineageRequest
 from metadata.ingestion.source.database.query_parser_source import QueryParserSource
 from metadata.ingestion.source.models import TableView
@@ -239,6 +251,58 @@ class LineageSource(QueryParserSource, ABC):
             f"Processing Procedure Lineage not supported for {str(self.service_connection.type.value)}"
         )
 
+    def _get_column_lineage(
+        self, from_table: Table, to_table: Table, columns_list: List[str]
+    ) -> List[ColumnLineage]:
+        """
+        Get the column lineage from the fields
+        """
+        try:
+            column_lineage = []
+            for field in columns_list or []:
+                from_column = get_column_fqn(table_entity=from_table, column=field)
+                to_column = get_column_fqn(table_entity=to_table, column=field)
+                if from_column and to_column:
+                    column_lineage.append(
+                        ColumnLineage(fromColumns=[from_column], toColumn=to_column)
+                    )
+            return column_lineage
+        except Exception as exc:
+            logger.debug(f"Error to get column lineage: {exc}")
+            logger.debug(traceback.format_exc())
+
+    @staticmethod
+    def _get_add_lineage_request(
+        from_entity: Table, to_entity: Table, column_lineage: List[ColumnLineage] = None
+    ) -> Optional[Either[AddLineageRequest]]:
+        if from_entity and to_entity:
+            return Either(
+                right=AddLineageRequest(
+                    edge=EntitiesEdge(
+                        fromEntity=EntityReference(
+                            id=Uuid(from_entity.id.root), type="table"
+                        ),
+                        toEntity=EntityReference(
+                            id=Uuid(to_entity.id.root), type="table"
+                        ),
+                        lineageDetails=LineageDetails(
+                            source=Source.CrossDatabaseLineage,
+                            columnsLineage=column_lineage,
+                        ),
+                    )
+                )
+            )
+
+        return None
+
+    def yield_cross_database_lineage(self) -> Iterable[Either[AddLineageRequest]]:
+        """
+        By default cross database lineage is not supported.
+        """
+        logger.info(
+            f"Processing Cross Database Lineage not supported for {str(self.service_connection.type.value)}"
+        )
+
     def _iter(
         self, *_, **__
     ) -> Iterable[Either[Union[AddLineageRequest, CreateQueryRequest]]]:
@@ -257,3 +321,8 @@ class LineageSource(QueryParserSource, ABC):
                 logger.warning(
                     f"Lineage extraction is not supported for {str(self.service_connection.type.value)} connection"
                 )
+        if self.source_config.processCrossDatabaseLineage:
+            yield from self.yield_cross_database_lineage() or []
+
+        # additional lineage
+        # hive service name -

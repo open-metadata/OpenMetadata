@@ -396,8 +396,9 @@ class OpenMetadata(
         url_limit = f"?limit={limit}"
         url_after = f"&after={after}" if after else ""
         url_fields = f"&fields={','.join(fields)}" if fields else ""
+        url_params = "".join([f"&{k}={v}," for k, v in params.items()])[:-1]
         resp = self.client.get(
-            path=f"{suffix}{url_limit}{url_after}{url_fields}", data=params
+            path=f"{suffix}{url_limit}{url_after}{url_fields}{url_params}", data=params
         )
 
         if self._use_raw_data:
