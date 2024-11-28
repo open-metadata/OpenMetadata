@@ -3,7 +3,7 @@ source:
   serviceName: test
   serviceConnection:
     config:
-      type: Microstrategy
+      type: MicroStrategy
       username: username
       password: password
       hostPort: http://hostPort
