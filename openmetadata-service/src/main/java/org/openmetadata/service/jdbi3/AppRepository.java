@@ -1,7 +1,6 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import static org.openmetadata.service.resources.apps.AppResource.encryptSlackAppConfig;
 import static org.openmetadata.service.util.UserUtil.getUser;
 
 import java.util.ArrayList;
@@ -389,9 +388,7 @@ public class AppRepository extends EntityRepository<App> {
     @Override
     public void entitySpecificUpdate() {
       recordChange(
-          "appConfiguration",
-          original.getAppConfiguration(),
-          encryptSlackAppConfig(updated, updated.getAppConfiguration()));
+          "appConfiguration", original.getAppConfiguration(), updated.getAppConfiguration());
       recordChange("appSchedule", original.getAppSchedule(), updated.getAppSchedule());
       recordChange("bot", original.getBot(), updated.getBot());
     }
