@@ -65,7 +65,7 @@ Please follow the instructions here to [install ElasticSearch](https://www.elast
 
 If you are using AWS OpenSearch Service, OpenMetadata Supports AWS OpenSearch Service engine version up to 2.7. For more information on AWS OpenSearch Service, please visit the official docs [here](https://docs.aws.amazon.com/opensearch-service/latest/developerguide/what-is.html).
 
-## Airflow (version 2.0.0 or higher) or other workflow schedulers
+## Airflow (version 2.9.1) or other workflow schedulers
 
 OpenMetadata performs metadata ingestion using the Ingestion Framework. Learn more about how to deploy and manage
 the ingestion workflows [here](/deployment/ingestion).
