@@ -22,11 +22,7 @@ import { SearchIndexClass } from '../../support/entity/SearchIndexClass';
 import { StoredProcedureClass } from '../../support/entity/StoredProcedureClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { TopicClass } from '../../support/entity/TopicClass';
-import {
-  createNewPage,
-  redirectToHomePage,
-  toastNotification,
-} from '../../utils/common';
+import { createNewPage, redirectToHomePage } from '../../utils/common';
 import { addMultiOwner, assignTier } from '../../utils/entity';
 
 const entities = [
@@ -237,7 +233,11 @@ entities.forEach((EntityClass) => {
 
           await deleteResponse;
 
-          await toastNotification(page, /deleted successfully!/);
+          await expect(page.locator('.Toastify__toast-body')).toHaveText(
+            /deleted successfully!/
+          );
+
+          await page.click('.Toastify__close-button');
 
           await page.reload();
 

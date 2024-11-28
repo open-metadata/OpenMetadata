@@ -49,6 +49,7 @@ import {
   LOCALSTORAGE_RECENTLY_SEARCHED,
   LOCALSTORAGE_RECENTLY_VIEWED,
 } from '../constants/constants';
+import { BASE_COLORS } from '../constants/DataInsight.constants';
 import { FEED_COUNT_INITIAL_DATA } from '../constants/entity.constants';
 import {
   UrlEntityCharRegEx,
@@ -875,4 +876,34 @@ export const removeOuterEscapes = (input: string) => {
 
   // Return the middle part without the outer escape characters or the original input if no match
   return match && match.length > 3 ? match[2] : input;
+};
+
+/**
+ * Generate a color with decreasing opacity after the first 24 colors.
+ * @param index - The index of the label
+ * @returns {string} - RGBA color string
+ */
+export const entityChartColor = (index: number): string => {
+  const baseColor = BASE_COLORS[index % BASE_COLORS.length]; // Cycle through base colors
+  const opacity =
+    index < BASE_COLORS.length
+      ? 1 // Full opacity for the first 24 labels
+      : Math.max(1 - Math.floor(index / BASE_COLORS.length) * 0.1, 0.1); // Decrease opacity for subsequent labels
+
+  return hexToRgba(baseColor, opacity);
+};
+
+/**
+ * Convert hex color to RGBA
+ * @param hex - Hex color string
+ * @param opacity - Opacity value (0-1)
+ * @returns {string} - RGBA color string
+ */
+const hexToRgba = (hex: string, opacity: number): string => {
+  const bigint = parseInt(hex.replace('#', ''), 16);
+  const r = (bigint >> 16) & 255;
+  const g = (bigint >> 8) & 255;
+  const b = bigint & 255;
+
+  return `rgba(${r}, ${g}, ${b}, ${opacity.toFixed(2)})`;
 };

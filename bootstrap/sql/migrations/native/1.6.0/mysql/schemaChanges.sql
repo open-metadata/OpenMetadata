@@ -1748,6 +1748,32 @@ UPDATE ingestion_pipeline_entity
 SET json = JSON_REMOVE(json, '$.sourceConfig.config.processPiiSensitive', '$.sourceConfig.config.confidence', '$.sourceConfig.config.generateSampleData')
 WHERE JSON_EXTRACT(json, '$.pipelineType') = 'profiler';
 
+-- Rename 'jobId' to 'jobIds', set 'jobId' as type array in 'jobIds' , add 'projectIds' for dbt cloud
+UPDATE pipeline_service_entity
+SET json = JSON_SET(
+    JSON_REMOVE(
+        json,
+        '$.connection.config.jobId'
+    ),
+    '$.connection.config.jobIds',
+    IF(
+        JSON_CONTAINS_PATH(json, 'one', '$.connection.config.jobIds'),
+        JSON_EXTRACT(json, '$.connection.config.jobIds'),
+        IF(
+            JSON_EXTRACT(json, '$.connection.config.jobId') IS NOT NULL,
+            JSON_ARRAY(JSON_UNQUOTE(JSON_EXTRACT(json, '$.connection.config.jobId'))),
+            JSON_ARRAY()
+        )
+    ),
+    '$.connection.config.projectIds',
+    IF(
+        JSON_CONTAINS_PATH(json, 'one', '$.connection.config.projectIds'),
+        JSON_EXTRACT(json, '$.connection.config.projectIds'),
+        JSON_ARRAY()
+    )
+)
+WHERE serviceType = 'DBTCloud';
+
 -- Update serviceType in dashboard_entity table
 UPDATE dashboard_entity
 SET json = JSON_SET(json, '$.serviceType', 'MicroStrategy')
