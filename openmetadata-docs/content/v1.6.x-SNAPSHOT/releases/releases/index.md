@@ -14,6 +14,47 @@ version. To see what's coming in next releases, please check our [Roadmap](/rele
 
 {% partial file="/v1.5/releases/latest.md" /%}
 
+# 1.5.11 Release
+
+{% note noteType="Tip" %}
+**Nov 15th, 2024**
+{% /note %}
+
+You can find the GitHub release [here](https://github.com/open-metadata/OpenMetadata/releases/tag/1.5.11-release).
+
+# What's Changed
+
+- Improvement: Search Index App, Parallelize the search indexing process.
+- Improvement: Mask SQL Queries where conditions data in Usage & Lineage Workflow.
+- Improvement: Databricks query run optimization to reduce the costs in retrieving metadata.
+- Improvement: Added support for lineage default depth settings. Admins can control the default Lineage Upstream and Downstream depth.
+- Improvement: Add Column Value to be At Expected Location Test.
+- Improvement: Scaling Export API to 10000s of assets, Introduced Async API and push export data using websockets
+- Fix: User count doesn't update on adding to the team while using search.
+- Fix: Sample data json formatting while displaying in the UI.
+- Fix: Return s3 endpoint as str() instead of Url.
+- Fix: Materialized View Lineage.
+- Fix: Custom property save config.
+
+**Full Changelog**: https://github.com/open-metadata/OpenMetadata/compare/1.5.10-release...1.5.11-release
+
+# 1.5.10 Release
+
+{% note noteType="Tip" %}
+**Oct 31st, 2024**
+{% /note %}
+
+You can find the GitHub release [here](https://github.com/open-metadata/OpenMetadata/releases/tag/1.5.10-release).
+
+# What's Changed
+
+- Fix encoding issue for teams search query.
+- Fix disable empty rule for query builder widget.
+- Fix unable to add more enum values for enum cp.
+- Fix navigate to listing for deleting a service.
+
+**Full Changelog**: https://github.com/open-metadata/OpenMetadata/compare/1.5.9-release...1.5.10-release
+
 # 1.5.9 Release
 
 {% note noteType="Tip" %}

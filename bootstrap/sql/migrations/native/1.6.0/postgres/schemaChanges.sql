@@ -1734,3 +1734,25 @@ WHERE json #>> '{pipelineType}' = 'metadata';
 UPDATE ingestion_pipeline_entity
 SET json = json::jsonb #- '{sourceConfig,config,processPiiSensitive}'  #- '{sourceConfig,config,confidence}'  #- '{sourceConfig,config,generateSampleData}'
 WHERE json #>> '{pipelineType}' = 'profiler';
+
+-- set value of 'jobId' as an array into 'jobIds' for dbt cloud
+UPDATE pipeline_service_entity
+SET json = (case when json#>>'{connection, config, jobId}' IS NOT null
+then 
+	jsonb_set(json, '{connection, config, jobIds}', to_jsonb(ARRAY[json#>>'{connection, config, jobId}']), true)
+else 
+	jsonb_set(json, '{connection, config, jobIds}', '[]', true)
+end
+)
+WHERE servicetype = 'DBTCloud';
+
+-- remove 'jobId' after setting 'jobIds' for dbt cloud
+UPDATE pipeline_service_entity
+SET json = json::jsonb #- '{connection,config,jobId}'
+WHERE json#>>'{connection, config, jobId}' IS NOT null
+and servicetype = 'DBTCloud';
+
+-- add 'projectIds' for dbt cloud
+UPDATE pipeline_service_entity
+SET json = jsonb_set(json, '{connection, config, projectIds}', '[]', true)
+WHERE servicetype = 'DBTCloud';

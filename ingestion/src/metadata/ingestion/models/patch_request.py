@@ -94,6 +94,7 @@ ALLOWED_COMMON_PATCH_FIELDS = {
     "tableConstraints": True,
     "tablePartition": True,
     "location": True,
+    "locationPath": True,
     "schemaDefinition": True,
     "sampleData": True,
     "fileFormat": True,
