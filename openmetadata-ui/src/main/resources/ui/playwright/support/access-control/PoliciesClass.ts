@@ -27,6 +27,8 @@ export type PolicyRulesType = {
   resources: string[];
   operations: string[];
   effect: string;
+  description?: string;
+  condition?: string;
 };
 
 export class PolicyClass {

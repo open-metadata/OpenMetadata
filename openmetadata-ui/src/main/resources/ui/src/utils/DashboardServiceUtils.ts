@@ -22,8 +22,8 @@ import domoDashboardConnection from '../jsons/connectionSchemas/connections/dash
 import lightdashConnection from '../jsons/connectionSchemas/connections/dashboard/lightdashConnection.json';
 import lookerConnection from '../jsons/connectionSchemas/connections/dashboard/lookerConnection.json';
 import metabaseConnection from '../jsons/connectionSchemas/connections/dashboard/metabaseConnection.json';
+import microStrategyConnection from '../jsons/connectionSchemas/connections/dashboard/microStrategyConnection.json';
 import modeConnection from '../jsons/connectionSchemas/connections/dashboard/modeConnection.json';
-import mstrConnection from '../jsons/connectionSchemas/connections/dashboard/mstrConnection.json';
 import powerBIConnection from '../jsons/connectionSchemas/connections/dashboard/powerBIConnection.json';
 import qlikcloudConnection from '../jsons/connectionSchemas/connections/dashboard/qlikCloudConnection.json';
 import qliksenseConnection from '../jsons/connectionSchemas/connections/dashboard/qlikSenseConnection.json';
@@ -118,8 +118,8 @@ export const getDashboardConfig = (type: DashboardServiceType) => {
       break;
     }
 
-    case DashboardServiceType.Mstr: {
-      schema = mstrConnection;
+    case DashboardServiceType.MicroStrategy: {
+      schema = microStrategyConnection;
 
       break;
     }
