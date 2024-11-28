@@ -51,6 +51,7 @@ mock_dbt_config = {
                     "dbtCatalogFilePath": "sample/dbt_files/catalog.json",
                     "dbtManifestFilePath": "sample/dbt_files/manifest.json",
                     "dbtRunResultsFilePath": "sample/dbt_files/run_results.json",
+                    "dbtSourcesFilePath": "sample/dbt_files/sources.json",
                 },
             }
         },
@@ -682,7 +683,7 @@ class DbtUnitTest(TestCase):
             self.assertEqual(expected, original)
 
     @patch("metadata.ingestion.ometa.mixins.es_mixin.ESMixin.es_search_from_fqn")
-    def test_updtream_nodes_for_lineage(self, es_search_from_fqn):
+    def test_upstream_nodes_for_lineage(self, es_search_from_fqn):
         expected_upstream_nodes = [
             "model.jaffle_shop.stg_customers",
             "model.jaffle_shop.stg_orders",

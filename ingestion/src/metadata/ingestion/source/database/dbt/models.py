@@ -20,12 +20,14 @@ from pydantic import BaseModel
 class DbtFiles(BaseModel):
     dbt_catalog: Optional[dict] = None
     dbt_manifest: dict
+    dbt_sources: Optional[dict] = None
     dbt_run_results: Optional[List[dict]] = None
 
 
 class DbtObjects(BaseModel):
     dbt_catalog: Optional[Any] = None
     dbt_manifest: Any
+    dbt_sources: Optional[Any] = None
     dbt_run_results: Optional[List[Any]] = None
 
 

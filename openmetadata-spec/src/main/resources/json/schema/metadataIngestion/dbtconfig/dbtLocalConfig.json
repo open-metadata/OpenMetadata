@@ -26,6 +26,11 @@
       "title": "DBT Run Results File Path",
       "description": "DBT run results file path to extract the test results information.",
       "type": "string"
+    },
+    "dbtSourcesFilePath": {
+      "title": "DBT Sources File Path",
+      "description": "DBT sources file path to extract the freshness test result.",
+      "type": "string"
     }
   },
   "additionalProperties": false,

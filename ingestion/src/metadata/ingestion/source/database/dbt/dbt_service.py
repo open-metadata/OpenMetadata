@@ -15,7 +15,12 @@ DBT service Topology.
 from abc import ABC, abstractmethod
 from typing import Iterable, List
 
-from dbt_artifacts_parser.parser import parse_catalog, parse_manifest, parse_run_results
+from dbt_artifacts_parser.parser import (
+    parse_catalog,
+    parse_manifest,
+    parse_run_results,
+    parse_sources,
+)
 from pydantic import Field
 from typing_extensions import Annotated
 
@@ -209,11 +214,13 @@ class DbtServiceSource(TopologyRunnerMixin, Source, ABC):
             self.remove_run_result_non_required_keys(
                 run_results=self.context.get().dbt_file.dbt_run_results
             )
+
         dbt_objects = DbtObjects(
             dbt_catalog=parse_catalog(self.context.get().dbt_file.dbt_catalog)
             if self.context.get().dbt_file.dbt_catalog
             else None,
             dbt_manifest=parse_manifest(self.context.get().dbt_file.dbt_manifest),
+            dbt_sources=parse_sources(self.context.get().dbt_file.dbt_sources),
             dbt_run_results=[
                 parse_run_results(run_result_file)
                 for run_result_file in self.context.get().dbt_file.dbt_run_results
