@@ -94,13 +94,12 @@ export const UserTab = ({
     showPagination,
   } = usePaging(PAGE_SIZE_MEDIUM);
 
-
   const usersList = useMemo(() => {
     return users.map((item) =>
       getEntityReferenceFromEntity(item, EntityType.USER)
     );
   }, [users]);
-  
+
   const isGroupType = useMemo(
     () => currentTeam.teamType === TeamType.Group,
     [currentTeam.teamType]
@@ -379,7 +378,7 @@ export const UserTab = ({
               onSearch={handleUsersSearchAction}
             />
           </Col>
-          {!currentTeam.deleted && (
+          {!currentTeam.deleted && isGroupType && (
             <Col>
               <Space>
                 {users.length > 0 && permission.EditAll && (

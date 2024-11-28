@@ -220,6 +220,13 @@ public final class CatalogExceptionMessage {
         "Principal: CatalogPrincipal{name='%s'} operations %s not allowed", user, operations);
   }
 
+  public static String resourcePermissionNotAllowed(
+      String user, List<MetadataOperation> operations, List<String> resources) {
+    return String.format(
+        "Principal: CatalogPrincipal{name='%s'} operations %s not allowed for resources {%s}.",
+        user, operations, resources);
+  }
+
   public static String domainPermissionNotAllowed(
       String user, String domainName, List<MetadataOperation> operations) {
     return String.format(
