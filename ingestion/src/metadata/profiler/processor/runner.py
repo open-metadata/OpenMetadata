@@ -73,6 +73,16 @@ class QueryRunner:
     def dataset(self, dataset):
         self._dataset = dataset
 
+    @property
+    def table_name(self):
+        """Table name attribute access"""
+        return self.raw_dataset.__table__.name
+
+    @property
+    def schema_name(self):
+        """Table name attribute access"""
+        return self.raw_dataset.__table__.schema
+
     def _build_query(self, *entities, **kwargs) -> Query:
         """Build query object
 

@@ -156,7 +156,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
             )
             return dict(row)
         except Exception as exc:
-            msg = f"Error trying to compute profile for {runner.table.name}.{column.name}: {exc}"
+            msg = f"Error trying to compute profile for {runner.table_name}.{column.name}: {exc}"
             handle_query_exception(msg, exc, session)
         return None
 
@@ -194,7 +194,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(
-                f"Error trying to compute profile for {runner.table.name}: {exc}"  # type: ignore
+                f"Error trying to compute profile for {runner.table_name}: {exc}"  # type: ignore
             )
             session.rollback()
             raise RuntimeError(exc)
@@ -231,7 +231,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
                 runner, column, exc, session, metrics
             )
         except Exception as exc:
-            msg = f"Error trying to compute profile for {runner.table.name}.{column.name}: {exc}"
+            msg = f"Error trying to compute profile for {runner.table_name}.{column.name}: {exc}"
             handle_query_exception(msg, exc, session)
         return None
 
@@ -274,10 +274,10 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
                 runner._session.get_bind().dialect.name
                 != Dialects.Druid
             ):
-                msg = f"Error trying to compute profile for {runner.table.name}.{column.name}: {exc}"
+                msg = f"Error trying to compute profile for {runner.table_name}.{column.name}: {exc}"
                 handle_query_exception(msg, exc, session)
         except Exception as exc:
-            msg = f"Error trying to compute profile for {runner.table.name}.{column.name}: {exc}"
+            msg = f"Error trying to compute profile for {runner.table_name}.{column.name}: {exc}"
             handle_query_exception(msg, exc, session)
         return None
 
@@ -310,10 +310,10 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
                 return dict(row)
         except ProgrammingError as exc:
             logger.info(
-                f"Skipping metrics for {runner.table.name}.{column.name} due to {exc}"
+                f"Skipping metrics for {runner.table_name}.{column.name} due to {exc}"
             )
         except Exception as exc:
-            msg = f"Error trying to compute profile for {runner.table.name}.{column.name}: {exc}"
+            msg = f"Error trying to compute profile for {runner.table_name}.{column.name}: {exc}"
             handle_query_exception(msg, exc, session)
         return None
 
@@ -347,7 +347,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
                 )
 
             except Exception as exc:
-                msg = f"Error trying to compute profile for {runner.table.name}.{metric.columnName}: {exc}"
+                msg = f"Error trying to compute profile for {runner.table_name}.{metric.columnName}: {exc}"
                 logger.debug(traceback.format_exc())
                 logger.warning(msg)
         if custom_metrics:
@@ -371,7 +371,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
         Returns:
             dictionnary of results
         """
-        logger.debug(f"Computing system metrics for {runner.table.name}")
+        logger.debug(f"Computing system metrics for {runner.table_name}")
         return self.system_metrics_computer.get_system_metrics(table=runner.dataset)
 
     def _create_thread_safe_runner(self, session, column=None):
