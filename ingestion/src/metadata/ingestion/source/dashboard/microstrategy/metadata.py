@@ -75,13 +75,17 @@ class MicrostrategySource(DashboardServiceSource):
 
         if self.client.is_project_name():
             project = self.client.get_project_by_name()
-            dashboards.extend(self.client.get_dashboards_list(project.id, project.name))
-
-        if not self.client.is_project_name():
-            for project in self.client.get_projects_list():
+            if project:
                 dashboards.extend(
                     self.client.get_dashboards_list(project.id, project.name)
                 )
+
+        if not self.client.is_project_name():
+            for project in self.client.get_projects_list():
+                if project:
+                    dashboards.extend(
+                        self.client.get_dashboards_list(project.id, project.name)
+                    )
 
         return dashboards
 
@@ -121,7 +125,7 @@ class MicrostrategySource(DashboardServiceSource):
         if dashboard_details:
             try:
                 dashboard_url = (
-                    f"{clean_uri(self.service_connection.hostPort._url)}/MicroStrategyLibrary/app/"
+                    f"{clean_uri(str(self.service_connection.hostPort))}/MicroStrategyLibrary/app/"
                     f"{dashboard_details.projectId}/{dashboard_details.id}"
                 )
                 dashboard_request = CreateDashboardRequest(
