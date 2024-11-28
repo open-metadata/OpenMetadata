@@ -9,19 +9,19 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """
-REST Auth & Client for Mstr
+REST Auth & Client for MicroStrategy
 """
 import traceback
 from typing import List, Optional
 
 import requests
 
-from metadata.generated.schema.entity.services.connections.dashboard.mstrConnection import (
-    MstrConnection,
+from metadata.generated.schema.entity.services.connections.dashboard.microStrategyConnection import (
+    MicroStrategyConnection,
 )
 from metadata.ingestion.connections.test_connections import SourceConnectionException
 from metadata.ingestion.ometa.client import REST, ClientConfig
-from metadata.ingestion.source.dashboard.mstr.models import (
+from metadata.ingestion.source.dashboard.microstrategy.models import (
     AuthHeaderCookie,
     MstrDashboard,
     MstrDashboardDetails,
@@ -37,30 +37,29 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 API_VERSION = "MicroStrategyLibrary/api"
-LOGIN_MODE_GUEST = 8
 APPLICATION_TYPE = 35
 
 
-class MSTRClient:
+class MicroStrategyClient:
     """
     Client Handling API communication with Metabase
     """
 
     def _get_base_url(self, path=None):
         if not path:
-            return f"{clean_uri(self.config.hostPort)}/{API_VERSION}"
-        return f"{clean_uri(self.config.hostPort)}/{API_VERSION}/{path}"
+            return f"{clean_uri(str(self.config.hostPort))}/{API_VERSION}"
+        return f"{clean_uri(str(self.config.hostPort))}/{API_VERSION}/{path}"
 
     def __init__(
         self,
-        config: MstrConnection,
+        config: MicroStrategyConnection,
     ):
         self.config = config
 
         self.auth_params: AuthHeaderCookie = self._get_auth_header_and_cookies()
 
         client_config = ClientConfig(
-            base_url=clean_uri(config.hostPort),
+            base_url=clean_uri(str(self.config.hostPort)),
             api_version=API_VERSION,
             extra_headers=self.auth_params.auth_header,
             allow_redirects=True,
@@ -81,7 +80,7 @@ class MSTRClient:
             data = {
                 "username": self.config.username,
                 "password": self.config.password.get_secret_value(),
-                "loginMode": LOGIN_MODE_GUEST,
+                "loginMode": self.config.loginMode,
                 "applicationType": APPLICATION_TYPE,
             }
             response = requests.post(

@@ -8,7 +8,7 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-"""Mstr source module"""
+"""MicroStrategy source module"""
 import traceback
 from typing import Iterable, List, Optional
 
@@ -16,8 +16,8 @@ from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.chart import Chart
-from metadata.generated.schema.entity.services.connections.dashboard.mstrConnection import (
-    MstrConnection,
+from metadata.generated.schema.entity.services.connections.dashboard.microStrategyConnection import (
+    MicroStrategyConnection,
 )
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
@@ -34,7 +34,7 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
-from metadata.ingestion.source.dashboard.mstr.models import (
+from metadata.ingestion.source.dashboard.microstrategy.models import (
     MstrDashboard,
     MstrDashboardDetails,
     MstrPage,
@@ -47,9 +47,9 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 
-class MstrSource(DashboardServiceSource):
+class MicrostrategySource(DashboardServiceSource):
     """
-    MSTR Source Class
+    Microstrategy Source Class
     """
 
     @classmethod
@@ -60,10 +60,10 @@ class MstrSource(DashboardServiceSource):
         pipeline_name: Optional[str] = None,
     ):
         config = WorkflowSource.model_validate(config_dict)
-        connection: MstrConnection = config.serviceConnection.root.config
-        if not isinstance(connection, MstrConnection):
+        connection: MicroStrategyConnection = config.serviceConnection.root.config
+        if not isinstance(connection, MicroStrategyConnection):
             raise InvalidSourceException(
-                f"Expected MstrConnection, but got {connection}"
+                f"Expected MicroStrategyConnection, but got {connection}"
             )
         return cls(config, metadata)
 
@@ -75,13 +75,17 @@ class MstrSource(DashboardServiceSource):
 
         if self.client.is_project_name():
             project = self.client.get_project_by_name()
-            dashboards.extend(self.client.get_dashboards_list(project.id, project.name))
-
-        if not self.client.is_project_name():
-            for project in self.client.get_projects_list():
+            if project:
                 dashboards.extend(
                     self.client.get_dashboards_list(project.id, project.name)
                 )
+
+        if not self.client.is_project_name():
+            for project in self.client.get_projects_list():
+                if project:
+                    dashboards.extend(
+                        self.client.get_dashboards_list(project.id, project.name)
+                    )
 
         return dashboards
 
@@ -121,7 +125,7 @@ class MstrSource(DashboardServiceSource):
         if dashboard_details:
             try:
                 dashboard_url = (
-                    f"{clean_uri(self.service_connection.hostPort)}/MicroStrategyLibrary/app/"
+                    f"{clean_uri(str(self.service_connection.hostPort))}/MicroStrategyLibrary/app/"
                     f"{dashboard_details.projectId}/{dashboard_details.id}"
                 )
                 dashboard_request = CreateDashboardRequest(

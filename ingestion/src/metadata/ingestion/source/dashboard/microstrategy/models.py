@@ -9,7 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """
-MSTR Models
+MicroStrategy Models
 """
 from datetime import datetime
 from typing import Any, List, Optional

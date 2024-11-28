@@ -1,13 +1,14 @@
 source:
-  type: mstr
+  type: microstrategy
   serviceName: test
   serviceConnection:
     config:
-      type: Mstr
+      type: MicroStrategy
       username: username
       password: password
       hostPort: http://hostPort
       projectName: project
+      loginMode: "8"
   sourceConfig:
     config:
       type: DashboardMetadata
