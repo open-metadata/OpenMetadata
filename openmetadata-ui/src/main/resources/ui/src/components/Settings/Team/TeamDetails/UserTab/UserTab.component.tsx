@@ -378,7 +378,7 @@ export const UserTab = ({
               onSearch={handleUsersSearchAction}
             />
           </Col>
-          {!currentTeam.deleted && (
+          {!currentTeam.deleted && isGroupType && (
             <Col>
               <Space>
                 {users.length > 0 && permission.EditAll && (
