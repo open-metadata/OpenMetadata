@@ -1135,7 +1135,6 @@ public class AppResource extends EntityResource<App, AppRepository> {
 
     // validate Bot if provided
     validateAndAddBot(app, createAppRequest.getBot());
-
     return app;
   }
 
