@@ -13,6 +13,7 @@
 Test Microstrategy using the topology
 """
 from datetime import datetime
+from types import SimpleNamespace
 from unittest import TestCase
 from unittest.mock import patch
 
@@ -101,32 +102,26 @@ class MicroStrategyUnitTest(TestCase):
     @patch(
         "metadata.ingestion.source.dashboard.microstrategy.metadata.MicrostrategySource.test_connection"
     )
-    def __init__(self, methodName, test_connection) -> None:
+    @patch(
+        "metadata.ingestion.source.dashboard.microstrategy.connection.get_connection"
+    )
+    def __init__(self, methodName, get_connection, test_connection) -> None:
         super().__init__(methodName)
         test_connection.return_value = False
+        get_connection.return_value = False
         self.config = OpenMetadataWorkflowConfig.model_validate(mock_micro_config)
         self.microstrategy = MicrostrategySource.create(
             mock_micro_config["source"],
             OpenMetadata(self.config.workflowConfig.openMetadataServerConfig),
         )
+        self.microstrategy.client = SimpleNamespace()
 
-    @patch(
-        "metadata.ingestion.source.dashboard.microstrategy.client.MicroStrategyClient.is_project_name"
-    )
-    @patch(
-        "metadata.ingestion.source.dashboard.microstrategy.client.MicroStrategyClient.get_projects_list"
-    )
-    @patch(
-        "metadata.ingestion.source.dashboard.microstrategy.client.MicroStrategyClient.get_dashboards_list"
-    )
-    def test_get_dashboards_list(
-        self, get_dashboards_list, get_projects_list, is_project_name
-    ):
+    def test_get_dashboards_list(self):
         """
         Get the dashboards
         """
-        is_project_name.return_value = False
-        get_projects_list.return_value = MOCK_PROJECT_LIST
-        get_dashboards_list.return_value = MOCK_DASHBORD_LIST
+        self.microstrategy.client.is_project_name = lambda *_: False
+        self.microstrategy.client.get_projects_list = lambda *_: MOCK_PROJECT_LIST
+        self.microstrategy.client.get_dashboards_list = lambda *_: MOCK_DASHBORD_LIST
         fetched_dashboards_list = self.microstrategy.get_dashboards_list()
         self.assertEqual(list(fetched_dashboards_list), MOCK_DASHBORD_LIST)
