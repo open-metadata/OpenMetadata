@@ -46,6 +46,7 @@ describe('AdvancedSearchClassBase', () => {
       EntityFields.TIER,
       'extension',
       'descriptionStatus',
+      'entityType',
     ]);
   });
 });

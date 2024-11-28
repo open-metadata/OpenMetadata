@@ -26,6 +26,29 @@
   }
 }
 
+.query-builder-form-field
+  .query-builder-card.jsonlogic
+  .query-builder-container {
+  .group-or-rule-container.group-container {
+    & > .group.group-or-rule {
+      & > .group--header {
+        order: 0;
+
+        .action.action--ADD-RULE {
+          position: absolute !important;
+          margin-top: 0;
+          right: 0;
+          top: -48px;
+        }
+      }
+    }
+  }
+}
+
+.query-filter-label {
+  text-transform: capitalize;
+}
+
 .query-builder-form-field {
   .hide--line.one--child {
     margin-top: 0;
@@ -175,6 +198,10 @@
         visibility: visible;
       }
     }
+  }
+
+  .rule {
+    align-items: center;
   }
 }
 

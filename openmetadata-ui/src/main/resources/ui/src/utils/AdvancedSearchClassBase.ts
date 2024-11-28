@@ -610,6 +610,19 @@ class AdvancedSearchClassBase {
           },
         },
       },
+      [EntityFields.ENTITY_TYPE]: {
+        label: t('label.entity-type-plural', { entity: t('label.entity') }),
+        type: 'select',
+        mainWidgetProps: this.mainWidgetProps,
+
+        fieldSettings: {
+          asyncFetch: this.autocomplete({
+            searchIndex: entitySearchIndex,
+            entityField: EntityFields.ENTITY_TYPE,
+          }),
+          useAsyncSearch: true,
+        },
+      },
     };
   }
 

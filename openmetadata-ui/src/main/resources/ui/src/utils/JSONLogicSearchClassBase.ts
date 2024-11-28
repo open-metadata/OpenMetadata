@@ -29,7 +29,7 @@ import {
 import { SearchIndex } from '../enums/search.enum';
 import { searchData } from '../rest/miscAPI';
 import advancedSearchClassBase from './AdvancedSearchClassBase';
-import { renderQueryBuilderFilterButtons } from './QueryBuilderUtils';
+import { renderJSONLogicQueryBuilderButtons } from './QueryBuilderUtils';
 
 class JSONLogicSearchClassBase {
   baseConfig = AntdConfig as Config;
@@ -370,7 +370,7 @@ class JSONLogicSearchClassBase {
         operatorLabel: t('label.condition') + ':',
         showNot: false,
         valueLabel: t('label.criteria') + ':',
-        renderButton: renderQueryBuilderFilterButtons,
+        renderButton: renderJSONLogicQueryBuilderButtons,
       },
     };
 
