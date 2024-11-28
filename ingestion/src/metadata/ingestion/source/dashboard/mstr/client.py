@@ -37,7 +37,7 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 API_VERSION = "MicroStrategyLibrary/api"
-LOGIN_MODE_GUEST = 8
+LOGIN_MODE_GUEST = 1
 APPLICATION_TYPE = 35
 
 
@@ -77,27 +77,31 @@ class MSTRClient:
         To know about the data params below please visit
         https://demo.microstrategy.com/MicroStrategyLibrary/api-docs/index.html#/Authentication/postLogin
         """
-        try:
-            data = {
-                "username": self.config.username,
-                "password": self.config.password.get_secret_value(),
-                "loginMode": LOGIN_MODE_GUEST,
-                "applicationType": APPLICATION_TYPE,
-            }
+        data = {
+            "username": self.config.username,
+            "password": self.config.password.get_secret_value(),
+            "loginMode": LOGIN_MODE_GUEST,
+            "applicationType": APPLICATION_TYPE,
+        }
+        response = requests.post(
+            url=self._get_base_url("auth/login"), data=data, timeout=60
+        )
+        if not response.status_code == 204:
+            logger.error(
+                f"Auth Failed with login mode: {LOGIN_MODE_GUEST}, Error: {response.text}"
+            )
+            logger.error("Trying with login mode: 8")
+            data["loginMode"] = 8
             response = requests.post(
                 url=self._get_base_url("auth/login"), data=data, timeout=60
             )
-            if not response:
-                raise SourceConnectionException()
-            return AuthHeaderCookie(
-                auth_header=response.headers, auth_cookies=response.cookies
-            )
-        except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.error(
-                f"Failed to fetch the auth header and cookies due to [{exc}], please validate credentials"
-            )
-        return None
+            if not response.status_code == 204:
+                raise SourceConnectionException(
+                    f"Auth Failed with login mode: 8 and {LOGIN_MODE_GUEST}, Error: {response.text}"
+                )
+        return AuthHeaderCookie(
+            auth_header=response.headers, auth_cookies=response.cookies
+        )
 
     def _set_api_session(self) -> bool:
         """
