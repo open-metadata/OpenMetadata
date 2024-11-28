@@ -13,23 +13,29 @@
 
 import { Col, Row, Switch, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
+import { AxiosError } from 'axios';
+import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined } from 'lodash';
-import React, { useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import DisplayName from '../../components/common/DisplayName/DisplayName';
 import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import NextPrevious from '../../components/common/NextPrevious/NextPrevious';
 import { NextPreviousProps } from '../../components/common/NextPrevious/NextPrevious.interface';
 import RichTextEditorPreviewer from '../../components/common/RichTextEditor/RichTextEditorPreviewer';
 import TableAntd from '../../components/common/Table/Table';
+import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
+import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { DatabaseSchema } from '../../generated/entity/data/databaseSchema';
 import { Table } from '../../generated/entity/data/table';
 import { UsePagingInterface } from '../../hooks/paging/usePaging';
+import { patchTableDetails } from '../../rest/tableAPI';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../utils/EntityUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
 
 interface SchemaTablesTabProps {
   databaseSchemaDetails: DatabaseSchema;
@@ -69,6 +75,48 @@ function SchemaTablesTab({
   pagingInfo,
 }: Readonly<SchemaTablesTabProps>) {
   const { t } = useTranslation();
+  const [localTableData, setLocalTableData] = useState<Table[]>([]);
+
+  const { permissions } = usePermissionProvider();
+
+  const allowEditDisplayNamePermission = useMemo(() => {
+    return (
+      !isVersionView &&
+      (permissions.table.EditAll || permissions.table.EditDisplayName)
+    );
+  }, [permissions, isVersionView]);
+
+  const handleDisplayNameUpdate = useCallback(
+    async (data: EntityName, id?: string) => {
+      try {
+        const tableDetails = localTableData.find((table) => table.id === id);
+        if (!tableDetails) {
+          return;
+        }
+        const updatedData = {
+          ...tableDetails,
+          displayName: data.displayName || undefined,
+        };
+        const jsonPatch = compare(tableDetails, updatedData);
+        await patchTableDetails(tableDetails.id, jsonPatch);
+
+        setLocalTableData((prevData) =>
+          prevData.map((table) =>
+            table.id === id
+              ? { ...table, displayName: data.displayName }
+              : table
+          )
+        );
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      }
+    },
+    [localTableData]
+  );
+
+  useEffect(() => {
+    setLocalTableData(tableData);
+  }, [tableData]);
 
   const tableColumn: ColumnsType<Table> = useMemo(
     () => [
@@ -79,17 +127,18 @@ function SchemaTablesTab({
         width: 500,
         render: (_, record: Table) => {
           return (
-            <div className="d-inline-flex w-max-90">
-              <Link
-                className="break-word"
-                data-testid={record.name}
-                to={entityUtilClassBase.getEntityLink(
-                  EntityType.TABLE,
-                  record.fullyQualifiedName as string
-                )}>
-                {getEntityName(record)}
-              </Link>
-            </div>
+            <DisplayName
+              allowRename={allowEditDisplayNamePermission}
+              displayName={record.displayName}
+              id={record.id}
+              key={record.id}
+              link={entityUtilClassBase.getEntityLink(
+                EntityType.TABLE,
+                record.fullyQualifiedName as string
+              )}
+              name={record.name}
+              onEditDisplayName={handleDisplayNameUpdate}
+            />
           );
         },
       },
@@ -105,7 +154,7 @@ function SchemaTablesTab({
           ),
       },
     ],
-    []
+    [handleDisplayNameUpdate, allowEditDisplayNamePermission]
   );
 
   return (
@@ -158,7 +207,7 @@ function SchemaTablesTab({
           bordered
           columns={tableColumn}
           data-testid="databaseSchema-tables"
-          dataSource={tableData}
+          dataSource={localTableData}
           loading={tableDataLoading}
           locale={{
             emptyText: (

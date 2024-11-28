@@ -1,5 +1,5 @@
 /*
- *  Copyright 2023 Collate.
+ *  Copyright 2024 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,24 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Rule } from 'antd/lib/form';
-import { Constraint } from '../../../generated/entity/data/table';
+import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
 
-export type EntityName = { name: string; displayName?: string; id?: string };
-
-export type EntityNameWithAdditionFields = EntityName & {
-  constraint: Constraint;
-};
-
-export interface EntityNameModalProps<
-  T extends { name: string; displayName?: string }
-> {
-  visible: boolean;
+export interface DisplayNameProps {
+  id: string;
+  name?: string;
+  displayName?: string;
+  link: string;
+  onEditDisplayName?: (data: EntityName, id?: string) => Promise<void>;
   allowRename?: boolean;
-  onCancel: () => void;
-  onSave: (obj: T) => void | Promise<void>;
-  entity: T;
-  title: string;
-  nameValidationRules?: Rule[];
-  additionalFields?: React.ReactNode;
 }

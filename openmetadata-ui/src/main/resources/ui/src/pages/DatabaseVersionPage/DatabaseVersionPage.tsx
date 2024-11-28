@@ -209,7 +209,7 @@ function DatabaseVersionPage() {
                   />
                 </Col>
                 <Col span={24}>
-                  <DatabaseSchemaTable />
+                  <DatabaseSchemaTable isVersionPage />
                 </Col>
               </Row>
             </Col>
