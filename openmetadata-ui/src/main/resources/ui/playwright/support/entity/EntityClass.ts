@@ -54,17 +54,17 @@ import { GlossaryTerm } from '../glossary/GlossaryTerm';
 import { EntityTypeEndpoint, ENTITY_PATH } from './Entity.interface';
 
 export class EntityClass {
-  type: string;
+  type = '';
   serviceCategory?: GlobalSettingOptions;
   childrenTabId?: string;
   childrenSelectorId?: string;
   endpoint: EntityTypeEndpoint;
-  cleanupUser: (apiContext: APIRequestContext) => Promise<void>;
+  cleanupUser?: (apiContext: APIRequestContext) => Promise<void>;
 
   customPropertyValue: Record<
     string,
     { value: string; newValue: string; property: CustomProperty }
-  >;
+  > = {};
 
   constructor(endpoint: EntityTypeEndpoint) {
     this.endpoint = endpoint;
@@ -95,9 +95,11 @@ export class EntityClass {
   async cleanupCustomProperty(apiContext: APIRequestContext) {
     // Delete custom property only for supported entities
     if (CustomPropertySupportedEntityList.includes(this.endpoint)) {
-      await this.cleanupUser(apiContext);
+      await this.cleanupUser?.(apiContext);
       const entitySchemaResponse = await apiContext.get(
-        `/api/v1/metadata/types/name/${ENTITY_PATH[this.endpoint]}`
+        `/api/v1/metadata/types/name/${
+          ENTITY_PATH[this.endpoint as keyof typeof ENTITY_PATH]
+        }`
       );
       const entitySchema = await entitySchemaResponse.json();
       await apiContext.patch(`/api/v1/metadata/types/${entitySchema.id}`, {
@@ -324,8 +326,8 @@ export class EntityClass {
     await validateFollowedEntityToWidget(page, entity, false);
   }
 
-  async announcement(page: Page, entityFqn: string) {
-    await createAnnouncement(page, entityFqn, {
+  async announcement(page: Page) {
+    await createAnnouncement(page, {
       title: 'Playwright Test Announcement',
       description: 'Playwright Test Announcement Description',
     });

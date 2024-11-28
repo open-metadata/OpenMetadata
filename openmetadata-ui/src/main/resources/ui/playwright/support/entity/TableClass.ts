@@ -17,6 +17,8 @@ import { uuid } from '../../utils/common';
 import { visitEntityPage } from '../../utils/entity';
 import {
   EntityTypeEndpoint,
+  ResponseDataType,
+  ResponseDataWithServiceType,
   TestCaseData,
   TestSuiteData,
 } from './Entity.interface';
@@ -104,15 +106,18 @@ export class TableClass extends EntityClass {
     databaseSchema: `${this.service.name}.${this.database.name}.${this.schema.name}`,
   };
 
-  serviceResponseData: unknown;
-  databaseResponseData: unknown;
-  schemaResponseData: unknown;
-  entityResponseData: unknown;
-  testSuiteResponseData: unknown;
-  testSuitePipelineResponseData: unknown[] = [];
-  testCasesResponseData: unknown[] = [];
-  queryResponseData: unknown[] = [];
-  additionalEntityTableResponseData: unknown[] = [];
+  serviceResponseData: ResponseDataType = {} as ResponseDataType;
+  databaseResponseData: ResponseDataWithServiceType =
+    {} as ResponseDataWithServiceType;
+  schemaResponseData: ResponseDataWithServiceType =
+    {} as ResponseDataWithServiceType;
+  entityResponseData: ResponseDataWithServiceType =
+    {} as ResponseDataWithServiceType;
+  testSuiteResponseData: ResponseDataType = {} as ResponseDataType;
+  testSuitePipelineResponseData: ResponseDataType[] = [];
+  testCasesResponseData: ResponseDataType[] = [];
+  queryResponseData: ResponseDataType[] = [];
+  additionalEntityTableResponseData: ResponseDataType[] = [];
 
   constructor(name?: string) {
     super(EntityTypeEndpoint.Table);

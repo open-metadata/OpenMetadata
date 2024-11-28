@@ -12,6 +12,7 @@
  */
 import { APIRequestContext, expect, Page } from '@playwright/test';
 import { SidebarItem } from '../constant/sidebar';
+import { ResponseDataType } from '../support/entity/Entity.interface';
 import { TableClass } from '../support/entity/TableClass';
 import { redirectToHomePage } from './common';
 import { sidebarClick } from './sidebar';
@@ -87,7 +88,7 @@ export const assignIncident = async (data: {
 export const triggerTestSuitePipelineAndWaitForSuccess = async (data: {
   page: Page;
   apiContext: APIRequestContext;
-  pipeline: unknown;
+  pipeline: ResponseDataType;
 }) => {
   const { page, apiContext, pipeline } = data;
   // wait for 2s before the pipeline to be run
@@ -100,6 +101,8 @@ export const triggerTestSuitePipelineAndWaitForSuccess = async (data: {
           `/api/v1/services/ingestionPipelines/trigger/${pipeline?.['id']}`
         );
       }
+
+      return;
     });
 
   // Wait for the run to complete

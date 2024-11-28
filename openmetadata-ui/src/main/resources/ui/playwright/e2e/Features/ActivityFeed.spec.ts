@@ -208,9 +208,23 @@ test.describe('Activity feed', () => {
 
     // Task 1 - Request to update tag to be resolved
 
+    const resolveSuggestion = page.waitForResponse(
+      '/api/v1/feed/tasks/18/resolve'
+    );
+    const openTasksResponse = page.waitForResponse(
+      '/api/v1/feed?entityLink=*&type=Task&taskStatus=Open'
+    );
+    const closedTasksResponse = page.waitForResponse(
+      '/api/v1/feed?entityLink=*&type=Task&taskStatus=Closed'
+    );
+
     await page.getByText('Accept Suggestion').click();
 
     await toastNotification(page, /Task resolved successfully/);
+
+    await resolveSuggestion;
+    await openTasksResponse;
+    await closedTasksResponse;
 
     await checkTaskCount(page, 0, 2);
   });

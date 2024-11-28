@@ -108,7 +108,7 @@ export const getEntityTypeSearchIndexMapping = (entityType: string) => {
     Metric: 'metric_search_index',
   };
 
-  return entityMapping[entityType];
+  return entityMapping[entityType as keyof typeof entityMapping];
 };
 
 export const toastNotification = async (

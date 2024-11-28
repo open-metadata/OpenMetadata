@@ -16,6 +16,7 @@ import { parseCSV } from '../../src/utils/EntityImport/EntityImportUtils';
 import { ApiEndpointClass } from '../support/entity/ApiEndpointClass';
 import { ContainerClass } from '../support/entity/ContainerClass';
 import { DashboardClass } from '../support/entity/DashboardClass';
+import { ResponseDataType } from '../support/entity/Entity.interface';
 import { EntityClass } from '../support/entity/EntityClass';
 import { MetricClass } from '../support/entity/MetricClass';
 import { MlModelClass } from '../support/entity/MlModelClass';
@@ -275,7 +276,7 @@ export const editPipelineEdgeDescription = async (
   page: Page,
   fromNode: EntityClass,
   toNode: EntityClass,
-  pipelineData,
+  pipelineData: ResponseDataType,
   description: string
 ) => {
   const fromNodeFqn = get(fromNode, 'entityResponseData.fullyQualifiedName');
@@ -507,7 +508,7 @@ export const verifyColumnLayerActive = async (page: Page) => {
   await page.click('[data-testid="lineage-layer-btn"]'); // Close Layer popover
 };
 
-export const verifyCSVHeaders = async (page: Page, headers: string[]) => {
+export const verifyCSVHeaders = async (headers: string[]) => {
   LINEAGE_CSV_HEADERS.forEach((expectedHeader) => {
     expect(headers).toContain(expectedHeader);
   });
@@ -539,7 +540,7 @@ export const getLineageCSVData = async (page: Page) => {
     .map((row) => row.split(',').map((cell) => cell.replace(/"/g, '').trim()));
 
   const headers = csvRows[0];
-  await verifyCSVHeaders(page, headers);
+  await verifyCSVHeaders(headers);
 
   return parseCSV(csvRows);
 };

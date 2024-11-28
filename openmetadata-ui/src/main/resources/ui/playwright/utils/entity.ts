@@ -794,7 +794,6 @@ const announcementForm = async (
 
 export const createAnnouncement = async (
   page: Page,
-  entityFqn: string,
   data: { title: string; description: string }
 ) => {
   await page.getByTestId('manage-button').click();
@@ -1230,7 +1229,7 @@ export const softDeleteEntity = async (
 
   await page.reload();
 
-  const deletedBadge = await page.locator('[data-testid="deleted-badge"]');
+  const deletedBadge = page.locator('[data-testid="deleted-badge"]');
 
   await expect(deletedBadge).toHaveText('Deleted');
 
@@ -1249,7 +1248,7 @@ export const softDeleteEntity = async (
     );
     await page.click('[data-testid="show-deleted"]');
     await deletedTableResponse;
-    const tableCount = await page.locator(
+    const tableCount = page.locator(
       '[data-testid="table"] [data-testid="count"]'
     );
 
@@ -1298,12 +1297,7 @@ export const hardDeleteEntity = async (
   await page.click('.Toastify__close-button');
 };
 
-export const checkDataAssetWidget = async (
-  page: Page,
-  type: string,
-  index: string,
-  serviceType: string
-) => {
+export const checkDataAssetWidget = async (page: Page, serviceType: string) => {
   const quickFilterResponse = page.waitForResponse(
     `/api/v1/search/query?q=&index=dataAsset*${serviceType}*`
   );
