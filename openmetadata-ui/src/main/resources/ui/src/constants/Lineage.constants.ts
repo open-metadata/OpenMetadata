@@ -105,6 +105,7 @@ export const LINEAGE_SOURCE: { [key in Source]: string } = {
   [Source.SparkLineage]: 'Spark Lineage',
   [Source.ViewLineage]: 'View Lineage',
   [Source.OpenLineage]: 'OpenLineage',
+  [Source.CrossDatabaseLineage]: 'Cross Database Lineage',
   [Source.ExternalTableLineage]: 'External Table Lineage',
 };
 
