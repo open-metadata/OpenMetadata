@@ -170,7 +170,7 @@ class ServiceBaseClass {
 
     // Header available once page loads
     await page.waitForSelector('[data-testid="data-assets-header"]');
-    await page.getByTestId('loader').waitFor({ state: 'detached' });
+    await page.getByTestId('loader').first().waitFor({ state: 'detached' });
     await page.getByTestId('ingestions').click();
     await page
       .getByLabel('Ingestions')
