@@ -17,7 +17,6 @@ from typing import Optional
 
 from sqlalchemy import Column, inspect
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm.util import AliasedClass
 
 from metadata.data_quality.validations.column.base.columnValuesToBeUnique import (
     BaseColumnValuesToBeUniqueValidator,

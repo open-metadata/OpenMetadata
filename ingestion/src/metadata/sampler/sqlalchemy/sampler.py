@@ -16,7 +16,7 @@ import traceback
 from typing import List, Optional, Union, cast
 
 from sqlalchemy import Column, inspect, text
-from sqlalchemy.orm import DeclarativeMeta, Query, aliased
+from sqlalchemy.orm import DeclarativeMeta, Query
 from sqlalchemy.orm.util import AliasedClass
 from sqlalchemy.schema import Table
 from sqlalchemy.sql.sqltypes import Enum
