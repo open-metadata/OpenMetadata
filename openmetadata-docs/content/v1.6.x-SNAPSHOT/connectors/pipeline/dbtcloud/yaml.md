@@ -70,11 +70,19 @@ This is a sample config for dbt Cloud:
 
 {% codeInfo srNumber=4 %}
 
-**jobId**: Optional. The Job ID of your DBT cloud Job in your Project to fetch metadata for. Look for the segment after "jobs" in the URL. For instance, in a URL like `https://cloud.getdbt.com/accounts/123/projects/87477/jobs/73659994`, the job ID is `73659994`. This will be a numeric value but in openmetadata we parse it as a string. If not passed all Jobs under the Account id will be ingested.
+**jobIds**: Optional. Job IDs of your DBT cloud Jobs in your Project to fetch metadata for. Look for the segment after "jobs" in the URL. For instance, in a URL like `https://cloud.getdbt.com/accounts/123/projects/87477/jobs/73659994`, the job ID is `73659994`. This will be a numeric value but in openmetadata we parse it as a string. If not passed all Jobs under the Account id will be ingested.
 
 {% /codeInfo %}
 
 {% codeInfo srNumber=5 %}
+
+**projectIds**: Optional.  Project IDs of your DBT cloud Account to fetch metadata for. Look for the segment after "projects" in the URL. For instance, in a URL like `https://cloud.getdbt.com/accounts/123/projects/87477/jobs/73659994`, the job ID is `87477`. This will be a numeric value but in openmetadata we parse it as a string. If not passed all Projects under the Account id will be ingested.
+
+Note that if both `Job Ids` and `Project Ids` are passed then it will filter out the jobs from the passed projects. any `Job Ids` not belonging to the `Project Ids` will also be filtered out.
+
+{% /codeInfo %}
+
+{% codeInfo srNumber=6 %}
 
 **token**: The Authentication Token of your DBT cloud API Account. To get your access token you can follow the docs [here](https://docs.getdbt.com/docs/dbt-cloud-apis/authentication).
 Make sure you have the necessary permissions on the token to run graphql queries and get job and run details. 
@@ -111,9 +119,12 @@ source:
         accountId: "numeric_account_id"
 ```
 ```yaml {% srNumber=4 %}
-        # jobId: "numeric_job_id"
+        # jobIds: ["job_id_1", "job_id_2", "job_id_3"]
 ```
 ```yaml {% srNumber=5 %}
+        # projectIds: ["project_id_1", "project_id_2", "project_id_3"]
+```
+```yaml {% srNumber=6 %}
         token: auth_token
 ```
 
