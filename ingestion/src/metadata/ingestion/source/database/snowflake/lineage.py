@@ -80,7 +80,7 @@ class SnowflakeLineageSource(
                         start_time=self.start,
                         end_time=self.end,
                     )
-                )
+                ).fetchall()
             # exit from active connection after fetching rows & during
             # further process of `yield_query_lineage`
             for row in rows:
