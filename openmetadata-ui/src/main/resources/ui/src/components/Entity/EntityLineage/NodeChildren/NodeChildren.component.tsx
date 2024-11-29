@@ -200,7 +200,7 @@ const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
 
   if (supportsColumns && (showColumns || showDataObservability)) {
     return (
-      <div className="column-container bg-grey-1 p-sm p-y-xs">
+      <div className="column-container">
         <div className="d-flex justify-between items-center">
           <div>
             {showColumns && (
@@ -247,7 +247,7 @@ const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
             </div>
 
             <section className="m-t-md" id="table-columns">
-              <div className="border rounded-4 overflow-hidden">
+              <div className="rounded-4 overflow-hidden">
                 {filteredColumns.map((column) =>
                   renderColumnsData(column as Column)
                 )}
