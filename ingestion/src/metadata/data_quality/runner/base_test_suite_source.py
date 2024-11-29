@@ -15,6 +15,7 @@ Base source for the data quality used to instantiate a data quality runner with 
 from copy import deepcopy
 from typing import Optional, cast
 
+from metadata.data_quality.builders.validator_builder import ValidatorBuilder
 from metadata.data_quality.interface.test_suite_interface import TestSuiteInterface
 from metadata.data_quality.runner.core import DataTestsRunner
 from metadata.generated.schema.entity.data.table import Table
@@ -46,10 +47,12 @@ class BaseTestSuiteRunner:
         ometa_client: OpenMetadata,
         entity: Table,
     ):
+        self.validator_builder_class = ValidatorBuilder
         self._interface = None
-        self._interface_type: str = config.source.type.lower()
         self.entity = entity
         self.service_conn_config = self._copy_service_config(config, self.entity.database)  # type: ignore
+        self._interface_type: str = self.service_conn_config.type.value.lower()
+
         self.source_config = TestSuitePipeline.model_validate(
             config.source.sourceConfig.config
         )
@@ -125,10 +128,11 @@ class BaseTestSuiteRunner:
         )
 
         self.interface: TestSuiteInterface = test_suite_class.create(
-            self.service_conn_config,
-            self.ometa_client,
-            sampler_interface,
-            self.entity,
+            service_connection_config=self.service_conn_config,
+            ometa_client=self.ometa_client,
+            sampler=sampler_interface,
+            table_entity=self.entity,
+            validator_builder=self.validator_builder_class,
         )
         return self.interface
 

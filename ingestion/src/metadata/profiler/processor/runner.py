@@ -44,6 +44,7 @@ class QueryRunner:
         self,
         session: Session,
         dataset: Union[DeclarativeMeta, AliasedClass],
+        raw_dataset: Table,
         partition_details: Optional[Dict] = None,
         profile_sample_query: Optional[str] = None,
     ):
@@ -51,11 +52,12 @@ class QueryRunner:
         self._dataset = dataset
         self.partition_details = partition_details
         self.profile_sample_query = profile_sample_query
+        self.raw_dataset = raw_dataset
 
     @property
     def table(self) -> Table:
         """Backward compatibility table attribute access"""
-        return self._dataset.__table__
+        return self.raw_dataset
 
     @property
     def _sample(self):
@@ -70,6 +72,16 @@ class QueryRunner:
     @dataset.setter
     def dataset(self, dataset):
         self._dataset = dataset
+
+    @property
+    def table_name(self):
+        """Table name attribute access"""
+        return self.raw_dataset.__table__.name
+
+    @property
+    def schema_name(self):
+        """Table name attribute access"""
+        return self.raw_dataset.__table__.schema
 
     def _build_query(self, *entities, **kwargs) -> Query:
         """Build query object
