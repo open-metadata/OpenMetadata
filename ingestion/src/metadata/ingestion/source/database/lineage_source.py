@@ -323,6 +323,3 @@ class LineageSource(QueryParserSource, ABC):
                 )
         if self.source_config.processCrossDatabaseLineage:
             yield from self.yield_cross_database_lineage() or []
-
-        # additional lineage
-        # hive service name -

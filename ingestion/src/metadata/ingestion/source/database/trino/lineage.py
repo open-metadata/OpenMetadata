@@ -43,7 +43,7 @@ class TrinoLineageSource(TrinoQueryParserSource, LineageSource):
         )
     """
 
-    def get_cross_database_fqn_from_service_names(self):
+    def get_cross_database_fqn_from_service_names(self) -> List[str]:
         database_service_names = self.source_config.crossDatabaseServiceNames
         return [
             database.fullyQualifiedName.root
@@ -53,7 +53,7 @@ class TrinoLineageSource(TrinoQueryParserSource, LineageSource):
             )
         ]
 
-    def check_same_table(self, table1, table2):
+    def check_same_table(self, table1: Table, table2: Table) -> bool:
         """
         Method to check whether the table1 and table2 are same
         """
