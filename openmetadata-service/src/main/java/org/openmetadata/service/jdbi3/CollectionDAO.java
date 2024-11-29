@@ -847,6 +847,13 @@ public interface CollectionDAO {
       bulkInsertTo(insertToRelationship);
     }
 
+    default void bulkRemoveToRelationship(
+        UUID fromId, List<UUID> toIds, String fromEntity, String toEntity, int relation) {
+
+      List<String> toIdsAsString = toIds.stream().map(UUID::toString).toList();
+      bulkRemoveTo(fromId, toIdsAsString, fromEntity, toEntity, relation);
+    }
+
     @ConnectionAwareSqlUpdate(
         value =
             "INSERT INTO entity_relationship(fromId, toId, fromEntity, toEntity, relation, json) "
@@ -881,6 +888,18 @@ public interface CollectionDAO {
                 value = "values",
                 propertyNames = {"fromId", "toId", "fromEntity", "toEntity", "relation"})
             List<EntityRelationshipObject> values);
+
+    @SqlUpdate(
+        value =
+            "DELETE FROM entity_relationship WHERE fromId = :fromId "
+                + "AND fromEntity = :fromEntity AND toId IN (<toIds>) "
+                + "AND toEntity = :toEntity AND relation = :relation")
+    void bulkRemoveTo(
+        @BindUUID("fromId") UUID fromId,
+        @BindList("toIds") List<String> toIds,
+        @Bind("fromEntity") String fromEntity,
+        @Bind("toEntity") String toEntity,
+        @Bind("relation") int relation);
 
     //
     // Find to operations
@@ -1157,7 +1176,7 @@ public interface CollectionDAO {
         value =
             "DELETE FROM entity_relationship "
                 + "WHERE  json->'pipeline'->>'id' =:toId OR toId = :toId AND relation = :relation "
-                + "AND json->>'source' = :source ORDER BY toId",
+                + "AND json->>'source' = :source",
         connectionType = POSTGRES)
     void deleteLineageBySourcePipeline(
         @BindUUID("toId") UUID toId,

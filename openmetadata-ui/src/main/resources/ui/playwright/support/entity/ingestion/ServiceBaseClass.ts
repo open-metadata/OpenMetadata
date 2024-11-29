@@ -98,10 +98,10 @@ class ServiceBaseClass {
       await testConnection(page);
     }
 
-    await this.submitService(this.serviceName, page);
+    await this.submitService(page);
 
     if (this.shouldAddIngestion) {
-      await this.addIngestionPipeline(this.serviceName, page);
+      await this.addIngestionPipeline(page);
     }
   }
 
@@ -149,7 +149,7 @@ class ServiceBaseClass {
     // Handle validate ingestion details in respective service here
   }
 
-  async addIngestionPipeline(serviceName: string, page: Page) {
+  async addIngestionPipeline(page: Page) {
     await page.click('[data-testid="add-ingestion-button"]');
 
     // Add ingestion page
@@ -170,7 +170,7 @@ class ServiceBaseClass {
 
     // Header available once page loads
     await page.waitForSelector('[data-testid="data-assets-header"]');
-    await page.getByTestId('loader').waitFor({ state: 'detached' });
+    await page.getByTestId('loader').first().waitFor({ state: 'detached' });
     await page.getByTestId('ingestions').click();
     await page
       .getByLabel('Ingestions')
@@ -191,7 +191,7 @@ class ServiceBaseClass {
     await this.handleIngestionRetry('metadata', page);
   }
 
-  async submitService(serviceName: string, page: Page) {
+  async submitService(page: Page) {
     await page.click('[data-testid="submit-btn"]');
     await page.waitForSelector('[data-testid="success-line"]', {
       state: 'visible',
