@@ -83,13 +83,15 @@ public final class SecretsUtil {
         throw new InvalidServiceConnectionException(
             String.format(
                 "Failed to convert [%s] to type [%s]. Review the connection.\n%s",
-                connectionName, connectionType, message));
+                connectionName, connectionType, message),
+            e);
       }
       // If we don't have the name, we are decrypting from the db
       throw new InvalidServiceConnectionException(
           String.format(
               "Failed to load the connection of type [%s]. Did migrations run properly?\n%s",
-              connectionType, message));
+              connectionType, message),
+          e);
     }
   }
 }
