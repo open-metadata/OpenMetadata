@@ -37,7 +37,7 @@ class ColumnValuesToBeAtExpectedLocationValidator(
     def _fetch_data(self, columns: List[str]) -> Iterator:
         """Fetch data from the runner object"""
         self.runner = cast(QueryRunner, self.runner)
-        inspection = inspect(self.runner.table)
+        inspection = inspect(self.runner.dataset)
         table_columns: List[Column] = inspection.c if inspection is not None else []
         cols = [col for col in table_columns if col.name in columns]
         for col in cols:

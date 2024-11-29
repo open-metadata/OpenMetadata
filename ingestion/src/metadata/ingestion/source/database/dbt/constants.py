@@ -82,6 +82,7 @@ NONE_KEYWORDS_LIST = ["none", "null"]
 DBT_CATALOG_FILE_NAME = "catalog.json"
 DBT_MANIFEST_FILE_NAME = "manifest.json"
 DBT_RUN_RESULTS_FILE_NAME = "run_results"
+DBT_SOURCES_FILE_NAME = "sources.json"
 
 
 class SkipResourceTypeEnum(Enum):
@@ -91,6 +92,7 @@ class SkipResourceTypeEnum(Enum):
 
     ANALYSIS = "analysis"
     TEST = "test"
+    SOURCE = "source"
 
 
 class CompiledQueriesEnum(Enum):
@@ -127,6 +129,7 @@ class DbtTestFailureEnum(Enum):
 
     FAILURE = "failure"
     FAIL = "fail"
+    ERROR = "error"
 
 
 class DbtCommonEnum(Enum):
@@ -137,6 +140,7 @@ class DbtCommonEnum(Enum):
     OWNER = "owner"
     NODES = "nodes"
     SOURCES = "sources"
+    SOURCES_FILE = "sources_file"
     SOURCE = "source"
     RESOURCETYPE = "resource_type"
     MANIFEST_NODE = "manifest_node"
