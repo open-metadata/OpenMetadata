@@ -87,9 +87,9 @@ function IngestionRunDetailsModal({
   const expandable: ExpandableConfig<StepSummary> = useMemo(
     () => ({
       expandedRowRender: (record) => {
-        return (
+        return record.failures ? (
           <Row gutter={[16, 16]}>
-            {record.failures?.map((failure) => (
+            {record.failures.map((failure) => (
               <Col key={failure.name} span={24}>
                 <ConnectionStepCard
                   isTestingConnection={false}
@@ -108,9 +108,9 @@ function IngestionRunDetailsModal({
                   }}
                 />
               </Col>
-            )) ?? []}
+            ))}
           </Row>
-        );
+        ) : undefined;
       },
       indentSize: 0,
       expandIcon: () => null,
