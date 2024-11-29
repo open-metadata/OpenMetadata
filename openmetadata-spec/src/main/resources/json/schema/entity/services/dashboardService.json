@@ -28,7 +28,7 @@
         "QuickSight",
         "QlikSense",
         "Lightdash",
-        "Mstr",
+        "MicroStrategy",
         "QlikCloud",
         "Sigma"
       ],
@@ -73,7 +73,7 @@
           "name": "Lightdash"
         },
         {
-          "name": "Mstr"
+          "name": "MicroStrategy"
         },
         {
           "name": "QlikCloud"
@@ -134,7 +134,7 @@
               "$ref": "./connections/dashboard/lightdashConnection.json"
             },
             {
-              "$ref": "./connections/dashboard/mstrConnection.json"
+              "$ref": "./connections/dashboard/microStrategyConnection.json"
             },
             {
               "$ref": "./connections/dashboard/qlikCloudConnection.json"
