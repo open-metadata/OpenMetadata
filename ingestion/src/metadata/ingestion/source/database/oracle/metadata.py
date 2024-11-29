@@ -47,9 +47,12 @@ from metadata.ingestion.source.database.common_db_source import (
 from metadata.ingestion.source.database.oracle.models import (
     FetchProcedureList,
     OracleStoredProcedure,
+    FetchPackageList,
+    OracleStoredPackage,
 )
 from metadata.ingestion.source.database.oracle.queries import (
     ORACLE_GET_STORED_PROCEDURES,
+    ORACLE_GET_STORED_PACKAGES
 )
 from metadata.ingestion.source.database.oracle.utils import (
     _get_col_type,
@@ -210,6 +213,15 @@ class OracleSource(CommonDbSourceService):
                     name=row[0][1], definition=row[1]["text"], owner=row[0][0]
                 )
                 yield stored_procedure
+    
+    def get_stored_package(self) -> Iterable[OracleStoredPackage]:
+        if self.source_config.includeStoredProcedures:
+            results: FetchPackageList = self.engine.execute(
+                ORACLE_GET_STORED_PACKAGES.format(
+                    schema=self.context.get().database_schema.upper()
+                )
+            ).all()
+            print(results)
 
     def yield_stored_procedure(
         self, stored_procedure: OracleStoredProcedure

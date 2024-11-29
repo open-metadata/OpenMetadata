@@ -94,6 +94,20 @@ WHERE
     type = 'PROCEDURE' and owner = '{schema}'
 """
 )
+
+ORACLE_GET_STORED_PACKAGES = textwrap.dedent(
+    """
+SELECT
+    OWNER,
+    NAME,
+    TEXT,
+
+FROM
+    DBA_SOURCE
+WHERE
+    type IN = 'PACKAGE, PACKAGE BODY' and owner = '{schema}'
+"""
+)
 CHECK_ACCESS_TO_ALL = "SELECT table_name FROM DBA_TABLES where ROWNUM < 2"
 ORACLE_GET_STORED_PROCEDURE_QUERIES = textwrap.dedent(
     """

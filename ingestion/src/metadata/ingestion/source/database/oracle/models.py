@@ -28,3 +28,27 @@ class FetchProcedure(BaseModel):
 
 class FetchProcedureList(BaseModel):
     __name__: List[FetchProcedure]
+
+
+class OracleStoredPackage(BaseModel):
+    """Oracle Stored Package list query results"""
+
+    name: str
+    definition: str
+    language: Optional[str] = Field(
+        None, description="Will only be informed for non-SQL routines."
+    )
+    owner: str
+
+
+class FetchPackage(BaseModel):
+    """Oracle Fetch Stored Procedure Raw Model"""
+
+    owner: Optional[str] = None
+    name: str
+    line: int
+    text: str
+
+
+class FetchPackageList(BaseModel):
+    __name__: List[FetchPackage]
