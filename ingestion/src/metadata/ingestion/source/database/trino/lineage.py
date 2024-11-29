@@ -107,7 +107,9 @@ class TrinoLineageSource(TrinoQueryParserSource, LineageSource):
                                 Table, fqn=cross_database_table_fqn
                             ),
                         )
-                        if self.check_same_table(trino_table, cross_database_table):
+                        if cross_database_table and self.check_same_table(
+                            trino_table, cross_database_table
+                        ):
                             lineage_details.append((trino_table, cross_database_table))
                             break
 
