@@ -88,6 +88,19 @@ const AddQueryPage = () => {
     }
   };
 
+  const getLabelValue = (
+    displayName: string,
+    name: string,
+    fullyQualifiedName: string
+  ): JSX.Element => (
+    <Space direction="vertical" size={0}>
+      <Typography.Text>{getEntityName({ displayName, name })}</Typography.Text>
+      <Typography.Text className="text-gray-400 text-xs break-word">
+        {fullyQualifiedName}
+      </Typography.Text>
+    </Space>
+  );
+
   const fetchTableEntity = async (
     searchValue = ''
   ): Promise<DefaultOptionType[]> => {
@@ -102,7 +115,11 @@ const AddQueryPage = () => {
         SearchIndex.TABLE
       );
       const options = data.hits.hits.map((value) => ({
-        label: getEntityName(value._source),
+        label: getLabelValue(
+          value._source.displayName || '',
+          value._source.name,
+          value._source.fullyQualifiedName || ''
+        ),
         value: value._source.id,
       }));
 
