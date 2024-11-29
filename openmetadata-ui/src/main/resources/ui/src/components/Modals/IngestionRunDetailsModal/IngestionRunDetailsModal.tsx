@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Modal, Typography } from 'antd';
+import { Button, Col, Modal, Row, Typography } from 'antd';
 import { ColumnType } from 'antd/lib/table';
 import { ExpandableConfig } from 'antd/lib/table/interface';
 import { startCase } from 'lodash';
@@ -88,24 +88,28 @@ function IngestionRunDetailsModal({
     () => ({
       expandedRowRender: (record) => {
         return (
-          record.failures?.map((failure) => (
-            <ConnectionStepCard
-              isTestingConnection={false}
-              key={failure.name}
-              testConnectionStep={{
-                name: failure.name,
-                mandatory: false,
-                description: failure.error,
-              }}
-              testConnectionStepResult={{
-                name: failure.name,
-                passed: false,
-                mandatory: false,
-                message: failure.error,
-                errorLog: failure.stackTrace,
-              }}
-            />
-          )) ?? []
+          <Row gutter={[16, 16]}>
+            {record.failures?.map((failure) => (
+              <Col key={failure.name} span={24}>
+                <ConnectionStepCard
+                  isTestingConnection={false}
+                  key={failure.name}
+                  testConnectionStep={{
+                    name: failure.name,
+                    mandatory: false,
+                    description: failure.error,
+                  }}
+                  testConnectionStepResult={{
+                    name: failure.name,
+                    passed: false,
+                    mandatory: false,
+                    message: failure.error,
+                    errorLog: failure.stackTrace,
+                  }}
+                />
+              </Col>
+            )) ?? []}
+          </Row>
         );
       },
       indentSize: 0,
