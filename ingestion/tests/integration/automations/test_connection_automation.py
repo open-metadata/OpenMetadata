@@ -81,7 +81,7 @@ def test_connection_workflow(metadata, mysql_container):
     )
 
     assert final_workflow.status == WorkflowStatus.Successful
-    assert len(final_workflow.response.steps) == 4
+    assert len(final_workflow.response.steps) == 5
     assert final_workflow.response.status.value == StatusType.Successful.value
 
     metadata.delete(

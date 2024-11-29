@@ -36,6 +36,41 @@ To run the MySQL ingestion, you will need to install:
 pip3 install "openmetadata-ingestion[mysql]"
 ```
 
+### Metadata
+
+Note that We support MySQL (version 8.0.0 or greater) and the user should have access to the `INFORMATION_SCHEMA` table.  By default a user can see only the rows in the `INFORMATION_SCHEMA` that correspond to objects for which the user has the proper access privileges.
+
+```SQL
+-- Create user. If <hostName> is omitted, defaults to '%'
+-- More details https://dev.mysql.com/doc/refman/8.0/en/create-user.html
+CREATE USER '<username>'[@'<hostName>'] IDENTIFIED BY '<password>';
+
+-- Grant select on a database
+GRANT SELECT ON world.* TO '<username>';
+
+-- Grant select on a database
+GRANT SELECT ON world.* TO '<username>';
+
+-- Grant select on a specific object
+GRANT SELECT ON world.hello TO '<username>';
+```
+
+### Lineage & Usage 
+To extract lineage & usage you need to enable the query logging in mysql and the user used in the connection needs to have select access to the `mysql.general_log`.
+
+```sql
+-- Enable Logging 
+SET GLOBAL general_log='ON';
+set GLOBAL log_output='table';
+
+-- Grant SELECT on log table
+GRANT SELECT ON mysql.general_log TO '<username>'@'<host>';
+```
+
+### Profiler & Data Quality
+Executing the profiler workflow or data quality tests, will require the user to have `SELECT` permission on the tables/schemas where the profiler/tests will be executed. More information on the profiler workflow setup can be found [here](/how-to-guides/data-quality-observability/profiler/workflow) and data quality tests [here](/how-to-guides/data-quality-observability/quality).
+
+
 ## Metadata Ingestion
 
 All connectors are defined as JSON Schemas.

@@ -9,20 +9,16 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """
-MYSQL lineage module
+MYSQL usage module
 """
-from metadata.ingestion.source.database.lineage_source import LineageSource
 from metadata.ingestion.source.database.mysql.queries import MYSQL_SQL_STATEMENT
 from metadata.ingestion.source.database.mysql.query_parser import MysqlQueryParserSource
+from metadata.ingestion.source.database.usage_source import UsageSource
 
 
-class MysqlLineageSource(MysqlQueryParserSource, LineageSource):
+class MysqlUsageSource(MysqlQueryParserSource, UsageSource):
     sql_stmt = MYSQL_SQL_STATEMENT
-    filters = """
-        AND (
-            lower(argument) LIKE '%%create%%table%%select%%'
-            OR lower(argument) LIKE '%%insert%%into%%select%%'
-            OR lower(argument) LIKE '%%update%%'
-            OR lower(argument) LIKE '%%merge%%'
-        )
-    """
+    filters = ""
+
+    def format_query(self, query: bytes) -> str:
+        return query.decode(errors="ignore").replace("\\n", "\n")
