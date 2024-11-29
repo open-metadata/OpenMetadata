@@ -52,11 +52,11 @@ import lightDash from '../assets/img/service-icon-lightdash.png';
 import looker from '../assets/img/service-icon-looker.png';
 import mariadb from '../assets/img/service-icon-mariadb.png';
 import metabase from '../assets/img/service-icon-metabase.png';
+import microstrategy from '../assets/img/service-icon-microstrategy.svg';
 import mode from '../assets/img/service-icon-mode.png';
 import mongodb from '../assets/img/service-icon-mongodb.png';
 import msAzure from '../assets/img/service-icon-ms-azure.png';
 import mssql from '../assets/img/service-icon-mssql.png';
-import mstr from '../assets/img/service-icon-mstr.png';
 import nifi from '../assets/img/service-icon-nifi.png';
 import openlineage from '../assets/img/service-icon-openlineage.svg';
 import oracle from '../assets/img/service-icon-oracle.png';
@@ -153,7 +153,7 @@ export const REDPANDA = redpanda;
 export const SUPERSET = superset;
 export const SYNAPSE = synapse;
 export const LOOKER = looker;
-export const MSTR = mstr;
+export const MICROSTRATEGY = microstrategy;
 export const TABLEAU = tableau;
 export const REDASH = redash;
 export const METABASE = metabase;
@@ -323,6 +323,7 @@ export const INGESTION_WORKFLOW_UI_SCHEMA = {
     'databaseFilterPattern',
     'schemaFilterPattern',
     'tableFilterPattern',
+    'classificationFilterPattern',
     'enableDebugLog',
     '*',
   ],
@@ -493,5 +494,6 @@ export const SERVICE_INGESTION_PIPELINE_TYPES = [
   PipelineType.Usage,
   PipelineType.Lineage,
   PipelineType.Profiler,
+  PipelineType.AutoClassification,
   PipelineType.Dbt,
 ];

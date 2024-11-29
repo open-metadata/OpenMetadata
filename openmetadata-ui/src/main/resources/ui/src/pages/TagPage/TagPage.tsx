@@ -23,7 +23,7 @@ import {
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { cloneDeep } from 'lodash';
+import { cloneDeep, isEmpty, startsWith } from 'lodash';
 import React, {
   useCallback,
   useEffect,
@@ -78,7 +78,6 @@ import { SearchIndex } from '../../enums/search.enum';
 import { ProviderType, Tag } from '../../generated/entity/classification/tag';
 import { Style } from '../../generated/type/tagLabel';
 import { useFqn } from '../../hooks/useFqn';
-import { MOCK_TAG_PERMISSIONS } from '../../mocks/Tags.mock';
 import { searchData } from '../../rest/miscAPI';
 import { deleteTag, getTagByFqn, patchTag } from '../../rest/tagAPI';
 import { getEntityDeleteMessage } from '../../utils/CommonUtils';
@@ -92,7 +91,11 @@ import {
   escapeESReservedCharacters,
   getEncodedFqn,
 } from '../../utils/StringsUtils';
-import { getQueryFilterToExcludeTerms } from '../../utils/TagsUtils';
+import {
+  getExcludedIndexesBasedOnEntityTypeEditTagPermission,
+  getQueryFilterToExcludeTermsAndEntities,
+  getTagAssetsQueryFilter,
+} from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import './tag-page.less';
 import { TagTabs } from './TagPage.inteface';
@@ -102,7 +105,7 @@ const TagPage = () => {
   const { fqn: tagFqn } = useFqn();
   const history = useHistory();
   const { tab: activeTab = TagTabs.OVERVIEW } = useParams<{ tab?: string }>();
-  const { getEntityPermission } = usePermissionProvider();
+  const { permissions, getEntityPermission } = usePermissionProvider();
   const [isLoading, setIsLoading] = useState(false);
   const [tagItem, setTagItem] = useState<Tag>();
   const [assetModalVisible, setAssetModalVisible] = useState(false);
@@ -149,18 +152,32 @@ const TagPage = () => {
       const isEditable = !tagItem.disabled && !tagItem.deleted;
 
       return {
-        editTagsPermission:
-          isEditable && (tagPermissions.EditTags || tagPermissions.EditAll),
+        editTagsPermission: isEditable && tagPermissions.EditAll,
         editDescriptionPermission:
           isEditable &&
-          (tagPermissions.EditDescription ||
-            tagPermissions.EditAll ||
-            tagPermissions.EditTags),
+          (tagPermissions.EditDescription || tagPermissions.EditAll),
       };
     }
 
     return { editTagsPermission: false, editDescriptionPermission: false };
   }, [tagPermissions, tagItem?.deleted]);
+
+  const editEntitiesTagPermission = useMemo(
+    () => getExcludedIndexesBasedOnEntityTypeEditTagPermission(permissions),
+    [permissions]
+  );
+
+  const haveAssetEditPermission = useMemo(
+    () =>
+      editTagsPermission ||
+      !isEmpty(editEntitiesTagPermission.entitiesHavingPermission),
+    [editTagsPermission, editEntitiesTagPermission.entitiesHavingPermission]
+  );
+
+  const isCertificationClassification = useMemo(
+    () => startsWith(tagFqn, 'Certification.'),
+    [tagFqn]
+  );
 
   const fetchCurrentTagPermission = async () => {
     if (!tagItem?.id) {
@@ -317,7 +334,7 @@ const TagPage = () => {
         '',
         1,
         0,
-        `(tags.tagFQN:"${encodedFqn}")`,
+        getTagAssetsQueryFilter(encodedFqn),
         '',
         '',
         SearchIndex.ALL
@@ -478,7 +495,16 @@ const TagPage = () => {
                   assetCount={assetCount}
                   entityFqn={tagItem?.fullyQualifiedName ?? ''}
                   isSummaryPanelOpen={Boolean(previewAsset)}
-                  permissions={MOCK_TAG_PERMISSIONS}
+                  permissions={
+                    {
+                      Create:
+                        haveAssetEditPermission &&
+                        !isCertificationClassification,
+                      EditAll:
+                        haveAssetEditPermission &&
+                        !isCertificationClassification,
+                    } as OperationPermission
+                  }
                   ref={assetTabRef}
                   type={AssetsOfEntity.TAG}
                   onAddAsset={() => setAssetModalVisible(true)}
@@ -573,7 +599,7 @@ const TagPage = () => {
             <Col className="p-x-md" flex="auto">
               <EntityHeader
                 badge={
-                  !editTagsPermission && (
+                  tagItem.disabled && (
                     <Space>
                       <Divider className="m-x-xs h-6" type="vertical" />
                       <StatusBadge
@@ -592,17 +618,19 @@ const TagPage = () => {
                 titleColor={tagItem.style?.color ?? BLACK_COLOR}
               />
             </Col>
-            {editTagsPermission && (
+            {haveAssetEditPermission && (
               <Col className="p-x-md">
                 <div className="d-flex self-end">
-                  <Button
-                    data-testid="data-classification-add-button"
-                    type="primary"
-                    onClick={() => setAssetModalVisible(true)}>
-                    {t('label.add-entity', {
-                      entity: t('label.asset-plural'),
-                    })}
-                  </Button>
+                  {!isCertificationClassification && (
+                    <Button
+                      data-testid="data-classification-add-button"
+                      type="primary"
+                      onClick={() => setAssetModalVisible(true)}>
+                      {t('label.add-entity', {
+                        entity: t('label.asset-plural'),
+                      })}
+                    </Button>
+                  )}
                   {manageButtonContent.length > 0 && (
                     <Dropdown
                       align={{ targetOffset: [-12, 0] }}
@@ -688,7 +716,10 @@ const TagPage = () => {
         <AssetSelectionModal
           entityFqn={tagItem.fullyQualifiedName}
           open={assetModalVisible}
-          queryFilter={getQueryFilterToExcludeTerms(tagItem.fullyQualifiedName)}
+          queryFilter={getQueryFilterToExcludeTermsAndEntities(
+            tagItem.fullyQualifiedName,
+            editEntitiesTagPermission.entitiesNotHavingPermission
+          )}
           type={AssetsOfEntity.TAG}
           onCancel={() => setAssetModalVisible(false)}
           onSave={handleAssetSave}

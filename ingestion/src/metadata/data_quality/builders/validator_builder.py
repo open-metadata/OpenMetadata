@@ -14,8 +14,8 @@ Builder interface defining the structure of builders for validators.
 Validators are test classes (e.g. columnValuesToBeBetween, etc.)
 """
 
-from abc import ABC, abstractmethod
 from datetime import datetime, timezone
+from enum import Enum
 from typing import TYPE_CHECKING, Set, Type, Union
 
 from metadata.data_quality.validations.base_test_handler import BaseTestValidator
@@ -31,8 +31,50 @@ if TYPE_CHECKING:
     from pandas import DataFrame
 
 
-class IValidatorBuilder(ABC):
+class TestCaseImporter:
+    def import_test_case_validator(
+        self,
+        test_type: str,
+        runner_type: str,
+        test_definition: str,
+    ) -> Type[BaseTestValidator]:
+        return import_test_case_class(test_type, runner_type, test_definition)
+
+
+class SourceType(Enum):
+    PANDAS = "pandas"
+    SQL = "sqlalchemy"
+
+
+class ValidatorBuilder(TestCaseImporter):
     """Interface for validator builders"""
+
+    def __init__(
+        self,
+        runner: Union[QueryRunner, "DataFrame"],
+        test_case: TestCase,
+        source_type: SourceType,
+        entity_type: str,
+    ) -> None:
+        """Builder object for SQA validators. This builder is used to create a validator object
+
+        Args:
+            runner (QueryRunner): The runner object
+            test_case (TestCase): The test case object
+            source_type (SourceType): The source type
+            entity_type (str): one of COLUMN or TABLE -- fetched from the test definition
+        """
+        super().__init__()
+        self._test_case = test_case
+        self.runner = runner
+        self.validator_cls: Type[
+            BaseTestValidator
+        ] = super().import_test_case_validator(
+            entity_type,
+            source_type.value,
+            self.test_case.testDefinition.fullyQualifiedName,
+        )
+        self.reset()
 
     @property
     def test_case(self):
@@ -43,28 +85,6 @@ class IValidatorBuilder(ABC):
     def validator(self):
         """Return the validator object"""
         return self._validator
-
-    def __init__(
-        self,
-        runner: Union[QueryRunner, "DataFrame"],
-        test_case: TestCase,
-        entity_type: str,
-    ) -> None:
-        """Builder object for SQA validators. This builder is used to create a validator object
-
-        Args:
-            runner (QueryRunner): The runner object
-            test_case (TestCase): The test case object
-            entity_type (str): one of COLUMN or TABLE -- fetched from the test definition
-        """
-        self._test_case = test_case
-        self.runner = runner
-        self.validator_cls: Type[BaseTestValidator] = import_test_case_class(
-            entity_type,
-            self._get_source_type(),
-            self.test_case.testDefinition.fullyQualifiedName,  # type: ignore
-        )
-        self.reset()
 
     def set_runtime_params(self, runtime_params_setters: Set[RuntimeParameterSetter]):
         """Set the runtime parameters for the validator object
@@ -92,8 +112,3 @@ class IValidatorBuilder(ABC):
                 int(datetime.now(tz=timezone.utc).timestamp() * 1000)
             ),
         )
-
-    @abstractmethod
-    def _get_source_type(self):
-        """Get the source type"""
-        raise NotImplementedError
