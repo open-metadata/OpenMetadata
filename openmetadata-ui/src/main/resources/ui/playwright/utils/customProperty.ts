@@ -447,9 +447,10 @@ export const createCustomPropertyForEntity = async (
   };
 
   for (const item of propertyList) {
+    const customPropertyName = `pwCustomProperty${uuid()}`;
     const payload = {
-      name: `pwCustomProperty${uuid()}`,
-      description: `pwCustomProperty${uuid()}`,
+      name: customPropertyName,
+      description: customPropertyName,
       propertyType: {
         id: item.id ?? '',
         type: 'type',
@@ -515,14 +516,13 @@ export const createCustomPropertyForEntity = async (
     const customProperty = await customPropertyResponse.json();
 
     // Process the custom properties
-    customProperties = customProperty.customProperties.reduce(
+    const newProperties = customProperty.customProperties.reduce(
       (
         prev: Record<string, string>,
         curr: Record<string, Record<string, string> | string>
       ) => {
         // only process the custom properties which are created via payload
-
-        if (curr.name !== payload.name) {
+        if (curr.name !== customPropertyName) {
           return prev;
         }
 
@@ -539,6 +539,8 @@ export const createCustomPropertyForEntity = async (
       },
       {}
     );
+
+    customProperties = { ...customProperties, ...newProperties };
   }
 
   return { customProperties, cleanupUser };
