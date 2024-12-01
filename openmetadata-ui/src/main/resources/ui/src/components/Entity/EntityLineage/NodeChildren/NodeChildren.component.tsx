@@ -12,6 +12,7 @@
  */
 import { DownOutlined, SearchOutlined, UpOutlined } from '@ant-design/icons';
 import { Button, Collapse, Input, Space } from 'antd';
+import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -247,7 +248,10 @@ const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
             </div>
 
             <section className="m-t-md" id="table-columns">
-              <div className="rounded-4 overflow-hidden">
+              <div
+                className={classNames('rounded-4 overflow-hidden', {
+                  border: !showAllColumns,
+                })}>
                 {filteredColumns.map((column) =>
                   renderColumnsData(column as Column)
                 )}
