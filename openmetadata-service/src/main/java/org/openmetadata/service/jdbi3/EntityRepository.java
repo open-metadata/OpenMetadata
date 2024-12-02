@@ -154,6 +154,7 @@ import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.api.BulkResponse;
 import org.openmetadata.schema.type.csv.CsvImportResult;
+import org.openmetadata.schema.type.customProperties.EnumConfig;
 import org.openmetadata.schema.type.customProperties.TableConfig;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
@@ -1526,6 +1527,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
         jsonNode.put(fieldName, formattedValue);
       }
       case "table-cp" -> validateTableType(fieldValue, propertyConfig, fieldName);
+      case "enum" -> validateEnumKeys(fieldName, fieldValue, propertyConfig);
       default -> {}
     }
   }
@@ -1605,6 +1607,26 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
       throw new IllegalArgumentException(
           CatalogExceptionMessage.jsonValidationError(fieldName, validationErrors));
+    }
+  }
+
+  public static void validateEnumKeys(
+      String fieldName, JsonNode fieldValue, String propertyConfig) {
+    JsonNode propertyConfigNode = JsonUtils.readTree(propertyConfig);
+    EnumConfig config = JsonUtils.treeToValue(propertyConfigNode, EnumConfig.class);
+
+    if (!config.getMultiSelect() && fieldValue.size() > 1) {
+      throw new IllegalArgumentException(
+          String.format("Only one value allowed for non-multiSelect %s property", fieldName));
+    }
+    Set<String> validValues = new HashSet<>(config.getValues());
+    Set<String> fieldValues = new HashSet<>();
+    fieldValue.forEach(value -> fieldValues.add(value.asText()));
+
+    if (!validValues.containsAll(fieldValues)) {
+      fieldValues.removeAll(validValues);
+      throw new IllegalArgumentException(
+          String.format("Values '%s' not supported for property %s", fieldValues, fieldName));
     }
   }
 
