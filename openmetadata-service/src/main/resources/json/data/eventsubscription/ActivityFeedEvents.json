@@ -16,7 +16,7 @@
       {
         "name": "matchAnyFieldChange",
         "effect": "include",
-        "condition": "matchAnyFieldChange({'description', 'domain', 'owners', 'tags', 'followers', 'extension','parameterValues', 'assets'})",
+        "condition": "matchAnyFieldChange({'description', 'domain', 'owners', 'tags', 'followers','parameterValues', 'assets'})",
         "prefixCondition": "OR"
       },
       {
@@ -70,7 +70,6 @@
               "owners",
               "tags",
               "followers",
-              "extension",
               "parameterValues",
               "pipelineStatus"
             ]
