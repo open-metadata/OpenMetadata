@@ -12,4 +12,8 @@ The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetada
 
 **searchIndexFilterPattern**: Note that the `searchIndexFilterPattern` support regex to include or exclude search indexes during metadata ingestion process.
 
+**includeIndexTemplate**: Set the Include Index Templates toggle to control whether to include index templates as part of metadata ingestion.
+
+**overrideMetadata**: Set the Override Metadata toggle to control whether to override the metadata if it already exists.
+
 {% /codeInfo %}
