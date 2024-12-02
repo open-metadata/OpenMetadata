@@ -472,15 +472,14 @@ public class SearchRepository {
 
       for (FieldChange field : changeDescription.getFieldsUpdated()) {
         if (field.getName().contains("parent")) {
-          EntityReference newEntityReference =
-              JsonUtils.readValue(field.getNewValue().toString(), EntityReference.class);
           EntityReference entityReferenceBeforeUpdate =
               JsonUtils.readValue(field.getOldValue().toString(), EntityReference.class);
           // Propagate FQN updates to all subchildren
-          searchClient.updateByFqnPrefix(
-              indexName,
-              entityReferenceBeforeUpdate.getFullyQualifiedName(),
-              newEntityReference.getFullyQualifiedName());
+          String originalFqn =
+              String.join(
+                  ".", entityReferenceBeforeUpdate.getFullyQualifiedName(), entity.getName());
+          String updatedFqn = entity.getFullyQualifiedName();
+          searchClient.updateByFqnPrefix(indexName, originalFqn, updatedFqn);
         }
       }
 
@@ -489,8 +488,10 @@ public class SearchRepository {
           EntityReference entityReferenceBeforeUpdate =
               JsonUtils.readValue(field.getOldValue().toString(), EntityReference.class);
           // Propagate FQN updates to all subchildren
-          searchClient.updateByFqnPrefix(
-              indexName, entityReferenceBeforeUpdate.getFullyQualifiedName(), "");
+          String originalFqn =
+              String.join(
+                  ".", entityReferenceBeforeUpdate.getFullyQualifiedName(), entity.getName());
+          searchClient.updateByFqnPrefix(indexName, originalFqn, "");
         }
       }
     }
