@@ -65,7 +65,8 @@ class OMetaIngestionPipelineMixin:
         :param pipeline_status_run_id: Pipeline Status run id
         """
         resp = self.client.get(
-            f"{self.get_suffix(IngestionPipeline)}/{quote(ingestion_pipeline_fqn)}/pipelineStatus/{pipeline_status_run_id}"
+            f"{self.get_suffix(IngestionPipeline)}/"
+            f"{quote(ingestion_pipeline_fqn)}/pipelineStatus/{pipeline_status_run_id}"
         )
         if resp:
             return PipelineStatus(**resp)
