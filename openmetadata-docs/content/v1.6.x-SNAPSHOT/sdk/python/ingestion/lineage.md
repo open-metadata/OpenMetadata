@@ -160,6 +160,7 @@ With everything prepared, we can now create the Lineage between both Entities. A
 represents the edge between two Entities, typed under `EntitiesEdge`.
 
 ```python
+from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.type.entityLineage import EntitiesEdge
 
@@ -346,6 +347,7 @@ To prepare this example, we need to start by creating the Pipeline Entity. Again
 to prepare the Pipeline Service:
 
 ```python
+from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.services.createPipelineService import (
     CreatePipelineServiceRequest,

@@ -24,6 +24,18 @@ $$note
 OpenMetadata supports MySQL version `8.0.0` and up. 
 $$
 
+### Lineage & Usage 
+To extract lineage & usage you need to enable the query logging in mysql and the user used in the connection needs to have select access to the `mysql.general_log`.
+
+```sql
+-- Enable Logging 
+SET GLOBAL general_log='ON';
+set GLOBAL log_output='table';
+
+-- Grant SELECT on log table
+GRANT SELECT ON mysql.general_log TO '<username>'@'<host>';
+```
+
 ### Profiler & Data Quality
 Executing the profiler Workflow or data quality tests, will require the user to have `SELECT` permission on the tables/schemas where the profiler/tests will be executed. The user should also be allowed to view information in `tables` for all objects in the database. More information on the profiler workflow setup can be found [here](https://docs.open-metadata.org/how-to-guides/data-quality-observability/profiler/workflow) and data quality tests [here](https://docs.open-metadata.org/connectors/ingestion/workflows/data-quality).
 
