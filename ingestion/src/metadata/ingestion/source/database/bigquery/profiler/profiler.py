@@ -22,7 +22,7 @@ class BigQueryProfiler(BigQueryProfilerInterface):
         **kwargs,
     ) -> List[SystemProfile]:
         return self.system_metrics_computer.get_system_metrics(
-            table=runner.table,
+            table=runner.dataset,
             usage_location=self.service_connection_config.usageLocation,
         )
 

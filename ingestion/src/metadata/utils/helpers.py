@@ -360,8 +360,7 @@ def clean_uri(uri: Union[str, Url]) -> str:
     make it http://localhost:9000
     """
     # force a string of the given Uri if needed
-    if isinstance(uri, Url):
-        uri = str(uri)
+    uri = str(uri)
     return uri[:-1] if uri.endswith("/") else uri
 
 

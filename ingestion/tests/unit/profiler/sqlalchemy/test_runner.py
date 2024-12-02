@@ -84,7 +84,9 @@ class RunnerTest(TestCase):
                 return_value=Mock(),
             ),
         ):
-            sampler = SQASampler(
+            sampler = SQASampler.__new__(SQASampler)
+            sampler.build_table_orm = lambda *args, **kwargs: User
+            sampler.__init__(
                 service_connection_config=Mock(),
                 ometa_client=None,
                 entity=None,
@@ -92,7 +94,9 @@ class RunnerTest(TestCase):
             )
             cls.dataset = sampler.get_dataset()
 
-        cls.raw_runner = QueryRunner(session=cls.session, dataset=cls.dataset)
+        cls.raw_runner = QueryRunner(
+            session=cls.session, dataset=cls.dataset, raw_dataset=sampler.raw_dataset
+        )
         cls.timeout_runner: Timer = cls_timeout(1)(Timer())
 
         # Insert 30 rows

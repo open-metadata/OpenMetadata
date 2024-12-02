@@ -37,6 +37,7 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.socket.WebSocketManager;
@@ -65,8 +66,10 @@ public class WebsocketNotificationHandler {
     CSVExportMessage message = new CSVExportMessage(jobId, "COMPLETED", csvData, null);
     String jsonMessage = JsonUtils.pojoToJson(message);
     UUID userId = getUserIdFromSecurityContext(securityContext);
-    WebSocketManager.getInstance()
-        .sendToOne(userId, WebSocketManager.CSV_EXPORT_CHANNEL, jsonMessage);
+    if (userId != null) {
+      WebSocketManager.getInstance()
+          .sendToOne(userId, WebSocketManager.CSV_EXPORT_CHANNEL, jsonMessage);
+    }
   }
 
   public static void bulkAssetsOperationCompleteNotification(
@@ -75,8 +78,10 @@ public class WebsocketNotificationHandler {
         new BulkAssetsOperationMessage(jobId, "COMPLETED", result, null);
     String jsonMessage = JsonUtils.pojoToJson(message);
     UUID userId = getUserIdFromSecurityContext(securityContext);
-    WebSocketManager.getInstance()
-        .sendToOne(userId, WebSocketManager.BULK_ASSETS_CHANNEL, jsonMessage);
+    if (userId != null) {
+      WebSocketManager.getInstance()
+          .sendToOne(userId, WebSocketManager.BULK_ASSETS_CHANNEL, jsonMessage);
+    }
   }
 
   public static void bulkAssetsOperationFailedNotification(
@@ -84,8 +89,10 @@ public class WebsocketNotificationHandler {
     CSVExportMessage message = new CSVExportMessage(jobId, "FAILED", null, errorMessage);
     String jsonMessage = JsonUtils.pojoToJson(message);
     UUID userId = getUserIdFromSecurityContext(securityContext);
-    WebSocketManager.getInstance()
-        .sendToOne(userId, WebSocketManager.BULK_ASSETS_CHANNEL, jsonMessage);
+    if (userId != null) {
+      WebSocketManager.getInstance()
+          .sendToOne(userId, WebSocketManager.BULK_ASSETS_CHANNEL, jsonMessage);
+    }
   }
 
   private void handleNotifications(ContainerResponseContext responseContext) {
@@ -186,14 +193,24 @@ public class WebsocketNotificationHandler {
     CSVExportMessage message = new CSVExportMessage(jobId, "FAILED", null, errorMessage);
     String jsonMessage = JsonUtils.pojoToJson(message);
     UUID userId = getUserIdFromSecurityContext(securityContext);
-    WebSocketManager.getInstance()
-        .sendToOne(userId, WebSocketManager.CSV_EXPORT_CHANNEL, jsonMessage);
+    if (userId != null) {
+      WebSocketManager.getInstance()
+          .sendToOne(userId, WebSocketManager.CSV_EXPORT_CHANNEL, jsonMessage);
+    }
   }
 
   private static UUID getUserIdFromSecurityContext(SecurityContext securityContext) {
-    String username = securityContext.getUserPrincipal().getName();
-    User user = Entity.getCollectionDAO().userDAO().findEntityByName(username);
-    return user.getId();
+    try {
+      String username = securityContext.getUserPrincipal().getName();
+      User user =
+          Entity.getCollectionDAO()
+              .userDAO()
+              .findEntityByName(FullyQualifiedName.quoteName(username));
+      return user.getId();
+    } catch (EntityNotFoundException e) {
+      LOG.error("User not found ", e);
+    }
+    return null;
   }
 
   public static void sendCsvImportCompleteNotification(
@@ -201,8 +218,10 @@ public class WebsocketNotificationHandler {
     CSVImportMessage message = new CSVImportMessage(jobId, "COMPLETED", result, null);
     String jsonMessage = JsonUtils.pojoToJson(message);
     UUID userId = getUserIdFromSecurityContext(securityContext);
-    WebSocketManager.getInstance()
-        .sendToOne(userId, WebSocketManager.CSV_IMPORT_CHANNEL, jsonMessage);
+    if (userId != null) {
+      WebSocketManager.getInstance()
+          .sendToOne(userId, WebSocketManager.CSV_IMPORT_CHANNEL, jsonMessage);
+    }
   }
 
   public static void sendCsvImportFailedNotification(
@@ -210,7 +229,9 @@ public class WebsocketNotificationHandler {
     CSVExportMessage message = new CSVExportMessage(jobId, "FAILED", null, errorMessage);
     String jsonMessage = JsonUtils.pojoToJson(message);
     UUID userId = getUserIdFromSecurityContext(securityContext);
-    WebSocketManager.getInstance()
-        .sendToOne(userId, WebSocketManager.CSV_IMPORT_CHANNEL, jsonMessage);
+    if (userId != null) {
+      WebSocketManager.getInstance()
+          .sendToOne(userId, WebSocketManager.CSV_IMPORT_CHANNEL, jsonMessage);
+    }
   }
 }

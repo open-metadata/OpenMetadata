@@ -8,22 +8,17 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-
 """
-Builder defining the structure of builders for validators for Pandas sources
+MYSQL usage module
 """
-
-from typing import TYPE_CHECKING
-
-from metadata.data_quality.builders.i_validator_builder import IValidatorBuilder
-
-if TYPE_CHECKING:
-    pass
+from metadata.ingestion.source.database.mysql.queries import MYSQL_SQL_STATEMENT
+from metadata.ingestion.source.database.mysql.query_parser import MysqlQueryParserSource
+from metadata.ingestion.source.database.usage_source import UsageSource
 
 
-class PandasValidatorBuilder(IValidatorBuilder):
-    """Builder for Pandas validators"""
+class MysqlUsageSource(MysqlQueryParserSource, UsageSource):
+    sql_stmt = MYSQL_SQL_STATEMENT
+    filters = ""
 
-    def _get_source_type(self) -> str:
-        """Return the test case"""
-        return "pandas"
+    def format_query(self, query: bytes) -> str:
+        return query.decode(errors="ignore").replace("\\n", "\n")
