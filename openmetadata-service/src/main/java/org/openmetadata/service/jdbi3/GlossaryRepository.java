@@ -212,7 +212,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
       try {
         originalTerm = Entity.getEntityByName(GLOSSARY_TERM, termFqn, "", Include.ALL);
       } catch (Exception e) {
-        LOG.info("Glossary term not found: {}, it will be created with Import.", termFqn);
+        LOG.warn("Glossary term not found: {}, it will be created with Import.", termFqn);
       }
       glossaryTerm.withStyle(originalTerm != null ? originalTerm.getStyle() : null);
       if (processRecord) {
