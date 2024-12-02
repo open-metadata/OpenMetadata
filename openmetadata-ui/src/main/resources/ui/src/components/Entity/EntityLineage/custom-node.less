@@ -62,14 +62,12 @@
   }
   .column-container {
     min-height: 48px;
-    padding: 6px 12px;
+    padding: 12px;
+    background-color: @grey-1;
 
-    .lineage-collapse-column {
-      .ant-collapse {
-        border-radius: 0;
-        border: 1px solid @border-color;
-        border-color: @border-color;
-      }
+    .lineage-collapse-column.ant-collapse {
+      border: none;
+      border-radius: 0;
       .ant-collapse-header {
         padding: 0;
         font-size: 12px;
@@ -253,11 +251,27 @@
 
 .custom-node-column-container {
   display: flex;
-  align-items: center;
-  justify-content: center;
+  justify-content: space-between;
+  padding: 6px 12px;
+  background: @white;
   position: relative;
-  background-color: @white;
   font-size: 12px;
+  font-weight: 400;
+
+  .custom-node-name-container {
+    display: flex;
+    align-items: center;
+    padding-left: 12px;
+    gap: 4px;
+
+    .custom-node-name-icon {
+      width: 14px;
+    }
+  }
+
+  .custom-node-constraint {
+    padding-right: 12px;
+  }
 }
 
 .custom-node-deleted-icon {
