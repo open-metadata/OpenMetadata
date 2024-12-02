@@ -321,7 +321,18 @@ export const getObservabilityCreationDetails = ({
           exclude: false,
         },
       ],
-      actions: [],
+      actions: [
+        {
+          name: 'Get Test Suite Status Updates',
+          inputs: [
+            {
+              inputSelector: 'test-result-select',
+              inputValue: 'Failed',
+            },
+          ],
+          exclude: false,
+        },
+      ],
       destinations: [
         {
           mode: 'external',
