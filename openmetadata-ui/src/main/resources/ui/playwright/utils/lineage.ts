@@ -517,12 +517,17 @@ export const verifyCSVHeaders = async (headers: string[]) => {
 export const getLineageCSVData = async (page: Page) => {
   await page.getByTestId('lineage-export').click();
 
-  await page.waitForSelector('[data-testid="export-entity-modal"]');
+  await page.waitForSelector(
+    '[data-testid="export-entity-modal"] #submit-button',
+    {
+      state: 'visible',
+    }
+  );
 
   const [download] = await Promise.all([
     page.waitForEvent('download'),
     page.click(
-      '[data-testid="export-entity-modal"]:visible button#submit-button'
+      '[data-testid="export-entity-modal"] button#submit-button:visible'
     ),
   ]);
 

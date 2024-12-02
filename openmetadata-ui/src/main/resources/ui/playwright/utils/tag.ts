@@ -58,7 +58,10 @@ export const visitClassificationPage = async (
   );
 
   await fetchTags;
-  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+  await page.waitForSelector(
+    '[data-testid="tags-container"] [data-testid="loader"]',
+    { state: 'detached' }
+  );
 };
 
 // Other asset type that should not get from the search in explore, they are not added to the tag

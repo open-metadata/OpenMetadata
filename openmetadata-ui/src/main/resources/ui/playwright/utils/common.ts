@@ -115,9 +115,9 @@ export const toastNotification = async (
   page: Page,
   message: string | RegExp
 ) => {
-  await expect(page.locator('.Toastify__toast-body[role="alert"]')).toHaveText(
-    message
-  );
+  await expect(
+    page.locator('.Toastify__toast-body[role="alert"]').first()
+  ).toHaveText(message);
 
   await page
     .locator('.Toastify__toast')

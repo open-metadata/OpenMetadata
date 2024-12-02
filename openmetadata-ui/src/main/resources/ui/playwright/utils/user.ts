@@ -100,8 +100,15 @@ export const visitUserProfilePage = async (page: Page, userName: string) => {
   const userResponse = page.waitForResponse(
     '/api/v1/search/query?q=**&from=0&size=*&index=*'
   );
+  const loader = page.waitForSelector(
+    '[data-testid="user-list-v1-component"] [data-testid="loader"]',
+    {
+      state: 'detached',
+    }
+  );
   await page.getByTestId('searchbar').fill(userName);
   await userResponse;
+  await loader;
   await page.getByTestId(userName).click();
 };
 
