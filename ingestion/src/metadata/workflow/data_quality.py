@@ -22,6 +22,7 @@ from metadata.generated.schema.entity.services.connections.serviceConnection imp
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.tests.testSuite import ServiceType, TestSuite
 from metadata.ingestion.api.steps import Processor, Sink
+from metadata.ingestion.ometa.utils import model_str
 from metadata.utils import fqn
 from metadata.utils.importer import import_sink_class
 from metadata.utils.logger import test_suite_logger
@@ -40,6 +41,7 @@ class TestSuiteWorkflow(IngestionWorkflow):
     """
 
     __test__ = False
+    service_type = ServiceType.TestSuite
 
     def set_steps(self):
         self.source = TestSuiteSource.create(self.config.model_dump(), self.metadata)
@@ -113,6 +115,8 @@ class TestSuiteWorkflow(IngestionWorkflow):
             fqn=fqn.build(
                 metadata=None,
                 entity_type=TestSuite,
-                table_fqn=self.config.source.sourceConfig.config.entityFullyQualifiedName,
+                table_fqn=model_str(
+                    self.config.source.sourceConfig.config.entityFullyQualifiedName
+                ),
             ),
         )
