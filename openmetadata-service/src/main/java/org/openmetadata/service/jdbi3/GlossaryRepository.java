@@ -187,6 +187,11 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
     protected void createEntity(CSVPrinter printer, List<CSVRecord> csvRecords) throws IOException {
       CSVRecord csvRecord = getNextRecord(printer, csvRecords);
       GlossaryTerm glossaryTerm = new GlossaryTerm().withGlossary(glossary.getEntityReference());
+      String termFqn =
+          FullyQualifiedName.add(
+              !nullOrEmpty(csvRecord.get(0)) ? csvRecord.get(0) : glossary.getFullyQualifiedName(),
+              csvRecord.get(1));
+      GlossaryTerm originalTerm = null;
 
       // TODO add header
       glossaryTerm
@@ -204,6 +209,12 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
           .withOwners(getOwners(printer, csvRecord, 9))
           .withStatus(getTermStatus(printer, csvRecord))
           .withExtension(getExtension(printer, csvRecord, 11));
+      try {
+        originalTerm = Entity.getEntityByName(GLOSSARY_TERM, termFqn, "", Include.ALL);
+      } catch (Exception e) {
+        LOG.info("Glossary term not found: {}, it will be created with Import.", termFqn);
+      }
+      glossaryTerm.withStyle(originalTerm != null ? originalTerm.getStyle() : null);
       if (processRecord) {
         createEntity(printer, csvRecord, glossaryTerm);
       }
