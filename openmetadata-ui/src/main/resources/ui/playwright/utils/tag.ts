@@ -46,6 +46,8 @@ export const visitClassificationPage = async (
   );
   await sidebarClick(page, SidebarItem.TAGS);
   await classificationResponse;
+
+  const fetchTags = page.waitForResponse('/api/v1/tags?*parent=*');
   await page
     .locator(`[data-testid="side-panel-classification"]`)
     .filter({ hasText: classificationName })
@@ -55,6 +57,7 @@ export const visitClassificationPage = async (
     classificationName
   );
 
+  await fetchTags;
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 };
 

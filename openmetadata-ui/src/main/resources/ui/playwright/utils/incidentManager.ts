@@ -101,8 +101,6 @@ export const triggerTestSuitePipelineAndWaitForSuccess = async (data: {
           `/api/v1/services/ingestionPipelines/trigger/${pipeline?.['id']}`
         );
       }
-
-      return;
     });
 
   // Wait for the run to complete

@@ -115,6 +115,10 @@ export const softDeleteUserProfilePage = async (
   );
   await page.getByTestId('searchbar').fill(userName);
   await userResponse;
+  await page.waitForSelector('.user-list-table [data-testid="loader"]', {
+    state: 'detached',
+  });
+
   await page.getByTestId(userName).click();
 
   await page.getByTestId('user-profile-details').click();

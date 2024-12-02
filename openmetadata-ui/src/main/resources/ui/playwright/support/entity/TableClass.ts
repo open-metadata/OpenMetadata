@@ -12,6 +12,7 @@
  */
 import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
+import { isEmpty } from 'lodash';
 import { SERVICE_TYPE } from '../../constant/service';
 import { uuid } from '../../utils/common';
 import { visitEntityPage } from '../../utils/entity';
@@ -228,7 +229,7 @@ export class TableClass extends EntityClass {
     apiContext: APIRequestContext,
     testSuite?: TestSuiteData
   ) {
-    if (!this.entityResponseData) {
+    if (isEmpty(this.entityResponseData)) {
       await this.create(apiContext);
     }
 
@@ -292,7 +293,7 @@ export class TableClass extends EntityClass {
     apiContext: APIRequestContext,
     testCaseData?: TestCaseData
   ) {
-    if (!this.testSuiteResponseData) {
+    if (isEmpty(this.testSuiteResponseData)) {
       await this.createTestSuiteAndPipelines(apiContext);
     }
 
