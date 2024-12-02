@@ -391,10 +391,15 @@ public abstract class EntityCsv<T extends EntityInterface> {
                 fieldValue.toString(),
                 customPropertyType,
                 propertyConfig);
-        case "enum" -> {
-          List<String> enumKeys = listOrEmpty(fieldToInternalArray(fieldValue.toString()));
-          fieldValue = enumKeys.isEmpty() ? null : enumKeys;
-        }
+        case "enum" -> fieldValue =
+            parseEnumType(
+                printer,
+                csvRecord,
+                fieldNumber,
+                fieldName,
+                customPropertyType,
+                fieldValue,
+                propertyConfig);
         case "timeInterval" -> fieldValue =
             parseTimeInterval(printer, csvRecord, fieldNumber, fieldName, fieldValue);
         case "number", "integer", "timestamp" -> fieldValue =
@@ -571,6 +576,27 @@ public abstract class EntityCsv<T extends EntityInterface> {
     tableJson.put("rows", rows);
     tableJson.put("columns", tableConfig.getColumns());
     return tableJson;
+  }
+
+  private Object parseEnumType(
+      CSVPrinter printer,
+      CSVRecord csvRecord,
+      int fieldNumber,
+      String fieldName,
+      String customPropertyType,
+      Object fieldValue,
+      String propertyConfig)
+      throws IOException {
+    List<String> enumKeys = listOrEmpty(fieldToInternalArray(fieldValue.toString()));
+    try {
+      EntityRepository.validateEnumKeys(fieldName, JsonUtils.valueToTree(enumKeys), propertyConfig);
+    } catch (Exception e) {
+      importFailure(
+          printer,
+          invalidCustomPropertyValue(fieldNumber, fieldName, customPropertyType, e.getMessage()),
+          csvRecord);
+    }
+    return enumKeys.isEmpty() ? null : enumKeys;
   }
 
   private void validateAndUpdateExtension(
