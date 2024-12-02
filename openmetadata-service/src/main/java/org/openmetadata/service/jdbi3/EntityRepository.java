@@ -1610,7 +1610,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
-  private void validateEnumKeys(String fieldName, JsonNode fieldValue, String propertyConfig) {
+  public static void validateEnumKeys(
+      String fieldName, JsonNode fieldValue, String propertyConfig) {
     JsonNode propertyConfigNode = JsonUtils.readTree(propertyConfig);
     EnumConfig config = JsonUtils.treeToValue(propertyConfigNode, EnumConfig.class);
 
