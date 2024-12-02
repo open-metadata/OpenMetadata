@@ -1157,6 +1157,22 @@ public class TableRepository extends EntityRepository<Table> {
           added,
           deleted,
           EntityUtil.tableConstraintMatch);
+      for (TableConstraint constraint : added) {
+        for (String column : constraint.getReferredColumns()) {
+          String toParent = FullyQualifiedName.getParentFQN(column);
+          EntityReference toTable = EntityUtil.getEntityReference(TABLE, toParent);
+          addRelationship(
+              updatedTable.getId(), toTable.getId(), TABLE, TABLE, Relationship.RELATED_TO);
+        }
+      }
+      for (TableConstraint constraint : deleted) {
+        for (String column : constraint.getReferredColumns()) {
+          String toParent = FullyQualifiedName.getParentFQN(column);
+          EntityReference toTable = EntityUtil.getEntityReference(TABLE, toParent);
+          deleteRelationship(
+              updatedTable.getId(), TABLE, toTable.getId(), TABLE, Relationship.RELATED_TO);
+        }
+      }
     }
   }
 
