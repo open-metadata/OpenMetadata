@@ -48,7 +48,7 @@ export const getTeamUsers = async (
   params: UsersQueryParams
 ) => {
   const response = await APIClient.get<PagingResponse<User[]>>(
-    `/teams/name/${teamName}/users`,
+    `/teams/name/${getEncodedFqn(teamName)}/users`,
     {
       params,
     }
