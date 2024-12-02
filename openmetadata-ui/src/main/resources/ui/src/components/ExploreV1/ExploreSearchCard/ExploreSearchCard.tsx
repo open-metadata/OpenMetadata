@@ -78,54 +78,56 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
           );
 
       const _otherDetails: ExtraInfo[] = [
+        ...(source?.domain
+          ? [
+              {
+                key: 'Domain',
+                value: getDomainPath(source.domain.fullyQualifiedName),
+                placeholderText: getEntityName(source.domain),
+                isLink: true,
+                openInNewTab: false,
+              },
+            ]
+          : !searchClassBase
+              .getListOfEntitiesWithoutDomain()
+              .includes(source?.entityType ?? '')
+          ? [
+              {
+                key: 'Domain',
+                value: '',
+              },
+            ]
+          : []),
+
         {
           key: 'Owner',
           value: (
-            <OwnerLabel owners={(source.owners as EntityReference[]) ?? []} />
+            <OwnerLabel owners={(source?.owners as EntityReference[]) ?? []} />
           ),
         },
-      ];
 
-      if (source?.domain) {
-        const domain = getEntityName(source.domain);
-        const domainLink = getDomainPath(source.domain.fullyQualifiedName);
-        _otherDetails.push({
-          key: 'Domain',
-          value: domainLink,
-          placeholderText: domain,
-          isLink: true,
-          openInNewTab: false,
-        });
-      } else {
-        const entitiesWithoutDomain =
-          searchClassBase.getListOfEntitiesWithoutDomain();
-        if (!entitiesWithoutDomain.includes(source.entityType ?? '')) {
-          _otherDetails.push({
-            key: 'Domain',
-            value: '',
-          });
-        }
-      }
-
-      if (
-        !searchClassBase
+        ...(!searchClassBase
           .getListOfEntitiesWithoutTier()
-          .includes((source.entityType ?? '') as EntityType)
-      ) {
-        _otherDetails.push({
-          key: 'Tier',
-          value: tierValue,
-        });
-      }
+          .includes((source?.entityType ?? '') as EntityType)
+          ? [
+              {
+                key: 'Tier',
+                value: tierValue,
+              },
+            ]
+          : []),
 
-      if ('usageSummary' in source) {
-        _otherDetails.push({
-          value: getUsagePercentile(
-            source.usageSummary?.weeklyStats?.percentileRank ?? 0,
-            true
-          ),
-        });
-      }
+        ...('usageSummary' in source
+          ? [
+              {
+                value: getUsagePercentile(
+                  source.usageSummary?.weeklyStats?.percentileRank ?? 0,
+                  true
+                ),
+              },
+            ]
+          : []),
+      ];
 
       return _otherDetails;
     }, [source]);
