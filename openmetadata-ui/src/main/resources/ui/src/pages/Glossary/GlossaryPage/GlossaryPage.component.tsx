@@ -14,7 +14,13 @@
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, {
+  RefObject,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -32,6 +38,7 @@ import {
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { PAGE_SIZE_LARGE, ROUTES } from '../../../constants/constants';
 import { GLOSSARIES_DOCS } from '../../../constants/docs.constants';
+import { observerOptions } from '../../../constants/Mydata.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
@@ -39,6 +46,7 @@ import { EntityAction, TabSpecificField } from '../../../enums/entity.enum';
 import { Glossary } from '../../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import { Operation } from '../../../generated/entity/policies/policy';
+import { useElementInView } from '../../../hooks/useElementInView';
 import { useFqn } from '../../../hooks/useFqn';
 import {
   deleteGlossary,
@@ -64,6 +72,16 @@ const GlossaryPage = () => {
   const { action } = useParams<{ action: EntityAction }>();
 
   const [isLoading, setIsLoading] = useState(true);
+  const [page, setPage] = useState({
+    paging: 0,
+    after: undefined,
+  });
+  const [isMoreGlossaryLoading, setIsMoreGlossaryLoading] =
+    useState<boolean>(false);
+  const [elementRef, isInView] = useElementInView({
+    ...observerOptions,
+    rootMargin: '10px',
+  });
 
   const [isRightPanelLoading, setIsRightPanelLoading] = useState(true);
   const [previewAsset, setPreviewAsset] =
@@ -134,10 +152,14 @@ const GlossaryPage = () => {
   };
 
   const fetchGlossaryList = async () => {
-    setIsRightPanelLoading(true);
-    setIsLoading(true);
+    if (page.after) {
+      setIsMoreGlossaryLoading(true);
+    } else {
+      setIsRightPanelLoading(true);
+      setIsLoading(true);
+    }
     try {
-      const { data } = await getGlossariesList({
+      const { data, paging } = await getGlossariesList({
         fields: [
           TabSpecificField.OWNERS,
           TabSpecificField.TAGS,
@@ -147,18 +169,30 @@ const GlossaryPage = () => {
         ],
 
         limit: PAGE_SIZE_LARGE,
+        after: page.after,
       });
       setGlossaries(data);
+      if (paging.after) {
+        setPage((prev) => ({ paging: prev.paging + 1, after: paging.after }));
+      } else {
+        setPage({ paging: 0, after: undefined });
+      }
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
       setIsLoading(false);
       setIsRightPanelLoading(false);
+      setIsMoreGlossaryLoading(false);
     }
   };
   useEffect(() => {
     fetchGlossaryList();
   }, []);
+  useEffect(() => {
+    if (page?.after && isInView) {
+      fetchGlossaryList();
+    }
+  }, [page?.after, isInView]);
 
   const fetchGlossaryTermDetails = async () => {
     setIsRightPanelLoading(true);
@@ -389,23 +423,30 @@ const GlossaryPage = () => {
   );
 
   const resizableLayout = isGlossaryActive ? (
-    <ResizableLeftPanels
-      className="content-height-with-resizable-panel"
-      firstPanel={{
-        className: 'content-resizable-panel-container',
-        minWidth: 280,
-        flex: 0.13,
-        children: <GlossaryLeftPanel glossaries={glossaries} />,
-      }}
-      hideFirstPanel={isImportAction}
-      pageTitle={t('label.glossary')}
-      secondPanel={{
-        children: glossaryElement,
-        className: 'content-resizable-panel-container',
-        minWidth: 800,
-        flex: 0.87,
-      }}
-    />
+    <>
+      <ResizableLeftPanels
+        className="content-height-with-resizable-panel"
+        firstPanel={{
+          className: 'content-resizable-panel-container',
+          minWidth: 280,
+          flex: 0.13,
+          children: <GlossaryLeftPanel glossaries={glossaries} />,
+        }}
+        hideFirstPanel={isImportAction}
+        pageTitle={t('label.glossary')}
+        secondPanel={{
+          children: glossaryElement,
+          className: 'content-resizable-panel-container',
+          minWidth: 800,
+          flex: 0.87,
+        }}
+      />
+      <div
+        className="h-1 w-full"
+        ref={elementRef as RefObject<HTMLDivElement>}
+      />
+      {isMoreGlossaryLoading && <Loader />}
+    </>
   ) : (
     <ResizablePanels
       className="content-height-with-resizable-panel"

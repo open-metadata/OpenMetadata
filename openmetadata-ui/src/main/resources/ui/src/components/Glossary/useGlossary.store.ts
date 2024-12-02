@@ -33,7 +33,10 @@ export const useGlossaryStore = create<{
   glossaryChildTerms: [],
 
   setGlossaries: (glossaries: Glossary[]) => {
-    set({ glossaries });
+    set((state) => ({
+      ...state,
+      glossaries: [...state.glossaries, ...glossaries],
+    }));
   },
   updateGlossary: (glossary: Glossary) => {
     const { glossaries } = get();
