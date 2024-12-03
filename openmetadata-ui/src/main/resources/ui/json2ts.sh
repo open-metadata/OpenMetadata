@@ -53,12 +53,13 @@ getTypes(){
     do
     	local_tmp_dir="$tmp_dir/$(dirname $file_with_dir)"
 	mkdir -p $local_tmp_dir
-    	tmp_schema_file="${local_tmp_dir}/$(basename -- $file_with_dir)"
+    	tmp_schema_file="${local_tmp_dir}/$(basename -- $file_with_dir)" # Full destination path
     	#args schema file, tmp schema file, output ts file
-        generateTmpSchemaFile $PWD"/"$schema_directory$file_with_dir $tmp_schema_file
+        generateTmpSchemaFile $PWD"/"$schema_directory$file_with_dir $tmp_schema_file # Copy the src schema into the destination file
     done
+    sleep 6000 # MATIDEBUG
 
-    escaped_tmp_dir=$(echo $tmp_dir | sed -e 's/[]\/$*.^[]/\\&/g')
+    escaped_tmp_dir=$(echo $tmp_dir | sed -e 's/[]\/$*.^[]/\\&/g') # ????
     for file_with_dir in $(find $tmp_dir  -name "*.json" | sed -e "s/${escaped_tmp_dir}//g")
     do
         joblist=$(jobs | wc -l)
@@ -74,12 +75,11 @@ getTypes(){
 	#args schema file, tmp schema file, output ts file
         generateType $tmp_schema_file $outputTS &
     done
-    
 }
 
 # Checkout root directory to generate typescript from schema
-cd ../../../../..
-echo "Generating TypeScript from OpenMetadata specifications"
+cd ../../../../.. # Go to root  directory
+echo "Generating TypeScript from OpenMetadata specifications in ${tmp_dir}"
 getTypes
 wait $(jobs -p)
 rm -rf $tmp_dir
