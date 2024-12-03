@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import { Glossary } from '../../generated/entity/data/glossary';
 import { GlossaryTermWithChildren } from '../../rest/glossaryAPI';
 
@@ -18,59 +19,68 @@ export type ModifiedGlossary = Glossary & {
   children?: GlossaryTermWithChildren[];
 };
 
-export const useGlossaryStore = create<{
-  glossaries: Glossary[];
-  activeGlossary: ModifiedGlossary;
-  glossaryChildTerms: ModifiedGlossary[];
-  setGlossaries: (glossaries: Glossary[], isAfter?: boolean) => void;
-  setActiveGlossary: (glossary: ModifiedGlossary) => void;
-  updateGlossary: (glossary: Glossary) => void;
-  updateActiveGlossary: (glossary: Partial<ModifiedGlossary>) => void;
-  setGlossaryChildTerms: (glossaryChildTerms: ModifiedGlossary[]) => void;
-}>()((set, get) => ({
-  glossaries: [],
-  activeGlossary: {} as ModifiedGlossary,
-  glossaryChildTerms: [],
+export const useGlossaryStore = create(
+  persist<{
+    glossaries: Glossary[];
+    activeGlossary: ModifiedGlossary;
+    glossaryChildTerms: ModifiedGlossary[];
+    setGlossaries: (glossaries: Glossary[], isAfter?: boolean) => void;
+    setActiveGlossary: (glossary: ModifiedGlossary) => void;
+    updateGlossary: (glossary: Glossary) => void;
+    updateActiveGlossary: (glossary: Partial<ModifiedGlossary>) => void;
+    setGlossaryChildTerms: (glossaryChildTerms: ModifiedGlossary[]) => void;
+  }>(
+    (set, get) => ({
+      glossaries: [],
+      activeGlossary: {} as ModifiedGlossary,
+      glossaryChildTerms: [],
 
-  setGlossaries: (glossaries: Glossary[], isAfter?: boolean) => {
-    set((state) => ({
-      ...state,
-      glossaries: isAfter ? [...state.glossaries, ...glossaries] : glossaries,
-    }));
-  },
-  updateGlossary: (glossary: Glossary) => {
-    const { glossaries } = get();
+      setGlossaries: (glossaries: Glossary[], isAfter?: boolean) => {
+        set((state) => ({
+          ...state,
+          glossaries: isAfter
+            ? [...state.glossaries, ...glossaries]
+            : glossaries,
+        }));
+      },
+      updateGlossary: (glossary: Glossary) => {
+        const { glossaries } = get();
 
-    const newGlossaries = glossaries.map((g) =>
-      g.fullyQualifiedName === glossary.fullyQualifiedName ? glossary : g
-    );
+        const newGlossaries = glossaries.map((g) =>
+          g.fullyQualifiedName === glossary.fullyQualifiedName ? glossary : g
+        );
 
-    set({ glossaries: newGlossaries });
-  },
-  setActiveGlossary: (glossary: ModifiedGlossary) => {
-    set({ activeGlossary: glossary });
-  },
-  updateActiveGlossary: (glossary: Partial<ModifiedGlossary>) => {
-    const { activeGlossary, glossaries } = get();
+        set({ glossaries: newGlossaries });
+      },
+      setActiveGlossary: (glossary: ModifiedGlossary) => {
+        set({ activeGlossary: glossary });
+      },
+      updateActiveGlossary: (glossary: Partial<ModifiedGlossary>) => {
+        const { activeGlossary, glossaries } = get();
 
-    const updatedGlossary = {
-      ...activeGlossary,
-      ...glossary,
-    } as ModifiedGlossary;
+        const updatedGlossary = {
+          ...activeGlossary,
+          ...glossary,
+        } as ModifiedGlossary;
 
-    // Update the active glossary
-    set({ activeGlossary: updatedGlossary });
+        // Update the active glossary
+        set({ activeGlossary: updatedGlossary });
 
-    // Update the corresponding glossary in the glossaries list
-    const index = glossaries.findIndex(
-      (g) => g.fullyQualifiedName === updatedGlossary.fullyQualifiedName
-    );
+        // Update the corresponding glossary in the glossaries list
+        const index = glossaries.findIndex(
+          (g) => g.fullyQualifiedName === updatedGlossary.fullyQualifiedName
+        );
 
-    if (index !== -1) {
-      glossaries[index] = updatedGlossary;
+        if (index !== -1) {
+          glossaries[index] = updatedGlossary;
+        }
+      },
+      setGlossaryChildTerms: (glossaryChildTerms: ModifiedGlossary[]) => {
+        set({ glossaryChildTerms });
+      },
+    }),
+    {
+      name: 'glossary-store',
     }
-  },
-  setGlossaryChildTerms: (glossaryChildTerms: ModifiedGlossary[]) => {
-    set({ glossaryChildTerms });
-  },
-}));
+  )
+);

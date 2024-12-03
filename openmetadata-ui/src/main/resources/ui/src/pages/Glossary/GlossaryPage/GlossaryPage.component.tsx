@@ -210,7 +210,6 @@ const GlossaryPage = () => {
         ],
       });
       setActiveGlossary(response as ModifiedGlossary);
-      localStorage.setItem('glossary', JSON.stringify(response));
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -223,17 +222,25 @@ const GlossaryPage = () => {
       if (!isGlossaryActive) {
         fetchGlossaryTermDetails();
       } else {
-        setActiveGlossary(
+        const persistedActiveGlossary =
+          useGlossaryStore.getState().activeGlossary;
+        const activeGlossary =
           glossaries.find(
             (glossary) => glossary.fullyQualifiedName === glossaryFqn
-          ) || JSON.parse(localStorage.getItem('glossary') as string)
-        );
-        // localStorage.setItem('glossary', JSON.stringify(glossaries.find(
-        //   (glossary) => glossary.fullyQualifiedName === glossaryFqn
-        // )));
-        !glossaryFqn &&
-          glossaries[0].fullyQualifiedName &&
-          history.replace(getGlossaryPath(glossaries[0].fullyQualifiedName));
+          ) ||
+          persistedActiveGlossary ||
+          glossaries[0];
+
+        setActiveGlossary(activeGlossary);
+
+        if (!glossaryFqn) {
+          const glossaryToUse = persistedActiveGlossary?.fullyQualifiedName
+            ? persistedActiveGlossary
+            : glossaries[0];
+
+          history.replace(getGlossaryPath(glossaryToUse.fullyQualifiedName));
+        }
+
         setIsRightPanelLoading(false);
       }
     }
@@ -301,7 +308,7 @@ const GlossaryPage = () => {
 
       history.push(glossaryPath);
       fetchGlossaryList();
-      localStorage.setItem('glossary', JSON.stringify(updatedGlossaries[0]));
+      setGlossaries(updatedGlossaries);
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -327,7 +334,6 @@ const GlossaryPage = () => {
         const response = await patchGlossaryTerm(activeGlossary?.id, jsonPatch);
         if (response) {
           setActiveGlossary(response as ModifiedGlossary);
-          localStorage.setItem('glossary', JSON.stringify(response));
           if (activeGlossary?.name !== updatedData.name) {
             history.push(getGlossaryPath(response.fullyQualifiedName));
             fetchGlossaryList();

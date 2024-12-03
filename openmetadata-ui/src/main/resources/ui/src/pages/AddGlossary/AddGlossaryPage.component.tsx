@@ -72,7 +72,6 @@ const AddGlossaryPage: FunctionComponent = () => {
     try {
       const res = await addGlossaries(data);
       goToGlossary(res.fullyQualifiedName ?? '');
-      localStorage.setItem('glossary', JSON.stringify(res));
     } catch (error) {
       handleSaveFailure(
         getIsErrorMatch(error as AxiosError, ERROR_MESSAGE.alreadyExist)
