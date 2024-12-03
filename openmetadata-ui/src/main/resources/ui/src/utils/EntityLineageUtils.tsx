@@ -223,7 +223,7 @@ const layoutOptions = {
   'elk.algorithm': 'layered',
   'elk.direction': 'RIGHT',
   'elk.layered.spacing.edgeNodeBetweenLayers': '50',
-  'elk.spacing.nodeNode': '70',
+  'elk.spacing.nodeNode': '60',
   'elk.layered.nodePlacement.strategy': 'SIMPLE',
 };
 
