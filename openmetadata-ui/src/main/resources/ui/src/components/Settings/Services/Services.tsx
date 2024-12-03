@@ -133,7 +133,6 @@ const Services = ({ serviceName }: ServicesProps) => {
       after,
       before,
       filters,
-      limit,
     }: {
       search?: string;
       limit?: number;
