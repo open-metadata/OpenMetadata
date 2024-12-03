@@ -119,10 +119,10 @@ class AbstractTableMetricComputer(ABC):
         Returns:
             Tuple[str, int]
         """
-        col_names = literal(",".join(inspect(self.table).c.keys()), type_=String).label(
+        col_names = literal(",".join(inspect(self.runner.raw_dataset).c.keys()), type_=String).label(
             COLUMN_NAMES
         )
-        col_count = literal(len(inspect(self.table).c)).label(COLUMN_COUNT)
+        col_count = literal(len(inspect(self.runner.raw_dataset).c)).label(COLUMN_COUNT)
         return col_names, col_count
 
     def _build_query(

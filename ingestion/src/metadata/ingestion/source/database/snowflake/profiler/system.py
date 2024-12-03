@@ -5,6 +5,7 @@ import re
 import traceback
 from typing import List, Optional, Tuple
 
+from metadata.profiler.processor.runner import QueryRunner
 import sqlalchemy.orm
 from pydantic import TypeAdapter
 
@@ -294,11 +295,11 @@ class SnowflakeSystemMetricsSource(
         )
 
     def get_kwargs(self, **kwargs):
-        table = kwargs.get("table")
+        runner: QueryRunner = kwargs.get("runner")
         return {
-            "table": table.__table__.name,
-            "database": self.get_session().get_bind().url.database,
-            "schema": table.__table__.schema,
+            "table": runner.table_name,
+            "database": runner.session.get_bind().url.database,
+            "schema": runner.schema_name,
         }
 
     def get_inserts(self, **kwargs) -> List[SystemProfile]:

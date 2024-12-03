@@ -4,6 +4,7 @@ Imeplemetation for the redshift system metrics source
 
 from typing import List
 
+from metadata.profiler.processor.runner import QueryRunner
 from pydantic import TypeAdapter
 
 from metadata.generated.schema.entity.data.table import SystemProfile
@@ -45,11 +46,11 @@ class RedshiftSystemMetricsSource(
         return get_metric_result(queries, table)
 
     def get_kwargs(self, **kwargs):
-        table = kwargs.get("table")
+        runner: QueryRunner = kwargs.get("runner")
         return {
-            "table": table.__table__.name,
-            "database": self.get_session().get_bind().url.database,
-            "schema": table.__table__.schema,
+            "table": runner.table_name,
+            "database": runner.session.get_bind().url.database,
+            "schema": runner.schema_name,
         }
 
     def get_deletes(self, **kwargs) -> List[SystemProfile]:
