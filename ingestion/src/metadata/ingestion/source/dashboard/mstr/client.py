@@ -37,7 +37,8 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 API_VERSION = "MicroStrategyLibrary/api"
-LOGIN_MODE_GUEST = 1
+HEADERS = {"Content-Type": "application/json"}
+LOGIN_MODE = 1
 APPLICATION_TYPE = 35
 
 
@@ -57,18 +58,43 @@ class MSTRClient:
     ):
         self.config = config
 
-        self.auth_params: AuthHeaderCookie = self._get_auth_header_and_cookies()
+        self.auth_params = self._get_auth_header_and_cookies()
 
         client_config = ClientConfig(
             base_url=clean_uri(config.hostPort),
             api_version=API_VERSION,
-            extra_headers=self.auth_params.auth_header,
+            extra_headers=self.auth_params.auth_header if self.auth_params else None,
             allow_redirects=True,
-            cookies=self.auth_params.auth_cookies,
+            cookies=self.auth_params.auth_cookies if self.auth_params else None,
         )
 
         self.client = REST(client_config)
-        self._set_api_session()
+
+    def get_auth_params(self) -> AuthHeaderCookie:
+        """
+        Test whether we can fetch auth_token from the api
+        """
+        data = {
+            "username": self.config.username,
+            "password": self.config.password.get_secret_value(),
+            "loginMode": LOGIN_MODE,
+            "applicationType": APPLICATION_TYPE,
+        }
+        response = requests.post(
+            url=self._get_base_url("auth/login"), json=data, headers=HEADERS, timeout=60
+        )
+        response.raise_for_status()
+        if (
+            not response.ok
+            or response.status_code != 204
+            or "X-MSTR-AuthToken" not in response.headers
+        ):
+            raise SourceConnectionException(
+                f"Failed to Fetch Token, please validate your credentials and login_mode : {response.text}"
+            )
+        return AuthHeaderCookie(
+            auth_header=response.headers, auth_cookies=response.cookies
+        )
 
     def _get_auth_header_and_cookies(self) -> Optional[AuthHeaderCookie]:
         """
@@ -77,40 +103,26 @@ class MSTRClient:
         To know about the data params below please visit
         https://demo.microstrategy.com/MicroStrategyLibrary/api-docs/index.html#/Authentication/postLogin
         """
-        data = {
-            "username": self.config.username,
-            "password": self.config.password.get_secret_value(),
-            "loginMode": LOGIN_MODE_GUEST,
-            "applicationType": APPLICATION_TYPE,
-        }
-        response = requests.post(
-            url=self._get_base_url("auth/login"), data=data, timeout=60
-        )
-        if not response.status_code == 204:
+        try:
+            auth_data = self.get_auth_params()
+            if auth_data:
+                self._set_api_session(auth_data)
+                return auth_data
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
             logger.error(
-                f"Auth Failed with login mode: {LOGIN_MODE_GUEST}, Error: {response.text}"
+                f"Failed to fetch the auth header and cookies due to : [{exc}]"
             )
-            logger.error("Trying with login mode: 8")
-            data["loginMode"] = 8
-            response = requests.post(
-                url=self._get_base_url("auth/login"), data=data, timeout=60
-            )
-            if not response.status_code == 204:
-                raise SourceConnectionException(
-                    f"Auth Failed with login mode: 8 and {LOGIN_MODE_GUEST}, Error: {response.text}"
-                )
-        return AuthHeaderCookie(
-            auth_header=response.headers, auth_cookies=response.cookies
-        )
+        return None
 
-    def _set_api_session(self) -> bool:
+    def _set_api_session(self, auth_data: AuthHeaderCookie) -> bool:
         """
         Set the user api session to active this will keep the connection alive
         """
         api_session = requests.put(
             url=self._get_base_url("sessions"),
-            headers=self.auth_params.auth_header,
-            cookies=self.auth_params.auth_cookies,
+            headers=auth_data.auth_header,
+            cookies=auth_data.auth_cookies,
             timeout=60,
         )
         if api_session.ok:
