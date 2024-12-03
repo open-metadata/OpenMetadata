@@ -141,9 +141,9 @@ public class MigrationUtil {
               + "WHERE jsonb_typeof(json->'tableConstraints') = 'array' "
               + "AND jsonb_array_length(json->'tableConstraints') > 0 "
               + "AND EXISTS ("
-              + "  SELECT 1 FROM jsonb_array_elements(json->'tableConstraints') AS constraint "
-              + "  WHERE jsonb_typeof(constraint->'referredColumns') = 'array' "
-              + "    AND jsonb_array_length(constraint->'referredColumns') > 0"
+              + "  SELECT 1 FROM jsonb_array_elements(json->'tableConstraints') AS tc "
+              + "  WHERE jsonb_typeof(tc->'referredColumns') = 'array' "
+              + "    AND jsonb_array_length(tc->'referredColumns') > 0"
               + ") "
               + "LIMIT :limit OFFSET :offset";
     }
