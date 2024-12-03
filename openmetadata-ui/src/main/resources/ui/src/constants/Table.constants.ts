@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+import { ReactComponent as IconForeignKey } from '../assets/svg/foreign-key.svg';
+import { ReactComponent as IconKey } from '../assets/svg/icon-key.svg';
 import {
   Constraint,
   ConstraintType,
@@ -29,10 +31,12 @@ export const TABLE_CONSTRAINTS_TYPE_OPTIONS = [
   {
     label: i18n.t('label.primary'),
     value: ConstraintType.PrimaryKey,
+    icon: IconKey,
   },
   {
     label: i18n.t('label.foreign'),
     value: ConstraintType.ForeignKey,
+    icon: IconForeignKey,
   },
 ];
 

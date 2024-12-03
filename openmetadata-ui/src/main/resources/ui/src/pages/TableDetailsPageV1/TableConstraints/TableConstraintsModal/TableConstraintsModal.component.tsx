@@ -31,7 +31,7 @@ import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconDelete } from '../../../../assets/svg/ic-delete.svg';
 import { ReactComponent as PlusIcon } from '../../../../assets/svg/plus-primary.svg';
 import Loader from '../../../../components/common/Loader/Loader';
-import { PAGE_SIZE } from '../../../../constants/constants';
+import { ICON_DIMENSION, PAGE_SIZE } from '../../../../constants/constants';
 import {
   RELATIONSHIP_TYPE_OPTION,
   TABLE_CONSTRAINTS_TYPE_OPTIONS,
@@ -285,7 +285,15 @@ const TableConstraintsModal = ({
             buttonStyle="outline"
             data-testid="constraint-tab-radio"
             optionType="button"
-            options={TABLE_CONSTRAINTS_TYPE_OPTIONS}
+            options={TABLE_CONSTRAINTS_TYPE_OPTIONS.map((item) => ({
+              label: (
+                <div className="d-flex items-center gap-2">
+                  <Icon component={item.icon} style={ICON_DIMENSION} />
+                  <Typography.Text>{item.label}</Typography.Text>
+                </div>
+              ),
+              value: item.value,
+            }))}
             value={activeViewTab}
             onChange={handleChangeConstraintTab}
           />
@@ -298,21 +306,23 @@ const TableConstraintsModal = ({
             layout="vertical"
             onFinish={handleSubmit}>
             {activeViewTab === ConstraintType.PrimaryKey ? (
-              <Form.Item
-                className="w-full"
-                label={t('label.primary-key-plural')}
-                name="primaryConstraints">
-                <Select
-                  allowClear
-                  autoClearSearchValue
-                  data-testid="primary-constraint-type-select"
-                  mode="multiple"
-                  options={tableColumnNameOptions}
-                  placeholder={t('label.select-entity', {
-                    entity: t('label.primary-key-plural'),
-                  })}
-                />
-              </Form.Item>
+              <div className="table-constraint-form-container">
+                <Form.Item
+                  className="w-full"
+                  label={t('label.primary-key-plural')}
+                  name="primaryConstraints">
+                  <Select
+                    allowClear
+                    autoClearSearchValue
+                    data-testid="primary-constraint-type-select"
+                    mode="multiple"
+                    options={tableColumnNameOptions}
+                    placeholder={t('label.select-entity', {
+                      entity: t('label.primary-key-plural'),
+                    })}
+                  />
+                </Form.Item>
+              </div>
             ) : (
               <Form.List name="foreignConstraints">
                 {(fields, { add, remove }) => (
