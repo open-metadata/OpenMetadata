@@ -553,7 +553,6 @@ public class OpenMetadataOperations implements Callable<Integer> {
       PipelineServiceClientInterface pipelineServiceClient,
       List<List<String>> pipelineStatuses) {
     try {
-      // TODO: IS THIS OK?
       LOG.debug(String.format("deploying pipeline %s", pipeline.getName()));
       pipeline.setOpenMetadataServerConnection(
           new OpenMetadataConnectionBuilder(config, pipeline).build());
@@ -617,9 +616,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
     String jdbcUrl = dataSourceFactory.getUrl();
     String user = dataSourceFactory.getUser();
     String password = dataSourceFactory.getPassword();
-    LOG.info("JDBC URL: {}", jdbcUrl);
     assert user != null && password != null;
-
     String flywayRootPath = config.getMigrationConfiguration().getFlywayPath();
     String location =
         "filesystem:"
