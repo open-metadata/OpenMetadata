@@ -157,6 +157,8 @@ source:
 
 {% partial file="/v1.5/connectors/yaml/data-profiler.md" variables={connector: "doris"} /%}
 
+{% partial file="/v1.5/connectors/yaml/auto-classification.md" variables={connector: "doris"} /%}
+
 {% partial file="/v1.5/connectors/yaml/data-quality.md" /%}
 
 ## Securing Doris Connection with SSL in OpenMetadata

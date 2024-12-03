@@ -154,7 +154,6 @@ class ProfilerSource(ProfilerSourceInterface):
                 profile_sample_type=self.source_config.profileSampleType,
                 sampling_method_type=self.source_config.samplingMethodType,
             ),
-            default_sample_data_count=self.source_config.sampleDataCount,
         )
 
         profiler_interface: ProfilerInterface = profiler_class.create(

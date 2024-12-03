@@ -210,6 +210,8 @@ source:
 
 {% partial file="/v1.5/connectors/yaml/data-profiler.md" variables={connector: "redshift"} /%}
 
+{% partial file="/v1.5/connectors/yaml/auto-classification.md" variables={connector: "redshift"} /%}
+
 {% partial file="/v1.5/connectors/yaml/data-quality.md" /%}
 
 ## Securing Redshift Connection with SSL in OpenMetadata
