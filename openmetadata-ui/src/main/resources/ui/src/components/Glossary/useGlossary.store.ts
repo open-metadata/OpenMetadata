@@ -35,7 +35,12 @@ export const useGlossaryStore = create<{
   setGlossaries: (glossaries: Glossary[]) => {
     set((state) => ({
       ...state,
-      glossaries: [...state.glossaries, ...glossaries],
+      glossaries: [
+        ...state.glossaries,
+        ...glossaries.filter(
+          (glossary) => !state.glossaries.some((g) => g.id === glossary.id)
+        ),
+      ],
     }));
   },
   updateGlossary: (glossary: Glossary) => {

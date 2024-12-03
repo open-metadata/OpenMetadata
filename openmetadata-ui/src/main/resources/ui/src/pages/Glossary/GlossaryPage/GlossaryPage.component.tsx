@@ -193,7 +193,7 @@ const GlossaryPage = () => {
     if (page?.after && isInView) {
       fetchGlossaryList();
     }
-  }, [page?.after, isInView]);
+  }, [page, isInView]);
 
   const fetchGlossaryTermDetails = async () => {
     setIsRightPanelLoading(true);
@@ -302,6 +302,7 @@ const GlossaryPage = () => {
 
       history.push(glossaryPath);
       fetchGlossaryList();
+      localStorage.setItem('glossary', JSON.stringify(updatedGlossaries[0]));
     } catch (error) {
       showErrorToast(
         error as AxiosError,
