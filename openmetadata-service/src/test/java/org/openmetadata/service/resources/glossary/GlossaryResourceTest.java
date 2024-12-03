@@ -652,7 +652,7 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
     // Create glossaryTerm with  Invalid custom property of type table
     TableConfig tableConfig =
         new TableConfig().withColumns(Set.of("columnName1", "columnName2", "columnName3"));
-    CustomProperty glossaryTermEnumCp =
+    CustomProperty glossaryTermTableCp =
         new CustomProperty()
             .withName("glossaryTermTableCp")
             .withDescription("table  type custom property ")
@@ -665,7 +665,7 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
             Entity.GLOSSARY_TERM, "customProperties", ADMIN_AUTH_HEADERS);
     entityType =
         typeResourceTest.addAndCheckCustomProperty(
-            entityType.getId(), glossaryTermEnumCp, OK, ADMIN_AUTH_HEADERS);
+            entityType.getId(), glossaryTermTableCp, OK, ADMIN_AUTH_HEADERS);
     String invalidTableTypeRecord =
         ",g1,dsp1,dsc1,h1;h2;h3,,term1;http://term1,PII.None,,,,\"glossaryTermTableCp:row_1_col1_Value,row_1_col2_Value,row_1_col3_Value,row_1_col4_Value|row_2_col1_Value,row_2_col2_Value,row_2_col3_Value,row_2_col4_Value\"";
     String invalidTableTypeValue =
@@ -684,6 +684,73 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
                   "glossaryTermTableCp",
                   "table",
                   "Column count should be less than or equal to " + tableConfig.getMaxColumns()))
+        };
+    assertRows(result, expectedRows);
+
+    // Create glossaryTerm with invalid multiple values for non multi-select property
+    CustomProperty glossaryTermSingleSelectEnumCp =
+        new CustomProperty()
+            .withName("glossaryTermSingleSelectEnumCp")
+            .withDescription("non-multi select enum type custom property ")
+            .withPropertyType(ENUM_TYPE.getEntityReference())
+            .withCustomPropertyConfig(
+                new CustomPropertyConfig()
+                    .withConfig(
+                        Map.of(
+                            "values",
+                            List.of("singleSelect-1", "singleSelect-2", "singleSelect-3"),
+                            "multiSelect",
+                            false)));
+
+    entityType =
+        typeResourceTest.getEntityByName(
+            Entity.GLOSSARY_TERM, "customProperties", ADMIN_AUTH_HEADERS);
+    entityType =
+        typeResourceTest.addAndCheckCustomProperty(
+            entityType.getId(), glossaryTermSingleSelectEnumCp, OK, ADMIN_AUTH_HEADERS);
+    String invalidEnumTypeRecord =
+        ",g1,dsp1,dsc1,h1;h2;h3,,term1;http://term1,PII.None,,,,glossaryTermSingleSelectEnumCp:any random string";
+    String invalidEnumTypeValue =
+        ",g1,dsp1,dsc1,h1;h2;h3,,term1;http://term1,PII.None,,,,glossaryTermSingleSelectEnumCp:any random string";
+    csv = createCsv(GlossaryCsv.HEADERS, listOf(invalidEnumTypeValue), null);
+    result = importCsv(glossaryName, csv, false);
+    Awaitility.await().atMost(4, TimeUnit.SECONDS).until(() -> true);
+    assertSummary(result, ApiStatus.PARTIAL_SUCCESS, 2, 1, 1);
+    expectedRows =
+        new String[] {
+          resultsHeader,
+          getFailedRecord(
+              invalidEnumTypeRecord,
+              invalidCustomPropertyValue(
+                  11,
+                  "glossaryTermSingleSelectEnumCp",
+                  ENUM_TYPE.getDisplayName(),
+                  String.format(
+                      "Values '[any random string]' not supported for property "
+                          + glossaryTermSingleSelectEnumCp.getName())))
+        };
+    assertRows(result, expectedRows);
+
+    String invalidEnumTypeRecord2 =
+        ",g1,dsp1,dsc1,h1;h2;h3,,term1;http://term1,PII.None,,,,glossaryTermSingleSelectEnumCp:singleSelect-1|singleSelect-2";
+    String invalidEnumTypeValue2 =
+        ",g1,dsp1,dsc1,h1;h2;h3,,term1;http://term1,PII.None,,,,glossaryTermSingleSelectEnumCp:singleSelect-1|singleSelect-2";
+    csv = createCsv(GlossaryCsv.HEADERS, listOf(invalidEnumTypeValue2), null);
+    result = importCsv(glossaryName, csv, false);
+    Awaitility.await().atMost(4, TimeUnit.SECONDS).until(() -> true);
+    assertSummary(result, ApiStatus.PARTIAL_SUCCESS, 2, 1, 1);
+    expectedRows =
+        new String[] {
+          resultsHeader,
+          getFailedRecord(
+              invalidEnumTypeRecord2,
+              invalidCustomPropertyValue(
+                  11,
+                  "glossaryTermSingleSelectEnumCp",
+                  ENUM_TYPE.getDisplayName(),
+                  String.format(
+                      "Only one value allowed for non-multiSelect %s property",
+                      glossaryTermSingleSelectEnumCp.getName())))
         };
     assertRows(result, expectedRows);
   }
@@ -844,7 +911,7 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
                 ",g1,dsp1,\"dsc1,1\",h1;h2;h3,,term1;http://term1,PII.None,user:%s,user:%s,%s,\"glossaryTermDateCp:18-09-2024;glossaryTermDateTimeCp:18-09-2024 01:09:34;glossaryTermDurationCp:PT5H30M10S;glossaryTermEmailCp:admin@open-metadata.org;glossaryTermEntRefCp:team:\"\"%s\"\";glossaryTermEntRefListCp:user:\"\"%s\"\"|user:\"\"%s\"\"\"",
                 reviewerRef.get(0), user1, "Approved", team11, user1, user2),
             String.format(
-                ",g2,dsp2,dsc3,h1;h3;h3,,term2;https://term2,PII.NonSensitive,,user:%s,%s,\"glossaryTermEnumCpMulti:val3|val2|val1|val4|val5;glossaryTermEnumCpSingle:singleVal1;glossaryTermIntegerCp:7777;glossaryTermMarkdownCp:# Sample Markdown Text;glossaryTermNumberCp:123456;\"\"glossaryTermQueryCp:select col,row from table where id ='30';\"\";glossaryTermStringCp:sample string content;glossaryTermTimeCp:10:08:45;glossaryTermTimeIntervalCp:1726142300000:17261420000;glossaryTermTimestampCp:1726142400000\"",
+                ",g2,dsp2,dsc3,h1;h3;h3,,term2;https://term2,PII.NonSensitive,,user:%s,%s,\"glossaryTermEnumCpMulti:val3|val2|val1|val4|val5;glossaryTermEnumCpSingle:single1;glossaryTermIntegerCp:7777;glossaryTermMarkdownCp:# Sample Markdown Text;glossaryTermNumberCp:123456;\"\"glossaryTermQueryCp:select col,row from table where id ='30';\"\";glossaryTermStringCp:sample string content;glossaryTermTimeCp:10:08:45;glossaryTermTimeIntervalCp:1726142300000:17261420000;glossaryTermTimestampCp:1726142400000\"",
                 user1, "Approved"),
             String.format(
                 "importExportTest.g1,g11,dsp2,dsc11,h1;h3;h3,,,,user:%s,team:%s,%s,",
@@ -857,7 +924,7 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
                 ",g1,dsp1,new-dsc1,h1;h2;h3,,term1;http://term1,PII.None,user:%s,user:%s,%s,\"glossaryTermDateCp:18-09-2024;glossaryTermDateTimeCp:18-09-2024 01:09:34;glossaryTermDurationCp:PT5H30M10S;glossaryTermEmailCp:admin@open-metadata.org;glossaryTermEntRefCp:team:\"\"%s\"\";glossaryTermEntRefListCp:user:\"\"%s\"\"|user:\"\"%s\"\"\"",
                 reviewerRef.get(0), user1, "Approved", team11, user1, user2),
             String.format(
-                ",g2,dsp2,new-dsc3,h1;h3;h3,,term2;https://term2,PII.NonSensitive,user:%s,user:%s,%s,\"glossaryTermEnumCpMulti:val3|val2|val1|val4|val5;glossaryTermEnumCpSingle:singleVal1;glossaryTermIntegerCp:7777;glossaryTermMarkdownCp:# Sample Markdown Text;glossaryTermNumberCp:123456;\"\"glossaryTermQueryCp:select col,row from table where id ='30';\"\";glossaryTermStringCp:sample string content;glossaryTermTimeCp:10:08:45;glossaryTermTimeIntervalCp:1726142300000:17261420000;glossaryTermTimestampCp:1726142400000\"",
+                ",g2,dsp2,new-dsc3,h1;h3;h3,,term2;https://term2,PII.NonSensitive,user:%s,user:%s,%s,\"glossaryTermEnumCpMulti:val3|val2|val1|val4|val5;glossaryTermEnumCpSingle:single1;glossaryTermIntegerCp:7777;glossaryTermMarkdownCp:# Sample Markdown Text;glossaryTermNumberCp:123456;\"\"glossaryTermQueryCp:select col,row from table where id ='30';\"\";glossaryTermStringCp:sample string content;glossaryTermTimeCp:10:08:45;glossaryTermTimeIntervalCp:1726142300000:17261420000;glossaryTermTimestampCp:1726142400000\"",
                 user1, user2, "Approved"),
             String.format(
                 "importExportTest.g1,g11,dsp2,new-dsc11,h1;h3;h3,,,,user:%s,team:%s,%s,\"\"\"glossaryTermTableCol1Cp:row_1_col1_Value,,\"\";\"\"glossaryTermTableCol3Cp:row_1_col1_Value,row_1_col2_Value,row_1_col3_Value|row_2_col1_Value,row_2_col2_Value,row_2_col3_Value\"\"\"",
