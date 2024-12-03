@@ -226,7 +226,9 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
         stmt = text(f"{self.sample_query}")
         stmt = stmt.columns(*list(inspect(self.raw_dataset).c))
 
-        return self.client.query(stmt.subquery()).cte(f"{self.raw_dataset.__tablename__}_user_sampled")
+        return self.client.query(stmt.subquery()).cte(
+            f"{self.raw_dataset.__tablename__}_user_sampled"
+        )
 
     def _partitioned_table(self) -> Query:
         """Return the Query object for partitioned tables"""

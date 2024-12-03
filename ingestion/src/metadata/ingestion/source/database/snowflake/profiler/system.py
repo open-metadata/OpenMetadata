@@ -5,7 +5,6 @@ import re
 import traceback
 from typing import List, Optional, Tuple
 
-from metadata.profiler.processor.runner import QueryRunner
 import sqlalchemy.orm
 from pydantic import TypeAdapter
 
@@ -21,6 +20,7 @@ from metadata.profiler.metrics.system.system import (
     SQASessionProvider,
     SystemMetricsComputer,
 )
+from metadata.profiler.processor.runner import QueryRunner
 from metadata.utils.collections import CaseInsensitiveString
 from metadata.utils.logger import profiler_logger
 from metadata.utils.lru_cache import LRU_CACHE_SIZE, LRUCache

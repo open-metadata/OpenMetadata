@@ -13,10 +13,9 @@ from metadata.profiler.metrics.system.system import (
     SQASessionProvider,
     SystemMetricsComputer,
 )
+from metadata.profiler.processor.runner import QueryRunner
 from metadata.utils.logger import profiler_logger
 from metadata.utils.time_utils import datetime_to_timestamp
-
-from metadata.profiler.processor.runner import QueryRunner
 
 logger = profiler_logger()
 

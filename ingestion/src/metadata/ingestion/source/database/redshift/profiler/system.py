@@ -4,7 +4,6 @@ Imeplemetation for the redshift system metrics source
 
 from typing import List
 
-from metadata.profiler.processor.runner import QueryRunner
 from pydantic import TypeAdapter
 
 from metadata.generated.schema.entity.data.table import SystemProfile
@@ -19,6 +18,7 @@ from metadata.profiler.metrics.system.system import (
     SQASessionProvider,
     SystemMetricsComputer,
 )
+from metadata.profiler.processor.runner import QueryRunner
 from metadata.utils.logger import profiler_logger
 from metadata.utils.profiler_utils import QueryResult
 from metadata.utils.time_utils import datetime_to_timestamp
