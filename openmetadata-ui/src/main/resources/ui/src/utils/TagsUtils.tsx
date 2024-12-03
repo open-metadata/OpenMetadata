@@ -555,3 +555,15 @@ export const getTagAssetsQueryFilter = (fqn: string) => {
     return `(tags.tagFQN:"${fqn}")`;
   }
 };
+
+export const getTagImageSrc = (iconURL: string) => {
+  if (!iconURL) {
+    return '';
+  }
+
+  if (iconURL.startsWith('http') || iconURL.startsWith('data:image')) {
+    return iconURL;
+  }
+
+  return `${window.location.origin}/${iconURL}`;
+};
