@@ -168,7 +168,7 @@ const TableConstraintsModal = ({
     }
   };
 
-  const tagOptions = useMemo(() => {
+  const relatedColumnOptions = useMemo(() => {
     return relatedColumns.map((node) => {
       const breadcrumbs = getBreadcrumbsFromFqn(node.label ?? '', true);
 
@@ -417,14 +417,16 @@ const TableConstraintsModal = ({
                               entity: t('label.related-column'),
                             })}
                             onSearch={debounceFetcher}>
-                            {tagOptions.map(({ label, value, data }) => (
-                              <Select.Option
-                                data-testid={`option-label-${data.label}`}
-                                key={value}
-                                value={value}>
-                                {label}
-                              </Select.Option>
-                            ))}
+                            {relatedColumnOptions.map(
+                              ({ label, value, data }) => (
+                                <Select.Option
+                                  data-testid={`option-label-${data.label}`}
+                                  key={value}
+                                  value={value}>
+                                  {label}
+                                </Select.Option>
+                              )
+                            )}
                           </Select>
                         </Form.Item>
                         <Button
