@@ -1136,9 +1136,10 @@ public class TableRepository extends EntityRepository<Table> {
         if (!nullOrEmpty(constraint.getReferredColumns())) {
           for (String column : constraint.getReferredColumns()) {
             String toParent = FullyQualifiedName.getParentFQN(column);
+            String columnName = FullyQualifiedName.getColumnName(column);
             try {
               Table toTable = findByName(toParent, NON_DELETED);
-              validateColumn(toTable, column);
+              validateColumn(toTable, columnName);
             } catch (EntityNotFoundException e) {
               throw new EntitySpecViolationException("Table not found: " + toParent);
             }
