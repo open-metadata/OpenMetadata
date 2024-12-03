@@ -47,12 +47,10 @@ from metadata.ingestion.source.database.common_db_source import (
 from metadata.ingestion.source.database.oracle.models import (
     FetchProcedureList,
     OracleStoredProcedure,
-    FetchPackageList,
-    OracleStoredPackage,
 )
 from metadata.ingestion.source.database.oracle.queries import (
+    ORACLE_GET_STORED_PACKAGES,
     ORACLE_GET_STORED_PROCEDURES,
-    ORACLE_GET_STORED_PACKAGES
 )
 from metadata.ingestion.source.database.oracle.utils import (
     _get_col_type,
@@ -189,39 +187,41 @@ class OracleSource(CommonDbSourceService):
         result_dict = {}
 
         for row in data:
-            owner, name, line, text = row
+
+            owner, name, line, text, procedure_type = row
             key = (owner, name)
             if key not in result_dict:
-                result_dict[key] = {"lines": [], "text": ""}
+                result_dict[key] = {"lines": [], "text": "", "procedure_type": ""}
             result_dict[key]["lines"].append(line)
             result_dict[key]["text"] += text
+            result_dict[key]["procedure_type"] = procedure_type
 
         # Return the concatenated text for each procedure name, ordered by line
         return result_dict
 
+    def _get_stored_procedures_internal(
+        self, query: str
+    ) -> Iterable[OracleStoredProcedure]:
+        results: FetchProcedureList = self.engine.execute(
+            query.format(schema=self.context.get().database_schema.upper())
+        ).all()
+        results = self.process_result(data=results)
+        for row in results.items():
+            stored_procedure = OracleStoredProcedure(
+                name=row[0][1],
+                definition=row[1]["text"],
+                owner=row[0][0],
+                procedure_type=row[1]["procedure_type"],
+            )
+            yield stored_procedure
+
     def get_stored_procedures(self) -> Iterable[OracleStoredProcedure]:
         """List Oracle Stored Procedures"""
         if self.source_config.includeStoredProcedures:
-            results: FetchProcedureList = self.engine.execute(
-                ORACLE_GET_STORED_PROCEDURES.format(
-                    schema=self.context.get().database_schema.upper()
-                )
-            ).all()
-            results = self.process_result(data=results)
-            for row in results.items():
-                stored_procedure = OracleStoredProcedure(
-                    name=row[0][1], definition=row[1]["text"], owner=row[0][0]
-                )
-                yield stored_procedure
-    
-    def get_stored_package(self) -> Iterable[OracleStoredPackage]:
-        if self.source_config.includeStoredProcedures:
-            results: FetchPackageList = self.engine.execute(
-                ORACLE_GET_STORED_PACKAGES.format(
-                    schema=self.context.get().database_schema.upper()
-                )
-            ).all()
-            print(results)
+            yield from self._get_stored_procedures_internal(
+                ORACLE_GET_STORED_PROCEDURES
+            )
+            yield from self._get_stored_procedures_internal(ORACLE_GET_STORED_PACKAGES)
 
     def yield_stored_procedure(
         self, stored_procedure: OracleStoredProcedure

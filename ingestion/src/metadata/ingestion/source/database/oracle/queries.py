@@ -87,7 +87,8 @@ SELECT
     OWNER,
     NAME,
     LINE,
-    TEXT
+    TEXT,
+    'StoredProcedure' as procedure_type
 FROM
     DBA_SOURCE
 WHERE
@@ -100,12 +101,13 @@ ORACLE_GET_STORED_PACKAGES = textwrap.dedent(
 SELECT
     OWNER,
     NAME,
+    LINE,
     TEXT,
+    'StoredPackage' as procedure_type
 
 FROM
     DBA_SOURCE
-WHERE
-    type IN = 'PACKAGE, PACKAGE BODY' and owner = '{schema}'
+WHERE TYPE IN ('PACKAGE', 'PACKAGE BODY') AND owner = '{schema}'
 """
 )
 CHECK_ACCESS_TO_ALL = "SELECT table_name FROM DBA_TABLES where ROWNUM < 2"

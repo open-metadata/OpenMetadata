@@ -90,12 +90,6 @@
       "default": true,
       "title": "Include Stored Procedures"
     },
-    "includeStoredPackages": {
-      "description": "test for Packages.",
-      "type": "boolean",
-      "default": true,
-      "title": "Include Stored Packages"
-    },
     "includeDDL": {
       "description": "Optional configuration to toggle the DDL Statements ingestion.",
       "type": "boolean",
