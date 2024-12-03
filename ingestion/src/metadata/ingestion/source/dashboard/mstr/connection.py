@@ -49,7 +49,6 @@ def test_connection(
     """
 
     test_fn = {
-        "GetToken": client.get_auth_params,
         "GetProjects": client.get_projects_list,
     }
 
