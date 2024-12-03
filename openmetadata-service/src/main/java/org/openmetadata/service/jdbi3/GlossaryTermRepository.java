@@ -120,8 +120,8 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
         UPDATE_FIELDS);
     supportsSearch = true;
     renameAllowed = true;
-    fieldFetchers.put("relatedTerms", this::fetchAndSetRelatedTerms);
-    fieldFetchers.put("parent", this::fetchAndSetParentOrGlossary);
+    fieldFetchers.put("relatedTerms", List.of(this::fetchAndSetRelatedTerms));
+    fieldFetchers.put("parent", List.of(this::fetchAndSetParentOrGlossary));
   }
 
   @Override

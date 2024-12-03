@@ -30,6 +30,7 @@ import java.util.Comparator;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.UUID;
@@ -222,6 +223,15 @@ public final class EntityUtil {
               .withDate(RestUtil.DATE_FORMAT.format(LocalDate.now()));
     }
     return details;
+  }
+
+  public static Map<UUID, UsageDetails> getLatestUsageForEntities(
+      UsageDAO usageDAO, List<UUID> entityIds) {
+    LOG.debug("Getting latest usage for entities, size {}", entityIds.size());
+    return usageDAO.getLatestUsageFromEntities(entityIdsListToStrings(entityIds)).stream()
+        .collect(
+            Collectors.toMap(
+                u -> UUID.fromString(u.getId()), UsageDAO.EntityUsageDetails::getUsageDetails));
   }
 
   /** Merge two sets of tags */
@@ -701,5 +711,17 @@ public final class EntityUtil {
         filter.addQueryParam("domainId", "null");
       }
     }
+  }
+
+  public static List<String> entityListToStrings(List<? extends EntityInterface> entities) {
+    return entities.stream().map(EntityInterface::getId).map(UUID::toString).toList();
+  }
+
+  public static List<UUID> entityListToUUID(List<? extends EntityInterface> entities) {
+    return entities.stream().map(EntityInterface::getId).toList();
+  }
+
+  public static List<String> entityIdsListToStrings(List<UUID> entityIds) {
+    return entityIds.stream().map(UUID::toString).toList();
   }
 }

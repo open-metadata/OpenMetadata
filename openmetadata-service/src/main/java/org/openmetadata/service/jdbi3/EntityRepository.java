@@ -55,6 +55,7 @@ import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTag
 import static org.openmetadata.service.resources.tags.TagLabelUtil.checkDisabledTags;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusive;
 import static org.openmetadata.service.util.EntityUtil.compareTagLabel;
+import static org.openmetadata.service.util.EntityUtil.entityListToStrings;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
@@ -66,6 +67,7 @@ import static org.openmetadata.service.util.EntityUtil.mergedInheritedEntityRefs
 import static org.openmetadata.service.util.EntityUtil.nextMajorVersion;
 import static org.openmetadata.service.util.EntityUtil.nextVersion;
 import static org.openmetadata.service.util.EntityUtil.objectMatch;
+import static org.openmetadata.service.util.EntityUtil.populateEntityReferences;
 import static org.openmetadata.service.util.EntityUtil.tagLabelMatch;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -93,6 +95,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -149,6 +152,7 @@ import org.openmetadata.schema.type.SuggestionType;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.type.ThreadType;
+import org.openmetadata.schema.type.UsageDetails;
 import org.openmetadata.schema.type.Votes;
 import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.schema.type.api.BulkOperationResult;
@@ -263,7 +267,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   protected boolean supportsSearch = false;
   @Getter protected boolean parent = false;
-  protected final Map<String, BiConsumer<List<T>, Fields>> fieldFetchers = new HashMap<>();
+  protected final Map<String, List<BiConsumer<List<T>, Fields>>> fieldFetchers =
+      new LinkedHashMap<>();
 
   protected EntityRepository(
       String collectionPath,
@@ -351,6 +356,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
     fieldSupportMap.put(FIELD_DOMAIN, Pair.of(supportsDomain, this::fetchAndSetDomain));
     fieldSupportMap.put(FIELD_REVIEWERS, Pair.of(supportsReviewers, this::fetchAndSetReviewers));
     fieldSupportMap.put(FIELD_EXTENSION, Pair.of(supportsExtension, this::fetchAndSetExtension));
+    fieldSupportMap.put(
+        FIELD_DATA_PRODUCTS, Pair.of(supportsDataProducts, this::fetchAndSetDataProducts));
+    fieldSupportMap.put(FIELD_FOLLOWERS, Pair.of(supportsFollower, this::fetchAndSetFollowers));
+    fieldSupportMap.put(FIELD_VOTES, Pair.of(supportsVotes, this::fetchAndSetVotes));
+    fieldSupportMap.put(FIELD_EXPERTS, Pair.of(supportsExperts, this::fetchAndSetExperts));
+    // TODO - Add support for children
+    // fieldSupportMap.put(FIELD_CHILDREN, Pair.of(true, this::fetchAndSetChildren));
 
     for (Map.Entry<String, Pair<Boolean, BiConsumer<List<T>, Fields>>> entry :
         fieldSupportMap.entrySet()) {
@@ -359,7 +371,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       BiConsumer<List<T>, Fields> fetcher = entry.getValue().getRight();
 
       if (supportsField) {
-        this.fieldFetchers.put(fieldName, fetcher);
+        this.fieldFetchers.put(fieldName, List.of(fetcher));
         this.patchFields.addField(allowedFields, fieldName);
         this.putFields.addField(allowedFields, fieldName);
       }
@@ -373,6 +385,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
    * operations. It is also used during PUT and PATCH operations to set up fields that can be updated.
    */
   protected abstract void setFields(T entity, Fields fields);
+
+  // protected abstract void setFieldsInBulk(List<T> entities, Fields fields);
 
   /**
    * Set the requested fields in an entity. This is used for requesting specific fields in the object during GET
@@ -437,6 +451,16 @@ public abstract class EntityRepository<T extends EntityInterface> {
       inheritDomain(entity, fields, parent);
     }
   }
+
+  //  protected void setInheritedFieldsInBulk(List<T> entities, Fields fields) {
+  //    if(supportsDomain){
+  //      List<EntityInterface> parents = getParentEntities(entities, "domain");
+  //    }
+  //    EntityInterface parent = supportsDomain ? getParentEntity(entity, "domain") : null;
+  //    if (parent != null) {
+  //      inheritDomain(entity, fields, parent);
+  //    }
+  //  }
 
   protected final void addServiceRelationship(T entity, EntityReference service) {
     if (service != null) {
@@ -752,22 +776,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     int total = dao.listCount(filter);
     if (limitParam > 0) {
       List<String> jsons = dao.listAfter(filter, limitParam, currentOffset);
-
-      for (String json : jsons) {
-        T parsedEntity = JsonUtils.readValue(json, entityClass);
-        try {
-          T entity = setFieldsInternal(parsedEntity, fields);
-          setInheritedFields(entity, fields);
-          clearFieldsInternal(entity, fields);
-          entities.add(withHref(uriInfo, entity));
-        } catch (Exception e) {
-          clearFieldsInternal(parsedEntity, fields);
-          EntityError entityError =
-              new EntityError().withMessage(e.getMessage()).withEntity(parsedEntity);
-          errors.add(entityError);
-          LOG.error("[ListForIndexing] Failed for Entity : {}", entityError);
-        }
-      }
+      setFieldsInBulk(jsons, fields, entities);
       currentOffset = currentOffset + limitParam;
       String newAfter = currentOffset > total ? null : String.valueOf(currentOffset);
       return getResultList(entities, errors, String.valueOf(beforeOffset), newAfter, total);
@@ -1909,6 +1918,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   public final EntityReference getContainer(UUID toId) {
     return getFromEntityRef(toId, Relationship.CONTAINS, null, true);
+  }
+
+  public final Map<UUID, EntityReference> getContainers(List<T> entities) {
+    return batchFetchToIdsAndRelationSingleRelation(entities, Relationship.CONTAINS);
   }
 
   public final EntityReference getContainer(UUID toId, String fromEntityType) {
@@ -3544,9 +3557,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   private void fetchAndSetFields(List<T> entities, Fields fields) {
     for (String field : fields) {
-      BiConsumer<List<T>, Fields> fetcher = fieldFetchers.get(field);
-      if (fetcher != null) {
-        fetcher.accept(entities, fields);
+      List<BiConsumer<List<T>, Fields>> fetchers = fieldFetchers.get(field);
+      if (!nullOrEmpty(fetchers)) {
+        fetchers.forEach(
+            fetcher -> {
+              if (fetcher != null) {
+                fetcher.accept(entities, fields);
+              }
+            });
       }
     }
   }
@@ -3604,6 +3622,95 @@ public abstract class EntityRepository<T extends EntityInterface> {
     for (T entity : entities) {
       Object extension = extensionsMap.get(entity.getId());
       entity.setExtension(extension);
+    }
+  }
+
+  private void fetchAndSetDataProducts(List<T> entities, Fields fields) {
+    fetchAndSetAttribute(
+        entities,
+        fields,
+        FIELD_DATA_PRODUCTS,
+        supportsDataProducts,
+        this::batchFetchDataProducts,
+        T::setDataProducts);
+  }
+
+  private void fetchAndSetFollowers(List<T> entities, Fields fields) {
+    fetchAndSetAttribute(
+        entities,
+        fields,
+        FIELD_FOLLOWERS,
+        supportsFollower,
+        this::batchFetchFollowers,
+        T::setFollowers);
+  }
+
+  private void fetchAndSetChildren(List<T> entities, Fields fields) {
+    fetchAndSetAttribute(
+        entities,
+        fields,
+        FIELD_CHILDREN,
+        true, // Assuming there's no specific `supportsChildren` flag
+        this::batchFetchChildren,
+        T::setChildren);
+  }
+
+  private void fetchAndSetExperts(List<T> entities, Fields fields) {
+    if (!fields.contains(FIELD_EXPERTS)
+        || !supportsExperts
+        || entities == null
+        || entities.isEmpty()) {
+      return;
+    }
+
+    Map<UUID, List<EntityReference>> entityExpertsMap = batchFetchExperts(entities);
+
+    for (T entity : entities) {
+      List<EntityReference> refs = entityExpertsMap.get(entity.getId());
+      entity.setExperts(refs);
+    }
+  }
+
+  private void fetchAndSetVotes(List<T> entities, Fields fields) {
+    if (!fields.contains(FIELD_VOTES) || !supportsVotes || entities == null || entities.isEmpty()) {
+      return;
+    }
+
+    List<CollectionDAO.EntityRelationshipObject> records =
+        daoCollection
+            .relationshipDAO()
+            .findFromBatch(entityListToStrings(entities), Relationship.VOTED.ordinal(), USER);
+    Map<UUID, List<CollectionDAO.EntityRelationshipObject>> uuidEntityRelationshipObjectMap =
+        records.stream().collect(Collectors.groupingBy(r -> UUID.fromString(r.getToId())));
+    for (T entity : entities) {
+      List<CollectionDAO.EntityRelationshipObject> votesUserRef =
+          uuidEntityRelationshipObjectMap.get(entity.getId());
+      if (!nullOrEmpty(votesUserRef)) {
+        List<EntityReference> upVoterRecords = new ArrayList<>();
+        List<EntityReference> downVoterRecords = new ArrayList<>();
+        for (CollectionDAO.EntityRelationshipObject eObject : votesUserRef) {
+          VoteType type = JsonUtils.readValue(eObject.getJson(), VoteType.class);
+          if (type == VoteType.VOTED_UP) {
+            upVoterRecords.add(
+                new EntityReference()
+                    .withId(UUID.fromString(eObject.getFromId()))
+                    .withType(eObject.getFromEntity()));
+          } else if (type == VoteType.VOTED_DOWN) {
+            downVoterRecords.add(
+                new EntityReference()
+                    .withId(UUID.fromString(eObject.getFromId()))
+                    .withType(eObject.getFromEntity()));
+          }
+        }
+        List<EntityReference> upVoters = populateEntityReferences(upVoterRecords);
+        List<EntityReference> downVoters = populateEntityReferences(downVoterRecords);
+        entity.setVotes(
+            new Votes()
+                .withUpVotes(upVoters.size())
+                .withDownVotes(downVoters.size())
+                .withUpVoters(upVoters)
+                .withDownVoters(downVoters));
+      }
     }
   }
 
@@ -3701,22 +3808,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   private Map<UUID, List<EntityReference>> batchFetchReviewers(List<T> entities) {
-    List<CollectionDAO.EntityRelationshipObject> records =
-        daoCollection
-            .relationshipDAO()
-            .findFromBatch(
-                entityListToStrings(entities), entityType, Relationship.REVIEWS.ordinal());
-
-    Map<UUID, List<EntityReference>> reviewersMap = new HashMap<>();
-
-    for (CollectionDAO.EntityRelationshipObject rec : records) {
-      UUID entityId = UUID.fromString(rec.getToId());
-      EntityReference reviewerRef =
-          Entity.getEntityReferenceById(rec.getFromEntity(), UUID.fromString(rec.getFromId()), ALL);
-      reviewersMap.computeIfAbsent(entityId, k -> new ArrayList<>()).add(reviewerRef);
-    }
-
-    return reviewersMap;
+    return batchFetchToIdsManyToOne(entities, Relationship.REVIEWS, entityType);
   }
 
   private Map<UUID, Object> batchFetchExtensions(List<T> entities) {
@@ -3741,9 +3833,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
       List<CollectionDAO.ExtensionRecordWithId> extensionRecords = entry.getValue();
 
       ObjectNode objectNode = JsonUtils.getObjectNode();
-      for (CollectionDAO.ExtensionRecordWithId record : extensionRecords) {
-        String fieldName = TypeRegistry.getPropertyName(record.extensionName());
-        JsonNode extensionJsonNode = JsonUtils.readTree(record.extensionJson());
+      for (CollectionDAO.ExtensionRecordWithId rec : extensionRecords) {
+        String fieldName = TypeRegistry.getPropertyName(rec.extensionName());
+        JsonNode extensionJsonNode = JsonUtils.readTree(rec.extensionJson());
         objectNode.set(fieldName, extensionJsonNode);
       }
 
@@ -3753,7 +3845,241 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return result;
   }
 
-  private List<String> entityListToStrings(List<T> entities) {
-    return entities.stream().map(EntityInterface::getId).map(UUID::toString).toList();
+  private Map<UUID, List<EntityReference>> batchFetchDataProducts(List<T> entities) {
+    return batchFetchToIdsOneToMany(entities, Relationship.HAS, DATA_PRODUCT);
+  }
+
+  private Map<UUID, List<EntityReference>> batchFetchFollowers(List<T> entities) {
+    return batchFetchToIdsOneToMany(entities, Relationship.FOLLOWS, USER);
+  }
+
+  private Map<UUID, List<EntityReference>> batchFetchChildren(List<T> entities) {
+    return batchFetchToIdsOneToMany(entities, Relationship.CONTAINS, entityType);
+  }
+
+  private Map<UUID, List<EntityReference>> batchFetchExperts(List<T> entities) {
+    return batchFetchFromIdsManyToOne(entities, Relationship.EXPERT, USER);
+  }
+
+  public Map<UUID, List<EntityReference>> batchFetchToIdsOneToMany(
+      List<T> toEntities, Relationship relationship, String fromEntityType) {
+    List<CollectionDAO.EntityRelationshipObject> records =
+        daoCollection
+            .relationshipDAO()
+            .findFromBatch(entityListToStrings(toEntities), relationship.ordinal(), fromEntityType);
+
+    Map<UUID, List<EntityReference>> entityToRefsMaps = new HashMap<>();
+
+    for (CollectionDAO.EntityRelationshipObject rec : records) {
+      UUID entityId = UUID.fromString(rec.getToId());
+      EntityReference fromRef =
+          Entity.getEntityReferenceById(rec.getFromEntity(), UUID.fromString(rec.getFromId()), ALL);
+      entityToRefsMaps.computeIfAbsent(entityId, k -> new ArrayList<>()).add(fromRef);
+    }
+
+    return entityToRefsMaps;
+  }
+
+  public Map<UUID, List<EntityReference>> batchFetchToIdsManyToOne(
+      List<T> toEntities, Relationship relationship, String toEntityType) {
+    List<CollectionDAO.EntityRelationshipObject> records =
+        daoCollection
+            .relationshipDAO()
+            .findFromBatch(entityListToStrings(toEntities), toEntityType, relationship.ordinal());
+
+    Map<UUID, List<EntityReference>> entityToRefsMaps = new HashMap<>();
+
+    for (CollectionDAO.EntityRelationshipObject rec : records) {
+      UUID entityId = UUID.fromString(rec.getToId());
+      EntityReference fromRef =
+          Entity.getEntityReferenceById(rec.getFromEntity(), UUID.fromString(rec.getFromId()), ALL);
+      entityToRefsMaps.computeIfAbsent(entityId, k -> new ArrayList<>()).add(fromRef);
+    }
+
+    return entityToRefsMaps;
+  }
+
+  public Map<UUID, List<EntityReference>> batchFetchFromIdsManyToOne(
+      List<T> fromIds, Relationship relationship, String toEntityType) {
+    List<CollectionDAO.EntityRelationshipObject> records =
+        daoCollection
+            .relationshipDAO()
+            .findToBatch(entityListToStrings(fromIds), toEntityType, relationship.ordinal());
+
+    Map<UUID, List<EntityReference>> entityToRefsMaps = new HashMap<>();
+
+    for (CollectionDAO.EntityRelationshipObject rec : records) {
+      UUID entityId = UUID.fromString(rec.getToId());
+      EntityReference fromRef =
+          Entity.getEntityReferenceById(rec.getFromEntity(), UUID.fromString(rec.getFromId()), ALL);
+      entityToRefsMaps.computeIfAbsent(entityId, k -> new ArrayList<>()).add(fromRef);
+    }
+
+    return entityToRefsMaps;
+  }
+
+  public Map<UUID, EntityReference> batchFetchFromIdsManyToOneSingleRelation(
+      List<T> fromIds, Relationship relationship, String toEntityType) {
+    List<CollectionDAO.EntityRelationshipObject> records =
+        daoCollection
+            .relationshipDAO()
+            .findToBatch(entityListToStrings(fromIds), toEntityType, relationship.ordinal());
+
+    Map<UUID, EntityReference> entityToRefsMaps = new HashMap<>();
+
+    for (CollectionDAO.EntityRelationshipObject rec : records) {
+      UUID entityId = UUID.fromString(rec.getToId());
+      EntityReference fromRef =
+          Entity.getEntityReferenceById(rec.getFromEntity(), UUID.fromString(rec.getFromId()), ALL);
+      entityToRefsMaps.put(entityId, fromRef);
+    }
+
+    return entityToRefsMaps;
+  }
+
+  public Map<UUID, List<EntityReference>> batchFetchFromIdsAndRelation(
+      List<T> fromIds, Relationship relationship) {
+    List<CollectionDAO.EntityRelationshipObject> records =
+        daoCollection
+            .relationshipDAO()
+            .findToBatch(entityListToStrings(fromIds), relationship.ordinal());
+
+    Map<UUID, List<EntityReference>> entityToRefsMaps = new HashMap<>();
+
+    for (CollectionDAO.EntityRelationshipObject rec : records) {
+      UUID entityId = UUID.fromString(rec.getToId());
+      EntityReference fromRef =
+          Entity.getEntityReferenceById(rec.getFromEntity(), UUID.fromString(rec.getFromId()), ALL);
+      entityToRefsMaps.computeIfAbsent(entityId, k -> new ArrayList<>()).add(fromRef);
+    }
+
+    return entityToRefsMaps;
+  }
+
+  public Map<UUID, List<EntityReference>> batchFetchToIdsAndRelation(
+      List<T> fromIds, Relationship relationship) {
+    List<CollectionDAO.EntityRelationshipObject> records =
+        daoCollection
+            .relationshipDAO()
+            .findFromBatch(entityListToStrings(fromIds), relationship.ordinal());
+
+    Map<UUID, List<EntityReference>> entityToRefsMaps = new HashMap<>();
+
+    for (CollectionDAO.EntityRelationshipObject rec : records) {
+      UUID entityId = UUID.fromString(rec.getToId());
+      EntityReference fromRef =
+          Entity.getEntityReferenceById(rec.getFromEntity(), UUID.fromString(rec.getFromId()), ALL);
+      entityToRefsMaps.computeIfAbsent(entityId, k -> new ArrayList<>()).add(fromRef);
+    }
+
+    return entityToRefsMaps;
+  }
+
+  public Map<UUID, EntityReference> batchFetchToIdsAndRelationSingleRelation(
+      List<T> fromIds, Relationship relationship) {
+    List<CollectionDAO.EntityRelationshipObject> records =
+        daoCollection
+            .relationshipDAO()
+            .findFromBatch(entityListToStrings(fromIds), relationship.ordinal());
+
+    Map<UUID, EntityReference> entityToRefsMaps = new HashMap<>();
+
+    for (CollectionDAO.EntityRelationshipObject rec : records) {
+      UUID entityId = UUID.fromString(rec.getToId());
+      EntityReference fromRef =
+          Entity.getEntityReferenceById(rec.getFromEntity(), UUID.fromString(rec.getFromId()), ALL);
+      entityToRefsMaps.put(entityId, fromRef);
+    }
+
+    return entityToRefsMaps;
+  }
+
+  public Map<UUID, EntityReference> batchFetchFromIdsAndRelationSingleRelation(
+      List<T> fromIds, Relationship relationship) {
+    List<CollectionDAO.EntityRelationshipObject> records =
+        daoCollection
+            .relationshipDAO()
+            .findToBatch(entityListToStrings(fromIds), relationship.ordinal());
+
+    Map<UUID, EntityReference> entityToRefsMaps = new HashMap<>();
+
+    for (CollectionDAO.EntityRelationshipObject rec : records) {
+      UUID entityId = UUID.fromString(rec.getToId());
+      EntityReference fromRef =
+          Entity.getEntityReferenceById(rec.getFromEntity(), UUID.fromString(rec.getFromId()), ALL);
+      if (fromRef != null) {
+        entityToRefsMaps.put(entityId, fromRef);
+      }
+    }
+    return entityToRefsMaps;
+  }
+
+  private void fetchAndSetAttribute(
+      List<T> entities,
+      Fields fields,
+      String fieldName,
+      boolean supportsField,
+      Function<List<T>, Map<UUID, List<EntityReference>>> batchFetcher,
+      BiConsumer<T, List<EntityReference>> setter) {
+
+    if (!fields.contains(fieldName) || !supportsField || entities == null || entities.isEmpty()) {
+      return;
+    }
+
+    Map<UUID, List<EntityReference>> fetchedMap = batchFetcher.apply(entities);
+
+    for (T entity : entities) {
+      List<EntityReference> references =
+          fetchedMap.getOrDefault(entity.getId(), Collections.emptyList());
+      setter.accept(entity, references);
+    }
+  }
+
+  public void setFieldFromMap(
+      boolean fieldRequired,
+      List<T> entities,
+      Map<UUID, List<EntityReference>> lookup,
+      BiConsumer<T, List<EntityReference>> setter) {
+    if (Boolean.FALSE.equals(fieldRequired)) {
+      return;
+    }
+    for (T entity : entities) {
+      List<EntityReference> references = lookup.get(entity.getId());
+      if (references != null) {
+        setter.accept(entity, references);
+      }
+    }
+  }
+
+  public void setFieldFromMapSingleRelation(
+      boolean fieldRequired,
+      List<T> entities,
+      Map<UUID, EntityReference> lookup,
+      BiConsumer<T, EntityReference> setter) {
+    if (Boolean.FALSE.equals(fieldRequired)) {
+      return;
+    }
+    for (T entity : entities) {
+      EntityReference ref = lookup.get(entity.getId());
+      if (ref != null) {
+        setter.accept(entity, ref);
+      }
+    }
+  }
+
+  public void setUsageDetails(
+      boolean fieldRequired,
+      List<T> entities,
+      Map<UUID, UsageDetails> lookup,
+      BiConsumer<T, UsageDetails> setter) {
+    if (Boolean.FALSE.equals(fieldRequired)) {
+      return;
+    }
+    for (T entity : entities) {
+      UsageDetails usageDetails = lookup.get(entity.getId());
+      if (usageDetails != null) {
+        setter.accept(entity, usageDetails);
+      }
+    }
   }
 }
