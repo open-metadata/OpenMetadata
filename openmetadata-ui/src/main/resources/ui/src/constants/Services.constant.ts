@@ -497,3 +497,14 @@ export const SERVICE_INGESTION_PIPELINE_TYPES = [
   PipelineType.AutoClassification,
   PipelineType.Dbt,
 ];
+
+export const SERVICE_TYPE_WITH_DISPLAY_NAME = new Map<string, string>([
+  [PipelineServiceType.GluePipeline, 'Glue Pipeline'],
+  [DatabaseServiceType.DomoDatabase, 'Domo Database'],
+  [DashboardServiceType.DomoDashboard, 'Domo Dashboard'],
+  [DashboardServiceType.MicroStrategy, 'Micro Strategy'],
+  [DashboardServiceType.PowerBIReportServer, 'PowerBI Report Server'],
+  [PipelineServiceType.DatabricksPipeline, 'Databricks Pipeline'],
+  [PipelineServiceType.DomoPipeline, 'Domo Pipeline'],
+  [PipelineServiceType.KafkaConnect, 'Kafka Connect'],
+]);
