@@ -25,6 +25,17 @@ export const SUPPORTED_TABLE_CONSTRAINTS = [
   ConstraintType.PrimaryKey,
 ];
 
+export const TABLE_CONSTRAINTS_TYPE_OPTIONS = [
+  {
+    label: i18n.t('label.primary'),
+    value: ConstraintType.PrimaryKey,
+  },
+  {
+    label: i18n.t('label.foreign'),
+    value: ConstraintType.ForeignKey,
+  },
+];
+
 export const COLUMN_CONSTRAINT_TYPE_OPTIONS = [
   {
     label: i18n.t('label.primary-key'),

@@ -70,7 +70,7 @@ const TableConstraints: FC<TableConstraintsProps> = ({
 
   return (
     <>
-      <Space className="p-b-sm" direction="vertical">
+      <Space className="p-b-sm w-full" direction="vertical">
         <Space size="middle">
           <Typography.Text className="right-panel-label">
             {t('label.table-constraints')}
@@ -144,9 +144,9 @@ const TableConstraints: FC<TableConstraintsProps> = ({
             }
             if (constraintType === ConstraintType.ForeignKey) {
               return (
-                <Space className="constraint-columns" key={index}>
+                <div className="d-flex gap-2 constraint-columns" key={index}>
                   <ForeignKeyConstraint />
-                  <Space direction="vertical" size={16}>
+                  <div className="d-flex flex-column gap-2">
                     <Typography.Text data-testid="constraint-column-name">
                       {columns?.join(', ')}
                     </Typography.Text>
@@ -178,8 +178,8 @@ const TableConstraints: FC<TableConstraintsProps> = ({
                         </Tooltip>
                       ))}
                     </div>
-                  </Space>
-                </Space>
+                  </div>
+                </div>
               );
             }
 

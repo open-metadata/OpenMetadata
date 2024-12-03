@@ -53,17 +53,21 @@
 
 .constraint-foreign-key {
   position: relative;
+  display: flex;
   .foreign-key-section-line {
-    margin-top: 20px;
+    width: 20px;
   }
   .foreign-key-icon {
-    background: white;
+    position: absolute;
+    top: 50%;
+    left: 0;
+    background: @white;
     height: 20px;
     width: 20px;
     border-radius: 50%;
     border: @global-border;
     padding: 2px;
-    transform: translate(-7px, -31px);
+    transform: translate(-50%, -50%);
     cursor: pointer;
   }
 }

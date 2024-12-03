@@ -11,18 +11,39 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Button, Form, Modal, Select, Tooltip, Typography } from 'antd';
+import {
+  Button,
+  Col,
+  Empty,
+  Form,
+  Modal,
+  Radio,
+  RadioChangeEvent,
+  Row,
+  Select,
+  Space,
+  Typography,
+} from 'antd';
 import { AxiosError } from 'axios';
 import { debounce, isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconDelete } from '../../../../assets/svg/ic-delete.svg';
 import { ReactComponent as PlusIcon } from '../../../../assets/svg/plus-primary.svg';
+import Loader from '../../../../components/common/Loader/Loader';
 import { PAGE_SIZE } from '../../../../constants/constants';
-import { RELATIONSHIP_TYPE_OPTION } from '../../../../constants/Table.constants';
+import {
+  RELATIONSHIP_TYPE_OPTION,
+  TABLE_CONSTRAINTS_TYPE_OPTIONS,
+} from '../../../../constants/Table.constants';
 import { SearchIndex } from '../../../../enums/search.enum';
-import { ConstraintType, Table } from '../../../../generated/entity/data/table';
+import {
+  ConstraintType,
+  Table,
+  TableConstraint,
+} from '../../../../generated/entity/data/table';
 import { searchQuery } from '../../../../rest/searchAPI';
+import { getBreadcrumbsFromFqn } from '../../../../utils/EntityUtils';
 import { getServiceNameQueryFilter } from '../../../../utils/ServiceUtils';
 import {
   escapeESReservedCharacters,
@@ -43,12 +64,18 @@ const TableConstraintsModal = ({
   onClose,
 }: TableConstraintModalProps) => {
   const { t } = useTranslation();
-  const [form] = Form.useForm<{ constraint: TableConstraintForm[] }>();
+  const [form] = Form.useForm<{
+    foreignConstraints: TableConstraintForm[];
+    primaryConstraints: string[];
+  }>();
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isRelatedColumnLoading, setIsRelatedColumnLoading] =
     useState<boolean>(false);
   const [searchValue, setSearchValue] = useState<string>('');
   const [relatedColumns, setRelatedColumns] = useState<SelectOptions[]>([]);
+  const [activeViewTab, setActiveViewTab] = useState<ConstraintType>(
+    ConstraintType.PrimaryKey
+  );
 
   const tableColumnNameOptions = useMemo(
     () =>
@@ -60,13 +87,14 @@ const TableConstraintsModal = ({
   );
 
   const getSearchResults = async (value: string) => {
+    setRelatedColumns([]);
     setIsRelatedColumnLoading(true);
     try {
       const encodedValue = getEncodedFqn(escapeESReservedCharacters(value));
       const data = await searchQuery({
         query:
           value &&
-          `(columns.name.keyword:${encodedValue}) OR (columns.fullyQualifiedName:${encodedValue})`,
+          `(columns.name.keyword:*${encodedValue}*) OR (columns.fullyQualifiedName:*${encodedValue}*)`,
         searchIndex: SearchIndex.TABLE,
         queryFilter: getServiceNameQueryFilter(
           tableDetails?.service?.name ?? ''
@@ -88,6 +116,7 @@ const TableConstraintsModal = ({
         return [...acc, ...columnOption];
       }, []);
 
+      setSearchValue(value);
       setRelatedColumns(allColumns);
     } catch (error) {
       showErrorToast(
@@ -101,25 +130,37 @@ const TableConstraintsModal = ({
     }
   };
 
-  const debounceOnSearch = useCallback(debounce(getSearchResults, 300), []);
+  const debounceFetcher = useCallback(debounce(getSearchResults, 800), []);
 
-  const handleSearch = (value: string): void => {
-    setSearchValue(value);
-    debounceOnSearch(value);
-  };
+  const handleSubmit = async () => {
+    const primaryConstraints: string[] =
+      form.getFieldValue('primaryConstraints');
+    const foreignConstraints: TableConstraintForm[] =
+      form.getFieldValue('foreignConstraints');
 
-  const handleSubmit = async (obj: { constraint: TableConstraintForm[] }) => {
     try {
       setIsLoading(true);
       await form.validateFields();
-      const constraintData = obj.constraint.map((item) => ({
-        ...item,
-        columns: [item.columns],
-        referredColumns: [item.referredColumns],
-        constraintType: ConstraintType.ForeignKey,
-      }));
+      const constraintData = foreignConstraints
+        .filter((obj) => !Object.values(obj).includes(undefined))
+        .map((item) => ({
+          ...item,
+          columns: [item.columns],
+          referredColumns: [item.referredColumns],
+          constraintType: ConstraintType.ForeignKey,
+        }));
 
-      await onSave(constraintData);
+      await onSave([
+        ...(!isEmpty(primaryConstraints)
+          ? [
+              {
+                columns: primaryConstraints,
+                constraintType: ConstraintType.PrimaryKey,
+              },
+            ]
+          : []),
+        ...constraintData,
+      ]);
     } catch (_) {
       // Nothing here
     } finally {
@@ -127,12 +168,66 @@ const TableConstraintsModal = ({
     }
   };
 
+  const tagOptions = useMemo(() => {
+    return relatedColumns.map((node) => {
+      const breadcrumbs = getBreadcrumbsFromFqn(node.label ?? '', true);
+
+      return {
+        label: (
+          <div className="constraint-breadcrumb">
+            <Space wrap align="start" className="w-full" size={4}>
+              {breadcrumbs.slice(0, 4).map((breadcrumb, index) => (
+                <React.Fragment key={breadcrumb.name}>
+                  <Typography.Text
+                    className="constraint-breadcrumb-item"
+                    ellipsis={{ tooltip: true }}>
+                    {breadcrumb.name}
+                  </Typography.Text>
+                  {index !== breadcrumbs.length - 2 && (
+                    <Typography.Text className="text-xss">
+                      {t('label.slash-symbol')}
+                    </Typography.Text>
+                  )}
+                </React.Fragment>
+              ))}
+            </Space>
+            <Typography.Text
+              className="constraint-breadcrumb-item constraint-column-name"
+              ellipsis={{ tooltip: true }}>
+              {breadcrumbs[4].name}
+            </Typography.Text>
+          </div>
+        ),
+        value: node.value,
+        data: node,
+      };
+    });
+  }, [relatedColumns]);
+
+  const handleChangeConstraintTab = useCallback((event: RadioChangeEvent) => {
+    setActiveViewTab(event.target.value);
+  }, []);
+
   useEffect(() => {
-    const constraintsWithoutPrimaryKeyData = constraint?.filter(
-      (item) => item.constraintType !== ConstraintType.PrimaryKey
+    const constraintFormData = constraint?.reduce(
+      (
+        acc: {
+          primary: TableConstraint;
+          foreign: TableConstraint[];
+        },
+        cv: TableConstraint
+      ) => {
+        if (cv.constraintType === ConstraintType.PrimaryKey) {
+          return { ...acc, primary: cv };
+        }
+
+        return { ...acc, foreign: [...acc.foreign, cv] };
+      },
+      { primary: {}, foreign: [] }
     );
-    const filteredConstraints = !isEmpty(constraintsWithoutPrimaryKeyData)
-      ? constraintsWithoutPrimaryKeyData?.map((item) => ({
+
+    const filteredConstraints = !isEmpty(constraintFormData?.foreign)
+      ? constraintFormData?.foreign.map((item) => ({
           columns: item.columns?.[0],
           relationshipType: item.relationshipType,
           referredColumns: item.referredColumns?.[0],
@@ -145,7 +240,10 @@ const TableConstraintsModal = ({
           },
         ];
 
-    form.setFieldValue('constraint', filteredConstraints);
+    form.setFieldsValue({
+      foreignConstraints: filteredConstraints,
+      primaryConstraints: constraintFormData?.primary.columns,
+    });
   }, [constraint]);
 
   useEffect(() => {
@@ -181,133 +279,177 @@ const TableConstraintsModal = ({
         entity: t('label.table-constraint-plural'),
       })}
       onCancel={onClose}>
-      <Form
-        className="table-constraint-form"
-        form={form}
-        layout="vertical"
-        onFinish={handleSubmit}>
-        <Form.List name="constraint">
-          {(fields, { add, remove }) => (
-            <>
-              {fields.map(({ key, name, ...restField }) => (
-                <div className="table-constraint-form-container" key={key}>
-                  <Form.Item
-                    className="w-full"
-                    {...restField}
-                    label={t('label.entity-name', {
-                      entity: t('label.column'),
-                    })}
-                    name={[name, 'columns']}
-                    rules={[
-                      {
-                        required: true,
-                        message: t('label.field-required', {
-                          field: t('label.entity-name', {
+      <Row gutter={[16, 16]}>
+        <Col span={24}>
+          <Radio.Group
+            buttonStyle="outline"
+            data-testid="constraint-tab-radio"
+            optionType="button"
+            options={TABLE_CONSTRAINTS_TYPE_OPTIONS}
+            value={activeViewTab}
+            onChange={handleChangeConstraintTab}
+          />
+        </Col>
+
+        <Col span={24}>
+          <Form
+            className="table-constraint-form"
+            form={form}
+            layout="vertical"
+            onFinish={handleSubmit}>
+            {activeViewTab === ConstraintType.PrimaryKey ? (
+              <Form.Item
+                className="w-full"
+                label={t('label.primary-key-plural')}
+                name="primaryConstraints">
+                <Select
+                  allowClear
+                  autoClearSearchValue
+                  data-testid="primary-constraint-type-select"
+                  mode="multiple"
+                  options={tableColumnNameOptions}
+                  placeholder={t('label.select-entity', {
+                    entity: t('label.primary-key-plural'),
+                  })}
+                />
+              </Form.Item>
+            ) : (
+              <Form.List name="foreignConstraints">
+                {(fields, { add, remove }) => (
+                  <>
+                    {fields.map(({ key, name, ...restField }) => (
+                      <div
+                        className="table-constraint-form-container"
+                        key={key}>
+                        <Form.Item
+                          className="w-full"
+                          {...restField}
+                          label={t('label.entity-name', {
                             entity: t('label.column'),
-                          }),
-                        }),
-                      },
-                    ]}>
-                    <Select
-                      data-testid={`${key}-column-type-select`}
-                      options={tableColumnNameOptions}
-                      placeholder={t('label.select-entity', {
-                        entity: t('label.table-entity-text', {
-                          entityText: t('label.column'),
-                        }),
-                      })}
-                    />
-                  </Form.Item>
-                  <Form.Item
-                    {...restField}
-                    className="w-full"
-                    label={t('label.entity-type-plural', {
-                      entity: t('label.relationship'),
-                    })}
-                    name={[name, 'relationshipType']}
-                    rules={[
-                      {
-                        required: true,
-                        message: t('label.field-required', {
-                          field: t('label.entity-type-plural', {
+                          })}
+                          name={[name, 'columns']}
+                          rules={[
+                            {
+                              required: true,
+                              message: t('label.field-required', {
+                                field: t('label.entity-name', {
+                                  entity: t('label.column'),
+                                }),
+                              }),
+                            },
+                          ]}>
+                          <Select
+                            data-testid={`${key}-column-type-select`}
+                            options={tableColumnNameOptions}
+                            placeholder={t('label.select-entity', {
+                              entity: t('label.table-entity-text', {
+                                entityText: t('label.column'),
+                              }),
+                            })}
+                          />
+                        </Form.Item>
+                        <Form.Item
+                          {...restField}
+                          className="w-full"
+                          label={t('label.entity-type-plural', {
                             entity: t('label.relationship'),
-                          }),
-                        }),
-                      },
-                    ]}>
-                    <Select
-                      data-testid={`${key}-relationship-type-select`}
-                      options={RELATIONSHIP_TYPE_OPTION}
-                      placeholder={t('label.select-entity', {
-                        entity: t('label.relationship-type'),
+                          })}
+                          name={[name, 'relationshipType']}
+                          rules={[
+                            {
+                              required: true,
+                              message: t('label.field-required', {
+                                field: t('label.entity-type-plural', {
+                                  entity: t('label.relationship'),
+                                }),
+                              }),
+                            },
+                          ]}>
+                          <Select
+                            data-testid={`${key}-relationship-type-select`}
+                            options={RELATIONSHIP_TYPE_OPTION}
+                            placeholder={t('label.select-entity', {
+                              entity: t('label.relationship-type'),
+                            })}
+                          />
+                        </Form.Item>
+                        <Form.Item
+                          {...restField}
+                          className="w-full"
+                          label={t('label.related-column')}
+                          name={[name, 'referredColumns']}
+                          rules={[
+                            {
+                              required: true,
+                              message: t('label.field-required', {
+                                field: t('label.related-column'),
+                              }),
+                            },
+                          ]}>
+                          <Select
+                            allowClear
+                            showSearch
+                            data-testid={`${key}-related-column-select`}
+                            notFoundContent={
+                              isRelatedColumnLoading ? (
+                                <Loader size="small" />
+                              ) : (
+                                <Empty
+                                  description={t('label.no-entity-available', {
+                                    entity: t('label.column-plural'),
+                                  })}
+                                  image={Empty.PRESENTED_IMAGE_SIMPLE}
+                                />
+                              )
+                            }
+                            optionLabelProp="label"
+                            placeholder={t('label.select-entity', {
+                              entity: t('label.related-column'),
+                            })}
+                            onSearch={debounceFetcher}>
+                            {tagOptions.map(({ label, value, data }) => (
+                              <Select.Option
+                                data-testid={`option-label-${data.label}`}
+                                key={value}
+                                value={value}>
+                                {label}
+                              </Select.Option>
+                            ))}
+                          </Select>
+                        </Form.Item>
+                        <Button
+                          className="delete-constraint-button"
+                          data-testid={`${key}-delete-constraint-button`}
+                          icon={
+                            <Icon
+                              className="align-middle text-grey-muted"
+                              component={IconDelete}
+                              style={{ fontSize: '16px' }}
+                            />
+                          }
+                          size="small"
+                          type="text"
+                          onClick={() => remove(name)}
+                        />
+                      </div>
+                    ))}
+                    <Button
+                      className="text-primary d-flex items-center m-t-md"
+                      data-testid="add-constraint-button"
+                      icon={<PlusIcon className="anticon" />}
+                      size="small"
+                      onClick={() => add()}>
+                      {t('label.add-entity', {
+                        entity: t('label.constraint-plural'),
                       })}
-                    />
-                  </Form.Item>
-                  <Form.Item
-                    {...restField}
-                    className="w-full"
-                    label={t('label.related-column')}
-                    name={[name, 'referredColumns']}
-                    rules={[
-                      {
-                        required: true,
-                        message: t('label.field-required', {
-                          field: t('label.related-column'),
-                        }),
-                      },
-                    ]}>
-                    <Select
-                      allowClear
-                      showSearch
-                      data-testid={`${key}-related-column-select`}
-                      loading={isRelatedColumnLoading}
-                      placeholder={t('label.select-entity', {
-                        entity: t('label.related-column'),
-                      })}
-                      onClick={(e) => e.stopPropagation()}
-                      onSearch={handleSearch}>
-                      {relatedColumns.map((option) => (
-                        <Select.Option
-                          data-testid={`option-label-${option.label}`}
-                          key={option.value}
-                          value={option.value}>
-                          <Tooltip placement="right" title={option.label}>
-                            <Typography.Text>{option.label}</Typography.Text>
-                          </Tooltip>
-                        </Select.Option>
-                      ))}
-                    </Select>
-                  </Form.Item>
-                  <Button
-                    className="delete-constraint-button"
-                    data-testid={`${key}-delete-constraint-button`}
-                    icon={
-                      <Icon
-                        className="align-middle text-grey-muted"
-                        component={IconDelete}
-                        style={{ fontSize: '16px' }}
-                      />
-                    }
-                    size="small"
-                    type="text"
-                    onClick={() => remove(name)}
-                  />
-                </div>
-              ))}
-              <Button
-                className="text-primary d-flex items-center m-t-md"
-                data-testid="add-constraint-button"
-                icon={<PlusIcon className="anticon" />}
-                size="small"
-                onClick={() => add()}>
-                {t('label.add-entity', {
-                  entity: t('label.constraint-plural'),
-                })}
-              </Button>
-            </>
-          )}
-        </Form.List>
-      </Form>
+                    </Button>
+                  </>
+                )}
+              </Form.List>
+            )}
+          </Form>
+        </Col>
+      </Row>
     </Modal>
   );
 };
