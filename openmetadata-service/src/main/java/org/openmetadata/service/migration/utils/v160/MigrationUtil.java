@@ -165,7 +165,7 @@ public class MigrationUtil {
 
       for (Map<String, Object> tableRow : tables) {
         String tableId = (String) tableRow.get("id");
-        String json = (String) tableRow.get("json");
+        String json = tableRow.get("json").toString();
         try {
           Table table = JsonUtils.readValue(json, Table.class);
           addConstraintRelationship(table, table.getTableConstraints(), tableRepository);
