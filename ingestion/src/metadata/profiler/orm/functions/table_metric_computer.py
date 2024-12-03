@@ -91,8 +91,8 @@ class AbstractTableMetricComputer(ABC):
             table (DeclarativeMeta): _description_
         """
         try:
-            self._schema_name = self.table.schema
-            self._table_name = self.table.name
+            self._schema_name = self.runner.schema_name
+            self._table_name = self.runner.table_name
         except AttributeError:
             raise AttributeError(ERROR_MSG)
 
