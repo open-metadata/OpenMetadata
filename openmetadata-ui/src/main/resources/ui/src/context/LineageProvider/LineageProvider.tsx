@@ -1135,15 +1135,27 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         decodedFqn
       );
 
-      const positionedNodesEdges = await positionNodesUsingElk(
-        updatedNodes,
-        updatedEdges,
-        activeLayer.includes(LineageLayer.ColumnLevelLineage),
-        isEditMode || expandAllColumns,
-        columnsHavingLineage
-      );
-      setNodes(positionedNodesEdges.nodes);
-      setEdges(positionedNodesEdges.edges);
+      if (reactFlowInstance && reactFlowInstance.viewportInitialized) {
+        const positionedNodesEdges = await positionNodesUsingElk(
+          updatedNodes,
+          updatedEdges,
+          activeLayer.includes(LineageLayer.ColumnLevelLineage),
+          isEditMode || expandAllColumns,
+          columnsHavingLineage
+        );
+        setNodes(positionedNodesEdges.nodes);
+        setEdges(positionedNodesEdges.edges);
+        const rootNode = positionedNodesEdges.nodes.find(
+          (n) => n.data.isRootNode
+        );
+        if (rootNode) {
+          centerNodePosition(rootNode, reactFlowInstance);
+        }
+      } else {
+        setNodes(updatedNodes);
+        setEdges(updatedEdges);
+      }
+
       setColumnsHavingLineage(columnsHavingLineage);
 
       // Get upstream downstream nodes and edges data
@@ -1158,7 +1170,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         selectNode(activeNode);
       }
     },
-    [decodedFqn, activeNode, activeLayer, isEditMode]
+    [decodedFqn, activeNode, activeLayer, isEditMode, reactFlowInstance]
   );
 
   useEffect(() => {

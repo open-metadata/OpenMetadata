@@ -222,8 +222,8 @@ export const getLayoutedElements = (
 const layoutOptions = {
   'elk.algorithm': 'layered',
   'elk.direction': 'RIGHT',
-  'elk.layered.spacing.edgeNodeBetweenLayers': '10',
-  'elk.spacing.nodeNode': '60',
+  'elk.layered.spacing.edgeNodeBetweenLayers': '50',
+  'elk.spacing.nodeNode': '70',
   'elk.layered.nodePlacement.strategy': 'SIMPLE',
 };
 
