@@ -240,6 +240,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
         const res = await getTableList({
           ...params,
           databaseSchema: decodedDatabaseSchemaFQN,
+          limit: pageSize,
           include: showDeletedTables ? Include.Deleted : Include.NonDeleted,
         });
         setTableData(res.data);
@@ -250,7 +251,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
         setTableDataLoading(false);
       }
     },
-    [decodedDatabaseSchemaFQN, showDeletedTables]
+    [decodedDatabaseSchemaFQN, showDeletedTables, pageSize]
   );
 
   const onDescriptionEdit = useCallback((): void => {
