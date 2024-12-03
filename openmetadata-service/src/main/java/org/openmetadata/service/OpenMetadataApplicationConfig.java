@@ -19,6 +19,7 @@ import io.dropwizard.db.DataSourceFactory;
 import io.dropwizard.health.conf.HealthConfiguration;
 import io.federecio.dropwizard.swagger.SwaggerBundleConfiguration;
 import java.util.LinkedHashMap;
+import java.util.Map;
 import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
 import lombok.Getter;
@@ -41,6 +42,13 @@ import org.openmetadata.service.monitoring.EventMonitorConfiguration;
 @Getter
 @Setter
 public class OpenMetadataApplicationConfig extends Configuration {
+
+  @Getter @JsonProperty private String basePath;
+
+  @Getter
+  @JsonProperty("assets")
+  private Map<String, String> assets;
+
   @JsonProperty("database")
   @NotNull
   @Valid
