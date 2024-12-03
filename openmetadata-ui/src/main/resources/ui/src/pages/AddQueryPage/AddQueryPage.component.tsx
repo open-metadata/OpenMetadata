@@ -44,7 +44,11 @@ import { postQuery } from '../../rest/queryAPI';
 import { getTableDetailsByFQN } from '../../rest/tableAPI';
 import { getPartialNameFromFQN } from '../../utils/CommonUtils';
 import { getCurrentMillis } from '../../utils/date-time/DateTimeUtils';
-import { getEntityBreadcrumbs, getEntityName } from '../../utils/EntityUtils';
+import {
+  getEntityBreadcrumbs,
+  getEntityLabel,
+  getEntityName,
+} from '../../utils/EntityUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
 const AddQueryPage = () => {
@@ -88,19 +92,6 @@ const AddQueryPage = () => {
     }
   };
 
-  const getLabelValue = (
-    displayName: string,
-    name: string,
-    fullyQualifiedName: string
-  ): JSX.Element => (
-    <Space direction="vertical" size={0}>
-      <Typography.Text>{getEntityName({ displayName, name })}</Typography.Text>
-      <Typography.Text className="text-gray-400 text-xs break-word">
-        {fullyQualifiedName}
-      </Typography.Text>
-    </Space>
-  );
-
   const fetchTableEntity = async (
     searchValue = ''
   ): Promise<DefaultOptionType[]> => {
@@ -115,11 +106,7 @@ const AddQueryPage = () => {
         SearchIndex.TABLE
       );
       const options = data.hits.hits.map((value) => ({
-        label: getLabelValue(
-          value._source.displayName || '',
-          value._source.name,
-          value._source.fullyQualifiedName || ''
-        ),
+        label: getEntityLabel(value._source),
         value: value._source.id,
       }));
 
