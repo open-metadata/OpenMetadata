@@ -27,7 +27,7 @@ from metadata.data_quality.validations.table.sqlalchemy.tableDiff import (
 )
 from metadata.generated.schema.entity.data.table import Table
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.sampler.sqlalchemy.sampler import SQASampler
+from metadata.sampler.sampler_interface import SamplerInterface
 
 
 def removesuffix(s: str, suffix: str) -> str:
@@ -68,7 +68,7 @@ class RuntimeParameterSetterFactory:
         ometa: OpenMetadata,
         service_connection_config,
         table_entity: Table,
-        sampler: SQASampler,
+        sampler: SamplerInterface,
     ) -> Set[RuntimeParameterSetter]:
         """Get the runtime parameter setter"""
         return {
