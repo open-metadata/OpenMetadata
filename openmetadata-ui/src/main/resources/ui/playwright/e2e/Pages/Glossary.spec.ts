@@ -1051,7 +1051,7 @@ test.describe('Glossary tests', () => {
       );
       await saveButton.click();
       await page.waitForSelector('thead th', { state: 'visible' });
-      const columnHeaders = await page.locator('thead th');
+      const columnHeaders = page.locator('thead th');
       const columnText = await columnHeaders.allTextContents();
 
       expect(columnText).toEqual(

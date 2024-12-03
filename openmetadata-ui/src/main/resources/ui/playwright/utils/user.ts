@@ -217,7 +217,9 @@ export const editDisplayName = async (page: Page, editedUserName: string) => {
   await saveResponse;
 
   // Verify the updated display name
-  const userName = await page.textContent('[data-testid="user-name"]');
+  const userName = await page.textContent(
+    '[data-testid="user-profile-details"] [data-testid="user-name"]'
+  );
 
   expect(userName).toContain(editedUserName);
 };
