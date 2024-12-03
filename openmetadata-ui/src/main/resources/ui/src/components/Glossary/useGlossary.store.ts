@@ -22,7 +22,7 @@ export const useGlossaryStore = create<{
   glossaries: Glossary[];
   activeGlossary: ModifiedGlossary;
   glossaryChildTerms: ModifiedGlossary[];
-  setGlossaries: (glossaries: Glossary[]) => void;
+  setGlossaries: (glossaries: Glossary[], isAfter?: boolean) => void;
   setActiveGlossary: (glossary: ModifiedGlossary) => void;
   updateGlossary: (glossary: Glossary) => void;
   updateActiveGlossary: (glossary: Partial<ModifiedGlossary>) => void;
@@ -32,15 +32,10 @@ export const useGlossaryStore = create<{
   activeGlossary: {} as ModifiedGlossary,
   glossaryChildTerms: [],
 
-  setGlossaries: (glossaries: Glossary[]) => {
+  setGlossaries: (glossaries: Glossary[], isAfter?: boolean) => {
     set((state) => ({
       ...state,
-      glossaries: [
-        ...state.glossaries,
-        ...glossaries.filter(
-          (glossary) => !state.glossaries.some((g) => g.id === glossary.id)
-        ),
-      ],
+      glossaries: isAfter ? [...state.glossaries, ...glossaries] : glossaries,
     }));
   },
   updateGlossary: (glossary: Glossary) => {

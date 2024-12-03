@@ -103,7 +103,6 @@ const GlossaryPage = () => {
   const isGlossaryActive = useMemo(() => {
     setIsRightPanelLoading(true);
     setActiveGlossary({} as ModifiedGlossary);
-    // localStorage.setItem('glossary', JSON.stringify({}));
 
     if (glossaryFqn) {
       return Fqn.split(glossaryFqn).length === 1;
@@ -172,7 +171,7 @@ const GlossaryPage = () => {
         limit: PAGE_SIZE_LARGE,
         after: page.after,
       });
-      setGlossaries(data);
+      setGlossaries(data, !paging?.after && true);
       if (paging.after) {
         setPage((prev) => ({ paging: prev.paging + 1, after: paging.after }));
       } else {
