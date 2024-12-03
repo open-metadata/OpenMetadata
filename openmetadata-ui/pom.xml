@@ -152,27 +152,6 @@
         </executions>
       </plugin>
       <plugin>
-      <groupId>org.codehaus.mojo</groupId>
-      <artifactId>exec-maven-plugin</artifactId>
-      <version>3.0.0</version>
-      <executions>
-        <execution>
-          <id>generate-typescript-from-json-schema</id>
-          <phase>generate-resources</phase>
-          <goals>
-            <goal>exec</goal>
-          </goals>
-          <configuration>
-            <executable>bash</executable>
-            <workingDirectory>${project.basedir}/src/main/resources/ui</workingDirectory>
-            <arguments>
-              <argument>json2ts.sh</argument>
-            </arguments>
-          </configuration>
-        </execution>
-      </executions>
-    </plugin>
-      <plugin>
         <artifactId>maven-resources-plugin</artifactId>
         <configuration>
             <nonFilteredFileExtensions>
@@ -199,6 +178,14 @@
                   <filtering>true</filtering>
                 </resource>
               </resources>
+              <nonFilteredFileExtensions>
+                <nonFilteredFileExtension>gz</nonFilteredFileExtension>
+                <nonFilteredFileExtension>woff</nonFilteredFileExtension>
+                <nonFilteredFileExtension>woff2</nonFilteredFileExtension>
+                <nonFilteredFileExtension>eot</nonFilteredFileExtension>
+                <nonFilteredFileExtension>svg</nonFilteredFileExtension>
+                <nonFilteredFileExtension>png</nonFilteredFileExtension>
+              </nonFilteredFileExtensions>
             </configuration>
           </execution>
         </executions>

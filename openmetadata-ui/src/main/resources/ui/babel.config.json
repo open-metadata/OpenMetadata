@@ -3,6 +3,9 @@
   "env": {
     "test": {
       "plugins": ["@babel/plugin-transform-runtime"]
+    },
+    "production": {
+      "debug": true
     }
   }
 }

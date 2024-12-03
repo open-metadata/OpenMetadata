@@ -3,3 +3,12 @@
 # ...
 cd openmetadata-ui/src/main/resources/ui
 yarn pre-commit
+
+# Check if any schema files have changed
+if git diff --name-only HEAD | grep -q 'openmetadata-spec/src/main/resources/json/schema/'; then
+  echo "JSON schema files changed. Regenerating TypeScript files..."
+  yarn run json2ts
+  git add src/generated
+else
+  echo "No changes in JSON schema files. Skipping TypeScript generation."
+fi
