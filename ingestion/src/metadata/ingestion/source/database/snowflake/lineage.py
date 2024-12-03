@@ -73,14 +73,13 @@ class SnowflakeLineageSource(
         yield a TableQuery with query parsing info
         """
         for engine in self.get_engine():
-            rows = None
+            rows = []
             with engine.connect() as conn:
-                rows = conn.execute(
-                    self.get_sql_statement(
-                        start_time=self.start,
-                        end_time=self.end,
-                    )
-                ).fetchall()
+                rows = conn.execution_options(
+                    stream_results=True, max_row_buffer=100
+                ).execute(
+                    self.get_sql_statement(start_time=self.start, end_time=self.end)
+                )
             # exit from active connection after fetching rows & during
             # further process of `yield_query_lineage`
             for row in rows:
