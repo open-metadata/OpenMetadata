@@ -12,6 +12,8 @@
 # limitations under the License.
 #
 
+#!/bin/bash
+
 schema_directory='openmetadata-spec/src/main/resources/json/schema/'
 om_ui_directory='openmetadata-ui/src/main/resources/ui/src/generated'
 tmp_dir=$(mktemp -d)
@@ -31,8 +33,7 @@ generateTmpSchemaFile() {
 generateType() {
     tmp_schema_file=$1
     output_file=$2
-    # Generate TypeScript
-    echo "Generating ${output_file} from specification at ${tmp_schema_file}"
+    echo "Generating $output_file from specification at $tmp_schema_file"
     ./node_modules/.bin/quicktype -s schema "$tmp_schema_file" -o "$output_file" --just-types > /dev/null 2>&1
 
     if [ -s "$output_file" ]; then
@@ -45,24 +46,26 @@ generateType() {
 processFile() {
     schema_file=$1
     relative_path=${schema_file#"$schema_directory"} # Extract relative path
-    local_tmp_dir="$tmp_dir/$(dirname "$relative_path")"
-    mkdir -p "$local_tmp_dir"
-
-    tmp_schema_file="${local_tmp_dir}/$(basename -- "$schema_file")"
-    generateTmpSchemaFile "$schema_file" "$tmp_schema_file"
-
     output_dir="$om_ui_directory/$(dirname "$relative_path")"
-    mkdir -p "$output_dir"
 
-    output_file="${output_dir}/$(basename -- "$relative_path" .json).ts"
+    # Debug output
+    echo "Schema file: $schema_file"
+    echo "Relative path: $relative_path"
+    echo "Output directory: $output_dir"
+
+    mkdir -p "$output_dir" # Ensure output directory exists
+
+    tmp_schema_file="$tmp_dir/$(basename "$schema_file")"
+    output_file="$output_dir/$(basename "$schema_file" .json).ts"
+
+    # Remove the old file if it exists
+    [ -f "$output_file" ] && rm "$output_file"
+
+    generateTmpSchemaFile "$schema_file" "$tmp_schema_file"
     generateType "$tmp_schema_file" "$output_file"
 }
 
 getTypes() {
-    if [ -d "$om_ui_directory" ]; then
-        rm -r "$om_ui_directory"
-    fi
-
     total_files=$#
     current_file=1
 
@@ -73,18 +76,16 @@ getTypes() {
     done
 }
 
-# Ensure we are in the project root directory
 cd "$(dirname "$0")/../../../../.." || exit
 
 echo "Generating TypeScript from OpenMetadata specifications"
 
-# Check if schema files are passed as arguments
 if [ "$#" -eq 0 ]; then
     echo "No schema files specified. Please provide schema file paths."
     exit 1
 fi
 
-# Process schema files sequentially
+# Process schema files
 getTypes "$@"
 
 # Clean up temporary files
