@@ -116,7 +116,7 @@ module.exports = {
     },
     alias: {
       process: 'process/browser',
-      Quill: path.resolve(__dirname, 'node_modules/quill'),  // Alias for the 'quill' library in node_modules
+      Quill: path.resolve(__dirname, 'node_modules/quill'), // Alias for the 'quill' library in node_modules
     },
   },
 
@@ -162,6 +162,18 @@ module.exports = {
         },
         {
           from: path.join(__dirname, 'public/locales'),
+          to: outputPath,
+        },
+        {
+          from: path.join(__dirname, 'public/BronzeCertification.svg'),
+          to: outputPath,
+        },
+        {
+          from: path.join(__dirname, 'public/SilverCertification.svg'),
+          to: outputPath,
+        },
+        {
+          from: path.join(__dirname, 'public/GoldCertification.svg'),
           to: outputPath,
         },
       ],
