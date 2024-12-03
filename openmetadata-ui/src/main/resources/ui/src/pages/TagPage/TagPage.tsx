@@ -95,6 +95,7 @@ import {
   getExcludedIndexesBasedOnEntityTypeEditTagPermission,
   getQueryFilterToExcludeTermsAndEntities,
   getTagAssetsQueryFilter,
+  getTagImageSrc,
 } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import './tag-page.less';
@@ -545,13 +546,15 @@ const TagPage = () => {
   ]);
   const icon = useMemo(() => {
     if (tagItem?.style?.iconURL) {
+      const iconUrl = getTagImageSrc(tagItem.style.iconURL);
+
       return (
         <img
           alt={tagItem.name ?? t('label.tag')}
           className="align-middle object-contain"
           data-testid="icon"
           height={36}
-          src={tagItem.style?.iconURL}
+          src={iconUrl}
           width={32}
         />
       );
