@@ -15,6 +15,10 @@ from typing import List
 
 import pytest
 
+from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
+    IngestionPipeline,
+    PipelineState,
+)
 from metadata.generated.schema.tests.basic import TestCaseStatus
 from metadata.generated.schema.tests.testCase import TestCase
 
@@ -28,7 +32,12 @@ class TestDataQuality:
         ],
     )
     def test_data_quality(
-        self, run_test_suite_workflow, metadata, test_case_name, expected_status
+        self,
+        run_test_suite_workflow,
+        metadata,
+        test_case_name,
+        expected_status,
+        ingestion_fqn,
     ):
         test_cases: List[TestCase] = metadata.list_entities(
             TestCase, fields=["*"], skip_on_failure=True
@@ -38,6 +47,16 @@ class TestDataQuality:
         )
         assert test_case is not None
         assert test_case.testCaseResult.testCaseStatus == expected_status
+
+        # Check the ingestion pipeline is properly created
+        ingestion_pipeline: IngestionPipeline = metadata.get_by_name(
+            entity=IngestionPipeline, fqn=ingestion_fqn, fields=["pipelineStatuses"]
+        )
+        assert ingestion_pipeline
+        assert ingestion_pipeline.pipelineStatuses
+        assert (
+            ingestion_pipeline.pipelineStatuses.pipelineState == PipelineState.success
+        )
 
     @pytest.mark.parametrize(
         "test_case_name,failed_rows",
