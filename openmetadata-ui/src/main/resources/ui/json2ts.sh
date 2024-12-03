@@ -14,7 +14,7 @@
 
 #!/bin/bash
 
-schema_directory='openmetadata-spec/src/main/resources/json/schema/'
+schema_directory='openmetadata-spec/src/main/resources/json/schema'
 om_ui_directory='openmetadata-ui/src/main/resources/ui/src/generated'
 tmp_dir=$(mktemp -d)
 
@@ -39,17 +39,18 @@ generateType() {
     if [ -s "$output_file" ]; then
         addLicensing "$output_file"
     else
+        echo "Error: Could not generate $output_file"
         rm -f "$output_file"
     fi
 }
 
 processFile() {
     schema_file=$1
-    relative_path=${schema_file#"$schema_directory"} # Extract relative path
+    relative_path=${schema_file#"$schema_directory/"} # Extract relative path
     output_dir="$om_ui_directory/$(dirname "$relative_path")"
 
-    # Debug output
-    echo "Schema file: $schema_file"
+    # Debugging output
+    echo "Processing schema: $schema_file"
     echo "Relative path: $relative_path"
     echo "Output directory: $output_dir"
 
@@ -58,9 +59,7 @@ processFile() {
     tmp_schema_file="$tmp_dir/$(basename "$schema_file")"
     output_file="$output_dir/$(basename "$schema_file" .json).ts"
 
-    # Remove the old file if it exists
-    [ -f "$output_file" ] && rm "$output_file"
-
+    # Generate temporary schema and TypeScript file
     generateTmpSchemaFile "$schema_file" "$tmp_schema_file"
     generateType "$tmp_schema_file" "$output_file"
 }
@@ -76,6 +75,7 @@ getTypes() {
     done
 }
 
+# Move to project root directory
 cd "$(dirname "$0")/../../../../.." || exit
 
 echo "Generating TypeScript from OpenMetadata specifications"
@@ -85,7 +85,7 @@ if [ "$#" -eq 0 ]; then
     exit 1
 fi
 
-# Process schema files
+# Process the schema files passed as arguments
 getTypes "$@"
 
 # Clean up temporary files
