@@ -53,7 +53,7 @@ class AbstractTableMetricComputer(ABC):
         self._metrics = metrics
         self._conn_config = conn_config
         self._database = self._runner._session.get_bind().url.database
-        self._table = self._runner.table
+        self._table = self._runner.dataset
         self._entity = entity
 
     @property

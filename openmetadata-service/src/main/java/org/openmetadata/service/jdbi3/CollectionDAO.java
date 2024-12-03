@@ -1176,7 +1176,7 @@ public interface CollectionDAO {
         value =
             "DELETE FROM entity_relationship "
                 + "WHERE  json->'pipeline'->>'id' =:toId OR toId = :toId AND relation = :relation "
-                + "AND json->>'source' = :source ORDER BY toId",
+                + "AND json->>'source' = :source",
         connectionType = POSTGRES)
     void deleteLineageBySourcePipeline(
         @BindUUID("toId") UUID toId,

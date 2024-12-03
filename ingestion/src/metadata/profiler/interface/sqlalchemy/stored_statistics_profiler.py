@@ -79,8 +79,8 @@ class ProfilerWithStatistics(SQAProfilerInterface, StoredStatisticsSource):
                 list,
                 partition(self.is_statistic_metric, metrics),
             )
-            schema = runner.table.schema
-            table_name = runner.table.name
+            schema = runner.schema_name
+            table_name = runner.table_name
             logger.debug(
                 "Getting statistics for column: %s.%s.%s",
                 schema,
@@ -118,8 +118,8 @@ class ProfilerWithStatistics(SQAProfilerInterface, StoredStatisticsSource):
                 list,
                 partition(self.is_statistic_metric, metrics),
             )
-            schema = runner.table.schema
-            table_name = runner.table.name
+            schema = runner.schema_name
+            table_name = runner.table_name
             logger.debug("Geting statistics for table: %s.%s", schema, table_name)
             result.update(
                 super().get_table_statistics(stat_metrics, schema, table_name)

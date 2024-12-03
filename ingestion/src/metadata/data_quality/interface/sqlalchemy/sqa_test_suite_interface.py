@@ -104,6 +104,7 @@ class SQATestSuiteInterface(SQAInterfaceMixin, TestSuiteInterface):
             QueryRunner(
                 session=self.session,
                 dataset=self.dataset,
+                raw_dataset=self.sampler.raw_dataset,
                 partition_details=self.table_partition_config,
                 profile_sample_query=self.table_sample_query,
             )
