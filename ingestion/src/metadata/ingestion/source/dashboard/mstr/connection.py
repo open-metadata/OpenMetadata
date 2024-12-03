@@ -49,7 +49,7 @@ def test_connection(
     """
 
     test_fn = {
-        "GetProjects": client.get_projects_list,
+        "GetProjects": client.list_projects,
     }
 
     return test_connection_steps(

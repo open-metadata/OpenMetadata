@@ -152,23 +152,26 @@ class MSTRClient:
     def is_project_name(self) -> bool:
         return bool(self.config.projectName)
 
+    def list_projects(self) -> List[MstrProject]:
+        """
+        Test if we can get the token and fetch projects
+        """
+        self.get_auth_params()
+        resp_projects = self.client.get(
+            path="/projects",
+        )
+        return resp_projects
+
     def get_projects_list(self) -> List[MstrProject]:
         """
         Get List of all projects
         """
         try:
-            resp_projects = self.client.get(
-                path="/projects",
-            )
-
-            project_list = MstrProjectList(projects=resp_projects)
+            project_list = MstrProjectList(projects=self.list_projects())
             return project_list.projects
-
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Failed to fetch the project list due to [{exc}]")
-
-        return []
 
     def get_project_by_name(self) -> Optional[MstrProject]:
         """
