@@ -54,6 +54,7 @@ module.exports = {
       {
         test: /\.(ts|tsx)$/,
         loader: 'ts-loader',
+        exclude: [/node_modules/, /dist/],
         options: {
           configFile: 'tsconfig.json',
           transpileOnly: true, // Speed up compilation in development mode
