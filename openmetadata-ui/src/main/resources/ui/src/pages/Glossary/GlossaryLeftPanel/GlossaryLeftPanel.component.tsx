@@ -68,6 +68,10 @@ const GlossaryLeftPanel = ({ glossaries }: GlossaryLeftPanelProps) => {
   };
   const handleMenuClick: MenuProps['onClick'] = (event) => {
     history.push(getGlossaryPath(event.key));
+    const glossary = glossaries.find(
+      (item) => item.fullyQualifiedName === event.key
+    );
+    localStorage.setItem('glossary', JSON.stringify(glossary));
   };
 
   return (

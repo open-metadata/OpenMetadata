@@ -103,6 +103,7 @@ const GlossaryPage = () => {
   const isGlossaryActive = useMemo(() => {
     setIsRightPanelLoading(true);
     setActiveGlossary({} as ModifiedGlossary);
+    // localStorage.setItem('glossary', JSON.stringify({}));
 
     if (glossaryFqn) {
       return Fqn.split(glossaryFqn).length === 1;
@@ -210,6 +211,7 @@ const GlossaryPage = () => {
         ],
       });
       setActiveGlossary(response as ModifiedGlossary);
+      localStorage.setItem('glossary', JSON.stringify(response));
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -225,8 +227,11 @@ const GlossaryPage = () => {
         setActiveGlossary(
           glossaries.find(
             (glossary) => glossary.fullyQualifiedName === glossaryFqn
-          ) || glossaries[0]
+          ) || JSON.parse(localStorage.getItem('glossary') as string)
         );
+        // localStorage.setItem('glossary', JSON.stringify(glossaries.find(
+        //   (glossary) => glossary.fullyQualifiedName === glossaryFqn
+        // )));
         !glossaryFqn &&
           glossaries[0].fullyQualifiedName &&
           history.replace(getGlossaryPath(glossaries[0].fullyQualifiedName));
@@ -322,6 +327,7 @@ const GlossaryPage = () => {
         const response = await patchGlossaryTerm(activeGlossary?.id, jsonPatch);
         if (response) {
           setActiveGlossary(response as ModifiedGlossary);
+          localStorage.setItem('glossary', JSON.stringify(response));
           if (activeGlossary?.name !== updatedData.name) {
             history.push(getGlossaryPath(response.fullyQualifiedName));
             fetchGlossaryList();
@@ -430,7 +436,16 @@ const GlossaryPage = () => {
           className: 'content-resizable-panel-container',
           minWidth: 280,
           flex: 0.13,
-          children: <GlossaryLeftPanel glossaries={glossaries} />,
+          children: (
+            <>
+              <GlossaryLeftPanel glossaries={glossaries} />
+              <div
+                className="h-[1px] w-full"
+                ref={elementRef as RefObject<HTMLDivElement>}
+              />
+              {isMoreGlossaryLoading && <Loader />}
+            </>
+          ),
         }}
         hideFirstPanel={isImportAction}
         pageTitle={t('label.glossary')}
@@ -441,11 +456,6 @@ const GlossaryPage = () => {
           flex: 0.87,
         }}
       />
-      <div
-        className="h-1 w-full"
-        ref={elementRef as RefObject<HTMLDivElement>}
-      />
-      {isMoreGlossaryLoading && <Loader />}
     </>
   ) : (
     <ResizablePanels
