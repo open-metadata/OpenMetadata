@@ -363,7 +363,7 @@ Now that you have your Connection defined in the JSON Schema, we can proceed to 
 
 {%inlineCallout
   color="violet-70"
-  bold="Develop the Ingesion Code"
+  bold="Develop the Ingestion Code"
   icon="MdArrowForward"
   href="/developers/contribute/developing-a-new-connector/develop-ingestion-code"%}
   Learn what you need to implement for the Connector's logic
