@@ -274,7 +274,8 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     TermReference reference1 =
         new TermReference().withName("reference1").withEndpoint(URI.create("http://reference1"));
 
-    // NOTE: We are patching outside the `patchEntityAndCheck` method in order to be able to wait for the Task to be Created.
+    // NOTE: We are patching outside the `patchEntityAndCheck` method in order to be able to wait
+    // for the Task to be Created.
     // The Task is created asynchronously from the Glossary Approval Workflow.
     // This allows us to be sure the Status will be updated to IN_REVIEW.
     term.withReviewers(List.of(USER1_REF))
