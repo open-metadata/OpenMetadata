@@ -1064,7 +1064,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   );
 
   const selectNode = (node: Node) => {
-    centerNodePosition(node, reactFlowInstance);
+    centerNodePosition(node, reactFlowInstance, zoomValue);
   };
 
   const repositionLayout = useCallback(
@@ -1096,12 +1096,13 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       }
 
       // Center the root node in the view
-      centerNodePosition(rootNode, reactFlowInstance);
+      centerNodePosition(rootNode, reactFlowInstance, zoomValue);
       if (activateNode) {
         onNodeClick(rootNode);
       }
     },
     [
+      zoomValue,
       reactFlowInstance,
       activeLayer,
       nodes,
@@ -1149,7 +1150,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
           (n) => n.data.isRootNode
         );
         if (rootNode) {
-          centerNodePosition(rootNode, reactFlowInstance);
+          centerNodePosition(rootNode, reactFlowInstance, zoomValue);
         }
       } else {
         setNodes(updatedNodes);
@@ -1170,7 +1171,14 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         selectNode(activeNode);
       }
     },
-    [decodedFqn, activeNode, activeLayer, isEditMode, reactFlowInstance]
+    [
+      decodedFqn,
+      activeNode,
+      activeLayer,
+      isEditMode,
+      reactFlowInstance,
+      zoomValue,
+    ]
   );
 
   useEffect(() => {

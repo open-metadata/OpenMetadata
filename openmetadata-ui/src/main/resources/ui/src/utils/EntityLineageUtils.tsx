@@ -126,14 +126,15 @@ export const onLoad = (reactFlowInstance: ReactFlowInstance) => {
 
 export const centerNodePosition = (
   node: Node,
-  reactFlowInstance?: ReactFlowInstance
+  reactFlowInstance?: ReactFlowInstance,
+  zoomValue?: number
 ) => {
   const { position, width } = node;
   reactFlowInstance?.setCenter(
     position.x + (width ?? 1 / 2),
     position.y + NODE_HEIGHT / 2,
     {
-      zoom: ZOOM_VALUE,
+      zoom: zoomValue ?? ZOOM_VALUE,
       duration: ZOOM_TRANSITION_DURATION,
     }
   );

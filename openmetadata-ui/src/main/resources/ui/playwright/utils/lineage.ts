@@ -86,7 +86,7 @@ export const performZoomOut = async (page: Page) => {
   const zoomOutBtn = page.locator('.react-flow__controls-zoomout');
   const enabled = await zoomOutBtn.isEnabled();
   if (enabled) {
-    for (const _ of Array.from({ length: 12 })) {
+    for (const _ of Array.from({ length: 10 })) {
       await zoomOutBtn.dispatchEvent('click');
     }
   }
