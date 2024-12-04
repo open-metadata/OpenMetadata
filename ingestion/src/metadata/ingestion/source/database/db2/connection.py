@@ -33,7 +33,7 @@ from metadata.ingestion.connections.builders import (
 )
 from metadata.ingestion.connections.test_connections import test_connection_db_common
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.utils.constants import THREE_MIN
+from metadata.utils.constants import THREE_MIN, UTF_8
 
 
 def get_connection(connection: Db2Connection) -> Engine:
@@ -41,10 +41,15 @@ def get_connection(connection: Db2Connection) -> Engine:
     Create connection
     """
     # prepare license
+    # pylint: disable=import-outside-toplevel
     if connection.license and connection.licenseFileName:
         import clidriver
 
-        with open(Path(clidriver.__path__[0], connection.licenseFileName), "w") as file:
+        with open(
+            Path(clidriver.__path__[0], "license", connection.licenseFileName),
+            "w",
+            encoding=UTF_8,
+        ) as file:
             file.write(connection.license)
 
     return create_generic_db_connection(
