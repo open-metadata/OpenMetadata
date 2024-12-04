@@ -149,19 +149,49 @@ const GlossaryPage = () => {
     history.push(ROUTES.ADD_GLOSSARY);
   };
 
-  const fetchGlossaryList = async () => {
-    const fetchData = async (
-      after: string | undefined,
-      accumulatedData: Glossary[]
-    ) => {
-      try {
-        if (after) {
-          setIsMoreGlossaryLoading(true);
-        } else {
-          setIsRightPanelLoading(true);
-          setIsLoading(true);
-        }
+  const fetchNextGlossaryItems = async (after?: string) => {
+    try {
+      let allGlossaries: Glossary[] = glossaries;
 
+      setIsMoreGlossaryLoading(true);
+
+      const { data, paging: glossaryPaging } = await getGlossariesList({
+        fields: [
+          TabSpecificField.OWNERS,
+          TabSpecificField.TAGS,
+          TabSpecificField.REVIEWERS,
+          TabSpecificField.VOTES,
+          TabSpecificField.DOMAIN,
+        ],
+        limit: PAGE_SIZE_LARGE,
+        after: after,
+      });
+
+      allGlossaries = [...allGlossaries, ...data];
+      handlePagingChange(glossaryPaging);
+
+      setGlossaries(allGlossaries);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsMoreGlossaryLoading(false);
+    }
+  };
+
+  const fetchGlossaryList = async () => {
+    try {
+      let nextPage: string | undefined = paging.after;
+      let allGlossaries: Glossary[] = glossaries;
+      let isGlossaryFound = false;
+
+      if (nextPage) {
+        setIsMoreGlossaryLoading(true);
+      } else {
+        setIsRightPanelLoading(true);
+        setIsLoading(true);
+      }
+
+      do {
         const { data, paging: glossaryPaging } = await getGlossariesList({
           fields: [
             TabSpecificField.OWNERS,
@@ -171,50 +201,37 @@ const GlossaryPage = () => {
             TabSpecificField.DOMAIN,
           ],
           limit: PAGE_SIZE_LARGE,
-          after,
+          after: nextPage,
         });
 
-        const updatedGlossaryList = [
-          ...accumulatedData,
-          ...data.filter(
-            (newItem) =>
-              !accumulatedData.some(
-                (existingItem) =>
-                  existingItem.fullyQualifiedName === newItem.fullyQualifiedName
-              )
-          ),
-        ];
+        allGlossaries = [...allGlossaries, ...data];
 
-        setGlossaries(updatedGlossaryList);
-        handlePagingChange(glossaryPaging);
-
-        const isGlossaryFound = updatedGlossaryList.some(
+        isGlossaryFound = allGlossaries.some(
           (item) => item.fullyQualifiedName === glossaryFqn
         );
 
-        if (!isGlossaryFound && glossaryPaging?.after) {
-          await fetchData(glossaryPaging.after, updatedGlossaryList);
-        }
-      } catch (error) {
-        showErrorToast(error as AxiosError);
-      } finally {
-        setIsLoading(false);
-        setIsRightPanelLoading(false);
-        setIsMoreGlossaryLoading(false);
-      }
-    };
+        nextPage = glossaryPaging?.after;
+        handlePagingChange(glossaryPaging);
+      } while (nextPage && !isGlossaryFound);
 
-    await fetchData(paging.after, glossaries);
+      setGlossaries(allGlossaries);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsLoading(false);
+      setIsRightPanelLoading(false);
+      setIsMoreGlossaryLoading(false);
+    }
   };
 
   useEffect(() => {
     fetchGlossaryList();
   }, []);
   useEffect(() => {
-    if (paging?.after && isInView) {
-      fetchGlossaryList();
+    if (paging?.after && isInView && !isMoreGlossaryLoading) {
+      fetchNextGlossaryItems(paging.after);
     }
-  }, [paging, isInView, pageSize]);
+  }, [paging, isInView, isMoreGlossaryLoading, pageSize]);
 
   const fetchGlossaryTermDetails = async () => {
     setIsRightPanelLoading(true);
