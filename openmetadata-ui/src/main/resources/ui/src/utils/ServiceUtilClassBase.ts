@@ -148,6 +148,7 @@ class ServiceUtilClassBase {
     PipelineServiceType.Matillion,
     PipelineServiceType.DataFactory,
     PipelineServiceType.Stitch,
+    DashboardServiceType.PowerBIReportServer,
   ];
 
   DatabaseServiceTypeSmallCase = this.convertEnumToLowerCase<

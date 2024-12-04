@@ -2,8 +2,8 @@
   sourceConfig:
     config:
       type: SearchMetadata
-      # markDeletedSearchIndexes: True
-      # includeSampleData: True
+      # markDeletedSearchIndexes: true
+      # includeSampleData: false
       # sampleSize: 10
       # searchIndexFilterPattern:
       #   includes:
@@ -12,4 +12,6 @@
       #   excludes:
       #     - index4
       #     - index3
+      # includeIndexTemplates: false
+      # overrideMetadata: false
 ```

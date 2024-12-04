@@ -82,7 +82,12 @@ def test_connection_workflow(metadata, mysql_container):
 
     assert final_workflow.status == WorkflowStatus.Successful
     assert len(final_workflow.response.steps) == 5
-    assert final_workflow.response.status.value == StatusType.Successful.value
+    # Get queries is not passing since we're not enabling the logs in the container
+    assert final_workflow.response.status.value == StatusType.Failed.value
+    steps = [
+        step for step in final_workflow.response.steps if step.name != "GetQueries"
+    ]
+    assert all(step.passed for step in steps)
 
     metadata.delete(
         entity=Workflow,
