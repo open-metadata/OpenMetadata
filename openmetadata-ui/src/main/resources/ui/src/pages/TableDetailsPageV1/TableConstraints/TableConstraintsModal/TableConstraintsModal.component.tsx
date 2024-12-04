@@ -12,7 +12,6 @@
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button, Empty, Form, Modal, Select, Space, Typography } from 'antd';
-import { useWatch } from 'antd/es/form/Form';
 import { AxiosError } from 'axios';
 import { debounce, isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -60,7 +59,7 @@ const TableConstraintsModal = ({
     useState<boolean>(false);
   const [searchValue, setSearchValue] = useState<string>('');
   const [relatedColumns, setRelatedColumns] = useState<SelectOptions[]>([]);
-  const constraintType = useWatch('constraintType', form);
+  const constraintType = Form.useWatch('constraintType', form);
 
   const tableColumnNameOptions = useMemo(
     () =>
