@@ -28,6 +28,8 @@ caption="Configure Metadata Ingestion Page" /%}
     - **Exclude**: Explicitly exclude search index by adding a list of comma-separated regular expressions to the Exclude field. OpenMetadata will exclude all search indexes with names matching one or more of the supplied regular expressions. All other schemas will be included.
 - **Include Sample Data (toggle)**: Set the Ingest Sample Data toggle to control whether to ingest sample data as part of metadata ingestion.
 - **Sample Size**: If include sample data is enabled, 10 records will be ingested by default. Using this field you can customize the size of sample data.
+- **Include Index Templates (toggle)**: Set the Include Index Templates toggle to control whether to include index templates as part of metadata ingestion.
+- **Override Metadata**: Set the Override Metadata toggle to control whether to override the metadata if it already exists.
 - **Enable Debug Log (toggle)**: Set the Enable Debug Log toggle to set the default log level to debug.
 
 
