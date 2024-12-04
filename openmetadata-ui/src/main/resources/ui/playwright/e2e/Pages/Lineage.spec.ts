@@ -51,7 +51,10 @@ import {
 import { settingClick } from '../../utils/sidebar';
 
 // use the admin user to login
-test.use({ storageState: 'playwright/.auth/admin.json' });
+test.use({
+  storageState: 'playwright/.auth/admin.json',
+  trace: 'on' /* Temporarily added for debugging purposes*/,
+});
 
 const entities = [
   TableClass,

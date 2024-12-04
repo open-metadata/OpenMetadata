@@ -98,6 +98,9 @@ base.afterAll('Cleanup', async ({ browser }) => {
   await afterAction();
 });
 
+// Temporarily added for debugging purposes
+test.use({ trace: 'on' });
+
 test.describe('Tag Page with Admin Roles', () => {
   test.slow(true);
 

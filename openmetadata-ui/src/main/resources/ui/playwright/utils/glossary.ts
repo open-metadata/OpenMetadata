@@ -1218,6 +1218,10 @@ export const dragAndDropColumn = async (
   dragColumn: string,
   dropColumn: string
 ) => {
+  await page.waitForSelector(`.draggable-menu-item:has-text("${dragColumn}")`, {
+    state: 'visible',
+  });
+
   await page
     .locator('.draggable-menu-item', { hasText: dragColumn })
     .dragTo(page.locator('.draggable-menu-item', { hasText: dropColumn }));
