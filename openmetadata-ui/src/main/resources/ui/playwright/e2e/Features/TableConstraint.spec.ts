@@ -337,8 +337,30 @@ test.describe('Table Constraints', {}, () => {
         '[data-testid="unique-constraint-type-select"] .anticon-close-circle'
       );
 
+      const saveResponseOne = page.waitForResponse('/api/v1/tables/*');
+      await page.click('[data-testid="save-btn"]');
+      await saveResponseOne;
+
+      await page.waitForSelector('[role="dialog"].ant-modal', {
+        state: 'detached',
+      });
+
+      // Verify Sort and Dist Key to be available
+      await expect(page.getByTestId('SORT_KEY-container')).toContainText(
+        'emailname'
+      );
+      await expect(page.getByTestId('SORT_KEY-icon')).toBeVisible();
+      await expect(page.getByTestId('DIST_KEY-container')).toContainText(
+        'shop_iduser_id'
+      );
+
+      // Remove the pending constraints
+
+      await page.getByTestId('edit-table-constraint-button').click();
+      await page.waitForSelector('[role="dialog"].ant-modal');
+
       // Clear Dist Key
-      await clickOnDistKeySelector(page);
+      await clickOnDistKeySelector(page, true);
       await page.click(
         '[data-testid="dist-constraint-type-select"] .anticon-close-circle'
       );

@@ -34,8 +34,14 @@ export const clickOnUniqueKeySelector = async (page: Page) => {
   await selectUniqueConstraints.click();
 };
 
-export const clickOnDistKeySelector = async (page: Page) => {
-  await page.getByTestId('constraint-type-select').getByTitle('Unique').click();
+export const clickOnDistKeySelector = async (
+  page: Page,
+  isPrimary?: boolean
+) => {
+  await page
+    .getByTestId('constraint-type-select')
+    .getByTitle(isPrimary ? 'Primary key' : 'Unique')
+    .click();
 
   const selectDistKeyConstraints = page.getByTitle('Dist key');
   await selectDistKeyConstraints.hover();
