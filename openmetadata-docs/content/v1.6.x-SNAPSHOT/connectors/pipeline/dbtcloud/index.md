@@ -25,7 +25,7 @@ Configure and schedule dbt Cloud metadata and profiler workflows from the OpenMe
 - [Troubleshooting](#troubleshooting)
     - [Workflow Deployment Error](#workflow-deployment-error)
 
-{% partial file="/v1.5/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/pipeline/dbtcloud/yaml"} /%}
+{% partial file="/v1.6/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/pipeline/dbtcloud/yaml"} /%}
 
 ## Requirements
 
@@ -49,7 +49,7 @@ To know more about permissions required refer [here](https://docs.getdbt.com/doc
 ## Metadata Ingestion
 
 {% partial 
-    file="/v1.5/connectors/metadata-ingestion-ui.md" 
+    file="/v1.6/connectors/metadata-ingestion-ui.md" 
     variables={
         connector: "DBTCloud", 
         selectServicePath: "/images/v1.6/connectors/dbtcloud/select-service.png",
@@ -80,11 +80,11 @@ Make sure you have the necessary permissions on the token to run graphql queries
 
 {% /extraContent %}
 
-{% partial file="/v1.5/connectors/test-connection.md" /%}
+{% partial file="/v1.6/connectors/test-connection.md" /%}
 
-{% partial file="/v1.5/connectors/pipeline/configure-ingestion.md" /%}
+{% partial file="/v1.6/connectors/pipeline/configure-ingestion.md" /%}
 
-{% partial file="/v1.5/connectors/ingestion-schedule-and-deploy.md" /%}
+{% partial file="/v1.6/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
 
@@ -101,7 +101,7 @@ By successfully completing these steps, the lineage information for the service 
 
 
 
-{% partial file="/v1.5/connectors/troubleshooting.md" /%}
+{% partial file="/v1.6/connectors/troubleshooting.md" /%}
 
 ### Missing Lineage
 If lineage information is not displayed for a DBT Cloud service, follow these steps to diagnose the issue.
