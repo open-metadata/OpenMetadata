@@ -173,9 +173,13 @@ const GlossaryPage = () => {
 
         allGlossaries = [...allGlossaries, ...data];
 
-        isGlossaryFound = allGlossaries.some(
-          (item) => item.fullyQualifiedName === glossaryFqn
-        );
+        if (glossaryFqn) {
+          isGlossaryFound = allGlossaries.some(
+            (item) => item.fullyQualifiedName === glossaryFqn
+          );
+        } else {
+          isGlossaryFound = true; // limit to first 50 records only if no glossaryFqn
+        }
 
         nextPage = glossaryPaging?.after;
 
@@ -221,10 +225,10 @@ const GlossaryPage = () => {
   };
 
   useEffect(() => {
-    if (glossaryFqn && !initialised) {
+    if (!initialised) {
       fetchGlossaryList();
     }
-  }, [glossaryFqn, initialised]);
+  }, [initialised]);
 
   useEffect(() => {
     if (paging?.after && isInView && !isMoreGlossaryLoading) {
