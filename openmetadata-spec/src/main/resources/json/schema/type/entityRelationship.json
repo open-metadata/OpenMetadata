@@ -33,7 +33,8 @@
         "voted",
         "expert",
         "editedBy",
-        "defaultsTo"
+        "defaultsTo",
+        "relatesTo"
       ],
       "javaEnums": [
         { "name": "CONTAINS" },
@@ -57,7 +58,8 @@
         { "name": "VOTED" },
         { "name": "EXPERT" },
         { "name": "EDITED_BY" },
-        { "name":  "DEFAULTS_TO" }
+        { "name":  "DEFAULTS_TO" },
+        { "name": "RELATES_TO" }
       ]
     }
   },
