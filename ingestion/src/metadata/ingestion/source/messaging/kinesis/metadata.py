@@ -93,7 +93,7 @@ class KinesisSource(MessagingServiceSource):
         all_topics, has_more_topics, args = [], True, KinesisArgs(Limit=100)
         while has_more_topics:
             try:
-                topics = self.kinesis.list_streams(**args.dict())
+                topics = self.kinesis.list_streams(**args.model_dump())
                 kinesis_topic_model = KinesisStreamModel(**topics)
                 all_topics.extend(kinesis_topic_model.StreamNames)
                 has_more_topics = kinesis_topic_model.HasMoreStreams
@@ -185,7 +185,7 @@ class KinesisSource(MessagingServiceSource):
         )
         try:
             while has_more_partitions:
-                partitions = self.kinesis.list_shards(**args.dict())
+                partitions = self.kinesis.list_shards(**args.model_dump())
                 kinesis_partitions_model = KinesisPartitions(**partitions)
                 all_partitions.extend(
                     [

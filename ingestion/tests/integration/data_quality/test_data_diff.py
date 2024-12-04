@@ -529,7 +529,7 @@ def test_error_paths(
         },
         "processor": {
             "type": "orm-test-runner",
-            "config": {"testCases": [parameters.dict()]},
+            "config": {"testCases": [parameters.model_dump()]},
         },
         "sink": sink_config,
         "workflowConfig": workflow_config,
