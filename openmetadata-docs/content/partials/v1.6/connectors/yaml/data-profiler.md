@@ -2,7 +2,7 @@
 
 The Data Profiler workflow will be using the `orm-profiler` processor.
 
-After running a Metadata Ingestion workflow, we can run Data Profiler workflow.
+After running a Metadata Ingestion workflow, we can run the Data Profiler workflow.
 While the `serviceName` will be the same to that was used in Metadata Ingestion, so the ingestion bot can get the `serviceConnection` details from the server.
 
 
@@ -14,14 +14,9 @@ This is a sample config for the profiler:
 
 {% codeInfoContainer %}
 
-{% codeInfo srNumber=13 %}
 #### Source Configuration - Source Config
 
 You can find all the definitions and types for the  `sourceConfig` [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/metadataIngestion/databaseServiceProfilerPipeline.json).
-
-**generateSampleData**: Option to turn on/off generating sample data.
-
-{% /codeInfo %}
 
 {% codeInfo srNumber=14 %}
 
@@ -34,19 +29,6 @@ You can find all the definitions and types for the  `sourceConfig` [here](https:
 **threadCount**: Number of threads to use during metric computations.
 
 {% /codeInfo %}
-
-{% codeInfo srNumber=16 %}
-
-**processPiiSensitive**: Optional configuration to automatically tag columns that might contain sensitive information.
-
-{% /codeInfo %}
-
-{% codeInfo srNumber=17 %}
-
-**confidence**: Set the Confidence value for which you want the column to be marked
-
-{% /codeInfo %}
-
 
 {% codeInfo srNumber=18 %}
 
@@ -100,26 +82,16 @@ To send the metadata to OpenMetadata, it needs to be specified as `type: metadat
 ```yaml {% isCodeBlock=true %}
 source:
   type: {% $connector %}
-  serviceName: local_athena
+  serviceName: {% $connector %}
   sourceConfig:
     config:
       type: Profiler
-```
-
-```yaml {% srNumber=13 %}
-      generateSampleData: true
 ```
 ```yaml {% srNumber=14 %}
       # profileSample: 85
 ```
 ```yaml {% srNumber=15 %}
       # threadCount: 5
-```
-```yaml {% srNumber=16 %}
-      processPiiSensitive: false
-```
-```yaml {% srNumber=17 %}
-      # confidence: 80
 ```
 ```yaml {% srNumber=18 %}
       # timeoutSeconds: 43200
@@ -158,8 +130,6 @@ processor:
   config: {}  # Remove braces if adding properties
     # tableConfig:
     #   - fullyQualifiedName: <table fqn>
-    #     profileSample: <number between 0 and 99> # default 
-
     #     profileSample: <number between 0 and 99> # default will be 100 if omitted
     #     profileQuery: <query to use for sampling data for the profiler>
     #     columnConfig:

@@ -79,7 +79,7 @@ $$
 $$section
 ### Store Sample Data $(id="storeSampleData")
 
-Set the Store Sample Data toggle to control whether to store sample data as part of Auto Classification workflow. If this is enabled, 100 rows will be ingested by default. You can update the number of rows in the "DatabaseServiceProfilerPipeline Advanced Config" section (i.e. `Sample Data Rows Count` setting).
+Set the Store Sample Data toggle to control whether to store sample data as part of Auto Classification workflow. If this is enabled, 50 rows will be ingested by default. You can update the number of rows in the "DatabaseServiceProfilerPipeline Advanced Config" section (i.e. `Sample Data Rows Count` setting).
 
 If disabled, OpenMetadata will not store any sample data, but will still use it on-the-fly to compute the Auto Classification.
 $$
@@ -95,29 +95,6 @@ $$
 $$section
 ### PII Inference Confidence Level $(id="confidence")
 Confidence level to use when inferring whether a column should be applied the classification or not (between 0 and 100). A number closer to 100 will yield less false positive but potentially more false negative.
-$$
-
-$$section
-### Profile Sample Type $(id="profileSampleType")
-The sample type can be set to either:
-
-* **Percentage**: this will use a percentage to sample the table (e.g. if table has 100 rows, and we set sample percentage tp 50%, the profiler will use 50 random rows to compute the metrics).
-* **Row Count**: this will use a number of rows to sample the table (e.g. if table has 100 rows, and we set row count to 10, the profiler will use 10 random rows to compute the metrics).
-  $$
-
-$$section
-### Profile Sample $(id="profileSample")
-Percentage of data or number of rows to use when sampling tables to compute the profiler metrics. By default (i.e. if left blank), the profiler will run against the entire table.
-$$
-
-$$section
-### Sampling Method Type $(id="samplingMethodType")
-
-**This parameter is effective for Snowflake only**
-
-The sampling method type can be set to **BERNOULLI** or **SYSTEM**. You can find the difference of two values in the document of the Snowflake. When you choice **BERNOULLI**, it will scan full rows in the table even though small value is set at the **Profile Sample**. However, it has less restlictions than **SYSTEM**.
-
-If no option is chosen, the default is **BERNOULLI**.
 $$
 
 $$section

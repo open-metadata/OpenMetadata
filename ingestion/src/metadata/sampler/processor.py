@@ -88,11 +88,7 @@ class SamplerProcessor(Processor):
                 schema_entity=schema_entity,
                 database_entity=database_entity,
                 table_config=get_config_for_table(entity, self.profiler_config),
-                default_sample_config=SampleConfig(
-                    profile_sample=self.source_config.profileSample,
-                    profile_sample_type=self.source_config.profileSampleType,
-                    sampling_method_type=self.source_config.samplingMethodType,
-                ),
+                default_sample_config=SampleConfig(),
                 default_sample_data_count=self.source_config.sampleDataCount,
             )
             sample_data = SampleData(

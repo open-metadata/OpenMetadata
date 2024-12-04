@@ -93,7 +93,7 @@ For a simple, local installation using our docker containers, this looks like:
 ```yaml {% srNumber=40 %}
 source:
   type: {% $connector %}-lineage
-  serviceName: <serviceName (same as metadata ingestion service name)>
+  serviceName: {% $connector %}
   sourceConfig:
     config:
       type: DatabaseLineage

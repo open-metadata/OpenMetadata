@@ -1732,7 +1732,7 @@ WHERE json #>> '{pipelineType}' = 'metadata';
 
 -- classification and sampling configs from the profiler pipelines
 UPDATE ingestion_pipeline_entity
-SET json = json::jsonb #- '{sourceConfig,config,processPiiSensitive}'  #- '{sourceConfig,config,confidence}'  #- '{sourceConfig,config,generateSampleData}'
+SET json = json::jsonb #- '{sourceConfig,config,processPiiSensitive}'  #- '{sourceConfig,config,confidence}'  #- '{sourceConfig,config,generateSampleData}' #- '{sourceConfig,config,sampleDataCount}'
 WHERE json #>> '{pipelineType}' = 'profiler';
 
 -- set value of 'jobId' as an array into 'jobIds' for dbt cloud

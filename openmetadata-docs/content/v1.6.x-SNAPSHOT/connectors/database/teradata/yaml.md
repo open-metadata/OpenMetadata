@@ -114,4 +114,6 @@ source:
 
 {% partial file="/v1.6/connectors/yaml/data-profiler.md" variables={connector: "teradata"} /%}
 
+{% partial file="/v1.5/connectors/yaml/auto-classification.md" variables={connector: "teradata"} /%}
+
 {% partial file="/v1.6/connectors/yaml/data-quality.md" /%}

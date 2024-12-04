@@ -162,6 +162,8 @@ source:
 
 {% partial file="/v1.5/connectors/yaml/data-profiler.md" variables={connector: "impala"} /%}
 
+{% partial file="/v1.5/connectors/yaml/auto-classification.md" variables={connector: "impala"} /%}
+
 {% partial file="/v1.5/connectors/yaml/data-quality.md" /%}
 
 ## Securing Impala Connection with SSL in OpenMetadata

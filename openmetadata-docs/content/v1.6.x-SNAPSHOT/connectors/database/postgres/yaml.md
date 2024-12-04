@@ -292,6 +292,8 @@ source:
 
 {% partial file="/v1.5/connectors/yaml/data-profiler.md" variables={connector: "postgres"} /%}
 
+{% partial file="/v1.5/connectors/yaml/auto-classification.md" variables={connector: "postgres"} /%}
+
 {% partial file="/v1.5/connectors/yaml/data-quality.md" /%}
 
 ## Securing Postgres Connection with SSL in OpenMetadata

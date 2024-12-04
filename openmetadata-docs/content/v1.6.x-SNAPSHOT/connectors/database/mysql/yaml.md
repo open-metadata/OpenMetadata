@@ -269,6 +269,8 @@ source:
 
 {% partial file="/v1.5/connectors/yaml/data-profiler.md" variables={connector: "mysql"} /%}
 
+{% partial file="/v1.5/connectors/yaml/auto-classification.md" variables={connector: "mysql"} /%}
+
 {% partial file="/v1.5/connectors/yaml/data-quality.md" /%}
 
 ## Securing MySQL Connection with SSL in OpenMetadata
