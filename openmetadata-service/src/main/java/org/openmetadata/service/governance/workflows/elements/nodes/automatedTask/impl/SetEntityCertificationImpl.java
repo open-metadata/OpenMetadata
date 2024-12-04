@@ -16,11 +16,10 @@ import org.flowable.engine.delegate.JavaDelegate;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.AssetCertification;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.resources.feeds.MessageParser;
-import org.openmetadata.service.resources.tags.TagLabelUtil;
-import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
@@ -76,7 +75,12 @@ public class SetEntityCertificationImpl implements JavaDelegate {
 
       AssetCertification assetCertification =
           new AssetCertification()
-              .withTagLabel(EntityUtil.toTagLabel(TagLabelUtil.getTag(certification)));
+              .withTagLabel(
+                  new TagLabel()
+                      .withTagFQN(certification)
+                      .withSource(TagLabel.TagSource.CLASSIFICATION)
+                      .withLabelType(TagLabel.LabelType.AUTOMATED)
+                      .withState(TagLabel.State.CONFIRMED));
       entity.setCertification(assetCertification);
     }
 
