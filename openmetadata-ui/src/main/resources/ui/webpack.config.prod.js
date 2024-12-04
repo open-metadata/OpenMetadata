@@ -177,9 +177,7 @@ module.exports = {
   // Plugins
   plugins: [
     // Clean webpack output directory
-    new CleanWebpackPlugin({
-      verbose: true, // Log removed files
-    }),
+    new CleanWebpackPlugin(),
 
     // Generate index.html from template
     new HtmlWebpackPlugin({
