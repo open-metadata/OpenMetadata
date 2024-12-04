@@ -1,0 +1,21 @@
+{
+  "name": "RetentionPolicyApplication",
+  "displayName": "Retention Policy",
+  "description": "**Retention Policy App: Automated Data Retention Management**\n\n**Efficient Record Management:** The Retention Policy App automates the cleanup and deletion of records for selected entities based on specified retention durations. It simplifies compliance with data retention policies and ensures efficient database management.\n\n**Customizable Retention Durations:** Tailor the retention period to match organizational or regulatory requirements for each entity, offering flexibility in data management.\n\n**Secure and Reliable:** Built with robust security measures to ensure safe handling of sensitive data while maintaining data integrity.\n\n**Seamless Integration:** Designed to integrate smoothly with OpenMetadata and other tools, the app operates within your existing infrastructure without disruption.\n\n**User-Friendly Configuration:** A straightforward interface allows easy setup and management of retention policies, making it accessible to users of all technical levels.",
+  "appType": "internal",
+  "appScreenshots": ["DataInsightsPic1.png"],
+  "developer": "Collate Inc.",
+  "developerUrl": "https://www.getcollate.io",
+  "privacyPolicyUrl": "https://www.getcollate.io",
+  "supportEmail": "support@getcollate.io",
+  "scheduleType": "NoSchedule",
+  "permission": "All",
+  "className": "org.openmetadata.service.apps.bundles.retentionPolicyApp.RetentionPolicyApp",
+  "runtime": {
+    "enabled": "true"
+  },
+  "appConfiguration": {
+    "entity": ["EventSubscription"],
+    "retentionPeriod": "One week"
+  }
+}
