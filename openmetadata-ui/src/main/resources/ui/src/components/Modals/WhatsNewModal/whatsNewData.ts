@@ -1170,7 +1170,7 @@ To continue pursuing this objective, the application was completely refactored t
   {
     id: 55,
     version: 'v1.6.0',
-    description: 'Released on 4th December 2024.',
+    description: 'Released on 5th December 2024.',
     features: [
       {
         title: `Visualizing Your Data Landscape with Entity Relationship (ER) Diagrams (Collate)`,
@@ -1236,8 +1236,18 @@ OpenMetadata 1.6 extends Role-Based Access Control (RBAC) to search functionalit
         path: 'https://www.youtube.com/embed/03ke9uv0PG0',
       },
       {
-        title: 'Alert Debuggability',
-        description: `Allowing users to test the destinations and see whenever the alert was triggered.`,
+        title: 'Streamlining Data Management with Additional Enhancements',
+        description: `Release 1.6 comes with several other notable improvements:
+
+- **Asynchronous Export APIs** : Enjoy increased efficiency when exporting and importing large datasets with new asynchronous APIs.
+
+- **Faster Search Re-indexing**:  Experience significantly improved performance in search re-indexing, making data discovery even smoother.
+
+- **Improved Data Insights Custom Dashboards UI (Collate)**: To make it even easier to write your own insights dashboards in Collate.
+
+- **Slack Integration (Collate)**: Collate is releasing a new Application that lets your users find and share assets directly within your Slack workspace!
+
+- **Alert Debuggability**: Allowing users to test the destinations and see whenever the alert was triggered.`,
         isImage: false,
         path: 'https://www.youtube.com/embed/7pUF9ZK2iK4',
       },
@@ -1259,11 +1269,36 @@ And in Collate, we are bringing four ETL, dashboarding and ML tools: **Matillion
       },
     ],
     changeLogs: {
-      Improvements: `- **Asynchronous Export APIs**: Enjoy increased efficiency when exporting and importing large datasets with new asynchronous APIs..
-- **Faster Search Re-indexing**:  Experience significantly improved performance in search re-indexing, making data discovery even smoother.
-- **Improved Data Insights Custom Dashboards UI ${CollateIconWithLinkMD}**: To make it even easier to write your own insights dashboards in Collate.
-- **Slack Integration ${CollateIconWithLinkMD}**: Collate is releasing a new Application that lets your users find and share assets directly within your Slack workspace!
+      ['Backward Incompatible Changes']: `
+
+**Ingestion Workflow Status:**
+
+We are updating how we compute the success percentage. Previously, we took into account for partial success the results of the Source (e.g., the tables we were able to properly retrieve from Snowflake, Redshift, etc.). This means that we had an error threshold in there were if up to 90% of the tables were successfully ingested, we would still consider the workflow as successful. However, any errors when sending the information to OpenMetadata would be considered as a failure.
+Now, we're changing this behavior to consider the success rate of all the steps involved in the workflow. The UI will then show more Partial Success statuses rather than Failed, properly reflecting the real state of the workflow.
+
+**Profiler & Auto Classification Workflow:**
+
+We are creating a new Auto Classification workflow that will take care of managing the sample data and PII classification, which was previously done by the Profiler workflow. This change will allow us to have a more modular and scalable system.
+The Profiler workflow will now only focus on the profiling part of the data, while the Auto Classification will take care of the rest.
+
+This means that we are removing these properties from the DatabaseServiceProfilerPipeline schema:
+
+-   generateSampleData
+-   processPiiSensitive
+-   confidence which will be moved to the new 
+-   Adding Glossary Term view is improved. Now we show glossary terms hierarchically enabling a better understanding of how the terms are setup while adding it to a table or dashboard.
+-   DatabaseServiceAutoClassificationPipeline schema.
+
+What you will need to do:
+
+-   If you are using the EXTERNAL ingestion for the profiler (YAML configuration), you will need to update your configuration, removing these properties as well.
+-   If you still want to use the Auto PII Classification and sampling features, you can create the new workflow from the UI.
 `,
+
+      [`Metadata Actions for ML Tagging - Deprecation Notice ${CollateIconWithLinkMD}`]: `
+Since we are introducing the Auto Classification workflow, we are going to remove in 1.7 the ML Tagging action from the Metadata Actions. That feature will be covered already by the Auto Classification workflow, which even brings more flexibility allow the on-the-fly usage of the sample data for classification purposes without having to store it in the database.`,
+
+      [`Service Spec for the Ingestion Framework`]: `This impacts users who maintain their own connectors for the ingestion framework that are NOT part of the OpenMetadata python library (openmetadata-ingestion). Introducing the "connector specifcication class (ServiceSpec)". The ServiceSpec class serves as the entrypoint for the connector and holds the references for the classes that will be used to ingest and process the metadata from the source. You can see postgres for an implementation example.`,
     },
   },
 ];
