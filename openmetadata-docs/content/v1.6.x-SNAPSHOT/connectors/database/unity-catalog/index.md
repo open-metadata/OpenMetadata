@@ -22,19 +22,19 @@ Configure and schedule Unity Catalog metadata workflow from the OpenMetadata UI:
 - [Lineage](/connectors/ingestion/lineage)
 - [dbt Integration](/connectors/ingestion/workflows/dbt)
 
-{% partial file="/v1.5/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/unity-catalog/yaml"} /%}
+{% partial file="/v1.6/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/unity-catalog/yaml"} /%}
 
-{% partial file="/v1.5/connectors/external-ingestion-deployment.md" /%}
+{% partial file="/v1.6/connectors/external-ingestion-deployment.md" /%}
 
 ## Metadata Ingestion
 
 {% partial 
-  file="/v1.5/connectors/metadata-ingestion-ui.md" 
+  file="/v1.6/connectors/metadata-ingestion-ui.md" 
   variables={
     connector: "Unity Catalog", 
-    selectServicePath: "/images/v1.5/connectors/unitycatalog/select-service.png",
-    addNewServicePath: "/images/v1.5/connectors/unitycatalog/add-new-service.png",
-    serviceConnectionPath: "/images/v1.5/connectors/unitycatalog/service-connection.png",
+    selectServicePath: "/images/v1.6/connectors/unitycatalog/select-service.png",
+    addNewServicePath: "/images/v1.6/connectors/unitycatalog/add-new-service.png",
+    serviceConnectionPath: "/images/v1.6/connectors/unitycatalog/service-connection.png",
 } 
 /%}
 
@@ -50,18 +50,18 @@ Configure and schedule Unity Catalog metadata workflow from the OpenMetadata UI:
 - **Catalog**: Catalog of the data source(Example: hive_metastore). This is optional parameter, if you would like to restrict the metadata reading to a single catalog. When left blank, OpenMetadata Ingestion attempts to scan all the catalog.
 - **DatabaseSchema**: databaseSchema of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single databaseSchema. When left blank, OpenMetadata Ingestion attempts to scan all the databaseSchema.
 
-{% partial file="/v1.5/connectors/database/advanced-configuration.md" /%}
+{% partial file="/v1.6/connectors/database/advanced-configuration.md" /%}
 
 {% /extraContent %}
 
-{% partial file="/v1.5/connectors/test-connection.md" /%}
+{% partial file="/v1.6/connectors/test-connection.md" /%}
 
-{% partial file="/v1.5/connectors/database/configure-ingestion.md" /%}
+{% partial file="/v1.6/connectors/database/configure-ingestion.md" /%}
 
-{% partial file="/v1.5/connectors/ingestion-schedule-and-deploy.md" /%}
+{% partial file="/v1.6/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
 
-{% partial file="/v1.5/connectors/troubleshooting.md" /%}
+{% partial file="/v1.6/connectors/troubleshooting.md" /%}
 
-{% partial file="/v1.5/connectors/database/related.md" /%}
+{% partial file="/v1.6/connectors/database/related.md" /%}
