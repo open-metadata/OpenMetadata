@@ -2651,7 +2651,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
             "In session change consolidation. Reverting to previous version {}",
             previous.getVersion());
         updated = previous;
-        updateInternal();
+        updateInternal(true);
         LOG.info(
             "In session change consolidation. Reverting to previous version {} completed",
             previous.getVersion());
@@ -2669,6 +2669,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
     /** Compare original and updated entities and perform updates. Update the entity version and track changes. */
     @Transaction
     private void updateInternal() {
+      updateInternal(false);
+    }
+
+    /** Compare original and updated entities and perform updates. Update the entity version and track changes. */
+    @Transaction
+    private void updateInternal(boolean consolidatingChanges) {
       if (operation.isDelete()) { // Soft DELETE Operation
         updateDeleted();
       } else { // PUT or PATCH operations
@@ -2687,12 +2693,16 @@ public abstract class EntityRepository<T extends EntityInterface> {
         updateStyle();
         updateLifeCycle();
         updateCertification();
-        entitySpecificUpdate();
+        entitySpecificUpdate(consolidatingChanges);
       }
     }
 
-    protected void entitySpecificUpdate() {
+    protected void entitySpecificUpdate(boolean consolidatingChanges) {
       // Default implementation. Override this to add any entity specific field updates
+    }
+
+    protected void entitySpecificUpdate() {
+      entitySpecificUpdate(false);
     }
 
     private void updateDescription() {
