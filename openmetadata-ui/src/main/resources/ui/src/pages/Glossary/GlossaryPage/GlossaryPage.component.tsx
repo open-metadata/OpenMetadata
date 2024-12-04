@@ -231,7 +231,6 @@ const GlossaryPage = () => {
         !glossaryFqn &&
           glossaries[0].fullyQualifiedName &&
           history.replace(getGlossaryPath(glossaries[0].fullyQualifiedName));
-
         setIsRightPanelLoading(false);
       }
     }
