@@ -40,6 +40,7 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -89,6 +90,7 @@ import org.openmetadata.schema.type.csv.CsvDocumentation;
 import org.openmetadata.schema.type.csv.CsvFile;
 import org.openmetadata.schema.type.csv.CsvHeader;
 import org.openmetadata.schema.type.csv.CsvImportResult;
+import org.openmetadata.sdk.exception.EntitySpecViolationException;
 import org.openmetadata.sdk.exception.SuggestionException;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
@@ -676,6 +678,7 @@ public class TableRepository extends EntityRepository<Table> {
         .withDatabase(schema.getDatabase())
         .withService(schema.getService())
         .withServiceType(schema.getServiceType());
+    validateTableConstraints(table);
   }
 
   @Override
@@ -693,6 +696,8 @@ public class TableRepository extends EntityRepository<Table> {
 
     // Restore the relationships
     table.withColumns(columnWithTags).withService(service);
+    // Store ER relationships based on table constraints
+    addConstraintRelationship(table, table.getTableConstraints());
   }
 
   @Override
@@ -1117,6 +1122,33 @@ public class TableRepository extends EntityRepository<Table> {
     return customMetrics;
   }
 
+  private void validateTableConstraints(Table table) {
+    if (!nullOrEmpty(table.getTableConstraints())) {
+      Set<TableConstraint> constraintSet = new HashSet<>();
+      for (TableConstraint constraint : table.getTableConstraints()) {
+        if (!constraintSet.add(constraint)) {
+          throw new EntitySpecViolationException(
+              "Duplicate constraint found in request: " + constraint);
+        }
+        for (String column : constraint.getColumns()) {
+          validateColumn(table, column);
+        }
+        if (!nullOrEmpty(constraint.getReferredColumns())) {
+          for (String column : constraint.getReferredColumns()) {
+            String toParent = FullyQualifiedName.getParentFQN(column);
+            String columnName = FullyQualifiedName.getColumnName(column);
+            try {
+              Table toTable = findByName(toParent, NON_DELETED);
+              validateColumn(toTable, columnName);
+            } catch (EntityNotFoundException e) {
+              throw new EntitySpecViolationException("Table not found: " + toParent);
+            }
+          }
+        }
+      }
+    }
+  }
+
   /** Handles entity updated from PUT and POST operation. */
   public class TableUpdater extends ColumnEntityUpdater {
     public TableUpdater(Table original, Table updated, Operation operation) {
@@ -1129,7 +1161,7 @@ public class TableRepository extends EntityRepository<Table> {
       Table updatedTable = updated;
       DatabaseUtil.validateColumns(updatedTable.getColumns());
       recordChange("tableType", origTable.getTableType(), updatedTable.getTableType());
-      updateConstraints(origTable, updatedTable);
+      updateTableConstraints(origTable, updatedTable, operation);
       updateColumns(
           COLUMN_FIELD, origTable.getColumns(), updated.getColumns(), EntityUtil.columnMatch);
       recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl());
@@ -1138,10 +1170,26 @@ public class TableRepository extends EntityRepository<Table> {
       recordChange("locationPath", original.getLocationPath(), updated.getLocationPath());
     }
 
-    private void updateConstraints(Table origTable, Table updatedTable) {
+    private void updateTableConstraints(Table origTable, Table updatedTable, Operation operation) {
+      validateTableConstraints(updatedTable);
+      if (operation.isPatch()
+          && !nullOrEmpty(updatedTable.getTableConstraints())
+          && !nullOrEmpty(origTable.getTableConstraints())) {
+        List<TableConstraint> newConstraints = new ArrayList<>();
+        for (TableConstraint constraint : updatedTable.getTableConstraints()) {
+          TableConstraint existing =
+              origTable.getTableConstraints().stream()
+                  .filter(c -> EntityUtil.tableConstraintMatch.test(c, constraint))
+                  .findAny()
+                  .orElse(null);
+          if (existing == null) {
+            newConstraints.add(constraint);
+          }
+        }
+        checkDuplicateTableConstraints(origTable, newConstraints);
+      }
       List<TableConstraint> origConstraints = listOrEmpty(origTable.getTableConstraints());
       List<TableConstraint> updatedConstraints = listOrEmpty(updatedTable.getTableConstraints());
-
       origConstraints.sort(EntityUtil.compareTableConstraint);
       origConstraints.stream().map(TableConstraint::getColumns).forEach(Collections::sort);
 
@@ -1157,6 +1205,66 @@ public class TableRepository extends EntityRepository<Table> {
           added,
           deleted,
           EntityUtil.tableConstraintMatch);
+
+      // manage table ER relationship based on table constraints
+      addConstraintRelationship(origTable, added);
+      deleteConstraintRelationship(origTable, deleted);
+    }
+  }
+
+  private void checkDuplicateTableConstraints(
+      Table origTable, List<TableConstraint> newConstraints) {
+    if (!nullOrEmpty(origTable.getTableConstraints()) && !nullOrEmpty(newConstraints)) {
+      Set<TableConstraint> origConstraints =
+          new HashSet<>(listOrEmpty(origTable.getTableConstraints()));
+      for (TableConstraint constraint : newConstraints) {
+        if (!origConstraints.add(constraint)) {
+          throw new EntitySpecViolationException("Table Constraint is Duplicate: " + constraint);
+        }
+      }
+    }
+  }
+
+  private void addConstraintRelationship(Table table, List<TableConstraint> constraints) {
+    if (!nullOrEmpty(constraints)) {
+      for (TableConstraint constraint : constraints) {
+        if (!nullOrEmpty(constraint.getReferredColumns())) {
+          for (String column : constraint.getReferredColumns()) {
+            String toParent = FullyQualifiedName.getParentFQN(column);
+            try {
+              EntityReference toTable =
+                  Entity.getEntityReferenceByName(TABLE, toParent, NON_DELETED);
+              addRelationship(
+                  table.getId(), toTable.getId(), TABLE, TABLE, Relationship.RELATED_TO);
+            } catch (EntityNotFoundException e) {
+              throw EntityNotFoundException.byName(
+                  String.format(
+                      "Failed to add table constraint due to missing table %s", toParent));
+            }
+          }
+        }
+      }
+    }
+  }
+
+  private void deleteConstraintRelationship(Table table, List<TableConstraint> constraints) {
+    if (!nullOrEmpty(constraints)) {
+      for (TableConstraint constraint : constraints) {
+        if (!nullOrEmpty(constraint.getReferredColumns())) {
+          for (String column : constraint.getReferredColumns()) {
+            String toParent = FullyQualifiedName.getParentFQN(column);
+            try {
+              EntityReference toTable = Entity.getEntityReferenceByName(TABLE, toParent, ALL);
+              deleteRelationship(
+                  table.getId(), TABLE, toTable.getId(), TABLE, Relationship.RELATED_TO);
+            } catch (EntityNotFoundException e) {
+              throw EntityNotFoundException.byName(
+                  String.format(
+                      "Failed to add table constraint due to missing table %s", toParent));
+            }
+          }
+        }
+      }
     }
   }
 
