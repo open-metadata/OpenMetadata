@@ -12,6 +12,7 @@
 """
 Source connection handler
 """
+from pathlib import Path
 from typing import Optional
 
 from sqlalchemy.engine import Engine
@@ -39,6 +40,13 @@ def get_connection(connection: Db2Connection) -> Engine:
     """
     Create connection
     """
+    # prepare license
+    if connection.license and connection.licenseFileName:
+        import clidriver
+
+        with open(Path(clidriver.__path__[0], connection.licenseFileName), "w") as file:
+            file.write(connection.license)
+
     return create_generic_db_connection(
         connection=connection,
         get_connection_url_fn=get_connection_url_common,
