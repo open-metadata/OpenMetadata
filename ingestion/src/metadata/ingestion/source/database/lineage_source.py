@@ -251,29 +251,33 @@ class LineageSource(QueryParserSource, ABC):
             f"Processing Procedure Lineage not supported for {str(self.service_connection.type.value)}"
         )
 
-    def _get_column_lineage(
-        self, from_table: Table, to_table: Table, columns_list: List[str]
+    def get_column_lineage(
+        self, from_table: Table, to_table: Table
     ) -> List[ColumnLineage]:
         """
         Get the column lineage from the fields
         """
         try:
             column_lineage = []
-            for field in columns_list or []:
+            for column in from_table.columns:
+                field = column.name.root
                 from_column = get_column_fqn(table_entity=from_table, column=field)
                 to_column = get_column_fqn(table_entity=to_table, column=field)
                 if from_column and to_column:
                     column_lineage.append(
                         ColumnLineage(fromColumns=[from_column], toColumn=to_column)
                     )
+
             return column_lineage
         except Exception as exc:
             logger.debug(f"Error to get column lineage: {exc}")
             logger.debug(traceback.format_exc())
 
-    @staticmethod
-    def _get_add_lineage_request(
-        from_entity: Table, to_entity: Table, column_lineage: List[ColumnLineage] = None
+    def get_add_cross_database_lineage_request(
+        self,
+        from_entity: Table,
+        to_entity: Table,
+        column_lineage: List[ColumnLineage] = None,
     ) -> Optional[Either[AddLineageRequest]]:
         if from_entity and to_entity:
             return Either(
@@ -321,5 +325,8 @@ class LineageSource(QueryParserSource, ABC):
                 logger.warning(
                     f"Lineage extraction is not supported for {str(self.service_connection.type.value)} connection"
                 )
-        if self.source_config.processCrossDatabaseLineage:
+        if (
+            self.source_config.processCrossDatabaseLineage
+            and self.source_config.crossDatabaseServiceNames
+        ):
             yield from self.yield_cross_database_lineage() or []

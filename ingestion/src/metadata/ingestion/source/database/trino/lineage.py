@@ -11,12 +11,12 @@
 """
 Trino lineage module
 """
+import re
 import traceback
-from typing import Iterable, List, Tuple
+from typing import Iterable, List
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.database import Database
-from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
@@ -61,38 +61,45 @@ class TrinoLineageSource(TrinoQueryParserSource, LineageSource):
             column.name.root for column in table1.columns
         } == {column.name.root for column in table2.columns}
 
-    def get_lineage_details(self) -> List[Tuple[Table, Table]]:
+    def get_cross_database_lineage(
+        self, from_table: Table, to_table: Table
+    ) -> Either[AddLineageRequest]:
         """
-        Method to fetch database lineage details.
+        Method to return cross database lineage request object
         """
-        all_cross_database_fqns = self.get_cross_database_fqn_from_service_names()
-        cross_database_table_fqn_mapping = {}
-        lineage_details = []
-
-        # Get all databases for the specified Trino service
-        trino_databases = self.metadata.list_all_entities(
-            entity=Database, params={"service": self.config.serviceName}
-        )
-        for trino_database in trino_databases:
-            trino_database_fqn = trino_database.fullyQualifiedName.root
-
-            # Get all schemas for the specified Trino database
-            trino_schemas = self.metadata.list_all_entities(
-                entity=DatabaseSchema,
-                params={"database": trino_database.fullyQualifiedName.root},
+        column_lineage = None
+        if from_table and from_table.columns and to_table and to_table.columns:
+            column_lineage = self.get_column_lineage(
+                from_table=from_table, to_table=to_table
             )
-            for trino_schema in trino_schemas:
-                if trino_schema.name.root == "information_schema":
-                    continue
+        return self.get_add_cross_database_lineage_request(
+            from_entity=from_table, to_entity=to_table, column_lineage=column_lineage
+        )
+
+    def yield_cross_database_lineage(self) -> Iterable[Either[AddLineageRequest]]:
+        try:
+            all_cross_database_fqns = self.get_cross_database_fqn_from_service_names()
+            cross_database_table_fqn_mapping = {}
+
+            # Get all databases for the specified Trino service
+            trino_databases = self.metadata.list_all_entities(
+                entity=Database, params={"service": self.config.serviceName}
+            )
+            for trino_database in trino_databases:
+                trino_database_fqn = trino_database.fullyQualifiedName.root
 
                 # Get all tables for the specified Trino database schema
                 trino_tables = self.metadata.list_all_entities(
-                    entity=Table,
-                    params={"databaseSchema": trino_schema.fullyQualifiedName.root},
+                    entity=Table, params={"database": trino_database_fqn}
                 )
                 for trino_table in trino_tables:
-                    trino_table_fqn = trino_table.fullyQualifiedName.root
+                    if re.match(
+                        r"^(system(_|$).*|information(_|$).*|.*(_|^)schema$|pg_.*|sys_.*|.*_system|db_.*)$",
+                        trino_table.databaseSchema.name,
+                    ):
+                        continue
 
+                    trino_table_fqn = trino_table.fullyQualifiedName.root
                     for cross_database_fqn in all_cross_database_fqns:
                         # Construct the FQN for cross-database tables
                         cross_database_table_fqn = trino_table_fqn.replace(
@@ -107,33 +114,14 @@ class TrinoLineageSource(TrinoQueryParserSource, LineageSource):
                                 Table, fqn=cross_database_table_fqn
                             ),
                         )
+                        # Create cross database lineage request if both tables are same
                         if cross_database_table and self.check_same_table(
                             trino_table, cross_database_table
                         ):
-                            lineage_details.append((trino_table, cross_database_table))
+                            yield self.get_cross_database_lineage(
+                                cross_database_table, trino_table
+                            )
                             break
-
-        return lineage_details
-
-    def yield_cross_database_lineage(self) -> Iterable[Either[AddLineageRequest]]:
-        if not (
-            self.source_config.processCrossDatabaseLineage
-            and self.source_config.crossDatabaseServiceNames
-        ):
-            return
-
-        try:
-            lineage_details = self.get_lineage_details()
-            for target, source in lineage_details:
-                column_lineage = None
-                if source and source.columns and target and target.columns:
-                    columns_list = [column.name.root for column in source.columns]
-                    column_lineage = self._get_column_lineage(
-                        from_table=source, to_table=target, columns_list=columns_list
-                    )
-                yield self._get_add_lineage_request(
-                    from_entity=source, to_entity=target, column_lineage=column_lineage
-                )
         except Exception as exc:
             yield Either(
                 left=StackTraceError(
