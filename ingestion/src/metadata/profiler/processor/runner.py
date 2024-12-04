@@ -83,6 +83,11 @@ class QueryRunner:
         """Table name attribute access"""
         return self.raw_dataset.__table__.schema
 
+    @property
+    def session(self):
+        """Table name attribute access"""
+        return self._session
+
     def _build_query(self, *entities, **kwargs) -> Query:
         """Build query object
 

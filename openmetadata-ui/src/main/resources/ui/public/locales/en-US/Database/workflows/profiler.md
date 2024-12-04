@@ -98,7 +98,7 @@ $$section
 
 **This parameter is effective for Snowflake only**
 
-The sampling method type can be set to **BERNOULLI** or **SYSTEM**. You can find the difference of two values in the document of the Snowflake. When you choice **BERNOULLI**, it will scan full rows in the table even though small value is set at the **Profile Sample**. However, it has less restlictions than **SYSTEM**.
+The sampling method type can be set to **BERNOULLI** or **SYSTEM**. Only database supporting these two sampling methods will take this setting into account. When you choose **BERNOULLI**, it will scan full rows in the table even though small value is set at the **Profile Sample**. However, it has less restrictions than **SYSTEM**. For more information you can reference the service documentation.
 
 If no option is chosen, the default is **BERNOULLI**.
 $$

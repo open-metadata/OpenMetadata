@@ -223,8 +223,11 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
         if not is_safe_sql_query(self.sample_query):
             raise RuntimeError(f"SQL expression is not safe\n\n{self.sample_query}")
 
-        return self.client.query(self.raw_dataset).from_statement(
-            text(f"{self.sample_query}")
+        stmt = text(f"{self.sample_query}")
+        stmt = stmt.columns(*list(inspect(self.raw_dataset).c))
+
+        return self.client.query(stmt.subquery()).cte(
+            f"{self.raw_dataset.__tablename__}_user_sampled"
         )
 
     def _partitioned_table(self) -> Query:

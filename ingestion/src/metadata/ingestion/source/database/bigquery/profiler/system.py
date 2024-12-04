@@ -13,6 +13,7 @@ from metadata.profiler.metrics.system.system import (
     SQASessionProvider,
     SystemMetricsComputer,
 )
+from metadata.profiler.processor.runner import QueryRunner
 from metadata.utils.logger import profiler_logger
 from metadata.utils.time_utils import datetime_to_timestamp
 
@@ -25,11 +26,11 @@ class BigQuerySystemMetricsSource(
     """BigQuery system metrics source class"""
 
     def get_kwargs(self, **kwargs):
-        table = kwargs.get("table")
+        runner: QueryRunner = kwargs.get("runner")
         return {
-            "table": table.__table__.name,
-            "dataset_id": table.__table_args__["schema"],
-            "project_id": super().get_session().get_bind().url.host,
+            "table": runner.table_name,
+            "database": runner.session.get_bind().url.database,
+            "schema": runner.schema_name,
             "usage_location": kwargs.get("usage_location"),
         }
 
