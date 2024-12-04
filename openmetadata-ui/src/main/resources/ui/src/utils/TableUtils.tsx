@@ -965,6 +965,8 @@ export const tableConstraintRendererBasedOnType = (
   constraintType: ConstraintType,
   columns?: string[]
 ) => {
+  const isSingleColumn = columns?.length === 1;
+
   return (
     <div
       className="d-flex constraint-columns"
@@ -976,8 +978,11 @@ export const tableConstraintRendererBasedOnType = (
         size={0}>
         {columns?.map((column, index) => (
           <Fragment key={column}>
-            {(columns?.length ?? 0) - 1 !== index ? (
-              <ConstraintIcon constraintType={constraintType} />
+            {(columns?.length ?? 0) - 1 !== index || isSingleColumn ? (
+              <ConstraintIcon
+                constraintType={constraintType}
+                showOnlyIcon={isSingleColumn}
+              />
             ) : null}
           </Fragment>
         ))}

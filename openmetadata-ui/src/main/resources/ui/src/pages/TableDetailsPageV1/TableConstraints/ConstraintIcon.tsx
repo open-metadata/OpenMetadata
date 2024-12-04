@@ -19,15 +19,20 @@ import { ReactComponent as IconUnique } from '../../../assets/svg/icon-unique.sv
 
 import SectionLine from '../../../assets/svg/section-line-medium.svg';
 
+import classNames from 'classnames';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ConstraintType } from '../../../generated/entity/data/table';
 
 interface ConstraintIconProps {
   constraintType: ConstraintType;
+  showOnlyIcon: boolean;
 }
 
-const ConstraintIcon = ({ constraintType }: ConstraintIconProps) => {
+const ConstraintIcon = ({
+  constraintType,
+  showOnlyIcon,
+}: ConstraintIconProps) => {
   const { t } = useTranslation();
 
   const { icon, title } = useMemo(() => {
@@ -64,9 +69,13 @@ const ConstraintIcon = ({ constraintType }: ConstraintIconProps) => {
 
   return (
     <div
-      className="constraint-primary-key"
+      className={classNames('constraint-primary-key', {
+        'm-r-xs': showOnlyIcon,
+      })}
       data-testid={`${constraintType}-icon`}>
-      <img className="primary-key-section-line" src={SectionLine} />
+      {!showOnlyIcon && (
+        <img className="primary-key-section-line" src={SectionLine} />
+      )}
       <Tooltip placement="bottom" title={title} trigger="hover">
         <Icon
           alt={constraintType}

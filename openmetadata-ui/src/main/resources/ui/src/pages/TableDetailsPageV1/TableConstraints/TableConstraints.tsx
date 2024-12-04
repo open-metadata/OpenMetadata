@@ -101,7 +101,7 @@ const TableConstraints: FC<TableConstraintsProps> = ({
         )}
 
         {tableDetails?.tableConstraints?.map(
-          ({ constraintType, columns, referredColumns }, index) => {
+          ({ constraintType, columns, referredColumns }) => {
             if (constraintType === ConstraintType.PrimaryKey) {
               return tableConstraintRendererBasedOnType(
                 ConstraintType.PrimaryKey,
