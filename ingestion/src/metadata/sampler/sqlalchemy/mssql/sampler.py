@@ -21,7 +21,7 @@ from metadata.generated.schema.entity.data.table import ProfileSampleType
 from metadata.sampler.sqlalchemy.sampler import SQASampler
 
 
-class MSSQLSampler(SQASampler):
+class MssqlSampler(SQASampler):
     """
     Generates a sample of the data to not
     run the query in the whole table.
