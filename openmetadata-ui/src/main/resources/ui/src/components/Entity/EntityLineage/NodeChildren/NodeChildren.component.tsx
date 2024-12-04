@@ -113,6 +113,10 @@ const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
     }
   }, [children]);
 
+  useEffect(() => {
+    setShowAllColumns(expandAllColumns);
+  }, [expandAllColumns]);
+
   const renderRecord = useCallback(
     (record: Column) => {
       const isColumnTraced = tracedColumns.includes(

@@ -132,7 +132,9 @@ export const dragAndDropNode = async (
   await page.hover(originSelector);
   await page.mouse.down();
   const box = (await destinationElement.boundingBox())!;
-  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  const x = (box.x + box.width / 2) * 0.25; // 0.25 as zoom factor
+  const y = (box.y + box.height / 2) * 0.25; // 0.25 as zoom factor
+  await page.mouse.move(x, y);
   await destinationElement.hover();
   await page.mouse.up();
 };
@@ -348,7 +350,8 @@ export const applyPipelineFromModal = async (
 
   await page
     .locator(`[data-testid="edge-${fromNodeFqn}-${toNodeFqn}"]`)
-    .dispatchEvent('click');
+    .click({ force: true });
+
   await page.locator('[data-testid="add-pipeline"]').dispatchEvent('click');
 
   const waitForSearchResponse = page.waitForResponse(
