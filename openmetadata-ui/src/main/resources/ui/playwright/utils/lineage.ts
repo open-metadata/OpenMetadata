@@ -86,7 +86,7 @@ export const performZoomOut = async (page: Page) => {
   const zoomOutBtn = page.locator('.react-flow__controls-zoomout');
   const enabled = await zoomOutBtn.isEnabled();
   if (enabled) {
-    for (const _ of Array.from({ length: 10 })) {
+    for (const _ of Array.from({ length: 8 })) {
       await zoomOutBtn.dispatchEvent('click');
     }
   }
@@ -132,7 +132,9 @@ export const dragAndDropNode = async (
   await page.hover(originSelector);
   await page.mouse.down();
   const box = (await destinationElement.boundingBox())!;
-  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  const x = (box.x + box.width / 2) * 0.25; // 0.25 as zoom factor
+  const y = (box.y + box.height / 2) * 0.25; // 0.25 as zoom factor
+  await page.mouse.move(x, y);
   await destinationElement.hover();
   await page.mouse.up();
 };
