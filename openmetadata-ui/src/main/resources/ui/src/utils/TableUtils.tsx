@@ -990,14 +990,36 @@ export const tableConstraintRendererBasedOnType = (
 
       <Space direction="vertical" size={16}>
         {columns?.map((column) => (
-          <Typography.Text
-            className="w-60"
-            ellipsis={{ tooltip: true }}
-            key={column}>
+          <Typography.Text ellipsis={{ tooltip: true }} key={column}>
             {column}
           </Typography.Text>
         ))}
       </Space>
     </div>
   );
+};
+
+/**
+ * Recursive function to get all columns from table column and its children
+ * @param columns Table Columns for creating options in table constraint form
+ * @returns column options with label and value
+ */
+export const getColumnOptionsFromTableColumn = (columns: Column[]) => {
+  const options: {
+    label: string;
+    value: string;
+  }[] = [];
+
+  columns.forEach((item) => {
+    if (!isEmpty(item.children)) {
+      options.push(...getColumnOptionsFromTableColumn(item.children ?? []));
+    }
+
+    options.push({
+      label: item.name,
+      value: item.name,
+    });
+  });
+
+  return options;
 };

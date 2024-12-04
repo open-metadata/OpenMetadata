@@ -37,7 +37,10 @@ import {
   escapeESReservedCharacters,
   getEncodedFqn,
 } from '../../../../utils/StringsUtils';
-import { createTableConstraintObject } from '../../../../utils/TableUtils';
+import {
+  createTableConstraintObject,
+  getColumnOptionsFromTableColumn,
+} from '../../../../utils/TableUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import './table-constraint.style.less';
 import {
@@ -62,11 +65,7 @@ const TableConstraintsModal = ({
   const constraintType = Form.useWatch('constraintType', form);
 
   const tableColumnNameOptions = useMemo(
-    () =>
-      tableDetails?.columns.map((item) => ({
-        label: item.name,
-        value: item.name,
-      })) ?? [],
+    () => getColumnOptionsFromTableColumn(tableDetails?.columns ?? []),
     [tableDetails?.columns]
   );
 
