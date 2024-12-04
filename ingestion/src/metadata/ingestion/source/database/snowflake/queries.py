@@ -294,15 +294,36 @@ SELECT
   PROCEDURE_LANGUAGE AS language,
   PROCEDURE_DEFINITION AS definition,
   ARGUMENT_SIGNATURE AS signature,
-  COMMENT as comment
+  COMMENT as comment,
+  'StoredProcedure' as procedure_type
 FROM INFORMATION_SCHEMA.PROCEDURES
 WHERE PROCEDURE_CATALOG = '{database_name}'
   AND PROCEDURE_SCHEMA = '{schema_name}'
     """
 )
 
+SNOWFLAKE_GET_FUNCTIONS = textwrap.dedent(
+    """
+SELECT
+  FUNCTION_NAME AS name,
+  FUNCTION_OWNER AS owner,
+  FUNCTION_LANGUAGE AS language,
+  FUNCTION_DEFINITION AS definition,
+  ARGUMENT_SIGNATURE AS signature,
+  COMMENT as comment,
+  'UDF' as procedure_type
+FROM INFORMATION_SCHEMA.FUNCTIONS
+WHERE FUNCTION_CATALOG = '{database_name}'
+  AND FUNCTION_SCHEMA = '{schema_name}'
+    """
+)
+
 SNOWFLAKE_DESC_STORED_PROCEDURE = (
     "DESC PROCEDURE {database_name}.{schema_name}.{procedure_name}{procedure_signature}"
+)
+
+SNOWFLAKE_DESC_FUNCTION = (
+    "DESC FUNCTION {database_name}.{schema_name}.{procedure_name}{procedure_signature}"
 )
 
 SNOWFLAKE_GET_STORED_PROCEDURE_QUERIES = textwrap.dedent(

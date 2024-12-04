@@ -100,6 +100,7 @@ ALLOWED_COMMON_PATCH_FIELDS = {
     "fileFormat": True,
     # Stored Procedure Fields
     "storedProcedureCode": True,
+    "storedProcedureType": True,
     "code": True,
     # Dashboard Entity Fields
     "chartType": True,
