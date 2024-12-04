@@ -48,4 +48,4 @@ alt="set compute row count"
 
  This query can be added to the table and shared with other users.
 
- ![inspection query](/images/v1.5/features/ingestion/workflows/data-quality/inspection-query.png)
+ ![inspection query](/images/v1.6/features/ingestion/workflows/data-quality/inspection-query.png)
