@@ -1167,4 +1167,98 @@ To continue pursuing this objective, the application was completely refactored t
 `,
     },
   },
+  {
+    id: 55,
+    version: 'v1.6.0',
+    description: 'Released on 4th December 2024.',
+    features: [
+      {
+        title: `Visualizing Your Data Landscape with Entity Relationship (ER) Diagrams (Collate)`,
+        description: `Understanding complex database schemas can be challenging without clear visualization. While OpenMetadata's best-in-class Lineage UI helps track data flow, there are better options for viewing structural relationships between tables. Collate 1.6 introduces ER diagrams as a new feature to let you:
+
+1.  Visualize table connections through primary and foreign key constraints
+
+2.  Navigate between data assets to discover relationships
+
+3.  Modify connections using the built-in UI editor
+
+ER diagrams help you better understand and manage your data architecture by showing how your database tables relate to each other.`,
+        isImage: false,
+        path: '',
+      },
+      {
+        title:
+          'Establishing Smooth Data Governance with Automated Glossary Approval Workflows (Collate)',
+        description: `Organizations often struggle with data governance due to rigid, pre-defined manual workflows. OpenMetadata 1.6 introduces a new, automated data governance framework designed to be customized to each organization's needs.
+        
+In Collate 1.6, the Glossary Approval Workflow has been migrated to this new framework. Now, you can create custom approval processes with specific conditions and rules and easily visualize them through intuitive workflow diagrams. You can also create smart approval processes for glossary terms with real-time state changes and task creation to save time and streamline work. `,
+        isImage: false,
+        path: '',
+      },
+      {
+        title:
+          'Data Certification Workflows for Automated Bronze, Silver, & Gold Data Standardization (Collate)',
+        description: `Collate 1.6 also leverages the new data governance framework for a new Data Certification Workflow, allowing you to define your organization's rules to certify your data as Bronze, Silver, or Gold. Certified assets are a great way to help users discover the right data and inform them which data has been properly curated.
+        
+Our vision is to expand our governance framework to allow our users to create their own Custom Governance workflows. We want to enable data teams to implement and automate data governance processes that perfectly fit your organization, promoting data quality and compliance.`,
+        isImage: false,
+        path: '',
+      },
+      {
+        title:
+          'Maintaining a Healthy Data Platform with Observability Dashboards (Collate)',
+        description: `Monitoring data quality and incident management across platforms can be challenging. OpenMetadata has been a pillar for data quality implementations, with its ability to create tests from the UI, native observability alerts, and Incident Manager. It offers data quality insights on a per-table level. .
+
+In Collate 1.6, we’re introducing platform-wide observability dashboards that allow you to track overall data quality coverage trends and analyze incident response performance across your entire data estate. Quickly identify root causes through enhanced asset and lineage views and enable proactive data quality management across your entire data ecosystem.`,
+        isImage: false,
+        path: '',
+      },
+      {
+        title: 'Elevating Metric Management with Dedicated Metric Entities',
+        description: `Metrics are essential for data-driven organizations, but OpenMetadata previously lacked dedicated metric management, forcing users to use glossary terms as a workaround. The new "Metric" entity in OpenMetadata 1.6 provides a purpose-built solution to:.
+
+1. Document detailed metric calculations and descriptions
+
+2. Record calculation formulas and implementation code (Python, Java, SQL, LaTeX)
+
+3. Visualize metric lineage from source data to insights
+
+This new addition helps teams better manage, understand, and calculate their business KPIs, for improved data literacy and consistency across data teams. `,
+        isImage: false,
+        path: '',
+      },
+      {
+        title: 'Reinforcing Data Security with Search RBAC',
+        description: `OpenMetadata's Roles and Policies enable granular permission control, ensuring appropriate access to metadata across different domains and teams. Some data teams may wish to enable data discovery to search for other tables while still enforcing controls with access requests. Other data teams in more restrictive environments may also wish to control the search experience.
+
+OpenMetadata 1.6 extends Role-Based Access Control (RBAC) to search functionality, allowing administrators to tailor user search experience. This provides personalized search results, with users only seeing assets they have permission to access, as well as stronger data governance by ensuring users only interact with data within their defined roles and responsibilities.`,
+        isImage: false,
+        path: '',
+      },
+      {
+        title: 'Expanded Connector Ecosystem and Diversity',
+        description: `OpenMetadata’s ingestion framework contains 80+ native connectors. These connectors are the foundation of the platform and bring in all the metadata your team needs: technical metadata, lineage, usage, profiling, etc.
+
+We bring new connectors in each release, continuously expanding our coverage. This time, release 1.6 comes with seven new connectors:
+
+1. **OpenAPI**: Extract rich metadata from OpenAPI specifications, including endpoints and schemas.
+
+2. **Sigma**: Bringing in your BI dashboard information.
+
+3. **Exasol**: Gain insights into your Exasol database, now supported thanks to Nicola Coretti’s OSS contribution!
+
+And in Collate, we are bringing four ETL, dashboarding and ML tools: **Matillion, Azure Data Factory, Stitch, PowerBI Server** and **Vertex AI!**`,
+        isImage: false,
+        path: '',
+      },
+    ],
+    changeLogs: {
+      Improvements: `- **Asynchronous Export APIs**: Enjoy increased efficiency when exporting and importing large datasets with new asynchronous APIs..
+- **Faster Search Re-indexing**:  Experience significantly improved performance in search re-indexing, making data discovery even smoother.
+- **Improved Data Insights Custom Dashboards UI ${CollateIconWithLinkMD}**: To make it even easier to write your own insights dashboards in Collate.
+- **Slack Integration ${CollateIconWithLinkMD}**: Collate is releasing a new Application that lets your users find and share assets directly within your Slack workspace!
+- **Alert Debuggability**:  Allowing users to test the destinations and see whenever the alert was triggered.
+`,
+    },
+  },
 ];
