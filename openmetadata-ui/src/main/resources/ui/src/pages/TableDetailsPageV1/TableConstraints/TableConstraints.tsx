@@ -89,7 +89,7 @@ const TableConstraints: FC<TableConstraintsProps> = ({
           )}
         </Space>
 
-        {hasPermission && tableDetails?.tableConstraints?.length === 0 && (
+        {hasPermission && isEmpty(tableDetails?.tableConstraints) && (
           <TagButton
             className="text-primary cursor-pointer"
             dataTestId="table-constraints-add-button"
@@ -131,7 +131,10 @@ const TableConstraints: FC<TableConstraintsProps> = ({
             }
             if (constraintType === ConstraintType.ForeignKey) {
               return (
-                <div className="d-flex gap-2 constraint-columns" key={index}>
+                <div
+                  className="d-flex gap-2 constraint-columns"
+                  data-testid={`${ConstraintType.ForeignKey}-container`}
+                  key={ConstraintType.ForeignKey}>
                   <ForeignKeyConstraint />
                   <div className="d-flex flex-column gap-2">
                     <Typography.Text data-testid="constraint-column-name">

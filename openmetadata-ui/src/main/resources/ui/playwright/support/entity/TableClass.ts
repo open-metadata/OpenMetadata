@@ -102,12 +102,6 @@ export class TableClass extends EntityClass {
     description: 'description',
     columns: this.children,
     databaseSchema: `${this.service.name}.${this.database.name}.${this.schema.name}`,
-    tableConstraints: [
-      {
-        constraintType: 'PRIMARY_KEY',
-        columns: ['user_id', 'shop_id'],
-      },
-    ],
   };
 
   serviceResponseData: unknown;

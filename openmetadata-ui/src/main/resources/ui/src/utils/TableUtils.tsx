@@ -62,10 +62,13 @@ import { ReactComponent as ContainerIcon } from '../assets/svg/ic-storage.svg';
 import { ReactComponent as IconStoredProcedure } from '../assets/svg/ic-stored-procedure.svg';
 import { ReactComponent as TableIcon } from '../assets/svg/ic-table.svg';
 import { ReactComponent as TopicIcon } from '../assets/svg/ic-topic.svg';
+import { ReactComponent as IconDistLineThrough } from '../assets/svg/icon-dist-line-through.svg';
 import { ReactComponent as IconDistKey } from '../assets/svg/icon-distribution.svg';
 import { ReactComponent as IconKeyLineThrough } from '../assets/svg/icon-key-line-through.svg';
 import { ReactComponent as IconKey } from '../assets/svg/icon-key.svg';
 import { ReactComponent as IconNotNullLineThrough } from '../assets/svg/icon-not-null-line-through.svg';
+import { ReactComponent as IconSortLineThrough } from '../assets/svg/icon-sort-line-through.svg';
+
 import { ReactComponent as IconNotNull } from '../assets/svg/icon-not-null.svg';
 import { ReactComponent as RoleIcon } from '../assets/svg/icon-role-grey.svg';
 import { ReactComponent as IconSortKey } from '../assets/svg/icon-sort.svg';
@@ -230,7 +233,7 @@ export const getConstraintIcon = ({
       title = t('label.entity-key', {
         entity: t('label.dist'),
       });
-      icon = isConstraintDeleted ? IconDistKey : IconDistKey;
+      icon = isConstraintDeleted ? IconDistLineThrough : IconDistKey;
       dataTestId = 'dist-key';
 
       break;
@@ -239,7 +242,7 @@ export const getConstraintIcon = ({
       title = t('label.entity-key', {
         entity: t('label.sort'),
       });
-      icon = isConstraintDeleted ? IconSortKey : IconSortKey;
+      icon = isConstraintDeleted ? IconSortLineThrough : IconSortKey;
       dataTestId = 'sort-key';
 
       break;
@@ -963,7 +966,10 @@ export const tableConstraintRendererBasedOnType = (
   columns?: string[]
 ) => {
   return (
-    <div className="d-flex constraint-columns" key={constraintType}>
+    <div
+      className="d-flex constraint-columns"
+      data-testid={`${constraintType}-container`}
+      key={constraintType}>
       <Space
         className="constraint-icon-container"
         direction="vertical"
