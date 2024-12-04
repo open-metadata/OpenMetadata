@@ -18,7 +18,7 @@ To solve this issue, you can edit your Service Connection by adding the followin
 - Value: `true`
 
 {% image
-src="/images/v1.5/connectors/synapse/autocommit.webp"
+src="/images/v1.6/connectors/synapse/autocommit.webp"
 alt="autocommit" /%}
 
 
@@ -31,7 +31,7 @@ This is an exception you can get when trying to connect to Synapse using SQLAlch
 To solve this issue, you need to add your IP address in firewall rules for your Azure SQL instance.
 
 {% image
-src="/images/v1.5/connectors/synapse/azure-firewall.webp"
+src="/images/v1.6/connectors/synapse/azure-firewall.webp"
 alt="azure sql firewall rules"
 caption="azure sql firewall rules" /%}
 

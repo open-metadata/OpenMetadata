@@ -28,9 +28,9 @@ Configure and schedule Databricks metadata and profiler workflows from the OpenM
 - [Lineage](/connectors/ingestion/lineage)
 - [dbt Integration](/connectors/ingestion/workflows/dbt)
 
-{% partial file="/v1.5/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/databricks/yaml"} /%}
+{% partial file="/v1.6/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/databricks/yaml"} /%}
 
-{% partial file="/v1.5/connectors/external-ingestion-deployment.md" /%}
+{% partial file="/v1.6/connectors/external-ingestion-deployment.md" /%}
 
 ## Unity Catalog
 
@@ -39,12 +39,12 @@ If you are using unity catalog in Databricks, then checkout the [Unity Catalog](
 ## Metadata Ingestion
 
 {% partial 
-  file="/v1.5/connectors/metadata-ingestion-ui.md" 
+  file="/v1.6/connectors/metadata-ingestion-ui.md" 
   variables={
     connector: "Databricks", 
-    selectServicePath: "/images/v1.5/connectors/databricks/select-service.png",
-    addNewServicePath: "/images/v1.5/connectors/databricks/add-new-service.png",
-    serviceConnectionPath: "/images/v1.5/connectors/databricks/service-connection.png",
+    selectServicePath: "/images/v1.6/connectors/databricks/select-service.png",
+    addNewServicePath: "/images/v1.6/connectors/databricks/add-new-service.png",
+    serviceConnectionPath: "/images/v1.6/connectors/databricks/service-connection.png",
 } 
 /%}
 
@@ -60,18 +60,18 @@ If you are using unity catalog in Databricks, then checkout the [Unity Catalog](
 - **Catalog**: Catalog of the data source(Example: hive_metastore). This is optional parameter, if you would like to restrict the metadata reading to a single catalog. When left blank, OpenMetadata Ingestion attempts to scan all the catalog.
 - **DatabaseSchema**: databaseSchema of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single databaseSchema. When left blank, OpenMetadata Ingestion attempts to scan all the databaseSchema.
 
-{% partial file="/v1.5/connectors/database/advanced-configuration.md" /%}
+{% partial file="/v1.6/connectors/database/advanced-configuration.md" /%}
 
 {% /extraContent %}
 
-{% partial file="/v1.5/connectors/test-connection.md" /%}
+{% partial file="/v1.6/connectors/test-connection.md" /%}
 
-{% partial file="/v1.5/connectors/database/configure-ingestion.md" /%}
+{% partial file="/v1.6/connectors/database/configure-ingestion.md" /%}
 
-{% partial file="/v1.5/connectors/ingestion-schedule-and-deploy.md" /%}
+{% partial file="/v1.6/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
 
-{% partial file="/v1.5/connectors/troubleshooting.md" /%}
+{% partial file="/v1.6/connectors/troubleshooting.md" /%}
 
-{% partial file="/v1.5/connectors/database/related.md" /%}
+{% partial file="/v1.6/connectors/database/related.md" /%}

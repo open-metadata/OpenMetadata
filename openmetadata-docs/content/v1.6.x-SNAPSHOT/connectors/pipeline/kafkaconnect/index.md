@@ -25,7 +25,7 @@ Configure and schedule KafkaConnect metadata and profiler workflows from the Ope
 - [Troubleshooting](#troubleshooting)
     - [Workflow Deployment Error](#workflow-deployment-error)
 
-{% partial file="/v1.5/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/pipeline/kafkaconnect/yaml"} /%}
+{% partial file="/v1.6/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/pipeline/kafkaconnect/yaml"} /%}
 
 ## Requirements
 
@@ -38,12 +38,12 @@ The ingestion framework uses [kafkaconnect python client](https://libraries.io/p
 ## Metadata Ingestion
 
 {% partial 
-    file="/v1.5/connectors/metadata-ingestion-ui.md" 
+    file="/v1.6/connectors/metadata-ingestion-ui.md" 
     variables={
         connector: "KafkaConnect", 
-        selectServicePath: "/images/v1.5/connectors/kafkaconnect/select-service.webp",
-        addNewServicePath: "/images/v1.5/connectors/kafkaconnect/add-new-service.webp",
-        serviceConnectionPath: "/images/v1.5/connectors/kafkaconnect/service-connection.webp",
+        selectServicePath: "/images/v1.6/connectors/kafkaconnect/select-service.webp",
+        addNewServicePath: "/images/v1.6/connectors/kafkaconnect/add-new-service.webp",
+        serviceConnectionPath: "/images/v1.6/connectors/kafkaconnect/service-connection.webp",
     } 
 /%}
 
@@ -65,11 +65,11 @@ The ingestion framework uses [kafkaconnect python client](https://libraries.io/p
 
 {% /extraContent %}
 
-{% partial file="/v1.5/connectors/test-connection.md" /%}
+{% partial file="/v1.6/connectors/test-connection.md" /%}
 
-{% partial file="/v1.5/connectors/pipeline/configure-ingestion.md" /%}
+{% partial file="/v1.6/connectors/pipeline/configure-ingestion.md" /%}
 
-{% partial file="/v1.5/connectors/ingestion-schedule-and-deploy.md" /%}
+{% partial file="/v1.6/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
 
@@ -82,7 +82,7 @@ Steps to retrieve and display the lineage information for a Kafka Connect servic
 By successfully completing these steps, the lineage information for the service will be displayed.
 
 {% image
-  src="/images/v1.5/connectors/kafkaconnect/lineage.webp"
+  src="/images/v1.6/connectors/kafkaconnect/lineage.webp"
   alt="Kafkaconnect Lineage" /%}
 
 
@@ -96,7 +96,7 @@ Currently, the following source and sink connectors for Kafka Connect are suppor
 
 For these connectors, lineage information can be obtained provided they are configured with a source or sink and the corresponding metadata ingestion is enabled.
 
-{% partial file="/v1.5/connectors/troubleshooting.md" /%}
+{% partial file="/v1.6/connectors/troubleshooting.md" /%}
 
 ### Missing Lineage
 If lineage information is not displayed for a Kafka Connect service, follow these steps to diagnose the issue.

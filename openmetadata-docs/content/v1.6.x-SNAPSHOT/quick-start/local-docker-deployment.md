@@ -205,13 +205,13 @@ You can access Airflow at [http://localhost:8080](http://localhost:8080). Use th
 You can explore the examples of Airflow DAGs used with OpenMetadata. Refer [here](https://github.com/open-metadata/OpenMetadata/tree/main/ingestion/examples/airflow/dags) for more information.
 
 {% image
-src="/images/v1.5/quickstart/docker/DAG_Examples.png"
+src="/images/v1.6/quickstart/docker/DAG_Examples.png"
 alt="DAG_Examples" /%}
 
 ## Go on a tour and start discovering the power of metadata & collaboration
 
 {% image
-src="/images/v1.5/quickstart/tour.png"
+src="/images/v1.6/quickstart/tour.png"
 alt="tour" /%}
 
 ## Cleanup
