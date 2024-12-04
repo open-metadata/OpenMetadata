@@ -71,6 +71,7 @@ const GlossaryPage = () => {
   const { fqn: glossaryFqn } = useFqn();
   const history = useHistory();
   const { action } = useParams<{ action: EntityAction }>();
+  const [initialised, setInitialised] = useState(false);
 
   const [isLoading, setIsLoading] = useState(true);
   const [isMoreGlossaryLoading, setIsMoreGlossaryLoading] =
@@ -149,6 +150,47 @@ const GlossaryPage = () => {
     history.push(ROUTES.ADD_GLOSSARY);
   };
 
+  const fetchGlossaryList = useCallback(async () => {
+    try {
+      let allGlossaries: Glossary[] = [];
+      let nextPage = paging.after;
+      let isGlossaryFound = false;
+      setInitialised(false);
+      setIsLoading(true);
+
+      do {
+        const { data, paging: glossaryPaging } = await getGlossariesList({
+          fields: [
+            TabSpecificField.OWNERS,
+            TabSpecificField.TAGS,
+            TabSpecificField.REVIEWERS,
+            TabSpecificField.VOTES,
+            TabSpecificField.DOMAIN,
+          ],
+          limit: PAGE_SIZE_LARGE,
+          after: nextPage,
+        });
+
+        allGlossaries = [...allGlossaries, ...data];
+
+        isGlossaryFound = allGlossaries.some(
+          (item) => item.fullyQualifiedName === glossaryFqn
+        );
+
+        nextPage = glossaryPaging?.after;
+
+        handlePagingChange(glossaryPaging);
+      } while (nextPage && !isGlossaryFound);
+
+      setGlossaries(allGlossaries);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsLoading(false);
+      setInitialised(true);
+    }
+  }, [paging.after, glossaryFqn]);
+
   const fetchNextGlossaryItems = async (after?: string) => {
     try {
       let allGlossaries: Glossary[] = glossaries;
@@ -178,55 +220,12 @@ const GlossaryPage = () => {
     }
   };
 
-  const fetchGlossaryList = async () => {
-    try {
-      let nextPage: string | undefined = paging.after;
-      let allGlossaries: Glossary[] = glossaries;
-      let isGlossaryFound = false;
-
-      if (nextPage) {
-        setIsMoreGlossaryLoading(true);
-      } else {
-        setIsRightPanelLoading(true);
-        setIsLoading(true);
-      }
-
-      do {
-        const { data, paging: glossaryPaging } = await getGlossariesList({
-          fields: [
-            TabSpecificField.OWNERS,
-            TabSpecificField.TAGS,
-            TabSpecificField.REVIEWERS,
-            TabSpecificField.VOTES,
-            TabSpecificField.DOMAIN,
-          ],
-          limit: PAGE_SIZE_LARGE,
-          after: nextPage,
-        });
-
-        allGlossaries = [...allGlossaries, ...data];
-
-        isGlossaryFound = allGlossaries.some(
-          (item) => item.fullyQualifiedName === glossaryFqn
-        );
-
-        nextPage = glossaryPaging?.after;
-        handlePagingChange(glossaryPaging);
-      } while (nextPage && !isGlossaryFound);
-
-      setGlossaries(allGlossaries);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setIsLoading(false);
-      setIsRightPanelLoading(false);
-      setIsMoreGlossaryLoading(false);
-    }
-  };
-
   useEffect(() => {
-    fetchGlossaryList();
-  }, []);
+    if (glossaryFqn && !initialised) {
+      fetchGlossaryList();
+    }
+  }, [glossaryFqn, initialised]);
+
   useEffect(() => {
     if (paging?.after && isInView && !isMoreGlossaryLoading) {
       fetchNextGlossaryItems(paging.after);
@@ -278,10 +277,7 @@ const GlossaryPage = () => {
     const jsonPatch = compare(activeGlossary as Glossary, updatedData);
 
     try {
-      const response = await patchGlossaries(
-        activeGlossary?.id as string,
-        jsonPatch
-      );
+      const response = await patchGlossaries(activeGlossary?.id, jsonPatch);
 
       updateActiveGlossary({ ...updatedData, ...response });
 

@@ -85,16 +85,25 @@ const GlossaryLeftPanel = ({ glossaries }: GlossaryLeftPanelProps) => {
           item.textContent === menuItem?.name ||
           item.textContent === menuItem?.displayName
       );
+
       if (itemToScroll) {
-        const itemIndex = Array.from(items).findIndex(
-          (item) => item === itemToScroll
-        );
-        const blockPosition =
-          itemIndex > Array.from(items).length - 10 ? 'nearest' : 'center';
-        itemToScroll.scrollIntoView({
-          behavior: 'smooth',
-          block: blockPosition,
-        });
+        const rect = itemToScroll.getBoundingClientRect();
+        const isVisible =
+          rect.top >= 0 &&
+          rect.bottom <=
+            (window.innerHeight || document.documentElement.clientHeight);
+
+        if (!isVisible) {
+          const itemIndex = Array.from(items).findIndex(
+            (item) => item === itemToScroll
+          );
+          const blockPosition =
+            itemIndex > Array.from(items).length - 10 ? 'nearest' : 'center';
+          itemToScroll.scrollIntoView({
+            behavior: 'smooth',
+            block: blockPosition,
+          });
+        }
       }
     }
   }, [glossaryFqn]);
