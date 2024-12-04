@@ -12,7 +12,7 @@ version. To see what's coming in next releases, please check our [Roadmap](/rele
 
 {% /note %}
 
-{% partial file="/v1.5/releases/latest.md" /%}
+{% partial file="/v1.6/releases/latest.md" /%}
 
 # 1.5.11 Release
 
@@ -449,7 +449,7 @@ We are also making the discovery of data more accessible for users introducing a
 
 {% youtube videoId="45ekUIRO1Ec" start="0:00" end="1:11" width="560px" height="315px" /%}
 
-## Pipeline Status Widget
+## Pipeline Status Widget (Collate)
 
 We are also adding another widget you can use to customize the Landing Page of the User Personas in your organization.
 

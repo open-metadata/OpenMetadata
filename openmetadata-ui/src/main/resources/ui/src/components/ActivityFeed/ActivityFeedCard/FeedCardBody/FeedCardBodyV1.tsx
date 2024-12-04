@@ -29,17 +29,14 @@ import {
 import { formatDateTime } from '../../../../utils/date-time/DateTimeUtils';
 import entityUtilClassBase from '../../../../utils/EntityUtilClassBase';
 import {
-  entityDisplayName,
   getEntityFQN,
   getEntityType,
   getFrontEndFormat,
   MarkdownToHTMLConverter,
 } from '../../../../utils/FeedUtils';
 import ExploreSearchCard from '../../../ExploreV1/ExploreSearchCard/ExploreSearchCard';
-import CustomPropertyFeed from '../../ActivityFeedCardV2/FeedCardBody/CustomPropertyFeed/CustomPropertyFeed.component';
 import DescriptionFeed from '../../ActivityFeedCardV2/FeedCardBody/DescriptionFeed/DescriptionFeed';
 import TagsFeed from '../../ActivityFeedCardV2/FeedCardBody/TagsFeed/TagsFeed';
-import TestCaseFeed from '../../ActivityFeedCardV2/FeedCardBody/TestCaseFeed/TestCaseFeed';
 import './feed-card-body-v1.less';
 import { FeedCardBodyV1Props } from './FeedCardBodyV1.interface';
 
@@ -83,15 +80,6 @@ const FeedCardBodyV1 = ({
         return <TagsFeed feed={feed} />;
       }
 
-      if (cardStyle === CardStyle.TestCaseResult) {
-        return (
-          <TestCaseFeed
-            entitySpecificInfo={feed.feedInfo?.entitySpecificInfo}
-            testCaseName={entityDisplayName(entityType, entityFQN) ?? ''}
-          />
-        );
-      }
-
       if (ASSET_CARD_STYLES.includes(cardStyle as CardStyle)) {
         const entityInfo = feed.feedInfo?.entitySpecificInfo?.entity;
         const isExecutableTestSuite =
@@ -126,10 +114,6 @@ const FeedCardBodyV1 = ({
             {entityCard}
           </Link>
         );
-      }
-
-      if (cardStyle === CardStyle.CustomProperties) {
-        return <CustomPropertyFeed feed={feed} />;
       }
     }
 
