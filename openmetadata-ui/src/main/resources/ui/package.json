@@ -206,7 +206,6 @@
     "html-webpack-plugin": "^5.5.0",
     "husky": "^8.0.1",
     "i18next-json-sync": "^3.1.2",
-    "image-webpack-loader": "^8.1.0",
     "jest": "^26.6.3",
     "jest-sonar-reporter": "^2.0.0",
     "less-loader": "^11.0.0",

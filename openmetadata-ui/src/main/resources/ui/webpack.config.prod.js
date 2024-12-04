@@ -122,15 +122,6 @@ module.exports = {
               outputPath: 'images/', // Directory in the output folder
             },
           },
-          {
-            loader: 'image-webpack-loader',
-            options: {
-              mozjpeg: { progressive: true, quality: 75 },
-              optipng: { enabled: false },
-              pngquant: { quality: [0.65, 0.9], speed: 4 },
-              webp: { quality: 75 }, // Modern image format support
-            },
-          },
         ],
       },
     ],
