@@ -104,11 +104,6 @@ If no option is chosen, the default is **BERNOULLI**.
 $$
 
 $$section
-### Sample Data Rows Count $(id="sampleDataCount")
-Set the number of rows to ingest when `Ingest Sample Data` toggle is on. Defaults to 50.
-$$
-
-$$section
 ### Thread Count $(id="threadCount")
 Number of threads that will be used when computing the profiler metrics. A high number can have negative performance effect.
 

@@ -363,6 +363,8 @@ source:
 
 {% partial file="/v1.5/connectors/yaml/data-profiler.md" variables={connector: "athena"} /%}
 
+{% partial file="/v1.5/connectors/yaml/auto-classification.md" variables={connector: "athena"} /%}
+
 {% partial file="/v1.5/connectors/yaml/data-quality.md" /%}
 
 ## dbt Integration
