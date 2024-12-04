@@ -1184,7 +1184,7 @@ To continue pursuing this objective, the application was completely refactored t
 
 ER diagrams help you better understand and manage your data architecture by showing how your database tables relate to each other.`,
         isImage: false,
-        path: '',
+        path: 'https://www.youtube.com/embed/3m2xHpIsYuM',
       },
       {
         title:
@@ -1193,7 +1193,7 @@ ER diagrams help you better understand and manage your data architecture by show
         
 In Collate 1.6, the Glossary Approval Workflow has been migrated to this new framework. Now, you can create custom approval processes with specific conditions and rules and easily visualize them through intuitive workflow diagrams. You can also create smart approval processes for glossary terms with real-time state changes and task creation to save time and streamline work. `,
         isImage: false,
-        path: '',
+        path: 'https://www.youtube.com/embed/yKJNWUb_ucA',
       },
       {
         title:
@@ -1202,7 +1202,7 @@ In Collate 1.6, the Glossary Approval Workflow has been migrated to this new fra
         
 Our vision is to expand our governance framework to allow our users to create their own Custom Governance workflows. We want to enable data teams to implement and automate data governance processes that perfectly fit your organization, promoting data quality and compliance.`,
         isImage: false,
-        path: '',
+        path: 'https://www.youtube.com/embed/hqxtn6uAvt4',
       },
       {
         title:
@@ -1211,7 +1211,7 @@ Our vision is to expand our governance framework to allow our users to create th
 
 In Collate 1.6, we’re introducing platform-wide observability dashboards that allow you to track overall data quality coverage trends and analyze incident response performance across your entire data estate. Quickly identify root causes through enhanced asset and lineage views and enable proactive data quality management across your entire data ecosystem.`,
         isImage: false,
-        path: '',
+        path: 'https://www.youtube.com/embed/DQ-abGXOsHE',
       },
       {
         title: 'Elevating Metric Management with Dedicated Metric Entities',
@@ -1225,7 +1225,7 @@ In Collate 1.6, we’re introducing platform-wide observability dashboards that 
 
 This new addition helps teams better manage, understand, and calculate their business KPIs, for improved data literacy and consistency across data teams. `,
         isImage: false,
-        path: '',
+        path: 'https://www.youtube.com/embed/Nf97_oWNAmM',
       },
       {
         title: 'Reinforcing Data Security with Search RBAC',
@@ -1233,7 +1233,13 @@ This new addition helps teams better manage, understand, and calculate their bus
 
 OpenMetadata 1.6 extends Role-Based Access Control (RBAC) to search functionality, allowing administrators to tailor user search experience. This provides personalized search results, with users only seeing assets they have permission to access, as well as stronger data governance by ensuring users only interact with data within their defined roles and responsibilities.`,
         isImage: false,
-        path: '',
+        path: 'https://www.youtube.com/embed/03ke9uv0PG0',
+      },
+      {
+        title: 'Alert Debuggability',
+        description: `Allowing users to test the destinations and see whenever the alert was triggered.`,
+        isImage: false,
+        path: 'https://www.youtube.com/embed/7pUF9ZK2iK4',
       },
       {
         title: 'Expanded Connector Ecosystem and Diversity',
@@ -1257,7 +1263,6 @@ And in Collate, we are bringing four ETL, dashboarding and ML tools: **Matillion
 - **Faster Search Re-indexing**:  Experience significantly improved performance in search re-indexing, making data discovery even smoother.
 - **Improved Data Insights Custom Dashboards UI ${CollateIconWithLinkMD}**: To make it even easier to write your own insights dashboards in Collate.
 - **Slack Integration ${CollateIconWithLinkMD}**: Collate is releasing a new Application that lets your users find and share assets directly within your Slack workspace!
-- **Alert Debuggability**:  Allowing users to test the destinations and see whenever the alert was triggered.
 `,
     },
   },
