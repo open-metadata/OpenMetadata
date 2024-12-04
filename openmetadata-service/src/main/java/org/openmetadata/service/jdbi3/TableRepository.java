@@ -1285,34 +1285,38 @@ public class TableRepository extends EntityRepository<Table> {
       // column.dataTypeDisplay,column.dataType, column.arrayDataType, column.dataLength,
       // column.tags, column.glossaryTerms
       Table originalEntity = JsonUtils.deepCopy(table, Table.class);
-      CSVRecord csvRecord = getNextRecord(printer, csvRecords);
-      if (csvRecord != null) {
-        updateColumnsFromCsv(printer, csvRecord);
+      while (recordIndex < csvRecords.size()) {
+        CSVRecord csvRecord = getNextRecord(printer, csvRecords);
+        if (csvRecord != null) {
+          updateColumnsFromCsv(printer, csvRecord);
+          String violations = ValidatorUtil.validate(table);
+          if (violations != null) {
+            // JSON schema based validation failed for the entity
+            importFailure(printer, violations, csvRecord);
+            return;
+          }
+        }
       }
+
       if (processRecord) {
-        patchColumns(originalEntity, printer, csvRecord, table);
+        patchColumns(originalEntity, printer, csvRecords, table);
       }
     }
 
     private void patchColumns(
-        Table originalTable, CSVPrinter resultsPrinter, CSVRecord csvRecord, Table entity)
+        Table originalTable, CSVPrinter resultsPrinter, List<CSVRecord> records, Table entity)
         throws IOException {
       EntityRepository<Table> repository =
           (EntityRepository<Table>) Entity.getEntityRepository(TABLE);
-      // Validate
-      String violations = ValidatorUtil.validate(entity);
-      if (violations != null) {
-        // JSON schema based validation failed for the entity
-        importFailure(resultsPrinter, violations, csvRecord);
-        return;
-      }
       if (Boolean.FALSE.equals(importResult.getDryRun())) { // If not dry run, create the entity
         try {
           JsonPatch jsonPatch = JsonUtils.getJsonPatch(originalTable, table);
           repository.patch(null, table.getId(), importedBy, jsonPatch);
         } catch (Exception ex) {
-          importFailure(resultsPrinter, ex.getMessage(), csvRecord);
-          importResult.setStatus(ApiStatus.FAILURE);
+          for (int i = 1; i < records.size(); i++) {
+            importFailure(resultsPrinter, ex.getMessage(), records.get(i));
+            importResult.setStatus(ApiStatus.FAILURE);
+          }
           return;
         }
       } else { // Dry run don't create the entity
@@ -1324,7 +1328,9 @@ public class TableRepository extends EntityRepository<Table> {
         dryRunCreatedEntities.put(entity.getFullyQualifiedName(), entity);
       }
 
-      importSuccess(resultsPrinter, csvRecord, ENTITY_UPDATED);
+      for (int i = 1; i < records.size(); i++) {
+        importSuccess(resultsPrinter, records.get(i), ENTITY_UPDATED);
+      }
     }
 
     public void updateColumnsFromCsv(CSVPrinter printer, CSVRecord csvRecord) throws IOException {
