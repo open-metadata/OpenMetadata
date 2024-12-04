@@ -1313,8 +1313,8 @@ public class TableRepository extends EntityRepository<Table> {
           JsonPatch jsonPatch = JsonUtils.getJsonPatch(originalTable, table);
           repository.patch(null, table.getId(), importedBy, jsonPatch);
         } catch (Exception ex) {
-          for (CSVRecord csvRecord : records) {
-            importFailure(resultsPrinter, ex.getMessage(), csvRecord);
+          for (int i = 1; i < records.size(); i++) {
+            importFailure(resultsPrinter, ex.getMessage(), records.get(i));
             importResult.setStatus(ApiStatus.FAILURE);
           }
           return;
@@ -1328,8 +1328,8 @@ public class TableRepository extends EntityRepository<Table> {
         dryRunCreatedEntities.put(entity.getFullyQualifiedName(), entity);
       }
 
-      for (CSVRecord csvRecord : records) {
-        importSuccess(resultsPrinter, csvRecord, ENTITY_UPDATED);
+      for (int i = 1; i < records.size(); i++) {
+        importSuccess(resultsPrinter, records.get(i), ENTITY_UPDATED);
       }
     }
 
