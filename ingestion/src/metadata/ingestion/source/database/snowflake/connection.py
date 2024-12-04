@@ -142,8 +142,10 @@ def get_connection(connection: SnowflakeConnection) -> Engine:
         get_connection_url_fn=get_connection_url,
         get_connection_args_fn=get_connection_args_common,
     )
-
-    connection.connectionArguments = init_empty_connection_arguments()
+    if connection.connectionArguments.root and connection.connectionArguments.root.get(
+        "private_key"
+    ):
+        del connection.connectionArguments.root["private_key"]
     return engine
 
 
