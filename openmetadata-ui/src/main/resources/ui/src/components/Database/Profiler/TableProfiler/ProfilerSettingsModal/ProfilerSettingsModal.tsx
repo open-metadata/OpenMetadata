@@ -415,7 +415,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
     } else {
       setIsDataLoading(false);
     }
-  }, []);
+  }, [tableId]);
 
   return (
     <Modal
