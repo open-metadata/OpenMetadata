@@ -376,7 +376,7 @@ class LineageParser:
         return [
             self.clean_table_name(table)
             for table in tables
-            if isinstance(table, Table) or isinstance(table, DataFunction)
+            if isinstance(table, (Table, DataFunction))
         ]
 
     @classmethod
