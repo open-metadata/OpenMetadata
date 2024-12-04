@@ -73,3 +73,7 @@ WHERE serviceType IN ('Snowflake', 'Redshift', 'BigQuery');
 UPDATE consumers_dlq SET source = 'publisher';
 
 DELETE from event_subscription_entity where name = 'ActivityFeedAlert';
+
+DROP INDEX event_time_index ON change_event;
+
+CREATE INDEX idx_offset_event_time ON change_event (offset, eventTime);
