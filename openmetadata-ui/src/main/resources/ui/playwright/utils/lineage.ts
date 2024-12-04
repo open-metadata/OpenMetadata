@@ -350,7 +350,8 @@ export const applyPipelineFromModal = async (
 
   await page
     .locator(`[data-testid="edge-${fromNodeFqn}-${toNodeFqn}"]`)
-    .dispatchEvent('click');
+    .click({ force: true });
+
   await page.locator('[data-testid="add-pipeline"]').dispatchEvent('click');
 
   const waitForSearchResponse = page.waitForResponse(
