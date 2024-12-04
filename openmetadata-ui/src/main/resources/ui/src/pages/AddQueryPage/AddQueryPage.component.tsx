@@ -44,7 +44,11 @@ import { postQuery } from '../../rest/queryAPI';
 import { getTableDetailsByFQN } from '../../rest/tableAPI';
 import { getPartialNameFromFQN } from '../../utils/CommonUtils';
 import { getCurrentMillis } from '../../utils/date-time/DateTimeUtils';
-import { getEntityBreadcrumbs, getEntityName } from '../../utils/EntityUtils';
+import {
+  getEntityBreadcrumbs,
+  getEntityLabel,
+  getEntityName,
+} from '../../utils/EntityUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
 const AddQueryPage = () => {
@@ -102,7 +106,7 @@ const AddQueryPage = () => {
         SearchIndex.TABLE
       );
       const options = data.hits.hits.map((value) => ({
-        label: getEntityName(value._source),
+        label: getEntityLabel(value._source),
         value: value._source.id,
       }));
 

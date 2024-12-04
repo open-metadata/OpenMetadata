@@ -89,7 +89,11 @@ test('Query Entity', async ({ page }) => {
     await page.keyboard.type(queryData.queryUsedIn.table1);
     await tableSearchResponse;
 
-    await page.click(`[title="${queryData.queryUsedIn.table1}"]`);
+    await page
+      .locator('div')
+      .filter({ hasText: new RegExp(`^${queryData.queryUsedIn.table1}$`) })
+      .click();
+
     await clickOutside(page);
 
     const createQueryResponse = page.waitForResponse('/api/v1/queries');
