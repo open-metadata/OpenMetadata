@@ -80,7 +80,7 @@ After clicking Next, you will be redirected to the Scheduling form. This will be
 
 ## Run Lineage Workflow Externally
 
-{% partial file="/v1.5/connectors/yaml/lineage.md" variables={connector: "bigquery"} /%}
+{% partial file="/v1.6/connectors/yaml/lineage.md" variables={connector: "bigquery"} /%}
 
 ## dbt Ingestion
 

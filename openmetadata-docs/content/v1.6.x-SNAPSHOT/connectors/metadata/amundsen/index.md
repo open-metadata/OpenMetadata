@@ -11,17 +11,17 @@ availableFeatures=[]
 unavailableFeatures=[]
 / %}
 
-{% partial file="/v1.5/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/metadata/amundsen/yaml"} /%}
+{% partial file="/v1.6/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/metadata/amundsen/yaml"} /%}
 
 ## Metadata Ingestion
 
 {% partial 
-  file="/v1.5/connectors/metadata-ingestion-ui.md" 
+  file="/v1.6/connectors/metadata-ingestion-ui.md" 
   variables={
     connector: "Amundsen", 
-    selectServicePath: "/images/v1.5/connectors/amundsen/select-service.png",
-    addNewServicePath: "/images/v1.5/connectors/amundsen/add-new-service.png",
-    serviceConnectionPath: "/images/v1.5/connectors/amundsen/service-connection.png",
+    selectServicePath: "/images/v1.6/connectors/amundsen/select-service.png",
+    addNewServicePath: "/images/v1.6/connectors/amundsen/add-new-service.png",
+    serviceConnectionPath: "/images/v1.6/connectors/amundsen/service-connection.png",
 } 
 /%}
 
@@ -39,12 +39,12 @@ unavailableFeatures=[]
 
 {% /extraContent %}
 
-{% partial file="/v1.5/connectors/test-connection.md" /%}
+{% partial file="/v1.6/connectors/test-connection.md" /%}
 
-{% partial file="/v1.5/connectors/metadata/configure-ingestion.md" /%}
+{% partial file="/v1.6/connectors/metadata/configure-ingestion.md" /%}
 
-{% partial file="/v1.5/connectors/ingestion-schedule-and-deploy.md" /%}
+{% partial file="/v1.6/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
 
-{% partial file="/v1.5/connectors/troubleshooting.md" /%}
+{% partial file="/v1.6/connectors/troubleshooting.md" /%}

@@ -21,7 +21,7 @@ Configure and schedule Trino metadata and profiler workflows from the OpenMetada
 - [Data Quality](/how-to-guides/data-quality-observability/quality)
 - [dbt Integration](/connectors/ingestion/workflows/dbt)
 
-{% partial file="/v1.5/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/trino/yaml"} /%}
+{% partial file="/v1.6/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/trino/yaml"} /%}
 
 ## Requirements
 
@@ -37,12 +37,12 @@ Executing the profiler workflow or data quality tests, will require the user to 
 
 ## Metadata Ingestion
 {% partial 
-  file="/v1.5/connectors/metadata-ingestion-ui.md" 
+  file="/v1.6/connectors/metadata-ingestion-ui.md" 
   variables={
     connector: "Trino", 
-    selectServicePath: "/images/v1.5/connectors/trino/select-service.png",
-    addNewServicePath: "/images/v1.5/connectors/trino/add-new-service.png",
-    serviceConnectionPath: "/images/v1.5/connectors/trino/service-connection.png",
+    selectServicePath: "/images/v1.6/connectors/trino/select-service.png",
+    addNewServicePath: "/images/v1.6/connectors/trino/add-new-service.png",
+    serviceConnectionPath: "/images/v1.6/connectors/trino/service-connection.png",
 } 
 /%}
 
@@ -102,18 +102,18 @@ There are a couple of types of SSL modes that redshift supports which can be add
 - **\<path-to-crt\>**: To use self-signed certificates, specify a path to the certificate in `verify` parameter.
 Find more details in [the Python requests library documentation](https://requests.readthedocs.io/en/latest/user/advanced.html?highlight=ssl#ssl-cert-verification).
 
-{% partial file="/v1.5/connectors/database/advanced-configuration.md" /%}
+{% partial file="/v1.6/connectors/database/advanced-configuration.md" /%}
 
 {% /extraContent %}
 
-{% partial file="/v1.5/connectors/test-connection.md" /%}
+{% partial file="/v1.6/connectors/test-connection.md" /%}
 
-{% partial file="/v1.5/connectors/database/configure-ingestion.md" /%}
+{% partial file="/v1.6/connectors/database/configure-ingestion.md" /%}
 
-{% partial file="/v1.5/connectors/ingestion-schedule-and-deploy.md" /%}
+{% partial file="/v1.6/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
 
-{% partial file="/v1.5/connectors/troubleshooting.md" /%}
+{% partial file="/v1.6/connectors/troubleshooting.md" /%}
 
-{% partial file="/v1.5/connectors/database/related.md" /%}
+{% partial file="/v1.6/connectors/database/related.md" /%}

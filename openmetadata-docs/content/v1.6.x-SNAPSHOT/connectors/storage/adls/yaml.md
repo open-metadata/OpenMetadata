@@ -19,7 +19,7 @@ Configure and schedule Azure metadata workflows from the CLI:
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 
-{% partial file="/v1.5/connectors/external-ingestion-deployment.md" /%}
+{% partial file="/v1.6/connectors/external-ingestion-deployment.md" /%}
 
 ## Requirements
 
@@ -45,7 +45,7 @@ file at the bucket root.
 
 You can learn more about this [here](/connectors/storage). Keep reading for an example on the shape of the manifest file.
 
-{% partial file="/v1.5/connectors/storage/manifest.md" /%}
+{% partial file="/v1.6/connectors/storage/manifest.md" /%}
 
 ## Metadata Ingestion
 
@@ -116,11 +116,11 @@ Here are the step-by-step instructions for finding the account name for an Azure
 
 {% /codeInfo %}
 
-{% partial file="/v1.5/connectors/yaml/storage/source-config-def.md" /%}
+{% partial file="/v1.6/connectors/yaml/storage/source-config-def.md" /%}
 
-{% partial file="/v1.5/connectors/yaml/ingestion-sink-def.md" /%}
+{% partial file="/v1.6/connectors/yaml/ingestion-sink-def.md" /%}
 
-{% partial file="/v1.5/connectors/yaml/workflow-config-def.md" /%}
+{% partial file="/v1.6/connectors/yaml/workflow-config-def.md" /%}
 
 #### Advanced Configuration
 
@@ -173,11 +173,11 @@ source:
         # key: value
 ```
 
-{% partial file="/v1.5/connectors/yaml/storage/source-config.md" /%}
+{% partial file="/v1.6/connectors/yaml/storage/source-config.md" /%}
 
-{% partial file="/v1.5/connectors/yaml/ingestion-sink.md" /%}
+{% partial file="/v1.6/connectors/yaml/ingestion-sink.md" /%}
 
-{% partial file="/v1.5/connectors/yaml/workflow-config.md" /%}
+{% partial file="/v1.6/connectors/yaml/workflow-config.md" /%}
 
 {% /codeBlock %}
 
@@ -185,7 +185,7 @@ source:
 
 
 
-{% partial file="/v1.5/connectors/yaml/ingestion-cli.md" /%}
+{% partial file="/v1.6/connectors/yaml/ingestion-cli.md" /%}
 
 ## Related
 

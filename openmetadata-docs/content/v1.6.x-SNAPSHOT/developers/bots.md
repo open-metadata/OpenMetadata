@@ -13,7 +13,7 @@ alt="settings-bot"
 /%}
 
 {% image
-src="/images/v1.5/developers/bot-listing.png"
+src="/images/v1.6/developers/bot-listing.png"
 alt="bot-listing"
 /%}
 
@@ -27,19 +27,19 @@ Click on `ingestion-bot` and you will be redirected to it's details page, there 
 - Copy the generated token
 
 {% image
-src="/images/v1.5/developers/bot-token-page.png"
+src="/images/v1.6/developers/bot-token-page.png"
 alt="bot-listing"
 /%}
 
 - Generate new token
 
 {% image
-src="/images/v1.5/developers/generate-new-token.png"
+src="/images/v1.6/developers/generate-new-token.png"
 alt="generate new token"
 /%}
 
 {% image
-src="/images/v1.5/developers/bot-token-generate.png"
+src="/images/v1.6/developers/bot-token-generate.png"
 alt="token generate page"
 /%}
 
@@ -48,7 +48,7 @@ alt="token generate page"
 Click the `Add bot` button, and you will be directed to the bot creation page. Fill in the required details and then click on the `Create` button.
 
 {% image
-src="/images/v1.5/developers/create-bot.png"
+src="/images/v1.6/developers/create-bot.png"
 alt="create bot"
 /%}
 

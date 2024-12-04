@@ -18,7 +18,7 @@ does not match host name \"<host>:<port>\"
 If you get this error that time please pass `{'sslmode': 'verify-ca'}` in the connection arguments.
 
 {% image
-src="/images/v1.5/connectors/redshift/service-connection-arguments.png"
+src="/images/v1.6/connectors/redshift/service-connection-arguments.png"
 alt="Configure service connection"
 caption="Configure the service connection by filling the form" /%}
 

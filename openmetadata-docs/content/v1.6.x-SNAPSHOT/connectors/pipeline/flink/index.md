@@ -25,7 +25,7 @@ Configure and schedule Flink metadata from the OpenMetadata UI:
 - [Troubleshooting](#troubleshooting)
     - [Workflow Deployment Error](#workflow-deployment-error)
 
-{% partial file="/v1.5/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/pipeline/flink/yaml"} /%}
+{% partial file="/v1.6/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/pipeline/flink/yaml"} /%}
 
 ## Requirements
 
@@ -38,12 +38,12 @@ The ingestion framework uses flink REST APIs to connect to the instance and perf
 ## Metadata Ingestion
 
 {% partial 
-    file="/v1.5/connectors/metadata-ingestion-ui.md" 
+    file="/v1.6/connectors/metadata-ingestion-ui.md" 
     variables={
         connector: "KafkaConnect", 
-        selectServicePath: "/images/v1.5/connectors/flink/select-new-service.webp",
-        addNewServicePath: "/images/v1.5/connectors/flink/add-new-service.webp",
-        serviceConnectionPath: "/images/v1.5/connectors/flink/service-connection.webp",
+        selectServicePath: "/images/v1.6/connectors/flink/select-new-service.webp",
+        addNewServicePath: "/images/v1.6/connectors/flink/add-new-service.webp",
+        serviceConnectionPath: "/images/v1.6/connectors/flink/service-connection.webp",
     } 
 /%}
 
@@ -65,13 +65,13 @@ The ingestion framework uses flink REST APIs to connect to the instance and perf
 
 {% /extraContent %}
 
-{% partial file="/v1.5/connectors/test-connection.md" /%}
+{% partial file="/v1.6/connectors/test-connection.md" /%}
 
-{% partial file="/v1.5/connectors/pipeline/configure-ingestion.md" /%}
+{% partial file="/v1.6/connectors/pipeline/configure-ingestion.md" /%}
 
-{% partial file="/v1.5/connectors/ingestion-schedule-and-deploy.md" /%}
+{% partial file="/v1.6/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
 
 
-{% partial file="/v1.5/connectors/troubleshooting.md" /%}
+{% partial file="/v1.6/connectors/troubleshooting.md" /%}

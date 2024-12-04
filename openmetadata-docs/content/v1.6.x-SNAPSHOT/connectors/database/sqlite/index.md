@@ -21,7 +21,7 @@ Configure and schedule Presto metadata and profiler workflows from the OpenMetad
 - [Data Quality](/how-to-guides/data-quality-observability/quality)
 - [dbt Integration](/connectors/ingestion/workflows/dbt)
 
-{% partial file="/v1.5/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/sqlite/yaml"} /%}
+{% partial file="/v1.6/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/sqlite/yaml"} /%}
 
 ## Requirements
 
@@ -32,12 +32,12 @@ To extract metadata, the user needs to be able to perform `.tables`, `.schema`, 
 ## Metadata Ingestion
 
 {% partial 
-  file="/v1.5/connectors/metadata-ingestion-ui.md" 
+  file="/v1.6/connectors/metadata-ingestion-ui.md" 
   variables={
     connector: "SQLite", 
-    selectServicePath: "/images/v1.5/connectors/sqlite/select-service.png",
-    addNewServicePath: "/images/v1.5/connectors/sqlite/add-new-service.png",
-    serviceConnectionPath: "/images/v1.5/connectors/sqlite/service-connection.png",
+    selectServicePath: "/images/v1.6/connectors/sqlite/select-service.png",
+    addNewServicePath: "/images/v1.6/connectors/sqlite/add-new-service.png",
+    serviceConnectionPath: "/images/v1.6/connectors/sqlite/service-connection.png",
 } 
 /%}
 
@@ -52,18 +52,18 @@ To extract metadata, the user needs to be able to perform `.tables`, `.schema`, 
 - **Database**: The database of the data source is an optional parameter, if you would like to restrict the metadata reading to a single database. If left blank, OpenMetadata ingestion attempts to scan all the databases.
 - **Database Mode**: How to run the SQLite database. :memory: by default.
 
-{% partial file="/v1.5/connectors/database/advanced-configuration.md" /%}
+{% partial file="/v1.6/connectors/database/advanced-configuration.md" /%}
 
 {% /extraContent %}
 
-{% partial file="/v1.5/connectors/test-connection.md" /%}
+{% partial file="/v1.6/connectors/test-connection.md" /%}
 
-{% partial file="/v1.5/connectors/database/configure-ingestion.md" /%}
+{% partial file="/v1.6/connectors/database/configure-ingestion.md" /%}
 
-{% partial file="/v1.5/connectors/ingestion-schedule-and-deploy.md" /%}
+{% partial file="/v1.6/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
 
-{% partial file="/v1.5/connectors/troubleshooting.md" /%}
+{% partial file="/v1.6/connectors/troubleshooting.md" /%}
 
-{% partial file="/v1.5/connectors/database/related.md" /%}
+{% partial file="/v1.6/connectors/database/related.md" /%}

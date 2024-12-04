@@ -24,7 +24,7 @@ Configure and schedule Athena metadata and profiler workflows from the OpenMetad
   - [Workflow Deployment Error](#workflow-deployment-error)
 - [Related](#related)
 
-{% partial file="/v1.5/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/athena/yaml"} /%}
+{% partial file="/v1.6/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/athena/yaml"} /%}
 
 ## Requirements
 
@@ -141,12 +141,12 @@ If you have external services other than glue and facing permission issues, add 
 ## Metadata Ingestion
 
 {% partial 
-  file="/v1.5/connectors/metadata-ingestion-ui.md" 
+  file="/v1.6/connectors/metadata-ingestion-ui.md" 
   variables={
     connector: "Athena", 
-    selectServicePath: "/images/v1.5/connectors/athena/select-service.png",
-    addNewServicePath: "/images/v1.5/connectors/athena/add-new-service.png",
-    serviceConnectionPath: "/images/v1.5/connectors/athena/service-connection.png",
+    selectServicePath: "/images/v1.6/connectors/athena/select-service.png",
+    addNewServicePath: "/images/v1.6/connectors/athena/add-new-service.png",
+    serviceConnectionPath: "/images/v1.6/connectors/athena/service-connection.png",
 } 
 /%}
 
@@ -218,18 +218,18 @@ Find more information about [Source Identity](https://docs.aws.amazon.com/STS/la
 - **S3 Staging Directory**: The S3 staging directory is an optional parameter. Enter a staging directory to override the default staging directory for AWS Athena.
 - **Athena Workgroup**: The Athena workgroup is an optional parameter. If you wish to have your Athena connection related to an existing AWS workgroup add your workgroup name here.
 
-{% partial file="/v1.5/connectors/database/advanced-configuration.md" /%}
+{% partial file="/v1.6/connectors/database/advanced-configuration.md" /%}
 
 {% /extraContent %}
 
-{% partial file="/v1.5/connectors/test-connection.md" /%}
+{% partial file="/v1.6/connectors/test-connection.md" /%}
 
-{% partial file="/v1.5/connectors/database/configure-ingestion.md" /%}
+{% partial file="/v1.6/connectors/database/configure-ingestion.md" /%}
 
-{% partial file="/v1.5/connectors/ingestion-schedule-and-deploy.md" /%}
+{% partial file="/v1.6/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
 
-{% partial file="/v1.5/connectors/troubleshooting.md" /%}
+{% partial file="/v1.6/connectors/troubleshooting.md" /%}
 
-{% partial file="/v1.5/connectors/database/related.md" /%}
+{% partial file="/v1.6/connectors/database/related.md" /%}

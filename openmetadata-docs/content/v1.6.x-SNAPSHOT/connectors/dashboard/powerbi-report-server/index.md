@@ -18,7 +18,7 @@ Configure and schedule PowerBI Report Server metadata from CLI:
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 
-{% partial file="/v1.5/connectors/external-ingestion-deployment.md" /%}
+{% partial file="/v1.6/connectors/external-ingestion-deployment.md" /%}
 
 ## Requirements
 
@@ -27,7 +27,7 @@ The PowerBI Report Server should be accessible from the ingestion environment.
 ## Metadata Ingestion
 
 {% partial 
-  file="/v1.5/connectors/metadata-ingestion-ui.md" 
+  file="/v1.6/connectors/metadata-ingestion-ui.md" 
   variables={
     connector: "PowerBIReportServer", 
     selectServicePath: "/images/v1.6/connectors/powerbireportserver/select-service.png",
@@ -64,4 +64,4 @@ Web Portal Virtual Directory name which you have configured in your PowerBI Repo
 
 {% /stepsContainer %}
 
-{% partial file="/v1.5/connectors/troubleshooting.md" /%}
+{% partial file="/v1.6/connectors/troubleshooting.md" /%}

@@ -18,7 +18,7 @@ Configure and schedule GCS metadata workflows from the OpenMetadata UI:
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 
-{% partial file="/v1.5/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/storage/gcs/yaml"} /%}
+{% partial file="/v1.6/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/storage/gcs/yaml"} /%}
 
 ## Requirements
 
@@ -43,7 +43,7 @@ file at the bucket root.
 
 You can learn more about this [here](/connectors/storage). Keep reading for an example on the shape of the manifest file.
 
-{% partial file="/v1.5/connectors/storage/manifest.md" /%}
+{% partial file="/v1.6/connectors/storage/manifest.md" /%}
 
 ## Metadata Ingestion
 
@@ -65,7 +65,7 @@ To visit the Services page, select Services from the Settings menu.
 {% stepVisualInfo %}
 
 {% image
-src="/images/v1.5/connectors/visit-services-page.png"
+src="/images/v1.6/connectors/visit-services-page.png"
 alt="Visit Services Page"
 caption="Find Dashboard option on left panel of the settings page" /%}
 
@@ -84,7 +84,7 @@ Click on the 'Add New Service' button to start the Service creation.
 {% stepVisualInfo %}
 
 {% image
-src="/images/v1.5/connectors/create-new-service.png"
+src="/images/v1.6/connectors/create-new-service.png"
 alt="Create a new service"
 caption="Add a new Service from the Storage Services page" /%}
 
@@ -103,7 +103,7 @@ Select GCS as the service type and click Next.
 {% stepVisualInfo %}
 
 {% image
-  src="/images/v1.5/connectors/GCS/select-service.png"
+  src="/images/v1.6/connectors/GCS/select-service.png"
   alt="Select Service"
   caption="Select your service from the list" /%}
 
@@ -129,7 +129,7 @@ from.
 {% stepVisualInfo %}
 
 {% image
-  src="/images/v1.5/connectors/GCS/add-new-service.png"
+  src="/images/v1.6/connectors/GCS/add-new-service.png"
   alt="Add New Service"
   caption="Provide a Name and description for your Service" /%}
 
@@ -151,7 +151,7 @@ desired.
 {% stepVisualInfo %}
 
 {% image
-  src="/images/v1.5/connectors/GCS/service-connection.png"
+  src="/images/v1.6/connectors/GCS/service-connection.png"
   alt="Configure service connection"
   caption="Configure the service connection by filling the form" /%}
 
@@ -166,12 +166,12 @@ desired.
 
 {% /extraContent %}
 
-{% partial file="/v1.5/connectors/test-connection.md" /%}
+{% partial file="/v1.6/connectors/test-connection.md" /%}
 
-{% partial file="/v1.5/connectors/storage/configure-ingestion.md" /%}
+{% partial file="/v1.6/connectors/storage/configure-ingestion.md" /%}
 
-{% partial file="/v1.5/connectors/ingestion-schedule-and-deploy.md" /%}
+{% partial file="/v1.6/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
 
-{% partial file="/v1.5/connectors/troubleshooting.md" /%}
+{% partial file="/v1.6/connectors/troubleshooting.md" /%}

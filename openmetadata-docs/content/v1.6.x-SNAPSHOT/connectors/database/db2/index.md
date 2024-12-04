@@ -37,7 +37,7 @@ Configure and schedule DB2 metadata and profiler workflows from the OpenMetadata
 - [Data Quality](/how-to-guides/data-quality-observability/quality)
 - [dbt Integration](/connectors/ingestion/workflows/dbt)
 
-{% partial file="/v1.5/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/db2/yaml"} /%}
+{% partial file="/v1.6/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/db2/yaml"} /%}
 
 ## Requirements
 
@@ -69,12 +69,12 @@ Executing the profiler workflow or data quality tests, will require the user to 
 
 ## Metadata Ingestion
 {% partial 
-  file="/v1.5/connectors/metadata-ingestion-ui.md" 
+  file="/v1.6/connectors/metadata-ingestion-ui.md" 
   variables={
     connector: "DB2", 
-    selectServicePath: "/images/v1.5/connectors/db2/select-service.png",
-    addNewServicePath: "/images/v1.5/connectors/db2/add-new-service.png",
-    serviceConnectionPath: "/images/v1.5/connectors/db2/service-connection.png",
+    selectServicePath: "/images/v1.6/connectors/db2/select-service.png",
+    addNewServicePath: "/images/v1.6/connectors/db2/add-new-service.png",
+    serviceConnectionPath: "/images/v1.6/connectors/db2/service-connection.png",
 } 
 /%}
 
@@ -95,19 +95,19 @@ If you are using DB2 for IBM i:
 - In Host and Port you should not add the Port Number.
 {% /note %}
 
-{% partial file="/v1.5/connectors/database/advanced-configuration.md" /%}
+{% partial file="/v1.6/connectors/database/advanced-configuration.md" /%}
 
 {% /extraContent %}
 
-{% partial file="/v1.5/connectors/test-connection.md" /%}
+{% partial file="/v1.6/connectors/test-connection.md" /%}
 
-{% partial file="/v1.5/connectors/database/configure-ingestion.md" /%}
+{% partial file="/v1.6/connectors/database/configure-ingestion.md" /%}
 
-{% partial file="/v1.5/connectors/ingestion-schedule-and-deploy.md" /%}
+{% partial file="/v1.6/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
 
-{% partial file="/v1.5/connectors/troubleshooting.md" /%}
+{% partial file="/v1.6/connectors/troubleshooting.md" /%}
 
-{% partial file="/v1.5/connectors/database/related.md" /%}
+{% partial file="/v1.6/connectors/database/related.md" /%}
 

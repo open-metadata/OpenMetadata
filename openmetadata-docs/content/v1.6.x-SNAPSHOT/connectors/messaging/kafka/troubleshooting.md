@@ -15,7 +15,7 @@ the schema registry are [here](https://docs.confluent.io/platform/current/client
 The image below shows what the configuration of a local Kafka server with a secured schema registry would look like:
 
 {% image
-src="/images/v1.5/connectors/kafka/kafka-config.png"
+src="/images/v1.6/connectors/kafka/kafka-config.png"
 alt="Configuration of a local Kafka server with a secured schema registry"
 caption="Configuration of a local Kafka server with a secured schema registry" /%}
 

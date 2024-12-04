@@ -17,7 +17,7 @@ To solve this issue, you can edit your Service Connection by adding the followin
 - Value: `true`
 
 {% image
-src="/images/v1.5/connectors/azuresql/autocommit.png"
+src="/images/v1.6/connectors/azuresql/autocommit.png"
 alt="autocommit" /%}
 
 
@@ -30,7 +30,7 @@ This is an exception you can get when trying to connect to AzureSQL using SQLAlc
 To solve this issue, you need to add your IP address in firewall rules for your Azure SQL instance.
 
 {% image
-src="/images/v1.5/connectors/azuresql/azure-firewall.png"
+src="/images/v1.6/connectors/azuresql/azure-firewall.png"
 alt="azure sql firewall rules"
 caption="azure sql firewall rules" /%}
 

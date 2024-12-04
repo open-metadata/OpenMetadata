@@ -18,7 +18,7 @@ Configure and schedule MLflow metadata and profiler workflows from the OpenMetad
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 
-{% partial file="/v1.5/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/ml-model/mlflow/yaml"} /%}
+{% partial file="/v1.6/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/ml-model/mlflow/yaml"} /%}
 
 ## Requirements
 
@@ -29,12 +29,12 @@ To extract metadata, OpenMetadata needs two elements:
 ## Metadata Ingestion
 
 {% partial 
-  file="/v1.5/connectors/metadata-ingestion-ui.md" 
+  file="/v1.6/connectors/metadata-ingestion-ui.md" 
   variables={
     connector: "Mlflow", 
-    selectServicePath: "/images/v1.5/connectors/mlflow/select-service.png",
-    addNewServicePath: "/images/v1.5/connectors/mlflow/add-new-service.png",
-    serviceConnectionPath: "/images/v1.5/connectors/mlflow/service-connection.png",
+    selectServicePath: "/images/v1.6/connectors/mlflow/select-service.png",
+    addNewServicePath: "/images/v1.6/connectors/mlflow/add-new-service.png",
+    serviceConnectionPath: "/images/v1.6/connectors/mlflow/service-connection.png",
 } 
 /%}
 
@@ -48,12 +48,12 @@ To extract metadata, OpenMetadata needs two elements:
 
 {% /extraContent %}
 
-{% partial file="/v1.5/connectors/test-connection.md" /%}
+{% partial file="/v1.6/connectors/test-connection.md" /%}
 
-{% partial file="/v1.5/connectors/ml-model/configure-ingestion.md" /%}
+{% partial file="/v1.6/connectors/ml-model/configure-ingestion.md" /%}
 
-{% partial file="/v1.5/connectors/ingestion-schedule-and-deploy.md" /%}
+{% partial file="/v1.6/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
 
-{% partial file="/v1.5/connectors/troubleshooting.md" /%}
+{% partial file="/v1.6/connectors/troubleshooting.md" /%}

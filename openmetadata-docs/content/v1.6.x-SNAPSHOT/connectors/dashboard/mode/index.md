@@ -18,7 +18,7 @@ Configure and schedule Mode metadata and profiler workflows from the OpenMetadat
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 
-{% partial file="/v1.5/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/dashboard/mode/yaml"} /%}
+{% partial file="/v1.6/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/dashboard/mode/yaml"} /%}
 
 ## Requirements
 
@@ -27,12 +27,12 @@ OpenMetadata relies on Mode's API, which is exclusive to members of the Mode Bus
 ## Metadata Ingestion
 
 {% partial 
-  file="/v1.5/connectors/metadata-ingestion-ui.md" 
+  file="/v1.6/connectors/metadata-ingestion-ui.md" 
   variables={
     connector: "Mode", 
-    selectServicePath: "/images/v1.5/connectors/mode/select-service.png",
-    addNewServicePath: "/images/v1.5/connectors/mode/add-new-service.png",
-    serviceConnectionPath: "/images/v1.5/connectors/mode/service-connection.png",
+    selectServicePath: "/images/v1.6/connectors/mode/select-service.png",
+    addNewServicePath: "/images/v1.6/connectors/mode/add-new-service.png",
+    serviceConnectionPath: "/images/v1.6/connectors/mode/service-connection.png",
 } 
 /%}
 
@@ -64,12 +64,12 @@ Name of the mode workspace from where the metadata is to be fetched.
 
 {% /extraContent %}
 
-{% partial file="/v1.5/connectors/test-connection.md" /%}
+{% partial file="/v1.6/connectors/test-connection.md" /%}
 
-{% partial file="/v1.5/connectors/dashboard/configure-ingestion.md" /%}
+{% partial file="/v1.6/connectors/dashboard/configure-ingestion.md" /%}
 
-{% partial file="/v1.5/connectors/ingestion-schedule-and-deploy.md" /%}
+{% partial file="/v1.6/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
 
-{% partial file="/v1.5/connectors/troubleshooting.md" /%}
+{% partial file="/v1.6/connectors/troubleshooting.md" /%}

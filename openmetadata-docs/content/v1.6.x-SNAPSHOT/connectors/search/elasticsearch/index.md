@@ -19,7 +19,7 @@ Configure and schedule Elasticsearch metadata workflow from the OpenMetadata UI:
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 
-{% partial file="/v1.5/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/search/elasticsearch/yaml"} /%}
+{% partial file="/v1.6/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/search/elasticsearch/yaml"} /%}
 
 ## Requirements
 
@@ -31,12 +31,12 @@ We extract Elasticsearch's metadata by using its [API](https://www.elastic.co/gu
 ## Metadata Ingestion
 
 {% partial 
-  file="/v1.5/connectors/metadata-ingestion-ui.md" 
+  file="/v1.6/connectors/metadata-ingestion-ui.md" 
   variables={
     connector: "ElasticSearch", 
-    selectServicePath: "/images/v1.5/connectors/elasticsearch/select-service.png",
-    addNewServicePath: "/images/v1.5/connectors/elasticsearch/add-new-service.png",
-    serviceConnectionPath: "/images/v1.5/connectors/elasticsearch/service-connection.png",
+    selectServicePath: "/images/v1.6/connectors/elasticsearch/select-service.png",
+    addNewServicePath: "/images/v1.6/connectors/elasticsearch/add-new-service.png",
+    serviceConnectionPath: "/images/v1.6/connectors/elasticsearch/service-connection.png",
 } 
 /%}
 
@@ -85,12 +85,12 @@ We extract Elasticsearch's metadata by using its [API](https://www.elastic.co/gu
 
 {% /extraContent %}
 
-{% partial file="/v1.5/connectors/test-connection.md" /%}
+{% partial file="/v1.6/connectors/test-connection.md" /%}
 
-{% partial file="/v1.5/connectors/search/configure-ingestion.md" /%}
+{% partial file="/v1.6/connectors/search/configure-ingestion.md" /%}
 
-{% partial file="/v1.5/connectors/ingestion-schedule-and-deploy.md" /%}
+{% partial file="/v1.6/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
 
-{% partial file="/v1.5/connectors/troubleshooting.md" /%}
+{% partial file="/v1.6/connectors/troubleshooting.md" /%}
