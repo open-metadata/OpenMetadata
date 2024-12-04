@@ -171,7 +171,8 @@ const GlossaryPage = () => {
         limit: PAGE_SIZE_LARGE,
         after: page.after,
       });
-      setGlossaries(data, !paging?.after && true);
+      const glossaryList = page.after ? [...data, ...glossaries] : data;
+      setGlossaries(glossaryList);
       if (paging.after) {
         setPage((prev) => ({ paging: prev.paging + 1, after: paging.after }));
       } else {
@@ -222,24 +223,14 @@ const GlossaryPage = () => {
       if (!isGlossaryActive) {
         fetchGlossaryTermDetails();
       } else {
-        const persistedActiveGlossary =
-          useGlossaryStore.getState().activeGlossary;
-        const activeGlossary =
+        setActiveGlossary(
           glossaries.find(
             (glossary) => glossary.fullyQualifiedName === glossaryFqn
-          ) ||
-          persistedActiveGlossary ||
-          glossaries[0];
-
-        setActiveGlossary(activeGlossary);
-
-        if (!glossaryFqn) {
-          const glossaryToUse = persistedActiveGlossary?.fullyQualifiedName
-            ? persistedActiveGlossary
-            : glossaries[0];
-
-          history.replace(getGlossaryPath(glossaryToUse.fullyQualifiedName));
-        }
+          ) || glossaries[0]
+        );
+        !glossaryFqn &&
+          glossaries[0].fullyQualifiedName &&
+          history.replace(getGlossaryPath(glossaries[0].fullyQualifiedName));
 
         setIsRightPanelLoading(false);
       }
@@ -308,7 +299,6 @@ const GlossaryPage = () => {
 
       history.push(glossaryPath);
       fetchGlossaryList();
-      setGlossaries(updatedGlossaries);
     } catch (error) {
       showErrorToast(
         error as AxiosError,
