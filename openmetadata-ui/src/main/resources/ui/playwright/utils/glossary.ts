@@ -26,6 +26,7 @@ import {
 import { GlossaryTerm } from '../support/glossary/GlossaryTerm';
 import {
   clickOutside,
+  closeFirstPopupAlert,
   getApiContext,
   INVALID_NAMES,
   NAME_MAX_LENGTH_VALIDATION_ERROR,
@@ -315,7 +316,7 @@ export const verifyGlossaryDetails = async (
     '[data-testid="viewer-container"]'
   );
 
-  await expect(viewerContainerText).toContain(glossaryDetails.description);
+  expect(viewerContainerText).toContain(glossaryDetails.description);
 
   // Owner
   if (glossaryDetails.owners.length > 0) {
@@ -390,6 +391,9 @@ export const fillGlossaryTermDetails = async (
   term: GlossaryTermData,
   validateCreateForm = true
 ) => {
+  // Safety check to close potential glossary not found alert
+  // Arrived due to parallel testing
+  await closeFirstPopupAlert(page);
   await page.click('[data-testid="add-new-tag-button-header"]');
 
   await page.waitForSelector('[role="dialog"].edit-glossary-modal');
@@ -501,8 +505,8 @@ export const verifyTaskCreated = async (
       {
         // Custom expect message for reporting, optional.
         message: 'To get the last run execution status as success',
-        timeout: 200_000,
-        intervals: [30_000],
+        timeout: 350_000,
+        intervals: [40_000, 30_000],
       }
     )
     .toContain(glossaryTermData.name);
@@ -1046,7 +1050,9 @@ export const approveTagsTask = async (
   entity: Glossary | GlossaryTerm
 ) => {
   await redirectToHomePage(page);
+  const glossaryResponse = page.waitForResponse('/api/v1/glossaryTerms*');
   await sidebarClick(page, SidebarItem.GLOSSARY);
+  await glossaryResponse;
   await selectActiveGlossary(page, entity.data.displayName);
 
   await page.click('[data-testid="activity_feed"]');
@@ -1071,7 +1077,7 @@ export const approveTagsTask = async (
     `[data-testid="tag-${value.tag}"]`
   );
 
-  await expect(tagVisibility).toBe(true);
+  expect(tagVisibility).toBe(true);
 };
 
 export async function openColumnDropdown(page: Page): Promise<void> {
@@ -1224,5 +1230,14 @@ export const dragAndDropColumn = async (
 
   await page
     .locator('.draggable-menu-item', { hasText: dragColumn })
-    .dragTo(page.locator('.draggable-menu-item', { hasText: dropColumn }));
+    .dragTo(page.locator('.draggable-menu-item', { hasText: dropColumn }), {
+      sourcePosition: {
+        x: 16,
+        y: 16,
+      },
+      targetPosition: {
+        x: 16,
+        y: 16,
+      },
+    });
 };

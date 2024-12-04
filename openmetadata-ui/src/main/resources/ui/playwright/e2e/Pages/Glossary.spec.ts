@@ -78,9 +78,6 @@ const user2 = new UserClass();
 const team = new TeamClass();
 const user3 = new UserClass();
 
-// Temporarily added for debugging purposes
-test.use({ trace: 'on' });
-
 test.describe('Glossary tests', () => {
   test.beforeAll(async ({ browser }) => {
     const { afterAction, apiContext } = await performAdminLogin(browser);

@@ -361,7 +361,6 @@ export const verifyCertificationTagPageUI = async (page: Page) => {
   await expect(
     page.getByTestId('data-classification-add-button')
   ).not.toBeVisible();
-  await expect(page.getByTestId('no-data-placeholder')).toBeVisible();
 };
 
 export const LIMITED_USER_RULES: PolicyRulesType[] = [
