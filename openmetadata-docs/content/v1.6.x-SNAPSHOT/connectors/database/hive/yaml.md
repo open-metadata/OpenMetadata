@@ -200,6 +200,8 @@ source:
 
 {% partial file="/v1.5/connectors/yaml/data-profiler.md" variables={connector: "hive"} /%}
 
+{% partial file="/v1.5/connectors/yaml/auto-classification.md" variables={connector: "hive"} /%}
+
 {% partial file="/v1.5/connectors/yaml/data-quality.md" /%}
 
 ## Securing Hive Connection with SSL in OpenMetadata
