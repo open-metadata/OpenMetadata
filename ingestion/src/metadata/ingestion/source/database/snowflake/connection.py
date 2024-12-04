@@ -121,7 +121,7 @@ def get_connection(connection: SnowflakeConnection) -> Engine:
             )
         p_key = serialization.load_pem_private_key(
             bytes(connection.privateKey.get_secret_value(), "utf-8"),
-            password=snowflake_private_key_passphrase.encode(),
+            password=snowflake_private_key_passphrase.encode() or None,
             backend=default_backend(),
         )
         pkb = p_key.private_bytes(
@@ -137,11 +137,14 @@ def get_connection(connection: SnowflakeConnection) -> Engine:
             "client_session_keep_alive"
         ] = connection.clientSessionKeepAlive
 
-    return create_generic_db_connection(
+    engine = create_generic_db_connection(
         connection=connection,
         get_connection_url_fn=get_connection_url,
         get_connection_args_fn=get_connection_args_common,
     )
+
+    connection.connectionArguments = init_empty_connection_arguments()
+    return engine
 
 
 def test_connection(
