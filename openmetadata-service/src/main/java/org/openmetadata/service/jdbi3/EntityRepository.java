@@ -2701,10 +2701,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
       // Default implementation. Override this to add any entity specific field updates
     }
 
-    protected void entitySpecificUpdate() {
-      entitySpecificUpdate(false);
-    }
-
     private void updateDescription() {
       if (operation.isPut() && !nullOrEmpty(original.getDescription()) && updatedByBot()) {
         // Revert change to non-empty description if it is being updated by a bot
