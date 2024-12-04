@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Popover } from 'antd';
+import { Popover, Space, Typography } from 'antd';
 import i18next, { t } from 'i18next';
 import {
   isEmpty,
@@ -165,6 +165,19 @@ export const getEntityName = (entity?: {
 }) => {
   return entity?.displayName || entity?.name || '';
 };
+
+export const getEntityLabel = (entity: {
+  displayName?: string;
+  name?: string;
+  fullyQualifiedName?: string;
+}): JSX.Element => (
+  <Space direction="vertical" size={0}>
+    <Typography.Text>{getEntityName(entity)}</Typography.Text>
+    <Typography.Text className="text-gray-400 text-xs break-word">
+      {entity?.fullyQualifiedName}
+    </Typography.Text>
+  </Space>
+);
 
 export const getEntityId = (entity?: { id?: string }) => entity?.id ?? '';
 
