@@ -18,6 +18,6 @@ Perform the reindexing process described below.
 
 ### Reindex
 
-{% partial file="/v1.5/deployment/reindex.md" /%}
+{% partial file="/v1.6/deployment/reindex.md" /%}
 
 **Note:** If you continue to experience issues, consider `re-installing` the search application.

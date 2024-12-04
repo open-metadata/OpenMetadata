@@ -203,6 +203,7 @@
     "file-loader": "^6.2.0",
     "fork-ts-checker-webpack-plugin": "6.5.0",
     "fs-extra": "^10.1.0",
+    "gifsicle": "^7.0.1",
     "html-webpack-plugin": "^5.5.0",
     "husky": "^8.0.1",
     "i18next-json-sync": "^3.1.2",

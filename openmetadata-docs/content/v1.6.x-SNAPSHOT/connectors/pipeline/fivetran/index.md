@@ -18,7 +18,7 @@ Configure and schedule Fivetran metadata and profiler workflows from the OpenMet
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 
-{% partial file="/v1.5/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/pipeline/fivetran/yaml"} /%}
+{% partial file="/v1.6/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/pipeline/fivetran/yaml"} /%}
 
 ## Requirements
 
@@ -27,12 +27,12 @@ To access Fivetran APIs, a Fivetran account on a Standard, Enterprise, or Busine
 ## Metadata Ingestion
 
 {% partial 
-  file="/v1.5/connectors/metadata-ingestion-ui.md" 
+  file="/v1.6/connectors/metadata-ingestion-ui.md" 
   variables={
     connector: "Fivetran", 
-    selectServicePath: "/images/v1.5/connectors/fivetran/select-service.png",
-    addNewServicePath: "/images/v1.5/connectors/fivetran/add-new-service.png",
-    serviceConnectionPath: "/images/v1.5/connectors/fivetran/service-connection.png",
+    selectServicePath: "/images/v1.6/connectors/fivetran/select-service.png",
+    addNewServicePath: "/images/v1.6/connectors/fivetran/add-new-service.png",
+    serviceConnectionPath: "/images/v1.6/connectors/fivetran/service-connection.png",
 } 
 /%}
 
@@ -55,12 +55,12 @@ For more detailed documentation visit [here](https://fivetran.com/docs/rest-api/
 - **hostPort**: HostPort of the Fivetran instance. By default, OpenMetadata will use `https://api.fivetran.com` to connect to the Fivetran APIs.
 - **limit**: Fivetran API Limit For Pagination. This refers to the maximum number of records that can be returned in a single page of results when using Fivetran's API for pagination.
 
-{% partial file="/v1.5/connectors/test-connection.md" /%}
+{% partial file="/v1.6/connectors/test-connection.md" /%}
 
-{% partial file="/v1.5/connectors/pipeline/configure-ingestion.md" /%}
+{% partial file="/v1.6/connectors/pipeline/configure-ingestion.md" /%}
 
-{% partial file="/v1.5/connectors/ingestion-schedule-and-deploy.md" /%}
+{% partial file="/v1.6/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
 
-{% partial file="/v1.5/connectors/troubleshooting.md" /%}
+{% partial file="/v1.6/connectors/troubleshooting.md" /%}

@@ -91,8 +91,8 @@ class AbstractTableMetricComputer(ABC):
             table (DeclarativeMeta): _description_
         """
         try:
-            self._schema_name = self.table.schema
-            self._table_name = self.table.name
+            self._schema_name = self.runner.schema_name
+            self._table_name = self.runner.table_name
         except AttributeError:
             raise AttributeError(ERROR_MSG)
 
@@ -119,10 +119,10 @@ class AbstractTableMetricComputer(ABC):
         Returns:
             Tuple[str, int]
         """
-        col_names = literal(",".join(inspect(self.table).c.keys()), type_=String).label(
-            COLUMN_NAMES
-        )
-        col_count = literal(len(inspect(self.table).c)).label(COLUMN_COUNT)
+        col_names = literal(
+            ",".join(inspect(self.runner.raw_dataset).c.keys()), type_=String
+        ).label(COLUMN_NAMES)
+        col_count = literal(len(inspect(self.runner.raw_dataset).c)).label(COLUMN_COUNT)
         return col_names, col_count
 
     def _build_query(
