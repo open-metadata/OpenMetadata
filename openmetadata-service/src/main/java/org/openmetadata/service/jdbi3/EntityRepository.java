@@ -917,6 +917,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   public final T setFieldsInternal(T entity, Fields fields) {
     entity.setOwners(fields.contains(FIELD_OWNERS) ? getOwners(entity) : entity.getOwners());
     entity.setTags(fields.contains(FIELD_TAGS) ? getTags(entity) : entity.getTags());
+    entity.setCertification(fields.contains(FIELD_TAGS) ? getCertification(entity) : null);
     entity.setExtension(
         fields.contains(FIELD_EXTENSION) ? getExtension(entity) : entity.getExtension());
     // Always return domains of entity
@@ -1713,6 +1714,22 @@ public abstract class EntityRepository<T extends EntityInterface> {
                 tagLabel.getState().ordinal());
       }
     }
+  }
+
+  protected AssetCertification getCertification(T entity) {
+    return !supportsCertification ? null : getCertification(entity.getCertification());
+  }
+
+  protected AssetCertification getCertification(AssetCertification certification) {
+    if (certification == null) {
+      return null;
+    }
+
+    String certificationTagFqn = certification.getTagLabel().getTagFQN();
+    TagLabel certificationTagLabel =
+        EntityUtil.toTagLabel(TagLabelUtil.getTag(certificationTagFqn));
+    certification.setTagLabel(certificationTagLabel);
+    return certification;
   }
 
   protected List<TagLabel> getTags(T entity) {
