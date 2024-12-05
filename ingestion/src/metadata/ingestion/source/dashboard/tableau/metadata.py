@@ -383,9 +383,12 @@ class TableauSource(DashboardServiceSource):
                         column=column.id,
                     )
                     for to_column in to_columns:
-                        column_lineage.append(
-                            ColumnLineage(fromColumns=[from_column], toColumn=to_column)
-                        )
+                        if from_column and to_column:
+                            column_lineage.append(
+                                ColumnLineage(
+                                    fromColumns=[from_column], toColumn=to_column
+                                )
+                            )
             return column_lineage
         except Exception as exc:
             logger.debug(f"Error to get column lineage: {exc}")
@@ -452,6 +455,7 @@ class TableauSource(DashboardServiceSource):
                 column.id
                 for field in upstream_data_model.fields
                 for column in field.upstreamColumns
+                if column is not None
             }
             for table in datamodel.upstreamTables or []:
                 om_tables = self._get_database_tables(db_service_entity, table)
@@ -889,6 +893,9 @@ class TableauSource(DashboardServiceSource):
         try:
             return dashboard_details.project.name
         except Exception as exc:
+            logger.info(
+                f"Cannot parse project name for dashboard:{dashboard_details.id} from Tableau server"
+            )
             logger.debug(traceback.format_exc())
             logger.warning(
                 f"Error fetching project name for {dashboard_details.id}: {exc}"
