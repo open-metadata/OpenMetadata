@@ -1,5 +1,3 @@
-import { KPIData } from './dataInsight.interface';
-
 /*
  *  Copyright 2024 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,15 +10,9 @@ import { KPIData } from './dataInsight.interface';
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-export const KPI_DATA: Array<KPIData> = [
-  {
-    dataInsightChart: 'Description KPI',
-    displayName: 'Playwright description with percentage',
-    metricType: 'Percentage',
-  },
-  {
-    dataInsightChart: 'Owner KPI',
-    displayName: 'Playwright Owner with percentage',
-    metricType: 'Percentage',
-  },
-];
+
+export interface KPIData {
+  dataInsightChart: string;
+  displayName: string;
+  metricType: string;
+}
