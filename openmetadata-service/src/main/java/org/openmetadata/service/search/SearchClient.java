@@ -266,6 +266,8 @@ public interface SearchClient {
       Pair<String, String> fieldAndValue,
       Pair<String, Map<String, Object>> updates);
 
+  void updateByFqnPrefix(String indexName, String oldParentFQN, String newParentFQN);
+
   void updateChildren(
       List<String> indexName,
       Pair<String, String> fieldAndValue,
