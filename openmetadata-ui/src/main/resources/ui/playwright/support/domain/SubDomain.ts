@@ -42,7 +42,7 @@ export class SubDomain {
     fullyQualifiedName: `\"PW%Subdomain.${this.id}\"`,
   };
 
-  responseData: ResponseDataType;
+  responseData: ResponseDataType = {} as ResponseDataType;
 
   constructor(domain: Domain, name?: string) {
     this.data.parent = domain.data.name;

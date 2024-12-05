@@ -36,7 +36,7 @@ export class Glossary {
     fullyQualifiedName: `\"PW%${this.randomId}.${this.randomName}\"`,
   };
 
-  responseData: GlossaryResponseDataType;
+  responseData: GlossaryResponseDataType = {} as GlossaryResponseDataType;
 
   constructor(name?: string) {
     this.data.name = name ?? this.data.name;

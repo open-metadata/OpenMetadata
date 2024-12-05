@@ -17,7 +17,10 @@ import { settingClick } from './sidebar';
 
 export const navigateToCustomizeLandingPage = async (
   page: Page,
-  { personaName, customPageDataResponse }
+  {
+    personaName,
+    customPageDataResponse,
+  }: { personaName: string; customPageDataResponse: number }
 ) => {
   const getPersonas = page.waitForResponse('/api/v1/personas*');
 
@@ -43,7 +46,7 @@ export const navigateToCustomizeLandingPage = async (
 
 export const removeAndCheckWidget = async (
   page: Page,
-  { widgetTestId, widgetKey }
+  { widgetTestId, widgetKey }: { widgetTestId: string; widgetKey: string }
 ) => {
   // Click on remove widget button
   await page.click(

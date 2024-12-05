@@ -10,10 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Browser } from '@playwright/test';
 import { AdminClass } from '../support/user/AdminClass';
 import { getAuthContext, getToken, redirectToHomePage } from './common';
 
-export const performAdminLogin = async (browser) => {
+export const performAdminLogin = async (browser: Browser) => {
   const admin = new AdminClass();
   const page = await browser.newPage();
   await admin.login(page);

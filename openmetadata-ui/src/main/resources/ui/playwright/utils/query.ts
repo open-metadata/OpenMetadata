@@ -11,10 +11,11 @@
  *  limitations under the License.
  */
 import { APIRequestContext, Page } from '@playwright/test';
+import { ResponseDataWithServiceType } from '../support/entity/Entity.interface';
 
 export const createQueryByTableName = async (data: {
   apiContext: APIRequestContext;
-  tableResponseData: unknown;
+  tableResponseData: ResponseDataWithServiceType;
 }) => {
   const { apiContext, tableResponseData } = data;
   const queryResponse = await apiContext

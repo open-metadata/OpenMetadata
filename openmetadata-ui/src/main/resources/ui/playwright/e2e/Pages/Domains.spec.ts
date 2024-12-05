@@ -378,7 +378,7 @@ test.describe('Domains Rbac', () => {
         const urlParams = new URLSearchParams(queryString);
         const qParam = urlParams.get('q');
 
-        await expect(qParam).toContain(`domain.fullyQualifiedName:`);
+        expect(qParam).toContain(`domain.fullyQualifiedName:`);
       });
 
       for (const asset of domainAssset2) {
@@ -389,7 +389,9 @@ test.describe('Domains Rbac', () => {
         const assetData = userPage.waitForResponse(
           `/api/v1/${asset.endpoint}/name/${fqn}*`
         );
-        await userPage.goto(`/${ENTITY_PATH[asset.endpoint]}/${fqn}`);
+        await userPage.goto(
+          `/${ENTITY_PATH[asset.endpoint as keyof typeof ENTITY_PATH]}/${fqn}`
+        );
         await assetData;
 
         await expect(

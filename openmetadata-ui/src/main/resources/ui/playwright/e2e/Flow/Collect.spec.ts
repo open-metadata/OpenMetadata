@@ -13,7 +13,7 @@
 import { expect, test } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
 import { redirectToHomePage } from '../../utils/common';
-import { settingClick } from '../../utils/sidebar';
+import { settingClick, SettingOptionsType } from '../../utils/sidebar';
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -55,7 +55,7 @@ test.describe('Collect end point should work properly', () => {
   });
 
   for (const key of Object.keys(PAGES)) {
-    const pageDetails = PAGES[key];
+    const pageDetails = PAGES[key as keyof typeof PAGES];
 
     test(`Visit ${pageDetails.name} page should trigger collect API`, async ({
       page,
@@ -65,7 +65,10 @@ test.describe('Collect end point should work properly', () => {
         '/api/v1/analytics/web/events/collect'
       );
 
-      await settingClick(page, pageDetails.menuId);
+      await settingClick(
+        page,
+        pageDetails.menuId as unknown as SettingOptionsType
+      );
 
       const collectResponse = await collectResponsePromise;
       const requestPayload = JSON.parse(

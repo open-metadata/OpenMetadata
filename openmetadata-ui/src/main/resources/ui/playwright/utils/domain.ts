@@ -21,6 +21,7 @@ import { EntityClass } from '../support/entity/EntityClass';
 import { TableClass } from '../support/entity/TableClass';
 import { TopicClass } from '../support/entity/TopicClass';
 import {
+  closeFirstPopupAlert,
   descriptionBox,
   getApiContext,
   INVALID_NAMES,
@@ -408,7 +409,11 @@ export const createDataProduct = async (
   page: Page,
   dataProduct: DataProduct['data']
 ) => {
-  await page.getByTestId('domain-details-add-button').click({ force: true });
+  // Safety check to close potential domain not found alert
+  // Arrived due to parallel testing
+  await closeFirstPopupAlert(page);
+
+  await page.getByTestId('domain-details-add-button').click();
   await page.getByRole('menuitem', { name: 'Data Products' }).click();
 
   await expect(page.getByText('Add Data Product')).toBeVisible();

@@ -16,15 +16,8 @@ import { DATA_STEWARD_RULES } from '../../constant/permission';
 import { generateRandomUsername, uuid } from '../../utils/common';
 import { PolicyClass } from '../access-control/PoliciesClass';
 import { RolesClass } from '../access-control/RolesClass';
+import { UserResponseDataType } from '../entity/Entity.interface';
 import { TeamClass } from '../team/TeamClass';
-
-type ResponseDataType = {
-  name: string;
-  displayName: string;
-  description: string;
-  id: string;
-  fullyQualifiedName: string;
-};
 
 type UserData = {
   email: string;
@@ -40,7 +33,7 @@ let dataStewardTeam: TeamClass;
 export class UserClass {
   data: UserData;
 
-  responseData: ResponseDataType;
+  responseData: UserResponseDataType = {} as UserResponseDataType;
   isUserDataSteward = false;
 
   constructor(data?: UserData) {

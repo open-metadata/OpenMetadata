@@ -21,7 +21,7 @@ import {
 import ServiceBaseClass from './ServiceBaseClass';
 
 class MetabaseIngestionClass extends ServiceBaseClass {
-  name: string;
+  name = '';
   tableName = 'jaffle_shop dashboard';
   constructor() {
     super(

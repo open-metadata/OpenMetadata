@@ -39,7 +39,7 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
   const tierTag1 = new TagClass({ classification: 'Tier' });
   const tierTag2 = new TagClass({ classification: 'Tier' });
 
-  let searchCriteria = {};
+  let searchCriteria: Record<string, any> = {};
 
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
     test.setTimeout(150000);

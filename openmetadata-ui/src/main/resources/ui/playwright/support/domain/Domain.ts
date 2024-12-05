@@ -33,7 +33,7 @@ export class Domain {
   id: string;
   data: ResponseDataType;
 
-  responseData: ResponseDataType;
+  responseData: ResponseDataType = {} as ResponseDataType;
 
   constructor(data?: ResponseDataType) {
     this.id = uuid();

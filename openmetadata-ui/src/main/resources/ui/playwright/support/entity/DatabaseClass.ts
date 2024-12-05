@@ -28,7 +28,11 @@ import {
 } from '../../utils/entity';
 import { visitServiceDetailsPage } from '../../utils/service';
 import { Domain } from '../domain/Domain';
-import { EntityTypeEndpoint } from './Entity.interface';
+import {
+  EntityTypeEndpoint,
+  ResponseDataType,
+  ResponseDataWithServiceType,
+} from './Entity.interface';
 import { EntityClass } from './EntityClass';
 
 export class DatabaseClass extends EntityClass {
@@ -111,10 +115,13 @@ export class DatabaseClass extends EntityClass {
     databaseSchema: `${this.service.name}.${this.entity.name}.${this.schema.name}`,
   };
 
-  serviceResponseData: unknown;
-  entityResponseData: unknown;
-  schemaResponseData: unknown;
-  tableResponseData: unknown;
+  serviceResponseData: ResponseDataType = {} as ResponseDataType;
+  entityResponseData: ResponseDataWithServiceType =
+    {} as ResponseDataWithServiceType;
+  schemaResponseData: ResponseDataWithServiceType =
+    {} as ResponseDataWithServiceType;
+  tableResponseData: ResponseDataWithServiceType =
+    {} as ResponseDataWithServiceType;
 
   constructor(name?: string) {
     super(EntityTypeEndpoint.Database);

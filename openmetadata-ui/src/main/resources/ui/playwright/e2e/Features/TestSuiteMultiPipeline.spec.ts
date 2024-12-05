@@ -158,7 +158,10 @@ test(
       await page.getByTestId('confirm-button').click();
       await deleteRes;
 
-      await page.getByTestId('more-actions').click();
+      await page
+        .getByTestId('ingestion-list-table')
+        .getByTestId('more-actions')
+        .click();
 
       await page
         .locator(

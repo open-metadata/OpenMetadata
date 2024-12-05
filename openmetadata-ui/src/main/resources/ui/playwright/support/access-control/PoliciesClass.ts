@@ -34,7 +34,7 @@ export type PolicyRulesType = {
 export class PolicyClass {
   id = uuid();
   data: ResponseDataType;
-  responseData: ResponseDataType;
+  responseData: ResponseDataType = {} as ResponseDataType;
 
   constructor(data?: ResponseDataType) {
     this.data = data ?? {
