@@ -95,7 +95,7 @@ public class PersonaRepository extends EntityRepository<Persona> {
     }
 
     @Override
-    public void entitySpecificUpdate() {
+    public void entitySpecificUpdate(boolean consolidatingChanges) {
       updateUsers(original, updated);
     }
 
