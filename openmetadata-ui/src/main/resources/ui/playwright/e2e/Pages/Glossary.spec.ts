@@ -366,11 +366,53 @@ test.describe('Glossary tests', () => {
       page.getByRole('link', { name: user1.responseData.displayName })
     ).toBeVisible();
 
+    await page
+      .getByTestId('edit-glossary-modal')
+      .getByTestId('add-reviewers')
+      .click();
+
+    await expect(
+      page
+        .getByRole('tooltip', { name: 'Selected Reviewers Teams' })
+        .getByTestId('select-owner-tabs')
+    ).toBeVisible();
+
+    const userListResponse = page.waitForResponse(
+      '/api/v1/users?limit=*&isBot=false*'
+    );
+    await page.getByRole('tab', { name: 'Users' }).click();
+    await userListResponse;
+
+    await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
+    const searchUserReviewer = page.waitForResponse(
+      `/api/v1/search/query?q=*${encodeURIComponent(
+        user2.responseData.displayName
+      )}*`
+    );
+    await page
+      .getByTestId(`owner-select-users-search-bar`)
+      .fill(user2.responseData.displayName);
+    await searchUserReviewer;
+
+    await page
+      .getByRole('listitem', {
+        name: user2.responseData.displayName,
+        exact: true,
+      })
+      .click();
+
+    await page.getByTestId('selectable-list-update-btn').click();
+
     await page.click('[data-testid="save-glossary-term"]');
     await glossaryTermResponse;
 
     await expect(
       page.getByRole('link', { name: user1.responseData.displayName })
+    ).toBeVisible();
+
+    await expect(
+      page.getByRole('link', { name: user2.responseData.displayName })
     ).toBeVisible();
 
     await glossaryTerm1.delete(apiContext);
