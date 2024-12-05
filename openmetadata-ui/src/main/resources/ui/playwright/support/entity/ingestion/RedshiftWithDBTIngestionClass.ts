@@ -35,7 +35,7 @@ import { sidebarClick } from '../../../utils/sidebar';
 import ServiceBaseClass from './ServiceBaseClass';
 
 class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
-  name: string;
+  name = '';
   filterPattern: string;
   dbtEntityFqn: string;
   schemaFilterPattern = 'dbt_automate_upgrade_tests';
