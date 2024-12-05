@@ -68,7 +68,7 @@ test.describe('Custom Theme Config Page', () => {
     for (const colorType of Object.keys(themeConfig)) {
       await page
         .locator(`[data-testid="${colorType}-color-input"]`)
-        .fill(themeConfig[colorType]);
+        .fill(themeConfig[colorType as keyof typeof themeConfig]);
     }
 
     const updatedConfigResponsePromise = page.waitForResponse(
