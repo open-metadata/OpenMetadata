@@ -22,6 +22,14 @@ REQUIRED_MANIFEST_KEYS = ["name", "schema", "resource_type"]
 # Based on https://schemas.getdbt.com/dbt/catalog/v1.json
 REQUIRED_CATALOG_KEYS = ["name", "type", "index"]
 
+REQUIRED_CONSTRAINT_KEYS = [
+    "type",
+    "name",
+    "expression",
+    "warn_unenforced",
+    "warn_unsupported",
+]
+
 REQUIRED_RESULTS_KEYS = {
     "status",
     "timing",
