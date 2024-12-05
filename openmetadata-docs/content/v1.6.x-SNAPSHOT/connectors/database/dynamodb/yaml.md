@@ -18,7 +18,7 @@ Configure and schedule DynamoDB metadata workflows from the OpenMetadata UI:
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 
-{% partial file="/v1.5/connectors/external-ingestion-deployment.md" /%}
+{% partial file="/v1.6/connectors/external-ingestion-deployment.md" /%}
 
 ## Requirements
 
@@ -47,7 +47,7 @@ For more information on Dynamodb permissions visit the [AWS DynamoDB official do
 
 ### Python Requirements
 
-{% partial file="/v1.5/connectors/python-requirements.md" /%}
+{% partial file="/v1.6/connectors/python-requirements.md" /%}
 
 To run the DynamoDB ingestion, you will need to install:
 
@@ -114,11 +114,11 @@ This is a sample config for DynamoDB:
 
 {% /codeInfo %}
 
-{% partial file="/v1.5/connectors/yaml/database/source-config-def.md" /%}
+{% partial file="/v1.6/connectors/yaml/database/source-config-def.md" /%}
 
-{% partial file="/v1.5/connectors/yaml/ingestion-sink-def.md" /%}
+{% partial file="/v1.6/connectors/yaml/ingestion-sink-def.md" /%}
 
-{% partial file="/v1.5/connectors/yaml/workflow-config-def.md" /%}
+{% partial file="/v1.6/connectors/yaml/workflow-config-def.md" /%}
 
 #### Advanced Configuration
 
@@ -177,17 +177,17 @@ source:
 ```
 
 
-{% partial file="/v1.5/connectors/yaml/database/source-config.md" /%}
+{% partial file="/v1.6/connectors/yaml/database/source-config.md" /%}
 
-{% partial file="/v1.5/connectors/yaml/ingestion-sink.md" /%}
+{% partial file="/v1.6/connectors/yaml/ingestion-sink.md" /%}
 
-{% partial file="/v1.5/connectors/yaml/workflow-config.md" /%}
+{% partial file="/v1.6/connectors/yaml/workflow-config.md" /%}
 
 {% /codeBlock %}
 
 {% /codePreview %}
 
-{% partial file="/v1.5/connectors/yaml/ingestion-cli.md" /%}
+{% partial file="/v1.6/connectors/yaml/ingestion-cli.md" /%}
 
 
 ## dbt Integration

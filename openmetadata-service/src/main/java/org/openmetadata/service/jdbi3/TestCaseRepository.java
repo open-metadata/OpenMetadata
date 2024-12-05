@@ -678,7 +678,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
 
     @Transaction
     @Override
-    public void entitySpecificUpdate() {
+    public void entitySpecificUpdate(boolean consolidatingChanges) {
       EntityLink origEntityLink = EntityLink.parse(original.getEntityLink());
       EntityReference origTableRef = EntityUtil.validateEntityLink(origEntityLink);
 
