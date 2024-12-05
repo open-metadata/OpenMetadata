@@ -322,7 +322,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
 
     @Transaction
     @Override
-    public void entitySpecificUpdate() {
+    public void entitySpecificUpdate(boolean consolidatingChanges) {
       updateAlgorithm(original, updated);
       updateDashboard(original, updated);
       updateMlFeatures(original, updated);

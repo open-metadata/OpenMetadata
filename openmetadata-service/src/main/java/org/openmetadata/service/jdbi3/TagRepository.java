@@ -307,7 +307,7 @@ public class TagRepository extends EntityRepository<Tag> {
 
     @Transaction
     @Override
-    public void entitySpecificUpdate() {
+    public void entitySpecificUpdate(boolean consolidatingChanges) {
       recordChange(
           "mutuallyExclusive", original.getMutuallyExclusive(), updated.getMutuallyExclusive());
       recordChange("disabled", original.getDisabled(), updated.getDisabled());
