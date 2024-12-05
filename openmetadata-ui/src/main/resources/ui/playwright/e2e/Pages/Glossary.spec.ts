@@ -1054,10 +1054,7 @@ test.describe('Glossary tests', () => {
       const dragColumn = 'Owners';
       const dropColumn = 'Status';
       await dragAndDropColumn(page, dragColumn, dropColumn);
-      const saveButton = page.locator(
-        '[data-testid="glossary-col-dropdown-save"]'
-      );
-      await saveButton.click();
+      await clickSaveButton(page);
       await page.waitForSelector('thead th', { state: 'visible' });
       const columnHeaders = page.locator('thead th');
       const columnText = await columnHeaders.allTextContents();

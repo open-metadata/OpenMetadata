@@ -1086,6 +1086,13 @@ export async function openColumnDropdown(page: Page): Promise<void> {
   await expect(dropdownButton).toBeVisible();
 
   await dropdownButton.click();
+
+  await page.waitForSelector(
+    '.ant-dropdown [role="menu"] .glossary-col-sel-dropdown-title',
+    {
+      state: 'visible',
+    }
+  );
 }
 
 export async function selectColumns(
@@ -1113,9 +1120,16 @@ export async function deselectColumns(
 }
 
 export async function clickSaveButton(page: Page): Promise<void> {
-  const saveButton = page.locator('.ant-btn-primary', {
-    hasText: 'Save',
-  });
+  // Adding manual wait to avoid flakiness for the operations performed in the
+  // dropdown like selection or drag and drop
+  await page.waitForTimeout(500);
+
+  const saveButton = page.locator(
+    '[data-testid="glossary-col-dropdown-save"]',
+    {
+      hasText: 'Save',
+    }
+  );
   await saveButton.click();
 }
 
