@@ -217,10 +217,18 @@ alt="DAG_Examples" /%}
 src="/images/v1.5/quickstart/tour.png"
 alt="tour" /%}
 
-## Cleanup
+## Stop
+To stop the services, from the same directory as mentioned in [step 1](#1.-create-a-directory-for-openmetadata), simply run below command.
+```
+docker compose down
+```
+
+## Delete
 
 From the same directory as mentioned in [step 1](#1.-create-a-directory-for-openmetadata), run the below command to stop the docker compose services and clean named volumes.
-
+{% warning %}
+This will delete all the data stored in database and search containers. Only run this if you want to delete and stop all the services.
+{%/ warning %}
 ```
 docker compose down --volumes
 ```

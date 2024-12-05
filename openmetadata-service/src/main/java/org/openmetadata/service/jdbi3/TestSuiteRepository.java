@@ -508,7 +508,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
 
     @Transaction
     @Override
-    public void entitySpecificUpdate() {
+    public void entitySpecificUpdate(boolean consolidatingChanges) {
       List<EntityReference> origTests = listOrEmpty(original.getTests());
       List<EntityReference> updatedTests = listOrEmpty(updated.getTests());
       List<ResultSummary> origTestCaseResultSummary =
