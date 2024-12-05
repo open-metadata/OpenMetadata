@@ -300,7 +300,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
 
     @Transaction
     @Override
-    public void entitySpecificUpdate() {
+    public void entitySpecificUpdate(boolean consolidatingChanges) {
       updateSourceConfig();
       updateAirflowConfig(original.getAirflowConfig(), updated.getAirflowConfig());
       updateLogLevel(original.getLoggerLevel(), updated.getLoggerLevel());

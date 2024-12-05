@@ -876,7 +876,7 @@ public class TeamRepository extends EntityRepository<Team> {
 
     @Transaction
     @Override
-    public void entitySpecificUpdate() {
+    public void entitySpecificUpdate(boolean consolidatingChanges) {
       if (original.getTeamType() != updated.getTeamType()) {
         // A team of type 'Group' cannot be updated
         if (GROUP.equals(original.getTeamType())) {

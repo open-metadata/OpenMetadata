@@ -142,7 +142,7 @@ public class KpiRepository extends EntityRepository<Kpi> {
 
     @Transaction
     @Override
-    public void entitySpecificUpdate() {
+    public void entitySpecificUpdate(boolean consolidatingChanges) {
       updateToRelationship(
           "dataInsightChart",
           KPI,

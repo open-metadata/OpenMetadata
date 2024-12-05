@@ -122,7 +122,7 @@ public class APICollectionRepository extends EntityRepository<APICollection> {
 
     @Transaction
     @Override
-    public void entitySpecificUpdate() {
+    public void entitySpecificUpdate(boolean consolidatingChanges) {
       recordChange("sourceHash", original.getSourceHash(), updated.getSourceHash());
     }
   }

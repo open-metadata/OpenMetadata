@@ -117,7 +117,7 @@ public abstract class ServiceEntityRepository<
 
     @Transaction
     @Override
-    public void entitySpecificUpdate() {
+    public void entitySpecificUpdate(boolean consolidatingChanges) {
       updateConnection();
     }
 

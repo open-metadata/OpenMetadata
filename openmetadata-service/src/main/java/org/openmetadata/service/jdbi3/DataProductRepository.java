@@ -135,7 +135,7 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
 
     @Transaction
     @Override
-    public void entitySpecificUpdate() {
+    public void entitySpecificUpdate(boolean consolidatingChanges) {
       updateAssets();
     }
 

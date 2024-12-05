@@ -270,7 +270,7 @@ public class TypeRepository extends EntityRepository<Type> {
 
     @Transaction
     @Override
-    public void entitySpecificUpdate() {
+    public void entitySpecificUpdate(boolean consolidatingChanges) {
       updateCustomProperties();
     }
 

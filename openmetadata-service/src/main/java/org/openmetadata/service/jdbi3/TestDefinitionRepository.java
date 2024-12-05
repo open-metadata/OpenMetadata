@@ -62,7 +62,7 @@ public class TestDefinitionRepository extends EntityRepository<TestDefinition> {
 
     @Transaction
     @Override
-    public void entitySpecificUpdate() {
+    public void entitySpecificUpdate(boolean consolidatingChanges) {
       recordChange("testPlatforms", original.getTestPlatforms(), updated.getTestPlatforms());
       recordChange(
           "supportedDataTypes", original.getSupportedDataTypes(), updated.getSupportedDataTypes());

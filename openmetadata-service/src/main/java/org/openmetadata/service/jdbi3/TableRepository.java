@@ -1156,7 +1156,7 @@ public class TableRepository extends EntityRepository<Table> {
     }
 
     @Override
-    public void entitySpecificUpdate() {
+    public void entitySpecificUpdate(boolean consolidatingChanges) {
       Table origTable = original;
       Table updatedTable = updated;
       DatabaseUtil.validateColumns(updatedTable.getColumns());
