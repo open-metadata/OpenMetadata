@@ -1,0 +1,69 @@
+{
+    "$id": "https://open-metadata.org/schema/entity/services/connections/database/cassandraConnection.json",
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "CassandraConnection",
+    "description": "Cassandra Connection Config",
+    "type": "object",
+    "javaType": "org.openmetadata.schema.services.connections.database.CassandraConnection",
+    "definitions": {
+        "cassandraType": {
+            "description": "Service type.",
+            "type": "string",
+            "enum": [
+                "Cassandra"
+            ],
+            "default": "Cassandra"
+        }
+    },
+    "properties": {
+        "type": {
+            "title": "Service Type",
+            "description": "Service Type",
+            "$ref": "#/definitions/cassandraType",
+            "default": "Cassandra"
+        },
+        "username": {
+            "title": "Username",
+            "description": "Username to connect to Cassandra. This user should have privileges to read all the metadata in Cassandra.",
+            "type": "string"
+        },
+        "password": {
+            "title": "Password",
+            "description": "Password to connect to Cassandra.",
+            "type": "string",
+            "format": "password"
+        },
+        "hostPort": {
+            "title": "Host and Port",
+            "description": "Host and port of the Cassandra service when using the `cassandra` connection scheme. Only host when using the `cassandra+srv` scheme.",
+            "type": "string"
+        },
+        "connectionOptions": {
+            "title": "Connection Options",
+            "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
+        },
+        "databaseName": {
+            "title": "Database Name",
+            "description": "Optional name to give to the database in OpenMetadata. If left blank, we will use default as the database name.",
+            "type": "string"
+        },
+        "supportsMetadataExtraction": {
+            "title": "Supports Metadata Extraction",
+            "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+        },
+        "supportsProfiler": {
+            "title": "Supports Profiler",
+            "$ref": "../connectionBasicType.json#/definitions/supportsProfiler"
+        },
+        "sslMode": {
+            "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/sslMode"
+        },
+        "sslConfig": {
+            "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/sslConfig"
+        }
+    },
+    "required": [
+        "hostPort"
+    ],
+    "additionalProperties": false
+}
