@@ -75,6 +75,9 @@ Thumbs.db
 # Sonar cloud
 "sonar-project.properties"
 
+# ignore antlr generated source
+src/generated/antlr
+
 # Snapshots
 *.snap
 
