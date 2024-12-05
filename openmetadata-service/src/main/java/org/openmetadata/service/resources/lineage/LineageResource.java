@@ -53,6 +53,7 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.lineage.AddLineage;
 import org.openmetadata.schema.type.EntityLineage;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
@@ -350,7 +351,7 @@ public class LineageResource {
     authorizer.authorize(
         securityContext,
         new OperationContext(LINEAGE_FIELD, MetadataOperation.EDIT_LINEAGE),
-        new LineageResourceContext());
+        new LineageResourceContext(addLineage));
     dao.addLineage(addLineage);
     return Response.status(Status.OK).build();
   }
@@ -427,7 +428,7 @@ public class LineageResource {
     authorizer.authorize(
         securityContext,
         new OperationContext(LINEAGE_FIELD, MetadataOperation.EDIT_LINEAGE),
-        new LineageResourceContext());
+        new LineageResourceContext(toEntity, toId));
     return dao.patchLineageEdge(fromEntity, fromId, toEntity, toId, patch);
   }
 
@@ -468,7 +469,7 @@ public class LineageResource {
     authorizer.authorize(
         securityContext,
         new OperationContext(LINEAGE_FIELD, MetadataOperation.EDIT_LINEAGE),
-        new LineageResourceContext());
+        new LineageResourceContext(toEntity, UUID.fromString(toId)));
 
     boolean deleted = dao.deleteLineage(fromEntity, fromId, toEntity, toId);
     if (!deleted) {
@@ -516,7 +517,7 @@ public class LineageResource {
     authorizer.authorize(
         securityContext,
         new OperationContext(LINEAGE_FIELD, MetadataOperation.EDIT_LINEAGE),
-        new LineageResourceContext());
+        new LineageResourceContext(toEntity, toFQN));
     boolean deleted = dao.deleteLineageByFQN(fromEntity, fromFQN, toEntity, toFQN);
     if (!deleted) {
       return Response.status(NOT_FOUND)
@@ -560,7 +561,7 @@ public class LineageResource {
     authorizer.authorize(
         securityContext,
         new OperationContext(LINEAGE_FIELD, MetadataOperation.EDIT_LINEAGE),
-        new LineageResourceContext());
+        new LineageResourceContext(entityType, entityId));
     dao.deleteLineageBySource(entityId, entityType, lineageSource);
     return Response.status(Status.OK).build();
   }
@@ -573,6 +574,8 @@ public class LineageResource {
 
   static class LineageResourceContext implements ResourceContextInterface {
 
+    EntityReference destinationLineageEntityRef;
+
     @Override
     public String getResource() {
       return LINEAGE_FIELD;
@@ -580,6 +583,11 @@ public class LineageResource {
 
     @Override
     public List<EntityReference> getOwners() {
+      if (this.destinationLineageEntityRef != null) {
+        EntityInterface dstEntity =
+            Entity.getEntity(destinationLineageEntityRef, "owners", Include.NON_DELETED);
+        return dstEntity.getOwners();
+      }
       return null;
     }
 
@@ -596,6 +604,20 @@ public class LineageResource {
     @Override
     public EntityReference getDomain() {
       return null;
+    }
+
+    public LineageResourceContext(AddLineage addLineage) {
+      this.destinationLineageEntityRef = addLineage.getEdge().getToEntity();
+    }
+
+    public LineageResourceContext(String toEntity, String toFqn) {
+      this.destinationLineageEntityRef =
+          Entity.getEntityReferenceByName(toEntity, toFqn, Include.NON_DELETED);
+    }
+
+    public LineageResourceContext(String toEntity, UUID toUuid) {
+      this.destinationLineageEntityRef =
+          Entity.getEntityReferenceById(toEntity, toUuid, Include.NON_DELETED);
     }
   }
 }
