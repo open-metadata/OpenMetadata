@@ -2113,6 +2113,43 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   @Override
+  public void updateByFqnPrefix(String indexName, String oldParentFQN, String newParentFQN) {
+    // Match all children documents whose fullyQualifiedName starts with the old parent's FQN
+    PrefixQueryBuilder prefixQuery =
+        new PrefixQueryBuilder("fullyQualifiedName", oldParentFQN + ".");
+
+    UpdateByQueryRequest updateByQueryRequest = new UpdateByQueryRequest(indexName);
+    updateByQueryRequest.setQuery(prefixQuery);
+
+    Map<String, Object> params = new HashMap<>();
+    params.put("oldParentFQN", oldParentFQN);
+    params.put("newParentFQN", newParentFQN);
+
+    String painlessScript =
+        "String updatedFQN = ctx._source.fullyQualifiedName.replace(params.oldParentFQN, params.newParentFQN); "
+            + "ctx._source.fullyQualifiedName = updatedFQN; "
+            + "ctx._source.fqnDepth = updatedFQN.splitOnToken('.').length; "
+            + "if (ctx._source.containsKey('parent')) { "
+            + "    if (ctx._source.parent.containsKey('fullyQualifiedName')) { "
+            + "        String parentFQN = ctx._source.parent.fullyQualifiedName; "
+            + "        ctx._source.parent.fullyQualifiedName = parentFQN.replace(params.oldParentFQN, params.newParentFQN); "
+            + "    } "
+            + "}";
+
+    Script inlineScript =
+        new Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, painlessScript, params);
+
+    updateByQueryRequest.setScript(inlineScript);
+
+    try {
+      updateElasticSearchByQuery(updateByQueryRequest);
+      LOG.info("Successfully propagated FQN updates for parent FQN: {}", oldParentFQN);
+    } catch (Exception e) {
+      LOG.error("Error while propagating FQN updates: {}", e.getMessage(), e);
+    }
+  }
+
+  @Override
   public void updateChildren(
       List<String> indexName,
       Pair<String, String> fieldAndValue,
