@@ -275,7 +275,7 @@ class FivetranSource(PipelineServiceSource):
                 )
 
     def get_pipeline_name(self, pipeline_details: FivetranPipelineDetails) -> str:
-        return pipeline_details.pipeline_name
+        return pipeline_details.pipeline_display_name or pipeline_details.pipeline_name
 
     def get_source_url(
         self,

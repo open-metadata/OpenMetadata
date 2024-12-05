@@ -134,3 +134,8 @@ The `ServiceSpec` class serves as the entrypoint for the connector and holds the
 to ingest and process the metadata from the source.
 You can see [postgres](https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/src/metadata/ingestion/source/database/postgres/service_spec.py) for an
 implementation example.
+
+
+### Fivetran
+
+The filtering of Fivetran pipelines now supports using their names instead of IDs. This change may affect existing configurations that rely on pipeline IDs for filtering.
