@@ -13,8 +13,9 @@ Cassandra source methods.
 """
 
 import traceback
-from typing import Dict, List, Optional, Union
+from typing import List, Optional
 
+from metadata.generated.schema.entity.data.table import Column
 from metadata.generated.schema.entity.services.connections.database.cassandraConnection import (
     CassandraConnection,
 )
@@ -23,6 +24,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.database.cassandra.helpers import CassandraColumnParser
 from metadata.ingestion.source.database.cassandra.queries import (
     CASSANDRA_GET_KEYSPACE_TABLES,
     CASSANDRA_GET_KEYSPACES,
@@ -94,18 +96,12 @@ class CassandraSource(CommonNoSQLSource):
 
         return tables
 
-    def get_table_columns_dict(
-        self, schema_name: str, table_name: str
-    ) -> Union[List[Dict], Dict]:
-        """
-        Method to get actual data available within table
-        need to be overridden by sources
-        """
+    def get_table_columns(self, schema_name: str, table_name: str) -> List[Column]:
         try:
-            columns = self.cassandra.execute(
+            data = self.cassandra.execute(
                 CASSANDRA_GET_TABLE_COLUMNS, [schema_name, table_name]
             )
-            return [{column.column_name: column.type for column in columns}]
+            return [CassandraColumnParser.parse(field=field) for field in data]
         except Exception as opf:
             logger.debug(f"Failed to read table [{table_name}]: {opf}")
             logger.debug(traceback.format_exc())

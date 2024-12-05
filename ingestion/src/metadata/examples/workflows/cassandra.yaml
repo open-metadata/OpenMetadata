@@ -1,10 +1,10 @@
 source:
   type: cassandra
-  serviceName: local_cassandra4
+  serviceName: local_cassandra
   serviceConnection:
     config:
       type: Cassandra
-      # databaseName: KESHAV
+      # databaseName: custom_database_name
       # username: username
       # password: password
       hostPort:  localhost:9042

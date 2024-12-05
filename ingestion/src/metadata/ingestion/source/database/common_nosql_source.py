@@ -27,6 +27,7 @@ from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import (
+    Column,
     Table,
     TableConstraint,
     TableType,
@@ -206,7 +207,6 @@ class CommonNoSQLSource(DatabaseServiceSource, ABC):
                     continue
                 yield table_name, TableType.Regular
 
-    @abstractmethod
     def get_table_columns_dict(
         self, schema_name: str, table_name: str
     ) -> Union[List[Dict], Dict]:
@@ -224,6 +224,17 @@ class CommonNoSQLSource(DatabaseServiceSource, ABC):
         # pylint: disable=unused-argument
         return None
 
+    def get_table_columns(self, schema_name: str, table_name: str) -> List[Column]:
+        """
+        Method to return all columns of a table
+        """
+        import pandas as pd  # pylint: disable=import-outside-toplevel
+
+        data = self.get_table_columns_dict(schema_name, table_name)
+        df = pd.DataFrame.from_records(list(data))
+        column_parser = DataFrameColumnParser.create(df)
+        return column_parser.get_columns()
+
     def yield_table(
         self, table_name_and_type: Tuple[str, TableType]
     ) -> Iterable[Either[CreateTableRequest]]:
@@ -231,19 +242,14 @@ class CommonNoSQLSource(DatabaseServiceSource, ABC):
         From topology.
         Prepare a table request and pass it to the sink
         """
-        import pandas as pd  # pylint: disable=import-outside-toplevel
 
         table_name, table_type = table_name_and_type
         schema_name = self.context.get().database_schema
         try:
-            data = self.get_table_columns_dict(schema_name, table_name)
-            df = pd.DataFrame.from_records(list(data))
-            column_parser = DataFrameColumnParser.create(df)
-            columns = column_parser.get_columns()
             table_request = CreateTableRequest(
                 name=EntityName(table_name),
                 tableType=table_type,
-                columns=columns,
+                columns=self.get_table_columns(schema_name, table_name),
                 tableConstraints=self.get_table_constraints(
                     schema_name=schema_name,
                     table_name=table_name,
