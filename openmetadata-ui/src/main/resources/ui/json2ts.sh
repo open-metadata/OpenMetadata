@@ -18,30 +18,12 @@ schema_directory='openmetadata-spec/src/main/resources/json/schema'
 om_ui_directory='openmetadata-ui/src/main/resources/ui/src/generated'
 tmp_dir=$(mktemp -d)
 
-addLicensing() {
-    dir=$1
-    txt=$(cat openmetadata-ui/src/main/resources/ui/types-licensing.txt; cat "$dir")
-    echo "$txt" > "$dir"
-}
-
-generateTmpSchemaFile() {
-    schema_file=$1
-    tmp_schema_file=$2
-    jq '(."$id" |= sub("https://open-metadata.org/schema";"";"i"))' "$schema_file" > "$tmp_schema_file"
-}
 
 generateType() {
     tmp_schema_file=$1
     output_file=$2
     echo "Generating $output_file from specification at $tmp_schema_file"
-    ./node_modules/.bin/quicktype -s schema "$tmp_schema_file" -o "$output_file" --just-types > /dev/null 2>&1
-
-    if [ -s "$output_file" ]; then
-        addLicensing "$output_file"
-    else
-        echo "Error: Could not generate $output_file"
-        rm -f "$output_file"
-    fi
+    ./node_modules/.bin/quicktype -s schema "$tmp_schema_file" -o "$output_file" --just-types
 }
 
 processFile() {
@@ -60,8 +42,7 @@ processFile() {
     output_file="$output_dir/$(basename "$schema_file" .json).ts"
 
     # Generate temporary schema and TypeScript file
-    generateTmpSchemaFile "$schema_file" "$tmp_schema_file"
-    generateType "$tmp_schema_file" "$output_file"
+    generateType "$schema_file" "$output_file"
 }
 
 getTypes() {

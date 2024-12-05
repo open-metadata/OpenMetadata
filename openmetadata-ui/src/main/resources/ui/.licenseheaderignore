@@ -75,9 +75,6 @@ Thumbs.db
 # Sonar cloud
 "sonar-project.properties"
 
-# Generated
-src/generated
-
 # Snapshots
 *.snap
 
