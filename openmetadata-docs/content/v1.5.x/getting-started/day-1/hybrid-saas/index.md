@@ -1,5 +1,5 @@
 ---
-title: Hybrid SaaS
+title:  Hybrid SaaS | Secure Metadata Ingestion for Collate
 slug: /getting-started/day-1/hybrid-saas
 collate: true
 ---
@@ -48,14 +48,14 @@ Once the image is downloaded, you can start the Docker container to initialize t
 
 #### 2. Configure the Agent  
 
-##### Access the Local Agent UI:  
+#### Access the Local Agent UI:  
 - Open your browser and navigate to the local instance of the Collate Ingestion Agent.  
 
-##### Set Up the Connection:  
+#### Set Up the Connection:  
 - Enter your Collate platform URL (e.g., `https://<your-company>.collate.com/api`).  
 - Add the ingestion bot token from the Collate settings under **Settings > Bots > Ingestion Bot**.  
 
-##### Verify Services:  
+#### Verify Services:  
 - Open the Collate UI and confirm that all available services (e.g., databases) are visible in the Ingestion Agent interface.  
 
 #### 3. Add a New Service  
