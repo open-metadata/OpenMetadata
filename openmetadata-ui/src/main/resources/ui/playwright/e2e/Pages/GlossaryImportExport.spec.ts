@@ -22,6 +22,7 @@ import { Glossary } from '../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import { UserClass } from '../../support/user/UserClass';
 import {
+  closeFirstPopupAlert,
   createNewPage,
   redirectToHomePage,
   toastNotification,
@@ -127,6 +128,11 @@ test.describe('Glossary Bulk Import Export', () => {
       async () => {
         await sidebarClick(page, SidebarItem.GLOSSARY);
         await selectActiveGlossary(page, glossary1.data.displayName);
+
+        // Safety check to close potential glossary not found alert
+        // Arrived due to parallel testing
+        await closeFirstPopupAlert(page);
+
         await page.click('[data-testid="manage-button"]');
         await page.click('[data-testid="import-button-description"]');
         const fileInput = await page.$('[type="file"]');
