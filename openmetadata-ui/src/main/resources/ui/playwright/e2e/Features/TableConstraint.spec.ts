@@ -118,8 +118,6 @@ test.describe('Table Constraints', {}, () => {
         )
         .click();
 
-      await page.waitForSelector('.ant-select-dropdown');
-
       // select value from dropdown
       const columnNameDropdownValue = page
         .getByTitle(columnName)
@@ -177,7 +175,7 @@ test.describe('Table Constraints', {}, () => {
         .type('name');
 
       // select 1st value from dropdown
-      const firstUniqueKeyColumn = page.getByTitle('name');
+      const firstUniqueKeyColumn = page.getByTitle('name', { exact: true });
       await firstUniqueKeyColumn.hover();
       await firstUniqueKeyColumn.click();
 
@@ -251,7 +249,7 @@ test.describe('Table Constraints', {}, () => {
         .type('name');
 
       // select 1st value from dropdown
-      const firstSortKeyColumn = page.getByTitle('name');
+      const firstSortKeyColumn = page.getByTitle('name', { exact: true });
       await firstSortKeyColumn.hover();
       await firstSortKeyColumn.click();
 

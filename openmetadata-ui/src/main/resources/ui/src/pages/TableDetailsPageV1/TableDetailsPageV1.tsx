@@ -389,10 +389,6 @@ const TableDetailsPageV1: React.FC = () => {
       }
       const jsonPatch = compare(tableDetails, updatedData);
 
-      if (isEmpty(jsonPatch)) {
-        return updatedData;
-      }
-
       return patchTableDetails(tableId, jsonPatch);
     },
     [tableDetails, tableId]
