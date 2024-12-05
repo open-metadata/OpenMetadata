@@ -479,6 +479,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         to_entity: Union[Dashboard, DashboardDataModel],
         from_entity: Union[Table, DashboardDataModel, Dashboard],
         column_lineage: List[ColumnLineage] = None,
+        sql: Optional[str] = None,
     ) -> Optional[Either[AddLineageRequest]]:
         if from_entity and to_entity:
             return Either(
@@ -494,6 +495,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
                         ),
                         lineageDetails=LineageDetails(
                             source=LineageSource.DashboardLineage,
+                            sqlQuery=sql,
                             columnsLineage=column_lineage,
                         ),
                     )
