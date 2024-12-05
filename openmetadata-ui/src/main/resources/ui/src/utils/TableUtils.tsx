@@ -18,6 +18,7 @@ import classNames from 'classnames';
 import { t } from 'i18next';
 import {
   get,
+  isEmpty,
   isUndefined,
   lowerCase,
   omit,
@@ -27,7 +28,7 @@ import {
   upperCase,
 } from 'lodash';
 import { EntityTags } from 'Models';
-import React, { CSSProperties } from 'react';
+import React, { CSSProperties, Fragment } from 'react';
 import { ReactComponent as AlertIcon } from '../assets/svg/alert.svg';
 import { ReactComponent as AnnouncementIcon } from '../assets/svg/announcements-black.svg';
 import { ReactComponent as ApplicationIcon } from '../assets/svg/application.svg';
@@ -61,11 +62,16 @@ import { ReactComponent as ContainerIcon } from '../assets/svg/ic-storage.svg';
 import { ReactComponent as IconStoredProcedure } from '../assets/svg/ic-stored-procedure.svg';
 import { ReactComponent as TableIcon } from '../assets/svg/ic-table.svg';
 import { ReactComponent as TopicIcon } from '../assets/svg/ic-topic.svg';
+import { ReactComponent as IconDistLineThrough } from '../assets/svg/icon-dist-line-through.svg';
+import { ReactComponent as IconDistKey } from '../assets/svg/icon-distribution.svg';
 import { ReactComponent as IconKeyLineThrough } from '../assets/svg/icon-key-line-through.svg';
 import { ReactComponent as IconKey } from '../assets/svg/icon-key.svg';
 import { ReactComponent as IconNotNullLineThrough } from '../assets/svg/icon-not-null-line-through.svg';
+import { ReactComponent as IconSortLineThrough } from '../assets/svg/icon-sort-line-through.svg';
+
 import { ReactComponent as IconNotNull } from '../assets/svg/icon-not-null.svg';
 import { ReactComponent as RoleIcon } from '../assets/svg/icon-role-grey.svg';
+import { ReactComponent as IconSortKey } from '../assets/svg/icon-sort.svg';
 import { ReactComponent as IconUniqueLineThrough } from '../assets/svg/icon-unique-line-through.svg';
 import { ReactComponent as IconUnique } from '../assets/svg/icon-unique.svg';
 import { ReactComponent as KPIIcon } from '../assets/svg/kpi.svg';
@@ -101,6 +107,7 @@ import { ConstraintTypes, PrimaryTableDataTypes } from '../enums/table.enum';
 import { SearchIndexField } from '../generated/entity/data/searchIndex';
 import {
   Column,
+  ConstraintType,
   DataType,
   JoinedWith,
   TableConstraint,
@@ -151,6 +158,7 @@ import { ReactComponent as IconVarchar } from '../assets/svg/data-type-icon/varc
 import { ReactComponent as IconVariant } from '../assets/svg/data-type-icon/variant.svg';
 import { ReactComponent as IconXML } from '../assets/svg/data-type-icon/xml.svg';
 import { Joined } from '../pages/TableDetailsPageV1/FrequentlyJoinedTables/FrequentlyJoinedTables.component';
+import ConstraintIcon from '../pages/TableDetailsPageV1/TableConstraints/ConstraintIcon';
 
 export const getUsagePercentile = (pctRank: number, isLiteral = false) => {
   const percentile = Math.round(pctRank * 10) / 10;
@@ -218,6 +226,24 @@ export const getConstraintIcon = ({
       title = t('label.foreign-key');
       icon = isConstraintDeleted ? IconForeignKeyLineThrough : IconForeignKey;
       dataTestId = 'foreign-key';
+
+      break;
+    }
+    case ConstraintType.DistKey: {
+      title = t('label.entity-key', {
+        entity: t('label.dist'),
+      });
+      icon = isConstraintDeleted ? IconDistLineThrough : IconDistKey;
+      dataTestId = 'dist-key';
+
+      break;
+    }
+    case ConstraintType.SortKey: {
+      title = t('label.entity-key', {
+        entity: t('label.sort'),
+      });
+      icon = isConstraintDeleted ? IconSortLineThrough : IconSortKey;
+      dataTestId = 'sort-key';
 
       break;
     }
@@ -922,4 +948,78 @@ export const getJoinsFromTableJoins = (joins?: TableJoins): Joined[] => {
       ),
     }))
     .sort((a, b) => b.joinCount - a.joinCount);
+};
+
+/**
+ * @param constraints contains column names for constraints which
+ * @param type constraint type
+ * @returns constraint object with columns and constraint type or empty array if constraints are empty
+ */
+export const createTableConstraintObject = (
+  constraints: string[],
+  type: ConstraintType
+) =>
+  !isEmpty(constraints) ? [{ columns: constraints, constraintType: type }] : [];
+
+export const tableConstraintRendererBasedOnType = (
+  constraintType: ConstraintType,
+  columns?: string[]
+) => {
+  const isSingleColumn = columns?.length === 1;
+
+  return (
+    <div
+      className="d-flex constraint-columns"
+      data-testid={`${constraintType}-container`}
+      key={constraintType}>
+      <Space
+        className="constraint-icon-container"
+        direction="vertical"
+        size={0}>
+        {columns?.map((column, index) => (
+          <Fragment key={column}>
+            {(columns?.length ?? 0) - 1 !== index || isSingleColumn ? (
+              <ConstraintIcon
+                constraintType={constraintType}
+                showOnlyIcon={isSingleColumn}
+              />
+            ) : null}
+          </Fragment>
+        ))}
+      </Space>
+
+      <Space direction="vertical" size={16}>
+        {columns?.map((column) => (
+          <Typography.Text ellipsis={{ tooltip: true }} key={column}>
+            {column}
+          </Typography.Text>
+        ))}
+      </Space>
+    </div>
+  );
+};
+
+/**
+ * Recursive function to get all columns from table column and its children
+ * @param columns Table Columns for creating options in table constraint form
+ * @returns column options with label and value
+ */
+export const getColumnOptionsFromTableColumn = (columns: Column[]) => {
+  const options: {
+    label: string;
+    value: string;
+  }[] = [];
+
+  columns.forEach((item) => {
+    if (!isEmpty(item.children)) {
+      options.push(...getColumnOptionsFromTableColumn(item.children ?? []));
+    }
+
+    options.push({
+      label: item.name,
+      value: item.name,
+    });
+  });
+
+  return options;
 };

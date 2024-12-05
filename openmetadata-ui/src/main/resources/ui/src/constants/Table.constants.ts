@@ -20,9 +20,35 @@ import i18n from '../utils/i18next/LocalUtil';
 
 export const TABLE_SCROLL_VALUE = { x: 1200 };
 
-export const SUPPORTED_TABLE_CONSTRAINTS = [
-  ConstraintType.ForeignKey,
-  ConstraintType.PrimaryKey,
+export const TABLE_CONSTRAINTS_TYPE_OPTIONS = [
+  {
+    label: i18n.t('label.entity-key', {
+      entity: i18n.t('label.primary'),
+    }),
+    value: ConstraintType.PrimaryKey,
+  },
+  {
+    label: i18n.t('label.entity-key', {
+      entity: i18n.t('label.foreign'),
+    }),
+    value: ConstraintType.ForeignKey,
+  },
+  {
+    label: i18n.t('label.unique'),
+    value: ConstraintType.Unique,
+  },
+  {
+    label: i18n.t('label.entity-key', {
+      entity: i18n.t('label.dist'),
+    }),
+    value: ConstraintType.DistKey,
+  },
+  {
+    label: i18n.t('label.entity-key', {
+      entity: i18n.t('label.sort'),
+    }),
+    value: ConstraintType.SortKey,
+  },
 ];
 
 export const COLUMN_CONSTRAINT_TYPE_OPTIONS = [
