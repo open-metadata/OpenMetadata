@@ -53,6 +53,16 @@
       "description": "Database of the data source.",
       "type": "string"
     },
+    "licenseFileName": {
+      "title": "License File Name",
+      "description": "License file name to connect to DB2.",
+      "type": "string"
+    },
+    "license": {
+      "title": "License",
+      "description": "License to connect to DB2.",
+      "type": "string"
+    },
     "connectionOptions": {
       "title": "Connection Options",
       "$ref": "../connectionBasicType.json#/definitions/connectionOptions"

@@ -108,6 +108,18 @@ This is a sample config for DB2:
 
 {% /codeInfo %}
 
+{% codeInfo srNumber=7 %}
+
+**license**: Contents of your license file if applicable, make sure to replace new lines with `\n` before pasting it here.
+
+{% /codeInfo %}
+
+{% codeInfo srNumber=8 %}
+
+**licenseFileName**: License file name in case the license is required for connection.
+
+{% /codeInfo %}
+
 {% partial file="/v1.6/connectors/yaml/database/source-config-def.md" /%}
 
 {% partial file="/v1.6/connectors/yaml/ingestion-sink-def.md" /%}
@@ -150,6 +162,12 @@ source:
 ```
 ```yaml {% srNumber=3 %}
       hostPort: localhost:5432
+```
+```yaml {% srNumber=7 %}
+      # license: content.....\n..of your....\n...license...\n..file...
+```
+```yaml {% srNumber=8 %}
+      # licenseFileName: your_license.llc
 ```
 ```yaml {% srNumber=4 %}
       # databaseSchema: schema
