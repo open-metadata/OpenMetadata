@@ -11,7 +11,6 @@
 """
 Trino lineage module
 """
-import re
 import traceback
 from typing import Iterable, List
 
@@ -92,13 +91,8 @@ class TrinoLineageSource(TrinoQueryParserSource, LineageSource):
                 trino_tables = self.metadata.list_all_entities(
                     entity=Table, params={"database": trino_database_fqn}
                 )
+                # NOTE: Currently, tables in system-defined schemas will also be checked for lineage.
                 for trino_table in trino_tables:
-                    if re.match(
-                        r"^(system(_|$).*|information(_|$).*|.*(_|^)schema$|pg_.*|sys_.*|.*_system|db_.*)$",
-                        trino_table.databaseSchema.name,
-                    ):
-                        continue
-
                     trino_table_fqn = trino_table.fullyQualifiedName.root
                     for cross_database_fqn in all_cross_database_fqns:
                         # Construct the FQN for cross-database tables
