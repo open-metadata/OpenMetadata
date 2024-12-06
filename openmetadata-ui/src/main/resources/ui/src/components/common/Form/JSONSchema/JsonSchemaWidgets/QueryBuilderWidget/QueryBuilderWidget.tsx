@@ -149,7 +149,15 @@ const QueryBuilderWidget: FC<WidgetProps> = ({
               (qFilter.query as QueryFieldInterface)?.bool
                 ?.must as QueryFieldInterface[]
             )?.push({
-              term: { entityType: entityType },
+              bool: {
+                must: [
+                  {
+                    term: {
+                      entityType: entityType,
+                    },
+                  },
+                ],
+              },
             });
           }
         }
