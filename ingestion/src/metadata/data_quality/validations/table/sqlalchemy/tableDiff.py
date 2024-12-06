@@ -25,7 +25,8 @@ from data_diff.diff_tables import DiffResultWrapper
 from data_diff.errors import DataDiffMismatchingKeyTypesError
 from data_diff.utils import ArithAlphanumeric, CaseInsensitiveDict
 from sqlalchemy import Column as SAColumn
-from sqlalchemy import create_engine, literal, select
+from sqlalchemy import literal, select
+from sqlalchemy.engine import make_url
 
 from metadata.data_quality.validations import utils
 from metadata.data_quality.validations.base_test_handler import BaseTestValidator
@@ -83,9 +84,9 @@ def build_sample_where_clause(
     reduced_concat = reduce(
         lambda c1, c2: c1.concat(c2), sql_alchemy_columns + [literal(salt)]
     )
-    sqa_dialect = create_engine(
+    sqa_dialect = make_url(
         f"{PythonDialects[table.database_service_type.name].value}://"
-    ).dialect
+    ).get_dialect()
     return str(
         select()
         .filter(
@@ -97,7 +98,7 @@ def build_sample_where_clause(
             < hex_nounce
         )
         .whereclause.compile(
-            dialect=sqa_dialect,
+            dialect=sqa_dialect(),
             compile_kwargs={"literal_binds": True},
         )
     )
