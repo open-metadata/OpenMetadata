@@ -175,6 +175,12 @@ class CommonNoSQLSource(DatabaseServiceSource, ABC):
         need to be overridden by sources
         """
 
+    def get_materialized_view_name_list(self, schema_name: str) -> List[str]:
+        """
+        Method to get list of materialized view names available within schema db
+        need to be overridden by sources
+        """
+
     def get_tables_name_and_type(self) -> Optional[Iterable[Tuple[str, TableType]]]:
         """
         Handle table and views.
@@ -186,26 +192,36 @@ class CommonNoSQLSource(DatabaseServiceSource, ABC):
         """
         schema_name = self.context.get().database_schema
         if self.source_config.includeTables:
-            for collection in self.get_table_name_list(schema_name):
-                table_name = collection
-                table_fqn = fqn.build(
-                    self.metadata,
-                    entity_type=Table,
-                    service_name=self.context.get().database_service,
-                    database_name=self.context.get().database,
-                    schema_name=self.context.get().database_schema,
-                    table_name=table_name,
-                )
-                if filter_by_table(
-                    self.source_config.tableFilterPattern,
-                    table_fqn if self.source_config.useFqnForFiltering else table_name,
-                ):
-                    self.status.filter(
-                        table_fqn,
-                        "Table Filtered Out",
+            for table_type, collections in {
+                TableType.Regular: self.get_table_name_list(schema_name),
+                TableType.MaterializedView: self.get_materialized_view_name_list(
+                    schema_name
+                ),
+            }.items():
+                for collection in collections or []:
+                    table_name = collection
+                    table_fqn = fqn.build(
+                        self.metadata,
+                        entity_type=Table,
+                        service_name=self.context.get().database_service,
+                        database_name=self.context.get().database,
+                        schema_name=self.context.get().database_schema,
+                        table_name=table_name,
                     )
-                    continue
-                yield table_name, TableType.Regular
+                    if filter_by_table(
+                        self.source_config.tableFilterPattern,
+                        (
+                            table_fqn
+                            if self.source_config.useFqnForFiltering
+                            else table_name
+                        ),
+                    ):
+                        self.status.filter(
+                            table_fqn,
+                            "Table Filtered Out",
+                        )
+                        continue
+                    yield table_name, table_type
 
     def get_table_columns_dict(
         self, schema_name: str, table_name: str

@@ -13,6 +13,31 @@
                 "Cassandra"
             ],
             "default": "Cassandra"
+        },
+        "cloudConfig": {
+            "title": "DataStax Astra DB Configuration",
+            "description": "Configuration for connecting to DataStax Astra DB in the cloud.",
+            "type": "object",
+            "properties": {
+                "connectTimeout": {
+                    "description": "Timeout in seconds for establishing new connections to Cassandra.",
+                    "type": "integer",
+                    "default": 600
+                },
+                "requestTimeout": {
+                    "description": "Timeout in seconds for individual Cassandra requests.",
+                    "type": "integer",
+                    "default": 600
+                },
+                "token": {
+                    "description": "The Astra DB application token used for authentication.",
+                    "type": "string"
+                },
+                "secureConnectBundle": {
+                    "description": "File path to the Secure Connect Bundle (.zip) used for a secure connection to DataStax Astra DB.",
+                    "type": "string"
+                }
+            }
         }
     },
     "properties": {
@@ -38,28 +63,23 @@
             "description": "Host and port of the Cassandra service when using the `cassandra` connection scheme. Only host when using the `cassandra+srv` scheme.",
             "type": "string"
         },
-        "connectionOptions": {
-            "title": "Connection Options",
-            "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
-        },
         "databaseName": {
             "title": "Database Name",
             "description": "Optional name to give to the database in OpenMetadata. If left blank, we will use default as the database name.",
             "type": "string"
         },
+        "cloudConfig": {
+            "title": "DataStax Astra DB Configuration",
+            "description": "Configuration for connecting to DataStax Astra DB in the cloud.",
+            "$ref": "#/definitions/cloudConfig"
+        },
+        "connectionOptions": {
+            "title": "Connection Options",
+            "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
+        },
         "supportsMetadataExtraction": {
             "title": "Supports Metadata Extraction",
             "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
-        },
-        "supportsProfiler": {
-            "title": "Supports Profiler",
-            "$ref": "../connectionBasicType.json#/definitions/supportsProfiler"
-        },
-        "sslMode": {
-            "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/sslMode"
-        },
-        "sslConfig": {
-            "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/sslConfig"
         }
     },
     "required": [

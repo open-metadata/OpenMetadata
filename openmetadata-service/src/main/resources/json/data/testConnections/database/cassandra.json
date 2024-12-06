@@ -20,7 +20,7 @@
     {
       "name": "GetTables",
       "description": "List all the tables available within a randomly chosen database available to the user.",
-      "errorMessage": "Failed to fetch tables, please validate if the user has `listCollection` privilege on available databases",
+      "errorMessage": "Failed to fetch tables, please validate if the user has enough privilege on available databases",
       "mandatory": true
     }
   ]

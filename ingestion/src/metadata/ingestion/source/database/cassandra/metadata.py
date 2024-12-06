@@ -26,6 +26,7 @@ from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.cassandra.helpers import CassandraColumnParser
 from metadata.ingestion.source.database.cassandra.queries import (
+    CASSANDRA_GET_KEYSPACE_MATERIALIZED_VIEWS,
     CASSANDRA_GET_KEYSPACE_TABLES,
     CASSANDRA_GET_KEYSPACES,
     CASSANDRA_GET_TABLE_COLUMNS,
@@ -95,6 +96,27 @@ class CassandraSource(CommonNoSQLSource):
             logger.debug(traceback.format_exc())
 
         return tables
+
+    def get_materialized_view_name_list(self, schema_name: str) -> List[str]:
+        """
+        Method to get list of materialized view names available within schema db
+        need to be overridden by sources
+        """
+        materialized_views = []
+        try:
+            materialized_views = [
+                row.view_name
+                for row in self.cassandra.execute(
+                    CASSANDRA_GET_KEYSPACE_MATERIALIZED_VIEWS, [schema_name]
+                )
+            ]
+        except Exception as exp:
+            logger.debug(
+                f"Failed to list materialized view names for schema [{schema_name}]: {exp}"
+            )
+            logger.debug(traceback.format_exc())
+
+        return materialized_views
 
     def get_table_columns(self, schema_name: str, table_name: str) -> List[Column]:
         try:

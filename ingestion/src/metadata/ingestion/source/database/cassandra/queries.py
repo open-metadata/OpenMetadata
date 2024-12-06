@@ -32,6 +32,12 @@ CASSANDRA_GET_KEYSPACE_TABLES = textwrap.dedent(
     """
 )
 
+CASSANDRA_GET_KEYSPACE_MATERIALIZED_VIEWS = textwrap.dedent(
+    """
+    SELECT * FROM system_schema.views WHERE keyspace_name = %s
+    """
+)
+
 CASSANDRA_GET_TABLE_COLUMNS = textwrap.dedent(
     """
     SELECT * FROM system_schema.columns WHERE keyspace_name = %s AND table_name = %s

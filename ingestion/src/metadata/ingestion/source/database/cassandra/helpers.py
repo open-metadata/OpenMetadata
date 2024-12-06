@@ -59,9 +59,7 @@ class CassandraColumnParser:
         raw_data_type = ""
         for letter in field.type:
             if letter == "<":
-                if not raw_data_type:
-                    continue
-                elif raw_data_type == "frozen":
+                if raw_data_type in ("", "frozen"):
                     raw_data_type = ""
                     continue
                 else:
@@ -94,7 +92,7 @@ class CassandraColumnParser:
 
         column_def = {
             "name": field.column_name,
-            "dataTypeDisplay": str(data_type),
+            "dataTypeDisplay": field.type,
             "dataType": data_type,
         }
         if array_data_type:

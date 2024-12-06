@@ -16,7 +16,12 @@ from functools import partial
 from typing import Optional
 
 from cassandra.auth import PlainTextAuthProvider
-from cassandra.cluster import Cluster
+from cassandra.cluster import (
+    EXEC_PROFILE_DEFAULT,
+    Cluster,
+    ExecutionProfile,
+    ProtocolVersion,
+)
 from cassandra.cluster import Session as CassandraSession
 from pydantic import BaseModel
 
@@ -38,22 +43,39 @@ from metadata.ingestion.source.database.cassandra.queries import (
 )
 from metadata.utils.constants import THREE_MIN
 
-# from cassandra.auth
-
 
 def get_connection(connection: CassandraConnection):
     """
     Create connection
     """
-    auth_provider = (
-        connection.username
-        and connection.password
-        and PlainTextAuthProvider(
-            username=connection.username, password=connection.password
+
+    cluster_config = {}
+    if connection.cloudConfig:
+        cloud_config = connection.cloudConfig
+        cluster_cloud_config = {
+            "connect_timeout": cloud_config.connectTimeout,
+            "use_default_tempdir": True,
+            "secure_connect_bundle": cloud_config.secureConnectBundle,
+        }
+        profile = ExecutionProfile(request_timeout=cloud_config.requestTimeout)
+        auth_provider = PlainTextAuthProvider("token", cloud_config.token)
+        cluster_config.update(
+            {
+                "cloud": cluster_cloud_config,
+                "auth_provider": auth_provider,
+                "execution_profiles": {EXEC_PROFILE_DEFAULT: profile},
+                "protocol_version": ProtocolVersion.V4,
+            }
         )
-    )
-    host, port = connection.hostPort.split(":")
-    cluster = Cluster(contact_points=[host], port=port, auth_provider=auth_provider)
+    else:
+        host, port = connection.hostPort.split(":")
+        cluster_config.update({"contact_points": [host], "port": port})
+        if connection.username and connection.password:
+            cluster_config["auth_provider"] = PlainTextAuthProvider(
+                username=connection.username, password=connection.password
+            )
+
+    cluster = Cluster(**cluster_config)
     session = cluster.connect()
 
     return session

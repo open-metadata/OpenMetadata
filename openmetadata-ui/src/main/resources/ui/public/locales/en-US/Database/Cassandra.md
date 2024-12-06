@@ -2,15 +2,16 @@
 In this section, we provide guides and references to use the Cassandra connector. You can view the full documentation for Cassandra [here](https://docs.open-metadata.org/connectors/database/cassandra).
 
 ## Requirements
-To extract metadata, the user used in the connection needs to be able to perform `find` operation on collection and `listCollection` operations on database available in Cassandra.
-
-You can find further information on the Hive connector in the [here](https://docs.open-metadata.org/connectors/database/cassandra).
+To extract metadata using the Cassandra connector, ensure the user in the connection has the following permissions:
+- Read Permissions: The ability to query tables and perform data extraction.
+- Schema Operations: Access to list and describe keyspaces and tables.
+You can find further information on the Cassandra connector in the [here](https://docs.open-metadata.org/connectors/database/cassandra).
 
 ## Connection Details
 
 $$section
 ### Username $(id="username")
-Username to connect to Cassandra. This user must have access to perform `find` operation on collection and `listCollection` operations on database available in Cassandra.
+Username to connect to Cassandra. This user must have the necessary permissions to perform metadata extraction and table queries.
 $$
 
 $$section
@@ -32,10 +33,5 @@ In OpenMetadata, the Database Service hierarchy works as follows:
 ```
 Database Service > Database > Schema > Table
 ```
-In the case of Cassandra, we won't have a Database as such. If you'd like to see your data in a database named something other than `default`, you can specify the name in this field.
-$$
-
-$$section
-### Connection Options $(id="connectionOptions")
-Additional connection options to build the URL that can be sent to service during the connection. The connectionOptions parameter is specific to the connection method being used. For example, if you are using SSL encryption, you might set the connectionOptions parameter to {'ssl': 'true', 'sslTrustStore': '/path/to/truststore'}.
+In the case of Cassandra, we won't have a Keyspace/Database as such. If you'd like to see your data in a database named something other than `default`, you can specify the name in this field.
 $$
