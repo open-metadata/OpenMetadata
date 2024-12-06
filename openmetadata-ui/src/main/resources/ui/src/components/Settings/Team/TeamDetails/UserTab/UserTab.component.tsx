@@ -188,6 +188,7 @@ export const UserTab = ({
 
   useEffect(() => {
     getCurrentTeamUsers(currentTeam.name);
+    handlePageChange(INITIAL_PAGING_VALUE);
   }, [currentTeam, pageSize]);
 
   const isTeamDeleted = useMemo(

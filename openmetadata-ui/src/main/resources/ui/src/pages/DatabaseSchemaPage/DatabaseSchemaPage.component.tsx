@@ -94,7 +94,13 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const pagingInfo = usePaging(PAGE_SIZE);
 
-  const { paging, pageSize, handlePagingChange } = pagingInfo;
+  const {
+    paging,
+    pageSize,
+    handlePagingChange,
+    currentPage,
+    handlePageChange,
+  } = pagingInfo;
 
   const { tab: activeTab = EntityTabs.TABLE } =
     useParams<{ tab: EntityTabs }>();
@@ -121,8 +127,6 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   const [databaseSchemaPermission, setDatabaseSchemaPermission] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
   const [showDeletedTables, setShowDeletedTables] = useState<boolean>(false);
-  const [currentTablesPage, setCurrentTablesPage] =
-    useState<number>(INITIAL_PAGING_VALUE);
   const [storedProcedureCount, setStoredProcedureCount] = useState(0);
 
   const [updateProfilerSetting, setUpdateProfilerSetting] =
@@ -140,7 +144,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
 
   const handleShowDeletedTables = (value: boolean) => {
     setShowDeletedTables(value);
-    setCurrentTablesPage(INITIAL_PAGING_VALUE);
+    handlePageChange(INITIAL_PAGING_VALUE);
   };
 
   const { version: currentVersion, deleted } = useMemo(
@@ -458,7 +462,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       if (cursorType) {
         getSchemaTables({ [cursorType]: paging[cursorType] });
       }
-      setCurrentTablesPage(currentPage);
+      handlePageChange(currentPage);
     },
     [paging, getSchemaTables]
   );
@@ -579,7 +583,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
         feedCount,
         tableData,
         activeTab,
-        currentTablesPage,
+        currentTablesPage: currentPage,
         databaseSchema,
         description,
         editDescriptionPermission,
@@ -611,7 +615,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       feedCount,
       tableData,
       activeTab,
-      currentTablesPage,
+      currentPage,
       databaseSchema,
       description,
       editDescriptionPermission,

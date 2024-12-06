@@ -780,8 +780,8 @@ const ServiceDetailsPage: FunctionComponent = () => {
         getOtherDetails({
           [cursorType]: paging[cursorType],
         });
-        handlePageChange(currentPage);
       }
+      handlePageChange(currentPage);
     },
     [paging, getOtherDetails, handlePageChange]
   );
