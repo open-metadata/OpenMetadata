@@ -62,18 +62,18 @@ class CassandraColumnParser:
                 if raw_data_type in ("", "frozen"):
                     raw_data_type = ""
                     continue
-                else:
-                    if not data_type:
-                        data_type = cls.datatype_mapping.get(
-                            raw_data_type.lower(), DataType.UNKNOWN
-                        )
-                    elif not array_data_type:
-                        array_data_type = cls.datatype_mapping.get(
-                            raw_data_type.lower(), DataType.UNKNOWN
-                        )
-                    raw_data_type = ""
-                    if data_type != DataType.ARRAY:
-                        break
+
+                if not data_type:
+                    data_type = cls.datatype_mapping.get(
+                        raw_data_type.lower(), DataType.UNKNOWN
+                    )
+                elif not array_data_type:
+                    array_data_type = cls.datatype_mapping.get(
+                        raw_data_type.lower(), DataType.UNKNOWN
+                    )
+                raw_data_type = ""
+                if data_type != DataType.ARRAY:
+                    break
 
             elif letter != ">":
                 raw_data_type += letter
