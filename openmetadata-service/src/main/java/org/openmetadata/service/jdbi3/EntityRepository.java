@@ -917,6 +917,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   public final T setFieldsInternal(T entity, Fields fields) {
     entity.setOwners(fields.contains(FIELD_OWNERS) ? getOwners(entity) : entity.getOwners());
     entity.setTags(fields.contains(FIELD_TAGS) ? getTags(entity) : entity.getTags());
+    entity.setCertification(fields.contains(FIELD_TAGS) ? getCertification(entity) : null);
     entity.setExtension(
         fields.contains(FIELD_EXTENSION) ? getExtension(entity) : entity.getExtension());
     // Always return domains of entity
@@ -1713,6 +1714,22 @@ public abstract class EntityRepository<T extends EntityInterface> {
                 tagLabel.getState().ordinal());
       }
     }
+  }
+
+  protected AssetCertification getCertification(T entity) {
+    return !supportsCertification ? null : getCertification(entity.getCertification());
+  }
+
+  protected AssetCertification getCertification(AssetCertification certification) {
+    if (certification == null) {
+      return null;
+    }
+
+    String certificationTagFqn = certification.getTagLabel().getTagFQN();
+    TagLabel certificationTagLabel =
+        EntityUtil.toTagLabel(TagLabelUtil.getTag(certificationTagFqn));
+    certification.setTagLabel(certificationTagLabel);
+    return certification;
   }
 
   protected List<TagLabel> getTags(T entity) {
@@ -2651,7 +2668,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
             "In session change consolidation. Reverting to previous version {}",
             previous.getVersion());
         updated = previous;
-        updateInternal();
+        updateInternal(true);
         LOG.info(
             "In session change consolidation. Reverting to previous version {} completed",
             previous.getVersion());
@@ -2669,6 +2686,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
     /** Compare original and updated entities and perform updates. Update the entity version and track changes. */
     @Transaction
     private void updateInternal() {
+      updateInternal(false);
+    }
+
+    /** Compare original and updated entities and perform updates. Update the entity version and track changes. */
+    @Transaction
+    private void updateInternal(boolean consolidatingChanges) {
       if (operation.isDelete()) { // Soft DELETE Operation
         updateDeleted();
       } else { // PUT or PATCH operations
@@ -2687,11 +2710,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
         updateStyle();
         updateLifeCycle();
         updateCertification();
-        entitySpecificUpdate();
+        entitySpecificUpdate(consolidatingChanges);
       }
     }
 
-    protected void entitySpecificUpdate() {
+    protected void entitySpecificUpdate(boolean consolidatingChanges) {
       // Default implementation. Override this to add any entity specific field updates
     }
 

@@ -18,7 +18,7 @@ Configure and schedule Kinesis metadata workflows from the OpenMetadata UI:
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 
-{% partial file="/v1.5/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/messaging/kinesis/yaml"} /%}
+{% partial file="/v1.6/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/messaging/kinesis/yaml"} /%}
 
 ## Requirements
 
@@ -52,12 +52,12 @@ For more information on Kinesis permissions visit the [AWS Kinesis official docu
 ## Metadata Ingestion
 
 {% partial 
-  file="/v1.5/connectors/metadata-ingestion-ui.md" 
+  file="/v1.6/connectors/metadata-ingestion-ui.md" 
   variables={
     connector: "Kinesis", 
-    selectServicePath: "/images/v1.5/connectors/kinesis/select-service.png",
-    addNewServicePath: "/images/v1.5/connectors//add-new-service.png",
-    serviceConnectionPath: "/images/v1.5/connectors/kinesis/service-connection.png",
+    selectServicePath: "/images/v1.6/connectors/kinesis/select-service.png",
+    addNewServicePath: "/images/v1.6/connectors//add-new-service.png",
+    serviceConnectionPath: "/images/v1.6/connectors/kinesis/service-connection.png",
 } 
 /%}
 
@@ -128,12 +128,12 @@ Find more information about [Source Identity](https://docs.aws.amazon.com/STS/la
 
 {% /extraContent %}
 
-{% partial file="/v1.5/connectors/test-connection.md" /%}
+{% partial file="/v1.6/connectors/test-connection.md" /%}
 
-{% partial file="/v1.5/connectors/messaging/configure-ingestion.md" /%}
+{% partial file="/v1.6/connectors/messaging/configure-ingestion.md" /%}
 
-{% partial file="/v1.5/connectors/ingestion-schedule-and-deploy.md" /%}
+{% partial file="/v1.6/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
 
-{% partial file="/v1.5/connectors/troubleshooting.md" /%}
+{% partial file="/v1.6/connectors/troubleshooting.md" /%}
