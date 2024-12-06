@@ -411,6 +411,12 @@ test.describe('Glossary tests', () => {
       page.getByRole('link', { name: user1.responseData.displayName })
     ).toBeVisible();
 
+    await openColumnDropdown(page);
+    const checkboxLabels = ['Reviewer'];
+    await selectColumns(page, checkboxLabels);
+    await clickSaveButton(page);
+    await verifyColumnsVisibility(page, checkboxLabels, true);
+
     await expect(
       page.getByRole('link', { name: user2.responseData.displayName })
     ).toBeVisible();
