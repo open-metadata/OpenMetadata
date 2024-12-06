@@ -16,14 +16,13 @@
 
 schema_directory='openmetadata-spec/src/main/resources/json/schema'
 om_ui_directory='openmetadata-ui/src/main/resources/ui/src/generated'
-tmp_dir=$(mktemp -d)
 
 
 generateType() {
     tmp_schema_file=$1
     output_file=$2
     echo "Generating $output_file from specification at $tmp_schema_file"
-    ./node_modules/.bin/quicktype -s schema "$tmp_schema_file" -o "$output_file" --just-types
+    ./node_modules/.bin/quicktype -s schema "$tmp_schema_file" -o "$output_file" --just-types > /dev/null 2>&1
 }
 
 processFile() {
@@ -68,8 +67,5 @@ fi
 
 # Process the schema files passed as arguments
 getTypes "$@"
-
-# Clean up temporary files
-rm -rf "$tmp_dir"
 
 echo "TypeScript generation completed."
