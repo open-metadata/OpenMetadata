@@ -19,9 +19,9 @@ Configure and schedule MongoDB metadata workflows from the OpenMetadata UI:
 - [Metadata Ingestion](#metadata-ingestion)
 - [Data Profiler](#data-profiler)
 
-{% partial file="/v1.5/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/mongodb/yaml"} /%}
+{% partial file="/v1.6/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/mongodb/yaml"} /%}
 
-{% partial file="/v1.5/connectors/external-ingestion-deployment.md" /%}
+{% partial file="/v1.6/connectors/external-ingestion-deployment.md" /%}
 
 ## Requirements
 
@@ -29,7 +29,7 @@ To fetch the metadata from MongoDB to OpenMetadata, the MongoDB user must have a
 
 ### Python Requirements
 
-{% partial file="/v1.5/connectors/python-requirements.md" /%}
+{% partial file="/v1.6/connectors/python-requirements.md" /%}
 
 To run the MongoDB ingestion, you will need to install:
 
@@ -74,7 +74,9 @@ This is a sample config for MongoDB:
 
 {% codeInfo srNumber=3 %}
 
-**hostPort**: The hostPort parameter specifies the host and port of the MongoDB. This should be specified as a string in the format `hostname:port`. E.g., `localhost:27017`.
+**hostPort**: When using the `mongodb` connecion schema, the hostPort parameter specifies the host and port of the MongoDB. This should be specified as a string in the format `hostname:port`. E.g., `localhost:27017`. When using the `mongodb+srv` connection schema, the hostPort parameter specifies the host and port of the MongoDB. This should be specified as a string in the format `hostname`. E.g., `cluster0-abcde.mongodb.net`.
+
+Using Atlas? Follow [this guide](https://www.mongodb.com/docs/guides/atlas/connection-string/) to get the connection string.
 
 {% /codeInfo %}
 
@@ -84,11 +86,11 @@ This is a sample config for MongoDB:
 
 {% /codeInfo %}
 
-{% partial file="/v1.5/connectors/yaml/database/source-config-def.md" /%}
+{% partial file="/v1.6/connectors/yaml/database/source-config-def.md" /%}
 
-{% partial file="/v1.5/connectors/yaml/ingestion-sink-def.md" /%}
+{% partial file="/v1.6/connectors/yaml/ingestion-sink-def.md" /%}
 
-{% partial file="/v1.5/connectors/yaml/workflow-config-def.md" /%}
+{% partial file="/v1.6/connectors/yaml/workflow-config-def.md" /%}
 
 #### Advanced Configuration
 
@@ -128,17 +130,17 @@ source:
       databaseName: custom_database_name
 ```
 
-{% partial file="/v1.5/connectors/yaml/database/source-config.md" /%}
+{% partial file="/v1.6/connectors/yaml/database/source-config.md" /%}
 
-{% partial file="/v1.5/connectors/yaml/ingestion-sink.md" /%}
+{% partial file="/v1.6/connectors/yaml/ingestion-sink.md" /%}
 
-{% partial file="/v1.5/connectors/yaml/workflow-config.md" /%}
+{% partial file="/v1.6/connectors/yaml/workflow-config.md" /%}
 
 {% /codeBlock %}
 
 {% /codePreview %}
 
-{% partial file="/v1.5/connectors/yaml/ingestion-cli.md" /%}
+{% partial file="/v1.6/connectors/yaml/ingestion-cli.md" /%}
 
 ## Data Profiler
 

@@ -20,7 +20,7 @@ Configure and schedule MongoDB metadata workflows from the OpenMetadata UI:
 - [Metadata Ingestion](#metadata-ingestion)
 - [Data Profiler](#data-profiler)
 
-{% partial file="/v1.5/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/mongodb/yaml"} /%}
+{% partial file="/v1.6/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/mongodb/yaml"} /%}
 
 ## Requirements
 
@@ -29,12 +29,12 @@ To fetch the metadata from MongoDB to OpenMetadata, the MongoDB user must have a
 ## Metadata Ingestion
 
 {% partial 
-  file="/v1.5/connectors/metadata-ingestion-ui.md" 
+  file="/v1.6/connectors/metadata-ingestion-ui.md" 
   variables={
     connector: "MongoDB", 
-    selectServicePath: "/images/v1.5/connectors/mongodb/select-service.png",
-    addNewServicePath: "/images/v1.5/connectors/mongodb/add-new-service.png",
-    serviceConnectionPath: "/images/v1.5/connectors/mongodb/service-connection.png",
+    selectServicePath: "/images/v1.6/connectors/mongodb/select-service.png",
+    addNewServicePath: "/images/v1.6/connectors/mongodb/add-new-service.png",
+    serviceConnectionPath: "/images/v1.6/connectors/mongodb/service-connection.png",
 } 
 /%}
 
@@ -45,24 +45,26 @@ To fetch the metadata from MongoDB to OpenMetadata, the MongoDB user must have a
 
 - **Username**: Username to connect to Mongodb. This user must have access to perform `find` operation on collection and `listCollection` operations on database available in MongoDB.
 - **Password**: Password to connect to MongoDB.
-- **Host Port**: The hostPort parameter specifies the host and port of the MongoDB. This should be specified as a string in the format `hostname:port`. E.g., `localhost:27017`.
+- **Host Port**: When using the `mongodb` connecion schema, the hostPort parameter specifies the host and port of the MongoDB. This should be specified as a string in the format `hostname:port`. E.g., `localhost:27017`. When using the `mongodb+srv` connection schema, the hostPort parameter specifies the host and port of the MongoDB. This should be specified as a string in the format `hostname`. E.g., `cluster0-abcde.mongodb.net`.
 - **databaseName**: Optional name to give to the database in OpenMetadata. If left blank, we will use default as the database name.
 
-{% partial file="/v1.5/connectors/database/advanced-configuration.md" /%}
+Using Atlas? Follow [this guide](https://www.mongodb.com/docs/guides/atlas/connection-string/) to get the connection string.
+
+{% partial file="/v1.6/connectors/database/advanced-configuration.md" /%}
 
 {% /extraContent %}
 
-{% partial file="/v1.5/connectors/test-connection.md" /%}
+{% partial file="/v1.6/connectors/test-connection.md" /%}
 
-{% partial file="/v1.5/connectors/database/configure-ingestion.md" /%}
+{% partial file="/v1.6/connectors/database/configure-ingestion.md" /%}
 
-{% partial file="/v1.5/connectors/ingestion-schedule-and-deploy.md" /%}
+{% partial file="/v1.6/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
 
-{% partial file="/v1.5/connectors/troubleshooting.md" /%}
+{% partial file="/v1.6/connectors/troubleshooting.md" /%}
 
-{% partial file="/v1.5/connectors/database/related.md" /%}
+{% partial file="/v1.6/connectors/database/related.md" /%}
 
 ## Data Profiler
 

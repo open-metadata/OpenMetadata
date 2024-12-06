@@ -84,33 +84,6 @@ during the migration after bumping this value, you can increase them further.
 
 After the migration is finished, you can revert this changes.
 
-# New Versioning System for Ingestion Docker Image
-
-We are excited to announce a recent change in our version tagging system for our Ingestion Docker images. This update aims to improve consistency and clarity in our versioning, aligning our Docker image tags with our Python PyPi package versions.
-
-### Ingestion Docker Image Tags
-
-To maintain consistency, our Docker images will now follow the same 4-digit versioning system as of Python Package versions. For example, a Docker image version might look like `1.0.0.0`.
-
-Additionally, we will continue to provide a 3-digit version tag (e.g., `1.0.0`) that will always point to the latest corresponding 4-digit image tag. This ensures ease of use for those who prefer a simpler version tag while still having access to the most recent updates.
-
-### Benefits
-
-**Consistency**: Both Python applications and Docker images will have the same versioning format, making it easier to track and manage versions.
-**Clarity**: The 4-digit system provides a clear and detailed versioning structure, helping users understand the nature and scope of changes.
-**Non-Breaking Change**: This update is designed to be non-disruptive. Existing Ingestions and dependencies will remain unaffected.
-
-#### Example
-
-Here’s an example of how the new versioning works:
-
-**Python Application Version**: `1.5.0.0`
-**Docker Image Tags**:
-- `1.5.0.0` (specific version)
-- `1.5.0` (latest version in the 1.5.0.x series)
-
-We believe this update will bring greater consistency and clarity to our versioning system. As always, we value your feedback and welcome any questions or comments you may have.
-
 # Backward Incompatible Changes
 
 ## 1.6.0
@@ -124,3 +97,45 @@ workflow as successful. However, any errors when sending the information to Open
 
 Now, we're changing this behavior to consider the success rate of all the steps involved in the workflow. The UI will
 then show more `Partial Success` statuses rather than `Failed`, properly reflecting the real state of the workflow.
+
+### Profiler & Auto Classification Workflow
+
+We are creating a new `Auto Classification` workflow that will take care of managing the sample data and PII classification,
+which was previously done by the Profiler workflow. This change will allow us to have a more modular and scalable system.
+
+The Profiler workflow will now only focus on the profiling part of the data, while the Auto Classification will take care
+of the rest.
+
+This means that we are removing these properties from the `DatabaseServiceProfilerPipeline` schema:
+- `generateSampleData`
+- `processPiiSensitive`
+- `confidence`
+which will be moved to the new `DatabaseServiceAutoClassificationPipeline` schema.
+
+What you will need to do:
+- If you are using the **EXTERNAL** ingestion for the profiler (YAML configuration), you will need to update your configuration,
+removing these properties as well.
+- If you still want to use the Auto PII Classification and sampling features, you can create the new workflow
+from the UI.
+
+### Collate - Metadata Actions for ML Tagging - Deprecation Notice
+
+Since we are introducing the `Auto Classification` workflow, **we are going to remove in 1.7 the `ML Tagging` action**
+from the Metadata Actions. That feature will be covered already by the `Auto Classification` workflow, which even brings
+more flexibility allow the on-the-fly usage of the sample data for classification purposes without having to store
+it in the database.
+
+### Service Spec for the Ingestion Framework
+
+This impacts users who maintain their own connectors for the ingestion framework that are **NOT** part of the
+[OpenMetadata python library (openmetadata-ingestion)](https://github.com/open-metadata/OpenMetadata/tree/ff261fb3738f3a56af1c31f7151af9eca7a602d5/ingestion/src/metadata/ingestion/source).
+Introducing the ["connector specifcication class (`ServiceSpec`)"](https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/src/metadata/utils/service_spec/service_spec.py). 
+The `ServiceSpec` class serves as the entrypoint for the connector and holds the references for the classes that will be used
+to ingest and process the metadata from the source.
+You can see [postgres](https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/src/metadata/ingestion/source/database/postgres/service_spec.py) for an
+implementation example.
+
+
+### Fivetran
+
+The filtering of Fivetran pipelines now supports using their names instead of IDs. This change may affect existing configurations that rely on pipeline IDs for filtering.

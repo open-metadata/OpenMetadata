@@ -174,6 +174,7 @@ public interface SearchClient {
       String index,
       String query,
       String filter,
+      String[] fields,
       SearchSortFilter searchSortFilter,
       int size,
       Object[] searchAfter)
@@ -264,6 +265,8 @@ public interface SearchClient {
       String indexName,
       Pair<String, String> fieldAndValue,
       Pair<String, Map<String, Object>> updates);
+
+  void updateByFqnPrefix(String indexName, String oldParentFQN, String newParentFQN);
 
   void updateChildren(
       List<String> indexName,
@@ -359,6 +362,8 @@ public interface SearchClient {
   }
 
   Object getLowLevelClient();
+
+  Object getClient();
 
   static boolean shouldApplyRbacConditions(
       SubjectContext subjectContext, RBACConditionEvaluator rbacConditionEvaluator) {

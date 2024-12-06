@@ -13,6 +13,7 @@
 DBT source methods.
 """
 import traceback
+from copy import deepcopy
 from datetime import datetime
 from typing import Any, Iterable, List, Optional, Union
 
@@ -324,7 +325,41 @@ class DbtSource(DbtServiceSource):
             None,
         )
 
-    # pylint: disable=too-many-locals, too-many-branches
+    def _add_dbt_freshness_test_from_sources(
+        self, key: str, manifest_node, manifest_entities, dbt_objects: DbtObjects
+    ):
+        # in dbt manifest sources node name is table/view name (not test name like with test nodes)
+        # so in order for the test creation to be named precisely I am amending manifest node name within it's deepcopy
+        manifest_node_new = deepcopy(manifest_node)
+        manifest_node_new.name = manifest_node_new.name + "_freshness"
+
+        freshness_test_result = next(
+            (item for item in dbt_objects.dbt_sources.results if item.unique_id == key),
+            None,
+        )
+
+        if freshness_test_result:
+            self.context.get().dbt_tests[key + "_freshness"] = {
+                DbtCommonEnum.MANIFEST_NODE.value: manifest_node_new
+            }
+            self.context.get().dbt_tests[key + "_freshness"][
+                DbtCommonEnum.UPSTREAM.value
+            ] = self.parse_upstream_nodes(manifest_entities, manifest_node)
+            self.context.get().dbt_tests[key + "_freshness"][
+                DbtCommonEnum.RESULTS.value
+            ] = freshness_test_result
+
+    def add_dbt_sources(
+        self, key: str, manifest_node, manifest_entities, dbt_objects: DbtObjects
+    ) -> None:
+        """
+        Method to append dbt test cases based on sources file for later processing
+        """
+        self._add_dbt_freshness_test_from_sources(
+            key, manifest_node, manifest_entities, dbt_objects
+        )
+
+    # pylint: disable=too-many-locals, too-many-branches, too-many-statements
     def yield_data_models(
         self, dbt_objects: DbtObjects
     ) -> Iterable[Either[DataModelLink]]:
@@ -375,6 +410,17 @@ class DbtSource(DbtServiceSource):
                             dbt_objects=dbt_objects,
                         )
                         continue
+
+                    if (
+                        dbt_objects.dbt_sources
+                        and resource_type == SkipResourceTypeEnum.SOURCE.value
+                    ):
+                        self.add_dbt_sources(
+                            key,
+                            manifest_node=manifest_node,
+                            manifest_entities=manifest_entities,
+                            dbt_objects=dbt_objects,
+                        )
 
                     # Skip the ephemeral nodes since it is not materialized
                     if check_ephemeral_node(manifest_node):
@@ -471,7 +517,7 @@ class DbtSource(DbtServiceSource):
                                     manifest_node=manifest_node,
                                     catalog_node=catalog_node,
                                 ),
-                                tags=dbt_table_tags_list or None,
+                                tags=dbt_table_tags_list or [],
                             ),
                         )
                         yield Either(right=data_model_link)
@@ -549,6 +595,29 @@ class DbtSource(DbtServiceSource):
                         f"Failed to parse the DBT node {node} to get upstream nodes: {exc}"
                     )
                     continue
+
+        if dbt_node.resource_type == SkipResourceTypeEnum.SOURCE.value:
+            parent_fqn = fqn.build(
+                self.metadata,
+                entity_type=Table,
+                service_name="*",
+                database_name=get_corrected_name(dbt_node.database),
+                schema_name=get_corrected_name(dbt_node.schema_),
+                table_name=dbt_node.name,
+            )
+
+            # check if the parent table exists in OM before adding it to the upstream list
+            parent_table_entity: Optional[
+                Union[Table, List[Table]]
+            ] = get_entity_from_es_result(
+                entity_list=self.metadata.es_search_from_fqn(
+                    entity_type=Table, fqn_search_string=parent_fqn
+                ),
+                fetch_multiple_entities=False,
+            )
+            if parent_table_entity:
+                upstream_nodes.append(parent_fqn)
+
         return upstream_nodes
 
     def parse_data_model_columns(
@@ -617,7 +686,7 @@ class DbtSource(DbtServiceSource):
                         ordinalPosition=catalog_column.index
                         if catalog_column
                         else None,
-                        tags=dbt_column_tag_list or None,
+                        tags=dbt_column_tag_list or [],
                     )
                 )
                 logger.debug(f"Successfully processed DBT column: {key}")

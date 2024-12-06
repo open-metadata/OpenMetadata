@@ -22,19 +22,55 @@ Configure and schedule MySQL metadata and profiler workflows from the OpenMetada
 - [dbt Integration](#dbt-integration)
 - [Enable Security](#securing-mysql-connection-with-ssl-in-openmetadata)
 
-{% partial file="/v1.5/connectors/external-ingestion-deployment.md" /%}
+{% partial file="/v1.6/connectors/external-ingestion-deployment.md" /%}
 
 ## Requirements
 
 ### Python Requirements
 
-{% partial file="/v1.5/connectors/python-requirements.md" /%}
+{% partial file="/v1.6/connectors/python-requirements.md" /%}
 
 To run the MySQL ingestion, you will need to install:
 
 ```bash
 pip3 install "openmetadata-ingestion[mysql]"
 ```
+
+### Metadata
+
+Note that We support MySQL (version 8.0.0 or greater) and the user should have access to the `INFORMATION_SCHEMA` table.  By default a user can see only the rows in the `INFORMATION_SCHEMA` that correspond to objects for which the user has the proper access privileges.
+
+```SQL
+-- Create user. If <hostName> is omitted, defaults to '%'
+-- More details https://dev.mysql.com/doc/refman/8.0/en/create-user.html
+CREATE USER '<username>'[@'<hostName>'] IDENTIFIED BY '<password>';
+
+-- Grant select on a database
+GRANT SELECT ON world.* TO '<username>';
+
+-- Grant select on a database
+GRANT SELECT ON world.* TO '<username>';
+
+-- Grant select on a specific object
+GRANT SELECT ON world.hello TO '<username>';
+```
+
+### Lineage & Usage 
+To extract lineage & usage you need to enable the query logging in mysql and the user used in the connection needs to have select access to the `mysql.general_log`.
+
+```sql
+-- Enable Logging 
+SET GLOBAL general_log='ON';
+set GLOBAL log_output='table';
+
+-- Grant SELECT on log table
+GRANT SELECT ON mysql.general_log TO '<username>'@'<host>';
+```
+
+### Profiler & Data Quality
+Executing the profiler workflow or data quality tests, will require the user to have `SELECT` permission on the tables/schemas where the profiler/tests will be executed. More information on the profiler workflow setup can be found [here](/how-to-guides/data-quality-observability/profiler/workflow) and data quality tests [here](/how-to-guides/data-quality-observability/quality).
+
+
 
 ## Metadata Ingestion
 
@@ -155,11 +191,11 @@ Find more information about [Source Identity](https://docs.aws.amazon.com/STS/la
 
 {% /codeInfo %}
 
-{% partial file="/v1.5/connectors/yaml/database/source-config-def.md" /%}
+{% partial file="/v1.6/connectors/yaml/database/source-config-def.md" /%}
 
-{% partial file="/v1.5/connectors/yaml/ingestion-sink-def.md" /%}
+{% partial file="/v1.6/connectors/yaml/ingestion-sink-def.md" /%}
 
-{% partial file="/v1.5/connectors/yaml/workflow-config-def.md" /%}
+{% partial file="/v1.6/connectors/yaml/workflow-config-def.md" /%}
 
 #### Advanced Configuration
 
@@ -219,21 +255,23 @@ source:
       #   key: value
 ```
 
-{% partial file="/v1.5/connectors/yaml/database/source-config.md" /%}
+{% partial file="/v1.6/connectors/yaml/database/source-config.md" /%}
 
-{% partial file="/v1.5/connectors/yaml/ingestion-sink.md" /%}
+{% partial file="/v1.6/connectors/yaml/ingestion-sink.md" /%}
 
-{% partial file="/v1.5/connectors/yaml/workflow-config.md" /%}
+{% partial file="/v1.6/connectors/yaml/workflow-config.md" /%}
 
 {% /codeBlock %}
 
 {% /codePreview %}
 
-{% partial file="/v1.5/connectors/yaml/ingestion-cli.md" /%}
+{% partial file="/v1.6/connectors/yaml/ingestion-cli.md" /%}
 
-{% partial file="/v1.5/connectors/yaml/data-profiler.md" variables={connector: "mysql"} /%}
+{% partial file="/v1.6/connectors/yaml/data-profiler.md" variables={connector: "mysql"} /%}
 
-{% partial file="/v1.5/connectors/yaml/data-quality.md" /%}
+{% partial file="/v1.6/connectors/yaml/auto-classification.md" variables={connector: "mysql"} /%}
+
+{% partial file="/v1.6/connectors/yaml/data-quality.md" /%}
 
 ## Securing MySQL Connection with SSL in OpenMetadata
 

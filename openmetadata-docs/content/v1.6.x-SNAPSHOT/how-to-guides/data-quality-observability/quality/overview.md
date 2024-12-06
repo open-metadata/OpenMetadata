@@ -1,6 +1,7 @@
 ---
 title: Data Quality Overview Section
 slug: /how-to-guides/data-quality-observability/quality/overview
+collate: true
 ---
 
 # Data Quality Overview Section
@@ -17,7 +18,7 @@ The 6 categories are defined as:
 For a full list of test cases and their dimensions click [here](/how-to-guides/data-quality-observability/quality/tests-yaml)
 
 {% image
-src="/images/v1.5/features/ingestion/workflows/data-quality/data-quality-dimensions.png"
+src="/images/v1.6/features/ingestion/workflows/data-quality/data-quality-dimensions.png"
 alt="Data Quality Overview"
 caption="Data Quality Overview"
 /%}

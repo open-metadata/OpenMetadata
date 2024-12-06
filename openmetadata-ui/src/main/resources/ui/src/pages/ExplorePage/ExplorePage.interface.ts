@@ -31,7 +31,7 @@ export interface EsTermQuery {
 }
 
 export type EsTermsQuery = {
-  [property: string]: string;
+  [property: string]: string | string[];
 };
 
 export interface EsExistsQuery {

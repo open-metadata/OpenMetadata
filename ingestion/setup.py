@@ -137,11 +137,12 @@ base_requirements = {
     "requests>=2.23",
     "requests-aws4auth~=1.1",  # Only depends on requests as external package. Leaving as base.
     "sqlalchemy>=1.4.0,<2",
-    "collate-sqllineage~=1.4.0",
+    "collate-sqllineage~=1.5.0",
     "tabulate==0.9.0",
     "typing-inspect",
     "packaging",  # For version parsing
     "shapely",
+    "collate-data-diff",
 }
 
 plugins: Dict[str, Set[str]] = {
@@ -304,7 +305,6 @@ plugins: Dict[str, Set[str]] = {
         "psycopg2-binary",
         VERSIONS["geoalchemy2"],
     },
-    "mstr": {"mstr-rest-requests==0.14.1"},
     "sagemaker": {VERSIONS["boto3"]},
     "salesforce": {"simple_salesforce~=1.11"},
     "sample-data": {VERSIONS["avro"], VERSIONS["grpc-tools"]},

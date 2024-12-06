@@ -18,8 +18,10 @@ import { Link } from 'react-router-dom';
 import { TooltipProps } from 'recharts';
 import { TABLE_FRESHNESS_KEY } from '../../../../constants/TestSuite.constant';
 import { Thread } from '../../../../generated/entity/feed/thread';
-import { formatTimeFromSeconds } from '../../../../utils/CommonUtils';
-import { formatDateTime } from '../../../../utils/date-time/DateTimeUtils';
+import {
+  convertMillisecondsToHumanReadableFormat,
+  formatDateTime,
+} from '../../../../utils/date-time/DateTimeUtils';
 import { getTaskDetailPath } from '../../../../utils/TasksUtils';
 import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
 
@@ -82,7 +84,7 @@ const TestSummaryCustomTooltip = (
         <span className="font-medium" data-testid={key}>
           {/* freshness will always be in seconds  */}
           {key === TABLE_FRESHNESS_KEY && isNumber(value)
-            ? formatTimeFromSeconds(value)
+            ? convertMillisecondsToHumanReadableFormat(value)
             : value}
         </span>
       </li>

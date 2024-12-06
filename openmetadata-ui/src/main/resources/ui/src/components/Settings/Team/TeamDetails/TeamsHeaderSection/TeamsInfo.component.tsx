@@ -323,7 +323,6 @@ const TeamsInfo = ({
       <Divider type="vertical" />
 
       <Space size={4}>
-        <Divider type="vertical" />
         <Typography.Text className="text-grey-muted d-flex items-center">
           {t('label.total-user-plural')}
           <Tooltip

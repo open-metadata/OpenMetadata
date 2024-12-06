@@ -25,7 +25,7 @@ Configure and schedule dbt Cloud metadata and profiler workflows from the OpenMe
 - [Troubleshooting](#troubleshooting)
     - [Workflow Deployment Error](#workflow-deployment-error)
 
-{% partial file="/v1.5/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/pipeline/dbtcloud/yaml"} /%}
+{% partial file="/v1.6/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/pipeline/dbtcloud/yaml"} /%}
 
 ## Requirements
 
@@ -49,7 +49,7 @@ To know more about permissions required refer [here](https://docs.getdbt.com/doc
 ## Metadata Ingestion
 
 {% partial 
-    file="/v1.5/connectors/metadata-ingestion-ui.md" 
+    file="/v1.6/connectors/metadata-ingestion-ui.md" 
     variables={
         connector: "DBTCloud", 
         selectServicePath: "/images/v1.6/connectors/dbtcloud/select-service.png",
@@ -69,18 +69,22 @@ To know more about permissions required refer [here](https://docs.getdbt.com/doc
 
 - **Account Id** : The Account ID of your DBT cloud Project. Go to your dbt cloud account settings to know your Account Id. This will be a numeric value but in openmetadata we parse it as a string.
 
-- **Job Id** : Optional. The Job ID of your DBT cloud Job in your Project to fetch metadata for. Look for the segment after "jobs" in the URL. For instance, in a URL like `https://cloud.getdbt.com/accounts/123/projects/87477/jobs/73659994`, the job ID is `73659994`. This will be a numeric value but in openmetadata we parse it as a string. If not passed all Jobs under the Account id will be ingested.
+- **Job Ids** : Optional. Job IDs of your DBT cloud Jobs in your Project to fetch metadata for. Look for the segment after "jobs" in the URL. For instance, in a URL like `https://cloud.getdbt.com/accounts/123/projects/87477/jobs/73659994`, the job ID is `73659994`. This will be a numeric value but in openmetadata we parse it as a string. If not passed all Jobs under the Account id will be ingested.
+
+- **Project Ids** : Optional. Project IDs of your DBT cloud Account to fetch metadata for. Look for the segment after "projects" in the URL. For instance, in a URL like `https://cloud.getdbt.com/accounts/123/projects/87477/jobs/73659994`, the job ID is `87477`. This will be a numeric value but in openmetadata we parse it as a string. If not passed all Projects under the Account id will be ingested.
+
+Note that if both `Job Ids` and `Project Ids` are passed then it will filter out the jobs from the passed projects. any `Job Ids` not belonging to the `Project Ids` will also be filtered out.
 
 - **Token** : The Authentication Token of your DBT cloud API Account. To get your access token you can follow the docs [here](https://docs.getdbt.com/docs/dbt-cloud-apis/authentication).
 Make sure you have the necessary permissions on the token to run graphql queries and get job and run details. 
 
 {% /extraContent %}
 
-{% partial file="/v1.5/connectors/test-connection.md" /%}
+{% partial file="/v1.6/connectors/test-connection.md" /%}
 
-{% partial file="/v1.5/connectors/pipeline/configure-ingestion.md" /%}
+{% partial file="/v1.6/connectors/pipeline/configure-ingestion.md" /%}
 
-{% partial file="/v1.5/connectors/ingestion-schedule-and-deploy.md" /%}
+{% partial file="/v1.6/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
 
@@ -97,7 +101,7 @@ By successfully completing these steps, the lineage information for the service 
 
 
 
-{% partial file="/v1.5/connectors/troubleshooting.md" /%}
+{% partial file="/v1.6/connectors/troubleshooting.md" /%}
 
 ### Missing Lineage
 If lineage information is not displayed for a DBT Cloud service, follow these steps to diagnose the issue.

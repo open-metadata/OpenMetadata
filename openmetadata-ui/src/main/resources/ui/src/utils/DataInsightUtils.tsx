@@ -52,7 +52,6 @@ import {
 import {
   BAR_CHART_MARGIN,
   ENTITIES_SUMMARY_LIST,
-  TOTAL_ENTITY_CHART_COLOR,
   WEB_SUMMARY_LIST,
 } from '../constants/DataInsight.constants';
 import {
@@ -69,6 +68,7 @@ import {
   DataInsightCustomChartResult,
   SystemChartType,
 } from '../rest/DataInsightAPI';
+import { entityChartColor } from '../utils/CommonUtils';
 import { axisTickFormatter } from './ChartUtils';
 import { pluralize } from './CommonUtils';
 import { customFormatDateTime, formatDate } from './date-time/DateTimeUtils';
@@ -152,7 +152,11 @@ export const CustomTooltip = (props: DataInsightChartTooltipProps) => {
   } = props;
 
   if (active && payload && payload.length) {
-    const timestamp = dateTimeFormatter(payload[0].payload[timeStampKey] || 0);
+    // we need to check if the xAxis is a date or not.
+    const timestamp =
+      timeStampKey === 'term'
+        ? payload[0].payload[timeStampKey]
+        : dateTimeFormatter(payload[0].payload[timeStampKey] || 0);
     const payloadValue = uniqBy(payload, 'dataKey');
 
     return (
@@ -494,7 +498,7 @@ export const renderDataInsightLineChart = (
           }
           key={s}
           name={s}
-          stroke={TOTAL_ENTITY_CHART_COLOR[i] ?? getRandomHexColor()}
+          stroke={entityChartColor(i) ?? getRandomHexColor()}
           strokeOpacity={
             isEmpty(activeMouseHoverKey) || s === activeMouseHoverKey
               ? DEFAULT_CHART_OPACITY

@@ -98,10 +98,10 @@ class ServiceBaseClass {
       await testConnection(page);
     }
 
-    await this.submitService(this.serviceName, page);
+    await this.submitService(page);
 
     if (this.shouldAddIngestion) {
-      await this.addIngestionPipeline(this.serviceName, page);
+      await this.addIngestionPipeline(page);
     }
   }
 
@@ -149,7 +149,7 @@ class ServiceBaseClass {
     // Handle validate ingestion details in respective service here
   }
 
-  async addIngestionPipeline(serviceName: string, page: Page) {
+  async addIngestionPipeline(page: Page) {
     await page.click('[data-testid="add-ingestion-button"]');
 
     // Add ingestion page
@@ -170,7 +170,10 @@ class ServiceBaseClass {
 
     // Header available once page loads
     await page.waitForSelector('[data-testid="data-assets-header"]');
-    await page.getByTestId('loader').waitFor({ state: 'detached' });
+    await page
+      .getByTestId('table-container')
+      .getByTestId('loader')
+      .waitFor({ state: 'detached' });
     await page.getByTestId('ingestions').click();
     await page
       .getByLabel('Ingestions')
@@ -191,7 +194,7 @@ class ServiceBaseClass {
     await this.handleIngestionRetry('metadata', page);
   }
 
-  async submitService(serviceName: string, page: Page) {
+  async submitService(page: Page) {
     await page.click('[data-testid="submit-btn"]');
     await page.waitForSelector('[data-testid="success-line"]', {
       state: 'visible',
@@ -289,7 +292,7 @@ class ServiceBaseClass {
         {
           // Custom expect message for reporting, optional.
           message: 'Wait for pipeline to be successful',
-          timeout: 600_000,
+          timeout: 650_000,
           intervals: [30_000, 15_000, 5_000],
         }
       )
@@ -383,7 +386,14 @@ class ServiceBaseClass {
 
     // Deploy with schedule
     await page.click('[data-testid="deploy-button"]');
+
+    const getIngestionPipelines = page.waitForRequest(
+      `/api/v1/services/ingestionPipelines?**`
+    );
+
     await page.click('[data-testid="view-service-button"]');
+
+    await getIngestionPipelines;
 
     await expect(page.getByTestId('schedule-primary-details')).toHaveText(
       'At 04:04 AM'

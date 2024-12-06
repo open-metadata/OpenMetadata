@@ -10,10 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Tag } from 'antd';
+import { Tag, Tooltip } from 'antd';
 import React from 'react';
 import { AssetCertification } from '../../../generated/entity/data/table';
 import { getEntityName } from '../../../utils/EntityUtils';
+import { getTagImageSrc, getTagTooltip } from '../../../utils/TagsUtils';
 import './certification-tag.less';
 
 const CertificationTag = ({
@@ -21,19 +22,32 @@ const CertificationTag = ({
 }: {
   certification: AssetCertification;
 }) => {
+  if (certification.tagLabel.style?.iconURL) {
+    const name = getEntityName(certification.tagLabel);
+    const tagSrc = getTagImageSrc(certification.tagLabel.style.iconURL);
+
+    return (
+      <Tooltip
+        className="cursor-pointer"
+        title={getTagTooltip(name, certification.tagLabel.description)}
+        trigger="hover">
+        <div data-testid={`certification-${certification.tagLabel.tagFQN}`}>
+          <img alt={`certification: ${name}`} src={tagSrc} />
+        </div>
+      </Tooltip>
+    );
+  }
+
   return (
     <Tag
       className="certification-tag"
+      data-testid={`certification-${certification.tagLabel.tagFQN}`}
       style={{
         borderColor: certification.tagLabel.style?.color,
         backgroundColor: certification.tagLabel.style?.color
           ? `${certification.tagLabel.style.color}33`
           : undefined, // Assuming 33 is the hex transparency for lighter shade
       }}>
-      {certification.tagLabel.style?.iconURL && (
-        <img alt="certification" src={certification.tagLabel.style?.iconURL} />
-      )}
-
       {getEntityName(certification.tagLabel)}
     </Tag>
   );

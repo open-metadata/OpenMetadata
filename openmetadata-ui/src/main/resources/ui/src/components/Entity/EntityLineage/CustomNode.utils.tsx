@@ -21,7 +21,7 @@ import { EntityLineageNodeType } from '../../../enums/entity.enum';
 import { Column } from '../../../generated/entity/data/table';
 import { encodeLineageHandles } from '../../../utils/EntityLineageUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
-import { getConstraintIcon } from '../../../utils/TableUtils';
+import { getColumnDataTypeIcon } from '../../../utils/TableUtils';
 import { EdgeTypeEnum } from './EntityLineage.interface';
 
 export const getHandleByType = (
@@ -78,7 +78,9 @@ export const getExpandHandle = (
           ? 'react-flow__handle-right'
           : 'react-flow__handle-left'
       )}
-      icon={<PlusIcon className="lineage-expand-icon" />}
+      icon={
+        <PlusIcon className="lineage-expand-icon" data-testid="plus-icon" />
+      }
       shape="circle"
       size="small"
       onClick={(e) => {
@@ -106,7 +108,9 @@ export const getCollapseHandle = (
           ? 'downstream-collapse-handle'
           : 'upstream-collapse-handle'
       }
-      icon={<MinusIcon className="lineage-expand-icon" />}
+      icon={
+        <MinusIcon className="lineage-expand-icon " data-testid="minus-icon" />
+      }
       shape="circle"
       size="small"
       onClick={(e) => {
@@ -129,9 +133,7 @@ export const getColumnContent = (
     <div
       className={classNames(
         'custom-node-column-container',
-        isColumnTraced
-          ? 'custom-node-header-tracing'
-          : 'custom-node-column-lineage-normal bg-white'
+        isColumnTraced && 'custom-node-header-tracing'
       )}
       data-testid={`column-${fullyQualifiedName}`}
       key={fullyQualifiedName}
@@ -146,15 +148,20 @@ export const getColumnContent = (
         encodeLineageHandles(fullyQualifiedName ?? '')
       )}
 
-      <Typography.Text
-        className="p-xss p-x-lg"
-        ellipsis={{ tooltip: true }}
-        style={{ maxWidth: NODE_WIDTH }}>
-        {getConstraintIcon({
-          constraint: column.constraint,
-        })}
-        {getEntityName(column)}
-      </Typography.Text>
+      <span className="custom-node-name-container">
+        <div className="custom-node-name-icon">
+          {getColumnDataTypeIcon({
+            dataType: column.dataType,
+            width: '14px',
+          })}
+        </div>
+        <Typography.Text
+          ellipsis={{ tooltip: true }}
+          style={{ maxWidth: NODE_WIDTH, color: 'inherit' }}>
+          {getEntityName(column)}
+        </Typography.Text>
+      </span>
+      <span className="custom-node-constraint">{column.constraint}</span>
     </div>
   );
 };

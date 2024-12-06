@@ -101,6 +101,7 @@ public final class CatalogExceptionMessage {
   public static final String INVALID_BOT_USER = "Revoke Token can only be applied to Bot Users.";
   public static final String NO_MANUAL_TRIGGER_ERR = "App does not support manual trigger.";
   public static final String INVALID_APP_TYPE = "Application Type is not valid.";
+  public static final String CSV_EXPORT_FAILED = "CSV Export Failed.";
 
   private CatalogExceptionMessage() {}
 
@@ -219,6 +220,13 @@ public final class CatalogExceptionMessage {
         "Principal: CatalogPrincipal{name='%s'} operations %s not allowed", user, operations);
   }
 
+  public static String resourcePermissionNotAllowed(
+      String user, List<MetadataOperation> operations, List<String> resources) {
+    return String.format(
+        "Principal: CatalogPrincipal{name='%s'} operations %s not allowed for resources {%s}.",
+        user, operations, resources);
+  }
+
   public static String domainPermissionNotAllowed(
       String user, String domainName, List<MetadataOperation> operations) {
     return String.format(
@@ -276,6 +284,11 @@ public final class CatalogExceptionMessage {
   public static String invalidTeamOwner(TeamType teamType) {
     return String.format(
         "Team of type %s can't own entities. Only Team of type Group can own entities.", teamType);
+  }
+
+  public static String invalidTeamUpdateUsers(TeamType teamType) {
+    return String.format(
+        "Team is of type %s. Users can be updated only in team of type Group.", teamType);
   }
 
   public static String invalidOwnerType(String entityType) {

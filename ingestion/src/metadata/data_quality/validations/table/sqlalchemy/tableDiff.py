@@ -25,14 +25,17 @@ from data_diff.diff_tables import DiffResultWrapper
 from data_diff.errors import DataDiffMismatchingKeyTypesError
 from data_diff.utils import ArithAlphanumeric, CaseInsensitiveDict
 from sqlalchemy import Column as SAColumn
-from sqlalchemy import literal, select
+from sqlalchemy import create_engine, literal, select
 
 from metadata.data_quality.validations import utils
 from metadata.data_quality.validations.base_test_handler import BaseTestValidator
 from metadata.data_quality.validations.mixins.sqa_validator_mixin import (
     SQAValidatorMixin,
 )
-from metadata.data_quality.validations.models import TableDiffRuntimeParameters
+from metadata.data_quality.validations.models import (
+    TableDiffRuntimeParameters,
+    TableParameter,
+)
 from metadata.generated.schema.entity.data.table import Column, ProfileSampleType
 from metadata.generated.schema.entity.services.connections.database.sapHanaConnection import (
     SapHanaScheme,
@@ -45,10 +48,12 @@ from metadata.generated.schema.tests.basic import (
     TestCaseStatus,
     TestResultValue,
 )
+from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.orm.converter.base import build_orm_col
 from metadata.profiler.orm.functions.md5 import MD5
 from metadata.profiler.orm.functions.substr import Substr
-from metadata.profiler.orm.registry import Dialects
+from metadata.profiler.orm.registry import Dialects, PythonDialects
+from metadata.utils.collections import CaseInsensitiveList
 from metadata.utils.logger import test_suite_logger
 
 logger = test_suite_logger()
@@ -65,6 +70,37 @@ SUPPORTED_DIALECTS = [
     Dialects.Trino,
     SapHanaScheme.hana.value,
 ]
+
+
+def build_sample_where_clause(
+    table: TableParameter, key_columns: List[str], salt: str, hex_nounce: str
+) -> str:
+    sql_alchemy_columns = [
+        build_orm_col(i, c, table.database_service_type)
+        for i, c in enumerate(table.columns)
+        if c.name.root in key_columns
+    ]
+    reduced_concat = reduce(
+        lambda c1, c2: c1.concat(c2), sql_alchemy_columns + [literal(salt)]
+    )
+    sqa_dialect = create_engine(
+        f"{PythonDialects[table.database_service_type.name].value}://"
+    ).dialect
+    return str(
+        select()
+        .filter(
+            Substr(
+                MD5(reduced_concat),
+                1,
+                8,
+            )
+            < hex_nounce
+        )
+        .whereclause.compile(
+            dialect=sqa_dialect,
+            compile_kwargs={"literal_binds": True},
+        )
+    )
 
 
 def compile_and_clauses(elements) -> str:
@@ -143,7 +179,7 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
     runtime_params: TableDiffRuntimeParameters
 
     def run_validation(self) -> TestCaseResult:
-        self.runtime_params = self.get_runtime_params()
+        self.runtime_params = self.get_runtime_parameters(TableDiffRuntimeParameters)
         try:
             self._validate_dialects()
             return self._run()
@@ -238,15 +274,16 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
         ).with_schema()
         result = []
         for column in table1.key_columns + table1.extra_columns:
-            col1_type = self._get_column_python_type(
-                table1._schema[column]  # pylint: disable=protected-access
-            )
-            # Skip columns that are not in the second table. We cover this case in get_changed_added_columns.
-            if table2._schema.get(column) is None:  # pylint: disable=protected-access
+            col1 = table1._schema.get(column)  # pylint: disable=protected-access
+            if col1 is None:
+                # Skip columns that are not in the first table. We cover this case in get_changed_added_columns.
                 continue
-            col2_type = self._get_column_python_type(
-                table2._schema[column]  # pylint: disable=protected-access
-            )
+            col2 = table2._schema.get(column)  # pylint: disable=protected-access
+            if col2 is None:
+                # Skip columns that are not in the second table. We cover this case in get_changed_added_columns.
+                continue
+            col1_type = self._get_column_python_type(col1)
+            col2_type = self._get_column_python_type(col2)
             if is_numeric(col1_type) and is_numeric(col2_type):
                 continue
             if col1_type != col2_type:
@@ -287,17 +324,20 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
 
     def get_table_diff(self) -> DiffResultWrapper:
         """Calls data_diff.diff_tables with the parameters from the test case."""
+        left_where, right_where = self.sample_where_clause()
         table1 = data_diff.connect_to_table(
             self.runtime_params.table1.serviceUrl,
             self.runtime_params.table1.path,
             self.runtime_params.keyColumns,  # type: ignore
             case_sensitive=self.get_case_sensitive(),
+            where=left_where,
         )
         table2 = data_diff.connect_to_table(
             self.runtime_params.table2.serviceUrl,
             self.runtime_params.table2.path,
             self.runtime_params.keyColumns,  # type: ignore
             case_sensitive=self.get_case_sensitive(),
+            where=right_where,
         )
         data_diff_kwargs = {
             "key_columns": self.runtime_params.keyColumns,
@@ -314,12 +354,9 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
 
     def get_where(self) -> Optional[str]:
         """Returns the where clause from the test case parameters or None if it is a blank string."""
-        runtime_where = self.runtime_params.whereClause
-        sample_where = self.sample_where_clause()
-        where = compile_and_clauses([c for c in [runtime_where, sample_where] if c])
-        return where if where else None
+        return self.runtime_params.whereClause or None
 
-    def sample_where_clause(self) -> Optional[str]:
+    def sample_where_clause(self) -> Tuple[Optional[str], Optional[str]]:
         """We use a where clause to sample the data for the diff. This is useful because with data diff
         we do not have access to the underlying 'SELECT' statement. This method generates a where clause
         that selects a random sample of the data based on the profile sample configuration.
@@ -340,19 +377,23 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
         with different ids because the comparison will not be sensible.
         """
         if (
+            # no sample configuration
             self.runtime_params.table_profile_config is None
             or self.runtime_params.table_profile_config.profileSample is None
+            # sample is 100% or in other words no sample is required
+            or (
+                self.runtime_params.table_profile_config.profileSampleType
+                == ProfileSampleType.PERCENTAGE
+                and self.runtime_params.table_profile_config.profileSample == 100
+            )
         ):
-            return None
+            return None, None
         if DatabaseServiceType.Mssql in [
             self.runtime_params.table1.database_service_type,
             self.runtime_params.table2.database_service_type,
         ]:
-            raise ValueError(
-                "MSSQL does not support sampling in data diff.\n"
-                "You can request this feature here:\n"
-                "https://github.com/open-metadata/OpenMetadata/issues/new?labels=enhancement&projects=&template=feature_request.md"  # pylint: disable=line-too-long
-            )
+            logger.warning("Sampling not supported in MSSQL. Skipping sampling.")
+            return None, None
         nounce = self.calculate_nounce()
         # SQL MD5 returns a 32 character hex string even with leading zeros so we need to
         # pad the nounce to 8 characters in preserve lexical order.
@@ -364,29 +405,14 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
         salt = "".join(
             random.choices(string.ascii_letters + string.digits, k=5)
         )  # 1 / ~62^5 should be enough entropy. Use letters and digits to avoid messing with SQL syntax
-        sql_alchemy_columns = [
-            build_orm_col(
-                i, c, self.runtime_params.table1.database_service_type
-            )  # TODO: get from runtime params
-            for i, c in enumerate(self.runtime_params.table1.columns)
-            if c.name.root in self.runtime_params.keyColumns
-        ]
-        reduced_concat = reduce(
-            lambda c1, c2: c1.concat(c2), sql_alchemy_columns + [literal(salt)]
+        key_columns = (
+            CaseInsensitiveList(self.runtime_params.keyColumns)
+            if not self.get_case_sensitive()
+            else self.runtime_params.keyColumns
         )
-        return str(
-            (
-                select()
-                .filter(
-                    Substr(
-                        MD5(reduced_concat),
-                        1,
-                        8,
-                    )
-                    < hex_nounce
-                )
-                .whereclause.compile(compile_kwargs={"literal_binds": True})
-            )
+        return tuple(
+            build_sample_where_clause(table, key_columns, salt, hex_nounce)
+            for table in [self.runtime_params.table1, self.runtime_params.table2]
         )
 
     def calculate_nounce(self, max_nounce=2**32 - 1) -> int:
@@ -405,7 +431,7 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
             self.runtime_params.table_profile_config.profileSampleType
             == ProfileSampleType.ROWS
         ):
-            row_count = self.get_row_count()
+            row_count = self.get_total_row_count()
             if row_count is None:
                 raise ValueError("Row count is required for ROWS profile sample type")
             return int(
@@ -413,13 +439,6 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
                 * (self.runtime_params.table_profile_config.profileSample / row_count)
             )
         raise ValueError("Invalid profile sample type")
-
-    def get_runtime_params(self) -> TableDiffRuntimeParameters:
-        raw = self.get_test_case_param_value(
-            self.test_case.parameterValues, "runtimeParams", str
-        )
-        runtime_params = TableDiffRuntimeParameters.model_validate_json(raw)
-        return runtime_params
 
     def get_row_diff_test_case_result(
         self,
@@ -616,5 +635,13 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
         )
 
     def get_row_count(self) -> Optional[int]:
-        self.runner._sample = None  # pylint: disable=protected-access
         return self._compute_row_count(self.runner, None)
+
+    def get_total_row_count(self) -> Optional[int]:
+        row_count = Metrics.ROW_COUNT()
+        try:
+            row = self.runner.select_first_from_table(row_count.fn())
+            return dict(row).get(Metrics.ROW_COUNT.name)
+        except Exception as e:
+            logger.error(f"Error getting row count: {e}")
+            return None

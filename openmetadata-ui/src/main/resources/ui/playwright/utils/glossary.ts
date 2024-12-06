@@ -26,6 +26,7 @@ import {
 import { GlossaryTerm } from '../support/glossary/GlossaryTerm';
 import {
   clickOutside,
+  closeFirstPopupAlert,
   getApiContext,
   INVALID_NAMES,
   NAME_MAX_LENGTH_VALIDATION_ERROR,
@@ -36,6 +37,12 @@ import {
 import { addMultiOwner } from './entity';
 import { sidebarClick } from './sidebar';
 import { TaskDetails, TASK_OPEN_FETCH_LINK } from './task';
+
+type TaskEntity = {
+  entityRef: {
+    name: string;
+  };
+};
 
 const GLOSSARY_NAME_VALIDATION_ERROR = 'Name size must be between 1 and 128';
 
@@ -309,7 +316,7 @@ export const verifyGlossaryDetails = async (
     '[data-testid="viewer-container"]'
   );
 
-  await expect(viewerContainerText).toContain(glossaryDetails.description);
+  expect(viewerContainerText).toContain(glossaryDetails.description);
 
   // Owner
   if (glossaryDetails.owners.length > 0) {
@@ -384,6 +391,9 @@ export const fillGlossaryTermDetails = async (
   term: GlossaryTermData,
   validateCreateForm = true
 ) => {
+  // Safety check to close potential glossary not found alert
+  // Arrived due to parallel testing
+  await closeFirstPopupAlert(page);
   await page.click('[data-testid="add-new-tag-button-header"]');
 
   await page.waitForSelector('[role="dialog"].edit-glossary-modal');
@@ -469,8 +479,47 @@ export const fillGlossaryTermDetails = async (
   }
 };
 
-const validateGlossaryTermTask = async (page: Page, term: GlossaryTermData) => {
+export const verifyTaskCreated = async (
+  page: Page,
+  glossaryFqn: string,
+  glossaryTermData: GlossaryTermData
+) => {
+  const { apiContext } = await getApiContext(page);
+  const entityLink = encodeURIComponent(`<#E::glossary::${glossaryFqn}>`);
+
+  await expect
+    .poll(
+      async () => {
+        const response = await apiContext
+          .get(
+            `/api/v1/feed?entityLink=${entityLink}&type=Task&taskStatus=Open`
+          )
+          .then((res) => res.json());
+
+        const arr = response.data.map(
+          (item: TaskEntity) => item.entityRef.name
+        );
+
+        return arr;
+      },
+      {
+        // Custom expect message for reporting, optional.
+        message: 'To get the last run execution status as success',
+        timeout: 350_000,
+        intervals: [40_000, 30_000],
+      }
+    )
+    .toContain(glossaryTermData.name);
+};
+
+export const validateGlossaryTermTask = async (
+  page: Page,
+  term: GlossaryTermData
+) => {
+  const taskCountRes = page.waitForResponse('/api/v1/feed/count?*');
   await page.click('[data-testid="activity_feed"]');
+  await taskCountRes;
+
   const taskFeeds = page.waitForResponse(TASK_OPEN_FETCH_LINK);
   await page
     .getByTestId('global-setting-left-panel')
@@ -504,6 +553,37 @@ export const approveGlossaryTermTask = async (
   await toastNotification(page, /Task resolved successfully/);
 };
 
+// Show the glossary term edit modal from glossary page tree.
+// Update the description and verify the changes.
+export const updateGlossaryTermDataFromTree = async (
+  page: Page,
+  termFqn: string
+) => {
+  // eslint-disable-next-line no-useless-escape
+  const escapedFqn = termFqn.replace(/\"/g, '\\"');
+  const termRow = page.locator(`[data-row-key="${escapedFqn}"]`);
+  await termRow.getByTestId('edit-button').click();
+
+  await page.waitForSelector('[role="dialog"].edit-glossary-modal');
+
+  await expect(
+    page.locator('[role="dialog"].edit-glossary-modal')
+  ).toBeVisible();
+  await expect(page.locator('.ant-modal-title')).toContainText(
+    'Edit Glossary Term'
+  );
+
+  await page.locator(descriptionBox).fill('Updated description');
+
+  const glossaryTermResponse = page.waitForResponse('/api/v1/glossaryTerms/*');
+  await page.getByTestId('save-glossary-term').click();
+  await glossaryTermResponse;
+
+  await expect(
+    termRow.getByRole('cell', { name: 'Updated description' })
+  ).toBeVisible();
+};
+
 export const validateGlossaryTerm = async (
   page: Page,
   term: GlossaryTermData,
@@ -516,13 +596,6 @@ export const validateGlossaryTerm = async (
 
   await expect(page.locator(termSelector)).toContainText(term.name);
   await expect(page.locator(statusSelector)).toContainText(status);
-
-  if (status === 'Draft') {
-    // wait for 15 seconds as the flowable which creates task is triggered every 10 seconds
-    await page.waitForTimeout(15000);
-    await validateGlossaryTermTask(page, term);
-    await page.click('[data-testid="terms"]');
-  }
 };
 
 export const createGlossaryTerm = async (
@@ -977,7 +1050,9 @@ export const approveTagsTask = async (
   entity: Glossary | GlossaryTerm
 ) => {
   await redirectToHomePage(page);
+  const glossaryResponse = page.waitForResponse('/api/v1/glossaryTerms*');
   await sidebarClick(page, SidebarItem.GLOSSARY);
+  await glossaryResponse;
   await selectActiveGlossary(page, entity.data.displayName);
 
   await page.click('[data-testid="activity_feed"]');
@@ -1002,7 +1077,7 @@ export const approveTagsTask = async (
     `[data-testid="tag-${value.tag}"]`
   );
 
-  await expect(tagVisibility).toBe(true);
+  expect(tagVisibility).toBe(true);
 };
 
 export async function openColumnDropdown(page: Page): Promise<void> {
@@ -1011,6 +1086,13 @@ export async function openColumnDropdown(page: Page): Promise<void> {
   await expect(dropdownButton).toBeVisible();
 
   await dropdownButton.click();
+
+  await page.waitForSelector(
+    '.ant-dropdown [role="menu"] .glossary-col-sel-dropdown-title',
+    {
+      state: 'visible',
+    }
+  );
 }
 
 export async function selectColumns(
@@ -1038,9 +1120,16 @@ export async function deselectColumns(
 }
 
 export async function clickSaveButton(page: Page): Promise<void> {
-  const saveButton = page.locator('.ant-btn-primary', {
-    hasText: 'Save',
-  });
+  // Adding manual wait to avoid flakiness for the operations performed in the
+  // dropdown like selection or drag and drop
+  await page.waitForTimeout(500);
+
+  const saveButton = page.locator(
+    '[data-testid="glossary-col-dropdown-save"]',
+    {
+      hasText: 'Save',
+    }
+  );
   await saveButton.click();
 }
 
@@ -1149,7 +1238,20 @@ export const dragAndDropColumn = async (
   dragColumn: string,
   dropColumn: string
 ) => {
+  await page.waitForSelector(`.draggable-menu-item:has-text("${dragColumn}")`, {
+    state: 'visible',
+  });
+
   await page
     .locator('.draggable-menu-item', { hasText: dragColumn })
-    .dragTo(page.locator('.draggable-menu-item', { hasText: dropColumn }));
+    .dragTo(page.locator('.draggable-menu-item', { hasText: dropColumn }), {
+      sourcePosition: {
+        x: 16,
+        y: 16,
+      },
+      targetPosition: {
+        x: 16,
+        y: 16,
+      },
+    });
 };

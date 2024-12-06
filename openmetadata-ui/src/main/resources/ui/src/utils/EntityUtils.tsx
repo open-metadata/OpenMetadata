@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Popover } from 'antd';
+import { Popover, Space, Typography } from 'antd';
 import i18next, { t } from 'i18next';
 import {
   isEmpty,
@@ -22,12 +22,14 @@ import {
   startCase,
 } from 'lodash';
 import { Bucket, EntityDetailUnion } from 'Models';
+import QueryString from 'qs';
 import React, { Fragment } from 'react';
 import { Link } from 'react-router-dom';
 import { OwnerLabel } from '../components/common/OwnerLabel/OwnerLabel.component';
 import QueryCount from '../components/common/QueryCount/QueryCount.component';
 import { TitleLink } from '../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import { DataAssetsWithoutServiceField } from '../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
+import { TableProfilerTab } from '../components/Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
 import { QueryVoteType } from '../components/Database/TableQueries/TableQueries.interface';
 import {
   LeafNodes,
@@ -68,6 +70,7 @@ import { ServiceCategory, ServiceCategoryPlural } from '../enums/service.enum';
 import { PrimaryTableDataTypes } from '../enums/table.enum';
 import { Kpi } from '../generated/dataInsight/kpi/kpi';
 import { Classification } from '../generated/entity/classification/classification';
+import { Tag } from '../generated/entity/classification/tag';
 import { APICollection } from '../generated/entity/data/apiCollection';
 import { APIEndpoint } from '../generated/entity/data/apiEndpoint';
 import { Chart } from '../generated/entity/data/chart';
@@ -122,6 +125,7 @@ import { BasicEntityOverviewInfo } from './EntityUtils.interface';
 import Fqn from './Fqn';
 import {
   getApplicationDetailsPath,
+  getClassificationTagPath,
   getDataQualityPagePath,
   getDomainDetailsPath,
   getDomainPath,
@@ -136,7 +140,7 @@ import {
   getTeamsWithFqnPath,
 } from './RouterUtils';
 import { getServiceRouteFromServiceType } from './ServiceUtils';
-import { stringToHTML } from './StringsUtils';
+import { bytesToSize, stringToHTML } from './StringsUtils';
 import {
   getDataTypeString,
   getTagsWithoutTier,
@@ -161,6 +165,19 @@ export const getEntityName = (entity?: {
 }) => {
   return entity?.displayName || entity?.name || '';
 };
+
+export const getEntityLabel = (entity: {
+  displayName?: string;
+  name?: string;
+  fullyQualifiedName?: string;
+}): JSX.Element => (
+  <Space direction="vertical" size={0}>
+    <Typography.Text>{getEntityName(entity)}</Typography.Text>
+    <Typography.Text className="text-gray-400 text-xs break-word">
+      {entity?.fullyQualifiedName}
+    </Typography.Text>
+  </Space>
+);
 
 export const getEntityId = (entity?: { id?: string }) => entity?.id ?? '';
 
@@ -219,6 +236,7 @@ const getTableFieldsFromTableDetails = (tableDetails: Table) => {
     service,
     database,
     databaseSchema,
+    domain,
   } = tableDetails;
   const [serviceName, databaseName, schemaName] = getPartialNameFromTableFQN(
     fullyQualifiedName ?? '',
@@ -243,7 +261,38 @@ const getTableFieldsFromTableDetails = (tableDetails: Table) => {
     profile,
     columns,
     tableType,
+    domain,
   };
+};
+
+const getCommonOverview = (
+  {
+    owners,
+    domain,
+  }: {
+    owners?: EntityReference[];
+    domain?: EntityReference;
+  },
+  showOwner = true
+) => {
+  return [
+    ...(showOwner
+      ? [
+          {
+            name: i18next.t('label.owner-plural'),
+            value: <OwnerLabel hasPermission={false} owners={owners} />,
+            visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
+          },
+        ]
+      : []),
+    {
+      name: i18next.t('label.domain'),
+      value: getEntityName(domain) || NO_DATA,
+      isLink: Boolean(domain),
+      url: getDomainPath(domain?.fullyQualifiedName),
+      visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
+    },
+  ];
 };
 
 const getTableOverview = (
@@ -261,14 +310,11 @@ const getTableOverview = (
     schema,
     tier,
     usage,
+    domain,
   } = getTableFieldsFromTableDetails(tableDetails);
 
-  const overview = [
-    {
-      name: i18next.t('label.owner-plural'),
-      value: <OwnerLabel hasPermission={false} owners={owners} />,
-      visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
-    },
+  const overview: BasicEntityOverviewInfo[] = [
+    ...getCommonOverview({ owners, domain }),
     {
       name: i18next.t('label.type'),
       value: tableType ?? TableType.Regular,
@@ -354,11 +400,88 @@ const getTableOverview = (
       name: i18next.t('label.incident-plural'),
       value: additionalInfo?.incidentCount ?? 0,
       isLink: true,
-      url: getEntityDetailsPath(
-        EntityType.TABLE,
-        fullyQualifiedName ?? '',
-        EntityTabs.INCIDENTS
-      ),
+      linkProps: {
+        pathname: getEntityDetailsPath(
+          EntityType.TABLE,
+          fullyQualifiedName ?? '',
+          EntityTabs.PROFILER
+        ),
+        search: QueryString.stringify({
+          activeTab: TableProfilerTab.INCIDENTS,
+        }),
+      },
+      visible: [
+        DRAWER_NAVIGATION_OPTIONS.lineage,
+        DRAWER_NAVIGATION_OPTIONS.explore,
+      ],
+    },
+  ];
+
+  return overview;
+};
+
+const getTopicOverview = (topicDetails: Topic) => {
+  const {
+    domain,
+    partitions,
+    replicationFactor,
+    retentionSize,
+    cleanupPolicies,
+    maximumMessageSize,
+    messageSchema,
+  } = topicDetails;
+
+  const overview: BasicEntityOverviewInfo[] = [
+    ...getCommonOverview({ domain }, false),
+    {
+      name: i18next.t('label.partition-plural'),
+      value: partitions ?? NO_DATA,
+      isLink: false,
+      visible: [
+        DRAWER_NAVIGATION_OPTIONS.lineage,
+        DRAWER_NAVIGATION_OPTIONS.explore,
+      ],
+    },
+    {
+      name: i18next.t('label.replication-factor'),
+      value: replicationFactor,
+      isLink: false,
+      visible: [
+        DRAWER_NAVIGATION_OPTIONS.lineage,
+        DRAWER_NAVIGATION_OPTIONS.explore,
+      ],
+    },
+    {
+      name: i18next.t('label.retention-size'),
+      value: bytesToSize(retentionSize ?? 0),
+      isLink: false,
+      visible: [
+        DRAWER_NAVIGATION_OPTIONS.lineage,
+        DRAWER_NAVIGATION_OPTIONS.explore,
+      ],
+    },
+    {
+      name: i18next.t('label.clean-up-policy-plural'),
+      value: cleanupPolicies ? cleanupPolicies.join(', ') : NO_DATA,
+      isLink: false,
+      visible: [
+        DRAWER_NAVIGATION_OPTIONS.lineage,
+        DRAWER_NAVIGATION_OPTIONS.explore,
+      ],
+    },
+    {
+      name: i18next.t('label.max-message-size'),
+      value: bytesToSize(maximumMessageSize ?? 0),
+      isLink: false,
+      visible: [
+        DRAWER_NAVIGATION_OPTIONS.lineage,
+        DRAWER_NAVIGATION_OPTIONS.explore,
+      ],
+    },
+    {
+      name: i18next.t('label.schema-type'),
+      value: messageSchema?.schemaType ?? NO_DATA,
+      isLink: false,
       visible: [
         DRAWER_NAVIGATION_OPTIONS.lineage,
         DRAWER_NAVIGATION_OPTIONS.explore,
@@ -370,16 +493,13 @@ const getTableOverview = (
 };
 
 const getPipelineOverview = (pipelineDetails: Pipeline) => {
-  const { owners, tags, sourceUrl, service, displayName } = pipelineDetails;
+  const { owners, tags, sourceUrl, service, displayName, domain } =
+    pipelineDetails;
   const tier = getTierTags(tags ?? []);
   const serviceDisplayName = getEntityName(service);
 
-  const overview = [
-    {
-      name: i18next.t('label.owner-plural'),
-      value: <OwnerLabel hasPermission={false} owners={owners} />,
-      visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
-    },
+  const overview: BasicEntityOverviewInfo[] = [
+    ...getCommonOverview({ owners, domain }),
     {
       name: `${i18next.t('label.pipeline')} ${i18next.t(
         'label.url-uppercase'
@@ -417,17 +537,13 @@ const getPipelineOverview = (pipelineDetails: Pipeline) => {
 };
 
 const getDashboardOverview = (dashboardDetails: Dashboard) => {
-  const { owners, tags, sourceUrl, service, displayName, project } =
+  const { owners, tags, sourceUrl, service, displayName, project, domain } =
     dashboardDetails;
   const tier = getTierTags(tags ?? []);
   const serviceDisplayName = getEntityName(service);
 
-  const overview = [
-    {
-      name: i18next.t('label.owner-plural'),
-      value: <OwnerLabel hasPermission={false} owners={owners} />,
-      visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
-    },
+  const overview: BasicEntityOverviewInfo[] = [
+    ...getCommonOverview({ owners, domain }),
     {
       name: `${i18next.t('label.dashboard')} ${i18next.t(
         'label.url-uppercase'
@@ -476,15 +592,11 @@ const getDashboardOverview = (dashboardDetails: Dashboard) => {
 export const getSearchIndexOverview = (
   searchIndexDetails: SearchIndexEntity
 ) => {
-  const { owners, tags, service } = searchIndexDetails;
+  const { owners, tags, service, domain } = searchIndexDetails;
   const tier = getTierTags(tags ?? []);
 
-  const overview = [
-    {
-      name: i18next.t('label.owner-plural'),
-      value: <OwnerLabel hasPermission={false} owners={owners} />,
-      visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
-    },
+  const overview: BasicEntityOverviewInfo[] = [
+    ...getCommonOverview({ owners, domain }),
     {
       name: i18next.t('label.tier'),
       value: entityTierRenderer(tier),
@@ -509,14 +621,11 @@ export const getSearchIndexOverview = (
 };
 
 const getMlModelOverview = (mlModelDetails: Mlmodel) => {
-  const { algorithm, target, server, dashboard, owners } = mlModelDetails;
+  const { algorithm, target, server, dashboard, owners, domain } =
+    mlModelDetails;
 
-  const overview = [
-    {
-      name: i18next.t('label.owner-plural'),
-      value: <OwnerLabel hasPermission={false} owners={owners} />,
-      visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
-    },
+  const overview: BasicEntityOverviewInfo[] = [
+    ...getCommonOverview({ owners, domain }),
     {
       name: i18next.t('label.algorithm'),
       value: algorithm || NO_DATA,
@@ -568,14 +677,16 @@ const getMlModelOverview = (mlModelDetails: Mlmodel) => {
 };
 
 const getContainerOverview = (containerDetails: Container) => {
-  const { numberOfObjects, serviceType, dataModel } = containerDetails;
+  const { numberOfObjects, serviceType, dataModel, owners, domain } =
+    containerDetails;
 
   const visible = [
     DRAWER_NAVIGATION_OPTIONS.lineage,
     DRAWER_NAVIGATION_OPTIONS.explore,
   ];
 
-  const overview = [
+  const overview: BasicEntityOverviewInfo[] = [
+    ...getCommonOverview({ owners, domain }),
     {
       name: i18next.t('label.object-plural'),
       value: numberOfObjects,
@@ -603,16 +714,19 @@ const getContainerOverview = (containerDetails: Container) => {
 };
 
 const getChartOverview = (chartDetails: Chart) => {
-  const { owners, sourceUrl, chartType, service, serviceType, displayName } =
-    chartDetails;
+  const {
+    owners,
+    sourceUrl,
+    chartType,
+    service,
+    serviceType,
+    displayName,
+    domain,
+  } = chartDetails;
   const serviceDisplayName = getEntityName(service);
 
-  const overview = [
-    {
-      name: i18next.t('label.owner-plural'),
-      value: <OwnerLabel hasPermission={false} owners={owners} />,
-      visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
-    },
+  const overview: BasicEntityOverviewInfo[] = [
+    ...getCommonOverview({ owners, domain }),
     {
       name: `${i18next.t('label.chart')} ${i18next.t('label.url-uppercase')}`,
       value: stringToHTML(displayName ?? '') || NO_DATA,
@@ -666,18 +780,15 @@ const getDataModelOverview = (dataModelDetails: DashboardDataModel) => {
     owners,
     tags,
     service,
+    domain,
     displayName,
     dataModelType,
     fullyQualifiedName,
   } = dataModelDetails;
   const tier = getTierTags(tags ?? []);
 
-  const overview = [
-    {
-      name: i18next.t('label.owner-plural'),
-      value: <OwnerLabel hasPermission={false} owners={owners} />,
-      visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
-    },
+  const overview: BasicEntityOverviewInfo[] = [
+    ...getCommonOverview({ owners, domain }),
     {
       name: `${i18next.t('label.data-model')} ${i18next.t(
         'label.url-uppercase'
@@ -736,7 +847,7 @@ const getDataModelOverview = (dataModelDetails: DashboardDataModel) => {
 const getStoredProcedureOverview = (
   storedProcedureDetails: StoredProcedure
 ) => {
-  const { fullyQualifiedName, owners, tags, storedProcedureCode } =
+  const { fullyQualifiedName, owners, tags, domain, storedProcedureCode } =
     storedProcedureDetails;
   const [service, database, schema] = getPartialNameFromTableFQN(
     fullyQualifiedName ?? '',
@@ -746,12 +857,8 @@ const getStoredProcedureOverview = (
 
   const tier = getTierTags(tags ?? []);
 
-  const overview = [
-    {
-      name: i18next.t('label.owner-plural'),
-      value: <OwnerLabel hasPermission={false} owners={owners} />,
-      visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
-    },
+  const overview: BasicEntityOverviewInfo[] = [
+    ...getCommonOverview({ owners, domain }),
     {
       name: i18next.t('label.service'),
       value: service || NO_DATA,
@@ -820,16 +927,17 @@ const getStoredProcedureOverview = (
 };
 
 const getDatabaseOverview = (databaseDetails: Database) => {
-  const { owners, service, tags, usageSummary } = databaseDetails;
+  const { owners, service, domain, tags, usageSummary } = databaseDetails;
 
   const tier = getTierTags(tags ?? []);
 
-  const overview = [
+  const overview: BasicEntityOverviewInfo[] = [
     {
       name: i18next.t('label.owner-plural'),
       value: <OwnerLabel hasPermission={false} owners={owners} />,
       visible: [DRAWER_NAVIGATION_OPTIONS.explore],
     },
+    ...getCommonOverview({ domain }, false),
     {
       name: i18next.t('label.tier'),
       value: entityTierRenderer(tier),
@@ -859,18 +967,18 @@ const getDatabaseOverview = (databaseDetails: Database) => {
 };
 
 const getDatabaseSchemaOverview = (databaseSchemaDetails: DatabaseSchema) => {
-  const { owners, service, tags, usageSummary, database } =
+  const { owners, service, tags, domain, usageSummary, database } =
     databaseSchemaDetails;
 
   const tier = getTierTags(tags ?? []);
 
-  const overview = [
+  const overview: BasicEntityOverviewInfo[] = [
     {
       name: i18next.t('label.owner-plural'),
       value: <OwnerLabel hasPermission={false} owners={owners} />,
       visible: [DRAWER_NAVIGATION_OPTIONS.explore],
     },
-
+    ...getCommonOverview({ domain }, false),
     {
       name: i18next.t('label.tier'),
       value: entityTierRenderer(tier),
@@ -909,16 +1017,17 @@ const getDatabaseSchemaOverview = (databaseSchemaDetails: DatabaseSchema) => {
 };
 
 const getEntityServiceOverview = (serviceDetails: EntityServiceUnion) => {
-  const { owners, tags, serviceType } = serviceDetails;
+  const { owners, domain, tags, serviceType } = serviceDetails;
 
   const tier = getTierTags(tags ?? []);
 
-  const overview = [
+  const overview: BasicEntityOverviewInfo[] = [
     {
       name: i18next.t('label.owner-plural'),
       value: <OwnerLabel hasPermission={false} owners={owners} />,
       visible: [DRAWER_NAVIGATION_OPTIONS.explore],
     },
+    ...getCommonOverview({ domain }, false),
     {
       name: i18next.t('label.tier'),
       value: entityTierRenderer(tier),
@@ -941,9 +1050,10 @@ const getApiCollectionOverview = (apiCollection: APICollection) => {
     return [];
   }
 
-  const { service } = apiCollection;
+  const { service, domain } = apiCollection;
 
-  const overview = [
+  const overview: BasicEntityOverviewInfo[] = [
+    ...getCommonOverview({ domain }, false),
     {
       name: i18next.t('label.endpoint-url'),
       value: apiCollection.endpointURL || NO_DATA,
@@ -970,9 +1080,10 @@ const getApiEndpointOverview = (apiEndpoint: APIEndpoint) => {
   if (isNil(apiEndpoint) || isEmpty(apiEndpoint)) {
     return [];
   }
-  const { service, apiCollection } = apiEndpoint;
+  const { domain, service, apiCollection } = apiEndpoint;
 
-  const overview = [
+  const overview: BasicEntityOverviewInfo[] = [
+    ...getCommonOverview({ domain }, false),
     {
       name: i18next.t('label.endpoint-url'),
       value: apiEndpoint.endpointURL || NO_DATA,
@@ -1028,7 +1139,8 @@ const getMetricOverview = (metric: Metric) => {
     return [];
   }
 
-  const overview = [
+  const overview: BasicEntityOverviewInfo[] = [
+    ...getCommonOverview({ domain: metric.domain }, false),
     {
       name: i18next.t('label.metric-type'),
       value: metric.metricType || NO_DATA,
@@ -1069,6 +1181,10 @@ export const getEntityOverview = (
   switch (type) {
     case ExplorePageTabs.TABLES: {
       return getTableOverview(entityDetail as Table, additionalInfo);
+    }
+
+    case ExplorePageTabs.TOPICS: {
+      return getTopicOverview(entityDetail as Topic);
     }
 
     case ExplorePageTabs.PIPELINES: {
@@ -1524,6 +1640,7 @@ export const getEntityLinkFromType = (
     case EntityType.GLOSSARY_TERM:
       return getGlossaryTermDetailsPath(fullyQualifiedName);
     case EntityType.TAG:
+      return getClassificationTagPath(fullyQualifiedName);
     case EntityType.CLASSIFICATION:
       return getTagsDetailsPath(fullyQualifiedName);
 
@@ -1892,18 +2009,20 @@ export const getEntityBreadcrumbs = (
           ),
         })),
       ];
-    case EntityType.TAG:
-      // eslint-disable-next-line no-case-declarations
-      const fqnTagList = entity.fullyQualifiedName
-        ? Fqn.split(entity.fullyQualifiedName)
-        : [];
-
+    case EntityType.TAG: {
       return [
-        ...fqnTagList.map((fqn) => ({
-          name: fqn,
-          url: getTagsDetailsPath(entity?.fullyQualifiedName ?? ''),
-        })),
+        {
+          name: getEntityName((entity as Tag).classification),
+          url: getTagsDetailsPath(
+            (entity as Tag).classification?.fullyQualifiedName ?? ''
+          ),
+        },
+        {
+          name: entity.name,
+          url: getClassificationTagPath(entity.fullyQualifiedName ?? ''),
+        },
       ];
+    }
 
     case EntityType.CLASSIFICATION:
       return [

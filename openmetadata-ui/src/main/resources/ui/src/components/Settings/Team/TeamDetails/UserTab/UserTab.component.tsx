@@ -37,6 +37,7 @@ import {
   TabSpecificField,
 } from '../../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../../enums/search.enum';
+import { TeamType } from '../../../../../generated/entity/teams/team';
 import { User } from '../../../../../generated/entity/teams/user';
 import { EntityReference } from '../../../../../generated/entity/type';
 import { Paging } from '../../../../../generated/type/paging';
@@ -47,7 +48,10 @@ import { searchData } from '../../../../../rest/miscAPI';
 import { exportUserOfTeam } from '../../../../../rest/teamsAPI';
 import { getUsers } from '../../../../../rest/userAPI';
 import { formatUsersResponse } from '../../../../../utils/APIUtils';
-import { getEntityName } from '../../../../../utils/EntityUtils';
+import {
+  getEntityName,
+  getEntityReferenceFromEntity,
+} from '../../../../../utils/EntityUtils';
 import { getSettingsPathWithFqn } from '../../../../../utils/RouterUtils';
 import { commonUserDetailColumns } from '../../../../../utils/Users.util';
 import ManageButton from '../../../../common/EntityPageInfos/ManageButton/ManageButton';
@@ -74,7 +78,7 @@ export const UserTab = ({
   const [deletingUser, setDeletingUser] = useState<EntityReference>();
   const { showModal } = useEntityExportModalProvider();
   const handleRemoveClick = (id: string) => {
-    const user = currentTeam.users?.find((u) => u.id === id);
+    const user = usersList?.find((u) => u.id === id);
     setDeletingUser(user);
   };
   const [isLoading, setIsLoading] = useState(true);
@@ -89,6 +93,17 @@ export const UserTab = ({
     handlePagingChange,
     showPagination,
   } = usePaging(PAGE_SIZE_MEDIUM);
+
+  const usersList = useMemo(() => {
+    return users.map((item) =>
+      getEntityReferenceFromEntity(item, EntityType.USER)
+    );
+  }, [users]);
+
+  const isGroupType = useMemo(
+    () => currentTeam.teamType === TeamType.Group,
+    [currentTeam.teamType]
+  );
 
   /**
    * Make API call to fetch current team user data
@@ -301,13 +316,13 @@ export const UserTab = ({
   }, [permission, isTeamDeleted]);
 
   if (isEmpty(users) && !searchText && !isLoading) {
-    return (
+    return isGroupType ? (
       <ErrorPlaceHolder
         button={
           <Space>
             <UserSelectableList
               hasPermission
-              selectedUsers={currentTeam.users ?? []}
+              selectedUsers={currentTeam?.users ?? []}
               onUpdate={onAddUser}>
               <Tooltip placement="topRight" title={addUserButtonTitle}>
                 <Button
@@ -339,6 +354,12 @@ export const UserTab = ({
         permission={permission.EditAll}
         type={ERROR_PLACEHOLDER_TYPE.ASSIGN}
       />
+    ) : (
+      <ErrorPlaceHolder
+        placeholderText={t('message.no-user-part-of-team', {
+          team: getEntityName(currentTeam),
+        })}
+      />
     );
   }
 
@@ -357,13 +378,13 @@ export const UserTab = ({
               onSearch={handleUsersSearchAction}
             />
           </Col>
-          {!currentTeam.deleted && (
+          {!currentTeam.deleted && isGroupType && (
             <Col>
               <Space>
                 {users.length > 0 && permission.EditAll && (
                   <UserSelectableList
                     hasPermission
-                    selectedUsers={currentTeam.users ?? []}
+                    selectedUsers={currentTeam?.users ?? []}
                     onUpdate={onAddUser}>
                     <Button data-testid="add-new-user" type="primary">
                       {t('label.add-entity', { entity: t('label.user') })}

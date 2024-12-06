@@ -12,14 +12,48 @@ version. To see what's coming in next releases, please check our [Roadmap](/rele
 
 {% /note %}
 
-{% partial file="/v1.5/releases/latest.md" /%}
+{% partial file="/v1.6/releases/latest.md" /%}
 
-# 1.6.0
+# 1.5.11 Release
 
-## Breaking Changes
+{% note noteType="Tip" %}
+**Nov 15th, 2024**
+{% /note %}
 
-- The ingestion Framework now uses the OpenMetadata Ingestion Service Specification (OMISS) to specify
-  entrypoints to ingestion operations. [Click here](./todo-need-link) for more info.
+You can find the GitHub release [here](https://github.com/open-metadata/OpenMetadata/releases/tag/1.5.11-release).
+
+# What's Changed
+
+- Improvement: Search Index App, Parallelize the search indexing process.
+- Improvement: Mask SQL Queries where conditions data in Usage & Lineage Workflow.
+- Improvement: Databricks query run optimization to reduce the costs in retrieving metadata.
+- Improvement: Added support for lineage default depth settings. Admins can control the default Lineage Upstream and Downstream depth.
+- Improvement: Add Column Value to be At Expected Location Test.
+- Improvement: Scaling Export API to 10000s of assets, Introduced Async API and push export data using websockets
+- Fix: User count doesn't update on adding to the team while using search.
+- Fix: Sample data json formatting while displaying in the UI.
+- Fix: Return s3 endpoint as str() instead of Url.
+- Fix: Materialized View Lineage.
+- Fix: Custom property save config.
+
+**Full Changelog**: https://github.com/open-metadata/OpenMetadata/compare/1.5.10-release...1.5.11-release
+
+# 1.5.10 Release
+
+{% note noteType="Tip" %}
+**Oct 31st, 2024**
+{% /note %}
+
+You can find the GitHub release [here](https://github.com/open-metadata/OpenMetadata/releases/tag/1.5.10-release).
+
+# What's Changed
+
+- Fix encoding issue for teams search query.
+- Fix disable empty rule for query builder widget.
+- Fix unable to add more enum values for enum cp.
+- Fix navigate to listing for deleting a service.
+
+**Full Changelog**: https://github.com/open-metadata/OpenMetadata/compare/1.5.9-release...1.5.10-release
 
 # 1.5.9 Release
 
@@ -415,7 +449,7 @@ We are also making the discovery of data more accessible for users introducing a
 
 {% youtube videoId="45ekUIRO1Ec" start="0:00" end="1:11" width="560px" height="315px" /%}
 
-## Pipeline Status Widget
+## Pipeline Status Widget (Collate)
 
 We are also adding another widget you can use to customize the Landing Page of the User Personas in your organization.
 

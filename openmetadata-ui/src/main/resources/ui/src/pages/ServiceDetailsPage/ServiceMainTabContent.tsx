@@ -13,9 +13,11 @@
 
 import { Col, Row, Space, Switch, Table, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
+import { AxiosError } from 'axios';
+import { compare } from 'fast-json-patch';
 import { isUndefined } from 'lodash';
 import { EntityTags, ServiceTypes } from 'Models';
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
 import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
@@ -25,7 +27,9 @@ import NextPrevious from '../../components/common/NextPrevious/NextPrevious';
 import { NextPreviousProps } from '../../components/common/NextPrevious/NextPrevious.interface';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import EntityRightPanel from '../../components/Entity/EntityRightPanel/EntityRightPanel';
+import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import { COMMON_RESIZABLE_PANEL_CONFIG } from '../../constants/ResizablePanel.constants';
+import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../enums/entity.enum';
 import { DatabaseService } from '../../generated/entity/services/databaseService';
@@ -33,10 +37,14 @@ import { Paging } from '../../generated/type/paging';
 import { UsePagingInterface } from '../../hooks/paging/usePaging';
 import { useFqn } from '../../hooks/useFqn';
 import { ServicesType } from '../../interface/service.interface';
-import { getServiceMainTabColumns } from '../../utils/ServiceMainTabContentUtils';
+import {
+  callServicePatchAPI,
+  getServiceMainTabColumns,
+} from '../../utils/ServiceMainTabContentUtils';
 import { getEntityTypeFromServiceCategory } from '../../utils/ServiceUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { createTagObject } from '../../utils/TagsUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
 import { ServicePageData } from './ServiceDetailsPage';
 
 interface ServiceMainTabContentProps {
@@ -53,6 +61,7 @@ interface ServiceMainTabContentProps {
   pagingHandler: NextPreviousProps['pagingHandler'];
   saveUpdatedServiceData: (updatedData: ServicesType) => Promise<void>;
   pagingInfo: UsePagingInterface;
+  isVersionPage?: boolean;
 }
 
 function ServiceMainTabContent({
@@ -69,6 +78,7 @@ function ServiceMainTabContent({
   serviceDetails,
   saveUpdatedServiceData,
   pagingInfo,
+  isVersionPage = false,
 }: Readonly<ServiceMainTabContentProps>) {
   const { t } = useTranslation();
   const { serviceCategory } = useParams<{
@@ -76,7 +86,10 @@ function ServiceMainTabContent({
   }>();
 
   const { fqn: serviceFQN } = useFqn();
+  const { permissions } = usePermissionProvider();
+
   const [isEdit, setIsEdit] = useState(false);
+  const [pageData, setPageData] = useState<ServicePageData[]>([]);
 
   const tier = getTierTags(serviceDetails?.tags ?? []);
   const tags = getTagsWithoutTier(serviceDetails?.tags ?? []);
@@ -131,9 +144,69 @@ function ServiceMainTabContent({
     setIsEdit(false);
   };
 
+  const handleDisplayNameUpdate = useCallback(
+    async (entityData: EntityName, id?: string) => {
+      try {
+        const pageDataDetails = pageData.find((data) => data.id === id);
+        if (!pageDataDetails) {
+          return;
+        }
+        const updatedData = {
+          ...pageDataDetails,
+          displayName: entityData.displayName || undefined,
+        };
+        const jsonPatch = compare(pageDataDetails, updatedData);
+        await callServicePatchAPI(
+          serviceCategory,
+          pageDataDetails.id,
+          jsonPatch
+        );
+        setPageData((prevData) =>
+          prevData.map((data) =>
+            data.id === id
+              ? { ...data, displayName: entityData.displayName }
+              : data
+          )
+        );
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      }
+    },
+    [pageData, serviceCategory]
+  );
+
+  const editDisplayNamePermission = useMemo(() => {
+    if (isVersionPage) {
+      return false;
+    }
+
+    const servicePermissions = {
+      databaseServices: permissions.databaseService,
+      messagingServices: permissions.messagingService,
+      dashboardServices: permissions.dashboardService,
+      pipelineServices: permissions.pipelineService,
+      mlmodelServices: permissions.mlmodelService,
+      storageServices: permissions.storageService,
+      searchServices: permissions.searchService,
+      apiServices: permissions.apiService,
+    };
+
+    const currentPermission =
+      servicePermissions[serviceCategory as keyof typeof servicePermissions];
+
+    return (
+      currentPermission?.EditAll || currentPermission?.EditDisplayName || false
+    );
+  }, [permissions, serviceCategory, isVersionPage]);
+
   const tableColumn: ColumnsType<ServicePageData> = useMemo(
-    () => getServiceMainTabColumns(serviceCategory),
-    [serviceCategory]
+    () =>
+      getServiceMainTabColumns(
+        serviceCategory,
+        editDisplayNamePermission,
+        handleDisplayNameUpdate
+      ),
+    [serviceCategory, handleDisplayNameUpdate, editDisplayNamePermission]
   );
 
   const entityType = useMemo(
@@ -141,10 +214,17 @@ function ServiceMainTabContent({
     [serviceCategory]
   );
 
-  const { editTagsPermission, editDescriptionPermission } = useMemo(
+  const {
+    editTagsPermission,
+    editGlossaryTermsPermission,
+    editDescriptionPermission,
+  } = useMemo(
     () => ({
       editTagsPermission:
         (servicePermission.EditTags || servicePermission.EditAll) &&
+        !serviceDetails.deleted,
+      editGlossaryTermsPermission:
+        (servicePermission.EditGlossaryTerms || servicePermission.EditAll) &&
         !serviceDetails.deleted,
       editDescriptionPermission:
         (servicePermission.EditDescription || servicePermission.EditAll) &&
@@ -152,6 +232,10 @@ function ServiceMainTabContent({
     }),
     [servicePermission, serviceDetails]
   );
+
+  useEffect(() => {
+    setPageData(data);
+  }, [data]);
 
   return (
     <Row gutter={[0, 16]} wrap={false}>
@@ -203,7 +287,7 @@ function ServiceMainTabContent({
                           bordered
                           columns={tableColumn}
                           data-testid="service-children-table"
-                          dataSource={data}
+                          dataSource={pageData}
                           locale={{
                             emptyText: <ErrorPlaceHolder className="m-y-md" />,
                           }}
@@ -238,6 +322,7 @@ function ServiceMainTabContent({
                     (serviceDetails as DatabaseService)?.dataProducts ?? []
                   }
                   domain={(serviceDetails as DatabaseService)?.domain}
+                  editGlossaryTermsPermission={editGlossaryTermsPermission}
                   editTagPermission={editTagsPermission}
                   entityFQN={serviceFQN}
                   entityId={serviceDetails.id}

@@ -39,6 +39,12 @@ Every IDP provides this information, we can download the XML Metadata and config
 
 {% note %}
 
+When configuring the Private Key for the Service Provider, ensure you use the actual key content enclosed within the `-----BEGIN PRIVATE KEY-----` and `-----END PRIVATE KEY-----` block. Avoid using the Base64-encoded format of the key, as this is not the expected value.
+
+{% /note %}
+
+{% note %}
+
 To add a private key, you need to include it in the keystore and update the configuration details accordingly [here](https://github.com/open-metadata/OpenMetadata/blob/main/conf/openmetadata.yaml#L219).
 
 ```yaml
@@ -93,4 +99,4 @@ Configure AWS as IDP.
 {% /inlineCallout %}
 {% /inlineCalloutContainer %}
 
-{% partial file="/v1.5/deployment/configure-ingestion.md" /%}
+{% partial file="/v1.6/deployment/configure-ingestion.md" /%}

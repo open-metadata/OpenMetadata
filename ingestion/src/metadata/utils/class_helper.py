@@ -66,6 +66,9 @@ from metadata.generated.schema.metadataIngestion.testSuitePipeline import (
     TestSuitePipeline,
 )
 from metadata.generated.schema.metadataIngestion.workflow import SourceConfig
+from metadata.generated.schema.tests.testSuite import (
+    ServiceType as TestSuiteServiceType,
+)
 
 SERVICE_TYPE_REF = {
     ServiceType.Api.value: "apiService",
@@ -77,6 +80,8 @@ SERVICE_TYPE_REF = {
     ServiceType.Metadata.value: "metadataService",
     ServiceType.Search.value: "searchService",
     ServiceType.Storage.value: "storageService",
+    # We use test suites as "services" for DQ Ingestion Pipelines
+    TestSuiteServiceType.TestSuite.value: "testSuite",
 }
 
 SOURCE_CONFIG_TYPE_INGESTION = {
@@ -123,6 +128,8 @@ def get_pipeline_type_from_source_config(source_config: SourceConfig) -> Pipelin
 def _get_service_type_from(  # pylint: disable=inconsistent-return-statements
     service_subtype: str,
 ) -> ServiceType:
+    if service_subtype.lower() == "testsuite":
+        return TestSuiteServiceType.TestSuite
     for service_type in ServiceType:
         if service_subtype.lower() in [
             subtype.value.lower()

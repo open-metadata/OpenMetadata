@@ -240,6 +240,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
         const res = await getTableList({
           ...params,
           databaseSchema: decodedDatabaseSchemaFQN,
+          limit: pageSize,
           include: showDeletedTables ? Include.Deleted : Include.NonDeleted,
         });
         setTableData(res.data);
@@ -250,7 +251,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
         setTableDataLoading(false);
       }
     },
-    [decodedDatabaseSchemaFQN, showDeletedTables]
+    [decodedDatabaseSchemaFQN, showDeletedTables, pageSize]
   );
 
   const onDescriptionEdit = useCallback((): void => {
@@ -528,6 +529,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
 
   const {
     editTagsPermission,
+    editGlossaryTermsPermission,
     editDescriptionPermission,
     editCustomAttributePermission,
     viewAllPermission,
@@ -535,6 +537,10 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     () => ({
       editTagsPermission:
         (databaseSchemaPermission.EditTags ||
+          databaseSchemaPermission.EditAll) &&
+        !databaseSchema.deleted,
+      editGlossaryTermsPermission:
+        (databaseSchemaPermission.EditGlossaryTerms ||
           databaseSchemaPermission.EditAll) &&
         !databaseSchema.deleted,
       editDescriptionPermission:
@@ -582,9 +588,11 @@ const DatabaseSchemaPage: FunctionComponent = () => {
         tableDataLoading,
         editCustomAttributePermission,
         editTagsPermission,
+        editGlossaryTermsPermission,
         decodedDatabaseSchemaFQN,
         tags,
         viewAllPermission,
+        databaseSchemaPermission,
         storedProcedureCount,
         onEditCancel,
         handleExtensionUpdate,
@@ -612,10 +620,12 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       tableDataLoading,
       editCustomAttributePermission,
       editTagsPermission,
+      editGlossaryTermsPermission,
       decodedDatabaseSchemaFQN,
       tags,
       viewAllPermission,
       storedProcedureCount,
+      databaseSchemaPermission,
       handleExtensionUpdate,
       handleTagSelection,
       onThreadLinkSelect,
