@@ -29,6 +29,7 @@ import {
 } from '../../../constants/Tag.constants';
 import { LabelType } from '../../../generated/entity/data/table';
 import { State, TagSource } from '../../../generated/type/tagLabel';
+import { useClickOutside } from '../../../hooks/useClickOutside';
 import { getEntityFeedLink } from '../../../utils/EntityUtils';
 import { getFilterTags } from '../../../utils/TableTags/TableTags.utils';
 import tagClassBase from '../../../utils/TagClassBase';
@@ -184,17 +185,24 @@ const TagsContainerV2 = ({
     [displayType, showNoDataPlaceholder, tags?.[tagType], layoutType]
   );
 
+  const tagSelectFormRef = useClickOutside<HTMLDivElement>(
+    isEditTags,
+    handleCancel
+  );
+
   const tagsSelectContainer = useMemo(() => {
     return (
-      <TagSelectForm
-        defaultValue={selectedTagsInternal ?? []}
-        fetchApi={fetchAPI}
-        placeholder={getTagPlaceholder(isGlossaryType)}
-        tagData={initialOptions}
-        tagType={tagType}
-        onCancel={handleCancel}
-        onSubmit={handleSave}
-      />
+      <div ref={tagSelectFormRef}>
+        <TagSelectForm
+          defaultValue={selectedTagsInternal ?? []}
+          fetchApi={fetchAPI}
+          placeholder={getTagPlaceholder(isGlossaryType)}
+          tagData={initialOptions}
+          tagType={tagType}
+          onCancel={handleCancel}
+          onSubmit={handleSave}
+        />
+      </div>
     );
   }, [
     isGlossaryType,

@@ -297,6 +297,7 @@ const AsyncSelectList: FC<AsyncSelectListProps & SelectProps> = ({
       data-testid="tag-selector"
       dropdownRender={dropdownRender}
       filterOption={false}
+      getPopupContainer={(triggerNode) => triggerNode.parentElement!} // Render dropdown in the parent container
       mode={mode}
       notFoundContent={
         isLoading ? (
