@@ -88,10 +88,12 @@ class Max(StaticMetric):
     def fn(self):
         """sqlalchemy function"""
         if is_concatenable(self.col.type):
-            return MaxFn(LenFn(column(self.col.name, self.col.type)))
+            return MaxFn(
+                LenFn(column(self.col.name, self.col.type)), type_=self.col.type
+            )
         if (not is_quantifiable(self.col.type)) and (not is_date_time(self.col.type)):
             return None
-        return MaxFn(column(self.col.name, self.col.type))
+        return MaxFn(column(self.col.name, self.col.type), type_=self.col.type)
 
     def df_fn(self, dfs=None):
         """pandas function"""

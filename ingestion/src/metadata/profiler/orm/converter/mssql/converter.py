@@ -16,10 +16,24 @@ Map Types to convert/cast mssql related data types to relevant data types
 
 from sqlalchemy import NVARCHAR, TEXT
 
-from metadata.profiler.orm.registry import CustomImage
+from metadata.profiler.orm.converter.common import CommonMapTypes
+from metadata.profiler.orm.registry import CustomImage, CustomTypes, DataType
 
 cast_dict = {
     CustomImage: "VARBINARY(max)",
     TEXT: "VARCHAR(max)",
     NVARCHAR: "NVARCHAR(max)",
 }
+
+
+class MssqlMapTypes(CommonMapTypes):
+    """
+    Mssql type mapper
+    """
+
+    def __init__(self) -> None:
+        self._TYPE_MAP.update(
+            {
+                DataType.TIMESTAMP: CustomTypes.TIMESTAMP.value,
+            }
+        )
