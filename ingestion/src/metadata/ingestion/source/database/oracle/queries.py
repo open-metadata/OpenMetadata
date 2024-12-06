@@ -95,7 +95,12 @@ WHERE
     type = 'PROCEDURE' and owner = '{schema}'
 """
 )
-
+ORACLE_GET_SCHEMA = """
+    SELECT USERNAME AS SCHEMA_NAME 
+    FROM ALL_USERS 
+    WHERE ROWNUM = 1 
+    ORDER BY USERNAME
+"""
 ORACLE_GET_STORED_PACKAGES = textwrap.dedent(
     """
 SELECT

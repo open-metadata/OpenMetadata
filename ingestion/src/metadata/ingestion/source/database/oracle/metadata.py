@@ -45,8 +45,8 @@ from metadata.ingestion.source.database.common_db_source import (
     TableNameAndType,
 )
 from metadata.ingestion.source.database.oracle.models import (
-    FetchProcedureList,
-    OracleStoredProcedure,
+    FetchObjectList,
+    OracleStoredObject,
 )
 from metadata.ingestion.source.database.oracle.queries import (
     ORACLE_GET_STORED_PACKAGES,
@@ -182,7 +182,7 @@ class OracleSource(CommonDbSourceService):
             logger.warning(f"Failed to fetch Schema definition for {table_name}: {exc}")
         return None
 
-    def process_result(self, data: FetchProcedureList):
+    def process_result(self, data: FetchObjectList):
         """Process data as per our stored procedure format"""
         result_dict = {}
 
@@ -201,13 +201,13 @@ class OracleSource(CommonDbSourceService):
 
     def _get_stored_procedures_internal(
         self, query: str
-    ) -> Iterable[OracleStoredProcedure]:
-        results: FetchProcedureList = self.engine.execute(
+    ) -> Iterable[OracleStoredObject]:
+        results: FetchObjectList = self.engine.execute(
             query.format(schema=self.context.get().database_schema.upper())
         ).all()
         results = self.process_result(data=results)
         for row in results.items():
-            stored_procedure = OracleStoredProcedure(
+            stored_procedure = OracleStoredObject(
                 name=row[0][1],
                 definition=row[1]["text"],
                 owner=row[0][0],
@@ -215,7 +215,7 @@ class OracleSource(CommonDbSourceService):
             )
             yield stored_procedure
 
-    def get_stored_procedures(self) -> Iterable[OracleStoredProcedure]:
+    def get_stored_procedures(self) -> Iterable[OracleStoredObject]:
         """List Oracle Stored Procedures"""
         if self.source_config.includeStoredProcedures:
             yield from self._get_stored_procedures_internal(
@@ -224,7 +224,7 @@ class OracleSource(CommonDbSourceService):
             yield from self._get_stored_procedures_internal(ORACLE_GET_STORED_PACKAGES)
 
     def yield_stored_procedure(
-        self, stored_procedure: OracleStoredProcedure
+        self, stored_procedure: OracleStoredObject
     ) -> Iterable[Either[CreateStoredProcedureRequest]]:
         """Prepare the stored procedure payload"""
 
