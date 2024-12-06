@@ -4,7 +4,7 @@ slug: /deployment/ingestion/external/github-actions
 collate: false
 ---
 
-{% partial file="/v1.5/deployment/external-ingestion.md" /%}
+{% partial file="/v1.6/deployment/external-ingestion.md" /%}
 
 # Run the ingestion from GitHub Actions
 

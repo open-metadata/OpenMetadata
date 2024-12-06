@@ -19,7 +19,7 @@ Configure and schedule Redash metadata and profiler workflows from the OpenMetad
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 
-{% partial file="/v1.5/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/dashboard/redash/yaml"} /%}
+{% partial file="/v1.6/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/dashboard/redash/yaml"} /%}
 
 ## Requirements
 
@@ -30,12 +30,12 @@ permissions, please visit Redash documentation [here](https://redash.io/help/use
 ## Metadata Ingestion
 
 {% partial 
-  file="/v1.5/connectors/metadata-ingestion-ui.md" 
+  file="/v1.6/connectors/metadata-ingestion-ui.md" 
   variables={
     connector: "Redash", 
-    selectServicePath: "/images/v1.5/connectors/redash/select-service.png",
-    addNewServicePath: "/images/v1.5/connectors/redash/add-new-service.png",
-    serviceConnectionPath: "/images/v1.5/connectors/redash/service-connection.png",
+    selectServicePath: "/images/v1.6/connectors/redash/select-service.png",
+    addNewServicePath: "/images/v1.6/connectors/redash/add-new-service.png",
+    serviceConnectionPath: "/images/v1.6/connectors/redash/service-connection.png",
 } 
 /%}
 
@@ -51,12 +51,12 @@ permissions, please visit Redash documentation [here](https://redash.io/help/use
 
 {% /extraContent %}
 
-{% partial file="/v1.5/connectors/test-connection.md" /%}
+{% partial file="/v1.6/connectors/test-connection.md" /%}
 
-{% partial file="/v1.5/connectors/dashboard/configure-ingestion.md" /%}
+{% partial file="/v1.6/connectors/dashboard/configure-ingestion.md" /%}
 
-{% partial file="/v1.5/connectors/ingestion-schedule-and-deploy.md" /%}
+{% partial file="/v1.6/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
 
-{% partial file="/v1.5/connectors/troubleshooting.md" /%}
+{% partial file="/v1.6/connectors/troubleshooting.md" /%}

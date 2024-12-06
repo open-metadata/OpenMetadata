@@ -210,11 +210,18 @@ test.describe('Glossary tests', () => {
     const { page, afterAction, apiContext } = await performAdminLogin(browser);
     const glossary1 = new Glossary();
     const glossaryTerm1 = new GlossaryTerm(glossary1);
-    const glossaryTerm2 = new GlossaryTerm(glossary1);
-    glossary1.data.terms = [glossaryTerm1, glossaryTerm2];
+    glossary1.data.terms = [glossaryTerm1];
+
+    /* We are creating another Glossary in order to avoid glossaryTerm2 to be moved to IN_REVIEW Status. */
+    const glossary2 = new Glossary();
+    const glossaryTerm2 = new GlossaryTerm(glossary2);
+    glossary2.data.terms = [glossaryTerm2];
+
     const user3 = new UserClass();
     const user4 = new UserClass();
+
     await glossary1.create(apiContext);
+    await glossary2.create(apiContext);
     await glossaryTerm1.create(apiContext);
     await glossaryTerm2.create(apiContext);
     await user3.create(apiContext);
@@ -285,6 +292,7 @@ test.describe('Glossary tests', () => {
       await glossaryTerm1.delete(apiContext);
       await glossaryTerm2.delete(apiContext);
       await glossary1.delete(apiContext);
+      await glossary2.delete(apiContext);
       await user3.delete(apiContext);
       await user4.delete(apiContext);
       await afterAction();
@@ -1046,12 +1054,9 @@ test.describe('Glossary tests', () => {
       const dragColumn = 'Owners';
       const dropColumn = 'Status';
       await dragAndDropColumn(page, dragColumn, dropColumn);
-      const saveButton = page.locator(
-        '[data-testid="glossary-col-dropdown-save"]'
-      );
-      await saveButton.click();
+      await clickSaveButton(page);
       await page.waitForSelector('thead th', { state: 'visible' });
-      const columnHeaders = await page.locator('thead th');
+      const columnHeaders = page.locator('thead th');
       const columnText = await columnHeaders.allTextContents();
 
       expect(columnText).toEqual(
