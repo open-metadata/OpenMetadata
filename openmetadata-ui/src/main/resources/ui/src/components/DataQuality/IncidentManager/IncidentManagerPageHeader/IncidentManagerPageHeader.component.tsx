@@ -41,10 +41,13 @@ import {
   updateTestCaseIncidentById,
 } from '../../../../rest/incidentManagerAPI';
 import { getNameFromFQN } from '../../../../utils/CommonUtils';
-import { getEntityName } from '../../../../utils/EntityUtils';
+import {
+  getColumnNameFromEntityLink,
+  getEntityName,
+} from '../../../../utils/EntityUtils';
 import { getEntityFQN } from '../../../../utils/FeedUtils';
 import { checkPermission } from '../../../../utils/PermissionsUtils';
-import { getDecodedFqn } from '../../../../utils/StringsUtils';
+import { getDecodedFqn, replacePlus } from '../../../../utils/StringsUtils';
 import { getTaskDetailPath } from '../../../../utils/TasksUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
@@ -75,6 +78,19 @@ const IncidentManagerPageHeader = ({
     updateTestCaseIncidentStatus,
     initialAssignees,
   } = useActivityFeedProvider();
+
+  const columnName = useMemo(() => {
+    const isColumn = testCaseData?.entityLink.includes('::columns::');
+    if (isColumn) {
+      const name = replacePlus(
+        getColumnNameFromEntityLink(testCaseData?.entityLink ?? '')
+      );
+
+      return name;
+    }
+
+    return;
+  }, [testCaseData]);
 
   const tableFqn = useMemo(
     () => getEntityFQN(testCaseData?.entityLink ?? ''),
@@ -324,6 +340,17 @@ const IncidentManagerPageHeader = ({
               }}>
               {getNameFromFQN(tableFqn)}
             </Link>
+          </Typography.Text>
+        </>
+      )}
+      {columnName && (
+        <>
+          <Divider className="self-center m-x-sm" type="vertical" />
+          <Typography.Text className="self-center text-xs whitespace-nowrap">
+            <span className="text-grey-muted">{`${t('label.column')}: `}</span>
+            <span className="font-medium" data-testid="test-column-name">
+              {columnName}
+            </span>
           </Typography.Text>
         </>
       )}
