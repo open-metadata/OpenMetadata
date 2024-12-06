@@ -32,7 +32,11 @@ const CertificationTag = ({
         title={getTagTooltip(name, certification.tagLabel.description)}
         trigger="hover">
         <div data-testid={`certification-${certification.tagLabel.tagFQN}`}>
-          <img alt={`certification: ${name}`} src={tagSrc} />
+          <img
+            alt={`certification: ${name}`}
+            className="certification-img"
+            src={tagSrc}
+          />
         </div>
       </Tooltip>
     );
