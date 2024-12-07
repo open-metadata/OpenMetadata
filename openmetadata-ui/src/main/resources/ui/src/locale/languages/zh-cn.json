@@ -156,6 +156,7 @@
     "chart-type": "图表类型",
     "check-active-data-quality-incident-plural": "Check active data quality incidents",
     "check-status": "检查状态",
+    "check-upstream-failure": "检查上游故障",
     "children": "子级",
     "children-lowercase": "子级",
     "claim-ownership": "声明所有权",

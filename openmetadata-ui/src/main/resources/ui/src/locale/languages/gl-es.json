@@ -156,6 +156,7 @@
     "chart-type": "Tipo de gráfico",
     "check-active-data-quality-incident-plural": "Check active data quality incidents",
     "check-status": "Verificar estado",
+    "check-upstream-failure": "Comprobe o fallo no upstream",
     "children": "Fillos",
     "children-lowercase": "fillos",
     "claim-ownership": "Reclamar propiedade",
