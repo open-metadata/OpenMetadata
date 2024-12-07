@@ -156,6 +156,7 @@
     "chart-type": "Chart type",
     "check-active-data-quality-incident-plural": "Check active data quality incidents",
     "check-status": "Status controleren",
+    "check-upstream-failure": "Controleer de upstream-fout",
     "children": "Kinderen",
     "children-lowercase": "kinderen",
     "claim-ownership": "Eigenaarschap opvragen",

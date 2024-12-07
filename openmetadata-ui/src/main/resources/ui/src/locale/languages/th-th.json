@@ -156,6 +156,7 @@
     "chart-type": "ประเภทกราฟ",
     "check-active-data-quality-incident-plural": "ตรวจสอบเหตุการณ์คุณภาพข้อมูลที่กำลังใช้งาน",
     "check-status": "ตรวจสอบสถานะ",
+    "check-upstream-failure": "ตรวจสอบความล้มเหลวของอัพสตรีม",
     "children": "เด็ก",
     "children-lowercase": "เด็ก",
     "claim-ownership": "ยืนยันความเป็นเจ้าของ",
