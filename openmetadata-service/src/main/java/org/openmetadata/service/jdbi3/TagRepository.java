@@ -13,17 +13,21 @@
 
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.CLASSIFICATION;
 import static org.openmetadata.service.Entity.TAG;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusiveForParentAndSubField;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.getUniqueTags;
+import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
+import static org.openmetadata.service.search.SearchClient.UPDATE_CERTIFICATION_SCRIPT;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.service.util.EntityUtil.getId;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -31,7 +35,6 @@ import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
-import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.BulkAssetsRequestInterface;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.AddTagToAssetsRequest;
@@ -135,7 +138,7 @@ public class TagRepository extends EntityRepository<Tag> {
     List<BulkResponse> failures = new ArrayList<>();
     List<BulkResponse> success = new ArrayList<>();
 
-    if (dryRun || CommonUtil.nullOrEmpty(request.getAssets())) {
+    if (dryRun || nullOrEmpty(request.getAssets())) {
       // Nothing to Validate
       return result
           .withStatus(ApiStatus.SUCCESS)
@@ -176,7 +179,7 @@ public class TagRepository extends EntityRepository<Tag> {
         result.setNumberOfRowsFailed(result.getNumberOfRowsFailed() + 1);
       }
       // Validate and Store Tags
-      if (CommonUtil.nullOrEmpty(result.getFailedRequest())) {
+      if (nullOrEmpty(result.getFailedRequest())) {
         List<TagLabel> tempList = new ArrayList<>(asset.getTags());
         tempList.add(tagLabel);
         // Apply Tags to Entities
@@ -249,6 +252,22 @@ public class TagRepository extends EntityRepository<Tag> {
       searchRepository
           .getSearchClient()
           .reindexAcrossIndices("tags.tagFQN", original.getEntityReference());
+    }
+
+    // Certification Updates
+    if (updated.getClassification().getFullyQualifiedName().equals("Certification")
+        && (updated.getChangeDescription() != null)) {
+      Map<String, Object> paramMap = new HashMap<>();
+      paramMap.put("name", updated.getName());
+      paramMap.put("description", updated.getDescription());
+      paramMap.put("tagFQN", updated.getFullyQualifiedName());
+      paramMap.put("style", updated.getStyle());
+      searchRepository
+          .getSearchClient()
+          .updateChildren(
+              GLOBAL_SEARCH_ALIAS,
+              new ImmutablePair<>("certification.tagLabel.tagFQN", updated.getFullyQualifiedName()),
+              new ImmutablePair<>(UPDATE_CERTIFICATION_SCRIPT, paramMap));
     }
   }
 
