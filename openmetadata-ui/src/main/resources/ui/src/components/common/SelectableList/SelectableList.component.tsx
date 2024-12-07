@@ -23,6 +23,7 @@ import {
   ADD_USER_CONTAINER_HEIGHT,
   pagingObject,
 } from '../../../constants/constants';
+import { ACTION_TYPE } from '../../../enums/common.enum';
 import { EntityReference } from '../../../generated/entity/data/table';
 import { Paging } from '../../../generated/type/paging';
 import { getEntityName } from '../../../utils/EntityUtils';
@@ -192,16 +193,20 @@ export const SelectableList = ({
     if (multiSelect) {
       setSelectedItemInternal((itemsMap) => {
         const id = item.id;
+        let action: ACTION_TYPE;
+
         const newItemsMap = cloneDeep(itemsMap);
         if (newItemsMap.has(id)) {
           newItemsMap?.delete(id);
+          action = ACTION_TYPE.REMOVE;
         } else {
           newItemsMap?.set(id, item);
+          action = ACTION_TYPE.UPDATE;
         }
 
         const newSelectedItems = [...newItemsMap.values()];
         // Call onChange with the new selected items
-        onChange?.(newSelectedItems);
+        onChange?.(newSelectedItems, item, action);
 
         return newItemsMap;
       });
