@@ -1,0 +1,85 @@
+{
+    "$id": "https://open-metadata.org/schema/entity/services/connections/database/cassandraConnection.json",
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "CassandraConnection",
+    "description": "Cassandra Connection Config",
+    "type": "object",
+    "javaType": "org.openmetadata.schema.services.connections.database.CassandraConnection",
+    "definitions": {
+        "cassandraType": {
+            "description": "Service type.",
+            "type": "string",
+            "enum": [
+                "Cassandra"
+            ],
+            "default": "Cassandra"
+        },
+        "cloudConfig": {
+            "title": "DataStax Astra DB Configuration",
+            "description": "Configuration for connecting to DataStax Astra DB in the cloud.",
+            "type": "object",
+            "properties": {
+                "connectTimeout": {
+                    "description": "Timeout in seconds for establishing new connections to Cassandra.",
+                    "type": "integer",
+                    "default": 600
+                },
+                "requestTimeout": {
+                    "description": "Timeout in seconds for individual Cassandra requests.",
+                    "type": "integer",
+                    "default": 600
+                },
+                "token": {
+                    "description": "The Astra DB application token used for authentication.",
+                    "type": "string"
+                },
+                "secureConnectBundle": {
+                    "description": "File path to the Secure Connect Bundle (.zip) used for a secure connection to DataStax Astra DB.",
+                    "type": "string"
+                }
+            }
+        }
+    },
+    "properties": {
+        "type": {
+            "title": "Service Type",
+            "description": "Service Type",
+            "$ref": "#/definitions/cassandraType",
+            "default": "Cassandra"
+        },
+        "username": {
+            "title": "Username",
+            "description": "Username to connect to Cassandra. This user should have privileges to read all the metadata in Cassandra.",
+            "type": "string"
+        },
+        "password": {
+            "title": "Password",
+            "description": "Password to connect to Cassandra.",
+            "type": "string",
+            "format": "password"
+        },
+        "hostPort": {
+            "title": "Host and Port",
+            "description": "Host and port of the Cassandra service when using the `cassandra` connection scheme. Only host when using the `cassandra+srv` scheme.",
+            "type": "string"
+        },
+        "databaseName": {
+            "title": "Database Name",
+            "description": "Optional name to give to the database in OpenMetadata. If left blank, we will use default as the database name.",
+            "type": "string"
+        },
+        "cloudConfig": {
+            "title": "DataStax Astra DB Configuration",
+            "description": "Configuration for connecting to DataStax Astra DB in the cloud.",
+            "$ref": "#/definitions/cloudConfig"
+        },
+        "supportsMetadataExtraction": {
+            "title": "Supports Metadata Extraction",
+            "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+        }
+    },
+    "required": [
+        "hostPort"
+    ],
+    "additionalProperties": false
+}
