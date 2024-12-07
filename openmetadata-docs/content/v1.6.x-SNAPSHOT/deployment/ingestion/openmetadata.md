@@ -11,7 +11,7 @@ with an orchestration system. It does not matter which one, but we need it to ha
 run, fetch the logs, etc. of our workflows.
 
 {% image
-  src="/images/v1.5/deployment/ingestion/openmetadata/om-orchestration.png"
+  src="/images/v1.6/deployment/ingestion/openmetadata/om-orchestration.png"
   alt="openmetadata-orchestration"
   caption="OpenMetadata Ingestion Orchestration"
 /%}
@@ -119,8 +119,8 @@ openmetadata:
 ## Custom Airflow Installation
 
 {% note %}
-- Note that the `openmetadata-ingestion` only supports Python versions 3.7, 3.8 and 3.9.
-- The supported Airflow versions are 2.3, 2.4 and 2.5. From release 1.1.1 onwards, OpenMetadata will also support Airflow 2.6.
+- Note that the `openmetadata-ingestion` only supports Python versions 3.7, 3.8, 3.9 and 3.10.
+- - The supported Airflow versions are 2.3, 2.4, 2.5, 2.6, and 2.7. Starting from release 1.5, OpenMetadata will support compatibility with Airflow versions up to 2.9.
 {% /note %}
 
 You will need to follow three steps:
@@ -174,6 +174,12 @@ OpenMetadata server. For example, if you are on version 1.0.0, then you can inst
 with versions `1.0.0.*`, e.g., `1.0.0.0`, `1.0.0.1`, etc., but not `1.0.1.x`.
 
 ### 3. Configure the Airflow environment
+
+{% note %}
+
+The ingestion image is built on Airflow's base image, ensuring it includes all necessary requirements to run Airflow. For Kubernetes deployments, the setup uses community Airflow charts with a modified base image, enabling it to function seamlessly as a **scheduler**, **webserver**, and **worker**.
+
+{% /note %}
 
 We need a couple of settings:
 

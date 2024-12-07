@@ -54,7 +54,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang.exception.ExceptionUtils;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
-import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.EntityTimeSeriesInterface;
 import org.openmetadata.schema.analytics.ReportData;
@@ -81,20 +80,16 @@ import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 @Slf4j
 public class SearchRepository {
 
-  @Getter private final SearchClient searchClient;
+  private volatile SearchClient searchClient;
 
-  private Map<String, IndexMapping> entityIndexMap;
+  @Getter private Map<String, IndexMapping> entityIndexMap;
 
   private final String language;
 
   @Getter @Setter public SearchIndexFactory searchIndexFactory = new SearchIndexFactory();
 
   private final List<String> inheritableFields =
-      List.of(
-          Entity.FIELD_OWNERS,
-          Entity.FIELD_DOMAIN,
-          Entity.FIELD_DISABLED,
-          Entity.FIELD_TEST_SUITES);
+      List.of(FIELD_OWNERS, Entity.FIELD_DOMAIN, Entity.FIELD_DISABLED, Entity.FIELD_TEST_SUITES);
   private final List<String> propagateFields = List.of(Entity.FIELD_TAGS);
 
   @Getter private final ElasticSearchConfiguration elasticSearchConfiguration;
@@ -122,6 +117,17 @@ public class SearchRepository {
             : "en";
     clusterAlias = config != null ? config.getClusterAlias() : "";
     loadIndexMappings();
+  }
+
+  public SearchClient getSearchClient() {
+    if (searchClient == null) {
+      synchronized (SearchRepository.class) {
+        if (searchClient == null) {
+          searchClient = buildSearchClient(elasticSearchConfiguration);
+        }
+      }
+    }
+    return searchClient;
   }
 
   private void loadIndexMappings() {
@@ -360,6 +366,9 @@ public class SearchRepository {
             entityType, entityId, entity.getChangeDescription(), indexMapping, entity);
         propagateGlossaryTags(
             entityType, entity.getFullyQualifiedName(), entity.getChangeDescription());
+
+        propagatetoRelatedEntities(
+            entityType, entityId, entity.getChangeDescription(), indexMapping, entity);
       } catch (Exception ie) {
         LOG.error(
             "Issue in Updating the search document for entity [{}] and entityType [{}]. Reason[{}], Cause[{}], Stack [{}]",
@@ -443,13 +452,58 @@ public class SearchRepository {
     }
   }
 
+  public void propagatetoRelatedEntities(
+      String entityType,
+      String entityId,
+      ChangeDescription changeDescription,
+      IndexMapping indexMapping,
+      EntityInterface entity) {
+
+    if (changeDescription != null && entityType.equalsIgnoreCase(Entity.PAGE)) {
+      String indexName = indexMapping.getIndexName(clusterAlias);
+      for (FieldChange field : changeDescription.getFieldsAdded()) {
+        if (field.getName().contains("parent")) {
+          String oldParentFQN = entity.getName();
+          String newParentFQN = entity.getFullyQualifiedName();
+          // Propagate FQN updates to all subchildren
+          searchClient.updateByFqnPrefix(indexName, oldParentFQN, newParentFQN);
+        }
+      }
+
+      for (FieldChange field : changeDescription.getFieldsUpdated()) {
+        if (field.getName().contains("parent")) {
+          EntityReference entityReferenceBeforeUpdate =
+              JsonUtils.readValue(field.getOldValue().toString(), EntityReference.class);
+          // Propagate FQN updates to all subchildren
+          String originalFqn =
+              String.join(
+                  ".", entityReferenceBeforeUpdate.getFullyQualifiedName(), entity.getName());
+          String updatedFqn = entity.getFullyQualifiedName();
+          searchClient.updateByFqnPrefix(indexName, originalFqn, updatedFqn);
+        }
+      }
+
+      for (FieldChange field : changeDescription.getFieldsDeleted()) {
+        if (field.getName().contains("parent")) {
+          EntityReference entityReferenceBeforeUpdate =
+              JsonUtils.readValue(field.getOldValue().toString(), EntityReference.class);
+          // Propagate FQN updates to all subchildren
+          String originalFqn =
+              String.join(
+                  ".", entityReferenceBeforeUpdate.getFullyQualifiedName(), entity.getName());
+          searchClient.updateByFqnPrefix(indexName, originalFqn, "");
+        }
+      }
+    }
+  }
+
   private Pair<String, Map<String, Object>> getInheritedFieldChanges(
       ChangeDescription changeDescription, EntityInterface entity) {
     StringBuilder scriptTxt = new StringBuilder();
     Map<String, Object> fieldData = new HashMap<>();
 
     if (changeDescription != null) {
-      for (FieldChange field : changeDescription.getFieldsAdded()) {
+      for (FieldChange field : changeDescription.getFieldsDeleted()) {
         if (inheritableFields.contains(field.getName())) {
           try {
             if (field.getName().equals(FIELD_OWNERS)) {
@@ -458,24 +512,23 @@ public class SearchRepository {
               for (EntityReference inheritedOwner : inheritedOwners) {
                 inheritedOwner.setInherited(true);
               }
-              fieldData.put("updatedOwners", inheritedOwners);
-              scriptTxt.append(ADD_OWNERS_SCRIPT);
+              fieldData.put("deletedOwners", inheritedOwners);
+              scriptTxt.append(REMOVE_OWNERS_SCRIPT);
+              scriptTxt.append(" ");
             } else {
               EntityReference entityReference =
-                  JsonUtils.readValue(field.getNewValue().toString(), EntityReference.class);
+                  JsonUtils.readValue(field.getOldValue().toString(), EntityReference.class);
               scriptTxt.append(
                   String.format(
-                      PROPAGATE_ENTITY_REFERENCE_FIELD_SCRIPT,
-                      field.getName(),
-                      field.getName(),
+                      REMOVE_PROPAGATED_ENTITY_REFERENCE_FIELD_SCRIPT,
                       field.getName(),
                       field.getName(),
                       field.getName()));
-              fieldData.put(field.getName(), entityReference);
+              fieldData.put(field.getName(), JsonUtils.getMap(entityReference));
+              scriptTxt.append(" ");
             }
           } catch (UnhandledServerException e) {
-            scriptTxt.append(
-                String.format(PROPAGATE_FIELD_SCRIPT, field.getName(), field.getNewValue()));
+            scriptTxt.append(String.format(REMOVE_PROPAGATED_FIELD_SCRIPT, field.getName()));
           }
         }
       }
@@ -505,9 +558,10 @@ public class SearchRepository {
                   String.format(PROPAGATE_FIELD_SCRIPT, field.getName(), field.getNewValue()));
             }
           }
+          scriptTxt.append(" ");
         }
       }
-      for (FieldChange field : changeDescription.getFieldsDeleted()) {
+      for (FieldChange field : changeDescription.getFieldsAdded()) {
         if (inheritableFields.contains(field.getName())) {
           try {
             if (field.getName().equals(FIELD_OWNERS)) {
@@ -516,21 +570,26 @@ public class SearchRepository {
               for (EntityReference inheritedOwner : inheritedOwners) {
                 inheritedOwner.setInherited(true);
               }
-              fieldData.put("deletedOwners", inheritedOwners);
-              scriptTxt.append(REMOVE_OWNERS_SCRIPT);
+              fieldData.put("updatedOwners", inheritedOwners);
+              scriptTxt.append(ADD_OWNERS_SCRIPT);
             } else {
               EntityReference entityReference =
-                  JsonUtils.readValue(field.getOldValue().toString(), EntityReference.class);
+                  JsonUtils.readValue(field.getNewValue().toString(), EntityReference.class);
               scriptTxt.append(
                   String.format(
-                      REMOVE_PROPAGATED_ENTITY_REFERENCE_FIELD_SCRIPT,
+                      PROPAGATE_ENTITY_REFERENCE_FIELD_SCRIPT,
+                      field.getName(),
+                      field.getName(),
                       field.getName(),
                       field.getName(),
                       field.getName()));
-              fieldData.put(field.getName(), JsonUtils.getMap(entityReference));
+              fieldData.put(field.getName(), entityReference);
             }
+            scriptTxt.append(" ");
           } catch (UnhandledServerException e) {
-            scriptTxt.append(String.format(REMOVE_PROPAGATED_FIELD_SCRIPT, field.getName()));
+            scriptTxt.append(
+                String.format(PROPAGATE_FIELD_SCRIPT, field.getName(), field.getNewValue()));
+            scriptTxt.append(" ");
           }
         }
       }
@@ -821,6 +880,26 @@ public class SearchRepository {
         q);
   }
 
+  public SearchClient.SearchResultListMapper listWithDeepPagination(
+      String entityType,
+      String query,
+      String filter,
+      String[] fields,
+      SearchSortFilter searchSortFilter,
+      int size,
+      Object[] searchAfter)
+      throws IOException {
+    IndexMapping index = entityIndexMap.get(entityType);
+    return searchClient.listWithDeepPagination(
+        index.getIndexName(clusterAlias),
+        query,
+        filter,
+        fields,
+        searchSortFilter,
+        size,
+        searchAfter);
+  }
+
   public Response searchBySourceUrl(String sourceUrl) throws IOException {
     return searchClient.searchBySourceUrl(sourceUrl);
   }
@@ -837,9 +916,23 @@ public class SearchRepository {
         fqn, upstreamDepth, downstreamDepth, queryFilter, deleted, entityType);
   }
 
+  public Response searchEntityRelationship(
+      String fqn, int upstreamDepth, int downstreamDepth, String queryFilter, boolean deleted)
+      throws IOException {
+    return searchClient.searchEntityRelationship(
+        fqn, upstreamDepth, downstreamDepth, queryFilter, deleted);
+  }
+
   public Response searchDataQualityLineage(
       String fqn, int upstreamDepth, String queryFilter, boolean deleted) throws IOException {
     return searchClient.searchDataQualityLineage(fqn, upstreamDepth, queryFilter, deleted);
+  }
+
+  public Response searchSchemaEntityRelationship(
+      String fqn, int upstreamDepth, int downstreamDepth, String queryFilter, boolean deleted)
+      throws IOException {
+    return searchClient.searchSchemaEntityRelationship(
+        fqn, upstreamDepth, downstreamDepth, queryFilter, deleted);
   }
 
   public Map<String, Object> searchLineageForExport(
@@ -929,7 +1022,7 @@ public class SearchRepository {
         String id = JsonUtils.extractValue(jsonNode, "_source", "id");
         String fqn = JsonUtils.extractValue(jsonNode, "_source", "fullyQualifiedName");
         String type = JsonUtils.extractValue(jsonNode, "_source", "entityType");
-        if (!CommonUtil.nullOrEmpty(fqn) && !CommonUtil.nullOrEmpty(type)) {
+        if (!nullOrEmpty(fqn) && !nullOrEmpty(type)) {
           fqns.add(
               new EntityReference()
                   .withId(UUID.fromString(id))

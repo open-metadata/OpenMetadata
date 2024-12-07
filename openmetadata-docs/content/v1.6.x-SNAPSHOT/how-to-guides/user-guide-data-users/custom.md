@@ -8,17 +8,23 @@ slug: /how-to-guides/guide-for-data-users/custom
 OpenMetadata uses a schema-first approach, and that's why we support custom properties for all types of data assets. Organizations can extend the attributes as required to capture custom metadata. You can view the Custom Properties tab in the detailed view for all types of data assets.
 
 Supported types:
-- duration
-- email
-- entityReference
-- entityReferenceList
-- enum
-- integer
-- markdown
-- number
-- sqlQuery
-- string
-- timestamp
+
+- Date
+- Date Time
+- Duration
+- Email
+- Entity Reference
+- Entity Reference List
+- Enum
+- Integer
+- Markdown
+- Number
+- SQL Query
+- String
+- Table
+- Time
+- Time Interval
+- Timestamp
 
 To create a Custom Property in OpenMetadata:
 - Navigate to **Settings** >> **Custom Properties**
@@ -26,7 +32,7 @@ To create a Custom Property in OpenMetadata:
 - Click on **Add Property**
 
 {% image
-src="/images/v1.5/how-to-guides/discovery/custom1.png"
+src="/images/v1.6/how-to-guides/discovery/custom1.png"
 alt="Create a Custom Property"
 caption="Create a Custom Property"
 /%}
@@ -38,7 +44,7 @@ caption="Create a Custom Property"
 - Click on **Create**.
 
 {% image
-src="/images/v1.5/how-to-guides/discovery/custom2.png"
+src="/images/v1.6/how-to-guides/discovery/custom2.png"
 alt="Define a Custom Property"
 caption="Define a Custom Property"
 /%}
@@ -46,7 +52,7 @@ caption="Define a Custom Property"
 Once the custom property has been created for a type of data asset, you can add the values for the custom property from the Custom Property tab in the detailed view of the data assets.
 
 {% image
-src="/images/v1.5/how-to-guides/discovery/custom3.png"
+src="/images/v1.6/how-to-guides/discovery/custom3.png"
 alt="Enter the Value for a Custom Property"
 caption="Enter the Value for a Custom Property"
 /%}

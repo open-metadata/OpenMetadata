@@ -7,8 +7,8 @@ slug: /connectors/database/glue
 name="Glue"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "dbt"]
-unavailableFeatures=["Query Usage", "Owners", "Tags", "Stored Procedures", "Data Profiler", "Data Quality", "Lineage", "Column-level Lineage"]
+availableFeatures=["Metadata", "dbt", "External Table Lineage"]
+unavailableFeatures=["Query Usage", "Owners", "Tags", "Stored Procedures", "Data Profiler", "Data Quality", "Column-level Lineage"]
 / %}
 
 
@@ -20,7 +20,7 @@ Configure and schedule Glue metadata and profiler workflows from the OpenMetadat
 - [Metadata Ingestion](#metadata-ingestion)
 - [dbt Integration](/connectors/ingestion/workflows/dbt)
 
-{% partial file="/v1.5/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/glue/yaml"} /%}
+{% partial file="/v1.6/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/glue/yaml"} /%}
 
 ## Requirements
 
@@ -29,12 +29,12 @@ User must have `glue:GetDatabases` and `glue:GetTables` permissions to ingest th
 ## Metadata Ingestion
 
 {% partial
-file="/v1.5/connectors/metadata-ingestion-ui.md"
+file="/v1.6/connectors/metadata-ingestion-ui.md"
 variables={
 connector: "Glue",
-selectServicePath: "/images/v1.5/connectors/glue/select-service.png",
-addNewServicePath: "/images/v1.5/connectors/glue/add-new-service.png",
-serviceConnectionPath: "/images/v1.5/connectors/glue/service-connection.png",
+selectServicePath: "/images/v1.6/connectors/glue/select-service.png",
+addNewServicePath: "/images/v1.6/connectors/glue/add-new-service.png",
+serviceConnectionPath: "/images/v1.6/connectors/glue/service-connection.png",
 }
 /%}
 
@@ -105,14 +105,14 @@ Find more information about [Source Identity](https://docs.aws.amazon.com/STS/la
 
 {% /extraContent %}
 
-{% partial file="/v1.5/connectors/test-connection.md" /%}
+{% partial file="/v1.6/connectors/test-connection.md" /%}
 
-{% partial file="/v1.5/connectors/database/configure-ingestion.md" /%}
+{% partial file="/v1.6/connectors/database/configure-ingestion.md" /%}
 
-{% partial file="/v1.5/connectors/ingestion-schedule-and-deploy.md" /%}
+{% partial file="/v1.6/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
 
-{% partial file="/v1.5/connectors/troubleshooting.md" /%}
+{% partial file="/v1.6/connectors/troubleshooting.md" /%}
 
-{% partial file="/v1.5/connectors/database/related.md" /%}
+{% partial file="/v1.6/connectors/database/related.md" /%}

@@ -77,6 +77,7 @@ def custom_query_compare(self, other):
 
 EXPECTED_QUERIES = [
     TableQuery(
+        dialect="ansi",
         query="select * from sales",
         userName="",
         startTime="",
@@ -88,6 +89,7 @@ EXPECTED_QUERIES = [
         duration=None,
     ),
     TableQuery(
+        dialect="ansi",
         query="select * from marketing",
         userName="",
         startTime="",
@@ -99,6 +101,7 @@ EXPECTED_QUERIES = [
         duration=None,
     ),
     TableQuery(
+        dialect="ansi",
         query="insert into marketing select * from sales",
         userName="",
         startTime="",
@@ -112,6 +115,7 @@ EXPECTED_QUERIES = [
 ]
 EXPECTED_QUERIES_FILE_2 = [
     TableQuery(
+        dialect="ansi",
         query="select * from product_data",
         userName="",
         startTime="",
@@ -123,6 +127,7 @@ EXPECTED_QUERIES_FILE_2 = [
         duration=None,
     ),
     TableQuery(
+        dialect="ansi",
         query="select * from students where marks>=80",
         userName="",
         startTime="",

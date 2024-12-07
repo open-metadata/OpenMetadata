@@ -64,11 +64,10 @@ class PowerBiApiClient:
             client_credential=self.config.clientSecret.get_secret_value(),
             authority=self.config.authorityURI + self.config.tenantId,
         )
-        self.auth_token = self.get_auth_token()
         client_config = ClientConfig(
             base_url="https://api.powerbi.com",
             api_version="v1.0",
-            auth_token=lambda: self.auth_token,
+            auth_token=self.get_auth_token,
             auth_header="Authorization",
             allow_redirects=True,
             retry_codes=[429],

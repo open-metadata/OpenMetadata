@@ -10,7 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
+import {
+  CheckOutlined,
+  CloseOutlined,
+  InfoCircleOutlined,
+} from '@ant-design/icons';
 import { Button, Divider, Form, Input, Space, Tooltip, Typography } from 'antd';
 import { isEmpty, last } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
@@ -18,6 +22,7 @@ import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../../../assets/svg/edit-new.svg';
 import {
   DE_ACTIVE_COLOR,
+  GRAYED_OUT_COLOR,
   ICON_DIMENSION,
   NO_DATA_PLACEHOLDER,
 } from '../../../../../constants/constants';
@@ -314,6 +319,28 @@ const TeamsInfo = ({
         updateTeamSubscription={updateTeamSubscription}
       />
       {teamTypeElement}
+
+      <Divider type="vertical" />
+
+      <Space size={4}>
+        <Typography.Text className="text-grey-muted d-flex items-center">
+          {t('label.total-user-plural')}
+          <Tooltip
+            destroyTooltipOnHide
+            title={t('message.team-distinct-user-description')}>
+            <InfoCircleOutlined
+              className="m-x-xss"
+              data-testid="helper-icon"
+              style={{ color: GRAYED_OUT_COLOR }}
+            />
+          </Tooltip>
+          {' : '}
+        </Typography.Text>
+
+        <Typography.Text className="font-medium" data-testid="team-user-count">
+          {currentTeam.userCount}
+        </Typography.Text>
+      </Space>
     </Space>
   );
 };

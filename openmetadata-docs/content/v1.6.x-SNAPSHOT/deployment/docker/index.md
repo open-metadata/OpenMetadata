@@ -11,7 +11,7 @@ Before starting with the deployment make sure you follow all the below Prerequis
 
 ## Docker Deployment Architecture
 
-{% image src="/images/v1.5/deployment/docker/om_docker_architecture.png" alt="Docker Deployment Architecture" /%}
+{% image src="/images/v1.6/deployment/docker/om_docker_architecture.png" alt="Docker Deployment Architecture" /%}
 
 ## Prerequisites
 
@@ -19,7 +19,7 @@ Before starting with the deployment make sure you follow all the below Prerequis
 
 For Production Deployment using Docker, we recommend bringing your own Databases and ElasticSearch Engine and not rely on quickstart packages.
 
-{% partial file="/v1.5/deployment/configure-external-orchestrator-for-ingestion-service.md" /%}
+{% partial file="/v1.6/deployment/configure-external-orchestrator-for-ingestion-service.md" /%}
 
 ### Docker (version 20.10.0 or higher)
 
@@ -80,7 +80,7 @@ Follow the instructions [here](https://docs.docker.com/compose/cli-command/#inst
    > Docker Compose version v2.2.3
    ```
 
-{% partial file="/v1.5/deployment/minimum-sizing-requirements.md" /%}
+{% partial file="/v1.6/deployment/minimum-sizing-requirements.md" /%}
 
 ## Steps for Deploying OpenMetadata using Docker
 
@@ -103,7 +103,7 @@ This docker compose file contains only the docker compose services for OpenMetad
 You can also run the below command to fetch the docker compose file directly from the terminal -
 
 ```bash
-wget https://github.com/open-metadata/OpenMetadata/releases/download/1.5.7-release/docker-compose-openmetadata.yml
+wget https://github.com/open-metadata/OpenMetadata/releases/download/1.5.8-release/docker-compose-openmetadata.yml
 ```
 
 ### 3. Update Environment Variables required for OpenMetadata Dependencies
@@ -192,7 +192,7 @@ You can validate that all containers are up by running with command `docker ps`.
 ```commandline
 ❯ docker ps
 CONTAINER ID   IMAGE                                                  COMMAND                  CREATED          STATUS                    PORTS                                                            NAMES
-470cc8149826   openmetadata/server:1.5.7                              "./openmetadata-star…"   45 seconds ago   Up 43 seconds             3306/tcp, 9200/tcp, 9300/tcp, 0.0.0.0:8585-8586->8585-8586/tcp   openmetadata_server
+470cc8149826   openmetadata/server:1.5.8                              "./openmetadata-star…"   45 seconds ago   Up 43 seconds             3306/tcp, 9200/tcp, 9300/tcp, 0.0.0.0:8585-8586->8585-8586/tcp   openmetadata_server
 ```
 
 In a few seconds, you should be able to access the OpenMetadata UI at [http://localhost:8585](http://localhost:8585)
@@ -358,7 +358,7 @@ Restart the OpenMetadata Docker Compose Application using `docker compose --env-
 
 ### PostgreSQL Issue permission denied to create extension "pgcrypto"
 
-{% partial file="/v1.5/deployment/postgresql-issue-permission-denied-extension-pgcrypto.md" /%}
+{% partial file="/v1.6/deployment/postgresql-issue-permission-denied-extension-pgcrypto.md" /%}
 
 {%note%}
 

@@ -187,7 +187,7 @@ describe('Explore Utils', () => {
       );
 
       expect(result).toEqual({
-        bucket: EntityFields.DATABASE,
+        bucket: EntityFields.DATABASE_DISPLAY_NAME,
         queryFilter: {
           query: {
             bool: {

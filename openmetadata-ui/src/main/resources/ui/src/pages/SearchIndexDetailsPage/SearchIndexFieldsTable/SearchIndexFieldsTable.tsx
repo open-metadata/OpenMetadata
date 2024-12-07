@@ -36,7 +36,7 @@ import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndexField } from '../../../generated/entity/data/searchIndex';
 import { TagSource } from '../../../generated/type/schema';
 import { TagLabel } from '../../../generated/type/tagLabel';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getColumnSorter, getEntityName } from '../../../utils/EntityUtils';
 import { makeData } from '../../../utils/SearchIndexUtils';
 import {
   getAllTags,
@@ -58,6 +58,7 @@ const SearchIndexFieldsTable = ({
   onUpdate,
   hasDescriptionEditAccess,
   hasTagEditAccess,
+  hasGlossaryTermEditAccess,
   isReadOnly = false,
   onThreadLinkSelect,
   entityFqn,
@@ -194,6 +195,7 @@ const SearchIndexFieldsTable = ({
         accessor: 'name',
         width: 220,
         fixed: 'left',
+        sorter: getColumnSorter<SearchIndexField, 'name'>('name'),
         render: (_, record: SearchIndexField) => (
           <div className="d-inline-flex w-max-90">
             <span className="break-word">{getEntityName(record)}</span>
@@ -255,7 +257,7 @@ const SearchIndexFieldsTable = ({
             entityFqn={entityFqn}
             entityType={EntityType.SEARCH_INDEX}
             handleTagSelection={handleTagSelection}
-            hasTagEditAccess={hasTagEditAccess}
+            hasTagEditAccess={hasGlossaryTermEditAccess}
             index={index}
             isReadOnly={isReadOnly}
             record={record}
@@ -270,6 +272,7 @@ const SearchIndexFieldsTable = ({
       entityFqn,
       isReadOnly,
       hasTagEditAccess,
+      hasGlossaryTermEditAccess,
       handleUpdate,
       handleTagSelection,
       renderDataTypeDisplay,

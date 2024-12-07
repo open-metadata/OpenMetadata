@@ -153,7 +153,7 @@ public class SuggestionsResourceTest extends OpenMetadataApplicationTest {
     CreateSuggestion create = create().withEntityLink("<>"); // Invalid EntityLink
 
     String failureReason =
-        "[entityLink must match \"(?U)^<#E::\\w+::[\\w'\\- .&/:+\"\\\\()$#%]+>$\"]";
+        "[entityLink must match \"(?U)^<#E::\\w+::(?:[^:<>|]|:[^:<>|])+(?:::(?:[^:<>|]|:[^:<>|])+)*>$\"]";
     assertResponseContains(
         () -> createSuggestion(create, USER_AUTH_HEADERS), BAD_REQUEST, failureReason);
 

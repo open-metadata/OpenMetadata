@@ -11,6 +11,67 @@ The main takes for developing a new connector are:
 - To understand that each of our Source Types (Databases, Dashboards, etc) have a Topology attached.
 - To understand that the process flow is implemented as a generator chain, going through each step.
 
+## Service Spec
+
+When developing a new database ingestion connector in OpenMetadata, ensure all necessary components are correctly configured. This guide outlines the steps required to define the connector's ingestion capabilities using a `service_spec.py` file.
+
+### Why Use `service_spec.py`?
+
+The `service_spec.py` file centralizes the definitions of sources, profilers, lineage, and other ingestion-related components for a connector. This approach helps standardize implementations across connectors, making it easier to manage ingestion workflows.
+
+### Steps to Develop a New Connector
+
+#### 1. Create the `service_spec.py` File
+Add a `service_spec.py` file within the connector's directory. This file will define the components needed for ingestion, such as metadata sources, lineage sources, profilers, and samplers.
+
+#### 2. Use the `DefaultDatabaseSpec` Class
+The `DefaultDatabaseSpec` class simplifies the definition of connectors by bundling the required components. Import the `DefaultDatabaseSpec` and reference the appropriate classes for your connector.
+
+#### 3. Define the `ServiceSpec`
+Customize the `ServiceSpec` object based on the features of your connector. Below is an example configuration:
+
+```python
+from metadata.ingestion.source.database.bigquery.lineage import BigqueryLineageSource
+from metadata.ingestion.source.database.bigquery.metadata import BigquerySource
+from metadata.ingestion.source.database.bigquery.profiler.profiler import (
+    BigQueryProfiler,
+)
+from metadata.ingestion.source.database.bigquery.usage import BigqueryUsageSource
+from metadata.sampler.sqlalchemy.bigquery.sampler import BigQuerySampler
+from metadata.utils.service_spec.default import DefaultDatabaseSpec
+
+ServiceSpec = DefaultDatabaseSpec(
+    metadata_source_class=BigquerySource,
+    lineage_source_class=BigqueryLineageSource,
+    usage_source_class=BigqueryUsageSource,
+    profiler_class=BigQueryProfiler,
+    sampler_class=BigQuerySampler,
+)
+```
+
+#### 4. Adjust Classes for Your Connector
+
+Replace the example classes (e.g., `BigquerySource`, `BigqueryLineageSource`, etc.) with those specific to your connector. Depending on the connector's features, you may include or exclude certain components like usage or profiling.
+
+### Components of `service_spec.py`
+
+- **`metadata_source_class`**: Defines the class for metadata ingestion.  
+- **`lineage_source_class`**: Defines the class for lineage extraction.  
+- **`usage_source_class`**: Tracks data usage patterns.  
+- **`profiler_class`**: Profiles data for quality and insights.  
+- **`sampler_class`**: Samples data for efficient ingestion.
+
+### Example Workflow
+
+#### Step 1: Add `service_spec.py`
+Place the file in the connector’s directory.
+
+#### Step 2: Configure Components
+Define the `ServiceSpec` using the required classes, adjusting for your connector’s capabilities.
+
+#### Step 3: Verify Integration
+Run the ingestion workflow to test the connector and ensure all components are functioning correctly.
+
 ## Service Topology
 
 The Topology defines a series of Nodes and Stages that get executed in a hierarchical way and describe how we extract the needed data from the sources.
@@ -25,6 +86,12 @@ From the Service Topology you can understand what methods you need to implement:
 ### Example - DatabaseServiceTopology
 
 Can be found in [`ingestion/src/metadata/ingestion/source/database/database_service.py`](https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/src/metadata/ingestion/source/database/database_service.py)
+
+{%inlineCallout icon="description" bold="OpenMetadata 1.6.0 or later" href="/deployment"%}
+Starting from 1.6.0 the OpenMetadata Ingestion Framewotk is using a ServiceSpec specificaiton
+in order to define the entrypoints for the ingestion process.
+{%/inlineCallout%}
+
 
 ```python
 class DatabaseServiceTopology(ServiceTopology):
@@ -49,10 +116,6 @@ class DatabaseServiceTopology(ServiceTopology):
             ),
         ],
         children=["database"],
-        # Note how we have `yield_view_lineage` and `yield_stored_procedure_lineage`
-        # as post_processed. This is because we cannot ensure proper lineage processing
-        # until we have finished ingesting all the metadata from the source.
-        post_process=["yield_view_lineage", "yield_procedure_lineage_and_queries"],
     )
     database = TopologyNode(
         producer="get_database_names",
@@ -324,11 +387,6 @@ class DatabaseServiceSource(
     ) -> Iterable[Either[CreateStoredProcedureRequest]]:
         """Process the stored procedure information"""
 
-    @abstractmethod
-    def yield_procedure_lineage_and_queries(
-        self,
-    ) -> Iterable[Either[Union[AddLineageRequest, CreateQueryRequest]]]:
-        """Extracts the lineage information from Stored Procedures"""
 
     def get_raw_database_schema_names(self) -> Iterable[str]:
         """

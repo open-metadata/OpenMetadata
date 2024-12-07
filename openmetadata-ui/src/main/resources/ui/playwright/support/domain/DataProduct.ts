@@ -43,7 +43,7 @@ export class DataProduct extends EntityClass {
     fullyQualifiedName: `\"PW%dataProduct.${this.id}\"`,
   };
 
-  responseData: ResponseDataType;
+  responseData: ResponseDataType = {} as ResponseDataType;
 
   constructor(domain: Domain, name?: string) {
     super(EntityTypeEndpoint.DATA_PRODUCT);

@@ -17,8 +17,8 @@ import {
   ENTITY_REFERENCE_PROPERTIES,
 } from '../constant/customProperty';
 import {
-  ENTITY_PATH,
   EntityTypeEndpoint,
+  ENTITY_PATH,
 } from '../support/entity/Entity.interface';
 import { UserClass } from '../support/user/UserClass';
 import { clickOutside, descriptionBox, uuid } from './common';
@@ -447,79 +447,87 @@ export const createCustomPropertyForEntity = async (
   };
 
   for (const item of propertyList) {
+    const customPropertyName = `pwCustomProperty${uuid()}`;
+    const payload = {
+      name: customPropertyName,
+      description: customPropertyName,
+      propertyType: {
+        id: item.id ?? '',
+        type: 'type',
+      },
+      ...(item.name === 'enum'
+        ? {
+            customPropertyConfig: {
+              config: {
+                multiSelect: true,
+                values: ['small', 'medium', 'large'],
+              },
+            },
+          }
+        : {}),
+      ...(['entityReference', 'entityReferenceList'].includes(item.name)
+        ? {
+            customPropertyConfig: {
+              config: ['user', 'team'],
+            },
+          }
+        : {}),
+
+      ...(item.name === 'time-cp'
+        ? {
+            customPropertyConfig: {
+              config: 'HH:mm:ss',
+            },
+          }
+        : {}),
+
+      ...(item.name === 'date-cp'
+        ? {
+            customPropertyConfig: {
+              config: 'yyyy-MM-dd',
+            },
+          }
+        : {}),
+
+      ...(item.name === 'dateTime-cp'
+        ? {
+            customPropertyConfig: {
+              config: 'yyyy-MM-dd HH:mm:ss',
+            },
+          }
+        : {}),
+      ...(item.name === 'table-cp'
+        ? {
+            customPropertyConfig: {
+              config: {
+                columns: ['pw-column1', 'pw-column2'],
+              },
+            },
+          }
+        : {}),
+    };
     const customPropertyResponse = await apiContext.put(
       `/api/v1/metadata/types/${entitySchema.id}`,
       {
-        data: {
-          name: `pwCustomProperty${uuid()}`,
-          description: `pwCustomProperty${uuid()}`,
-          propertyType: {
-            id: item.id ?? '',
-            type: 'type',
-          },
-          ...(item.name === 'enum'
-            ? {
-                customPropertyConfig: {
-                  config: {
-                    multiSelect: true,
-                    values: ['small', 'medium', 'large'],
-                  },
-                },
-              }
-            : {}),
-          ...(['entityReference', 'entityReferenceList'].includes(item.name)
-            ? {
-                customPropertyConfig: {
-                  config: ['user', 'team'],
-                },
-              }
-            : {}),
-
-          ...(item.name === 'time-cp'
-            ? {
-                customPropertyConfig: {
-                  config: 'HH:mm:ss',
-                },
-              }
-            : {}),
-
-          ...(item.name === 'date-cp'
-            ? {
-                customPropertyConfig: {
-                  config: 'yyyy-MM-dd',
-                },
-              }
-            : {}),
-
-          ...(item.name === 'dateTime-cp'
-            ? {
-                customPropertyConfig: {
-                  config: 'yyyy-MM-dd HH:mm:ss',
-                },
-              }
-            : {}),
-          ...(item.name === 'table-cp'
-            ? {
-                customPropertyConfig: {
-                  config: {
-                    columns: ['pw-column1', 'pw-column2'],
-                  },
-                },
-              }
-            : {}),
-        },
+        data: payload,
       }
     );
 
     const customProperty = await customPropertyResponse.json();
 
     // Process the custom properties
-    customProperties = customProperty.customProperties.reduce(
+    const newProperties = customProperty.customProperties.reduce(
       (
         prev: Record<string, string>,
-        curr: Record<string, Record<string, string>>
+        curr: Record<string, Record<string, string> | string>
       ) => {
-        const propertyTypeName = curr.propertyType.name;
+        // only process the custom properties which are created via payload
+        if (curr.name !== customPropertyName) {
+          return prev;
+        }
+
+        const propertyTypeName = (curr.propertyType as Record<string, string>)
+          .name;
 
         return {
           ...prev,
@@ -531,6 +539,8 @@ export const createCustomPropertyForEntity = async (
       },
       {}
     );
+
+    customProperties = { ...customProperties, ...newProperties };
   }
 
   return { customProperties, cleanupUser };
@@ -613,6 +623,9 @@ export const addCustomPropertiesForEntity = async ({
 
   // Correct name
   await page.fill('[data-testid="name"]', propertyName);
+
+  // displayName
+  await page.fill('[data-testid="display-name"]', propertyName);
 
   // Select custom type
   await page.locator('[id="root\\/propertyType"]').fill(customType);
@@ -704,10 +717,18 @@ export const editCreatedProperty = async (
   }
 
   if (type === 'Table') {
-    await expect(page.getByText('Columns:pw-column1pw-column2')).toBeVisible();
+    await expect(
+      page
+        .locator(`[data-row-key="${propertyName}"]`)
+        .getByText('Columns:pw-column1pw-column2')
+    ).toBeVisible();
   }
 
   await editButton.click();
+
+  // displayName
+  await page.fill('[data-testid="display-name"]', '');
+  await page.fill('[data-testid="display-name"]', propertyName);
 
   await page.locator(descriptionBox).fill('');
   await page.locator(descriptionBox).fill('This is new description');

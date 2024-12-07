@@ -160,6 +160,7 @@ With everything prepared, we can now create the Lineage between both Entities. A
 represents the edge between two Entities, typed under `EntitiesEdge`.
 
 ```python
+from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.type.entityLineage import EntitiesEdge
 
@@ -211,7 +212,7 @@ If the node were to have other edges already, they would be showing up here.
 
 If we validate the Lineage from the UI, we will see:
 
-{% image src="/images/v1.5/sdk/python/ingestion/lineage/simple-lineage.png" alt="simple-lineage" /%}
+{% image src="/images/v1.6/sdk/python/ingestion/lineage/simple-lineage.png" alt="simple-lineage" /%}
 
 
 ### 7. Fetching Lineage
@@ -336,7 +337,7 @@ created_lineage = metadata.add_lineage(data=add_lineage_request)
 
 This information will now be reflected in the UI as well:
 
-{% image src="/images/v1.5/sdk/python/ingestion/lineage/lineage-col.png" alt="lineage-col" /%}
+{% image src="/images/v1.6/sdk/python/ingestion/lineage/lineage-col.png" alt="lineage-col" /%}
 
 ### Adding a Pipeline Reference
 
@@ -346,6 +347,7 @@ To prepare this example, we need to start by creating the Pipeline Entity. Again
 to prepare the Pipeline Service:
 
 ```python
+from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.services.createPipelineService import (
     CreatePipelineServiceRequest,

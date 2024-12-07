@@ -7,8 +7,8 @@ slug: /connectors/database/impala/yaml
 name="Impala"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Data Profiler", "Data Quality", "dbt"]
-unavailableFeatures=["Query Usage", "Owners", "Lineage", "Column-level Lineage", "Tags", "Stored Procedures"]
+availableFeatures=["Metadata", "Data Profiler", "Data Quality", "dbt", "View Lineage", "View Column-level Lineage"]
+unavailableFeatures=["Query Usage", "Owners", "Tags", "Stored Procedures"]
 / %}
 
 In this section, we provide guides and references to use the Impala connector.
@@ -21,13 +21,13 @@ Configure and schedule Impala metadata and profiler workflows from the OpenMetad
 - [dbt Integration](#dbt-integration)
 - [Enable Security](#securing-impala-connection-with-ssl-in-openmetadata)
 
-{% partial file="/v1.5/connectors/external-ingestion-deployment.md" /%}
+{% partial file="/v1.6/connectors/external-ingestion-deployment.md" /%}
 
 ## Requirements
 
 ### Python Requirements
 
-{% partial file="/v1.5/connectors/python-requirements.md" /%}
+{% partial file="/v1.6/connectors/python-requirements.md" /%}
 
 To run the Impala ingestion, you will need to install:
 
@@ -92,11 +92,11 @@ This is a sample config for Hive:
 
 {% codeInfo srNumber=8 %}
 
-{% partial file="/v1.5/connectors/yaml/database/source-config-def.md" /%}
+{% partial file="/v1.6/connectors/yaml/database/source-config-def.md" /%}
 
-{% partial file="/v1.5/connectors/yaml/ingestion-sink-def.md" /%}
+{% partial file="/v1.6/connectors/yaml/ingestion-sink-def.md" /%}
 
-{% partial file="/v1.5/connectors/yaml/workflow-config-def.md" /%}
+{% partial file="/v1.6/connectors/yaml/workflow-config-def.md" /%}
 
 #### Advanced Configuration
 
@@ -148,21 +148,23 @@ source:
       #   key: value
 ```
 
-{% partial file="/v1.5/connectors/yaml/database/source-config.md" /%}
+{% partial file="/v1.6/connectors/yaml/database/source-config.md" /%}
 
-{% partial file="/v1.5/connectors/yaml/ingestion-sink.md" /%}
+{% partial file="/v1.6/connectors/yaml/ingestion-sink.md" /%}
 
-{% partial file="/v1.5/connectors/yaml/workflow-config.md" /%}
+{% partial file="/v1.6/connectors/yaml/workflow-config.md" /%}
 
 {% /codeBlock %}
 
 {% /codePreview %}
 
-{% partial file="/v1.5/connectors/yaml/ingestion-cli.md" /%}
+{% partial file="/v1.6/connectors/yaml/ingestion-cli.md" /%}
 
-{% partial file="/v1.5/connectors/yaml/data-profiler.md" variables={connector: "impala"} /%}
+{% partial file="/v1.6/connectors/yaml/data-profiler.md" variables={connector: "impala"} /%}
 
-{% partial file="/v1.5/connectors/yaml/data-quality.md" /%}
+{% partial file="/v1.6/connectors/yaml/auto-classification.md" variables={connector: "impala"} /%}
+
+{% partial file="/v1.6/connectors/yaml/data-quality.md" /%}
 
 ## Securing Impala Connection with SSL in OpenMetadata
 

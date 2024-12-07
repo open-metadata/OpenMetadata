@@ -65,6 +65,7 @@ import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.util.CSVExportResponse;
 import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/databases")
@@ -422,6 +423,30 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
   }
 
   @GET
+  @Path("/name/{name}/exportAsync")
+  @Produces(MediaType.APPLICATION_JSON)
+  @Valid
+  @Operation(
+      operationId = "exportDatabase",
+      summary = "Export database in CSV format",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Exported csv with database schemas",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = CSVExportResponse.class)))
+      })
+  public Response exportCsvAsync(
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the Database", schema = @Schema(type = "string"))
+          @PathParam("name")
+          String name) {
+    return exportCsvInternalAsync(securityContext, name);
+  }
+
+  @GET
   @Path("/name/{name}/export")
   @Produces(MediaType.TEXT_PLAIN)
   @Valid
@@ -478,6 +503,41 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
       String csv)
       throws IOException {
     return importCsvInternal(securityContext, name, csv, dryRun);
+  }
+
+  @PUT
+  @Path("/name/{name}/importAsync")
+  @Consumes(MediaType.TEXT_PLAIN)
+  @Produces(MediaType.APPLICATION_JSON)
+  @Valid
+  @Operation(
+      operationId = "importDatabaseAsync",
+      summary = "Import database schemas from CSV asynchronously",
+      description =
+          "Import database schemas from CSV to update database schemas asynchronously (no creation allowed).",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Import initiated successfully",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = CsvImportResult.class)))
+      })
+  public Response importCsvAsync(
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the Database", schema = @Schema(type = "string"))
+          @PathParam("name")
+          String name,
+      @Parameter(
+              description =
+                  "Dry-run when true is used for validating the CSV without really importing it. (default=true)",
+              schema = @Schema(type = "boolean"))
+          @DefaultValue("true")
+          @QueryParam("dryRun")
+          boolean dryRun,
+      String csv) {
+    return importCsvInternalAsync(securityContext, name, csv, dryRun);
   }
 
   @PUT

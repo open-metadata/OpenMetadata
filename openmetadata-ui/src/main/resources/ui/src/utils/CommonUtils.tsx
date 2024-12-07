@@ -13,6 +13,7 @@
 
 /* eslint-disable @typescript-eslint/ban-types */
 
+import { DefaultOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { t } from 'i18next';
@@ -27,7 +28,6 @@ import {
   toLower,
   toNumber,
 } from 'lodash';
-import { Duration } from 'luxon';
 import {
   CurrentState,
   ExtraInfo,
@@ -39,10 +39,6 @@ import {
 import React, { ReactNode } from 'react';
 import { Trans } from 'react-i18next';
 import { reactLocalStorage } from 'reactjs-localstorage';
-import {
-  getDayCron,
-  getHourCron,
-} from '../components/common/CronEditor/CronEditor.constant';
 import ErrorPlaceHolder from '../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../components/common/Loader/Loader';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
@@ -53,6 +49,7 @@ import {
   LOCALSTORAGE_RECENTLY_SEARCHED,
   LOCALSTORAGE_RECENTLY_VIEWED,
 } from '../constants/constants';
+import { BASE_COLORS } from '../constants/DataInsight.constants';
 import { FEED_COUNT_INITIAL_DATA } from '../constants/entity.constants';
 import {
   UrlEntityCharRegEx,
@@ -60,7 +57,6 @@ import {
 } from '../constants/regex.constants';
 import { SIZE } from '../enums/common.enum';
 import { EntityType, FqnPart } from '../enums/entity.enum';
-import { PipelineType } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { EntityReference, User } from '../generated/entity/teams/user';
 import { TagLabel } from '../generated/type/tagLabel';
 import { FeedCounts } from '../interface/feed.interface';
@@ -601,45 +597,6 @@ export const digitFormatter = (value: number) => {
   }).format(value);
 };
 
-/**
- * Converts a duration in seconds to a human-readable format.
- * The function returns the largest time unit (years, months, days, hours, minutes, or seconds)
- * that is greater than or equal to one, rounded to the nearest whole number.
- *
- * @param {number} seconds - The duration in seconds to be converted.
- * @returns {string} A string representing the duration in a human-readable format,
- *                  e.g., "1 hour", "2 days", "3 months", etc.
- *
- * @example
- * formatTimeFromSeconds(1); // returns "1 second"
- * formatTimeFromSeconds(60); // returns "1 minute"
- * formatTimeFromSeconds(3600); // returns "1 hour"
- * formatTimeFromSeconds(86400); // returns "1 day"
- */
-export const formatTimeFromSeconds = (seconds: number): string => {
-  const duration = Duration.fromObject({ seconds });
-  let unit: keyof Duration;
-
-  if (duration.as('years') >= 1) {
-    unit = 'years';
-  } else if (duration.as('months') >= 1) {
-    unit = 'months';
-  } else if (duration.as('days') >= 1) {
-    unit = 'days';
-  } else if (duration.as('hours') >= 1) {
-    unit = 'hours';
-  } else if (duration.as('minutes') >= 1) {
-    unit = 'minutes';
-  } else {
-    unit = 'seconds';
-  }
-
-  const value = Math.round(duration.as(unit));
-  const unitSingular = unit.slice(0, -1);
-
-  return `${value} ${value === 1 ? unitSingular : unit}`;
-};
-
 export const getTeamsUser = (
   data: ExtraInfo,
   currentUser: User
@@ -680,23 +637,6 @@ export const getOwnerValue = (owner?: EntityReference) => {
       return getUserPath(owner?.fullyQualifiedName ?? '');
     default:
       return '';
-  }
-};
-
-export const getIngestionFrequency = (pipelineType: PipelineType) => {
-  const value = {
-    min: 0,
-    hour: 0,
-  };
-
-  switch (pipelineType) {
-    case PipelineType.TestSuite:
-    case PipelineType.Metadata:
-    case PipelineType.Application:
-      return getHourCron(value);
-
-    default:
-      return getDayCron(value);
   }
 };
 
@@ -907,11 +847,13 @@ export const getServiceTypeExploreQueryFilter = (serviceType: string) => {
 
 export const filterSelectOptions = (
   input: string,
-  option?: { label: string; value: string }
+  option?: DefaultOptionType
 ) => {
   return (
-    toLower(option?.label).includes(toLower(input)) ||
-    toLower(option?.value).includes(toLower(input))
+    toLower(option?.labelValue).includes(toLower(input)) ||
+    toLower(isString(option?.value) ? option?.value : '').includes(
+      toLower(input)
+    )
   );
 };
 
@@ -934,4 +876,34 @@ export const removeOuterEscapes = (input: string) => {
 
   // Return the middle part without the outer escape characters or the original input if no match
   return match && match.length > 3 ? match[2] : input;
+};
+
+/**
+ * Generate a color with decreasing opacity after the first 24 colors.
+ * @param index - The index of the label
+ * @returns {string} - RGBA color string
+ */
+export const entityChartColor = (index: number): string => {
+  const baseColor = BASE_COLORS[index % BASE_COLORS.length]; // Cycle through base colors
+  const opacity =
+    index < BASE_COLORS.length
+      ? 1 // Full opacity for the first 24 labels
+      : Math.max(1 - Math.floor(index / BASE_COLORS.length) * 0.1, 0.1); // Decrease opacity for subsequent labels
+
+  return hexToRgba(baseColor, opacity);
+};
+
+/**
+ * Convert hex color to RGBA
+ * @param hex - Hex color string
+ * @param opacity - Opacity value (0-1)
+ * @returns {string} - RGBA color string
+ */
+const hexToRgba = (hex: string, opacity: number): string => {
+  const bigint = parseInt(hex.replace('#', ''), 16);
+  const r = (bigint >> 16) & 255;
+  const g = (bigint >> 8) & 255;
+  const b = bigint & 255;
+
+  return `rgba(${r}, ${g}, ${b}, ${opacity.toFixed(2)})`;
 };

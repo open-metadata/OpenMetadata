@@ -14,6 +14,7 @@
 import { t } from 'i18next';
 import { capitalize, map, startCase, values } from 'lodash';
 import { DateFilterType, StepperStepType } from 'Models';
+import { StatusData } from '../components/DataQuality/ChartWidgets/StatusCardWidget/StatusCardWidget.interface';
 import { TestCaseSearchParams } from '../components/DataQuality/DataQuality.interface';
 import { CSMode } from '../enums/codemirror.enum';
 import { SORT_ORDER } from '../enums/common.enum';
@@ -27,7 +28,10 @@ import {
 } from '../generated/entity/data/table';
 import { MetricType } from '../generated/settings/settings';
 import { TestCaseStatus } from '../generated/tests/testCase';
-import { TestPlatform } from '../generated/tests/testDefinition';
+import {
+  DataQualityDimensions,
+  TestPlatform,
+} from '../generated/tests/testDefinition';
 import { TestCaseType } from '../rest/testAPI';
 import {
   getCurrentMillis,
@@ -303,6 +307,18 @@ export const INITIAL_TEST_RESULT_SUMMARY = {
   failed: 0,
 };
 
+export const INITIAL_ENTITY_HEALTH_MATRIX = {
+  healthy: 0,
+  unhealthy: 0,
+  total: 0,
+};
+
+export const INITIAL_DATA_ASSETS_COVERAGE_STATES = {
+  covered: 0,
+  notCovered: 0,
+  total: 0,
+};
+
 export const DEFAULT_TEST_VALUE = [
   {
     value: 0,
@@ -317,6 +333,25 @@ export const DEFAULT_TEST_VALUE = [
     type: TestCaseStatus.Failed,
   },
 ];
+
+export const NO_DIMENSION = 'No Dimension';
+export const DIMENSIONS_DATA = [
+  ...Object.values(DataQualityDimensions),
+  NO_DIMENSION,
+];
+
+export const DEFAULT_DIMENSIONS_DATA = DIMENSIONS_DATA.reduce((acc, item) => {
+  return {
+    ...acc,
+    [item]: {
+      title: item,
+      success: 0,
+      failed: 0,
+      aborted: 0,
+      total: 0,
+    },
+  };
+}, {} as { [key: string]: StatusData });
 
 export const codeMirrorOption = {
   tabSize: JSON_TAB_SIZE,
@@ -430,12 +465,20 @@ export const TEST_CASE_FILTERS: Record<string, keyof TestCaseSearchParams> = {
   tier: 'tier',
   tags: 'tags',
   service: 'serviceName',
+  dimension: 'dataQualityDimension',
 };
 
 export const TEST_CASE_PLATFORM_OPTION = values(TestPlatform).map((value) => ({
   label: value,
   value: value,
 }));
+
+export const TEST_CASE_DIMENSIONS_OPTION = values(DataQualityDimensions).map(
+  (value) => ({
+    label: value,
+    value: value,
+  })
+);
 
 export const INITIAL_COLUMN_METRICS_VALUE = {
   countMetrics: INITIAL_COUNT_METRIC_VALUE,

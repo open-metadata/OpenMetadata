@@ -57,6 +57,7 @@ import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.TeamHierarchy;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.api.BulkAssets;
@@ -71,6 +72,8 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.util.CSVExportResponse;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
@@ -443,7 +446,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
                     schema = @Schema(implementation = ChangeEvent.class))),
         @ApiResponse(responseCode = "404", description = "model for instance {id} is not found")
       })
-  public Response bulkRemoveGlossaryFromAssets(
+  public Response bulkRemoveAssets(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Name of the Team", schema = @Schema(type = "string"))
@@ -593,6 +596,27 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
   }
 
   @GET
+  @Path("/name/{name}/exportAsync")
+  @Produces(MediaType.TEXT_PLAIN)
+  @Valid
+  @Operation(
+      operationId = "exportTeams",
+      summary = "Export teams in CSV format",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Exported csv with teams information",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = CSVExportResponse.class)))
+      })
+  public Response exportCsvAsync(
+      @Context SecurityContext securityContext, @PathParam("name") String name) throws IOException {
+    return exportCsvInternalAsync(securityContext, name);
+  }
+
+  @GET
   @Path("/name/{name}/export")
   @Produces(MediaType.TEXT_PLAIN)
   @Valid
@@ -642,6 +666,100 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
       String csv)
       throws IOException {
     return importCsvInternal(securityContext, name, csv, dryRun);
+  }
+
+  @PUT
+  @Path("/{teamId}/users")
+  @Operation(
+      operationId = "updateTeamUsers",
+      summary = "Update team users",
+      description =
+          "Update the list of users for a team. Replaces existing users with the provided list.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Updated team users",
+            content = @Content(mediaType = "application/json")),
+        @ApiResponse(responseCode = "404", description = "Team not found")
+      })
+  public Response updateTeamUsers(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @PathParam("teamId") UUID teamId,
+      List<EntityReference> users) {
+
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(teamId));
+    return repository
+        .updateTeamUsers(securityContext.getUserPrincipal().getName(), teamId, users)
+        .toResponse();
+  }
+
+  @DELETE
+  @Path("/{teamId}/users/{userId}")
+  @Operation(
+      operationId = "deleteTeamUser",
+      summary = "Remove a user from a team",
+      description = "Remove the user identified by `userId` from the team identified by `teamId`.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "User removed from team",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ChangeEvent.class))),
+        @ApiResponse(responseCode = "404", description = "Team or user not found")
+      })
+  public Response deleteTeamUser(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the team", schema = @Schema(type = "UUID"))
+          @PathParam("teamId")
+          UUID teamId,
+      @Parameter(description = "Id of the user being removed", schema = @Schema(type = "string"))
+          @PathParam("userId")
+          String userId) {
+
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(teamId));
+    return repository
+        .deleteTeamUser(
+            securityContext.getUserPrincipal().getName(), teamId, UUID.fromString(userId))
+        .toResponse();
+  }
+
+  @PUT
+  @Path("/name/{name}/importAsync")
+  @Consumes(MediaType.TEXT_PLAIN)
+  @Produces(MediaType.APPLICATION_JSON)
+  @Valid
+  @Operation(
+      operationId = "importTeamsAsync",
+      summary = "Import from CSV to create, and update teams asynchronously.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Import initiated successfully",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = CsvImportResult.class)))
+      })
+  public Response importCsvAsync(
+      @Context SecurityContext securityContext,
+      @PathParam("name") String name,
+      @Parameter(
+              description =
+                  "Dry-run when true is used for validating the CSV without really importing it. (default=true)",
+              schema = @Schema(type = "boolean"))
+          @DefaultValue("true")
+          @QueryParam("dryRun")
+          boolean dryRun,
+      String csv) {
+    return importCsvInternalAsync(securityContext, name, csv, dryRun);
   }
 
   private Team getTeam(CreateTeam ct, String user) {

@@ -43,25 +43,6 @@ class BigQueryProfilerInterface(SQAProfilerInterface):
                 columns_list.extend(col)
         return columns_list
 
-    def _get_sampler(self, **kwargs):
-        """get sampler object"""
-        from metadata.profiler.processor.sampler.sampler_factory import (  # pylint: disable=import-outside-toplevel
-            sampler_factory_,
-        )
-
-        session = kwargs.get("session")
-        table = kwargs["table"]
-
-        return sampler_factory_.create(
-            self.service_connection_config.__class__.__name__,
-            client=session or self.session,
-            table=table,
-            profile_sample_config=self.profile_sample_config,
-            partition_details=self.partition_details,
-            profile_sample_query=self.profile_query,
-            table_type=self.table_entity.tableType,
-        )
-
     def get_columns(self) -> Column:
         """Get columns from table"""
         # pylint: disable=import-outside-toplevel

@@ -10,9 +10,21 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
+import { EntityTabs } from '../../../enums/entity.enum';
+
+export interface TabProps {
+  label: JSX.Element;
+  key: EntityTabs;
+  children?: JSX.Element;
+  isHidden?: boolean;
+}
+
 export interface TabsLabelProps {
   name: string;
   id: string;
   count?: number;
   isActive?: boolean;
+  description?: string;
+  isBeta?: boolean;
 }

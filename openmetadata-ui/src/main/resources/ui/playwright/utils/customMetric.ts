@@ -141,6 +141,10 @@ export const deleteCustomMetric = async ({
   page,
   metric,
   isColumnMetric = false,
+}: {
+  page: Page;
+  metric: CustomMetricDetails['metric'];
+  isColumnMetric?: boolean;
 }) => {
   await page
     .locator(`[data-testid="${metric.name}-custom-metrics"]`)

@@ -309,21 +309,37 @@ export const assignTier = async (
   await expect(page.getByTestId('Tier')).toContainText(tier);
 };
 
-export const removeTier = async (page: Page) => {
+export const removeTier = async (page: Page, endpoint: string) => {
   await page.getByTestId('edit-tier').click();
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+  const patchRequest = page.waitForResponse(
+    (response) =>
+      response.url().includes(`/api/v1/${endpoint}`) &&
+      response.request().method() === 'PATCH'
+  );
   await page.getByTestId('clear-tier').click();
+  await patchRequest;
   await clickOutside(page);
 
   await expect(page.getByTestId('Tier')).toContainText('No Tier');
 };
 
-export const updateDescription = async (page: Page, description: string) => {
+export const updateDescription = async (
+  page: Page,
+  description: string,
+  isModal = false
+) => {
   await page.getByTestId('edit-description').click();
   await page.locator('.ProseMirror').first().click();
   await page.locator('.ProseMirror').first().clear();
   await page.locator('.ProseMirror').first().fill(description);
   await page.getByTestId('save').click();
+
+  if (isModal) {
+    await page.waitForSelector('[role="dialog"].description-markdown-editor', {
+      state: 'hidden',
+    });
+  }
 
   isEmpty(description)
     ? await expect(
@@ -337,10 +353,11 @@ export const updateDescription = async (page: Page, description: string) => {
 export const assignTag = async (
   page: Page,
   tag: string,
-  action: 'Add' | 'Edit' = 'Add'
+  action: 'Add' | 'Edit' = 'Add',
+  parentId = 'entity-right-panel'
 ) => {
   await page
-    .getByTestId('entity-right-panel')
+    .getByTestId(parentId)
     .getByTestId('tags-container')
     .getByTestId(action === 'Add' ? 'add-tag' : 'edit-button')
     .click();
@@ -363,7 +380,7 @@ export const assignTag = async (
 
   await expect(
     page
-      .getByTestId('entity-right-panel')
+      .getByTestId(parentId)
       .getByTestId('tags-container')
       .getByTestId(`tag-${tag}`)
   ).toBeVisible();
@@ -783,7 +800,6 @@ const announcementForm = async (
 
 export const createAnnouncement = async (
   page: Page,
-  entityFqn: string,
   data: { title: string; description: string }
 ) => {
   await page.getByTestId('manage-button').click();
@@ -1219,7 +1235,7 @@ export const softDeleteEntity = async (
 
   await page.reload();
 
-  const deletedBadge = await page.locator('[data-testid="deleted-badge"]');
+  const deletedBadge = page.locator('[data-testid="deleted-badge"]');
 
   await expect(deletedBadge).toHaveText('Deleted');
 
@@ -1234,11 +1250,11 @@ export const softDeleteEntity = async (
   if (endPoint === EntityTypeEndpoint.Table) {
     await page.click('[data-testid="breadcrumb-link"]:last-child');
     const deletedTableResponse = page.waitForResponse(
-      '/api/v1/tables?databaseSchema=*'
+      '/api/v1/tables?*databaseSchema=*'
     );
     await page.click('[data-testid="show-deleted"]');
     await deletedTableResponse;
-    const tableCount = await page.locator(
+    const tableCount = page.locator(
       '[data-testid="table"] [data-testid="count"]'
     );
 
@@ -1287,12 +1303,7 @@ export const hardDeleteEntity = async (
   await page.click('.Toastify__close-button');
 };
 
-export const checkDataAssetWidget = async (
-  page: Page,
-  type: string,
-  index: string,
-  serviceType: string
-) => {
+export const checkDataAssetWidget = async (page: Page, serviceType: string) => {
   const quickFilterResponse = page.waitForResponse(
     `/api/v1/search/query?q=&index=dataAsset*${serviceType}*`
   );

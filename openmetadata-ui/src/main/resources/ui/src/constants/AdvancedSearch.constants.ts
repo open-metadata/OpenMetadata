@@ -65,6 +65,10 @@ export const DATA_ASSET_DROPDOWN_ITEMS = [
     key: EntityFields.TIER,
   },
   {
+    label: t('label.certification'),
+    key: EntityFields.CERTIFICATION,
+  },
+  {
     label: t('label.service'),
     key: EntityFields.SERVICE,
   },
@@ -90,6 +94,10 @@ export const TABLE_DROPDOWN_ITEMS = [
   {
     label: t('label.table-type'),
     key: EntityFields.TABLE_TYPE,
+  },
+  {
+    label: t('label.column-description'),
+    key: EntityFields.COLUMN_DESCRIPTION_STATUS,
   },
 ];
 
@@ -283,6 +291,14 @@ export const LINEAGE_DROPDOWN_ITEMS = [
   },
 ];
 
+export const TEXT_FIELD_OPERATORS = [
+  'equal',
+  'not_equal',
+  'like',
+  'not_like',
+  'is_null',
+  'is_not_null',
+];
 /**
  * Generates a query builder tree with a group containing an empty rule
  */

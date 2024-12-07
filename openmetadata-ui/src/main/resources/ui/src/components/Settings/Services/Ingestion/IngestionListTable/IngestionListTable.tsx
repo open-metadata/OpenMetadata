@@ -32,6 +32,7 @@ import { IngestionPipeline } from '../../../../../generated/entity/services/inge
 import { UseAirflowStatusProps } from '../../../../../hooks/useAirflowStatus';
 import { useApplicationStore } from '../../../../../hooks/useApplicationStore';
 import { deleteIngestionPipelineById } from '../../../../../rest/ingestionPipelineAPI';
+import { Transi18next } from '../../../../../utils/CommonUtils';
 import { getEntityName } from '../../../../../utils/EntityUtils';
 import {
   renderNameField,
@@ -328,6 +329,21 @@ function IngestionListTable({
     ]
   );
 
+  const ingestionDeleteMessage = useMemo(
+    () => (
+      <Transi18next
+        i18nKey="message.permanently-delete-ingestion-pipeline"
+        renderElement={
+          <span className="font-medium" data-testid="entityName" />
+        }
+        values={{
+          entityName: getEntityName(deleteSelection),
+        }}
+      />
+    ),
+    [deleteSelection]
+  );
+
   return (
     <>
       <Row className="m-b-md" data-testid="ingestion-table" gutter={[16, 16]}>
@@ -362,6 +378,7 @@ function IngestionListTable({
             <Col span={24}>
               <NextPrevious
                 currentPage={ingestionPagingInfo.currentPage}
+                isLoading={isLoading}
                 isNumberBased={isNumberBasedPaging}
                 pageSize={ingestionPagingInfo.pageSize}
                 paging={ingestionPagingInfo.paging}
@@ -373,6 +390,7 @@ function IngestionListTable({
       </Row>
 
       <EntityDeleteModal
+        bodyText={ingestionDeleteMessage}
         entityName={getEntityName(deleteSelection)}
         entityType={t('label.ingestion-lowercase')}
         visible={isConfirmationModalOpen}

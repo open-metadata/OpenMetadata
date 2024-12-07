@@ -24,13 +24,16 @@ import {
   GlossaryTerm,
   Status,
 } from '../../../generated/entity/data/glossaryTerm';
+import { Table } from '../../../generated/entity/data/table';
 import { EntityReference } from '../../../generated/entity/type';
 import { TagLabel } from '../../../generated/tests/testCase';
+import { AssetCertification } from '../../../generated/type/assetCertification';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getDomainPath } from '../../../utils/RouterUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import { stringToHTML } from '../../../utils/StringsUtils';
 import { getUsagePercentile } from '../../../utils/TableUtils';
+import CertificationTag from '../../common/CertificationTag/CertificationTag';
 import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.component';
 import TableDataCardBody from '../../Database/TableDataCardBody/TableDataCardBody';
@@ -75,54 +78,56 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
           );
 
       const _otherDetails: ExtraInfo[] = [
+        ...(source?.domain
+          ? [
+              {
+                key: 'Domain',
+                value: getDomainPath(source.domain.fullyQualifiedName),
+                placeholderText: getEntityName(source.domain),
+                isLink: true,
+                openInNewTab: false,
+              },
+            ]
+          : !searchClassBase
+              .getListOfEntitiesWithoutDomain()
+              .includes(source?.entityType ?? '')
+          ? [
+              {
+                key: 'Domain',
+                value: '',
+              },
+            ]
+          : []),
+
         {
           key: 'Owner',
           value: (
-            <OwnerLabel owners={(source.owners as EntityReference[]) ?? []} />
+            <OwnerLabel owners={(source?.owners as EntityReference[]) ?? []} />
           ),
         },
-      ];
 
-      if (source?.domain) {
-        const domain = getEntityName(source.domain);
-        const domainLink = getDomainPath(source.domain.fullyQualifiedName);
-        _otherDetails.push({
-          key: 'Domain',
-          value: domainLink,
-          placeholderText: domain,
-          isLink: true,
-          openInNewTab: false,
-        });
-      } else {
-        const entitiesWithoutDomain =
-          searchClassBase.getListOfEntitiesWithoutDomain();
-        if (!entitiesWithoutDomain.includes(source.entityType ?? '')) {
-          _otherDetails.push({
-            key: 'Domain',
-            value: '',
-          });
-        }
-      }
-
-      if (
-        !searchClassBase
+        ...(!searchClassBase
           .getListOfEntitiesWithoutTier()
-          .includes((source.entityType ?? '') as EntityType)
-      ) {
-        _otherDetails.push({
-          key: 'Tier',
-          value: tierValue,
-        });
-      }
+          .includes((source?.entityType ?? '') as EntityType)
+          ? [
+              {
+                key: 'Tier',
+                value: tierValue,
+              },
+            ]
+          : []),
 
-      if ('usageSummary' in source) {
-        _otherDetails.push({
-          value: getUsagePercentile(
-            source.usageSummary?.weeklyStats?.percentileRank ?? 0,
-            true
-          ),
-        });
-      }
+        ...('usageSummary' in source
+          ? [
+              {
+                value: getUsagePercentile(
+                  source.usageSummary?.weeklyStats?.percentileRank ?? 0,
+                  true
+                ),
+              },
+            ]
+          : []),
+      ];
 
       return _otherDetails;
     }, [source]);
@@ -221,7 +226,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
                 </Typography.Text>
               </Button>
             ) : (
-              <div className="w-full d-flex items-start">
+              <div className="w-full d-flex items-center">
                 {entityIcon}
 
                 <Link
@@ -248,6 +253,16 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
                     {stringToHTML(searchClassBase.getEntityName(source))}
                   </Typography.Text>
                 </Link>
+
+                {(source as Table)?.certification && (
+                  <div className="p-l-sm">
+                    <CertificationTag
+                      certification={
+                        (source as Table).certification as AssetCertification
+                      }
+                    />
+                  </div>
+                )}
 
                 {hasGlossaryTermStatus && (
                   <GlossaryStatusBadge

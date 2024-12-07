@@ -31,11 +31,17 @@ export interface EsTermQuery {
 }
 
 export type EsTermsQuery = {
-  [property: string]: string;
+  [property: string]: string | string[];
 };
 
 export interface EsExistsQuery {
   field: string;
+}
+
+export interface EsWildCard {
+  wildcard: {
+    [key: string]: { value: string };
+  };
 }
 
 export interface EsBoolQuery {
@@ -54,6 +60,12 @@ export interface QueryFieldInterface {
 
 export interface QueryFilterInterface {
   query: QueryFieldInterface;
+}
+
+export interface EsTerm {
+  term: {
+    [key: string]: string | boolean;
+  };
 }
 
 export enum ExploreSidebarTab {

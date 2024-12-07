@@ -73,6 +73,7 @@ const LogsViewerPage = () => {
   const [appData, setAppData] = useState<App>();
   const [appRuns, setAppRuns] = useState<PipelineStatus[]>([]);
   const [paging, setPaging] = useState<Paging>();
+  const [isLogsLoading, setIsLogsLoading] = useState(true);
 
   const isApplicationType = useMemo(
     () => logEntityType === GlobalSettingOptions.APPLICATIONS,
@@ -83,6 +84,7 @@ const LogsViewerPage = () => {
     ingestionId?: string,
     pipelineType?: PipelineType
   ) => {
+    setIsLogsLoading(true);
     try {
       if (isApplicationType) {
         const currentTime = Date.now();
@@ -103,49 +105,52 @@ const LogsViewerPage = () => {
         paging?.total !== paging?.after ? paging?.after : ''
       );
 
-      if (res.data.after && res.data.total) {
-        setPaging({
-          after: res.data.after,
-          total: toNumber(res.data.total),
-        });
-      }
+      setPaging({
+        after: res.data.after,
+        total: toNumber(res.data.total),
+      });
 
       switch (pipelineType || ingestionDetails?.pipelineType) {
         case PipelineType.Metadata:
-          setLogs(logs.concat(res.data?.ingestion_task || ''));
+          setLogs(logs.concat(res.data?.ingestion_task ?? ''));
 
           break;
         case PipelineType.Application:
-          setLogs(logs.concat(res.data?.application_task || ''));
+          setLogs(logs.concat(res.data?.application_task ?? ''));
 
           break;
         case PipelineType.Profiler:
-          setLogs(logs.concat(res.data?.profiler_task || ''));
+          setLogs(logs.concat(res.data?.profiler_task ?? ''));
 
           break;
         case PipelineType.Usage:
-          setLogs(logs.concat(res.data?.usage_task || ''));
+          setLogs(logs.concat(res.data?.usage_task ?? ''));
 
           break;
         case PipelineType.Lineage:
-          setLogs(logs.concat(res.data?.lineage_task || ''));
+          setLogs(logs.concat(res.data?.lineage_task ?? ''));
 
           break;
         case PipelineType.Dbt:
-          setLogs(logs.concat(res.data?.dbt_task || ''));
+          setLogs(logs.concat(res.data?.dbt_task ?? ''));
 
           break;
         case PipelineType.TestSuite:
-          setLogs(logs.concat(res.data?.test_suite_task || ''));
+          setLogs(logs.concat(res.data?.test_suite_task ?? ''));
 
           break;
         case PipelineType.DataInsight:
-          setLogs(logs.concat(res.data?.data_insight_task || ''));
+          setLogs(logs.concat(res.data?.data_insight_task ?? ''));
 
           break;
 
         case PipelineType.ElasticSearchReindex:
-          setLogs(logs.concat(res.data?.elasticsearch_reindex_task || ''));
+          setLogs(logs.concat(res.data?.elasticsearch_reindex_task ?? ''));
+
+          break;
+
+        case PipelineType.AutoClassification:
+          setLogs(logs.concat(res.data?.auto_classification_task ?? ''));
 
           break;
 
@@ -156,6 +161,8 @@ const LogsViewerPage = () => {
       }
     } catch (err) {
       showErrorToast(err as AxiosError);
+    } finally {
+      setIsLogsLoading(false);
     }
   };
 
@@ -195,10 +202,6 @@ const LogsViewerPage = () => {
 
   const fetchMoreLogs = () => {
     fetchLogs(ingestionDetails?.id, ingestionDetails?.pipelineType);
-    setPaging({
-      ...paging,
-      after: '',
-    } as Paging);
   };
 
   useEffect(() => {
@@ -218,20 +221,13 @@ const LogsViewerPage = () => {
     const isBottom = clientHeight + scrollTop === scrollHeight;
 
     if (
+      !isLogsLoading &&
       isBottom &&
       !isNil(paging) &&
       !isUndefined(paging.after) &&
       toNumber(paging?.after) < toNumber(paging?.total)
     ) {
       fetchMoreLogs();
-    }
-
-    if (toNumber(paging?.after) + 1 === toNumber(paging?.total)) {
-      // to stop at last page
-      setPaging({
-        ...paging,
-        after: undefined,
-      } as Paging);
     }
 
     return;

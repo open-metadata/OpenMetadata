@@ -44,7 +44,7 @@ class TestDatalake:
             "names.json",
             "names.jsonl",
             "new_users.parquet",
-            "users.csv",
+            "users/users.csv",
             "profiler_test_.csv",
         } == set(names)
 
@@ -54,11 +54,11 @@ class TestDatalake:
                 if column.dataType == DataType.JSON:
                     assert column.children
 
-    def test_profiler(self, run_profiler):
+    def test_auto_classification(self, run_auto_classification):
         """Also excluding the test for parquet files until the above is fixed"""
         csv_ = self.metadata.get_by_name(
             entity=Table,
-            fqn=f'datalake_for_integration_tests.default.{BUCKET_NAME}."users.csv"',
+            fqn=f'datalake_for_integration_tests.default.{BUCKET_NAME}."users/users.csv"',
             fields=["tableProfilerConfig"],
         )
         # parquet_ = self.metadata.get_by_name(

@@ -36,6 +36,7 @@ import domo from '../assets/img/service-icon-domo.png';
 import doris from '../assets/img/service-icon-doris.png';
 import druid from '../assets/img/service-icon-druid.png';
 import dynamodb from '../assets/img/service-icon-dynamodb.png';
+import exasol from '../assets/img/service-icon-exasol.png';
 import fivetran from '../assets/img/service-icon-fivetran.png';
 import flink from '../assets/img/service-icon-flink.png';
 import gcs from '../assets/img/service-icon-gcs.png';
@@ -51,11 +52,11 @@ import lightDash from '../assets/img/service-icon-lightdash.png';
 import looker from '../assets/img/service-icon-looker.png';
 import mariadb from '../assets/img/service-icon-mariadb.png';
 import metabase from '../assets/img/service-icon-metabase.png';
+import microstrategy from '../assets/img/service-icon-microstrategy.svg';
 import mode from '../assets/img/service-icon-mode.png';
 import mongodb from '../assets/img/service-icon-mongodb.png';
 import msAzure from '../assets/img/service-icon-ms-azure.png';
 import mssql from '../assets/img/service-icon-mssql.png';
-import mstr from '../assets/img/service-icon-mstr.png';
 import nifi from '../assets/img/service-icon-nifi.png';
 import openlineage from '../assets/img/service-icon-openlineage.svg';
 import oracle from '../assets/img/service-icon-oracle.png';
@@ -152,7 +153,7 @@ export const REDPANDA = redpanda;
 export const SUPERSET = superset;
 export const SYNAPSE = synapse;
 export const LOOKER = looker;
-export const MSTR = mstr;
+export const MICROSTRATEGY = microstrategy;
 export const TABLEAU = tableau;
 export const REDASH = redash;
 export const METABASE = metabase;
@@ -186,6 +187,7 @@ export const ALATIONSINK = alationsink;
 export const SAS = sas;
 export const OPENLINEAGE = openlineage;
 export const LOGO = logo;
+export const EXASOL = exasol;
 
 export const AIRFLOW = airflow;
 export const PREFECT = prefect;
@@ -284,8 +286,14 @@ export const servicesDisplayName: { [key: string]: string } = {
 
 export const DEF_UI_SCHEMA = {
   supportsMetadataExtraction: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  supportsSystemProfile: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  supportsDataDiff: { 'ui:widget': 'hidden', 'ui:hideError': true },
   supportsUsageExtraction: { 'ui:widget': 'hidden', 'ui:hideError': true },
   supportsLineageExtraction: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  supportsViewLineageExtraction: {
+    'ui:widget': 'hidden',
+    'ui:hideError': true,
+  },
   supportsProfiler: { 'ui:widget': 'hidden', 'ui:hideError': true },
   supportsDatabase: { 'ui:widget': 'hidden', 'ui:hideError': true },
   supportsQueryComment: { 'ui:widget': 'hidden', 'ui:hideError': true },
@@ -315,6 +323,7 @@ export const INGESTION_WORKFLOW_UI_SCHEMA = {
     'databaseFilterPattern',
     'schemaFilterPattern',
     'tableFilterPattern',
+    'classificationFilterPattern',
     'enableDebugLog',
     '*',
   ],
@@ -453,7 +462,12 @@ export const ADVANCED_PROPERTIES = [
   'connectionOptions',
   'scheme',
   'sampleDataStorageConfig',
+  'computeTableMetrics',
+  'computeColumnMetrics',
+  'includeViews',
+  'useStatistics',
   'confidence',
+  'samplingMethodType',
   'sampleDataCount',
   'threadCount',
   'timeoutSeconds',
@@ -482,5 +496,25 @@ export const SERVICE_INGESTION_PIPELINE_TYPES = [
   PipelineType.Usage,
   PipelineType.Lineage,
   PipelineType.Profiler,
+  PipelineType.AutoClassification,
   PipelineType.Dbt,
 ];
+
+export const SERVICE_TYPE_WITH_DISPLAY_NAME = new Map<string, string>([
+  [PipelineServiceType.GluePipeline, 'Glue Pipeline'],
+  [DatabaseServiceType.DomoDatabase, 'Domo Database'],
+  [DashboardServiceType.DomoDashboard, 'Domo Dashboard'],
+  [DashboardServiceType.MicroStrategy, 'Micro Strategy'],
+  [DashboardServiceType.PowerBIReportServer, 'PowerBI Report Server'],
+  [PipelineServiceType.DatabricksPipeline, 'Databricks Pipeline'],
+  [PipelineServiceType.DomoPipeline, 'Domo Pipeline'],
+  [PipelineServiceType.KafkaConnect, 'Kafka Connect'],
+  [DatabaseServiceType.SapERP, 'SAP ERP'],
+  [DatabaseServiceType.SapHana, 'SAP HANA'],
+  [DatabaseServiceType.UnityCatalog, 'Unity Catalog'],
+  [PipelineServiceType.DataFactory, 'Data Factory'],
+  [PipelineServiceType.DBTCloud, 'DBT Cloud'],
+  [PipelineServiceType.OpenLineage, 'Open Lineage'],
+  [MetadataServiceType.AlationSink, 'Alation Sink'],
+  [SearchServiceType.ElasticSearch, 'Elasticsearch'],
+]);

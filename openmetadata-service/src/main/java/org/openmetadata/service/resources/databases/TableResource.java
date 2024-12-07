@@ -15,6 +15,7 @@ package org.openmetadata.service.resources.databases;
 
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 
+import es.org.elasticsearch.action.search.SearchResponse;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -127,7 +128,8 @@ public class TableResource extends EntityResource<Table, TableRepository> {
         MetadataOperation.EDIT_QUERIES,
         MetadataOperation.EDIT_DATA_PROFILE,
         MetadataOperation.EDIT_SAMPLE_DATA,
-        MetadataOperation.EDIT_LINEAGE);
+        MetadataOperation.EDIT_LINEAGE,
+        MetadataOperation.EDIT_ENTITY_RELATIONSHIP);
   }
 
   public static class TableList extends ResultList<Table> {
@@ -451,6 +453,30 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   }
 
   @GET
+  @Path("/name/{name}/exportAsync")
+  @Produces(MediaType.TEXT_PLAIN)
+  @Valid
+  @Operation(
+      operationId = "exportTable",
+      summary = "Export table in CSV format",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Exported csv with columns from the table",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = String.class)))
+      })
+  public Response exportCsvAsync(
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the table", schema = @Schema(type = "string"))
+          @PathParam("name")
+          String name) {
+    return exportCsvInternalAsync(securityContext, name);
+  }
+
+  @GET
   @Path("/name/{name}/export")
   @Produces(MediaType.TEXT_PLAIN)
   @Valid
@@ -506,6 +532,38 @@ public class TableResource extends EntityResource<Table, TableRepository> {
       String csv)
       throws IOException {
     return importCsvInternal(securityContext, name, csv, dryRun);
+  }
+
+  @PUT
+  @Path("/name/{name}/importAsync")
+  @Consumes(MediaType.TEXT_PLAIN)
+  @Valid
+  @Operation(
+      operationId = "importTableAsync",
+      summary = "Import columns from CSV to update table asynchronously (no creation allowed)",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Import result",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = CsvImportResult.class)))
+      })
+  public Response importCsvAsync(
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the table", schema = @Schema(type = "string"))
+          @PathParam("name")
+          String name,
+      @Parameter(
+              description =
+                  "Dry-run when true is used for validating the CSV without really importing it. (default=true)",
+              schema = @Schema(type = "boolean"))
+          @DefaultValue("true")
+          @QueryParam("dryRun")
+          boolean dryRun,
+      String csv) {
+    return importCsvInternalAsync(securityContext, name, csv, dryRun);
   }
 
   @DELETE
@@ -1217,6 +1275,42 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     return repository
         .deleteFollower(securityContext.getUserPrincipal().getName(), id, UUID.fromString(userId))
         .toResponse();
+  }
+
+  @GET
+  @Path("/entityRelationship")
+  @Operation(
+      operationId = "searchEntityRelationship",
+      summary = "Search Entity Relationship",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "search response",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = SearchResponse.class)))
+      })
+  public Response searchEntityRelationship(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "fqn") @QueryParam("fqn") String fqn,
+      @Parameter(description = "upstreamDepth") @QueryParam("upstreamDepth") int upstreamDepth,
+      @Parameter(description = "downstreamDepth") @QueryParam("downstreamDepth")
+          int downstreamDepth,
+      @Parameter(
+              description =
+                  "Elasticsearch query that will be combined with the query_string query generator from the `query` argument")
+          @QueryParam("query_filter")
+          String queryFilter,
+      @Parameter(description = "Filter documents by deleted param. By default deleted is false")
+          @QueryParam("includeDeleted")
+          @DefaultValue("false")
+          boolean deleted)
+      throws IOException {
+
+    return Entity.getSearchRepository()
+        .searchEntityRelationship(fqn, upstreamDepth, downstreamDepth, queryFilter, deleted);
   }
 
   public static Table validateNewTable(Table table) {
