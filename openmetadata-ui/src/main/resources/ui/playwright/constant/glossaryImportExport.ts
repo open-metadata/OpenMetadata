@@ -1,6 +1,3 @@
-import { expect, Page } from '@playwright/test';
-import { getApiContext } from '../utils/common';
-
 /*
  *  Copyright 2024 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -37,43 +34,4 @@ This project is designed to **simplify** and *automate* daily tasks. It aims to:
     columns: ['pw-import-export-column1', 'pw-import-export-column2'],
     rows: 'pw-import-export-row1-column1,pw-import-export-row1-column2',
   },
-};
-
-type TaskEntity = {
-  entityRef: {
-    name: string;
-  };
-};
-
-export const verifyTaskCreated = async (
-  page: Page,
-  glossaryFqn: string,
-  glossaryTermName: string
-) => {
-  const { apiContext } = await getApiContext(page);
-  const entityLink = encodeURIComponent(`<#E::glossary::${glossaryFqn}>`);
-
-  await expect
-    .poll(
-      async () => {
-        const response = await apiContext
-          .get(
-            `/api/v1/feed?entityLink=${entityLink}&type=Task&taskStatus=Open`
-          )
-          .then((res) => res.json());
-
-        const arr = response.data.map(
-          (item: TaskEntity) => item.entityRef.name
-        );
-
-        return arr;
-      },
-      {
-        // Custom expect message for reporting, optional.
-        message: 'To get the last run execution status as success',
-        timeout: 350_000,
-        intervals: [40_000, 30_000],
-      }
-    )
-    .toContain(glossaryTermName);
 };

@@ -15,7 +15,6 @@ import { CUSTOM_PROPERTIES_ENTITIES } from '../../constant/customProperty';
 import {
   CUSTOM_PROPERTIES_TYPES,
   FIELD_VALUES_CUSTOM_PROPERTIES,
-  verifyTaskCreated,
 } from '../../constant/glossaryImportExport';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { SidebarItem } from '../../constant/sidebar';
@@ -38,6 +37,7 @@ import { addMultiOwner } from '../../utils/entity';
 import {
   selectActiveGlossary,
   selectActiveGlossaryTerm,
+  verifyTaskCreated,
 } from '../../utils/glossary';
 import {
   createGlossaryTermRowDetails,
