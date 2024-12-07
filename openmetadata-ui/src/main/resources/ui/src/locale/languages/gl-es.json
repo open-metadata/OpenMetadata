@@ -1699,7 +1699,7 @@
     "no-closed-task": "Non hai tarefas pechadas",
     "no-config-available": "Non hai configuracións de conexión dispoñibles.",
     "no-config-plural": "Non hai configuracións.",
-    "no-custom-properties-table": "Actualmente non hai propiedades personalizadas definidas para o Activo de Datos da Táboa. Para descubrir como engadir propiedades personalizadas, consulta <0>{{docs}}</0>",
+    "no-custom-properties-entity": "Actualmente non hai Propiedades Personalizadas definidas para o Activo de Datos {{entity}}. Para descubrir como engadir Propiedades Personalizadas, consulte <0>{{docs}}</0>",
     "no-customization-available": "No customization available for this tab",
     "no-data": "Non hai datos",
     "no-data-assets": "Benvido a OpenMetadata! Parece que aínda non se engadiron activos de datos. Consulta a nosa guía de <0>Como comezar</0> para iniciar.",

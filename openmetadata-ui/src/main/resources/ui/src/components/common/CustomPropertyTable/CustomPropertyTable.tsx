@@ -14,7 +14,7 @@
 import { Col, Divider, Row, Skeleton, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { isEmpty, isUndefined } from 'lodash';
+import { isEmpty, isUndefined, startCase } from 'lodash';
 import React, {
   Fragment,
   useCallback,
@@ -228,7 +228,7 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
           className={className}
           placeholderText={
             <Transi18next
-              i18nKey="message.no-custom-properties-table"
+              i18nKey="message.no-custom-properties-entity"
               renderElement={
                 <a
                   href={CUSTOM_PROPERTIES_DOCS}
@@ -239,6 +239,7 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
               }
               values={{
                 docs: t('label.doc-plural-lowercase'),
+                entity: startCase(entityType),
               }}
             />
           }
