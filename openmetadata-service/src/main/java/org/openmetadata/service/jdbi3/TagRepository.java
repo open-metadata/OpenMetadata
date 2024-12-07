@@ -20,14 +20,11 @@ import static org.openmetadata.service.Entity.CLASSIFICATION;
 import static org.openmetadata.service.Entity.TAG;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusiveForParentAndSubField;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.getUniqueTags;
-import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
-import static org.openmetadata.service.search.SearchClient.UPDATE_CERTIFICATION_SCRIPT;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.service.util.EntityUtil.getId;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -252,22 +249,6 @@ public class TagRepository extends EntityRepository<Tag> {
       searchRepository
           .getSearchClient()
           .reindexAcrossIndices("tags.tagFQN", original.getEntityReference());
-    }
-
-    // Certification Updates
-    if (updated.getClassification().getFullyQualifiedName().equals("Certification")
-        && (updated.getChangeDescription() != null)) {
-      Map<String, Object> paramMap = new HashMap<>();
-      paramMap.put("name", updated.getName());
-      paramMap.put("description", updated.getDescription());
-      paramMap.put("tagFQN", updated.getFullyQualifiedName());
-      paramMap.put("style", updated.getStyle());
-      searchRepository
-          .getSearchClient()
-          .updateChildren(
-              GLOBAL_SEARCH_ALIAS,
-              new ImmutablePair<>("certification.tagLabel.tagFQN", updated.getFullyQualifiedName()),
-              new ImmutablePair<>(UPDATE_CERTIFICATION_SCRIPT, paramMap));
     }
   }
 
