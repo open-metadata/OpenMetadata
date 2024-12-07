@@ -1,18 +1,18 @@
 source:
   type: cassandra
-  serviceName: local_cassandra6
+  serviceName: local_cassandra
   serviceConnection:
     config:
       type: Cassandra
       # databaseName: custom_database_name
-      # username: username
-      # password: password
+      # username: cassandra
+      # password: cassandra
       # cloudConfig:
-      #   connectTimeout:600
-      #   secureConnectBundle: 
-      #   token: 
-      #   requestTimeout:600
-      hostPort:  localhost:9042
+      #   secureConnectBundle: <SCB file path>
+      #   token: <token string>
+      #   requestTimeout: 600
+      #   connectTimeout: 600
+      hostPort: localhost:9042
   sourceConfig:
     config:
       type: DatabaseMetadata

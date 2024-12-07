@@ -72,7 +72,8 @@ def get_connection(connection: CassandraConnection):
         cluster_config.update({"contact_points": [host], "port": port})
         if connection.username and connection.password:
             cluster_config["auth_provider"] = PlainTextAuthProvider(
-                username=connection.username, password=connection.password
+                username=connection.username,
+                password=connection.password.get_secret_value(),
             )
 
     cluster = Cluster(**cluster_config)

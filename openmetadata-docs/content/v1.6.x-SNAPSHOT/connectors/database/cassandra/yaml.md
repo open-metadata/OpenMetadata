@@ -80,7 +80,7 @@ This is a sample config for Cassandra:
 
 {% /codeInfo %}
 
-{% codeInfo srNumber=6 %}
+{% codeInfo srNumber=4 %}
 
 **databaseName**: Optional name to give to the database in OpenMetadata. If left blank, we will use default as the database name.
 
@@ -94,16 +94,16 @@ This is a sample config for Cassandra:
 
 #### Advanced Configuration
 
-{% codeInfo srNumber=7 %}
+{% codeInfo srNumber=5 %}
 
-**Connection Options (Optional)**: Enter the details for any additional connection options that can be sent to database during the connection. These details must be added as Key-Value pairs.
+**cloudConfig**: Configuration for connecting to DataStax Astra DB in the cloud.
 
 {% /codeInfo %}
 
 
 {% /codeInfoContainer %}
 
-{% codeBlock fileName="filename.yaml" %}
+{% codeBlock fileName="cassandra.yaml" %}
 
 ```yaml {% isCodeBlock=true %}
 source:
@@ -122,13 +122,17 @@ source:
 ```yaml {% srNumber=3 %}
       hostPort: localhost:9042
 ```
-```yaml {% srNumber=7 %}
-      # connectionOptions:
-      #   key: value
-```
-```yaml {% srNumber=6 %}
+```yaml {% srNumber=4 %}
       databaseName: custom_database_name
 ```
+```yaml {% srNumber=5 %}
+      cloudConfig:
+        secureConnectBundle: <file path>
+        token: token
+        requestTimeout: 600
+        connectTimeout: 600
+```
+
 
 {% partial file="/v1.6/connectors/yaml/database/source-config.md" /%}
 
@@ -151,7 +155,7 @@ This is a sample config for the profiler:
 
 {% codeInfoContainer %}
 
-{% codeInfo srNumber=13 %}
+{% codeInfo srNumber=20 %}
 
 #### Source Configuration - Source Config
 
@@ -168,10 +172,6 @@ You can find all the definitions and types for the  `sourceConfig` [here](https:
 
 {% /codeInfo %}
 
-{% codeInfo srNumber=22 %}
-
-**tableConfig**: `tableConfig` allows you to set up some configuration at the table level.
-{% /codeInfo %}
 
 {% codeInfo srNumber=23 %}
 
@@ -241,9 +241,6 @@ workflowConfig:
 {% /codeBlock %}
 
 {% /codePreview %}
-
-- You can learn more about how to configure and run the Profiler Workflow to extract Profiler data and execute the Data Quality from [here](/how-to-guides/data-quality-observability/profiler/workflow)
-
 
 ## dbt Integration
 

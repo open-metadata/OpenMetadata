@@ -268,7 +268,7 @@ plugins: Dict[str, Set[str]] = {
     },
     "mlflow": {"mlflow-skinny>=2.3.0"},
     "mongo": {VERSIONS["mongo"], VERSIONS["pandas"], VERSIONS["numpy"]},
-    "cassandra": {VERSIONS["cassandra"], VERSIONS["numpy"], VERSIONS["pandas"]},
+    "cassandra": {VERSIONS["cassandra"]},
     "couchbase": {"couchbase~=4.1"},
     "mssql": {
         "sqlalchemy-pytds~=0.3",

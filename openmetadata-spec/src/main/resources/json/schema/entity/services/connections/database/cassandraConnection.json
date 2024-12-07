@@ -73,10 +73,6 @@
             "description": "Configuration for connecting to DataStax Astra DB in the cloud.",
             "$ref": "#/definitions/cloudConfig"
         },
-        "connectionOptions": {
-            "title": "Connection Options",
-            "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
-        },
         "supportsMetadataExtraction": {
             "title": "Supports Metadata Extraction",
             "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"

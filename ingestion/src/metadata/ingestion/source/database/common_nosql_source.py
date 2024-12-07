@@ -246,8 +246,9 @@ class CommonNoSQLSource(DatabaseServiceSource, ABC):
         """
         import pandas as pd  # pylint: disable=import-outside-toplevel
 
-        data = self.get_table_columns_dict(schema_name, table_name)
-        df = pd.DataFrame.from_records(list(data))
+        df = pd.DataFrame.from_records(
+            list(self.get_table_columns_dict(schema_name, table_name))
+        )
         column_parser = DataFrameColumnParser.create(df)
         return column_parser.get_columns()
 

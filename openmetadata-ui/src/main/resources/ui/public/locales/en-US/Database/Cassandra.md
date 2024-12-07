@@ -28,6 +28,18 @@ If you are running the OpenMetadata ingestion in a docker and your services are 
 $$
 
 $$section
+### Cloud Config $(id="cloudConfig")
+  
+  Configuration for connecting to DataStax Astra DB in the cloud.
+
+  - cloudConfig: Configuration for connecting to DataStax Astra DB in the cloud.
+  - connectTimeout: Timeout in seconds for establishing new connections to Cassandra.
+  - requestTimeout: Timeout in seconds for individual Cassandra requests.
+  - token: The Astra DB application token used for authentication.
+  - secureConnectBundle: File path to the Secure Connect Bundle (.zip) used for a secure connection to DataStax Astra DB.
+$$
+
+$$section
 ### Database Name $(id="databaseName")
 In OpenMetadata, the Database Service hierarchy works as follows:
 ```
