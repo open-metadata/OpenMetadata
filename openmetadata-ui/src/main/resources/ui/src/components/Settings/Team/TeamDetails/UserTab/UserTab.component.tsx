@@ -46,7 +46,7 @@ import { SearchResponse } from '../../../../../interface/search.interface';
 import { ImportType } from '../../../../../pages/TeamsPage/ImportTeamsPage/ImportTeamsPage.interface';
 import { searchData } from '../../../../../rest/miscAPI';
 import { exportUserOfTeam } from '../../../../../rest/teamsAPI';
-import { getUsers } from '../../../../../rest/userAPI';
+import { getTeamUsers } from '../../../../../rest/userAPI';
 import { formatUsersResponse } from '../../../../../utils/APIUtils';
 import {
   getEntityName,
@@ -110,10 +110,9 @@ export const UserTab = ({
    */
   const getCurrentTeamUsers = (team: string, paging: Partial<Paging> = {}) => {
     setIsLoading(true);
-    getUsers({
+    getTeamUsers(team, {
       fields: `${TabSpecificField.ROLES}`,
       limit: pageSize,
-      team,
       ...paging,
     })
       .then((res) => {
@@ -200,36 +199,44 @@ export const UserTab = ({
     const tabColumns: ColumnsType<User> = [
       // will not show teams column in the Team Page
       ...commonUserDetailColumns().filter((item) => item.key !== 'teams'),
-      {
-        title: t('label.action-plural'),
-        dataIndex: 'actions',
-        key: 'actions',
-        width: 90,
-        render: (_, record) => (
-          <Space
-            align="center"
-            className="w-full justify-center remove-icon"
-            size={8}>
-            <Tooltip
-              placement="left"
-              title={
-                permission.EditAll
-                  ? t('label.remove')
-                  : t('message.no-permission-for-action')
-              }>
-              <Button
-                data-testid="remove-user-btn"
-                disabled={!permission.EditAll}
-                icon={
-                  <IconRemove height={16} name={t('label.remove')} width={16} />
-                }
-                type="text"
-                onClick={() => handleRemoveClick(record.id)}
-              />
-            </Tooltip>
-          </Space>
-        ),
-      },
+      ...(isGroupType
+        ? [
+            {
+              title: t('label.action-plural'),
+              dataIndex: 'actions',
+              key: 'actions',
+              width: 90,
+              render: (_: null, record: User) => (
+                <Space
+                  align="center"
+                  className="w-full justify-center remove-icon"
+                  size={8}>
+                  <Tooltip
+                    placement="left"
+                    title={
+                      permission.EditAll
+                        ? t('label.remove')
+                        : t('message.no-permission-for-action')
+                    }>
+                    <Button
+                      data-testid="remove-user-btn"
+                      disabled={!permission.EditAll}
+                      icon={
+                        <IconRemove
+                          height={16}
+                          name={t('label.remove')}
+                          width={16}
+                        />
+                      }
+                      type="text"
+                      onClick={() => handleRemoveClick(record.id)}
+                    />
+                  </Tooltip>
+                </Space>
+              ),
+            },
+          ]
+        : []),
     ];
 
     return tabColumns.filter((column) =>
@@ -366,44 +373,46 @@ export const UserTab = ({
 
   return (
     <Row className="p-y-md" gutter={[0, 16]}>
-      <Col span={24}>
-        <Row justify="space-between">
-          <Col span={8}>
-            <Searchbar
-              removeMargin
-              placeholder={t('label.search-for-type', {
-                type: t('label.user-lowercase'),
-              })}
-              searchValue={searchText}
-              typingInterval={500}
-              onSearch={handleUsersSearchAction}
-            />
-          </Col>
-          {!currentTeam.deleted && isGroupType && (
-            <Col>
-              <Space>
-                {users.length > 0 && permission.EditAll && (
-                  <UserSelectableList
-                    hasPermission
-                    selectedUsers={currentTeam?.users ?? []}
-                    onUpdate={onAddUser}>
-                    <Button data-testid="add-new-user" type="primary">
-                      {t('label.add-entity', { entity: t('label.user') })}
-                    </Button>
-                  </UserSelectableList>
-                )}
-                <ManageButton
-                  canDelete={false}
-                  displayName={getEntityName(currentTeam)}
-                  entityName={currentTeam.name}
-                  entityType={EntityType.USER}
-                  extraDropdownContent={IMPORT_EXPORT_MENU_ITEM}
-                />
-              </Space>
+      {isGroupType && (
+        <Col span={24}>
+          <Row justify="space-between">
+            <Col span={8}>
+              <Searchbar
+                removeMargin
+                placeholder={t('label.search-for-type', {
+                  type: t('label.user-lowercase'),
+                })}
+                searchValue={searchText}
+                typingInterval={500}
+                onSearch={handleUsersSearchAction}
+              />
             </Col>
-          )}
-        </Row>
-      </Col>
+            {!currentTeam.deleted && (
+              <Col>
+                <Space>
+                  {users.length > 0 && permission.EditAll && (
+                    <UserSelectableList
+                      hasPermission
+                      selectedUsers={currentTeam?.users ?? []}
+                      onUpdate={onAddUser}>
+                      <Button data-testid="add-new-user" type="primary">
+                        {t('label.add-entity', { entity: t('label.user') })}
+                      </Button>
+                    </UserSelectableList>
+                  )}
+                  <ManageButton
+                    canDelete={false}
+                    displayName={getEntityName(currentTeam)}
+                    entityName={currentTeam.name}
+                    entityType={EntityType.USER}
+                    extraDropdownContent={IMPORT_EXPORT_MENU_ITEM}
+                  />
+                </Space>
+              </Col>
+            )}
+          </Row>
+        </Col>
+      )}
       <Col span={24}>
         <Table
           bordered
