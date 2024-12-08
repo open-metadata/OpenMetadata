@@ -1,0 +1,8 @@
+{
+  "name": "RetentionPolicyApplication",
+  "displayName": "Retention Policy",
+  "appConfiguration": {
+    "entity": "eventsubscription",
+    "retentionPeriod": "One week"
+  }
+}
