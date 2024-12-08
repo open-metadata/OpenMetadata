@@ -24,6 +24,7 @@ import static org.openmetadata.service.search.SearchClient.REMOVE_TAGS_CHILDREN_
 import static org.openmetadata.service.search.SearchClient.REMOVE_TEST_SUITE_CHILDREN_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.SOFT_DELETE_RESTORE_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.UPDATE_ADDED_DELETE_GLOSSARY_TAGS;
+import static org.openmetadata.service.search.SearchClient.UPDATE_CERTIFICATION_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.UPDATE_PROPAGATED_ENTITY_REFERENCE_FIELD_SCRIPT;
 import static org.openmetadata.service.search.models.IndexMapping.indexNameSeparator;
 import static org.openmetadata.service.util.EntityUtil.compareEntityReferenceById;
@@ -58,6 +59,7 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.EntityTimeSeriesInterface;
 import org.openmetadata.schema.analytics.ReportData;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
+import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.tests.DataQualityReport;
 import org.openmetadata.schema.tests.TestSuite;
@@ -366,7 +368,7 @@ public class SearchRepository {
             entityType, entityId, entity.getChangeDescription(), indexMapping, entity);
         propagateGlossaryTags(
             entityType, entity.getFullyQualifiedName(), entity.getChangeDescription());
-
+        propagateCertificationTags(entityType, entity);
         propagatetoRelatedEntities(
             entityType, entityId, entity.getChangeDescription(), indexMapping, entity);
       } catch (Exception ie) {
@@ -449,6 +451,24 @@ public class SearchRepository {
           GLOBAL_SEARCH_ALIAS,
           new ImmutablePair<>("tags.tagFQN", glossaryFQN),
           new ImmutablePair<>(UPDATE_ADDED_DELETE_GLOSSARY_TAGS, fieldData));
+    }
+  }
+
+  public void propagateCertificationTags(String entityType, EntityInterface entity) {
+    ChangeDescription changeDescription = entity.getChangeDescription();
+    if (changeDescription != null && entityType.equalsIgnoreCase(Entity.TAG)) {
+      Tag tagEntity = (Tag) entity;
+      if (tagEntity.getClassification().getFullyQualifiedName().equals("Certification")) {
+        Map<String, Object> paramMap = new HashMap<>();
+        paramMap.put("name", entity.getName());
+        paramMap.put("description", entity.getDescription());
+        paramMap.put("tagFQN", entity.getFullyQualifiedName());
+        paramMap.put("style", entity.getStyle());
+        searchClient.updateChildren(
+            GLOBAL_SEARCH_ALIAS,
+            new ImmutablePair<>("certification.tagLabel.tagFQN", entity.getFullyQualifiedName()),
+            new ImmutablePair<>(UPDATE_CERTIFICATION_SCRIPT, paramMap));
+      }
     }
   }
 
