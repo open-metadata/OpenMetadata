@@ -79,6 +79,9 @@ openmetadata-ui/src/main/resources/ui/tsconfig.tsbuildinfo
 /ingestion/tests/e2e/artifacts/*
 openmetadata-ui/src/main/resources/ui/src/test/unit/coverage
 openmetadata-ui/src/main/resources/ui/test-report.xml
+/openmetadata-airflow-apis/coverage.xml
+/openmetadata-airflow-apis/ci-coverage.xml
+/openmetadata-airflow-apis/junit/*
 
 # Playwright artifacts
 openmetadata-ui/src/main/resources/ui/playwright/output/
