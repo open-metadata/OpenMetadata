@@ -18,6 +18,7 @@ import {
 } from '../../constant/glossaryImportExport';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { SidebarItem } from '../../constant/sidebar';
+import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
 import { Glossary } from '../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import { UserClass } from '../../support/user/UserClass';
@@ -32,7 +33,12 @@ import {
   addCustomPropertiesForEntity,
   deleteCreatedProperty,
 } from '../../utils/customProperty';
-import { selectActiveGlossary } from '../../utils/glossary';
+import { addMultiOwner } from '../../utils/entity';
+import {
+  selectActiveGlossary,
+  selectActiveGlossaryTerm,
+  verifyTaskCreated,
+} from '../../utils/glossary';
 import {
   createGlossaryTermRowDetails,
   fillGlossaryRowDetails,
@@ -47,6 +53,7 @@ test.use({
 
 const user1 = new UserClass();
 const user2 = new UserClass();
+const user3 = new UserClass();
 const glossary1 = new Glossary();
 const glossary2 = new Glossary();
 const glossaryTerm1 = new GlossaryTerm(glossary1);
@@ -54,6 +61,8 @@ const glossaryTerm2 = new GlossaryTerm(glossary2);
 const propertiesList = Object.values(CUSTOM_PROPERTIES_TYPES);
 
 const propertyListName: Record<string, string> = {};
+
+const additionalGlossaryTerm = createGlossaryTermRowDetails();
 
 test.describe('Glossary Bulk Import Export', () => {
   test.slow(true);
@@ -63,6 +72,7 @@ test.describe('Glossary Bulk Import Export', () => {
 
     await user1.create(apiContext);
     await user2.create(apiContext);
+    await user3.create(apiContext);
     await glossary1.create(apiContext);
     await glossary2.create(apiContext);
     await glossaryTerm1.create(apiContext);
@@ -76,6 +86,7 @@ test.describe('Glossary Bulk Import Export', () => {
 
     await user1.delete(apiContext);
     await user2.delete(apiContext);
+    await user3.delete(apiContext);
     await glossary1.delete(apiContext);
     await glossary2.delete(apiContext);
 
@@ -129,6 +140,16 @@ test.describe('Glossary Bulk Import Export', () => {
         await sidebarClick(page, SidebarItem.GLOSSARY);
         await selectActiveGlossary(page, glossary1.data.displayName);
 
+        // Update Reviewer
+        await addMultiOwner({
+          page,
+          ownerNames: [user3.getUserName()],
+          activatorBtnDataTestId: 'Add',
+          resultTestId: 'glossary-reviewer-name',
+          endpoint: EntityTypeEndpoint.Glossary,
+          type: 'Users',
+        });
+
         // Safety check to close potential glossary not found alert
         // Arrived due to parallel testing
         await closeFirstPopupAlert(page);
@@ -162,7 +183,7 @@ test.describe('Glossary Bulk Import Export', () => {
         // Click on first cell and edit
         await fillGlossaryRowDetails(
           {
-            ...createGlossaryTermRowDetails(),
+            ...additionalGlossaryTerm,
             owners: [user1.responseData?.['displayName']],
             reviewers: [user2.responseData?.['displayName']],
             relatedTerm: {
@@ -208,6 +229,21 @@ test.describe('Glossary Bulk Import Export', () => {
         );
       }
     );
+
+    await test.step('should have term in review state', async () => {
+      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await selectActiveGlossary(page, glossary1.data.displayName);
+      await verifyTaskCreated(
+        page,
+        glossary1.data.fullyQualifiedName,
+        glossaryTerm1.data.name
+      );
+      await selectActiveGlossaryTerm(page, glossaryTerm1.data.displayName);
+
+      const statusBadge = page.locator('.status-badge');
+
+      await expect(statusBadge).toHaveText('In Review');
+    });
 
     await test.step('delete custom properties', async () => {
       for (const propertyName of Object.values(propertyListName)) {
