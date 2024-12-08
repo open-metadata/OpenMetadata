@@ -267,6 +267,13 @@ const TreeAsyncSelectList: FC<Omit<AsyncSelectListProps, 'fetchOptions'>> = ({
     }
   }, 300);
 
+  const handleDropdownChange = (open: boolean) => {
+    if (!open) {
+      // Close the form when the dropdown closes
+      onCancel && onCancel();
+    }
+  };
+
   useEffect(() => {
     if (glossaries.length) {
       expandableKeys.current = glossaries.map((glossary) => glossary.id);
@@ -295,7 +302,6 @@ const TreeAsyncSelectList: FC<Omit<AsyncSelectListProps, 'fetchOptions'>> = ({
       dropdownRender={dropdownRender}
       dropdownStyle={{ width: 300 }}
       filterTreeNode={false}
-      getPopupContainer={(triggerNode) => triggerNode.parentElement!} // Render dropdown in the parent container
       loadData={({ id, name }) => {
         if (expandableKeys.current.includes(id)) {
           return fetchGlossaryTerm({ glossary: name as string });
@@ -328,6 +334,7 @@ const TreeAsyncSelectList: FC<Omit<AsyncSelectListProps, 'fetchOptions'>> = ({
       treeData={treeData}
       treeExpandedKeys={isEmpty(searchOptions) ? undefined : expandedRowKeys}
       onChange={handleChange}
+      onDropdownVisibleChange={handleDropdownChange}
       onSearch={onSearch}
       onTreeExpand={setExpandedRowKeys}
       {...props}
