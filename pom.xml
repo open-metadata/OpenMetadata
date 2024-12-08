@@ -97,20 +97,20 @@
     <!-- Upgrading to jdbi version causes test failures-->
     <jdbi3.version>3.37.1</jdbi3.version>
     <commons-cli.version>1.9.0</commons-cli.version>
-    <commons-io.version>2.17.0</commons-io.version>
+    <commons-io.version>2.18.0</commons-io.version>
     <flyway.version>9.22.3</flyway.version>
-    <redshift-jdbc.version>2.1.0.30</redshift-jdbc.version>
+    <redshift-jdbc.version>2.1.0.31</redshift-jdbc.version>
     <gson.version>2.11.0</gson.version>
     <mysql.connector.version>9.1.0</mysql.connector.version>
     <postgres.connector.version>42.7.4</postgres.connector.version>
     <jsonschema2pojo.version>1.2.1</jsonschema2pojo.version>
     <commons-lang.version>2.6</commons-lang.version>
-    <lombok.version>1.18.34</lombok.version>
+    <lombok.version>1.18.36</lombok.version>
     <tomcat-jdbc.version>10.1.10</tomcat-jdbc.version>
     <elasticsearch.version>7.17.23</elasticsearch.version>
     <opensearch.version>2.5.0</opensearch.version>
     <httpasyncclient.version>4.1.5</httpasyncclient.version>
-    <openapiswagger.version>2.2.25</openapiswagger.version>
+    <openapiswagger.version>2.2.26</openapiswagger.version>
 
     <httpclient.version>4.5.14</httpclient.version>
     <spring.version>6.1.14</spring.version>
@@ -134,7 +134,7 @@
     <testng.version>7.6.1</testng.version>
     <!-- Micrometer upgrade to 3.x requires Dropwizard > 3.x -->
     <dropwizard-micrometer.version>2.0.9</dropwizard-micrometer.version>
-    <json-schema-validator.version>1.5.2</json-schema-validator.version>
+    <json-schema-validator.version>1.5.4</json-schema-validator.version>
     <java-jwt.version>4.4.0</java-jwt.version>
     <jwks-rsa.version>0.22.1</jwks-rsa.version>
     <jjwt.version>0.9.1</jjwt.version>
@@ -468,7 +468,7 @@
       <dependency>
         <groupId>io.github.classgraph</groupId>
         <artifactId>classgraph</artifactId>
-        <version>4.8.177</version>
+        <version>4.8.179</version>
       </dependency>
       <dependency>
         <groupId>org.reflections</groupId>
@@ -776,7 +776,7 @@
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-site-plugin</artifactId>
-          <version>3.12.1</version>
+          <version>3.21.0</version>
         </plugin>
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
