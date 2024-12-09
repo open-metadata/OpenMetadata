@@ -242,15 +242,3 @@ workflowConfig:
 
 {% /codePreview %}
 
-## dbt Integration
-
-{% tilesContainer %}
-
-{% tile
-icon="mediation"
-title="dbt Integration"
-description="Learn more about how to ingest dbt models' definitions and their lineage."
-link="/connectors/ingestion/workflows/dbt" /%}
-
-{% /tilesContainer %}
-
