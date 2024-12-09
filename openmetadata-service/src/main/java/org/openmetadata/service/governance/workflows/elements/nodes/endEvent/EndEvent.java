@@ -13,12 +13,10 @@ public class EndEvent implements NodeInterface {
 
   public EndEvent(String id) {
     this.endEvent = new EndEventBuilder().id(id).build();
-    attachWorkflowInstanceStageListeners(endEvent);
   }
 
   public EndEvent(EndEventDefinition nodeDefinition) {
     this.endEvent = new EndEventBuilder().id(nodeDefinition.getName()).build();
-    attachWorkflowInstanceStageListeners(endEvent);
   }
 
   public void addToWorkflow(BpmnModel model, Process process) {

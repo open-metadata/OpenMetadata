@@ -737,9 +737,16 @@ public class OpenSearchClient implements SearchClient {
               new os.org.opensearch.action.search.SearchRequest(index).source(searchSourceBuilder),
               RequestOptions.DEFAULT);
       SearchHits searchHits = response.getHits();
-      SearchHit[] hits = searchHits.getHits();
-      Arrays.stream(hits).forEach(hit -> results.add(hit.getSourceAsMap()));
-      return new SearchResultListMapper(results, searchHits.getTotalHits().value);
+      List<SearchHit> hits = List.of(searchHits.getHits());
+      Object[] lastHitSortValues = null;
+
+      if (!hits.isEmpty()) {
+        lastHitSortValues = hits.get(hits.size() - 1).getSortValues();
+      }
+
+      hits.forEach(hit -> results.add(hit.getSourceAsMap()));
+      return new SearchResultListMapper(
+          results, searchHits.getTotalHits().value, lastHitSortValues);
     } catch (OpenSearchStatusException e) {
       if (e.status() == RestStatus.NOT_FOUND) {
         throw new SearchIndexNotFoundException(String.format("Failed to to find index %s", index));

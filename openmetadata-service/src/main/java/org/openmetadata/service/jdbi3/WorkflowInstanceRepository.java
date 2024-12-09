@@ -3,6 +3,7 @@ package org.openmetadata.service.jdbi3;
 import static org.openmetadata.service.governance.workflows.Workflow.EXCEPTION_VARIABLE;
 
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import org.openmetadata.schema.governance.workflows.WorkflowInstance;
 import org.openmetadata.service.Entity;
@@ -50,7 +51,7 @@ public class WorkflowInstanceRepository extends EntityTimeSeriesRepository<Workf
 
     workflowInstance.setEndedAt(endedAt);
 
-    if (variables.containsKey(EXCEPTION_VARIABLE)) {
+    if (Optional.ofNullable(variables.getOrDefault(EXCEPTION_VARIABLE, null)).isPresent()) {
       workflowInstance.setException(true);
     }
 
