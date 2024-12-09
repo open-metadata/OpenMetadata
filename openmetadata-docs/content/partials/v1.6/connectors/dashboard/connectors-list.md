@@ -11,6 +11,8 @@
 {% connectorInfoCard name="QuickSight" stage="PROD" href="/connectors/dashboard/quicksight" platform="OpenMetadata" / %}
 {% connectorInfoCard name="Redash" stage="PROD" href="/connectors/dashboard/redash" platform="OpenMetadata" / %}
 {% connectorInfoCard name="Superset" stage="PROD" href="/connectors/dashboard/superset" platform="OpenMetadata" / %}
+{% connectorInfoCard name="Sigma" stage="PROD" href="/connectors/dashboard/sigma" platform="OpenMetadata" / %}
+{% connectorInfoCard name="PowerBI" stage="PROD" href="/connectors/dashboard/powerbi" platform="OpenMetadata" / %}
 {% connectorInfoCard name="Tableau" stage="PROD" href="/connectors/dashboard/tableau" platform="OpenMetadata" / %}
 
 {% /connectorsListContainer %}
