@@ -22,6 +22,7 @@ import { Glossary } from '../support/glossary/Glossary';
 import {
   GlossaryData,
   GlossaryTermData,
+  UserTeamRef,
 } from '../support/glossary/Glossary.interface';
 import { GlossaryTerm } from '../support/glossary/GlossaryTerm';
 import {
@@ -482,7 +483,7 @@ export const fillGlossaryTermDetails = async (
 export const verifyTaskCreated = async (
   page: Page,
   glossaryFqn: string,
-  glossaryTermData: GlossaryTermData
+  glossaryTermData: string
 ) => {
   const { apiContext } = await getApiContext(page);
   const entityLink = encodeURIComponent(`<#E::glossary::${glossaryFqn}>`);
@@ -509,7 +510,7 @@ export const verifyTaskCreated = async (
         intervals: [40_000, 30_000],
       }
     )
-    .toContain(glossaryTermData.name);
+    .toContain(glossaryTermData);
 };
 
 export const validateGlossaryTermTask = async (
@@ -1233,6 +1234,92 @@ export const filterStatus = async (
   }
 };
 
+export const addMultiOwnerInDialog = async (data: {
+  page: Page;
+  ownerNames: string | string[];
+  activatorBtnLocator: string;
+  endpoint: EntityTypeEndpoint;
+  resultTestId?: string;
+  isSelectableInsideForm?: boolean;
+  type: 'Teams' | 'Users';
+  clearAll?: boolean;
+}) => {
+  const {
+    page,
+    ownerNames,
+    activatorBtnLocator,
+    resultTestId = 'owner-link',
+    isSelectableInsideForm = false,
+    endpoint,
+    type,
+    clearAll = true,
+  } = data;
+  const isMultipleOwners = Array.isArray(ownerNames);
+  const owners = isMultipleOwners ? ownerNames : [ownerNames];
+
+  await page.click(activatorBtnLocator);
+
+  await expect(page.locator("[data-testid='select-owner-tabs']")).toBeVisible();
+
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
+  await page
+    .locator("[data-testid='select-owner-tabs']")
+    .getByRole('tab', { name: 'Users' })
+    .click();
+
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
+  if (clearAll && isMultipleOwners) {
+    await page.click('[data-testid="clear-all-button"]');
+  }
+
+  for (const ownerName of owners) {
+    const searchOwner = page.waitForResponse(
+      'api/v1/search/query?q=*&index=user_search_index*'
+    );
+    await page.locator('[data-testid="owner-select-users-search-bar"]').clear();
+    await page.fill('[data-testid="owner-select-users-search-bar"]', ownerName);
+    await searchOwner;
+    await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
+    const ownerItem = page.getByRole('listitem', {
+      name: ownerName,
+      exact: true,
+    });
+
+    if (type === 'Teams') {
+      if (isSelectableInsideForm) {
+        await ownerItem.click();
+      } else {
+        const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
+        await ownerItem.click();
+        await patchRequest;
+      }
+    } else {
+      await ownerItem.click();
+    }
+  }
+
+  if (isMultipleOwners) {
+    const updateButton = page.getByTestId('selectable-list-update-btn');
+
+    if (isSelectableInsideForm) {
+      await updateButton.click();
+    } else {
+      const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
+      await updateButton.click();
+      await patchRequest;
+    }
+  }
+
+  for (const name of owners) {
+    await expect(page.locator(`[data-testid="${resultTestId}"]`)).toContainText(
+      name
+    );
+  }
+};
+
 export const dragAndDropColumn = async (
   page: Page,
   dragColumn: string,
@@ -1254,4 +1341,73 @@ export const dragAndDropColumn = async (
         y: 16,
       },
     });
+};
+
+export const getEscapedTermFqn = (term: GlossaryTermData) => {
+  // eslint-disable-next-line no-useless-escape
+  return term.fullyQualifiedName.replace(/\"/g, '\\"');
+};
+
+export const openEditGlossaryTermModal = async (
+  page: Page,
+  term: GlossaryTermData
+) => {
+  const escapedFqn = getEscapedTermFqn(term);
+  const termRow = page.locator(`[data-row-key="${escapedFqn}"]`);
+  const glossaryTermRes = page.waitForResponse('/api/v1/glossaryTerms/name/*');
+  await termRow.getByTestId('edit-button').click();
+  await glossaryTermRes;
+  await page.waitForSelector('[role="dialog"].edit-glossary-modal');
+
+  await expect(
+    page.locator('[role="dialog"].edit-glossary-modal')
+  ).toBeVisible();
+  await expect(page.locator('.ant-modal-title')).toContainText(
+    'Edit Glossary Term'
+  );
+};
+
+export const updateGlossaryTermOwners = async (
+  page: Page,
+  term: GlossaryTermData,
+  owners: UserTeamRef[]
+) => {
+  await openEditGlossaryTermModal(page, term);
+  const ownerLocator = '.edit-glossary-modal [data-testid="add-owner"]';
+  await addMultiOwnerInDialog({
+    page,
+    ownerNames: owners.map((owner) => owner.name),
+    activatorBtnLocator: ownerLocator,
+    resultTestId: 'owner-container',
+    endpoint: EntityTypeEndpoint.GlossaryTerm,
+    isSelectableInsideForm: true,
+    type: 'Users',
+  });
+
+  const glossaryTermResponse = page.waitForResponse('/api/v1/glossaryTerms/*');
+  await page.getByTestId('save-glossary-term').click();
+  await glossaryTermResponse;
+};
+
+export const updateGlossaryTermReviewers = async (
+  page: Page,
+  term: GlossaryTermData,
+  reviewers: UserTeamRef[]
+) => {
+  await openEditGlossaryTermModal(page, term);
+  const reviewerLocator = '.edit-glossary-modal [data-testid="add-reviewers"]';
+
+  await addMultiOwnerInDialog({
+    page,
+    ownerNames: reviewers.map((reviewer) => reviewer.name),
+    activatorBtnLocator: reviewerLocator,
+    resultTestId: 'reviewers-container',
+    endpoint: EntityTypeEndpoint.Glossary,
+    isSelectableInsideForm: true,
+    type: 'Users',
+  });
+
+  const glossaryTermResponse = page.waitForResponse('/api/v1/glossaryTerms/*');
+  await page.getByTestId('save-glossary-term').click();
+  await glossaryTermResponse;
 };
