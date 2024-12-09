@@ -1699,7 +1699,7 @@
     "no-closed-task": "Nenhuma Tarefa Concluída",
     "no-config-available": "Nenhuma Configuração de Conexão disponível.",
     "no-config-plural": "Nenhuma Configuração.",
-    "no-custom-properties-table": "Atualmente, não há Propriedades Personalizadas definidas para o Ativo de Dados da Tabela. Para descobrir como adicionar Propriedades Personalizadas, consulte <0>{{docs}}</0>",
+    "no-custom-properties-entity": "Atualmente, não há Propriedades Personalizadas definidas para o Ativo de Dados {{entity}}. Para saber como adicionar Propriedades Personalizadas, consulte <0>{{docs}}</0>.",
     "no-customization-available": "No customization available for this tab",
     "no-data": "Sem dados",
     "no-data-assets": "Welcome to OpenMetadata! It looks like no data assets have been added yet. Check out our <0>How to Get Started</0> guide to begin.",
