@@ -48,7 +48,7 @@ mock_cassandra_config = {
             "config": {
                 "type": "Cassandra",
                 "username": "cassandra",
-                "password": "cassandra",
+                "authType": {"password": "cassandra"},
                 "hostPort": "localhost:9042",
             },
         },
