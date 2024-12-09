@@ -45,13 +45,6 @@ public class CreateApprovalTaskImpl implements TaskListener {
 
       Thread task = createApprovalTask(entity, assignees);
       WorkflowHandler.getInstance().setCustomTaskId(delegateTask.getId(), task.getId());
-
-      UUID workflowInstanceStateId =
-          (UUID) delegateTask.getVariable(STAGE_INSTANCE_STATE_ID_VARIABLE);
-      WorkflowInstanceStateRepository workflowInstanceStateRepository =
-          (WorkflowInstanceStateRepository)
-              Entity.getEntityTimeSeriesRepository(Entity.WORKFLOW_INSTANCE_STATE);
-      workflowInstanceStateRepository.updateStageWithTask(task.getId(), workflowInstanceStateId);
     } catch (Exception exc) {
       LOG.error(
           String.format(
