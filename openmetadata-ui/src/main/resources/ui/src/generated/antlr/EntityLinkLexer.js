@@ -1,4 +1,4 @@
-// Generated from /Users/keshavmohta/OpenMetadata/openmetadata-spec/src/main/antlr4/org/openmetadata/schema/EntityLink.g4 by ANTLR 4.9.2
+// Generated from /Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/../../../../../openmetadata-spec/src/main/antlr4/org/openmetadata/schema/EntityLink.g4 by ANTLR 4.9.2
 // jshint ignore: start
 import antlr4 from 'antlr4';
 
@@ -658,18 +658,18 @@ const serializedATN = ["\u0003\u608b\ua72a\u8133\ub9ed\u417c\u3be7\u7786",
 
 const atn = new antlr4.atn.ATNDeserializer().deserialize(serializedATN);
 
-const decisionsToDFA = atn.decisionToState.map( (ds, index) => new antlr4.dfa.DFA(ds, index) );
+const decisionsToDFA = atn.decisionToState.map((ds, index) => new antlr4.dfa.DFA(ds, index));
 
 export default class EntityLinkLexer extends antlr4.Lexer {
 
     static grammarFileName = "EntityLink.g4";
-    static channelNames = [ "DEFAULT_TOKEN_CHANNEL", "HIDDEN" ];
-	static modeNames = [ "DEFAULT_MODE" ];
-	static literalNames = [ null, "'>'", "'::'", "'<#E'" ];
-	static symbolicNames = [ null, null, null, "RESERVED_START", "ENTITY_TYPE", 
-                          "ENTITY_FIELD", "NAME_OR_FQN" ];
-	static ruleNames = [ "T__0", "T__1", "RESERVED_START", "ENTITY_TYPE", "ENTITY_FIELD", 
-                      "NAME_OR_FQN" ];
+    static channelNames = ["DEFAULT_TOKEN_CHANNEL", "HIDDEN"];
+    static modeNames = ["DEFAULT_MODE"];
+    static literalNames = [null, "'>'", "'::'", "'<#E'"];
+    static symbolicNames = [null, null, null, "RESERVED_START", "ENTITY_TYPE",
+        "ENTITY_FIELD", "NAME_OR_FQN"];
+    static ruleNames = ["T__0", "T__1", "RESERVED_START", "ENTITY_TYPE", "ENTITY_FIELD",
+        "NAME_OR_FQN"];
 
     constructor(input) {
         super(input)

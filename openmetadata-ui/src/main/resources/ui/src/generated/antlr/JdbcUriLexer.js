@@ -1,4 +1,4 @@
-// Generated from /Users/keshavmohta/OpenMetadata/openmetadata-spec/src/main/antlr4/org/openmetadata/schema/JdbcUri.g4 by ANTLR 4.9.2
+// Generated from /Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/../../../../../openmetadata-spec/src/main/antlr4/org/openmetadata/schema/JdbcUri.g4 by ANTLR 4.9.2
 // jshint ignore: start
 import antlr4 from 'antlr4';
 
@@ -146,25 +146,25 @@ const serializedATN = ["\u0003\u608b\ua72a\u8133\ub9ed\u417c\u3be7\u7786",
 
 const atn = new antlr4.atn.ATNDeserializer().deserialize(serializedATN);
 
-const decisionsToDFA = atn.decisionToState.map( (ds, index) => new antlr4.dfa.DFA(ds, index) );
+const decisionsToDFA = atn.decisionToState.map((ds, index) => new antlr4.dfa.DFA(ds, index));
 
 export default class JdbcUriLexer extends antlr4.Lexer {
 
     static grammarFileName = "JdbcUri.g4";
-    static channelNames = [ "DEFAULT_TOKEN_CHANNEL", "HIDDEN" ];
-	static modeNames = [ "DEFAULT_MODE" ];
-	static literalNames = [ null, "'jdbc:'", "'/'", null, null, null, null, 
-                         null, null, null, null, null, "'?'", "'.'", "':'", 
-                         "'&'" ];
-	static symbolicNames = [ null, null, null, "DATABASE_TYPE", "URI_SEPARATOR", 
-                          "PORT_NUMBER", "IDENTIFIER", "HOST_NAME", "IPV4_ADDRESS", 
-                          "IPV6_ADDRESS", "HEXDIGIT", "CONNECTION_ARG", 
-                          "CONNECTION_ARG_INIT", "PERIOD", "COLON", "AMP", 
-                          "WS" ];
-	static ruleNames = [ "T__0", "T__1", "DATABASE_TYPE", "URI_SEPARATOR", 
-                      "PORT_NUMBER", "IDENTIFIER", "HOST_NAME", "IPV4_ADDRESS", 
-                      "IPV6_ADDRESS", "HEXDIGIT", "CONNECTION_ARG", "CONNECTION_ARG_INIT", 
-                      "PERIOD", "COLON", "AMP", "WS" ];
+    static channelNames = ["DEFAULT_TOKEN_CHANNEL", "HIDDEN"];
+    static modeNames = ["DEFAULT_MODE"];
+    static literalNames = [null, "'jdbc:'", "'/'", null, null, null, null,
+        null, null, null, null, null, "'?'", "'.'", "':'",
+        "'&'"];
+    static symbolicNames = [null, null, null, "DATABASE_TYPE", "URI_SEPARATOR",
+        "PORT_NUMBER", "IDENTIFIER", "HOST_NAME", "IPV4_ADDRESS",
+        "IPV6_ADDRESS", "HEXDIGIT", "CONNECTION_ARG",
+        "CONNECTION_ARG_INIT", "PERIOD", "COLON", "AMP",
+        "WS"];
+    static ruleNames = ["T__0", "T__1", "DATABASE_TYPE", "URI_SEPARATOR",
+        "PORT_NUMBER", "IDENTIFIER", "HOST_NAME", "IPV4_ADDRESS",
+        "IPV6_ADDRESS", "HEXDIGIT", "CONNECTION_ARG", "CONNECTION_ARG_INIT",
+        "PERIOD", "COLON", "AMP", "WS"];
 
     constructor(input) {
         super(input)
