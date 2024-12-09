@@ -30,8 +30,6 @@ pip install openmetadata-managed-apis==x.y.z
 ```
 
 #### With Kubernetes
-
-#### With Kubernetes
 Follow these steps to reindex using the CLI:
 
 1.	List the CronJobs
