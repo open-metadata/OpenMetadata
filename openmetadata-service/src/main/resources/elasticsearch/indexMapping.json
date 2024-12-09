@@ -297,7 +297,7 @@
     "indexName": "ingestion_pipeline_search_index",
     "indexMappingFile": "/elasticsearch/%s/ingestion_pipeline_index_mapping.json",
     "alias": "ingestionPipeline",
-    "parentAliases": ["all", "dataAsset"],
+    "parentAliases": [],
     "childAliases": []
   }
 }
