@@ -1,5 +1,3 @@
-import { TestSummary } from '../../generated/tests/testCase';
-
 /*
  *  Copyright 2023 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,6 +10,10 @@ import { TestSummary } from '../../generated/tests/testCase';
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
+import { EntityType } from '../../enums/entity.enum';
+import { TestSummary } from '../../generated/tests/testCase';
+
 export enum DataQualityPageTabs {
   TEST_SUITES = 'test-suites',
   TABLES = 'tables',
@@ -32,4 +34,5 @@ export type DataQualityDashboardChartFilters = {
   startTs?: number;
   endTs?: number;
   entityFQN?: string;
+  entityType?: EntityType;
 };

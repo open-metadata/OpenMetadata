@@ -12,6 +12,7 @@
  */
 /* eslint-disable max-len */
 import { IncidentTimeMetricsType } from '../components/DataQuality/DataQuality.interface';
+import { EntityType } from '../enums/entity.enum';
 import { TestCaseStatus } from '../generated/tests/testCase';
 import { TestCaseResolutionStatusTypes } from '../generated/tests/testCaseResolutionStatus';
 import {
@@ -1198,6 +1199,85 @@ describe('dataQualityDashboardAPI', () => {
                       lte: filters.endTs,
                       gte: filters.startTs,
                     },
+                  },
+                },
+              ],
+            },
+          },
+        }),
+        index: 'testCaseResult',
+        aggregationQuery:
+          'bucketName=byDay:aggType=date_histogram:field=timestamp&calendar_interval=day,bucketName=newIncidents:aggType=cardinality:field=testCase.fullyQualifiedName',
+      });
+    });
+
+    it('should call getDataQualityReport with provided entityType', async () => {
+      const status = TestCaseStatus.Success;
+      const filters = {
+        entityType: EntityType.TABLE,
+        entityFQN: 'entityFQN',
+        startTs: 1729073964962,
+        endTs: 1729678764965,
+      };
+
+      await fetchTestCaseStatusMetricsByDays(status, filters);
+
+      expect(getDataQualityReport).toHaveBeenCalledWith({
+        q: JSON.stringify({
+          query: {
+            bool: {
+              must: [
+                { term: { testCaseStatus: status } },
+                {
+                  range: {
+                    timestamp: {
+                      lte: filters.endTs,
+                      gte: filters.startTs,
+                    },
+                  },
+                },
+                {
+                  term: {
+                    'table.fullyQualifiedName.keyword': 'entityFQN',
+                  },
+                },
+              ],
+            },
+          },
+        }),
+        index: 'testCaseResult',
+        aggregationQuery:
+          'bucketName=byDay:aggType=date_histogram:field=timestamp&calendar_interval=day,bucketName=newIncidents:aggType=cardinality:field=testCase.fullyQualifiedName',
+      });
+    });
+
+    it('should call getDataQualityReport with normal entity fqn if entityType not provided', async () => {
+      const status = TestCaseStatus.Success;
+      const filters = {
+        entityFQN: 'entityFQN',
+        startTs: 1729073964962,
+        endTs: 1729678764965,
+      };
+
+      await fetchTestCaseStatusMetricsByDays(status, filters);
+
+      expect(getDataQualityReport).toHaveBeenCalledWith({
+        q: JSON.stringify({
+          query: {
+            bool: {
+              must: [
+                { term: { testCaseStatus: status } },
+                {
+                  range: {
+                    timestamp: {
+                      lte: filters.endTs,
+                      gte: filters.startTs,
+                    },
+                  },
+                },
+                {
+                  term: {
+                    'testCase.entityFQN': 'entityFQN',
                   },
                 },
               ],
