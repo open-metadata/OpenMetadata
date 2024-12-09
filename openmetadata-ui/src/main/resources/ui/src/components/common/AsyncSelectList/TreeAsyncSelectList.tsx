@@ -267,13 +267,6 @@ const TreeAsyncSelectList: FC<Omit<AsyncSelectListProps, 'fetchOptions'>> = ({
     }
   }, 300);
 
-  const handleDropdownChange = (open: boolean) => {
-    if (!open) {
-      // Close the form when the dropdown closes
-      onCancel && onCancel();
-    }
-  };
-
   useEffect(() => {
     if (glossaries.length) {
       expandableKeys.current = glossaries.map((glossary) => glossary.id);
@@ -334,7 +327,6 @@ const TreeAsyncSelectList: FC<Omit<AsyncSelectListProps, 'fetchOptions'>> = ({
       treeData={treeData}
       treeExpandedKeys={isEmpty(searchOptions) ? undefined : expandedRowKeys}
       onChange={handleChange}
-      onDropdownVisibleChange={handleDropdownChange}
       onSearch={onSearch}
       onTreeExpand={setExpandedRowKeys}
       {...props}
