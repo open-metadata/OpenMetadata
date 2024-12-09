@@ -50,8 +50,8 @@ def get_connection(connection: CassandraConnection):
     """
 
     cluster_config = {}
-    if connection.cloudConfig:
-        cloud_config = connection.cloudConfig
+    if hasattr(connection.authType, "cloudConfig"):
+        cloud_config = connection.authType.cloudConfig
         cluster_cloud_config = {
             "connect_timeout": cloud_config.connectTimeout,
             "use_default_tempdir": True,
@@ -70,10 +70,10 @@ def get_connection(connection: CassandraConnection):
     else:
         host, port = connection.hostPort.split(":")
         cluster_config.update({"contact_points": [host], "port": port})
-        if connection.username and connection.password:
+        if connection.username and getattr(connection.authType, "password", None):
             cluster_config["auth_provider"] = PlainTextAuthProvider(
                 username=connection.username,
-                password=connection.password.get_secret_value(),
+                password=connection.authType.password.get_secret_value(),
             )
 
     cluster = Cluster(**cluster_config)

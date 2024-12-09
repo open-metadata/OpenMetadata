@@ -13,31 +13,6 @@
                 "Cassandra"
             ],
             "default": "Cassandra"
-        },
-        "cloudConfig": {
-            "title": "DataStax Astra DB Configuration",
-            "description": "Configuration for connecting to DataStax Astra DB in the cloud.",
-            "type": "object",
-            "properties": {
-                "connectTimeout": {
-                    "description": "Timeout in seconds for establishing new connections to Cassandra.",
-                    "type": "integer",
-                    "default": 600
-                },
-                "requestTimeout": {
-                    "description": "Timeout in seconds for individual Cassandra requests.",
-                    "type": "integer",
-                    "default": 600
-                },
-                "token": {
-                    "description": "The Astra DB application token used for authentication.",
-                    "type": "string"
-                },
-                "secureConnectBundle": {
-                    "description": "File path to the Secure Connect Bundle (.zip) used for a secure connection to DataStax Astra DB.",
-                    "type": "string"
-                }
-            }
         }
     },
     "properties": {
@@ -52,11 +27,17 @@
             "description": "Username to connect to Cassandra. This user should have privileges to read all the metadata in Cassandra.",
             "type": "string"
         },
-        "password": {
-            "title": "Password",
-            "description": "Password to connect to Cassandra.",
-            "type": "string",
-            "format": "password"
+        "authType": {
+            "title": "Auth Configuration Type",
+            "description": "Choose Auth Config Type.",
+            "oneOf": [
+                {
+                    "$ref": "./common/basicAuth.json"
+                },
+                {
+                    "$ref": "./cassandra/cloudConfig.json"
+                }
+            ]
         },
         "hostPort": {
             "title": "Host and Port",
@@ -68,18 +49,10 @@
             "description": "Optional name to give to the database in OpenMetadata. If left blank, we will use default as the database name.",
             "type": "string"
         },
-        "cloudConfig": {
-            "title": "DataStax Astra DB Configuration",
-            "description": "Configuration for connecting to DataStax Astra DB in the cloud.",
-            "$ref": "#/definitions/cloudConfig"
-        },
         "supportsMetadataExtraction": {
             "title": "Supports Metadata Extraction",
             "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
         }
     },
-    "required": [
-        "hostPort"
-    ],
     "additionalProperties": false
 }

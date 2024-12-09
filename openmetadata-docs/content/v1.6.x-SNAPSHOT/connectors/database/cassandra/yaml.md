@@ -68,12 +68,6 @@ This is a sample config for Cassandra:
 
 {% /codeInfo %}
 
-{% codeInfo srNumber=2 %}
-
-**password**: Password to connect to Cassandra.
-
-{% /codeInfo %}
-
 {% codeInfo srNumber=3 %}
 
 **hostPort**: When using the `cassandra` connecion schema, the hostPort parameter specifies the host and port of the Cassandra. This should be specified as a string in the format `hostname:port`. E.g., `localhost:9042`.
@@ -86,17 +80,27 @@ This is a sample config for Cassandra:
 
 {% /codeInfo %}
 
+{% codeInfo srNumber=5 %}
+
+**Auth Type**: Following authentication types are supported:
+1. **Basic Authentication**:
+We'll use the user credentials to connect to Cassandra
+- **password**: Password of the user.
+
+2. **DataStax Astra DB Configuration**: 
+Configuration for connecting to DataStax Astra DB in the cloud.
+  - **secureConnectBundle**: File path to the Secure Connect Bundle (.zip) used for a secure connection to DataStax Astra DB.
+  - **token**: The Astra DB application token used for authentication.
+  - **connectTimeout**: Timeout in seconds for establishing new connections to Cassandra.
+  - **requestTimeout**: Timeout in seconds for individual Cassandra requests.
+
+{% /codeInfo %}
+
 {% partial file="/v1.6/connectors/yaml/database/source-config-def.md" /%}
 
 {% partial file="/v1.6/connectors/yaml/ingestion-sink-def.md" /%}
 
 {% partial file="/v1.6/connectors/yaml/workflow-config-def.md" /%}
-
-#### Advanced Configuration
-
-{% codeInfo srNumber=5 %}
-
-**cloudConfig**: Configuration for connecting to DataStax Astra DB in the cloud.
 
 {% /codeInfo %}
 
@@ -116,9 +120,6 @@ source:
 ```yaml {% srNumber=1 %}
       username: username
 ```
-```yaml {% srNumber=2 %}
-      password: password
-```
 ```yaml {% srNumber=3 %}
       hostPort: localhost:9042
 ```
@@ -126,11 +127,13 @@ source:
       databaseName: custom_database_name
 ```
 ```yaml {% srNumber=5 %}
-      cloudConfig:
-        secureConnectBundle: <file path>
-        token: token
-        requestTimeout: 600
-        connectTimeout: 600
+      authType:
+        password: password
+        cloudConfig:
+          secureConnectBundle: <SCB File Path>
+          token: <Token String>
+          requestTimeout: <Timeout in seconds>
+          connectTimeout: <Timeout in seconds>
 ```
 
 
@@ -145,100 +148,3 @@ source:
 {% /codePreview %}
 
 {% partial file="/v1.6/connectors/yaml/ingestion-cli.md" /%}
-
-
-### 1. Define the YAML Config
-
-This is a sample config for the profiler:
-
-{% codePreview %}
-
-{% codeInfoContainer %}
-
-{% codeInfo srNumber=20 %}
-
-#### Source Configuration - Source Config
-
-You can find all the definitions and types for the  `sourceConfig` [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/metadataIngestion/databaseServiceProfilerPipeline.json).
-
-
-**schemaFilterPattern**: Regex to only fetch tables or databases that matches the pattern.
-
-{% /codeInfo %}
-
-{% codeInfo srNumber=21 %}
-
-**tableFilterPattern**: Regex to only fetch tables or databases that matches the pattern.
-
-{% /codeInfo %}
-
-
-{% codeInfo srNumber=23 %}
-
-#### Sink Configuration
-
-To send the metadata to OpenMetadata, it needs to be specified as `type: metadata-rest`.
-{% /codeInfo %}
-
-
-{% codeInfo srNumber=24 %}
-
-#### Workflow Configuration
-
-The main property here is the `openMetadataServerConfig`, where you can define the host and security provider of your OpenMetadata installation.
-
-For a simple, local installation using our docker containers, this looks like:
-
-{% /codeInfo %}
-
-{% /codeInfoContainer %}
-
-{% codeBlock fileName="filename.yaml" %}
-
-
-```yaml {% isCodeBlock=true %}
-source:
-  type: cassandra
-  serviceName: local_cassandra
-  sourceConfig:
-    config:
-      type: DatabaseMetadata
-```
-
-```yaml {% srNumber=20 %}
-      # schemaFilterPattern:
-      #   includes:
-      #     - schema1
-      #     - schema2
-      #   excludes:
-      #     - schema3
-      #     - schema4
-```
-```yaml {% srNumber=21 %}
-      # tableFilterPattern:
-      #   includes:
-      #     - table1
-      #     - table2
-      #   excludes:
-      #     - table3
-      #     - table4
-```
-
-```yaml {% srNumber=23 %}
-sink:
-  type: metadata-rest
-  config: {}
-```
-
-```yaml {% srNumber=24 %}
-workflowConfig:
-  # loggerLevel: DEBUG  # DEBUG, INFO, WARN or ERROR
-  openMetadataServerConfig:
-    hostPort: <OpenMetadata host and port>
-    authProvider: <OpenMetadata auth provider>
-```
-
-{% /codeBlock %}
-
-{% /codePreview %}
-

@@ -11,47 +11,9 @@
  *  limitations under the License.
  */
 /**
- * Cassandra Connection Config
- */
-export interface CassandraConnection {
-    /**
-     * Choose Auth Config Type.
-     */
-    authType?: AuthConfigurationType;
-    /**
-     * Optional name to give to the database in OpenMetadata. If left blank, we will use default
-     * as the database name.
-     */
-    databaseName?: string;
-    /**
-     * Host and port of the Cassandra service when using the `cassandra` connection scheme. Only
-     * host when using the `cassandra+srv` scheme.
-     */
-    hostPort?:                   string;
-    supportsMetadataExtraction?: boolean;
-    /**
-     * Service Type
-     */
-    type?: CassandraType;
-    /**
-     * Username to connect to Cassandra. This user should have privileges to read all the
-     * metadata in Cassandra.
-     */
-    username?: string;
-}
-
-/**
- * Choose Auth Config Type.
- *
- * Common Database Connection Config
- *
  * Configuration for connecting to DataStax Astra DB in the cloud.
  */
-export interface AuthConfigurationType {
-    /**
-     * Password to connect to source.
-     */
-    password?: string;
+export interface CloudConfig {
     /**
      * Configuration for connecting to DataStax Astra DB in the cloud.
      */
@@ -80,13 +42,4 @@ export interface DataStaxAstraDBConfiguration {
      */
     token?: string;
     [property: string]: any;
-}
-
-/**
- * Service Type
- *
- * Service type.
- */
-export enum CassandraType {
-    Cassandra = "Cassandra",
 }

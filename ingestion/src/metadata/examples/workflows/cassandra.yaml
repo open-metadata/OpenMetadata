@@ -4,14 +4,15 @@ source:
   serviceConnection:
     config:
       type: Cassandra
-      # databaseName: custom_database_name
-      # username: cassandra
-      # password: cassandra
-      # cloudConfig:
-      #   secureConnectBundle: <SCB file path>
-      #   token: <token string>
-      #   requestTimeout: 600
-      #   connectTimeout: 600
+      databaseName: custom_database_name
+      username: cassandra
+      authType:
+        password: cassandra
+        # cloudConfig:
+        #   secureConnectBundle: <SCB File Path>
+        #   token: <Token String>
+        #   requestTimeout: <Timeout in seconds>
+        #   connectTimeout: <Timeout in seconds>
       hostPort: localhost:9042
   sourceConfig:
     config:
