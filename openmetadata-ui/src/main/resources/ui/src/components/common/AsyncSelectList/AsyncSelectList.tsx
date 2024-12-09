@@ -286,6 +286,13 @@ const AsyncSelectList: FC<AsyncSelectListProps & SelectProps> = ({
     onChange?.(selectedValues);
   };
 
+  const handleDropdownChange = (open: boolean) => {
+    if (!open) {
+      // Close the form when the dropdown closes
+      onCancel && onCancel();
+    }
+  };
+
   useEffect(() => {
     loadOptions('');
   }, []);
@@ -314,6 +321,7 @@ const AsyncSelectList: FC<AsyncSelectListProps & SelectProps> = ({
       style={{ width: '100%' }}
       tagRender={customTagRender}
       onChange={handleChange}
+      onDropdownVisibleChange={handleDropdownChange}
       onInputKeyDown={(event) => {
         if (event.key === 'Backspace') {
           return event.stopPropagation();
