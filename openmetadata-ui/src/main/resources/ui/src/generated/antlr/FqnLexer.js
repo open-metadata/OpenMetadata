@@ -1,4 +1,4 @@
-// Generated from /Users/harsha/Code/OpenMetadata/openmetadata-ui/src/main/resources/ui/../../../../../openmetadata-spec/src/main/antlr4/org/openmetadata/schema/Fqn.g4 by ANTLR 4.9.2
+// Generated from /Users/akashverma/Desktop/project/OpenMetadata/openmetadata-ui/src/main/resources/ui/../../../../../openmetadata-spec/src/main/antlr4/org/openmetadata/schema/Fqn.g4 by ANTLR 4.9.2
 // jshint ignore: start
 import antlr4 from 'antlr4';
 
