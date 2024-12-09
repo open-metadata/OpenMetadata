@@ -398,7 +398,7 @@ test('Verify function data in edge drawer', async ({ browser }) => {
 });
 
 test('Verify global lineage config', async ({ browser }) => {
-  test.slow();
+  test.slow(true);
 
   const { page } = await createNewPage(browser);
   const { apiContext, afterAction } = await getApiContext(page);
