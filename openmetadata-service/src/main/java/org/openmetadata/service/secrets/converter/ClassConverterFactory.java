@@ -13,8 +13,9 @@
 
 package org.openmetadata.service.secrets.converter;
 
+import com.mysql.cj.MysqlConnection;
 import java.util.Map;
-
+import lombok.Getter;
 import org.flywaydb.core.internal.database.redshift.RedshiftConnection;
 import org.openmetadata.schema.auth.SSOAuthMechanism;
 import org.openmetadata.schema.entity.automations.TestServiceConnectionRequest;
@@ -43,11 +44,6 @@ import org.openmetadata.schema.services.connections.database.iceberg.IcebergFile
 import org.openmetadata.schema.services.connections.pipeline.AirflowConnection;
 import org.openmetadata.schema.services.connections.search.ElasticSearchConnection;
 import org.openmetadata.schema.services.connections.storage.GCSConnection;
-
-import com.mysql.cj.MysqlConnection;
-
-import lombok.Getter;
-
 
 /** Factory class to get a `ClassConverter` based on the service class. */
 public final class ClassConverterFactory {
@@ -90,7 +86,7 @@ public final class ClassConverterFactory {
                 new TestServiceConnectionRequestClassConverter()),
             Map.entry(TrinoConnection.class, new TrinoConnectionClassConverter()),
             Map.entry(Workflow.class, new WorkflowClassConverter()));
-            Map.entry(CassandraConnection.class, new CassandraConnectionClassConverter());
+    Map.entry(CassandraConnection.class, new CassandraConnectionClassConverter());
   }
 
   public static ClassConverter getConverter(Class<?> clazz) {

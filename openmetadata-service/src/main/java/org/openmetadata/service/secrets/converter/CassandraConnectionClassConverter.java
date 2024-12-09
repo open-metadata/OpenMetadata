@@ -14,7 +14,6 @@
 package org.openmetadata.service.secrets.converter;
 
 import java.util.List;
-
 import org.openmetadata.schema.services.connections.database.CassandraConnection;
 import org.openmetadata.schema.services.connections.database.cassandra.CloudConfig;
 import org.openmetadata.schema.services.connections.database.common.basicAuth;
@@ -25,19 +24,21 @@ import org.openmetadata.service.util.JsonUtils;
  */
 public class CassandraConnectionClassConverter extends ClassConverter {
 
-    private static final List<Class<?>> CONFIG_SOURCE_CLASSES = List.of(basicAuth.class, CloudConfig.class);
+  private static final List<Class<?>> CONFIG_SOURCE_CLASSES =
+      List.of(basicAuth.class, CloudConfig.class);
 
-    public CassandraConnectionClassConverter() {
-        super(CassandraConnection.class);
-    }
+  public CassandraConnectionClassConverter() {
+    super(CassandraConnection.class);
+  }
 
-    @Override
-    public Object convert(Object object) {
-        CassandraConnection cassandraConnection = (CassandraConnection) JsonUtils.convertValue(object, this.clazz);
+  @Override
+  public Object convert(Object object) {
+    CassandraConnection cassandraConnection =
+        (CassandraConnection) JsonUtils.convertValue(object, this.clazz);
 
-        tryToConvert(cassandraConnection.getAuthType(), CONFIG_SOURCE_CLASSES)
-                .ifPresent(cassandraConnection::setAuthType);
+    tryToConvert(cassandraConnection.getAuthType(), CONFIG_SOURCE_CLASSES)
+        .ifPresent(cassandraConnection::setAuthType);
 
-        return cassandraConnection;
-    }
+    return cassandraConnection;
+  }
 }
