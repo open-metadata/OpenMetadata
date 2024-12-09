@@ -358,7 +358,7 @@ const GlossaryTermTab = ({
 
           return aIndex - bIndex;
         }),
-    [options, newColumns]
+    [newColumns]
   );
 
   const handleColumnSelectionDropdownSave = useCallback(() => {
