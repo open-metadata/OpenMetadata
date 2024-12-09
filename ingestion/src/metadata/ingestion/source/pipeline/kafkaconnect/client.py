@@ -61,8 +61,7 @@ class KafkaConnectClient:
         """
         Get the version and other details of the Kafka Connect cluster.
         """
-        result = self.client.get_cluster_info()
-        return result
+        return self.client.get_cluster_info()
 
     def get_connectors_list(
         self,
@@ -73,10 +72,7 @@ class KafkaConnectClient:
         """
         Get the list of connectors from Kafka Connect cluster.
         """
-        result = self.client.list_connectors(
-            expand=expand, pattern=pattern, state=state
-        )
-        return result
+        return self.client.list_connectors(expand=expand, pattern=pattern, state=state)
 
     def get_connectors(
         self,
