@@ -15,13 +15,9 @@ The main takes for developing a new connector are:
 
 When developing a new database ingestion connector in OpenMetadata, ensure all necessary components are correctly configured. This guide outlines the steps required to define the connector's ingestion capabilities using a `service_spec.py` file.
 
----
-
 ### Why Use `service_spec.py`?
 
 The `service_spec.py` file centralizes the definitions of sources, profilers, lineage, and other ingestion-related components for a connector. This approach helps standardize implementations across connectors, making it easier to manage ingestion workflows.
-
----
 
 ### Steps to Develop a New Connector
 
@@ -57,17 +53,13 @@ ServiceSpec = DefaultDatabaseSpec(
 
 Replace the example classes (e.g., `BigquerySource`, `BigqueryLineageSource`, etc.) with those specific to your connector. Depending on the connector's features, you may include or exclude certain components like usage or profiling.
 
----
-
 ### Components of `service_spec.py`
 
 - **`metadata_source_class`**: Defines the class for metadata ingestion.  
 - **`lineage_source_class`**: Defines the class for lineage extraction.  
 - **`usage_source_class`**: Tracks data usage patterns.  
 - **`profiler_class`**: Profiles data for quality and insights.  
-- **`sampler_class`**: Samples data for efficient ingestion.  
-
----
+- **`sampler_class`**: Samples data for efficient ingestion.
 
 ### Example Workflow
 
@@ -79,7 +71,6 @@ Define the `ServiceSpec` using the required classes, adjusting for your connecto
 
 #### Step 3: Verify Integration
 Run the ingestion workflow to test the connector and ensure all components are functioning correctly.
-
 
 ## Service Topology
 

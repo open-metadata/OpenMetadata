@@ -21,7 +21,7 @@ import {
 import ServiceBaseClass from './ServiceBaseClass';
 
 class BigQueryIngestionClass extends ServiceBaseClass {
-  name: string;
+  name = '';
   filterPattern: string;
 
   constructor() {
