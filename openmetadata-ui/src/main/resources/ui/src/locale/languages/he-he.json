@@ -1699,7 +1699,7 @@
     "no-closed-task": "אין משימות סגורות",
     "no-config-available": "אין הגדרות חיבור זמינות.",
     "no-config-plural": "אין הגדרות.",
-    "no-custom-properties-table": "There are currently no Custom Properties defined for the Table Data Asset. To discover how to add Custom Properties, please refer to <0>{{docs}}</0>",
+    "no-custom-properties-entity": "נכון לעכשיו לא מוגדרות תכונות מותאמות אישית עבור נכס הנתונים {{entity}}. כדי לגלות כיצד להוסיף תכונות מותאמות אישית, נא עיין ב-<0>{{docs}}</0>",
     "no-customization-available": "No customization available for this tab",
     "no-data": "אין נתונים",
     "no-data-assets": "Welcome to OpenMetadata! It looks like no data assets have been added yet. Check out our <0>How to Get Started</0> guide to begin.",
