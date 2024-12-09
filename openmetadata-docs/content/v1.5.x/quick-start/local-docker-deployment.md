@@ -219,7 +219,7 @@ alt="tour" /%}
 
 ## Start and Stop
 
-From the same directory mentioned in [step 1](#1.-create-a-directory-for-openmetadata), use the following commands to pause and unpause the Docker Compose services.
+From the same directory mentioned in [step 1](#1.-create-a-directory-for-openmetadata), use the following commands to start and stop the Docker Compose services.
 
 To stop the services
 
