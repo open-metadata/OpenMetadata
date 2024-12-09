@@ -86,9 +86,7 @@ for (const EntityClass of entities) {
   test(`Lineage creation from ${defaultEntity.getType()} entity`, async ({
     browser,
   }) => {
-    // Temporarily increase the timeout for this test
-    // TODO: Improve test to reduce the time taken
-    test.setTimeout(240_000);
+    test.slow(true);
 
     const { page } = await createNewPage(browser);
     const { currentEntity, entities, cleanup } = await setupEntitiesForLineage(
@@ -400,9 +398,7 @@ test('Verify function data in edge drawer', async ({ browser }) => {
 });
 
 test('Verify global lineage config', async ({ browser }) => {
-  // Temporarily increase the timeout for this test
-  // TODO: Improve test to reduce the time taken
-  test.setTimeout(240_000);
+  test.slow(true);
 
   const { page } = await createNewPage(browser);
   const { apiContext, afterAction } = await getApiContext(page);

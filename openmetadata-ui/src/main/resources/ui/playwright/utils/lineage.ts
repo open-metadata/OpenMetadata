@@ -124,22 +124,6 @@ export const deleteEdge = async (
   await deleteRes;
 };
 
-export const dragAndDropNode = async (
-  page: Page,
-  originSelector: string,
-  destinationSelector: string
-) => {
-  const destinationElement = await page.waitForSelector(destinationSelector);
-  await page.hover(originSelector);
-  await page.mouse.down();
-  const box = (await destinationElement.boundingBox())!;
-  const x = (box.x + box.width / 2) * 0.25; // 0.25 as zoom factor
-  const y = (box.y + box.height / 2) * 0.25; // 0.25 as zoom factor
-  await page.mouse.move(x, y);
-  await destinationElement.hover();
-  await page.mouse.up();
-};
-
 export const dragConnection = async (
   page: Page,
   sourceId: string,
@@ -171,10 +155,10 @@ export const connectEdgeBetweenNodes = async (
   const toNodeName = get(toNode, 'entityResponseData.name');
   const toNodeFqn = get(toNode, 'entityResponseData.fullyQualifiedName');
 
-  const source = `[data-testid="${type}-draggable-icon"]`;
-  const target = '[data-testid="lineage-details"]';
-
-  await dragAndDropNode(page, source, target);
+  // Drag and drop the node to the lineage canvas
+  await page
+    .locator(`[data-testid="${type}-draggable-icon"]`)
+    .dragTo(page.locator('[data-testid="lineage-details"]'));
 
   await page.locator('[data-testid="suggestion-node"]').dispatchEvent('click');
 
