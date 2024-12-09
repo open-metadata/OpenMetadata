@@ -86,21 +86,6 @@
     "supportsMetadataExtraction": {
       "title": "Supports Metadata Extraction",
       "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
-    },
-    "supportsDBTExtraction": {
-      "$ref": "../connectionBasicType.json#/definitions/supportsDBTExtraction"
-    },
-    "supportsProfiler": {
-      "title": "Supports Profiler",
-      "$ref": "../connectionBasicType.json#/definitions/supportsProfiler"
-    },
-    "supportsQueryComment": {
-      "title": "Supports Query Comment",
-      "$ref": "../connectionBasicType.json#/definitions/supportsQueryComment"
-    },
-    "sampleDataStorageConfig": {
-      "title": "Storage Config for Sample Data",
-      "$ref": "../connectionBasicType.json#/definitions/sampleDataStorageConfig"
     }
   },
   "additionalProperties": false,
