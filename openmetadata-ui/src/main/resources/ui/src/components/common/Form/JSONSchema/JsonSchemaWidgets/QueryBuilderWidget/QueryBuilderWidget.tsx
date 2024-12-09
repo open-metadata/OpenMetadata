@@ -186,7 +186,8 @@ const QueryBuilderWidget: FC<WidgetProps> = ({
     if (!isEmpty(value)) {
       if (outputType === SearchOutputType.ElasticSearch) {
         const parsedTree = getJsonTreeFromQueryFilter(
-          JSON.parse(value || '')
+          JSON.parse(value || ''),
+          config.fields
         ) as JsonTree;
 
         if (Object.keys(parsedTree).length > 0) {
