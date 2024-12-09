@@ -118,6 +118,18 @@ removing these properties as well.
 - If you still want to use the Auto PII Classification and sampling features, you can create the new workflow
 from the UI.
 
+### RBAC Policy Updates for `EditTags`
+
+We have given more granularity to the `EditTags` policy. Previously, it was a single policy that allowed the user to manage
+any kind of tagging to the assets, including adding tags, glossary terms, and Tiers. 
+
+Now, we have split this policy to give further control on which kind of tagging the user can manage. The `EditTags` policy has been
+split into:
+
+- `EditTags`: to add tags.
+- `EditGlossaryTerms`: to add Glossary Terms.
+- `EditTier`: to add Tier tags.
+
 ### Collate - Metadata Actions for ML Tagging - Deprecation Notice
 
 Since we are introducing the `Auto Classification` workflow, **we are going to remove in 1.7 the `ML Tagging` action**
