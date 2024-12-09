@@ -32,7 +32,8 @@ export class GlossaryTerm {
     reviewers: [],
   };
 
-  responseData: GlossaryTermResponseDataType;
+  responseData: GlossaryTermResponseDataType =
+    {} as GlossaryTermResponseDataType;
 
   constructor(glossary: Glossary, parent?: string, name?: string) {
     this.data.glossary = glossary.data.name;

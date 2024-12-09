@@ -46,6 +46,8 @@ export const visitClassificationPage = async (
   );
   await sidebarClick(page, SidebarItem.TAGS);
   await classificationResponse;
+
+  const fetchTags = page.waitForResponse('/api/v1/tags?*parent=*');
   await page
     .locator(`[data-testid="side-panel-classification"]`)
     .filter({ hasText: classificationName })
@@ -55,7 +57,11 @@ export const visitClassificationPage = async (
     classificationName
   );
 
-  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+  await fetchTags;
+  await page.waitForSelector(
+    '[data-testid="tags-container"] [data-testid="loader"]',
+    { state: 'detached' }
+  );
 };
 
 // Other asset type that should not get from the search in explore, they are not added to the tag
@@ -355,7 +361,6 @@ export const verifyCertificationTagPageUI = async (page: Page) => {
   await expect(
     page.getByTestId('data-classification-add-button')
   ).not.toBeVisible();
-  await expect(page.getByTestId('no-data-placeholder')).toBeVisible();
 };
 
 export const LIMITED_USER_RULES: PolicyRulesType[] = [

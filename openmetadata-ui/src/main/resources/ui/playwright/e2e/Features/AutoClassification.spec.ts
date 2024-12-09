@@ -59,10 +59,7 @@ test.describe('Auto Classification', PLAYWRIGHT_INGESTION_TAG_OBJ, async () => {
     await getDatabases;
 
     // Click on the database name
-    await page
-      .getByTestId('child-asset-name-link')
-      .getByText('default')
-      .click();
+    await page.getByTestId('column-name').getByText('default').click();
 
     await page.waitForSelector('[data-testid="cypress_integrations_test_db"]');
 

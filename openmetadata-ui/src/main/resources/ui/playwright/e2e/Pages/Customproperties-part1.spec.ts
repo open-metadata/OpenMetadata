@@ -18,7 +18,7 @@ import {
   deleteCreatedProperty,
   editCreatedProperty,
 } from '../../utils/customProperty';
-import { settingClick } from '../../utils/sidebar';
+import { settingClick, SettingOptionsType } from '../../utils/sidebar';
 
 const propertiesList = [
   'Integer',
@@ -50,7 +50,11 @@ test.describe('Custom properties without custom property config', () => {
         }) => {
           test.slow(true);
 
-          await settingClick(page, entity.entityApiType, true);
+          await settingClick(
+            page,
+            entity.entityApiType as SettingOptionsType,
+            true
+          );
 
           await addCustomPropertiesForEntity({
             page,

@@ -16,7 +16,6 @@ import React, { Fragment } from 'react';
 import { Handle, HandleProps, HandleType, Position } from 'reactflow';
 import { ReactComponent as MinusIcon } from '../../../assets/svg/control-minus.svg';
 import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-outlined.svg';
-import { NODE_WIDTH } from '../../../constants/Lineage.constants';
 import { EntityLineageNodeType } from '../../../enums/entity.enum';
 import { Column } from '../../../generated/entity/data/table';
 import { encodeLineageHandles } from '../../../utils/EntityLineageUtils';
@@ -156,8 +155,8 @@ export const getColumnContent = (
           })}
         </div>
         <Typography.Text
-          ellipsis={{ tooltip: true }}
-          style={{ maxWidth: NODE_WIDTH, color: 'inherit' }}>
+          className="custom-node-column-label"
+          ellipsis={{ tooltip: true }}>
           {getEntityName(column)}
         </Typography.Text>
       </span>

@@ -2,7 +2,7 @@
   "ignoreFile": ".licenseheaderignore",
   "license": "LICENSE",
   "trailingWhitespace": "TRIM",
-  "regexIdentifier": "@@",
+  "regexIdentifier": "@@@",
   "licenseFormats": {
     "sh|yml|yaml|^Dockerfile": {
       "eachLine": {

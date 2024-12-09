@@ -243,6 +243,7 @@ class CliDBBase(TestCase):
             self.create_table_and_view()
             self.build_config_file()
             self.run_command()
+            self.add_table_profile_config()
             table: Table = self.openmetadata.get_by_name(
                 Table, self.get_data_quality_table(), nullable=False
             )
@@ -476,3 +477,6 @@ class CliDBBase(TestCase):
         def get_system_profile_cases(self) -> List[Tuple[str, List[SystemProfile]]]:
             """Return a list of tuples with the table fqn and the expected system profile"""
             return []
+
+        def add_table_profile_config(self):
+            pass
