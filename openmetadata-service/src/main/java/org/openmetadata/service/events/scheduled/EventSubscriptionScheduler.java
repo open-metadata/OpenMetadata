@@ -118,7 +118,6 @@ public class EventSubscriptionScheduler {
 
       // Schedule the Job
       alertsScheduler.scheduleJob(jobDetail, trigger);
-      instance.scheduleCleanupJob();
 
       LOG.info(
           "Event Subscription started as {} : status {} for all Destinations",

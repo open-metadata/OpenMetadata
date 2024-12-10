@@ -24,6 +24,9 @@
         },
         {
           "$ref": "external/slackAppTokenConfiguration.json"
+        },
+        {
+          "$ref": "internal/retentionPolicyConfiguration.json"
         }
       ]
     },

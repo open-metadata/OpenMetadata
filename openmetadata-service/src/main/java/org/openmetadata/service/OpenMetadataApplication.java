@@ -67,6 +67,7 @@ import org.openmetadata.schema.configuration.LimitsConfiguration;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.service.apps.ApplicationHandler;
+import org.openmetadata.service.apps.bundles.retentionPolicyApp.RetentionPolicyScheduler;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.config.OMWebBundle;
 import org.openmetadata.service.config.OMWebConfiguration;
@@ -625,6 +626,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       EventPubSub.shutdown();
       AppScheduler.shutDown();
       EventSubscriptionScheduler.shutDown();
+      RetentionPolicyScheduler.shutDown();
       LOG.info("Stopping the application");
     }
   }
