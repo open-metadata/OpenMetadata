@@ -43,9 +43,3 @@ CASSANDRA_GET_TABLE_COLUMNS = textwrap.dedent(
     SELECT * FROM system_schema.columns WHERE keyspace_name = %s AND table_name = %s
     """
 )
-
-CASSANDRA_GET_TABLE_DATA = textwrap.dedent(
-    """
-    SELECT * FROM my_keyspace.user_table limit 10
-    """
-)
