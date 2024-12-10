@@ -165,6 +165,9 @@ export const useApplicationStore = create<ApplicationStore>()(
         return get()?.oidcIdToken;
       },
       setOidcToken: (oidcToken) => {
+        // const { start } = get();
+        // if (oidcToken) {
+        // }
         set({ oidcIdToken: oidcToken });
       },
       removeOidcToken: () => {
