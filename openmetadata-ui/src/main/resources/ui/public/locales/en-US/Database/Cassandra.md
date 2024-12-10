@@ -32,11 +32,10 @@ $$section
   
   Configuration for connecting to DataStax Astra DB in the cloud.
 
-  - cloudConfig: Configuration for connecting to DataStax Astra DB in the cloud.
-  - connectTimeout: Timeout in seconds for establishing new connections to Cassandra.
-  - requestTimeout: Timeout in seconds for individual Cassandra requests.
-  - token: The Astra DB application token used for authentication.
-  - secureConnectBundle: File path to the Secure Connect Bundle (.zip) used for a secure connection to DataStax Astra DB.
+  - connectTimeout $(id="connectTimeout"): Timeout in seconds for establishing new connections to Cassandra.
+  - requestTimeout $(id="requestTimeout"): Timeout in seconds for individual Cassandra requests.
+  - token $(id="token"): The Astra DB application token used for authentication.
+  - secureConnectBundle $(id="secureConnectBundle"): File path to the Secure Connect Bundle (.zip) used for a secure connection to DataStax Astra DB.
 $$
 
 $$section
