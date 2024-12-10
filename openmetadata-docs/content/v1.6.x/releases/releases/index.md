@@ -14,6 +14,42 @@ version. To see what's coming in next releases, please check our [Roadmap](/rele
 
 {% partial file="/v1.6/releases/latest.md" /%}
 
+# 1.5.13 Release
+
+{% note noteType="Tip" %}
+**Nov 28th, 2024**
+{% /note %}
+
+# What's Changed
+
+- Fix Microstrategy Login Mode
+- Add Snowflake UDF Lineage Support
+
+**Full Changelog**: https://github.com/open-metadata/OpenMetadata/compare/1.5.12-release...1.5.13-release
+
+# 1.5.12 Release
+
+{% note noteType="Tip" %}
+**Nov 26th, 2024**
+{% /note %}
+
+# What's Changed
+
+- Improvement: Added async apis for csv import.
+- Improvement: Skip domain check for bots and admin
+- Improvement: MYSQL lineage and usage.
+- Minor: Added Lineage Field back to SearchLineage.
+- Fix: Database is missing from the search dropdown
+- Fix: Bad Representation of owners.
+- Fix: The Daily Active Users Summary Card in Data Insights.
+- Fix: The processing of URL Encoded Assets in Data Insights.
+- Fix: Column Level Lineage export.
+- Fix: Store procedure yielding by adding Try/Except.
+- Fix: Lineage export when there is no column / pipeline edge.
+
+
+
+
 # 1.5.11 Release
 
 {% note noteType="Tip" %}
