@@ -1290,17 +1290,20 @@ SET
         )
       )
     )
-  ) 
+  )
 WHERE 
   json -> 'chartDetails' -> 'metrics' is null;
 
 
--- Rename 'offset' to 'currentOffset' and add 'startingOffset'
+-- Rename and remove 'offset' to 'currentOffset' and add 'startingOffset'
 UPDATE change_event_consumers
 SET json = jsonb_set(
-    jsonb_set(json, '{currentOffset}', json -> 'offset'),
-    '{startingOffset}', json -> 'offset'
-)
+                jsonb_set(
+                    json - 'offset',
+                    '{currentOffset}', json -> 'offset'
+                ),
+                '{startingOffset}', json -> 'offset'
+            )
 WHERE json -> 'offset' IS NOT NULL
   AND jsonSchema = 'eventSubscriptionOffset';
 
