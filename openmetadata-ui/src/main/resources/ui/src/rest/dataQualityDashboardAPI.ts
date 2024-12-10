@@ -317,7 +317,9 @@ export const fetchTestCaseStatusMetricsByDays = (
   if (filters?.entityFQN) {
     mustFilter.push({
       term: {
-        'testCase.entityFQN': filters.entityFQN,
+        [filters.entityType
+          ? `${filters.entityType}.fullyQualifiedName.keyword`
+          : 'testCase.entityFQN']: filters.entityFQN,
       },
     });
   }
