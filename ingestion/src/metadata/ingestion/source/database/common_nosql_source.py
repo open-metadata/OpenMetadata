@@ -194,13 +194,17 @@ class CommonNoSQLSource(DatabaseServiceSource, ABC):
 
         table_type_collections_mapping = {}
         if self.source_config.includeTables:
-            table_type_collections_mapping[
-                TableType.Regular
-            ] = self.get_table_name_list(schema_name)
+            table_type_collections_mapping.update(
+                {TableType.Regular: self.get_table_name_list(schema_name)}
+            )
         if self.source_config.includeViews:
-            table_type_collections_mapping[
-                TableType.MaterializedView
-            ] = self.get_materialized_view_name_list(schema_name)
+            table_type_collections_mapping.update(
+                {
+                    TableType.MaterializedView: self.get_materialized_view_name_list(
+                        schema_name
+                    )
+                }
+            )
 
         for table_type, collections in table_type_collections_mapping.items():
             for collection in collections or []:
