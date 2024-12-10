@@ -106,7 +106,10 @@ const GlossaryTermTab = ({
     useGlossaryStore();
   const { t } = useTranslation();
 
-  const glossaryTerms = (glossaryChildTerms as ModifiedGlossaryTerm[]) ?? [];
+  const glossaryTerms = useMemo(
+    () => (glossaryChildTerms as ModifiedGlossaryTerm[]) ?? [],
+    [glossaryChildTerms]
+  );
 
   const [movedGlossaryTerm, setMovedGlossaryTerm] =
     useState<MoveGlossaryTermType>();
@@ -141,6 +144,9 @@ const GlossaryTermTab = ({
   }, [isGlossary, activeGlossary]);
 
   const expandableKeys = useMemo(() => {
+    // clean expandedRowKey upon glossaryTerm change
+    setExpandedRowKeys([]);
+
     return findExpandableKeysForArray(glossaryTerms);
   }, [glossaryTerms]);
 

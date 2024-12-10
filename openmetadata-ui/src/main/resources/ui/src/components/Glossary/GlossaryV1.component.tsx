@@ -129,11 +129,9 @@ const GlossaryV1 = ({
       const { data } = await getFirstLevelGlossaryTerms(
         params?.glossary ?? params?.parent ?? ''
       );
-      const children = data.map((data) =>
-        data.childrenCount ?? 0 > 0 ? { ...data, children: [] } : data
-      );
-
-      setGlossaryChildTerms(children as ModifiedGlossary[]);
+      // We are considering childrenCount fot expand collapse state
+      // Hence don't need any intervention to list response here
+      setGlossaryChildTerms(data as ModifiedGlossary[]);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -232,7 +230,11 @@ const GlossaryV1 = ({
           entity: t('label.glossary-term'),
         });
       } else {
-        updateGlossaryTermInStore(response);
+        updateGlossaryTermInStore({
+          ...response,
+          // Since patch didn't respond with childrenCount preserve it from currentData
+          childrenCount: currentData.childrenCount,
+        });
         setIsEditModalOpen(false);
       }
     } catch (error) {
