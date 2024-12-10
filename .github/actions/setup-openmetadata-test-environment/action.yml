@@ -50,7 +50,7 @@ runs:
     - name: Install Python Dependencies
       run: |
         source env/bin/activate
-        make install_all install_test
+        make install_all
       shell: bash
     # ------------------------------------------------------------------------------
 

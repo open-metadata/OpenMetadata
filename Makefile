@@ -1,6 +1,7 @@
 .DEFAULT_GOAL := help
 PY_SOURCE ?= ingestion/src
 include ingestion/Makefile
+include openmetadata-airflow-apis/Makefile
 
 .PHONY: help
 help:

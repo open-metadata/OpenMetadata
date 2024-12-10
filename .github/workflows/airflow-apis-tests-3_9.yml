@@ -95,7 +95,7 @@ jobs:
     - name: Install open-metadata dependencies
       run: |
         source env/bin/activate
-        make install_all install_test
+        make install_all
 
     - name: Start Server and Ingest Sample Data
       uses: nick-fields/retry@v2.8.3
