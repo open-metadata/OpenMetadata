@@ -149,6 +149,34 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
   const columns = useMemo(() => {
     const data: ColumnsType<TestCase> = [
       {
+        title: t('label.status'),
+        dataIndex: 'status',
+        key: 'status',
+        width: 250,
+        sorter: true,
+        sortDirections: ['ascend', 'descend'],
+        render: (name: string, record) => {
+          const status = record.testCaseResult?.testCaseStatus;
+          const result = record.testCaseResult?.result;
+
+          return (
+            <Space className="d-flex align-start" data-testid={name}>
+              <Tooltip title={status}>
+                <div className="m-t-xss">
+                  <StatusBox status={status?.toLocaleLowerCase()} />
+                </div>
+              </Tooltip>
+
+              {status !== 'Success' && (
+                <Typography.Paragraph className="m-0" style={{ maxWidth: 230 }}>
+                  {result}
+                </Typography.Paragraph>
+              )}
+            </Space>
+          );
+        },
+      },
+      {
         title: t('label.name'),
         dataIndex: 'name',
         key: 'name',
@@ -156,7 +184,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         sorter: true,
         sortDirections: ['ascend', 'descend'],
         render: (name: string, record) => {
-          const status = record.testCaseResult?.testCaseStatus;
+          // const status = record.testCaseResult?.testCaseStatus;
           const urlData = {
             pathname: getIncidentManagerDetailPagePath(
               record.fullyQualifiedName ?? ''
@@ -166,11 +194,11 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
 
           return (
             <Space data-testid={name}>
-              <Tooltip title={status}>
+              {/* <Tooltip title={status}>
                 <div>
                   <StatusBox status={status?.toLocaleLowerCase()} />
                 </div>
-              </Tooltip>
+              </Tooltip> */}
 
               <Typography.Paragraph className="m-0" style={{ maxWidth: 280 }}>
                 <Link to={urlData}>{getEntityName(record)}</Link>
