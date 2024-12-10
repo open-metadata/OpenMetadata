@@ -27,6 +27,7 @@ import { getEntityFeedLink } from '../../../utils/EntityUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { useActivityFeedProvider } from '../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import RichTextEditor from '../../common/RichTextEditor/RichTextEditor';
 import './announcement-modal.less';
 
@@ -36,6 +37,7 @@ interface Props {
   entityFQN: string;
   onCancel: () => void;
   onSave: () => void;
+  isAnnouncementTab?: boolean;
 }
 
 export interface CreateAnnouncement {
@@ -51,8 +53,10 @@ const AddAnnouncementModal: FC<Props> = ({
   onSave,
   entityType,
   entityFQN,
+  isAnnouncementTab = false,
 }) => {
   const { currentUser } = useApplicationStore();
+  const { updateEntityThread } = useActivityFeedProvider();
 
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
@@ -84,6 +88,9 @@ const AddAnnouncementModal: FC<Props> = ({
       try {
         setIsLoading(true);
         const data = await postThread(announcementData);
+        if (!isAnnouncementTab) {
+          updateEntityThread(data);
+        }
         if (data) {
           showSuccessToast(t('message.announcement-created-successfully'));
         }

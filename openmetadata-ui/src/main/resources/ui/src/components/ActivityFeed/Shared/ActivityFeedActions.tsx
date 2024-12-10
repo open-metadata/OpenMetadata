@@ -12,7 +12,7 @@
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Space } from 'antd';
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
 import { ReactComponent as IconEdit } from '../../../assets/svg/ic-edit.svg';
@@ -25,6 +25,7 @@ import {
 
 import { ReactComponent as IconReply } from '../../../assets/svg/ic-reply.svg';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { deletePostById, deleteThread } from '../../../rest/feedsAPI';
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
 import './activity-feed-actions.less';
 
@@ -33,6 +34,8 @@ interface ActivityFeedActionsProps {
   feed: Thread;
   isPost: boolean;
   onEditPost?: () => void;
+  isAnnouncementTab?: boolean;
+  updateAnnouncementThreads?: () => void;
 }
 
 const ActivityFeedActions = ({
@@ -40,6 +43,8 @@ const ActivityFeedActions = ({
   feed,
   isPost,
   onEditPost,
+  isAnnouncementTab,
+  updateAnnouncementThreads,
 }: ActivityFeedActionsProps) => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
@@ -53,11 +58,33 @@ const ActivityFeedActions = ({
 
     updateEditorFocus(true);
   };
+  const deleteAnnouncementThread = useCallback(
+    async (threadId: string, postId: string, isThread: boolean) => {
+      if (isThread) {
+        await deleteThread(threadId);
+        updateAnnouncementThreads && updateAnnouncementThreads();
+      } else {
+        const deleteResponse = await deletePostById(threadId, postId);
+
+        updateAnnouncementThreads && updateAnnouncementThreads();
+        // if (deleteResponse) {
+        //   //await getUpdatedThread(threadId);
+        //   updateAnnouncementThreads && updateAnnouncementThreads();
+        // }
+      }
+    },
+    []
+  );
 
   const handleDelete = () => {
-    deleteFeed(feed.id, post.id, !isPost).catch(() => {
-      // ignore since error is displayed in toast in the parent promise.
-    });
+    if (isAnnouncementTab || isPost) {
+      deleteAnnouncementThread(feed.id, post.id, !isPost);
+    } else {
+      deleteFeed(feed.id, post.id, !isPost).catch(() => {
+        // ignore since error is displayed in toast in the parent promise.
+      });
+    }
+
     setShowDeleteDialog(false);
     if (!isPost) {
       hideDrawer();
@@ -99,15 +126,16 @@ const ActivityFeedActions = ({
           />
         )}
 
-        {editCheck && (
-          <Icon
-            className="toolbar-button"
-            component={IconEdit}
-            data-testid="edit-message"
-            style={{ fontSize: '16px' }}
-            onClick={onEditPost}
-          />
-        )}
+        {editCheck ||
+          ((feed.type === 'Announcement' || isAnnouncementTab) && (
+            <Icon
+              className="toolbar-button"
+              component={IconEdit}
+              data-testid="edit-message"
+              style={{ fontSize: '16px' }}
+              onClick={onEditPost}
+            />
+          ))}
 
         {deleteCheck && (
           <Icon

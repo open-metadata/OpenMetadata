@@ -15,6 +15,7 @@ import { EntityType } from '../../../enums/entity.enum';
 import { FeedFilter } from '../../../enums/mydata.enum';
 import { ReactionOperation } from '../../../enums/reactions.enum';
 import {
+  AnnoucementStatus,
   Post,
   ReactionType,
   Thread,
@@ -57,7 +58,8 @@ export interface ActivityFeedProviderContextType {
     entityType?: EntityType,
     fqn?: string,
     taskStatus?: ThreadTaskStatus,
-    limit?: number
+    limit?: number,
+    AnnouncementStatus?: AnnoucementStatus
   ) => Promise<void>;
   showDrawer: (thread: Thread) => void;
   hideDrawer: () => void;

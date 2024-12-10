@@ -37,7 +37,8 @@ export const getAllFeeds = async (
   filterType?: FeedFilter,
   taskStatus?: ThreadTaskStatus,
   userId?: string,
-  limit?: number
+  limit?: number,
+  activeAnnouncement?: boolean | undefined
 ) => {
   const isFilterAll = filterType === FeedFilter.ALL || isUndefined(filterType);
 
@@ -52,6 +53,7 @@ export const getAllFeeds = async (
         taskStatus,
         userId: isFilterAll ? undefined : userId,
         limit,
+        activeAnnouncement,
       },
     }
   );
@@ -174,6 +176,32 @@ export const getActiveAnnouncement = async (entityLink?: string) => {
   } = {
     type: ThreadType.Announcement,
     activeAnnouncement: true,
+  };
+
+  if (entityLink) {
+    params.entityLink = entityLink;
+  }
+
+  const response = await APIClient.get<{ data: Thread[]; paging: Paging }>(
+    '/feed',
+    {
+      params,
+    }
+  );
+
+  return response.data;
+};
+export const getAnnouncements = async (
+  activeAnnouncement?: boolean,
+  entityLink?: string
+) => {
+  const params: {
+    type: ThreadType;
+    activeAnnouncement?: boolean;
+    entityLink?: string;
+  } = {
+    type: ThreadType.Announcement,
+    activeAnnouncement: activeAnnouncement,
   };
 
   if (entityLink) {

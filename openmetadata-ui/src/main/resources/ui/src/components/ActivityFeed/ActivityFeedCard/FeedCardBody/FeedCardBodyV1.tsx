@@ -165,7 +165,10 @@ const FeedCardBodyV1 = ({
   return (
     <div
       className={classNames(
-        'feed-card-body bg-grey-5 p-sm rounded-6',
+        `feed-card-body  p-sm rounded-6 ${
+          feed.type !== 'Announcement' && 'bg-grey-5'
+        }`,
+
         isEditPost ? '' : className
       )}>
       <div className="feed-message">
