@@ -156,17 +156,13 @@ function ServiceMainTabContent({
           displayName: entityData.displayName || undefined,
         };
         const jsonPatch = compare(pageDataDetails, updatedData);
-        await callServicePatchAPI(
+        const response = await callServicePatchAPI(
           serviceCategory,
           pageDataDetails.id,
           jsonPatch
         );
         setPageData((prevData) =>
-          prevData.map((data) =>
-            data.id === id
-              ? { ...data, displayName: entityData.displayName }
-              : data
-          )
+          prevData.map((data) => (data.id === id && response ? response : data))
         );
       } catch (error) {
         showErrorToast(error as AxiosError);
