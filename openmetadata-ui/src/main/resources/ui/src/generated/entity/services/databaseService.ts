@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * This schema defines the `Database Service` is a service such as MySQL, BigQuery,
  * Redshift, Postgres, or Snowflake. Alternative terms such as Database Cluster, Database
  * Server instance are also used for database service.
@@ -228,6 +226,8 @@ export interface DatabaseConnection {
  * Synapse Database Connection Config
  *
  * Exasol Database Connection Config
+ *
+ * Cockroach Database Connection Config
  */
 export interface ConfigClass {
     /**
@@ -290,6 +290,8 @@ export interface ConfigClass {
      * Host and Port of the SAP ERP instance.
      *
      * Host and port of the Azure Synapse service.
+     *
+     * Host and port of the Cockrooach service.
      */
     hostPort?:                string;
     sampleDataStorageConfig?: SampleDataStorageConfig;
@@ -373,6 +375,9 @@ export interface ConfigClass {
      *
      * Initial Redshift database to connect to. If you want to ingest all databases, set
      * ingestAllDatabases to true.
+     *
+     * Optional name to give to the database in OpenMetadata. If left blank, we will use default
+     * as the database name.
      */
     database?: string;
     /**
@@ -532,6 +537,9 @@ export interface ConfigClass {
      *
      * Username to connect to Exasol. This user should have privileges to read all the metadata
      * in Exasol.
+     *
+     * Username to connect to Cockroach. This user should have privileges to read all the
+     * metadata in Cockroach.
      */
     username?: string;
     /**
@@ -586,7 +594,15 @@ export interface ConfigClass {
     /**
      * Generated Token to connect to Databricks.
      */
-    token?:                         string;
+    token?: string;
+    /**
+     * License to connect to DB2.
+     */
+    license?: string;
+    /**
+     * License file name to connect to DB2.
+     */
+    licenseFileName?:               string;
     supportsViewLineageExtraction?: boolean;
     /**
      * Available sources to fetch the metadata.
@@ -1787,6 +1803,7 @@ export enum ConfigScheme {
     Bigquery = "bigquery",
     ClickhouseHTTP = "clickhouse+http",
     ClickhouseNative = "clickhouse+native",
+    CockroachdbPsycopg2 = "cockroachdb+psycopg2",
     Couchbase = "couchbase",
     DatabricksConnector = "databricks+connector",
     Db2IBMDB = "db2+ibm_db",
@@ -1854,6 +1871,7 @@ export enum ConfigType {
     BigQuery = "BigQuery",
     BigTable = "BigTable",
     Clickhouse = "Clickhouse",
+    Cockroach = "Cockroach",
     Couchbase = "Couchbase",
     CustomDatabase = "CustomDatabase",
     Databricks = "Databricks",
@@ -1969,6 +1987,7 @@ export enum DatabaseServiceType {
     BigQuery = "BigQuery",
     BigTable = "BigTable",
     Clickhouse = "Clickhouse",
+    Cockroach = "Cockroach",
     Couchbase = "Couchbase",
     CustomDatabase = "CustomDatabase",
     Databricks = "Databricks",

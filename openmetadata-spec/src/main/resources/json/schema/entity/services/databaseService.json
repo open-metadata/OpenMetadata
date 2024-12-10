@@ -58,7 +58,8 @@
         "Teradata",
         "SapErp",
         "Synapse",
-        "Exasol"
+        "Exasol",
+        "Cockroach"
       ],
       "javaEnums": [
         {
@@ -192,6 +193,9 @@
         },
         {
           "name": "Exasol"
+        },
+        {
+          "name": "Cockroach"
         }
       ]
     },
@@ -330,6 +334,9 @@
             },
             {
               "$ref": "./connections/database/exasolConnection.json"
+            },
+            {
+              "$ref": "./connections/database/cockroachConnection.json"
             }
           ]
         }

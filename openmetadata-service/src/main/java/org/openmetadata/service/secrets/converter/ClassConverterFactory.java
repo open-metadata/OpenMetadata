@@ -72,7 +72,8 @@ public final class ClassConverterFactory {
                 TestServiceConnectionRequest.class,
                 new TestServiceConnectionRequestClassConverter()),
             Map.entry(TrinoConnection.class, new TrinoConnectionClassConverter()),
-            Map.entry(Workflow.class, new WorkflowClassConverter()));
+            Map.entry(Workflow.class, new WorkflowClassConverter()),
+            Map.entry(CockroachConnection.class, new CockroachConnectionClassConverter()));
   }
 
   public static ClassConverter getConverter(Class<?> clazz) {

@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * DatabaseService Profiler Pipeline Configuration.
  */
 export interface DatabaseServiceProfilerPipeline {
@@ -47,12 +45,8 @@ export interface DatabaseServiceProfilerPipeline {
      * Percentage of data or no. of rows used to compute the profiler metrics and run data
      * quality tests
      */
-    profileSample?:     number;
-    profileSampleType?: ProfileSampleType;
-    /**
-     * Number of sample rows to ingest when 'Generate Sample Data' is enabled
-     */
-    sampleDataCount?:    number;
+    profileSample?:      number;
+    profileSampleType?:  ProfileSampleType;
     samplingMethodType?: SamplingMethodType;
     /**
      * Regex to only fetch tables or databases that matches the pattern.
