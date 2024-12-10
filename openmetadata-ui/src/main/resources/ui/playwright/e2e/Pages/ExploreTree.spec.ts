@@ -190,3 +190,28 @@ test.describe('Explore Tree scenarios ', () => {
     await afterAction();
   });
 });
+
+test.describe('Explore page', () => {
+  test('Check the listing of tags', async ({ page }) => {
+    await page
+      .locator('div')
+      .filter({ hasText: /^Governance$/ })
+      .locator('svg')
+      .first()
+      .click();
+
+    await expect(page.getByRole('tree')).toContainText('Glossaries');
+    await expect(page.getByRole('tree')).toContainText('Tags');
+
+    const res = page.waitForResponse(
+      '/api/v1/search/query?q=&index=dataAsset*'
+    );
+    // click on tags
+    await page.getByTestId('explore-tree-title-Tags').click();
+
+    const response = await res;
+    const jsonResponse = await response.json();
+
+    expect(jsonResponse.hits.hits.length).toBeGreaterThan(0);
+  });
+});

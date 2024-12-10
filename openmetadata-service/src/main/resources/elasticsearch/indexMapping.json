@@ -150,8 +150,8 @@
     "indexName": "tag_search_index",
     "indexMappingFile": "/elasticsearch/%s/tag_index_mapping.json",
     "alias": "tag",
-    "parentAliases": ["classification"],
-    "childAliases": ["all", "dataAsset"]
+    "parentAliases": ["classification", "all", "dataAsset"],
+    "childAliases": []
   },
   "classification": {
     "indexName": "classification_search_index",
