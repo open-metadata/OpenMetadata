@@ -98,6 +98,12 @@ workflow as successful. However, any errors when sending the information to Open
 Now, we're changing this behavior to consider the success rate of all the steps involved in the workflow. The UI will
 then show more `Partial Success` statuses rather than `Failed`, properly reflecting the real state of the workflow.
 
+# Database Metadata & Lineage Workflow
+
+With 1.6 Release we are moving the `View Lineage` & `Stored Procedure Lineage` computation from metadata workflow to lineage workflow.
+
+This means that we are removing the `overrideViewLineage` property from the `DatabaseServiceMetadataPipeline` schema which will be moved to the `DatabaseServiceQueryLineagePipeline` schema.
+
 ### Profiler & Auto Classification Workflow
 
 We are creating a new `Auto Classification` workflow that will take care of managing the sample data and PII classification,
@@ -151,3 +157,12 @@ implementation example.
 ### Fivetran
 
 The filtering of Fivetran pipelines now supports using their names instead of IDs. This change may affect existing configurations that rely on pipeline IDs for filtering.
+
+### DBT Cloud Pipeline Service
+
+We are removing the field `jobId` which we required to ingest dbt metadata from a specific job, instead of this we added a new field called `jobIds` which will accept multiple job ids to ingest metadata from multiple jobs.
+
+### MicroStrategy
+
+The `serviceType` for MicroStrategy connector is renamed from `Mstr` to `MicroStrategy`.
+
