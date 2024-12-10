@@ -40,7 +40,7 @@ from metadata.generated.schema.type.basic import EntityName, FullyQualifiedEntit
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.oracle.metadata import OracleSource
-from metadata.ingestion.source.database.oracle.models import OracleStoredProcedure
+from metadata.ingestion.source.database.oracle.models import OracleStoredObject
 
 mock_oracle_config = {
     "source": {
@@ -103,7 +103,7 @@ MOCK_DATABASE_SCHEMA = DatabaseSchema(
     ),
 )
 
-MOCK_STORED_PROCEDURE = OracleStoredProcedure(
+MOCK_STORED_PROCEDURE = OracleStoredObject(
     name="sample_procedure",
     definition="SAMPLE_SQL_TEXT",
     owner="sample_stored_prcedure_owner",
