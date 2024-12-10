@@ -98,7 +98,7 @@ workflow as successful. However, any errors when sending the information to Open
 Now, we're changing this behavior to consider the success rate of all the steps involved in the workflow. The UI will
 then show more `Partial Success` statuses rather than `Failed`, properly reflecting the real state of the workflow.
 
-# Database Metadata & Lineage Workflow
+### Database Metadata & Lineage Workflow
 
 With 1.6 Release we are moving the `View Lineage` & `Stored Procedure Lineage` computation from metadata workflow to lineage workflow.
 
