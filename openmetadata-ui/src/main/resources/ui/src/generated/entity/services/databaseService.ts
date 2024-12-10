@@ -12,7 +12,7 @@
  */
 
 
- /**
+/**
  * This schema defines the `Database Service` is a service such as MySQL, BigQuery,
  * Redshift, Postgres, or Snowflake. Alternative terms such as Database Cluster, Database
  * Server instance are also used for database service.
@@ -22,7 +22,7 @@ export interface DatabaseService {
      * Change that lead to this version of the entity.
      */
     changeDescription?: ChangeDescription;
-    connection?:        DatabaseConnection;
+    connection?: DatabaseConnection;
     /**
      * List of data products this entity is part of.
      */
@@ -209,6 +209,8 @@ export interface DatabaseConnection {
  *
  * MongoDB Connection Config
  *
+ * Cassandra Connection Config
+ *
  * Couchbase Connection Config
  *
  * Greenplum Database Connection Config
@@ -234,7 +236,7 @@ export interface ConfigClass {
      * If using Metastore, Key-Value pairs that will be used to add configs to the SparkSession.
      */
     connectionArguments?: { [key: string]: any };
-    connectionOptions?:   { [key: string]: string };
+    connectionOptions?: { [key: string]: string };
     /**
      * GCP Credentials
      */
@@ -283,6 +285,9 @@ export interface ConfigClass {
      * Host and port of the MongoDB service when using the `mongodb` connection scheme. Only
      * host when using the `mongodb+srv` scheme.
      *
+     * Host and port of the Cassandra service when using the `cassandra` connection scheme. Only
+     * host when using the `cassandra+srv` scheme.
+     *
      * Host and port of the Doris service.
      *
      * Host and port of the Teradata service.
@@ -291,7 +296,7 @@ export interface ConfigClass {
      *
      * Host and port of the Azure Synapse service.
      */
-    hostPort?:                string;
+    hostPort?: string;
     sampleDataStorageConfig?: SampleDataStorageConfig;
     /**
      * SQLAlchemy driver scheme options.
@@ -300,18 +305,18 @@ export interface ConfigClass {
      *
      * Couchbase driver scheme options.
      */
-    scheme?:                ConfigScheme;
-    supportsDatabase?:      boolean;
-    supportsDataDiff?:      boolean;
+    scheme?: ConfigScheme;
+    supportsDatabase?: boolean;
+    supportsDataDiff?: boolean;
     supportsDBTExtraction?: boolean;
     /**
      * Supports Lineage Extraction.
      */
-    supportsLineageExtraction?:  boolean;
+    supportsLineageExtraction?: boolean;
     supportsMetadataExtraction?: boolean;
-    supportsProfiler?:           boolean;
-    supportsQueryComment?:       boolean;
-    supportsSystemProfile?:      boolean;
+    supportsProfiler?: boolean;
+    supportsQueryComment?: boolean;
+    supportsSystemProfile?: boolean;
     /**
      * Supports Usage Extraction.
      */
@@ -336,7 +341,7 @@ export interface ConfigClass {
      * multi-regions are not yet in GA.
      */
     usageLocation?: string;
-    awsConfig?:     AWSCredentials;
+    awsConfig?: AWSCredentials;
     /**
      * Optional name to give to the database in OpenMetadata. If left blank, we will use default
      * as the database name.
@@ -438,6 +443,8 @@ export interface ConfigClass {
      *
      * Password to connect to MongoDB.
      *
+     * Password to connect to Cassandra.
+     *
      * Password to connect to Couchbase.
      *
      * Password to connect to Doris.
@@ -513,6 +520,9 @@ export interface ConfigClass {
      * Username to connect to MongoDB. This user should have privileges to read all the metadata
      * in MongoDB.
      *
+     * Username to connect to Cassandra. This user should have privileges to read all the
+     * metadata in Cassandra.
+     *
      * Username to connect to Couchbase. This user should have privileges to read all the
      * metadata in Couchbase.
      *
@@ -586,7 +596,15 @@ export interface ConfigClass {
     /**
      * Generated Token to connect to Databricks.
      */
-    token?:                         string;
+    token?: string;
+    /**
+     * License to connect to DB2.
+     */
+    license?: string;
+    /**
+     * License file name to connect to DB2.
+     */
+    licenseFileName?: string;
     supportsViewLineageExtraction?: boolean;
     /**
      * Available sources to fetch the metadata.
@@ -646,7 +664,7 @@ export interface ConfigClass {
      * Custom OpenMetadata Classification name for Postgres policy tags.
      */
     classificationName?: string;
-    sslMode?:            SSLMode;
+    sslMode?: SSLMode;
     /**
      * Protocol ( Connection Argument ) to connect to Presto.
      */
@@ -762,6 +780,10 @@ export interface ConfigClass {
      */
     connection?: SAPHanaConnection;
     /**
+     * Configuration for connecting to DataStax Astra DB in the cloud.
+     */
+    cloudConfig?: DataStaxAstraDBConfiguration;
+    /**
      * Couchbase connection Bucket options.
      */
     bucket?: string;
@@ -824,7 +846,7 @@ export interface ConfigClass {
      * Pagination limit used while querying the SAP ERP API for fetching the entities
      */
     paginationLimit?: number;
-    verifySSL?:       VerifySSL;
+    verifySSL?: VerifySSL;
     /**
      * Client SSL/TLS settings.
      */
@@ -870,8 +892,8 @@ export interface AuthConfigurationType {
     /**
      * Password to connect to source.
      */
-    password?:    string;
-    awsConfig?:   AWSCredentials;
+    password?: string;
+    awsConfig?: AWSCredentials;
     azureConfig?: AzureCredentials;
     /**
      * JWT to connect to source.
@@ -1056,7 +1078,7 @@ export interface Connection {
     /**
      * Berarer token to use for the 'Authorization' header.
      */
-    token?:     string;
+    token?: string;
     awsConfig?: AWSCredentials;
     /**
      * DynamoDB table name.
@@ -1193,6 +1215,30 @@ export interface SSLCertificatesByPath {
 }
 
 /**
+ * Configuration for connecting to DataStax Astra DB in the cloud.
+ */
+export interface DataStaxAstraDBConfiguration {
+    /**
+     * Timeout in seconds for establishing new connections to Cassandra.
+     */
+    connectTimeout?: number;
+    /**
+     * Timeout in seconds for individual Cassandra requests.
+     */
+    requestTimeout?: number;
+    /**
+     * File path to the Secure Connect Bundle (.zip) used for a secure connection to DataStax
+     * Astra DB.
+     */
+    secureConnectBundle?: string;
+    /**
+     * The Astra DB application token used for authentication.
+     */
+    token?: string;
+    [property: string]: any;
+}
+
+/**
  * Available sources to fetch the metadata.
  *
  * Deltalake Metastore configuration.
@@ -1227,7 +1273,7 @@ export interface TaLakeConfigurationSource {
     /**
      * Prefix of the data source.
      */
-    prefix?:         string;
+    prefix?: string;
     securityConfig?: SecurityConfigClass;
 }
 
@@ -1272,7 +1318,7 @@ export interface ConnectionClass {
      * Local path for the local file with metastore data. E.g., /tmp/metastore.db
      */
     metastoreFilePath?: string;
-    securityConfig?:    AWSCredentials;
+    securityConfig?: AWSCredentials;
 }
 
 /**
@@ -1540,9 +1586,9 @@ export interface HiveMetastoreConnectionDetails {
     /**
      * Custom OpenMetadata Classification name for Postgres policy tags.
      */
-    classificationName?:  string;
+    classificationName?: string;
     connectionArguments?: { [key: string]: any };
-    connectionOptions?:   { [key: string]: string };
+    connectionOptions?: { [key: string]: string };
     /**
      * Database of the data source. This is optional parameter, if you would like to restrict
      * the metadata reading to a single database. When left blank, OpenMetadata Ingestion
@@ -1559,7 +1605,7 @@ export interface HiveMetastoreConnectionDetails {
      * Ingest data from all databases in Postgres. You can use databaseFilterPattern on top of
      * this.
      */
-    ingestAllDatabases?:      boolean;
+    ingestAllDatabases?: boolean;
     sampleDataStorageConfig?: SampleDataStorageConfig;
     /**
      * SQLAlchemy driver scheme options.
@@ -1568,16 +1614,16 @@ export interface HiveMetastoreConnectionDetails {
     /**
      * SSL Configuration details.
      */
-    sslConfig?:                  Config;
-    sslMode?:                    SSLMode;
-    supportsDatabase?:           boolean;
-    supportsDataDiff?:           boolean;
-    supportsDBTExtraction?:      boolean;
-    supportsLineageExtraction?:  boolean;
+    sslConfig?: Config;
+    sslMode?: SSLMode;
+    supportsDatabase?: boolean;
+    supportsDataDiff?: boolean;
+    supportsDBTExtraction?: boolean;
+    supportsLineageExtraction?: boolean;
     supportsMetadataExtraction?: boolean;
-    supportsProfiler?:           boolean;
-    supportsQueryComment?:       boolean;
-    supportsUsageExtraction?:    boolean;
+    supportsProfiler?: boolean;
+    supportsQueryComment?: boolean;
+    supportsUsageExtraction?: boolean;
     /**
      * Service Type
      */
@@ -1616,8 +1662,8 @@ export interface HiveMetastoreConnectionDetailsAuthConfigurationType {
     /**
      * Password to connect to source.
      */
-    password?:    string;
-    awsConfig?:   AWSCredentials;
+    password?: string;
+    awsConfig?: AWSCredentials;
     azureConfig?: AzureCredentials;
 }
 
@@ -1648,7 +1694,7 @@ export interface DataStorageConfig {
     /**
      * Prefix of the data source.
      */
-    prefix?:        string;
+    prefix?: string;
     storageConfig?: AwsCredentials;
     [property: string]: any;
 }
@@ -1853,6 +1899,7 @@ export enum ConfigType {
     AzureSQL = "AzureSQL",
     BigQuery = "BigQuery",
     BigTable = "BigTable",
+    Cassandra = "Cassandra",
     Clickhouse = "Clickhouse",
     Couchbase = "Couchbase",
     CustomDatabase = "CustomDatabase",
@@ -1968,6 +2015,7 @@ export enum DatabaseServiceType {
     AzureSQL = "AzureSQL",
     BigQuery = "BigQuery",
     BigTable = "BigTable",
+    Cassandra = "Cassandra",
     Clickhouse = "Clickhouse",
     Couchbase = "Couchbase",
     CustomDatabase = "CustomDatabase",
@@ -2046,7 +2094,7 @@ export interface TagLabel {
      * 'Suggested' state is used when a tag label is suggested by users or tools. Owner of the
      * entity must confirm the suggested labels before it is marked as 'Confirmed'.
      */
-    state:  State;
+    state: State;
     style?: Style;
     tagFQN: string;
 }
