@@ -7,8 +7,8 @@ slug: /connectors/database/dynamodb
 name="DynamoDB"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata"]
-unavailableFeatures=["Query Usage", "Owners", "Tags", "Stored Procedures", "Data Profiler", "Data Quality", "Lineage", "Column-level Lineage", "dbt"]
+availableFeatures=["Metadata", "Data Profiler"]
+unavailableFeatures=["Query Usage", "Owners", "Tags", "Stored Procedures", "Data Quality", "Lineage", "Column-level Lineage", "dbt"]
 / %}
 
 
