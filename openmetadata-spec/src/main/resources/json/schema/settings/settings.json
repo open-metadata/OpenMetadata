@@ -32,7 +32,8 @@
         "profilerConfiguration",
         "searchSettings",
         "assetCertificationSettings",
-        "lineageSettings"
+        "lineageSettings",
+        "workflowSettings"
       ]
     }
   },
@@ -84,6 +85,9 @@
         },
         {
           "$ref": "../configuration/lineageSettings.json"
+        },
+        {
+          "$ref": "../configuration/workflowSettings.json"
         }
       ]
     }
