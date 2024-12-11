@@ -26,6 +26,7 @@ import {
 import { ReactComponent as IconReply } from '../../../assets/svg/ic-reply.svg';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { deletePostById, deleteThread } from '../../../rest/feedsAPI';
+import { getUpdatedThread } from '../../../utils/FeedUtils';
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
 import './activity-feed-actions.less';
 
@@ -50,8 +51,13 @@ const ActivityFeedActions = ({
   const { currentUser } = useApplicationStore();
   const isAuthor = post.from === currentUser?.name;
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const { deleteFeed, showDrawer, hideDrawer, updateEditorFocus } =
-    useActivityFeedProvider();
+  const {
+    deleteFeed,
+    showDrawer,
+    hideDrawer,
+    updateEditorFocus,
+    updateEntityThread,
+  } = useActivityFeedProvider();
 
   const onReply = () => {
     showDrawer(feed);
@@ -64,9 +70,13 @@ const ActivityFeedActions = ({
         await deleteThread(threadId);
         updateAnnouncementThreads && updateAnnouncementThreads();
       } else {
-        const deleteResponse = await deletePostById(threadId, postId);
-
-        updateAnnouncementThreads && updateAnnouncementThreads();
+        await deletePostById(threadId, postId);
+        const updatedthread = await getUpdatedThread(threadId);
+        if (feed.type === 'Announcement' && !isAnnouncementTab) {
+          updateEntityThread(updatedthread);
+        } else {
+          updateAnnouncementThreads && updateAnnouncementThreads();
+        }
         // if (deleteResponse) {
         //   //await getUpdatedThread(threadId);
         //   updateAnnouncementThreads && updateAnnouncementThreads();
@@ -77,7 +87,7 @@ const ActivityFeedActions = ({
   );
 
   const handleDelete = () => {
-    if (isAnnouncementTab || isPost) {
+    if (isAnnouncementTab || (feed.type === 'Announcement' && isPost)) {
       deleteAnnouncementThread(feed.id, post.id, !isPost);
     } else {
       deleteFeed(feed.id, post.id, !isPost).catch(() => {

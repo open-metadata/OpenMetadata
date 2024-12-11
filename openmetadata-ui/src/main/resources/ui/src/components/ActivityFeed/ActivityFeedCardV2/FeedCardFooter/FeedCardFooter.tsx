@@ -12,12 +12,16 @@
  */
 
 import { Avatar, Button, Col, Row, Space, Tooltip, Typography } from 'antd';
+import { compare } from 'fast-json-patch';
 import { min, noop, sortBy } from 'lodash';
 import React, { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ThreadIcon } from '../../../../assets/svg/thread-icon.svg';
 import { ReactionOperation } from '../../../../enums/reactions.enum';
-import { ReactionType } from '../../../../generated/type/reaction';
+import { Post } from '../../../../generated/entity/feed/thread';
+import { Reaction, ReactionType } from '../../../../generated/type/reaction';
+import { useApplicationStore } from '../../../../hooks/useApplicationStore';
+import { updatePost } from '../../../../rest/feedsAPI';
 import {
   formatDateTime,
   getRelativeTime,
@@ -35,11 +39,13 @@ function FeedCardFooter({
     showThreadIcon: true,
     showRepliesContainer: true,
   },
+  isAnnouncementTab = false,
+  updateAnnouncementThreads,
 }: Readonly<FeedCardFooterProps>) {
   const { t } = useTranslation();
   const { showDrawer, updateReactions, fetchUpdatedThread } =
     useActivityFeedProvider();
-
+  const { currentUser } = useApplicationStore();
   // The number of posts in the thread
   const postLength = useMemo(() => feed?.postsCount ?? 0, [feed?.postsCount]);
 
@@ -58,10 +64,61 @@ function FeedCardFooter({
     return { latestReplyTimeStamp, repliedUniqueUsersList };
   }, [feed?.posts]);
 
+  const updateAnnouncementsThreadReactions = async (
+    post: Post,
+    feedId: string,
+    isThread: boolean,
+    reactionType: ReactionType,
+    reactionOperation: ReactionOperation
+  ) => {
+    let updatedReactions = post.reactions ?? [];
+    if (reactionOperation === ReactionOperation.ADD) {
+      const reactionObject = {
+        reactionType,
+        user: {
+          id: currentUser?.id as string,
+        },
+      };
+
+      updatedReactions = [...updatedReactions, reactionObject as Reaction];
+    } else {
+      updatedReactions = updatedReactions.filter(
+        (reaction) =>
+          !(
+            reaction.reactionType === reactionType &&
+            reaction.user.id === currentUser?.id
+          )
+      );
+    }
+
+    const patch = compare(
+      { ...post, reactions: [...(post.reactions ?? [])] },
+      {
+        ...post,
+        reactions: updatedReactions,
+      }
+    );
+
+    await updatePost(feedId, post.id, patch).catch(() => {
+      // ignore since error is displayed in toast in the parent promise.
+    });
+
+    updateAnnouncementThreads && updateAnnouncementThreads();
+  };
   const onReactionUpdate = useCallback(
     async (reaction: ReactionType, operation: ReactionOperation) => {
-      await updateReactions(post, feed.id, !isPost, reaction, operation);
-      await fetchUpdatedThread(feed.id);
+      if (isAnnouncementTab) {
+        updateAnnouncementsThreadReactions(
+          post,
+          feed.id,
+          !isPost,
+          reaction,
+          operation
+        );
+      } else {
+        await updateReactions(post, feed.id, !isPost, reaction, operation);
+        await fetchUpdatedThread(feed.id);
+      }
     },
     [updateReactions, post, feed.id, isPost, fetchUpdatedThread]
   );

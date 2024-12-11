@@ -203,8 +203,10 @@ const ActivityFeedCardV2 = ({
               <FeedCardFooter
                 componentsVisibility={componentsVisibility}
                 feed={feed}
+                isAnnouncementTab={isAnnouncementTab}
                 isPost={isPost}
                 post={post}
+                updateAnnouncementThreads={updateAnnouncementThreads}
               />
             </Col>
           </Row>
@@ -227,6 +229,7 @@ const ActivityFeedCardV2 = ({
                 isPost
                 componentsVisibility={componentsVisibility}
                 feed={feed}
+                isAnnouncementTab={isAnnouncementTab}
                 isOpenInDrawer={isOpenInDrawer}
                 key={reply.id}
                 post={reply}

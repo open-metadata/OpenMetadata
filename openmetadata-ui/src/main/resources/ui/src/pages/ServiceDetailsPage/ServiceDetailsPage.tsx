@@ -1059,9 +1059,10 @@ const ServiceDetailsPage: FunctionComponent = () => {
         children: testConnectionTab,
       },
       {
-        name: t('label.announcement'),
+        name: t('label.announcement-plural'),
         isHidden: !servicePermission.EditAll,
         key: EntityTabs.ANNOUNCEMENT,
+        count: 0,
         children: (
           <AnnouncementTab entityType={entityType} fqn={decodedServiceFQN} />
         ),
