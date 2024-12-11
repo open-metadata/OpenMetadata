@@ -84,7 +84,6 @@ kubectl logs job/<job_name>
 
 #### With Kubernetes
 
-#### With Kubernetes
 Follow these steps to deploy pipelines using the CLI:
 1.	List the CronJobs
 Use the following command to check the available CronJobs:
