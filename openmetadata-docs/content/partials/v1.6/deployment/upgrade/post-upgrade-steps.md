@@ -49,7 +49,7 @@ Create a one-time job from an existing CronJob using the following command:
 ```bash
 kubectl create job --from=cronjob/cron-reindex <job_name>
 ```
-{% note %} Replace <job_name> with the actual name of the job.{% /note %}
+{% note %} Replace `<job_name>` with the actual name of the job.{% /note %}
 
 Upon running this command you should see output similar to the following.
 ```CommandLine
@@ -72,7 +72,7 @@ To view the logs use the below command.
 ```bash
 kubectl logs job/<job_name>
 ```
-{% note %} Replace <job_name> with the actual job name.{% /note %}
+{% note %} Replace `<job_name>` with the actual job name.{% /note %}
 
 
 
@@ -102,7 +102,7 @@ Create a one-time job from an existing CronJob using the following command:
 kubectl create job --from=cronjob/cron-reindex <job_name>
 ```
 {% note %} 
-Replace <job_name> with the actual name of the job.
+Replace `<job_name>` with the actual name of the job.
 {% /note %}
 
 Upon running this command you should see output similar to the following.
@@ -126,7 +126,7 @@ To view the logs use the below command.
 ```bash
 kubectl logs job/<job_name>
 ```
-{% note %} Replace <job_name> with the actual job name.{% /note %}
+{% note %} Replace `<job_name>` with the actual job name.{% /note %}
 
 
 
