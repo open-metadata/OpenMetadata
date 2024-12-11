@@ -10,8 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { APIRequestContext } from '@playwright/test';
+import { APIRequestContext, expect, Page } from '@playwright/test';
 import { uuid } from '../../utils/common';
+import { searchTeam } from '../../utils/team';
 type ResponseDataType = {
   name: string;
   displayName: string;
@@ -44,6 +45,23 @@ export class TeamClass {
 
   get() {
     return this.responseData;
+  }
+
+  async visitTeamPage(page: Page) {
+    await searchTeam(page, this.responseData?.['displayName']);
+
+    await page
+      .locator(`[data-row-key="${this.data.name}"]`)
+      .getByRole('link')
+      .click();
+
+    await page.waitForLoadState('networkidle');
+
+    await expect(page.getByTestId('team-heading')).toHaveText(
+      this.data.displayName
+    );
+
+    await page.waitForLoadState('networkidle');
   }
 
   async create(apiContext: APIRequestContext) {
