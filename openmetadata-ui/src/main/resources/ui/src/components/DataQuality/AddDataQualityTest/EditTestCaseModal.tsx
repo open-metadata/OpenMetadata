@@ -18,6 +18,7 @@ import { compare } from 'fast-json-patch';
 import { isArray, isEmpty, isEqual, pick } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { MAX_MODAL_WIDTH } from '../../../constants/Appearance.constants';
 import { ENTITY_NAME_REGEX } from '../../../constants/regex.constants';
 import { TABLE_DIFF } from '../../../constants/TestSuite.constant';
 import { TabSpecificField } from '../../../enums/entity.enum';
@@ -243,7 +244,7 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
       okText={t('label.submit')}
       open={visible}
       title={`${t('label.edit')} ${testCase?.name}`}
-      width={720}
+      width={MAX_MODAL_WIDTH}
       onCancel={onCancel}
       onOk={() => form.submit()}>
       {isLoading ? (
