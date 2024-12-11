@@ -44,10 +44,10 @@ export const visitClassificationPage = async (
   const classificationResponse = page.waitForResponse(
     '/api/v1/classifications?**'
   );
+  const fetchTags = page.waitForResponse('/api/v1/tags?*parent=*');
   await sidebarClick(page, SidebarItem.TAGS);
   await classificationResponse;
 
-  const fetchTags = page.waitForResponse('/api/v1/tags?*parent=*');
   await page
     .locator(`[data-testid="side-panel-classification"]`)
     .filter({ hasText: classificationName })
