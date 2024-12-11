@@ -260,6 +260,7 @@ This page list all the supported helm values for OpenMetadata Helm Charts.
 | nameOverride | string | `""` |
 | nodeSelector | object | `{}` |
 | podAnnotations | object | `{}` |
+| deploymentAnnotations | object | `{}` |
 | podSecurityContext | object | `{}` |
 | readinessProbe.initialDelaySeconds | int | `60` |
 | readinessProbe.periodSeconds | int | `30` |
