@@ -116,14 +116,16 @@ const TreeAsyncSelectList: FC<Omit<AsyncSelectListProps, 'fetchOptions'>> = ({
           onClick={(event) => {
             event.stopPropagation();
             form.submit();
-          }}>
+          }}
+          onMouseDown={(e) => e.preventDefault()}>
           {t('label.update')}
         </Button>
         <Button
           data-testid="cancelAssociatedTag"
           size="small"
           type="link"
-          onClick={onCancel}>
+          onClick={onCancel}
+          onMouseDown={(e) => e.preventDefault()}>
           {t('label.cancel')}
         </Button>
       </Space>
@@ -311,17 +313,22 @@ const TreeAsyncSelectList: FC<Omit<AsyncSelectListProps, 'fetchOptions'>> = ({
 
   // Function to handle clicks outside the dropdown
   const handleClickOutside = (event: MouseEvent) => {
-    const isClickOutsideDropdown =
-      dropdownRef.current &&
-      !dropdownRef.current.contains(event.target as Node);
+    const dropdownElement = dropdownRef.current;
 
-    const isClickOnInput =
-      document.activeElement === dropdownRef.current?.querySelector('input');
-    const isClickOnSelectItem = dropdownRef.current
-      ?.querySelector('.ant-select-item')
-      ?.contains(event.target as Node);
+    if (!dropdownElement) {
+      return;
+    }
+    const focusableElements = ['.input', '.ant-select-item', '.update-btn'];
+    const isClickInsideRelevantElement = focusableElements.some((selector) =>
+      (event.target as HTMLElement).closest(selector)
+    );
 
-    if (isClickOutsideDropdown && !isClickOnInput && !isClickOnSelectItem) {
+    const isClickInsideDropdown = dropdownElement.contains(
+      event.target as Node
+    );
+
+    // Close dropdown only if the click is outside both dropdown and relevant elements
+    if (!isClickInsideDropdown && !isClickInsideRelevantElement) {
       setIsDropdownOpen(false);
       onCancel?.();
     }
@@ -366,7 +373,6 @@ const TreeAsyncSelectList: FC<Omit<AsyncSelectListProps, 'fetchOptions'>> = ({
         dropdownRender={dropdownRender}
         dropdownStyle={{ width: 300 }}
         filterTreeNode={false}
-        getPopupContainer={(triggerNode) => triggerNode.parentElement!} // Render dropdown in the parent container
         loadData={({ id, name }) => {
           if (expandableKeys.current.includes(id)) {
             return fetchGlossaryTerm({ glossary: name as string });

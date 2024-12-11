@@ -192,13 +192,15 @@ const AsyncSelectList: FC<AsyncSelectListProps & SelectProps> = ({
             onClick={(event) => {
               event.stopPropagation();
               form.submit();
-            }}>
+            }}
+            onMouseDown={(e) => e.preventDefault()}>
             {t('label.update')}
           </Button>
           <Button
             data-testid="cancelAssociatedTag"
             size="small"
-            onClick={onCancel}>
+            onClick={onCancel}
+            onMouseDown={(e) => e.preventDefault()}>
             {t('label.cancel')}
           </Button>
         </Space>
@@ -331,17 +333,22 @@ const AsyncSelectList: FC<AsyncSelectListProps & SelectProps> = ({
 
   // Function to handle clicks outside the dropdown
   const handleClickOutside = (event: MouseEvent) => {
-    const isClickOutsideDropdown =
-      dropdownRef.current &&
-      !dropdownRef.current.contains(event.target as Node);
+    const dropdownElement = dropdownRef.current;
 
-    const isClickOnInput =
-      document.activeElement === dropdownRef.current?.querySelector('input');
-    const isClickOnSelectItem = dropdownRef.current
-      ?.querySelector('.ant-select-item')
-      ?.contains(event.target as Node);
+    if (!dropdownElement) {
+      return;
+    }
+    const focusableElements = ['.input', '.ant-select-item', '.update-btn'];
+    const isClickInsideRelevantElement = focusableElements.some((selector) =>
+      (event.target as HTMLElement).closest(selector)
+    );
 
-    if (isClickOutsideDropdown && !isClickOnInput && !isClickOnSelectItem) {
+    const isClickInsideDropdown = dropdownElement.contains(
+      event.target as Node
+    );
+
+    // Close dropdown only if the click is outside both dropdown and relevant elements
+    if (!isClickInsideDropdown && !isClickInsideRelevantElement) {
       setIsDropdownOpen(false);
       onCancel?.();
     }
@@ -370,7 +377,6 @@ const AsyncSelectList: FC<AsyncSelectListProps & SelectProps> = ({
         data-testid="tag-selector"
         dropdownRender={dropdownRender}
         filterOption={false}
-        getPopupContainer={(triggerNode) => triggerNode.parentElement!} // Render dropdown in the parent container
         mode={mode}
         notFoundContent={
           isLoading ? (
