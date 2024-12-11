@@ -31,7 +31,10 @@ import { ReactComponent as IconExternalLink } from '../assets/svg/external-links
 const { Text } = Typography;
 
 export const mockTextBasedSummaryTitleResponse = (
-  <Text className="entity-title" data-testid="entity-title">
+  <Text
+    className="entity-title"
+    data-testid="entity-title"
+    ellipsis={{ tooltip: true }}>
     <span className="text-highlighter">title2</span>
   </Text>
 );
@@ -346,7 +349,10 @@ export const mockEntityDataWithNestingResponse: BasicEntityInfo[] = [
   {
     name: 'api_client_id',
     title: (
-      <Text className="entity-title" data-testid="entity-title">
+      <Text
+        className="entity-title"
+        data-testid="entity-title"
+        ellipsis={{ tooltip: true }}>
         api_client_id
       </Text>
     ),
@@ -361,7 +367,10 @@ export const mockEntityDataWithNestingResponse: BasicEntityInfo[] = [
   {
     name: 'Customer',
     title: (
-      <Text className="entity-title" data-testid="entity-title">
+      <Text
+        className="entity-title"
+        data-testid="entity-title"
+        ellipsis={{ tooltip: true }}>
         Customer
       </Text>
     ),
@@ -375,7 +384,10 @@ export const mockEntityDataWithNestingResponse: BasicEntityInfo[] = [
       {
         name: 'id',
         title: (
-          <Text className="entity-title" data-testid="entity-title">
+          <Text
+            className="entity-title"
+            data-testid="entity-title"
+            ellipsis={{ tooltip: true }}>
             id
           </Text>
         ),
@@ -389,7 +401,10 @@ export const mockEntityDataWithNestingResponse: BasicEntityInfo[] = [
       {
         name: 'first_name',
         title: (
-          <Text className="entity-title" data-testid="entity-title">
+          <Text
+            className="entity-title"
+            data-testid="entity-title"
+            ellipsis={{ tooltip: true }}>
             first_name
           </Text>
         ),
@@ -403,7 +418,10 @@ export const mockEntityDataWithNestingResponse: BasicEntityInfo[] = [
       {
         name: 'last_name',
         title: (
-          <Text className="entity-title" data-testid="entity-title">
+          <Text
+            className="entity-title"
+            data-testid="entity-title"
+            ellipsis={{ tooltip: true }}>
             last_name
           </Text>
         ),
@@ -417,7 +435,10 @@ export const mockEntityDataWithNestingResponse: BasicEntityInfo[] = [
       {
         name: 'email',
         title: (
-          <Text className="entity-title" data-testid="entity-title">
+          <Text
+            className="entity-title"
+            data-testid="entity-title"
+            ellipsis={{ tooltip: true }}>
             email
           </Text>
         ),
@@ -441,7 +462,10 @@ export const mockInvalidDataResponse = [
     name: '',
     tags: undefined,
     title: (
-      <Text className="entity-title" data-testid="entity-title">
+      <Text
+        className="entity-title"
+        data-testid="entity-title"
+        ellipsis={{ tooltip: true }}>
         --
       </Text>
     ),
