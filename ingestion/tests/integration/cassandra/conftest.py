@@ -2,7 +2,6 @@ import textwrap
 
 import pytest
 from cassandra.cluster import Cluster, DCAwareRoundRobinPolicy
-from testcontainers.cassandra import CassandraContainer
 
 from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceRequest,
@@ -17,6 +16,8 @@ def session(tmp_path_factory):
     """
     Start a Cassandra container with the dvdrental database.
     """
+    from testcontainers.cassandra import CassandraContainer
+
     with CassandraContainer() as container, Cluster(
         container.get_contact_points(),
         load_balancing_policy=DCAwareRoundRobinPolicy(container.get_local_datacenter()),
