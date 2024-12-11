@@ -50,11 +50,11 @@ import {
   createGlossaryTerms,
   createTagTaskForGlossary,
   deleteGlossaryOrGlossaryTerm,
-  descriptionBox,
   deselectColumns,
   dragAndDropColumn,
   dragAndDropTerm,
   filterStatus,
+  getEscapedTermFqn,
   goToAssetsTab,
   openColumnDropdown,
   renameGlossaryTerm,
@@ -63,6 +63,8 @@ import {
   selectColumns,
   toggleAllColumnsSelection,
   updateGlossaryTermDataFromTree,
+  updateGlossaryTermOwners,
+  updateGlossaryTermReviewers,
   validateGlossaryTerm,
   verifyAllColumns,
   verifyColumnsVisibility,
@@ -126,7 +128,7 @@ test.describe('Glossary tests', () => {
         await verifyTaskCreated(
           page1,
           glossary1.data.fullyQualifiedName,
-          glossary1.data.terms[0].data
+          glossary1.data.terms[0].data.name
         );
 
         await approveGlossaryTermTask(page1, glossary1.data.terms[0].data);
@@ -183,7 +185,7 @@ test.describe('Glossary tests', () => {
         await verifyTaskCreated(
           page1,
           glossary2.data.fullyQualifiedName,
-          glossary2.data.terms[0].data
+          glossary2.data.terms[0].data.name
         );
 
         await approveGlossaryTermTask(page1, glossary2.data.terms[0].data);
@@ -304,126 +306,63 @@ test.describe('Glossary tests', () => {
     const { page, afterAction, apiContext } = await performAdminLogin(browser);
     const glossary1 = new Glossary();
     const glossaryTerm1 = new GlossaryTerm(glossary1);
-    await glossary1.create(apiContext);
-    await glossaryTerm1.create(apiContext);
+    const owner1 = new UserClass();
+    const reviewer1 = new UserClass();
 
-    const testtag = `Test tag ${uuid()}`;
+    try {
+      await glossary1.create(apiContext);
+      await glossaryTerm1.create(apiContext);
+      await owner1.create(apiContext);
+      await reviewer1.create(apiContext);
+      await await redirectToHomePage(page);
+      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await selectActiveGlossary(page, glossary1.data.displayName);
 
-    await redirectToHomePage(page);
-    await sidebarClick(page, SidebarItem.GLOSSARY);
+      await updateGlossaryTermOwners(page, glossaryTerm1.data, [
+        {
+          name: `${owner1.data.firstName}${owner1.data.lastName}`,
+          type: 'user',
+        },
+      ]);
 
-    await page.click('[data-testid="add-classification"]');
+      await updateGlossaryTermReviewers(page, glossaryTerm1.data, [
+        {
+          name: `${reviewer1.data.firstName}${reviewer1.data.lastName}`,
+          type: 'user',
+        },
+      ]);
 
-    await expect(page.getByRole('dialog')).toBeVisible();
+      await openColumnDropdown(page);
+      const checkboxLabels = ['Reviewer'];
+      await selectColumns(page, checkboxLabels);
+      await clickSaveButton(page);
+      await verifyColumnsVisibility(page, checkboxLabels, true);
 
-    await page.getByTestId('name').fill(testtag);
-    await page.locator(descriptionBox).fill('Test Description');
+      const escapedFqn = getEscapedTermFqn(glossaryTerm1.data);
+      const termRow = page.locator(`[data-row-key="${escapedFqn}"]`);
 
-    const glossaryTermResponse = page.waitForResponse('/api/v1/glossaryTerms');
-    await page.click('[data-testid="save-glossary-term"]');
-    await glossaryTermResponse;
+      // Verify the Reviewer
+      const reviewerSelector = `td:nth-child(3) a[data-testid="owner-link"]`;
+      const reviewerText = await termRow
+        .locator(reviewerSelector)
+        .textContent();
 
-    await page.click('[data-testid="expand-icon"]');
+      expect(reviewerText).toBe(
+        `${reviewer1.data.firstName}${reviewer1.data.lastName}`
+      );
 
-    await expect(page.getByText(testtag)).toBeVisible();
+      // Verify the Owner
+      const ownerSelector = `td:nth-child(4) a[data-testid="owner-link"]`;
+      const ownerText = await termRow.locator(ownerSelector).textContent();
 
-    await page.getByTestId('edit-button').last().click();
-
-    await expect(page.getByRole('dialog')).toBeVisible();
-
-    await page
-      .getByTestId('edit-glossary-modal')
-      .getByTestId('add-owner')
-      .click();
-
-    await expect(page.getByTestId('select-owner-tabs')).toBeVisible();
-
-    await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
-
-    await expect(page.getByRole('listitem', { name: 'admin' })).toHaveClass(
-      /active/
-    );
-
-    const searchUser = page.waitForResponse(
-      `/api/v1/search/query?q=*${encodeURIComponent(
-        user1.responseData.displayName
-      )}*`
-    );
-    await page
-      .getByTestId(`owner-select-users-search-bar`)
-      .fill(user1.responseData.displayName);
-    await searchUser;
-
-    await page
-      .getByRole('listitem', {
-        name: user1.responseData.displayName,
-        exact: true,
-      })
-      .click();
-    await page.getByTestId('selectable-list-update-btn').click();
-
-    await expect(
-      page.getByRole('link', { name: user1.responseData.displayName })
-    ).toBeVisible();
-
-    await page
-      .getByTestId('edit-glossary-modal')
-      .getByTestId('add-reviewers')
-      .click();
-
-    await expect(
-      page
-        .getByRole('tooltip', { name: 'Selected Reviewers Teams' })
-        .getByTestId('select-owner-tabs')
-    ).toBeVisible();
-
-    const userListResponse = page.waitForResponse(
-      '/api/v1/users?limit=*&isBot=false*'
-    );
-    await page.getByRole('tab', { name: 'Users' }).click();
-    await userListResponse;
-
-    await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
-
-    const searchUserReviewer = page.waitForResponse(
-      `/api/v1/search/query?q=*${encodeURIComponent(
-        user2.responseData.displayName
-      )}*`
-    );
-    await page
-      .getByTestId(`owner-select-users-search-bar`)
-      .fill(user2.responseData.displayName);
-    await searchUserReviewer;
-
-    await page
-      .getByRole('listitem', {
-        name: user2.responseData.displayName,
-        exact: true,
-      })
-      .click();
-
-    await page.getByTestId('selectable-list-update-btn').click();
-
-    await page.click('[data-testid="save-glossary-term"]');
-    await glossaryTermResponse;
-
-    await expect(
-      page.getByRole('link', { name: user1.responseData.displayName })
-    ).toBeVisible();
-
-    await openColumnDropdown(page);
-    const checkboxLabels = ['Reviewer'];
-    await selectColumns(page, checkboxLabels);
-    await clickSaveButton(page);
-    await verifyColumnsVisibility(page, checkboxLabels, true);
-
-    await expect(
-      page.getByRole('link', { name: user2.responseData.displayName })
-    ).toBeVisible();
-
-    await glossaryTerm1.delete(apiContext);
-    await glossary1.delete(apiContext);
-    await afterAction();
+      expect(ownerText).toBe(`${owner1.data.firstName}${owner1.data.lastName}`);
+    } finally {
+      await glossaryTerm1.delete(apiContext);
+      await glossary1.delete(apiContext);
+      await owner1.delete(apiContext);
+      await reviewer1.delete(apiContext);
+      await afterAction();
+    }
   });
 
   test('Add and Remove Assets', async ({ browser }) => {
