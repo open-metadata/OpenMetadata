@@ -318,7 +318,11 @@ const TreeAsyncSelectList: FC<Omit<AsyncSelectListProps, 'fetchOptions'>> = ({
     if (!dropdownElement) {
       return;
     }
-    const focusableElements = ['.input', '.ant-select-item', '.update-btn'];
+    const focusableElements = [
+      '.input',
+      '.ant-select-tree-treenode',
+      '.update-btn',
+    ];
     const isClickInsideRelevantElement = focusableElements.some((selector) =>
       (event.target as HTMLElement).closest(selector)
     );
