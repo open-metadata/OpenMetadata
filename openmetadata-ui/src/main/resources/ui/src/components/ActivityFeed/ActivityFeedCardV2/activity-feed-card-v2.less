@@ -17,7 +17,20 @@
   display: flex;
   width: 100%;
   gap: 8px;
-
+  position: relative;
+  .avatar-column {
+    &::after {
+      position: absolute;
+      content: '';
+      top: 0;
+      left: 40%;
+      transform: translateX(-50%);
+      width: 1px;
+      background: @announcement-border-light;
+      height: calc(100% - 10px);
+      z-index: 1;
+    }
+  }
   .feed-card-v2-sidebar {
     display: flex;
     padding: 4px 0px;
@@ -36,6 +49,17 @@
   }
   &.active {
     border-left: 4px solid @info-color;
+  }
+  &.announcement-active {
+    &::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -10px; /* Adjust this value for spacing outside */
+      height: 100%;
+      width: 4px; /* Width of the border */
+      background-color: @info-color; /* Your desired border color */
+    }
   }
 
   .feed-reply-card-v2 {

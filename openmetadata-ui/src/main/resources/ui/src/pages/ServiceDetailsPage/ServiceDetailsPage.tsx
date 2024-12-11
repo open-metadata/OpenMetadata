@@ -29,6 +29,7 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
+import AnnouncementTab from '../../components/Announcement/AnnouncementTab.component';
 import AirflowMessageBanner from '../../components/common/AirflowMessageBanner/AirflowMessageBanner';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
@@ -1056,6 +1057,14 @@ const ServiceDetailsPage: FunctionComponent = () => {
         isHidden: !servicePermission.EditAll,
         key: EntityTabs.CONNECTION,
         children: testConnectionTab,
+      },
+      {
+        name: t('label.announcement'),
+        isHidden: !servicePermission.EditAll,
+        key: EntityTabs.ANNOUNCEMENT,
+        children: (
+          <AnnouncementTab entityType={entityType} fqn={decodedServiceFQN} />
+        ),
       }
     );
 

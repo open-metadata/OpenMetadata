@@ -32,6 +32,7 @@ import { EntityType } from '../../../enums/entity.enum';
 import { FeedFilter } from '../../../enums/mydata.enum';
 import { ReactionOperation } from '../../../enums/reactions.enum';
 import {
+  AnnoucementStatus,
   Post,
   TaskType,
   Thread,
@@ -167,7 +168,8 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
       entityType?: EntityType,
       fqn?: string,
       taskStatus?: ThreadTaskStatus,
-      limit?: number
+      limit?: number,
+      announcementStatus?: AnnoucementStatus
     ) => {
       try {
         setLoading(true);
@@ -179,6 +181,14 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
         } else if (feedFilterType !== FeedFilter.ALL) {
           userId = currentUser?.id;
         }
+        const activeAnnouncement =
+          type === ThreadType.Announcement
+            ? announcementStatus === AnnoucementStatus.Active
+              ? true
+              : announcementStatus === AnnoucementStatus.Inactive
+              ? false
+              : undefined
+            : undefined;
 
         const { data, paging } = await getAllFeeds(
           entityType !== EntityType.USER && fqn
@@ -189,7 +199,8 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
           feedFilterType,
           type === ThreadType.Task ? taskStatus : undefined,
           userId,
-          limit
+          limit,
+          activeAnnouncement
         );
         setEntityThread((prev) => (after ? [...prev, ...data] : [...data]));
         setEntityPaging(paging);

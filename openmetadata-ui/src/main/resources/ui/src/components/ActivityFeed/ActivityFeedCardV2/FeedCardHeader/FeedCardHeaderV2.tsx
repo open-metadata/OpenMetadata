@@ -52,6 +52,7 @@ const FeedCardHeaderV2 = ({
   fieldName,
   cardStyle,
   feed,
+  isAnnouncementTab = false,
 }: FeedCardHeaderV2Props) => {
   const [, , user] = useUserProfile({
     permission: true,
@@ -134,54 +135,85 @@ const FeedCardHeaderV2 = ({
 
   return (
     <div className={classNames('feed-card-header-v2', className)}>
-      <Typography.Text className="break-word">
-        <UserPopOverCard userName={createdBy}>
-          <Link className="thread-author" to={getUserPath(createdBy)}>
-            {getEntityName(user)}
-          </Link>
-        </UserPopOverCard>
+      {feed.type !== 'Announcement' && !isAnnouncementTab ? (
+        <>
+          <Typography.Text className="break-word">
+            <UserPopOverCard userName={createdBy}>
+              <Link className="thread-author" to={getUserPath(createdBy)}>
+                {getEntityName(user)}
+              </Link>
+            </UserPopOverCard>
 
-        {entityCheck && !isEntityFeed && (
-          <Typography.Text
-            className="font-normal whitespace-normal"
-            data-testid="headerText">
-            {isAnnouncement ? (
-              <Typography.Text className="m-r-xss">
-                {t('label.posted-on-lowercase')}
-              </Typography.Text>
-            ) : (
-              <>
-                <Typography.Text className="m-r-xss">
-                  {getFeedHeaderTextFromCardStyle(
-                    fieldOperation,
-                    cardStyle,
-                    fieldName,
-                    entityType
-                  )}
-                </Typography.Text>
-                {fieldName === 'assets' && (
+            {entityCheck && !isEntityFeed && (
+              <Typography.Text
+                className="font-normal whitespace-normal"
+                data-testid="headerText">
+                {isAnnouncement ? (
                   <Typography.Text className="m-r-xss">
-                    {t('label.to-lowercase')}
+                    {t('label.posted-on-lowercase')}
                   </Typography.Text>
+                ) : (
+                  <>
+                    <Typography.Text className="m-r-xss">
+                      {getFeedHeaderTextFromCardStyle(
+                        fieldOperation,
+                        cardStyle,
+                        fieldName,
+                        entityType
+                      )}
+                    </Typography.Text>
+                    {fieldName === 'assets' && (
+                      <Typography.Text className="m-r-xss">
+                        {t('label.to-lowercase')}
+                      </Typography.Text>
+                    )}
+                  </>
                 )}
-              </>
-            )}
 
-            {renderEntityLink}
+                {renderEntityLink}
+              </Typography.Text>
+            )}
           </Typography.Text>
-        )}
-      </Typography.Text>
-      {timeStamp && (
-        <Tooltip
-          color="white"
-          overlayClassName="timestamp-tooltip"
-          title={formatDateTime(timeStamp)}>
-          <span
-            className="feed-card-header-v2-timestamp"
-            data-testid="timestamp">
-            {getRelativeTime(timeStamp)}
-          </span>
-        </Tooltip>
+          {timeStamp && (
+            <Tooltip
+              color="white"
+              overlayClassName="timestamp-tooltip"
+              title={formatDateTime(timeStamp)}>
+              <span
+                className="feed-card-header-v2-timestamp"
+                data-testid="timestamp">
+                {getRelativeTime(timeStamp)}
+              </span>
+            </Tooltip>
+          )}
+        </>
+      ) : (
+        <>
+          <Typography.Text className="break-word">
+            <UserPopOverCard userName={createdBy}>
+              <Link className="thread-author" to={getUserPath(createdBy)}>
+                {getEntityName(user)}
+              </Link>
+            </UserPopOverCard>
+            {entityLink && (
+              <Typography.Text className="m-r-xss">
+                {t('message.made-announcement')}
+              </Typography.Text>
+            )}
+            {timeStamp && (
+              <Tooltip
+                color="white"
+                overlayClassName="timestamp-tooltip"
+                title={formatDateTime(timeStamp)}>
+                <span
+                  className="feed-card-header-v2-timestamp"
+                  data-testid="timestamp">
+                  {getRelativeTime(timeStamp)}
+                </span>
+              </Tooltip>
+            )}
+          </Typography.Text>
+        </>
       )}
     </div>
   );

@@ -34,6 +34,9 @@ const FeedPanelBodyV1: FC<FeedPanelBodyPropV1> = ({
   isActive,
   hidePopover = false,
   isForFeedTab = false,
+  isAnnouncementCard = false,
+  isAnnouncementTab,
+  updateAnnouncementThreads,
 }) => {
   const mainFeed = useMemo(
     () =>
@@ -54,7 +57,13 @@ const FeedPanelBodyV1: FC<FeedPanelBodyPropV1> = ({
   return (
     <Button
       block
-      className={classNames('activity-feed-card-container ', className)}
+      className={classNames(
+        'activity-feed-card-container ',
+        className,
+        feed.type === 'Announcement' && !isAnnouncementCard
+          ? 'activity-feed-announcement'
+          : ''
+      )}
       data-testid="message-container"
       type="text"
       onClick={handleFeedClick}>
@@ -75,9 +84,11 @@ const FeedPanelBodyV1: FC<FeedPanelBodyPropV1> = ({
           componentsVisibility={componentsVisibility}
           feed={feed}
           isActive={isActive}
+          isAnnouncementTab={isAnnouncementTab}
           isOpenInDrawer={isOpenInDrawer}
           post={mainFeed}
           showThread={showThread}
+          updateAnnouncementThreads={updateAnnouncementThreads}
         />
       )}
     </Button>

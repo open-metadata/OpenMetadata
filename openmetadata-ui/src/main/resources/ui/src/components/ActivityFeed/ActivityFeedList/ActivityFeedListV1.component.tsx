@@ -35,6 +35,8 @@ interface ActivityFeedListV1Props {
     showRepliesContainer?: boolean;
   };
   selectedThread?: Thread;
+  isAnnouncementTab?: boolean;
+  updateAnnouncementThreads?: () => void;
 }
 
 const ActivityFeedListV1 = ({
@@ -51,6 +53,8 @@ const ActivityFeedListV1 = ({
   isForFeedTab = false,
   emptyPlaceholderText,
   selectedThread,
+  isAnnouncementTab,
+  updateAnnouncementThreads,
 }: ActivityFeedListV1Props) => {
   const [entityThread, setEntityThread] = useState<Thread[]>([]);
 
@@ -76,9 +80,11 @@ const ActivityFeedListV1 = ({
           feed={feed}
           hidePopover={hidePopover}
           isActive={activeFeedId === feed.id}
+          isAnnouncementTab={isAnnouncementTab}
           isForFeedTab={isForFeedTab}
           key={feed.id}
           showThread={showThread}
+          updateAnnouncementThreads={updateAnnouncementThreads}
           onFeedClick={onFeedClick}
         />
       )),

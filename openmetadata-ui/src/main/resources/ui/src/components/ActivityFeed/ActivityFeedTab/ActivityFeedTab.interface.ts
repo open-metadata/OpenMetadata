@@ -22,6 +22,7 @@ export enum ActivityFeedTabs {
   ALL = 'all',
   MENTIONS = 'mentions',
   TASKS = 'tasks',
+  ANNOUNCEMENTS = 'announcements',
 }
 
 export interface ActivityFeedTabBasicProps {
