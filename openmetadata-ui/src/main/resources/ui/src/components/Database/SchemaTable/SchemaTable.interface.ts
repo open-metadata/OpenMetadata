@@ -34,15 +34,6 @@ export type TableCellRendered<T, K extends keyof T> = (
   index: number
 ) => ReactNode;
 
-export interface DataTypeDisplayCellProps {
-  dataTypeDisplay: Column['dataTypeDisplay'];
-}
-
-export interface EditColumnTag {
-  column: Column;
-  index: number;
-}
-
 export interface UpdatedColumnFieldData {
   fqn: string;
   field: keyof Column;

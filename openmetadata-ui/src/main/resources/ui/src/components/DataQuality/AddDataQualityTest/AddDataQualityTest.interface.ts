@@ -23,11 +23,6 @@ export interface AddDataQualityTestProps {
   table: Table;
 }
 
-export interface SelectTestSuiteProps {
-  initialValue?: SelectTestSuiteType;
-  onSubmit: (data: SelectTestSuiteType) => void;
-}
-
 export interface TestCaseFormProps {
   initialValue?: CreateTestCase;
   onSubmit: (data: CreateTestCase) => Promise<void>;
@@ -49,19 +44,6 @@ export type TestSuiteIngestionDataType = {
   name?: string;
   selectAllTestCases?: boolean;
 };
-
-export interface TestSuiteSchedulerProps {
-  initialData?: Partial<TestSuiteIngestionDataType>;
-  allowEnableDebugLog?: boolean;
-  isLoading: boolean;
-  onSubmit: (data: TestSuiteIngestionDataType) => void;
-  onCancel: () => void;
-  buttonProps?: {
-    okText: string;
-    cancelText: string;
-  };
-  includePeriodOptions?: string[];
-}
 
 export interface AddTestSuitePipelineProps {
   initialData?: Partial<TestSuiteIngestionDataType>;

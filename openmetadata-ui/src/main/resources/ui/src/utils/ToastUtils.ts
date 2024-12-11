@@ -98,11 +98,3 @@ export const showInfoToast = (message: string, autoCloseTimer = 5000) => {
     autoClose: autoCloseTimer,
   });
 };
-
-/**
- * Clear all the toast messages.
- */
-export const clearAllToasts = () => {
-  toast.clearWaitingQueue();
-  toast.dismiss();
-};

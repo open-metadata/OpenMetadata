@@ -13,10 +13,7 @@
 
 import i18next from 'i18next';
 import { StepperStepType } from 'Models';
-import {
-  FilterPattern,
-  PipelineType,
-} from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { PipelineType } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 
 export const STEPS_FOR_ADD_INGESTION: Array<StepperStepType> = [
   {
@@ -27,11 +24,6 @@ export const STEPS_FOR_ADD_INGESTION: Array<StepperStepType> = [
   },
   { name: i18next.t('label.schedule-interval'), step: 2 },
 ];
-
-export const INITIAL_FILTER_PATTERN: FilterPattern = {
-  includes: [],
-  excludes: [],
-};
 
 export const INGESTION_ACTION_TYPE = {
   ADD: 'add',
@@ -50,7 +42,3 @@ export const PIPELINE_TYPE_LOCALIZATION = {
   [PipelineType.Usage]: 'usage',
   [PipelineType.Application]: 'application',
 };
-
-export const DBT_CLASSIFICATION_DEFAULT_VALUE = 'dbtTags';
-
-export const DEFAULT_PARSING_TIMEOUT_LIMIT = 300;

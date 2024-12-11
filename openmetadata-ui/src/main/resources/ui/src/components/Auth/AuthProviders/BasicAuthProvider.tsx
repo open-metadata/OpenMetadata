@@ -12,7 +12,6 @@
  */
 
 import { AxiosError } from 'axios';
-import { JwtPayload } from 'jwt-decode';
 import React, { createContext, ReactNode, useContext, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
@@ -42,11 +41,6 @@ import { resetWebAnalyticSession } from '../../../utils/WebAnalyticsUtils';
 import { toLower } from 'lodash';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { OidcUser } from './AuthProvider.interface';
-
-export interface BasicAuthJWTPayload extends JwtPayload {
-  isBot?: false;
-  email?: string;
-}
 
 interface BasicAuthProps {
   children: ReactNode;

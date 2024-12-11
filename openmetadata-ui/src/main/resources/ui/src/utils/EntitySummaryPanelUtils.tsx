@@ -39,11 +39,6 @@ import { stringToHTML } from './StringsUtils';
 
 const { Text } = Typography;
 
-export interface EntityNameProps {
-  name?: string;
-  displayName?: string;
-}
-
 export type SummaryListItem = Column | Field | Chart | Task | MlFeature;
 
 export interface ListItemHighlights {

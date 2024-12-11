@@ -31,12 +31,6 @@ export interface EntityLineageResponse {
   upstreamEdges?: EdgeDetails[];
 }
 
-export type LineageRequest = {
-  upstreamDepth?: number;
-  downstreamDepth?: number;
-  nodesPerLayer?: number;
-};
-
 export interface EdgeFromToData {
   fqn: string;
   id: string;

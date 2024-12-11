@@ -67,8 +67,3 @@ export interface EsTerm {
     [key: string]: string | boolean;
   };
 }
-
-export enum ExploreSidebarTab {
-  ASSETS = 'assets',
-  TREE = 'tree',
-}

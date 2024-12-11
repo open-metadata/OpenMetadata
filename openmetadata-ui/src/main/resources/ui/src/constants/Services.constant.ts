@@ -13,10 +13,7 @@
 
 import { map, startCase } from 'lodash';
 import { ServiceTypes, StepperStepType } from 'Models';
-import addPlaceHolder from '../assets/img/add-placeholder.svg';
 import airbyte from '../assets/img/Airbyte.png';
-import noDataFound from '../assets/img/no-data-placeholder.svg';
-import noService from '../assets/img/no-service.png';
 import airflow from '../assets/img/service-icon-airflow.png';
 import alationsink from '../assets/img/service-icon-alation-sink.png';
 import amazonS3 from '../assets/img/service-icon-amazon-s3.svg';
@@ -55,7 +52,6 @@ import metabase from '../assets/img/service-icon-metabase.png';
 import microstrategy from '../assets/img/service-icon-microstrategy.svg';
 import mode from '../assets/img/service-icon-mode.png';
 import mongodb from '../assets/img/service-icon-mongodb.png';
-import msAzure from '../assets/img/service-icon-ms-azure.png';
 import mssql from '../assets/img/service-icon-mssql.png';
 import nifi from '../assets/img/service-icon-nifi.png';
 import openlineage from '../assets/img/service-icon-openlineage.svg';
@@ -63,9 +59,7 @@ import oracle from '../assets/img/service-icon-oracle.png';
 import pinot from '../assets/img/service-icon-pinot.png';
 import postgres from '../assets/img/service-icon-post.png';
 import powerbi from '../assets/img/service-icon-power-bi.png';
-import prefect from '../assets/img/service-icon-prefect.png';
 import presto from '../assets/img/service-icon-presto.png';
-import pulsar from '../assets/img/service-icon-pulsar.png';
 import qlikSense from '../assets/img/service-icon-qlik-sense.png';
 import query from '../assets/img/service-icon-query.png';
 import quicksight from '../assets/img/service-icon-quicksight.png';
@@ -101,7 +95,6 @@ import restService from '../assets/svg/ic-service-rest-api.svg';
 import logo from '../assets/svg/logo-monogram.svg';
 import openSearch from '../assets/svg/open-search.svg';
 import pipelineDefault from '../assets/svg/pipeline.svg';
-import plus from '../assets/svg/plus.svg';
 import mlflow from '../assets/svg/service-icon-mlflow.svg';
 import teradata from '../assets/svg/teradata.svg';
 import topicDefault from '../assets/svg/topic.svg';
@@ -120,16 +113,7 @@ import { PipelineServiceType } from '../generated/entity/services/pipelineServic
 import { SearchServiceType } from '../generated/entity/services/searchService';
 import { ServiceType } from '../generated/entity/services/serviceType';
 import i18n from '../utils/i18next/LocalUtil';
-import {
-  addDBTIngestionGuide,
-  addLineageIngestionGuide,
-  addMetadataIngestionGuide,
-  addProfilerIngestionGuide,
-  addUsageIngestionGuide,
-} from './service-guide.constant';
 
-export const NoDataFoundPlaceHolder = noDataFound;
-export const AddPlaceHolder = addPlaceHolder;
 export const MYSQL = mysql;
 export const SQLITE = sqlite;
 export const MSSQL = mssql;
@@ -148,7 +132,6 @@ export const GLUE = glue;
 export const MARIADB = mariadb;
 export const VERTICA = vertica;
 export const KAFKA = kafka;
-export const PULSAR = pulsar;
 export const REDPANDA = redpanda;
 export const SUPERSET = superset;
 export const SYNAPSE = synapse;
@@ -188,9 +171,7 @@ export const SAS = sas;
 export const OPENLINEAGE = openlineage;
 export const LOGO = logo;
 export const EXASOL = exasol;
-
 export const AIRFLOW = airflow;
-export const PREFECT = prefect;
 export const POWERBI = powerbi;
 export const DATABASE_DEFAULT = databaseDefault;
 export const TOPIC_DEFAULT = topicDefault;
@@ -205,7 +186,6 @@ export const DOMO = domo;
 export const SAGEMAKER = sagemaker;
 export const AMAZON_S3 = amazonS3;
 export const GCS = gcs;
-export const MS_AZURE = msAzure;
 export const SPARK = spark;
 export const SPLINE = spline;
 export const MONGODB = mongodb;
@@ -216,8 +196,6 @@ export const GREENPLUM = greenplum;
 export const ELASTIC_SEARCH = elasticSearch;
 export const OPEN_SEARCH = openSearch;
 export const CUSTOM_SEARCH_DEFAULT = searchDefault;
-export const PLUS = plus;
-export const NOSERVICE = noService;
 export const ICEBERGE = iceberge;
 export const TERADATA = teradata;
 export const FLINK = flink;
@@ -310,10 +288,6 @@ export const INGESTION_ELASTIC_SEARCH_WORKFLOW_UI_SCHEMA = {
   regionName: { 'ui:widget': 'hidden', 'ui:hideError': true },
 };
 
-export const INGESTION_WORKFLOW_NAME_UI_SCHEMA = {
-  name: { 'ui:disabled': true },
-};
-
 export const INGESTION_WORKFLOW_UI_SCHEMA = {
   type: { 'ui:widget': 'hidden', 'ui:hideError': true },
   name: { 'ui:widget': 'hidden', 'ui:hideError': true },
@@ -385,14 +359,6 @@ export const TEST_CONNECTION_PROGRESS_PERCENTAGE = {
   TWENTY: 20,
   FORTY: 40,
   HUNDRED: 100,
-};
-
-export const INGESTION_GUIDE_MAP = {
-  [PipelineType.Usage]: addUsageIngestionGuide,
-  [PipelineType.Lineage]: addLineageIngestionGuide,
-  [PipelineType.Profiler]: addProfilerIngestionGuide,
-  [PipelineType.Dbt]: addDBTIngestionGuide,
-  [PipelineType.Metadata]: addMetadataIngestionGuide,
 };
 
 export const SERVICE_TYPE_MAP = {
