@@ -102,8 +102,13 @@ const ActivityFeedActions = ({
   };
 
   const editCheck = useMemo(() => {
-    if (feed.type === ThreadType.Announcement && !isPost) {
-      return false;
+    if (feed.type === ThreadType.Announcement) {
+      // Admins can delete announcements. They can delete posts only if they are the author.
+      if (isPost) {
+        return isAuthor;
+      }
+
+      return currentUser?.isAdmin;
     } else if (feed.type === ThreadType.Task && !isPost) {
       return false;
     } else if (isAuthor) {
@@ -114,7 +119,14 @@ const ActivityFeedActions = ({
   }, [post, feed, currentUser]);
 
   const deleteCheck = useMemo(() => {
-    if (feed.type === ThreadType.Task && !isPost) {
+    if (feed.type === ThreadType.Announcement) {
+      // Admins can delete announcements. They can delete posts only if they are the author.
+      if (isPost) {
+        return isAuthor;
+      }
+
+      return currentUser?.isAdmin;
+    } else if (feed.type === ThreadType.Task && !isPost) {
       return false;
     } else if (isAuthor || currentUser?.isAdmin) {
       return true;
@@ -136,16 +148,15 @@ const ActivityFeedActions = ({
           />
         )}
 
-        {editCheck ||
-          ((feed.type === 'Announcement' || isAnnouncementTab) && (
-            <Icon
-              className="toolbar-button"
-              component={IconEdit}
-              data-testid="edit-message"
-              style={{ fontSize: '16px' }}
-              onClick={onEditPost}
-            />
-          ))}
+        {editCheck && (
+          <Icon
+            className="toolbar-button"
+            component={IconEdit}
+            data-testid="edit-message"
+            style={{ fontSize: '16px' }}
+            onClick={onEditPost}
+          />
+        )}
 
         {deleteCheck && (
           <Icon

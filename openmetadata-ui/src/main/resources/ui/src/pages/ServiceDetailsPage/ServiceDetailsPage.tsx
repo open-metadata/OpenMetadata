@@ -1060,7 +1060,6 @@ const ServiceDetailsPage: FunctionComponent = () => {
       },
       {
         name: t('label.announcement-plural'),
-        isHidden: !servicePermission.EditAll,
         key: EntityTabs.ANNOUNCEMENT,
         count: 0,
         children: (
