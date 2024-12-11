@@ -17,7 +17,7 @@ You can find more details about Docker deployment [here](/deployment/docker)
 
 Below we have highlighted the steps needed to upgrade to the latest version with Docker. Make sure to also look [here](/deployment/upgrade/versions/100-to-110) for the specific details related to upgrading to 1.0.0
 
-{% partial file="/v1.6/deployment/upgrade/upgrade-prerequisites.md" /%}
+{% partial file="/v1.7/deployment/upgrade/upgrade-prerequisites.md" /%}
 
 # Upgrade Process
 
@@ -41,7 +41,7 @@ Please make sure to go through [breaking changes and release highlights](/deploy
 docker compose -f docker-compose.yml up -d
 ```
 
-{% partial file="/v1.6/deployment/upgrade/post-upgrade-steps.md" /%}
+{% partial file="/v1.7/deployment/upgrade/post-upgrade-steps.md" /%}
 
 
 # Troubleshooting

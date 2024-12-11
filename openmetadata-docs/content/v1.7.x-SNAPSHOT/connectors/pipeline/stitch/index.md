@@ -20,7 +20,7 @@ Configure and schedule Stitch metadata and profiler workflows from the OpenMetad
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 
-{% partial file="/v1.6/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/pipeline/stitch/yaml"} /%}
+{% partial file="/v1.7/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/pipeline/stitch/yaml"} /%}
 
 ## Requirements
 
@@ -31,12 +31,12 @@ To extract metadata from Stitch, User first need to crate API crednetials:
 ## Metadata Ingestion
 
 {% partial 
-    file="/v1.6/connectors/metadata-ingestion-ui.md" 
+    file="/v1.7/connectors/metadata-ingestion-ui.md" 
     variables={
         connector: "Stitch", 
-        selectServicePath: "/images/v1.6/connectors/stitch/select-service.png",
-        addNewServicePath: "/images/v1.6/connectors/stitch/add-new-service.png",
-        serviceConnectionPath: "/images/v1.6/connectors/stitch/service-connection.png",
+        selectServicePath: "/images/v1.7/connectors/stitch/select-service.png",
+        addNewServicePath: "/images/v1.7/connectors/stitch/add-new-service.png",
+        serviceConnectionPath: "/images/v1.7/connectors/stitch/service-connection.png",
     } 
 /%}
 
@@ -52,14 +52,14 @@ To extract metadata from Stitch, User first need to crate API crednetials:
 
 {% /extraContent %}
 
-{% partial file="/v1.6/connectors/test-connection.md" /%}
+{% partial file="/v1.7/connectors/test-connection.md" /%}
 
-{% partial file="/v1.6/connectors/pipeline/configure-ingestion.md" /%}
+{% partial file="/v1.7/connectors/pipeline/configure-ingestion.md" /%}
 
-{% partial file="/v1.6/connectors/ingestion-schedule-and-deploy.md" /%}
+{% partial file="/v1.7/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
 
 By successfully completing these steps, the lineage information for the service will be displayed.
 
-{% partial file="/v1.6/connectors/troubleshooting.md" /%}
+{% partial file="/v1.7/connectors/troubleshooting.md" /%}
