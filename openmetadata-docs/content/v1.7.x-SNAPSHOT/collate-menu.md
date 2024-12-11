@@ -35,6 +35,12 @@ site_menu:
   - category: Connectors
     url: /connectors
 
+  - category: Connectors / API
+    url: /connectors/api
+  - category: Connectors / API / REST
+    url: /connectors/api/rest
+  - category: Connectors / API / REST / Run Externally
+    url: /connectors/api/rest/yaml
   - category: Connectors / Database
     url: /connectors/database
   - category: Connectors / Database / ADLS Datalake
