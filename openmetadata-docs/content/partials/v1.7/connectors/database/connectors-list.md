@@ -22,6 +22,7 @@
 {% connectorInfoCard name="Impala" stage="PROD" href="/connectors/database/impala" platform="OpenMetadata" / %}
 {% connectorInfoCard name="MariaDB" stage="PROD" href="/connectors/database/mariadb" platform="OpenMetadata" / %}
 {% connectorInfoCard name="MongoDB" stage="PROD" href="/connectors/database/mongodb" platform="OpenMetadata" / %}
+{% connectorInfoCard name="Cassandra" stage="BETA" href="/connectors/database/cassandra" platform="OpenMetadata" / %}
 {% connectorInfoCard name="MSSQL" stage="PROD" href="/connectors/database/mssql" platform="OpenMetadata" / %}
 {% connectorInfoCard name="MySQL" stage="PROD" href="/connectors/database/mysql" platform="OpenMetadata" / %}
 {% connectorInfoCard name="Oracle" stage="PROD" href="/connectors/database/oracle" platform="OpenMetadata" / %}

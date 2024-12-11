@@ -19,7 +19,7 @@ Configure and schedule Cassandra metadata workflows from the OpenMetadata UI:
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 
-{% partial file="/v1.6/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/cassandra/yaml"} /%}
+{% partial file="/v1.7/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/cassandra/yaml"} /%}
 
 ## Requirements
 
@@ -30,12 +30,12 @@ To extract metadata using the Cassandra connector, ensure the user in the connec
 ## Metadata Ingestion
 
 {% partial 
-  file="/v1.6/connectors/metadata-ingestion-ui.md" 
+  file="/v1.7/connectors/metadata-ingestion-ui.md" 
   variables={
     connector: "Cassandra", 
-    selectServicePath: "/images/v1.6/connectors/cassandra/select-service.png",
-    addNewServicePath: "/images/v1.6/connectors/cassandra/add-new-service.png",
-    serviceConnectionPath: "/images/v1.6/connectors/cassandra/service-connection.png",
+    selectServicePath: "/images/v1.7/connectors/cassandra/select-service.png",
+    addNewServicePath: "/images/v1.7/connectors/cassandra/add-new-service.png",
+    serviceConnectionPath: "/images/v1.7/connectors/cassandra/service-connection.png",
 } 
 /%}
 
@@ -62,14 +62,14 @@ Configuration for connecting to DataStax Astra DB in the cloud.
 
 {% /extraContent %}
 
-{% partial file="/v1.6/connectors/test-connection.md" /%}
+{% partial file="/v1.7/connectors/test-connection.md" /%}
 
-{% partial file="/v1.6/connectors/database/configure-ingestion.md" /%}
+{% partial file="/v1.7/connectors/database/configure-ingestion.md" /%}
 
-{% partial file="/v1.6/connectors/ingestion-schedule-and-deploy.md" /%}
+{% partial file="/v1.7/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
 
-{% partial file="/v1.6/connectors/troubleshooting.md" /%}
+{% partial file="/v1.7/connectors/troubleshooting.md" /%}
 
-{% partial file="/v1.6/connectors/database/related.md" /%}
+{% partial file="/v1.7/connectors/database/related.md" /%}
