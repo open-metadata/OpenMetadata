@@ -114,6 +114,10 @@ const GlossaryTermTab = ({
   const [isTableLoading, setIsTableLoading] = useState(false);
   const [isTableHovered, setIsTableHovered] = useState(false);
   const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
+  const listOfVisibleColumns = useMemo(() => {
+    return ['name', 'description', 'owners', 'status', 'new-term'];
+  }, []);
+
   const [isStatusDropdownVisible, setIsStatusDropdownVisible] =
     useState<boolean>(false);
   const statusOptions = useMemo(
@@ -123,7 +127,7 @@ const GlossaryTermTab = ({
   );
   const [statusDropdownSelection, setStatusDropdownSelections] = useState<
     string[]
-  >(['Approved', 'Draft']);
+  >([Status.Approved, Status.Draft, Status.InReview]);
   const [selectedStatus, setSelectedStatus] = useState<string[]>([
     ...statusDropdownSelection,
   ]);
@@ -195,7 +199,12 @@ const GlossaryTermTab = ({
         key: 'reviewers',
         width: '33%',
         render: (reviewers: EntityReference[]) => (
-          <OwnerLabel owners={reviewers} />
+          <OwnerLabel
+            owners={reviewers}
+            placeHolder={t('label.no-entity', {
+              entity: t('label.reviewer-plural'),
+            })}
+          />
         ),
       },
       {
@@ -296,11 +305,7 @@ const GlossaryTermTab = ({
     }
 
     return data;
-  }, [glossaryTerms, permissions]);
-
-  const listOfVisibleColumns = useMemo(() => {
-    return ['name', 'description', 'owners', 'status', 'new-term'];
-  }, []);
+  }, [permissions]);
 
   const defaultCheckedList = useMemo(
     () =>

@@ -58,6 +58,7 @@ import {
   LOOKER,
   MARIADB,
   METABASE,
+  MICROSTRATEGY,
   MLFLOW,
   ML_MODEL_DEFAULT,
   MODE,
@@ -147,6 +148,7 @@ class ServiceUtilClassBase {
     PipelineServiceType.Matillion,
     PipelineServiceType.DataFactory,
     PipelineServiceType.Stitch,
+    DashboardServiceType.PowerBIReportServer,
   ];
 
   DatabaseServiceTypeSmallCase = this.convertEnumToLowerCase<
@@ -376,6 +378,7 @@ class ServiceUtilClassBase {
 
       case this.DashboardServiceTypeSmallCase.CustomDashboard:
         return DASHBOARD_DEFAULT;
+
       case this.DashboardServiceTypeSmallCase.Superset:
         return SUPERSET;
 
@@ -468,6 +471,7 @@ class ServiceUtilClassBase {
 
       case this.MlModelServiceTypeSmallCase.Sklearn:
         return SCIKIT;
+
       case this.MlModelServiceTypeSmallCase.SageMaker:
         return SAGEMAKER;
 
@@ -503,6 +507,9 @@ class ServiceUtilClassBase {
 
       case this.ApiServiceTypeSmallCase.REST:
         return REST_SERVICE;
+
+      case this.DashboardServiceTypeSmallCase.MicroStrategy:
+        return MICROSTRATEGY;
 
       default: {
         let logo;

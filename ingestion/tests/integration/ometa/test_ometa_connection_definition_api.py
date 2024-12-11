@@ -45,5 +45,5 @@ def test_get_connection_def():
     res: TestConnectionDefinition = metadata.get_by_name(
         entity=TestConnectionDefinition, fqn="Mysql.testConnectionDefinition"
     )
-    assert len(res.steps) == 4
+    assert len(res.steps) == 5
     assert res.name.root == "Mysql"

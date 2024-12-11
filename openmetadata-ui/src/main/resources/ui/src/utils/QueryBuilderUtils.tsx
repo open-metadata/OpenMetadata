@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { CloseOutlined } from '@ant-design/icons';
+import { CloseOutlined, PlusOutlined } from '@ant-design/icons';
 import { Button } from 'antd';
 import { t } from 'i18next';
 import { isUndefined } from 'lodash';
@@ -206,6 +206,19 @@ export const getEqualFieldProperties = (
   };
 };
 
+export const getOperator = (
+  fieldType: string | undefined,
+  isNot: boolean
+): string => {
+  switch (fieldType) {
+    case 'text':
+    case 'boolean':
+      return isNot ? 'not_equal' : 'equal';
+    default:
+      return isNot ? 'select_not_equals' : 'select_equals';
+  }
+};
+
 export const getJsonTreePropertyFromQueryFilter = (
   parentPath: Array<string>,
   queryFilter: QueryFieldInterface[],
@@ -221,7 +234,7 @@ export const getJsonTreePropertyFromQueryFilter = (
       } else if (!isUndefined(curr.term)) {
         const [field, value] = Object.entries(curr.term)[0];
         const fieldType = fields ? resolveFieldType(fields, field) : '';
-        const op = fieldType === 'text' ? 'equal' : 'select_equals';
+        const op = getOperator(fieldType, false);
 
         return {
           ...acc,
@@ -238,7 +251,7 @@ export const getJsonTreePropertyFromQueryFilter = (
         const value = Object.values((curr.bool?.must_not as EsTerm)?.term)[0];
         const key = Object.keys((curr.bool?.must_not as EsTerm)?.term)[0];
         const fieldType = fields ? resolveFieldType(fields, key) : '';
-        const op = fieldType === 'text' ? 'not_equal' : 'select_not_equals';
+        const op = getOperator(fieldType, true);
 
         return {
           ...acc,
@@ -403,6 +416,43 @@ export const renderQueryBuilderFilterButtons: RenderSettings['renderButton'] = (
 
   return <></>;
 };
+
+export const renderJSONLogicQueryBuilderButtons: RenderSettings['renderButton'] =
+  (props) => {
+    const type = props?.type;
+
+    if (type === 'delRule') {
+      return (
+        <Button
+          className="action action--DELETE ant-btn-sm"
+          data-testid="delete-condition-button"
+          icon={<CloseOutlined width={14} />}
+          onClick={props?.onClick}
+        />
+      );
+    } else if (type === 'delRuleGroup') {
+      return (
+        <Button
+          className="action action--DELETE-GROUP ant-btn-sm"
+          data-testid="delete-group-condition-button"
+          icon={<CloseOutlined width={14} />}
+          onClick={props?.onClick}
+        />
+      );
+    } else if (type === 'addRule') {
+      return (
+        <Button
+          className="action action--ADD-RULE ant-btn-sm"
+          data-testid="add-condition-button"
+          icon={<PlusOutlined width={14} />}
+          type="primary"
+          onClick={props?.onClick}
+        />
+      );
+    }
+
+    return <></>;
+  };
 
 interface ElasticsearchQuery {
   bool?: {

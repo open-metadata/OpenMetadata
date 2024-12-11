@@ -98,7 +98,10 @@ export const getTitle = (
       </div>
     </Link>
   ) : (
-    <Text className="entity-title" data-testid="entity-title">
+    <Text
+      className="entity-title"
+      data-testid="entity-title"
+      ellipsis={{ tooltip: true }}>
       {title}
     </Text>
   );

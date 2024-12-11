@@ -130,7 +130,7 @@ public class StoredProcedureRepository extends EntityRepository<StoredProcedure>
 
     @Transaction
     @Override
-    public void entitySpecificUpdate() {
+    public void entitySpecificUpdate(boolean consolidatingChanges) {
       // storedProcedureCode is a required field. Cannot be null.
       if (updated.getStoredProcedureCode() != null) {
         recordChange(

@@ -16,7 +16,7 @@ import traceback
 from typing import List, Optional, Union, cast
 
 from sqlalchemy import Column, inspect, text
-from sqlalchemy.orm import DeclarativeMeta, Query, aliased
+from sqlalchemy.orm import DeclarativeMeta, Query
 from sqlalchemy.orm.util import AliasedClass
 from sqlalchemy.schema import Table
 from sqlalchemy.sql.sqltypes import Enum
@@ -145,13 +145,12 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
             and self.sample_config.profile_sample_type == ProfileSampleType.PERCENTAGE
         ):
             if self.partition_details:
-                return self._partitioned_table()
+                partitioned = self._partitioned_table()
+                return partitioned.cte(f"{self.raw_dataset.__tablename__}_partitioned")
 
             return self.raw_dataset
 
-        sampled = self.get_sample_query(column=column)
-
-        return aliased(self.raw_dataset, sampled)
+        return self.get_sample_query(column=column)
 
     def fetch_sample_data(self, columns: Optional[List[Column]] = None) -> TableData:
         """
@@ -224,13 +223,16 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
         if not is_safe_sql_query(self.sample_query):
             raise RuntimeError(f"SQL expression is not safe\n\n{self.sample_query}")
 
-        return self.client.query(self.raw_dataset).from_statement(
-            text(f"{self.sample_query}")
+        stmt = text(f"{self.sample_query}")
+        stmt = stmt.columns(*list(inspect(self.raw_dataset).c))
+
+        return self.client.query(stmt.subquery()).cte(
+            f"{self.raw_dataset.__tablename__}_user_sampled"
         )
 
     def _partitioned_table(self) -> Query:
         """Return the Query object for partitioned tables"""
-        return aliased(self.raw_dataset, self.get_partitioned_query().subquery())
+        return self.get_partitioned_query()
 
     def get_partitioned_query(self, query=None) -> Query:
         """Return the partitioned query"""

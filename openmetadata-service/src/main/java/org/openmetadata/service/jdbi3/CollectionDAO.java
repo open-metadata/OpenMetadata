@@ -1176,7 +1176,7 @@ public interface CollectionDAO {
         value =
             "DELETE FROM entity_relationship "
                 + "WHERE  json->'pipeline'->>'id' =:toId OR toId = :toId AND relation = :relation "
-                + "AND json->>'source' = :source ORDER BY toId",
+                + "AND json->>'source' = :source",
         connectionType = POSTGRES)
     void deleteLineageBySourcePipeline(
         @BindUUID("toId") UUID toId,
@@ -2741,25 +2741,6 @@ public interface CollectionDAO {
       return listAfter(
           getTableName(), filter.getQueryParams(), condition, condition, limit, afterName, afterId);
     }
-
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT json FROM table_entity "
-                + "WHERE JSON_SEARCH(JSON_EXTRACT(json, '$.tableConstraints[*].referredColumns'), "
-                + "'one', :fqn) IS NOT NULL",
-        connectionType = MYSQL)
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT json "
-                + "FROM table_entity "
-                + "WHERE EXISTS ("
-                + "    SELECT 1"
-                + "    FROM jsonb_array_elements(json->'tableConstraints') AS constraints"
-                + "    CROSS JOIN jsonb_array_elements_text(constraints->'referredColumns') AS referredColumn "
-                + "    WHERE referredColumn LIKE :fqn"
-                + ")",
-        connectionType = POSTGRES)
-    List<String> findRelatedTables(@Bind("fqn") String fqn);
   }
 
   interface StoredProcedureDAO extends EntityDAO<StoredProcedure> {

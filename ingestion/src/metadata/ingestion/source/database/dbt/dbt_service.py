@@ -15,7 +15,12 @@ DBT service Topology.
 from abc import ABC, abstractmethod
 from typing import Iterable, List
 
-from dbt_artifacts_parser.parser import parse_catalog, parse_manifest, parse_run_results
+from dbt_artifacts_parser.parser import (
+    parse_catalog,
+    parse_manifest,
+    parse_run_results,
+    parse_sources,
+)
 from pydantic import Field
 from typing_extensions import Annotated
 
@@ -38,6 +43,7 @@ from metadata.ingestion.models.topology import (
 )
 from metadata.ingestion.source.database.database_service import DataModelLink
 from metadata.ingestion.source.database.dbt.constants import (
+    REQUIRED_CONSTRAINT_KEYS,
     REQUIRED_NODE_KEYS,
     REQUIRED_RESULTS_KEYS,
 )
@@ -182,6 +188,20 @@ class DbtServiceSource(TopologyRunnerMixin, Source, ABC):
                 ]
                 for key in keys_to_delete:
                     del value[key]
+                if value.get("columns"):
+                    for col_name, value in value[
+                        "columns"
+                    ].items():  # pylint: disable=unused-variable
+                        if value.get("constraints"):
+                            keys_to_delete = [
+                                key
+                                for key in value
+                                if key.lower() not in REQUIRED_CONSTRAINT_KEYS
+                            ]
+                            for key in keys_to_delete:
+                                del value[key]
+                        else:
+                            value["constraints"] = None
 
     def remove_run_result_non_required_keys(self, run_results: List[dict]):
         """
@@ -209,11 +229,15 @@ class DbtServiceSource(TopologyRunnerMixin, Source, ABC):
             self.remove_run_result_non_required_keys(
                 run_results=self.context.get().dbt_file.dbt_run_results
             )
+
         dbt_objects = DbtObjects(
             dbt_catalog=parse_catalog(self.context.get().dbt_file.dbt_catalog)
             if self.context.get().dbt_file.dbt_catalog
             else None,
             dbt_manifest=parse_manifest(self.context.get().dbt_file.dbt_manifest),
+            dbt_sources=parse_sources(self.context.get().dbt_file.dbt_sources)
+            if self.context.get().dbt_file.dbt_sources
+            else None,
             dbt_run_results=[
                 parse_run_results(run_result_file)
                 for run_result_file in self.context.get().dbt_file.dbt_run_results
