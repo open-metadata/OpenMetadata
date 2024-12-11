@@ -292,7 +292,7 @@ class ServiceBaseClass {
         {
           // Custom expect message for reporting, optional.
           message: 'Wait for pipeline to be successful',
-          timeout: 650_000,
+          timeout: 750_000,
           intervals: [30_000, 15_000, 5_000],
         }
       )
