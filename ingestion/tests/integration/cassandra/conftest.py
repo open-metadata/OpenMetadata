@@ -58,8 +58,9 @@ def create_service_request(session, tmp_path_factory):
             "serviceType": DatabaseServiceType.Cassandra.value,
             "connection": {
                 "config": {
+                    "username": "cassandra",
+                    "authType": {"password": "cassandra"},
                     "hostPort": f"{session.cluster.contact_points[0][0]}:{session.cluster.contact_points[0][1]}",
-                    "databaseSchema": session.keyspace,
                 }
             },
         }
