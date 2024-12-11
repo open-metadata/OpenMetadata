@@ -52,7 +52,6 @@ def session(tmp_path_factory):
 
 @pytest.fixture(scope="module")
 def create_service_request(session, tmp_path_factory):
-    breakpoint()
     return CreateDatabaseServiceRequest.model_validate(
         {
             "name": "docker_test_" + tmp_path_factory.mktemp("cassandra").name,
