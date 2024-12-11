@@ -105,6 +105,11 @@ export const UserTab = ({
     [currentTeam.teamType]
   );
 
+  const editUserPermission = useMemo(
+    () => permission.EditAll || permission.EditUsers,
+    [permission.EditAll, permission.EditUsers]
+  );
+
   /**
    * Make API call to fetch current team user data
    */
@@ -213,13 +218,13 @@ export const UserTab = ({
             <Tooltip
               placement="left"
               title={
-                permission.EditAll
+                editUserPermission
                   ? t('label.remove')
                   : t('message.no-permission-for-action')
               }>
               <Button
                 data-testid="remove-user-btn"
-                disabled={!permission.EditAll}
+                disabled={!editUserPermission}
                 icon={
                   <IconRemove height={16} name={t('label.remove')} width={16} />
                 }
@@ -235,7 +240,7 @@ export const UserTab = ({
     return tabColumns.filter((column) =>
       column.key === 'actions' ? !isTeamDeleted : true
     );
-  }, [handleRemoveClick, permission, isTeamDeleted]);
+  }, [handleRemoveClick, editUserPermission, isTeamDeleted]);
 
   const sortedUser = useMemo(() => orderBy(users, ['name'], 'asc'), [users]);
 
@@ -329,10 +334,10 @@ export const UserTab = ({
                 <Button
                   ghost
                   className={classNames({
-                    'p-x-lg': permission.EditAll && !isTeamDeleted,
+                    'p-x-lg': editUserPermission && !isTeamDeleted,
                   })}
                   data-testid="add-new-user"
-                  disabled={!permission.EditAll || isTeamDeleted}
+                  disabled={!editUserPermission || isTeamDeleted}
                   icon={<PlusOutlined />}
                   type="primary">
                   {t('label.add')}
@@ -352,7 +357,7 @@ export const UserTab = ({
         }
         className="mt-0-important"
         heading={t('label.user')}
-        permission={permission.EditAll}
+        permission={editUserPermission}
         type={ERROR_PLACEHOLDER_TYPE.ASSIGN}
       />
     ) : (
@@ -382,7 +387,7 @@ export const UserTab = ({
           {!currentTeam.deleted && isGroupType && (
             <Col>
               <Space>
-                {users.length > 0 && permission.EditAll && (
+                {users.length > 0 && editUserPermission && (
                   <UserSelectableList
                     hasPermission
                     selectedUsers={currentTeam?.users ?? []}
