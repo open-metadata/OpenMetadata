@@ -193,13 +193,16 @@ x-environment: &common-env
       WEB_CONF_HSTS_MAX_AGE: ${WEB_CONF_HSTS_MAX_AGE:-"365 days"}
       WEB_CONF_HSTS_INCLUDE_SUBDOMAINS: ${WEB_CONF_HSTS_INCLUDE_SUBDOMAINS:-"true"}
       WEB_CONF_HSTS_PRELOAD: ${WEB_CONF_HSTS_PRELOAD:-"true"}
-            #OpenMetadata Web Configuration
+      #OpenMetadata Web Configuration
       WEB_CONF_URI_PATH: ${WEB_CONF_URI_PATH:-"/api"}
-            # Mask passwords values in UI
-      MASK_PASSWORDS_API: ${MASK_PASSWORDS_API:-false}
-
-
-
+      # Migration 
+      MIGRATION_LIMIT_PARAM: ${MIGRATION_LIMIT_PARAM:-1200}
+      #Referrer-Policy
+      WEB_CONF_REFERRER_POLICY_ENABLED: ${WEB_CONF_REFERRER_POLICY_ENABLED:-false}
+      WEB_CONF_REFERRER_POLICY_OPTION: ${WEB_CONF_REFERRER_POLICY_OPTION:-"SAME_ORIGIN"}
+      #Permission-Policy
+      WEB_CONF_PERMISSION_POLICY_ENABLED: ${WEB_CONF_PERMISSION_POLICY_ENABLED:-false}
+      WEB_CONF_PERMISSION_POLICY_OPTION: ${WEB_CONF_PERMISSION_POLICY_OPTION:-""}
 
 services:
   mysql:
@@ -258,15 +261,6 @@ services:
     command: "./bootstrap/openmetadata-ops.sh -d migrate --force"
     environment:
       <<: *common-env
-      # Migration 
-      MIGRATION_LIMIT_PARAM: ${MIGRATION_LIMIT_PARAM:-1200}
-      #Referrer-Policy
-      WEB_CONF_REFERRER_POLICY_ENABLED: ${WEB_CONF_REFERRER_POLICY_ENABLED:-false}
-      WEB_CONF_REFERRER_POLICY_OPTION: ${WEB_CONF_REFERRER_POLICY_OPTION:-"SAME_ORIGIN"}
-      #Permission-Policy
-      WEB_CONF_PERMISSION_POLICY_ENABLED: ${WEB_CONF_PERMISSION_POLICY_ENABLED:-false}
-      WEB_CONF_PERMISSION_POLICY_OPTION: ${WEB_CONF_PERMISSION_POLICY_OPTION:-""}
-
     depends_on:
       elasticsearch:
         condition: service_healthy
@@ -282,7 +276,6 @@ services:
     container_name: openmetadata_server
     environment:
       <<: *common-env
-      MASK_PASSWORDS_API: ${MASK_PASSWORDS_API:-true}
     expose:
       - 8585
       - 8586

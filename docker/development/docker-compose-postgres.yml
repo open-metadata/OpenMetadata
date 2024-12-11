@@ -167,12 +167,8 @@ x-environment: &common-env
       SMTP_SERVER_USERNAME: ${SMTP_SERVER_USERNAME:-""}
       SMTP_SERVER_PWD: ${SMTP_SERVER_PWD:-""}
       SMTP_SERVER_STRATEGY: ${SMTP_SERVER_STRATEGY:-"SMTP_TLS"}
-
       # Heap OPTS Configurations
       OPENMETADATA_HEAP_OPTS: ${OPENMETADATA_HEAP_OPTS:--Xmx1G -Xms1G}
-      # Mask passwords values in UI
-      MASK_PASSWORDS_API: ${MASK_PASSWORDS_API:-false}
-      
       #OpenMetadata Web Configuration
       WEB_CONF_URI_PATH: ${WEB_CONF_URI_PATH:-"/api"}
       #HSTS
@@ -272,7 +268,6 @@ services:
     container_name: openmetadata_server
     environment:
       <<: *common-env
-      MASK_PASSWORDS_API: ${MASK_PASSWORDS_API:-true}
     expose:
       - 8585
       - 8586
