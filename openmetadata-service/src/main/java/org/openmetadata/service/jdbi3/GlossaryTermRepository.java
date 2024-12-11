@@ -934,9 +934,9 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
 
     @Transaction
     @Override
-    public void entitySpecificUpdate() {
+    public void entitySpecificUpdate(boolean consolidatingChanges) {
       validateParent();
-      updateStatus(original, updated);
+      updateStatus(original, updated, consolidatingChanges);
       updateSynonyms(original, updated);
       updateReferences(original, updated);
       updateRelatedTerms(original, updated);
@@ -1000,12 +1000,14 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       }
     }
 
-    private void updateStatus(GlossaryTerm origTerm, GlossaryTerm updatedTerm) {
+    private void updateStatus(
+        GlossaryTerm origTerm, GlossaryTerm updatedTerm, boolean consolidatingChanges) {
       if (origTerm.getStatus() == updatedTerm.getStatus()) {
         return;
       }
       // Only reviewers can change from IN_REVIEW status to APPROVED/REJECTED status
-      if (origTerm.getStatus() == Status.IN_REVIEW
+      if (!consolidatingChanges
+          && origTerm.getStatus() == Status.IN_REVIEW
           && (updatedTerm.getStatus() == Status.APPROVED
               || updatedTerm.getStatus() == Status.REJECTED)) {
         checkUpdatedByReviewer(origTerm, updatedTerm.getUpdatedBy());

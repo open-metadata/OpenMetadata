@@ -85,6 +85,7 @@
     "eventemitter3": "^5.0.1",
     "fast-json-patch": "^3.1.1",
     "history": "4.5.1",
+    "elkjs": "^0.9.3",
     "html-react-parser": "^1.4.14",
     "https-browserify": "^1.0.0",
     "i18next": "^21.10.0",
@@ -206,7 +207,6 @@
     "html-webpack-plugin": "^5.5.0",
     "husky": "^8.0.1",
     "i18next-json-sync": "^3.1.2",
-    "image-webpack-loader": "^8.1.0",
     "jest": "^26.6.3",
     "jest-sonar-reporter": "^2.0.0",
     "less-loader": "^11.0.0",
@@ -248,7 +248,7 @@
     "path-to-regexp": "1.9.0",
     "terser-webpack-plugin": "5.1.1",
     "cookie": "0.7.0",
-    "jsonpath-plus": "10.0.7",
+    "jsonpath-plus": "10.2.0",
     "cross-spawn": "7.0.5"
   }
 }

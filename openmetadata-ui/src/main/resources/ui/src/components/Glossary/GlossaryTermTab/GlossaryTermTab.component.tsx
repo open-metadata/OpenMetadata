@@ -199,7 +199,12 @@ const GlossaryTermTab = ({
         key: 'reviewers',
         width: '33%',
         render: (reviewers: EntityReference[]) => (
-          <OwnerLabel owners={reviewers} />
+          <OwnerLabel
+            owners={reviewers}
+            placeHolder={t('label.no-entity', {
+              entity: t('label.reviewer-plural'),
+            })}
+          />
         ),
       },
       {
@@ -353,7 +358,7 @@ const GlossaryTermTab = ({
 
           return aIndex - bIndex;
         }),
-    [options, newColumns]
+    [newColumns]
   );
 
   const handleColumnSelectionDropdownSave = useCallback(() => {

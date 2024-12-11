@@ -113,24 +113,13 @@ module.exports = {
 
       // Images to be handled by file-loader + image-webpack-loader
       {
-        test: /\.(png|jpe?g|gif)$/i,
+        test: /\.(png|jpe?g)$/i,
         use: [
           {
             loader: 'file-loader',
             options: {
               name: 'images/[name].[contenthash].[ext]', // Output file naming
               outputPath: 'images/', // Directory in the output folder
-              publicPath: '/', // Public path used in the app
-            },
-          },
-          {
-            loader: 'image-webpack-loader',
-            options: {
-              mozjpeg: { progressive: true, quality: 75 },
-              optipng: { enabled: false },
-              pngquant: { quality: [0.65, 0.9], speed: 4 },
-              gifsicle: { interlaced: false },
-              webp: { quality: 75 }, // Modern image format support
             },
           },
         ],
@@ -188,9 +177,7 @@ module.exports = {
   // Plugins
   plugins: [
     // Clean webpack output directory
-    new CleanWebpackPlugin({
-      verbose: true, // Log removed files
-    }),
+    new CleanWebpackPlugin(),
 
     // Generate index.html from template
     new HtmlWebpackPlugin({

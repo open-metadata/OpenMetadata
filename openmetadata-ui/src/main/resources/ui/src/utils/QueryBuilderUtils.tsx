@@ -206,6 +206,19 @@ export const getEqualFieldProperties = (
   };
 };
 
+export const getOperator = (
+  fieldType: string | undefined,
+  isNot: boolean
+): string => {
+  switch (fieldType) {
+    case 'text':
+    case 'boolean':
+      return isNot ? 'not_equal' : 'equal';
+    default:
+      return isNot ? 'select_not_equals' : 'select_equals';
+  }
+};
+
 export const getJsonTreePropertyFromQueryFilter = (
   parentPath: Array<string>,
   queryFilter: QueryFieldInterface[],
@@ -221,7 +234,7 @@ export const getJsonTreePropertyFromQueryFilter = (
       } else if (!isUndefined(curr.term)) {
         const [field, value] = Object.entries(curr.term)[0];
         const fieldType = fields ? resolveFieldType(fields, field) : '';
-        const op = fieldType === 'text' ? 'equal' : 'select_equals';
+        const op = getOperator(fieldType, false);
 
         return {
           ...acc,
@@ -238,7 +251,7 @@ export const getJsonTreePropertyFromQueryFilter = (
         const value = Object.values((curr.bool?.must_not as EsTerm)?.term)[0];
         const key = Object.keys((curr.bool?.must_not as EsTerm)?.term)[0];
         const fieldType = fields ? resolveFieldType(fields, key) : '';
-        const op = fieldType === 'text' ? 'not_equal' : 'select_not_equals';
+        const op = getOperator(fieldType, true);
 
         return {
           ...acc,
