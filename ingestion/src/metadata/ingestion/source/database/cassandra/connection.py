@@ -37,6 +37,7 @@ from metadata.generated.schema.entity.services.connections.testConnectionResult 
 from metadata.ingestion.connections.test_connections import test_connection_steps
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.cassandra.queries import (
+    CASSANDRA_GET_KEYSPACE_MATERIALIZED_VIEWS,
     CASSANDRA_GET_KEYSPACE_TABLES,
     CASSANDRA_GET_KEYSPACES,
     CASSANDRA_GET_RELEASE_VERSION,
@@ -95,25 +96,29 @@ def test_connection(
     """
 
     class SchemaHolder(BaseModel):
-        database: Optional[str] = None
+        schema: Optional[str] = None
 
     holder = SchemaHolder()
 
     def test_get_release_version(session: CassandraConnection):
         session.execute(CASSANDRA_GET_RELEASE_VERSION)
 
-    def test_get_databases(session: CassandraSession, holder_: SchemaHolder):
-        for database in session.execute(CASSANDRA_GET_KEYSPACES):
-            holder_.database = database.keyspace_name
+    def test_get_schemas(session: CassandraSession, holder_: SchemaHolder):
+        for keyspace in session.execute(CASSANDRA_GET_KEYSPACES):
+            holder_.schema = keyspace.keyspace_name
             break
 
     def test_get_tables(session: CassandraSession, holder_: SchemaHolder):
-        session.execute(CASSANDRA_GET_KEYSPACE_TABLES, [holder_.database])
+        session.execute(CASSANDRA_GET_KEYSPACE_TABLES, [holder_.schema])
+
+    def test_get_views(session: CassandraSession, holder_: SchemaHolder):
+        session.execute(CASSANDRA_GET_KEYSPACE_MATERIALIZED_VIEWS, [holder_.schema])
 
     test_fn = {
         "CheckAccess": partial(test_get_release_version, session),
-        "GetDatabases": partial(test_get_databases, session, holder),
+        "GetSchemas": partial(test_get_schemas, session, holder),
         "GetTables": partial(test_get_tables, session, holder),
+        "GetViews": partial(test_get_views, session, holder),
     }
 
     return test_connection_steps(

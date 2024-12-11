@@ -12,9 +12,9 @@
       "mandatory": true
     },
     {
-      "name": "GetDatabases",
-      "description": "List all the databases available to the user.",
-      "errorMessage": "Failed to fetch databases, please validate if the user has enough privilege to fetch databases.",
+      "name": "GetSchemas",
+      "description": "List all the schemas/keyspaces available to the user.",
+      "errorMessage": "Failed to fetch schemas, please validate if the user has enough privilege to fetch schemas.",
       "mandatory": true
     },
     {
@@ -22,6 +22,12 @@
       "description": "List all the tables available within a randomly chosen database available to the user.",
       "errorMessage": "Failed to fetch tables, please validate if the user has enough privilege on available databases",
       "mandatory": true
+    },
+    {
+      "name": "GetViews",
+      "description": "From a given schema/keyspace, list the views belonging to that schema. If no schema is specified, we'll list the tables of a random schema.",
+      "errorMessage": "Failed to fetch views, please validate if the user has enough privilege to fetch views.",
+      "mandatory": false
     }
   ]
 }
