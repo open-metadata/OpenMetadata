@@ -201,6 +201,8 @@ This page list all the supported helm values for OpenMetadata Helm Charts.
 | openmetadata.config.smtpConfig.username | string | `Empty String` | SMTP_SERVER_USERNAME |
 | openmetadata.config.upgradeMigrationConfigs.debug | bool | `false` |  |
 | openmetadata.config.upgradeMigrationConfigs.additionalArgs | string | `Empty String` |  |
+| openmetadata.config.deployPipelinesConfig.debug | bool | `false` |   |
+| openmetadata.config.deployPipelinesConfig.additionalArgs | string | `Empty String` |   |
 | openmetadata.config.reindexConfig.debug | bool | `false` |  |
 | openmetadata.config.reindexConfig.additionalArgs | string | `Empty String` |  |
 | openmetadata.config.web.enabled | bool | `true` | |
