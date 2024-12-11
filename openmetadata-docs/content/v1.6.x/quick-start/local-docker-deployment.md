@@ -214,13 +214,46 @@ alt="DAG_Examples" /%}
 src="/images/v1.6/quickstart/tour.png"
 alt="tour" /%}
 
+## Start and Stop
+
+From the same directory mentioned in [step 1](#1.-create-a-directory-for-openmetadata), use the following commands to start and stop the Docker Compose services.
+
+To stop the services
+
+```
+docker compose stop
+```
+
+To start the services
+
+```
+docker compose start
+```
+
+{% note %} Start and stop are used to completely halt or restart the running services. When services are stopped, their containers are shut down but remain available for restarting without rebuilding.
+Importantly, any data stored in Docker volumes remains unaffected during this process. The volumes stay intact and accessible, preserving your application’s state and making it easy to restart the services without losing data. This makes it a reliable option for temporary shutdowns while maintaining continuity.{% /note %}
+
 ## Cleanup
 
-From the same directory as mentioned in [step 1](#1.-create-a-directory-for-openmetadata), run the below command to stop the docker compose services and clean named volumes.
+To stop the Docker Compose services, run the following command from the same directory mentioned in [step 1](#1.-create-a-directory-for-openmetadata).
+
+Stop the services
+
+```
+docker compose down
+```
+
+If you want to clean up the associated named volumes as well, use the following command
 
 ```
 docker compose down --volumes
 ```
+
+{% note noteType="Tip" %}  
+Named volumes are used to persist data created by containers, ensuring that the data remains even after the containers are stopped or removed. These volumes are managed by Docker and stored independently from the containers.  
+Using the `--volumes` flag with the `docker compose down` command will delete these volumes, permanently removing all stored data.
+{% /note %}
+
 
 ## Troubleshooting
 
