@@ -209,9 +209,9 @@ class CommonNoSQLSource(DatabaseServiceSource, ABC):
         schema_name = self.context.get().database_schema
 
         try:
-            for flag, table_and_type_fn in {
-                self.source_config.includeTables: self.query_table_names_and_types,
-                self.source_config.includeViews: self.query_view_names_and_types,
+            for table_and_type_fn, flag in {
+                self.query_table_names_and_types: self.source_config.includeTables,
+                self.query_view_names_and_types: self.source_config.includeViews,
             }.items():
                 if not flag:
                     continue
