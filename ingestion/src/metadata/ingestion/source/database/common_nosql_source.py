@@ -16,6 +16,8 @@ import traceback
 from abc import ABC, abstractmethod
 from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 
+from pydantic import BaseModel
+
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
@@ -59,6 +61,16 @@ logger = ingestion_logger()
 
 
 SAMPLE_SIZE = 1000
+
+
+class TableNameAndType(BaseModel):
+    """
+    Helper model for passing down
+    names and types of tables
+    """
+
+    name: str
+    type_: TableType = TableType.Regular
 
 
 class CommonNoSQLSource(DatabaseServiceSource, ABC):
@@ -169,16 +181,20 @@ class CommonNoSQLSource(DatabaseServiceSource, ABC):
         )
 
     @abstractmethod
-    def get_table_name_list(self, schema_name: str) -> List[str]:
+    def query_table_names_and_types(
+        self, schema_name: str
+    ) -> Iterable[TableNameAndType]:
         """
-        Method to get list of table names available within schema db
+        Method to get list of table names and types available within schema db
         need to be overridden by sources
         """
 
-    def get_materialized_view_name_list(self, schema_name: str) -> List[str]:
+    def query_view_names_and_types(
+        self, schema_name: str
+    ) -> Iterable[TableNameAndType]:
         """
-        Method to get list of materialized view names available within schema db
-        need to be overridden by sources
+        Method to get list of materialized view names and types available within schema db
+        need to be overridden by sources if views are supported by the database.
         """
 
     def get_tables_name_and_type(self) -> Optional[Iterable[Tuple[str, TableType]]]:
@@ -192,45 +208,44 @@ class CommonNoSQLSource(DatabaseServiceSource, ABC):
         """
         schema_name = self.context.get().database_schema
 
-        table_type_collections_mapping = {}
-        if self.source_config.includeTables:
-            table_type_collections_mapping.update(
-                {TableType.Regular: self.get_table_name_list(schema_name)}
-            )
-        if self.source_config.includeViews:
-            table_type_collections_mapping.update(
-                {
-                    TableType.MaterializedView: self.get_materialized_view_name_list(
-                        schema_name
-                    )
-                }
-            )
-
-        for table_type, collections in table_type_collections_mapping.items():
-            for collection in collections or []:
-                table_name = collection
-                table_fqn = fqn.build(
-                    self.metadata,
-                    entity_type=Table,
-                    service_name=self.context.get().database_service,
-                    database_name=self.context.get().database,
-                    schema_name=self.context.get().database_schema,
-                    table_name=table_name,
-                )
-                if filter_by_table(
-                    self.source_config.tableFilterPattern,
-                    (
-                        table_fqn
-                        if self.source_config.useFqnForFiltering
-                        else table_name
-                    ),
-                ):
-                    self.status.filter(
-                        table_fqn,
-                        "Table Filtered Out",
-                    )
+        try:
+            for flag, table_and_type_fn in {
+                self.source_config.includeTables: self.query_table_names_and_types,
+                self.source_config.includeViews: self.query_view_names_and_types,
+            }.items():
+                if not flag:
                     continue
-                yield table_name, table_type
+
+                for table_and_type in table_and_type_fn(schema_name=schema_name) or []:
+                    table_name, table_type = table_and_type.name, table_and_type.type_
+
+                    table_fqn = fqn.build(
+                        self.metadata,
+                        entity_type=Table,
+                        service_name=self.context.get().database_service,
+                        database_name=self.context.get().database,
+                        schema_name=self.context.get().database_schema,
+                        table_name=table_name,
+                    )
+                    if filter_by_table(
+                        self.source_config.tableFilterPattern,
+                        (
+                            table_fqn
+                            if self.source_config.useFqnForFiltering
+                            else table_name
+                        ),
+                    ):
+                        self.status.filter(
+                            table_fqn,
+                            "Table Filtered Out",
+                        )
+                        continue
+                    yield table_name, table_type
+        except Exception as err:
+            logger.warning(
+                f"Fetching tables names failed for schema {schema_name} due to - {err}"
+            )
+            logger.debug(traceback.format_exc())
 
     def get_table_columns_dict(
         self, schema_name: str, table_name: str

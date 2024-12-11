@@ -13,9 +13,9 @@ Cassandra source methods.
 """
 
 import traceback
-from typing import List, Optional
+from typing import Iterable, List, Optional
 
-from metadata.generated.schema.entity.data.table import Column
+from metadata.generated.schema.entity.data.table import Column, TableType
 from metadata.generated.schema.entity.services.connections.database.cassandraConnection import (
     CassandraConnection,
 )
@@ -31,7 +31,10 @@ from metadata.ingestion.source.database.cassandra.queries import (
     CASSANDRA_GET_KEYSPACES,
     CASSANDRA_GET_TABLE_COLUMNS,
 )
-from metadata.ingestion.source.database.common_nosql_source import CommonNoSQLSource
+from metadata.ingestion.source.database.common_nosql_source import (
+    CommonNoSQLSource,
+    TableNameAndType,
+)
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -76,7 +79,9 @@ class CassandraSource(CommonNoSQLSource):
 
         return schema_names
 
-    def get_table_name_list(self, schema_name: str) -> List[str]:
+    def query_table_names_and_types(
+        self, schema_name: str
+    ) -> Iterable[TableNameAndType]:
         """
         Method to get list of table names available within schema db
         need to be overridden by sources
@@ -84,7 +89,7 @@ class CassandraSource(CommonNoSQLSource):
         tables = []
         try:
             tables = [
-                row.table_name
+                TableNameAndType(name=row.table_name)
                 for row in self.cassandra.execute(
                     CASSANDRA_GET_KEYSPACE_TABLES, [schema_name]
                 )
@@ -97,7 +102,9 @@ class CassandraSource(CommonNoSQLSource):
 
         return tables
 
-    def get_materialized_view_name_list(self, schema_name: str) -> List[str]:
+    def query_view_names_and_types(
+        self, schema_name: str
+    ) -> Iterable[TableNameAndType]:
         """
         Method to get list of materialized view names available within schema db
         need to be overridden by sources
@@ -105,7 +112,7 @@ class CassandraSource(CommonNoSQLSource):
         materialized_views = []
         try:
             materialized_views = [
-                row.view_name
+                TableNameAndType(name=row.view_name, type_=TableType.MaterializedView)
                 for row in self.cassandra.execute(
                     CASSANDRA_GET_KEYSPACE_MATERIALIZED_VIEWS, [schema_name]
                 )
