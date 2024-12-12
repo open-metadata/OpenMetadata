@@ -33,7 +33,6 @@ import {
   LINEAGE_DROPDOWN_ITEMS,
 } from '../constants/AdvancedSearch.constants';
 import { NOT_INCLUDE_AGGREGATION_QUICK_FILTER } from '../constants/explore.constants';
-import { AdvancedFields } from '../enums/AdvancedSearch.enum';
 import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import {
@@ -72,38 +71,6 @@ export const getAssetsPageQuickFilters = (type?: AssetsOfEntity) => {
       return [...COMMON_DROPDOWN_ITEMS];
   }
   // TODO: Add more quick filters
-};
-
-export const getAdvancedField = (field: string) => {
-  switch (field) {
-    case 'columns.name':
-    case 'dataModel.columns.name':
-      return AdvancedFields.COLUMN;
-
-    case 'databaseSchema.name':
-      return AdvancedFields.SCHEMA;
-
-    case 'database.name':
-      return AdvancedFields.DATABASE;
-
-    case 'charts.displayName.keyword':
-      return AdvancedFields.CHART;
-
-    case 'dataModels.displayName.keyword':
-      return AdvancedFields.DATA_MODEL;
-
-    case 'tasks.displayName.keyword':
-      return AdvancedFields.TASK;
-
-    case 'messageSchema.schemaFields.name':
-      return AdvancedFields.FIELD;
-
-    case 'service.name':
-      return AdvancedFields.SERVICE;
-
-    default:
-      return;
-  }
 };
 
 export const renderAdvanceSearchButtons: RenderSettings['renderButton'] = (
@@ -367,37 +334,6 @@ export const getServiceOptions = (
   return service
     ? service.displayName ?? service.name ?? option.text
     : option.text;
-};
-
-// Function to get the display name to show in the options for search Dropdowns
-export const getOptionTextFromKey = (
-  index: SearchIndex,
-  option: SuggestOption<SearchIndex, ExploreSearchSource>,
-  key: string
-) => {
-  switch (key) {
-    case 'charts.displayName.keyword': {
-      return getChartsOptions(option);
-    }
-    case 'dataModels.displayName.keyword': {
-      return getDataModelOptions(option);
-    }
-    case 'tasks.displayName.keyword': {
-      return getTasksOptions(option);
-    }
-    case 'columns.name': {
-      return getColumnsOptions(option, index);
-    }
-    case 'service.name': {
-      return getServiceOptions(option);
-    }
-    case 'messageSchema.schemaFields.name': {
-      return getSchemaFieldOptions(option);
-    }
-    default: {
-      return option.text;
-    }
-  }
 };
 
 export const getOptionsFromAggregationBucket = (buckets: Bucket[]) => {

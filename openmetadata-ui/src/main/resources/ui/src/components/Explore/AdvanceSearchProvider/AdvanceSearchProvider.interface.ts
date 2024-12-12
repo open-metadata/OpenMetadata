@@ -49,5 +49,3 @@ export interface AdvanceSearchContext {
     subTitle?: string;
   };
 }
-
-export type FilterObject = Record<string, string[]>;

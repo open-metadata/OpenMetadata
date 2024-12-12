@@ -83,11 +83,6 @@ export interface DataObj {
   sourceUrl?: string;
 }
 
-export interface EditObj {
-  edit: boolean;
-  id?: string;
-}
-
 export type DomainSupportedServiceTypes =
   | DatabaseService
   | MessagingService

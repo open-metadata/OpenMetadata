@@ -11,16 +11,7 @@
  *  limitations under the License.
  */
 
-import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
-
 export const MOCK_TAG_ENCODED_FQN = '"%22Mock.Tag%22.Tag_1"';
-
-export const MOCK_TAG_PERMISSIONS = {
-  Create: true,
-  Delete: true,
-  EditAll: true,
-  ViewAll: true,
-} as OperationPermission;
 
 export const mockTagList = [
   {

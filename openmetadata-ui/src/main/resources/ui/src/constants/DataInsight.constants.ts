@@ -55,8 +55,6 @@ export const DATA_INSIGHT_GRAPH_COLORS = [
   '#DA996A',
 ];
 
-export const BAR_SIZE = 15;
-
 export const INITIAL_CHART_FILTER: ChartFilter = {
   startTs: getEpochMillisForPastDays(DEFAULT_SELECTED_RANGE.days),
   endTs: getCurrentMillis(),
@@ -129,11 +127,6 @@ export const ENTITIES_SUMMARY_LIST = [
 ];
 
 export const KPI_DATE_PICKER_FORMAT = 'YYYY-MM-DD';
-
-export const KPI_DATES = {
-  startDate: '',
-  endDate: '',
-};
 
 export const BASE_COLORS = [
   '#E57373',

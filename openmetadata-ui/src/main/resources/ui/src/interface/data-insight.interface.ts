@@ -66,17 +66,9 @@ export enum KpiDate {
   END_DATE = 'endDate',
 }
 
-export type KpiDates = {
-  [x in KpiDate]: string;
-};
-
 export type ChartValue = string | number | undefined;
 
 export type AggregatedCostAnalysisReportDataSearchSource = ReportData; // extends EntityInterface
-
-export type DataInsightSearchSourceMapping = {
-  [DataInsightIndex.AGGREGATED_COST_ANALYSIS_REPORT_DATA]: AggregatedCostAnalysisReportDataSearchSource;
-};
 
 export type DataInsightSearchRequest = {
   pageNumber?: number;

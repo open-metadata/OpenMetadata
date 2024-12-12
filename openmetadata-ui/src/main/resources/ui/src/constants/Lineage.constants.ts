@@ -22,8 +22,7 @@ export const FOREIGN_OBJECT_SIZE = 40;
 export const ZOOM_VALUE = 0.65;
 export const MIN_ZOOM_VALUE = 0.1;
 export const MAX_ZOOM_VALUE = 2.5;
-export const ZOOM_SLIDER_STEP = 0.1;
-export const ZOOM_BUTTON_STEP = 0.25;
+
 export const ZOOM_TRANSITION_DURATION = 800;
 export const DATATYPES_HAVING_SUBFIELDS = [
   'RECORD',
@@ -32,8 +31,6 @@ export const DATATYPES_HAVING_SUBFIELDS = [
   'UNION',
   'TABLE',
 ];
-
-export const PIPELINE_EDGE_WIDTH = 200;
 
 export const entityData = [
   {
@@ -77,9 +74,6 @@ export const entityData = [
     label: t('label.metric-plural'),
   },
 ];
-
-export const POSITION_X = 150;
-export const POSITION_Y = 60;
 
 export const NODE_WIDTH = 400;
 export const NODE_HEIGHT = 90;

@@ -76,12 +76,6 @@ export const confirmRegistration = async (token: string) => {
   return response.data;
 };
 
-export const resendRegistrationToken = async () => {
-  const response = await axiosClient.put(`${apiPath}/resendRegistrationToken`);
-
-  return response;
-};
-
 export const getAccessTokenOnExpiry = async (payload: TokenRefreshRequest) => {
   const response = await axiosClient.post<
     TokenRefreshRequest,
