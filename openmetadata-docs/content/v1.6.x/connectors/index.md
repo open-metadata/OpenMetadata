@@ -29,6 +29,10 @@ the following docs to run the Ingestion Framework in any orchestrator externally
   / %}
 {% /tilesContainer %}
 
+## API Services
+
+{% partial file="/v1.6/connectors/api/connectors-list.md" /%}
+
 ## Database / DataWarehouse Services
 
 {% partial file="/v1.6/connectors/database/connectors-list.md" /%}
