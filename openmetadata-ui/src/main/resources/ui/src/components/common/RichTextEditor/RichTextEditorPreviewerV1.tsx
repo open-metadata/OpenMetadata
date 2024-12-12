@@ -80,7 +80,7 @@ const RichTextEditorPreviewerV1: FC<PreviewerProp> = ({
           readMore ? '' : reducePreviewLineClass
         )}
         data-testid="markdown-parser">
-        <BlockEditor content={viewerValue} editable={false} />
+        <BlockEditor autoFocus={false} content={viewerValue} editable={false} />
       </div>
       {hasReadMore && showReadMoreBtn && (
         <Button
