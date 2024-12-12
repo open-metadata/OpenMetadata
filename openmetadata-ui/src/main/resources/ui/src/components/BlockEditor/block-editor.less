@@ -207,11 +207,15 @@
   &.block-editor-wrapper--bar-menu {
     border: 1px solid #dadde6;
     border-radius: 4px;
-    min-height: 300px;
     .om-block-editor {
+      max-height: 300px;
+      overflow: auto;
       padding-left: 50px;
       padding-right: 50px;
       padding-top: 8px;
+      &:focus-visible {
+        outline: none;
+      }
     }
   }
 }
@@ -399,7 +403,7 @@
     width: 100%;
   }
 }
-.om-image-node-embed-link-btn-col {
+body .om-image-node-embed-link-btn-col {
   display: flex;
   justify-content: flex-end;
 }
