@@ -129,12 +129,13 @@ const RequestDescription = () => {
             id: assignee.value,
             type: assignee.type,
           })),
-          suggestion: markdownRef.current?.getEditorContent(),
+          suggestion: markdownRef.current?.getEditorContent?.(),
           type: TaskType.RequestDescription,
           oldValue: '',
         },
         type: ThreadType.Task,
       };
+
       postThread(data)
         .then(() => {
           showSuccessToast(

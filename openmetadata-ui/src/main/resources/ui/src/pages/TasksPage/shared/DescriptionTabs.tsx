@@ -46,7 +46,7 @@ export const DescriptionTabs = ({
     (key: string) => {
       setActiveTab(key);
       if (isEqual(key, '2')) {
-        const newDescription = markdownRef.current?.getEditorContent();
+        const newDescription = markdownRef.current?.getEditorContent?.();
         if (newDescription) {
           const diff = getDescriptionDiff(description, newDescription);
           setDiffs(diff);
