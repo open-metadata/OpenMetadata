@@ -38,8 +38,8 @@ from metadata.generated.schema.entity.services.databaseService import DatabaseSe
 from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import User
 from metadata.utils.logger import utils_logger
-from src.metadata.generated.schema.entity.data.apiCollection import APICollection
-from src.metadata.generated.schema.entity.data.apiEndpoint import APIEndpoint
+from metadata.generated.schema.entity.data.apiCollection import APICollection
+from metadata.generated.schema.entity.data.apiEndpoint import APIEndpoint
 
 logger = utils_logger()
 T = TypeVar("T", bound=BaseModel)
