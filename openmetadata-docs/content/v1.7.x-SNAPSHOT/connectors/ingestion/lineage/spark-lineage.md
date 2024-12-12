@@ -212,14 +212,14 @@ Once this pyspark job get finished you will see a new pipeline service with name
 
 
 {% image
-  src="/images/v1.6/connectors/spark/spark-pipeline-service.png"
+  src="/images/v1.7/connectors/spark/spark-pipeline-service.png"
   alt="Spark Pipeline Service"
   caption="Spark Pipeline Service"
  /%}
 
 
  {% image
-  src="/images/v1.6/connectors/spark/spark-pipeline-details.png"
+  src="/images/v1.7/connectors/spark/spark-pipeline-details.png"
   alt="Spark Pipeline Details"
   caption="Spark Pipeline Details"
  /%}
@@ -227,7 +227,7 @@ Once this pyspark job get finished you will see a new pipeline service with name
 
 
  {% image
-  src="/images/v1.6/connectors/spark/spark-pipeline-lineage.png"
+  src="/images/v1.7/connectors/spark/spark-pipeline-lineage.png"
   alt="Spark Pipeline Lineage"
   caption="Spark Pipeline Lineage"
  /%}
@@ -243,7 +243,7 @@ To use the `OpenMetadata Spark Agent`, you will have to download the latest jar 
 To upload the jar you can visit the compute details page and then go to the libraries tab
 
 {% image
-  src="/images/v1.6/connectors/spark/spark-upload-jar.png"
+  src="/images/v1.7/connectors/spark/spark-upload-jar.png"
   alt="Spark Upload Jar"
   caption="Spark Upload Jar"
  /%}
@@ -251,7 +251,7 @@ To upload the jar you can visit the compute details page and then go to the libr
 Click on the "Install Now" button and choose `dbfs` mode and upload the `OpenMetadata Spark Agent` jar.
 
 {% image
-  src="/images/v1.6/connectors/spark/spark-upload-jar-2.png"
+  src="/images/v1.7/connectors/spark/spark-upload-jar-2.png"
   alt="Spark Upload Jar"
   caption="Spark Upload Jar"
  /%}
@@ -259,7 +259,7 @@ Click on the "Install Now" button and choose `dbfs` mode and upload the `OpenMet
 Once your jar is uploaded copy the path of the jar for the next steps.
 
 {% image
-  src="/images/v1.6/connectors/spark/spark-uploaded-jar.png"
+  src="/images/v1.7/connectors/spark/spark-uploaded-jar.png"
   alt="Spark Upload Jar"
   caption="Spark Upload Jar"
  /%}
@@ -291,7 +291,7 @@ echo "END: Modify Spark config settings"
 Note: The copied path would look like this `dbfs:/FileStore/jars/....` you need to modify it like `/dbfs/FileStore/jars/...` this.
 
 {% image
-  src="/images/v1.6/connectors/spark/prepare-script.png"
+  src="/images/v1.7/connectors/spark/prepare-script.png"
   alt="Prepare Script"
   caption="Prepare Script"
  /%}
@@ -303,14 +303,14 @@ Note: The copied path would look like this `dbfs:/FileStore/jars/....` you need 
 Once you have created a initialization script, you will need to attach this script to your compute instance, to do that you can go to advanced config > init scripts and add your script path.
 
 {% image
-  src="/images/v1.6/connectors/spark/prepare-script.png"
+  src="/images/v1.7/connectors/spark/prepare-script.png"
   alt="Prepare Script"
   caption="Prepare Script"
  /%}
 
 
 {% image
-  src="/images/v1.6/connectors/spark/spark-init-script.png"
+  src="/images/v1.7/connectors/spark/spark-init-script.png"
   alt="Spark Init Script"
   caption="Spark Init Script"
  /%}
@@ -322,7 +322,7 @@ After configuring the init script, you will need to update the spark config as w
 
 
 {% image
-  src="/images/v1.6/connectors/spark/spark-config-set.png"
+  src="/images/v1.7/connectors/spark/spark-config-set.png"
   alt="Spark Set Config"
   caption="Spark Set Config"
  /%}
@@ -356,7 +356,7 @@ Follow the below steps in order to use OpenMetadata Spark Agent with glue.
 3. Add the S3 url of OpenMetadata Spark Agent Jar in the Dependent Jars path.
 
 {% image
-  src="/images/v1.6/connectors/spark/glue-job-jar.png"
+  src="/images/v1.7/connectors/spark/glue-job-jar.png"
   alt="Glue Job Configure Jar"
   caption="Glue Job Configure Jar"
  /%}
@@ -375,7 +375,7 @@ spark.extraListeners=org.openmetadata.spark.agent.OpenMetadataSparkListener --co
 2. Add the `--user-jars-first` parameter and set its value to `true`
 
 {% image
-  src="/images/v1.6/connectors/spark/glue-job-params.png"
+  src="/images/v1.7/connectors/spark/glue-job-params.png"
   alt="Glue Job Configure Params"
   caption="Glue Job Configure Params"
  /%}

@@ -20,7 +20,7 @@ Configure and schedule Teradata metadata and profiler workflows from the OpenMet
 - [Data Profiler](/how-to-guides/data-quality-observability/profiler/workflow)
 - [Data Quality](/how-to-guides/data-quality-observability/quality/configure)
 
-{% partial file="/v1.6/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/greenplum/yaml"} /%}
+{% partial file="/v1.7/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/greenplum/yaml"} /%}
 
 ## Requirements
 {%inlineCallout icon="description" bold="OpenMetadata 1.6 or later" href="/deployment"%}
@@ -35,12 +35,12 @@ Connector was tested on Teradata DBS version 17.20. Since there are no significa
 By default, all valid users in Teradata DB has full access to metadata objects, so there are no any specific requirements to user privileges.
 
 {% partial 
-  file="/v1.6/connectors/metadata-ingestion-ui.md" 
+  file="/v1.7/connectors/metadata-ingestion-ui.md" 
   variables={
     connector: "Teradata", 
-    selectServicePath: "/images/v1.6/connectors/teradata/select-service.png",
-    addNewServicePath: "/images/v1.6/connectors/teradata/add-new-service.png",
-    serviceConnectionPath: "/images/v1.6/connectors/teradata/service-connection.png",
+    selectServicePath: "/images/v1.7/connectors/teradata/select-service.png",
+    addNewServicePath: "/images/v1.7/connectors/teradata/add-new-service.png",
+    serviceConnectionPath: "/images/v1.7/connectors/teradata/service-connection.png",
 } 
 /%}
 
@@ -58,18 +58,18 @@ By default, all valid users in Teradata DB has full access to metadata objects, 
 - **Teradata Database Account**: Specifies an account string to override the default account string defined for the database user. Accounts are used by the database for workload management and resource usage monitoring.
 - **Connection Options** and **Connection Arguments**: additional connection parameters. For more information please view teradatasql [docs](https://pypi.org/project/teradatasql/).
 
-{% partial file="/v1.6/connectors/database/advanced-configuration.md" /%}
+{% partial file="/v1.7/connectors/database/advanced-configuration.md" /%}
 
 {% /extraContent %}
 
-{% partial file="/v1.6/connectors/test-connection.md" /%}
+{% partial file="/v1.7/connectors/test-connection.md" /%}
 
-{% partial file="/v1.6/connectors/database/configure-ingestion.md" /%}
+{% partial file="/v1.7/connectors/database/configure-ingestion.md" /%}
 
-{% partial file="/v1.6/connectors/ingestion-schedule-and-deploy.md" /%}
+{% partial file="/v1.7/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
 
-{% partial file="/v1.6/connectors/troubleshooting.md" /%}
+{% partial file="/v1.7/connectors/troubleshooting.md" /%}
 
-{% partial file="/v1.6/connectors/database/related.md" /%}
+{% partial file="/v1.7/connectors/database/related.md" /%}
