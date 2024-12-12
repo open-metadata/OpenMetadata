@@ -692,7 +692,9 @@ public final class EntityUtil {
     SubjectContext subjectContext = getSubjectContext(securityContext);
     // If the User is admin then no need to add domainId in the query param
     // Also if there are domain restriction on the subject context via role
-    if (!subjectContext.isAdmin() && !subjectContext.isBot() && subjectContext.hasAnyRole(DOMAIN_ONLY_ACCESS_ROLE)) {
+    if (!subjectContext.isAdmin()
+        && !subjectContext.isBot()
+        && subjectContext.hasAnyRole(DOMAIN_ONLY_ACCESS_ROLE)) {
       if (!nullOrEmpty(subjectContext.getUserDomains())) {
         filter.addQueryParam(
             "domainId", getCommaSeparatedIdsFromRefs(subjectContext.getUserDomains()));

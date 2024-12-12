@@ -116,12 +116,20 @@ public class ListFilter extends Filter<ListFilter> {
 
   private String getDomainCondition(String tableName) {
     String domainId = getQueryParam("domainId");
-    return domainId == null
-        ? ""
-        : String.format(
-            "(%s in (SELECT entity_relationship.toId FROM entity_relationship WHERE entity_relationship.fromEntity='domain' AND entity_relationship.fromId IN (%s) AND "
-                + "relation=10))",
-            nullOrEmpty(tableName) ? "id" : String.format("%s.id", tableName), domainId);
+    String entityIdColumn = nullOrEmpty(tableName) ? "id" : (tableName + ".id");
+
+    if (domainId == null) {
+      return "";
+    } else if ("null".equals(domainId)) {
+      return String.format(
+          "(%s NOT IN (SELECT entity_relationship.toId FROM entity_relationship WHERE entity_relationship.fromEntity='domain' AND relation=10))",
+          entityIdColumn);
+    } else {
+      return String.format(
+          "(%s in (SELECT entity_relationship.toId FROM entity_relationship WHERE entity_relationship.fromEntity='domain' AND entity_relationship.fromId IN (%s) AND "
+              + "relation=10))",
+          entityIdColumn, domainId);
+    }
   }
 
   public String getApiCollectionCondition(String apiEndpoint) {
