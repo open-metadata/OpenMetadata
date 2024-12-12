@@ -13,7 +13,7 @@ Dynamo source methods.
 """
 
 import traceback
-from typing import Dict, List, Optional, Union
+from typing import Dict, Iterable, List, Optional, Union
 
 from metadata.generated.schema.entity.data.table import TableType
 from metadata.generated.schema.entity.services.connections.database.dynamoDBConnection import (
@@ -27,6 +27,7 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.common_nosql_source import (
     SAMPLE_SIZE,
     CommonNoSQLSource,
+    TableNameAndType,
 )
 from metadata.ingestion.source.database.dynamodb.models import TableResponse
 from metadata.utils.constants import DEFAULT_DATABASE
@@ -64,14 +65,16 @@ class DynamodbSource(CommonNoSQLSource):
         """
         return [DEFAULT_DATABASE]
 
-    def get_table_name_list(self, schema_name: str) -> List[str]:
+    def query_table_names_and_types(
+        self, schema_name: str
+    ) -> Iterable[TableNameAndType]:
         """
         Method to get list of table names available within schema db
         need to be overridden by sources
         """
         try:
             tables = self.dynamodb.tables.all()
-            return [table.name for table in tables]
+            return [TableNameAndType(name=table.name) for table in tables]
         except Exception as err:
             logger.debug(traceback.format_exc())
             logger.error(f"Failed to list DynamoDB table names: {err}")

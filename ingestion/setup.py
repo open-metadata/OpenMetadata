@@ -57,6 +57,7 @@ VERSIONS = {
     "giturlparse": "giturlparse",
     "validators": "validators~=0.22.0",
     "teradata": "teradatasqlalchemy>=20.0.0.0",
+    "cassandra": "cassandra-driver>=3.28.0",
 }
 
 COMMONS = {
@@ -267,6 +268,7 @@ plugins: Dict[str, Set[str]] = {
     },
     "mlflow": {"mlflow-skinny>=2.3.0"},
     "mongo": {VERSIONS["mongo"], VERSIONS["pandas"], VERSIONS["numpy"]},
+    "cassandra": {VERSIONS["cassandra"]},
     "couchbase": {"couchbase~=4.1"},
     "mssql": {
         "sqlalchemy-pytds~=0.3",
@@ -370,6 +372,7 @@ test = {
     VERSIONS["tableau"],
     VERSIONS["pyhive"],
     VERSIONS["mongo"],
+    VERSIONS["cassandra"],
     VERSIONS["redshift"],
     VERSIONS["snowflake"],
     VERSIONS["elasticsearch8"],

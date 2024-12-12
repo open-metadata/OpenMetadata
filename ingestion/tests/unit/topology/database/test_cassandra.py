@@ -10,7 +10,7 @@
 #  limitations under the License.
 
 """
-Test MongoDB using the topology
+Test Cassandra using the topology
 """
 
 import json
@@ -32,8 +32,8 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.database.cassandra.metadata import CassandraSource
 from metadata.ingestion.source.database.common_nosql_source import TableNameAndType
-from metadata.ingestion.source.database.mongodb.metadata import MongodbSource
 
 mock_file_path = (
     Path(__file__).parent.parent.parent / "resources/datasets/glue_db_dataset.json"
@@ -41,16 +41,16 @@ mock_file_path = (
 with open(mock_file_path) as file:
     mock_data: dict = json.load(file)
 
-mock_mongo_config = {
+mock_cassandra_config = {
     "source": {
-        "type": "mongodb",
-        "serviceName": "local_mongodb",
+        "type": "cassandra",
+        "serviceName": "local_cassandra",
         "serviceConnection": {
             "config": {
-                "type": "MongoDB",
-                "username": "ulixius",
-                "password": "dummy_password",
-                "hostPort": "localhost:27017",
+                "type": "Cassandra",
+                "username": "cassandra",
+                "authType": {"password": "cassandra"},
+                "hostPort": "localhost:9042",
             },
         },
         "sourceConfig": {
@@ -75,15 +75,15 @@ mock_mongo_config = {
 
 MOCK_DATABASE_SERVICE = DatabaseService(
     id="85811038-099a-11ed-861d-0242ac120002",
-    name="local_mongodb",
+    name="local_cassandra",
     connection=DatabaseConnection(),
-    serviceType=DatabaseServiceType.Glue,
+    serviceType=DatabaseServiceType.Cassandra,
 )
 
 MOCK_DATABASE = Database(
     id="2aaa012e-099a-11ed-861d-0242ac120002",
     name="default",
-    fullyQualifiedName="local_mongodb.default",
+    fullyQualifiedName="local_cassandra.default",
     displayName="default",
     description="",
     service=EntityReference(
@@ -95,7 +95,7 @@ MOCK_DATABASE = Database(
 MOCK_DATABASE_SCHEMA = DatabaseSchema(
     id="2aaa012e-099a-11ed-861d-0242ac120056",
     name="default",
-    fullyQualifiedName="local_mongodb.default.default",
+    fullyQualifiedName="local_cassandra.default.default",
     displayName="default",
     description="",
     database=EntityReference(
@@ -108,55 +108,40 @@ MOCK_DATABASE_SCHEMA = DatabaseSchema(
     ),
 )
 
-MOCK_JSON_TABLE_DATA = [
-    {
-        "name": "mayur",
-        "age": 25,
-        "is_married": False,
-        "address": {"line": "random address"},
-    },
-    {"name": "onkar", "age": 26, "is_married": True},
+
+MOCK_TABLE_COLUMNS_DATA = [
+    Column(
+        name="name",
+        displayName="name",
+        dataType=DataType.STRING,
+        dataTypeDisplay=DataType.STRING.value,
+    ),
+    Column(
+        name="age",
+        displayName="age",
+        dataType=DataType.INT,
+        dataTypeDisplay=DataType.INT.value,
+    ),
+    Column(
+        name="is_married",
+        displayName="is_married",
+        dataType=DataType.BOOLEAN,
+        dataTypeDisplay=DataType.BOOLEAN.value,
+    ),
+    Column(
+        name="address",
+        displayName="address",
+        dataType=DataType.MAP,
+        dataTypeDisplay=DataType.MAP.value,
+    ),
 ]
 
 MOCK_CREATE_TABLE = CreateTableRequest(
     name="random_table",
     tableType=TableType.Regular,
-    columns=[
-        Column(
-            name="name",
-            displayName="name",
-            dataType=DataType.STRING,
-            dataTypeDisplay=DataType.STRING.value,
-        ),
-        Column(
-            name="age",
-            displayName="age",
-            dataType=DataType.INT,
-            dataTypeDisplay=DataType.INT.value,
-        ),
-        Column(
-            name="is_married",
-            displayName="is_married",
-            dataType=DataType.BOOLEAN,
-            dataTypeDisplay=DataType.BOOLEAN.value,
-        ),
-        Column(
-            name="address",
-            displayName="address",
-            dataType=DataType.JSON,
-            dataTypeDisplay=DataType.JSON.value,
-            children=[
-                Column(
-                    name="line",
-                    dataType=DataType.STRING,
-                    dataTypeDisplay=DataType.STRING.value,
-                    displayName="line",
-                )
-            ],
-        ),
-    ],
+    columns=MOCK_TABLE_COLUMNS_DATA,
     tableConstraints=None,
-    databaseSchema="local_mongodb.default.default",
+    databaseSchema="local_cassandra.default.default",
 )
 
 
@@ -189,53 +174,64 @@ def custom_column_compare(self, other):
     )
 
 
-class MongoDBUnitTest(TestCase):
+class CassandraUnitTest(TestCase):
+    @patch("metadata.ingestion.source.database.cassandra.connection.get_connection")
     @patch(
-        "metadata.ingestion.source.database.mongodb.metadata.MongodbSource.test_connection"
+        "metadata.ingestion.source.database.cassandra.metadata.CassandraSource.test_connection"
     )
-    def __init__(self, methodName, test_connection) -> None:
+    def __init__(self, methodName, get_connection, test_connection) -> None:
         super().__init__(methodName)
+        get_connection.return_value = False
         test_connection.return_value = False
-        self.config = OpenMetadataWorkflowConfig.model_validate(mock_mongo_config)
-        self.mongo_source = MongodbSource.create(
-            mock_mongo_config["source"],
+
+        self.config = OpenMetadataWorkflowConfig.model_validate(mock_cassandra_config)
+        self.cassandra_source = CassandraSource.create(
+            mock_cassandra_config["source"],
             OpenMetadata(self.config.workflowConfig.openMetadataServerConfig),
         )
-        self.mongo_source.context.get().__dict__[
+        self.cassandra_source.context.get().__dict__[
             "database_service"
         ] = MOCK_DATABASE_SERVICE.name.root
-        self.mongo_source.context.get().__dict__["database"] = MOCK_DATABASE.name.root
-        self.mongo_source.context.get().__dict__[
+        self.cassandra_source.context.get().__dict__[
+            "database"
+        ] = MOCK_DATABASE.name.root
+        self.cassandra_source.context.get().__dict__[
             "database_schema"
         ] = MOCK_DATABASE_SCHEMA.name.root
 
     def test_database_names(self):
-        assert EXPECTED_DATABASE_NAMES == list(self.mongo_source.get_database_names())
+        assert EXPECTED_DATABASE_NAMES == list(
+            self.cassandra_source.get_database_names()
+        )
 
     def test_database_schema_names(self):
         with patch.object(
-            MongodbSource,
+            CassandraSource,
             "get_schema_name_list",
             return_value=MOCK_DATABASE_SCHEMA_NAMES,
         ):
             assert EXPECTED_DATABASE_SCHEMA_NAMES == list(
-                self.mongo_source.get_database_schema_names()
+                self.cassandra_source.get_database_schema_names()
             )
 
     def test_table_names(self):
         with patch.object(
-            MongodbSource, "query_table_names_and_types", return_value=MOCK_TABLE_NAMES
+            CassandraSource,
+            "query_table_names_and_types",
+            return_value=MOCK_TABLE_NAMES,
         ):
             assert EXPECTED_TABLE_NAMES == list(
-                self.mongo_source.get_tables_name_and_type()
+                self.cassandra_source.get_tables_name_and_type()
             )
 
     def test_yield_tables(self):
         Column.__eq__ = custom_column_compare
         with patch.object(
-            MongodbSource, "get_table_columns_dict", return_value=MOCK_JSON_TABLE_DATA
+            CassandraSource, "get_table_columns", return_value=MOCK_TABLE_COLUMNS_DATA
         ):
             assert (
                 MOCK_CREATE_TABLE
-                == next(self.mongo_source.yield_table(EXPECTED_TABLE_NAMES[0])).right
+                == next(
+                    self.cassandra_source.yield_table(EXPECTED_TABLE_NAMES[0])
+                ).right
             )
