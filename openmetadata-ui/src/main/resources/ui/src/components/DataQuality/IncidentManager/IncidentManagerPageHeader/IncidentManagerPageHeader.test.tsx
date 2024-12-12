@@ -104,6 +104,9 @@ jest.mock('../../../../utils/CommonUtils', () => ({
 
 jest.mock('../../../../utils/EntityUtils', () => ({
   getEntityName: jest.fn().mockReturnValue('getEntityName'),
+  getColumnNameFromEntityLink: jest
+    .fn()
+    .mockReturnValue('getColumnNameFromEntityLink'),
 }));
 
 jest.mock('../../../../utils/FeedUtils', () => ({
@@ -270,5 +273,8 @@ describe('Incident Manager Page Header component', () => {
     // Test Type
     expect(screen.getByText('label.test-type:')).toBeInTheDocument();
     expect(screen.getByText('getEntityName')).toBeInTheDocument();
+    // If Column is present
+    expect(screen.getByText('label.column:')).toBeInTheDocument();
+    expect(screen.getByText('getColumnNameFromEntityLink')).toBeInTheDocument();
   });
 });
