@@ -22,6 +22,7 @@ import React, {
 import { io, Socket } from 'socket.io-client';
 import { ROUTES } from '../../constants/constants';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
+import { getOidcToken } from '../../utils/LocalStorageUtils';
 
 export const WebSocketContext = React.createContext<{ socket?: Socket }>({});
 
@@ -35,6 +36,8 @@ const WebSocketProvider: FC<Props> = ({ children }: Props) => {
 
   // Init websocket for Feed & notification
   const initWebSocket = useCallback(() => {
+    const token: string = getOidcToken() || '';
+
     setSocket(
       io(ROUTES.HOME, {
         path: ROUTES.ACTIVITY_PUSH_FEED,
@@ -46,6 +49,9 @@ const WebSocketProvider: FC<Props> = ({ children }: Props) => {
         // We need to enforce transports to be websocket only
         // Refer: https://socket.io/docs/v3/using-multiple-nodes/
         transports: ['websocket'],
+        extraHeaders: {
+          Authorization: `Bearer ${token}`,
+        },
       })
     );
   }, [currentUser]);
