@@ -12,6 +12,8 @@
 """
 Define constants useful for the metadata ingestion
 """
+from metadata.generated.schema.entity.data.apiCollection import APICollection
+from metadata.generated.schema.entity.data.apiEndpoint import APIEndpoint
 from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.container import Container
 from metadata.generated.schema.entity.data.dashboard import Dashboard
@@ -84,6 +86,8 @@ ENTITY_REFERENCE_CLASS_MAP = {
     "metadataService": MetadataService,
     "searchService": SearchService,
     # Data Asset Entities
+    "apiCollection": APICollection,
+    "apiEndpoint": APIEndpoint,
     "table": Table,
     "storedProcedure": StoredProcedure,
     "database": Database,
