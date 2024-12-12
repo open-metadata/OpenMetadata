@@ -5,6 +5,7 @@
 {% connectorInfoCard name="AzureSQL" stage="PROD" href="/connectors/database/azuresql" platform="OpenMetadata" / %}
 {% connectorInfoCard name="BigQuery" stage="PROD" href="/connectors/database/bigquery" platform="OpenMetadata" / %}
 {% connectorInfoCard name="BigTable" stage="BETA" href="/connectors/database/bigtable" platform="OpenMetadata" / %}
+{% connectorInfoCard name="Cassandra" stage="BETA" href="/connectors/database/cassandra" platform="OpenMetadata" / %}
 {% connectorInfoCard name="Clickhouse" stage="PROD" href="/connectors/database/clickhouse" platform="OpenMetadata" / %}
 {% connectorInfoCard name="Couchbase" stage="BETA" href="/connectors/database/couchbase" platform="OpenMetadata" / %}
 {% connectorInfoCard name="Databricks" stage="PROD" href="/connectors/database/databricks" platform="OpenMetadata" / %}
@@ -22,7 +23,6 @@
 {% connectorInfoCard name="Impala" stage="PROD" href="/connectors/database/impala" platform="OpenMetadata" / %}
 {% connectorInfoCard name="MariaDB" stage="PROD" href="/connectors/database/mariadb" platform="OpenMetadata" / %}
 {% connectorInfoCard name="MongoDB" stage="PROD" href="/connectors/database/mongodb" platform="OpenMetadata" / %}
-{% connectorInfoCard name="Cassandra" stage="BETA" href="/connectors/database/cassandra" platform="OpenMetadata" / %}
 {% connectorInfoCard name="MSSQL" stage="PROD" href="/connectors/database/mssql" platform="OpenMetadata" / %}
 {% connectorInfoCard name="MySQL" stage="PROD" href="/connectors/database/mysql" platform="OpenMetadata" / %}
 {% connectorInfoCard name="Oracle" stage="PROD" href="/connectors/database/oracle" platform="OpenMetadata" / %}

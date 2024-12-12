@@ -71,6 +71,10 @@ site_menu:
     url: /connectors/database/bigtable/yaml
   - category: Connectors / Database / BigTable / Roles
     url: /connectors/database/bigtable/roles
+  - category: Connectors / Database / Cassandra
+    url: /connectors/database/cassandra
+  - category: Connectors / Database / Cassandra / Run Externally
+    url: /connectors/database/cassandra/yaml
   - category: Connectors / Database / Clickhouse
     url: /connectors/database/clickhouse
   - category: Connectors / Database / Clickhouse / Run Externally
@@ -1388,6 +1392,8 @@ site_menu:
     url: /main-concepts/metadata-standard/schemas/entity/services/connections/database/azuresqlconnection
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Database / BigQueryConnection
     url: /main-concepts/metadata-standard/schemas/entity/services/connections/database/bigqueryconnection
+  - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Database / CassandraConnection
+    url: /main-concepts/metadata-standard/schemas/entity/services/connections/database/cassandraconnection
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Database / ClickhouseConnection
     url: /main-concepts/metadata-standard/schemas/entity/services/connections/database/clickhouseconnection
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Database / Common / BasicAuth
