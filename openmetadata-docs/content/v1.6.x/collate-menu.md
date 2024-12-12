@@ -820,6 +820,8 @@ site_menu:
     url: /how-to-guides/data-governance/workflows/elements/nodes/set-asset-certification
   - category: How-to Guides / Data Governance / Workflows / Elements / Nodes / Set Glossary Term Status
     url: /how-to-guides/data-governance/workflows/elements/nodes/set-glossary-term-status
+  - category: How-to Guides / Data Governance / Workflows / How to Edit a Workflow
+    url: /how-to-guides/data-governance/workflows/how-to-edit-workflow
 
   - category: Getting Started
     url: /getting-started
