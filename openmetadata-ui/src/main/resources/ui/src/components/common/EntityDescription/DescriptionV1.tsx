@@ -33,7 +33,7 @@ import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/Mo
 import SuggestionsAlert from '../../Suggestions/SuggestionsAlert/SuggestionsAlert';
 import { useSuggestionsContext } from '../../Suggestions/SuggestionsProvider/SuggestionsProvider';
 import SuggestionsSlider from '../../Suggestions/SuggestionsSlider/SuggestionsSlider';
-import RichTextEditorPreviewer from '../RichTextEditor/RichTextEditorPreviewer';
+import RichTextEditorPreviewerV1 from '../RichTextEditor/RichTextEditorPreviewerV1';
 import { DescriptionProps } from './Description.interface';
 
 const { Text } = Typography;
@@ -189,7 +189,7 @@ const DescriptionV1 = ({
       return suggestionData;
     } else {
       return description.trim() ? (
-        <RichTextEditorPreviewer
+        <RichTextEditorPreviewerV1
           className={reduceDescription ? 'max-two-lines' : ''}
           enableSeeMoreVariant={!removeBlur}
           isDescriptionExpanded={isDescriptionExpanded}

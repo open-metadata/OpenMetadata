@@ -218,6 +218,13 @@
       }
     }
   }
+
+  // if contenteditable is false, remove padding-bottom from last p tag
+  .om-block-editor[contenteditable='false'] {
+    > p:last-child {
+      padding-bottom: 0;
+    }
+  }
 }
 
 .menu-wrapper {
