@@ -256,6 +256,10 @@ site_menu:
     url: /connectors/database/bigtable/yaml
   - category: Connectors / Database / BigTable / Roles
     url: /connectors/database/bigtable/roles
+  - category: Connectors / Database / Cassandra
+    url: /connectors/database/cassandra
+  - category: Connectors / Database / Cassandra / Run Externally
+    url: /connectors/database/cassandra/yaml
   - category: Connectors / Database / Clickhouse
     url: /connectors/database/clickhouse
   - category: Connectors / Database / Clickhouse / Run Externally
@@ -332,10 +336,6 @@ site_menu:
     url: /connectors/database/mongodb
   - category: Connectors / Database / MongoDB / Run Externally
     url: /connectors/database/mongodb/yaml
-  - category: Connectors / Database / Cassandra
-    url: /connectors/database/cassandra
-  - category: Connectors / Database / Cassandra / Run Externally
-    url: /connectors/database/cassandra/yaml
   - category: Connectors / Database / MSSQL
     url: /connectors/database/mssql
   - category: Connectors / Database / MSSQL / Run Externally
@@ -1518,6 +1518,12 @@ site_menu:
     url: /main-concepts/metadata-standard/schemas/entity/services/connections/database/azuresqlconnection
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Database / BigQueryConnection
     url: /main-concepts/metadata-standard/schemas/entity/services/connections/database/bigqueryconnection
+  - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Database / Cassandra
+    url: /main-concepts/metadata-standard/schemas/entity/services/connections/database/cassandra
+  - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Database / Cassandra / CassandraValues
+    url: /main-concepts/metadata-standard/schemas/entity/services/connections/database/cassandra/cassandravalues
+  - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Database / CassandraConnection
+    url: /main-concepts/metadata-standard/schemas/entity/services/connections/database/cassandraconnection
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Database / ClickhouseConnection
     url: /main-concepts/metadata-standard/schemas/entity/services/connections/database/clickhouseconnection
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Database / Common / BasicAuth
@@ -1572,12 +1578,6 @@ site_menu:
     url: /main-concepts/metadata-standard/schemas/entity/services/connections/database/mongodb/mongodbvalues
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Database / MongoDBConnection
     url: /main-concepts/metadata-standard/schemas/entity/services/connections/database/mongodbconnection
-  - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Database / Cassandra
-    url: /main-concepts/metadata-standard/schemas/entity/services/connections/database/cassandra
-  - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Database / Cassandra / CassandraValues
-    url: /main-concepts/metadata-standard/schemas/entity/services/connections/database/cassandra/cassandravalues
-  - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Database / CassandraConnection
-    url: /main-concepts/metadata-standard/schemas/entity/services/connections/database/cassandraconnection
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Database / MssqlConnection
     url: /main-concepts/metadata-standard/schemas/entity/services/connections/database/mssqlconnection
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Database / MysqlConnection
