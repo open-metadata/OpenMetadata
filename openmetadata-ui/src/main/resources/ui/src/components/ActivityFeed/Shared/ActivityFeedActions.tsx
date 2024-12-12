@@ -33,6 +33,7 @@ import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import {
   deletePostById,
   deleteThread,
+  updatePost,
   updateThread,
 } from '../../../rest/feedsAPI';
 import { getUpdatedThread } from '../../../utils/FeedUtils';
@@ -152,11 +153,11 @@ const ActivityFeedActions = ({
   const handleVisibleChange = (newVisible: boolean) => {
     setVisible(newVisible);
   };
-  const onReactionSelect = (
+  const onReactionSelect = async (
     reactionType: ReactionType,
     reactionOperation: ReactionOperation
   ) => {
-    let updatedReactions = feed.reactions || [];
+    let updatedReactions = isPost ? post.reactions || [] : feed.reactions || [];
     if (reactionOperation === ReactionOperation.ADD) {
       const reactionObject = {
         reactionType,
@@ -176,21 +177,42 @@ const ActivityFeedActions = ({
       );
     }
 
-    const patch = compare(
-      { ...feed, reactions: [...(feed.reactions || [])] },
-      {
-        ...feed,
-        reactions: updatedReactions,
-      }
-    );
+    const originalObject = isPost
+      ? { ...post, reactions: [...(post.reactions || [])] }
+      : { ...feed, reactions: [...(feed.reactions || [])] };
+
+    const updatedObject = isPost
+      ? { ...post, reactions: updatedReactions }
+      : { ...feed, reactions: updatedReactions };
+
+    const patch = compare(originalObject, updatedObject);
     if (!isEmpty(patch)) {
-      updateThread(feed.id, patch);
-      updateAnnouncementThreads && updateAnnouncementThreads();
+      if (feed.type === 'Announcement' && !isAnnouncementTab) {
+        if (isPost) {
+          await updatePost(feed.id, post.id, patch);
+          const updatedthread = await getUpdatedThread(feed.id);
+          updateEntityThread(updatedthread);
+        } else {
+          await updateThread(feed.id, patch);
+          const updatedthread = await getUpdatedThread(feed.id);
+          updateEntityThread(updatedthread);
+        }
+      } else {
+        if (isPost) {
+          await updatePost(feed.id, post.id, patch);
+          updateAnnouncementThreads && updateAnnouncementThreads();
+        } else {
+          await updateThread(feed.id, patch);
+          updateAnnouncementThreads && updateAnnouncementThreads();
+        }
+      }
     }
   };
 
   const isReacted = (reactionType: ReactionType) => {
-    return feed?.reactions?.some(
+    const reactions = isPost ? post.reactions : feed.reactions;
+
+    return reactions?.some(
       (reactionItem) =>
         reactionItem.user.id === currentUser?.id &&
         reactionType === reactionItem.reactionType
