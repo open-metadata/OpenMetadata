@@ -19,7 +19,7 @@ Configure and schedule Datalake metadata and profiler workflows from the OpenMet
 - [Data Profiler](/how-to-guides/data-quality-observability/profiler/workflow)
 - [Data Quality](/how-to-guides/data-quality-observability/quality)
 
-{% partial file="/v1.6/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/adls-datalake/yaml"} /%}
+{% partial file="/v1.7/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/adls-datalake/yaml"} /%}
 
 ## Requirements
 
@@ -37,12 +37,12 @@ permissions on the Storage Account:
 ## Metadata Ingestion
 
 {% partial 
-  file="/v1.6/connectors/metadata-ingestion-ui.md" 
+  file="/v1.7/connectors/metadata-ingestion-ui.md" 
   variables={
     connector: "Datalake", 
-    selectServicePath: "/images/v1.6/connectors/datalake/select-service.png",
-    addNewServicePath: "/images/v1.6/connectors/datalake/add-new-service.png",
-    serviceConnectionPath: "/images/v1.6/connectors/datalake/service-connection.png",
+    selectServicePath: "/images/v1.7/connectors/datalake/select-service.png",
+    addNewServicePath: "/images/v1.7/connectors/datalake/add-new-service.png",
+    serviceConnectionPath: "/images/v1.7/connectors/datalake/service-connection.png",
 } 
 /%}
 
@@ -66,18 +66,18 @@ permissions on the Storage Account:
 
 The current approach for authentication is based on `app registration`, reach out to us on [slack](https://slack.open-metadata.org/) if you find the need for another auth system
 
-{% partial file="/v1.6/connectors/database/advanced-configuration.md" /%}
+{% partial file="/v1.7/connectors/database/advanced-configuration.md" /%}
 
 {% /extraContent %}
 
-{% partial file="/v1.6/connectors/test-connection.md" /%}
+{% partial file="/v1.7/connectors/test-connection.md" /%}
 
-{% partial file="/v1.6/connectors/database/configure-ingestion.md" /%}
+{% partial file="/v1.7/connectors/database/configure-ingestion.md" /%}
 
-{% partial file="/v1.6/connectors/ingestion-schedule-and-deploy.md" /%}
+{% partial file="/v1.7/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
 
-{% partial file="/v1.6/connectors/troubleshooting.md" /%}
+{% partial file="/v1.7/connectors/troubleshooting.md" /%}
 
-{% partial file="/v1.6/connectors/database/related.md" /%}
+{% partial file="/v1.7/connectors/database/related.md" /%}

@@ -18,7 +18,7 @@ Configure and schedule Lightdash metadata and profiler workflows from the OpenMe
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 
-{% partial file="/v1.6/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/dashboard/lightdash/yaml"} /%}
+{% partial file="/v1.7/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/dashboard/lightdash/yaml"} /%}
 
 ## Requirements
 
@@ -27,12 +27,12 @@ To integrate Lightdash, ensure you are using OpenMetadata version 1.2.x or highe
 ## Metadata Ingestion
 
 {% partial 
-  file="/v1.6/connectors/metadata-ingestion-ui.md" 
+  file="/v1.7/connectors/metadata-ingestion-ui.md" 
   variables={
     connector: "Lightdash", 
-    selectServicePath: "/images/v1.6/connectors/lightdash/select-service.png",
-    addNewServicePath: "/images/v1.6/connectors/lightdash/add-new-service.png",
-    serviceConnectionPath: "/images/v1.6/connectors/lightdash/service-connection.png",
+    selectServicePath: "/images/v1.7/connectors/lightdash/select-service.png",
+    addNewServicePath: "/images/v1.7/connectors/lightdash/add-new-service.png",
+    serviceConnectionPath: "/images/v1.7/connectors/lightdash/service-connection.png",
 } 
 /%}
 
@@ -57,12 +57,12 @@ To integrate Lightdash, ensure you are using OpenMetadata version 1.2.x or highe
 
 {% /extraContent %}
 
-{% partial file="/v1.6/connectors/test-connection.md" /%}
+{% partial file="/v1.7/connectors/test-connection.md" /%}
 
-{% partial file="/v1.6/connectors/dashboard/configure-ingestion.md" /%}
+{% partial file="/v1.7/connectors/dashboard/configure-ingestion.md" /%}
 
-{% partial file="/v1.6/connectors/ingestion-schedule-and-deploy.md" /%}
+{% partial file="/v1.7/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
 
-{% partial file="/v1.6/connectors/troubleshooting.md" /%}
+{% partial file="/v1.7/connectors/troubleshooting.md" /%}

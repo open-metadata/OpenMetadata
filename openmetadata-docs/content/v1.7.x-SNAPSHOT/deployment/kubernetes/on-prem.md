@@ -268,4 +268,4 @@ Use the `--values` flag to point to your own YAML configuration if needed.
 
 # FAQs
 
-{% partial file="/v1.6/deployment/faqs.md" /%}
+{% partial file="/v1.7/deployment/faqs.md" /%}

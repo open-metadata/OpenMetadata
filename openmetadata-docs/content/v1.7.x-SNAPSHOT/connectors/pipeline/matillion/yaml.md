@@ -25,7 +25,7 @@ Configure and schedule Matillion metadata and profiler workflows from the OpenMe
 - [Troubleshooting](#troubleshooting)
     - [Workflow Deployment Error](#workflow-deployment-error)
 
-{% partial file="/v1.6/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/pipeline/matillion/yaml"} /%}
+{% partial file="/v1.7/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/pipeline/matillion/yaml"} /%}
 
 ## Requirements
 
@@ -36,7 +36,7 @@ To extract metadata from Matillion, you need to create a user with the following
 
 ### Python Requirements
 
-{% partial file="/v1.6/connectors/python-requirements.md" /%}
+{% partial file="/v1.7/connectors/python-requirements.md" /%}
 
 To run the Matillion ingestion, you will need to install:
 
@@ -92,11 +92,11 @@ This is a sample config for Matillion:
 {% /codeInfo %}
 
 
-{% partial file="/v1.6/connectors/yaml/pipeline/source-config-def.md" /%}
+{% partial file="/v1.7/connectors/yaml/pipeline/source-config-def.md" /%}
 
-{% partial file="/v1.6/connectors/yaml/ingestion-sink-def.md" /%}
+{% partial file="/v1.7/connectors/yaml/ingestion-sink-def.md" /%}
 
-{% partial file="/v1.6/connectors/yaml/workflow-config-def.md" /%}
+{% partial file="/v1.7/connectors/yaml/workflow-config-def.md" /%}
 
 {% /codeInfoContainer %}
 
@@ -129,14 +129,14 @@ source:
                         -----END CERTIFICATE-----
 ```
 
-{% partial file="/v1.6/connectors/yaml/pipeline/source-config.md" /%}
+{% partial file="/v1.7/connectors/yaml/pipeline/source-config.md" /%}
 
-{% partial file="/v1.6/connectors/yaml/ingestion-sink.md" /%}
+{% partial file="/v1.7/connectors/yaml/ingestion-sink.md" /%}
 
-{% partial file="/v1.6/connectors/yaml/workflow-config.md" /%}
+{% partial file="/v1.7/connectors/yaml/workflow-config.md" /%}
 
 {% /codeBlock %}
 
 {% /codePreview %}
 
-{% partial file="/v1.6/connectors/yaml/ingestion-cli.md" /%}
+{% partial file="/v1.7/connectors/yaml/ingestion-cli.md" /%}

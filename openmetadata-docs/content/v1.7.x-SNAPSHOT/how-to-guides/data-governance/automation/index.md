@@ -26,7 +26,7 @@ Managing metadata manually can be challenging, particularly in dynamic environme
 ### 1. Bulk Ownership and Domain Assignment
 
 {% image
-src="/images/v1.6/how-to-guides/governance/bulk-ownership-and.png"
+src="/images/v1.7/how-to-guides/governance/bulk-ownership-and.png"
 alt="Getting started with Automation"
 caption="Getting started with Automation"
 /%}
@@ -38,7 +38,7 @@ caption="Getting started with Automation"
 ### 2. Bulk Tagging and Glossary Term Assignment
 
 {% image
-src="/images/v1.6/how-to-guides/governance/bulk-tagging-glossary.png"
+src="/images/v1.7/how-to-guides/governance/bulk-tagging-glossary.png"
 alt="Getting started with Automation"
 caption="Getting started with Automation"
 /%}
@@ -50,7 +50,7 @@ caption="Getting started with Automation"
 ### 3. Metadata Propagation via Lineage
 
 {% image
-src="/images/v1.6/how-to-guides/governance/metadata-propogation.png"
+src="/images/v1.7/how-to-guides/governance/metadata-propogation.png"
 alt="Getting started with Automation"
 caption="Getting started with Automation"
 /%}
@@ -62,7 +62,7 @@ caption="Getting started with Automation"
 ### 4. Automatic PII Detection and Tagging
 
 {% image
-src="/images/v1.6/how-to-guides/governance/automatic-detection.png"
+src="/images/v1.7/how-to-guides/governance/automatic-detection.png"
 alt="Getting started with Automation"
 caption="Getting started with Automation"
 /%}

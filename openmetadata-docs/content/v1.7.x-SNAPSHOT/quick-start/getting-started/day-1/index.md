@@ -55,21 +55,21 @@ to import metadata into OpenMetadata on a regular schedule.
 - Go to the **Ingestion** tab and click **Add Metadata Ingestion**.
 
 {% image
-  src="/images/v1.6/getting-started/add-ingestion.png"
+  src="/images/v1.7/getting-started/add-ingestion.png"
   alt="Adding Ingestion"
   caption="Adding Ingestion" /%}
 
 - Configure any required settings or filters for the ingestion process. Documentation is available in the side panel for reference.
 
 {% image
-  src="/images/v1.6/getting-started/ingestion-config.png"
+  src="/images/v1.7/getting-started/ingestion-config.png"
   alt="Configure Ingestion"
   caption="Configure Ingestion" /%}
 
 - Schedule the pipeline to ingest metadata at regular intervals.
 
 {% image
-  src="/images/v1.6/getting-started/schedule-ingesgtion.png"
+  src="/images/v1.7/getting-started/schedule-ingesgtion.png"
   alt="Schedule Ingestion"
   caption="Schedule Ingestion" /%}
 
@@ -77,7 +77,7 @@ to import metadata into OpenMetadata on a regular schedule.
 - Once the metadata ingestion is completed, the ingested data assets can be viewed under the **Explore** section in the main menu.
 
 {% image
-  src="/images/v1.6/getting-started/explore-tab.png"
+  src="/images/v1.7/getting-started/explore-tab.png"
   alt="Ingested Data"
   caption="Ingested Data under Explore Tab" /%}
 
@@ -92,7 +92,7 @@ To invite users you will need to ensure that you have an SMTP server available. 
 To update the details from the UI, navigate to Settings > Preferences > Email
 
 {% image
-src="/images/v1.6/how-to-guides/admin-guide/email.png"
+src="/images/v1.7/how-to-guides/admin-guide/email.png"
 alt="Email Configuration"
 caption="Email Configuration"
 /%}
@@ -104,14 +104,14 @@ After metadata has been ingested into OpenMetadata, you can [invite users](/how-
 - Go to **Settings > Team & User Management > Users**.
 
 {% image
-  src="/images/v1.6/getting-started/users.png"
+  src="/images/v1.7/getting-started/users.png"
   alt="Users Navigation"
   caption="Users Navigation" /%}
 
 - Click **Add User**, then enter their email and other required details to grant access to the platform.
 
 {% image
-  src="/images/v1.6/getting-started/add-users.png"
+  src="/images/v1.7/getting-started/add-users.png"
   alt="Adding New User"
   height="750px"
   caption="Adding New User" /%}
@@ -121,7 +121,7 @@ After metadata has been ingested into OpenMetadata, you can [invite users](/how-
 - Admin access can be granted to users who need full access to all settings, including the ability to invite new users.
 
 {% image
-  src="/images/v1.6/getting-started/update-user.png"
+  src="/images/v1.7/getting-started/update-user.png"
   alt="Users Profile"
   caption="Users Profile" /%}
 

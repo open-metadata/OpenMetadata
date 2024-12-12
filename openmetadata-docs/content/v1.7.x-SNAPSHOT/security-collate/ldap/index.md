@@ -27,7 +27,7 @@ You will need to share the following information with the Collate team:
 
 Please see the below image for a sample LDAP Configuration in ApacheDS.
 
-{% image src="/images/v1.6/deployment/security/ldap/Ldap_ScreenShot1.png" alt="apache-ldap" /%}
+{% image src="/images/v1.7/deployment/security/ldap/Ldap_ScreenShot1.png" alt="apache-ldap" /%}
 
 Advanced LDAP Specific Configuration (Optional):
 

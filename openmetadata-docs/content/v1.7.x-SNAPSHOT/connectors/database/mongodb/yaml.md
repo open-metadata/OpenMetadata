@@ -19,9 +19,9 @@ Configure and schedule MongoDB metadata workflows from the OpenMetadata UI:
 - [Metadata Ingestion](#metadata-ingestion)
 - [Data Profiler](#data-profiler)
 
-{% partial file="/v1.6/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/mongodb/yaml"} /%}
+{% partial file="/v1.7/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/mongodb/yaml"} /%}
 
-{% partial file="/v1.6/connectors/external-ingestion-deployment.md" /%}
+{% partial file="/v1.7/connectors/external-ingestion-deployment.md" /%}
 
 ## Requirements
 
@@ -29,7 +29,7 @@ To fetch the metadata from MongoDB to OpenMetadata, the MongoDB user must have a
 
 ### Python Requirements
 
-{% partial file="/v1.6/connectors/python-requirements.md" /%}
+{% partial file="/v1.7/connectors/python-requirements.md" /%}
 
 To run the MongoDB ingestion, you will need to install:
 
@@ -86,11 +86,11 @@ Using Atlas? Follow [this guide](https://www.mongodb.com/docs/guides/atlas/conne
 
 {% /codeInfo %}
 
-{% partial file="/v1.6/connectors/yaml/database/source-config-def.md" /%}
+{% partial file="/v1.7/connectors/yaml/database/source-config-def.md" /%}
 
-{% partial file="/v1.6/connectors/yaml/ingestion-sink-def.md" /%}
+{% partial file="/v1.7/connectors/yaml/ingestion-sink-def.md" /%}
 
-{% partial file="/v1.6/connectors/yaml/workflow-config-def.md" /%}
+{% partial file="/v1.7/connectors/yaml/workflow-config-def.md" /%}
 
 #### Advanced Configuration
 
@@ -130,17 +130,17 @@ source:
       databaseName: custom_database_name
 ```
 
-{% partial file="/v1.6/connectors/yaml/database/source-config.md" /%}
+{% partial file="/v1.7/connectors/yaml/database/source-config.md" /%}
 
-{% partial file="/v1.6/connectors/yaml/ingestion-sink.md" /%}
+{% partial file="/v1.7/connectors/yaml/ingestion-sink.md" /%}
 
-{% partial file="/v1.6/connectors/yaml/workflow-config.md" /%}
+{% partial file="/v1.7/connectors/yaml/workflow-config.md" /%}
 
 {% /codeBlock %}
 
 {% /codePreview %}
 
-{% partial file="/v1.6/connectors/yaml/ingestion-cli.md" /%}
+{% partial file="/v1.7/connectors/yaml/ingestion-cli.md" /%}
 
 ## Data Profiler
 

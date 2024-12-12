@@ -26,13 +26,13 @@ From `0.12.1` OpenMetadata has changed the default `no-auth` to `Basic` auth, So
     alt="settings-bot" /%}
 
    {% image
-    src="/images/v1.6/cli-ingestion-with-basic-auth/bot-list.png"
+    src="/images/v1.7/cli-ingestion-with-basic-auth/bot-list.png"
     alt="bot-list" /%}
 
 
 **2.** You will be redirected to the `ingestion-bot` details page. there you will get the JWT token, click on the copy button and copy the JWT token.
    {% image
-src="/images/v1.6/cli-ingestion-with-basic-auth/bot-token.png"
+src="/images/v1.7/cli-ingestion-with-basic-auth/bot-token.png"
 alt="bot-token" /%}
 
 

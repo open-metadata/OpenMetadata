@@ -74,7 +74,7 @@ After adding the tier information to your `schema.yml` file, run your dbt workfl
 Table level Tier ingested from dbt can be viewed on the node in OpenMetadata
 
 {% image
-  src="/images/v1.6//features/ingestion/workflows/dbt/dbt-features/dbt-tier.png"
+  src="/images/v1.7//features/ingestion/workflows/dbt/dbt-features/dbt-tier.png"
   alt="dbt_tier"
   caption="dbt Tier"
  /%}

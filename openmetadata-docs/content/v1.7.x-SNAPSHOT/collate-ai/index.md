@@ -35,7 +35,7 @@ Documenting thousands of tables manually is tedious and time-consuming. Collate 
 ### 1. Automatic Data Asset Documentation
 
 {% image
-src="/images/v1.6/collate-ai/reviewing-generated-metadata.png"
+src="/images/v1.7/collate-ai/reviewing-generated-metadata.png"
 alt="Automatic Data Asset Documentation"
 caption="Auto Generate data Asset Documentation"
 /%}
@@ -48,7 +48,7 @@ caption="Auto Generate data Asset Documentation"
 ### 2. Natural Language SQL Query Generation
 
 {% image
-src="/images/v1.6/collate-ai/using-collate-ai-chatbot-2.png"
+src="/images/v1.7/collate-ai/using-collate-ai-chatbot-2.png"
 alt="Natural Language SQL Query Generation"
 caption="Natural Language SQL Query Generation"
 /%}
@@ -61,7 +61,7 @@ caption="Natural Language SQL Query Generation"
 ### 3. SQL Query Optimization and Troubleshooting
 
 {% image
-src="/images/v1.6/collate-ai/fixing-sql-queries-3.png"
+src="/images/v1.7/collate-ai/fixing-sql-queries-3.png"
 alt="SQL Query Optimization and Troubleshooting"
 caption="SQL Query Optimization"
 /%}
@@ -74,7 +74,7 @@ caption="SQL Query Optimization"
 ### 4. Fixing SQL Queries
 
 {% image
-src="/images/v1.6/collate-ai/fixing-sql-queries-4.png"
+src="/images/v1.7/collate-ai/fixing-sql-queries-4.png"
 alt="Fixing SQL Queries"
 caption="Fixing SQL Queries"
 /%}
