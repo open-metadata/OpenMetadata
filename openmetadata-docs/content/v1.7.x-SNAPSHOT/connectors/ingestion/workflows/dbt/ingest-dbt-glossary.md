@@ -27,7 +27,7 @@ To view created Glossary Terms, navigate to the Glossary section within OpenMeta
 OpenMetadata also supports creating nested Glossary Terms, allowing you to organize them hierarchically and seamlessly ingest them into dbt.
 
 {% image
-  src="/images/v1.6//features/ingestion/workflows/dbt/dbt-features/dbt-glossary-term.png"
+  src="/images/v1.7//features/ingestion/workflows/dbt/dbt-features/dbt-glossary-term.png"
   alt="Openmetadata_glossary_term"
   caption="OpenMetadata Glossaries"
  /%}
@@ -51,13 +51,13 @@ And for `more_nested_term` (`Test_Glossary.term_two.nested_term.more_nested_term
 you can see the current url containing the glossary term FQNs as **https://localhost:8585/glossary/`Test_Glossary.term_two.nested_term.more_nested_term`**
 
 {% image
-  src="/images/v1.6//features/ingestion/workflows/dbt/dbt-features/dbt-glossary-fqn.png"
+  src="/images/v1.7//features/ingestion/workflows/dbt/dbt-features/dbt-glossary-fqn.png"
   alt="Openmetadata_glossary_term"
   caption="OpenMetadata Glossary Term - term_one"
  /%}
 
 {% image
-  src="/images/v1.6//features/ingestion/workflows/dbt/dbt-features/dbt-glossary-nested-fqn.png"
+  src="/images/v1.7//features/ingestion/workflows/dbt/dbt-features/dbt-glossary-nested-fqn.png"
   alt="Openmetadata_glossary_term"
   caption="OpenMetadata Glossary Term - more_nested_term"
  /%}
@@ -179,7 +179,7 @@ The generated `manifest.json` file will then include the FQNs under `node_name->
 Table and Column level Glossary term ingested from dbt can be viewed on the node in OpenMetadata
 
 {% image
-  src="/images/v1.6//features/ingestion/workflows/dbt/dbt-features/dbt-glossary.png"
+  src="/images/v1.7//features/ingestion/workflows/dbt/dbt-features/dbt-glossary.png"
   alt="dbt_glossary"
   caption="dbt Glossary term"
  /%}
