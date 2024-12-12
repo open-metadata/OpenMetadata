@@ -30,4 +30,5 @@ export interface FeedPanelBodyPropV1 {
   isAnnouncementCard?: boolean;
   isAnnouncementTab?: boolean;
   updateAnnouncementThreads?: () => void;
+  permissions?: boolean;
 }

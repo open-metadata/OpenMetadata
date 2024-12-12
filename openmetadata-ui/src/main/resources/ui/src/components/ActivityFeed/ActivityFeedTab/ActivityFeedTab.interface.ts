@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../../enums/entity.enum';
 import { Column } from '../../../generated/entity/data/table';
 import { EntityReference } from '../../../generated/entity/type';
@@ -35,6 +36,7 @@ export interface ActivityFeedTabBasicProps {
   onFeedUpdate: () => void;
   onUpdateEntityDetails?: () => void;
   owners?: EntityReference[];
+  permissions?: OperationPermission;
 }
 
 export type ActivityFeedTabProps = ActivityFeedTabBasicProps &

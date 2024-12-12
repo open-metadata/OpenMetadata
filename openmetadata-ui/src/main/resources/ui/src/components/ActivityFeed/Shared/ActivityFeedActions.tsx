@@ -47,6 +47,7 @@ interface ActivityFeedActionsProps {
   onEditPost?: () => void;
   isAnnouncementTab?: boolean;
   updateAnnouncementThreads?: () => void;
+  permissions?: boolean;
 }
 
 const ActivityFeedActions = ({
@@ -56,6 +57,7 @@ const ActivityFeedActions = ({
   onEditPost,
   isAnnouncementTab,
   updateAnnouncementThreads,
+  permissions,
 }: ActivityFeedActionsProps) => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
@@ -113,12 +115,11 @@ const ActivityFeedActions = ({
 
   const editCheck = useMemo(() => {
     if (feed.type === ThreadType.Announcement) {
-      // Admins can delete announcements. They can delete posts only if they are the author.
-      if (isPost) {
-        return isAuthor;
+      if (isPost && isAuthor) {
+        return true;
       }
 
-      return currentUser?.isAdmin;
+      return permissions;
     } else if (feed.type === ThreadType.Task && !isPost) {
       return false;
     } else if (isAuthor) {
@@ -130,12 +131,11 @@ const ActivityFeedActions = ({
 
   const deleteCheck = useMemo(() => {
     if (feed.type === ThreadType.Announcement) {
-      // Admins can delete announcements. They can delete posts only if they are the author.
-      if (isPost) {
-        return isAuthor;
+      if (isPost && isAuthor) {
+        return true;
       }
 
-      return currentUser?.isAdmin;
+      return permissions;
     } else if (feed.type === ThreadType.Task && !isPost) {
       return false;
     } else if (isAuthor || currentUser?.isAdmin) {

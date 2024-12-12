@@ -37,6 +37,7 @@ interface ActivityFeedListV1Props {
   selectedThread?: Thread;
   isAnnouncementTab?: boolean;
   updateAnnouncementThreads?: () => void;
+  permissions?: boolean;
 }
 
 const ActivityFeedListV1 = ({
@@ -55,6 +56,7 @@ const ActivityFeedListV1 = ({
   selectedThread,
   isAnnouncementTab,
   updateAnnouncementThreads,
+  permissions,
 }: ActivityFeedListV1Props) => {
   const [entityThread, setEntityThread] = useState<Thread[]>([]);
 
@@ -83,6 +85,7 @@ const ActivityFeedListV1 = ({
           isAnnouncementTab={isAnnouncementTab}
           isForFeedTab={isForFeedTab}
           key={feed.id}
+          permissions={permissions}
           showThread={showThread}
           updateAnnouncementThreads={updateAnnouncementThreads}
           onFeedClick={onFeedClick}

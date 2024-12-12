@@ -93,6 +93,7 @@ export const ActivityFeedTab = ({
   isForFeedTab = true,
   onUpdateFeedCount,
   onUpdateEntityDetails,
+  permissions,
 }: ActivityFeedTabProps) => {
   const history = useHistory();
   const { t } = useTranslation();
@@ -585,7 +586,7 @@ export const ActivityFeedTab = ({
             <Tooltip title={t('message.no-permission-to-view')}>
               <Button
                 data-testid="add-announcement"
-                disabled={false}
+                disabled={!permissions?.EditAll}
                 type="primary"
                 onClick={handleOpenAnnouncementModal}>
                 {t('label.add')}
@@ -601,6 +602,7 @@ export const ActivityFeedTab = ({
           feedList={entityThread}
           isForFeedTab={isForFeedTab}
           isLoading={false}
+          permissions={permissions?.EditAll}
           selectedThread={selectedThread}
           showThread={false}
           onFeedClick={handleFeedClick}

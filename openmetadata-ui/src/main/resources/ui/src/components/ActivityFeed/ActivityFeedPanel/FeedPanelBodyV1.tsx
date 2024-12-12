@@ -37,6 +37,7 @@ const FeedPanelBodyV1: FC<FeedPanelBodyPropV1> = ({
   isAnnouncementCard = false,
   isAnnouncementTab,
   updateAnnouncementThreads,
+  permissions,
 }) => {
   const mainFeed = useMemo(
     () =>
@@ -86,6 +87,7 @@ const FeedPanelBodyV1: FC<FeedPanelBodyPropV1> = ({
           isActive={isActive}
           isAnnouncementTab={isAnnouncementTab}
           isOpenInDrawer={isOpenInDrawer}
+          permissions={permissions}
           post={mainFeed}
           showThread={showThread}
           updateAnnouncementThreads={updateAnnouncementThreads}

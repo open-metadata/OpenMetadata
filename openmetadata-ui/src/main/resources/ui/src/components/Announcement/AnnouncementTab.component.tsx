@@ -18,7 +18,7 @@ import { t } from 'i18next';
 import { noop } from 'lodash';
 import React, { useCallback, useEffect, useState } from 'react';
 import '../../components/ActivityFeed/ActivityFeedTab/activity-feed-tab.less';
-import { EntityType } from '../../enums/entity.enum';
+import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
 import {
   AnnoucementStatus,
   Post,
@@ -27,7 +27,9 @@ import {
 } from '../../generated/entity/feed/thread';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { getAnnouncements, postFeedById } from '../../rest/feedsAPI';
+import { getEntityPermissionByFqn } from '../../rest/permissionAPI';
 import { getEntityFeedLink } from '../../utils/EntityUtils';
+import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import ActivityFeedEditor from '../ActivityFeed/ActivityFeedEditor/ActivityFeedEditor';
 import ActivityFeedListV1 from '../ActivityFeed/ActivityFeedList/ActivityFeedListV1.component';
@@ -36,7 +38,7 @@ import FeedPanelHeader from '../ActivityFeed/ActivityFeedPanel/FeedPanelHeader';
 import AddAnnouncementModal from '../Modals/AnnouncementModal/AddAnnouncementModal';
 interface AnnouncementTabProps {
   fqn: string;
-  entityType: EntityType;
+  entityType: any;
 }
 
 const AnnouncementTab: React.FC<AnnouncementTabProps> = ({
@@ -50,6 +52,8 @@ const AnnouncementTab: React.FC<AnnouncementTabProps> = ({
   const [threads, setThreads] = useState<any[]>([]);
   const [selectedAnnouncementThread, setSelectedAnnouncementThread] =
     useState<Thread>();
+  const [announcementsPermissions, setAnnouncementsPermissions] =
+    useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
   const { currentUser } = useApplicationStore();
 
   const getThreads = async () => {
@@ -79,6 +83,7 @@ const AnnouncementTab: React.FC<AnnouncementTabProps> = ({
 
   useEffect(() => {
     getThreads();
+    fetchPermission();
   }, [announcementFilter]);
 
   const updateSelectedThread = (thread: Thread) => {
@@ -140,6 +145,27 @@ const AnnouncementTab: React.FC<AnnouncementTabProps> = ({
     });
   };
 
+  const fetchPermission = useCallback(async () => {
+    try {
+      const response = await getEntityPermissionByFqn(entityType, fqn);
+      const mappedPermissions: OperationPermission =
+        response.permissions.reduce(
+          (acc, permission) => {
+            if (permission.operation && permission.access === 'allow') {
+              if (permission.operation in acc) {
+                acc[permission.operation] = true;
+              }
+            }
+
+            return acc;
+          },
+          { ...DEFAULT_ENTITY_PERMISSION }
+        );
+      setAnnouncementsPermissions(mappedPermissions);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  }, [fqn]);
   const updateAnnouncementThreads = () => {
     getThreads();
   };
@@ -184,7 +210,7 @@ const AnnouncementTab: React.FC<AnnouncementTabProps> = ({
             <Tooltip title={t('message.no-permission-to-view')}>
               <Button
                 data-testid="add-announcement"
-                disabled={false}
+                disabled={!announcementsPermissions?.EditAll}
                 type="primary"
                 onClick={handleOpenAnnouncementModal}>
                 {t('label.add')}
@@ -203,6 +229,7 @@ const AnnouncementTab: React.FC<AnnouncementTabProps> = ({
             emptyPlaceholderText=""
             feedList={threads}
             isLoading={false}
+            permissions={announcementsPermissions?.EditAll}
             selectedThread={selectedAnnouncementThread}
             showThread={false}
             updateAnnouncementThreads={updateAnnouncementThreads}

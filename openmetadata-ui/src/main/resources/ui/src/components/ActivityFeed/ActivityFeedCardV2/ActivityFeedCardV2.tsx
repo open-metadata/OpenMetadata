@@ -48,6 +48,7 @@ const ActivityFeedCardV2 = ({
   },
   isAnnouncementTab = false,
   updateAnnouncementThreads,
+  permissions,
 }: Readonly<ActivityFeedCardV2Props>) => {
   const [isEditPost, setIsEditPost] = useState<boolean>(false);
   const [showActions, setShowActions] = useState(false);
@@ -224,6 +225,7 @@ const ActivityFeedCardV2 = ({
                 feed={feed}
                 isAnnouncementTab={isAnnouncementTab}
                 isPost={isPost}
+                permissions={permissions}
                 post={post}
                 updateAnnouncementThreads={updateAnnouncementThreads}
                 onEditPost={onEditPost}
