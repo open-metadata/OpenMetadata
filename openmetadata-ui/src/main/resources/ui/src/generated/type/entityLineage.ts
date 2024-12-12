@@ -19,8 +19,8 @@ export interface EntityLineage {
     /**
      * Primary entity for which this lineage graph is created.
      */
-    entity:         EntityReference;
-    nodes?:         EntityReference[];
+    entity: EntityReference;
+    nodes?: EntityReference[];
     upstreamEdges?: Edge[];
 }
 
@@ -148,6 +148,7 @@ export interface EntityReference {
  * Lineage type describes how a lineage was created.
  */
 export enum Source {
+    CrossDatabaseLineage = "CrossDatabaseLineage",
     DashboardLineage = "DashboardLineage",
     DbtLineage = "DbtLineage",
     ExternalTableLineage = "ExternalTableLineage",
