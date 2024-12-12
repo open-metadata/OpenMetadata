@@ -33,15 +33,21 @@ from metadata.generated.schema.entity.data.searchIndex import SearchIndex
 from metadata.generated.schema.entity.data.storedProcedure import StoredProcedure
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.data.topic import Topic
+from metadata.generated.schema.entity.services.apiService import ApiService
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import User
 from metadata.utils.logger import utils_logger
+from src.metadata.generated.schema.entity.data.apiCollection import APICollection
+from src.metadata.generated.schema.entity.data.apiEndpoint import APIEndpoint
 
 logger = utils_logger()
 T = TypeVar("T", bound=BaseModel)
 
 ES_INDEX_MAP = {
+    ApiService.__name__: "api_service_search_index",
+    APICollection.__name__: "api_collection_search_index",
+    APIEndpoint.__name__: "api_endpoint_search_index",
     Table.__name__: "table_search_index",
     Database.__name__: "database_search_index",
     DatabaseSchema.__name__: "database_schema_search_index",
