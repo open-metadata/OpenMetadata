@@ -200,6 +200,11 @@ You can access Airflow at [http://localhost:8080](http://localhost:8080). Use th
 - Username: `admin`
 - Password: `admin`
 
+### Customizing Airflow Admin Credentials:  
+  When using Docker Compose, you can change the default Airflow admin credentials by setting the following environment variables:  
+  - Username: `AIRFLOW_ADMIN_USER`
+  - Password: `AIRFLOW_ADMIN_PASSWORD`
+
 ## Airflow DAGs Showcased in Deployment
 
 You can explore the examples of Airflow DAGs used with OpenMetadata. Refer [here](https://github.com/open-metadata/OpenMetadata/tree/main/ingestion/examples/airflow/dags) for more information.
