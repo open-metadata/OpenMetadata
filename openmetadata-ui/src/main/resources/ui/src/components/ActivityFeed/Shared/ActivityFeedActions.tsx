@@ -11,23 +11,33 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Space } from 'antd';
+import { Popover, Space } from 'antd';
+import { compare } from 'fast-json-patch';
+import { isEmpty, uniqueId } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
 import { ReactComponent as IconEdit } from '../../../assets/svg/ic-edit.svg';
+import { ReactComponent as IconReaction } from '../../../assets/svg/ic-reaction.svg';
+import { ReactComponent as IconReply } from '../../../assets/svg/ic-reply.svg';
 import ConfirmationModal from '../../../components/Modals/ConfirmationModal/ConfirmationModal';
+import { REACTION_LIST } from '../../../constants/reactions.constant';
+import { ReactionOperation } from '../../../enums/reactions.enum';
 import {
   Post,
+  ReactionType,
   Thread,
   ThreadType,
 } from '../../../generated/entity/feed/thread';
-
-import { ReactComponent as IconReply } from '../../../assets/svg/ic-reply.svg';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
-import { deletePostById, deleteThread } from '../../../rest/feedsAPI';
+import {
+  deletePostById,
+  deleteThread,
+  updateThread,
+} from '../../../rest/feedsAPI';
 import { getUpdatedThread } from '../../../utils/FeedUtils';
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
+import Reaction from '../Reactions/Reaction';
 import './activity-feed-actions.less';
 
 interface ActivityFeedActionsProps {
@@ -58,7 +68,7 @@ const ActivityFeedActions = ({
     updateEditorFocus,
     updateEntityThread,
   } = useActivityFeedProvider();
-
+  const [visible, setVisible] = useState<boolean>(false);
   const onReply = () => {
     showDrawer(feed);
 
@@ -135,6 +145,72 @@ const ActivityFeedActions = ({
     return false;
   }, [post, feed, isAuthor, currentUser]);
 
+  const hide = () => {
+    setVisible(false);
+  };
+
+  const handleVisibleChange = (newVisible: boolean) => {
+    setVisible(newVisible);
+  };
+  const onReactionSelect = (
+    reactionType: ReactionType,
+    reactionOperation: ReactionOperation
+  ) => {
+    let updatedReactions = feed.reactions || [];
+    if (reactionOperation === ReactionOperation.ADD) {
+      const reactionObject = {
+        reactionType,
+        user: {
+          id: currentUser?.id as string,
+        },
+      };
+
+      updatedReactions = [...updatedReactions, reactionObject as any];
+    } else {
+      updatedReactions = updatedReactions.filter(
+        (reaction) =>
+          !(
+            reaction.reactionType === reactionType &&
+            reaction.user.id === currentUser?.id
+          )
+      );
+    }
+
+    const patch = compare(
+      { ...feed, reactions: [...(feed.reactions || [])] },
+      {
+        ...feed,
+        reactions: updatedReactions,
+      }
+    );
+    if (!isEmpty(patch)) {
+      updateThread(feed.id, patch);
+      updateAnnouncementThreads && updateAnnouncementThreads();
+    }
+  };
+
+  const isReacted = (reactionType: ReactionType) => {
+    return feed?.reactions?.some(
+      (reactionItem) =>
+        reactionItem.user.id === currentUser?.id &&
+        reactionType === reactionItem.reactionType
+    );
+  };
+
+  const reactionList = REACTION_LIST.map((reaction) => {
+    return (
+      <Reaction
+        isReacted={isReacted(reaction.reaction) as boolean}
+        key={uniqueId()}
+        reaction={reaction}
+        onHide={() => {
+          hide();
+        }}
+        onReactionSelect={onReactionSelect}
+      />
+    );
+  });
+
   return (
     <>
       <Space className="feed-actions" data-testid="feed-actions" size={12}>
@@ -147,6 +223,23 @@ const ActivityFeedActions = ({
             onClick={onReply}
           />
         )}
+        <Popover
+          destroyTooltipOnHide
+          align={{ targetOffset: [0, -10] }}
+          content={reactionList || []}
+          id="reaction-popover"
+          open={visible}
+          overlayClassName="ant-popover-feed-reactions"
+          placement="topLeft"
+          trigger="click"
+          zIndex={9999}
+          onOpenChange={handleVisibleChange}>
+          <Icon
+            component={IconReaction}
+            data-testid="add-reactions"
+            style={{ fontSize: '16px' }}
+          />
+        </Popover>
 
         {editCheck && (
           <Icon

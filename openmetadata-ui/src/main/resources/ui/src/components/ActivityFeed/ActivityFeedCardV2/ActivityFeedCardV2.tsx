@@ -21,6 +21,7 @@ import {
   AnnouncementDetails,
   GeneratedBy,
 } from '../../../generated/entity/feed/thread';
+import { updatePost } from '../../../rest/feedsAPI';
 import { updateThreadData } from '../../../utils/FeedUtils';
 import UserPopOverCard from '../../common/PopOverCard/UserPopOverCard';
 import ProfilePicture from '../../common/ProfilePicture/ProfilePicture';
@@ -60,7 +61,7 @@ const ActivityFeedCardV2 = ({
 
   const onEditPost = () => {
     setIsEditPost(!isEditPost);
-    setIsEditAnnouncement(!isEditAnnouncement);
+    !isPost && setIsEditAnnouncement(!isEditAnnouncement); // do not open Edit Announcement Modal is its a post
   };
 
   const handleMouseEnter = () => {
@@ -74,7 +75,14 @@ const ActivityFeedCardV2 = ({
   const onUpdate = (message: string) => {
     const updatedPost = { ...feed, message };
     const patch = compare(feed, updatedPost);
-    updateFeed(feed.id, post.id, !isPost, patch);
+    if (isAnnouncementTab) {
+      // update post in announcement tab
+      updatePost(feed.id, post.id, patch);
+      updateAnnouncementThreads && updateAnnouncementThreads();
+    } else {
+      updateFeed(feed.id, post.id, !isPost, patch);
+    }
+
     setIsEditPost(!isEditPost);
   };
 

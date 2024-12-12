@@ -37,9 +37,14 @@ interface ReactionsProps {
     reaction: ReactionType,
     operation: ReactionOperation
   ) => void;
+  showAddEmoji?: boolean;
 }
 
-const Reactions: FC<ReactionsProps> = ({ reactions, onReactionSelect }) => {
+const Reactions: FC<ReactionsProps> = ({
+  reactions,
+  onReactionSelect,
+  showAddEmoji,
+}) => {
   const { t } = useTranslation();
   const [visible, setVisible] = useState(false);
   const { currentUser } = useApplicationStore();
@@ -100,29 +105,31 @@ const Reactions: FC<ReactionsProps> = ({ reactions, onReactionSelect }) => {
   return (
     <div className="d-flex items-center" data-testid="feed-reaction-container">
       {emojis}
-      <Popover
-        arrowPointAtCenter
-        align={{ targetOffset: [0, -10] }}
-        content={reactionList}
-        open={visible}
-        overlayClassName="ant-popover-feed-reactions"
-        placement="topLeft"
-        trigger="click"
-        zIndex={9999}
-        onOpenChange={handleVisibleChange}>
-        <Button
-          className="flex-center p-0"
-          data-testid="add-reactions"
-          icon={<AddReactionIcon width={18} />}
-          shape="circle"
-          size="small"
-          title={t('label.add-entity', {
-            entity: t('label.reaction-lowercase-plural'),
-          })}
-          type="text"
-          onClick={(e) => e.stopPropagation()}
-        />
-      </Popover>
+      {showAddEmoji && (
+        <Popover
+          arrowPointAtCenter
+          align={{ targetOffset: [0, -10] }}
+          content={reactionList}
+          open={visible}
+          overlayClassName="ant-popover-feed-reactions"
+          placement="topLeft"
+          trigger="click"
+          zIndex={9999}
+          onOpenChange={handleVisibleChange}>
+          <Button
+            className="flex-center p-0"
+            data-testid="add-reactions"
+            icon={<AddReactionIcon width={18} />}
+            shape="circle"
+            size="small"
+            title={t('label.add-entity', {
+              entity: t('label.reaction-lowercase-plural'),
+            })}
+            type="text"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </Popover>
+      )}
     </div>
   );
 };

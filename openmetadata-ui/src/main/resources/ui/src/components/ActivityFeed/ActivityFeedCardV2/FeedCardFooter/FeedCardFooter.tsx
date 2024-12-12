@@ -18,7 +18,7 @@ import React, { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ThreadIcon } from '../../../../assets/svg/thread-icon.svg';
 import { ReactionOperation } from '../../../../enums/reactions.enum';
-import { Post } from '../../../../generated/entity/feed/thread';
+import { Post, ThreadType } from '../../../../generated/entity/feed/thread';
 import { Reaction, ReactionType } from '../../../../generated/type/reaction';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { updatePost } from '../../../../rest/feedsAPI';
@@ -144,6 +144,7 @@ function FeedCardFooter({
           )}
           <Reactions
             reactions={post.reactions ?? []}
+            showAddEmoji={!(feed.type === ThreadType.Announcement)} // hide emoji if its Announcement , since we are showing add emoji thrg pop up
             onReactionSelect={onReactionUpdate ?? noop}
           />
         </Space>
