@@ -17,7 +17,7 @@ To import a Database Service into Collate:
 3. Click on the **⋮** icon and select **Import** to download the Database Service file.
 
 {% image
-src="/images/v1.6/how-to-guides/discovery/import1.png"
+src="/images/v1.7/how-to-guides/discovery/import1.png"
 alt="Import a Database Service"
 caption="Import a Database Service"
 /%}
@@ -43,7 +43,7 @@ Once you have the template, you can fill in the following details:
 - **domain**: This field contains the domain assigned to the data asset.
 
 {% image
-src="/images/v1.6/how-to-guides/discovery/import2.png"
+src="/images/v1.7/how-to-guides/discovery/import2.png"
 alt="Upload the Database Service CSV file"
 caption="Upload the Database Service CSV file"
 /%}
@@ -51,7 +51,7 @@ caption="Upload the Database Service CSV file"
 5. You can now preview the uploaded Database Service CSV file and add or modify data using the inline editor.
 
 {% image
-src="/images/v1.6/how-to-guides/discovery/import3.png"
+src="/images/v1.7/how-to-guides/discovery/import3.png"
 alt="Preview of the Database Service"
 caption="Preview of the Database Service"
 /%}
@@ -59,7 +59,7 @@ caption="Preview of the Database Service"
 6. Validate the updated Data Assets and confirm the changes. A success or failure message will then be displayed based on the outcome.
 
 {% image
-src="/images/v1.6/how-to-guides/discovery/import4.png"
+src="/images/v1.7/how-to-guides/discovery/import4.png"
 alt="Validate the updated Data Assets"
 caption="Validate the updated Data Assets"
 /%}
@@ -67,7 +67,7 @@ caption="Validate the updated Data Assets"
 7. The Database Service has been updated successfully, and you can now view the changes in the Database Service.
 
 {% image
-src="/images/v1.6/how-to-guides/discovery/import5.png"
+src="/images/v1.7/how-to-guides/discovery/import5.png"
 alt="Database Service Import successful"
 caption="DatabaseService Import successful"
 /%}
@@ -87,7 +87,7 @@ To import a Database into Collate:
 2. Click on the **⋮** icon and select **Import** to upload the Database CSV file.
 
 {% image
-src="/images/v1.6/how-to-guides/discovery/import6.png"
+src="/images/v1.7/how-to-guides/discovery/import6.png"
 alt="Import a Database"
 caption="Import a Database"
 /%}
@@ -117,7 +117,7 @@ Once you have the template, you can fill in the following details:
 - **domain**: This field contains the domain assigned to the data asset.
 
 {% image
-src="/images/v1.6/how-to-guides/discovery/import7.png"
+src="/images/v1.7/how-to-guides/discovery/import7.png"
 alt="Upload the Database CSV file"
 caption="Upload the Database CSV file"
 /%}
@@ -125,7 +125,7 @@ caption="Upload the Database CSV file"
 4. You can now preview the uploaded Database CSV file and add or modify data using the inline editor.
 
 {% image
-src="/images/v1.6/how-to-guides/discovery/import8.png"
+src="/images/v1.7/how-to-guides/discovery/import8.png"
 alt="Preview of the Database"
 caption="Preview of the Database"
 /%}
@@ -133,7 +133,7 @@ caption="Preview of the Database"
 5. Validate the updated Data Assets and confirm the changes. A success or failure message will then be displayed based on the outcome.
 
 {% image
-src="/images/v1.6/how-to-guides/discovery/import9.png"
+src="/images/v1.7/how-to-guides/discovery/import9.png"
 alt="Validate the updated Data Assets"
 caption="Validate the updated Data Assets"
 /%}
@@ -141,7 +141,7 @@ caption="Validate the updated Data Assets"
 6. The Database has been updated successfully, and you can now view the changes in the Database.
 
 {% image
-src="/images/v1.6/how-to-guides/discovery/import10.png"
+src="/images/v1.7/how-to-guides/discovery/import10.png"
 alt="Database Import successful"
 caption="DatabaseImport successful"
 /%}
@@ -162,7 +162,7 @@ To import a Database Schema into Collate:
 
 
 {% image
-src="/images/v1.6/how-to-guides/discovery/import11.png"
+src="/images/v1.7/how-to-guides/discovery/import11.png"
 alt="Import a Database Schema"
 caption="Import a Database Schema"
 /%}
@@ -190,7 +190,7 @@ Once you have the template, you can fill in the following details:
 - **retentionPeriod**: This field contains the retention period of the data asset. Period is expressed as a duration in ISO 8601 format in UTC. Example - `P23DT23H`.
 
 {% image
-src="/images/v1.6/how-to-guides/discovery/import12.png"
+src="/images/v1.7/how-to-guides/discovery/import12.png"
 alt="Upload the Database Schema CSV file"
 caption="Upload the Database Schema CSV file"
 /%}
@@ -198,7 +198,7 @@ caption="Upload the Database Schema CSV file"
 4. You can now preview the uploaded Database Schema CSV file and add or modify data using the inline editor.
 
 {% image
-src="/images/v1.6/how-to-guides/discovery/import13.png"
+src="/images/v1.7/how-to-guides/discovery/import13.png"
 alt="Preview of the Database Schema"
 caption="Preview of the Database Schema"
 /%}
@@ -206,7 +206,7 @@ caption="Preview of the Database Schema"
 5. Validate the updated Data Assets and confirm the changes. A success or failure message will then be displayed based on the outcome.
 
 {% image
-src="/images/v1.6/how-to-guides/discovery/import14.png"
+src="/images/v1.7/how-to-guides/discovery/import14.png"
 alt="Validate the updated Data Assets"
 caption="Validate the updated Data Assets"
 /%}
@@ -214,7 +214,7 @@ caption="Validate the updated Data Assets"
 6. The Database Schema has been updated successfully, and you can now view the changes in the Database Schema.
 
 {% image
-src="/images/v1.6/how-to-guides/discovery/import15.png"
+src="/images/v1.7/how-to-guides/discovery/import15.png"
 alt="Database Schema Import successful"
 caption="DatabaseSchema Import successful"
 /%}
@@ -235,7 +235,7 @@ To import a Table into Collate:
 2. Click on the **⋮** icon and select **Import** to download the Table CSV file.
 
 {% image
-src="/images/v1.6/how-to-guides/discovery/import16.png"
+src="/images/v1.7/how-to-guides/discovery/import16.png"
 alt="Import a Table"
 caption="Import a Table"
 /%}
@@ -282,7 +282,7 @@ Once you have the template, you can fill in the following details:
 - **column.glossaryTerms**:  This field holds the Glossary terms linked to the column to provide standardized definitions.
 
 {% image
-src="/images/v1.6/how-to-guides/discovery/import17.png"
+src="/images/v1.7/how-to-guides/discovery/import17.png"
 alt="Upload the Table CSV file"
 caption="Upload the Table CSV file"
 /%}
@@ -290,7 +290,7 @@ caption="Upload the Table CSV file"
 4. You can now preview the uploaded Table CSV file and add or modify data using the inline editor.
 
 {% image
-src="/images/v1.6/how-to-guides/discovery/import18.png"
+src="/images/v1.7/how-to-guides/discovery/import18.png"
 alt="Preview of the Table"
 caption="Preview of the Table"
 /%}
@@ -298,7 +298,7 @@ caption="Preview of the Table"
 5. Validate the updated Data Assets and confirm the changes. A success or failure message will then be displayed based on the outcome.
 
 {% image
-src="/images/v1.6/how-to-guides/discovery/import19.png"
+src="/images/v1.7/how-to-guides/discovery/import19.png"
 alt="Validate the updated Data Assets"
 caption="Validate the updated Data Assets"
 /%}
@@ -306,7 +306,7 @@ caption="Validate the updated Data Assets"
 6. The Table has been updated successfully, and you can now view the changes in the Table.
 
 {% image
-src="/images/v1.6/how-to-guides/discovery/import20.png"
+src="/images/v1.7/how-to-guides/discovery/import20.png"
 alt="Table Import successful"
 caption="Table Import successful"
 /%}
