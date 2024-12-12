@@ -22,6 +22,7 @@ import athena from '../assets/img/service-icon-athena.png';
 import atlas from '../assets/img/service-icon-atlas.svg';
 import azuresql from '../assets/img/service-icon-azuresql.png';
 import bigtable from '../assets/img/service-icon-bigtable.png';
+import cassandra from '../assets/img/service-icon-cassandra.png';
 import clickhouse from '../assets/img/service-icon-clickhouse.png';
 import couchbase from '../assets/img/service-icon-couchbase.svg';
 import dagster from '../assets/img/service-icon-dagster.png';
@@ -189,6 +190,7 @@ export const GCS = gcs;
 export const SPARK = spark;
 export const SPLINE = spline;
 export const MONGODB = mongodb;
+export const CASSANDRA = cassandra;
 export const QLIK_SENSE = qlikSense;
 export const LIGHT_DASH = lightDash;
 export const COUCHBASE = couchbase;
@@ -394,7 +396,7 @@ export const BETA_SERVICES = [
   DatabaseServiceType.Teradata,
   StorageServiceType.Gcs,
   DatabaseServiceType.SapERP,
-  PipelineServiceType.Flink,
+  DatabaseServiceType.Cassandra,
   MetadataServiceType.AlationSink,
   DatabaseServiceType.Synapse,
 ];
