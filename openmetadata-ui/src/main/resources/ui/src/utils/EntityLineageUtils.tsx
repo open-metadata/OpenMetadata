@@ -24,7 +24,6 @@ import {
   isUndefined,
   uniqueId,
   uniqWith,
-  upperCase,
 } from 'lodash';
 import { EntityTags, LoadingState } from 'Models';
 import React, { MouseEvent as ReactMouseEvent } from 'react';
@@ -58,7 +57,6 @@ import {
 } from '../components/Entity/EntityLineage/EntityLineage.interface';
 import LoadMoreNode from '../components/Entity/EntityLineage/LoadMoreNode/LoadMoreNode';
 import { EntityChildren } from '../components/Entity/EntityLineage/NodeChildren/NodeChildren.interface';
-import { ExploreSearchIndex } from '../components/Explore/ExplorePage.interface';
 import {
   EdgeDetails,
   EntityLineageResponse,
@@ -78,7 +76,6 @@ import {
   EntityType,
   FqnPart,
 } from '../enums/entity.enum';
-import { SearchIndex } from '../enums/search.enum';
 import { AddLineage, EntitiesEdge } from '../generated/api/lineage/addLineage';
 import { APIEndpoint } from '../generated/entity/data/apiEndpoint';
 import { Container } from '../generated/entity/data/container';
@@ -693,15 +690,6 @@ export const getEntityNodeIcon = (label: string) => {
     default:
       return TableIcon;
   }
-};
-
-export const getSearchIndexFromNodeType = (entityType: string) => {
-  const searchIndexKey = upperCase(entityType).replace(
-    ' ',
-    '_'
-  ) as keyof typeof SearchIndex;
-
-  return SearchIndex[searchIndexKey] as ExploreSearchIndex;
 };
 
 export const checkUpstreamDownstream = (id: string, data: EdgeDetails[]) => {

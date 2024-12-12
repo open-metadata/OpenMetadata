@@ -16,6 +16,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.api.configuration.UiThemePreference;
 import org.openmetadata.schema.configuration.AssetCertificationSettings;
+import org.openmetadata.schema.configuration.WorkflowSettings;
 import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
 import org.openmetadata.schema.security.client.OpenMetadataJWTClientConfig;
@@ -32,6 +33,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.CustomExceptionMessage;
 import org.openmetadata.service.fernet.Fernet;
+import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.CollectionDAO.SystemDAO;
 import org.openmetadata.service.migration.MigrationValidationClient;
 import org.openmetadata.service.resources.settings.SettingsCache;
@@ -116,6 +118,15 @@ public class SystemRepository {
 
     return oAssetCertificationSettings
         .map(settings -> (AssetCertificationSettings) settings.getConfigValue())
+        .orElse(null);
+  }
+
+  public WorkflowSettings getWorkflowSettings() {
+    Optional<Settings> oWorkflowSettings =
+        Optional.ofNullable(getConfigWithKey(SettingsType.WORKFLOW_SETTINGS.value()));
+
+    return oWorkflowSettings
+        .map(settings -> (WorkflowSettings) settings.getConfigValue())
         .orElse(null);
   }
 
@@ -209,6 +220,13 @@ public class SystemRepository {
     return (new RestUtil.PutResponse<>(Response.Status.OK, original, ENTITY_UPDATED)).toResponse();
   }
 
+  private void postUpdate(SettingsType settingsType) {
+    if (settingsType == SettingsType.WORKFLOW_SETTINGS) {
+      WorkflowHandler workflowHandler = WorkflowHandler.getInstance();
+      workflowHandler.initializeNewProcessEngine(workflowHandler.getProcessEngineConfiguration());
+    }
+  }
+
   public void updateSetting(Settings setting) {
     try {
       if (setting.getConfigType() == SettingsType.EMAIL_CONFIGURATION) {
@@ -235,6 +253,7 @@ public class SystemRepository {
           setting.getConfigType().toString(), JsonUtils.pojoToJson(setting.getConfigValue()));
       // Invalidate Cache
       SettingsCache.invalidateSettings(setting.getConfigType().value());
+      postUpdate(setting.getConfigType());
     } catch (Exception ex) {
       LOG.error("Failing in Updating Setting.", ex);
       throw new CustomExceptionMessage(

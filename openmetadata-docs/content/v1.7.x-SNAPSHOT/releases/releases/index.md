@@ -12,7 +12,7 @@ version. To see what's coming in next releases, please check our [Roadmap](/rele
 
 {% /note %}
 
-{% partial file="/v1.6/releases/latest.md" /%}
+{% partial file="/v1.7/releases/latest.md" /%}
 
 # 1.5.11 Release
 
