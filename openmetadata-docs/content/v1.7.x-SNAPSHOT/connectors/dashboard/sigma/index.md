@@ -18,7 +18,7 @@ Configure and schedule Sigma metadata and profiler workflows from the OpenMetada
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 
-{% partial file="/v1.6/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/dashboard/sigma/yaml"} /%}
+{% partial file="/v1.7/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/dashboard/sigma/yaml"} /%}
 
 ## Requirements
 
@@ -27,12 +27,12 @@ OpenMetadata relies on Sigma's REST API. To know more you can read the [Sigma AP
 ## Metadata Ingestion
 
 {% partial 
-  file="/v1.6/connectors/metadata-ingestion-ui.md" 
+  file="/v1.7/connectors/metadata-ingestion-ui.md" 
   variables={
     connector: "Sigma", 
-    selectServicePath: "/images/v1.6/connectors/sigma/select-service.png",
-    addNewServicePath: "/images/v1.6/connectors/sigma/add-new-service.png",
-    serviceConnectionPath: "/images/v1.6/connectors/sigma/service-connection.png",
+    selectServicePath: "/images/v1.7/connectors/sigma/select-service.png",
+    addNewServicePath: "/images/v1.7/connectors/sigma/add-new-service.png",
+    serviceConnectionPath: "/images/v1.7/connectors/sigma/service-connection.png",
 } 
 /%}
 
@@ -67,12 +67,12 @@ To get to know the Sigma REST API Version visit [here](https://help.sigmacomputi
 
 {% /extraContent %}
 
-{% partial file="/v1.6/connectors/test-connection.md" /%}
+{% partial file="/v1.7/connectors/test-connection.md" /%}
 
-{% partial file="/v1.6/connectors/dashboard/configure-ingestion.md" /%}
+{% partial file="/v1.7/connectors/dashboard/configure-ingestion.md" /%}
 
-{% partial file="/v1.6/connectors/ingestion-schedule-and-deploy.md" /%}
+{% partial file="/v1.7/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
 
-{% partial file="/v1.6/connectors/troubleshooting.md" /%}
+{% partial file="/v1.7/connectors/troubleshooting.md" /%}

@@ -16,7 +16,7 @@ Learn how to resolve the most common problems people encounter in the ADLS Datal
 - Select `Certificates & Secret` under `Manage` Section
 
 {% image
-src="/images/v1.6/connectors/datalake/troubleshoot-clientId.png"
+src="/images/v1.7/connectors/datalake/troubleshoot-clientId.png"
 alt="Configure service connection"
 caption="Find Client ID" /%}
 
