@@ -137,7 +137,7 @@ const QueryUsedByOtherTable = ({
       return data.hits.hits.map((value) => ({
         label: getEntityLabel(value._source),
         value: value._source.id,
-        title: getEntityName(value._source),
+        labelValue: getEntityName(value._source),
       }));
     } catch (error) {
       return [];
@@ -152,10 +152,10 @@ const QueryUsedByOtherTable = ({
       const selectedValue = queryUsedIn.map((table) => ({
         label: getEntityLabel(table),
         value: table.id,
-        title: getEntityName(table),
+        labelValue: getEntityName(table),
       }));
 
-      setInitialOptions(uniqBy([...selectedValue, ...options], 'title'));
+      setInitialOptions(uniqBy([...selectedValue, ...options], 'labelValue'));
     } catch (error) {
       setInitialOptions([]);
     } finally {

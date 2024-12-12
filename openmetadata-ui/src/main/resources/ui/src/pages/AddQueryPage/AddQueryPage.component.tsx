@@ -108,7 +108,7 @@ const AddQueryPage = () => {
       const options = data.hits.hits.map((value) => ({
         label: getEntityLabel(value._source),
         value: value._source.id,
-        title: getEntityName(value._source),
+        labelValue: getEntityName(value._source),
       }));
 
       return table
