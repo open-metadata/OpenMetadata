@@ -98,14 +98,10 @@ function SchemaTablesTab({
           displayName: data.displayName || undefined,
         };
         const jsonPatch = compare(tableDetails, updatedData);
-        await patchTableDetails(tableDetails.id, jsonPatch);
+        const response = await patchTableDetails(tableDetails.id, jsonPatch);
 
         setLocalTableData((prevData) =>
-          prevData.map((table) =>
-            table.id === id
-              ? { ...table, displayName: data.displayName }
-              : table
-          )
+          prevData.map((table) => (table.id === id ? response : table))
         );
       } catch (error) {
         showErrorToast(error as AxiosError);

@@ -50,8 +50,6 @@ public class SetEntityCertificationTask implements NodeInterface {
     subProcess.addFlowElement(new SequenceFlow(startEvent.getId(), setEntityCertification.getId()));
     subProcess.addFlowElement(new SequenceFlow(setEntityCertification.getId(), endEvent.getId()));
 
-    attachWorkflowInstanceStageListeners(subProcess);
-
     this.runtimeExceptionBoundaryEvent = getRuntimeExceptionBoundaryEvent(subProcess);
     this.subProcess = subProcess;
   }
