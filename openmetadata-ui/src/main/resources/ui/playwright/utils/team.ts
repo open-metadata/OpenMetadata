@@ -39,12 +39,8 @@ export const createTeam = async (page: Page, isPublic?: boolean) => {
     await page.getByTestId('isJoinable-switch-button').click();
   }
 
-  await page
-    .locator('.toastui-editor-md-container > .toastui-editor > .ProseMirror')
-    .isVisible();
-  await page
-    .locator('.toastui-editor-md-container > .toastui-editor > .ProseMirror')
-    .fill(teamData.description);
+  await page.locator(descriptionBox).isVisible();
+  await page.locator(descriptionBox).fill(teamData.description);
 
   const createTeamResponse = page.waitForResponse('/api/v1/teams');
 

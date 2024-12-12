@@ -28,6 +28,7 @@ import { GlossaryTerm } from '../support/glossary/GlossaryTerm';
 import {
   clickOutside,
   closeFirstPopupAlert,
+  descriptionBox,
   getApiContext,
   INVALID_NAMES,
   NAME_MAX_LENGTH_VALIDATION_ERROR,
@@ -46,9 +47,6 @@ type TaskEntity = {
 };
 
 const GLOSSARY_NAME_VALIDATION_ERROR = 'Name size must be between 1 and 128';
-
-export const descriptionBox =
-  '.toastui-editor-md-container > .toastui-editor > .ProseMirror';
 
 export const checkDisplayName = async (page: Page, displayName: string) => {
   await expect(page.getByTestId('entity-header-display-name')).toHaveText(

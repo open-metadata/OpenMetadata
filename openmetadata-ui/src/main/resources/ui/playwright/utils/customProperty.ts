@@ -107,16 +107,8 @@ export const setValueForProperty = async (data: {
   const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
   switch (propertyType) {
     case 'markdown':
-      await page
-        .locator(
-          '.toastui-editor-md-container > .toastui-editor > .ProseMirror'
-        )
-        .isVisible();
-      await page
-        .locator(
-          '.toastui-editor-md-container > .toastui-editor > .ProseMirror'
-        )
-        .fill(value);
+      await page.locator(descriptionBox).isVisible();
+      await page.locator(descriptionBox).fill(value);
       await page.locator('[data-testid="save"]').click();
 
       break;
