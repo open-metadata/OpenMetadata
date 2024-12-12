@@ -11,7 +11,9 @@
  *  limitations under the License.
  */
 import { APIRequestContext, expect, Page } from '@playwright/test';
+import { GlobalSettingOptions } from '../../constant/settings';
 import { uuid } from '../../utils/common';
+import { settingClick } from '../../utils/sidebar';
 import { searchTeam } from '../../utils/team';
 type ResponseDataType = {
   name: string;
@@ -48,6 +50,13 @@ export class TeamClass {
   }
 
   async visitTeamPage(page: Page) {
+    // complete url since we are making basic and advance call to get the details of the team
+    const fetchOrganizationResponse = page.waitForResponse(
+      `/api/v1/teams/name/Organization?fields=users%2CdefaultRoles%2Cpolicies%2CchildrenCount%2Cdomains&include=all`
+    );
+    await settingClick(page, GlobalSettingOptions.TEAMS);
+    await fetchOrganizationResponse;
+
     await searchTeam(page, this.responseData?.['displayName']);
 
     await page
@@ -60,8 +69,6 @@ export class TeamClass {
     await expect(page.getByTestId('team-heading')).toHaveText(
       this.data.displayName
     );
-
-    await page.waitForLoadState('networkidle');
   }
 
   async create(apiContext: APIRequestContext) {

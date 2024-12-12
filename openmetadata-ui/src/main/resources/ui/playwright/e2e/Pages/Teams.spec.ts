@@ -21,6 +21,7 @@ import { TeamClass } from '../../support/team/TeamClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
+  createNewPage,
   descriptionBox,
   getApiContext,
   redirectToHomePage,
@@ -39,7 +40,8 @@ import {
   verifyAssetsInTeamsPage,
 } from '../../utils/team';
 
-const adminUser = new UserClass();
+const id = uuid();
+const dataConsumerUser = new UserClass();
 const editOnlyUser = new UserClass(); // this user will have only editUser permission in team
 let team = new TeamClass();
 const team2 = new TeamClass();
@@ -64,60 +66,60 @@ let teamDetails: {
 };
 
 const test = base.extend<{
-  adminPage: Page;
   editOnlyUserPage: Page;
+  dataConsumerPage: Page;
 }>({
-  adminPage: async ({ browser }, use) => {
-    const adminPage = await browser.newPage();
-    await adminUser.login(adminPage);
-    await use(adminPage);
-    await adminPage.close();
-  },
   editOnlyUserPage: async ({ browser }, use) => {
     const page = await browser.newPage();
     await editOnlyUser.login(page);
     await use(page);
     await page.close();
   },
+  dataConsumerPage: async ({ browser }, use) => {
+    const page = await browser.newPage();
+    await dataConsumerUser.login(page);
+    await use(page);
+    await page.close();
+  },
 });
 
 test.describe('Teams Page', () => {
+  // use the admin user to login
+  test.use({ storageState: 'playwright/.auth/admin.json' });
+
   test.slow(true);
 
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-    await adminUser.create(apiContext);
-    await adminUser.setAdminRole(apiContext);
+    const { apiContext, afterAction } = await createNewPage(browser);
     await user.create(apiContext);
     await afterAction();
   });
 
   test.afterAll('Cleanup', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-    await adminUser.delete(apiContext);
+    const { apiContext, afterAction } = await createNewPage(browser);
     await user.delete(apiContext);
     await afterAction();
   });
 
-  test.beforeEach('Visit Home Page', async ({ adminPage }) => {
-    await redirectToHomePage(adminPage);
-    const fetchOrganizationResponse = adminPage.waitForResponse(
+  test.beforeEach('Visit Home Page', async ({ page }) => {
+    await redirectToHomePage(page);
+    const fetchOrganizationResponse = page.waitForResponse(
       '/api/v1/teams?parentTeam=Organization&include=all&fields=**'
     );
-    await settingClick(adminPage, GlobalSettingOptions.TEAMS);
+    await settingClick(page, GlobalSettingOptions.TEAMS);
     await fetchOrganizationResponse;
   });
 
-  test('Teams Page Flow', async ({ adminPage }) => {
+  test('Teams Page Flow', async ({ page }) => {
     await test.step('Create a new team', async () => {
-      await settingClick(adminPage, GlobalSettingOptions.TEAMS);
-      await adminPage.waitForLoadState('networkidle');
+      await settingClick(page, GlobalSettingOptions.TEAMS);
+      await page.waitForLoadState('networkidle');
 
-      await adminPage.waitForSelector('[data-testid="add-team"]');
+      await page.waitForSelector('[data-testid="add-team"]');
 
-      await adminPage.getByTestId('add-team').click();
+      await page.getByTestId('add-team').click();
 
-      const newTeamData = await createTeam(adminPage);
+      const newTeamData = await createTeam(page);
 
       teamDetails = {
         ...teamDetails,
@@ -126,16 +128,12 @@ test.describe('Teams Page', () => {
     });
 
     await test.step('Add owner to created team', async () => {
-      const getTeamResponse = adminPage.waitForResponse(
-        `/api/v1/teams/name/*?*`
-      );
-      await adminPage
-        .getByRole('link', { name: teamDetails.displayName })
-        .click();
+      const getTeamResponse = page.waitForResponse(`/api/v1/teams/name/*?*`);
+      await page.getByRole('link', { name: teamDetails.displayName }).click();
       await getTeamResponse;
 
       await addMultiOwner({
-        page: adminPage,
+        page,
         ownerNames: [user.getUserName()],
         activatorBtnDataTestId: 'edit-owner',
         endpoint: EntityTypeEndpoint.Teams,
@@ -145,321 +143,311 @@ test.describe('Teams Page', () => {
 
     await test.step('Update email of created team', async () => {
       // Edit email
-      await adminPage.locator('[data-testid="edit-email"]').click();
-      await adminPage
+      await page.locator('[data-testid="edit-email"]').click();
+      await page
         .locator('[data-testid="email-input"]')
         .fill(teamDetails.updatedEmail);
 
-      const saveEditEmailResponse =
-        adminPage.waitForResponse('/api/v1/teams/*');
-      await adminPage.locator('[data-testid="save-edit-email"]').click();
+      const saveEditEmailResponse = page.waitForResponse('/api/v1/teams/*');
+      await page.locator('[data-testid="save-edit-email"]').click();
       await saveEditEmailResponse;
 
       // Reload the page
-      await adminPage.reload();
+      await page.reload();
 
       // Check for updated email
 
-      await expect(
-        adminPage.locator('[data-testid="email-value"]')
-      ).toContainText(teamDetails.updatedEmail);
+      await expect(page.locator('[data-testid="email-value"]')).toContainText(
+        teamDetails.updatedEmail
+      );
     });
 
     await test.step('Add user to created team', async () => {
       // Navigate to users tab and add new user
-      await adminPage.locator('[data-testid="users"]').click();
+      await page.locator('[data-testid="users"]').click();
 
-      const fetchUsersResponse = adminPage.waitForResponse(
+      const fetchUsersResponse = page.waitForResponse(
         '/api/v1/users?limit=25&isBot=false'
       );
-      await adminPage.locator('[data-testid="add-new-user"]').click();
+      await page.locator('[data-testid="add-new-user"]').click();
       await fetchUsersResponse;
 
       // Search and select the user
-      await adminPage
+      await page
         .locator('[data-testid="selectable-list"] [data-testid="searchbar"]')
         .fill(user.getUserName());
 
-      await adminPage
+      await page
         .locator(
           `[data-testid="selectable-list"] [title="${user.getUserName()}"]`
         )
         .click();
 
       await expect(
-        adminPage.locator(
+        page.locator(
           `[data-testid="selectable-list"] [title="${user.getUserName()}"]`
         )
       ).toHaveClass(/active/);
 
-      const updateTeamResponse = adminPage.waitForResponse('/api/v1/users*');
+      const updateTeamResponse = page.waitForResponse('/api/v1/users*');
 
       // Update the team with the new user
-      await adminPage
-        .locator('[data-testid="selectable-list-update-btn"]')
-        .click();
+      await page.locator('[data-testid="selectable-list-update-btn"]').click();
       await updateTeamResponse;
 
       // Verify the user is added to the team
 
       await expect(
-        adminPage.locator(`[data-testid="${userName.toLowerCase()}"]`)
+        page.locator(`[data-testid="${userName.toLowerCase()}"]`)
       ).toBeVisible();
     });
 
     await test.step('Remove added user from created team', async () => {
-      await adminPage.locator('[data-testid="users"]').click();
+      await page.locator('[data-testid="users"]').click();
 
       // Click on add new user
-      const fetchUsersResponse = adminPage.waitForResponse(
+      const fetchUsersResponse = page.waitForResponse(
         '/api/v1/users?limit=25&isBot=false'
       );
-      await adminPage.locator('[data-testid="add-new-user"]').click();
+      await page.locator('[data-testid="add-new-user"]').click();
       await fetchUsersResponse;
 
       // Select the user to remove
-      await adminPage
+      await page
         .locator(
           `[data-testid="selectable-list"] [title="${user.getUserName()}"]`
         )
         .click();
 
-      const updateTeamResponse = adminPage.waitForResponse('/api/v1/users*');
-      await adminPage
-        .locator('[data-testid="selectable-list-update-btn"]')
-        .click();
+      const updateTeamResponse = page.waitForResponse('/api/v1/users*');
+      await page.locator('[data-testid="selectable-list-update-btn"]').click();
       await updateTeamResponse;
 
       // Verify the user is removed from the team
       await expect(
-        adminPage.locator(`[data-testid="${userName.toLowerCase()}"]`)
+        page.locator(`[data-testid="${userName.toLowerCase()}"]`)
       ).not.toBeVisible();
     });
 
     await test.step('Join team should work properly', async () => {
-      await adminPage.locator('[data-testid="users"]').click();
+      await page.locator('[data-testid="users"]').click();
 
       // Click on join teams button
-      await adminPage.locator('[data-testid="join-teams"]').click();
+      await page.locator('[data-testid="join-teams"]').click();
 
-      await toastNotification(adminPage, 'Team joined successfully!');
+      await toastNotification(page, 'Team joined successfully!');
 
       // Verify leave team button exists
       await expect(
-        adminPage.locator('[data-testid="leave-team-button"]')
+        page.locator('[data-testid="leave-team-button"]')
       ).toBeVisible();
     });
 
     await test.step('Update display name for created team', async () => {
       // Click on edit display name
-      await adminPage.locator('[data-testid="edit-team-name"]').click();
+      await page.locator('[data-testid="edit-team-name"]').click();
 
       // Enter the updated team name
-      await adminPage
+      await page
         .locator('[data-testid="team-name-input"]')
         .fill(teamDetails.updatedName);
 
       // Save the updated display name
-      const patchTeamResponse = adminPage.waitForResponse(
+      const patchTeamResponse = page.waitForResponse(
         (response) =>
           response.url().includes('/api/v1/teams/') &&
           response.request().method() === 'PATCH'
       );
-      await adminPage.locator('[data-testid="saveAssociatedTag"]').click();
+      await page.locator('[data-testid="saveAssociatedTag"]').click();
       await patchTeamResponse;
 
       // Validate the updated display name
-      await expect(
-        adminPage.locator('[data-testid="team-heading"]')
-      ).toHaveText(teamDetails.updatedName);
+      await expect(page.locator('[data-testid="team-heading"]')).toHaveText(
+        teamDetails.updatedName
+      );
 
-      await expect(
-        adminPage.locator('[data-testid="inactive-link"]')
-      ).toContainText(teamDetails.updatedName);
+      await expect(page.locator('[data-testid="inactive-link"]')).toContainText(
+        teamDetails.updatedName
+      );
     });
 
     await test.step('Update description for created team', async () => {
       // Validate the updated display name
-      await expect(
-        adminPage.locator('[data-testid="team-heading"]')
-      ).toContainText(teamDetails.updatedName);
+      await expect(page.locator('[data-testid="team-heading"]')).toContainText(
+        teamDetails.updatedName
+      );
 
-      await expect(
-        adminPage.locator('[data-testid="inactive-link"]')
-      ).toContainText(teamDetails.updatedName);
+      await expect(page.locator('[data-testid="inactive-link"]')).toContainText(
+        teamDetails.updatedName
+      );
 
-      await adminPage.locator('[role="tablist"] [data-icon="right"]').click();
+      await page.locator('[role="tablist"] [data-icon="right"]').click();
 
       // Click on edit description button
-      await adminPage.locator('[data-testid="edit-description"]').click();
-      await adminPage.waitForLoadState('domcontentloaded');
+      await page.locator('[data-testid="edit-description"]').click();
+      await page.waitForLoadState('domcontentloaded');
 
       // Entering updated description
       const updatedDescription = 'This is an updated team description';
 
-      await adminPage.click(descriptionBox);
-      await adminPage.keyboard.type(updatedDescription);
+      await page.click(descriptionBox);
+      await page.keyboard.type(updatedDescription);
 
-      const patchDescriptionResponse = adminPage.waitForResponse(
+      const patchDescriptionResponse = page.waitForResponse(
         (response) =>
           response.url().includes('/api/v1/teams/') &&
           response.request().method() === 'PATCH'
       );
-      await adminPage.locator('[data-testid="save"]').click();
+      await page.locator('[data-testid="save"]').click();
       await patchDescriptionResponse;
 
       // Validating the updated description
       await expect(
-        adminPage.locator('[data-testid="asset-description-container"] p')
+        page.locator('[data-testid="asset-description-container"] p')
       ).toContainText(updatedDescription);
     });
 
     await test.step('Leave team flow should work properly', async () => {
-      await expect(
-        adminPage.locator('[data-testid="team-heading"]')
-      ).toContainText(teamDetails?.updatedName ?? '');
+      await expect(page.locator('[data-testid="team-heading"]')).toContainText(
+        teamDetails?.updatedName ?? ''
+      );
 
       // Click on Leave team
-      await adminPage.locator('[data-testid="leave-team-button"]').click();
+      await page.locator('[data-testid="leave-team-button"]').click();
 
-      const leaveTeamResponse = adminPage.waitForResponse(
+      const leaveTeamResponse = page.waitForResponse(
         (response) =>
           response.url().includes('/api/v1/users/') &&
           response.request().method() === 'PATCH'
       );
       // Click on confirm button
-      await adminPage.locator('.ant-modal-footer').getByText('Confirm').click();
+      await page.locator('.ant-modal-footer').getByText('Confirm').click();
       await leaveTeamResponse;
 
       // Verify that the "Join Teams" button is now visible
-      await expect(
-        adminPage.locator('[data-testid="join-teams"]')
-      ).toBeVisible();
+      await expect(page.locator('[data-testid="join-teams"]')).toBeVisible();
     });
 
     await test.step('Soft Delete Team', async () => {
-      await softDeleteTeam(adminPage);
+      await softDeleteTeam(page);
 
-      const fetchOrganizationResponse = adminPage.waitForResponse(
+      const fetchOrganizationResponse = page.waitForResponse(
         '/api/v1/teams?*parentTeam=Organization*fields=*'
       );
-      await settingClick(adminPage, GlobalSettingOptions.TEAMS);
+      await settingClick(page, GlobalSettingOptions.TEAMS);
       await fetchOrganizationResponse;
 
       // Check if the table does not contain the team name
-      await expect(adminPage.locator('table')).not.toContainText(
+      await expect(page.locator('table')).not.toContainText(
         teamDetails?.displayName ?? ''
       );
 
       // Click on the show deleted button
-      await adminPage.locator('[data-testid="show-deleted"]').click();
+      await page.locator('[data-testid="show-deleted"]').click();
 
       // Check if the table contains the team name and click on it
       await expect(
-        adminPage.getByRole('link', { name: teamDetails?.updatedName })
+        page.getByRole('link', { name: teamDetails?.updatedName })
       ).toBeVisible();
     });
 
     await test.step('Hard Delete Team', async () => {
-      const fetchTeamResponse =
-        adminPage.waitForResponse(`/api/v1/teams/name/*`);
+      const fetchTeamResponse = page.waitForResponse(`/api/v1/teams/name/*`);
 
-      await adminPage
-        .getByRole('link', { name: teamDetails.updatedName })
-        .click();
+      await page.getByRole('link', { name: teamDetails.updatedName }).click();
 
       await fetchTeamResponse;
 
       // Verify the team heading contains the updated name
-      await expect(
-        adminPage.locator('[data-testid="team-heading"]')
-      ).toContainText(teamDetails?.updatedName ?? '');
+      await expect(page.locator('[data-testid="team-heading"]')).toContainText(
+        teamDetails?.updatedName ?? ''
+      );
 
-      await hardDeleteTeam(adminPage);
+      await hardDeleteTeam(page);
 
       // Validate the deleted team
       await expect(
-        adminPage.getByRole('link', { name: teamDetails?.updatedName })
+        page.getByRole('link', { name: teamDetails?.updatedName })
       ).not.toBeVisible();
     });
   });
 
-  test('Create a new public team', async ({ adminPage }) => {
-    await settingClick(adminPage, GlobalSettingOptions.TEAMS);
+  test('Create a new public team', async ({ page }) => {
+    await settingClick(page, GlobalSettingOptions.TEAMS);
 
-    await adminPage.waitForSelector('[data-testid="add-team"]');
+    await page.waitForSelector('[data-testid="add-team"]');
 
-    await adminPage.getByTestId('add-team').click();
+    await page.getByTestId('add-team').click();
 
-    const publicTeam = await createTeam(adminPage, true);
+    const publicTeam = await createTeam(page, true);
 
-    await adminPage.getByRole('link', { name: publicTeam.displayName }).click();
+    await page.getByRole('link', { name: publicTeam.displayName }).click();
 
-    await adminPage
+    await page
       .getByTestId('team-details-collapse')
       .getByTestId('manage-button')
       .click();
 
-    await expect(adminPage.locator('button[role="switch"]')).toHaveAttribute(
+    await expect(page.locator('button[role="switch"]')).toHaveAttribute(
       'aria-checked',
       'true'
     );
 
-    await adminPage.click('body'); // Equivalent to clicking outside
+    await page.click('body'); // Equivalent to clicking outside
 
-    await hardDeleteTeam(adminPage);
+    await hardDeleteTeam(page);
   });
 
-  test('Create a new private team', async ({ adminPage }) => {
-    await settingClick(adminPage, GlobalSettingOptions.TEAMS);
+  test('Create a new private team', async ({ page }) => {
+    await settingClick(page, GlobalSettingOptions.TEAMS);
 
-    await adminPage.waitForSelector('[data-testid="add-team"]');
+    await page.waitForSelector('[data-testid="add-team"]');
 
-    await adminPage.getByTestId('add-team').click();
+    await page.getByTestId('add-team').click();
 
-    const publicTeam = await createTeam(adminPage);
+    const publicTeam = await createTeam(page);
 
-    await adminPage.getByRole('link', { name: publicTeam.displayName }).click();
+    await page.getByRole('link', { name: publicTeam.displayName }).click();
 
-    await adminPage
+    await page
       .getByTestId('team-details-collapse')
       .getByTestId('manage-button')
       .click();
 
-    await expect(adminPage.locator('button[role="switch"]')).toHaveAttribute(
+    await expect(page.locator('button[role="switch"]')).toHaveAttribute(
       'aria-checked',
       'false'
     );
 
-    await adminPage.click('body'); // Equivalent to clicking outside
+    await page.click('body'); // Equivalent to clicking outside
 
-    await hardDeleteTeam(adminPage);
+    await hardDeleteTeam(page);
   });
 
   test('Permanently deleting a team without soft deleting should work properly', async ({
-    adminPage,
+    page,
   }) => {
-    const { apiContext, afterAction } = await getApiContext(adminPage);
+    const { apiContext, afterAction } = await getApiContext(page);
     const team = new TeamClass();
     await team.create(apiContext);
-    await settingClick(adminPage, GlobalSettingOptions.TEAMS);
-    await adminPage.waitForLoadState('networkidle');
-    const getTeamResponse = adminPage.waitForResponse(`/api/v1/teams/name/*?*`);
-    await adminPage
+    await settingClick(page, GlobalSettingOptions.TEAMS);
+    await page.waitForLoadState('networkidle');
+    const getTeamResponse = page.waitForResponse(`/api/v1/teams/name/*?*`);
+    await page
       .getByRole('link', { name: team.responseData?.['displayName'] })
       .click();
     await getTeamResponse;
 
-    await expect(
-      adminPage.locator('[data-testid="team-heading"]')
-    ).toContainText(team.responseData?.['displayName']);
+    await expect(page.locator('[data-testid="team-heading"]')).toContainText(
+      team.responseData?.['displayName']
+    );
 
-    await hardDeleteTeam(adminPage);
+    await hardDeleteTeam(page);
     await afterAction();
   });
 
-  test('Team search should work properly', async ({ adminPage }) => {
-    const { apiContext, afterAction } = await getApiContext(adminPage);
+  test('Team search should work properly', async ({ page }) => {
+    const { apiContext, afterAction } = await getApiContext(page);
     const id = uuid();
     const team1 = new TeamClass();
     const team2 = new TeamClass({
@@ -480,15 +468,15 @@ test.describe('Teams Page', () => {
     await team3.create(apiContext);
 
     try {
-      await settingClick(adminPage, GlobalSettingOptions.TEAMS);
-      await adminPage.waitForLoadState('networkidle');
+      await settingClick(page, GlobalSettingOptions.TEAMS);
+      await page.waitForLoadState('networkidle');
 
       for (const team of [team1, team2, team3]) {
-        await searchTeam(adminPage, team.responseData?.['displayName']);
+        await searchTeam(page, team.responseData?.['displayName']);
       }
 
       // Should not find the organization team and show errorPlaceholder
-      await searchTeam(adminPage, 'Organization', true);
+      await searchTeam(page, 'Organization', true);
     } finally {
       await team1.delete(apiContext);
       await team2.delete(apiContext);
@@ -497,8 +485,8 @@ test.describe('Teams Page', () => {
     }
   });
 
-  test('Export team', async ({ adminPage }) => {
-    const { apiContext } = await getApiContext(adminPage);
+  test('Export team', async ({ page }) => {
+    const { apiContext } = await getApiContext(page);
     const id = uuid();
     const team = new TeamClass({
       name: `pw%team.export-${id}`,
@@ -510,28 +498,28 @@ test.describe('Teams Page', () => {
     await team.create(apiContext);
 
     try {
-      await settingClick(adminPage, GlobalSettingOptions.TEAMS);
-      await adminPage.waitForLoadState('networkidle');
+      await settingClick(page, GlobalSettingOptions.TEAMS);
+      await page.waitForLoadState('networkidle');
 
-      await searchTeam(adminPage, team.responseData?.['displayName']);
+      await searchTeam(page, team.responseData?.['displayName']);
 
-      await adminPage
+      await page
         .locator(`[data-row-key="${team.data.name}"]`)
         .getByRole('link')
         .click();
 
-      await adminPage.waitForLoadState('networkidle');
+      await page.waitForLoadState('networkidle');
 
-      await expect(adminPage.getByTestId('team-heading')).toHaveText(
+      await expect(page.getByTestId('team-heading')).toHaveText(
         team.data.displayName
       );
 
-      const downloadPromise = adminPage.waitForEvent('download');
+      const downloadPromise = page.waitForEvent('download');
 
-      await adminPage.getByTestId('manage-button').click();
-      await adminPage.getByTestId('export-details-container').click();
-      await adminPage.fill('#fileName', team.data.name);
-      await adminPage.click('#submit-button');
+      await page.getByTestId('manage-button').click();
+      await page.getByTestId('export-details-container').click();
+      await page.fill('#fileName', team.data.name);
+      await page.click('#submit-button');
       const download = await downloadPromise;
       // Wait for the download process to complete and save the downloaded file somewhere.
       await download.saveAs('downloads/' + download.suggestedFilename());
@@ -540,8 +528,8 @@ test.describe('Teams Page', () => {
     }
   });
 
-  test('Team assets should', async ({ adminPage }) => {
-    const { apiContext, afterAction } = await getApiContext(adminPage);
+  test('Team assets should', async ({ page }) => {
+    const { apiContext, afterAction } = await getApiContext(page);
     const id = uuid();
 
     const table1 = new TableClass();
@@ -584,15 +572,15 @@ test.describe('Teams Page', () => {
     await team4.create(apiContext);
 
     try {
-      await addTeamOwnerToEntity(adminPage, table1, team1);
-      await addTeamOwnerToEntity(adminPage, table2, team2);
-      await addTeamOwnerToEntity(adminPage, table3, team3);
-      await addTeamOwnerToEntity(adminPage, table4, team4);
+      await addTeamOwnerToEntity(page, table1, team1);
+      await addTeamOwnerToEntity(page, table2, team2);
+      await addTeamOwnerToEntity(page, table3, team3);
+      await addTeamOwnerToEntity(page, table4, team4);
 
-      await verifyAssetsInTeamsPage(adminPage, table1, team1, 1);
-      await verifyAssetsInTeamsPage(adminPage, table2, team2, 1);
-      await verifyAssetsInTeamsPage(adminPage, table3, team3, 1);
-      await verifyAssetsInTeamsPage(adminPage, table4, team4, 1);
+      await verifyAssetsInTeamsPage(page, table1, team1, 1);
+      await verifyAssetsInTeamsPage(page, table2, team2, 1);
+      await verifyAssetsInTeamsPage(page, table3, team3, 1);
+      await verifyAssetsInTeamsPage(page, table4, team4, 1);
     } finally {
       await table1.delete(apiContext);
       await table2.delete(apiContext);
@@ -606,8 +594,8 @@ test.describe('Teams Page', () => {
     }
   });
 
-  test('Delete a user from the table', async ({ adminPage }) => {
-    const { apiContext, afterAction } = await getApiContext(adminPage);
+  test('Delete a user from the table', async ({ page }) => {
+    const { apiContext, afterAction } = await getApiContext(page);
     const id = uuid();
 
     const table1 = new TableClass();
@@ -622,60 +610,58 @@ test.describe('Teams Page', () => {
     await table1.create(apiContext);
     await team1.create(apiContext);
 
-    await addTeamOwnerToEntity(adminPage, table1, team1);
-    await verifyAssetsInTeamsPage(adminPage, table1, team1, 1);
+    await addTeamOwnerToEntity(page, table1, team1);
+    await verifyAssetsInTeamsPage(page, table1, team1, 1);
 
     // Navigate to users tab and add new user
-    await adminPage.locator('[data-testid="users"]').click();
+    await page.locator('[data-testid="users"]').click();
 
-    const fetchUsersResponse = adminPage.waitForResponse(
+    const fetchUsersResponse = page.waitForResponse(
       '/api/v1/users?limit=25&isBot=false'
     );
-    await adminPage.locator('[data-testid="add-new-user"]').click();
+    await page.locator('[data-testid="add-new-user"]').click();
     await fetchUsersResponse;
 
     // Search and select the user
-    await adminPage
+    await page
       .locator('[data-testid="selectable-list"] [data-testid="searchbar"]')
       .fill(user.getUserName());
 
-    await adminPage
+    await page
       .locator(
         `[data-testid="selectable-list"] [title="${user.getUserName()}"]`
       )
       .click();
 
     await expect(
-      adminPage.locator(
+      page.locator(
         `[data-testid="selectable-list"] [title="${user.getUserName()}"]`
       )
     ).toHaveClass(/active/);
 
-    const updateTeamResponse = adminPage.waitForResponse('/api/v1/users*');
+    const updateTeamResponse = page.waitForResponse('/api/v1/users*');
 
     // Update the team with the new user
-    await adminPage
-      .locator('[data-testid="selectable-list-update-btn"]')
-      .click();
+    await page.locator('[data-testid="selectable-list-update-btn"]').click();
     await updateTeamResponse;
 
     // Verify the user is added to the team
     await expect(
-      adminPage.locator(`[data-row-key="${userName.toLowerCase()}"]`)
+      page.locator(`[data-row-key="${userName.toLowerCase()}"]`)
     ).toBeVisible();
 
-    await adminPage
+    await page
       .locator(`[data-row-key="${userName.toLowerCase()}"]`)
       .getByTestId('remove-user-btn')
       .click();
 
-    const updatedTeamResponse = adminPage.waitForResponse('api/v1/users*');
+    const updatedTeamResponse = page.waitForResponse('api/v1/users*');
 
-    await adminPage.getByRole('button', { name: 'confirm' }).click();
+    await page.getByRole('button', { name: 'confirm' }).click();
     await updatedTeamResponse;
 
     await expect(
-      adminPage.locator(`[data-row-key="${userName.toLowerCase()}"]`)
+      page.locator(`[data-row-key="${userName.toLowerCase()}"]`)
     ).not.toBeVisible();
 
     await afterAction();
@@ -722,17 +708,11 @@ test.describe('Teams Page with EditUser Permission', () => {
 
   test.beforeEach('Visit Home Page', async ({ editOnlyUserPage }) => {
     await redirectToHomePage(editOnlyUserPage);
-    const fetchOrganizationResponse = editOnlyUserPage.waitForResponse(
-      '/api/v1/teams?parentTeam=Organization&include=all&fields=**'
-    );
-    await settingClick(editOnlyUserPage, GlobalSettingOptions.TEAMS);
-    await fetchOrganizationResponse;
-
     await team2.visitTeamPage(editOnlyUserPage);
   });
 
   test('Add and Remove User for Team', async ({ editOnlyUserPage }) => {
-    await test.step('Add user in Team for the placeholder', async () => {
+    await test.step('Add user in Team from the placeholder', async () => {
       await addUserInTeam(editOnlyUserPage, user);
     });
 
@@ -760,5 +740,126 @@ test.describe('Teams Page with EditUser Permission', () => {
         editOnlyUserPage.locator(`[data-testid="${userName.toLowerCase()}"]`)
       ).not.toBeVisible();
     });
+  });
+});
+
+test.describe('Teams Page with Data Consumer User', () => {
+  test.slow(true);
+
+  test.beforeAll('Setup pre-requests', async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    await dataConsumerUser.create(apiContext);
+    await user.create(apiContext);
+    await policy.create(apiContext, EDIT_USER_FOR_TEAM_RULES);
+    await role.create(apiContext, [policy.responseData.name]);
+
+    team = new TeamClass({
+      name: `PW%-data-consumer-team-${id}`,
+      displayName: `PW Data Consumer Team ${id}`,
+      description: 'playwright data consumer team description',
+      teamType: 'Group',
+      users: [user.responseData.id],
+      defaultRoles: role.responseData.id ? [role.responseData.id] : [],
+    });
+    await team.create(apiContext);
+    await team2.create(apiContext);
+    await afterAction();
+  });
+
+  test.afterAll('Cleanup', async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    await dataConsumerUser.delete(apiContext);
+    await user.delete(apiContext);
+    await team.delete(apiContext);
+    await team2.delete(apiContext);
+    await afterAction();
+  });
+
+  test.beforeEach('Visit Home Page', async ({ dataConsumerPage }) => {
+    await redirectToHomePage(dataConsumerPage);
+  });
+
+  test('Should not have edit access on team page with no data available', async ({
+    dataConsumerPage,
+  }) => {
+    await team2.visitTeamPage(dataConsumerPage);
+
+    await expect(
+      dataConsumerPage.getByTestId('edit-team-name')
+    ).not.toBeVisible();
+    await expect(dataConsumerPage.getByTestId('add-domain')).not.toBeVisible();
+    await expect(dataConsumerPage.getByTestId('edit-owner')).not.toBeVisible();
+    await expect(dataConsumerPage.getByTestId('edit-email')).not.toBeVisible();
+    await expect(
+      dataConsumerPage.getByTestId('edit-team-subscription')
+    ).not.toBeVisible();
+    await expect(
+      dataConsumerPage.getByTestId('manage-button')
+    ).not.toBeVisible();
+
+    await expect(dataConsumerPage.getByTestId('join-teams')).toBeVisible();
+
+    // User Tab
+    await expect(
+      dataConsumerPage.getByTestId('add-new-user')
+    ).not.toBeVisible();
+    await expect(
+      dataConsumerPage.getByTestId('permission-error-placeholder')
+    ).toBeVisible();
+
+    // Asset Tab
+    const assetResponse = dataConsumerPage.waitForResponse(
+      '/api/v1/search/query?**'
+    );
+    await dataConsumerPage.getByTestId('assets').click();
+    await assetResponse;
+
+    await expect(
+      dataConsumerPage.getByTestId('add-placeholder-button')
+    ).not.toBeVisible();
+    await expect(
+      dataConsumerPage.getByTestId('no-data-placeholder')
+    ).toBeVisible();
+
+    // Role Tab
+    await dataConsumerPage.getByTestId('roles').click();
+
+    await expect(
+      dataConsumerPage.getByTestId('add-placeholder-button')
+    ).not.toBeVisible();
+    await expect(
+      dataConsumerPage.getByTestId('permission-error-placeholder')
+    ).toBeVisible();
+
+    // Policies Tab
+    await dataConsumerPage.getByTestId('policies').click();
+
+    await expect(
+      dataConsumerPage.getByTestId('add-placeholder-button')
+    ).not.toBeVisible();
+    await expect(
+      dataConsumerPage.getByTestId('permission-error-placeholder')
+    ).toBeVisible();
+  });
+
+  test('Should not have edit access on team page with data available', async ({
+    dataConsumerPage,
+  }) => {
+    await team.visitTeamPage(dataConsumerPage);
+
+    // User Tab
+    await expect(
+      dataConsumerPage.getByTestId('add-new-user')
+    ).not.toBeVisible();
+
+    // Role Tab
+    await dataConsumerPage.getByTestId('roles').click();
+
+    await expect(dataConsumerPage.getByTestId('add-role')).not.toBeVisible();
+
+    // Policies Tab
+    await dataConsumerPage.getByTestId('policies').click();
+
+    await expect(dataConsumerPage.getByTestId('add-policy')).not.toBeVisible();
   });
 });
