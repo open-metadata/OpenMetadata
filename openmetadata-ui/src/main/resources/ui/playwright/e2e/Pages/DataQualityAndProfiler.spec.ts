@@ -493,8 +493,11 @@ test(
     await page.getByTestId('profiler').click();
     await page
       .getByTestId('profiler-tab-left-panel')
-      .getByText('Table Profile')
+      .getByText('Data Quality')
       .click();
+
+    await page.reload();
+    await page.waitForLoadState('networkidle');
 
     await page.click('[data-testid="profiler-setting-btn"]');
     await page.waitForSelector('.ant-modal-body');

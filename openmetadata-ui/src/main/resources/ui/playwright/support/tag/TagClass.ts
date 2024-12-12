@@ -57,7 +57,7 @@ export class TagClass {
     classification: 'Tier',
   };
 
-  responseData: ResponseDataType;
+  responseData: ResponseDataType = {} as ResponseDataType;
 
   constructor(tag: Partial<TagData>) {
     this.data.classification = tag.classification ?? this.data.classification;

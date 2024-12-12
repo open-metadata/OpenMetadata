@@ -274,24 +274,30 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   }
 
   @Override
-  protected void postDelete(TestCase test) {
-    super.postDelete(test);
-    // Update test suite with new test case in search index
-    TestSuiteRepository testSuiteRepository =
-        (TestSuiteRepository) Entity.getEntityRepository(Entity.TEST_SUITE);
-    TestSuite testSuite = Entity.getEntity(test.getTestSuite(), "*", ALL);
-    TestSuite original = TestSuiteRepository.copyTestSuite(testSuite);
-    testSuiteRepository.postUpdate(original, testSuite);
-    deleteTestCaseFailedRowsSample(test.getId());
+  protected void postDelete(TestCase testCase) {
+    super.postDelete(testCase);
+    updateTestSuite(testCase);
   }
 
   @Override
-  protected void postCreate(TestCase test) {
-    super.postCreate(test);
-    // Update test suite with new test case in search index
+  protected void postCreate(TestCase testCase) {
+    super.postCreate(testCase);
+    updateTestSuite(testCase);
+  }
+
+  private void updateTestSuite(TestCase testCase) {
+    // Update test suite with updated test case in search index
     TestSuiteRepository testSuiteRepository =
         (TestSuiteRepository) Entity.getEntityRepository(Entity.TEST_SUITE);
-    TestSuite testSuite = Entity.getEntity(test.getTestSuite(), "*", ALL);
+    TestSuite testSuite = Entity.getEntity(testCase.getTestSuite(), "*", ALL);
+    TestSuite original = TestSuiteRepository.copyTestSuite(testSuite);
+    testSuiteRepository.postUpdate(original, testSuite);
+  }
+
+  private void updateLogicalTestSuite(UUID testSuiteId) {
+    TestSuiteRepository testSuiteRepository =
+        (TestSuiteRepository) Entity.getEntityRepository(Entity.TEST_SUITE);
+    TestSuite testSuite = Entity.getEntity(Entity.TEST_SUITE, testSuiteId, "*", ALL);
     TestSuite original = TestSuiteRepository.copyTestSuite(testSuite);
     testSuiteRepository.postUpdate(original, testSuite);
   }
@@ -465,6 +471,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       testCase.setChangeDescription(change);
       postUpdate(testCase, testCase);
     }
+    updateLogicalTestSuite(testSuite.getId());
     return new RestUtil.PutResponse<>(Response.Status.OK, testSuite, LOGICAL_TEST_CASE_ADDED);
   }
 
@@ -483,6 +490,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
                         .withNewValue(updatedTestCase.getTestSuites())));
     updatedTestCase.setChangeDescription(change);
     postUpdate(testCase, updatedTestCase);
+    updateLogicalTestSuite(testSuiteId);
     testCase.setTestSuite(updatedTestCase.getTestSuite());
     testCase.setTestSuites(updatedTestCase.getTestSuites());
     return new RestUtil.DeleteResponse<>(testCase, ENTITY_DELETED);
@@ -678,7 +686,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
 
     @Transaction
     @Override
-    public void entitySpecificUpdate() {
+    public void entitySpecificUpdate(boolean consolidatingChanges) {
       EntityLink origEntityLink = EntityLink.parse(original.getEntityLink());
       EntityReference origTableRef = EntityUtil.validateEntityLink(origEntityLink);
 

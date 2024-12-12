@@ -57,6 +57,7 @@ VERSIONS = {
     "giturlparse": "giturlparse",
     "validators": "validators~=0.22.0",
     "teradata": "teradatasqlalchemy>=20.0.0.0",
+    "cassandra": "cassandra-driver>=3.28.0",
 }
 
 COMMONS = {
@@ -137,7 +138,7 @@ base_requirements = {
     "requests>=2.23",
     "requests-aws4auth~=1.1",  # Only depends on requests as external package. Leaving as base.
     "sqlalchemy>=1.4.0,<2",
-    "collate-sqllineage~=1.4.0",
+    "collate-sqllineage~=1.5.0",
     "tabulate==0.9.0",
     "typing-inspect",
     "packaging",  # For version parsing
@@ -267,6 +268,7 @@ plugins: Dict[str, Set[str]] = {
     },
     "mlflow": {"mlflow-skinny>=2.3.0"},
     "mongo": {VERSIONS["mongo"], VERSIONS["pandas"], VERSIONS["numpy"]},
+    "cassandra": {VERSIONS["cassandra"]},
     "couchbase": {"couchbase~=4.1"},
     "mssql": {
         "sqlalchemy-pytds~=0.3",
@@ -370,6 +372,7 @@ test = {
     VERSIONS["tableau"],
     VERSIONS["pyhive"],
     VERSIONS["mongo"],
+    VERSIONS["cassandra"],
     VERSIONS["redshift"],
     VERSIONS["snowflake"],
     VERSIONS["elasticsearch8"],

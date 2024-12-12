@@ -54,6 +54,7 @@ import {
   dragAndDropColumn,
   dragAndDropTerm,
   filterStatus,
+  getEscapedTermFqn,
   goToAssetsTab,
   openColumnDropdown,
   renameGlossaryTerm,
@@ -62,6 +63,8 @@ import {
   selectColumns,
   toggleAllColumnsSelection,
   updateGlossaryTermDataFromTree,
+  updateGlossaryTermOwners,
+  updateGlossaryTermReviewers,
   validateGlossaryTerm,
   verifyAllColumns,
   verifyColumnsVisibility,
@@ -125,7 +128,7 @@ test.describe('Glossary tests', () => {
         await verifyTaskCreated(
           page1,
           glossary1.data.fullyQualifiedName,
-          glossary1.data.terms[0].data
+          glossary1.data.terms[0].data.name
         );
 
         await approveGlossaryTermTask(page1, glossary1.data.terms[0].data);
@@ -182,7 +185,7 @@ test.describe('Glossary tests', () => {
         await verifyTaskCreated(
           page1,
           glossary2.data.fullyQualifiedName,
-          glossary2.data.terms[0].data
+          glossary2.data.terms[0].data.name
         );
 
         await approveGlossaryTermTask(page1, glossary2.data.terms[0].data);
@@ -210,11 +213,18 @@ test.describe('Glossary tests', () => {
     const { page, afterAction, apiContext } = await performAdminLogin(browser);
     const glossary1 = new Glossary();
     const glossaryTerm1 = new GlossaryTerm(glossary1);
-    const glossaryTerm2 = new GlossaryTerm(glossary1);
-    glossary1.data.terms = [glossaryTerm1, glossaryTerm2];
+    glossary1.data.terms = [glossaryTerm1];
+
+    /* We are creating another Glossary in order to avoid glossaryTerm2 to be moved to IN_REVIEW Status. */
+    const glossary2 = new Glossary();
+    const glossaryTerm2 = new GlossaryTerm(glossary2);
+    glossary2.data.terms = [glossaryTerm2];
+
     const user3 = new UserClass();
     const user4 = new UserClass();
+
     await glossary1.create(apiContext);
+    await glossary2.create(apiContext);
     await glossaryTerm1.create(apiContext);
     await glossaryTerm2.create(apiContext);
     await user3.create(apiContext);
@@ -285,8 +295,72 @@ test.describe('Glossary tests', () => {
       await glossaryTerm1.delete(apiContext);
       await glossaryTerm2.delete(apiContext);
       await glossary1.delete(apiContext);
+      await glossary2.delete(apiContext);
       await user3.delete(apiContext);
       await user4.delete(apiContext);
+      await afterAction();
+    }
+  });
+
+  test('Add and Update Glossary Term', async ({ browser }) => {
+    const { page, afterAction, apiContext } = await performAdminLogin(browser);
+    const glossary1 = new Glossary();
+    const glossaryTerm1 = new GlossaryTerm(glossary1);
+    const owner1 = new UserClass();
+    const reviewer1 = new UserClass();
+
+    try {
+      await glossary1.create(apiContext);
+      await glossaryTerm1.create(apiContext);
+      await owner1.create(apiContext);
+      await reviewer1.create(apiContext);
+      await await redirectToHomePage(page);
+      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await selectActiveGlossary(page, glossary1.data.displayName);
+
+      await updateGlossaryTermOwners(page, glossaryTerm1.data, [
+        {
+          name: `${owner1.data.firstName}${owner1.data.lastName}`,
+          type: 'user',
+        },
+      ]);
+
+      await updateGlossaryTermReviewers(page, glossaryTerm1.data, [
+        {
+          name: `${reviewer1.data.firstName}${reviewer1.data.lastName}`,
+          type: 'user',
+        },
+      ]);
+
+      await openColumnDropdown(page);
+      const checkboxLabels = ['Reviewer'];
+      await selectColumns(page, checkboxLabels);
+      await clickSaveButton(page);
+      await verifyColumnsVisibility(page, checkboxLabels, true);
+
+      const escapedFqn = getEscapedTermFqn(glossaryTerm1.data);
+      const termRow = page.locator(`[data-row-key="${escapedFqn}"]`);
+
+      // Verify the Reviewer
+      const reviewerSelector = `td:nth-child(3) a[data-testid="owner-link"]`;
+      const reviewerText = await termRow
+        .locator(reviewerSelector)
+        .textContent();
+
+      expect(reviewerText).toBe(
+        `${reviewer1.data.firstName}${reviewer1.data.lastName}`
+      );
+
+      // Verify the Owner
+      const ownerSelector = `td:nth-child(4) a[data-testid="owner-link"]`;
+      const ownerText = await termRow.locator(ownerSelector).textContent();
+
+      expect(ownerText).toBe(`${owner1.data.firstName}${owner1.data.lastName}`);
+    } finally {
+      await glossaryTerm1.delete(apiContext);
+      await glossary1.delete(apiContext);
+      await owner1.delete(apiContext);
+      await reviewer1.delete(apiContext);
       await afterAction();
     }
   });
@@ -1046,12 +1120,9 @@ test.describe('Glossary tests', () => {
       const dragColumn = 'Owners';
       const dropColumn = 'Status';
       await dragAndDropColumn(page, dragColumn, dropColumn);
-      const saveButton = page.locator(
-        '[data-testid="glossary-col-dropdown-save"]'
-      );
-      await saveButton.click();
+      await clickSaveButton(page);
       await page.waitForSelector('thead th', { state: 'visible' });
-      const columnHeaders = await page.locator('thead th');
+      const columnHeaders = page.locator('thead th');
       const columnText = await columnHeaders.allTextContents();
 
       expect(columnText).toEqual(

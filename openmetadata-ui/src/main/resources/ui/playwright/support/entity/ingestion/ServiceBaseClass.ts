@@ -170,7 +170,10 @@ class ServiceBaseClass {
 
     // Header available once page loads
     await page.waitForSelector('[data-testid="data-assets-header"]');
-    await page.getByTestId('loader').first().waitFor({ state: 'detached' });
+    await page
+      .getByTestId('table-container')
+      .getByTestId('loader')
+      .waitFor({ state: 'detached' });
     await page.getByTestId('ingestions').click();
     await page
       .getByLabel('Ingestions')
@@ -289,7 +292,7 @@ class ServiceBaseClass {
         {
           // Custom expect message for reporting, optional.
           message: 'Wait for pipeline to be successful',
-          timeout: 600_000,
+          timeout: 750_000,
           intervals: [30_000, 15_000, 5_000],
         }
       )
@@ -383,7 +386,14 @@ class ServiceBaseClass {
 
     // Deploy with schedule
     await page.click('[data-testid="deploy-button"]');
+
+    const getIngestionPipelines = page.waitForRequest(
+      `/api/v1/services/ingestionPipelines?**`
+    );
+
     await page.click('[data-testid="view-service-button"]');
+
+    await getIngestionPipelines;
 
     await expect(page.getByTestId('schedule-primary-details')).toHaveText(
       'At 04:04 AM'

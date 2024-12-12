@@ -67,6 +67,7 @@ import org.openmetadata.schema.auth.PersonalAccessToken;
 import org.openmetadata.schema.auth.RefreshToken;
 import org.openmetadata.schema.auth.TokenType;
 import org.openmetadata.schema.configuration.AssetCertificationSettings;
+import org.openmetadata.schema.configuration.WorkflowSettings;
 import org.openmetadata.schema.dataInsight.DataInsightChart;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
 import org.openmetadata.schema.dataInsight.kpi.Kpi;
@@ -2741,25 +2742,6 @@ public interface CollectionDAO {
       return listAfter(
           getTableName(), filter.getQueryParams(), condition, condition, limit, afterName, afterId);
     }
-
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT json FROM table_entity "
-                + "WHERE JSON_SEARCH(JSON_EXTRACT(json, '$.tableConstraints[*].referredColumns'), "
-                + "'one', :fqn) IS NOT NULL",
-        connectionType = MYSQL)
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT json "
-                + "FROM table_entity "
-                + "WHERE EXISTS ("
-                + "    SELECT 1"
-                + "    FROM jsonb_array_elements(json->'tableConstraints') AS constraints"
-                + "    CROSS JOIN jsonb_array_elements_text(constraints->'referredColumns') AS referredColumn "
-                + "    WHERE referredColumn LIKE :fqn"
-                + ")",
-        connectionType = POSTGRES)
-    List<String> findRelatedTables(@Bind("fqn") String fqn);
   }
 
   interface StoredProcedureDAO extends EntityDAO<StoredProcedure> {
@@ -5175,6 +5157,7 @@ public interface CollectionDAO {
             case SEARCH_SETTINGS -> JsonUtils.readValue(json, SearchSettings.class);
             case ASSET_CERTIFICATION_SETTINGS -> JsonUtils.readValue(
                 json, AssetCertificationSettings.class);
+            case WORKFLOW_SETTINGS -> JsonUtils.readValue(json, WorkflowSettings.class);
             case LINEAGE_SETTINGS -> JsonUtils.readValue(json, LineageSettings.class);
             default -> throw new IllegalArgumentException("Invalid Settings Type " + configType);
           };
