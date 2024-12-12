@@ -12,7 +12,7 @@
  */
 
 
- /**
+/**
  * Add lineage details between two entities
  */
 export interface AddLineage {
@@ -150,6 +150,7 @@ export interface ColumnLineage {
  * Lineage type describes how a lineage was created.
  */
 export enum Source {
+    CrossDatabaseLineage = "CrossDatabaseLineage",
     DashboardLineage = "DashboardLineage",
     DbtLineage = "DbtLineage",
     ExternalTableLineage = "ExternalTableLineage",

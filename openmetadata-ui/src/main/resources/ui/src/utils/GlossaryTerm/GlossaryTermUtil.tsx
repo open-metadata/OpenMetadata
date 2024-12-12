@@ -11,19 +11,15 @@
  *  limitations under the License.
  */
 import { TabsProps } from 'antd';
-import { isUndefined, uniqueId } from 'lodash';
+import { isUndefined } from 'lodash';
 import React from 'react';
 import EmptyWidgetPlaceholder from '../../components/MyData/CustomizableComponents/EmptyWidgetPlaceholder/EmptyWidgetPlaceholder';
 import { SIZE } from '../../enums/common.enum';
-import { LandingPageWidgetKeys } from '../../enums/CustomizablePage.enum';
 import { GlossaryTermDetailPageWidgetKeys } from '../../enums/CustomizeDetailPage.enum';
 import { EntityTabs } from '../../enums/entity.enum';
-import { Document } from '../../generated/entity/docStore/document';
 import { Tab } from '../../generated/system/ui/uiCustomization';
 import { WidgetConfig } from '../../pages/CustomizablePage/CustomizablePage.interface';
 import customizeGlossaryTermPageClassBase from '../CustomiseGlossaryTermPage/CustomizeGlossaryTermPage';
-import { moveEmptyWidgetToTheEnd } from '../CustomizableLandingPageUtils';
-import customizeMyDataPageClassBase from '../CustomizeMyDataPageClassBase';
 import { getEntityName } from '../EntityUtils';
 
 export const getWidgetFromKey = ({
@@ -79,98 +75,6 @@ export const getWidgetFromKey = ({
     />
   );
 };
-
-const getNewWidgetPlacement = (
-  currentLayout: WidgetConfig[],
-  widgetWidth: number
-) => {
-  const lowestWidgetLayout = currentLayout.reduce(
-    (acc, widget) => {
-      if (
-        widget.y >= acc.y &&
-        widget.i !== LandingPageWidgetKeys.EMPTY_WIDGET_PLACEHOLDER
-      ) {
-        if (widget.y === acc.y && widget.x < acc.x) {
-          return acc;
-        }
-
-        return widget;
-      }
-
-      return acc;
-    },
-    { y: 0, x: 0, w: 0 }
-  );
-
-  // Check if there's enough space to place the new widget on the same row
-  if (
-    customizeMyDataPageClassBase.landingPageMaxGridSize -
-      (lowestWidgetLayout.x + lowestWidgetLayout.w) >=
-    widgetWidth
-  ) {
-    return {
-      x: lowestWidgetLayout.x + lowestWidgetLayout.w,
-      y: lowestWidgetLayout.y,
-    };
-  }
-
-  // Otherwise, move to the next row
-  return {
-    x: 0,
-    y: lowestWidgetLayout.y + 1,
-  };
-};
-
-export const getAddWidgetHandler =
-  (
-    newWidgetData: Document,
-    placeholderWidgetKey: string,
-    widgetWidth: number,
-    maxGridSize: number
-  ) =>
-  (currentLayout: Array<WidgetConfig>) => {
-    const widgetFQN = uniqueId(`${newWidgetData.fullyQualifiedName}-`);
-    const widgetHeight = customizeMyDataPageClassBase.getWidgetHeight(
-      newWidgetData.name
-    );
-
-    // The widget with key "ExtraWidget.EmptyWidgetPlaceholder" will always remain in the bottom
-    // and is not meant to be replaced hence
-    // if placeholderWidgetKey is "ExtraWidget.EmptyWidgetPlaceholder"
-    // append the new widget in the array
-    // else replace the new widget with other placeholder widgets
-    if (
-      placeholderWidgetKey === LandingPageWidgetKeys.EMPTY_WIDGET_PLACEHOLDER
-    ) {
-      return [
-        ...moveEmptyWidgetToTheEnd(currentLayout),
-        {
-          w: widgetWidth,
-          h: widgetHeight,
-          i: widgetFQN,
-          static: false,
-          ...getNewWidgetPlacement(currentLayout, widgetWidth),
-        },
-      ];
-    } else {
-      return currentLayout.map((widget: WidgetConfig) => {
-        const widgetX =
-          widget.x + widgetWidth <= maxGridSize
-            ? widget.x
-            : maxGridSize - widgetWidth;
-
-        return widget.i === placeholderWidgetKey
-          ? {
-              ...widget,
-              i: widgetFQN,
-              h: widgetHeight,
-              w: widgetWidth,
-              x: widgetX,
-            }
-          : widget;
-      });
-    }
-  };
 
 export const getGlossaryTermDetailTabs = (
   defaultTabs: TabsProps['items'],
