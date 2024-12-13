@@ -15,14 +15,13 @@ from pydantic import BaseModel
 
 from metadata.generated.schema.entity.data.table import Table
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.profiler.processor.sampler.sqlalchemy.sampler import SQASampler
 
 
 class RuntimeParameterSetter(ABC):
     """
     Set runtime parameters for a test case. This can be useful for resolving parameters based on the
     state of OpenMetadata entities.
-    You can see an example implemnentation in `TableDiffParamsSetter`.
+    You can see an example implementation in `TableDiffParamsSetter`.
     """
 
     def __init__(
@@ -30,7 +29,7 @@ class RuntimeParameterSetter(ABC):
         ometa_client: OpenMetadata,
         service_connection_config,
         table_entity: Table,
-        sampler: SQASampler,
+        sampler,
     ):
         self.ometa_client = ometa_client
         self.service_connection_config = service_connection_config

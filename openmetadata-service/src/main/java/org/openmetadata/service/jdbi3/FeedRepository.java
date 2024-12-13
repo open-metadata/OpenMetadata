@@ -197,6 +197,9 @@ public class FeedRepository {
       if (repository.supportsTags) {
         fieldList.add("tags");
       }
+      if (repository.supportsReviewers) {
+        fieldList.add("reviewers");
+      }
       return String.join(",", fieldList.toArray(new String[0]));
     }
   }

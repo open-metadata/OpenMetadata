@@ -54,22 +54,25 @@ class KafkaConnectClient:
         auth = None
         ssl_verify = config.verifySSL
         if config.KafkaConnectConfig:
-            auth = f"{config.KafkaConnectConfig.username}:{config.KafkaConnectConfig.password}"
+            auth = f"{config.KafkaConnectConfig.username}:{config.KafkaConnectConfig.password.get_secret_value()}"
         self.client = KafkaConnect(url=url, auth=auth, ssl_verify=ssl_verify)
 
     def get_cluster_info(self) -> Optional[dict]:
         """
         Get the version and other details of the Kafka Connect cluster.
         """
-        try:
-            result = self.client.get_cluster_info()
-            return result
+        return self.client.get_cluster_info()
 
-        except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.error(f"Unable to get cluster info :{exc}")
-
-        return None
+    def get_connectors_list(
+        self,
+        expand: str = None,
+        pattern: str = None,
+        state: str = None,
+    ) -> dict:
+        """
+        Get the list of connectors from Kafka Connect cluster.
+        """
+        return self.client.list_connectors(expand=expand, pattern=pattern, state=state)
 
     def get_connectors(
         self,
@@ -85,12 +88,8 @@ class KafkaConnectClient:
             pattern (str): Only list connectors that match the regex pattern.
             state (str): Only list connectors that match the state.
         """
-
         try:
-            result = self.client.list_connectors(
-                expand=expand, pattern=pattern, state=state
-            )
-            return result
+            return self.get_connectors_list(expand=expand, pattern=pattern, state=state)
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.error(f"Unable to get connectors list {exc}")

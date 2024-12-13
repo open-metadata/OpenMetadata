@@ -1,3 +1,6 @@
+from metadata.data_quality.interface.sqlalchemy.unity_catalog.test_suite_interface import (
+    UnityCatalogTestSuiteInterface,
+)
 from metadata.ingestion.source.database.unitycatalog.lineage import (
     UnitycatalogLineageSource,
 )
@@ -15,4 +18,5 @@ ServiceSpec = DefaultDatabaseSpec(
     lineage_source_class=UnitycatalogLineageSource,
     usage_source_class=UnitycatalogUsageSource,
     profiler_class=UnityCatalogProfilerInterface,
+    test_suite_class=UnityCatalogTestSuiteInterface,
 )

@@ -114,6 +114,10 @@ const GlossaryTermTab = ({
   const [isTableLoading, setIsTableLoading] = useState(false);
   const [isTableHovered, setIsTableHovered] = useState(false);
   const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
+  const listOfVisibleColumns = useMemo(() => {
+    return ['name', 'description', 'owners', 'status', 'new-term'];
+  }, []);
+
   const [isStatusDropdownVisible, setIsStatusDropdownVisible] =
     useState<boolean>(false);
   const statusOptions = useMemo(
@@ -123,7 +127,7 @@ const GlossaryTermTab = ({
   );
   const [statusDropdownSelection, setStatusDropdownSelections] = useState<
     string[]
-  >(['Approved', 'Draft']);
+  >([Status.Approved, Status.Draft, Status.InReview]);
   const [selectedStatus, setSelectedStatus] = useState<string[]>([
     ...statusDropdownSelection,
   ]);
@@ -195,7 +199,12 @@ const GlossaryTermTab = ({
         key: 'reviewers',
         width: '33%',
         render: (reviewers: EntityReference[]) => (
-          <OwnerLabel owners={reviewers} />
+          <OwnerLabel
+            owners={reviewers}
+            placeHolder={t('label.no-entity', {
+              entity: t('label.reviewer-plural'),
+            })}
+          />
         ),
       },
       {
@@ -296,11 +305,7 @@ const GlossaryTermTab = ({
     }
 
     return data;
-  }, [glossaryTerms, permissions]);
-
-  const listOfVisibleColumns = useMemo(() => {
-    return ['name', 'description', 'owners', 'status', 'new-term'];
-  }, []);
+  }, [permissions]);
 
   const defaultCheckedList = useMemo(
     () =>
@@ -402,7 +407,7 @@ const GlossaryTermTab = ({
           ];
           setCheckedList(newCheckedList);
         } else {
-          setCheckedList([type === 'columns' ? 'name' : 'Draft']);
+          type === 'columns' ? setCheckedList(['name']) : setCheckedList([]);
         }
       } else {
         setCheckedList((prev: string[]) => {
@@ -452,13 +457,19 @@ const GlossaryTermTab = ({
                     .every(({ key }) =>
                       columnDropdownSelections.includes(key as string)
                     )}
-                  className="custom-glossary-col-sel-checkbox m-l-lg p-l-md"
+                  className={classNames(
+                    'd-flex',
+                    'items-center',
+                    'm-b-xss',
+                    'custom-glossary-col-sel-checkbox',
+                    'select-all-checkbox'
+                  )}
                   key="all"
                   value="all"
                   onChange={(e) =>
                     handleCheckboxChange('all', e.target.checked, 'columns')
                   }>
-                  {t('label.all')}
+                  <p className="m-l-xs m-t-sm">{t('label.all')}</p>
                 </Checkbox>
                 {options.map(
                   (option: { value: string; label: string }, index: number) => (
@@ -483,6 +494,7 @@ const GlossaryTermTab = ({
         {
           key: 'divider',
           type: 'divider',
+          className: 'm-b-xs',
         },
         {
           key: 'actions',
@@ -490,11 +502,14 @@ const GlossaryTermTab = ({
             <div className="flex-center">
               <Space>
                 <Button
+                  className="custom-glossary-dropdown-action-btn"
+                  data-testid="glossary-col-dropdown-save"
                   type="primary"
                   onClick={handleColumnSelectionDropdownSave}>
                   {t('label.save')}
                 </Button>
                 <Button
+                  className="custom-glossary-dropdown-action-btn"
                   type="default"
                   onClick={handleColumnSelectionDropdownCancel}>
                   {t('label.cancel')}
@@ -565,6 +580,7 @@ const GlossaryTermTab = ({
         {
           key: 'divider',
           type: 'divider',
+          className: 'm-b-xs',
         },
         {
           key: 'actions',
@@ -572,11 +588,13 @@ const GlossaryTermTab = ({
             <div className="flex-center">
               <Space>
                 <Button
+                  className="custom-glossary-dropdown-action-btn"
                   type="primary"
                   onClick={handleStatusSelectionDropdownSave}>
                   {t('label.save')}
                 </Button>
                 <Button
+                  className="custom-glossary-dropdown-action-btn"
                   type="default"
                   onClick={handleStatusSelectionDropdownCancel}>
                   {t('label.cancel')}
@@ -797,9 +815,9 @@ const GlossaryTermTab = ({
   return (
     <Row className={className} gutter={[0, 16]}>
       <Col span={24}>
-        <div className="d-flex justify-end">
+        <div className="d-flex justify-end items-center gap-5">
           <Button
-            className="text-primary m-b-sm"
+            className="text-primary mb-4 m-r-xss"
             data-testid="expand-collapse-all-button"
             size="small"
             type="text"
@@ -815,7 +833,7 @@ const GlossaryTermTab = ({
             </Space>
           </Button>
           <Dropdown
-            className="custom-glossary-dropdown-menu status-dropdown"
+            className="mb-4  custom-glossary-dropdown-menu status-dropdown"
             getPopupContainer={(trigger) => {
               const customContainer = trigger.closest(
                 '.custom-glossary-dropdown-menu.status-dropdown'

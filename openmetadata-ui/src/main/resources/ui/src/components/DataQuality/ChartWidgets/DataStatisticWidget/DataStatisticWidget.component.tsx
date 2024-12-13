@@ -25,6 +25,7 @@ const DataStatisticWidget = ({
   redirectPath,
   linkLabel,
   isLoading,
+  iconProps,
 }: DataStatisticWidgetProps) => {
   const Icon = icon;
 
@@ -38,7 +39,7 @@ const DataStatisticWidget = ({
       </Typography.Paragraph>
 
       <div className="d-flex gap-2 items-center m-b-xss">
-        <Icon height={22} width={22} />
+        <Icon height={24} width={24} {...iconProps} />
         <Typography.Paragraph
           className="font-medium text-xl m-b-0"
           data-testid="total-value">

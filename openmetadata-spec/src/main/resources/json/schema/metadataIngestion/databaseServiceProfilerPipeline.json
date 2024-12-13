@@ -50,12 +50,6 @@
       "default": false,
       "title": "Use FQN For Filtering"
     },
-    "generateSampleData": {
-      "description": "Option to turn on/off generating sample data. If enabled, profiler will ingest sample data for each table.",
-      "type": "boolean",
-      "default": true,
-      "title": "Generate Sample Data"
-    },
     "computeMetrics": {
       "description": "Option to turn on/off computing profiler metrics.",
       "type": "boolean",
@@ -80,18 +74,6 @@
       "default": false,
       "title": "Use Gathered Statistics"
     },
-    "processPiiSensitive": {
-      "description": "Optional configuration to automatically tag columns that might contain sensitive information",
-      "type": "boolean",
-      "default": false,
-      "title": "Auto Tag PII"
-    },
-    "confidence": {
-      "description": "Set the Confidence value for which you want the column to be tagged as PII. Confidence value ranges from 0 to 100. A higher number will yield less false positives but more false negatives. A lower number will yield more false positives but less false negatives.",
-      "type": "number",
-      "default": 80,
-      "title": "PII Inference Confidence Level"
-    },
     "profileSampleType": {
       "$ref": "../entity/data/table.json#/definitions/profileSampleType",
       "title": "Profile Sample Type"
@@ -105,12 +87,6 @@
     "samplingMethodType": {
       "$ref": "../entity/data/table.json#/definitions/samplingMethodType",
       "title": "Sampling Method Type"
-    },
-    "sampleDataCount": {
-      "description": "Number of sample rows to ingest when 'Generate Sample Data' is enabled",
-      "type": "integer",
-      "default": 50,
-      "title": "Sample Data Rows Count"
     },
     "threadCount": {
       "description": "Number of threads to use during metric computations",

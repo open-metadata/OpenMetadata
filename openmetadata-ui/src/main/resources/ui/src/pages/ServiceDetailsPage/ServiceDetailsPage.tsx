@@ -181,7 +181,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
 
   const {
     paging,
-    pageSize: databasePageSize,
+    pageSize,
     currentPage,
     handlePageChange,
     handlePagingChange,
@@ -513,44 +513,45 @@ const ServiceDetailsPage: FunctionComponent = () => {
     async (paging?: PagingWithoutTotal) => {
       try {
         setIsServiceLoading(true);
+        const pagingParams = { ...paging, limit: pageSize };
         switch (serviceCategory) {
           case ServiceCategory.DATABASE_SERVICES: {
-            await fetchDatabases(paging);
+            await fetchDatabases(pagingParams);
 
             break;
           }
           case ServiceCategory.MESSAGING_SERVICES: {
-            await fetchTopics(paging);
+            await fetchTopics(pagingParams);
 
             break;
           }
           case ServiceCategory.DASHBOARD_SERVICES: {
-            await fetchDashboards(paging);
+            await fetchDashboards(pagingParams);
 
             break;
           }
           case ServiceCategory.PIPELINE_SERVICES: {
-            await fetchPipeLines(paging);
+            await fetchPipeLines(pagingParams);
 
             break;
           }
           case ServiceCategory.ML_MODEL_SERVICES: {
-            await fetchMlModal(paging);
+            await fetchMlModal(pagingParams);
 
             break;
           }
           case ServiceCategory.STORAGE_SERVICES: {
-            await fetchContainers(paging);
+            await fetchContainers(pagingParams);
 
             break;
           }
           case ServiceCategory.SEARCH_SERVICES: {
-            await fetchSearchIndexes(paging);
+            await fetchSearchIndexes(pagingParams);
 
             break;
           }
           case ServiceCategory.API_SERVICES: {
-            await fetchCollections(paging);
+            await fetchCollections(pagingParams);
 
             break;
           }
@@ -574,6 +575,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
       fetchContainers,
       fetchSearchIndexes,
       fetchCollections,
+      pageSize,
     ]
   );
 
@@ -778,8 +780,8 @@ const ServiceDetailsPage: FunctionComponent = () => {
         getOtherDetails({
           [cursorType]: paging[cursorType],
         });
-        handlePageChange(currentPage);
       }
+      handlePageChange(currentPage);
     },
     [paging, getOtherDetails, handlePageChange]
   );
@@ -853,8 +855,8 @@ const ServiceDetailsPage: FunctionComponent = () => {
 
   useEffect(() => {
     handlePageChange(INITIAL_PAGING_VALUE);
-    getOtherDetails({ limit: databasePageSize });
-  }, [activeTab, showDeleted, deleted, databasePageSize]);
+    getOtherDetails({ limit: pageSize });
+  }, [activeTab, showDeleted, deleted, pageSize]);
 
   useEffect(() => {
     // fetch count for data modal tab, its need only when its dashboard page and data modal tab is not active

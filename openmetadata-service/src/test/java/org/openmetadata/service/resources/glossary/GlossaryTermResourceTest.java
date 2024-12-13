@@ -98,6 +98,7 @@ import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
+import org.testcontainers.shaded.com.google.common.collect.Lists;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @Slf4j
@@ -265,20 +266,29 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
   @Test
   void patch_addDeleteReviewers(TestInfo test) throws IOException {
     CreateGlossaryTerm create =
-        createRequest(getEntityName(test), "", "", null).withReviewers(null).withSynonyms(null);
+        createRequest(getEntityName(test), "desc", "", null).withReviewers(null).withSynonyms(null);
     GlossaryTerm term = createEntity(create, ADMIN_AUTH_HEADERS);
 
     // Add reviewer USER1, synonym1, reference1 in PATCH request
     String origJson = JsonUtils.pojoToJson(term);
     TermReference reference1 =
         new TermReference().withName("reference1").withEndpoint(URI.create("http://reference1"));
+
+    // NOTE: We are patching outside the `patchEntityAndCheck` method in order to be able to wait
+    // for the Task to be Created.
+    // The Task is created asynchronously from the Glossary Approval Workflow.
+    // This allows us to be sure the Status will be updated to IN_REVIEW.
     term.withReviewers(List.of(USER1_REF))
         .withSynonyms(List.of("synonym1"))
         .withReferences(List.of(reference1));
+    patchEntity(term.getId(), origJson, term, ADMIN_AUTH_HEADERS);
+    waitForTaskToBeCreated(term.getFullyQualifiedName());
+
     ChangeDescription change = getChangeDescription(term, MINOR_UPDATE);
     fieldAdded(change, "reviewers", List.of(USER1_REF));
     fieldAdded(change, "synonyms", List.of("synonym1"));
     fieldAdded(change, "references", List.of(reference1));
+    fieldUpdated(change, "status", Status.APPROVED, Status.IN_REVIEW);
     term = patchEntityAndCheck(term, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // Add reviewer USER2, synonym2, reference2 in PATCH request
@@ -293,6 +303,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     fieldAdded(change, "reviewers", List.of(USER1_REF, USER2_REF));
     fieldAdded(change, "synonyms", List.of("synonym1", "synonym2"));
     fieldAdded(change, "references", List.of(reference1, reference2));
+    fieldUpdated(change, "status", Status.APPROVED, Status.IN_REVIEW);
     term = patchEntityAndCheck(term, origJson, ADMIN_AUTH_HEADERS, CHANGE_CONSOLIDATED, change);
 
     // Remove a reviewer USER1, synonym1, reference1 in PATCH request
@@ -305,6 +316,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     fieldAdded(change, "reviewers", List.of(USER2_REF));
     fieldAdded(change, "synonyms", List.of("synonym2"));
     fieldAdded(change, "references", List.of(reference2));
+    fieldUpdated(change, "status", Status.APPROVED, Status.IN_REVIEW);
     patchEntityAndCheck(term, origJson, ADMIN_AUTH_HEADERS, CHANGE_CONSOLIDATED, change);
   }
 
@@ -730,6 +742,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
   }
 
   @Test
+  @Order(Integer.MAX_VALUE)
   void delete_recursive(TestInfo test) throws IOException {
     Glossary g1 = createGlossary(test, null, emptyList());
 
@@ -874,6 +887,27 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
             .orElse(false); // Return false if no glossary named "g1" was found
 
     assertTrue(isChild, "childGlossaryTerm should be a child of parentGlossaryTerm");
+  }
+
+  @Test
+  void get_entityWithDifferentFields_200_OK(TestInfo test) throws IOException {
+    CreateGlossaryTerm create =
+        createRequest(
+            getEntityName(test), "description", "displayName", Lists.newArrayList(USER1_REF));
+    create.setReviewers(List.of(USER1_REF));
+    create.setTags(List.of(USER_ADDRESS_TAG_LABEL, GLOSSARY2_TERM1_LABEL));
+
+    GlossaryTerm entity = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+
+    waitForTaskToBeCreated(entity.getFullyQualifiedName(), 60000L * 3);
+
+    entity = validateGetWithDifferentFields(entity, false);
+    validateEntityReferences(entity.getOwners());
+    assertListNotEmpty(entity.getTags());
+
+    entity = validateGetWithDifferentFields(entity, true);
+    validateEntityReferences(entity.getOwners());
+    assertListNotEmpty(entity.getTags());
   }
 
   @Test
@@ -1124,11 +1158,8 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
             ? getEntityByName(term.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(term.getId(), fields, ADMIN_AUTH_HEADERS);
     assertListNull(
-        term.getChildren(),
-        term.getRelatedTerms(),
-        term.getReviewers(),
-        term.getOwners(),
-        term.getTags());
+        term.getChildren(), term.getRelatedTerms(), term.getReviewers(), term.getOwners());
+    assertTrue(term.getTags().isEmpty());
 
     fields = "children,relatedTerms,reviewers,owners,tags";
     term =

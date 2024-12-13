@@ -235,7 +235,12 @@ public class RBACConditionEvaluator {
   public void matchAnyTag(List<String> tags, ConditionCollector collector) {
     List<OMQueryBuilder> tagQueries = new ArrayList<>();
     for (String tag : tags) {
-      OMQueryBuilder tagQuery = queryBuilderFactory.termQuery("tags.tagFQN", tag);
+      OMQueryBuilder tagQuery;
+      if (tag.startsWith("Tier")) {
+        tagQuery = queryBuilderFactory.termQuery("tier.tagFQN", tag);
+      } else {
+        tagQuery = queryBuilderFactory.termQuery("tags.tagFQN", tag);
+      }
       tagQueries.add(tagQuery);
     }
     OMQueryBuilder tagQueryCombined;

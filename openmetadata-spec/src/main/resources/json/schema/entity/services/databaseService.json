@@ -49,6 +49,7 @@
         "Dbt",
         "SapHana",
         "MongoDB",
+        "Cassandra",
         "Couchbase",
         "Greenplum",
         "Doris",
@@ -162,6 +163,9 @@
         },
         {
           "name": "MongoDB"
+        },
+        {
+          "name": "Cassandra"
         },
         {
           "name": "Couchbase"
@@ -302,6 +306,9 @@
               "$ref": "./connections/database/mongoDBConnection.json"
             },
             {
+              "$ref": "./connections/database/cassandraConnection.json"
+            },
+            {
               "$ref": "./connections/database/couchbaseConnection.json"
             },
             {
@@ -379,7 +386,7 @@
       "items": {
         "$ref": "../../type/tagLabel.json"
       },
-      "default": null
+      "default": []
     },
     "version": {
       "description": "Metadata version of the entity.",

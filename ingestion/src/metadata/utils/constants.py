@@ -12,6 +12,8 @@
 """
 Define constants useful for the metadata ingestion
 """
+from metadata.generated.schema.entity.data.apiCollection import APICollection
+from metadata.generated.schema.entity.data.apiEndpoint import APIEndpoint
 from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.container import Container
 from metadata.generated.schema.entity.data.dashboard import Dashboard
@@ -27,6 +29,51 @@ from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.entity.domains.dataProduct import DataProduct
 from metadata.generated.schema.entity.domains.domain import Domain
 from metadata.generated.schema.entity.services.apiService import ApiService
+from metadata.generated.schema.entity.services.connections.database.bigTableConnection import (
+    BigtableType,
+)
+from metadata.generated.schema.entity.services.connections.database.couchbaseConnection import (
+    CouchbaseType,
+)
+from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
+    DatalakeType,
+)
+from metadata.generated.schema.entity.services.connections.database.deltaLakeConnection import (
+    DeltaLakeType,
+)
+from metadata.generated.schema.entity.services.connections.database.domoDatabaseConnection import (
+    DomoDatabaseType,
+)
+from metadata.generated.schema.entity.services.connections.database.dorisConnection import (
+    DorisType,
+)
+from metadata.generated.schema.entity.services.connections.database.druidConnection import (
+    DruidType,
+)
+from metadata.generated.schema.entity.services.connections.database.dynamoDBConnection import (
+    DynamoDBType,
+)
+from metadata.generated.schema.entity.services.connections.database.glueConnection import (
+    GlueType,
+)
+from metadata.generated.schema.entity.services.connections.database.icebergConnection import (
+    IcebergType,
+)
+from metadata.generated.schema.entity.services.connections.database.mongoDBConnection import (
+    MongoDBType,
+)
+from metadata.generated.schema.entity.services.connections.database.salesforceConnection import (
+    SalesforceType,
+)
+from metadata.generated.schema.entity.services.connections.database.sapErpConnection import (
+    SapErpType,
+)
+from metadata.generated.schema.entity.services.connections.database.sasConnection import (
+    SasType,
+)
+from metadata.generated.schema.entity.services.connections.database.unityCatalogConnection import (
+    DatabricksType,
+)
 from metadata.generated.schema.entity.services.dashboardService import DashboardService
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.messagingService import MessagingService
@@ -86,6 +133,8 @@ ENTITY_REFERENCE_CLASS_MAP = {
     "metadataService": MetadataService,
     "searchService": SearchService,
     # Data Asset Entities
+    "apiCollection": APICollection,
+    "apiEndpoint": APIEndpoint,
     "table": Table,
     "storedProcedure": StoredProcedure,
     "database": Database,
@@ -111,3 +160,21 @@ ENTITY_REFERENCE_TYPE_MAP = {
 }
 
 CUSTOM_CONNECTOR_PREFIX = "custom"
+
+NON_SQA_DATABASE_CONNECTIONS = (
+    DatalakeType.Datalake.value,
+    BigtableType.BigTable.value,
+    CouchbaseType.Couchbase.value,
+    DatabricksType.UnityCatalog.value,
+    DeltaLakeType.DeltaLake.value,
+    DomoDatabaseType.DomoDatabase.value,
+    DorisType.Doris.value,
+    DruidType.Druid.value,
+    DynamoDBType.DynamoDB.value,
+    GlueType.Glue.value,
+    IcebergType.Iceberg.value,
+    MongoDBType.MongoDB.value,
+    SalesforceType.Salesforce.value,
+    SapErpType.SapErp.value,
+    SasType.SAS.value,
+)

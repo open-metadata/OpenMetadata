@@ -49,7 +49,7 @@ def run_data_quality_workflow(
     run_workflow(MetadataWorkflow, ingestion_config)
     test_suite_config = OpenMetadataWorkflowConfig(
         source=Source(
-            type=TestSuiteConfigType.TestSuite.value,
+            type="postgres",
             serviceName="MyTestSuite",
             sourceConfig=SourceConfig(
                 config=TestSuitePipeline(
@@ -301,13 +301,23 @@ def run_data_quality_workflow(
     ids=lambda *x: x[0],
 )
 def test_data_quality(
-    run_data_quality_workflow, metadata: OpenMetadata, test_case_name, expected_status
+    run_data_quality_workflow,
+    metadata: OpenMetadata,
+    test_case_name,
+    expected_status,
+    db_service,
 ):
     test_cases: List[TestCase] = metadata.list_entities(
         TestCase, fields=["*"], skip_on_failure=True
     ).entities
     test_case: TestCase = next(
-        (t for t in test_cases if t.name.root == test_case_name), None
+        (
+            t
+            for t in test_cases
+            if t.name.root == test_case_name
+            and "dvdrental.public.customer" in t.entityFQN
+        ),
+        None,
     )
     assert test_case is not None
     assert_equal_pydantic_objects(
@@ -323,7 +333,7 @@ def get_incompatible_column_type_config(workflow_config, sink_config):
     def inner(entity_fqn: str, incompatible_test_case: TestCaseDefinition):
         return {
             "source": {
-                "type": "TestSuite",
+                "type": "postgres",
                 "serviceName": "MyTestSuite",
                 "sourceConfig": {
                     "config": {
