@@ -27,7 +27,6 @@ from metadata.antlr.split_listener import FqnSplitListener
 from metadata.generated.antlr.FqnLexer import FqnLexer
 from metadata.generated.antlr.FqnParser import FqnParser
 from metadata.generated.schema.entity.classification.tag import Tag
-from metadata.generated.schema.entity.data.apiCollection import APICollection
 from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.container import Container
 from metadata.generated.schema.entity.data.dashboard import Dashboard
@@ -233,10 +232,12 @@ def _(
     fetch_multiple_entities: bool = False,
 ) -> str:
     if not skip_es_search:
-        entity = search_database_from_es(metadata,
-                                         database_name,
-                                         service_name,
-                                         fetch_multiple_entities=fetch_multiple_entities)
+        entity = search_database_from_es(
+            metadata,
+            database_name,
+            service_name,
+            fetch_multiple_entities=fetch_multiple_entities,
+        )
 
         if entity and fetch_multiple_entities:
             return [str(database.fullyQualifiedName.root) for database in entity]
