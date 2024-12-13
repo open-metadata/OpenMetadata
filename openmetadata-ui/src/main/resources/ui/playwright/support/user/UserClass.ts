@@ -157,6 +157,17 @@ export class UserClass {
     const loginRes = page.waitForResponse('/api/v1/users/login');
     await page.getByTestId('login').click();
     await loginRes;
+
+    const modal = await page
+      .getByRole('dialog')
+      .locator('div')
+      .filter({ hasText: 'Getting Started' })
+      .nth(1)
+      .isVisible();
+
+    if (modal) {
+      await page.getByRole('dialog').getByRole('img').first().click();
+    }
   }
 
   async logout(page: Page) {
