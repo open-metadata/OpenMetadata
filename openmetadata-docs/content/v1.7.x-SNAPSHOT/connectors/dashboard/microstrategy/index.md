@@ -18,7 +18,7 @@ Configure and schedule MicroStrategy metadata and profiler workflows from the Op
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 
-{% partial file="/v1.6/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/dashboard/microstrategy/yaml"} /%}
+{% partial file="/v1.7/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/dashboard/microstrategy/yaml"} /%}
 
 ## Requirements
 
@@ -37,12 +37,12 @@ However, if the user still cannot access the APIs, the following should be check
 ## Metadata Ingestion
 
 {% partial 
-  file="/v1.6/connectors/metadata-ingestion-ui.md" 
+  file="/v1.7/connectors/metadata-ingestion-ui.md" 
   variables={
     connector: "MicroStrategy", 
-    selectServicePath: "/images/v1.6/connectors/microstrategy/select-service.png",
-    addNewServicePath: "/images/v1.6/connectors/microstrategy/add-new-service.png",
-    serviceConnectionPath: "/images/v1.6/connectors/microstrategy/service-connection.png",
+    selectServicePath: "/images/v1.7/connectors/microstrategy/select-service.png",
+    addNewServicePath: "/images/v1.7/connectors/microstrategy/add-new-service.png",
+    serviceConnectionPath: "/images/v1.7/connectors/microstrategy/service-connection.png",
 } 
 /%}
 
@@ -66,12 +66,12 @@ If you're using demo account for Microstrategy, it will be needed to authenticat
 
 {% /extraContent %}
 
-{% partial file="/v1.6/connectors/test-connection.md" /%}
+{% partial file="/v1.7/connectors/test-connection.md" /%}
 
-{% partial file="/v1.6/connectors/dashboard/configure-ingestion.md" /%}
+{% partial file="/v1.7/connectors/dashboard/configure-ingestion.md" /%}
 
-{% partial file="/v1.6/connectors/ingestion-schedule-and-deploy.md" /%}
+{% partial file="/v1.7/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
 
-{% partial file="/v1.6/connectors/troubleshooting.md" /%}
+{% partial file="/v1.7/connectors/troubleshooting.md" /%}

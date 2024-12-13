@@ -5,6 +5,7 @@
 {% connectorInfoCard name="AzureSQL" stage="PROD" href="/connectors/database/azuresql" platform="OpenMetadata" / %}
 {% connectorInfoCard name="BigQuery" stage="PROD" href="/connectors/database/bigquery" platform="OpenMetadata" / %}
 {% connectorInfoCard name="BigTable" stage="BETA" href="/connectors/database/bigtable" platform="OpenMetadata" / %}
+{% connectorInfoCard name="Cassandra" stage="BETA" href="/connectors/database/cassandra" platform="OpenMetadata" / %}
 {% connectorInfoCard name="Clickhouse" stage="PROD" href="/connectors/database/clickhouse" platform="OpenMetadata" / %}
 {% connectorInfoCard name="Couchbase" stage="BETA" href="/connectors/database/couchbase" platform="OpenMetadata" / %}
 {% connectorInfoCard name="Databricks" stage="PROD" href="/connectors/database/databricks" platform="OpenMetadata" / %}
