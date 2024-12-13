@@ -22,7 +22,7 @@ From `0.12.1` OpenMetadata has changed the default `no-auth` to `Basic` auth, So
 **1.** Go to the `settings` page from the `activity bar` Section. Click on the `Bots` and you will see the list of bots, then click on the `ingestion-bot`.
    
    {% image
-    src="/images/v1.4/cli-ingestion-with-basic-auth/settings-bot.png"
+    src="/images/v1.6/cli-ingestion-with-basic-auth/settings-bot.png"
     alt="settings-bot" /%}
 
    {% image

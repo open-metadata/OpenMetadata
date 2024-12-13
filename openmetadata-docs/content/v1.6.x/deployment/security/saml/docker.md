@@ -56,4 +56,4 @@ SAML_KEYSTORE_PASSWORD=myKeystorePassword
 docker compose --env-file ~/openmetadata_saml.env up -d
 ```
 
-{% partial file="/v1.4/deployment/configure-ingestion.md" /%}
+{% partial file="/v1.6/deployment/configure-ingestion.md" /%}

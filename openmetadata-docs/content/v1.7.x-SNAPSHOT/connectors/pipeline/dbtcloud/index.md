@@ -17,7 +17,7 @@ In this section, we provide guides and references to use the dbt Cloud connector
 Configure and schedule dbt Cloud metadata and profiler workflows from the OpenMetadata UI:
 
 - [Requirements](#requirements)
-    - [dbt Cloud Versions](#dbtcloud-versions)
+    - [dbt Cloud Versions](#dbt-cloud-versions)
 - [Metadata Ingestion](#metadata-ingestion)
     - [Service Name](#service-name)
     - [Connection Details](#connection-details)
