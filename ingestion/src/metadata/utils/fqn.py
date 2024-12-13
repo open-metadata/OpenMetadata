@@ -231,7 +231,7 @@ def _(
     database_name: str,
     skip_es_search: bool = True,
     fetch_multiple_entities: bool = False,
-) -> str:
+) -> Union[Optional[str], Optional[List[str]]]:
     if not skip_es_search:
         entity = search_database_from_es(
             metadata,
