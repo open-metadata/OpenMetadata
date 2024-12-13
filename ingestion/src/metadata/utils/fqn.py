@@ -225,15 +225,29 @@ def _(
 
 @fqn_build_registry.add(Database)
 def _(
-    _: Optional[OpenMetadata],  # ES Search not enabled for Databases
+    metadata: Optional[OpenMetadata],  # ES Search not enabled for Databases
     *,
     service_name: str,
     database_name: str,
+    skip_es_search: bool = True,
+    fetch_multiple_entities: bool = False,
 ) -> str:
+    if not skip_es_search:
+        entity = search_database_from_es(metadata,
+                                         database_name,
+                                         service_name,
+                                         fetch_multiple_entities=fetch_multiple_entities)
+
+        if entity and fetch_multiple_entities:
+            return [str(database.fullyQualifiedName.root) for database in entity]
+        if entity:
+            return str(entity.fullyQualifiedName.root)
+
     if not service_name or not database_name:
         raise FQNBuildingException(
             f"Args should be informed, but got service=`{service_name}`, db=`{database_name}``"
         )
+
     return _build(service_name, database_name)
 
 
@@ -249,20 +263,6 @@ def _(
             f"Args should be informed, but got service=`{service_name}`, dashboard=`{dashboard_name}``"
         )
     return _build(service_name, dashboard_name)
-
-
-@fqn_build_registry.add(APICollection)
-def _(
-    _: Optional[OpenMetadata],  # ES Index not necessary for dashboard FQN building
-    *,
-    service_name: str,
-    api_collection_name: str,
-) -> str:
-    if not service_name or not api_collection_name:
-        raise FQNBuildingException(
-            f"Args should be informed, but got service=`{service_name}`, collection=`{api_collection_name}``"
-        )
-    return _build(service_name, api_collection_name)
 
 
 @fqn_build_registry.add(Chart)
