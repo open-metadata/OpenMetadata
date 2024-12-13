@@ -99,7 +99,7 @@ const ActivityFeedCardV2 = ({
     await updateThreadData(threadId, postId, isThread, data, callback);
     fetchUpdatedThread(threadId);
   };
-  const handleAnnouncementUpdate = (
+  const handleAnnouncementUpdate = async (
     title: string,
     announcement: AnnouncementDetails
   ) => {
@@ -147,6 +147,7 @@ const ActivityFeedCardV2 = ({
         {
           active: isActive && feed.type !== 'Announcement',
           'announcement-active': isActive && feed.type === 'Announcement',
+          'announcement-gap': feed.type === 'Announcement',
         },
         className
       )}>
@@ -174,7 +175,10 @@ const ActivityFeedCardV2 = ({
           />
         </div>
       )}
-      <Row className="w-full" gutter={[0, 10]}>
+      <Row
+        className="w-full"
+        gutter={[0, 10]}
+        style={{ whiteSpace: 'pre-wrap' }}>
         <Col
           className={classNames('feed-card-v2', {
             'feed-reply-card-v2': isPost,

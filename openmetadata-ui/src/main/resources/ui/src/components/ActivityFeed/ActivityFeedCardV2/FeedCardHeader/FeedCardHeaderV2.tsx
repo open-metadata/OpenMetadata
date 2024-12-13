@@ -180,7 +180,7 @@ const FeedCardHeaderV2 = ({
               overlayClassName="timestamp-tooltip"
               title={formatDateTime(timeStamp)}>
               <span
-                className="feed-card-header-v2-timestamp"
+                className="feed-card-header-v2-timestamp wrap"
                 data-testid="timestamp">
                 {getRelativeTime(timeStamp)}
               </span>
@@ -188,7 +188,7 @@ const FeedCardHeaderV2 = ({
           )}
         </>
       ) : (
-        <>
+        <div className="gap-2">
           <Typography.Text className="break-word">
             <UserPopOverCard userName={createdBy}>
               <Link className="thread-author" to={getUserPath(createdBy)}>
@@ -196,7 +196,7 @@ const FeedCardHeaderV2 = ({
               </Link>
             </UserPopOverCard>
             {entityLink && (
-              <Typography.Text className="m-r-xss">
+              <Typography.Text className="m-r-sm">
                 {t('message.made-announcement')}
               </Typography.Text>
             )}
@@ -208,12 +208,13 @@ const FeedCardHeaderV2 = ({
                 <span
                   className="feed-card-header-v2-timestamp"
                   data-testid="timestamp">
+                  <Typography.Text>-</Typography.Text>{' '}
                   {getRelativeTime(timeStamp)}
                 </span>
               </Tooltip>
             )}
           </Typography.Text>
-        </>
+        </div>
       )}
     </div>
   );

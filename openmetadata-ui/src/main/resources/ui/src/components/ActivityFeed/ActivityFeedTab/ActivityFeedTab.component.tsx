@@ -27,6 +27,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory, useParams } from 'react-router-dom';
 import { ReactComponent as AllActivityIcon } from '../../../assets/svg/all-activity-v2.svg';
+import { ReactComponent as AnnouncementsIcon } from '../../../assets/svg/announcements-v1.svg';
 import { ReactComponent as CheckIcon } from '../../../assets/svg/ic-check.svg';
 import { ReactComponent as MentionIcon } from '../../../assets/svg/ic-mentions.svg';
 import { ReactComponent as TaskIcon } from '../../../assets/svg/ic-task.svg';
@@ -216,6 +217,8 @@ export const ActivityFeedTab = ({
       );
     } else if (activeTab === ActivityFeedTabs.MENTIONS) {
       return t('message.no-mentions');
+    } else if (activeTab === ActivityFeedTabs.ANNOUNCEMENTS) {
+      return t('message.no-announcement-message');
     } else {
       return t('message.no-open-tasks');
     }
@@ -484,11 +487,11 @@ export const ActivityFeedTab = ({
             label: (
               <div className="d-flex justify-between">
                 <Space align="center" size="small">
-                  <AllActivityIcon
+                  <AnnouncementsIcon
                     style={COMMON_ICON_STYLES}
                     {...ICON_DIMENSION}
                   />
-                  <span>{t('label.announcement')}</span>
+                  <span>{t('label.announcement-plural')}</span>
                 </Space>
 
                 <span>

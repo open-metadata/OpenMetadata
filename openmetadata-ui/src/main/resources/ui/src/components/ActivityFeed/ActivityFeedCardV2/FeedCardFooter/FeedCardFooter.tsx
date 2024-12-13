@@ -162,7 +162,7 @@ function FeedCardFooter({
       <Col span={24}>
         {componentsVisibility.showRepliesContainer && postLength !== 0 && (
           <Button
-            className="flex items-end gap-2 p-x-xss w-full rounded-8"
+            className="flex items-center gap-2 p-x-xss w-full rounded-8"
             type="text"
             onClick={componentsVisibility.showThreadIcon ? showReplies : noop}>
             {feed.type !== 'Announcement' && postLength > 0 && (
@@ -178,7 +178,7 @@ function FeedCardFooter({
               </Avatar.Group>
             )}
             <Typography.Text
-              className="text-xs font-medium text-primary"
+              className="text-xs font-medium text-primar"
               data-testid="reply-count">
               {postLength <= 1
                 ? t('label.one-reply')

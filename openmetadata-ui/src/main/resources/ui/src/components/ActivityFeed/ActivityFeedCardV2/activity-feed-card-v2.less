@@ -18,6 +18,9 @@
   width: 100%;
   gap: 8px;
   position: relative;
+  &.announcement-gap {
+    gap: 8px;
+  }
   .avatar-column {
     &::after {
       position: absolute;
@@ -30,7 +33,14 @@
       height: calc(100% - 10px);
       z-index: 1;
     }
+    .ant-avatar-group {
+      margin-bottom: 8px !important;
+    }
+    .assignee-item {
+      z-index: 9;
+    }
   }
+
   .feed-card-v2-sidebar {
     display: flex;
     padding: 4px 0px;
@@ -55,10 +65,10 @@
       content: '';
       position: absolute;
       top: 0;
-      left: -10px; /* Adjust this value for spacing outside */
-      height: 100%;
-      width: 4px; /* Width of the border */
-      background-color: @info-color; /* Your desired border color */
+      left: -10px;
+      height: 98%;
+      width: 4px;
+      background-color: @info-color;
     }
   }
 
