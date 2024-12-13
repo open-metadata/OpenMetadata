@@ -206,7 +206,9 @@ public class SearchResource {
             .getHierarchy(getHierarchy)
             .domains(domains)
             .applyDomainFilter(
-                !subjectContext.isAdmin() && subjectContext.hasAnyRole(DOMAIN_ONLY_ACCESS_ROLE))
+                !subjectContext.isAdmin()
+                    && !subjectContext.isBot()
+                    && subjectContext.hasAnyRole(DOMAIN_ONLY_ACCESS_ROLE))
             .searchAfter(searchAfter)
             .explain(explain)
             .build();

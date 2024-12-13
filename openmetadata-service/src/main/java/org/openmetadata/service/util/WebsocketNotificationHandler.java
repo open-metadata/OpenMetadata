@@ -67,7 +67,7 @@ public class WebsocketNotificationHandler {
     UUID userId = getUserIdFromSecurityContext(securityContext);
     if (userId != null) {
       WebSocketManager.getInstance()
-        .sendToOne(userId, WebSocketManager.CSV_EXPORT_CHANNEL, jsonMessage);
+          .sendToOne(userId, WebSocketManager.CSV_EXPORT_CHANNEL, jsonMessage);
     }
   }
 
