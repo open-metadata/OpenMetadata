@@ -7,8 +7,8 @@ slug: /connectors/database/sap-erp
 name="SAP ERP"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "dbt"]
-unavailableFeatures=["Query Usage", "Stored Procedures", "Owners", "Tags","Data Profiler", "Data Quality", "View Lineage", "View Column-level Lineage"]
+availableFeatures=["Metadata"]
+unavailableFeatures=["Query Usage", "Stored Procedures", "Owners", "Tags","Data Profiler", "Data Quality", "View Lineage", "View Column-level Lineage", "dbt"]
 / %}
 
 
