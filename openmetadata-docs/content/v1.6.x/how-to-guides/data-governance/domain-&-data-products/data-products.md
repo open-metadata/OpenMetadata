@@ -33,7 +33,7 @@ By following these steps, you can effectively set up and manage data products in
 
 
 {% image
-  src="/images/v1.4/how-to-guides/governance/data-products.gif"
+  src="/images/v1.6/how-to-guides/governance/data-products.gif"
   alt="Data Products"
  /%}
 
