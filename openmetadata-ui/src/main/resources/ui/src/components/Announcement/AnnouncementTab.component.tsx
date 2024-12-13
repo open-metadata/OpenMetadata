@@ -82,8 +82,8 @@ const AnnouncementTab: React.FC<AnnouncementTabProps> = ({
   };
 
   useEffect(() => {
-    getThreads();
     fetchPermission();
+    getThreads();
   }, [announcementFilter]);
 
   const updateSelectedThread = (thread: Thread) => {
@@ -223,7 +223,7 @@ const AnnouncementTab: React.FC<AnnouncementTabProps> = ({
             isForFeedTab
             activeFeedId={selectedAnnouncementThread?.id}
             componentsVisibility={{
-              showThreadIcon: true,
+              showThreadIcon: false,
               showRepliesContainer: true,
             }}
             emptyPlaceholderText=""
@@ -275,19 +275,19 @@ const AnnouncementTab: React.FC<AnnouncementTabProps> = ({
                 />
               </div>
             </div>
-            {isAddAnnouncementOpen && (
-              <AddAnnouncementModal
-                isAnnouncementTab
-                entityFQN={fqn || ''}
-                entityType={entityType || ''}
-                open={isAddAnnouncementOpen}
-                onCancel={handleCloseAnnouncementModal}
-                onSave={handleSaveAnnouncement}
-              />
-            )}
           </Col>
         )}
       </Row>
+      {isAddAnnouncementOpen && (
+        <AddAnnouncementModal
+          isAnnouncementTab
+          entityFQN={fqn || ''}
+          entityType={entityType || ''}
+          open={isAddAnnouncementOpen}
+          onCancel={handleCloseAnnouncementModal}
+          onSave={handleSaveAnnouncement}
+        />
+      )}
     </div>
   );
 };

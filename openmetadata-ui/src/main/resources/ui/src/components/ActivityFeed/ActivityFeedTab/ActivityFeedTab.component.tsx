@@ -131,7 +131,7 @@ export const ActivityFeedTab = ({
     getFeedData(
       feedFilter,
       undefined,
-      threadType,
+      ThreadType.Announcement,
       entityType,
       fqn,
       undefined,

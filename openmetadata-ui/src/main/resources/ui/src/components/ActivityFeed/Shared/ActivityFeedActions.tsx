@@ -77,31 +77,24 @@ const ActivityFeedActions = ({
 
     updateEditorFocus(true);
   };
-  const deleteAnnouncementThread = useCallback(
+
+  // delete Announcement in Service page's Announcement Tab
+  const deleteAnnouncementFeed = useCallback(
     async (threadId: string, postId: string, isThread: boolean) => {
       if (isThread) {
         await deleteThread(threadId);
-        updateAnnouncementThreads && updateAnnouncementThreads();
       } else {
         await deletePostById(threadId, postId);
-        const updatedthread = await getUpdatedThread(threadId);
-        if (feed.type === 'Announcement' && !isAnnouncementTab) {
-          updateEntityThread(updatedthread);
-        } else {
-          updateAnnouncementThreads && updateAnnouncementThreads();
-        }
-        // if (deleteResponse) {
-        //   //await getUpdatedThread(threadId);
-        //   updateAnnouncementThreads && updateAnnouncementThreads();
-        // }
+        await getUpdatedThread(threadId);
       }
+      updateAnnouncementThreads && updateAnnouncementThreads();
     },
     []
   );
 
   const handleDelete = () => {
-    if (isAnnouncementTab || (feed.type === 'Announcement' && isPost)) {
-      deleteAnnouncementThread(feed.id, post.id, !isPost);
+    if (isAnnouncementTab && feed.type === ThreadType.Announcement) {
+      deleteAnnouncementFeed(feed.id, post.id, !isPost); // delete Announcement feed in Service page's Announcement Tab
     } else {
       deleteFeed(feed.id, post.id, !isPost).catch(() => {
         // ignore since error is displayed in toast in the parent promise.
