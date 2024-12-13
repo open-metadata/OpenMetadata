@@ -287,27 +287,30 @@ public class AirflowRESTClient extends PipelineServiceClient {
       if (response.statusCode() == 401 || response.statusCode() == 403) {
         return buildUnhealthyStatus(
             String.format(
-                "Authentication failed for user [%s] trying to access the Airflow APIs.",
-                this.username));
+                "Authentication failed for user [%s] trying to access the Airflow APIs at [%s]",
+                this.username, serviceURL.toString()));
       }
 
       // APIs URL not found
       if (response.statusCode() == 404) {
         return buildUnhealthyStatus(
             String.format(
-                "Airflow APIs not found. Please validate if the OpenMetadata Airflow plugin is installed correctly. %s",
-                DOCS_LINK));
+                "Airflow APIs not found at [%s]. Please validate if the OpenMetadata Airflow plugin is installed correctly. %s",
+                serviceURL.toString(), DOCS_LINK));
       }
 
       return buildUnhealthyStatus(
           String.format(
-              "Unexpected status response: code [%s] - [%s]",
-              response.statusCode(), response.body()));
+              "Unexpected status response at [%s]: code [%s] - [%s]",
+              serviceURL.toString(), response.statusCode(), response.body()));
 
     } catch (IOException | URISyntaxException e) {
       String exceptionMsg;
       if (e.getMessage() != null) {
-        exceptionMsg = String.format("Failed to get Airflow status due to [%s].", e.getMessage());
+        exceptionMsg =
+            String.format(
+                "Failed to get Airflow status at [%s] due to [%s].",
+                serviceURL.toString(), e.getMessage());
       } else {
         exceptionMsg =
             String.format(
