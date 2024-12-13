@@ -245,23 +245,25 @@ const ActivityFeedActions = ({
             onClick={onReply}
           />
         )}
-        <Popover
-          destroyTooltipOnHide
-          align={{ targetOffset: [0, -10] }}
-          content={reactionList || []}
-          id="reaction-popover"
-          open={visible}
-          overlayClassName="ant-popover-feed-reactions"
-          placement="topLeft"
-          trigger="click"
-          zIndex={9999}
-          onOpenChange={handleVisibleChange}>
-          <Icon
-            component={IconReaction}
-            data-testid="add-reactions"
-            style={{ fontSize: '16px' }}
-          />
-        </Popover>
+        {feed.type === ThreadType.Announcement && (
+          <Popover
+            destroyTooltipOnHide
+            align={{ targetOffset: [0, -10] }}
+            content={reactionList || []}
+            id="reaction-popover"
+            open={visible}
+            overlayClassName="ant-popover-feed-reactions"
+            placement="topLeft"
+            trigger="click"
+            zIndex={9999}
+            onOpenChange={handleVisibleChange}>
+            <Icon
+              component={IconReaction}
+              data-testid="add-reactions"
+              style={{ fontSize: '16px' }}
+            />
+          </Popover>
+        )}
 
         {editCheck && (
           <Icon

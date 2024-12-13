@@ -566,7 +566,6 @@ export const ActivityFeedTab = ({
                     handleUpdateAnnouncementFilter(AnnoucementStatus.Active);
                     setActiveThread();
                   }}>
-                  <TaskIcon className="m-r-xss" width={14} />{' '}
                   {countData.data.openTaskCount} {t('label.active')}
                 </Typography.Text>
               )}
@@ -581,7 +580,6 @@ export const ActivityFeedTab = ({
                     handleUpdateAnnouncementFilter(AnnoucementStatus.Inactive);
                     setActiveThread();
                   }}>
-                  <CheckIcon className="m-r-xss" width={14} />{' '}
                   {countData.data.closedTaskCount} {t('label.inactive')}
                 </Typography.Text>
               )}
