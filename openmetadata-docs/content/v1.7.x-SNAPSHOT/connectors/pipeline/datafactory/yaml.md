@@ -21,7 +21,7 @@ Configure and schedule Azure DataFactory metadata and profiler workflows from th
     - [Data Factory Versions](#data-factory-versions)
 - [Metadata Ingestion](#metadata-ingestion)
 
-{% partial file="/v1.6/connectors/external-ingestion-deployment.md" /%}
+{% partial file="/v1.7/connectors/external-ingestion-deployment.md" /%}
 
 ## Requirements
 
@@ -37,7 +37,7 @@ Ensure that the service principal or managed identity you’re using has the nec
 
 ### Python Requirements
 
-{% partial file="/v1.6/connectors/python-requirements.md" /%}
+{% partial file="/v1.7/connectors/python-requirements.md" /%}
 
 To run the Data Factory ingestion, you will need to install:
 
@@ -147,11 +147,11 @@ This is a sample config for Data Factory:
 {% /codeInfo %}
 
 
-{% partial file="/v1.6/connectors/yaml/pipeline/source-config-def.md" /%}
+{% partial file="/v1.7/connectors/yaml/pipeline/source-config-def.md" /%}
 
-{% partial file="/v1.6/connectors/yaml/ingestion-sink-def.md" /%}
+{% partial file="/v1.7/connectors/yaml/ingestion-sink-def.md" /%}
 
-{% partial file="/v1.6/connectors/yaml/workflow-config-def.md" /%}
+{% partial file="/v1.7/connectors/yaml/workflow-config-def.md" /%}
 
 {% /codeInfoContainer %}
 
@@ -192,14 +192,14 @@ source:
       run_filter_days: 7
 ```
 
-{% partial file="/v1.6/connectors/yaml/pipeline/source-config.md" /%}
+{% partial file="/v1.7/connectors/yaml/pipeline/source-config.md" /%}
 
-{% partial file="/v1.6/connectors/yaml/ingestion-sink.md" /%}
+{% partial file="/v1.7/connectors/yaml/ingestion-sink.md" /%}
 
-{% partial file="/v1.6/connectors/yaml/workflow-config.md" /%}
+{% partial file="/v1.7/connectors/yaml/workflow-config.md" /%}
 
 {% /codeBlock %}
 
 {% /codePreview %}
 
-{% partial file="/v1.6/connectors/yaml/ingestion-cli.md" /%}
+{% partial file="/v1.7/connectors/yaml/ingestion-cli.md" /%}
