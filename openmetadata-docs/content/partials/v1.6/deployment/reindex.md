@@ -2,7 +2,7 @@ Go to `Settings` -> `Applications` -> `Search Indexing`
 
 {% image src="/images/v1.5/deployment/upgrade/search-index-app.png" alt="search-index-app" caption="Reindex" /%}
 
-Click on `Run Now`.
+Before initiating the process by clicking `Run Now`, ensure that the `Recreate Indexes` option is enabled to allow rebuilding the indexes as needed.
 
 In the configuration section, you can select the entities you want to reindex.
 
