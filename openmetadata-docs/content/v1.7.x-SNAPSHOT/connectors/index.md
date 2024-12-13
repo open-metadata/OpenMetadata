@@ -31,36 +31,36 @@ the following docs to run the Ingestion Framework in any orchestrator externally
 
 ## API Services
 
-{% partial file="/v1.6/connectors/api/connectors-list.md" /%}
+{% partial file="/v1.7/connectors/api/connectors-list.md" /%}
 
 ## Database / DataWarehouse Services
 
-{% partial file="/v1.6/connectors/database/connectors-list.md" /%}
+{% partial file="/v1.7/connectors/database/connectors-list.md" /%}
 
 ## Dashboard Services
 
-{% partial file="/v1.6/connectors/dashboard/connectors-list.md" /%}
+{% partial file="/v1.7/connectors/dashboard/connectors-list.md" /%}
 
 ## Messaging Services
 
-{% partial file="/v1.6/connectors/messaging/connectors-list.md" /%}
+{% partial file="/v1.7/connectors/messaging/connectors-list.md" /%}
 
 ## Pipeline Services
 
-{% partial file="/v1.6/connectors/pipeline/connectors-list.md" /%}
+{% partial file="/v1.7/connectors/pipeline/connectors-list.md" /%}
 
 ## ML Model Services
 
-{% partial file="/v1.6/connectors/ml-model/connectors-list.md" /%}
+{% partial file="/v1.7/connectors/ml-model/connectors-list.md" /%}
 
 ## Storage Services
 
-{% partial file="/v1.6/connectors/storage/connectors-list.md" /%}
+{% partial file="/v1.7/connectors/storage/connectors-list.md" /%}
 
 ## Metadata Services
 
-{% partial file="/v1.6/connectors/metadata/connectors-list.md" /%}
+{% partial file="/v1.7/connectors/metadata/connectors-list.md" /%}
 
 ## Search Services
 
-{% partial file="/v1.6/connectors/search/connectors-list.md" /%}
+{% partial file="/v1.7/connectors/search/connectors-list.md" /%}

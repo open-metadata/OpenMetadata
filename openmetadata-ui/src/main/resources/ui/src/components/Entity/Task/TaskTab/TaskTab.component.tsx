@@ -431,8 +431,11 @@ export const TaskTab = ({
       onTaskResolve();
     }
     setTaskAction(
-      TASK_ACTION_LIST.find((action) => action.key === info.key) ??
-        TASK_ACTION_LIST[0]
+      [
+        ...TASK_ACTION_LIST,
+        ...GLOSSARY_TASK_ACTION_LIST,
+        ...INCIDENT_TASK_ACTION_LIST,
+      ].find((action) => action.key === info.key) ?? TASK_ACTION_LIST[0]
     );
   };
 
