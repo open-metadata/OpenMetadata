@@ -336,6 +336,8 @@ site_menu:
     url: /connectors/database/mssql
   - category: Connectors / Database / MSSQL / Run Externally
     url: /connectors/database/mssql/yaml
+  - category: Connectors / Database / MSSQL / Troubleshooting
+    url: /connectors/database/mssql/troubleshooting
   - category: Connectors / Database / MySQL
     url: /connectors/database/mysql
   - category: Connectors / Database / MySQL / Run Externally
