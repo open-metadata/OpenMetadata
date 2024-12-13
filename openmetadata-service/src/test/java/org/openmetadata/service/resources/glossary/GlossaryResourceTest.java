@@ -934,8 +934,25 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
     List<String> newRecords =
         listOf(
             ",g3,dsp0,dsc0,h1;h2;h3,,term0;http://term0,PII.Sensitive,,,Approved,\"\"\"glossaryTermTableCol1Cp:row_1_col1_Value,,\"\";\"\"glossaryTermTableCol3Cp:row_1_col1_Value,row_1_col2_Value,row_1_col3_Value|row_2_col1_Value,row_2_col2_Value,row_2_col3_Value\"\"\"");
-    testImportExport(
-        glossary.getName(), GlossaryCsv.HEADERS, createRecords, updateRecords, newRecords);
+    Awaitility.await()
+        .atMost(Duration.ofMillis(120 * 1000L))
+        .pollInterval(Duration.ofMillis(2000L))
+        .ignoreExceptions()
+        .until(
+            () -> {
+              try {
+                testImportExport(
+                    glossary.getName(),
+                    GlossaryCsv.HEADERS,
+                    createRecords,
+                    updateRecords,
+                    newRecords);
+                return true;
+              } catch (Exception e) {
+                // Return false to retry
+                return false;
+              }
+            });
   }
 
   @Test

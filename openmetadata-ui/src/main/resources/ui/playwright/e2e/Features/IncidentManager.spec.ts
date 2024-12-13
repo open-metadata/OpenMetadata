@@ -47,6 +47,9 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
 
     const { afterAction, apiContext, page } = await createNewPage(browser);
 
+    for (const user of users) {
+      await user.create(apiContext);
+    }
     const { pipeline } = await table1.createTestSuiteAndPipelines(apiContext);
     for (let i = 0; i < 3; i++) {
       await table1.createTestCase(apiContext, {
@@ -65,10 +68,6 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
       pipeline,
       apiContext,
     });
-
-    for (const user of users) {
-      await user.create(apiContext);
-    }
 
     await afterAction();
   });

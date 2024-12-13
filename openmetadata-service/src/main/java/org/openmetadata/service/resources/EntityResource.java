@@ -171,7 +171,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     authorizer.authorize(securityContext, operationContext, resourceContext);
 
     // Add Domain Filter
-    EntityUtil.addDomainQueryParam(securityContext, filter);
+    EntityUtil.addDomainQueryParam(securityContext, filter, entityType);
 
     // List
     ResultList<T> resultList;

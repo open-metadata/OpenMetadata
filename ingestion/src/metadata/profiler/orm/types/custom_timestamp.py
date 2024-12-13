@@ -45,6 +45,8 @@ class CustomTimestamp(TypeDecorator):
         import struct  # pylint: disable=import-outside-toplevel
 
         if dialect.name == "mssql" and isinstance(value, bytes):
-            bytes_to_int = struct.unpack(">Q", value)[0]
-            return bytes_to_int
+            unpacked_value = struct.unpack("@Q", value)
+            if unpacked_value:
+                return unpacked_value[0]
+            return None
         return value
