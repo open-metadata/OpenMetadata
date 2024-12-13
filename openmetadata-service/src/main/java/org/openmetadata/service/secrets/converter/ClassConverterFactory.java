@@ -88,8 +88,8 @@ public final class ClassConverterFactory {
             Map.entry(TrinoConnection.class, new TrinoConnectionClassConverter()),
             Map.entry(Workflow.class, new WorkflowClassConverter()),
             Map.entry(CockroachConnection.class, new CockroachConnectionClassConverter()));
-            Map.entry(Workflow.class, new WorkflowClassConverter());
-            Map.entry(CassandraConnection.class, new CassandraConnectionClassConverter());
+    Map.entry(Workflow.class, new WorkflowClassConverter());
+    Map.entry(CassandraConnection.class, new CassandraConnectionClassConverter());
   }
 
   public static ClassConverter getConverter(Class<?> clazz) {
