@@ -64,6 +64,11 @@ const RichTextEditorPreviewerV1: FC<PreviewerProp> = ({
     setReadMore(Boolean(isDescriptionExpanded));
   }, [isDescriptionExpanded]);
 
+  // if markdown is empty then show no description placeholder
+  if (markdown === '' || markdown === '<p></p>') {
+    return <span className="text-grey-muted">{t('label.no-description')}</span>;
+  }
+
   return (
     <div
       className={classNames('rich-text-editor-container', className, {
