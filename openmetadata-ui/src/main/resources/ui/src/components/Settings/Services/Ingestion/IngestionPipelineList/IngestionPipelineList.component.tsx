@@ -185,7 +185,7 @@ export const IngestionPipelineList = ({
 
   useEffect(() => {
     isAirflowAvailable && fetchPipelines({ limit: pageSize });
-  }, [serviceName, isAirflowAvailable]);
+  }, [serviceName, isAirflowAvailable, pageSize]);
 
   const handleTableChange: TableProps<IngestionPipeline>['onChange'] =
     useCallback(
