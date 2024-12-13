@@ -131,7 +131,7 @@ jest.mock('../../components/common/ResizablePanels/ResizablePanels', () =>
 );
 
 jest.mock(
-  '../../components/common/RichTextEditor/RichTextEditorPreviewer',
+  '../../components/common/RichTextEditor/RichTextEditorPreviewerV1',
   () => jest.fn().mockImplementation(() => <div>RichTextEditorPreviewer</div>)
 );
 
