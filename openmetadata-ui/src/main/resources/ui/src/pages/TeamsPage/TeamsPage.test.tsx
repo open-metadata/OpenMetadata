@@ -164,7 +164,6 @@ describe('Test Teams Page', () => {
       {
         fields: [
           'users',
-          'userCount',
           'defaultRoles',
           'policies',
           'childrenCount',

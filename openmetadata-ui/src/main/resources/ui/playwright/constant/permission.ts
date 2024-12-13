@@ -77,6 +77,15 @@ export const DATA_CONSUMER_RULES: PolicyRulesType[] = [
   },
 ];
 
+export const EDIT_USER_FOR_TEAM_RULES: PolicyRulesType[] = [
+  {
+    name: 'EditUserTeams-EditRule',
+    resources: ['team'],
+    operations: ['EditUsers'],
+    effect: 'allow',
+  },
+];
+
 export const ORGANIZATION_POLICY_RULES: PolicyRulesType[] = [
   {
     name: 'OrganizationPolicy-NoOwner-Rule',
