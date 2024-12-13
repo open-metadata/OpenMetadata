@@ -57,6 +57,7 @@ VERSIONS = {
     "giturlparse": "giturlparse",
     "validators": "validators~=0.22.0",
     "teradata": "teradatasqlalchemy>=20.0.0.0",
+    "cockroach": "sqlalchemy-cockroachdb==2.0.2",
 }
 
 COMMONS = {
@@ -232,6 +233,10 @@ plugins: Dict[str, Set[str]] = {
     "glue": {VERSIONS["boto3"]},
     "great-expectations": {VERSIONS["great-expectations"]},
     "greenplum": {*COMMONS["postgres"]},
+    "cockroach": {
+        VERSIONS["cockroach"],
+        "psycopg2-binary",
+    },
     "hive": {
         *COMMONS["hive"],
         "thrift>=0.13,<1",
@@ -377,6 +382,7 @@ test = {
     VERSIONS["avro"],  # Sample Data
     VERSIONS["grpc-tools"],
     VERSIONS["neo4j"],
+    VERSIONS["cockroach"],
     "testcontainers==3.7.1;python_version<'3.9'",
     "testcontainers~=4.8.0;python_version>='3.9'",
     "minio==7.2.5",

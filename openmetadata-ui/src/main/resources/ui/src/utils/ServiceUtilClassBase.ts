@@ -25,6 +25,7 @@ import {
   BIGQUERY,
   BIGTABLE,
   CLICKHOUSE,
+  COCKROACH,
   COUCHBASE,
   CUSTOM_SEARCH_DEFAULT,
   CUSTOM_STORAGE_DEFAULT,
@@ -352,6 +353,9 @@ class ServiceUtilClassBase {
       case this.DatabaseServiceTypeSmallCase.Couchbase:
         return COUCHBASE;
 
+      case this.DatabaseServiceTypeSmallCase.Cockroach:
+        return COCKROACH;
+
       case this.DatabaseServiceTypeSmallCase.Greenplum:
         return GREENPLUM;
 
@@ -669,6 +673,8 @@ class ServiceUtilClassBase {
         return 'ElasticSearch';
       case this.SearchServiceTypeSmallCase.CustomSearch:
         return 'Custom Search';
+      case this.DatabaseServiceTypeSmallCase.Cockroach:
+        return 'Cockroach';
 
       default:
         return capitalize(serviceType);

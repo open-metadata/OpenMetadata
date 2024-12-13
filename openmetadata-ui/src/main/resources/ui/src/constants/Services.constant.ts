@@ -26,6 +26,7 @@ import atlas from '../assets/img/service-icon-atlas.svg';
 import azuresql from '../assets/img/service-icon-azuresql.png';
 import bigtable from '../assets/img/service-icon-bigtable.png';
 import clickhouse from '../assets/img/service-icon-clickhouse.png';
+import cockroach from '../assets/img/service-icon-cockroach.png';
 import couchbase from '../assets/img/service-icon-couchbase.svg';
 import dagster from '../assets/img/service-icon-dagster.png';
 import databrick from '../assets/img/service-icon-databrick.png';
@@ -222,6 +223,7 @@ export const ICEBERGE = iceberge;
 export const TERADATA = teradata;
 export const FLINK = flink;
 export const REST_SERVICE = restService;
+export const COCKROACH = cockroach;
 export const excludedService = [
   MlModelServiceType.Sklearn,
   MetadataServiceType.MetadataES,
@@ -431,6 +433,7 @@ export const BETA_SERVICES = [
   PipelineServiceType.Flink,
   MetadataServiceType.AlationSink,
   DatabaseServiceType.Synapse,
+  DatabaseServiceType.Cockroach,
 ];
 
 export const TEST_CONNECTION_INITIAL_MESSAGE = i18n.t(
