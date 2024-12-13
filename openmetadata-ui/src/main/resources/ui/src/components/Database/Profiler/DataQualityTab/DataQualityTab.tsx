@@ -399,7 +399,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
     if (status !== 'Success') {
       return (
         <Typography.Paragraph className="p-md m-b-0 error-msg-bg" type="danger">
-          {record.testCaseResult?.result || 'No error message available'}
+          {record.testCaseResult?.result ?? 'No error message available'}
         </Typography.Paragraph>
       );
     }
