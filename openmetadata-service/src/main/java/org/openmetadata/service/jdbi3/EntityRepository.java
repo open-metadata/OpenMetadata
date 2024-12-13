@@ -960,17 +960,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return update(uriInfo, original, updated);
   }
 
-  @Transaction
-  public final PutResponse<T> createOrUpdate(UriInfo uriInfo, String updatedJson) {
-    T updated = JsonUtils.readValue(updatedJson, entityClass);
-    T original = findByNameOrNull(updated.getFullyQualifiedName(), ALL);
-    if (original == null) { // If an original entity does not exist then create it, else update
-      return new PutResponse<>(
-          Status.CREATED, withHref(uriInfo, createNewEntity(updated)), ENTITY_CREATED);
-    }
-    return update(uriInfo, original, updated);
-  }
-
   @SuppressWarnings("unused")
   protected void postCreate(T entity) {
     if (supportsSearch) {
