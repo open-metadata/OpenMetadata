@@ -186,7 +186,10 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     EntityMaskerFactory.createEntityMasker();
 
     // Instantiate JWT Token Generator
-    JWTTokenGenerator.getInstance().init(catalogConfig.getJwtTokenConfiguration());
+    JWTTokenGenerator.getInstance()
+        .init(
+            catalogConfig.getAuthenticationConfiguration().getTokenValidationAlgorithm(),
+            catalogConfig.getJwtTokenConfiguration());
 
     // Set the Database type for choosing correct queries from annotations
     jdbi.getConfig(SqlObjects.class)
