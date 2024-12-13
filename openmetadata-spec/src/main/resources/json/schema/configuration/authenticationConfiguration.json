@@ -49,7 +49,8 @@
     "tokenValidationAlgorithm": {
       "description": "Token Validation Algorithm to use.",
       "type": "string",
-      "enum": ["RS256", "RS384", "RS512"]
+      "enum": ["RS256", "RS384", "RS512"],
+      "default": "RS256"
     },
     "authority": {
       "description": "Authentication Authority",
