@@ -52,6 +52,8 @@ Admin permissions are required to register the application on the Azure portal.
 
 - **Web:**  
   This type is intended for confidential clients. If you select this option, you must provide both the client ID and client secret. Simply passing the client ID will cause the authorization process to fail, as the Authorization Code flow requires both credentials for successful authentication.
+  The [OIDC Authorization Code Flow](/deployment/security/oidc) is used in this case, where the client secret is required to securely exchange the authorization code for tokens.
+
 
 ### Recommendation:
 
