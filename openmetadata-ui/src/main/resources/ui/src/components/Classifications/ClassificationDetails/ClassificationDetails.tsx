@@ -438,6 +438,95 @@ const ClassificationDetails = forwardRef(
                         </Button>
                       </Tooltip>
                     )}
+                  </div>
+                }
+                className={classNames({
+                  'opacity-60': isClassificationDisabled,
+                })}
+                displayName={displayName}
+                icon={
+                  <IconTag className="h-9" style={{ color: DE_ACTIVE_COLOR }} />
+                }
+                isDisabled={isClassificationDisabled}
+                name={name ?? currentClassification.name}
+                serviceName="classification"
+              />
+            </Col>
+
+            <Col className="d-flex justify-end items-start" flex="270px">
+              <Space>
+                {createPermission && (
+                  <Tooltip title={addTagButtonToolTip}>
+                    <Button
+                      data-testid="add-new-tag-button"
+                      disabled={isClassificationDisabled}
+                      type="primary"
+                      onClick={handleAddNewTagClick}>
+                      {t('label.add-entity', {
+                        entity: t('label.tag'),
+                      })}
+                    </Button>
+                  </Tooltip>
+                )}
+
+                <ButtonGroup size="small">
+                  <Tooltip
+                    title={t(
+                      `label.${
+                        isVersionView
+                          ? 'exit-version-history'
+                          : 'version-plural-history'
+                      }`
+                    )}>
+                    <Button
+                      className="w-16 p-0"
+                      data-testid="version-button"
+                      icon={<Icon component={VersionIcon} />}
+                      onClick={versionHandler}>
+                      <Typography.Text>{currentVersion}</Typography.Text>
+                    </Button>
+                  </Tooltip>
+                  {showManageButton && (
+                    <ManageButton
+                      isRecursiveDelete
+                      afterDeleteAction={handleAfterDeleteAction}
+                      allowRename={!isSystemClassification}
+                      allowSoftDelete={false}
+                      canDelete={deletePermission && !isClassificationDisabled}
+                      displayName={getEntityName(currentClassification)}
+                      editDisplayNamePermission={
+                        editDisplayNamePermission && !isClassificationDisabled
+                      }
+                      entityFQN={currentClassification.fullyQualifiedName}
+                      entityId={currentClassification.id}
+                      entityName={currentClassification.name}
+                      entityType={EntityType.CLASSIFICATION}
+                      extraDropdownContent={extraDropdownContent}
+                      onEditDisplayName={handleUpdateDisplayName}
+                    />
+                  )}
+                </ButtonGroup>
+              </Space>
+            </Col>
+          </Row>
+        )}
+        <div className="m-b-sm m-t-xs" data-testid="description-container">
+          <DescriptionV1
+            className={classNames({
+              'opacity-60': isClassificationDisabled,
+            })}
+            description={description}
+            entityName={getEntityName(currentClassification)}
+            entityType={EntityType.CLASSIFICATION}
+            hasEditAccess={editDescriptionPermission}
+            isDescriptionExpanded={isEmpty(tags)}
+            isEdit={isEditClassification}
+            showCommentsIcon={false}
+            onCancel={handleCancelEditDescription}
+            onDescriptionEdit={handleEditDescriptionClick}
+            onDescriptionUpdate={handleUpdateDescription}
+          />
+        </div>
 
                     <ButtonGroup size="small">
                       <Tooltip

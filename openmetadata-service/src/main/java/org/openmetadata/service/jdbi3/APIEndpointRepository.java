@@ -396,7 +396,7 @@ public class APIEndpointRepository extends EntityRepository<APIEndpoint> {
 
     @Transaction
     @Override
-    public void entitySpecificUpdate() {
+    public void entitySpecificUpdate(boolean consolidatingChanges) {
       recordChange("endpointURL", original.getEndpointURL(), updated.getEndpointURL());
       recordChange("requestMethod", original.getRequestMethod(), updated.getRequestMethod());
 

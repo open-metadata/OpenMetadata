@@ -1,12 +1,16 @@
 package org.openmetadata.service.governance.workflows.elements.nodes.userTask.impl;
 
+import static org.openmetadata.service.governance.workflows.Workflow.EXCEPTION_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
-import static org.openmetadata.service.governance.workflows.Workflow.STAGE_INSTANCE_STATE_ID_VARIABLE;
+import static org.openmetadata.service.governance.workflows.Workflow.WORKFLOW_RUNTIME_EXCEPTION;
+import static org.openmetadata.service.governance.workflows.WorkflowHandler.getProcessDefinitionKeyFromId;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import lombok.extern.slf4j.Slf4j;
+import org.flowable.engine.delegate.BpmnError;
 import org.flowable.engine.delegate.TaskListener;
 import org.flowable.identitylink.api.IdentityLink;
 import org.flowable.task.service.delegate.DelegateTask;
@@ -22,28 +26,32 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.FeedRepository;
-import org.openmetadata.service.jdbi3.WorkflowInstanceStateRepository;
 import org.openmetadata.service.resources.feeds.FeedResource;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.util.WebsocketNotificationHandler;
 
+@Slf4j
 public class CreateApprovalTaskImpl implements TaskListener {
   @Override
   public void notify(DelegateTask delegateTask) {
-    List<EntityReference> assignees = getAssignees(delegateTask);
-    MessageParser.EntityLink entityLink =
-        MessageParser.EntityLink.parse((String) delegateTask.getVariable(RELATED_ENTITY_VARIABLE));
-    GlossaryTerm entity = Entity.getEntity(entityLink, "*", Include.ALL);
+    try {
+      List<EntityReference> assignees = getAssignees(delegateTask);
+      MessageParser.EntityLink entityLink =
+          MessageParser.EntityLink.parse(
+              (String) delegateTask.getVariable(RELATED_ENTITY_VARIABLE));
+      GlossaryTerm entity = Entity.getEntity(entityLink, "*", Include.ALL);
 
-    Thread task = createApprovalTask(entity, assignees);
-    WorkflowHandler.getInstance().setCustomTaskId(delegateTask.getId(), task.getId());
-
-    UUID workflowInstanceStateId =
-        (UUID) delegateTask.getVariable(STAGE_INSTANCE_STATE_ID_VARIABLE);
-    WorkflowInstanceStateRepository workflowInstanceStateRepository =
-        (WorkflowInstanceStateRepository)
-            Entity.getEntityTimeSeriesRepository(Entity.WORKFLOW_INSTANCE_STATE);
-    workflowInstanceStateRepository.updateStageWithTask(task.getId(), workflowInstanceStateId);
+      Thread task = createApprovalTask(entity, assignees);
+      WorkflowHandler.getInstance().setCustomTaskId(delegateTask.getId(), task.getId());
+    } catch (Exception exc) {
+      LOG.error(
+          String.format(
+              "[%s] Failure: ",
+              getProcessDefinitionKeyFromId(delegateTask.getProcessDefinitionId())),
+          exc);
+      delegateTask.setVariable(EXCEPTION_VARIABLE, exc.toString());
+      throw new BpmnError(WORKFLOW_RUNTIME_EXCEPTION, exc.getMessage());
+    }
   }
 
   private List<EntityReference> getAssignees(DelegateTask delegateTask) {

@@ -266,20 +266,29 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
   @Test
   void patch_addDeleteReviewers(TestInfo test) throws IOException {
     CreateGlossaryTerm create =
-        createRequest(getEntityName(test), "", "", null).withReviewers(null).withSynonyms(null);
+        createRequest(getEntityName(test), "desc", "", null).withReviewers(null).withSynonyms(null);
     GlossaryTerm term = createEntity(create, ADMIN_AUTH_HEADERS);
 
     // Add reviewer USER1, synonym1, reference1 in PATCH request
     String origJson = JsonUtils.pojoToJson(term);
     TermReference reference1 =
         new TermReference().withName("reference1").withEndpoint(URI.create("http://reference1"));
+
+    // NOTE: We are patching outside the `patchEntityAndCheck` method in order to be able to wait
+    // for the Task to be Created.
+    // The Task is created asynchronously from the Glossary Approval Workflow.
+    // This allows us to be sure the Status will be updated to IN_REVIEW.
     term.withReviewers(List.of(USER1_REF))
         .withSynonyms(List.of("synonym1"))
         .withReferences(List.of(reference1));
+    patchEntity(term.getId(), origJson, term, ADMIN_AUTH_HEADERS);
+    waitForTaskToBeCreated(term.getFullyQualifiedName());
+
     ChangeDescription change = getChangeDescription(term, MINOR_UPDATE);
     fieldAdded(change, "reviewers", List.of(USER1_REF));
     fieldAdded(change, "synonyms", List.of("synonym1"));
     fieldAdded(change, "references", List.of(reference1));
+    fieldUpdated(change, "status", Status.APPROVED, Status.IN_REVIEW);
     term = patchEntityAndCheck(term, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // Add reviewer USER2, synonym2, reference2 in PATCH request
@@ -294,6 +303,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     fieldAdded(change, "reviewers", List.of(USER1_REF, USER2_REF));
     fieldAdded(change, "synonyms", List.of("synonym1", "synonym2"));
     fieldAdded(change, "references", List.of(reference1, reference2));
+    fieldUpdated(change, "status", Status.APPROVED, Status.IN_REVIEW);
     term = patchEntityAndCheck(term, origJson, ADMIN_AUTH_HEADERS, CHANGE_CONSOLIDATED, change);
 
     // Remove a reviewer USER1, synonym1, reference1 in PATCH request
@@ -306,6 +316,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     fieldAdded(change, "reviewers", List.of(USER2_REF));
     fieldAdded(change, "synonyms", List.of("synonym2"));
     fieldAdded(change, "references", List.of(reference2));
+    fieldUpdated(change, "status", Status.APPROVED, Status.IN_REVIEW);
     patchEntityAndCheck(term, origJson, ADMIN_AUTH_HEADERS, CHANGE_CONSOLIDATED, change);
   }
 
@@ -731,6 +742,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
   }
 
   @Test
+  @Order(Integer.MAX_VALUE)
   void delete_recursive(TestInfo test) throws IOException {
     Glossary g1 = createGlossary(test, null, emptyList());
 

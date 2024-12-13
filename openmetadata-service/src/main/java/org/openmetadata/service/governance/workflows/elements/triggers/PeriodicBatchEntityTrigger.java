@@ -1,5 +1,6 @@
 package org.openmetadata.service.governance.workflows.elements.triggers;
 
+import static org.openmetadata.service.governance.workflows.Workflow.EXCEPTION_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.getFlowableElementId;
 
@@ -53,6 +54,7 @@ public class PeriodicBatchEntityTrigger implements TriggerInterface {
 
     StartEvent startEvent =
         new StartEventBuilder().id(getFlowableElementId(triggerWorkflowId, "startEvent")).build();
+    startEvent.setAsynchronousLeave(true);
     oTimerDefinition.ifPresent(startEvent::addEventDefinition);
     process.addFlowElement(startEvent);
 
@@ -120,7 +122,12 @@ public class PeriodicBatchEntityTrigger implements TriggerInterface {
     inputParameter.setSource(RELATED_ENTITY_VARIABLE);
     inputParameter.setTarget(RELATED_ENTITY_VARIABLE);
 
+    IOParameter outputParameter = new IOParameter();
+    outputParameter.setSource(EXCEPTION_VARIABLE);
+    outputParameter.setTarget(EXCEPTION_VARIABLE);
+
     workflowTrigger.setInParameters(List.of(inputParameter));
+    workflowTrigger.setOutParameters(List.of(outputParameter));
     workflowTrigger.setLoopCharacteristics(multiInstance);
 
     return workflowTrigger;
@@ -155,6 +162,8 @@ public class PeriodicBatchEntityTrigger implements TriggerInterface {
     serviceTask.getFieldExtensions().add(entityTypeExpr);
     serviceTask.getFieldExtensions().add(searchFilterExpr);
     serviceTask.getFieldExtensions().add(batchSizeExpr);
+
+    serviceTask.setAsynchronousLeave(true);
 
     return serviceTask;
   }

@@ -103,7 +103,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
   static final String FIELDS = "owners";
   private SearchRepository searchRepository;
   public static final List<ScheduleType> SCHEDULED_TYPES =
-      List.of(ScheduleType.Scheduled, ScheduleType.ScheduledOrManual);
+      List.of(ScheduleType.Scheduled, ScheduleType.ScheduledOrManual, ScheduleType.NoSchedule);
   public static final String SLACK_APPLICATION = "SlackApplication";
 
   @Override
@@ -269,13 +269,13 @@ public class AppResource extends EntityResource<App, AppRepository> {
           @DefaultValue("10")
           @QueryParam("limit")
           @Min(0)
-          @Max(1000000)
+          @Max(1000)
           int limitParam,
       @Parameter(description = "Offset records. (0 to 1000000, default = 0)")
           @DefaultValue("0")
           @QueryParam("offset")
           @Min(0)
-          @Max(1000000)
+          @Max(1000)
           int offset,
       @Parameter(
               description = "Filter pipeline status after the given start timestamp",
@@ -1013,9 +1013,9 @@ public class AppResource extends EntityResource<App, AppRepository> {
     App app = repository.getByName(uriInfo, name, fields);
     if (Boolean.TRUE.equals(app.getSupportsInterrupt())) {
       if (app.getAppType().equals(AppType.Internal)) {
-        AppScheduler.getInstance().stopApplicationRun(app);
+        new Thread(() -> AppScheduler.getInstance().stopApplicationRun(app)).start();
         return Response.status(Response.Status.OK)
-            .entity("Application will be stopped in some time.")
+            .entity("Application stop in progress. Please check status via.")
             .build();
       } else {
         if (!app.getPipelines().isEmpty()) {
@@ -1135,7 +1135,6 @@ public class AppResource extends EntityResource<App, AppRepository> {
 
     // validate Bot if provided
     validateAndAddBot(app, createAppRequest.getBot());
-
     return app;
   }
 

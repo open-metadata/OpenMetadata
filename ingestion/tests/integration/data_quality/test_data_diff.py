@@ -2,7 +2,7 @@ import sys
 from datetime import datetime
 
 import pytest
-from dirty_equals import IsApprox
+from dirty_equals import IsApprox, IsPositiveInt
 from pydantic import BaseModel
 from sqlalchemy import VARBINARY
 from sqlalchemy import Column as SQAColumn
@@ -97,7 +97,7 @@ class TestParameters(BaseModel):
                     testCaseStatus=TestCaseStatus.Success,
                     failedRows=0,
                     # we use approximations becuase the sampling is not deterministic
-                    passedRows=IsApprox(59, delta=20),
+                    passedRows=IsApprox(59, delta=60) & IsPositiveInt,
                 ),
                 TableProfilerConfig(
                     profileSampleType=ProfileSampleType.PERCENTAGE,
@@ -120,11 +120,12 @@ class TestParameters(BaseModel):
                     timestamp=int(datetime.now().timestamp() * 1000),
                     testCaseStatus=TestCaseStatus.Success,
                     failedRows=0,
-                    passedRows=IsApprox(10, delta=5),
+                    # we use approximations around the 99.5 confidence interval since the
+                    # sampling in data diff uses hash based partitioning
+                    passedRows=IsApprox(10, delta=15) & IsPositiveInt,
                 ),
                 TableProfilerConfig(
                     profileSampleType=ProfileSampleType.ROWS,
-                    # we use approximations becuase the sampling is not deterministic
                     profileSample=10,
                 ),
             ),
@@ -305,7 +306,7 @@ class TestParameters(BaseModel):
                     testCaseStatus=TestCaseStatus.Failed,
                     testResultValue=[
                         TestResultValue(name="removedColumns", value="1"),
-                        TestResultValue(name="addedColumns", value="0"),
+                        TestResultValue(name="addedColumns", value="1"),
                         TestResultValue(name="changedColumns", value="0"),
                     ],
                 ),

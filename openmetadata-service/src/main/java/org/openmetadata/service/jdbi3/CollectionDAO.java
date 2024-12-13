@@ -67,6 +67,7 @@ import org.openmetadata.schema.auth.PersonalAccessToken;
 import org.openmetadata.schema.auth.RefreshToken;
 import org.openmetadata.schema.auth.TokenType;
 import org.openmetadata.schema.configuration.AssetCertificationSettings;
+import org.openmetadata.schema.configuration.WorkflowSettings;
 import org.openmetadata.schema.dataInsight.DataInsightChart;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
 import org.openmetadata.schema.dataInsight.kpi.Kpi;
@@ -847,6 +848,13 @@ public interface CollectionDAO {
       bulkInsertTo(insertToRelationship);
     }
 
+    default void bulkRemoveToRelationship(
+        UUID fromId, List<UUID> toIds, String fromEntity, String toEntity, int relation) {
+
+      List<String> toIdsAsString = toIds.stream().map(UUID::toString).toList();
+      bulkRemoveTo(fromId, toIdsAsString, fromEntity, toEntity, relation);
+    }
+
     @ConnectionAwareSqlUpdate(
         value =
             "INSERT INTO entity_relationship(fromId, toId, fromEntity, toEntity, relation, json) "
@@ -881,6 +889,18 @@ public interface CollectionDAO {
                 value = "values",
                 propertyNames = {"fromId", "toId", "fromEntity", "toEntity", "relation"})
             List<EntityRelationshipObject> values);
+
+    @SqlUpdate(
+        value =
+            "DELETE FROM entity_relationship WHERE fromId = :fromId "
+                + "AND fromEntity = :fromEntity AND toId IN (<toIds>) "
+                + "AND toEntity = :toEntity AND relation = :relation")
+    void bulkRemoveTo(
+        @BindUUID("fromId") UUID fromId,
+        @BindList("toIds") List<String> toIds,
+        @Bind("fromEntity") String fromEntity,
+        @Bind("toEntity") String toEntity,
+        @Bind("relation") int relation);
 
     //
     // Find to operations
@@ -1157,7 +1177,7 @@ public interface CollectionDAO {
         value =
             "DELETE FROM entity_relationship "
                 + "WHERE  json->'pipeline'->>'id' =:toId OR toId = :toId AND relation = :relation "
-                + "AND json->>'source' = :source ORDER BY toId",
+                + "AND json->>'source' = :source",
         connectionType = POSTGRES)
     void deleteLineageBySourcePipeline(
         @BindUUID("toId") UUID toId,
@@ -2722,25 +2742,6 @@ public interface CollectionDAO {
       return listAfter(
           getTableName(), filter.getQueryParams(), condition, condition, limit, afterName, afterId);
     }
-
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT json FROM table_entity "
-                + "WHERE JSON_SEARCH(JSON_EXTRACT(json, '$.tableConstraints[*].referredColumns'), "
-                + "'one', :fqn) IS NOT NULL",
-        connectionType = MYSQL)
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT json "
-                + "FROM table_entity "
-                + "WHERE EXISTS ("
-                + "    SELECT 1"
-                + "    FROM jsonb_array_elements(json->'tableConstraints') AS constraints"
-                + "    CROSS JOIN jsonb_array_elements_text(constraints->'referredColumns') AS referredColumn "
-                + "    WHERE referredColumn LIKE :fqn"
-                + ")",
-        connectionType = POSTGRES)
-    List<String> findRelatedTables(@Bind("fqn") String fqn);
   }
 
   interface StoredProcedureDAO extends EntityDAO<StoredProcedure> {
@@ -5156,6 +5157,7 @@ public interface CollectionDAO {
             case SEARCH_SETTINGS -> JsonUtils.readValue(json, SearchSettings.class);
             case ASSET_CERTIFICATION_SETTINGS -> JsonUtils.readValue(
                 json, AssetCertificationSettings.class);
+            case WORKFLOW_SETTINGS -> JsonUtils.readValue(json, WorkflowSettings.class);
             case LINEAGE_SETTINGS -> JsonUtils.readValue(json, LineageSettings.class);
             default -> throw new IllegalArgumentException("Invalid Settings Type " + configType);
           };

@@ -293,7 +293,7 @@ export const getNameFromUserData = (
     }
   }
 
-  return { name: userName, email: email };
+  return { name: userName, email: email, picture: user.picture };
 };
 
 export const isProtectedRoute = (pathname: string) => {
@@ -340,6 +340,7 @@ export const extractDetailsFromToken = (token: string) => {
         return {
           exp,
           isExpired: false,
+          timeoutExpiry: 0,
         };
       }
       const threshouldMillis = EXPIRY_THRESHOLD_MILLES;

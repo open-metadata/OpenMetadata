@@ -154,6 +154,7 @@ import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.api.BulkResponse;
 import org.openmetadata.schema.type.csv.CsvImportResult;
+import org.openmetadata.schema.type.customProperties.EnumConfig;
 import org.openmetadata.schema.type.customProperties.TableConfig;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
@@ -916,6 +917,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   public final T setFieldsInternal(T entity, Fields fields) {
     entity.setOwners(fields.contains(FIELD_OWNERS) ? getOwners(entity) : entity.getOwners());
     entity.setTags(fields.contains(FIELD_TAGS) ? getTags(entity) : entity.getTags());
+    entity.setCertification(fields.contains(FIELD_TAGS) ? getCertification(entity) : null);
     entity.setExtension(
         fields.contains(FIELD_EXTENSION) ? getExtension(entity) : entity.getExtension());
     // Always return domains of entity
@@ -1526,6 +1528,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
         jsonNode.put(fieldName, formattedValue);
       }
       case "table-cp" -> validateTableType(fieldValue, propertyConfig, fieldName);
+      case "enum" -> validateEnumKeys(fieldName, fieldValue, propertyConfig);
       default -> {}
     }
   }
@@ -1605,6 +1608,26 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
       throw new IllegalArgumentException(
           CatalogExceptionMessage.jsonValidationError(fieldName, validationErrors));
+    }
+  }
+
+  public static void validateEnumKeys(
+      String fieldName, JsonNode fieldValue, String propertyConfig) {
+    JsonNode propertyConfigNode = JsonUtils.readTree(propertyConfig);
+    EnumConfig config = JsonUtils.treeToValue(propertyConfigNode, EnumConfig.class);
+
+    if (!config.getMultiSelect() && fieldValue.size() > 1) {
+      throw new IllegalArgumentException(
+          String.format("Only one value allowed for non-multiSelect %s property", fieldName));
+    }
+    Set<String> validValues = new HashSet<>(config.getValues());
+    Set<String> fieldValues = new HashSet<>();
+    fieldValue.forEach(value -> fieldValues.add(value.asText()));
+
+    if (!validValues.containsAll(fieldValues)) {
+      fieldValues.removeAll(validValues);
+      throw new IllegalArgumentException(
+          String.format("Values '%s' not supported for property %s", fieldValues, fieldName));
     }
   }
 
@@ -1691,6 +1714,22 @@ public abstract class EntityRepository<T extends EntityInterface> {
                 tagLabel.getState().ordinal());
       }
     }
+  }
+
+  protected AssetCertification getCertification(T entity) {
+    return !supportsCertification ? null : getCertification(entity.getCertification());
+  }
+
+  protected AssetCertification getCertification(AssetCertification certification) {
+    if (certification == null) {
+      return null;
+    }
+
+    String certificationTagFqn = certification.getTagLabel().getTagFQN();
+    TagLabel certificationTagLabel =
+        EntityUtil.toTagLabel(TagLabelUtil.getTag(certificationTagFqn));
+    certification.setTagLabel(certificationTagLabel);
+    return certification;
   }
 
   protected List<TagLabel> getTags(T entity) {
@@ -1833,6 +1872,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
     daoCollection
         .relationshipDAO()
         .bulkInsertToRelationship(fromId, toId, fromEntity, toEntity, relationship.ordinal());
+  }
+
+  @Transaction
+  public final void bulkRemoveToRelationship(
+      UUID fromId, List<UUID> toId, String fromEntity, String toEntity, Relationship relationship) {
+    daoCollection
+        .relationshipDAO()
+        .bulkRemoveToRelationship(fromId, toId, fromEntity, toEntity, relationship.ordinal());
   }
 
   public final List<EntityReference> findBoth(
@@ -2621,7 +2668,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
             "In session change consolidation. Reverting to previous version {}",
             previous.getVersion());
         updated = previous;
-        updateInternal();
+        updateInternal(true);
         LOG.info(
             "In session change consolidation. Reverting to previous version {} completed",
             previous.getVersion());
@@ -2639,6 +2686,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
     /** Compare original and updated entities and perform updates. Update the entity version and track changes. */
     @Transaction
     private void updateInternal() {
+      updateInternal(false);
+    }
+
+    /** Compare original and updated entities and perform updates. Update the entity version and track changes. */
+    @Transaction
+    private void updateInternal(boolean consolidatingChanges) {
       if (operation.isDelete()) { // Soft DELETE Operation
         updateDeleted();
       } else { // PUT or PATCH operations
@@ -2657,11 +2710,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
         updateStyle();
         updateLifeCycle();
         updateCertification();
-        entitySpecificUpdate();
+        entitySpecificUpdate(consolidatingChanges);
       }
     }
 
-    protected void entitySpecificUpdate() {
+    protected void entitySpecificUpdate(boolean consolidatingChanges) {
       // Default implementation. Override this to add any entity specific field updates
     }
 

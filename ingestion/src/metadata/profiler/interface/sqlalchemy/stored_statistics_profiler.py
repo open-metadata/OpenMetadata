@@ -79,8 +79,8 @@ class ProfilerWithStatistics(SQAProfilerInterface, StoredStatisticsSource):
                 list,
                 partition(self.is_statistic_metric, metrics),
             )
-            schema = runner.table.__table_args__["schema"]
-            table_name = runner.table.__tablename__
+            schema = runner.schema_name
+            table_name = runner.table_name
             logger.debug(
                 "Getting statistics for column: %s.%s.%s",
                 schema,
@@ -118,8 +118,8 @@ class ProfilerWithStatistics(SQAProfilerInterface, StoredStatisticsSource):
                 list,
                 partition(self.is_statistic_metric, metrics),
             )
-            schema = runner.table.__table_args__["schema"]
-            table_name = runner.table.__tablename__
+            schema = runner.schema_name
+            table_name = runner.table_name
             logger.debug("Geting statistics for table: %s.%s", schema, table_name)
             result.update(
                 super().get_table_statistics(stat_metrics, schema, table_name)
@@ -135,12 +135,10 @@ class ProfilerWithStatistics(SQAProfilerInterface, StoredStatisticsSource):
             result.update(super_table_metrics)
         return result
 
-    def get_hybrid_metrics(
-        self, column: Column, metric: Metric, column_results: Dict, **kwargs
-    ):
+    def get_hybrid_metrics(self, column: Column, metric: Metric, column_results: Dict):
         # this metrics might have been computed in a previous step
         return column_results.get(metric.name()) or super().get_hybrid_metrics(
-            column, metric, column_results, **kwargs
+            column, metric, column_results
         )
 
     def is_statistic_metric(self, metric: Metric) -> bool:

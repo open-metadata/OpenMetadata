@@ -26,7 +26,7 @@ import { ProviderType } from '../generated/entity/bot';
 import { Tag } from '../generated/entity/classification/tag';
 import { DeleteTagsType } from '../pages/TagsPage/TagsPage.interface';
 import { getClassificationTagPath } from './RouterUtils';
-import { getDeleteIcon } from './TagsUtils';
+import { getDeleteIcon, getTagImageSrc } from './TagsUtils';
 
 export const getEditButtonData = (
   isClassificationDisabled: boolean,
@@ -72,9 +72,14 @@ export const getCommonColumns = (): ColumnsType<Tag> => [
     key: 'name',
     width: 200,
     render: (_, record) => (
-      <Space align="center">
+      <div className="d-flex items-center gap-2">
         {record.style?.iconURL && (
-          <img data-testid="tag-icon" src={record.style.iconURL} width={16} />
+          <img
+            data-testid="tag-icon"
+            height={16}
+            src={getTagImageSrc(record.style.iconURL)}
+            width={16}
+          />
         )}
         <Link
           className="m-b-0"
@@ -85,12 +90,12 @@ export const getCommonColumns = (): ColumnsType<Tag> => [
         </Link>
         {record.disabled ? (
           <Badge
-            className="m-l-xs badge-grey"
+            className="badge-grey"
             count={t('label.disabled')}
             data-testid="disabled"
           />
         ) : null}
-      </Space>
+      </div>
     ),
   },
   {

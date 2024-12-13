@@ -16,7 +16,13 @@ from copy import deepcopy
 
 import pytest
 
+from metadata.generated.schema.entity.data.table import (
+    PartitionIntervalTypes,
+    ProfileSampleType,
+    TableProfilerConfig,
+)
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.sampler.models import PartitionProfilerConfig
 from metadata.workflow.classification import AutoClassificationWorkflow
 from metadata.workflow.data_quality import TestSuiteWorkflow
 from metadata.workflow.metadata import MetadataWorkflow
@@ -60,7 +66,7 @@ INGESTION_CONFIG = {
 
 DATA_QUALITY_CONFIG = {
     "source": {
-        "type": "datalake",
+        "type": "testsuite",
         "serviceName": "datalake_for_integration_tests",
         "serviceConnection": {
             "config": {
@@ -78,7 +84,7 @@ DATA_QUALITY_CONFIG = {
         "sourceConfig": {
             "config": {
                 "type": "TestSuite",
-                "entityFullyQualifiedName": f'datalake_for_integration_tests.default.{BUCKET_NAME}."users.csv"',
+                "entityFullyQualifiedName": f'datalake_for_integration_tests.default.{BUCKET_NAME}."users/users.csv"',
             }
         },
     },
@@ -101,6 +107,7 @@ DATA_QUALITY_CONFIG = {
                     "name": "first_name_is_john",
                     "testDefinitionName": "columnValuesToBeInSet",
                     "columnName": "first_name",
+                    "computePassedFailedRowCount": True,
                     "parameterValues": [
                         {
                             "name": "allowedValues",
@@ -111,6 +118,13 @@ DATA_QUALITY_CONFIG = {
                             "value": "True",
                         },
                     ],
+                },
+                # Helps us ensure that the passedRows and failedRows are proper ints, even when coming from Pandas
+                {
+                    "name": "first_name_is_unique",
+                    "testDefinitionName": "columnValuesToBeUnique",
+                    "columnName": "first_name",
+                    "computePassedFailedRowCount": True,
                 },
             ]
         },
@@ -126,7 +140,14 @@ DATA_QUALITY_CONFIG = {
             },
         },
     },
+    # Helps us validate we are properly encoding the names of Ingestion Pipelines when sending status updates
+    "ingestionPipelineFQN": f'datalake_for_integration_tests.default.{BUCKET_NAME}."users/users.csv".testSuite.uuid',
 }
+
+
+@pytest.fixture(scope="session")
+def ingestion_fqn():
+    return f'datalake_for_integration_tests.default.{BUCKET_NAME}."users/users.csv".testSuite.uuid'
 
 
 @pytest.fixture(scope="session")
@@ -195,6 +216,60 @@ def run_test_suite_workflow(run_ingestion, ingestion_config):
     ingestion_workflow.execute()
     ingestion_workflow.raise_from_status()
     ingestion_workflow.stop()
+
+
+@pytest.fixture(scope="class")
+def run_sampled_test_suite_workflow(metadata, run_ingestion, ingestion_config):
+    metadata.create_or_update_table_profiler_config(
+        fqn='datalake_for_integration_tests.default.my-bucket."users/users.csv"',
+        table_profiler_config=TableProfilerConfig(
+            profileSampleType=ProfileSampleType.PERCENTAGE,
+            profileSample=50.0,
+            partitioning=None,
+        ),
+    )
+    workflow_config = deepcopy(DATA_QUALITY_CONFIG)
+    workflow_config["source"]["serviceConnection"] = ingestion_config["source"][
+        "serviceConnection"
+    ]
+    ingestion_workflow = TestSuiteWorkflow.create(workflow_config)
+    ingestion_workflow.execute()
+    ingestion_workflow.raise_from_status()
+    ingestion_workflow.stop()
+    metadata.create_or_update_table_profiler_config(
+        fqn='datalake_for_integration_tests.default.my-bucket."users/users.csv"',
+        table_profiler_config=TableProfilerConfig(
+            profileSampleType=ProfileSampleType.PERCENTAGE,
+            profileSample=100.0,
+        ),
+    )
+
+
+@pytest.fixture(scope="class")
+def run_partitioned_test_suite_workflow(metadata, run_ingestion, ingestion_config):
+    metadata.create_or_update_table_profiler_config(
+        fqn='datalake_for_integration_tests.default.my-bucket."users/users.csv"',
+        table_profiler_config=TableProfilerConfig(
+            partitioning=PartitionProfilerConfig(
+                enablePartitioning=True,
+                partitionIntervalType=PartitionIntervalTypes.COLUMN_VALUE,
+                partitionValues=["Los Angeles"],
+                partitionColumnName="city",
+            )
+        ),
+    )
+    workflow_config = deepcopy(DATA_QUALITY_CONFIG)
+    workflow_config["source"]["serviceConnection"] = ingestion_config["source"][
+        "serviceConnection"
+    ]
+    ingestion_workflow = TestSuiteWorkflow.create(workflow_config)
+    ingestion_workflow.execute()
+    ingestion_workflow.raise_from_status()
+    ingestion_workflow.stop()
+    metadata.create_or_update_table_profiler_config(
+        fqn='datalake_for_integration_tests.default.my-bucket."users/users.csv"',
+        table_profiler_config=TableProfilerConfig(partitioning=None),
+    )
 
 
 @pytest.fixture(scope="class")
