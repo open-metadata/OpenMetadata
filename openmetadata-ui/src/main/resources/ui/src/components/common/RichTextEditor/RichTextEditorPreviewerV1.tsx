@@ -15,7 +15,7 @@ import classNames from 'classnames';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DESCRIPTION_MAX_PREVIEW_CHARACTERS } from '../../../constants/constants';
-import { formatContent, isHTMLString } from '../../../utils/BlockEditorUtils';
+import { formatContent } from '../../../utils/BlockEditorUtils';
 import { getTrimmedContent } from '../../../utils/CommonUtils';
 import BlockEditor from '../../BlockEditor/BlockEditor';
 import { PreviewerProp } from './RichTextEditor.interface';
@@ -57,9 +57,7 @@ const RichTextEditorPreviewerV1: FC<PreviewerProp> = ({
   }, [hasReadMore, readMore, maxLength, content]);
 
   useEffect(() => {
-    setContent(
-      isHTMLString(markdown) ? formatContent(markdown, 'client') : markdown
-    );
+    setContent(formatContent(markdown, 'client'));
   }, [markdown]);
 
   useEffect(() => {

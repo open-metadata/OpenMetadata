@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { mergeAttributes, Node } from '@tiptap/core';
+import { Node } from '@tiptap/core';
 
 export default Node.create({
   name: 'diffView',
@@ -29,12 +29,23 @@ export default Node.create({
   parseHTML() {
     return [
       {
-        tag: 'diff-view',
+        tag: 'span[data-diff]',
       },
     ];
   },
 
-  renderHTML({ HTMLAttributes }) {
-    return ['diff-view', mergeAttributes(HTMLAttributes), 0];
+  renderHTML({ HTMLAttributes, node }) {
+    const diffNode = document.createElement('span');
+
+    Object.keys(HTMLAttributes).forEach((key) => {
+      diffNode.setAttribute(key, HTMLAttributes[key]);
+    });
+
+    diffNode.setAttribute('data-diff', 'true');
+    diffNode.innerHTML = node.textContent;
+
+    return {
+      dom: diffNode,
+    };
   },
 });
