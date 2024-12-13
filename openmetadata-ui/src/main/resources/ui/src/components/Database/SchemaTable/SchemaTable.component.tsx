@@ -420,7 +420,6 @@ const SchemaTable = ({
         dataIndex: 'dataTypeDisplay',
         key: 'dataTypeDisplay',
         accessor: 'dataTypeDisplay',
-        ellipsis: true,
         width: 150,
         render: renderDataTypeDisplay,
       },
