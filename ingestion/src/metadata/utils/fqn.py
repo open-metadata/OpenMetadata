@@ -225,7 +225,7 @@ def _(
 
 @fqn_build_registry.add(Database)
 def _(
-    metadata: Optional[OpenMetadata],  # ES Search not enabled for Databases
+    metadata: Optional[OpenMetadata],
     *,
     service_name: str,
     database_name: str,
