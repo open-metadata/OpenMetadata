@@ -207,6 +207,8 @@ export interface DatabaseConnection {
  *
  * MongoDB Connection Config
  *
+ * Cassandra Connection Config
+ *
  * Couchbase Connection Config
  *
  * Greenplum Database Connection Config
@@ -282,6 +284,9 @@ export interface ConfigClass {
      *
      * Host and port of the MongoDB service when using the `mongodb` connection scheme. Only
      * host when using the `mongodb+srv` scheme.
+     *
+     * Host and port of the Cassandra service when using the `cassandra` connection scheme. Only
+     * host when using the `cassandra+srv` scheme.
      *
      * Host and port of the Doris service.
      *
@@ -517,6 +522,9 @@ export interface ConfigClass {
      *
      * Username to connect to MongoDB. This user should have privileges to read all the metadata
      * in MongoDB.
+     *
+     * Username to connect to Cassandra. This user should have privileges to read all the
+     * metadata in Cassandra.
      *
      * Username to connect to Couchbase. This user should have privileges to read all the
      * metadata in Couchbase.
@@ -881,6 +889,8 @@ export enum AuthMechanismEnum {
  * IAM Auth Database Connection Config
  *
  * Azure Database Connection Config
+ *
+ * Configuration for connecting to DataStax Astra DB in the cloud.
  */
 export interface AuthConfigurationType {
     /**
@@ -893,6 +903,10 @@ export interface AuthConfigurationType {
      * JWT to connect to source.
      */
     jwt?: string;
+    /**
+     * Configuration for connecting to DataStax Astra DB in the cloud.
+     */
+    cloudConfig?: DataStaxAstraDBConfiguration;
 }
 
 /**
@@ -969,6 +983,30 @@ export interface AzureCredentials {
      * Key Vault Name
      */
     vaultName?: string;
+}
+
+/**
+ * Configuration for connecting to DataStax Astra DB in the cloud.
+ */
+export interface DataStaxAstraDBConfiguration {
+    /**
+     * Timeout in seconds for establishing new connections to Cassandra.
+     */
+    connectTimeout?: number;
+    /**
+     * Timeout in seconds for individual Cassandra requests.
+     */
+    requestTimeout?: number;
+    /**
+     * File path to the Secure Connect Bundle (.zip) used for a secure connection to DataStax
+     * Astra DB.
+     */
+    secureConnectBundle?: string;
+    /**
+     * The Astra DB application token used for authentication.
+     */
+    token?: string;
+    [property: string]: any;
 }
 
 /**
@@ -1870,6 +1908,7 @@ export enum ConfigType {
     AzureSQL = "AzureSQL",
     BigQuery = "BigQuery",
     BigTable = "BigTable",
+    Cassandra = "Cassandra",
     Clickhouse = "Clickhouse",
     Cockroach = "Cockroach",
     Couchbase = "Couchbase",
@@ -1986,6 +2025,7 @@ export enum DatabaseServiceType {
     AzureSQL = "AzureSQL",
     BigQuery = "BigQuery",
     BigTable = "BigTable",
+    Cassandra = "Cassandra",
     Clickhouse = "Clickhouse",
     Cockroach = "Cockroach",
     Couchbase = "Couchbase",

@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { CarouselProps } from 'antd';
 import loginClassBase from './LoginClassBase';
 
 const {
@@ -49,13 +48,3 @@ export const LOGIN_SLIDE = [
     descriptionKey: 'deeply-understand-table-relations-message',
   },
 ];
-
-export const LOGIN_CAROUSEL_SETTINGS = {
-  autoplay: true,
-  prefixCls: 'login-carousel',
-  dots: {
-    className: 'carousel-dots',
-  },
-  slidesToShow: 1,
-  slidesToScroll: 1,
-} as CarouselProps;

@@ -5,27 +5,26 @@ import types
 from unittest import TestCase
 from unittest.mock import patch
 
-from metadata.generated.schema.metadataIngestion.workflow import (
-    OpenMetadataWorkflowConfig,
-)
-from metadata.ingestion.source.database.cockroach.metadata import CockroachSource
+from sqlalchemy.types import VARCHAR
+
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
+from metadata.generated.schema.entity.data.table import Column, Constraint, DataType
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseConnection,
     DatabaseService,
     DatabaseServiceType,
 )
+from metadata.generated.schema.metadataIngestion.workflow import (
+    OpenMetadataWorkflowConfig,
+)
 from metadata.generated.schema.type.entityReference import EntityReference
-
-from metadata.generated.schema.entity.data.table import Column, Constraint, DataType
 from metadata.ingestion.source.database.cockroach.metadata import (
     GEOMETRY,
     POINT,
     POLYGON,
     CockroachSource,
 )
-from sqlalchemy.types import VARCHAR
 
 mock_cockroach_config = {
     "source": {
@@ -233,7 +232,7 @@ class cockroachUnitTest(TestCase):
         )
 
         self.cockroach_source.context.get().__dict__[
-                "database_service"
+            "database_service"
         ] = MOCK_DATABASE_SERVICE.name.root
         self.cockroach_source.context.get().__dict__[
             "database"
@@ -250,13 +249,12 @@ class cockroachUnitTest(TestCase):
         inspector.get_pk_constraint = lambda table_name, schema_name: []
         inspector.get_unique_constraints = lambda table_name, schema_name: []
         inspector.get_foreign_keys = lambda table_name, schema_name: []
-        
+
         result, _, _ = self.cockroach_source.get_columns_and_constraints(
             "public", "user", "cockroach", inspector
         )
         for i, _ in enumerate(EXPECTED_COLUMN_VALUE):
             self.assertEqual(result[i], EXPECTED_COLUMN_VALUE[i])
-
 
     @patch("sqlalchemy.engine.base.Engine")
     @patch(

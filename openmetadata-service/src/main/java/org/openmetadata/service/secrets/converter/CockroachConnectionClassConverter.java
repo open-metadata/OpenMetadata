@@ -9,27 +9,26 @@ import org.openmetadata.service.util.JsonUtils;
 /**
  * Converter class to get an `CockroachConnection` object.
  */
-public class CockroachConnectionClassConverter extends ClassConverter{
+public class CockroachConnectionClassConverter extends ClassConverter {
 
-    private static final List<Class<?>> SSL_SOURCE_CLASS = List.of(ValidateSSLClientConfig.class);
-    private static final List<Class<?>> CONFIG_SOURCE_CLASSES =
-      List.of(basicAuth.class);
+  private static final List<Class<?>> SSL_SOURCE_CLASS = List.of(ValidateSSLClientConfig.class);
+  private static final List<Class<?>> CONFIG_SOURCE_CLASSES = List.of(basicAuth.class);
 
-    public CockroachConnectionClassConverter() {
-        super(CockroachConnection.class);
-    }
+  public CockroachConnectionClassConverter() {
+    super(CockroachConnection.class);
+  }
 
-    @Override
-    public Object convert(Object object) {
-        CockroachConnection cockroachConnection =
-            (CockroachConnection) JsonUtils.convertValue(object, this.clazz);
+  @Override
+  public Object convert(Object object) {
+    CockroachConnection cockroachConnection =
+        (CockroachConnection) JsonUtils.convertValue(object, this.clazz);
 
-        tryToConvert(cockroachConnection.getAuthType(), CONFIG_SOURCE_CLASSES)
-            .ifPresent(cockroachConnection::setAuthType);
+    tryToConvert(cockroachConnection.getAuthType(), CONFIG_SOURCE_CLASSES)
+        .ifPresent(cockroachConnection::setAuthType);
 
-        tryToConvert(cockroachConnection.getSslConfig(), SSL_SOURCE_CLASS)
-            .ifPresent(cockroachConnection::setSslConfig);
+    tryToConvert(cockroachConnection.getSslConfig(), SSL_SOURCE_CLASS)
+        .ifPresent(cockroachConnection::setSslConfig);
 
-        return cockroachConnection;
-    }
+    return cockroachConnection;
+  }
 }
