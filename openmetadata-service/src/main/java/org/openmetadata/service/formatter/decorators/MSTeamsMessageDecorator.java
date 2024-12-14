@@ -175,9 +175,8 @@ public class MSTeamsMessageDecorator implements MessageDecorator<TeamsMessage> {
 
   private TeamsMessage createDQMessage(
       String publisherName, ChangeEvent event, OutgoingMessage outgoingMessage) {
-
     Map<DQ_Template_Section, Map<Enum<?>, Object>> dqTemplateData =
-        buildDQTemplateData(publisherName, event, outgoingMessage);
+        MessageDecorator.buildDQTemplateData(event, outgoingMessage);
 
     TextBlock changeEventDetailsTextBlock = createHeader();
 
@@ -565,33 +564,6 @@ public class MSTeamsMessageDecorator implements MessageDecorator<TeamsMessage> {
             General_Template_Section.EVENT_DETAILS,
             EventDetailsKeys.OUTGOING_MESSAGE,
             outgoingMessage);
-
-    return builder.build();
-  }
-
-  // todo - complete buildDQTemplateData fn
-  private Map<DQ_Template_Section, Map<Enum<?>, Object>> buildDQTemplateData(
-      String publisherName, ChangeEvent event, OutgoingMessage outgoingMessage) {
-
-    TemplateDataBuilder<DQ_Template_Section> builder = new TemplateDataBuilder<>();
-
-    // Use DQ_Template_Section directly
-    builder
-        .add(
-            DQ_Template_Section.EVENT_DETAILS,
-            EventDetailsKeys.EVENT_TYPE,
-            event.getEventType().value())
-        .add(DQ_Template_Section.EVENT_DETAILS, EventDetailsKeys.UPDATED_BY, event.getUserName())
-        .add(DQ_Template_Section.EVENT_DETAILS, EventDetailsKeys.ENTITY_TYPE, event.getEntityType())
-        .add(
-            DQ_Template_Section.EVENT_DETAILS,
-            EventDetailsKeys.ENTITY_FQN,
-            MessageDecorator.getFQNForChangeEventEntity(event))
-        .add(
-            DQ_Template_Section.EVENT_DETAILS,
-            EventDetailsKeys.TIME,
-            new Date(event.getTimestamp()).toString())
-        .add(DQ_Template_Section.EVENT_DETAILS, EventDetailsKeys.OUTGOING_MESSAGE, outgoingMessage);
 
     return builder.build();
   }
