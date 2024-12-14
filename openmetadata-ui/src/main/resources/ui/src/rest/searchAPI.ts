@@ -14,10 +14,8 @@
 import { AxiosResponse } from 'axios';
 import { isArray, isNil } from 'lodash';
 import { SearchIndex } from '../enums/search.enum';
-import { DataInsightSearchRequest } from '../interface/data-insight.interface';
 import {
   Aggregations,
-  DataInsightSearchResponse,
   KeysOfUnion,
   SearchIndexSearchSourceMapping,
   SearchRequest,
@@ -234,59 +232,4 @@ export const searchQuery = async <
   const res = await rawSearchQuery(req);
 
   return formatSearchQueryResponse(res.data);
-};
-
-/**
- * Access point for the Search API.
- * Executes a request to /search/query, returning a formatted response.
- *
- * @param req Request object
- */
-export const searchQueryDataInsight = async (
-  req: DataInsightSearchRequest
-): Promise<DataInsightSearchResponse> => {
-  const {
-    query,
-    pageNumber = 1,
-    pageSize = 10,
-    queryFilter,
-    sortField,
-    sortOrder,
-    searchIndex,
-    includeDeleted,
-    trackTotalHits,
-    postFilter,
-    fetchSource,
-    filters,
-  } = req;
-
-  const queryWithSlash = getQueryWithSlash(query || '');
-
-  const apiQuery = query
-    ? filters
-      ? `${queryWithSlash} AND `
-      : queryWithSlash
-    : '';
-
-  const apiUrl = `/search/query?q=${apiQuery}${filters ?? ''}`;
-
-  const res = await APIClient.get(apiUrl, {
-    params: {
-      index: searchIndex,
-      from: (pageNumber - 1) * pageSize,
-      size: pageSize,
-      deleted: includeDeleted,
-      query_filter: JSON.stringify(queryFilter),
-      post_filter: JSON.stringify(postFilter),
-      sort_field: sortField,
-      sort_order: sortOrder,
-      track_total_hits: trackTotalHits,
-      fetch_source: fetchSource,
-      include_source_fields: req.fetchSource ? req.includeFields : undefined,
-    },
-  });
-
-  return formatSearchQueryResponse(
-    res.data
-  ) as unknown as DataInsightSearchResponse;
 };

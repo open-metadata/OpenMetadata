@@ -25,6 +25,7 @@ import {
 import { ReactComponent as IconTimesCircle } from '../../../assets/svg/ic-times-circle.svg';
 import { useLineageProvider } from '../../../context/LineageProvider/LineageProvider';
 import { EntityLineageNodeType } from '../../../enums/entity.enum';
+import { LineageLayer } from '../../../generated/configuration/lineageSettings';
 import { checkUpstreamDownstream } from '../../../utils/EntityLineageUtils';
 import './custom-node.less';
 import { getCollapseHandle, getExpandHandle } from './CustomNode.utils';
@@ -46,9 +47,20 @@ const CustomNodeV1 = (props: NodeProps) => {
     onNodeCollapse,
     removeNodeHandler,
     loadChildNodesHandler,
+    activeLayer,
+    dataQualityLineage,
   } = useLineageProvider();
 
   const { label, isNewNode, node = {}, isRootNode } = data;
+
+  const showDqTracing = useMemo(() => {
+    return (
+      (activeLayer.includes(LineageLayer.DataObservability) &&
+        dataQualityLineage?.nodes?.some((dqNode) => dqNode.id === node?.id)) ??
+      false
+    );
+  }, [activeLayer, dataQualityLineage, node]);
+
   const nodeType = isEditMode ? EntityLineageNodeType.DEFAULT : type;
   const isSelected = selectedNode === node;
   const { id, lineage, fullyQualifiedName } = node;
@@ -257,6 +269,9 @@ const CustomNodeV1 = (props: NodeProps) => {
       className={classNames(
         'lineage-node p-0',
         isSelected ? 'custom-node-header-active' : 'custom-node-header-normal',
+        {
+          'data-quality-failed-custom-node-header': showDqTracing,
+        },
         { 'custom-node-header-tracing': isTraced }
       )}
       data-testid={`lineage-node-${fullyQualifiedName}`}>

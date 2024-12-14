@@ -349,7 +349,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
   private void getTaskTags(boolean setTags, List<Task> tasks) {
     for (Task t : listOrEmpty(tasks)) {
-      if (t.getTags() == null) {
+      if (t.getTags() == null || t.getTags().isEmpty()) {
         t.setTags(setTags ? getTags(t.getFullyQualifiedName()) : t.getTags());
       }
     }
@@ -469,7 +469,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
     @Transaction
     @Override
-    public void entitySpecificUpdate() {
+    public void entitySpecificUpdate(boolean consolidatingChanges) {
       updateTasks(original, updated);
       recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl());
       recordChange("concurrency", original.getConcurrency(), updated.getConcurrency());

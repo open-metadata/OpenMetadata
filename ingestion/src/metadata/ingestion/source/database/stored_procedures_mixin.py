@@ -117,8 +117,6 @@ class StoredProcedureLineageMixin(ABC):
 
         for row in results:
             try:
-                print("*** " * 100)
-                print(dict(row))
                 query_by_procedure = QueryByProcedure.model_validate(dict(row))
                 procedure_name = (
                     query_by_procedure.procedure_name
@@ -219,14 +217,26 @@ class StoredProcedureLineageMixin(ABC):
         self, procedure_and_query: ProcedureAndQuery
     ) -> Iterable[Either[Union[AddLineageRequest, CreateQueryRequest]]]:
 
-        yield from self._yield_procedure_lineage(
-            query_by_procedure=procedure_and_query.query_by_procedure,
-            procedure=procedure_and_query.procedure,
-        )
-        yield from self.yield_procedure_query(
-            query_by_procedure=procedure_and_query.query_by_procedure,
-            procedure=procedure_and_query.procedure,
-        )
+        try:
+            yield from self._yield_procedure_lineage(
+                query_by_procedure=procedure_and_query.query_by_procedure,
+                procedure=procedure_and_query.procedure,
+            )
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Could not get lineage for store procedure '{procedure_and_query.procedure.fullyQualifiedName}' due to [{exc}]."
+            )
+        try:
+            yield from self.yield_procedure_query(
+                query_by_procedure=procedure_and_query.query_by_procedure,
+                procedure=procedure_and_query.procedure,
+            )
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Could not get query for store procedure '{procedure_and_query.procedure.fullyQualifiedName}' due to [{exc}]."
+            )
 
     def procedure_lineage_generator(self) -> Iterable[ProcedureAndQuery]:
         query = {

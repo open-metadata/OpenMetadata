@@ -14,6 +14,8 @@ import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 public class ListFilter extends Filter<ListFilter> {
+  public static final String NULL_PARAM = "null";
+
   public ListFilter() {
     this(Include.NON_DELETED);
   }
@@ -45,6 +47,7 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getAssignee());
     conditions.add(getEventSubscriptionAlertType());
     conditions.add(getApiCollectionCondition(tableName));
+    conditions.add(getWorkflowDefinitionIdCondition());
     String condition = addCondition(conditions);
     return condition.isEmpty() ? "WHERE TRUE" : "WHERE " + condition;
   }
@@ -52,6 +55,13 @@ public class ListFilter extends Filter<ListFilter> {
   private String getAssignee() {
     String assignee = queryParams.get("assignee");
     return assignee == null ? "" : String.format("assignee = '%s'", assignee);
+  }
+
+  private String getWorkflowDefinitionIdCondition() {
+    String workflowDefinitionId = queryParams.get("workflowDefinitionId");
+    return workflowDefinitionId == null
+        ? ""
+        : String.format("workflowDefinitionId = '%s'", workflowDefinitionId);
   }
 
   private String getEventSubscriptionAlertType() {
@@ -108,12 +118,24 @@ public class ListFilter extends Filter<ListFilter> {
 
   private String getDomainCondition(String tableName) {
     String domainId = getQueryParam("domainId");
-    return domainId == null
-        ? ""
-        : String.format(
-            "(%s in (SELECT entity_relationship.toId FROM entity_relationship WHERE entity_relationship.fromEntity='domain' AND entity_relationship.fromId IN (%s) AND "
-                + "relation=10))",
-            nullOrEmpty(tableName) ? "id" : String.format("%s.id", tableName), domainId);
+    String entityIdColumn = nullOrEmpty(tableName) ? "id" : (tableName + ".id");
+    if (domainId == null) {
+      return "";
+    } else if (NULL_PARAM.equals(domainId)) {
+      String entityType = getQueryParam("entityType");
+      String entityTypeCondition =
+          nullOrEmpty(entityType)
+              ? ""
+              : String.format("AND entity_relationship.toEntity='%s'", entityType);
+      return String.format(
+          "(%s NOT IN (SELECT entity_relationship.toId FROM entity_relationship WHERE entity_relationship.fromEntity='domain' %s AND relation=10))",
+          entityIdColumn, entityTypeCondition);
+    } else {
+      return String.format(
+          "(%s in (SELECT entity_relationship.toId FROM entity_relationship WHERE entity_relationship.fromEntity='domain' AND entity_relationship.fromId IN (%s) AND "
+              + "relation=10))",
+          entityIdColumn, domainId);
+    }
   }
 
   public String getApiCollectionCondition(String apiEndpoint) {

@@ -13,6 +13,18 @@
 import { EntityFields } from '../enums/AdvancedSearch.enum';
 import { AdvancedSearchClassBase } from './AdvancedSearchClassBase';
 
+jest.mock('../rest/miscAPI', () => ({
+  getAggregateFieldOptions: jest.fn().mockImplementation(() =>
+    Promise.resolve({
+      data: {},
+    })
+  ),
+}));
+
+jest.mock('./JSONLogicSearchClassBase', () => ({
+  getQueryBuilderFields: jest.fn(),
+}));
+
 describe('AdvancedSearchClassBase', () => {
   let advancedSearchClassBase: AdvancedSearchClassBase;
 
@@ -34,6 +46,7 @@ describe('AdvancedSearchClassBase', () => {
       EntityFields.TIER,
       'extension',
       'descriptionStatus',
+      'entityType',
     ]);
   });
 });

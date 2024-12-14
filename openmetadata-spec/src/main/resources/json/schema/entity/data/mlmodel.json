@@ -67,7 +67,7 @@
           "items": {
             "$ref": "../../type/tagLabel.json"
           },
-          "default": null
+          "default": []
         }
       }
     },

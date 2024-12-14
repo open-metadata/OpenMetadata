@@ -57,7 +57,7 @@ export class TagClass {
     classification: 'Tier',
   };
 
-  responseData: ResponseDataType;
+  responseData: ResponseDataType = {} as ResponseDataType;
 
   constructor(tag: Partial<TagData>) {
     this.data.classification = tag.classification ?? this.data.classification;
@@ -68,6 +68,7 @@ export class TagClass {
       page,
       this.responseData.classification.displayName
     );
+    await page.getByTestId(this.data.name).click();
   }
 
   async create(apiContext: APIRequestContext) {

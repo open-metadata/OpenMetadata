@@ -197,6 +197,9 @@ public class FeedRepository {
       if (repository.supportsTags) {
         fieldList.add("tags");
       }
+      if (repository.supportsReviewers) {
+        fieldList.add("reviewers");
+      }
       return String.join(",", fieldList.toArray(new String[0]));
     }
   }
@@ -293,6 +296,10 @@ public class FeedRepository {
   }
 
   public Thread getTask(EntityLink about, TaskType taskType) {
+    return getTask(about, taskType, null);
+  }
+
+  public Thread getTask(EntityLink about, TaskType taskType, TaskStatus taskStatus) {
     List<Triple<String, String, String>> tasks =
         dao.fieldRelationshipDAO()
             .findFrom(
@@ -304,8 +311,16 @@ public class FeedRepository {
         UUID threadId = UUID.fromString(task.getLeft());
         Thread thread =
             EntityUtil.validate(threadId, dao.feedDAO().findById(threadId), Thread.class);
-        if (thread.getTask() != null && thread.getTask().getType() == taskType) {
-          return thread;
+        if (Optional.ofNullable(taskStatus).isPresent()) {
+          if (thread.getTask() != null
+              && thread.getTask().getType() == taskType
+              && thread.getTask().getStatus() == taskStatus) {
+            return thread;
+          }
+        } else {
+          if (thread.getTask() != null && thread.getTask().getType() == taskType) {
+            return thread;
+          }
         }
       }
     }

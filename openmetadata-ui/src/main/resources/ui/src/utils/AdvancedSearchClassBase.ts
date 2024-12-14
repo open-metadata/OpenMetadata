@@ -185,6 +185,25 @@ class AdvancedSearchClassBase {
         useAsyncSearch: true,
       },
     },
+
+    [EntityFields.COLUMN_DESCRIPTION_STATUS]: {
+      label: t('label.column-description'),
+      type: 'select',
+      operators: [
+        'select_equals',
+        'select_not_equals',
+        'is_null',
+        'is_not_null',
+      ],
+      mainWidgetProps: this.mainWidgetProps,
+      valueSources: ['value'],
+      fieldSettings: {
+        listValues: {
+          INCOMPLETE: t('label.incomplete'),
+          COMPLETE: t('label.complete'),
+        },
+      },
+    },
   };
 
   /**
@@ -591,6 +610,19 @@ class AdvancedSearchClassBase {
           },
         },
       },
+      [EntityFields.ENTITY_TYPE]: {
+        label: t('label.entity-type-plural', { entity: t('label.entity') }),
+        type: 'select',
+        mainWidgetProps: this.mainWidgetProps,
+
+        fieldSettings: {
+          asyncFetch: this.autocomplete({
+            searchIndex: entitySearchIndex,
+            entityField: EntityFields.ENTITY_TYPE,
+          }),
+          useAsyncSearch: true,
+        },
+      },
     };
   }
 
@@ -641,6 +673,7 @@ class AdvancedSearchClassBase {
       [SearchIndex.SEARCH_INDEX]: this.searchIndexQueryBuilderFields,
       [SearchIndex.DASHBOARD_DATA_MODEL]: this.dataModelQueryBuilderFields,
       [SearchIndex.API_ENDPOINT_INDEX]: this.apiEndpointQueryBuilderFields,
+      [SearchIndex.GLOSSARY_TERM]: this.glossaryQueryBuilderFields,
       [SearchIndex.ALL]: {
         ...this.tableQueryBuilderFields,
         ...this.pipelineQueryBuilderFields,

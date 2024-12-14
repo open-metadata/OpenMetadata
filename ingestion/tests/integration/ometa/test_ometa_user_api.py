@@ -161,6 +161,11 @@ class OMetaUserTest(TestCase):
         # Non existing email returns None
         self.assertIsNone(self.metadata.get_reference_by_name(name="idonotexist"))
 
+        # when searching for "data" user we should not get DataInsightsApplicationBot in result
+        team_data = self.metadata.get_reference_by_name(name="data").root[0]
+        self.assertEqual(team_data.name, "Data")
+        self.assertEqual(team_data.type, "team")
+
         # We can get the user matching its name
         self.assertEqual(
             self.user_1.id,

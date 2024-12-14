@@ -156,6 +156,7 @@
     <logback-classic.version>1.2.13</logback-classic.version>
     <jsonpath.version>2.9.0</jsonpath.version>
     <everit.version>1.14.4</everit.version>
+    <json-patch.version>1.13</json-patch.version>
   </properties>
 
   <dependencyManagement>
@@ -528,7 +529,7 @@
         <groupId>org.eclipse.jetty</groupId>
         <artifactId>jetty-io</artifactId>
         <!-- 9.x required for Dropwizard 2.1.x -->
-        <version>9.4.53.v20231009</version>
+        <version>9.4.56.v20240826</version>
       </dependency>
 
       <!-- avoid security issue https://security.snyk.io/vuln/SNYK-JAVA-ORGGLASSFISH-1297098 -->
@@ -550,7 +551,11 @@
         <artifactId>json-path</artifactId>
         <version>${jsonpath.version}</version>
       </dependency>
-
+    <dependency>
+      <groupId>com.github.java-json-tools</groupId>
+      <artifactId>json-patch</artifactId>
+      <version>${json-patch.version}</version>
+    </dependency>
       <dependency>
         <groupId>com.microsoft.azure</groupId>
         <artifactId>msal4j</artifactId>
@@ -561,7 +566,6 @@
         <artifactId>azure-identity</artifactId>
         <version>1.14.0</version>
       </dependency>
-
       <!-- avoid security issue https://security.snyk.io/vuln/SNYK-JAVA-ORGYAML-2806360 -->
     </dependencies>
   </dependencyManagement>

@@ -38,6 +38,7 @@ jest.mock('../constants/constants', () => ({
 
 jest.mock('./RouterUtils', () => ({
   getDataQualityPagePath: jest.fn(),
+  getDomainPath: jest.fn(),
 }));
 
 describe('EntityUtils unit tests', () => {
@@ -165,10 +166,12 @@ describe('EntityUtils unit tests', () => {
 
   describe('getColumnSorter', () => {
     type TestType = { name: string };
+
     it('should return -1 if the 1st value should be before 2nd value', () => {
       const sorter = getColumnSorter<TestType, 'name'>('name');
       const item1 = { name: 'abc' };
       const item2 = { name: 'xyz' };
+
       expect(sorter(item1, item2)).toBe(-1);
     });
 
@@ -176,6 +179,7 @@ describe('EntityUtils unit tests', () => {
       const sorter = getColumnSorter<TestType, 'name'>('name');
       const item1 = { name: 'abc' };
       const item2 = { name: 'abc' };
+
       expect(sorter(item1, item2)).toBe(0);
     });
 
@@ -183,6 +187,7 @@ describe('EntityUtils unit tests', () => {
       const sorter = getColumnSorter<TestType, 'name'>('name');
       const item1 = { name: 'abc' };
       const item2 = { name: 'xyz' };
+
       expect(sorter(item2, item1)).toBe(1);
     });
 
@@ -190,6 +195,7 @@ describe('EntityUtils unit tests', () => {
       const sorter = getColumnSorter<TestType, 'name'>('name');
       const item1 = { name: 'abc10' };
       const item2 = { name: 'abc20' };
+
       expect(sorter(item2, item1)).toBe(1);
     });
   });

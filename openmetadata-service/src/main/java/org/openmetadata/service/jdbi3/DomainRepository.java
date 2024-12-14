@@ -147,7 +147,7 @@ public class DomainRepository extends EntityRepository<Domain> {
 
     @Transaction
     @Override
-    public void entitySpecificUpdate() {
+    public void entitySpecificUpdate(boolean consolidatingChanges) {
       recordChange("domainType", original.getDomainType(), updated.getDomainType());
     }
   }

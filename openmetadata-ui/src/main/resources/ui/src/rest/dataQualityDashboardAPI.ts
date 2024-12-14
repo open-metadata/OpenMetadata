@@ -174,6 +174,37 @@ export const fetchTestCaseSummaryByDimension = (
   });
 };
 
+export const fetchTestCaseSummaryByNoDimension = (
+  filters?: DataQualityDashboardChartFilters
+) => {
+  const mustFilter = [];
+  if (filters?.ownerFqn) {
+    mustFilter.push(buildMustEsFilterForOwner(filters.ownerFqn));
+  }
+  if (filters?.tags || filters?.tier) {
+    mustFilter.push(
+      buildMustEsFilterForTags([
+        ...(filters?.tags ?? []),
+        ...(filters?.tier ?? []),
+      ])
+    );
+  }
+
+  return getDataQualityReport({
+    q: JSON.stringify({
+      query: {
+        bool: {
+          must: mustFilter,
+          must_not: [{ exists: { field: 'dataQualityDimension' } }],
+        },
+      },
+    }),
+    index: 'testCase',
+    aggregationQuery:
+      'bucketName=status:aggType=terms:field=testCaseResult.testCaseStatus',
+  });
+};
+
 export const fetchCountOfIncidentStatusTypeByDays = (
   status: TestCaseResolutionStatusTypes,
   filters?: DataQualityDashboardChartFilters
@@ -286,7 +317,9 @@ export const fetchTestCaseStatusMetricsByDays = (
   if (filters?.entityFQN) {
     mustFilter.push({
       term: {
-        'testCase.entityFQN': filters.entityFQN,
+        [filters.entityType
+          ? `${filters.entityType}.fullyQualifiedName.keyword`
+          : 'testCase.entityFQN']: filters.entityFQN,
       },
     });
   }
