@@ -54,31 +54,31 @@ setup('authenticate as admin', async ({ page }) => {
   await page.context().storageState({ path: adminFile });
 });
 
-setup('authenticate as ingestion bot', async ({ page }) => {
-  const admin = new AdminClass();
+// setup('authenticate as ingestion bot', async ({ page }) => {
+//   const admin = new AdminClass();
 
-  // login with admin user
-  await admin.login(page);
-  await page.waitForURL('**/my-data');
+//   // login with admin user
+//   await admin.login(page);
+//   await page.waitForURL('**/my-data');
 
-  const { apiContext, afterAction } = await getApiContext(page);
+//   const { apiContext, afterAction } = await getApiContext(page);
 
-  const bot = await apiContext
-    .get('/api/v1/bots/name/ingestion-bot')
-    .then((response) => response.json());
-  const tokenData = await apiContext
-    .get(`/api/v1/users/auth-mechanism/${bot.botUser.id}`)
-    .then((response) => response.json());
+//   const bot = await apiContext
+//     .get('/api/v1/bots/name/ingestion-bot')
+//     .then((response) => response.json());
+//   const tokenData = await apiContext
+//     .get(`/api/v1/users/auth-mechanism/${bot.botUser.id}`)
+//     .then((response) => response.json());
 
-  await page.evaluate((token) => {
-    // Set a new value for a key in localStorage
-    localStorage.setItem(
-      'om-session',
-      JSON.stringify({ state: { oidcIdToken: token } })
-    );
-  }, tokenData.config.JWTToken);
+//   await page.evaluate((token) => {
+//     // Set a new value for a key in localStorage
+//     localStorage.setItem(
+//       'om-session',
+//       JSON.stringify({ state: { oidcIdToken: token } })
+//     );
+//   }, tokenData.config.JWTToken);
 
-  await page.context().storageState({ path: ingestionBotFile });
+//   await page.context().storageState({ path: ingestionBotFile });
 
-  await afterAction();
-});
+//   await afterAction();
+// });
