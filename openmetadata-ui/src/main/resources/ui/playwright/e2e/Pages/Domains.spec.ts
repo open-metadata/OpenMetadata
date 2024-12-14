@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test as base } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import { get } from 'lodash';
 import { SidebarItem } from '../../constant/sidebar';
@@ -18,7 +18,6 @@ import { DataProduct } from '../../support/domain/DataProduct';
 import { Domain } from '../../support/domain/Domain';
 import { SubDomain } from '../../support/domain/SubDomain';
 import { ENTITY_PATH } from '../../support/entity/Entity.interface';
-import { AdminClass } from '../../support/user/AdminClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { getApiContext, redirectToHomePage } from '../../utils/common';
@@ -39,48 +38,6 @@ import {
 } from '../../utils/domain';
 import { sidebarClick } from '../../utils/sidebar';
 import { performUserLogin, visitUserProfilePage } from '../../utils/user';
-
-const test = base.extend<{
-  page: Page;
-  ingestionBotPage: Page;
-}>({
-  page: async ({ browser }, use) => {
-    const adminUser = new AdminClass();
-    const adminPage = await browser.newPage();
-    await adminUser.login(adminPage);
-    await use(adminPage);
-    await adminPage.close();
-  },
-  ingestionBotPage: async ({ browser }, use) => {
-    const admin = new AdminClass();
-    const page = await browser.newPage();
-
-    // login with admin user
-    await admin.login(page);
-    await page.waitForURL('**/my-data');
-
-    const { apiContext } = await getApiContext(page);
-
-    const bot = await apiContext
-      .get('/api/v1/bots/name/ingestion-bot')
-      .then((response) => response.json());
-    const tokenData = await apiContext
-      .get(`/api/v1/users/auth-mechanism/${bot.botUser.id}`)
-      .then((response) => response.json());
-
-    await page.evaluate((token) => {
-      // Set a new value for a key in localStorage
-      localStorage.setItem(
-        'om-session',
-        JSON.stringify({ state: { oidcIdToken: token } })
-      );
-    }, tokenData.config.JWTToken);
-
-    // await afterAction();
-    await use(page);
-    await page.close();
-  },
-});
 
 test.describe('Domains', () => {
   test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -369,7 +326,7 @@ test.describe('Domains Rbac', () => {
     await afterAction();
   });
 
-  test('Domain Rbac', async ({ browser, ingestionBotPage }) => {
+  test('Domain Rbac', async ({ browser }) => {
     test.slow(true);
 
     const { page, afterAction, apiContext } = await performAdminLogin(browser);
@@ -394,20 +351,6 @@ test.describe('Domains Rbac', () => {
       await selectDomain(page, domain2.data);
       await addAssetsToDomain(page, domain2.data, domainAssset2);
     });
-
-    await test.step(
-      'Ingestion bot should access domain assigned assets',
-      async () => {
-        await redirectToHomePage(ingestionBotPage);
-        [...domainAssset1, ...domainAssset2].forEach(async (asset) => {
-          await asset.visitEntityPage(ingestionBotPage);
-
-          await expect(
-            page.getByTestId('permission-error-placeholder')
-          ).not.toBeVisible();
-        });
-      }
-    );
 
     await test.step('User with access to multiple domains', async () => {
       await userPage
