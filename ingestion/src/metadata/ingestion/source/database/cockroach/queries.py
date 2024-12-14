@@ -46,7 +46,8 @@ COCKROACH_GET_VIEW_NAMES = """
 
 
 COCKROACH_SCHEMA_COMMENTS = """
-    SELECT 
+    SELECT
+    current_database() AS database_name,
     n.nspname AS schema_name,
     d.description AS comment
 FROM 

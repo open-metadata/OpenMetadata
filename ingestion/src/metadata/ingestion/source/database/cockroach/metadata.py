@@ -48,7 +48,6 @@ from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database
 from metadata.utils.importer import import_side_effects
 from metadata.utils.logger import ingestion_logger
-from metadata.utils.sqlalchemy_utils import get_schema_descriptions
 
 import_side_effects(
     "metadata.ingestion.source.database.postgres.converter_orm",
@@ -116,16 +115,17 @@ class CockroachSource(CommonDbSourceService, MultiDBSource):
             )
         return cls(config, metadata)
 
+    def set_schema_description_map(self) -> None:
+        self.schema_desc_map.clear()
+        results = self.engine.execute(COCKROACH_SCHEMA_COMMENTS).all()
+        for row in results:
+            self.schema_desc_map[(row.database_name, row.schema_name)] = row.comment
+
     def get_schema_description(self, schema_name: str) -> Optional[str]:
         """
         Method to fetch the schema description
         """
-        return self.schema_desc_map.get(schema_name)
-
-    def set_schema_description_map(self) -> None:
-        self.schema_desc_map = get_schema_descriptions(
-            self.engine, COCKROACH_SCHEMA_COMMENTS
-        )
+        return self.schema_desc_map.get((self.context.get().database, schema_name))
 
     def query_table_names_and_types(
         self, schema_name: str

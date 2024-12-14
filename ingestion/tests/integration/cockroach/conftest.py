@@ -21,12 +21,10 @@ from metadata.generated.schema.entity.services.databaseService import (
 @pytest.fixture(scope="module")
 def cockroach_container(tmp_path_factory):
     """
-    Start a Cockroach container with the dvdrental database.
+    Start a Cockroach container.
     """
 
-    container = CockroachDBContainer(
-        image="cockroachdb/cockroach:v23.1.0", dbname="dvdrental"
-    )
+    container = CockroachDBContainer(image="cockroachdb/cockroach:v23.1.0")
 
     with (
         try_bind(container, 26257, None) if not os.getenv("CI") else container
@@ -60,7 +58,7 @@ def create_service_request(cockroach_container, tmp_path_factory):
                 username=cockroach_container.username,
                 authType={"password": cockroach_container.password},
                 hostPort=f"localhost:{cockroach_container.get_exposed_port(26257)}",
-                database="dvdrental",
+                database=cockroach_container.dbname,
             )
         ),
     )
