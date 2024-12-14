@@ -26,10 +26,6 @@ export const QUERY_PAGE_ERROR_STATE = {
   page: false,
   search: false,
 };
-export const QUERY_PAGE_FILTER = {
-  team: [],
-  user: [],
-};
 export const QUERY_PAGE_DEFAULT_FILTER = {
   initialOptions: [],
   options: [],

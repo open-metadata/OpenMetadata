@@ -35,11 +35,11 @@ Admin permissions are required to register the application on the Azure portal.
 
 - From the Azure Active Directory, navigate to the `App Registrations` section from the left nav bar.
 
-{% image src="/images/v1.6/deployment/security/azure/create-app-1.png" alt="create-app" /%} 
+{% image src="/images/v1.7/deployment/security/azure/create-app-1.png" alt="create-app" /%} 
 
 - Click on `New Registration`. This step is for registering the OpenMetadata UI.
 
-{% image src="/images/v1.6/deployment/security/azure/create-app-2.png" alt="create-app" /%}
+{% image src="/images/v1.7/deployment/security/azure/create-app-2.png" alt="create-app" /%}
 
 - Provide an Application Name for registration.
 - Provide a redirect URL as a `Single Page Application`.
@@ -52,6 +52,8 @@ Admin permissions are required to register the application on the Azure portal.
 
 - **Web:**  
   This type is intended for confidential clients. If you select this option, you must provide both the client ID and client secret. Simply passing the client ID will cause the authorization process to fail, as the Authorization Code flow requires both credentials for successful authentication.
+  The [OIDC Authorization Code Flow](/deployment/security/oidc) is used in this case, where the client secret is required to securely exchange the authorization code for tokens.
+
 
 ### Recommendation:
 
@@ -60,13 +62,13 @@ Admin permissions are required to register the application on the Azure portal.
 
 {% /note %}
 
-{% image src="/images/v1.6/deployment/security/azure/create-app-3.png" alt="create-app" /%}
+{% image src="/images/v1.7/deployment/security/azure/create-app-3.png" alt="create-app" /%}
 
 ### Step 3: Where to Find the Credentials
 
 - The `Client ID` and the `Tenant ID` are displayed in the Overview section of the registered application.
 
-{% image src="/images/v1.6/deployment/security/azure/where-to-find-credentials.png" alt="create-app" /%}
+{% image src="/images/v1.7/deployment/security/azure/where-to-find-credentials.png" alt="create-app" /%}
 
 - When passing the details for `authority`, the `Tenant ID` is added to the URL as shown in the example
   below. `https://login.microsoftonline.com/TenantID`
@@ -75,4 +77,4 @@ Admin permissions are required to register the application on the Azure portal.
 "authority": "https://login.microsoftonline.com/c11234b7c-b1b2-9854-0mn1-56abh3dea295"
 ```
 
-{% partial file="/v1.6/deployment/configure-ingestion.md" /%}
+{% partial file="/v1.7/deployment/configure-ingestion.md" /%}
