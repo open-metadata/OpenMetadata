@@ -3032,7 +3032,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
       SystemRepository systemRepository = Entity.getSystemRepository();
       AssetCertificationSettings assetCertificationSettings =
-          systemRepository.getAssetCertificationSettings();
+          systemRepository.getAssetCertificationSettingOrDefault();
 
       String certificationLabel = updatedCertification.getTagLabel().getTagFQN();
 

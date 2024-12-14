@@ -79,6 +79,7 @@ import org.openmetadata.service.exception.ConstraintViolationExceptionMapper;
 import org.openmetadata.service.exception.JsonMappingExceptionMapper;
 import org.openmetadata.service.exception.OMErrorPageHandler;
 import org.openmetadata.service.fernet.Fernet;
+import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.MigrationDAO;
@@ -172,6 +173,9 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     // Configure the Fernet instance
     Fernet.getInstance().setFernetKey(catalogConfig);
+
+    // Initialize Workflow Handler
+    WorkflowHandler.initialize(catalogConfig);
 
     // Init Settings Cache after repositories
     SettingsCache.initialize(catalogConfig);
