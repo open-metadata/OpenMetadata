@@ -9,7 +9,7 @@
       "title": "Entity",
       "description": "The entity for which the records will be deleted",
       "type": "string",
-      "const": "EventSubscription",
+      "enum": ["EventSubscription"],
       "default": "EventSubscription",
       "readOnly": true
     },

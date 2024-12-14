@@ -61,7 +61,6 @@ public class EventSubscriptionScheduler {
   public static final String ALERT_TRIGGER_GROUP = "OMAlertJobGroup";
   private static EventSubscriptionScheduler instance;
   private static volatile boolean initialized = false;
-  public static volatile boolean cleanupJobInitialised = false;
 
   private final Scheduler alertsScheduler = new StdSchedulerFactory().getScheduler();
 
@@ -168,33 +167,6 @@ public class EventSubscriptionScheduler {
     alertsScheduler.unscheduleJob(
         new TriggerKey(deletedEntity.getId().toString(), ALERT_TRIGGER_GROUP));
     LOG.info("Alert publisher deleted for {}", deletedEntity.getName());
-  }
-
-  public void scheduleCleanupJob() {
-    if (!cleanupJobInitialised) {
-      try {
-        JobDetail cleanupJob =
-            JobBuilder.newJob(EventSubscriptionCleanupJob.class)
-                .withIdentity("CleanupJob", ALERT_JOB_GROUP)
-                .build();
-
-        Trigger cleanupTrigger =
-            TriggerBuilder.newTrigger()
-                .withIdentity("CleanupTrigger", ALERT_TRIGGER_GROUP)
-                .withSchedule(
-                    SimpleScheduleBuilder.simpleSchedule()
-                        .withIntervalInSeconds(10)
-                        .repeatForever())
-                .startNow()
-                .build();
-
-        alertsScheduler.scheduleJob(cleanupJob, cleanupTrigger);
-        cleanupJobInitialised = true;
-        LOG.info("Scheduled periodic cleanup job to run every 10 seconds.");
-      } catch (SchedulerException e) {
-        LOG.error("Failed to schedule cleanup job", e);
-      }
-    }
   }
 
   @Transaction

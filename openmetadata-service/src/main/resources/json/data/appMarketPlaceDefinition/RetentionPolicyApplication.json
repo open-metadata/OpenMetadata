@@ -8,7 +8,7 @@
   "developerUrl": "https://www.getcollate.io",
   "privacyPolicyUrl": "https://www.getcollate.io",
   "supportEmail": "support@getcollate.io",
-  "scheduleType": "NoSchedule",
+  "scheduleType": "ScheduledOrManual",
   "permission": "All",
   "className": "org.openmetadata.service.apps.bundles.retentionPolicyApp.RetentionPolicyApp",
   "runtime": {
