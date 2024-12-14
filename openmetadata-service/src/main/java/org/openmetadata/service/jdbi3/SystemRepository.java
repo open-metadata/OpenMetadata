@@ -16,6 +16,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.api.configuration.UiThemePreference;
 import org.openmetadata.schema.configuration.AssetCertificationSettings;
+import org.openmetadata.schema.configuration.ExecutorConfiguration;
+import org.openmetadata.schema.configuration.HistoryCleanUpConfiguration;
 import org.openmetadata.schema.configuration.WorkflowSettings;
 import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
@@ -121,6 +123,17 @@ public class SystemRepository {
         .orElse(null);
   }
 
+  public AssetCertificationSettings getAssetCertificationSettingOrDefault() {
+    AssetCertificationSettings assetCertificationSettings = getAssetCertificationSettings();
+    if (assetCertificationSettings == null) {
+      assetCertificationSettings =
+          new AssetCertificationSettings()
+              .withAllowedClassification("Certification")
+              .withValidityPeriod("P30D");
+    }
+    return assetCertificationSettings;
+  }
+
   public WorkflowSettings getWorkflowSettings() {
     Optional<Settings> oWorkflowSettings =
         Optional.ofNullable(getConfigWithKey(SettingsType.WORKFLOW_SETTINGS.value()));
@@ -128,6 +141,17 @@ public class SystemRepository {
     return oWorkflowSettings
         .map(settings -> (WorkflowSettings) settings.getConfigValue())
         .orElse(null);
+  }
+
+  public WorkflowSettings getWorkflowSettingsOrDefault() {
+    WorkflowSettings workflowSettings = getWorkflowSettings();
+    if (workflowSettings == null) {
+      workflowSettings =
+          new WorkflowSettings()
+              .withExecutorConfiguration(new ExecutorConfiguration())
+              .withHistoryCleanUpConfiguration(new HistoryCleanUpConfiguration());
+    }
+    return workflowSettings;
   }
 
   public Settings getEmailConfigInternal() {
