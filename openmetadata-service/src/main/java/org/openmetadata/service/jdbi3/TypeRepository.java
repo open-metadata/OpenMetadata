@@ -22,11 +22,13 @@ import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.util.EntityUtil.customFieldMatch;
 import static org.openmetadata.service.util.EntityUtil.getCustomField;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -428,6 +430,7 @@ public class TypeRepository extends EntityRepository<Type> {
                 Relationship.HAS.ordinal(),
                 "customProperty",
                 customPropertyJson);
+        postUpdateCustomPropertyConfig(entity, origProperty, updatedProperty);
       }
     }
 
@@ -443,9 +446,56 @@ public class TypeRepository extends EntityRepository<Type> {
         HashSet<String> updatedValues = new HashSet<>(updatedConfig.getValues());
         if (updatedValues.size() != updatedConfig.getValues().size()) {
           throw new IllegalArgumentException("Enum Custom Property values cannot have duplicates.");
-        } else if (!updatedValues.containsAll(origConfig.getValues())) {
-          throw new IllegalArgumentException(
-              "Existing Enum Custom Property values cannot be removed.");
+        }
+      }
+    }
+
+    private void postUpdateCustomPropertyConfig(
+        Type entity, CustomProperty origProperty, CustomProperty updatedProperty) {
+      if (origProperty.getPropertyType().getName().equals("enum")) {
+        EnumConfig origConfig =
+            JsonUtils.convertValue(
+                origProperty.getCustomPropertyConfig().getConfig(), EnumConfig.class);
+        EnumConfig updatedConfig =
+            JsonUtils.convertValue(
+                updatedProperty.getCustomPropertyConfig().getConfig(), EnumConfig.class);
+        HashSet<String> updatedKeys = new HashSet<>(updatedConfig.getValues());
+
+        if (!updatedKeys.containsAll(origConfig.getValues())) {
+          // Update the extension values with removed enum keys
+          List<String> removedEnumKeys =
+              origConfig.getValues().stream()
+                  .filter(value -> !updatedConfig.getValues().contains(value))
+                  .toList();
+
+          String customPropertyFQN =
+              getCustomPropertyFQN(entity.getName(), updatedProperty.getName());
+
+          List<CollectionDAO.ExtensionWithIdAndSchemaObject> extensions =
+              daoCollection.entityExtensionDAO().getExtensionsByPrefixBatch(customPropertyFQN);
+          List<CollectionDAO.ExtensionWithIdAndSchemaObject> updatedExtensions =
+              extensions.stream()
+                  .map(
+                      extension -> {
+                        List<String> rowValues =
+                            Optional.ofNullable(extension.getJson())
+                                .map(
+                                    json ->
+                                        JsonUtils.readValue(
+                                            json, new TypeReference<List<String>>() {}))
+                                .orElseGet(ArrayList::new);
+                        rowValues.removeAll(removedEnumKeys);
+
+                        return CollectionDAO.ExtensionWithIdAndSchemaObject.builder()
+                            .id(extension.getId())
+                            .extension(extension.getExtension())
+                            .json(JsonUtils.pojoToJson(rowValues))
+                            .jsonschema(extension.getJsonschema())
+                            .build();
+                      })
+                  .toList();
+
+          daoCollection.entityExtensionDAO().bulkUpsertExtensions(updatedExtensions);
         }
       }
     }
