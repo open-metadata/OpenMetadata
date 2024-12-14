@@ -104,7 +104,7 @@ wget -O - {your domain}/api/v1/system/config/jwks
 
 Once the above configuration is updated, the server is restarted. Admin can go to Settings -> Bots page.
 
-{% image src="/images/v1.4/deployment/security/enable-jwt/settings-bot.png" alt="Settings Page" caption="Settings Page" /%} 
+{% image src="/images/v1.6/deployment/security/enable-jwt/settings-bot.png" alt="Settings Page" caption="Settings Page" /%} 
 
 {% image src="/images/v1.6/deployment/security/enable-jwt/bot.png" alt="Bot settings page" caption="Bot settings page" /%} 
 

@@ -293,7 +293,7 @@ export const getNameFromUserData = (
     }
   }
 
-  return { name: userName, email: email };
+  return { name: userName, email: email, picture: user.picture };
 };
 
 export const isProtectedRoute = (pathname: string) => {

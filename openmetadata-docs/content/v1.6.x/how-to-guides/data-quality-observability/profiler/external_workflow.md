@@ -34,7 +34,7 @@ Note that running a single profiler workflow is only supported if you run the wo
 
 {% /note %}
 
-{% partial file="/v1.4/connectors/external-ingestion-deployment.md" /%}
+{% partial file="/v1.6/connectors/external-ingestion-deployment.md" /%}
 
 ### Requirements
 
