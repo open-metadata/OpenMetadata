@@ -293,15 +293,26 @@ class S3Source(StorageServiceSource):
         )
         # if we have a sample file to fetch a schema from
         if sample_key:
-            columns = self._get_columns(
-                container_name=bucket_name,
-                sample_key=sample_key,
-                metadata_entry=metadata_entry,
-                config_source=S3Config(
-                    securityConfig=self.service_connection.awsConfig
-                ),
-                client=self.s3_client,
-            )
+            try:
+                columns = self._get_columns(
+                    container_name=bucket_name,
+                    sample_key=sample_key,
+                    metadata_entry=metadata_entry,
+                    config_source=S3Config(
+                        securityConfig=self.service_connection.awsConfig
+                    ),
+                    client=self.s3_client,
+                )
+            except Exception as err:
+                logger.warning()
+                self.status.failed(
+                    error=StackTraceError(
+                        name=f"{bucket_name}/{sample_key}",
+                        error=f"Error extracting columns from [{bucket_name}/{sample_key}] due to: [{err}]",
+                        stackTrace=traceback.format_exc(),
+                    )
+                )
+                return None
             if columns:
                 prefix = (
                     f"{KEY_SEPARATOR}{metadata_entry.dataPath.strip(KEY_SEPARATOR)}"
@@ -413,7 +424,7 @@ class S3Source(StorageServiceSource):
         candidate_keys = [
             entry["Key"]
             for entry in response[S3_CLIENT_ROOT_RESPONSE]
-            if entry and entry.get("Key")
+            if entry and entry.get("Key") and not entry.get("Key").endswith("/")
         ]
         for key in candidate_keys:
             if self.is_valid_unstructured_file(metadata_entry.unstructuredFormats, key):
@@ -622,7 +633,7 @@ class S3Source(StorageServiceSource):
                 candidate_keys = [
                     entry["Key"]
                     for entry in response[S3_CLIENT_ROOT_RESPONSE]
-                    if entry and entry.get("Key")
+                    if entry and entry.get("Key") and not entry.get("Key").endswith("/")
                 ]
                 # pick a random key out of the candidates if any were returned
                 if candidate_keys:
