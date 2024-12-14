@@ -394,3 +394,27 @@ export const renderReferenceElement = (
     </Tag>
   );
 };
+
+export const findAndUpdateNested = (
+  terms: ModifiedGlossary[],
+  newTerm: GlossaryTerm
+): ModifiedGlossary[] => {
+  return terms.map((term) => {
+    if (term.fullyQualifiedName === newTerm.parent?.fullyQualifiedName) {
+      return {
+        ...term,
+        children: [...(term.children || []), newTerm] as GlossaryTerm[],
+      } as ModifiedGlossary;
+    } else if ('children' in term && term.children?.length) {
+      return {
+        ...term,
+        children: findAndUpdateNested(
+          term.children as ModifiedGlossary[],
+          newTerm
+        ),
+      } as ModifiedGlossary;
+    }
+
+    return term;
+  });
+};

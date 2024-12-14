@@ -99,8 +99,12 @@ const GlossaryV1 = ({
 
   const [editMode, setEditMode] = useState(false);
 
-  const { activeGlossary, glossaryChildTerms, setGlossaryChildTerms } =
-    useGlossaryStore();
+  const {
+    activeGlossary,
+    glossaryChildTerms,
+    setGlossaryChildTerms,
+    insertNewGlossaryTermToChildTerms,
+  } = useGlossaryStore();
 
   const { id, fullyQualifiedName } = activeGlossary ?? {};
 
@@ -259,29 +263,38 @@ const GlossaryV1 = ({
     }
   };
 
-  const onTermModalSuccess = useCallback(() => {
-    loadGlossaryTerms(true);
-    if (!isGlossaryActive && tab !== 'terms') {
-      history.push(
-        getGlossaryTermDetailsPath(
-          selectedData.fullyQualifiedName || '',
-          EntityTabs.TERMS
-        )
-      );
-    }
-    setIsEditModalOpen(false);
-  }, [isGlossaryActive, tab, selectedData]);
+  const onTermModalSuccess = useCallback(
+    (term: GlossaryTerm) => {
+      // Setting loading so that nested terms are rendered again on table with change
+      setIsTermsLoading(true);
+      // Update store with newly created term
+      insertNewGlossaryTermToChildTerms(term);
+      if (!isGlossaryActive && tab !== 'terms') {
+        history.push(
+          getGlossaryTermDetailsPath(
+            selectedData.fullyQualifiedName || '',
+            EntityTabs.TERMS
+          )
+        );
+      }
+      // Close modal and set loading to false
+      setIsEditModalOpen(false);
+      setIsTermsLoading(false);
+    },
+    [isGlossaryActive, tab, selectedData]
+  );
 
   const handleGlossaryTermAdd = async (formData: GlossaryTermForm) => {
     try {
-      await addGlossaryTerm({
+      const term = await addGlossaryTerm({
         ...formData,
         glossary:
           activeGlossaryTerm?.glossary?.name ||
           (selectedData.fullyQualifiedName ?? ''),
         parent: activeGlossaryTerm?.fullyQualifiedName,
       });
-      onTermModalSuccess();
+
+      onTermModalSuccess(term);
     } catch (error) {
       if (
         (error as AxiosError).response?.status === HTTP_STATUS_CODE.CONFLICT

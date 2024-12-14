@@ -144,9 +144,6 @@ const GlossaryTermTab = ({
   }, [isGlossary, activeGlossary]);
 
   const expandableKeys = useMemo(() => {
-    // clean expandedRowKey upon glossaryTerm change
-    setExpandedRowKeys([]);
-
     return findExpandableKeysForArray(glossaryTerms);
   }, [glossaryTerms]);
 
