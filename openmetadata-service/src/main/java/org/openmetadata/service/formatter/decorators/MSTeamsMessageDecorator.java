@@ -29,6 +29,7 @@ import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.tests.TestCaseParameterValue;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.changeEvent.msteams.TeamsMessage;
@@ -115,9 +116,24 @@ public class MSTeamsMessageDecorator implements MessageDecorator<TeamsMessage> {
     String entityType = event.getEntityType();
 
     return switch (entityType) {
-      case Entity.TEST_CASE -> createDQMessage(publisherName, event, outgoingMessage);
+      case Entity.TEST_CASE -> createTestCaseMessage(publisherName, event, outgoingMessage);
       default -> createGeneralChangeEventMessage(publisherName, event, outgoingMessage);
     };
+  }
+
+  private TeamsMessage createTestCaseMessage(
+      String publisherName, ChangeEvent event, OutgoingMessage outgoingMessage) {
+    final String testCaseResult = "testCaseResult";
+    List<FieldChange> fieldsAdded = event.getChangeDescription().getFieldsAdded();
+    List<FieldChange> fieldsUpdated = event.getChangeDescription().getFieldsUpdated();
+
+    boolean hasRelevantChange =
+        fieldsAdded.stream().anyMatch(field -> testCaseResult.equals(field.getName()))
+            || fieldsUpdated.stream().anyMatch(field -> testCaseResult.equals(field.getName()));
+
+    return hasRelevantChange
+        ? createDQMessage(event, outgoingMessage)
+        : createGeneralChangeEventMessage(publisherName, event, outgoingMessage);
   }
 
   private TeamsMessage createGeneralChangeEventMessage(
@@ -173,8 +189,7 @@ public class MSTeamsMessageDecorator implements MessageDecorator<TeamsMessage> {
     return TeamsMessage.builder().type("message").attachments(List.of(attachment)).build();
   }
 
-  private TeamsMessage createDQMessage(
-      String publisherName, ChangeEvent event, OutgoingMessage outgoingMessage) {
+  private TeamsMessage createDQMessage(ChangeEvent event, OutgoingMessage outgoingMessage) {
     Map<DQ_Template_Section, Map<Enum<?>, Object>> dqTemplateData =
         MessageDecorator.buildDQTemplateData(event, outgoingMessage);
 
