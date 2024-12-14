@@ -47,6 +47,7 @@ import org.openmetadata.schema.api.tests.CreateTestSuite;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
 import org.openmetadata.schema.auth.JWTTokenExpiry;
 import org.openmetadata.schema.configuration.AssetCertificationSettings;
+import org.openmetadata.schema.configuration.WorkflowSettings;
 import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
@@ -549,6 +550,48 @@ public class SystemResourceTest extends OpenMetadataApplicationTest {
     // Assert updated values
     assertEquals(3, updatedLineageConfig.getUpstreamDepth());
     assertEquals(4, updatedLineageConfig.getDownstreamDepth());
+  }
+
+  @Test
+  void testWorkflowSettings() throws HttpResponseException {
+    // Retrieve the default workflow settings
+    Settings setting = getSystemConfig(SettingsType.WORKFLOW_SETTINGS);
+    WorkflowSettings workflowSettings =
+        JsonUtils.convertValue(setting.getConfigValue(), WorkflowSettings.class);
+
+    // Assert default values
+    assertEquals(50, workflowSettings.getExecutorConfiguration().getCorePoolSize());
+    assertEquals(1000, workflowSettings.getExecutorConfiguration().getQueueSize());
+    assertEquals(100, workflowSettings.getExecutorConfiguration().getMaxPoolSize());
+    assertEquals(20, workflowSettings.getExecutorConfiguration().getTasksDuePerAcquisition());
+    assertEquals(7, workflowSettings.getHistoryCleanUpConfiguration().getCleanAfterNumberOfDays());
+
+    // Update workflow settings
+    workflowSettings.getExecutorConfiguration().setCorePoolSize(100);
+    workflowSettings.getExecutorConfiguration().setQueueSize(2000);
+    workflowSettings.getExecutorConfiguration().setMaxPoolSize(200);
+    workflowSettings.getExecutorConfiguration().setTasksDuePerAcquisition(40);
+    workflowSettings.getHistoryCleanUpConfiguration().setCleanAfterNumberOfDays(10);
+
+    Settings updatedSetting =
+        new Settings()
+            .withConfigType(SettingsType.WORKFLOW_SETTINGS)
+            .withConfigValue(workflowSettings);
+
+    updateSystemConfig(updatedSetting);
+
+    // Retrieve the updated settings
+    Settings updatedSettings = getSystemConfig(SettingsType.WORKFLOW_SETTINGS);
+    WorkflowSettings updateWorkflowSettings =
+        JsonUtils.convertValue(updatedSettings.getConfigValue(), WorkflowSettings.class);
+
+    // Assert updated values
+    assertEquals(100, updateWorkflowSettings.getExecutorConfiguration().getCorePoolSize());
+    assertEquals(2000, updateWorkflowSettings.getExecutorConfiguration().getQueueSize());
+    assertEquals(200, updateWorkflowSettings.getExecutorConfiguration().getMaxPoolSize());
+    assertEquals(40, updateWorkflowSettings.getExecutorConfiguration().getTasksDuePerAcquisition());
+    assertEquals(
+        10, updateWorkflowSettings.getHistoryCleanUpConfiguration().getCleanAfterNumberOfDays());
   }
 
   @Test

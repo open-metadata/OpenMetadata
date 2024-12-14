@@ -64,7 +64,7 @@ public class WorkflowHandler {
       ProcessEngineConfiguration currentProcessEngineConfiguration) {
     ProcessEngines.destroy();
     SystemRepository systemRepository = Entity.getSystemRepository();
-    WorkflowSettings workflowSettings = systemRepository.getWorkflowSettings();
+    WorkflowSettings workflowSettings = systemRepository.getWorkflowSettingsOrDefault();
 
     StandaloneProcessEngineConfiguration processEngineConfiguration =
         new StandaloneProcessEngineConfiguration();

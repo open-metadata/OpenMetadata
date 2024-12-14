@@ -70,7 +70,6 @@ public class WorkflowDefinitionResource
 
   @Override
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
-    WorkflowHandler.initialize(config);
     repository.initSeedDataFromResources();
   }
 
