@@ -42,6 +42,7 @@ import org.openmetadata.service.apps.bundles.changeEvent.msteams.TeamsMessage.Te
 import org.openmetadata.service.exception.UnhandledServerException;
 
 public class MSTeamsMessageDecorator implements MessageDecorator<TeamsMessage> {
+  private static final String TEST_CASE_RESULT = "testCaseResult";
 
   @Override
   public String getBold() {
@@ -123,13 +124,12 @@ public class MSTeamsMessageDecorator implements MessageDecorator<TeamsMessage> {
 
   private TeamsMessage createTestCaseMessage(
       String publisherName, ChangeEvent event, OutgoingMessage outgoingMessage) {
-    final String testCaseResult = "testCaseResult";
     List<FieldChange> fieldsAdded = event.getChangeDescription().getFieldsAdded();
     List<FieldChange> fieldsUpdated = event.getChangeDescription().getFieldsUpdated();
 
     boolean hasRelevantChange =
-        fieldsAdded.stream().anyMatch(field -> testCaseResult.equals(field.getName()))
-            || fieldsUpdated.stream().anyMatch(field -> testCaseResult.equals(field.getName()));
+        fieldsAdded.stream().anyMatch(field -> TEST_CASE_RESULT.equals(field.getName()))
+            || fieldsUpdated.stream().anyMatch(field -> TEST_CASE_RESULT.equals(field.getName()));
 
     return hasRelevantChange
         ? createDQMessage(event, outgoingMessage)
