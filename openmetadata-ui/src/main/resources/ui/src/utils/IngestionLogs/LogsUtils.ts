@@ -15,6 +15,7 @@ import { round } from 'lodash';
 import { PipelineType } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { useDownloadProgressStore } from '../../hooks/useDownloadProgressStore';
 import { IngestionPipelineLogByIdInterface } from '../../pages/LogsViewerPage/LogsViewerPage.interfaces';
+import { getApplicationLogs } from '../../rest/applicationAPI';
 import { getIngestionPipelineLogById } from '../../rest/ingestionPipelineAPI';
 import { showErrorToast } from '../ToastUtils';
 
@@ -61,10 +62,13 @@ export const fetchLogsRecursively = async (
   after?: string
 ) => {
   let logs = '';
+
   const {
     data: { total, after: afterCursor, ...rest },
-  } = await getIngestionPipelineLogById(ingestionId, after);
-
+  } =
+    pipelineType === PipelineType.Application
+      ? await getApplicationLogs(ingestionId, after)
+      : await getIngestionPipelineLogById(ingestionId, after);
   logs = logs.concat(getLogsFromResponse(rest, pipelineType));
   if (afterCursor && total) {
     const progress = round((Number(afterCursor) * 100) / Number(total));
@@ -88,6 +92,20 @@ export const downloadIngestionLog = async (
 
   try {
     return await fetchLogsRecursively(ingestionId, pipelineType);
+  } catch (err) {
+    showErrorToast(err as AxiosError);
+
+    return '';
+  }
+};
+
+export const downloadAppLogs = async (appName?: string) => {
+  if (!appName) {
+    return '';
+  }
+
+  try {
+    return await fetchLogsRecursively(appName, PipelineType.Application);
   } catch (err) {
     showErrorToast(err as AxiosError);
 
