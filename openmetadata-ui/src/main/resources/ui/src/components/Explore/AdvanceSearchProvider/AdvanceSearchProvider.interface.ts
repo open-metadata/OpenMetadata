@@ -14,6 +14,10 @@ import { ReactNode } from 'react';
 import { Config, ImmutableTree } from 'react-awesome-query-builder';
 import { SearchIndex } from '../../../enums/search.enum';
 
+export enum SearchOutputType {
+  ElasticSearch = 'elasticsearch',
+  JSONLogic = 'jsonlogic',
+}
 export interface AdvanceSearchProviderProps {
   children: ReactNode;
   isExplorePage?: boolean;
