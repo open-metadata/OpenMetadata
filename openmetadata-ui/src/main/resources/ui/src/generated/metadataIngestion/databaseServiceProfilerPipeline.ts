@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * DatabaseService Profiler Pipeline Configuration.
  */
 export interface DatabaseServiceProfilerPipeline {
@@ -36,13 +34,29 @@ export interface DatabaseServiceProfilerPipeline {
      */
     computeTableMetrics?: boolean;
     /**
+     * Set the Confidence value for which you want the column to be tagged as PII. Confidence
+     * value ranges from 0 to 100. A higher number will yield less false positives but more
+     * false negatives. A lower number will yield more false positives but less false negatives.
+     */
+    confidence?: number;
+    /**
      * Regex to only fetch databases that matches the pattern.
      */
     databaseFilterPattern?: FilterPattern;
     /**
+     * Option to turn on/off generating sample data. If enabled, profiler will ingest sample
+     * data for each table.
+     */
+    generateSampleData?: boolean;
+    /**
      * Optional configuration to turn off fetching metadata for views.
      */
     includeViews?: boolean;
+    /**
+     * Optional configuration to automatically tag columns that might contain sensitive
+     * information
+     */
+    processPiiSensitive?: boolean;
     /**
      * Percentage of data or no. of rows used to compute the profiler metrics and run data
      * quality tests

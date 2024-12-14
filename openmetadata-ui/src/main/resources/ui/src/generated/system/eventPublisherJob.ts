@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * This schema defines Event Publisher Job.
  */
 export interface EventPublisherJob {
@@ -65,7 +63,7 @@ export interface EventPublisherJob {
      */
     producerThreads?: number;
     /**
-     * Queue Size to use internally for reindexing.
+     * Queue Size to user internally for reindexing.
      */
     queueSize?: number;
     /**
@@ -161,7 +159,6 @@ export enum Status {
     Failed = "failed",
     Running = "running",
     Started = "started",
-    StopInProgress = "stopInProgress",
     Stopped = "stopped",
     Success = "success",
 }

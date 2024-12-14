@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * Data Insight Custom Chart Result
  */
 export interface DataInsightCustomChartResult {

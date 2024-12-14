@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * What type of error occurred when importing a CSV file.
  */
 export enum CSVErrorType {

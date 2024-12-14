@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * Represents the offsets for an event subscription, tracking the starting point and current
  * position of events processed.
  */

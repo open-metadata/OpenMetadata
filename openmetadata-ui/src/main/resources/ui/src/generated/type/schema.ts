@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * This schema defines the Topic entity. A topic is a feed into which message are published
  * to by publishers and read from by consumers in a messaging service.
  */

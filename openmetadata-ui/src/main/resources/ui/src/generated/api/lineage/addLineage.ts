@@ -10,8 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
 /**
  * Add lineage details between two entities
  */
@@ -150,7 +148,6 @@ export interface ColumnLineage {
  * Lineage type describes how a lineage was created.
  */
 export enum Source {
-    CrossDatabaseLineage = "CrossDatabaseLineage",
     DashboardLineage = "DashboardLineage",
     DbtLineage = "DbtLineage",
     ExternalTableLineage = "ExternalTableLineage",

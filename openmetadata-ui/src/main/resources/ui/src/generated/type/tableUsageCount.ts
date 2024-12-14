@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * This model is the linking between the usage stage and bulk sink steps
  */
 export interface TableUsageCount {

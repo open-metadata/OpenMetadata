@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * Schema defining the response for event subscription diagnostics, including details about
  * processed and unprocessed events.
  */
@@ -22,7 +20,7 @@ export interface EventSubscriptionDiagnosticInfo {
      */
     currentOffset?: any;
     /**
-     * Count of failed events for specific alert.
+     * Count of failed events.
      */
     failedEventsCount?: any;
     /**
@@ -34,8 +32,7 @@ export interface EventSubscriptionDiagnosticInfo {
      */
     latestOffset?: any;
     /**
-     * The number of relevant unprocessed events based on the alert's filtering rules for
-     * specific alert.
+     * The number of relevant unprocessed events based on the alert's filtering rules.
      */
     relevantUnprocessedEventsCount?: any;
     /**
@@ -47,7 +44,7 @@ export interface EventSubscriptionDiagnosticInfo {
      */
     startingOffset?: any;
     /**
-     * Count of successful events for specific alert.
+     * Count of successful events.
      */
     successfulEventsCount?: any;
     /**

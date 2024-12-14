@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * Schema corresponding to a table profile that belongs to a table
  */
 export interface CreateTableProfile {

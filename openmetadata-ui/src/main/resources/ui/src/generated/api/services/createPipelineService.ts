@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * Create Pipeline service entity request
  */
 export interface CreatePipelineService {
@@ -273,13 +271,9 @@ export interface Connection {
      */
     discoveryAPI?: string;
     /**
-     * List of IDs of your DBT cloud jobs seperated by comma `,`
+     * ID of your DBT cloud job
      */
-    jobIds?: string[];
-    /**
-     * List of IDs of your DBT cloud projects seperated by comma `,`
-     */
-    projectIds?: string[];
+    jobId?: string;
     /**
      * Available sources to fetch metadata.
      */
@@ -453,14 +447,13 @@ export interface MetadataDatabaseConnection {
     /**
      * SSL Configuration details.
      */
-    sslConfig?:                  Config;
-    supportsDataDiff?:           boolean;
-    supportsDBTExtraction?:      boolean;
-    supportsLineageExtraction?:  boolean;
-    supportsMetadataExtraction?: boolean;
-    supportsProfiler?:           boolean;
-    supportsQueryComment?:       boolean;
-    supportsUsageExtraction?:    boolean;
+    sslConfig?:                     Config;
+    supportsDataDiff?:              boolean;
+    supportsDBTExtraction?:         boolean;
+    supportsMetadataExtraction?:    boolean;
+    supportsProfiler?:              boolean;
+    supportsQueryComment?:          boolean;
+    supportsViewLineageExtraction?: boolean;
     /**
      * Username to connect to MySQL. This user should have privileges to read all the metadata
      * in Mysql.
@@ -488,9 +481,11 @@ export interface MetadataDatabaseConnection {
      * Ingest data from all databases in Postgres. You can use databaseFilterPattern on top of
      * this.
      */
-    ingestAllDatabases?: boolean;
-    sslMode?:            SSLMode;
-    supportsDatabase?:   boolean;
+    ingestAllDatabases?:        boolean;
+    sslMode?:                   SSLMode;
+    supportsDatabase?:          boolean;
+    supportsLineageExtraction?: boolean;
+    supportsUsageExtraction?:   boolean;
     /**
      * How to run the SQLite database. :memory: by default.
      */
@@ -500,8 +495,7 @@ export interface MetadataDatabaseConnection {
      *
      * Password to connect to the Matillion.
      */
-    password?:                      string;
-    supportsViewLineageExtraction?: boolean;
+    password?: string;
     [property: string]: any;
 }
 

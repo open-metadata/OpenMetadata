@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- export interface ComplexTypesObject {
+export interface ComplexTypesObject {
     "table-cp"?: Table;
     [property: string]: any;
 }

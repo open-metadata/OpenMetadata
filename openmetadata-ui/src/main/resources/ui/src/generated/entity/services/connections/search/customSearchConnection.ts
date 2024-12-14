@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * Custom Search Service connection to build a source that is not supported by OpenMetadata
  * yet.
  */

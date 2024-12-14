@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * MlModel Service Entity, such as MlFlow.
  */
 export interface MlmodelService {

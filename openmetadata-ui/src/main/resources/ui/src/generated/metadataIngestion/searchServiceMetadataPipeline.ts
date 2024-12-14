@@ -10,16 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * SearchService Metadata Pipeline Configuration.
  */
 export interface SearchServiceMetadataPipeline {
-    /**
-     * Enable the 'Include Index Template' toggle to manage the ingestion of index template data.
-     */
-    includeIndexTemplate?: boolean;
     /**
      * Optional configuration to turn off fetching sample data for search index.
      */

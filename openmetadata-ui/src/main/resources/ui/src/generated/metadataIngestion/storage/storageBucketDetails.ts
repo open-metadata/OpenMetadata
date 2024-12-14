@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * Details of the bucket where the storage metadata manifest file is stored
  */
 export interface StorageBucketDetails {

@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * DBT Pipeline Configuration.
  */
 export interface DbtPipeline {
@@ -132,10 +130,6 @@ export interface DBTConfigurationSource {
      */
     dbtRunResultsFilePath?: string;
     /**
-     * DBT sources file path to extract the freshness test result.
-     */
-    dbtSourcesFilePath?: string;
-    /**
      * DBT catalog http file path to extract dbt models with their column schemas.
      */
     dbtCatalogHttpPath?: string;
@@ -147,10 +141,6 @@ export interface DBTConfigurationSource {
      * DBT run results http file path to extract the test results information.
      */
     dbtRunResultsHttpPath?: string;
-    /**
-     * DBT sources http file path to extract freshness test results information.
-     */
-    dbtSourcesHttpPath?: string;
     /**
      * Details of the bucket where the dbt files are stored
      */

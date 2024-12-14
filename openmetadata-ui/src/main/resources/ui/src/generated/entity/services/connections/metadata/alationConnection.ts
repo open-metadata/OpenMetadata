@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * Alation Connection Config
  */
 export interface AlationConnection {
@@ -174,7 +172,8 @@ export interface AlationDatabaseConnection {
      * restrict the metadata reading to a single schema. When left blank, OpenMetadata Ingestion
      * attempts to scan all the schemas.
      */
-    databaseSchema?: string;
+    databaseSchema?:                string;
+    supportsViewLineageExtraction?: boolean;
 }
 
 /**

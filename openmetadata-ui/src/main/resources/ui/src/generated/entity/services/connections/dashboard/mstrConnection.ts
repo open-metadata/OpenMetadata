@@ -11,23 +11,38 @@
  *  limitations under the License.
  */
 /**
- * Schema defining email templates.
+ * Mstr Connection Config
  */
-export interface TemplateValidationReponse {
+export interface MstrConnection {
     /**
-     * List of additional placeholders.
+     * Host and Port of the Metabase instance.
      */
-    additionalPlaceholder?: string[];
+    hostPort: string;
     /**
-     * Flag indicating if the template is valid.
+     * Password to connect to MSTR.
      */
-    isValid?: boolean;
+    password?: string;
     /**
-     * Validation message.
+     * MSTR Project Name
      */
-    message?: string;
+    projectName?:                string;
+    supportsMetadataExtraction?: boolean;
     /**
-     * List of missing placeholders.
+     * Service Type
      */
-    missingPlaceholder?: string[];
+    type?: MstrType;
+    /**
+     * Username to connect to MSTR. This user should have privileges to read all the metadata in
+     * MSTR.
+     */
+    username: string;
+}
+
+/**
+ * Service Type
+ *
+ * Mstr service type
+ */
+export enum MstrType {
+    Mstr = "Mstr",
 }

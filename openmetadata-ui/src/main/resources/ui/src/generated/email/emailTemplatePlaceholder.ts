@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * Schema defining placeholders used in email templates.
  */
 export interface EmailTemplatePlaceholder {

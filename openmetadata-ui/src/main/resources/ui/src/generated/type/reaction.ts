@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * This schema defines the reaction to an entity or a conversation in the activity feeds.
  */
 export interface Reaction {

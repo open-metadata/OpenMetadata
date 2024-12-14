@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * Storage Metadata Manifest file GCS path config.
  */
 export interface StorageMetadataGCSConfig {

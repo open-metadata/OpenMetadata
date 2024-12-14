@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * This schema defines the type for reporting the count of threads related to an entity.
  */
 export interface ThreadCount {

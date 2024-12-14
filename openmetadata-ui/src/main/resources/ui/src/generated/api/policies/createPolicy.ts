@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * Create Policy Entity Request
  */
 export interface CreatePolicy {
@@ -161,7 +159,6 @@ export enum Operation {
     EditDescription = "EditDescription",
     EditDisplayName = "EditDisplayName",
     EditEntityRelationship = "EditEntityRelationship",
-    EditGlossaryTerms = "EditGlossaryTerms",
     EditIngestionPipelineStatus = "EditIngestionPipelineStatus",
     EditKnowledgePanel = "EditKnowledgePanel",
     EditLifeCycle = "EditLifeCycle",

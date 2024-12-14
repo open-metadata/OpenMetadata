@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * TestConnection is the definition that will encapsulate the steps required to test a
  * connection to a specific service.
  */

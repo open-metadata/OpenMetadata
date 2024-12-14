@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * Definition of the properties contained by an object store container template config file
  */
 export interface ContainerMetadataConfig {

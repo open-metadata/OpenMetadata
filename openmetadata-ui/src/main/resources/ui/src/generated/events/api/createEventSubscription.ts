@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * This defines schema for sending alerts for OpenMetadata
  */
 export interface CreateEventSubscription {
@@ -102,7 +100,7 @@ export interface Destination {
      * Read timeout in seconds. (Default 12s).
      */
     readTimeout?:   number;
-    statusDetails?: TionStatus;
+    statusDetails?: SubscriptionStatus;
     /**
      * Connection timeout in seconds. (Default 10s).
      */
@@ -180,92 +178,42 @@ export enum HTTPMethod {
 }
 
 /**
- * Current status of the subscription, including details on the last successful and failed
- * attempts, and retry information.
- *
- * Detailed status of the destination during a test operation, including HTTP response
- * information.
+ * Subscription Current Status
  */
-export interface TionStatus {
+export interface SubscriptionStatus {
     /**
-     * Timestamp of the last failed callback in UNIX UTC epoch time in milliseconds.
+     * Last non-successful callback time in UNIX UTC epoch time in milliseconds.
      */
     lastFailedAt?: number;
     /**
-     * Detailed reason for the last failure received during callback.
+     * Last non-successful activity response reason received during callback.
      */
     lastFailedReason?: string;
     /**
-     * HTTP status code received during the last failed callback attempt.
+     * Last non-successful activity response code received during callback.
      */
     lastFailedStatusCode?: number;
     /**
-     * Timestamp of the last successful callback in UNIX UTC epoch time in milliseconds.
+     * Last non-successful callback time in UNIX UTC epoch time in milliseconds.
      */
     lastSuccessfulAt?: number;
     /**
-     * Timestamp for the next retry attempt in UNIX epoch time in milliseconds. Only valid if
+     * Next retry will be done at this time in Unix epoch time milliseconds. Only valid is
      * `status` is `awaitingRetry`.
      */
     nextAttempt?: number;
-    /**
-     * Status is `disabled` when the event subscription was created with `enabled` set to false
-     * and it never started publishing events. Status is `active` when the event subscription is
-     * functioning normally and a 200 OK response was received for the callback notification.
-     * Status is `failed` when a bad callback URL, connection failures, or `1xx` or `3xx`
-     * response was received for the callback notification. Status is `awaitingRetry` when the
-     * previous attempt at callback timed out or received a `4xx` or `5xx` response. Status is
-     * `retryLimitReached` after all retries fail.
-     *
-     * Overall test status, indicating if the test operation succeeded or failed.
-     */
-    status?: Status;
-    /**
-     * Current timestamp of this status in UNIX epoch time in milliseconds.
-     *
-     * Timestamp when the response was received, in UNIX epoch time milliseconds.
-     */
-    timestamp?: number;
-    /**
-     * Body of the HTTP response, if any, returned by the server.
-     */
-    entity?: string;
-    /**
-     * HTTP headers returned in the response as a map of header names to values.
-     */
-    headers?: any;
-    /**
-     * URL location if the response indicates a redirect or newly created resource.
-     */
-    location?: string;
-    /**
-     * Media type of the response entity, if specified (e.g., application/json).
-     */
-    mediaType?: string;
-    /**
-     * Detailed reason for failure if the test did not succeed.
-     */
-    reason?: string;
-    /**
-     * HTTP status code of the response (e.g., 200 for OK, 404 for Not Found).
-     */
-    statusCode?: number;
-    /**
-     * HTTP status reason phrase associated with the status code (e.g., 'Not Found').
-     */
-    statusInfo?: string;
+    status?:      Status;
+    timestamp?:   number;
 }
 
 /**
- * Status is `disabled` when the event subscription was created with `enabled` set to false
- * and it never started publishing events. Status is `active` when the event subscription is
- * functioning normally and a 200 OK response was received for the callback notification.
- * Status is `failed` when a bad callback URL, connection failures, or `1xx` or `3xx`
- * response was received for the callback notification. Status is `awaitingRetry` when the
- * previous attempt at callback timed out or received a `4xx` or `5xx` response. Status is
- * `retryLimitReached` after all retries fail.
- *
- * Overall test status, indicating if the test operation succeeded or failed.
+ * Status is `disabled`, when eventSubscription was created with `enabled` set to false and
+ * it never started publishing events. Status is `active` when eventSubscription is normally
+ * functioning and 200 OK response was received for callback notification. Status is
+ * `failed` on bad callback URL, connection failures, `1xx`, and `3xx` response was received
+ * for callback notification. Status is `awaitingRetry` when previous attempt at callback
+ * timed out or received `4xx`, `5xx` response. Status is `retryLimitReached` after all
+ * retries fail.
  */
 export enum Status {
     Active = "active",
@@ -273,8 +221,6 @@ export enum Status {
     Disabled = "disabled",
     Failed = "failed",
     RetryLimitReached = "retryLimitReached",
-    StatusFailed = "Failed",
-    Success = "Success",
 }
 
 /**

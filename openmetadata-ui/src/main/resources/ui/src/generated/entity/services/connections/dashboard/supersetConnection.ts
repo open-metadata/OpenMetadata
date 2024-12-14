@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * Superset Connection Config
  */
 export interface SupersetConnection {
@@ -121,7 +119,8 @@ export interface SupersetConnectionClass {
      * restrict the metadata reading to a single schema. When left blank, OpenMetadata Ingestion
      * attempts to scan all the schemas.
      */
-    databaseSchema?: string;
+    databaseSchema?:                string;
+    supportsViewLineageExtraction?: boolean;
 }
 
 /**

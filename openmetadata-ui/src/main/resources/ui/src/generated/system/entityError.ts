@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * Entity And Message Scehma in case of failures.
  */
 export interface EntityError {

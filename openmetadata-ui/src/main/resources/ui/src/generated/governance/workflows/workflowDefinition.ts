@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * Defines a workflow, having all the different pieces and attributes.
  */
 export interface WorkflowDefinition {

@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * DataInsightChartResult represents data that will be consumed by a specific chart
  */
 export interface DataInsightChartResult {
