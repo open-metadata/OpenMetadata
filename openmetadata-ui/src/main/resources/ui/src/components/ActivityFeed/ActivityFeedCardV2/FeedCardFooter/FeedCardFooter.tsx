@@ -100,7 +100,7 @@ function FeedCardFooter({
     const patch = compare(originalObject, updatedObject);
 
     if (!isEmpty(patch)) {
-      if (feed.type === 'Announcement' && !isAnnouncementTab) {
+      if (feed.type === ThreadType.Announcement && !isAnnouncementTab) {
         if (isPost) {
           await updatePost(feed.id, post.id, patch);
           const updatedthread = await getUpdatedThread(feed.id);
@@ -165,7 +165,7 @@ function FeedCardFooter({
             className="flex items-center gap-2 p-x-xss w-full rounded-8"
             type="text"
             onClick={componentsVisibility.showThreadIcon ? showReplies : noop}>
-            {feed.type !== 'Announcement' && postLength > 0 && (
+            {feed.type !== ThreadType.Announcement && postLength > 0 && (
               <Avatar.Group>
                 {repliedUniqueUsersList.map((user) => (
                   <ProfilePicture

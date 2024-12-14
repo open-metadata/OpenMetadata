@@ -61,7 +61,7 @@ const FeedPanelBodyV1: FC<FeedPanelBodyPropV1> = ({
       className={classNames(
         'activity-feed-card-container ',
         className,
-        feed.type === 'Announcement' && !isAnnouncementCard
+        feed.type === ThreadType.Announcement && !isAnnouncementCard
           ? 'activity-feed-announcement'
           : ''
       )}

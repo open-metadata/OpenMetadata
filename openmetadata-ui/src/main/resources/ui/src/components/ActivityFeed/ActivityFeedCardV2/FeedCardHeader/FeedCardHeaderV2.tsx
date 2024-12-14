@@ -34,7 +34,10 @@ import EntityPopOverCard from '../../../common/PopOverCard/EntityPopOverCard';
 import { useTranslation } from 'react-i18next';
 import { ASSET_CARD_STYLES } from '../../../../constants/Feeds.constants';
 import { EntityType } from '../../../../enums/entity.enum';
-import { CardStyle } from '../../../../generated/entity/feed/thread';
+import {
+  CardStyle,
+  ThreadType,
+} from '../../../../generated/entity/feed/thread';
 import entityUtilClassBase from '../../../../utils/EntityUtilClassBase';
 import searchClassBase from '../../../../utils/SearchClassBase';
 import UserPopOverCard from '../../../common/PopOverCard/UserPopOverCard';
@@ -135,7 +138,7 @@ const FeedCardHeaderV2 = ({
 
   return (
     <div className={classNames('feed-card-header-v2', className)}>
-      {feed.type !== 'Announcement' && !isAnnouncementTab ? (
+      {feed.type !== ThreadType.Announcement && !isAnnouncementTab ? (
         <>
           <Typography.Text className="break-word">
             <UserPopOverCard userName={createdBy}>

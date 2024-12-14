@@ -14,12 +14,13 @@
 import { Avatar, Col, Row } from 'antd';
 import classNames from 'classnames';
 import { compare, Operation } from 'fast-json-patch';
-import { isEmpty } from 'lodash';
+import _, { isEmpty } from 'lodash';
 import React, { useMemo, useState } from 'react';
 import { EntityField } from '../../../constants/Feeds.constants';
 import {
   AnnouncementDetails,
   GeneratedBy,
+  ThreadType,
 } from '../../../generated/entity/feed/thread';
 import { updatePost } from '../../../rest/feedsAPI';
 import { updateThreadData } from '../../../utils/FeedUtils';
@@ -114,12 +115,26 @@ const ActivityFeedCardV2 = ({
       announcement,
     };
 
+    const isAnnouncementTimeUpdated =
+      _.isEqual(
+        existingAnnouncement?.announcement?.startTime,
+        updatedAnnouncement?.announcement?.startTime * 1000
+      ) &&
+      _.isEqual(
+        existingAnnouncement?.announcement?.endTime,
+        updatedAnnouncement?.announcement?.endTime * 1000
+      );
+
     const patch = compare(existingAnnouncement, updatedAnnouncement);
 
     if (!isEmpty(patch)) {
       updateThreadHandler(feed.id, feed.id, true, patch);
       if (isAnnouncementTab) {
         updateAnnouncementThreads && updateAnnouncementThreads(); // if its Announcement tab in service page
+      } else {
+        !isAnnouncementTimeUpdated && // refetch new announcements only if announcements timings are updated
+          updateAnnouncementThreads &&
+          updateAnnouncementThreads();
       }
     }
 
@@ -145,13 +160,14 @@ const ActivityFeedCardV2 = ({
       className={classNames(
         'feed-card-v2-container p-sm',
         {
-          active: isActive && feed.type !== 'Announcement',
-          'announcement-active': isActive && feed.type === 'Announcement',
-          'announcement-gap': feed.type === 'Announcement',
+          active: isActive && feed.type !== ThreadType.Announcement,
+          'announcement-active':
+            isActive && feed.type === ThreadType.Announcement,
+          'announcement-gap': feed.type === ThreadType.Announcement,
         },
         className
       )}>
-      {feed.type === 'Announcement' &&
+      {feed.type === ThreadType.Announcement &&
         !isPost &&
         componentsVisibility.showRepliesContainer && (
           <Col className="avatar-column d-flex flex-column items-center justify-between">
@@ -160,8 +176,8 @@ const ActivityFeedCardV2 = ({
             {repliesPostAvatarGroup}
           </Col>
         )}
-      {(feed.type !== 'Announcement' ||
-        (feed.type === 'Announcement' &&
+      {(feed.type !== ThreadType.Announcement ||
+        (feed.type === ThreadType.Announcement &&
           !componentsVisibility.showRepliesContainer)) && (
         <div
           className={classNames('feed-card-v2-sidebar', {

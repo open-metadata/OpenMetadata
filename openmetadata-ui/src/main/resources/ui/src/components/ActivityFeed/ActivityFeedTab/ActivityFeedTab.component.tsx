@@ -406,6 +406,18 @@ export const ActivityFeedTab = ({
     handleFeedFetchFromFeedList();
     handleUpdateTaskFilter(ThreadTaskStatus.Closed);
   };
+  const refetchAnnouncements = useCallback(() => {
+    getFeedData(
+      feedFilter,
+      undefined,
+      threadType,
+      entityType,
+      fqn,
+      undefined,
+      undefined,
+      announcementFilter
+    );
+  }, [feedFilter, threadType, entityType, fqn, announcementFilter]);
 
   return (
     <div className="activity-feed-tab">
@@ -606,6 +618,9 @@ export const ActivityFeedTab = ({
           permissions={permissions?.EditAll}
           selectedThread={selectedThread}
           showThread={false}
+          updateAnnouncementThreads={
+            isAnnouncementActiveTab ? refetchAnnouncements : noop
+          }
           onFeedClick={handleFeedClick}
         />
         {loader}

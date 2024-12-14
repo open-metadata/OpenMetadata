@@ -169,7 +169,7 @@ const FeedCardBodyV1 = ({
     <div
       className={classNames(
         `feed-card-body  p-sm rounded-6 ${
-          feed.type !== 'Announcement' && 'bg-grey-5'
+          feed.type !== ThreadType.Announcement && 'bg-grey-5'
         }`,
 
         isEditPost ? '' : className
