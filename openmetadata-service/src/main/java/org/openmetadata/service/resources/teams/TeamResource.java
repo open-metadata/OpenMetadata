@@ -72,7 +72,6 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.util.CSVExportResponse;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
@@ -687,10 +686,6 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
       @Context SecurityContext securityContext,
       @PathParam("teamId") UUID teamId,
       List<EntityReference> users) {
-
-    OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
-    authorizer.authorize(securityContext, operationContext, getResourceContextById(teamId));
     return repository
         .updateTeamUsers(securityContext.getUserPrincipal().getName(), teamId, users)
         .toResponse();
@@ -721,10 +716,6 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
       @Parameter(description = "Id of the user being removed", schema = @Schema(type = "string"))
           @PathParam("userId")
           String userId) {
-
-    OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
-    authorizer.authorize(securityContext, operationContext, getResourceContextById(teamId));
     return repository
         .deleteTeamUser(
             securityContext.getUserPrincipal().getName(), teamId, UUID.fromString(userId))
