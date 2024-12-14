@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { expect, Page, test as base } from '@playwright/test';
+import { GlobalSettingOptions } from '../../constant/settings';
 import { SidebarItem } from '../../constant/sidebar';
 import { Domain } from '../../support/domain/Domain';
 import { AdminClass } from '../../support/user/AdminClass';
@@ -21,7 +22,7 @@ import {
   selectDomain,
   setupAssetsForDomain,
 } from '../../utils/domain';
-import { sidebarClick } from '../../utils/sidebar';
+import { settingClick, sidebarClick } from '../../utils/sidebar';
 
 const test = base.extend<{
   page: Page;
@@ -129,11 +130,11 @@ test.describe('Ingestion Bot ', () => {
           await asset.visitEntityPage(ingestionBotPage);
 
           await expect(
-            page.getByTestId('permission-error-placeholder')
+            ingestionBotPage.getByTestId('permission-error-placeholder')
           ).not.toBeVisible();
 
-          await expect(page.getByTestId('domain-link')).toHaveText(
-            domain1.data.name
+          await expect(ingestionBotPage.getByTestId('domain-link')).toHaveText(
+            domain1.data.displayName
           );
         }
         // Check if entity page is accessible & it has domain
@@ -141,13 +142,37 @@ test.describe('Ingestion Bot ', () => {
           await asset.visitEntityPage(ingestionBotPage);
 
           await expect(
-            page.getByTestId('permission-error-placeholder')
+            ingestionBotPage.getByTestId('permission-error-placeholder')
           ).not.toBeVisible();
 
-          await expect(page.getByTestId('domain-link')).toHaveText(
-            domain2.data.name
+          await expect(ingestionBotPage.getByTestId('domain-link')).toHaveText(
+            domain2.data.displayName
           );
         }
+      }
+    );
+
+    // Need backend change to support this tests
+    test.fixme(
+      'Ingestion bot should able to access services irrespective of domain',
+      async () => {
+        await redirectToHomePage(page);
+        // change domain
+        await ingestionBotPage.getByTestId('domain-dropdown').click();
+        await ingestionBotPage
+          .locator(
+            `[data-menu-id*="${domain1.data.name}"] > .ant-dropdown-menu-title-content`
+          )
+          .click();
+
+        //   validate service list
+
+        await settingClick(ingestionBotPage, GlobalSettingOptions.DATABASES);
+        const rowKeys = await ingestionBotPage.waitForSelector(
+          '[data-row-key=*]'
+        );
+
+        expect(rowKeys).not.toHaveLength(0);
       }
     );
 
