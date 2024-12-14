@@ -22,8 +22,6 @@ import {
 import { removeOrganizationPolicyAndRole } from '../utils/team';
 const adminFile = 'playwright/.auth/admin.json';
 
-const ingestionBotFile = 'playwright/.auth/ingestionBot.json';
-
 const initialSetup = async (page: Page) => {
   const { apiContext, afterAction } = await getApiContext(page);
   // Update JWT expiry time to 4 hours
@@ -53,32 +51,3 @@ setup('authenticate as admin', async ({ page }) => {
   // End of authentication steps.
   await page.context().storageState({ path: adminFile });
 });
-
-// setup('authenticate as ingestion bot', async ({ page }) => {
-//   const admin = new AdminClass();
-
-//   // login with admin user
-//   await admin.login(page);
-//   await page.waitForURL('**/my-data');
-
-//   const { apiContext, afterAction } = await getApiContext(page);
-
-//   const bot = await apiContext
-//     .get('/api/v1/bots/name/ingestion-bot')
-//     .then((response) => response.json());
-//   const tokenData = await apiContext
-//     .get(`/api/v1/users/auth-mechanism/${bot.botUser.id}`)
-//     .then((response) => response.json());
-
-//   await page.evaluate((token) => {
-//     // Set a new value for a key in localStorage
-//     localStorage.setItem(
-//       'om-session',
-//       JSON.stringify({ state: { oidcIdToken: token } })
-//     );
-//   }, tokenData.config.JWTToken);
-
-//   await page.context().storageState({ path: ingestionBotFile });
-
-//   await afterAction();
-// });
