@@ -12,6 +12,8 @@
  */
 import { expect } from '@playwright/test';
 import { Page } from 'playwright';
+import { EXPECTED_BUCKETS } from '../constant/explore';
+import { getApiContext } from './common';
 
 export interface Bucket {
   key: string;
@@ -122,46 +124,35 @@ export const selectDataAssetFilter = async (
   await page.getByTestId('update-btn').click();
 };
 
-export const checkBucket = (bucket: Bucket | undefined) => {
-  expect(bucket).toBeDefined();
+export const validateBucketsForIndex = async (page: Page, index: string) => {
+  const { apiContext } = await getApiContext(page);
 
-  if (bucket) {
-    expect(bucket.doc_count).toBeGreaterThan(0);
-  }
-};
+  return await expect
+    .poll(
+      async () => {
+        const response = await apiContext
+          .get(
+            `/api/v1/search/query?q=&index=${index}&from=0&size=10&deleted=false&query_filter=%7B%22query%22:%7B%22bool%22:%7B%7D%7D%7D&sort_field=totalVotes&sort_order=desc`
+          )
+          .then((res) => res.json());
 
-export const findBucket = (buckets: Bucket[], key: string) =>
-  buckets.find((bucket) => bucket.key === key);
+        const buckets =
+          response.aggregations?.['sterms#entityType']?.buckets || [];
 
-export const validateBuckets = async (response: any) => {
-  const jsonResponse = await response.json();
+        // Check if each key in expectedBuckets has a doc_count > 0
+        const validBuckets = EXPECTED_BUCKETS.every((expectedKey) => {
+          const bucket = buckets.find((b: Bucket) => b.key === expectedKey);
 
-  const buckets = jsonResponse.aggregations?.['sterms#entityType']?.buckets;
+          return bucket ? bucket.doc_count > 0 : false;
+        });
 
-  expect(buckets).toBeDefined();
-  expect(Array.isArray(buckets)).toBeTruthy();
-  expect(buckets.length).toBeGreaterThan(0);
-
-  const keys = [
-    'table',
-    'databaseSchema',
-    'chart',
-    'storedProcedure',
-    'database',
-    'pipeline',
-    'dashboard',
-    'container',
-    'tag',
-    'dashboardDataModel',
-    'apiEndpoint',
-    'topic',
-    'apiCollection',
-    'searchIndex',
-    'mlModel',
-  ];
-
-  keys.forEach((key) => {
-    const bucket = findBucket(buckets, key);
-    checkBucket(bucket);
-  });
+        return validBuckets;
+      },
+      {
+        message: `Waiting for the expected buckets with doc_count > 0 for index "${index}"`,
+        timeout: 350_000,
+        intervals: [40_000, 30_000],
+      }
+    )
+    .toBe(true);
 };

@@ -16,6 +16,7 @@ import { SidebarItem } from '../../constant/sidebar';
 import { ApiEndpointClass } from '../../support/entity/ApiEndpointClass';
 import { ContainerClass } from '../../support/entity/ContainerClass';
 import { DashboardClass } from '../../support/entity/DashboardClass';
+import { DashboardDataModelClass } from '../../support/entity/DashboardDataModelClass';
 import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
 import { MlModelClass } from '../../support/entity/MlModelClass';
 import { PipelineClass } from '../../support/entity/PipelineClass';
@@ -25,7 +26,7 @@ import { TableClass } from '../../support/entity/TableClass';
 import { TopicClass } from '../../support/entity/TopicClass';
 import { getApiContext, redirectToHomePage } from '../../utils/common';
 import { updateDisplayNameForEntity } from '../../utils/entity';
-import { validateBuckets } from '../../utils/explore';
+import { validateBucketsForIndex } from '../../utils/explore';
 import { sidebarClick } from '../../utils/sidebar';
 
 // use the admin user to login
@@ -209,6 +210,7 @@ test.describe('Explore page', () => {
   const apiEndpoint = new ApiEndpointClass();
   const topic = new TopicClass();
   const searchIndex = new SearchIndexClass();
+  const dashboardDataModel = new DashboardDataModelClass();
   const mlModel = new MlModelClass();
 
   test.beforeEach('Setup pre-requisits', async ({ page }) => {
@@ -221,6 +223,7 @@ test.describe('Explore page', () => {
     await apiEndpoint.create(apiContext);
     await topic.create(apiContext);
     await searchIndex.create(apiContext);
+    await dashboardDataModel.create(apiContext);
     await mlModel.create(apiContext);
     await afterAction();
   });
@@ -235,6 +238,7 @@ test.describe('Explore page', () => {
     await apiEndpoint.delete(apiContext);
     await topic.delete(apiContext);
     await searchIndex.delete(apiContext);
+    await dashboardDataModel.delete(apiContext);
     await mlModel.delete(apiContext);
     await afterAction();
   });
@@ -265,36 +269,10 @@ test.describe('Explore page', () => {
   test('Check listing of entities when index is dataAsset', async ({
     page,
   }) => {
-    const index = 'dataAsset';
-
-    page.on('response', async (response) => {
-      if (
-        response
-          .url()
-          .includes(
-            `/api/v1/search/query?q=&index=${index}&from=0&size=10&deleted=false&query_filter=%7B%22query%22:%7B%22bool%22:%7B%7D%7D%7D&sort_field=totalVotes&sort_order=desc`
-          ) &&
-        response.status() === 200
-      ) {
-        await validateBuckets(response);
-      }
-    });
+    await validateBucketsForIndex(page, 'dataAsset');
   });
 
   test('Check listing of entities when index is all', async ({ page }) => {
-    const index = 'all';
-
-    page.on('response', async (response) => {
-      if (
-        response
-          .url()
-          .includes(
-            `/api/v1/search/query?q=&index=${index}&from=0&size=10&deleted=false&query_filter=%7B%22query%22:%7B%22bool%22:%7B%7D%7D%7D&sort_field=totalVotes&sort_order=desc`
-          ) &&
-        response.status() === 200
-      ) {
-        await validateBuckets(response);
-      }
-    });
+    await validateBucketsForIndex(page, 'all');
   });
 });
