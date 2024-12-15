@@ -17,10 +17,10 @@ export interface RetentionPolicyConfigurationClass {
      */
     activityThreadsRetentionPeriod: number;
     /**
-     * Enter the retention period for Event Subscription records in days (e.g., 7 for one week,
-     * 30 for one month).
+     * Enter the retention period for change event records in days (e.g., 7 for one week, 30 for
+     * one month).
      */
-    eventSubscriptionRetentionPeriod: number;
+    changeEventRetentionPeriod: number;
     /**
      * Enter the number of versions to retain.
      */

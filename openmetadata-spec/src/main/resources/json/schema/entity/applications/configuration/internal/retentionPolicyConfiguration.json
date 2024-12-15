@@ -4,9 +4,9 @@
   "title": "Retention Configuration",
   "description": "Configure retention policies for each entity.",
   "properties": {
-    "eventSubscriptionRetentionPeriod": {
-      "title": "Event Subscription Retention Period (days)",
-      "description": "Enter the retention period for Event Subscription records in days (e.g., 7 for one week, 30 for one month).",
+    "changeEventRetentionPeriod": {
+      "title": "Change Event Retention Period (days)",
+      "description": "Enter the retention period for change event records in days (e.g., 7 for one week, 30 for one month).",
       "type": "integer",
       "default": 7,
       "minimum": 1
@@ -27,7 +27,7 @@
     }
   },
   "required": [
-    "eventSubscriptionRetentionPeriod",
+    "changeEventRetentionPeriod",
     "versionsRetentionPeriod",
     "activityThreadsRetentionPeriod"
   ],

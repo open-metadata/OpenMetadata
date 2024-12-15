@@ -47,7 +47,7 @@ public class RetentionPolicyApp extends AbstractNativeApplication {
 
     cleanActivityThreads(config.getActivityThreadsRetentionPeriod());
     cleanVersions(config.getVersionsRetentionPeriod());
-    cleanEventSubscription(config.getEventSubscriptionRetentionPeriod());
+    cleanChangeEvents(config.getChangeEventRetentionPeriod());
   }
 
   private void cleanActivityThreads(int retentionPeriod) {
@@ -59,7 +59,7 @@ public class RetentionPolicyApp extends AbstractNativeApplication {
   }
 
   @Transaction
-  private void cleanEventSubscription(int retentionPeriod) {
+  private void cleanChangeEvents(int retentionPeriod) {
     long cutoffMillis = getRetentionCutoffMillis(retentionPeriod);
 
     int totalDeletedSuccessfulEvents =

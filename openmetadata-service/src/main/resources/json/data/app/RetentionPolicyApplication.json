@@ -4,7 +4,7 @@
   "appConfiguration": {
     "activityThreadsRetentionPeriod": 30,
     "versionsRetentionPeriod": 10,
-    "eventSubscriptionRetentionPeriod": 7
+    "changeEventRetentionPeriod": 7
   },
   "appSchedule": {
     "scheduleTimeline": "Custom",
