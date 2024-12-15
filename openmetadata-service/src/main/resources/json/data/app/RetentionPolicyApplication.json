@@ -2,11 +2,12 @@
   "name": "RetentionPolicyApplication",
   "displayName": "Retention Policy",
   "appConfiguration": {
-    "entity": "EventSubscription",
-    "retentionPeriod": "One week"
+    "activityThreadsRetentionPeriod": 30,
+    "versionsRetentionPeriod": 10,
+    "eventSubscriptionRetentionPeriod": 7
   },
   "appSchedule": {
     "scheduleTimeline": "Custom",
-    "cronExpression": "0 0 * * *"
+    "cronExpression": "0 0 * * 0"
   }
 }

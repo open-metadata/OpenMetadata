@@ -1,32 +1,36 @@
 {
   "$id": "https://open-metadata.org/schema/entity/applications/configuration/retentionPolicyConfiguration.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Retention Policy Configuration",
+  "title": "Retention Configuration",
   "type": "object",
-  "description": "Retention Policy Configuration.",
+  "description": "Configure retention policies for each entity.",
   "properties": {
-    "entity": {
-      "title": "Entity",
-      "description": "The entity for which the records will be deleted",
-      "type": "string",
-      "const": "EventSubscription",
-      "default": "EventSubscription",
-      "readOnly": true
+    "eventSubscriptionRetentionPeriod": {
+      "title": "Event Subscription Retention Period (days)",
+      "description": "Enter the retention period for Event Subscription records in days (e.g., 7 for one week, 30 for one month).",
+      "type": "integer",
+      "default": 7,
+      "minimum": 1
     },
-    "retentionPeriod": {
-      "title": "Retention Period",
-      "description": "Select the retention period after which the records will be deleted",
-      "type": "string",
-      "enum": [
-        "One week",
-        "Two weeks",
-        "One month",
-        "Three months",
-        "Six months"
-      ],
-      "default": "One week"
+    "versionsRetentionPeriod": {
+      "title": "Versions Retention Period (versions)",
+      "description": "Enter the number of versions to retain.",
+      "type": "integer",
+      "default": 10,
+      "minimum": 1
+    },
+    "activityThreadsRetentionPeriod": {
+      "title": "Activity Threads Retention Period (days)",
+      "description": "Enter the retention period for Activity Threads records in days (e.g., 30 for one month, 60 for two months).",
+      "type": "integer",
+      "default": 30,
+      "minimum": 1
     }
   },
-  "required": ["entity", "retentionPeriod"],
+  "required": [
+    "eventSubscriptionRetentionPeriod",
+    "versionsRetentionPeriod",
+    "activityThreadsRetentionPeriod"
+  ],
   "additionalProperties": false
 }

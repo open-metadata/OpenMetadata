@@ -10,34 +10,19 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-/**
- * Retention Policy Configuration.
- */
-export interface RetentionPolicyConfiguration {
+export interface RetentionPolicyConfigurationClass {
     /**
-     * The entity for which the records will be deleted
+     * Enter the retention period for Activity Threads records in days (e.g., 30 for one month,
+     * 60 for two months).
      */
-    entity: Entity;
+    activityThreadsRetentionPeriod: number;
     /**
-     * Select the retention period after which the records will be deleted
+     * Enter the retention period for Event Subscription records in days (e.g., 7 for one week,
+     * 30 for one month).
      */
-    retentionPeriod: RetentionPeriod;
-}
-
-/**
- * The entity for which the records will be deleted
- */
-export enum Entity {
-    EventSubscription = "EventSubscription",
-}
-
-/**
- * Select the retention period after which the records will be deleted
- */
-export enum RetentionPeriod {
-    OneMonth = "One month",
-    OneWeek = "One week",
-    SixMonths = "Six months",
-    ThreeMonths = "Three months",
-    TwoWeeks = "Two weeks",
+    eventSubscriptionRetentionPeriod: number;
+    /**
+     * Enter the number of versions to retain.
+     */
+    versionsRetentionPeriod: number;
 }
