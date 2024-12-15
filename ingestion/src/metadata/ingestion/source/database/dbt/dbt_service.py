@@ -15,7 +15,7 @@ DBT service Topology.
 from abc import ABC, abstractmethod
 from typing import Iterable, List
 
-from dbt_artifacts_parser.parser import parse_catalog, parse_manifest, parse_run_results
+from dbt_artifacts_parser.parser import parse_catalog, parse_run_results
 from pydantic import Field
 from typing_extensions import Annotated
 
@@ -43,6 +43,7 @@ from metadata.ingestion.source.database.dbt.constants import (
     REQUIRED_RESULTS_KEYS,
 )
 from metadata.ingestion.source.database.dbt.dbt_config import get_dbt_details
+from metadata.ingestion.source.database.dbt.parser.utils import parse_manifest
 from metadata.ingestion.source.database.dbt.models import (
     DbtFiles,
     DbtFilteredModel,
@@ -229,9 +230,6 @@ class DbtServiceSource(TopologyRunnerMixin, Source, ABC):
             if self.context.get().dbt_file.dbt_catalog
             else None,
             dbt_manifest=parse_manifest(self.context.get().dbt_file.dbt_manifest),
-            dbt_sources=parse_sources(self.context.get().dbt_file.dbt_sources)
-            if self.context.get().dbt_file.dbt_sources
-            else None,
             dbt_run_results=[
                 parse_run_results(run_result_file)
                 for run_result_file in self.context.get().dbt_file.dbt_run_results
