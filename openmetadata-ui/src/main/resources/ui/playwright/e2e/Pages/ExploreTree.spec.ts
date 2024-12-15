@@ -13,10 +13,19 @@
 import test, { expect } from '@playwright/test';
 import { get } from 'lodash';
 import { SidebarItem } from '../../constant/sidebar';
+import { ApiEndpointClass } from '../../support/entity/ApiEndpointClass';
+import { ContainerClass } from '../../support/entity/ContainerClass';
+import { DashboardClass } from '../../support/entity/DashboardClass';
 import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
+import { MlModelClass } from '../../support/entity/MlModelClass';
+import { PipelineClass } from '../../support/entity/PipelineClass';
+import { SearchIndexClass } from '../../support/entity/SearchIndexClass';
+import { StoredProcedureClass } from '../../support/entity/StoredProcedureClass';
 import { TableClass } from '../../support/entity/TableClass';
+import { TopicClass } from '../../support/entity/TopicClass';
 import { getApiContext, redirectToHomePage } from '../../utils/common';
 import { updateDisplayNameForEntity } from '../../utils/entity';
+import { validateBuckets } from '../../utils/explore';
 import { sidebarClick } from '../../utils/sidebar';
 
 // use the admin user to login
@@ -192,6 +201,44 @@ test.describe('Explore Tree scenarios ', () => {
 });
 
 test.describe('Explore page', () => {
+  const table = new TableClass();
+  const dashboard = new DashboardClass();
+  const storedProcedure = new StoredProcedureClass();
+  const pipeline = new PipelineClass();
+  const container = new ContainerClass();
+  const apiEndpoint = new ApiEndpointClass();
+  const topic = new TopicClass();
+  const searchIndex = new SearchIndexClass();
+  const mlModel = new MlModelClass();
+
+  test.beforeEach('Setup pre-requisits', async ({ page }) => {
+    const { apiContext, afterAction } = await getApiContext(page);
+    await table.create(apiContext);
+    await dashboard.create(apiContext);
+    await storedProcedure.create(apiContext);
+    await pipeline.create(apiContext);
+    await container.create(apiContext);
+    await apiEndpoint.create(apiContext);
+    await topic.create(apiContext);
+    await searchIndex.create(apiContext);
+    await mlModel.create(apiContext);
+    await afterAction();
+  });
+
+  test.afterEach('Cleanup', async ({ page }) => {
+    const { apiContext, afterAction } = await getApiContext(page);
+    await table.delete(apiContext);
+    await dashboard.delete(apiContext);
+    await storedProcedure.delete(apiContext);
+    await pipeline.delete(apiContext);
+    await container.delete(apiContext);
+    await apiEndpoint.delete(apiContext);
+    await topic.delete(apiContext);
+    await searchIndex.delete(apiContext);
+    await mlModel.delete(apiContext);
+    await afterAction();
+  });
+
   test('Check the listing of tags', async ({ page }) => {
     await page
       .locator('div')
@@ -213,5 +260,41 @@ test.describe('Explore page', () => {
     const jsonResponse = await response.json();
 
     expect(jsonResponse.hits.hits.length).toBeGreaterThan(0);
+  });
+
+  test('Check listing of entities when index is dataAsset', async ({
+    page,
+  }) => {
+    const index = 'dataAsset';
+
+    page.on('response', async (response) => {
+      if (
+        response
+          .url()
+          .includes(
+            `/api/v1/search/query?q=&index=${index}&from=0&size=10&deleted=false&query_filter=%7B%22query%22:%7B%22bool%22:%7B%7D%7D%7D&sort_field=totalVotes&sort_order=desc`
+          ) &&
+        response.status() === 200
+      ) {
+        await validateBuckets(response);
+      }
+    });
+  });
+
+  test('Check listing of entities when index is all', async ({ page }) => {
+    const index = 'all';
+
+    page.on('response', async (response) => {
+      if (
+        response
+          .url()
+          .includes(
+            `/api/v1/search/query?q=&index=${index}&from=0&size=10&deleted=false&query_filter=%7B%22query%22:%7B%22bool%22:%7B%7D%7D%7D&sort_field=totalVotes&sort_order=desc`
+          ) &&
+        response.status() === 200
+      ) {
+        await validateBuckets(response);
+      }
+    });
   });
 });

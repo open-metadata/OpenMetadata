@@ -13,6 +13,11 @@
 import { expect } from '@playwright/test';
 import { Page } from 'playwright';
 
+export interface Bucket {
+  key: string;
+  doc_count: number;
+}
+
 export const searchAndClickOnOption = async (
   page: Page,
   filter: { key: string; label: string; value?: string },
@@ -115,4 +120,48 @@ export const selectDataAssetFilter = async (
   await page.getByRole('button', { name: 'Data Assets' }).click();
   await page.getByTestId(`${filterValue}-checkbox`).check();
   await page.getByTestId('update-btn').click();
+};
+
+export const checkBucket = (bucket: Bucket | undefined) => {
+  expect(bucket).toBeDefined();
+
+  if (bucket) {
+    expect(bucket.doc_count).toBeGreaterThan(0);
+  }
+};
+
+export const findBucket = (buckets: Bucket[], key: string) =>
+  buckets.find((bucket) => bucket.key === key);
+
+export const validateBuckets = async (response: any) => {
+  const jsonResponse = await response.json();
+
+  const buckets = jsonResponse.aggregations?.['sterms#entityType']?.buckets;
+
+  expect(buckets).toBeDefined();
+  expect(Array.isArray(buckets)).toBeTruthy();
+  expect(buckets.length).toBeGreaterThan(0);
+
+  const keys = [
+    'table',
+    'databaseSchema',
+    'chart',
+    'storedProcedure',
+    'database',
+    'pipeline',
+    'dashboard',
+    'container',
+    'tag',
+    'dashboardDataModel',
+    'apiEndpoint',
+    'topic',
+    'apiCollection',
+    'searchIndex',
+    'mlModel',
+  ];
+
+  keys.forEach((key) => {
+    const bucket = findBucket(buckets, key);
+    checkBucket(bucket);
+  });
 };
