@@ -3,34 +3,23 @@ site_menu:
   - category: Home
     url: /
 
-  - category: Enable Security
-    url: /deployment
-  - category: Enable Security / Ldap Authentication
-    url: /deployment/security/ldap
-  - category: Enable Security / Auth0 SSO
-    url: /deployment/security/auth0
-  - category: Enable Security / Azure SSO
-    url: /deployment/security/azure
-  - category: Enable Security / Custom OIDC SSO
-    url: /deployment/security/custom-oidc
-  - category: Enable Security / OIDC SSO
-    url: /deployment/security/oidc
-  - category: Enable Security / Google SSO
-    url: /deployment/security/google
-  - category: Enable Security / Okta SSO
-    url: /deployment/security/okta
-  - category: Enable Security / Amazon Cognito SSO
-    url: /deployment/security/amazon-cognito
-  - category: Enable Security / One Login SSO
-    url: /deployment/security/one-login
-  - category: Enable Security / Keycloak SSO
-    url: /deployment/security/keycloak
-  - category: Enable Security / Saml
-    url: /deployment/security/saml
-  - category: Enable Security / Saml / AWS
-    url: /deployment/security/saml/aws
-  - category: Enable Security / Saml / Azure
-    url: /deployment/security/saml/azure
+  - category: Getting Started
+    url: /getting-started
+
+  - category: Getting Started / Day 1
+    url: /getting-started/day-1
+  - category: Getting Started / Day 1 / Hybrid SaaS
+    url: /getting-started/day-1/hybrid-saas
+  - category: Getting Started / Day 1 / Hybrid SaaS / Airflow
+    url: /getting-started/day-1/hybrid-saas/airflow
+  - category: Getting Started / Day 1 / Hybrid SaaS / MWAA
+    url: /getting-started/day-1/hybrid-saas/mwaa
+  - category: Getting Started / Day 1 / Hybrid SaaS / GCS Composer
+    url: /getting-started/day-1/hybrid-saas/gcs-composer
+  - category: Getting Started / Day 1 / Hybrid SaaS / GitHub Actions
+    url: /getting-started/day-1/hybrid-saas/github-actions
+  - category: Getting Started / Day 1 / Hybrid SaaS / Credentials
+    url: /getting-started/day-1/hybrid-saas/credentials
 
   - category: Connectors
     url: /connectors
@@ -799,23 +788,34 @@ site_menu:
   - category: How-to Guides / Data Governance / Domains & Data Product /  How to Use Data Products
     url: /how-to-guides/data-governance/domains-&-data-products/data-products
 
-  - category: Getting Started
-    url: /getting-started
-
-  - category: Getting Started / Day 1
-    url: /getting-started/day-1
-  - category: Getting Started / Day 1 / Hybrid SaaS
-    url: /getting-started/day-1/hybrid-saas
-  - category: Getting Started / Day 1 / Hybrid SaaS / Airflow
-    url: /getting-started/day-1/hybrid-saas/airflow
-  - category: Getting Started / Day 1 / Hybrid SaaS / MWAA
-    url: /getting-started/day-1/hybrid-saas/mwaa
-  - category: Getting Started / Day 1 / Hybrid SaaS / GCS Composer
-    url: /getting-started/day-1/hybrid-saas/gcs-composer
-  - category: Getting Started / Day 1 / Hybrid SaaS / GitHub Actions
-    url: /getting-started/day-1/hybrid-saas/github-actions
-  - category: Getting Started / Day 1 / Hybrid SaaS / Credentials
-    url: /getting-started/day-1/hybrid-saas/credentials
+  - category: Enable Security
+    url: /security
+  - category: Enable Security / Ldap Authentication
+    url: /security/ldap
+  - category: Enable Security / Auth0 SSO
+    url: /security/auth0
+  - category: Enable Security / Azure SSO
+    url: /security/azure
+  - category: Enable Security / Custom OIDC SSO
+    url: /security/custom-oidc
+  - category: Enable Security / OIDC SSO
+    url: /security/oidc
+  - category: Enable Security / Google SSO
+    url: /security/google
+  - category: Enable Security / Okta SSO
+    url: /security/okta
+  - category: Enable Security / Amazon Cognito SSO
+    url: /security/amazon-cognito
+  - category: Enable Security / One Login SSO
+    url: /security/one-login
+  - category: Enable Security / Keycloak SSO
+    url: /security/keycloak
+  - category: Enable Security / Saml
+    url: /security/saml
+  - category: Enable Security / Saml / AWS
+    url: /security/saml/aws
+  - category: Enable Security / Saml / Azure
+    url: /security/saml/azure
 
   - category: Releases
     url: /releases
