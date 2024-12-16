@@ -815,33 +815,33 @@ site_menu:
     url: /how-to-guides/data-governance/workflows/how-to-edit-workflow
 
   - category: Enable Security
-    url: /deployment
+    url: /security
   - category: Enable Security / Ldap Authentication
-    url: /deployment/security/ldap
+    url: /security/ldap
   - category: Enable Security / Auth0 SSO
-    url: /deployment/security/auth0
+    url: /security/auth0
   - category: Enable Security / Azure SSO
-    url: /deployment/security/azure
+    url: /security/azure
   - category: Enable Security / Custom OIDC SSO
-    url: /deployment/security/custom-oidc
+    url: /security/custom-oidc
   - category: Enable Security / OIDC SSO
-    url: /deployment/security/oidc
+    url: /security/oidc
   - category: Enable Security / Google SSO
-    url: /deployment/security/google
+    url: /security/google
   - category: Enable Security / Okta SSO
-    url: /deployment/security/okta
+    url: /security/okta
   - category: Enable Security / Amazon Cognito SSO
-    url: /deployment/security/amazon-cognito
+    url: /security/amazon-cognito
   - category: Enable Security / One Login SSO
-    url: /deployment/security/one-login
+    url: /security/one-login
   - category: Enable Security / Keycloak SSO
-    url: /deployment/security/keycloak
+    url: /security/keycloak
   - category: Enable Security / Saml
-    url: /deployment/security/saml
+    url: /security/saml
   - category: Enable Security / Saml / AWS
-    url: /deployment/security/saml/aws
+    url: /security/saml/aws
   - category: Enable Security / Saml / Azure
-    url: /deployment/security/saml/azure
+    url: /security/saml/azure
 
   - category: Releases
     url: /releases
