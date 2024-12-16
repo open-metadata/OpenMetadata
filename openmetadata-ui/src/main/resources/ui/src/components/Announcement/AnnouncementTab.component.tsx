@@ -15,11 +15,10 @@ import { Button, Col, Row, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { t } from 'i18next';
-import { isEmpty, noop } from 'lodash';
+import { noop } from 'lodash';
 import React, { useCallback, useEffect, useState } from 'react';
 import '../../components/ActivityFeed/ActivityFeedTab/activity-feed-tab.less';
 import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
-import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
 import {
   AnnoucementStatus,
@@ -35,7 +34,6 @@ import ActivityFeedEditor from '../ActivityFeed/ActivityFeedEditor/ActivityFeedE
 import ActivityFeedListV1 from '../ActivityFeed/ActivityFeedList/ActivityFeedListV1.component';
 import FeedPanelBodyV1 from '../ActivityFeed/ActivityFeedPanel/FeedPanelBodyV1';
 import FeedPanelHeader from '../ActivityFeed/ActivityFeedPanel/FeedPanelHeader';
-import ErrorPlaceHolder from '../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import AddAnnouncementModal from '../Modals/AnnouncementModal/AddAnnouncementModal';
 interface AnnouncementTabProps {
   fqn: string;
@@ -146,27 +144,15 @@ const AnnouncementTab: React.FC<AnnouncementTabProps> = ({
     });
   };
 
-  const updateAnnouncementThreads = () => {
+  const updateAnnouncementThreads = useCallback(() => {
     getThreads();
-  };
-  if (isEmpty(threads) && !isThreadLoading) {
-    return (
-      <ErrorPlaceHolder
-        className="h-auto mt-24"
-        type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-        <Typography.Paragraph data-testid="announcement-error">
-          {t('message.no-announcement-message')}
-        </Typography.Paragraph>
-      </ErrorPlaceHolder>
-    );
-  }
+  }, [getThreads]);
 
   return (
     <div className="two-column-layout">
       <Row gutter={[0, 16]} style={{ height: '100%' }}>
         <Col className="left-column" md={12} xs={24}>
           <div className="d-flex p-sm p-x-lg justify-between activity-feed-task @grey-1">
-            {/* {getElementWithCountLoader( */}
             <div className="d-flex gap-4">
               <Typography.Text
                 className={classNames(
