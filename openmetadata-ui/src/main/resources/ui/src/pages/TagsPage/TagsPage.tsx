@@ -682,8 +682,7 @@ const TagsPage = () => {
             entity: t('label.tag'),
           })
         : t('message.adding-new-tag', {
-            categoryName:
-              currentClassification?.displayName ?? currentClassification?.name,
+            categoryName: getEntityName(currentClassification),
           }),
     [editTag, currentClassification]
   );

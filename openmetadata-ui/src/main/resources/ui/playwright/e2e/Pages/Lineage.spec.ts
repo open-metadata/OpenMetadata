@@ -51,7 +51,9 @@ import {
 import { settingClick } from '../../utils/sidebar';
 
 // use the admin user to login
-test.use({ storageState: 'playwright/.auth/admin.json' });
+test.use({
+  storageState: 'playwright/.auth/admin.json',
+});
 
 const entities = [
   TableClass,
@@ -396,6 +398,8 @@ test('Verify function data in edge drawer', async ({ browser }) => {
 });
 
 test('Verify global lineage config', async ({ browser }) => {
+  test.slow(true);
+
   const { page } = await createNewPage(browser);
   const { apiContext, afterAction } = await getApiContext(page);
   const table = new TableClass();

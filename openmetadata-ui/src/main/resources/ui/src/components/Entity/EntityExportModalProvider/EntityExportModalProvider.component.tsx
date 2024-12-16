@@ -114,6 +114,10 @@ export const EntityExportModalProvider = ({
   const handleCSVExportJobUpdate = (
     response: Partial<CSVExportWebsocketResponse>
   ) => {
+    // If multiple tab is open, then we need to check if the tab has active job or not before initiating the download
+    if (!csvExportJobRef.current) {
+      return;
+    }
     const updatedCSVExportJob: Partial<CSVExportJob> = {
       ...response,
       ...csvExportJobRef.current,
