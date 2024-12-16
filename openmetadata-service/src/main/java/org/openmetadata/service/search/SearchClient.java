@@ -19,6 +19,7 @@ import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResultList;
+import org.openmetadata.schema.entity.type.CustomProperty;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.tests.DataQualityReport;
@@ -196,6 +197,13 @@ public interface SearchClient {
 
   Response searchEntityRelationship(
       String fqn, int upstreamDepth, int downstreamDepth, String queryFilter, boolean deleted)
+      throws IOException;
+
+  Response searchCustomProperties(
+      SearchListFilter searchListFilter,
+      SearchSortFilter searchSortFilter,
+      String queryFilter,
+      CustomProperty property)
       throws IOException;
 
   Response searchDataQualityLineage(

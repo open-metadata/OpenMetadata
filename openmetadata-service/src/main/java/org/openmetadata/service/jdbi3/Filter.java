@@ -21,6 +21,11 @@ public abstract class Filter<T extends Filter<T>> {
     return (T) this;
   }
 
+  public T addQueryParam(String name, int value) {
+    queryParams.put(name, String.valueOf(value));
+    return (T) this;
+  }
+
   public void removeQueryParam(String name) {
     queryParams.remove(name);
   }

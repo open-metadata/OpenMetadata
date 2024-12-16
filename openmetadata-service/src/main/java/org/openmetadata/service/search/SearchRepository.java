@@ -60,6 +60,7 @@ import org.openmetadata.schema.EntityTimeSeriesInterface;
 import org.openmetadata.schema.analytics.ReportData;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.entity.classification.Tag;
+import org.openmetadata.schema.entity.type.CustomProperty;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.tests.DataQualityReport;
 import org.openmetadata.schema.tests.TestSuite;
@@ -941,6 +942,16 @@ public class SearchRepository {
       throws IOException {
     return searchClient.searchEntityRelationship(
         fqn, upstreamDepth, downstreamDepth, queryFilter, deleted);
+  }
+
+  public Response searchCustomProperties(
+      SearchListFilter searchListFilter,
+      SearchSortFilter searchSortFilter,
+      String queryFilter,
+      CustomProperty property)
+      throws IOException {
+    return searchClient.searchCustomProperties(
+        searchListFilter, searchSortFilter, queryFilter, property);
   }
 
   public Response searchDataQualityLineage(

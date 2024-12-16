@@ -150,10 +150,12 @@ import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResultLi
 import org.openmetadata.schema.dataInsight.custom.FormulaHolder;
 import org.openmetadata.schema.entity.data.EntityHierarchy__1;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.type.CustomProperty;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.tests.DataQualityReport;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.customProperties.TableConfig;
 import org.openmetadata.sdk.exception.SearchException;
 import org.openmetadata.sdk.exception.SearchIndexNotFoundException;
 import org.openmetadata.service.Entity;
@@ -166,6 +168,7 @@ import org.openmetadata.service.jdbi3.TestCaseResultRepository;
 import org.openmetadata.service.search.SearchAggregation;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchIndexUtils;
+import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.search.SearchRequest;
 import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.search.UpdateSearchEventsConstant;
@@ -942,6 +945,120 @@ public class ElasticSearchClient implements SearchClient {
     Map<String, Object> responseMap =
         searchEntityRelationshipInternal(fqn, upstreamDepth, downstreamDepth, queryFilter, deleted);
     return Response.status(OK).entity(responseMap).build();
+  }
+
+  public Response searchCustomProperties(
+      SearchListFilter searchListFilter,
+      SearchSortFilter searchSortFilter,
+      String queryFilter,
+      CustomProperty property)
+      throws IOException {
+
+    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+    String index = searchListFilter.getQueryParam("index");
+    searchSourceBuilder.from(Integer.parseInt(searchListFilter.getQueryParam("from")));
+    searchSourceBuilder.size(Integer.parseInt(searchListFilter.getQueryParam("size")));
+
+    String propertyName = searchListFilter.getQueryParam("propertyName");
+    String propertyType = property.getPropertyType().getName();
+    String extensionField = "extension." + propertyName;
+    String query = searchListFilter.getQueryParam("query");
+    BoolQueryBuilder mainQuery = QueryBuilders.boolQuery();
+
+    switch (propertyType) {
+      case "enum",
+          "date-cp",
+          "dateTime-cp",
+          "markdown",
+          "sqlQuery",
+          "string",
+          "time-cp",
+          "integer",
+          "number",
+          "timestamp" -> mainQuery.must(QueryBuilders.matchQuery(extensionField, query));
+
+      case "duration" -> mainQuery.must(
+          QueryBuilders.matchPhrasePrefixQuery(extensionField, query));
+
+      case "email" -> mainQuery.must(
+          QueryBuilders.boolQuery()
+              .should(QueryBuilders.matchPhrasePrefixQuery(extensionField, query))
+              .should(QueryBuilders.matchQuery(extensionField, query))
+              .minimumShouldMatch(1));
+
+      case "entityReference", "entityReferenceList" -> mainQuery.must(
+          QueryBuilders.boolQuery()
+              .should(QueryBuilders.matchQuery(extensionField + ".displayName", query))
+              .should(QueryBuilders.matchQuery(extensionField + ".fullyQualifiedName", query))
+              .minimumShouldMatch(1));
+
+      case "timeInterval" -> mainQuery.must(
+          QueryBuilders.boolQuery()
+              .should(QueryBuilders.matchQuery(extensionField + ".start", query))
+              .should(QueryBuilders.matchQuery(extensionField + ".end", query))
+              .minimumShouldMatch(1));
+
+      case "table-cp" -> {
+        TableConfig tableConfig =
+            JsonUtils.convertValue(
+                property.getCustomPropertyConfig().getConfig(), TableConfig.class);
+        BoolQueryBuilder tableQuery = QueryBuilders.boolQuery();
+        for (String column : tableConfig.getColumns()) {
+          tableQuery.should(
+              QueryBuilders.matchPhrasePrefixQuery(extensionField + ".rows." + column, query));
+        }
+        tableQuery.minimumShouldMatch(1);
+        mainQuery.must(tableQuery);
+      }
+
+      default -> mainQuery.must(QueryBuilders.matchQuery(extensionField, query));
+    }
+
+    mainQuery.must(QueryBuilders.termQuery("deleted", searchListFilter.getQueryParam("deleted")));
+
+    if (!nullOrEmpty(queryFilter) && !queryFilter.equals("{}")) {
+      try {
+        XContentParser filterParser =
+            XContentType.JSON
+                .xContent()
+                .createParser(xContentRegistry, LoggingDeprecationHandler.INSTANCE, queryFilter);
+        QueryBuilder filterQuery = SearchSourceBuilder.fromXContent(filterParser).query();
+
+        searchSourceBuilder.query(QueryBuilders.boolQuery().must(mainQuery).filter(filterQuery));
+
+      } catch (Exception ex) {
+        LOG.warn("Error parsing query_filter from query parameters, ignoring filter", ex);
+      }
+    } else {
+      searchSourceBuilder.query(mainQuery);
+    }
+
+    if (!nullOrEmpty(searchSortFilter.getSortField())) {
+      FieldSortBuilder fieldSortBuilder =
+          new FieldSortBuilder(searchSortFilter.getSortField())
+              .order(SortOrder.fromString(searchSortFilter.getSortType()));
+      if (!searchSortFilter.getSortField().equalsIgnoreCase("_score")) {
+        fieldSortBuilder.unmappedType("integer");
+      }
+      searchSourceBuilder.sort(fieldSortBuilder);
+    }
+
+    searchSourceBuilder.fetchSource(new FetchSourceContext(true, new String[] {}, new String[] {}));
+    searchSourceBuilder.trackTotalHitsUpTo(MAX_RESULT_HITS);
+    searchSourceBuilder.timeout(new TimeValue(30, TimeUnit.SECONDS));
+
+    try {
+      SearchResponse searchResponse =
+          client.search(
+              new es.org.elasticsearch.action.search.SearchRequest(
+                      Entity.getSearchRepository().getIndexOrAliasName(index))
+                  .source(searchSourceBuilder),
+              RequestOptions.DEFAULT);
+
+      return Response.status(OK).entity(searchResponse.toString()).build();
+    } catch (ElasticsearchStatusException e) {
+      throw new SearchException(String.format("Search failed due to %s", e.getMessage()));
+    }
   }
 
   @Override

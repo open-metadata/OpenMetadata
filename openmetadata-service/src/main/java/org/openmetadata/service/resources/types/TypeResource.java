@@ -16,6 +16,7 @@ package org.openmetadata.service.resources.types;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 
+import es.org.elasticsearch.action.search.SearchResponse;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -27,6 +28,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import javax.json.JsonPatch;
@@ -64,6 +66,8 @@ import org.openmetadata.service.jdbi3.TypeRepository;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
+import org.openmetadata.service.search.SearchListFilter;
+import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -517,6 +521,89 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
                   + entityType
                   + ". Exception: "
                   + e.getMessage())
+          .build();
+    }
+  }
+
+  @GET
+  @Path("/customProperties/search")
+  @Operation(
+      operationId = "searchCustomProperties",
+      summary = "Search Custom Properties",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "search response",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = SearchResponse.class)))
+      })
+  public Response searchCustomProperties(
+      @Parameter(description = "Type of the entity", example = "table") @QueryParam("entityType")
+          String entityType,
+      @Parameter(description = "Name of the custom property", example = "propertyName")
+          @QueryParam("propertyName")
+          String propertyName,
+      @Parameter(
+              description = "search query term to search for custom properties",
+              schema = @Schema(type = "string"))
+          @QueryParam("query")
+          String query,
+      @Parameter(
+              description =
+                  "Elasticsearch query that will be combined with the query_string query generator from the `query` argument")
+          @QueryParam("query_filter")
+          String queryFilter,
+      @Parameter(description = "Starting point of the results", example = "20")
+          @QueryParam("from")
+          @DefaultValue("0")
+          int from,
+      @Parameter(description = "Number of results to return", example = "10")
+          @QueryParam("size")
+          @DefaultValue("10")
+          int size,
+      @Parameter(description = "ElasticSearch Index name, defaults to table_search_index")
+          @DefaultValue("table_search_index")
+          @QueryParam("index")
+          String index,
+      @Parameter(description = "Include deleted entities", example = "false")
+          @QueryParam("deleted")
+          @DefaultValue("false")
+          boolean deleted,
+      @Parameter(description = "Field to sort the results by", example = "_score")
+          @QueryParam("sort_field")
+          @DefaultValue("_score")
+          String sortField,
+      @Parameter(description = "Order to sort the results", example = "desc")
+          @QueryParam("sort_order")
+          @DefaultValue("desc")
+          String sortOrder,
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext) {
+
+    try {
+      SearchListFilter searchListFilter = new SearchListFilter();
+      Optional.ofNullable(entityType)
+          .ifPresent(t -> searchListFilter.addQueryParam("entityType", t));
+      Optional.ofNullable(propertyName)
+          .ifPresent(pn -> searchListFilter.addQueryParam("propertyName", pn));
+      Optional.ofNullable(index).ifPresent(in -> searchListFilter.addQueryParam("index", in));
+      Optional.ofNullable(query).ifPresent(q -> searchListFilter.addQueryParam("query", q));
+      searchListFilter.addQueryParam("from", from);
+      searchListFilter.addQueryParam("size", size);
+      searchListFilter.addQueryParam("deleted", deleted);
+      CustomProperty property = repository.getCustomPropertyType(entityType, propertyName);
+
+      SearchSortFilter searchSortFilter = new SearchSortFilter(sortField, sortOrder, null, null);
+
+      return Entity.getSearchRepository()
+          .searchCustomProperties(searchListFilter, searchSortFilter, queryFilter, property);
+
+    } catch (Exception e) {
+      LOG.error("Error searching custom properties: {}", e.getMessage(), e);
+      return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+          .entity("Error searching custom properties. Exception: " + e.getMessage())
           .build();
     }
   }

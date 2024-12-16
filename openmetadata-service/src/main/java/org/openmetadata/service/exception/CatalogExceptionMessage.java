@@ -265,6 +265,11 @@ public final class CatalogExceptionMessage {
     return String.format("Custom Property %s has invalid value %s", fieldName, validationMessages);
   }
 
+  public static String unknownCustomProperty(String propertyName, String entityType) {
+    return String.format(
+        "Custom property %s not found for entity type %s", propertyName, entityType);
+  }
+
   public static String invalidParent(Team parent, String child, TeamType childType) {
     return String.format(
         "Team %s of type %s can't be of parent of team %s of type %s",
