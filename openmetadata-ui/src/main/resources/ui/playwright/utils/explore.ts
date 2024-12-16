@@ -135,16 +135,16 @@ export const validateBucketsForIndex = async (page: Page, index: string) => {
 
   const buckets = response.aggregations?.['sterms#entityType']?.buckets ?? [];
 
-  // Verify all expected buckets exist and have doc_count > 0
-  const invalidBuckets = EXPECTED_BUCKETS.filter((expectedKey) => {
+  EXPECTED_BUCKETS.forEach((expectedKey) => {
     const bucket = buckets.find((b: Bucket) => b.key === expectedKey);
 
-    return !bucket || bucket.doc_count <= 0;
-  });
+    // Expect the bucket to exist
+    expect(bucket, `Bucket with key "${expectedKey}" is missing`).toBeDefined();
 
-  if (invalidBuckets.length > 0) {
-    throw new Error(
-      `Buckets missing or with doc_count <= 0: ${invalidBuckets.join(', ')}`
-    );
-  }
+    // Expect the bucket's doc_count to be greater than 0
+    expect(
+      bucket?.doc_count,
+      `Bucket "${expectedKey}" has doc_count <= 0`
+    ).toBeGreaterThan(0);
+  });
 };

@@ -24,6 +24,8 @@ import { SearchIndexClass } from '../../support/entity/SearchIndexClass';
 import { StoredProcedureClass } from '../../support/entity/StoredProcedureClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { TopicClass } from '../../support/entity/TopicClass';
+import { Glossary } from '../../support/glossary/Glossary';
+import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import { getApiContext, redirectToHomePage } from '../../utils/common';
 import { updateDisplayNameForEntity } from '../../utils/entity';
 import { validateBucketsForIndex } from '../../utils/explore';
@@ -203,6 +205,8 @@ test.describe('Explore Tree scenarios ', () => {
 
 test.describe('Explore page', () => {
   const table = new TableClass();
+  const glossary = new Glossary();
+  const glossaryTerm = new GlossaryTerm(glossary);
   const dashboard = new DashboardClass();
   const storedProcedure = new StoredProcedureClass();
   const pipeline = new PipelineClass();
@@ -216,6 +220,8 @@ test.describe('Explore page', () => {
   test.beforeEach('Setup pre-requisits', async ({ page }) => {
     const { apiContext, afterAction } = await getApiContext(page);
     await table.create(apiContext);
+    await glossary.create(apiContext);
+    await glossaryTerm.create(apiContext);
     await dashboard.create(apiContext);
     await storedProcedure.create(apiContext);
     await pipeline.create(apiContext);
@@ -231,6 +237,8 @@ test.describe('Explore page', () => {
   test.afterEach('Cleanup', async ({ page }) => {
     const { apiContext, afterAction } = await getApiContext(page);
     await table.delete(apiContext);
+    await glossary.delete(apiContext);
+    await glossaryTerm.delete(apiContext);
     await dashboard.delete(apiContext);
     await storedProcedure.delete(apiContext);
     await pipeline.delete(apiContext);

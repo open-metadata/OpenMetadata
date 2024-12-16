@@ -12,6 +12,7 @@
  */
 export const EXPECTED_BUCKETS = [
   'table',
+  'glossaryTerm',
   'databaseSchema',
   'chart',
   'storedProcedure',
