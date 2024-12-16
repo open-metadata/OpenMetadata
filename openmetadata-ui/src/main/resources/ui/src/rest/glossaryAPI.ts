@@ -147,7 +147,7 @@ export const getGlossaryTermByFQN = async (fqn = '', params?: ListParams) => {
 
 export const addGlossaryTerm = async (
   data: CreateGlossaryTerm
-): Promise<AxiosResponse> => {
+): Promise<GlossaryTerm> => {
   const url = '/glossaryTerms';
 
   const response = await APIClient.post(url, data);
