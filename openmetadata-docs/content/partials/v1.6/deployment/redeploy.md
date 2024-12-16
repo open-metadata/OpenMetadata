@@ -1,4 +1,4 @@
-Go to `Settings` -> `{service entity}` -> `Pipelines`
+Go to `Settings` -> `{Services}` -> `{Databases}` -> `Pipelines`
 
 {% image src="/images/v1.5/deployment/upgrade/redeploy.png" alt="redeploy" caption="Re-deploy" /%}
 
