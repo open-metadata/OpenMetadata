@@ -47,7 +47,7 @@ import {
 } from '../../../../utils/EntityUtils';
 import { getEntityFQN } from '../../../../utils/FeedUtils';
 import { checkPermission } from '../../../../utils/PermissionsUtils';
-import { getDecodedFqn, replacePlus } from '../../../../utils/StringsUtils';
+import { getDecodedFqn } from '../../../../utils/StringsUtils';
 import { getTaskDetailPath } from '../../../../utils/TasksUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
@@ -82,9 +82,7 @@ const IncidentManagerPageHeader = ({
   const columnName = useMemo(() => {
     const isColumn = testCaseData?.entityLink.includes('::columns::');
     if (isColumn) {
-      const name = replacePlus(
-        getColumnNameFromEntityLink(testCaseData?.entityLink ?? '')
-      );
+      const name = getColumnNameFromEntityLink(testCaseData?.entityLink ?? '');
 
       return name;
     }
