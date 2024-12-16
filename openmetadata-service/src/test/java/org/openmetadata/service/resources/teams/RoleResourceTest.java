@@ -194,12 +194,12 @@ public class RoleResourceTest extends EntityResourceTest<Role, CreateRole> {
       teamResourceTest.createEntity(
           teamResourceTest
               .createRequest("roleTeam1", "", "", null)
-              .withDefaultRoles(List.of(role.getId())),
+              .withDefaultRoles(List.of(role.getFullyQualifiedName())),
           ADMIN_AUTH_HEADERS);
       teamResourceTest.createEntity(
           teamResourceTest
               .createRequest("roleTeam2", "", "", null)
-              .withDefaultRoles(List.of(role.getId())),
+              .withDefaultRoles(List.of(role.getFullyQualifiedName())),
           ADMIN_AUTH_HEADERS);
     }
 

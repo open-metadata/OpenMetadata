@@ -49,11 +49,17 @@ import static org.openmetadata.service.socket.WebSocketManager.SEARCH_INDEX_JOB_
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.ENTITY_TYPE_KEY;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.isDataInsightIndex;
 
+import java.io.BufferedWriter;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -168,6 +174,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
   private final AtomicReference<Integer> batchSize = new AtomicReference<>(5);
   private JobExecutionContext jobExecutionContext;
   private volatile boolean stopped = false;
+  Queue<Map<String, Object>> entityRecords = new ConcurrentLinkedQueue<>();
 
   public SearchIndexApp(CollectionDAO collectionDAO, SearchRepository searchRepository) {
     super(collectionDAO, searchRepository);
@@ -309,6 +316,20 @@ public class SearchIndexApp extends AbstractNativeApplication {
     } finally {
       shutdownExecutor(jobExecutor, "JobExecutor", 20, TimeUnit.SECONDS);
       shutdownExecutor(producerExecutor, "ReaderExecutor", 1, TimeUnit.MINUTES);
+
+      for (Map<String, Object> rec : entityRecords) {
+        try (BufferedWriter writer =
+            new BufferedWriter(
+                new FileWriter(
+                    String.format(
+                        "/Users/mohityadav/IdeaProjects/OMTesting/sample_data/%s.json",
+                        rec.get(ENTITY_TYPE_KEY)),
+                    true))) {
+          writer.write(JsonUtils.pojoToJson(rec, true));
+        } catch (IOException e) {
+          e.printStackTrace();
+        }
+      }
     }
   }
 
@@ -657,6 +678,20 @@ public class SearchIndexApp extends AbstractNativeApplication {
       LOG.debug("Read Entities with entityType: {},  CurrentOffset: {}", entityType, offset);
       if (resultList != null) {
         ResultList<?> entities = extractEntities(entityType, resultList);
+        Map<String, Object> contextData = new HashMap<>();
+        List<Map<String, Object>> resultData = new ArrayList<>();
+        for (Object ob : entities.getData()) {
+          Map<String, Object> result = JsonUtils.getMap(ob);
+          Map<String, Object> ansert = new HashMap<>();
+          ansert.put("teamType", result.get("teamType"));
+          ansert.put("name", result.get("name"));
+          ansert.put("parents", result.get("parents"));
+          ansert.put("isJoinable", result.get("isJoinable"));
+          resultData.add(ansert);
+        }
+        contextData.put(ENTITY_TYPE_KEY, entityType);
+        contextData.put("records", resultData);
+        entityRecords.add(contextData);
         if (!nullOrEmpty(entities.getData())) {
           IndexingTask<?> task = new IndexingTask<>(entityType, entities, offset);
           processTask(task, jobExecutionContext);

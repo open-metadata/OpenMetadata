@@ -285,6 +285,13 @@ public final class EntityUtil {
     return refs.stream().map(EntityReference::getId).collect(Collectors.toList());
   }
 
+  public static List<String> refToFqns(List<EntityReference> refs) {
+    if (refs == null) {
+      return null;
+    }
+    return refs.stream().map(EntityReference::getFullyQualifiedName).collect(Collectors.toList());
+  }
+
   public static <T> boolean isDescriptionRequired(Class<T> clz) {
     // Returns true if description field in entity is required
     try {

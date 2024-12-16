@@ -529,6 +529,27 @@ public final class TestUtils {
     validateEntityReferences(actual);
   }
 
+  public static void assertEntityReferenceFqns(
+      List<String> expected, List<EntityReference> actual) {
+    if (expected == null && actual == null) {
+      return;
+    }
+    expected = listOrEmpty(expected);
+    actual = listOrEmpty(actual);
+    if (expected.isEmpty()) {
+      return;
+    }
+    assertEquals(expected.size(), actual.size());
+    for (String fqn : expected) {
+      assertNotNull(
+          actual.stream()
+              .filter(entity -> entity.getFullyQualifiedName().equals(fqn))
+              .findAny()
+              .orElse(null));
+    }
+    validateEntityReferences(actual);
+  }
+
   public static void assertEntityReferences(
       List<EntityReference> expected, List<EntityReference> actual) {
     if (expected == actual) { // Take care of both being null
