@@ -40,13 +40,6 @@
               "description": "Add the Reviewers to the assignees List.",
               "type": "boolean",
               "default": false
-            },
-            "extraAssignees": {
-              "description": "Manually add Specific Assignees.",
-              "type": "array",
-              "items": {
-                "$ref": "../../../../../type/entityReference.json"
-              }
             }
           }
         }
