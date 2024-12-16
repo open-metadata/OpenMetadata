@@ -164,7 +164,6 @@ const AnnouncementTab: React.FC<AnnouncementTabProps> = ({
   return (
     <div className="two-column-layout">
       <Row gutter={[0, 16]} style={{ height: '100%' }}>
-        {/* Left Column */}
         <Col className="left-column" md={12} xs={24}>
           <div className="d-flex p-sm p-x-lg justify-between activity-feed-task @grey-1">
             {/* {getElementWithCountLoader( */}
@@ -183,8 +182,6 @@ const AnnouncementTab: React.FC<AnnouncementTabProps> = ({
                 }}>
                 {0} {t('label.active')}
               </Typography.Text>
-              {/* )} */}
-              {/* {getElementWithCountLoader( */}
               <Typography.Text
                 className={classNames('cursor-pointer d-flex items-center', {
                   'font-medium':
@@ -197,10 +194,9 @@ const AnnouncementTab: React.FC<AnnouncementTabProps> = ({
                 {0} {t('label.inactive')}
               </Typography.Text>
             </div>
-            {/* )} */}
             <Tooltip title={t('message.no-permission-to-view')}>
               <Button
-                data-testid="add-announcement"
+                data-testid="add-announcement-btn"
                 disabled={!permissions?.EditAll}
                 type="primary"
                 onClick={handleOpenAnnouncementModal}>
@@ -228,7 +224,6 @@ const AnnouncementTab: React.FC<AnnouncementTabProps> = ({
           />
         </Col>
 
-        {/* Right Column */}
         {selectedAnnouncementThread && (
           <Col className="right-column" md={12} xs={24}>
             <div id="feed-panel">
