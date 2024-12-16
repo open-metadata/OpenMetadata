@@ -20,10 +20,10 @@
       "default": "removeCustomPropertiesActionType"
     },
     "customProperties": {
-      "description": "Custom Properties to remove",
+      "description": "Custom Properties keys to remove",
       "type": "array",
       "items": {
-        "$ref": "../../../../../type/basic.json#/definitions/entityExtension"
+        "type": "string"
       }
     }
   },

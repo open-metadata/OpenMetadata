@@ -15,9 +15,9 @@
  */
 export interface RemoveCustomPropertiesAction {
     /**
-     * Custom Properties to remove
+     * Custom Properties keys to remove
      */
-    customProperties: any[];
+    customProperties: string[];
     /**
      * Application Type
      */
