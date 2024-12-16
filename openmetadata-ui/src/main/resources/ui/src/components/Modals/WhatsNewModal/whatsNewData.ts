@@ -1177,7 +1177,7 @@ To continue pursuing this objective, the application was completely refactored t
 - **Minor**: Domain Policy Update to be non-system.
 - **Fix**: Query builder state issue.
 - **Fix**: Downloading of application logs.
-`,
+- **Minor**: DBT v12 Model Changes.`,
     },
   },
   {
