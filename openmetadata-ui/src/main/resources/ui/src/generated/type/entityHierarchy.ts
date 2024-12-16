@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * This schema defines the entity hierarchy structure.
  */
 export interface EntityHierarchy {
@@ -43,6 +41,11 @@ export interface EntityHierarchy {
     name: string;
 }
 
+/**
+ * Other entities that are children of this entity.
+ *
+ * This schema defines the entity hierarchy structure.
+ */
 export interface ChildElement {
     /**
      * Other entities that are children of this entity.
@@ -69,5 +72,4 @@ export interface ChildElement {
      * Preferred name for the entity hierarchy.
      */
     name: string;
-    [property: string]: any;
 }
