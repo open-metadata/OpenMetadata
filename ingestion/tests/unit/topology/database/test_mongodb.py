@@ -32,6 +32,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.database.common_nosql_source import TableNameAndType
 from metadata.ingestion.source.database.mongodb.metadata import MongodbSource
 
 mock_file_path = (
@@ -175,8 +176,8 @@ EXPECTED_TABLE_NAMES = [
 ]
 
 MOCK_TABLE_NAMES = [
-    "random_table",
-    "random1_table",
+    TableNameAndType(name="random_table"),
+    TableNameAndType(name="random1_table"),
 ]
 
 
@@ -223,7 +224,7 @@ class MongoDBUnitTest(TestCase):
 
     def test_table_names(self):
         with patch.object(
-            MongodbSource, "get_table_name_list", return_value=MOCK_TABLE_NAMES
+            MongodbSource, "query_table_names_and_types", return_value=MOCK_TABLE_NAMES
         ):
             assert EXPECTED_TABLE_NAMES == list(
                 self.mongo_source.get_tables_name_and_type()

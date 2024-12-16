@@ -2,6 +2,8 @@
 
 ### Reindex
 
+#### With UI
+
 {% partial file="/v1.5/deployment/reindex.md" /%}
 
 Since this is required after the upgrade, we want to reindex `All` the entities.
@@ -17,6 +19,52 @@ For example, if you are upgrading the server to the version `x.y.z`, you will ne
 pip install openmetadata-ingestion[<plugin>]==x.y.z
 ```
 
+#### With Kubernetes
+Follow these steps to reindex using the CLI:
+
+1.	List the CronJobs
+Use the following command to check the available CronJobs:
+```bash
+kubectl get cronjobs
+```
+Upon running this command you should see output similar to the following.
+```CommandLine
+kubectl get cronjobs
+NAME                    SCHEDULE      TIMEZONE   SUSPEND   ACTIVE   LAST SCHEDULE   AGE
+cron-reindex            0/5 * * * *   <none>     True      0        <none>          31m
+```
+
+2.	Create a Job from a CronJob
+Create a one-time job from an existing CronJob using the following command:
+```bash
+kubectl create job --from=cronjob/cron-reindex <job_name>
+```
+{% note %} Replace `<job_name>` with the actual name of the job.{% /note %}
+
+Upon running this command you should see output similar to the following.
+```CommandLine
+kubectl create job --from=cronjob/cron-reindex cron-reindex-one
+job.batch/cron-reindex-one created
+```
+3.	Check the Job Status
+Verify the status of the created job with:
+```bash
+kubectl get jobs
+```
+Upon running this command you should see output similar to the following.
+```CommandLine
+kubectl get jobs
+NAME                       STATUS     COMPLETIONS   DURATION   AGE
+cron-reindex-one           Complete   1/1           20s        109s
+```
+4. view logs 
+To view the logs use the below command.
+```bash
+kubectl logs job/<job_name>
+```
+{% note %} Replace `<job_name>` with the actual job name.{% /note %}
+
+
 The `plugin` parameter is a list of the sources that we want to ingest. An example would look like this `openmetadata-ingestion[mysql,snowflake,s3]==1.2.0`.
 You will find specific instructions for each connector [here](/connectors).
 
@@ -29,7 +77,55 @@ pip install openmetadata-managed-apis==x.y.z
 
 ### Re Deploy Ingestion Pipelines
 
+#### With UI
+
 {% partial file="/v1.5/deployment/redeploy.md" /%}
+
+#### With Kubernetes
+
+Follow these steps to deploy pipelines using the CLI:
+1.	List the CronJobs
+Use the following command to check the available CronJobs:
+```bash
+kubectl get cronjobs
+```
+Upon running this command you should see output similar to the following.
+```commandline
+kubectl get cronjobs
+NAME                    SCHEDULE      TIMEZONE   SUSPEND   ACTIVE   LAST SCHEDULE   AGE
+cron-deploy-pipelines   0/5 * * * *   <none>     True      0        <none>          4m7s
+```
+2.	Create a Job from a CronJob
+Create a one-time job from an existing CronJob using the following command:
+```bash
+kubectl create job --from=cronjob/cron-reindex <job_name>
+```
+{% note %} 
+Replace `<job_name>` with the actual name of the job.
+{% /note %}
+
+Upon running this command you should see output similar to the following.
+```commandline
+kubectl create job --from=cronjob/cron-deploy-pipelines cron-deploy-pipeline-one
+job.batch/cron-deploy-pipeline-one created
+```
+3.	Check the Job Status
+Verify the status of the created job with:
+```bash
+kubectl get jobs
+```
+Upon running this command you should see output similar to the following.
+```CommandLine
+kubectl get jobs
+NAME                       STATUS     COMPLETIONS   DURATION   AGE
+cron-deploy-pipeline-one   Complete   1/1           13s        3m35s
+```
+4. view logs 
+To view the logs use the below command.
+```bash
+kubectl logs job/<job_name>
+```
+{% note %} Replace `<job_name>` with the actual job name.{% /note %}
 
 If you are seeing broken dags select all the pipelines from all the services and re deploy the pipelines.
 

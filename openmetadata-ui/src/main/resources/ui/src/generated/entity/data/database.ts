@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * This schema defines the Database entity. A database also referred to as Database Catalog
  * is a collection of schemas.
  */
@@ -511,6 +509,7 @@ export enum DatabaseServiceType {
     AzureSQL = "AzureSQL",
     BigQuery = "BigQuery",
     BigTable = "BigTable",
+    Cassandra = "Cassandra",
     Clickhouse = "Clickhouse",
     Couchbase = "Couchbase",
     CustomDatabase = "CustomDatabase",

@@ -19,11 +19,7 @@ In this section, we provide guides and references to use the Matillion connector
 Configure and schedule Matillion metadata and profiler workflows from the OpenMetadata UI:
 
 - [Requirements](#requirements)
-    - [Matillion Versions](#matillion-versions)
 - [Metadata Ingestion](#metadata-ingestion)
-    - [Connection Details](#connection-details)
-- [Troubleshooting](#troubleshooting)
-    - [Workflow Deployment Error](#workflow-deployment-error)
 
 {% partial file="/v1.6/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/pipeline/matillion/yaml"} /%}
 
