@@ -131,6 +131,7 @@ import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.feed.Suggestion;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.entity.type.Style;
 import org.openmetadata.schema.system.EntityError;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.AssetCertification;
@@ -2969,6 +2970,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     private void updateStyle() {
       if (supportsStyle) {
+        Style originalStyle = original.getStyle();
+        Style updatedStyle = updated.getStyle();
+
+        if (originalStyle == updatedStyle) return;
+        if (operation == Operation.PUT && updatedStyle == null) {
+          updatedStyle = originalStyle;
+          updated.setStyle(updatedStyle);
+        }
         recordChange(FIELD_STYLE, original.getStyle(), updated.getStyle(), true);
       }
     }
@@ -3023,7 +3032,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
       SystemRepository systemRepository = Entity.getSystemRepository();
       AssetCertificationSettings assetCertificationSettings =
-          systemRepository.getAssetCertificationSettings();
+          systemRepository.getAssetCertificationSettingOrDefault();
 
       String certificationLabel = updatedCertification.getTagLabel().getTagFQN();
 
