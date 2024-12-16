@@ -44,10 +44,10 @@ export const visitClassificationPage = async (
   const classificationResponse = page.waitForResponse(
     '/api/v1/classifications?**'
   );
+  const fetchTags = page.waitForResponse('/api/v1/tags?*parent=*');
   await sidebarClick(page, SidebarItem.TAGS);
   await classificationResponse;
 
-  const fetchTags = page.waitForResponse('/api/v1/tags?*parent=*');
   await page
     .locator(`[data-testid="side-panel-classification"]`)
     .filter({ hasText: classificationName })
@@ -350,9 +350,8 @@ export const editTagPageDescription = async (page: Page, tag: TagClass) => {
 };
 
 export const verifyCertificationTagPageUI = async (page: Page) => {
-  await redirectToHomePage(page);
-  const res = page.waitForResponse(`/api/v1/tags/name/*`);
   await visitClassificationPage(page, 'Certification');
+  const res = page.waitForResponse(`/api/v1/tags/name/*`);
   await page.getByTestId('Gold').click();
   await res;
 

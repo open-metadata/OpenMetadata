@@ -197,13 +197,12 @@ export const DatabaseSchemaTable = ({
           displayName: data.displayName || undefined,
         };
         const jsonPatch = compare(schemaDetails, updatedData);
-        await patchDatabaseSchemaDetails(schemaDetails.id ?? '', jsonPatch);
+        const response = await patchDatabaseSchemaDetails(
+          schemaDetails.id ?? '',
+          jsonPatch
+        );
         setSchemas((prevData) =>
-          prevData.map((schema) =>
-            schema.id === id
-              ? { ...schema, displayName: data.displayName }
-              : schema
-          )
+          prevData.map((schema) => (schema.id === id ? response : schema))
         );
       } catch (error) {
         showErrorToast(error as AxiosError);

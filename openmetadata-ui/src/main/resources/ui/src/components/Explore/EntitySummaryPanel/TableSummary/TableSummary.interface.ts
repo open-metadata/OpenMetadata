@@ -11,11 +11,7 @@
  *  limitations under the License.
  */
 
-import {
-  Table,
-  TableType,
-  TagLabel,
-} from '../../../../generated/entity/data/table';
+import { Table, TagLabel } from '../../../../generated/entity/data/table';
 import { DRAWER_NAVIGATION_OPTIONS } from '../../../../utils/EntityUtils';
 import { SearchedDataProps } from '../../../SearchedData/SearchedData.interface';
 
@@ -25,12 +21,6 @@ export interface TableSummaryProps {
   tags?: TagLabel[];
   isLoading?: boolean;
   highlights?: SearchedDataProps['data'][number]['highlight'];
-}
-
-export interface BasicTableInfo {
-  Type: TableType | string;
-  Queries: string;
-  Columns: string;
 }
 
 export interface TableProfileDetails {

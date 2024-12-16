@@ -88,10 +88,6 @@ jest.mock('react-router-dom', () => ({
   })),
 }));
 
-jest.mock('../../../utils/CustomProperties/CustomProperty.utils', () => ({
-  getEntityExtentionDetailsFromEntityType: jest.fn(),
-}));
-
 const handleExtensionUpdate = jest.fn();
 
 const mockProp = {
