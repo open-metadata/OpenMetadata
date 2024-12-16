@@ -98,11 +98,6 @@ export const navbarSearchItems = [
     searchIndex: 'api_collection_search_index',
     isScrollRequired: true,
   },
-  {
-    label: 'Metric',
-    searchIndex: 'metric_search_index',
-    isScrollRequired: true,
-  },
 ];
 
 export const selectOption = async (
