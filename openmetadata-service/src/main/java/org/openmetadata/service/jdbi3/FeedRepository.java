@@ -751,17 +751,15 @@ public class FeedRepository {
 
     String beforeCursor = null;
     String afterCursor = null;
-    if (filter.getPaginationType() == PaginationType.BEFORE) {
-      if (!threads.isEmpty()) {
+    if (!nullOrEmpty(threads)) {
+      if (filter.getPaginationType() == PaginationType.BEFORE) {
         if (threads.size()
             > limit) { // If extra result exists, then previous page exists - return before cursor
           threads.remove(0);
           beforeCursor = threads.get(0).getUpdatedAt().toString();
         }
         afterCursor = threads.get(threads.size() - 1).getUpdatedAt().toString();
-      }
-    } else {
-      if (!threads.isEmpty()) {
+      } else {
         beforeCursor = filter.getAfter() == null ? null : threads.get(0).getUpdatedAt().toString();
         if (threads.size()
             > limit) { // If extra result exists, then next page exists - return after cursor
