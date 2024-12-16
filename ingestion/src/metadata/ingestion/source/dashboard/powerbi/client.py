@@ -110,9 +110,11 @@ class PowerBiApiClient:
                 response_data = self.client.get("/myorg/admin/dashboards")
                 response = DashboardsResponse(**response_data)
                 return response.value
-            group = self.fetch_all_workspaces()[0]
-            return self.fetch_all_org_dashboards(group_id=group.id)
-
+            groups = self.fetch_all_workspaces()
+            all_dashboards = []
+            for group in groups:
+                all_dashboards.extend(self.fetch_all_org_dashboards(group_id=group.id))
+            return all_dashboards
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
             logger.warning(f"Error fetching dashboards: {exc}")
