@@ -529,8 +529,7 @@ public final class TestUtils {
     validateEntityReferences(actual);
   }
 
-  public static void assertEntityReferenceFqns(
-      List<String> expected, List<EntityReference> actual) {
+  public static void assertEntityReferenceFqn(List<String> expected, List<EntityReference> actual) {
     if (expected == null && actual == null) {
       return;
     }
