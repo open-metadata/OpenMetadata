@@ -77,16 +77,23 @@ class AWSClient:
             config.profileName,
         )
         sts_client = session.client("sts")
+
+        duration_kw = dict()
+        if config.assumeRoleSessionDuration:
+            duration_kw["DurationSeconds"] = config.assumeRoleSessionDuration
+
         if config.assumeRoleSourceIdentity:
             resp = sts_client.assume_role(
                 RoleArn=config.assumeRoleArn,
                 RoleSessionName=config.assumeRoleSessionName,
                 SourceIdentity=config.assumeRoleSourceIdentity,
+                **duration_kw,
             )
         else:
             resp = sts_client.assume_role(
                 RoleArn=config.assumeRoleArn,
                 RoleSessionName=config.assumeRoleSessionName,
+                **duration_kw,
             )
 
         if resp:
