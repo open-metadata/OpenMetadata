@@ -166,6 +166,7 @@ import org.openmetadata.service.jdbi3.TestCaseResultRepository;
 import org.openmetadata.service.search.SearchAggregation;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchIndexUtils;
+import org.openmetadata.service.search.SearchQueryBuilder;
 import org.openmetadata.service.search.SearchRequest;
 import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.search.UpdateSearchEventsConstant;
@@ -243,6 +244,8 @@ public class ElasticSearchClient implements SearchClient {
   private static final List<String> SOURCE_FIELDS_TO_EXCLUDE =
       Stream.concat(FIELDS_TO_REMOVE.stream(), Stream.of("schemaDefinition", "customMetrics"))
           .toList();
+
+  private final SearchQueryBuilder searchQueryBuilder = new ElasticSearchQueryBuilder();
 
   static {
     SearchModule searchModule = new SearchModule(Settings.EMPTY, false, List.of());
@@ -366,9 +369,9 @@ public class ElasticSearchClient implements SearchClient {
 
   @Override
   public Response search(SearchRequest request, SubjectContext subjectContext) throws IOException {
+    // Instead of using the old large switch-case, we now rely on SearchQueryBuilder to use searchSettings
     SearchSourceBuilder searchSourceBuilder =
-        getSearchSourceBuilder(
-            request.getIndex(), request.getQuery(), request.getFrom(), request.getSize());
+        searchQueryBuilder.getSearchSourceBuilder(request.getIndex(), request.getQuery(), request.getFrom(), request.getSize());
 
     buildSearchRBACQuery(subjectContext, searchSourceBuilder);
 
@@ -393,62 +396,10 @@ public class ElasticSearchClient implements SearchClient {
       searchSourceBuilder.searchAfter(request.getSearchAfter());
     }
 
-    /* For backward-compatibility we continue supporting the deleted argument, this should be removed in future versions */
-    if (request
-            .getIndex()
-            .equalsIgnoreCase(Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS))
-        || request
-            .getIndex()
-            .equalsIgnoreCase(Entity.getSearchRepository().getIndexOrAliasName("dataAsset"))) {
-      es.org.elasticsearch.index.query.BoolQueryBuilder boolQueryBuilder =
-          QueryBuilders.boolQuery();
-      boolQueryBuilder.should(
-          QueryBuilders.boolQuery()
-              .must(searchSourceBuilder.query())
-              .must(QueryBuilders.existsQuery("deleted"))
-              .must(QueryBuilders.termQuery("deleted", request.isDeleted())));
-      boolQueryBuilder.should(
-          QueryBuilders.boolQuery()
-              .must(searchSourceBuilder.query())
-              .mustNot(QueryBuilders.existsQuery("deleted")));
-      searchSourceBuilder.query(boolQueryBuilder);
-    } else if (request
-            .getIndex()
-            .equalsIgnoreCase(
-                Entity.getSearchRepository().getIndexMapping(DOMAIN).getIndexName(clusterAlias))
-        || request
-            .getIndex()
-            .equalsIgnoreCase(
-                Entity.getSearchRepository()
-                    .getIndexMapping(DATA_PRODUCT)
-                    .getIndexName(clusterAlias))
-        || request
-            .getIndex()
-            .equalsIgnoreCase(
-                Entity.getSearchRepository().getIndexMapping(QUERY).getIndexName(clusterAlias))
-        || request
-            .getIndex()
-            .equalsIgnoreCase(
-                Entity.getSearchRepository().getIndexOrAliasName("knowledge_page_search_index"))
-        || request
-            .getIndex()
-            .equalsIgnoreCase(
-                Entity.getSearchRepository()
-                    .getIndexMapping(RAW_COST_ANALYSIS_REPORT_DATA)
-                    .getIndexName(clusterAlias))
-        || request
-            .getIndex()
-            .equalsIgnoreCase(
-                Entity.getSearchRepository()
-                    .getIndexMapping(AGGREGATED_COST_ANALYSIS_REPORT_DATA)
-                    .getIndexName(clusterAlias))) {
-      searchSourceBuilder.query(QueryBuilders.boolQuery().must(searchSourceBuilder.query()));
-    } else {
-      searchSourceBuilder.query(
-          QueryBuilders.boolQuery()
-              .must(searchSourceBuilder.query())
-              .must(QueryBuilders.termQuery("deleted", request.isDeleted())));
-    }
+    // Deleted filtering logic can be integrated into SearchQueryBuilder if needed,
+    // or remain here for backward compatibility:
+    // Apply deleted logic for backward-compatibility
+    searchQueryBuilder.applyDeletedLogic(request, searchSourceBuilder);
 
     if (!nullOrEmpty(request.getSortFieldParam()) && !request.isGetHierarchy()) {
       FieldSortBuilder fieldSortBuilder =
@@ -461,62 +412,9 @@ public class ElasticSearchClient implements SearchClient {
       searchSourceBuilder.sort(fieldSortBuilder);
     }
 
-    if (request
-        .getIndex()
-        .equalsIgnoreCase(
-            Entity.getSearchRepository()
-                .getIndexMapping(GLOSSARY_TERM)
-                .getIndexName(clusterAlias))) {
-      searchSourceBuilder.query(QueryBuilders.boolQuery().must(searchSourceBuilder.query()));
+    searchQueryBuilder.applyGlossaryHierarchyLogic(request, searchSourceBuilder);
 
-      if (request.isGetHierarchy()) {
-        QueryBuilder baseQuery =
-            QueryBuilders.boolQuery()
-                .should(searchSourceBuilder.query())
-                .should(QueryBuilders.matchPhraseQuery("fullyQualifiedName", request.getQuery()))
-                .should(QueryBuilders.matchPhraseQuery("name", request.getQuery()))
-                .should(QueryBuilders.matchPhraseQuery("displayName", request.getQuery()))
-                .should(
-                    QueryBuilders.matchPhraseQuery(
-                        "glossary.fullyQualifiedName", request.getQuery()))
-                .should(QueryBuilders.matchPhraseQuery("glossary.displayName", request.getQuery()))
-                .must(QueryBuilders.matchQuery("status", "Approved"))
-                .minimumShouldMatch(1);
-        searchSourceBuilder.query(baseQuery);
-
-        SearchResponse searchResponse =
-            client.search(
-                new es.org.elasticsearch.action.search.SearchRequest(request.getIndex())
-                    .source(searchSourceBuilder),
-                RequestOptions.DEFAULT);
-
-        // Extract parent terms from aggregation
-        BoolQueryBuilder parentTermQueryBuilder = QueryBuilders.boolQuery();
-        Terms parentTerms = searchResponse.getAggregations().get("fqnParts_agg");
-
-        // Build  es query to get parent terms for the user input query , to build correct hierarchy
-        if (!parentTerms.getBuckets().isEmpty() && !request.getQuery().equals("*")) {
-          parentTerms.getBuckets().stream()
-              .map(Terms.Bucket::getKeyAsString)
-              .forEach(
-                  parentTerm ->
-                      parentTermQueryBuilder.should(
-                          QueryBuilders.matchQuery("fullyQualifiedName", parentTerm)));
-
-          searchSourceBuilder.query(
-              parentTermQueryBuilder
-                  .minimumShouldMatch(1)
-                  .must(QueryBuilders.matchQuery("status", "Approved")));
-        }
-        searchSourceBuilder.sort(SortBuilders.fieldSort("fullyQualifiedName").order(SortOrder.ASC));
-      }
-    }
-
-    /* for performance reasons ElasticSearch doesn't provide accurate hits
-    if we enable trackTotalHits parameter it will try to match every result, count and return hits
-    however in most cases for search results an approximate value is good enough.
-    we are displaying total entity counts in landing page and explore page where we need the total count
-    https://github.com/elastic/elasticsearch/issues/33028 */
+    // fetch source and track hits
     searchSourceBuilder.fetchSource(
         new FetchSourceContext(
             request.isFetchSource(),
@@ -526,7 +424,7 @@ public class ElasticSearchClient implements SearchClient {
     if (request.isTrackTotalHits()) {
       searchSourceBuilder.trackTotalHits(true);
     } else {
-      searchSourceBuilder.trackTotalHitsUpTo(MAX_RESULT_HITS);
+      searchSourceBuilder.trackTotalHitsUpTo(searchQueryBuilder.getSearchSettings().getGlobalSettings().getMaxResultHits());
     }
 
     searchSourceBuilder.timeout(new TimeValue(30, TimeUnit.SECONDS));

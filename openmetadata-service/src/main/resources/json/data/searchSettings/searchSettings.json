@@ -46,7 +46,32 @@
         "field": "tags.tagFQN"
       }
     ],
-    "highlightFields": ["name", "displayName", "description", "displayName.ngram", "name.ngram"]
+    "highlightFields": ["name", "displayName", "description", "displayName.ngram", "name.ngram"],
+    "tagBoosts": [
+      { "field": "tier.tagFQN", "tagFQN": "Tier.Tier1", "boost": 50.0 },
+      { "field": "tier.tagFQN", "tagFQN": "Tier.Tier2", "boost": 30.0 },
+      { "field": "tier.tagFQN", "tagFQN": "Tier.Tier3", "boost": 15.0 }
+    ],
+    "fieldValueBoosts": [
+      {
+        "field": "usageSummary.weeklyStats.count",
+        "factor": 4.0,
+        "modifier": "sqrt",
+        "missing": 1,
+        "condition": {
+          "range": { "gt": 0 }
+        }
+      },
+      {
+        "field": "totalVotes",
+        "factor": 3.0,
+        "modifier": "ln1p",
+        "missing": 0,
+        "condition": {
+          "range": { "gt": 0 }
+        }
+      }
+    ]
   },
   "assetTypeConfigurations": [
     {

@@ -38,6 +38,27 @@
           "type": "array",
           "items": { "type": "string" },
           "description": "Fields to include in the highlights."
+        },
+        "boosts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/fieldBoost"
+          },
+          "description": "Global field boosts that apply to all asset types."
+        },
+        "tagBoosts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/tagBoost"
+          },
+          "description": "Global tag-based boosts for fields like tier tags."
+        },
+        "fieldValueBoosts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/fieldValueBoost"
+          },
+          "description": "Global field value-based boosts for usage, votes, etc."
         }
       },
       "additionalProperties": false
@@ -149,6 +170,7 @@
     "tagBoost": {
       "type": "object",
       "properties": {
+        "field": { "type": "string", "description": "Field name to boost." },
         "tagFQN": { "type": "string", "description": "Fully Qualified Name of the tag." },
         "boost": { "type": "number", "description": "Boost factor for the tag." }
       },
