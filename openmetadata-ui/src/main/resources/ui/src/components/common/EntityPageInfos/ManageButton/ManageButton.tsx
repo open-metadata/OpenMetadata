@@ -25,7 +25,6 @@ import { ReactComponent as IconSetting } from '../../../../assets/svg/ic-setting
 import { ReactComponent as IconDropdown } from '../../../../assets/svg/menu.svg';
 import { NO_PERMISSION_FOR_ACTION } from '../../../../constants/HelperTextUtil';
 import { EntityType } from '../../../../enums/entity.enum';
-import { ANNOUNCEMENT_ENTITIES } from '../../../../utils/AnnouncementsUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import EntityNameModal from '../../../Modals/EntityNameModal/EntityNameModal.component';
 import { EntityName } from '../../../Modals/EntityNameModal/EntityNameModal.interface';
@@ -48,7 +47,6 @@ const ManageButton: FC<ManageButtonProps> = ({
   entityId,
   isRecursiveDelete,
   extraDropdownContent,
-  onAnnouncementClick,
   onRestoreEntity,
   deleted,
   editDisplayNamePermission,
@@ -97,14 +95,6 @@ const ManageButton: FC<ManageButtonProps> = ({
       setIsDisplayNameEditing(false);
     }
   };
-
-  const showAnnouncementOption = useMemo(
-    () =>
-      onAnnouncementClick &&
-      ANNOUNCEMENT_ENTITIES.includes(entityType as EntityType) &&
-      !deleted,
-    [onAnnouncementClick, entityType, deleted]
-  );
 
   const showRenameOption = useMemo(
     () => editDisplayNamePermission && onEditDisplayName && !deleted,
