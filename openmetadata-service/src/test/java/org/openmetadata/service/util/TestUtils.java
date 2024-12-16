@@ -563,6 +563,20 @@ public final class TestUtils {
     }
   }
 
+  public static void assertEntityReferencesFqn(
+      List<EntityReference> expected, List<EntityReference> actual) {
+    if (expected == actual) { // Take care of both being null
+      return;
+    }
+    if (expected != null) {
+      actual = listOrEmpty(actual);
+      assertEquals(expected.size(), actual.size());
+      for (EntityReference e : expected) {
+        TestUtils.existsInEntityReferenceList(actual, e.getFullyQualifiedName(), true);
+      }
+    }
+  }
+
   public static void assertEntityReferenceNames(
       List<String> expected, List<EntityReference> actual) {
     if (expected != null) {

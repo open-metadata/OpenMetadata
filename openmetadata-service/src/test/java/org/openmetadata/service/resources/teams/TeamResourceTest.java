@@ -1097,7 +1097,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
       expectedUsers.add(new EntityReference().withFullyQualifiedName(fqn).withType(Entity.USER));
     }
     expectedUsers = expectedUsers.isEmpty() ? null : expectedUsers;
-    TestUtils.assertEntityReferences(expectedUsers, team.getUsers());
+    TestUtils.assertEntityReferencesFqn(expectedUsers, team.getUsers());
     TestUtils.assertEntityReferenceFqn(createRequest.getDefaultRoles(), team.getDefaultRoles());
     TestUtils.assertEntityReferenceFqn(createRequest.getParents(), team.getParents());
     TestUtils.assertEntityReferenceFqn(createRequest.getChildren(), team.getChildren());
