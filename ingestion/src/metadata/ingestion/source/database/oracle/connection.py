@@ -41,7 +41,11 @@ from metadata.ingestion.connections.builders import (
 )
 from metadata.ingestion.connections.test_connections import test_connection_db_common
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.database.oracle.queries import CHECK_ACCESS_TO_ALL
+from metadata.ingestion.source.database.oracle.queries import (
+    CHECK_ACCESS_TO_ALL,
+    ORACLE_GET_SCHEMA,
+    ORACLE_GET_STORED_PACKAGES,
+)
 from metadata.utils.constants import THREE_MIN
 from metadata.utils.logger import ingestion_logger
 
@@ -131,6 +135,12 @@ def get_connection(connection: OracleConnection) -> Engine:
     )
 
 
+class OraclePackageAccessError(Exception):
+    """
+    Raised when unable to access Oracle stored packages
+    """
+
+
 def test_connection(
     metadata: OpenMetadata,
     engine: Engine,
@@ -143,7 +153,19 @@ def test_connection(
     of a metadata workflow or during an Automation Workflow
     """
 
-    test_conn_queries = {"CheckAccess": CHECK_ACCESS_TO_ALL}
+    def test_oracle_package_access(engine):
+        try:
+            schema_name = engine.execute(ORACLE_GET_SCHEMA).scalar()
+            return ORACLE_GET_STORED_PACKAGES.format(schema=schema_name)
+        except Exception as e:
+            raise OraclePackageAccessError(
+                f"Failed to access Oracle stored packages: {e}"
+            )
+
+    test_conn_queries = {
+        "CheckAccess": CHECK_ACCESS_TO_ALL,
+        "PackageAccess": test_oracle_package_access(engine),
+    }
 
     return test_connection_db_common(
         metadata=metadata,

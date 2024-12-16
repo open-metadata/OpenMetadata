@@ -4,11 +4,17 @@
     "description": "This Test Connection validates the access against the database and basic metadata extraction of schemas and tables.",
     "steps": [
       {
-        "name": "CheckAccess",
+        "name": "CheckAccess", 
         "description": "Validate that we can properly reach the database and authenticate with the given credentials.",
         "errorMessage": "Failed to connect to oracle, please validate if the user has relevant permissions, if not, please provide the necessary permissions. For more details, please refer https://docs.open-metadata.org/connectors/database/oracle.",
         "shortCircuit": true,
         "mandatory": true
+      },
+      {
+        "name": "PackageAccess",
+        "description": "Validate that we can access Oracle stored packages.",
+        "errorMessage": "Failed to access Oracle stored packages. Please verify the user has the necessary permissions to access Oracle packages.",
+        "mandatory": false
       },
       {
         "name": "GetSchemas",
@@ -17,18 +23,16 @@
         "mandatory": true
       },
       {
-        "name": "GetTables",
+        "name": "GetTables", 
         "description": "From a given schema, list the tables belonging to that schema. If no schema is specified, we'll list the tables of a random schema.",
         "errorMessage": "Failed to fetch tables, please validate if the user has enough privilege to fetch tables.",
         "mandatory": true
       },
       {
         "name": "GetViews",
-        "description": "From a given schema, list the views belonging to that schema. If no schema is specified, we'll list the tables of a random schema.",
+        "description": "From a given schema, list the views belonging to that schema. If no schema is specified, we'll list the tables of a random schema.", 
         "errorMessage": "Failed to fetch views, please validate if the user has enough privilege to fetch views.",
         "mandatory": false
       }
     ]
   }
-  
-  

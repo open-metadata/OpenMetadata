@@ -87,11 +87,32 @@ SELECT
     OWNER,
     NAME,
     LINE,
-    TEXT
+    TEXT,
+    'StoredProcedure' as procedure_type
 FROM
     DBA_SOURCE
 WHERE
     type = 'PROCEDURE' and owner = '{schema}'
+"""
+)
+ORACLE_GET_SCHEMA = """
+    SELECT USERNAME AS SCHEMA_NAME 
+    FROM ALL_USERS 
+    WHERE ROWNUM = 1 
+    ORDER BY USERNAME
+"""
+ORACLE_GET_STORED_PACKAGES = textwrap.dedent(
+    """
+SELECT
+    OWNER,
+    NAME,
+    LINE,
+    TEXT,
+    'StoredPackage' as procedure_type
+
+FROM
+    DBA_SOURCE
+WHERE TYPE IN ('PACKAGE', 'PACKAGE BODY') AND owner = '{schema}'
 """
 )
 CHECK_ACCESS_TO_ALL = "SELECT table_name FROM DBA_TABLES where ROWNUM < 2"
