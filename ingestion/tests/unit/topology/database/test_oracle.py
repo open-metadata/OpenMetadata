@@ -24,7 +24,10 @@ from metadata.generated.schema.api.data.createStoredProcedure import (
 )
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
-from metadata.generated.schema.entity.data.storedProcedure import StoredProcedureCode
+from metadata.generated.schema.entity.data.storedProcedure import (
+    StoredProcedureCode,
+    StoredProcedureType,
+)
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
@@ -107,6 +110,14 @@ MOCK_STORED_PROCEDURE = OracleStoredObject(
     name="sample_procedure",
     definition="SAMPLE_SQL_TEXT",
     owner="sample_stored_prcedure_owner",
+    procedure_type="StoredProcedure",
+)
+
+MOCK_STORED_PACKAGE = OracleStoredObject(
+    name="sample_package",
+    definition="SAMPLE_SQL_TEXT",
+    owner="sample_stored_package_owner",
+    procedure_type="StoredPackage",
 )
 
 EXPECTED_DATABASE = [
@@ -154,6 +165,28 @@ EXPECTED_STORED_PROCEDURE = [
         owners=None,
         tags=None,
         storedProcedureCode=StoredProcedureCode(language="SQL", code="SAMPLE_SQL_TEXT"),
+        storedProcedureType=StoredProcedureType.StoredProcedure,
+        databaseSchema=FullyQualifiedEntityName(
+            "oracle_source_test.sample_database.sample_schema"
+        ),
+        extension=None,
+        dataProducts=None,
+        sourceUrl=None,
+        domain=None,
+        lifeCycle=None,
+        sourceHash=None,
+    )
+]
+
+EXPECTED_STORED_PACKAGE = [
+    CreateStoredProcedureRequest(
+        name=EntityName("sample_package"),
+        displayName=None,
+        description=None,
+        owners=None,
+        tags=None,
+        storedProcedureCode=StoredProcedureCode(language="SQL", code="SAMPLE_SQL_TEXT"),
+        storedProcedureType=StoredProcedureType.StoredPackage,
         databaseSchema=FullyQualifiedEntityName(
             "oracle_source_test.sample_database.sample_schema"
         ),
@@ -220,4 +253,10 @@ class OracleUnitTest(TestCase):
         assert EXPECTED_STORED_PROCEDURE == [
             either.right
             for either in self.oracle.yield_stored_procedure(MOCK_STORED_PROCEDURE)
+        ]
+
+    def test_yield_stored_package(self):
+        assert EXPECTED_STORED_PACKAGE == [
+            either.right
+            for either in self.oracle.yield_stored_procedure(MOCK_STORED_PACKAGE)
         ]

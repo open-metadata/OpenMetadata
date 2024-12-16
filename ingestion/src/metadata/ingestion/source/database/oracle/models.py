@@ -15,7 +15,7 @@ class OracleStoredObject(BaseModel):
         None, description="Will only be informed for non-SQL routines."
     )
     owner: str
-    procedure_type: Optional[str] = Field(None, alias="PROCEDURE_TYPE")
+    procedure_type: Optional[str] = Field(None, alias="procedure_type")
 
 
 class FetchObject(BaseModel):

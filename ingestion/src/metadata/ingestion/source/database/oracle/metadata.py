@@ -24,6 +24,7 @@ from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.storedProcedure import (
     Language,
     StoredProcedureCode,
+    StoredProcedureType,
 )
 from metadata.generated.schema.entity.data.table import TableType
 from metadata.generated.schema.entity.services.connections.database.oracleConnection import (
@@ -227,13 +228,17 @@ class OracleSource(CommonDbSourceService):
         self, stored_procedure: OracleStoredObject
     ) -> Iterable[Either[CreateStoredProcedureRequest]]:
         """Prepare the stored procedure payload"""
-
         try:
             stored_procedure_request = CreateStoredProcedureRequest(
                 name=EntityName(stored_procedure.name),
                 storedProcedureCode=StoredProcedureCode(
                     language=Language.SQL,
                     code=stored_procedure.definition,
+                ),
+                storedProcedureType=(
+                    StoredProcedureType.StoredPackage
+                    if stored_procedure.procedure_type == "StoredPackage"
+                    else StoredProcedureType.StoredProcedure
                 ),
                 owners=self.metadata.get_reference_by_name(
                     name=stored_procedure.owner.lower(), is_owner=True
