@@ -127,32 +127,24 @@ export const selectDataAssetFilter = async (
 export const validateBucketsForIndex = async (page: Page, index: string) => {
   const { apiContext } = await getApiContext(page);
 
-  return await expect
-    .poll(
-      async () => {
-        const response = await apiContext
-          .get(
-            `/api/v1/search/query?q=&index=${index}&from=0&size=10&deleted=false&query_filter=%7B%22query%22:%7B%22bool%22:%7B%7D%7D%7D&sort_field=totalVotes&sort_order=desc`
-          )
-          .then((res) => res.json());
-
-        const buckets =
-          response.aggregations?.['sterms#entityType']?.buckets || [];
-
-        // Check if each key in expectedBuckets has a doc_count > 0
-        const validBuckets = EXPECTED_BUCKETS.every((expectedKey) => {
-          const bucket = buckets.find((b: Bucket) => b.key === expectedKey);
-
-          return bucket ? bucket.doc_count > 0 : false;
-        });
-
-        return validBuckets;
-      },
-      {
-        message: `Waiting for the expected buckets with doc_count > 0 for index "${index}"`,
-        timeout: 350_000,
-        intervals: [40_000, 30_000],
-      }
+  const response = await apiContext
+    .get(
+      `/api/v1/search/query?q=&index=${index}&from=0&size=10&deleted=false&query_filter=%7B%22query%22:%7B%22bool%22:%7B%7D%7D%7D&sort_field=totalVotes&sort_order=desc`
     )
-    .toBe(true);
+    .then((res) => res.json());
+
+  const buckets = response.aggregations?.['sterms#entityType']?.buckets ?? [];
+
+  // Verify all expected buckets exist and have doc_count > 0
+  const invalidBuckets = EXPECTED_BUCKETS.filter((expectedKey) => {
+    const bucket = buckets.find((b: Bucket) => b.key === expectedKey);
+
+    return !bucket || bucket.doc_count <= 0;
+  });
+
+  if (invalidBuckets.length > 0) {
+    throw new Error(
+      `Buckets missing or with doc_count <= 0: ${invalidBuckets.join(', ')}`
+    );
+  }
 };
