@@ -34,6 +34,7 @@ import {
   DATA_ASSET_ICON_DIMENSION,
   DE_ACTIVE_COLOR,
   getEntityDetailsPath,
+  serviceEntityTypes,
 } from '../../../constants/constants';
 import { SERVICE_TYPES } from '../../../constants/Services.constant';
 import { useTourProvider } from '../../../context/TourProvider/TourProvider';
@@ -366,6 +367,31 @@ export const DataAssetsHeader = ({
     );
   };
 
+  const handleOpenAnnouncementsTab = () => {
+    if (!dataAsset.fullyQualifiedName) {
+      return;
+    }
+
+    if (serviceEntityTypes.includes(entityType)) {
+      // If the entity type is a service, pass the ANNOUNCEMENT tab
+      const entityLink = entityUtilClassBase.getEntityLink(
+        entityType,
+        dataAsset.fullyQualifiedName,
+        EntityTabs.ANNOUNCEMENT
+      );
+      history.push(entityLink);
+    } else {
+      // Otherwise, pass both ACTIVITY_FEED and ANNOUNCEMENT tabs
+      const entityLink = entityUtilClassBase.getEntityLink(
+        entityType,
+        dataAsset.fullyQualifiedName,
+        EntityTabs.ACTIVITY_FEED,
+        ActivityFeedTabs.ANNOUNCEMENTS
+      );
+      history.push(entityLink);
+    }
+  };
+
   const handleShareButtonClick = async () => {
     await onCopyToClipBoard();
     setCopyTooltip(t('message.link-copy-to-clipboard'));
@@ -618,7 +644,7 @@ export const DataAssetsHeader = ({
               {activeAnnouncement && (
                 <AnnouncementCard
                   announcement={activeAnnouncement}
-                  onClick={handleOpenAnnouncementDrawer}
+                  onClick={handleOpenAnnouncementsTab}
                 />
               )}
             </div>

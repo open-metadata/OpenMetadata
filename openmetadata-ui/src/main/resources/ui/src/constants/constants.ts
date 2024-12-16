@@ -618,3 +618,15 @@ export const STATUS_LABEL = {
   [Status.Stopped]: 'Stopped',
   [Status.Success]: 'Success',
 };
+
+export const serviceEntityTypes = [
+  EntityType.DATABASE_SERVICE,
+  EntityType.DASHBOARD_SERVICE,
+  EntityType.MESSAGING_SERVICE,
+  EntityType.PIPELINE_SERVICE,
+  EntityType.MLMODEL_SERVICE,
+  EntityType.METADATA_SERVICE,
+  EntityType.STORAGE_SERVICE,
+  EntityType.SEARCH_SERVICE,
+  EntityType.API_SERVICE,
+];
