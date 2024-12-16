@@ -131,7 +131,9 @@ export const UserSelectableList = ({
       placement="bottomRight"
       showArrow={false}
       trigger="click"
-      onOpenChange={setPopupVisible}
+      onOpenChange={(isVisible: boolean) =>
+        hasPermission ? setPopupVisible(isVisible) : null
+      }
       {...popoverProps}>
       {children ?? (
         <Tooltip

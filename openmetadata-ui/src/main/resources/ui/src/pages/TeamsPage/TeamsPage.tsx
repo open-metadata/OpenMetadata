@@ -280,7 +280,7 @@ const TeamsPage = () => {
         displayName: data.displayName,
         description: data.description,
         teamType: data.teamType as TeamType,
-        parents: fqn ? [selectedTeam.id] : undefined,
+        parents: fqn ? [fqn] : undefined,
         email: data.email || undefined,
         domains,
         isJoinable: data.isJoinable,

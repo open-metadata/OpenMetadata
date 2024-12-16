@@ -119,9 +119,9 @@ export class UserClass {
       displayName: `PW Data Steward Team ${id}`,
       description: 'playwright data steward team description',
       teamType: 'Group',
-      users: [this.responseData.id],
-      defaultRoles: dataStewardRoles.responseData.id
-        ? [dataStewardRoles.responseData.id]
+      users: [this.responseData.fullyQualifiedName],
+      defaultRoles: dataStewardRoles.responseData.fullyQualifiedName
+        ? [dataStewardRoles.responseData.fullyQualifiedName]
         : [],
     });
     await dataStewardTeam.create(apiContext);

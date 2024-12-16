@@ -43,6 +43,24 @@ describe('UserSelectableList Component Test', () => {
     });
   });
 
+  it('should render popover list if no permission', () => {
+    render(
+      <UserSelectableList
+        hasPermission={false}
+        selectedUsers={[]}
+        onUpdate={mockOnUpdate}
+      />
+    );
+
+    act(() => {
+      expect(screen.getByTestId('add-user')).toBeDisabled();
+
+      fireEvent.click(screen.getByTestId('add-user'));
+    });
+
+    expect(screen.queryByText('selectable-list')).not.toBeInTheDocument();
+  });
+
   it('should render enabled button if has permission', () => {
     render(
       <UserSelectableList
@@ -57,7 +75,7 @@ describe('UserSelectableList Component Test', () => {
     });
   });
 
-  it('should render selectablelist if click on add-user', () => {
+  it('should render selectable list if click on add-user', () => {
     render(
       <UserSelectableList
         hasPermission
