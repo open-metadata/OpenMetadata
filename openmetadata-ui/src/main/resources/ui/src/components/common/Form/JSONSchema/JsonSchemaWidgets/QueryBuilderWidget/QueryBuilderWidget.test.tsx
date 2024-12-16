@@ -15,6 +15,7 @@ import { render, screen } from '@testing-library/react';
 import React from 'react';
 import { BasicConfig } from 'react-awesome-query-builder';
 import AntdConfig from 'react-awesome-query-builder/lib/config/antd';
+import { withAdvanceSearch } from '../../../../../AppRouter/withAdvanceSearch';
 import QueryBuilderWidget from './QueryBuilderWidget';
 
 const mockOnFocus = jest.fn();
@@ -25,19 +26,22 @@ const baseConfig = AntdConfig as BasicConfig;
 jest.mock(
   '../../../../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.component',
   () => ({
-    AdvanceSearchProvider: ({ children }: { children: React.ReactNode }) => (
-      <div data-testid="advance-search-provider-mock">{children}</div>
-    ),
     useAdvanceSearch: jest.fn().mockImplementation(() => ({
       toggleModal: jest.fn(),
+      isExplorePage: false,
       sqlQuery: '',
+      searchIndex: 'table_search_index',
       onResetAllFilters: jest.fn(),
       onChangeSearchIndex: jest.fn(),
+      onTreeUpdate: jest.fn(),
       config: {
         ...baseConfig,
         fields: {},
       },
     })),
+    AdvanceSearchProvider: ({ children }: { children: React.ReactNode }) => (
+      <div>{children}</div>
+    ),
   })
 );
 
@@ -67,7 +71,11 @@ const mockProps = {
 
 describe('QueryBuilderWidget', () => {
   it('should render the query builder', () => {
-    render(<QueryBuilderWidget {...mockProps} />);
+    const QueryBuilderWidgetWithProvider = withAdvanceSearch(
+      QueryBuilderWidget,
+      { isExplorePage: false }
+    );
+    render(<QueryBuilderWidgetWithProvider {...mockProps} />);
     const builder = screen.getByTestId('query-builder-form-field');
 
     expect(builder).toBeInTheDocument();

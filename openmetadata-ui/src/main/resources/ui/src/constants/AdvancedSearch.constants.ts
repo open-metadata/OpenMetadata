@@ -283,6 +283,15 @@ export const LINEAGE_DROPDOWN_ITEMS = [
   },
 ];
 
+export const TEXT_FIELD_OPERATORS = [
+  'equal',
+  'not_equal',
+  'like',
+  'not_like',
+  'is_null',
+  'is_not_null',
+];
+
 /**
  * Generates a query builder tree with a group containing an empty rule
  */
