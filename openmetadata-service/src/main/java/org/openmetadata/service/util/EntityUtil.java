@@ -267,6 +267,17 @@ public final class EntityUtil {
         .collect(Collectors.toList());
   }
 
+  public static List<EntityReference> populateEntityReferenceFromFqn(
+      List<String> fqns, String entityType) {
+    if (fqns == null) {
+      return null;
+    }
+    return populateEntityReferences(
+        fqns.stream()
+            .map(fqn -> new EntityReference().withFullyQualifiedName(fqn).withType(entityType))
+            .collect(Collectors.toList()));
+  }
+
   public static List<UUID> refToIds(List<EntityReference> refs) {
     if (refs == null) {
       return null;

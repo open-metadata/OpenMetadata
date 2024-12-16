@@ -35,7 +35,7 @@
       "description": "Parent teams. For an `Organization` the `parent` is always null. A `BusinessUnit` always has only one parent of type `BusinessUnit` or an `Organization`. A `Division` can have multiple parents of type `BusinessUnit` or `Division`. A `Department` can have multiple parents of type `Division` or `Department`.",
       "type": "array",
       "items": {
-        "$ref": "../../type/basic.json#/definitions/uuid"
+        "$ref": "../../type/basic.json#/definitions/entityName"
       },
       "default": null
     },
@@ -43,7 +43,7 @@
       "description": "Children teams. An `Organization` can have `BusinessUnit`, `Division` or `Department` as children. A `BusinessUnit` can have `BusinessUnit`, `Division`, or `Department` as children. A `Division` can have `Division` or `Department` as children. A `Department` can have `Department` as children.",
       "type": "array",
       "items": {
-        "$ref": "../../type/basic.json#/definitions/uuid"
+        "$ref": "../../type/basic.json#/definitions/entityName"
       },
       "default": null
     },
@@ -51,7 +51,7 @@
       "description": "Optional IDs of users that are part of the team.",
       "type": "array",
       "items": {
-        "$ref": "../../type/basic.json#/definitions/uuid"
+        "$ref": "../../type/basic.json#/definitions/entityName"
       },
       "default": null
     },
@@ -59,7 +59,7 @@
       "description": "Roles to be assigned to all users that are part of this team.",
       "type": "array",
       "items": {
-        "$ref": "../../type/basic.json#/definitions/uuid"
+        "$ref": "../../type/basic.json#/definitions/entityName"
       },
       "default": null
     },
@@ -77,7 +77,7 @@
       "description": "Policies that is attached to this team.",
       "type": "array",
       "items": {
-        "$ref": "../../type/basic.json#/definitions/uuid"
+        "$ref": "../../type/basic.json#/definitions/entityName"
       },
       "default": null
     },
