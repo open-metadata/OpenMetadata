@@ -63,7 +63,7 @@ ES_INDEX_MAP = {
     Topic.__name__: "topic_search_index",
     Pipeline.__name__: "pipeline_search_index",
     Glossary.__name__: "glossary_search_index",
-    GlossaryTerm.__name__: "glossary_search_index",
+    GlossaryTerm.__name__: "glossary_term_search_index",
     MlModel.__name__: "mlmodel_search_index",
     Tag.__name__: "tag_search_index",
     Container.__name__: "container_search_index",
