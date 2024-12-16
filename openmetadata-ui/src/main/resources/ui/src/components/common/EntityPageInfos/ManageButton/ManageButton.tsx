@@ -15,10 +15,9 @@ import { Button, Dropdown, Modal, Tooltip, Typography } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { capitalize, isUndefined } from 'lodash';
+import { capitalize } from 'lodash';
 import React, { FC, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as IconAnnouncementsBlack } from '../../../../assets/svg/announcements-black.svg';
 import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
 import { ReactComponent as IconDelete } from '../../../../assets/svg/ic-delete.svg';
 import { ReactComponent as IconRestore } from '../../../../assets/svg/ic-restore.svg';
@@ -139,26 +138,6 @@ const ManageButton: FC<ManageButtonProps> = ({
               }
             },
             key: 'restore-button',
-          },
-        ] as ItemType[])
-      : []),
-
-    ...(showAnnouncementOption
-      ? ([
-          {
-            label: (
-              <ManageButtonItemLabel
-                description={t('message.announcement-action-description')}
-                icon={IconAnnouncementsBlack}
-                id="announcement-button"
-                name={t('label.announcement-plural')}
-              />
-            ),
-            onClick: (e) => {
-              e.domEvent.stopPropagation();
-              !isUndefined(onAnnouncementClick) && onAnnouncementClick();
-            },
-            key: 'announcement-button',
           },
         ] as ItemType[])
       : []),
