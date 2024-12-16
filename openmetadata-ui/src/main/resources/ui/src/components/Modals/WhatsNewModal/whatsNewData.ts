@@ -17,7 +17,7 @@ import incidentManagerSampleData from '../../../assets/img/incidentManagerSample
 import profilerConfigPage from '../../../assets/img/profilerConfigPage.png';
 import collateIcon from '../../../assets/svg/ic-collate.svg';
 
-export const COOKIE_VERSION = 'VERSION_1_5_12'; // To be changed with each release.
+export const COOKIE_VERSION = 'VERSION_1_5_15'; // To be changed with each release.
 
 // for youtube video make isImage = false and path = {video embed id}
 // embed:- youtube video => share => click on embed and take {url with id} from it
@@ -1164,6 +1164,19 @@ To continue pursuing this objective, the application was completely refactored t
 - **Fix**: Column Level Lineage export.
 - **Fix**: Store procedure yielding by adding Try/Except.
 - **Fix**: Lineage export when there is no column / pipeline edge.
+`,
+    },
+  },
+  {
+    id: 55,
+    version: 'v1.5.15',
+    description: 'Released on 16th December 2024.',
+    features: [],
+    changeLogs: {
+      Improvements: `
+- **Minor**: Domain Policy Update to be non-system.
+- **Fix**: Query builder state issue.
+- **Fix**: Downloading of application logs.
 `,
     },
   },
