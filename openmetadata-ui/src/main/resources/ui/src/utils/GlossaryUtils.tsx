@@ -399,6 +399,14 @@ export const findAndUpdateNested = (
   terms: ModifiedGlossary[],
   newTerm: GlossaryTerm
 ): ModifiedGlossary[] => {
+  // If new term has no parent, it's a top level term
+  // So just update 0 level terms no need to iterate over it
+  if (!newTerm.parent) {
+    return [...terms, newTerm as ModifiedGlossary];
+  }
+
+  // If parent is there means term is  created within a term
+  // So we need to find the parent term and update it's children
   return terms.map((term) => {
     if (term.fullyQualifiedName === newTerm.parent?.fullyQualifiedName) {
       return {
