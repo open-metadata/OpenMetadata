@@ -89,7 +89,7 @@ const IncidentManagerPageHeader = ({
       return name;
     }
 
-    return;
+    return null;
   }, [testCaseData]);
 
   const tableFqn = useMemo(
