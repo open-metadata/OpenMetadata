@@ -18,9 +18,11 @@ import { performAdminLogin } from '../../utils/admin';
 import { getApiContext, redirectToHomePage } from '../../utils/common';
 import {
   addAssetsToDomain,
+  addServicesToDomain,
   selectDomain,
   setupAssetsForDomain,
 } from '../../utils/domain';
+import { visitServiceDetailsPage } from '../../utils/service';
 import { sidebarClick } from '../../utils/sidebar';
 
 const test = base.extend<{
@@ -96,6 +98,8 @@ test.describe('Ingestion Bot ', () => {
     await redirectToHomePage(page);
   });
 
+  test.slow();
+
   test('Ingestion bot should be able to access domain specific domain', async ({
     ingestionBotPage,
     page,
@@ -151,29 +155,41 @@ test.describe('Ingestion Bot ', () => {
       }
     );
 
-    // Need backend change to support this tests
-    // test.fixme(
-    //   'Ingestion bot should able to access services irrespective of domain',
-    //   async () => {
-    //     await redirectToHomePage(page);
-    //     // change domain
-    //     await ingestionBotPage.getByTestId('domain-dropdown').click();
-    //     await ingestionBotPage
-    //       .locator(
-    //         `[data-menu-id*="${domain1.data.name}"] > .ant-dropdown-menu-title-content`
-    //       )
-    //       .click();
+    await test.step('Assign services to domains', async () => {
+      // Add assets to domain 1
+      await redirectToHomePage(page);
+      await sidebarClick(page, SidebarItem.DOMAIN);
+      await selectDomain(page, domain1.data);
+      await addServicesToDomain(page, domain1.data, [
+        domainAsset1[0].get().service,
+      ]);
 
-    //     //   validate service list
+      // Add assets to domain 2
+      await redirectToHomePage(page);
+      await sidebarClick(page, SidebarItem.DOMAIN);
+      await selectDomain(page, domain2.data);
+      await addServicesToDomain(page, domain2.data, [
+        domainAsset2[0].get().service,
+      ]);
+    });
 
-    //     await settingClick(ingestionBotPage, GlobalSettingOptions.DATABASES);
-    //     const rowKeys = await ingestionBotPage.waitForSelector(
-    //       '[data-row-key=*]'
-    //     );
+    await test.step(
+      'Ingestion bot should access domain assigned services',
+      async () => {
+        await redirectToHomePage(ingestionBotPage);
 
-    //     expect(rowKeys).not.toHaveLength(0);
-    //   }
-    // );
+        // Check if services is searchable and accessible or not
+        await visitServiceDetailsPage(ingestionBotPage, {
+          name: domainAsset1[0].get().service.name,
+          type: domainAsset1[0].serviceCategory,
+        });
+
+        // check if service has domain or not
+        await expect(ingestionBotPage.getByTestId('domain-link')).toHaveText(
+          domain1.data.displayName
+        );
+      }
+    );
 
     await assetCleanup1();
     await assetCleanup2();
