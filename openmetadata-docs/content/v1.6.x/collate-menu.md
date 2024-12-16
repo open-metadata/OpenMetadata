@@ -794,6 +794,36 @@ site_menu:
     url: /how-to-guides/data-governance/domains-&-data-products/domains
   - category: How-to Guides / Data Governance / Domains & Data Product /  How to Use Data Products
     url: /how-to-guides/data-governance/domains-&-data-products/data-products
+  - category: How-to Guides / Data Governance / Workflows
+    url: /how-to-guides/data-governance/workflows
+  - category: How-to Guides / Data Governance / Workflows / Default Workflows
+    url: /how-to-guides/data-governance/workflows/default-workflows
+  - category: How-to Guides / Data Governance / Workflows / Default Workflows / Glossary Approval Workflow
+    url: /how-to-guides/data-governance/workflows/default-workflows/glossary-approval
+  - category: How-to Guides / Data Governance / Workflows / Default Workflows / Table Certification Workflow
+    url: /how-to-guides/data-governance/workflows/default-workflows/table-certification
+  - category: How-to Guides / Data Governance / Workflows / Default Workflows / Dashboard Certification Workflow
+    url: /how-to-guides/data-governance/workflows/default-workflows/dashboard-certification
+  - category: How-to Guides / Data Governance / Workflows / Elements
+    url: /how-to-guides/data-governance/workflows/elements
+  - category: How-to Guides / Data Governance / Workflows / Elements / Triggers
+    url: /how-to-guides/data-governance/workflows/elements/triggers
+  - category: How-to Guides / Data Governance / Workflows / Elements / Triggers / Event Based Entity Trigger
+    url: /how-to-guides/data-governance/workflows/elements/triggers/event-based-entity-trigger
+  - category: How-to Guides / Data Governance / Workflows / Elements / Triggers / Periodic Batch Entity Trigger
+    url: /how-to-guides/data-governance/workflows/elements/triggers/periodic-batch-entity-trigger
+  - category: How-to Guides / Data Governance / Workflows / Elements / Nodes
+    url: /how-to-guides/data-governance/workflows/elements/nodes
+  - category: How-to Guides / Data Governance / Workflows / Elements / Nodes / Check Entity Attributes
+    url: /how-to-guides/data-governance/workflows/elements/nodes/check-entity-attributes
+  - category: How-to Guides / Data Governance / Workflows / Elements / Nodes / Create User Task
+    url: /how-to-guides/data-governance/workflows/elements/nodes/create-user-task
+  - category: How-to Guides / Data Governance / Workflows / Elements / Nodes / Set Asset Certification
+    url: /how-to-guides/data-governance/workflows/elements/nodes/set-asset-certification
+  - category: How-to Guides / Data Governance / Workflows / Elements / Nodes / Set Glossary Term Status
+    url: /how-to-guides/data-governance/workflows/elements/nodes/set-glossary-term-status
+  - category: How-to Guides / Data Governance / Workflows / How to Edit a Workflow
+    url: /how-to-guides/data-governance/workflows/how-to-edit-workflow
 
   - category: Getting Started
     url: /getting-started
