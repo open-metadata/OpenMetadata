@@ -97,6 +97,12 @@ export const deletedUserChecks = async (page: Page) => {
 
 export const visitUserProfilePage = async (page: Page, userName: string) => {
   await settingClick(page, GlobalSettingOptions.USERS);
+  await page.waitForSelector(
+    '[data-testid="user-list-v1-component"] [data-testid="loader"]',
+    {
+      state: 'detached',
+    }
+  );
   const userResponse = page.waitForResponse(
     '/api/v1/search/query?q=**&from=0&size=*&index=*'
   );
@@ -470,9 +476,9 @@ export const permanentDeleteUser = async (
   );
   await page.click('[data-testid="confirm-button"]');
   await hardDeleteUserResponse;
-  await reFetchUsers;
 
   await toastNotification(page, `"${displayName}" deleted successfully!`);
+  await reFetchUsers;
 
   // Wait for the loader to disappear
   await page.waitForSelector('[data-testid="loader"]', { state: 'hidden' });
