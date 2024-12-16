@@ -136,7 +136,5 @@ export const showSuccessToast = (message: string, autoCloseTimer = 5000) => {
  * @param autoCloseTimer Set the delay in ms to close the toast automatically. `Default: 5000`
  */
 export const showInfoToast = (message: string, autoCloseTimer = 5000) => {
-  useAlertStore
-    .getState()
-    .addAlert({ type: 'success', message }, autoCloseTimer);
+  useAlertStore.getState().addAlert({ type: 'info', message }, autoCloseTimer);
 };
