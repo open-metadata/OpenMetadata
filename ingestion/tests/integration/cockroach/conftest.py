@@ -4,7 +4,6 @@ import textwrap
 import pytest
 from sqlalchemy import create_engine
 
-
 from _openmetadata_testutils.helpers.docker import try_bind
 from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceRequest,
@@ -16,6 +15,7 @@ from metadata.generated.schema.entity.services.databaseService import (
     DatabaseConnection,
     DatabaseServiceType,
 )
+
 
 @pytest.fixture(scope="module")
 def cockroach_container(tmp_path_factory):
