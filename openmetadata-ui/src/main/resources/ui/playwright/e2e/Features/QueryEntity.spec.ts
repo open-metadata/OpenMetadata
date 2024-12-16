@@ -92,6 +92,7 @@ test('Query Entity', async ({ page }) => {
     await page
       .locator('div')
       .filter({ hasText: new RegExp(`^${queryData.queryUsedIn.table1}$`) })
+      .first()
       .click();
 
     await clickOutside(page);
