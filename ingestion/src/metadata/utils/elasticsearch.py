@@ -28,6 +28,7 @@ from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.glossary import Glossary
 from metadata.generated.schema.entity.data.glossaryTerm import GlossaryTerm
+from metadata.generated.schema.entity.data.metric import Metric
 from metadata.generated.schema.entity.data.mlmodel import MlModel
 from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.data.query import Query
@@ -68,6 +69,7 @@ ES_INDEX_MAP = {
     Container.__name__: "container_search_index",
     Query.__name__: "query_search_index",
     ReportData.__name__: "entity_report_data_index",
+    Metric.__name__: "metric_search_index",
     "web_analytic_user_activity_report": "web_analytic_user_activity_report_data_index",
     "web_analytic_entity_view_report": "web_analytic_entity_view_report_data_index",
 }
