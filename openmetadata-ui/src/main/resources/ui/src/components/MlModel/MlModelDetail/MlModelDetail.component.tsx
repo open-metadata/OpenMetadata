@@ -483,6 +483,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
             entityFeedTotalCount={feedCount.totalCount}
             entityType={EntityType.MLMODEL}
             fqn={mlModelDetail?.fullyQualifiedName ?? ''}
+            permissions={mlModelPermissions}
             onFeedUpdate={fetchEntityFeedCount}
             onUpdateEntityDetails={fetchMlModel}
             onUpdateFeedCount={handleFeedCount}

@@ -15,10 +15,12 @@ import { Button, Col, Row, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { t } from 'i18next';
-import { noop } from 'lodash';
+import { isEmpty, noop } from 'lodash';
 import React, { useCallback, useEffect, useState } from 'react';
 import '../../components/ActivityFeed/ActivityFeedTab/activity-feed-tab.less';
 import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
+import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
+import { EntityType } from '../../enums/entity.enum';
 import {
   AnnoucementStatus,
   Post,
@@ -27,23 +29,24 @@ import {
 } from '../../generated/entity/feed/thread';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { getAnnouncements, postFeedById } from '../../rest/feedsAPI';
-import { getEntityPermissionByFqn } from '../../rest/permissionAPI';
 import { getEntityFeedLink } from '../../utils/EntityUtils';
-import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import ActivityFeedEditor from '../ActivityFeed/ActivityFeedEditor/ActivityFeedEditor';
 import ActivityFeedListV1 from '../ActivityFeed/ActivityFeedList/ActivityFeedListV1.component';
 import FeedPanelBodyV1 from '../ActivityFeed/ActivityFeedPanel/FeedPanelBodyV1';
 import FeedPanelHeader from '../ActivityFeed/ActivityFeedPanel/FeedPanelHeader';
+import ErrorPlaceHolder from '../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import AddAnnouncementModal from '../Modals/AnnouncementModal/AddAnnouncementModal';
 interface AnnouncementTabProps {
   fqn: string;
-  entityType: any;
+  entityType: EntityType;
+  permissions: OperationPermission;
 }
 
 const AnnouncementTab: React.FC<AnnouncementTabProps> = ({
   fqn,
   entityType,
+  permissions,
 }) => {
   const [announcementFilter, setAnnouncementFilter] =
     useState<AnnoucementStatus>(AnnoucementStatus.Active);
@@ -52,12 +55,11 @@ const AnnouncementTab: React.FC<AnnouncementTabProps> = ({
   const [threads, setThreads] = useState<any[]>([]);
   const [selectedAnnouncementThread, setSelectedAnnouncementThread] =
     useState<Thread>();
-  const [announcementsPermissions, setAnnouncementsPermissions] =
-    useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
+  const [isThreadLoading, setIsThreadLoading] = useState<boolean>(true);
   const { currentUser } = useApplicationStore();
 
   const getThreads = async () => {
-    // setIsThreadLoading(true);
+    setIsThreadLoading(true);
 
     try {
       const res = await getAnnouncements(
@@ -73,7 +75,7 @@ const AnnouncementTab: React.FC<AnnouncementTabProps> = ({
         })
       );
     } finally {
-      //   setIsThreadLoading(false);
+      setIsThreadLoading(false);
     }
   };
 
@@ -82,7 +84,6 @@ const AnnouncementTab: React.FC<AnnouncementTabProps> = ({
   };
 
   useEffect(() => {
-    fetchPermission();
     getThreads();
   }, [announcementFilter]);
 
@@ -145,30 +146,20 @@ const AnnouncementTab: React.FC<AnnouncementTabProps> = ({
     });
   };
 
-  const fetchPermission = useCallback(async () => {
-    try {
-      const response = await getEntityPermissionByFqn(entityType, fqn);
-      const mappedPermissions: OperationPermission =
-        response.permissions.reduce(
-          (acc, permission) => {
-            if (permission.operation && permission.access === 'allow') {
-              if (permission.operation in acc) {
-                acc[permission.operation] = true;
-              }
-            }
-
-            return acc;
-          },
-          { ...DEFAULT_ENTITY_PERMISSION }
-        );
-      setAnnouncementsPermissions(mappedPermissions);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  }, [fqn]);
   const updateAnnouncementThreads = () => {
     getThreads();
   };
+  if (isEmpty(threads) && !isThreadLoading) {
+    return (
+      <ErrorPlaceHolder
+        className="h-auto mt-24"
+        type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+        <Typography.Paragraph data-testid="announcement-error">
+          {t('message.no-announcement-message')}
+        </Typography.Paragraph>
+      </ErrorPlaceHolder>
+    );
+  }
 
   return (
     <div className="two-column-layout">
@@ -210,7 +201,7 @@ const AnnouncementTab: React.FC<AnnouncementTabProps> = ({
             <Tooltip title={t('message.no-permission-to-view')}>
               <Button
                 data-testid="add-announcement"
-                disabled={!announcementsPermissions?.EditAll}
+                disabled={!permissions?.EditAll}
                 type="primary"
                 onClick={handleOpenAnnouncementModal}>
                 {t('label.add')}
@@ -229,7 +220,7 @@ const AnnouncementTab: React.FC<AnnouncementTabProps> = ({
             emptyPlaceholderText=""
             feedList={threads}
             isLoading={false}
-            permissions={announcementsPermissions?.EditAll}
+            permissions={permissions?.EditAll}
             selectedThread={selectedAnnouncementThread}
             showThread={false}
             updateAnnouncementThreads={updateAnnouncementThreads}

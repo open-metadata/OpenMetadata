@@ -1063,7 +1063,11 @@ const ServiceDetailsPage: FunctionComponent = () => {
         key: EntityTabs.ANNOUNCEMENT,
         count: 0,
         children: (
-          <AnnouncementTab entityType={entityType} fqn={decodedServiceFQN} />
+          <AnnouncementTab
+            entityType={entityType}
+            fqn={decodedServiceFQN}
+            permissions={servicePermission}
+          />
         ),
       }
     );

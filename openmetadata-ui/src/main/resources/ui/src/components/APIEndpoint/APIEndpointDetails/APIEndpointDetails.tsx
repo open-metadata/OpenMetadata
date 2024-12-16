@@ -383,6 +383,7 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
             entityFeedTotalCount={feedCount.totalCount}
             entityType={EntityType.API_ENDPOINT}
             fqn={apiEndpointDetails?.fullyQualifiedName ?? ''}
+            permissions={apiEndpointPermissions}
             onFeedUpdate={getEntityFeedCount}
             onUpdateEntityDetails={fetchAPIEndpointDetails}
             onUpdateFeedCount={handleFeedCount}

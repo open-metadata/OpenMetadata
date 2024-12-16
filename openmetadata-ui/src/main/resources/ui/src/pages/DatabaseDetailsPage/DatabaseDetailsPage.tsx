@@ -605,6 +605,7 @@ const DatabaseDetails: FunctionComponent = () => {
             entityFeedTotalCount={feedCount.totalCount}
             entityType={EntityType.DATABASE}
             fqn={database?.fullyQualifiedName ?? ''}
+            permissions={databasePermission}
             onFeedUpdate={getEntityFeedCount}
             onUpdateEntityDetails={getDetailsByFQN}
             onUpdateFeedCount={handleFeedCount}

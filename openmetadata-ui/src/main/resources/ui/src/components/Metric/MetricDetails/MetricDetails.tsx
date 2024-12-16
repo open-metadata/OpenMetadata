@@ -389,6 +389,7 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
             entityFeedTotalCount={feedCount.totalCount}
             entityType={EntityType.METRIC}
             fqn={metricDetails?.fullyQualifiedName ?? ''}
+            permissions={metricPermissions}
             onFeedUpdate={getEntityFeedCount}
             onUpdateEntityDetails={fetchMetricDetails}
             onUpdateFeedCount={handleFeedCount}

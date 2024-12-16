@@ -654,6 +654,7 @@ const APICollectionPage: FunctionComponent = () => {
             entityFeedTotalCount={feedCount.totalCount}
             entityType={EntityType.API_COLLECTION}
             fqn={apiCollection?.fullyQualifiedName ?? ''}
+            permissions={apiCollectionPermission}
             onFeedUpdate={getEntityFeedCount}
             onUpdateEntityDetails={fetchAPICollectionDetails}
             onUpdateFeedCount={handleFeedCount}

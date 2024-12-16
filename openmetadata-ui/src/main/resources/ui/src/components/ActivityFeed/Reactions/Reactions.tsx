@@ -43,7 +43,7 @@ interface ReactionsProps {
 const Reactions: FC<ReactionsProps> = ({
   reactions,
   onReactionSelect,
-  showAddEmoji,
+  showAddEmoji = true,
 }) => {
   const { t } = useTranslation();
   const [visible, setVisible] = useState(false);
