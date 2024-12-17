@@ -21,12 +21,6 @@ from metadata.generated.schema.entity.data.table import Column, DataType, Table
 from metadata.generated.schema.entity.services.connections.dashboard.supersetConnection import (
     SupersetConnection,
 )
-from metadata.generated.schema.entity.services.connections.database import postgresConnection
-from metadata.generated.schema.entity.services.connections.database.common import basicAuth
-
-from metadata.generated.schema.entity.services.connections.dashboard.customDashboardConnection import (
-    CustomDashboardConnection,
-)
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
