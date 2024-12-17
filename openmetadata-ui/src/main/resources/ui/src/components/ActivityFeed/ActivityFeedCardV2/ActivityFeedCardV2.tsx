@@ -98,7 +98,7 @@ const ActivityFeedCardV2 = ({
       return;
     };
     await updateThreadData(threadId, postId, isThread, data, callback);
-    fetchUpdatedThread(threadId);
+    await fetchUpdatedThread(threadId);
   };
   const handleAnnouncementUpdate = async (
     title: string,

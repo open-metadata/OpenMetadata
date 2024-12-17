@@ -126,20 +126,6 @@ export const ActivityFeedTab = ({
     []
   );
 
-  const handleSaveAnnouncement = useCallback(() => {
-    handleCloseAnnouncementModal();
-    getFeedData(
-      feedFilter,
-      undefined,
-      ThreadType.Announcement,
-      entityType,
-      fqn,
-      undefined,
-      undefined,
-      announcementFilter
-    );
-  }, [announcementFilter]);
-
   const [countData, setCountData] = useState<{
     loading: boolean;
     data: FeedCounts;
@@ -295,6 +281,20 @@ export const ActivityFeedTab = ({
     };
   }, [activeTab, isUserEntity, currentUser]);
 
+  const handleSaveAnnouncement = useCallback(() => {
+    getFeedData(
+      feedFilter,
+      undefined,
+      ThreadType.Announcement,
+      entityType,
+      fqn,
+      undefined,
+      undefined,
+      announcementFilter
+    );
+    handleCloseAnnouncementModal();
+  }, [feedFilter, entityType, fqn, announcementFilter]);
+
   const handleFeedFetchFromFeedList = useCallback(
     (after?: string) => {
       getFeedData(feedFilter, after, threadType, entityType, fqn, taskFilter);
@@ -418,6 +418,23 @@ export const ActivityFeedTab = ({
       announcementFilter
     );
   }, [feedFilter, threadType, entityType, fqn, announcementFilter]);
+
+  const handleFilterClick = useCallback(
+    (status) => {
+      handleUpdateAnnouncementFilter(status);
+      setActiveThread();
+    },
+    [handleUpdateAnnouncementFilter, setActiveThread]
+  );
+
+  const handleActiveClick = useCallback(
+    () => handleFilterClick(AnnoucementStatus.Active),
+    [handleFilterClick]
+  );
+  const handleInactiveClick = useCallback(
+    () => handleFilterClick(AnnoucementStatus.Inactive),
+    [handleFilterClick]
+  );
 
   return (
     <div className="activity-feed-tab">
@@ -574,10 +591,7 @@ export const ActivityFeedTab = ({
                     }
                   )}
                   data-testid="active-announcements"
-                  onClick={() => {
-                    handleUpdateAnnouncementFilter(AnnoucementStatus.Active);
-                    setActiveThread();
-                  }}>
+                  onClick={handleActiveClick}>
                   {countData.data.openTaskCount} {t('label.active')}
                 </Typography.Text>
               )}
@@ -588,10 +602,7 @@ export const ActivityFeedTab = ({
                       announcementFilter === AnnoucementStatus.Inactive,
                   })}
                   data-testid="inactive-announcements"
-                  onClick={() => {
-                    handleUpdateAnnouncementFilter(AnnoucementStatus.Inactive);
-                    setActiveThread();
-                  }}>
+                  onClick={handleInactiveClick}>
                   {countData.data.closedTaskCount} {t('label.inactive')}
                 </Typography.Text>
               )}

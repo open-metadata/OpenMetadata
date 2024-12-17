@@ -372,24 +372,17 @@ export const DataAssetsHeader = ({
       return;
     }
 
-    if (serviceEntityTypes.includes(entityType)) {
-      // If the entity type is a service, pass the ANNOUNCEMENT tab
-      const entityLink = entityUtilClassBase.getEntityLink(
-        entityType,
-        dataAsset.fullyQualifiedName,
-        EntityTabs.ANNOUNCEMENT
-      );
-      history.push(entityLink);
-    } else {
-      // Otherwise, pass both ACTIVITY_FEED and ANNOUNCEMENT tabs
-      const entityLink = entityUtilClassBase.getEntityLink(
-        entityType,
-        dataAsset.fullyQualifiedName,
-        EntityTabs.ACTIVITY_FEED,
-        ActivityFeedTabs.ANNOUNCEMENTS
-      );
-      history.push(entityLink);
-    }
+    const tabParams = serviceEntityTypes.includes(entityType)
+      ? [EntityTabs.ANNOUNCEMENT]
+      : [EntityTabs.ACTIVITY_FEED, ActivityFeedTabs.ANNOUNCEMENTS];
+
+    const entityLink = entityUtilClassBase.getEntityLink(
+      entityType,
+      dataAsset.fullyQualifiedName,
+      ...tabParams
+    );
+
+    history.push(entityLink);
   };
 
   const handleShareButtonClick = async () => {

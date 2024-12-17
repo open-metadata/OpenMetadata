@@ -106,9 +106,12 @@ const ActivityFeedActions = ({
       hideDrawer();
     }
   };
-
+  const isAnnouncement = useMemo(
+    () => feed.type === ThreadType.Announcement,
+    [feed.type]
+  );
   const editCheck = useMemo(() => {
-    if (feed.type === ThreadType.Announcement) {
+    if (isAnnouncement) {
       if (isPost && isAuthor) {
         return true;
       }
@@ -124,7 +127,7 @@ const ActivityFeedActions = ({
   }, [post, feed, currentUser]);
 
   const deleteCheck = useMemo(() => {
-    if (feed.type === ThreadType.Announcement) {
+    if (isAnnouncement) {
       if (isPost && isAuthor) {
         return true;
       }

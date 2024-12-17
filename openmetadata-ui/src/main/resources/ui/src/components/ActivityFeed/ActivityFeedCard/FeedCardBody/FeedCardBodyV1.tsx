@@ -165,20 +165,21 @@ const FeedCardBodyV1 = ({
     return feedBodyStyleCardsRender;
   }, [isEditPost, message, feedBodyStyleCardsRender]);
 
+  const isAnnouncement = useMemo(
+    () => feed.type === ThreadType.Announcement,
+    [feed.type]
+  );
+
   return (
     <div
       className={classNames(
-        `feed-card-body  p-sm rounded-6 ${
-          feed.type !== ThreadType.Announcement && 'bg-grey-5'
-        }`,
+        `feed-card-body  p-sm rounded-6 ${!isAnnouncement && 'bg-grey-5'}`,
 
         isEditPost ? '' : className
       )}>
       <div
         className={`feed-message ${
-          feed.type === ThreadType.Announcement
-            ? 'feed-message--announcement'
-            : ''
+          isAnnouncement ? 'feed-message--announcement' : ''
         }`}>
         {!isUndefined(announcement) ? (
           <>
@@ -195,26 +196,19 @@ const FeedCardBodyV1 = ({
               </Col>
             </Row>
             <Row>
-              <Col
-                className={`${feed.type === ThreadType.Announcement && 'mt-4'}`}
-                span={24}>
+              <Col className={`${isAnnouncement && 'mt-4'}`} span={24}>
                 <Typography.Text className="font-semibold">
                   {message}
                 </Typography.Text>
               </Col>
             </Row>
-            {feed.type === ThreadType.Announcement && (
+            {isAnnouncement ? (
               <Row>
-                <Col
-                  className={`${
-                    feed.type === ThreadType.Announcement && 'mb-1'
-                  }`}
-                  span={24}>
+                <Col className="mb-1" span={24}>
                   <Typography.Text>{announcement.description}</Typography.Text>
                 </Col>
               </Row>
-            )}
-            {feed.type !== 'Announcement' && (
+            ) : (
               <Row>
                 <Col span={24}>
                   <RichTextEditorPreviewer

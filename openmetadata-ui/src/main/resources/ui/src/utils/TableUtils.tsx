@@ -775,6 +775,7 @@ export const getTableDetailPageBaseTabs = ({
           entityType={EntityType.TABLE}
           fqn={tableDetails?.fullyQualifiedName ?? ''}
           owners={tableDetails?.owners}
+          permissions={tablePermissions}
           onFeedUpdate={getEntityFeedCount}
           onUpdateEntityDetails={fetchTableDetails}
           onUpdateFeedCount={handleFeedCount}

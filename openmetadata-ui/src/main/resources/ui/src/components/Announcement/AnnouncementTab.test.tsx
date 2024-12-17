@@ -15,6 +15,7 @@ import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../enums/entity.enum';
+import { MOCK_ANNOUNCEMENT_DATA } from '../../mocks/Announcement.mock';
 import { getAnnouncements } from '../../rest/feedsAPI';
 import AnnouncementTab from './AnnouncementTab.component';
 
@@ -39,71 +40,6 @@ interface AnnouncementTabProps {
   entityType: EntityType;
   permissions: OperationPermission;
 }
-const mockData = {
-  data: [
-    {
-      id: 'c47dca52-ede3-4caa-95fc-1bf7c09c4b8b',
-      type: 'Announcement',
-      href: 'testref',
-      threadTs: 1734104175006,
-      about: '<#E::databaseService::mysql_sample>',
-      entityRef: {
-        id: 'dd72c57f-90d4-4d44-a28e-fcce022da01d',
-        type: 'databaseService',
-        name: 'mysql_sample',
-        fullyQualifiedName: 'mysql_sample',
-        displayName: 'mysql_sample',
-        deleted: false,
-      },
-      generatedBy: 'user',
-      cardStyle: 'default',
-      fieldOperation: 'updated',
-      createdBy: 'admin',
-      updatedAt: 1734165381233,
-      updatedBy: 'admin',
-      resolved: false,
-      message: 'test message 1',
-      postsCount: 2,
-      posts: [
-        {
-          id: 'eed48d1d-1a2f-4010-93a1-1e58abe655c9',
-          message: 'test post 1',
-          postTs: 1734104788080,
-          from: 'admin',
-          reactions: [],
-        },
-        {
-          id: 'b5489fd3-ef45-46db-b547-e25744d41e7a',
-          message: 'test post 2',
-          postTs: 1734165309885,
-          from: 'admin',
-          reactions: [],
-        },
-      ],
-      reactions: [
-        {
-          reactionType: 'hooray',
-          user: {
-            id: '749ade20-3e65-4e49-8974-adfbd7a83996',
-            type: 'user',
-            name: 'admin',
-            fullyQualifiedName: 'admin',
-            displayName: 'admin',
-            deleted: false,
-          },
-        },
-      ],
-      announcement: {
-        description: 'test announcement 1',
-        startTime: 1734276969000,
-        endTime: 1734536171000,
-      },
-    },
-  ],
-  paging: {
-    total: 1,
-  },
-};
 
 describe('AnnouncementTab', () => {
   const defaultProps = {
@@ -125,7 +61,7 @@ describe('AnnouncementTab', () => {
   });
 
   it('should fetch and display announcements correctly', async () => {
-    mockGetAnnouncements.mockResolvedValueOnce(mockData);
+    mockGetAnnouncements.mockResolvedValueOnce(MOCK_ANNOUNCEMENT_DATA);
 
     render(
       <MemoryRouter>
@@ -134,7 +70,7 @@ describe('AnnouncementTab', () => {
     );
 
     const announcementMessage = await screen.findAllByText(
-      'test announcement 1'
+      'Cypress announcement'
     );
 
     expect(announcementMessage[0]).toBeInTheDocument();
@@ -158,7 +94,7 @@ describe('AnnouncementTab', () => {
 
     const activeFilterButton = screen.getByTestId('active-announcement');
     fireEvent.click(activeFilterButton);
-    mockGetAnnouncements.mockResolvedValueOnce(mockData);
+    mockGetAnnouncements.mockResolvedValueOnce(MOCK_ANNOUNCEMENT_DATA);
     await waitFor(() =>
       expect(mockGetAnnouncements).toHaveBeenCalledWith(
         true,
@@ -175,7 +111,7 @@ describe('AnnouncementTab', () => {
     );
     const inactiveFilterButton = screen.getByTestId('inactive-announcement');
     fireEvent.click(inactiveFilterButton);
-    mockGetAnnouncements.mockResolvedValueOnce(mockData);
+    mockGetAnnouncements.mockResolvedValueOnce(MOCK_ANNOUNCEMENT_DATA);
     await waitFor(() =>
       expect(mockGetAnnouncements).toHaveBeenCalledWith(
         false,
@@ -185,7 +121,7 @@ describe('AnnouncementTab', () => {
   });
 
   it('updates selected announcement and displays its details and post replies in right panel', async () => {
-    mockGetAnnouncements.mockResolvedValueOnce(mockData);
+    mockGetAnnouncements.mockResolvedValueOnce(MOCK_ANNOUNCEMENT_DATA);
 
     render(
       <MemoryRouter>
@@ -194,12 +130,15 @@ describe('AnnouncementTab', () => {
     );
 
     const announcementMessage = await screen.findAllByText(
-      'test announcement 1'
+      'Cypress announcement'
     );
     fireEvent.click(announcementMessage[0]);
 
-    expect(screen.getByText('test post 1')).toBeInTheDocument();
-    expect(screen.getByText('test post 2')).toBeInTheDocument();
+    expect(screen.getByText('this is done!')).toBeInTheDocument();
+    expect(screen.getByText('having a look on it!')).toBeInTheDocument();
+    expect(
+      screen.getByText('this if fixed and RCA given!')
+    ).toBeInTheDocument();
 
     expect(announcementMessage[0]).toBeInTheDocument();
   });

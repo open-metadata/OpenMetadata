@@ -327,6 +327,7 @@ const GlossaryDetails = ({
                   fqn={glossary.fullyQualifiedName ?? ''}
                   hasGlossaryReviewer={!isEmpty(glossary.reviewers)}
                   owners={glossary.owners}
+                  permissions={permissions}
                   onFeedUpdate={getEntityFeedCount}
                   onUpdateEntityDetails={noop}
                 />

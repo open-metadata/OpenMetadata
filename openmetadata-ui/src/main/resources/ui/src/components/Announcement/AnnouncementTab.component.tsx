@@ -201,7 +201,7 @@ const AnnouncementTab: React.FC<AnnouncementTabProps> = ({
             }}
             emptyPlaceholderText=""
             feedList={threads}
-            isLoading={false}
+            isLoading={isThreadLoading}
             permissions={permissions?.EditAll}
             selectedThread={selectedAnnouncementThread}
             showThread={false}
