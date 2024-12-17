@@ -158,6 +158,9 @@ export class UserClass {
     await page.getByTestId('login').click();
     await loginRes;
 
+    await page.waitForURL('**/my-data');
+    await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
     const modal = await page
       .getByRole('dialog')
       .locator('div')
