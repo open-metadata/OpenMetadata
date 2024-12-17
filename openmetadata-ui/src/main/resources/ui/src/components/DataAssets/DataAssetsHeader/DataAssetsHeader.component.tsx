@@ -70,7 +70,6 @@ import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { getDataQualityLineage } from '../../../rest/lineageAPI';
 import tableClassBase from '../../../utils/TableClassBase';
 import AnnouncementCard from '../../common/EntityPageInfos/AnnouncementCard/AnnouncementCard';
-import AnnouncementDrawer from '../../common/EntityPageInfos/AnnouncementDrawer/AnnouncementDrawer';
 import ManageButton from '../../common/EntityPageInfos/ManageButton/ManageButton';
 import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.component';
 import RetentionPeriod from '../../Database/RetentionPeriod/RetentionPeriod.component';
@@ -230,8 +229,6 @@ export const DataAssetsHeader = ({
     [votes, USER_ID]
   );
 
-  const [isAnnouncementDrawerOpen, setIsAnnouncementDrawerOpen] =
-    useState<boolean>(false);
   const [activeAnnouncement, setActiveAnnouncement] = useState<Thread>();
 
   const fetchDQFailureCount = async () => {
@@ -410,15 +407,6 @@ export const DataAssetsHeader = ({
     await onUpdateVote?.(data, dataAsset.id ?? '');
   };
 
-  const handleOpenAnnouncementDrawer = useCallback(
-    () => setIsAnnouncementDrawerOpen(true),
-    []
-  );
-
-  const handleCloseAnnouncementDrawer = useCallback(
-    () => setIsAnnouncementDrawerOpen(false),
-    []
-  );
   const handleFollowingClick = useCallback(async () => {
     setIsFollowingLoading(true);
     await onFollowClick?.();
@@ -621,11 +609,6 @@ export const DataAssetsHeader = ({
                   entityType={entityType}
                   extraDropdownContent={extraDropdownContent}
                   isRecursiveDelete={isRecursiveDelete}
-                  onAnnouncementClick={
-                    permissions?.EditAll
-                      ? handleOpenAnnouncementDrawer
-                      : undefined
-                  }
                   onEditDisplayName={onDisplayNameUpdate}
                   onProfilerSettingUpdate={onProfilerSettingUpdate}
                   onRestoreEntity={onRestoreDataAsset}
@@ -644,16 +627,6 @@ export const DataAssetsHeader = ({
           </Space>
         </Col>
       </Row>
-
-      {isAnnouncementDrawerOpen && (
-        <AnnouncementDrawer
-          createPermission={permissions?.EditAll}
-          entityFQN={dataAsset.fullyQualifiedName ?? ''}
-          entityType={entityType}
-          open={isAnnouncementDrawerOpen}
-          onClose={handleCloseAnnouncementDrawer}
-        />
-      )}
     </>
   );
 };
