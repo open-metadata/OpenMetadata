@@ -79,6 +79,7 @@ import org.openmetadata.service.util.ResultList;
 public class GlossaryResource extends EntityResource<Glossary, GlossaryRepository> {
   public static final String COLLECTION_PATH = "v1/glossaries/";
   static final String FIELDS = "owners,tags,reviewers,usageCount,termCount,domain,extension";
+  private final GlossaryMapper mapper = new GlossaryMapper();
 
   public GlossaryResource(Authorizer authorizer, Limits limits) {
     super(Entity.GLOSSARY, authorizer, limits);
@@ -296,7 +297,7 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateGlossary create) {
-    Glossary glossary = getGlossary(create, securityContext.getUserPrincipal().getName());
+    Glossary glossary = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, glossary);
   }
 
@@ -377,7 +378,7 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateGlossary create) {
-    Glossary glossary = getGlossary(create, securityContext.getUserPrincipal().getName());
+    Glossary glossary = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, glossary);
   }
 
@@ -606,17 +607,5 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
           @DefaultValue("true")
           boolean dryRun) {
     return importCsvInternalAsync(securityContext, name, csv, dryRun);
-  }
-
-  private Glossary getGlossary(CreateGlossary create, String user) {
-    return getGlossary(repository, create, user);
-  }
-
-  public static Glossary getGlossary(
-      GlossaryRepository repository, CreateGlossary create, String updatedBy) {
-    return repository
-        .copy(new Glossary(), create, updatedBy)
-        .withProvider(create.getProvider())
-        .withMutuallyExclusive(create.getMutuallyExclusive());
   }
 }
