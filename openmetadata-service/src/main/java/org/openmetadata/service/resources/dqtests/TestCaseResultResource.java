@@ -102,6 +102,7 @@ public class TestCaseResultResource
           @PathParam("fqn")
           String fqn,
       @Valid CreateTestCaseResult createTestCaseResults) {
+    createTestCaseResults.withFqn(fqn);
     ResourceContextInterface resourceContext = TestCaseResourceContext.builder().name(fqn).build();
     OperationContext operationContext =
         new OperationContext(Entity.TABLE, MetadataOperation.EDIT_TESTS);
