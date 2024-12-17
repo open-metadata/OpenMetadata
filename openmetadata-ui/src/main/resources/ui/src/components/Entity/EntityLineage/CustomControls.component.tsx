@@ -305,7 +305,7 @@ const CustomControls: FC<ControlProps> = ({
                     }
                   )}
                   data-testid="edit-lineage"
-                  // disabled={!hasEditAccess}
+                  disabled={!hasEditAccess}
                   icon={getLoadingStatusValue(editIcon, loading, status)}
                   title={
                     hasEditAccess
