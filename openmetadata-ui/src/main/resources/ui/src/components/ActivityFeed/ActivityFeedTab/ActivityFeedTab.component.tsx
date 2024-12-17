@@ -52,6 +52,7 @@ import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useElementInView } from '../../../hooks/useElementInView';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { getFeedCount } from '../../../rest/feedsAPI';
+import { ANNOUNCEMENT_ENTITIES } from '../../../utils/AnnouncementsUtils';
 import {
   getCountBadge,
   getFeedCounts,
@@ -133,6 +134,7 @@ export const ActivityFeedTab = ({
     loading: false,
     data: FEED_COUNT_INITIAL_DATA,
   });
+  const showAnnouncementsSubTab = ANNOUNCEMENT_ENTITIES.includes(entityType);
 
   const {
     postFeed,
@@ -512,29 +514,33 @@ export const ActivityFeedTab = ({
             ),
             key: 'tasks',
           },
-          {
-            label: (
-              <div className="d-flex justify-between">
-                <Space align="center" size="small">
-                  <AnnouncementsIcon
-                    style={COMMON_ICON_STYLES}
-                    {...ICON_DIMENSION}
-                  />
-                  <span>{t('label.announcement-plural')}</span>
-                </Space>
+          ...(showAnnouncementsSubTab
+            ? [
+                {
+                  label: (
+                    <div className="d-flex justify-between">
+                      <Space align="center" size="small">
+                        <AnnouncementsIcon
+                          style={COMMON_ICON_STYLES}
+                          {...ICON_DIMENSION}
+                        />
+                        <span>{t('label.announcement-plural')}</span>
+                      </Space>
 
-                <span>
-                  {!isUserEntity &&
-                    getCountBadge(
-                      countData.data.conversationCount,
-                      '',
-                      activeTab === ActivityFeedTabs.ANNOUNCEMENTS
-                    )}
-                </span>
-              </div>
-            ),
-            key: 'announcements',
-          },
+                      <span>
+                        {!isUserEntity &&
+                          getCountBadge(
+                            countData.data.conversationCount,
+                            '',
+                            activeTab === ActivityFeedTabs.ANNOUNCEMENTS
+                          )}
+                      </span>
+                    </div>
+                  ),
+                  key: 'announcements',
+                },
+              ]
+            : []),
         ]}
         mode="inline"
         rootClassName="left-container"

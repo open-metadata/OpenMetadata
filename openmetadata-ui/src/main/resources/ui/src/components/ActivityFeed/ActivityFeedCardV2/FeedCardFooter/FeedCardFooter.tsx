@@ -65,6 +65,11 @@ function FeedCardFooter({
     return { latestReplyTimeStamp, repliedUniqueUsersList };
   }, [feed?.posts]);
   const { updateEntityThread } = useActivityFeedProvider();
+
+  const isFeedTypeAnnouncement = useMemo(
+    () => feed.type === ThreadType.Announcement,
+    [feed.type]
+  );
   const updateAnnouncementsThreadReactions = async (
     post: Post,
     reactionType: ReactionType,
@@ -100,24 +105,21 @@ function FeedCardFooter({
     const patch = compare(originalObject, updatedObject);
 
     if (!isEmpty(patch)) {
-      if (feed.type === ThreadType.Announcement && !isAnnouncementTab) {
+      if (isFeedTypeAnnouncement && !isAnnouncementTab) {
         if (isPost) {
           await updatePost(feed.id, post.id, patch);
-          const updatedthread = await getUpdatedThread(feed.id);
-          updateEntityThread(updatedthread);
         } else {
           await updateThread(feed.id, patch);
-          const updatedthread = await getUpdatedThread(feed.id);
-          updateEntityThread(updatedthread);
         }
+        const updatedthread = await getUpdatedThread(feed.id);
+        updateEntityThread(updatedthread);
       } else {
         if (isPost) {
           await updatePost(feed.id, post.id, patch);
-          updateAnnouncementThreads && updateAnnouncementThreads();
         } else {
           await updateThread(feed.id, patch);
-          updateAnnouncementThreads && updateAnnouncementThreads();
         }
+        updateAnnouncementThreads && updateAnnouncementThreads();
       }
     }
   };
@@ -154,7 +156,7 @@ function FeedCardFooter({
           )}
           <Reactions
             reactions={post.reactions ?? []}
-            showAddEmoji={!(feed.type === ThreadType.Announcement)} // hide emoji if its Announcement , since we are showing add emoji thrg pop up
+            showAddEmoji={!isFeedTypeAnnouncement} // hide emoji if its Announcement , since we are showing add emoji thrg pop up
             onReactionSelect={onReactionUpdate ?? noop}
           />
         </Space>

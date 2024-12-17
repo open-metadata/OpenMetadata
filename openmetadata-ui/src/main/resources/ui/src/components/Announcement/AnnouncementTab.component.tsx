@@ -18,6 +18,7 @@ import { t } from 'i18next';
 import { noop } from 'lodash';
 import React, { useCallback, useEffect, useState } from 'react';
 import '../../components/ActivityFeed/ActivityFeedTab/activity-feed-tab.less';
+import '../../components/Announcement/announcement.less';
 import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../enums/entity.enum';
 import {
@@ -53,12 +54,9 @@ const AnnouncementTab: React.FC<AnnouncementTabProps> = ({
   const [threads, setThreads] = useState<any[]>([]);
   const [selectedAnnouncementThread, setSelectedAnnouncementThread] =
     useState<Thread>();
-  const [isThreadLoading, setIsThreadLoading] = useState<boolean>(true);
   const { currentUser } = useApplicationStore();
 
   const getThreads = async () => {
-    setIsThreadLoading(true);
-
     try {
       const res = await getAnnouncements(
         announcementFilter === AnnoucementStatus.Active ? true : false,
@@ -72,8 +70,6 @@ const AnnouncementTab: React.FC<AnnouncementTabProps> = ({
           entity: t('label.thread-plural-lowercase'),
         })
       );
-    } finally {
-      setIsThreadLoading(false);
     }
   };
 
@@ -201,7 +197,7 @@ const AnnouncementTab: React.FC<AnnouncementTabProps> = ({
             }}
             emptyPlaceholderText=""
             feedList={threads}
-            isLoading={isThreadLoading}
+            isLoading={false}
             permissions={permissions?.EditAll}
             selectedThread={selectedAnnouncementThread}
             showThread={false}

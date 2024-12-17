@@ -154,6 +154,15 @@ const ActivityFeedCardV2 = ({
       </Avatar.Group>
     );
   }, [feed.posts]);
+  const isAnnouncementWithRepliesVisible =
+    feed.type === ThreadType.Announcement &&
+    !isPost &&
+    componentsVisibility.showRepliesContainer;
+
+  const isActivityFeedCardSidebarVisible =
+    feed.type !== ThreadType.Announcement ||
+    (feed.type === ThreadType.Announcement &&
+      !componentsVisibility.showRepliesContainer);
 
   return (
     <div
@@ -167,18 +176,14 @@ const ActivityFeedCardV2 = ({
         },
         className
       )}>
-      {feed.type === ThreadType.Announcement &&
-        !isPost &&
-        componentsVisibility.showRepliesContainer && (
-          <Col className="avatar-column d-flex flex-column items-center justify-between">
-            <UserPopOverCard userName={post.from} />
+      {isAnnouncementWithRepliesVisible && (
+        <Col className="avatar-column d-flex flex-column items-center justify-between">
+          <UserPopOverCard userName={post.from} />
 
-            {repliesPostAvatarGroup}
-          </Col>
-        )}
-      {(feed.type !== ThreadType.Announcement ||
-        (feed.type === ThreadType.Announcement &&
-          !componentsVisibility.showRepliesContainer)) && (
+          {repliesPostAvatarGroup}
+        </Col>
+      )}
+      {isActivityFeedCardSidebarVisible && (
         <div
           className={classNames('feed-card-v2-sidebar', {
             'feed-card-v2-post-sidebar': isPost,
