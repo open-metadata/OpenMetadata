@@ -179,6 +179,7 @@ public class TagLabelUtil {
         checkMutuallyExclusive(getUniqueTags(tempList));
       } catch (IllegalArgumentException ex) {
         failed = true;
+        tempList.removeAll(glossaryTags);
         errorMessage.append(
             String.format(
                 "Asset %s has a tag %s which is mutually exclusive with the one of the glossary tags %s. %n",

@@ -14,6 +14,7 @@
 import { CheckOutlined, SearchOutlined } from '@ant-design/icons';
 import { graphlib, layout } from '@dagrejs/dagre';
 import { AxiosError } from 'axios';
+import ELK, { ElkExtendedEdge, ElkNode } from 'elkjs/lib/elk.bundled.js';
 import { t } from 'i18next';
 import {
   cloneDeep,
@@ -23,7 +24,6 @@ import {
   isUndefined,
   uniqueId,
   uniqWith,
-  upperCase,
 } from 'lodash';
 import { EntityTags, LoadingState } from 'Models';
 import React, { MouseEvent as ReactMouseEvent } from 'react';
@@ -57,7 +57,6 @@ import {
 } from '../components/Entity/EntityLineage/EntityLineage.interface';
 import LoadMoreNode from '../components/Entity/EntityLineage/LoadMoreNode/LoadMoreNode';
 import { EntityChildren } from '../components/Entity/EntityLineage/NodeChildren/NodeChildren.interface';
-import { ExploreSearchIndex } from '../components/Explore/ExplorePage.interface';
 import {
   EdgeDetails,
   EntityLineageResponse,
@@ -77,7 +76,6 @@ import {
   EntityType,
   FqnPart,
 } from '../enums/entity.enum';
-import { SearchIndex } from '../enums/search.enum';
 import { AddLineage, EntitiesEdge } from '../generated/api/lineage/addLineage';
 import { APIEndpoint } from '../generated/entity/data/apiEndpoint';
 import { Container } from '../generated/entity/data/container';
@@ -125,14 +123,15 @@ export const onLoad = (reactFlowInstance: ReactFlowInstance) => {
 
 export const centerNodePosition = (
   node: Node,
-  reactFlowInstance?: ReactFlowInstance
+  reactFlowInstance?: ReactFlowInstance,
+  zoomValue?: number
 ) => {
   const { position, width } = node;
   reactFlowInstance?.setCenter(
     position.x + (width ?? 1 / 2),
     position.y + NODE_HEIGHT / 2,
     {
-      zoom: ZOOM_VALUE,
+      zoom: zoomValue ?? ZOOM_VALUE,
       duration: ZOOM_TRANSITION_DURATION,
     }
   );
@@ -216,6 +215,73 @@ export const getLayoutedElements = (
   });
 
   return { node: uNode, edge: edgesRequired };
+};
+
+const layoutOptions = {
+  'elk.algorithm': 'layered',
+  'elk.direction': 'RIGHT',
+  'elk.layered.spacing.edgeNodeBetweenLayers': '50',
+  'elk.spacing.nodeNode': '60',
+  'elk.layered.nodePlacement.strategy': 'SIMPLE',
+};
+
+const elk = new ELK();
+
+export const getELKLayoutedElements = async (
+  nodes: Node[],
+  edges: Edge[],
+  isExpanded = true,
+  expandAllColumns = false,
+  columnsHavingLineage: string[] = []
+) => {
+  const elkNodes: ElkNode[] = nodes.map((node) => {
+    const { childrenHeight } = getEntityChildrenAndLabel(
+      node.data.node,
+      expandAllColumns,
+      columnsHavingLineage
+    );
+    const nodeHeight = isExpanded ? childrenHeight + 220 : NODE_HEIGHT;
+
+    return {
+      ...node,
+      targetPosition: 'left',
+      sourcePosition: 'right',
+      width: NODE_WIDTH,
+      height: nodeHeight,
+    };
+  });
+
+  const elkEdges: ElkExtendedEdge[] = edges.map((edge) => ({
+    id: edge.id,
+    sources: [edge.source],
+    targets: [edge.target],
+  }));
+
+  const graph = {
+    id: 'root',
+    layoutOptions: layoutOptions,
+    children: elkNodes,
+    edges: elkEdges,
+  };
+
+  try {
+    const layoutedGraph = await elk.layout(graph);
+    const updatedNodes: Node[] = nodes.map((node) => {
+      const layoutedNode = (layoutedGraph?.children ?? []).find(
+        (elkNode) => elkNode.id === node.id
+      );
+
+      return {
+        ...node,
+        position: { x: layoutedNode?.x ?? 0, y: layoutedNode?.y ?? 0 },
+        hidden: false,
+      };
+    });
+
+    return { nodes: updatedNodes, edges: edges ?? [] };
+  } catch (error) {
+    return { nodes: [], edges: [] };
+  }
 };
 
 export const getModalBodyText = (selectedEdge: Edge) => {
@@ -508,7 +574,7 @@ const calculateHeightAndFlattenNode = (
       expandAllColumns ||
       columnsHavingLineage.indexOf(child.fullyQualifiedName ?? '') !== -1
     ) {
-      totalHeight += 27; // Add height for the current child
+      totalHeight += 31; // Add height for the current child
     }
     flattened.push(child);
 
@@ -626,15 +692,6 @@ export const getEntityNodeIcon = (label: string) => {
   }
 };
 
-export const getSearchIndexFromNodeType = (entityType: string) => {
-  const searchIndexKey = upperCase(entityType).replace(
-    ' ',
-    '_'
-  ) as keyof typeof SearchIndex;
-
-  return SearchIndex[searchIndexKey] as ExploreSearchIndex;
-};
-
 export const checkUpstreamDownstream = (id: string, data: EdgeDetails[]) => {
   const hasUpstream = data.some((edge: EdgeDetails) => edge.toEntity.id === id);
 
@@ -682,6 +739,24 @@ const getNodeType = (
   return EntityLineageNodeType.DEFAULT;
 };
 
+export const positionNodesUsingElk = async (
+  nodes: Node[],
+  edges: Edge[],
+  isColView: boolean,
+  expandAllColumns = false,
+  columnsHavingLineage: string[] = []
+) => {
+  const obj = await getELKLayoutedElements(
+    nodes,
+    edges,
+    isColView,
+    expandAllColumns,
+    columnsHavingLineage
+  );
+
+  return obj;
+};
+
 export const createNodes = (
   nodesData: EntityReference[],
   edgesData: EdgeDetails[],
@@ -692,37 +767,8 @@ export const createNodes = (
     getEntityName(a).localeCompare(getEntityName(b))
   );
 
-  const GraphInstance = graphlib.Graph;
-  const graph = new GraphInstance();
-
-  // Set an object for the graph label
-  graph.setGraph({
-    rankdir: EntityLineageDirection.LEFT_RIGHT,
-  });
-
-  // Default to assigning a new object as a label for each new edge.
-  graph.setDefaultEdgeLabel(() => ({}));
-
-  // Add nodes to the graph
-  uniqueNodesData.forEach((node) => {
+  return uniqueNodesData.map((node) => {
     const { childrenHeight } = getEntityChildrenAndLabel(node as SourceType);
-    const nodeHeight = isExpanded ? childrenHeight + 220 : NODE_HEIGHT;
-    graph.setNode(node.id, { width: NODE_WIDTH, height: nodeHeight });
-  });
-
-  // Add edges to the graph (if you have edge information)
-  edgesData.forEach((edge) => {
-    graph.setEdge(edge.fromEntity.id, edge.toEntity.id);
-  });
-
-  // Perform the layout
-  layout(graph);
-
-  // Get the layout positions
-  const layoutPositions = graph.nodes().map((nodeId) => graph.node(nodeId));
-
-  return uniqueNodesData.map((node, index) => {
-    const position = layoutPositions[index];
     const type =
       node.type === EntityLineageNodeType.LOAD_MORE
         ? node.type
@@ -741,9 +787,11 @@ export const createNodes = (
         node,
         isRootNode: entityFqn === node.fullyQualifiedName,
       },
+      width: NODE_WIDTH,
+      height: isExpanded ? childrenHeight + 220 : NODE_HEIGHT,
       position: {
-        x: position.x - NODE_WIDTH / 2,
-        y: position.y - position.height / 2,
+        x: 0,
+        y: 0,
       },
     };
   });

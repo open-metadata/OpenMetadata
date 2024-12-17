@@ -103,35 +103,30 @@ const SearchRBACSettingsPage = () => {
         <Col span={24}>
           <Row align="middle" justify="space-between">
             <Col>
-              <PageHeader data={PAGE_HEADERS.SEARCH_RBAC} />
+              <PageHeader isBeta data={PAGE_HEADERS.SEARCH_RBAC} />
             </Col>
           </Row>
         </Col>
-        <Col span={12}>
-          <Row align="middle">
-            <Col span={24}>
-              <Typography.Text className="m-0 text-grey-muted">
-                {t('label.enable-roles-polices-in-search')}
-                <Tooltip
-                  placement="top"
-                  title={t('message.enable-access-control-description')}
-                  trigger="hover">
-                  <InfoCircleOutlined
-                    className="m-x-xss"
-                    data-testid="enable-access-control-info"
-                    style={{ color: GRAYED_OUT_COLOR }}
-                  />
-                </Tooltip>
-              </Typography.Text>
-            </Col>
-            <Col>
-              <Switch
-                checked={searchConfig?.enableAccessControl}
-                disabled={isUpdating}
-                onChange={handleUpdateClick}
+        <Col className="d-flex items-center" span={12}>
+          <Typography.Text className="m-0 text-grey-muted">
+            {t('label.enable-roles-polices-in-search')}
+            <Tooltip
+              placement="top"
+              title={t('message.enable-access-control-description')}
+              trigger="hover">
+              <InfoCircleOutlined
+                className="m-x-xss"
+                data-testid="enable-access-control-info"
+                style={{ color: GRAYED_OUT_COLOR }}
               />
-            </Col>
-          </Row>
+            </Tooltip>
+          </Typography.Text>
+          <Switch
+            checked={searchConfig?.enableAccessControl}
+            className="m-l-xlg"
+            disabled={isUpdating}
+            onChange={handleUpdateClick}
+          />
         </Col>
       </Row>
     </PageLayoutV1>

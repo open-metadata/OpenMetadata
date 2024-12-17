@@ -41,18 +41,6 @@ export interface DeleteWidgetModalProps {
   isDeleting?: boolean;
 }
 
-export interface DeleteSectionProps {
-  allowSoftDelete?: boolean;
-  entityName: string;
-  entityType: string;
-  deletEntityMessage?: string;
-  hasPermission: boolean;
-  isAdminUser?: boolean;
-  entityId: string;
-  isRecursiveDelete?: boolean;
-  afterDeleteAction?: () => void;
-}
-
 export enum DeleteType {
   SOFT_DELETE = 'soft-delete',
   HARD_DELETE = 'hard-delete',

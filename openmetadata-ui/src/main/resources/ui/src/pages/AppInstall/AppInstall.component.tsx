@@ -40,7 +40,10 @@ import {
   CreateAppRequest,
   ScheduleTimeline,
 } from '../../generated/entity/applications/createAppRequest';
-import { AppMarketPlaceDefinition } from '../../generated/entity/applications/marketplace/appMarketPlaceDefinition';
+import {
+  AppMarketPlaceDefinition,
+  ScheduleType,
+} from '../../generated/entity/applications/marketplace/appMarketPlaceDefinition';
 import { useFqn } from '../../hooks/useFqn';
 import { installApplication } from '../../rest/applicationAPI';
 import { getMarketPlaceApplicationByFqn } from '../../rest/applicationMarketPlaceAPI';
@@ -72,13 +75,17 @@ const AppInstall = () => {
       (feature) => feature.name === 'app'
     ) ?? {};
 
-  const stepperList = useMemo(
-    () =>
-      !appData?.allowConfiguration
-        ? STEPS_FOR_APP_INSTALL.filter((item) => item.step !== 2)
-        : STEPS_FOR_APP_INSTALL,
-    [appData]
-  );
+  const stepperList = useMemo(() => {
+    if (appData?.scheduleType === ScheduleType.NoSchedule) {
+      return STEPS_FOR_APP_INSTALL.filter((item) => item.step !== 3);
+    }
+
+    if (!appData?.allowConfiguration) {
+      return STEPS_FOR_APP_INSTALL.filter((item) => item.step !== 2);
+    }
+
+    return STEPS_FOR_APP_INSTALL;
+  }, [appData]);
 
   const { initialOptions, defaultValue } = useMemo(() => {
     if (!appData) {
@@ -123,22 +130,10 @@ const AppInstall = () => {
     history.push(getSettingPath(GlobalSettingOptions.APPLICATIONS));
   };
 
-  const onSubmit = async (updatedValue: WorkflowExtraConfig) => {
-    const { cron } = updatedValue;
+  const installApp = async (data: CreateAppRequest) => {
     try {
       setIsSavingLoading(true);
-      const data: CreateAppRequest = {
-        appConfiguration: appConfiguration ?? appData?.appConfiguration,
-        appSchedule: {
-          scheduleTimeline: isEmpty(cron)
-            ? ScheduleTimeline.None
-            : ScheduleTimeline.Custom,
-          ...(cron ? { cronExpression: cron } : {}),
-        },
-        name: fqn,
-        description: appData?.description,
-        displayName: appData?.displayName,
-      };
+
       await installApplication(data);
 
       showSuccessToast(t('message.app-installed-successfully'));
@@ -154,10 +149,37 @@ const AppInstall = () => {
     }
   };
 
+  const onSubmit = async (updatedValue: WorkflowExtraConfig) => {
+    const { cron } = updatedValue;
+    const data: CreateAppRequest = {
+      appConfiguration: appConfiguration ?? appData?.appConfiguration,
+      appSchedule: {
+        scheduleTimeline: isEmpty(cron)
+          ? ScheduleTimeline.None
+          : ScheduleTimeline.Custom,
+        ...(cron ? { cronExpression: cron } : {}),
+      },
+      name: fqn,
+      description: appData?.description,
+      displayName: appData?.displayName,
+    };
+    installApp(data);
+  };
+
   const onSaveConfiguration = (data: IChangeEvent) => {
     const updatedFormData = formatFormDataForSubmit(data.formData);
     setAppConfiguration(updatedFormData);
-    setActiveServiceStep(3);
+    if (appData?.scheduleType !== ScheduleType.NoSchedule) {
+      setActiveServiceStep(3);
+    } else {
+      const data: CreateAppRequest = {
+        appConfiguration: updatedFormData,
+        name: fqn,
+        description: appData?.description,
+        displayName: appData?.displayName,
+      };
+      installApp(data);
+    }
   };
 
   const RenderSelectedTab = useCallback(() => {
@@ -201,7 +223,7 @@ const AppInstall = () => {
         );
       case 3:
         return (
-          <div className="w-500 p-md border rounded-4">
+          <div className="w-3/5 p-md border rounded-4">
             <Typography.Title level={5}>{t('label.schedule')}</Typography.Title>
             <ScheduleInterval
               defaultSchedule={defaultValue}

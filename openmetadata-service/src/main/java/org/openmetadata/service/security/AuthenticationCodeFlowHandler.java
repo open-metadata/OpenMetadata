@@ -916,7 +916,9 @@ public class AuthenticationCodeFlowHandler {
       OIDCTokenResponse tokenSuccessResponse, OidcCredentials credentials) {
     OIDCTokens oidcTokens = tokenSuccessResponse.getOIDCTokens();
     credentials.setAccessToken(oidcTokens.getAccessToken());
-    credentials.setRefreshToken(oidcTokens.getRefreshToken());
+    if (oidcTokens.getRefreshToken() != null) {
+      credentials.setRefreshToken(oidcTokens.getRefreshToken());
+    }
     if (oidcTokens.getIDToken() != null) {
       credentials.setIdToken(oidcTokens.getIDToken());
     }

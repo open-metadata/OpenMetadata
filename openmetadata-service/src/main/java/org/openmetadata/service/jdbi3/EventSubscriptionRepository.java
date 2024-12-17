@@ -134,7 +134,7 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
     }
 
     @Override
-    public void entitySpecificUpdate() {
+    public void entitySpecificUpdate(boolean consolidatingChanges) {
       recordChange("input", original.getInput(), updated.getInput(), true);
       recordChange("batchSize", original.getBatchSize(), updated.getBatchSize());
       if (!original.getAlertType().equals(CreateEventSubscription.AlertType.ACTIVITY_FEED)) {

@@ -136,7 +136,7 @@ class AWSClient:
                 method="sts-assume-role",
             )
             session = get_session()
-            session._credentials = refreshable_creds
+            session._credentials = refreshable_creds  # pylint: disable=protected-access
             return Session(
                 botocore_session=session, region_name=aws_region, profile_name=profile
             )
@@ -175,7 +175,7 @@ class AWSClient:
     def get_client(self, service_name: str) -> Any:
         # initialize the client depending on the AWSCredentials passed
         if self.config is not None:
-            logger.info(f"Getting AWS client for service [{service_name}]")
+            logger.debug(f"Getting AWS client for service [{service_name}]")
             session = self.create_session()
             if self.config.endPointURL is not None:
                 return session.client(
@@ -183,7 +183,7 @@ class AWSClient:
                 )
             return session.client(service_name=service_name)
 
-        logger.info(f"Getting AWS default client for service [{service_name}]")
+        logger.debug(f"Getting AWS default client for service [{service_name}]")
         # initialized with the credentials loaded from running machine
         return boto3.client(service_name=service_name)
 
