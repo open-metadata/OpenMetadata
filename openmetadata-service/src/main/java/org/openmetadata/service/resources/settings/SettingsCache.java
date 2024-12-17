@@ -118,7 +118,7 @@ public class SettingsCache {
               .withConfigValue(
                   new LoginConfiguration()
                       .withMaxLoginFailAttempts(3)
-                      .withAccessBlockTime(600)
+                      .withAccessBlockTime(30)
                       .withJwtTokenExpiryTime(3600));
       systemRepository.createNewSetting(setting);
     }
