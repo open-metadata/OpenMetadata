@@ -320,6 +320,41 @@ export const addAssetsToDomain = async (
   await checkAssetsCount(page, assets.length);
 };
 
+export const addServicesToDomain = async (
+  page: Page,
+  domain: Domain['data'],
+  assets: EntityClass[]
+) => {
+  await goToAssetsTab(page, domain);
+
+  await page.getByTestId('domain-details-add-button').click();
+  await page.getByRole('menuitem', { name: 'Assets', exact: true }).click();
+
+  for (const asset of assets) {
+    const name = get(asset, 'name');
+    const fqn = get(asset, 'fullyQualifiedName');
+
+    const searchRes = page.waitForResponse(
+      `/api/v1/search/query?q=${name}&index=all&from=0&size=25&*`
+    );
+    await page
+      .getByTestId('asset-selection-modal')
+      .getByTestId('searchbar')
+      .fill(name);
+    await searchRes;
+
+    await page.locator(`[data-testid="table-data-card_${fqn}"] input`).check();
+  }
+
+  const assetsAddRes = page.waitForResponse(
+    `/api/v1/domains/${encodeURIComponent(
+      domain.fullyQualifiedName ?? ''
+    )}/assets/add`
+  );
+  await page.getByTestId('save-btn').click();
+  await assetsAddRes;
+};
+
 export const addAssetsToDataProduct = async (
   page: Page,
   dataProduct: DataProduct['data'],
