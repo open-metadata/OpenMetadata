@@ -15,7 +15,6 @@ import { FilterOutlined } from '@ant-design/icons';
 import { Button, Form, Select, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { ExpandableConfig } from 'antd/lib/table/interface';
-import parse from 'html-react-parser';
 import {
   cloneDeep,
   groupBy,
@@ -60,6 +59,7 @@ import {
   searchInColumns,
 } from '../../../utils/EntityUtils';
 import { getEntityColumnFQN } from '../../../utils/FeedUtils';
+import { stringToHTML } from '../../../utils/StringsUtils';
 import {
   getAllTags,
   searchTagInData,
@@ -251,7 +251,7 @@ const SchemaTable = ({
       <Typography.Paragraph
         className="cursor-pointer"
         ellipsis={{ tooltip: displayValue, rows: 3 }}>
-        {parse(highlightSearchText(displayValue, searchText))}
+        {stringToHTML(highlightSearchText(displayValue, searchText))}
       </Typography.Paragraph>
     );
   };
@@ -376,7 +376,7 @@ const SchemaTable = ({
                 <Typography.Text
                   className="m-b-0 d-block text-grey-muted break-word"
                   data-testid="column-name">
-                  {parse(highlightSearchText(name, searchText))}
+                  {stringToHTML(highlightSearchText(name, searchText))}
                 </Typography.Text>
               </div>
               {!isEmpty(displayName) ? (
@@ -384,7 +384,7 @@ const SchemaTable = ({
                 <Typography.Text
                   className="m-b-0 d-block break-word"
                   data-testid="column-display-name">
-                  {parse(
+                  {stringToHTML(
                     highlightSearchText(getEntityName(record), searchText)
                   )}
                 </Typography.Text>
