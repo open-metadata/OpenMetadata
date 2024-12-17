@@ -38,6 +38,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -1067,5 +1068,9 @@ public class SearchRepository {
       LOG.error("Error while getting entities from ES for validation", ex);
     }
     return new ArrayList<>();
+  }
+
+  public Set<String> getSearchEntities() {
+    return new HashSet<>(entityIndexMap.keySet());
   }
 }
