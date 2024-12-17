@@ -39,6 +39,7 @@ export interface EntityHierarchy {
      * Preferred name for the entity hierarchy.
      */
     name: string;
+    [property: string]: any;
 }
 
 /**
@@ -72,4 +73,5 @@ export interface ChildElement {
      * Preferred name for the entity hierarchy.
      */
     name: string;
+    [property: string]: any;
 }

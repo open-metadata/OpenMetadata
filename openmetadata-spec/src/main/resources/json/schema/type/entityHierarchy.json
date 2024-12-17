@@ -12,7 +12,7 @@
       "items": {
         "$ref": "entityHierarchy.json"
       },
-      "default": null
+      "default": []
     }
   },
   "properties": {
@@ -41,6 +41,5 @@
       "$ref" : "#/definitions/entityHierarchyList"
     }
   },
-  "required": ["id", "name", "description"],
-  "additionalProperties": false
+  "required": ["id", "name", "description"]
 }
