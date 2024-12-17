@@ -18,10 +18,6 @@ source:
       includeViews: true
       type: DatabaseMetadata
       includeDDL: true
-      tableFilterPattern:
-        excludes:
-          - ACT_*
-          - FLW_*
 sink:
   type: metadata-rest
   config: {}

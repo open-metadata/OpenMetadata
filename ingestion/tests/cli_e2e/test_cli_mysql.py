@@ -105,7 +105,7 @@ class MysqlCliTest(CliCommonDB.TestSuite, SQACommonMethods):
 
     @staticmethod
     def get_excludes_tables() -> List[str]:
-        return [".*bot.*", "ACT_*", "FLW_*"]
+        return [".*bot.*"]
 
     @staticmethod
     def expected_filtered_schema_includes() -> int:
