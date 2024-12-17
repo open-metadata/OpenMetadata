@@ -225,7 +225,7 @@ class ChangeEventParserResourceTest extends OpenMetadataApplicationTest {
     assertEquals(1, threadWithMessages.size());
 
     assertEquals(
-        "Updated **columns**: lo_order <span data-diff='true'  class=\"diff-added\">priority</span>",
+        "Updated **columns**: lo_order <span data-diff='true' class=\"diff-added\">priority</span>",
         threadWithMessages.get(0).getMessage());
 
     // Simulate a change of datatype change in column
