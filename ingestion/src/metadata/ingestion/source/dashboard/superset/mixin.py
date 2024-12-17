@@ -21,6 +21,12 @@ from metadata.generated.schema.entity.data.table import Column, DataType, Table
 from metadata.generated.schema.entity.services.connections.dashboard.supersetConnection import (
     SupersetConnection,
 )
+from metadata.generated.schema.entity.services.connections.database import postgresConnection
+from metadata.generated.schema.entity.services.connections.database.common import basicAuth
+
+from metadata.generated.schema.entity.services.connections.dashboard.customDashboardConnection import (
+    CustomDashboardConnection,
+)
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
@@ -162,15 +168,26 @@ class SupersetSourceMixin(DashboardServiceSource):
                 chart_json = self.all_charts.get(chart_id)
                 if chart_json:
                     try:
-                        datasource_fqn = self._get_datasource_fqn_for_lineage(
-                            chart_json, db_service_entity
-                        )
-                        if not datasource_fqn:
-                            continue
-                        from_entity = self.metadata.get_by_name(
-                            entity=Table,
-                            fqn=datasource_fqn,
-                        )
+                        from_entities = []
+
+                        if chart_json.sql != "":
+                            # multiple entities
+                            from_entities = self._get_source_table_for_lineage(
+                                chart_json, db_service_entity
+                            )
+                        else:
+                            datasource_fqn = self._get_datasource_fqn_for_lineage(
+                                chart_json, db_service_entity
+                            )
+                            if not datasource_fqn:
+                                print("Skipping, did not find datasource_fqn.")
+                                continue
+                            from_entities = [
+                                self.metadata.get_by_name(
+                                    entity=Table,
+                                    fqn=datasource_fqn,
+                                )
+                            ]
                         datamodel_fqn = fqn.build(
                             self.metadata,
                             entity_type=DashboardDataModel,
@@ -183,10 +200,17 @@ class SupersetSourceMixin(DashboardServiceSource):
                         )
 
                         columns_list = self._get_columns_list_for_lineage(chart_json)
-                        column_lineage = self._get_column_lineage(
-                            from_entity, to_entity, columns_list
-                        )
-                        if from_entity and to_entity:
+                        
+                        if from_entities == None or len(from_entities) == 0:
+                            print("Missing from entity")
+                            from_entities = []
+                        if not to_entity:
+                            print("Missing to entity")
+                        for from_entity in from_entities:
+                            print('Found both - from & To entity, adding lineage')
+                            column_lineage = self._get_column_lineage(
+                                from_entity, to_entity, columns_list
+                            )
                             yield self._get_add_lineage_request(
                                 to_entity=to_entity,
                                 from_entity=from_entity,

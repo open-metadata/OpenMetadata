@@ -22,6 +22,7 @@ select
     	s.viz_type,
 	t.id AS table_id,
 	t.table_name,
+    t.sql,
 	t.schema,
 	db.database_name,
     db.sqlalchemy_uri
