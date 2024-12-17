@@ -23,12 +23,16 @@ import {
   getEntityLinkFromType,
   getEntityOverview,
   highlightEntityNameAndDescription,
+  highlightSearchText,
 } from './EntityUtils';
 import {
   entityWithoutNameAndDescHighlight,
   highlightedEntityDescription,
   highlightedEntityDisplayName,
+  mockHighlightedResult,
   mockHighlights,
+  mockSearchText,
+  mockText,
 } from './mocks/EntityUtils.mock';
 
 jest.mock('../constants/constants', () => ({
@@ -197,6 +201,38 @@ describe('EntityUtils unit tests', () => {
       const item2 = { name: 'abc20' };
 
       expect(sorter(item2, item1)).toBe(1);
+    });
+  });
+
+  describe('highlightSearchText method', () => {
+    it('should return the text with highlighted search text', () => {
+      const result = highlightSearchText(mockText, mockSearchText);
+
+      expect(result).toBe(mockHighlightedResult);
+    });
+
+    it('should return the original text if searchText is not found', () => {
+      const result = highlightSearchText(mockText, 'nonexistent');
+
+      expect(result).toBe(mockText);
+    });
+
+    it('should return an empty string if no text is provided', () => {
+      const result = highlightSearchText('', 'test');
+
+      expect(result).toBe('');
+    });
+
+    it('should return an empty string if no searchText is provided', () => {
+      const result = highlightSearchText(mockText, '');
+
+      expect(result).toBe(mockText);
+    });
+
+    it('should return empty string if both text and searchText are missing', () => {
+      const result = highlightSearchText('', '');
+
+      expect(result).toBe('');
     });
   });
 });
