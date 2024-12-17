@@ -332,6 +332,8 @@ site_menu:
     url: /connectors/database/mssql
   - category: Connectors / Database / MSSQL / Run Externally
     url: /connectors/database/mssql/yaml
+  - category: Connectors / Database / MSSQL / Troubleshooting
+    url: /connectors/database/mssql/troubleshooting
   - category: Connectors / Database / MySQL
     url: /connectors/database/mysql
   - category: Connectors / Database / MySQL / Run Externally
@@ -771,6 +773,8 @@ site_menu:
     url: /how-to-guides/data-discovery
   - category: How-to Guides / Data Discovery / How to Discover Assets of Interest
     url: /how-to-guides/data-discovery/discover
+  - category: How-to Guides / Data Discovery / Steps for Searching Using Hierarchy
+    url: /how-to-guides/data-discovery/hierarchy
   - category: How-to Guides / Data Discovery / Get a Quick Glance of the Data Assets
     url: /how-to-guides/data-discovery/preview
   - category: How-to Guides / Data Discovery / Detailed View of the Data Assets
@@ -929,6 +933,14 @@ site_menu:
     url: /releases/supported
   - category: Releases / All Releases
     url: /releases/all-releases
+  - category: Releases / All Releases / 1.5.11 Release
+    url: /releases/all-releases/#1.5.11-release
+  - category: Releases / All Releases / 1.5.10 Release
+    url: /releases/all-releases/#1.5.10-release
+  - category: Releases / All Releases / 1.5.9 Release
+    url: /releases/all-releases/#1.5.9-release
+  - category: Releases / All Releases / 1.5.8 Release
+    url: /releases/all-releases/#1.5.8-release
   - category: Releases / All Releases / 1.5.7 Release
     url: /releases/all-releases/#1.5.7-release
   - category: Releases / All Releases / 1.5.6 Release

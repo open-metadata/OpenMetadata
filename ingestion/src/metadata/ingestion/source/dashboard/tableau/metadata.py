@@ -69,6 +69,7 @@ from metadata.ingestion.source.dashboard.tableau.models import (
     ChartUrl,
     DataSource,
     DatasourceField,
+    TableAndQuery,
     TableauDashboard,
     TableauTag,
     UpstreamTable,
@@ -149,7 +150,7 @@ class TableauSource(DashboardServiceSource):
         return None
 
     @staticmethod
-    def _get_data_models_tags(dataModels: [DataSource]) -> Set[str]:
+    def _get_data_models_tags(dataModels: List[DataSource]) -> Set[str]:
         """
         Get the tags from the data model in the upstreamDatasources
         """
@@ -382,9 +383,12 @@ class TableauSource(DashboardServiceSource):
                         column=column.id,
                     )
                     for to_column in to_columns:
-                        column_lineage.append(
-                            ColumnLineage(fromColumns=[from_column], toColumn=to_column)
-                        )
+                        if from_column and to_column:
+                            column_lineage.append(
+                                ColumnLineage(
+                                    fromColumns=[from_column], toColumn=to_column
+                                )
+                            )
             return column_lineage
         except Exception as exc:
             logger.debug(f"Error to get column lineage: {exc}")
@@ -451,17 +455,22 @@ class TableauSource(DashboardServiceSource):
                 column.id
                 for field in upstream_data_model.fields
                 for column in field.upstreamColumns
+                if column is not None
             }
             for table in datamodel.upstreamTables or []:
                 om_tables = self._get_database_tables(db_service_entity, table)
-                for om_table in om_tables or []:
+                for om_table_and_query in om_tables or []:
                     column_lineage = self._get_column_lineage(
-                        table, om_table, upstream_data_model_entity, upstream_col_set
+                        table,
+                        om_table_and_query.table,
+                        upstream_data_model_entity,
+                        upstream_col_set,
                     )
                     yield self._get_add_lineage_request(
                         to_entity=upstream_data_model_entity,
-                        from_entity=om_table,
+                        from_entity=om_table_and_query.table,
                         column_lineage=column_lineage,
+                        sql=om_table_and_query.query,
                     )
         except Exception as err:
             yield Either(
@@ -698,7 +707,7 @@ class TableauSource(DashboardServiceSource):
 
     def _get_table_entities_from_api(
         self, db_service_entity: DatabaseService, table: UpstreamTable
-    ) -> Optional[List[Table]]:
+    ) -> Optional[List[TableAndQuery]]:
         """
         In case we get the table details from the Graphql APIs we process them
         """
@@ -734,7 +743,7 @@ class TableauSource(DashboardServiceSource):
                     fqn=table_fqn,
                 )
                 if table_entity:
-                    return [table_entity]
+                    return [TableAndQuery(table=table_entity)]
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Error to get tables for lineage using GraphQL Apis: {exc}")
@@ -742,7 +751,7 @@ class TableauSource(DashboardServiceSource):
 
     def _get_table_entities_from_query(
         self, db_service_entity: DatabaseService, table: UpstreamTable
-    ) -> Optional[List[Table]]:
+    ) -> Optional[List[TableAndQuery]]:
         """
         In case we get the table details from the Graphql APIs we process them
         """
@@ -778,7 +787,12 @@ class TableauSource(DashboardServiceSource):
                         database_schema=schema_name,
                         table=table_name,
                     )
-                    tables_list.extend(from_entities)
+                    tables_list.extend(
+                        [
+                            TableAndQuery(table=table, query=custom_sql_table.query)
+                            for table in from_entities
+                        ]
+                    )
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
@@ -787,7 +801,7 @@ class TableauSource(DashboardServiceSource):
 
     def _get_database_tables(
         self, db_service_entity: DatabaseService, table: UpstreamTable
-    ) -> Optional[List[Table]]:
+    ) -> Optional[List[TableAndQuery]]:
         """
         Get the table entities for lineage
         """
@@ -879,6 +893,9 @@ class TableauSource(DashboardServiceSource):
         try:
             return dashboard_details.project.name
         except Exception as exc:
+            logger.info(
+                f"Cannot parse project name for dashboard:{dashboard_details.id} from Tableau server"
+            )
             logger.debug(traceback.format_exc())
             logger.warning(
                 f"Error fetching project name for {dashboard_details.id}: {exc}"

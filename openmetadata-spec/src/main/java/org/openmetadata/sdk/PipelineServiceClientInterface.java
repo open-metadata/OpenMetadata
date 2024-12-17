@@ -52,6 +52,8 @@ public interface PipelineServiceClientInterface {
           "ingestion_task",
           PipelineType.PROFILER.toString(),
           "profiler_task",
+          PipelineType.AUTO_CLASSIFICATION.toString(),
+          "auto_classification_task",
           PipelineType.LINEAGE.toString(),
           "lineage_task",
           PipelineType.DBT.toString(),

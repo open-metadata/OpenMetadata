@@ -264,7 +264,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
   public Integer reIndex(
       @Option(
               names = {"-b", "--batch-size"},
-              defaultValue = "100",
+              defaultValue = "300",
               description = "Number of records to process in each batch.")
           int batchSize,
       @Option(
@@ -284,9 +284,14 @@ public class OpenMetadataOperations implements Callable<Integer> {
           int producerThreads,
       @Option(
               names = {"--consumer-threads"},
-              defaultValue = "10",
+              defaultValue = "5",
               description = "Number of threads to use for processing.")
           int consumerThreads,
+      @Option(
+              names = {"--queue-size"},
+              defaultValue = "300",
+              description = "Queue Size to use internally for reindexing.")
+          int queueSize,
       @Option(
               names = {"--back-off"},
               defaultValue = "1000",
@@ -299,7 +304,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
           int maxBackOff,
       @Option(
               names = {"--max-requests"},
-              defaultValue = "100",
+              defaultValue = "1000",
               description = "Maximum number of concurrent search requests.")
           int maxRequests,
       @Option(
@@ -309,10 +314,17 @@ public class OpenMetadataOperations implements Callable<Integer> {
           int retries) {
     try {
       LOG.info(
-          "Running Reindexing with Batch Size: {}, Payload Size: {}, Recreate-Index: {}",
+          "Running Reindexing with Batch Size: {}, Payload Size: {}, Recreate-Index: {}, Producer threads: {}, Consumer threads: {}, Queue Size: {}, Back-off: {}, Max Back-off: {}, Max Requests: {}, Retries: {}",
           batchSize,
           payloadSize,
-          recreateIndexes);
+          recreateIndexes,
+          producerThreads,
+          consumerThreads,
+          queueSize,
+          backOff,
+          maxBackOff,
+          maxRequests,
+          retries);
       parseConfig();
       CollectionRegistry.initialize();
       ApplicationHandler.initialize(config);
@@ -327,6 +339,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
           recreateIndexes,
           producerThreads,
           consumerThreads,
+          queueSize,
           backOff,
           maxBackOff,
           maxRequests,
@@ -344,6 +357,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
       boolean recreateIndexes,
       int producerThreads,
       int consumerThreads,
+      int queueSize,
       int backOff,
       int maxBackOff,
       int maxRequests,
@@ -363,6 +377,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
         .withRecreateIndex(recreateIndexes)
         .withProducerThreads(producerThreads)
         .withConsumerThreads(consumerThreads)
+        .withQueueSize(queueSize)
         .withInitialBackoff(backOff)
         .withMaxBackoff(maxBackOff)
         .withMaxConcurrentRequests(maxRequests)
@@ -538,7 +553,6 @@ public class OpenMetadataOperations implements Callable<Integer> {
       PipelineServiceClientInterface pipelineServiceClient,
       List<List<String>> pipelineStatuses) {
     try {
-      // TODO: IS THIS OK?
       LOG.debug(String.format("deploying pipeline %s", pipeline.getName()));
       pipeline.setOpenMetadataServerConnection(
           new OpenMetadataConnectionBuilder(config, pipeline).build());
@@ -602,9 +616,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
     String jdbcUrl = dataSourceFactory.getUrl();
     String user = dataSourceFactory.getUser();
     String password = dataSourceFactory.getPassword();
-    LOG.info("JDBC URL: {}", jdbcUrl);
     assert user != null && password != null;
-
     String flywayRootPath = config.getMigrationConfiguration().getFlywayPath();
     String location =
         "filesystem:"

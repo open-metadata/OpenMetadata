@@ -75,7 +75,8 @@
         "active",
         "activeError",
         "stopped",
-        "success"
+        "success",
+        "stopInProgress"
       ]
     },
     "failure": {
@@ -122,7 +123,7 @@
     },
     "queueSize": {
       "title": "Queue Size to use.",
-      "description": "Queue Size to user internally for reindexing.",
+      "description": "Queue Size to use internally for reindexing.",
       "type": "integer",
       "default": 100
     },

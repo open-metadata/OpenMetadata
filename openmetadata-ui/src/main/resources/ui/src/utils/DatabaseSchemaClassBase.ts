@@ -13,6 +13,7 @@
 import { EntityTags } from 'Models';
 import { PagingHandlerParams } from '../components/common/NextPrevious/NextPrevious.interface';
 import { TabProps } from '../components/common/TabsLabel/TabsLabel.interface';
+import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs } from '../enums/entity.enum';
 import { DatabaseSchema } from '../generated/entity/data/databaseSchema';
@@ -35,10 +36,12 @@ export interface DatabaseSchemaPageTabProps {
   tableDataLoading: boolean;
   editCustomAttributePermission: boolean;
   editTagsPermission: boolean;
+  editGlossaryTermsPermission: boolean;
   decodedDatabaseSchemaFQN: string;
   tags: any[];
   viewAllPermission: boolean;
   storedProcedureCount: number;
+  databaseSchemaPermission: OperationPermission;
   handleExtensionUpdate: (schema: DatabaseSchema) => Promise<void>;
   handleTagSelection: (selectedTags: EntityTags[]) => Promise<void>;
   onThreadLinkSelect: (link: string, threadType?: ThreadType) => void;

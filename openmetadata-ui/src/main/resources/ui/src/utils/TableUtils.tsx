@@ -18,17 +18,17 @@ import classNames from 'classnames';
 import { t } from 'i18next';
 import {
   get,
+  isEmpty,
   isUndefined,
   lowerCase,
   omit,
-  reduce,
   toString,
   uniqBy,
   uniqueId,
   upperCase,
 } from 'lodash';
 import { EntityTags } from 'Models';
-import React, { CSSProperties } from 'react';
+import React, { CSSProperties, Fragment } from 'react';
 import { ReactComponent as AlertIcon } from '../assets/svg/alert.svg';
 import { ReactComponent as AnnouncementIcon } from '../assets/svg/announcements-black.svg';
 import { ReactComponent as ApplicationIcon } from '../assets/svg/application.svg';
@@ -62,11 +62,16 @@ import { ReactComponent as ContainerIcon } from '../assets/svg/ic-storage.svg';
 import { ReactComponent as IconStoredProcedure } from '../assets/svg/ic-stored-procedure.svg';
 import { ReactComponent as TableIcon } from '../assets/svg/ic-table.svg';
 import { ReactComponent as TopicIcon } from '../assets/svg/ic-topic.svg';
+import { ReactComponent as IconDistLineThrough } from '../assets/svg/icon-dist-line-through.svg';
+import { ReactComponent as IconDistKey } from '../assets/svg/icon-distribution.svg';
 import { ReactComponent as IconKeyLineThrough } from '../assets/svg/icon-key-line-through.svg';
 import { ReactComponent as IconKey } from '../assets/svg/icon-key.svg';
 import { ReactComponent as IconNotNullLineThrough } from '../assets/svg/icon-not-null-line-through.svg';
+import { ReactComponent as IconSortLineThrough } from '../assets/svg/icon-sort-line-through.svg';
+
 import { ReactComponent as IconNotNull } from '../assets/svg/icon-not-null.svg';
 import { ReactComponent as RoleIcon } from '../assets/svg/icon-role-grey.svg';
+import { ReactComponent as IconSortKey } from '../assets/svg/icon-sort.svg';
 import { ReactComponent as IconUniqueLineThrough } from '../assets/svg/icon-unique-line-through.svg';
 import { ReactComponent as IconUnique } from '../assets/svg/icon-unique.svg';
 import { ReactComponent as KPIIcon } from '../assets/svg/kpi.svg';
@@ -89,7 +94,6 @@ import { TabProps } from '../components/common/TabsLabel/TabsLabel.interface';
 import TableProfiler from '../components/Database/Profiler/TableProfiler/TableProfiler';
 import SampleDataTableComponent from '../components/Database/SampleDataTable/SampleDataTable.component';
 import TableQueries from '../components/Database/TableQueries/TableQueries';
-import IncidentManager from '../components/IncidentManager/IncidentManager.component';
 import Lineage from '../components/Lineage/Lineage.component';
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
 import { NON_SERVICE_TYPE_ASSETS } from '../constants/Assets.constants';
@@ -103,6 +107,7 @@ import { ConstraintTypes, PrimaryTableDataTypes } from '../enums/table.enum';
 import { SearchIndexField } from '../generated/entity/data/searchIndex';
 import {
   Column,
+  ConstraintType,
   DataType,
   JoinedWith,
   TableConstraint,
@@ -153,6 +158,7 @@ import { ReactComponent as IconVarchar } from '../assets/svg/data-type-icon/varc
 import { ReactComponent as IconVariant } from '../assets/svg/data-type-icon/variant.svg';
 import { ReactComponent as IconXML } from '../assets/svg/data-type-icon/xml.svg';
 import { Joined } from '../pages/TableDetailsPageV1/FrequentlyJoinedTables/FrequentlyJoinedTables.component';
+import ConstraintIcon from '../pages/TableDetailsPageV1/TableConstraints/ConstraintIcon';
 
 export const getUsagePercentile = (pctRank: number, isLiteral = false) => {
   const percentile = Math.round(pctRank * 10) / 10;
@@ -220,6 +226,24 @@ export const getConstraintIcon = ({
       title = t('label.foreign-key');
       icon = isConstraintDeleted ? IconForeignKeyLineThrough : IconForeignKey;
       dataTestId = 'foreign-key';
+
+      break;
+    }
+    case ConstraintType.DistKey: {
+      title = t('label.entity-key', {
+        entity: t('label.dist'),
+      });
+      icon = isConstraintDeleted ? IconDistLineThrough : IconDistKey;
+      dataTestId = 'dist-key';
+
+      break;
+    }
+    case ConstraintType.SortKey: {
+      title = t('label.entity-key', {
+        entity: t('label.sort'),
+      });
+      icon = isConstraintDeleted ? IconSortLineThrough : IconSortKey;
+      dataTestId = 'sort-key';
 
       break;
     }
@@ -657,32 +681,34 @@ export const searchInFields = <T extends SearchIndexField | Column>(
   return searchedValue;
 };
 
-export const getUpdatedTags = <T extends TableFieldsInfoCommonEntities>(
-  newFieldTags: Array<EntityTags>,
-  field?: T
-): TagLabel[] => {
-  const prevTagsFqn = field?.tags?.map((tag) => tag.tagFQN);
+export const updateFieldTags = <T extends TableFieldsInfoCommonEntities>(
+  changedFieldFQN: string,
+  newFieldTags: EntityTags[],
+  searchIndexFields?: Array<T>
+) => {
+  searchIndexFields?.forEach((field) => {
+    if (field.fullyQualifiedName === changedFieldFQN) {
+      field.tags = getUpdatedTags(newFieldTags);
+    } else {
+      updateFieldTags(
+        changedFieldFQN,
+        newFieldTags,
+        field?.children as Array<T>
+      );
+    }
+  });
+};
 
-  return reduce(
-    newFieldTags,
-    (acc: Array<EntityTags>, cv: EntityTags) => {
-      if (prevTagsFqn?.includes(cv.tagFQN)) {
-        const prev = field?.tags?.find((tag) => tag.tagFQN === cv.tagFQN);
+export const getUpdatedTags = (newFieldTags: Array<EntityTags>): TagLabel[] => {
+  const mappedNewTags: TagLabel[] = newFieldTags.map((tag) => ({
+    ...omit(tag, 'isRemovable'),
+    labelType: LabelType.Manual,
+    state: State.Confirmed,
+    source: tag.source || 'Classification',
+    tagFQN: tag.tagFQN,
+  }));
 
-        return [...acc, prev];
-      } else {
-        return [
-          ...acc,
-          {
-            ...omit(cv, 'isRemovable'),
-            labelType: LabelType.Manual,
-            state: State.Confirmed,
-          },
-        ];
-      }
-    },
-    []
-  );
+  return mappedNewTags;
 };
 
 export const updateFieldDescription = <T extends TableFieldsInfoCommonEntities>(
@@ -697,24 +723,6 @@ export const updateFieldDescription = <T extends TableFieldsInfoCommonEntities>(
       updateFieldDescription(
         changedFieldFQN,
         description,
-        field?.children as Array<T>
-      );
-    }
-  });
-};
-
-export const updateFieldTags = <T extends TableFieldsInfoCommonEntities>(
-  changedFieldFQN: string,
-  newFieldTags: EntityTags[],
-  searchIndexFields?: Array<T>
-) => {
-  searchIndexFields?.forEach((field) => {
-    if (field.fullyQualifiedName === changedFieldFQN) {
-      field.tags = getUpdatedTags<T>(newFieldTags, field);
-    } else {
-      updateFieldTags(
-        changedFieldFQN,
-        newFieldTags,
         field?.children as Array<T>
       );
     }
@@ -814,7 +822,7 @@ export const getTableDetailPageBaseTabs = ({
       label: (
         <TabsLabel
           id={EntityTabs.PROFILER}
-          name={t('label.profiler-amp-data-quality')}
+          name={t('label.data-observability')}
         />
       ),
       key: EntityTabs.PROFILER,
@@ -827,26 +835,6 @@ export const getTableDetailPageBaseTabs = ({
             table={tableDetails}
             testCaseSummary={testCaseSummary}
           />
-        ),
-    },
-    {
-      label: (
-        <TabsLabel
-          id={EntityTabs.INCIDENTS}
-          name={t('label.incident-plural')}
-        />
-      ),
-      key: EntityTabs.INCIDENTS,
-      children:
-        tablePermissions.ViewAll || tablePermissions.ViewTests ? (
-          <div className="p-x-lg p-b-lg p-t-md">
-            <IncidentManager
-              isIncidentPage={false}
-              tableDetails={tableDetails}
-            />
-          </div>
-        ) : (
-          <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
         ),
     },
     {
@@ -960,4 +948,78 @@ export const getJoinsFromTableJoins = (joins?: TableJoins): Joined[] => {
       ),
     }))
     .sort((a, b) => b.joinCount - a.joinCount);
+};
+
+/**
+ * @param constraints contains column names for constraints which
+ * @param type constraint type
+ * @returns constraint object with columns and constraint type or empty array if constraints are empty
+ */
+export const createTableConstraintObject = (
+  constraints: string[],
+  type: ConstraintType
+) =>
+  !isEmpty(constraints) ? [{ columns: constraints, constraintType: type }] : [];
+
+export const tableConstraintRendererBasedOnType = (
+  constraintType: ConstraintType,
+  columns?: string[]
+) => {
+  const isSingleColumn = columns?.length === 1;
+
+  return (
+    <div
+      className="d-flex constraint-columns"
+      data-testid={`${constraintType}-container`}
+      key={constraintType}>
+      <Space
+        className="constraint-icon-container"
+        direction="vertical"
+        size={0}>
+        {columns?.map((column, index) => (
+          <Fragment key={column}>
+            {(columns?.length ?? 0) - 1 !== index || isSingleColumn ? (
+              <ConstraintIcon
+                constraintType={constraintType}
+                showOnlyIcon={isSingleColumn}
+              />
+            ) : null}
+          </Fragment>
+        ))}
+      </Space>
+
+      <Space direction="vertical" size={16}>
+        {columns?.map((column) => (
+          <Typography.Text ellipsis={{ tooltip: true }} key={column}>
+            {column}
+          </Typography.Text>
+        ))}
+      </Space>
+    </div>
+  );
+};
+
+/**
+ * Recursive function to get all columns from table column and its children
+ * @param columns Table Columns for creating options in table constraint form
+ * @returns column options with label and value
+ */
+export const getColumnOptionsFromTableColumn = (columns: Column[]) => {
+  const options: {
+    label: string;
+    value: string;
+  }[] = [];
+
+  columns.forEach((item) => {
+    if (!isEmpty(item.children)) {
+      options.push(...getColumnOptionsFromTableColumn(item.children ?? []));
+    }
+
+    options.push({
+      label: item.name,
+      value: item.name,
+    });
+  });
+
+  return options;
 };

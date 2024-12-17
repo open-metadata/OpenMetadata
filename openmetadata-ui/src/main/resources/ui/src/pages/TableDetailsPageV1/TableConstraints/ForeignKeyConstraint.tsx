@@ -16,12 +16,15 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconForeignKey } from '../../../assets/svg/foreign-key.svg';
 import SectionLine from '../../../assets/svg/section-line-medium.svg';
+import { ConstraintType } from '../../../generated/entity/data/table';
 
 const ForeignKeyConstraint = () => {
   const { t } = useTranslation();
 
   return (
-    <div className="constraint-foreign-key">
+    <div
+      className="constraint-foreign-key"
+      data-testid={`${ConstraintType.ForeignKey}-icon`}>
       <img
         className="foreign-key-section-line"
         src={SectionLine}

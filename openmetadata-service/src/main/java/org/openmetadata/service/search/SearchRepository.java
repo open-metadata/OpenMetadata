@@ -24,6 +24,7 @@ import static org.openmetadata.service.search.SearchClient.REMOVE_TAGS_CHILDREN_
 import static org.openmetadata.service.search.SearchClient.REMOVE_TEST_SUITE_CHILDREN_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.SOFT_DELETE_RESTORE_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.UPDATE_ADDED_DELETE_GLOSSARY_TAGS;
+import static org.openmetadata.service.search.SearchClient.UPDATE_CERTIFICATION_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.UPDATE_PROPAGATED_ENTITY_REFERENCE_FIELD_SCRIPT;
 import static org.openmetadata.service.search.models.IndexMapping.indexNameSeparator;
 import static org.openmetadata.service.util.EntityUtil.compareEntityReferenceById;
@@ -37,6 +38,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -54,11 +56,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang.exception.ExceptionUtils;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
-import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.EntityTimeSeriesInterface;
 import org.openmetadata.schema.analytics.ReportData;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
+import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.tests.DataQualityReport;
 import org.openmetadata.schema.tests.TestSuite;
@@ -90,11 +92,7 @@ public class SearchRepository {
   @Getter @Setter public SearchIndexFactory searchIndexFactory = new SearchIndexFactory();
 
   private final List<String> inheritableFields =
-      List.of(
-          Entity.FIELD_OWNERS,
-          Entity.FIELD_DOMAIN,
-          Entity.FIELD_DISABLED,
-          Entity.FIELD_TEST_SUITES);
+      List.of(FIELD_OWNERS, Entity.FIELD_DOMAIN, Entity.FIELD_DISABLED, Entity.FIELD_TEST_SUITES);
   private final List<String> propagateFields = List.of(Entity.FIELD_TAGS);
 
   @Getter private final ElasticSearchConfiguration elasticSearchConfiguration;
@@ -371,6 +369,9 @@ public class SearchRepository {
             entityType, entityId, entity.getChangeDescription(), indexMapping, entity);
         propagateGlossaryTags(
             entityType, entity.getFullyQualifiedName(), entity.getChangeDescription());
+        propagateCertificationTags(entityType, entity);
+        propagatetoRelatedEntities(
+            entityType, entityId, entity.getChangeDescription(), indexMapping, entity);
       } catch (Exception ie) {
         LOG.error(
             "Issue in Updating the search document for entity [{}] and entityType [{}]. Reason[{}], Cause[{}], Stack [{}]",
@@ -451,6 +452,69 @@ public class SearchRepository {
           GLOBAL_SEARCH_ALIAS,
           new ImmutablePair<>("tags.tagFQN", glossaryFQN),
           new ImmutablePair<>(UPDATE_ADDED_DELETE_GLOSSARY_TAGS, fieldData));
+    }
+  }
+
+  public void propagateCertificationTags(String entityType, EntityInterface entity) {
+    ChangeDescription changeDescription = entity.getChangeDescription();
+    if (changeDescription != null && entityType.equalsIgnoreCase(Entity.TAG)) {
+      Tag tagEntity = (Tag) entity;
+      if (tagEntity.getClassification().getFullyQualifiedName().equals("Certification")) {
+        Map<String, Object> paramMap = new HashMap<>();
+        paramMap.put("name", entity.getName());
+        paramMap.put("description", entity.getDescription());
+        paramMap.put("tagFQN", entity.getFullyQualifiedName());
+        paramMap.put("style", entity.getStyle());
+        searchClient.updateChildren(
+            GLOBAL_SEARCH_ALIAS,
+            new ImmutablePair<>("certification.tagLabel.tagFQN", entity.getFullyQualifiedName()),
+            new ImmutablePair<>(UPDATE_CERTIFICATION_SCRIPT, paramMap));
+      }
+    }
+  }
+
+  public void propagatetoRelatedEntities(
+      String entityType,
+      String entityId,
+      ChangeDescription changeDescription,
+      IndexMapping indexMapping,
+      EntityInterface entity) {
+
+    if (changeDescription != null && entityType.equalsIgnoreCase(Entity.PAGE)) {
+      String indexName = indexMapping.getIndexName(clusterAlias);
+      for (FieldChange field : changeDescription.getFieldsAdded()) {
+        if (field.getName().contains("parent")) {
+          String oldParentFQN = entity.getName();
+          String newParentFQN = entity.getFullyQualifiedName();
+          // Propagate FQN updates to all subchildren
+          searchClient.updateByFqnPrefix(indexName, oldParentFQN, newParentFQN);
+        }
+      }
+
+      for (FieldChange field : changeDescription.getFieldsUpdated()) {
+        if (field.getName().contains("parent")) {
+          EntityReference entityReferenceBeforeUpdate =
+              JsonUtils.readValue(field.getOldValue().toString(), EntityReference.class);
+          // Propagate FQN updates to all subchildren
+          String originalFqn =
+              String.join(
+                  ".", entityReferenceBeforeUpdate.getFullyQualifiedName(), entity.getName());
+          String updatedFqn = entity.getFullyQualifiedName();
+          searchClient.updateByFqnPrefix(indexName, originalFqn, updatedFqn);
+        }
+      }
+
+      for (FieldChange field : changeDescription.getFieldsDeleted()) {
+        if (field.getName().contains("parent")) {
+          EntityReference entityReferenceBeforeUpdate =
+              JsonUtils.readValue(field.getOldValue().toString(), EntityReference.class);
+          // Propagate FQN updates to all subchildren
+          String originalFqn =
+              String.join(
+                  ".", entityReferenceBeforeUpdate.getFullyQualifiedName(), entity.getName());
+          searchClient.updateByFqnPrefix(indexName, originalFqn, "");
+        }
+      }
     }
   }
 
@@ -841,13 +905,20 @@ public class SearchRepository {
       String entityType,
       String query,
       String filter,
+      String[] fields,
       SearchSortFilter searchSortFilter,
       int size,
       Object[] searchAfter)
       throws IOException {
     IndexMapping index = entityIndexMap.get(entityType);
     return searchClient.listWithDeepPagination(
-        index.getIndexName(clusterAlias), query, filter, searchSortFilter, size, searchAfter);
+        index.getIndexName(clusterAlias),
+        query,
+        filter,
+        fields,
+        searchSortFilter,
+        size,
+        searchAfter);
   }
 
   public Response searchBySourceUrl(String sourceUrl) throws IOException {
@@ -972,7 +1043,7 @@ public class SearchRepository {
         String id = JsonUtils.extractValue(jsonNode, "_source", "id");
         String fqn = JsonUtils.extractValue(jsonNode, "_source", "fullyQualifiedName");
         String type = JsonUtils.extractValue(jsonNode, "_source", "entityType");
-        if (!CommonUtil.nullOrEmpty(fqn) && !CommonUtil.nullOrEmpty(type)) {
+        if (!nullOrEmpty(fqn) && !nullOrEmpty(type)) {
           fqns.add(
               new EntityReference()
                   .withId(UUID.fromString(id))
@@ -986,5 +1057,9 @@ public class SearchRepository {
       LOG.error("Error while getting entities from ES for validation", ex);
     }
     return new ArrayList<>();
+  }
+
+  public Set<String> getSearchEntities() {
+    return new HashSet<>(entityIndexMap.keySet());
   }
 }

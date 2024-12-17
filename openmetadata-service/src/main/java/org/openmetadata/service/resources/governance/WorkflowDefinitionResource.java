@@ -33,7 +33,6 @@ import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.governance.CreateWorkflowDefinition;
-import org.openmetadata.schema.entity.data.APICollection;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
@@ -71,7 +70,6 @@ public class WorkflowDefinitionResource
 
   @Override
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
-    WorkflowHandler.initialize(config);
     repository.initSeedDataFromResources();
   }
 
@@ -161,7 +159,7 @@ public class WorkflowDefinitionResource
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = APICollection.class))),
+                    schema = @Schema(implementation = WorkflowDefinition.class))),
         @ApiResponse(
             responseCode = "404",
             description = "Workflow Definition for instance {id} is not found")
@@ -195,11 +193,11 @@ public class WorkflowDefinitionResource
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "The APICollection",
+            description = "The Workflow Definition",
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = APICollection.class))),
+                    schema = @Schema(implementation = WorkflowDefinition.class))),
         @ApiResponse(
             responseCode = "404",
             description = "Workflow Definition for instance {fqn} is not found")
@@ -239,7 +237,7 @@ public class WorkflowDefinitionResource
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = APICollection.class))),
+                    schema = @Schema(implementation = WorkflowDefinition.class))),
         @ApiResponse(
             responseCode = "404",
             description =
@@ -252,7 +250,7 @@ public class WorkflowDefinitionResource
           @PathParam("id")
           UUID id,
       @Parameter(
-              description = "APICollection version number in the form `major`.`minor`",
+              description = "WorkflowDefinition version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version) {
@@ -354,7 +352,7 @@ public class WorkflowDefinitionResource
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = APICollection.class)))
+                    schema = @Schema(implementation = WorkflowDefinition.class)))
       })
   public Response createOrUpdate(
       @Context UriInfo uriInfo,
@@ -398,7 +396,7 @@ public class WorkflowDefinitionResource
   @DELETE
   @Path("/name/{fqn}")
   @Operation(
-      operationId = "deleteAPICollectionByFQN",
+      operationId = "deleteWorkflowDefinitionByFQN",
       summary = "Delete a Workflow Definition by fully qualified name",
       description = "Delete a Workflow Definition by `fullyQualifiedName`.",
       responses = {
@@ -447,6 +445,35 @@ public class WorkflowDefinitionResource
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
+  }
+
+  @POST
+  @Path("/name/{fqn}/trigger")
+  @Operation(
+      operationId = "triggerWorkflow",
+      summary = "Start a new instance of a Workflow Definition",
+      description = "Start a new instance of a Workflow Definition.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Workflow trigger status code",
+            content = @Content(mediaType = "application/json")),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Workflow Definition named '{fqn}' is not found")
+      })
+  public Response trigger(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the Workflow Definition", schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn) {
+    boolean triggerResponse = WorkflowHandler.getInstance().triggerWorkflow(fqn);
+    if (triggerResponse) {
+      return Response.status(Response.Status.OK).entity("Workflow Triggered").build();
+    } else {
+      return Response.status(Response.Status.NOT_FOUND).entity(fqn).build();
+    }
   }
 
   private WorkflowDefinition getWorkflowDefinition(CreateWorkflowDefinition create, String user) {

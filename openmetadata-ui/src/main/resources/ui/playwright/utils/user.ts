@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { expect, Page, Response } from '@playwright/test';
+import { Browser, expect, Page, Response } from '@playwright/test';
 import {
   customFormatDateTime,
   getEpochMillisForFutureDays,
@@ -36,7 +36,7 @@ import {
   toastNotification,
   visitOwnProfilePage,
 } from './common';
-import { settingClick, sidebarClick } from './sidebar';
+import { settingClick, SettingOptionsType, sidebarClick } from './sidebar';
 
 export const visitUserListPage = async (page: Page) => {
   const fetchUsers = page.waitForResponse('/api/v1/users?*');
@@ -44,7 +44,7 @@ export const visitUserListPage = async (page: Page) => {
   await fetchUsers;
 };
 
-export const performUserLogin = async (browser, user: UserClass) => {
+export const performUserLogin = async (browser: Browser, user: UserClass) => {
   const page = await browser.newPage();
   await user.login(page);
   const token = await getToken(page);
@@ -97,11 +97,24 @@ export const deletedUserChecks = async (page: Page) => {
 
 export const visitUserProfilePage = async (page: Page, userName: string) => {
   await settingClick(page, GlobalSettingOptions.USERS);
+  await page.waitForSelector(
+    '[data-testid="user-list-v1-component"] [data-testid="loader"]',
+    {
+      state: 'detached',
+    }
+  );
   const userResponse = page.waitForResponse(
     '/api/v1/search/query?q=**&from=0&size=*&index=*'
   );
+  const loader = page.waitForSelector(
+    '[data-testid="user-list-v1-component"] [data-testid="loader"]',
+    {
+      state: 'detached',
+    }
+  );
   await page.getByTestId('searchbar').fill(userName);
   await userResponse;
+  await loader;
   await page.getByTestId(userName).click();
 };
 
@@ -115,6 +128,10 @@ export const softDeleteUserProfilePage = async (
   );
   await page.getByTestId('searchbar').fill(userName);
   await userResponse;
+  await page.waitForSelector('.user-list-table [data-testid="loader"]', {
+    state: 'detached',
+  });
+
   await page.getByTestId(userName).click();
 
   await page.getByTestId('user-profile-details').click();
@@ -206,7 +223,9 @@ export const editDisplayName = async (page: Page, editedUserName: string) => {
   await saveResponse;
 
   // Verify the updated display name
-  const userName = await page.textContent('[data-testid="user-name"]');
+  const userName = await page.textContent(
+    '[data-testid="user-profile-details"] [data-testid="user-name"]'
+  );
 
   expect(userName).toContain(editedUserName);
 };
@@ -457,9 +476,9 @@ export const permanentDeleteUser = async (
   );
   await page.click('[data-testid="confirm-button"]');
   await hardDeleteUserResponse;
-  await reFetchUsers;
 
   await toastNotification(page, `"${displayName}" deleted successfully!`);
+  await reFetchUsers;
 
   // Wait for the loader to disappear
   await page.waitForSelector('[data-testid="loader"]', { state: 'hidden' });
@@ -594,7 +613,7 @@ export const checkStewardServicesPermissions = async (page: Page) => {
 
   // Iterate through the service page details and check for the add service button
   for (const service of Object.values(VISIT_SERVICE_PAGE_DETAILS)) {
-    await settingClick(page, service.settingsMenuId);
+    await settingClick(page, service.settingsMenuId as SettingOptionsType);
 
     await expect(
       page.locator('[data-testid="add-service-button"] > span')
@@ -668,7 +687,20 @@ export const checkStewardPermissions = async (page: Page) => {
   await expect(page.locator('[data-testid="edit-lineage"]')).toBeEnabled();
 };
 
-export const addUser = async (page: Page, { name, email, password, role }) => {
+export const addUser = async (
+  page: Page,
+  {
+    name,
+    email,
+    password,
+    role,
+  }: {
+    name: string;
+    email: string;
+    password: string;
+    role: string;
+  }
+) => {
   await page.click('[data-testid="add-user"]');
 
   await page.fill('[data-testid="email"]', email);
@@ -759,7 +791,7 @@ export const settingPageOperationPermissionCheck = async (page: Page) => {
       apiResponse = page.waitForResponse(id.api);
     }
     // Navigate to settings and respective tab page
-    await settingClick(page, id.testid);
+    await settingClick(page, id.testid as SettingOptionsType);
     if (id?.api && apiResponse) {
       await apiResponse;
     }
@@ -773,10 +805,14 @@ export const settingPageOperationPermissionCheck = async (page: Page) => {
       await settingClick(page, id.testid);
     } else {
       await sidebarClick(page, SidebarItem.SETTINGS);
-      let paths = SETTINGS_OPTIONS_PATH[id.testid];
+      let paths =
+        SETTINGS_OPTIONS_PATH[id.testid as keyof typeof SETTINGS_OPTIONS_PATH];
 
       if (id.isCustomProperty) {
-        paths = SETTING_CUSTOM_PROPERTIES_PATH[id.testid];
+        paths =
+          SETTING_CUSTOM_PROPERTIES_PATH[
+            id.testid as keyof typeof SETTING_CUSTOM_PROPERTIES_PATH
+          ];
       }
 
       await expectSettingEntityNotVisible(page, paths);

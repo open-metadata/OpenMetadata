@@ -88,6 +88,87 @@
                     }
                 },
                 {
+                    "name": "table_column_count_equals",
+                    "description": "test the number of column in table",
+                    "entityLink": "<#E::table::sample_data.ecommerce_db.shopify.dim___reserved__colon____reserved__arrow__address>",
+                    "testDefinitionName": "tableColumnCountToEqual",
+                    "parameterValues": [
+                        {
+                            "name": "columnCount",
+                            "value": "10"
+                        }
+                    ],
+                    "resolutions": {
+                        "sequenceOne": [
+                            {
+                                "testCaseResolutionStatusType": "Ack",
+                                "severity": "Severity1"
+                            },
+                            {
+                                "testCaseResolutionStatusType": "Assigned",
+                                "severity": "Severity1",
+                                "assignee": "aaron_johnson0"
+                            },
+                            {
+                                "testCaseResolutionStatusType": "Resolved",
+                                "severity": "Severity1",
+                                "resolver": "aaron_johnson0"
+                            }
+                        ],
+                        "sequenceTwo": [
+                            {
+                                "testCaseResolutionStatusType": "New",
+                                "severity": "Severity1"
+                            },
+                            {
+                                "testCaseResolutionStatusType": "Ack",
+                                "severity": "Severity1"
+                            },
+                            {
+                                "testCaseResolutionStatusType": "Assigned",
+                                "severity": "Severity1",
+                                "assignee": "christopher_campbell7"
+                            },
+                            {
+                                "testCaseResolutionStatusType": "Resolved",
+                                "severity": "Severity1",
+                                "resolver": "christopher_campbell7"
+                            }
+                        ],
+                        "sequenceThree": [
+                            {
+                                "testCaseResolutionStatusType": "New",
+                                "severity": "Severity3"
+                            },
+                            {
+                                "testCaseResolutionStatusType": "Ack",
+                                "severity": "Severity3"
+                            },
+                            {
+                                "testCaseResolutionStatusType": "Assigned",
+                                "severity": "Severity3",
+                                "assignee": "christopher_campbell7"
+                            },
+                            {
+                                "testCaseResolutionStatusType": "Assigned",
+                                "severity": "Severity3",
+                                "assignee": "aaron_johnson0"
+                            },
+                            {
+                                "testCaseResolutionStatusType": "Resolved",
+                                "severity": "Severity3",
+                                "resolver": "aaron_johnson0"
+                            }
+                        ],
+                        "sequenceFour": [
+                            {
+                                "testCaseResolutionStatusType": "New",
+                                "severity": "Severity5"
+                            }
+                        ]
+                    }
+                },
+                {
                     "name": "table_column_count_between",
                     "description": "test the number of column in table is between x and y",
                     "entityLink": "<#E::table::sample_data.ecommerce_db.shopify.dim_address>",

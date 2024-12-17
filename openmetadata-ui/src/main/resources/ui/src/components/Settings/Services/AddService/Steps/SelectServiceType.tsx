@@ -22,6 +22,7 @@ import {
   BETA_SERVICES,
   excludedService,
   SERVICE_CATEGORY_OPTIONS,
+  SERVICE_TYPE_WITH_DISPLAY_NAME,
 } from '../../../../../constants/Services.constant';
 import { ServiceCategory } from '../../../../../enums/service.enum';
 import { DatabaseServiceType } from '../../../../../generated/entity/data/database';
@@ -85,11 +86,9 @@ const SelectServiceType = ({
   const getServiceName = (type: string) => {
     if (type.includes('Custom')) {
       return startCase(type);
-    } else if (type === PipelineServiceType.GluePipeline) {
-      return 'Glue Pipeline';
     }
 
-    return type;
+    return SERVICE_TYPE_WITH_DISPLAY_NAME.get(type) || type;
   };
 
   return (

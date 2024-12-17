@@ -130,13 +130,19 @@ public class StoredProcedureRepository extends EntityRepository<StoredProcedure>
 
     @Transaction
     @Override
-    public void entitySpecificUpdate() {
+    public void entitySpecificUpdate(boolean consolidatingChanges) {
       // storedProcedureCode is a required field. Cannot be null.
       if (updated.getStoredProcedureCode() != null) {
         recordChange(
             "storedProcedureCode",
             original.getStoredProcedureCode(),
             updated.getStoredProcedureCode());
+      }
+      if (updated.getStoredProcedureType() != null) {
+        recordChange(
+            "storedProcedureType",
+            original.getStoredProcedureType(),
+            updated.getStoredProcedureType());
       }
       recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl());
       recordChange("sourceHash", original.getSourceHash(), updated.getSourceHash());
