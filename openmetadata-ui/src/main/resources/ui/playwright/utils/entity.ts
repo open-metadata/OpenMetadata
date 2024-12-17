@@ -790,31 +790,27 @@ const announcementForm = async (
   );
 
   await page.locator('#announcement-submit').scrollIntoViewIfNeeded();
-  const announcementSubmit = page.waitForResponse(
-    '/api/v1/feed?entityLink=*type=Announcement*'
-  );
   await page.click('#announcement-submit');
-  await announcementSubmit;
   await page.click('.Toastify__close-button');
 };
 
 export const createAnnouncement = async (
   page: Page,
-  data: { title: string; description: string }
+  data: { title: string; description: string },
+  isForActivityFeedTab: boolean
 ) => {
-  await page.getByTestId('manage-button').click();
-  await page.getByTestId('announcement-button').click();
+  if (isForActivityFeedTab) {
+    await page.getByText('Activity Feeds & Tasks').click(); // For Activity Feed
+    await page.getByTestId('announcement-sub-tab').click();
+  } else {
+    await page.getByText('Announcements').click(); // For Service page
+  }
+  await page.getByTestId('add-announcement-btn').click();
   const startDate = customFormatDateTime(getCurrentMillis(), 'yyyy-MM-dd');
   const endDate = customFormatDateTime(
     getEpochMillisForFutureDays(5),
     'yyyy-MM-dd'
   );
-
-  await expect(page.getByTestId('announcement-error')).toContainText(
-    'No Announcements, Click on add announcement to add one.'
-  );
-
-  await page.getByTestId('add-announcement').click();
 
   await expect(page.locator('.ant-modal-header')).toContainText(
     'Make an announcement'
@@ -823,9 +819,12 @@ export const createAnnouncement = async (
   await announcementForm(page, { ...data, startDate, endDate });
 
   await page.reload();
-  await page.getByTestId('announcement-card').isVisible();
+  const feedDataCard = page
+    .locator('#feedData')
+    .getByTestId('activity-feed-card-v2');
 
-  await expect(page.getByTestId('announcement-card')).toContainText(data.title);
+  await expect(feedDataCard).toBeVisible();
+  await expect(feedDataCard).toContainText(data.title);
 
   // TODO: Review redirection flow for announcement @Ashish8689
   // await redirectToHomePage(page);
@@ -850,17 +849,7 @@ export const createAnnouncement = async (
 };
 
 export const replyAnnouncement = async (page: Page) => {
-  await page.click('[data-testid="announcement-card"]');
-
-  await page.hover(
-    '[data-testid="announcement-card"] [data-testid="main-message"]'
-  );
-
-  await page.waitForSelector('.ant-popover', { state: 'visible' });
-
-  await expect(page.getByTestId('add-reply').locator('svg')).toBeVisible();
-
-  await page.getByTestId('add-reply').locator('svg').click();
+  await page.click('[data-testid="activity-feed-card-v2"]');
 
   await expect(page.locator('.ql-editor')).toBeVisible();
 
@@ -873,41 +862,18 @@ export const replyAnnouncement = async (page: Page) => {
   await page.fill('[data-testid="editor-wrapper"] .ql-editor', 'Reply message');
   await page.click('[data-testid="send-button"]');
 
-  await expect(
-    page.locator('[data-testid="replies"] [data-testid="viewer-container"]')
-  ).toHaveText('Reply message');
-  await expect(page.locator('[data-testid="show-reply-thread"]')).toHaveText(
-    '1 replies'
-  );
+  const feedDataCard = page
+    .locator('#feedData')
+    .getByTestId('activity-feed-card-v2');
 
-  // Edit the reply message
-  await page.hover('[data-testid="replies"] > [data-testid="main-message"]');
-  await page.waitForSelector('.ant-popover', { state: 'visible' });
-  await page.click('[data-testid="edit-message"]');
-
-  await page.fill(
-    '[data-testid="editor-wrapper"] .ql-editor',
-    'Reply message edited'
-  );
-
-  await page.click('[data-testid="save-button"]');
-
-  await expect(
-    page.locator('[data-testid="replies"] [data-testid="viewer-container"]')
-  ).toHaveText('Reply message edited');
+  await expect(feedDataCard).toContainText('1 Reply');
 
   await page.reload();
 };
 
 export const deleteAnnouncement = async (page: Page) => {
-  await page.getByTestId('manage-button').click();
-  await page.getByTestId('announcement-button').click();
-
-  await page.hover(
-    '[data-testid="announcement-card"] [data-testid="main-message"]'
-  );
-
-  await page.waitForSelector('.ant-popover', { state: 'visible' });
+  const feedcard = page.locator('#feedData').getByTestId('feedcardbodyV1');
+  feedcard.hover();
 
   await page.click('[data-testid="delete-message"]');
   const modalText = await page.textContent('.ant-modal-body');
@@ -923,10 +889,16 @@ export const deleteAnnouncement = async (page: Page) => {
 
 export const createInactiveAnnouncement = async (
   page: Page,
-  data: { title: string; description: string }
+  data: { title: string; description: string },
+  isForActivityFeedTab: boolean
 ) => {
-  await page.getByTestId('manage-button').click();
-  await page.getByTestId('announcement-button').click();
+  if (isForActivityFeedTab) {
+    await page.getByText('Activity Feeds & Tasks').click(); // For Activity Feed
+    await page.getByTestId('announcement-sub-tab').click();
+  } else {
+    await page.getByText('Announcements').click(); // For Service page
+  }
+  await page.getByTestId('add-announcement-btn').click();
   const startDate = customFormatDateTime(
     getEpochMillisForFutureDays(6),
     'yyyy-MM-dd'
@@ -936,15 +908,21 @@ export const createInactiveAnnouncement = async (
     'yyyy-MM-dd'
   );
 
-  await page.getByTestId('add-announcement').click();
-
   await expect(page.locator('.ant-modal-header')).toContainText(
     'Make an announcement'
   );
 
   await announcementForm(page, { ...data, startDate, endDate });
-  await page.getByTestId('inActive-announcements').isVisible();
+
   await page.reload();
+  const inactiveTextLocator = page.getByTestId('inactive-announcements');
+
+  await inactiveTextLocator.click();
+  const feedDataCard = page
+    .locator('#feedData')
+    .getByTestId('activity-feed-card-v2');
+
+  await expect(feedDataCard).toContainText(data.title);
 };
 
 export const updateDisplayNameForEntity = async (

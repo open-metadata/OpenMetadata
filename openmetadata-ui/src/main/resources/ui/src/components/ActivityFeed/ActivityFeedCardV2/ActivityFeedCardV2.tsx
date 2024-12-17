@@ -175,7 +175,8 @@ const ActivityFeedCardV2 = ({
           'announcement-gap': feed.type === ThreadType.Announcement,
         },
         className
-      )}>
+      )}
+      data-testid="activity-feed-card-v2">
       {isAnnouncementWithRepliesVisible && (
         <Col className="avatar-column d-flex flex-column items-center justify-between">
           <UserPopOverCard userName={post.from} />

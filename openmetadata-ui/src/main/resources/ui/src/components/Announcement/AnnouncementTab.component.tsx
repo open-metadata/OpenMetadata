@@ -169,7 +169,7 @@ const AnnouncementTab: React.FC<AnnouncementTabProps> = ({
                   'font-medium':
                     announcementFilter === AnnoucementStatus.Inactive,
                 })}
-                data-testid="inactive-announcement"
+                data-testid="inactive-announcements"
                 onClick={() => {
                   handleUpdateAnnouncementFilter(AnnoucementStatus.Inactive);
                 }}>

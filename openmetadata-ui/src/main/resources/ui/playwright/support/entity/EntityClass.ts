@@ -326,20 +326,28 @@ export class EntityClass {
     await validateFollowedEntityToWidget(page, entity, false);
   }
 
-  async announcement(page: Page) {
-    await createAnnouncement(page, {
-      title: 'Playwright Test Announcement',
-      description: 'Playwright Test Announcement Description',
-    });
+  async announcement(page: Page, isForActivityFeedTab: boolean) {
+    await createAnnouncement(
+      page,
+      {
+        title: 'Playwright Test Announcement',
+        description: 'Playwright Test Announcement Description',
+      },
+      isForActivityFeedTab
+    );
     await replyAnnouncement(page);
     await deleteAnnouncement(page);
   }
 
-  async inactiveAnnouncement(page: Page) {
-    await createInactiveAnnouncement(page, {
-      title: 'Inactive Playwright announcement',
-      description: 'Inactive Playwright announcement description',
-    });
+  async inactiveAnnouncement(page: Page, isForActivityFeedTab: boolean) {
+    await createInactiveAnnouncement(
+      page,
+      {
+        title: 'Inactive Playwright announcement',
+        description: 'Inactive Playwright announcement description',
+      },
+      isForActivityFeedTab
+    );
     await deleteAnnouncement(page);
   }
 

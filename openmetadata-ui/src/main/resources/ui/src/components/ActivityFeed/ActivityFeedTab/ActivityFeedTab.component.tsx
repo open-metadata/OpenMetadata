@@ -518,7 +518,9 @@ export const ActivityFeedTab = ({
             ? [
                 {
                   label: (
-                    <div className="d-flex justify-between">
+                    <div
+                      className="d-flex justify-between"
+                      data-testid="announcement-sub-tab">
                       <Space align="center" size="small">
                         <AnnouncementsIcon
                           style={COMMON_ICON_STYLES}
@@ -615,7 +617,7 @@ export const ActivityFeedTab = ({
             </div>
             <Tooltip title={t('message.no-permission-to-view')}>
               <Button
-                data-testid="add-announcement"
+                data-testid="add-announcement-btn"
                 disabled={!permissions?.EditAll}
                 type="primary"
                 onClick={handleOpenAnnouncementModal}>

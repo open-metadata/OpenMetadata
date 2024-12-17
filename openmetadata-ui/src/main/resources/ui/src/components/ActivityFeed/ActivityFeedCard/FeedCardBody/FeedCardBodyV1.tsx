@@ -176,7 +176,8 @@ const FeedCardBodyV1 = ({
         `feed-card-body  p-sm rounded-6 ${!isAnnouncement && 'bg-grey-5'}`,
 
         isEditPost ? '' : className
-      )}>
+      )}
+      data-testid="feedcardbodyV1">
       <div
         className={`feed-message ${
           isAnnouncement ? 'feed-message--announcement' : ''
