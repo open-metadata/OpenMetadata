@@ -965,55 +965,58 @@ public class ElasticSearchClient implements SearchClient {
     String query = searchListFilter.getQueryParam("query");
     BoolQueryBuilder mainQuery = QueryBuilders.boolQuery();
 
-    switch (propertyType) {
-      case "enum",
-          "date-cp",
-          "dateTime-cp",
-          "markdown",
-          "sqlQuery",
-          "string",
-          "time-cp",
-          "integer",
-          "number",
-          "timestamp" -> mainQuery.must(QueryBuilders.matchQuery(extensionField, query));
+    if (!nullOrEmpty(query)) {
+      switch (propertyType) {
+        case "enum",
+            "date-cp",
+            "dateTime-cp",
+            "markdown",
+            "sqlQuery",
+            "string",
+            "time-cp",
+            "integer",
+            "number",
+            "timestamp" -> mainQuery.must(QueryBuilders.matchQuery(extensionField, query));
 
-      case "duration" -> mainQuery.must(
-          QueryBuilders.matchPhrasePrefixQuery(extensionField, query));
+        case "duration" -> mainQuery.must(
+            QueryBuilders.matchPhrasePrefixQuery(extensionField, query));
 
-      case "email" -> mainQuery.must(
-          QueryBuilders.boolQuery()
-              .should(QueryBuilders.matchPhrasePrefixQuery(extensionField, query))
-              .should(QueryBuilders.matchQuery(extensionField, query))
-              .minimumShouldMatch(1));
+        case "email" -> mainQuery.must(
+            QueryBuilders.boolQuery()
+                .should(QueryBuilders.matchPhrasePrefixQuery(extensionField, query))
+                .should(QueryBuilders.matchQuery(extensionField, query))
+                .minimumShouldMatch(1));
 
-      case "entityReference", "entityReferenceList" -> mainQuery.must(
-          QueryBuilders.boolQuery()
-              .should(QueryBuilders.matchQuery(extensionField + ".displayName", query))
-              .should(QueryBuilders.matchQuery(extensionField + ".fullyQualifiedName", query))
-              .minimumShouldMatch(1));
+        case "entityReference", "entityReferenceList" -> mainQuery.must(
+            QueryBuilders.boolQuery()
+                .should(QueryBuilders.matchQuery(extensionField + ".displayName", query))
+                .should(QueryBuilders.matchQuery(extensionField + ".fullyQualifiedName", query))
+                .minimumShouldMatch(1));
 
-      case "timeInterval" -> mainQuery.must(
-          QueryBuilders.boolQuery()
-              .should(QueryBuilders.matchQuery(extensionField + ".start", query))
-              .should(QueryBuilders.matchQuery(extensionField + ".end", query))
-              .minimumShouldMatch(1));
+        case "timeInterval" -> mainQuery.must(
+            QueryBuilders.boolQuery()
+                .should(QueryBuilders.matchQuery(extensionField + ".start", query))
+                .should(QueryBuilders.matchQuery(extensionField + ".end", query))
+                .minimumShouldMatch(1));
 
-      case "table-cp" -> {
-        TableConfig tableConfig =
-            JsonUtils.convertValue(
-                property.getCustomPropertyConfig().getConfig(), TableConfig.class);
-        BoolQueryBuilder tableQuery = QueryBuilders.boolQuery();
-        for (String column : tableConfig.getColumns()) {
-          tableQuery.should(
-              QueryBuilders.matchPhrasePrefixQuery(extensionField + ".rows." + column, query));
+        case "table-cp" -> {
+          TableConfig tableConfig =
+              JsonUtils.convertValue(
+                  property.getCustomPropertyConfig().getConfig(), TableConfig.class);
+          BoolQueryBuilder tableQuery = QueryBuilders.boolQuery();
+          for (String column : tableConfig.getColumns()) {
+            tableQuery.should(
+                QueryBuilders.matchPhrasePrefixQuery(extensionField + ".rows." + column, query));
+          }
+          tableQuery.minimumShouldMatch(1);
+          mainQuery.must(tableQuery);
         }
-        tableQuery.minimumShouldMatch(1);
-        mainQuery.must(tableQuery);
+
+        default -> mainQuery.must(QueryBuilders.existsQuery(extensionField));
       }
-
-      default -> mainQuery.must(QueryBuilders.matchQuery(extensionField, query));
+    } else {
+      mainQuery.must(QueryBuilders.existsQuery(extensionField));
     }
-
     mainQuery.must(QueryBuilders.termQuery("deleted", searchListFilter.getQueryParam("deleted")));
 
     if (!nullOrEmpty(queryFilter) && !queryFilter.equals("{}")) {
