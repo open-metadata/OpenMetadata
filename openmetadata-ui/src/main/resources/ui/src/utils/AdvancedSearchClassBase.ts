@@ -22,6 +22,7 @@ import {
   SelectFieldSettings,
 } from 'react-awesome-query-builder';
 import AntdConfig from 'react-awesome-query-builder/lib/config/antd';
+import { TEXT_FIELD_OPERATORS } from '../constants/AdvancedSearch.constants';
 import { EntityFields, SuggestionField } from '../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { getAggregateFieldOptions } from '../rest/miscAPI';
@@ -794,6 +795,100 @@ class AdvancedSearchClassBase {
       },
     };
   };
+
+  public getCustomPropertiesSubFields(field: { name: string; type: string }) {
+    {
+      switch (field.type) {
+        case 'array<entityReference>':
+        case 'entityReference':
+          return {
+            subfieldsKey: field.name + `.fullyQualifiedName`,
+            dataObject: {
+              type: 'select',
+              label: field.name,
+              fieldSettings: {
+                asyncFetch: advancedSearchClassBase.autocomplete({
+                  searchIndex: [SearchIndex.USER, SearchIndex.TEAM],
+                  entityField: EntityFields.DISPLAY_NAME_KEYWORD,
+                }),
+                useAsyncSearch: true,
+              },
+            },
+          };
+        case 'date-cp': {
+          return {
+            subfieldsKey: field.name,
+            dataObject: {
+              type: 'date',
+              valueSources: ['value'],
+              operators: TEXT_FIELD_OPERATORS,
+            },
+          };
+        }
+        case 'dateTime-cp': {
+          return {
+            subfieldsKey: field.name,
+            dataObject: {
+              type: 'datetime',
+              valueSources: ['value'],
+              operators: TEXT_FIELD_OPERATORS,
+            },
+          };
+        }
+        case 'time-cp': {
+          return {
+            subfieldsKey: field.name,
+            dataObject: {
+              type: 'time',
+              valueSources: ['value'],
+              operators: TEXT_FIELD_OPERATORS,
+            },
+          };
+        }
+        case 'timeInterval': {
+          return {
+            subfieldsKey: [field.name + `.start`, field.name + `.end`],
+            dataObject: {
+              type: 'text',
+              label: field.name,
+              fieldSettings: {
+                minimum_should_match: 1,
+              },
+            },
+          };
+        }
+
+        case 'table-cp': {
+          return {
+            subfieldsKey: field.name + '.first',
+            dataObject: {
+              type: 'text',
+              label: field.name,
+              valueSources: ['value'],
+              operators: TEXT_FIELD_OPERATORS,
+            },
+          };
+        }
+        // case "timestamp":
+        // case "string":
+        // case "markdown":
+        // case "number":
+        // case "integer":
+        // case "email":
+        // case "enum":
+        // case "duration":
+        default:
+          return {
+            subfieldsKey: field.name,
+            dataObject: {
+              type: 'text',
+              valueSources: ['value'],
+              operators: TEXT_FIELD_OPERATORS,
+            },
+          };
+      }
+    }
+  }
 }
 
 const advancedSearchClassBase = new AdvancedSearchClassBase();
