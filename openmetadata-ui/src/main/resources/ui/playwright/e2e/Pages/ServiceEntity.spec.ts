@@ -112,11 +112,13 @@ entities.forEach((EntityClass) => {
     });
 
     test(`Announcement create & delete`, async ({ page }) => {
-      await entity.announcement(page, false);
+      const isService = entity.type.includes('Service') ? false : true;
+      await entity.announcement(page, isService);
     });
 
     test(`Inactive Announcement create & delete`, async ({ page }) => {
-      await entity.inactiveAnnouncement(page, false);
+      const isService = entity.type.includes('Service') ? false : true;
+      await entity.inactiveAnnouncement(page, isService);
     });
 
     // Create custom property only for supported entities

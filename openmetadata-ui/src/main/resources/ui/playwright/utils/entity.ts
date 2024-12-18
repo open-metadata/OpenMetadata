@@ -800,7 +800,12 @@ export const createAnnouncement = async (
   isForActivityFeedTab: boolean
 ) => {
   if (isForActivityFeedTab) {
-    await page.getByText('Activity Feeds & Tasks').click(); // For Activity Feed
+    const activityFeedText = (await page
+      .getByText('Activity Feeds & Tasks')
+      .isVisible())
+      ? 'Activity Feeds & Tasks'
+      : 'Activity Feeds';
+    await page.getByText(activityFeedText).click(); // For Activity Feed
     await page.getByTestId('announcement-sub-tab').click();
   } else {
     await page.getByText('Announcements').click(); // For Service page
@@ -893,7 +898,12 @@ export const createInactiveAnnouncement = async (
   isForActivityFeedTab: boolean
 ) => {
   if (isForActivityFeedTab) {
-    await page.getByText('Activity Feeds & Tasks').click(); // For Activity Feed
+    const activityFeedText = (await page
+      .getByText('Activity Feeds & Tasks')
+      .isVisible())
+      ? 'Activity Feeds & Tasks'
+      : 'Activity Feeds';
+    await page.getByText(activityFeedText).click(); // For Activity Feed
     await page.getByTestId('announcement-sub-tab').click();
   } else {
     await page.getByText('Announcements').click(); // For Service page
