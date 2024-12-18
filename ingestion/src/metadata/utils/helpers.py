@@ -502,18 +502,19 @@ def retry_with_docker_host(config: Optional[WorkflowSource] = None):
                     else:
                         raise error
 
-                host_value = (
+                host_port_str = str(
                     getattr(config.serviceConnection.root.config, "hostPort", None)
                     or ""
                 )
-                if "localhost" not in host_value:
+                if "localhost" not in host_port_str:
                     raise error
 
-                docker_host_value = host_value.replace(
+                host_port_type = type(config.serviceConnection.root.config.hostPort)
+                docker_host_port_str = host_port_str.replace(
                     "localhost", "host.docker.internal"
                 )
-                setattr(
-                    config.serviceConnection.root.config, "hostPort", docker_host_value
+                config.serviceConnection.root.config.hostPort = host_port_type(
+                    docker_host_port_str
                 )
                 func(*args, **kwargs)
 
