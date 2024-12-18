@@ -32,6 +32,9 @@ from metadata.generated.schema.entity.data.chart import ChartType
 from metadata.generated.schema.entity.data.table import Column, Table
 from metadata.generated.schema.entity.feed.suggestion import Suggestion, SuggestionType
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.metadataIngestion.workflow import (
+    Source as WorkflowSource,
+)
 from metadata.generated.schema.type.basic import EntityLink
 from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.utils.constants import DEFAULT_DATABASE
@@ -476,3 +479,35 @@ def init_staging_dir(directory: str) -> None:
     location = Path(directory)
     logger.info(f"Creating the directory to store staging data in {location}")
     location.mkdir(parents=True, exist_ok=True)
+
+
+def retry_with_docker_host(func):
+    """
+    Retries the function on exception, replacing "localhost" with "host.docker.internal"
+    in the `hostPort` config if applicable. Raises the original exception if no `config` is found.
+    """
+
+    def wrapper(*args, **kwargs):
+        try:
+            func(*args, **kwargs)
+        except Exception as error:
+            config = kwargs.get("config")
+            if not config:
+                for argument in args:
+                    if isinstance(argument, WorkflowSource):
+                        config = argument
+                        break
+                else:
+                    raise error
+
+            host_value = (
+                getattr(config.serviceConnection.root.config, "hostPort", None) or ""
+            )
+            if "localhost" not in host_value:
+                raise error
+
+            docker_host_value = host_value.replace("localhost", "host.docker.internal")
+            setattr(config.serviceConnection.root.config, "hostPort", docker_host_value)
+            func(*args, **kwargs)
+
+    return wrapper

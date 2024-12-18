@@ -26,7 +26,7 @@ from metadata.ingestion.connections.test_connections import (
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_test_connection_fn
-from metadata.utils.helpers import get_start_and_end
+from metadata.utils.helpers import get_start_and_end, retry_with_docker_host
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.ssl_manager import get_ssl_connection
 
@@ -49,6 +49,7 @@ class QueryParserSource(Source, ABC):
     database_field: str
     schema_field: str
 
+    @retry_with_docker_host
     def __init__(
         self,
         config: WorkflowSource,
