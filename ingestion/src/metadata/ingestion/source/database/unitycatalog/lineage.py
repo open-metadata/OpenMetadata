@@ -40,8 +40,8 @@ from metadata.ingestion.source.database.unitycatalog.client import UnityCatalogC
 from metadata.ingestion.source.database.unitycatalog.connection import get_connection
 from metadata.ingestion.source.database.unitycatalog.models import LineageTableStreams
 from metadata.utils import fqn
-from metadata.utils.logger import ingestion_logger
 from metadata.utils.helpers import retry_with_docker_host
+from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 

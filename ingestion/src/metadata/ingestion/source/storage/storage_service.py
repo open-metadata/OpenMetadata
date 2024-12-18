@@ -81,22 +81,22 @@ class StorageServiceTopology(ServiceTopology):
     service -> container -> container -> container...
     """
 
-    root: Annotated[TopologyNode, Field(description="Root node for the topology")] = (
-        TopologyNode(
-            producer="get_services",
-            stages=[
-                NodeStage(
-                    type_=StorageService,
-                    context="objectstore_service",
-                    processor="yield_create_request_objectstore_service",
-                    overwrite=False,
-                    must_return=True,
-                    cache_entities=True,
-                ),
-            ],
-            children=["container"],
-            post_process=["mark_containers_as_deleted"],
-        )
+    root: Annotated[
+        TopologyNode, Field(description="Root node for the topology")
+    ] = TopologyNode(
+        producer="get_services",
+        stages=[
+            NodeStage(
+                type_=StorageService,
+                context="objectstore_service",
+                processor="yield_create_request_objectstore_service",
+                overwrite=False,
+                must_return=True,
+                cache_entities=True,
+            ),
+        ],
+        children=["container"],
+        post_process=["mark_containers_as_deleted"],
     )
 
     container: Annotated[
@@ -161,9 +161,9 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
         self.test_connection()
 
         # Try to get the global manifest
-        self.global_manifest: Optional[ManifestMetadataConfig] = (
-            self.get_manifest_file()
-        )
+        self.global_manifest: Optional[
+            ManifestMetadataConfig
+        ] = self.get_manifest_file()
 
     @property
     def name(self) -> str:

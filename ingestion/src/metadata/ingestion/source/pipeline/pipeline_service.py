@@ -68,22 +68,22 @@ class PipelineServiceTopology(ServiceTopology):
     data that has been produced by any parent node.
     """
 
-    root: Annotated[TopologyNode, Field(description="Root node for the topology")] = (
-        TopologyNode(
-            producer="get_services",
-            stages=[
-                NodeStage(
-                    type_=PipelineService,
-                    context="pipeline_service",
-                    processor="yield_create_request_pipeline_service",
-                    overwrite=False,
-                    must_return=True,
-                    cache_entities=True,
-                ),
-            ],
-            children=["pipeline"],
-            post_process=["mark_pipelines_as_deleted"],
-        )
+    root: Annotated[
+        TopologyNode, Field(description="Root node for the topology")
+    ] = TopologyNode(
+        producer="get_services",
+        stages=[
+            NodeStage(
+                type_=PipelineService,
+                context="pipeline_service",
+                processor="yield_create_request_pipeline_service",
+                overwrite=False,
+                must_return=True,
+                cache_entities=True,
+            ),
+        ],
+        children=["pipeline"],
+        post_process=["mark_pipelines_as_deleted"],
     )
     pipeline: Annotated[
         TopologyNode, Field(description="Processing Pipelines Node")

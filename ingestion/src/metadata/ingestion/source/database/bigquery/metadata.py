@@ -97,6 +97,7 @@ from metadata.ingestion.source.database.multi_db_source import MultiDBSource
 from metadata.utils import fqn
 from metadata.utils.credentials import GOOGLE_CREDENTIALS
 from metadata.utils.filters import filter_by_database, filter_by_schema
+from metadata.utils.helpers import retry_with_docker_host
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import (
     get_all_table_ddls,
@@ -105,7 +106,6 @@ from metadata.utils.sqlalchemy_utils import (
 )
 from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_label
 from metadata.utils.tag_utils import get_tag_labels as fetch_tag_labels_om
-from metadata.utils.helpers import retry_with_docker_host
 
 _bigquery_table_types = {
     "BASE TABLE": TableType.Regular,

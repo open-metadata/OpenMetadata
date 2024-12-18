@@ -23,12 +23,11 @@ from metadata.ingestion.source.connections import get_test_connection_fn
 from metadata.profiler.processor.processor import ProfilerProcessor
 from metadata.profiler.source.metadata import OpenMetadataSource
 from metadata.profiler.source.metadata_ext import OpenMetadataSourceExt
+from metadata.utils.helpers import retry_with_docker_host
 from metadata.utils.importer import import_sink_class
 from metadata.utils.logger import profiler_logger
 from metadata.utils.ssl_manager import get_ssl_connection
 from metadata.workflow.ingestion import IngestionWorkflow
-from metadata.utils.helpers import retry_with_docker_host
-
 
 logger = profiler_logger()
 
