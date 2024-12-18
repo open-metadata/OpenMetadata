@@ -62,15 +62,14 @@ class OMetaUserMixin:
                     "query": f"{name} AND isBot:false",
                     "fields": ["name", "displayName"],
                     "default_operator": "AND",
-                    "fuzziness": "AUTO"
+                    "fuzziness": "AUTO",
                 }
             }
         }
 
         return (
             f"""/search/query?query_filter={json.dumps(query_filter)}"""
-            f"&from={from_}&size={size}&index="
-            + ES_INDEX_MAP[entity.__name__]
+            f"&from={from_}&size={size}&index=" + ES_INDEX_MAP[entity.__name__]
         )
 
     def _search_by_email(
