@@ -62,6 +62,7 @@ from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper
 from metadata.ingestion.lineage.sql_lineage import get_lineage_by_query
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.models.table_metadata import ColumnDescription
+from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.ingestion.source.database.database_service import DataModelLink
@@ -1071,10 +1072,15 @@ class DbtSource(DbtServiceSource):
                         else None,
                         test_case_name=manifest_node.name,
                     )
-                    self.metadata.add_test_case_results(
-                        test_results=test_case_result,
-                        test_case_fqn=test_case_fqn,
-                    )
+                    try:
+                        self.metadata.add_test_case_results(
+                            test_results=test_case_result,
+                            test_case_fqn=test_case_fqn,
+                        )
+                    except APIError as err:
+                        if err.code != 409:
+                            raise APIError(err) from err
+
         except Exception as err:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
             logger.error(
