@@ -124,7 +124,7 @@ class ConfigResourceTest extends OpenMetadataApplicationTest {
     LoginConfiguration loginConfiguration =
         TestUtils.get(target, LoginConfiguration.class, TEST_AUTH_HEADERS);
     assertEquals(3, loginConfiguration.getMaxLoginFailAttempts());
-    assertEquals(600, loginConfiguration.getAccessBlockTime());
+    assertEquals(30, loginConfiguration.getAccessBlockTime());
     assertEquals(3600, loginConfiguration.getJwtTokenExpiryTime());
   }
 
