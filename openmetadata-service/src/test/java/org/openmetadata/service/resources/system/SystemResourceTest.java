@@ -436,7 +436,7 @@ public class SystemResourceTest extends OpenMetadataApplicationTest {
 
     // Assert default values
     assertEquals(3, loginConfig.getMaxLoginFailAttempts());
-    assertEquals(600, loginConfig.getAccessBlockTime());
+    assertEquals(30, loginConfig.getAccessBlockTime());
     assertEquals(3600, loginConfig.getJwtTokenExpiryTime());
 
     // Update login configuration
