@@ -42,34 +42,33 @@ alt="create-account" /%}
 src="/images/v1.5/deployment/security/auth0/create-account-3.png" 
 alt="create-account" /%}
 
-### Step 2: Create a New Application
 
-- Once you are on the Dashboard page, click on `Applications > Applications` available on the left-hand side panel.
+## Step 2: Create Server Credentials
 
-{% image 
-src="/images/v1.5/deployment/security/auth0/create-new-app-1.png" 
-alt="create-app" /%}
+## Choose Your Authentication Flow
 
-- Click on `Create Application`.
+After creating the account, choose the authentication flow you want to use:
 
-{% image 
-src="/images/v1.5/deployment/security/auth0/create-new-app-2.png" 
-alt="create-app" /%}
+- [Implicit Flow](/deployment/security/auth0/implicit-flow) (Public)
+- [Auth Code Flow](/deployment/security/auth0/auth-code-flow) (Confidential)
 
-- Enter the Application name.
-- Choose an application type and click on `Create`.
 
-{% image 
-src="/images/v1.5/deployment/security/auth0/create-new-app-3.png" 
-alt="create-app" /%}
 
-### Step 3: Where to Find the Credentials
+{% note %}
 
-- Navigate to the Settings tab. 
-- You will find your `Client ID` and `Domain`.
+- **SPA (Single Page Application):**  
+  This type is designed for implicit flows. In this case, providing both the client ID and client secret will result in a failure because the implicit flow only requires the client ID for authentication.
 
-{% image 
-src="/images/v1.5/deployment/security/auth0/credentials.png" 
-alt="credentials" /%}
+- **Web:**  
+  This type is intended for confidential clients. If you select this option, you must provide both the client ID and client secret. Simply passing the client ID will cause the authorization process to fail, as the Authorization Code flow requires both credentials for successful authentication.
+  The [OIDC Authorization Code Flow](/deployment/security/oidc) is used in this case, where the client secret is required to securely exchange the authorization code for tokens.
+
+
+### Recommendation:
+
+- Use the **Web** type for confidential clients that require both a client ID and secret.
+- Use the **SPA** type for applications using implicit flows where only a client ID is needed.
+
+{% /note %}
 
 {% partial file="/v1.5/deployment/configure-ingestion.md" /%}
