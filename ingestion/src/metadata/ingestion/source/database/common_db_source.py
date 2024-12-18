@@ -225,6 +225,7 @@ class CommonDbSourceService(
             yield self.service_connection.databaseSchema
         else:
             for schema_name in self.inspector.get_schema_names():
+                logger.info(f"Processing Schema: {schema_name}")
                 yield schema_name
 
     def get_database_schema_names(self) -> Iterable[str]:

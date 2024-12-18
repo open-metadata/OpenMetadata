@@ -147,6 +147,7 @@ class StoredProcedureMixin(ABC):
         self, query_by_procedure: QueryByProcedure, procedure: StoredProcedure
     ) -> Iterable[Either[AddLineageRequest]]:
         """Add procedure lineage from its query"""
+        logger.debug("Processing Lineage for Stored Procedure Query")
         self.context.get().stored_procedure_query_lineage = False
         if self.is_lineage_query(
             query_type=query_by_procedure.query_type,
@@ -203,6 +204,7 @@ class StoredProcedureMixin(ABC):
         self,
     ) -> Iterable[Either[Union[AddLineageRequest, CreateQueryRequest]]]:
         """Get all the queries and procedures list and yield them"""
+        logger.debug("Processing Lineage for Stored Procedure")
         if self.context.get().stored_procedures:
             logger.info("Processing Lineage for Stored Procedures")
             # First, get all the query history

@@ -316,7 +316,7 @@ class SnowflakeSource(
                 ):
                     self.status.filter(database_fqn, "Database Filtered Out")
                     continue
-
+                logger.debug(f"Processing database {new_database}")
                 try:
                     self.set_inspector(database_name=new_database)
                     self.set_session_query_tag()

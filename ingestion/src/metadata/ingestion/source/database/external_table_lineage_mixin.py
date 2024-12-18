@@ -43,6 +43,7 @@ class ExternalTableLineageMixin(ABC):
         """
         Yield external table lineage
         """
+        logger.info("Processing Lineage for External Tables")
         for table_qualified_tuple, location in self.external_location_map.items() or []:
             try:
                 location_entity = self.metadata.es_search_container_by_path(
