@@ -55,9 +55,11 @@ import {
   getColumnSorter,
   getEntityName,
   getFrequentlyJoinedColumns,
+  highlightSearchText,
   searchInColumns,
 } from '../../../utils/EntityUtils';
 import { getEntityColumnFQN } from '../../../utils/FeedUtils';
+import { stringToHTML } from '../../../utils/StringsUtils';
 import {
   getAllTags,
   searchTagInData,
@@ -249,7 +251,7 @@ const SchemaTable = ({
       <Typography.Paragraph
         className="cursor-pointer"
         ellipsis={{ tooltip: displayValue, rows: 3 }}>
-        {displayValue}
+        {stringToHTML(highlightSearchText(displayValue, searchText))}
       </Typography.Paragraph>
     );
   };
@@ -264,7 +266,7 @@ const SchemaTable = ({
         <TableDescription
           columnData={{
             fqn: record.fullyQualifiedName ?? '',
-            field: record.description,
+            field: highlightSearchText(record.description, searchText),
             record,
           }}
           entityFqn={tableFqn}
@@ -374,7 +376,7 @@ const SchemaTable = ({
                 <Typography.Text
                   className="m-b-0 d-block text-grey-muted break-word"
                   data-testid="column-name">
-                  {name}
+                  {stringToHTML(highlightSearchText(name, searchText))}
                 </Typography.Text>
               </div>
               {!isEmpty(displayName) ? (
@@ -382,7 +384,9 @@ const SchemaTable = ({
                 <Typography.Text
                   className="m-b-0 d-block break-word"
                   data-testid="column-display-name">
-                  {getEntityName(record)}
+                  {stringToHTML(
+                    highlightSearchText(getEntityName(record), searchText)
+                  )}
                 </Typography.Text>
               ) : null}
 
