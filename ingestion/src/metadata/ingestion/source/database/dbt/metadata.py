@@ -438,7 +438,7 @@ class DbtSource(DbtServiceSource):
                         table_name=model_name,
                     )
 
-                    table_entity: Optional[
+                    table_entities: Optional[
                         Union[Table, List[Table]]
                     ] = get_entity_from_es_result(
                         entity_list=self.metadata.es_search_from_fqn(
@@ -446,10 +446,20 @@ class DbtSource(DbtServiceSource):
                             fqn_search_string=table_fqn,
                             fields="sourceHash",
                         ),
-                        fetch_multiple_entities=False,
+                        fetch_multiple_entities=True,
+                    )
+                    logger.debug(
+                        f"Found table entities from {table_fqn}: {table_entities}"
+                    )
+
+                    table_entity = next(
+                        iter(filter(lambda x: x is not None, table_entities)), None
                     )
 
                     if table_entity:
+                        logger.debug(
+                            f"Using Table Entity for datamodel: {table_entity}"
+                        )
                         data_model_link = DataModelLink(
                             table_entity=table_entity,
                             datamodel=DataModel(
@@ -882,6 +892,7 @@ class DbtSource(DbtServiceSource):
                         self.metadata, entity_link_str
                     )
                     table_fqn = get_table_fqn(entity_link_str)
+                    logger.debug(f"Table fqn found: {table_fqn}")
                     source_elements = table_fqn.split(fqn.FQN_SEPARATOR)
                     test_case_fqn = fqn.build(
                         self.metadata,
@@ -917,6 +928,7 @@ class DbtSource(DbtServiceSource):
                                 owners=None,
                             )
                         )
+                    logger.debug(f"Test case Already Exists: {test_case_fqn}")
         except Exception as err:  # pylint: disable=broad-except
             yield Either(
                 left=StackTraceError(
@@ -1006,6 +1018,8 @@ class DbtSource(DbtServiceSource):
                         else None,
                         test_case_name=manifest_node.name,
                     )
+
+                    logger.debug(f"Adding test case results to {test_case_fqn} ")
                     try:
                         self.metadata.add_test_case_results(
                             test_results=test_case_result,
