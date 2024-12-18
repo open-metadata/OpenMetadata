@@ -187,7 +187,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
   const getPropertyInput = () => {
     const commonStyle: CSSProperties = {
       marginBottom: '0px',
-      minWidth: '250px',
+      width: '100%',
     };
     switch (propertyType.name) {
       case 'string':
@@ -255,6 +255,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
             onCancel={onHideInput}
             onSave={noop}>
             <Form
+              className="d-block"
               id={formId}
               initialValues={initialValues}
               layout="vertical"
@@ -314,11 +315,11 @@ export const PropertyValue: FC<PropertyValueProps> = ({
               <Form.Item name="dateTimeValue" style={commonStyle}>
                 <DatePicker
                   allowClear
+                  className="w-full"
                   data-testid="date-time-picker"
                   disabled={isLoading}
                   format={format}
                   showTime={propertyType.name === 'dateTime-cp'}
-                  style={{ width: '250px' }}
                 />
               </Form.Item>
             </Form>
@@ -359,10 +360,10 @@ export const PropertyValue: FC<PropertyValueProps> = ({
               <Form.Item name="time" style={commonStyle}>
                 <TimePicker
                   allowClear
+                  className="w-full"
                   data-testid="time-picker"
                   disabled={isLoading}
                   format={format}
-                  style={{ width: '250px' }}
                 />
               </Form.Item>
             </Form>
@@ -905,7 +906,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
 
         return (
           <div
-            className="d-flex justify-between"
+            className="d-flex justify-center flex-wrap gap-3"
             data-testid="time-interval-value">
             <div className="d-flex flex-column gap-2 items-center">
               <StartTimeIcon height={30} width={30} />
