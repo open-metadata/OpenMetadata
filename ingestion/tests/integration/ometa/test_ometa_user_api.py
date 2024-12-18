@@ -62,7 +62,9 @@ class OMetaUserTest(TestCase):
 
         cls.user_1: User = cls.metadata.create_or_update(
             data=CreateUserRequest(
-                name="random.user.es", email="random.user.es@getcollate.io"
+                name="random.user.es",
+                email="random.user.es@getcollate.io",
+                description="test",
             ),
         )
 
@@ -197,4 +199,9 @@ class OMetaUserTest(TestCase):
         # if team is not group, return none
         self.assertIsNone(
             self.metadata.get_reference_by_name(name="Organization", is_owner=True)
+        )
+
+        # description should not affect in search
+        self.assertIsNone(
+            self.metadata.get_reference_by_name(name="test", is_owner=True)
         )
