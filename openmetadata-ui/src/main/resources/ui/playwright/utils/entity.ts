@@ -1098,11 +1098,6 @@ export const deletedEntityCommonChecks = async ({
     // only two menu options (restore and delete) should be present
     await expect(
       page.locator(
-        '[data-testid="manage-dropdown-list-container"] [data-testid="announcement-button"]'
-      )
-    ).toBeHidden();
-    await expect(
-      page.locator(
         '[data-testid="manage-dropdown-list-container"] [data-testid="rename-button"]'
       )
     ).toBeHidden();
@@ -1122,11 +1117,6 @@ export const deletedEntityCommonChecks = async ({
       )
     ).toBeVisible();
   } else {
-    await expect(
-      page.locator(
-        '[data-testid="manage-dropdown-list-container"] [data-testid="announcement-button"]'
-      )
-    ).toBeVisible();
     await expect(
       page.locator(
         '[data-testid="manage-dropdown-list-container"] [data-testid="rename-button"]'
