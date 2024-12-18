@@ -2393,3 +2393,16 @@ export const getColumnSorter = <T, K extends keyof T>(field: K) => {
     return 0;
   };
 };
+
+export const highlightSearchText = (
+  text?: string,
+  searchText?: string
+): string => {
+  if (!searchText || !text) {
+    return text ?? '';
+  }
+
+  const regex = new RegExp(`(${searchText})`, 'gi');
+
+  return text.replace(regex, `<mark class="text-highlighter">$1</mark>`);
+};
