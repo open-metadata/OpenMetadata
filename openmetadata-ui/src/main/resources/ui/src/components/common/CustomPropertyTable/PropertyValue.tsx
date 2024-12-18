@@ -255,7 +255,6 @@ export const PropertyValue: FC<PropertyValueProps> = ({
             onCancel={onHideInput}
             onSave={noop}>
             <Form
-              className="d-block"
               id={formId}
               initialValues={initialValues}
               layout="vertical"
