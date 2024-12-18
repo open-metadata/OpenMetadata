@@ -80,7 +80,7 @@ class CommonNoSQLSource(DatabaseServiceSource, ABC):
     Database metadata from NoSQL source
     """
 
-    @retry_with_docker_host
+    @retry_with_docker_host()
     def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
         super().__init__()
         self.config = config

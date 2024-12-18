@@ -72,7 +72,7 @@ class AlationsinkSource(Source):
     config: WorkflowSource
     alation_sink_client: AlationSinkClient
 
-    @retry_with_docker_host
+    @retry_with_docker_host()
     def __init__(
         self,
         config: WorkflowSource,

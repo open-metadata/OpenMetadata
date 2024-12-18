@@ -109,7 +109,7 @@ class CommonDbSourceService(
     - fetch_column_tags implemented at SqlColumnHandler. Sources should override this when needed
     """
 
-    @retry_with_docker_host
+    @retry_with_docker_host()
     def __init__(
         self,
         config: WorkflowSource,

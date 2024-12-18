@@ -72,42 +72,42 @@ class MessagingServiceTopology(ServiceTopology):
     data that has been produced by any parent node.
     """
 
-    root: Annotated[
-        TopologyNode, Field(description="Root node for the topology")
-    ] = TopologyNode(
-        producer="get_services",
-        stages=[
-            NodeStage(
-                type_=MessagingService,
-                context="messaging_service",
-                processor="yield_create_request_messaging_service",
-                overwrite=False,
-                must_return=True,
-                cache_entities=True,
-            )
-        ],
-        children=["topic"],
-        post_process=["mark_topics_as_deleted"],
+    root: Annotated[TopologyNode, Field(description="Root node for the topology")] = (
+        TopologyNode(
+            producer="get_services",
+            stages=[
+                NodeStage(
+                    type_=MessagingService,
+                    context="messaging_service",
+                    processor="yield_create_request_messaging_service",
+                    overwrite=False,
+                    must_return=True,
+                    cache_entities=True,
+                )
+            ],
+            children=["topic"],
+            post_process=["mark_topics_as_deleted"],
+        )
     )
-    topic: Annotated[
-        TopologyNode, Field(description="Topic Processing Node")
-    ] = TopologyNode(
-        producer="get_topic",
-        stages=[
-            NodeStage(
-                type_=Topic,
-                context="topic",
-                processor="yield_topic",
-                consumer=["messaging_service"],
-                use_cache=True,
-            ),
-            NodeStage(
-                type_=TopicSampleData,
-                processor="yield_topic_sample_data",
-                consumer=["messaging_service"],
-                nullable=True,
-            ),
-        ],
+    topic: Annotated[TopologyNode, Field(description="Topic Processing Node")] = (
+        TopologyNode(
+            producer="get_topic",
+            stages=[
+                NodeStage(
+                    type_=Topic,
+                    context="topic",
+                    processor="yield_topic",
+                    consumer=["messaging_service"],
+                    use_cache=True,
+                ),
+                NodeStage(
+                    type_=TopicSampleData,
+                    processor="yield_topic_sample_data",
+                    consumer=["messaging_service"],
+                    nullable=True,
+                ),
+            ],
+        )
     )
 
 
@@ -126,7 +126,7 @@ class MessagingServiceSource(TopologyRunnerMixin, Source, ABC):
     context = TopologyContextManager(topology)
     topic_source_state: Set = set()
 
-    @retry_with_docker_host
+    @retry_with_docker_host()
     def __init__(
         self,
         config: WorkflowSource,

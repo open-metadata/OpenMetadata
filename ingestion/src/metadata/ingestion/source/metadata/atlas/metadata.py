@@ -70,7 +70,7 @@ class AtlasSource(Source):
     tables: Dict[str, Any]
     topics: Dict[str, Any]
 
-    @retry_with_docker_host
+    @retry_with_docker_host()
     def __init__(
         self,
         config: WorkflowSource,

@@ -481,33 +481,42 @@ def init_staging_dir(directory: str) -> None:
     location.mkdir(parents=True, exist_ok=True)
 
 
-def retry_with_docker_host(func):
+def retry_with_docker_host(config: Optional[WorkflowSource] = None):
     """
     Retries the function on exception, replacing "localhost" with "host.docker.internal"
     in the `hostPort` config if applicable. Raises the original exception if no `config` is found.
     """
 
-    def wrapper(*args, **kwargs):
-        try:
-            func(*args, **kwargs)
-        except Exception as error:
-            config = kwargs.get("config")
-            if not config:
-                for argument in args:
-                    if isinstance(argument, WorkflowSource):
-                        config = argument
-                        break
-                else:
+    def decorator(func):
+        def wrapper(*args, **kwargs):
+            nonlocal config
+            try:
+                func(*args, **kwargs)
+            except Exception as error:
+                config = config or kwargs.get("config")
+                if not config:
+                    for argument in args:
+                        if isinstance(argument, WorkflowSource):
+                            config = argument
+                            break
+                    else:
+                        raise error
+
+                host_value = (
+                    getattr(config.serviceConnection.root.config, "hostPort", None)
+                    or ""
+                )
+                if "localhost" not in host_value:
                     raise error
 
-            host_value = (
-                getattr(config.serviceConnection.root.config, "hostPort", None) or ""
-            )
-            if "localhost" not in host_value:
-                raise error
+                docker_host_value = host_value.replace(
+                    "localhost", "host.docker.internal"
+                )
+                setattr(
+                    config.serviceConnection.root.config, "hostPort", docker_host_value
+                )
+                func(*args, **kwargs)
 
-            docker_host_value = host_value.replace("localhost", "host.docker.internal")
-            setattr(config.serviceConnection.root.config, "hostPort", docker_host_value)
-            func(*args, **kwargs)
+        return wrapper
 
-    return wrapper
+    return decorator

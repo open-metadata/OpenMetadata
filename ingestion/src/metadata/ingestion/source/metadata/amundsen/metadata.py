@@ -116,7 +116,7 @@ class AmundsenSource(Source):
 
     dashboard_service: DashboardService
 
-    @retry_with_docker_host
+    @retry_with_docker_host()
     def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
         super().__init__()
         self.config = config

@@ -27,6 +27,8 @@ from metadata.utils.importer import import_sink_class
 from metadata.utils.logger import profiler_logger
 from metadata.utils.ssl_manager import get_ssl_connection
 from metadata.workflow.ingestion import IngestionWorkflow
+from metadata.utils.helpers import retry_with_docker_host
+
 
 logger = profiler_logger()
 
@@ -66,12 +68,16 @@ class ProfilerWorkflow(IngestionWorkflow):
         self.steps = (profiler_processor, sink)
 
     def test_connection(self) -> None:
-        service_config = self.config.source.serviceConnection.root.config
-        conn = get_ssl_connection(service_config)
+        @retry_with_docker_host(config=self.config.source)
+        def main(self):
+            service_config = self.config.source.serviceConnection.root.config
+            conn = get_ssl_connection(service_config)
 
-        test_connection_fn = get_test_connection_fn(service_config)
-        result = test_connection_fn(self.metadata, conn, service_config)
-        raise_test_connection_exception(result)
+            test_connection_fn = get_test_connection_fn(service_config)
+            result = test_connection_fn(self.metadata, conn, service_config)
+            raise_test_connection_exception(result)
+
+        return main(self)
 
     def _get_sink(self) -> Sink:
         sink_type = self.config.sink.type

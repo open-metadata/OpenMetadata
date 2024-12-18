@@ -49,7 +49,7 @@ class QueryParserSource(Source, ABC):
     database_field: str
     schema_field: str
 
-    @retry_with_docker_host
+    @retry_with_docker_host()
     def __init__(
         self,
         config: WorkflowSource,
@@ -68,6 +68,7 @@ class QueryParserSource(Source, ABC):
         self.engine = (
             get_ssl_connection(self.service_connection) if get_engine else None
         )
+        self.test_connection()
 
     @property
     def name(self) -> str:
@@ -130,5 +131,5 @@ class QueryParserSource(Source, ABC):
 
     def test_connection(self) -> None:
         test_connection_fn = get_test_connection_fn(self.service_connection)
-        result = test_connection_fn(self.engine)
+        result = test_connection_fn(self.metadata, self.engine, self.service_connection)
         raise_test_connection_exception(result)

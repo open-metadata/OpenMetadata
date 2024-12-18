@@ -66,36 +66,36 @@ class MlModelServiceTopology(ServiceTopology):
     data that has been produced by any parent node.
     """
 
-    root: Annotated[
-        TopologyNode, Field(description="Root node for the topology")
-    ] = TopologyNode(
-        producer="get_services",
-        stages=[
-            NodeStage(
-                type_=MlModelService,
-                context="mlmodel_service",
-                processor="yield_create_request_mlmodel_service",
-                overwrite=False,
-                must_return=True,
-                cache_entities=True,
-            ),
-        ],
-        children=["mlmodel"],
-        post_process=["mark_mlmodels_as_deleted"],
+    root: Annotated[TopologyNode, Field(description="Root node for the topology")] = (
+        TopologyNode(
+            producer="get_services",
+            stages=[
+                NodeStage(
+                    type_=MlModelService,
+                    context="mlmodel_service",
+                    processor="yield_create_request_mlmodel_service",
+                    overwrite=False,
+                    must_return=True,
+                    cache_entities=True,
+                ),
+            ],
+            children=["mlmodel"],
+            post_process=["mark_mlmodels_as_deleted"],
+        )
     )
-    mlmodel: Annotated[
-        TopologyNode, Field(description="ML Model Processing Node")
-    ] = TopologyNode(
-        producer="get_mlmodels",
-        stages=[
-            NodeStage(
-                type_=MlModel,
-                context="mlmodels",
-                processor="yield_mlmodel",
-                consumer=["mlmodel_service"],
-                use_cache=True,
-            ),
-        ],
+    mlmodel: Annotated[TopologyNode, Field(description="ML Model Processing Node")] = (
+        TopologyNode(
+            producer="get_mlmodels",
+            stages=[
+                NodeStage(
+                    type_=MlModel,
+                    context="mlmodels",
+                    processor="yield_mlmodel",
+                    consumer=["mlmodel_service"],
+                    use_cache=True,
+                ),
+            ],
+        )
     )
 
 
@@ -114,7 +114,7 @@ class MlModelServiceSource(TopologyRunnerMixin, Source, ABC):
     context = TopologyContextManager(topology)
     mlmodel_source_state: Set = set()
 
-    @retry_with_docker_host
+    @retry_with_docker_host()
     def __init__(
         self,
         config: WorkflowSource,

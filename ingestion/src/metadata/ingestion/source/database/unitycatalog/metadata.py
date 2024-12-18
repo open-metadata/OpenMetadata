@@ -76,6 +76,8 @@ from metadata.ingestion.source.models import TableView
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_table
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.helpers import retry_with_docker_host
+
 
 logger = ingestion_logger()
 
@@ -89,6 +91,7 @@ class UnitycatalogSource(
     the unity catalog source
     """
 
+    @retry_with_docker_host()
     def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
         super().__init__()
         self.config = config
@@ -311,9 +314,9 @@ class UnitycatalogSource(
         schema_name = self.context.get().database_schema
         db_name = self.context.get().database
         if table.storage_location and not table.storage_location.startswith("dbfs"):
-            self.external_location_map[
-                (db_name, schema_name, table_name)
-            ] = table.storage_location
+            self.external_location_map[(db_name, schema_name, table_name)] = (
+                table.storage_location
+            )
         try:
             columns = list(self.get_columns(table.columns))
             (
