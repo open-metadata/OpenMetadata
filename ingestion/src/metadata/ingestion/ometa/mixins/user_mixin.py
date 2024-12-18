@@ -13,8 +13,7 @@ Mixin class containing User specific methods
 
 To be used by OpenMetadata class
 """
-import json 
-
+import json
 from functools import lru_cache
 from typing import Optional, Type
 
