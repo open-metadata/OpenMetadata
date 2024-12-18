@@ -167,6 +167,16 @@ jest.mock('../../../constants/Table.constants', () => ({
   },
 }));
 
+jest.mock('../../../utils/StringsUtils', () => ({
+  ...jest.requireActual('../../../utils/StringsUtils'),
+  stringToHTML: jest.fn((text) => text),
+}));
+
+jest.mock('../../../utils/EntityUtils', () => ({
+  ...jest.requireActual('../../../utils/EntityUtils'),
+  highlightSearchText: jest.fn((text) => text),
+}));
+
 describe('Test EntityTable Component', () => {
   it('Initially, Table should load', async () => {
     render(<EntityTableV1 {...mockEntityTableProp} />, {
