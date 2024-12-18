@@ -56,7 +56,7 @@ describe('AnnouncementTab', () => {
     render(<AnnouncementTab {...defaultProps} />);
 
     expect(screen.getByTestId('active-announcement')).toBeInTheDocument();
-    expect(screen.getByTestId('inactive-announcement')).toBeInTheDocument();
+    expect(screen.getByTestId('inactive-announcements')).toBeInTheDocument();
     expect(screen.getByTestId('add-announcement-btn')).toBeInTheDocument();
   });
 
@@ -109,7 +109,7 @@ describe('AnnouncementTab', () => {
         <AnnouncementTab {...defaultProps} />
       </MemoryRouter>
     );
-    const inactiveFilterButton = screen.getByTestId('inactive-announcement');
+    const inactiveFilterButton = screen.getByTestId('inactive-announcements');
     fireEvent.click(inactiveFilterButton);
     mockGetAnnouncements.mockResolvedValueOnce(MOCK_ANNOUNCEMENT_DATA);
     await waitFor(() =>
