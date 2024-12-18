@@ -104,7 +104,7 @@ const SuccessScreen = ({
           <Typography.Paragraph
             className="m-b-0"
             data-testid="success-line"
-            ellipsis={{ rows: 3 }}>
+            ellipsis={{ rows: 7 }}>
             {isUndefined(successMessage) ? (
               <span>
                 <span className="m-r-xss font-semibold">
