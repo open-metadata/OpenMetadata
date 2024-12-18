@@ -144,6 +144,24 @@ class AdvancedSearchClassBase {
   };
 
   /**
+   * Fields specific to database schema
+   */
+  databaseSchemaQueryBuilderFields: Fields = {
+    [EntityFields.DATABASE]: {
+      label: t('label.database'),
+      type: 'select',
+      mainWidgetProps: this.mainWidgetProps,
+      fieldSettings: {
+        asyncFetch: this.autocomplete({
+          searchIndex: SearchIndex.DATABASE_SCHEMA,
+          entityField: EntityFields.DATABASE,
+        }),
+        useAsyncSearch: true,
+      },
+    },
+  };
+
+  /**
    * Fields specific to tables
    */
   tableQueryBuilderFields: Fields = {
@@ -477,7 +495,7 @@ class AdvancedSearchClassBase {
         mainWidgetProps: this.mainWidgetProps,
         fieldSettings: {
           asyncFetch: this.autocomplete({
-            searchIndex: SearchIndex.DATA_ASSET,
+            searchIndex: entitySearchIndex,
             entityField: EntityFields.DISPLAY_NAME_KEYWORD,
           }),
           useAsyncSearch: true,
@@ -498,7 +516,7 @@ class AdvancedSearchClassBase {
         mainWidgetProps: this.mainWidgetProps,
         fieldSettings: {
           asyncFetch: this.autocomplete({
-            searchIndex: SearchIndex.DATA_ASSET,
+            searchIndex: entitySearchIndex,
             entityField: EntityFields.NAME_KEYWORD,
           }),
           useAsyncSearch: true,
@@ -674,6 +692,7 @@ class AdvancedSearchClassBase {
       [SearchIndex.DASHBOARD_DATA_MODEL]: this.dataModelQueryBuilderFields,
       [SearchIndex.API_ENDPOINT_INDEX]: this.apiEndpointQueryBuilderFields,
       [SearchIndex.GLOSSARY_TERM]: this.glossaryQueryBuilderFields,
+      [SearchIndex.DATABASE_SCHEMA]: this.databaseSchemaQueryBuilderFields,
       [SearchIndex.ALL]: {
         ...this.tableQueryBuilderFields,
         ...this.pipelineQueryBuilderFields,
@@ -699,9 +718,29 @@ class AdvancedSearchClassBase {
       },
     };
 
-    entitySearchIndex.forEach((index) => {
-      configs = { ...configs, ...(configIndexMapping[index] ?? {}) };
-    });
+    // Find out the common fields between the selected indices
+    if (!isEmpty(entitySearchIndex)) {
+      const firstIndex = entitySearchIndex[0];
+
+      // Fields config for the first index
+      configs = { ...configIndexMapping[firstIndex] };
+
+      // Iterate over the rest of the indices to see the common fields
+      entitySearchIndex.slice(1).forEach((index) => {
+        // Get the current config for the current iteration index
+        const currentConfig = configIndexMapping[index] ?? {};
+
+        // Filter out the fields that are not common between the current and previous configs
+        configs = Object.keys(configs).reduce((acc, key) => {
+          // If the key exists in the current config, add it to the accumulator
+          if (currentConfig[key]) {
+            acc[key] = configs[key];
+          }
+
+          return acc;
+        }, {} as Fields);
+      });
+    }
 
     return configs;
   }
