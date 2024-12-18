@@ -42,6 +42,7 @@ import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
+import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
 import org.openmetadata.service.security.JwtFilter;
 import org.openmetadata.service.security.auth.LoginAttemptCache;
 import org.openmetadata.service.util.JsonUtils;
@@ -106,6 +107,12 @@ public class SystemRepository {
       Settings fetchedSettings = dao.getConfigWithKey(key);
       if (fetchedSettings == null) {
         return null;
+      }
+
+      if (fetchedSettings.getConfigType() == SettingsType.EMAIL_CONFIGURATION) {
+        SmtpSettings emailConfig = (SmtpSettings) fetchedSettings.getConfigValue();
+        emailConfig.setPassword(PasswordEntityMasker.PASSWORD_MASK);
+        fetchedSettings.setConfigValue(emailConfig);
       }
 
       return fetchedSettings;
