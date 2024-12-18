@@ -22,7 +22,10 @@ import {
   SelectFieldSettings,
 } from 'react-awesome-query-builder';
 import AntdConfig from 'react-awesome-query-builder/lib/config/antd';
-import { TEXT_FIELD_OPERATORS } from '../constants/AdvancedSearch.constants';
+import {
+  DATE_FIELD_OPERATORS,
+  TEXT_FIELD_OPERATORS,
+} from '../constants/AdvancedSearch.constants';
 import { EntityFields, SuggestionField } from '../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { getAggregateFieldOptions } from '../rest/miscAPI';
@@ -796,42 +799,40 @@ class AdvancedSearchClassBase {
     };
   };
 
-  public getCustomPropertiesSubFields(field: { name: string; type: string }) {
+  public getCustomPropertiesSubFields(field: {
+    name: string;
+    type: string;
+    customPropertyConfig: {
+      config: string | string[];
+    };
+  }) {
     {
       switch (field.type) {
         case 'array<entityReference>':
         case 'entityReference':
           return {
-            subfieldsKey: field.name + `.fullyQualifiedName`,
+            subfieldsKey: field.name + `.name`,
             dataObject: {
               type: 'select',
               label: field.name,
               fieldSettings: {
                 asyncFetch: advancedSearchClassBase.autocomplete({
-                  searchIndex: [SearchIndex.USER, SearchIndex.TEAM],
-                  entityField: EntityFields.DISPLAY_NAME_KEYWORD,
+                  searchIndex: (
+                    (field.customPropertyConfig.config ?? []) as string[]
+                  ).join(',') as SearchIndex,
+                  entityField: EntityFields.NAME_KEYWORD,
                 }),
                 useAsyncSearch: true,
               },
             },
           };
-        case 'date-cp': {
-          return {
-            subfieldsKey: field.name,
-            dataObject: {
-              type: 'date',
-              valueSources: ['value'],
-              operators: TEXT_FIELD_OPERATORS,
-            },
-          };
-        }
+        case 'date-cp':
         case 'dateTime-cp': {
           return {
             subfieldsKey: field.name,
             dataObject: {
-              type: 'datetime',
-              valueSources: ['value'],
-              operators: TEXT_FIELD_OPERATORS,
+              type: 'date',
+              operators: DATE_FIELD_OPERATORS,
             },
           };
         }
@@ -840,8 +841,7 @@ class AdvancedSearchClassBase {
             subfieldsKey: field.name,
             dataObject: {
               type: 'time',
-              valueSources: ['value'],
-              operators: TEXT_FIELD_OPERATORS,
+              operators: DATE_FIELD_OPERATORS,
             },
           };
         }
@@ -851,9 +851,6 @@ class AdvancedSearchClassBase {
             dataObject: {
               type: 'text',
               label: field.name,
-              fieldSettings: {
-                minimum_should_match: 1,
-              },
             },
           };
         }

@@ -223,13 +223,21 @@ export const AdvanceSearchProvider = ({
 
       Object.entries(res).forEach(([_, fields]) => {
         if (Array.isArray(fields) && fields.length > 0) {
-          fields.forEach((field: { name: string; type: string }) => {
-            if (field.name && field.type) {
-              const { subfieldsKey, dataObject } =
-                advancedSearchClassBase.getCustomPropertiesSubFields(field);
-              subfields[subfieldsKey] = dataObject;
+          fields.forEach(
+            (field: {
+              name: string;
+              type: string;
+              customPropertyConfig: {
+                config: string | string[];
+              };
+            }) => {
+              if (field.name && field.type) {
+                const { subfieldsKey, dataObject } =
+                  advancedSearchClassBase.getCustomPropertiesSubFields(field);
+                subfields[subfieldsKey] = dataObject;
+              }
             }
-          });
+          );
         }
       });
     } catch (error) {
