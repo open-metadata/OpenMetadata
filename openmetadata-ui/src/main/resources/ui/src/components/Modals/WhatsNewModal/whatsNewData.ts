@@ -1169,6 +1169,19 @@ To continue pursuing this objective, the application was completely refactored t
   },
   {
     id: 55,
+    version: 'v1.5.15',
+    description: 'Released on 16th December 2024.',
+    features: [],
+    changeLogs: {
+      Improvements: `
+- **Minor**: Domain Policy Update to be non-system.
+- **Fix**: Query builder state issue.
+- **Fix**: Downloading of application logs.
+- **Minor**: DBT v12 Model Changes.`,
+    },
+  },
+  {
+    id: 56,
     version: 'v1.6.0',
     description: 'Released on 10th December 2024.',
     features: [
@@ -1311,7 +1324,7 @@ Since we are introducing the Auto Classification workflow, we are going to remov
     },
   },
   {
-    id: 56,
+    id: 57,
     version: 'v1.6.1',
     description: 'Released on 10th December 2024.',
     note: "In 1.6.1, Fixes tags listing for explore page on top of 1.6.0 release. Don't miss out the release highlights!",
