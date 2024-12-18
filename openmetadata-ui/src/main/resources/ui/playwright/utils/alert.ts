@@ -503,7 +503,7 @@ export const verifyAlertDetails = async ({
 
   if (description) {
     // Check alert name
-    await expect(page.getByTestId('alert-description')).toContainText(
+    await expect(page.getByTestId('markdown-parser')).toContainText(
       description
     );
   }

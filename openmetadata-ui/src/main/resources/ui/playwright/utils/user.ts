@@ -707,7 +707,7 @@ export const addUser = async (
 
   await page.fill('[data-testid="displayName"]', name);
 
-  await page.fill(descriptionBox, 'Adding new user');
+  await page.locator(descriptionBox).fill('Adding new user');
 
   await page.click(':nth-child(2) > .ant-radio > .ant-radio-input');
   await page.fill('#password', password);

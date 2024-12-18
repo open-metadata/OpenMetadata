@@ -19,7 +19,7 @@ import { sidebarClick } from './sidebar';
 
 export const uuid = () => randomUUID().split('-')[0];
 
-export const descriptionBox = '.om-block-editor';
+export const descriptionBox = '.om-block-editor[contenteditable="true"]';
 
 export const INVALID_NAMES = {
   MAX_LENGTH:

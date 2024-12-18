@@ -242,7 +242,7 @@ export const createGlossary = async (
 
   await page.fill('[data-testid="name"]', glossaryData.name);
 
-  await page.fill(descriptionBox, glossaryData.description);
+  await page.locator(descriptionBox).fill(glossaryData.description);
 
   await expect(
     page.locator('[data-testid="form-item-alert"]')

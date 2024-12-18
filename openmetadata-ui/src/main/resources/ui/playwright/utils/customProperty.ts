@@ -673,7 +673,7 @@ export const addCustomPropertiesForEntity = async ({
 
   // Description
 
-  await page.fill(descriptionBox, customPropertyData.description);
+  await page.locator(descriptionBox).fill(customPropertyData.description);
 
   const createPropertyPromise = page.waitForResponse(
     '/api/v1/metadata/types/name/*?fields=customProperties'

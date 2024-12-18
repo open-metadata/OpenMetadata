@@ -222,7 +222,7 @@ export const addTeamHierarchy = async (
     await page.click(`.ant-select-dropdown [title="${teamDetails.teamType}"]`);
   }
 
-  await page.fill(descriptionBox, teamDetails.description);
+  await page.locator(descriptionBox).fill(teamDetails.description);
 
   // Saving the created team
   const saveTeamResponse = page.waitForResponse('/api/v1/teams');
