@@ -1232,8 +1232,7 @@ public class TableRepository extends EntityRepository<Table> {
           for (String column : constraint.getReferredColumns()) {
             String toParent = FullyQualifiedName.getParentFQN(column);
             try {
-              EntityReference toTable =
-                  Entity.getEntityReferenceByName(TABLE, toParent, ALL);
+              EntityReference toTable = Entity.getEntityReferenceByName(TABLE, toParent, ALL);
               addRelationship(
                   table.getId(), toTable.getId(), TABLE, TABLE, Relationship.RELATED_TO);
             } catch (EntityNotFoundException e) {
