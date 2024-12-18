@@ -1,6 +1,6 @@
 # Cockroach
 
-In this section, we provide guides and references to use the Greenplum connector.
+In this section, we provide guides and references to use the Cockroach connector.
 
 ## Requirements
 
@@ -8,7 +8,7 @@ In this section, we provide guides and references to use the Greenplum connector
 
 Executing the profiler Workflow or data quality tests, will require the user to have `SELECT` permission on the tables/schemas where the profiler/tests will be executed. More information on the profiler workflow setup can be found [here](https://docs.open-metadata.org/how-to-guides/data-quality-observability/profiler/workflow) and data quality tests [here](https://docs.open-metadata.org/connectors/ingestion/workflows/data-quality).
 
-You can find further information on the Greenplum connector in the [docs](https://docs.open-metadata.org/connectors/database/greenplum).
+You can find further information on the Cockroach connector in the [docs](https://docs.open-metadata.org/connectors/database/cockroach).
 
 ## Connection Details
 
@@ -21,7 +21,7 @@ $$
 $$section
 ### Username $(id="username")
 
-Username to connect to Postgres. This user should have privileges to read all the metadata in Postgres.
+Username to connect to Cockroach. This user should have privileges to read all the metadata in Cockroach.
 $$
 
 
@@ -30,46 +30,28 @@ $$section
 There is one auth config:
 - Basic Auth.
 
-User can authenticate the Postgres Instance with auth type as `Basic Authentication` i.e. Password
+User can authenticate the Cockroach Instance with auth type as `Basic Authentication` i.e. Password
 $$
 
 ## Basic Auth
 $$section
 ### Password $(id="password")
 
-Password to connect to Postgres.
+Password to connect to Cockroach.
 $$
 
 $$section
 ### Host and Port $(id="hostPort")
 
-This parameter specifies the host and port of the Postgres instance. This should be specified as a string in the format `hostname:port`. For example, you might set the hostPort parameter to `localhost:5432`.
+This parameter specifies the host and port of the Cockroach instance. This should be specified as a string in the format `hostname:port`. For example, you might set the hostPort parameter to `localhost:26257`.
 
-If you are running the OpenMetadata ingestion in a docker and your services are hosted on the `localhost`, then use `host.docker.internal:5432` as the value.
+If you are running the OpenMetadata ingestion in a docker and your services are hosted on the `localhost`, then use `host.docker.internal:26257` as the value.
 $$
 
 $$section
 ### Database $(id="database")
 
-Initial Postgres database to connect to. If you want to ingest all databases, set `ingestAllDatabases` to true.
-$$
-
-$$section
-### SSL Mode $(id="sslMode")
-
-SSL Mode to connect to postgres database. E.g, `prefer`, `verify-ca`, `allow` etc.
-$$
-$$note
-if you are using `IAM auth`, select either `allow` (recommended) or other option based on your use case.
-$$
-
-
-$$section
-### SSL CA $(id="caCertificate")
-The CA certificate used for SSL validation (`sslrootcert`).
-$$
-$$note
-Greenplum only needs CA Certificate
+Initial Cockroach database to connect to. If you want to ingest all databases, set `ingestAllDatabases` to true.
 $$
 
 $$section
