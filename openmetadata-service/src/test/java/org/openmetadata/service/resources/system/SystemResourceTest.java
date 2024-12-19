@@ -81,6 +81,7 @@ import org.openmetadata.service.resources.storages.ContainerResourceTest;
 import org.openmetadata.service.resources.teams.TeamResourceTest;
 import org.openmetadata.service.resources.teams.UserResourceTest;
 import org.openmetadata.service.resources.topics.TopicResourceTest;
+import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.TestUtils;
 
@@ -190,10 +191,10 @@ public class SystemResourceTest extends OpenMetadataApplicationTest {
     // Test Email Config
     Settings emailSettings = getSystemConfig(SettingsType.EMAIL_CONFIGURATION);
     SmtpSettings smtp = JsonUtils.convertValue(emailSettings.getConfigValue(), SmtpSettings.class);
-    // Password for Email is encrypted using fernet
+    // Password for Email is always sent in hidden
     SmtpSettings expected = config.getSmtpSettings();
-    expected.setPassword(smtp.getPassword());
-    assertEquals(config.getSmtpSettings(), smtp);
+    expected.setPassword(PasswordEntityMasker.PASSWORD_MASK);
+    assertEquals(expected, smtp);
 
     // Test Custom Ui Theme Preference Config
     Settings uiThemeConfigWrapped = getSystemConfig(SettingsType.CUSTOM_UI_THEME_PREFERENCE);
