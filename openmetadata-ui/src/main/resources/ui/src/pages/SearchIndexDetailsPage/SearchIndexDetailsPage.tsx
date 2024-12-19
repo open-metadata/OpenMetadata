@@ -474,6 +474,7 @@ function SearchIndexDetailsPage() {
               entityType={EntityType.SEARCH_INDEX}
               fqn={searchIndexDetails?.fullyQualifiedName ?? ''}
               owners={searchIndexDetails?.owners}
+              permissions={searchIndexPermissions}
               onFeedUpdate={getEntityFeedCount}
               onUpdateEntityDetails={fetchSearchIndexDetails}
               onUpdateFeedCount={handleFeedCount}

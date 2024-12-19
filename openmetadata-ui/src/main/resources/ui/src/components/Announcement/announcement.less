@@ -48,6 +48,8 @@
 
       .ant-avatar-group {
         z-index: 10;
+        margin-bottom: @margin-xss;
+        margin-right: @margin-xss;
       }
     }
 
@@ -66,4 +68,18 @@
   background: @announcement-border-light;
   width: 1px;
   height: calc(100% - 10px);
+}
+.two-column-layout {
+  .left-column {
+    height: @entity-details-tab-height;
+    border-right: @global-border;
+    overflow-y: scroll;
+  }
+
+  .right-column {
+    height: @entity-details-tab-height;
+    background-color: @white;
+    overflow-y: scroll;
+    border-left: @global-border;
+  }
 }

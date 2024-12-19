@@ -271,6 +271,7 @@ const GlossaryTermsV1 = ({
                   fqn={glossaryTerm.fullyQualifiedName ?? ''}
                   hasGlossaryReviewer={!isEmpty(glossaryTerm.reviewers)}
                   owners={glossaryTerm.owners}
+                  permissions={permissions}
                   onFeedUpdate={getEntityFeedCount}
                   onUpdateEntityDetails={refreshActiveGlossaryTerm}
                 />

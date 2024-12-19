@@ -347,6 +347,7 @@ const DataModelDetails = ({
             entityFeedTotalCount={feedCount.totalCount}
             entityType={EntityType.DASHBOARD_DATA_MODEL}
             fqn={dataModelData?.fullyQualifiedName ?? ''}
+            permissions={dataModelPermissions}
             onFeedUpdate={getEntityFeedCount}
             onUpdateEntityDetails={fetchDataModel}
             onUpdateFeedCount={handleFeedCount}
