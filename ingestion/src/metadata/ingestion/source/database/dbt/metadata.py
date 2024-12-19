@@ -926,7 +926,8 @@ class DbtSource(DbtServiceSource):
                 yield Either(
                     left=StackTraceError(
                         name=str(table_entity.fullyQualifiedName.root),
-                        error=f"Failed to parse the node {table_entity.fullyQualifiedName.root} to update dbt owner: {exc}",
+                        error=f"Failed to parse the node"
+                        f"{table_entity.fullyQualifiedName.root} to update dbt owner: {exc}",
                         stackTrace=traceback.format_exc(),
                     )
                 )
