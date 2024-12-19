@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * DBT Catalog, Manifest and Run Results HTTP path configuration.
  */
 export interface DbtHTTPConfig {
@@ -32,10 +30,6 @@ export interface DbtHTTPConfig {
      * DBT run results http file path to extract the test results information.
      */
     dbtRunResultsHttpPath?: string;
-    /**
-     * DBT sources http file path to extract freshness test results information.
-     */
-    dbtSourcesHttpPath?: string;
 }
 
 /**

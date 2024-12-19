@@ -11,18 +11,22 @@
  *  limitations under the License.
  */
 
-import { Form, Modal, Typography } from 'antd';
+import { PlusOutlined } from '@ant-design/icons';
+import { Button, Form, Modal, Space, Typography } from 'antd';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { OwnerLabel } from '../../components/common/OwnerLabel/OwnerLabel.component';
 import { VALIDATION_MESSAGES } from '../../constants/constants';
 import {
   HEX_COLOR_CODE_REGEX,
   TAG_NAME_REGEX,
 } from '../../constants/regex.constants';
 import { DEFAULT_FORM_VALUE } from '../../constants/Tags.constant';
+import { EntityReference } from '../../generated/entity/type';
 import {
   FieldProp,
   FieldTypes,
+  FormItemLayout,
   HelperTextType,
 } from '../../interface/FormUtils.interface';
 import { generateFormFields } from '../../utils/formUtils';
@@ -45,7 +49,6 @@ const TagsForm = ({
   const { t } = useTranslation();
   const [form] = Form.useForm();
   const [saving, setSaving] = useState(false);
-
   const isMutuallyExclusive = Form.useWatch<boolean | undefined>(
     'mutuallyExclusive',
     form
@@ -216,6 +219,38 @@ const TagsForm = ({
           },
         ] as FieldProp[])
       : []),
+    ...(isClassification
+      ? ([
+          {
+            name: 'owners',
+            id: 'root/owner',
+            required: false,
+            label: t('label.owner-plural'),
+            type: FieldTypes.USER_TEAM_SELECT,
+            props: {
+              hasPermission: true,
+              children: (
+                <Button
+                  data-testid="add-owner"
+                  icon={
+                    <PlusOutlined
+                      style={{ color: 'white', fontSize: '12px' }}
+                    />
+                  }
+                  size="small"
+                  type="primary"
+                />
+              ),
+              multiple: { user: true, team: false },
+            },
+            formItemLayout: FormItemLayout.HORIZONTAL,
+            formItemProps: {
+              valuePropName: 'owners',
+              trigger: 'onUpdate',
+            },
+          },
+        ] as FieldProp[])
+      : []),
   ];
 
   const handleSave = async (data: SubmitProps) => {
@@ -229,6 +264,13 @@ const TagsForm = ({
       setSaving(false);
     }
   };
+
+  const selectedOwners =
+    Form.useWatch<EntityReference | EntityReference[]>('owners', form) ?? [];
+
+  const ownersList = Array.isArray(selectedOwners)
+    ? selectedOwners
+    : [selectedOwners];
 
   return (
     <Modal
@@ -262,6 +304,13 @@ const TagsForm = ({
         validateMessages={VALIDATION_MESSAGES}
         onFinish={handleSave}>
         {generateFormFields(formFields)}
+        <div className="m-t-xss">
+          {Boolean(ownersList.length) && (
+            <Space wrap data-testid="owner-container" size={[8, 8]}>
+              <OwnerLabel owners={ownersList} />
+            </Space>
+          )}
+        </div>
       </Form>
     </Modal>
   );

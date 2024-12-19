@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * Ingestion Pipeline Config is used to set up an Airflow DAG.
  */
 export interface CreateIngestionPipeline {
@@ -188,7 +186,6 @@ export interface EntityReference {
  */
 export enum PipelineType {
     Application = "application",
-    AutoClassification = "autoClassification",
     DataInsight = "dataInsight",
     Dbt = "dbt",
     ElasticSearchReindex = "elasticSearchReindex",
@@ -218,8 +215,6 @@ export interface SourceConfig {
  * MessagingService Metadata Pipeline Configuration.
  *
  * DatabaseService Profiler Pipeline Configuration.
- *
- * DatabaseService AutoClassification & Auto Classification Pipeline Configuration.
  *
  * PipelineService Metadata Pipeline Configuration.
  *
@@ -425,6 +420,9 @@ export interface Pipeline {
     projectFilterPattern?: FilterPattern;
     /**
      * Option to turn on/off generating sample data during metadata extraction.
+     *
+     * Option to turn on/off generating sample data. If enabled, profiler will ingest sample
+     * data for each table.
      */
     generateSampleData?: boolean;
     /**
@@ -457,6 +455,17 @@ export interface Pipeline {
      */
     computeTableMetrics?: boolean;
     /**
+     * Set the Confidence value for which you want the column to be tagged as PII. Confidence
+     * value ranges from 0 to 100. A higher number will yield less false positives but more
+     * false negatives. A lower number will yield more false positives but less false negatives.
+     */
+    confidence?: number;
+    /**
+     * Optional configuration to automatically tag columns that might contain sensitive
+     * information
+     */
+    processPiiSensitive?: boolean;
+    /**
      * Percentage of data or no. of rows used to compute the profiler metrics and run data
      * quality tests
      *
@@ -484,22 +493,6 @@ export interface Pipeline {
      * be found in the documentation: https://docs.openmetadata.org/latest/profler
      */
     useStatistics?: boolean;
-    /**
-     * Set the Confidence value for which you want the column to be tagged as PII. Confidence
-     * value ranges from 0 to 100. A higher number will yield less false positives but more
-     * false negatives. A lower number will yield more false positives but less false negatives.
-     */
-    confidence?: number;
-    /**
-     * Optional configuration to automatically tag columns that might contain sensitive
-     * information
-     */
-    enableAutoClassification?: boolean;
-    /**
-     * Option to turn on/off storing sample data. If enabled, we will ingest sample data for
-     * each table.
-     */
-    storeSampleData?: boolean;
     /**
      * Optional configuration to turn off fetching lineage from pipelines.
      */
@@ -540,10 +533,6 @@ export interface Pipeline {
      */
     markDeletedContainers?:       boolean;
     storageMetadataConfigSource?: StorageMetadataConfigurationSource;
-    /**
-     * Enable the 'Include Index Template' toggle to manage the ingestion of index template data.
-     */
-    includeIndexTemplate?: boolean;
     /**
      * Optional configuration to turn off fetching sample data for search index.
      */
@@ -695,8 +684,6 @@ export interface FilterPattern {
  * in the backend.
  *
  * Search Indexing App.
- *
- * This schema defines the Slack App Token Configuration
  */
 export interface CollateAIAppConfig {
     /**
@@ -770,10 +757,6 @@ export interface CollateAIAppConfig {
      */
     producerThreads?: number;
     /**
-     * Queue Size to user internally for reindexing.
-     */
-    queueSize?: number;
-    /**
      * This schema publisher run modes.
      */
     recreateIndex?: boolean;
@@ -781,14 +764,6 @@ export interface CollateAIAppConfig {
      * Recreate Indexes with updated Language
      */
     searchIndexMappingLanguage?: SearchIndexMappingLanguage;
-    /**
-     * Bot Token
-     */
-    botToken?: string;
-    /**
-     * User Token
-     */
-    userToken?: string;
 }
 
 /**
@@ -1192,10 +1167,6 @@ export interface DBTConfigurationSource {
      */
     dbtRunResultsFilePath?: string;
     /**
-     * DBT sources file path to extract the freshness test result.
-     */
-    dbtSourcesFilePath?: string;
-    /**
      * DBT catalog http file path to extract dbt models with their column schemas.
      */
     dbtCatalogHttpPath?: string;
@@ -1207,10 +1178,6 @@ export interface DBTConfigurationSource {
      * DBT run results http file path to extract the test results information.
      */
     dbtRunResultsHttpPath?: string;
-    /**
-     * DBT sources http file path to extract freshness test results information.
-     */
-    dbtSourcesHttpPath?: string;
     /**
      * Details of the bucket where the dbt files are stored
      */
@@ -1548,7 +1515,6 @@ export interface StorageMetadataBucketDetails {
 export enum ConfigType {
     APIMetadata = "ApiMetadata",
     Application = "Application",
-    AutoClassification = "AutoClassification",
     DashboardMetadata = "DashboardMetadata",
     DataInsight = "dataInsight",
     DatabaseLineage = "DatabaseLineage",

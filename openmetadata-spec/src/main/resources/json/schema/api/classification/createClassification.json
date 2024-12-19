@@ -19,6 +19,11 @@
       "description": "Description of the classification.",
       "$ref": "../../type/basic.json#/definitions/markdown"
     },
+    "owners": {
+      "description": "Owners of this classification",
+      "$ref": "../../type/entityReferenceList.json",
+      "default": null
+    },
     "provider": {
       "$ref": "../../type/basic.json#/definitions/providerType"
     },

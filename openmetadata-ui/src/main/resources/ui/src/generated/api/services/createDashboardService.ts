@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * Create Dashboard service entity request
  */
 export interface CreateDashboardService {
@@ -83,7 +81,7 @@ export interface DashboardConnection {
  *
  * Lightdash Connection Config
  *
- * MicroStrategy Connection Config
+ * Mstr Connection Config
  *
  * Qlik Cloud Connection Config
  *
@@ -134,8 +132,6 @@ export interface Connection {
      *
      * Address for your running Lightdash instance
      *
-     * Host and Port of the MicroStrategy instance.
-     *
      * Host and Port of the Qlik Cloud instance.
      *
      * Sigma API url.
@@ -153,7 +149,7 @@ export interface Connection {
      *
      * Password to connect to PowerBI report server.
      *
-     * Password to connect to MicroStrategy.
+     * Password to connect to MSTR.
      */
     password?: string;
     /**
@@ -164,8 +160,8 @@ export interface Connection {
      *
      * Username for Redash
      *
-     * Username to connect to MicroStrategy. This user should have privileges to read all the
-     * metadata in MicroStrategy.
+     * Username to connect to MSTR. This user should have privileges to read all the metadata in
+     * MSTR.
      */
     username?: string;
     /**
@@ -317,14 +313,7 @@ export interface Connection {
      */
     spaceUUID?: string;
     /**
-     * Login Mode for Microstrategy's REST API connection. You can authenticate with one of the
-     * following authentication modes: `Standard (1)`, `Anonymous (8)`. Default will be
-     * `Standard (1)`. If you're using demo account for Microstrategy, it will be needed to
-     * authenticate through loginMode `8`.
-     */
-    loginMode?: string;
-    /**
-     * MicroStrategy Project Name
+     * MSTR Project Name
      */
     projectName?: string;
     /**
@@ -539,7 +528,8 @@ export interface SupersetConnection {
      * restrict the metadata reading to a single schema. When left blank, OpenMetadata Ingestion
      * attempts to scan all the schemas.
      */
-    databaseSchema?: string;
+    databaseSchema?:                string;
+    supportsViewLineageExtraction?: boolean;
 }
 
 /**
@@ -1054,7 +1044,7 @@ export interface GCPImpersonateServiceAccountValues {
  *
  * Lightdash service type
  *
- * MicroStrategy service type
+ * Mstr service type
  *
  * Qlik Cloud service type
  *
@@ -1069,8 +1059,8 @@ export enum DashboardServiceType {
     Lightdash = "Lightdash",
     Looker = "Looker",
     Metabase = "Metabase",
-    MicroStrategy = "MicroStrategy",
     Mode = "Mode",
+    Mstr = "Mstr",
     PowerBI = "PowerBI",
     PowerBIReportServer = "PowerBIReportServer",
     QlikCloud = "QlikCloud",

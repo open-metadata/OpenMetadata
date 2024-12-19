@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * SSL Certificates By Path
  */
 export interface SSLCERTPaths {

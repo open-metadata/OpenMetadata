@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * Defines a workflow instance.
  */
 export interface WorkflowInstance {
@@ -20,10 +18,6 @@ export interface WorkflowInstance {
      * Timestamp on which the workflow instance ended.
      */
     endedAt?: number;
-    /**
-     * If the Workflow Instance has errors, 'True'. Else, 'False'.
-     */
-    exception?: boolean;
     /**
      * Unique identifier of this workflow instance state.
      */

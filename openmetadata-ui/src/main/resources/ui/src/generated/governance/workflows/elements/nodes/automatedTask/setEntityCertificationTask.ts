@@ -10,13 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * Sets the Entity Certification to the configured value.
  */
 export interface SetEntityCertificationTask {
-    config?: CertificationConfiguration;
+    config?: Config;
     /**
      * Description of the Node.
      */
@@ -35,13 +33,6 @@ export interface SetEntityCertificationTask {
     [property: string]: any;
 }
 
-export interface CertificationConfiguration {
-    certification: CertificationEnum;
-}
-
-export enum CertificationEnum {
-    CertificationBronze = "Certification.Bronze",
-    CertificationGold = "Certification.Gold",
-    CertificationSilver = "Certification.Silver",
-    Empty = "",
+export interface Config {
+    certification: string;
 }

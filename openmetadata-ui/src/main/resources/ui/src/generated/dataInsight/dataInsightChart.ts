@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * DataInsightChart represents the definition of a chart with its parameters
  */
 export interface DataInsightChart {

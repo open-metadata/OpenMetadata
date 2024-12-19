@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * Object to send Status responses about your Ingestion Pipelines ops.
  */
 export interface PipelineServiceClientResponse {

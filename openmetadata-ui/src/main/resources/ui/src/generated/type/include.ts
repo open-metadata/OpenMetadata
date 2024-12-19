@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * GET entity by id, GET entity by name, and LIST entities can include deleted or
  * non-deleted entities using the parameter include.
  */

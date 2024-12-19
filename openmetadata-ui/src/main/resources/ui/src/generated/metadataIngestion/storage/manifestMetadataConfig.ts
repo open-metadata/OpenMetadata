@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- export interface ManifestMetadataConfigClass {
+export interface ManifestMetadataConfigClass {
     /**
      * List of metadata entries for the bucket containing information about where data resides
      * and its structure
