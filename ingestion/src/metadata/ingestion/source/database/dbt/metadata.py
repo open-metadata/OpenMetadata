@@ -890,6 +890,40 @@ class DbtSource(DbtServiceSource):
                     f"to update dbt description: {exc}"
                 )
 
+    def process_dbt_owners(self, data_model_link: DataModelLink):
+        """
+        Method to process DBT owners using patch APIs
+        """
+        table_entity: Table = data_model_link.table_entity
+        logger.debug(
+            f"Processing DBT owners for: {table_entity.fullyQualifiedName.root}"
+        )
+        if table_entity:
+            try:
+                data_model = data_model_link.datamodel
+                force_override = False
+                if (
+                    data_model.resourceType != DbtCommonEnum.SOURCE.value
+                    and self.source_config.dbtUpdateOwners
+                ):
+                    force_override = True
+
+                # Patch table owners from DBT
+                if data_model.owners:
+                    self.metadata.patch_owner(
+                        entity=Table,
+                        source=table_entity,
+                        owners=data_model.owners,
+                        force=force_override,
+                    )
+
+            except Exception as exc:  # pylint: disable=broad-except
+                logger.debug(traceback.format_exc())
+                logger.warning(
+                    f"Failed to parse the node {table_entity.fullyQualifiedName.root} "
+                    f"to update dbt description: {exc}"
+                )
+
     def create_dbt_tests_definition(
         self, dbt_test: dict
     ) -> Iterable[Either[CreateTestDefinitionRequest]]:
