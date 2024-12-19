@@ -75,6 +75,7 @@ from metadata.ingestion.source.database.unitycatalog.models import (
 from metadata.ingestion.source.models import TableView
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_table
+from metadata.utils.helpers import retry_with_docker_host
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -89,6 +90,7 @@ class UnitycatalogSource(
     the unity catalog source
     """
 
+    @retry_with_docker_host()
     def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
         super().__init__()
         self.config = config
