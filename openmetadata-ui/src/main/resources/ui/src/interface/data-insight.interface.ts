@@ -44,6 +44,7 @@ export interface DataInsightChartTooltipProps extends TooltipProps<any, any> {
   dateTimeFormatter?: (date?: number) => string;
   valueFormatter?: (value: number | string, key?: string) => string | number;
   timeStampKey?: string;
+  transformLabel?: boolean;
 }
 
 export interface UIKpiResult extends KpiResult {
