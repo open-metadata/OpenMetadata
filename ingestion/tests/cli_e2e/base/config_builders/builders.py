@@ -89,7 +89,6 @@ class AutoClassificationConfigBuilder(BaseBuilder):
                 "type": "AutoClassification",
                 "storeSampleData": True,
                 "enableAutoClassification": False,
-                "profileSample": self.profilerSample,
             }
         }
 
