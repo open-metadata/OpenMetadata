@@ -101,7 +101,6 @@ const DescriptionTask: FC<DescriptionTaskProps> = ({
               <div data-testid="request-description">
                 {isTaskActionEdit && hasEditAccess ? (
                   <RichTextEditor
-                    height="208px"
                     initialValue={task?.suggestion ?? ''}
                     placeHolder={t('label.add-entity', {
                       entity: t('label.description'),

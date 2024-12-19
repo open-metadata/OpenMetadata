@@ -36,7 +36,7 @@ import { showErrorToast } from '../../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import NextPrevious from '../../../common/NextPrevious/NextPrevious';
 import { NextPreviousProps } from '../../../common/NextPrevious/NextPrevious.interface';
-import RichTextEditorPreviewer from '../../../common/RichTextEditor/RichTextEditorPreviewer';
+import RichTextEditorPreviewerV1 from '../../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import Table from '../../../common/Table/Table';
 
 const DataModelTable = () => {
@@ -86,7 +86,7 @@ const DataModelTable = () => {
         key: 'description',
         render: (description: ServicePageData['description']) =>
           !isUndefined(description) && description.trim() ? (
-            <RichTextEditorPreviewer markdown={description} />
+            <RichTextEditorPreviewerV1 markdown={description} />
           ) : (
             <span className="text-grey-muted">
               {t('label.no-entity', {

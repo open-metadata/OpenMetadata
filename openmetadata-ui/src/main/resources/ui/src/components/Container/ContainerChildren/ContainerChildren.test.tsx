@@ -39,6 +39,15 @@ const mockDataProps = {
 };
 
 describe('ContainerChildren', () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+  });
+
+  afterEach(() => {
+    jest.runOnlyPendingTimers();
+    jest.useRealTimers();
+  });
+
   it('Should call fetch container function on load', () => {
     render(
       <BrowserRouter>
@@ -87,6 +96,9 @@ describe('ContainerChildren', () => {
         <ContainerChildren {...mockDataProps} />
       </BrowserRouter>
     );
+
+    // Fast-forward until all timers have been executed
+    jest.runAllTimers();
 
     const richTextPreviewers = screen.getAllByTestId('viewer-container');
 

@@ -13,6 +13,12 @@
 import { EditorState } from '@tiptap/pm/state';
 import { Editor } from '@tiptap/react';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
+import {
+  ENTITY_URL_MAP,
+  hashtagRegEx,
+  mentionRegEx,
+} from '../constants/Feeds.constants';
+import { getEntityDetail } from './FeedUtils';
 
 export const getSelectedText = (state: EditorState) => {
   const { from, to } = state.selection;
@@ -33,6 +39,45 @@ export const isInViewport = (ele: HTMLElement, container: HTMLElement) => {
   return eleTop >= containerTop && eleBottom <= containerBottom;
 };
 
+const _convertMarkdownFormatToHtmlString = (markdown: string) => {
+  let updatedMessage = markdown;
+  const urlEntries = Object.entries(ENTITY_URL_MAP);
+
+  const mentionList = markdown.match(mentionRegEx) ?? [];
+  const hashTagList = markdown.match(hashtagRegEx) ?? [];
+
+  const mentionMap = new Map<string, RegExpMatchArray | null>(
+    mentionList.map((mention) => [mention, getEntityDetail(mention)])
+  );
+
+  const hashTagMap = new Map<string, RegExpMatchArray | null>(
+    hashTagList.map((hashTag) => [hashTag, getEntityDetail(hashTag)])
+  );
+
+  mentionMap.forEach((value, key) => {
+    if (value) {
+      const [, href, rawEntityType, fqn] = value;
+      const entityType = urlEntries.find((e) => e[1] === rawEntityType)?.[0];
+
+      if (entityType) {
+        const entityLink = `<a href="${href}/${rawEntityType}/${fqn}" data-type="mention" data-entityType="${entityType}" data-fqn="${fqn}" data-label="${fqn}">@${fqn}</a>`;
+        updatedMessage = updatedMessage.replaceAll(key, entityLink);
+      }
+    }
+  });
+
+  hashTagMap.forEach((value, key) => {
+    if (value) {
+      const [, href, rawEntityType, fqn] = value;
+
+      const entityLink = `<a href="${href}/${rawEntityType}/${fqn}" data-type="hashtag" data-entityType="${rawEntityType}" data-fqn="${fqn}" data-label="${fqn}">#${fqn}</a>`;
+      updatedMessage = updatedMessage.replaceAll(key, entityLink);
+    }
+  });
+
+  return updatedMessage;
+};
+
 export type FormatContentFor = 'server' | 'client';
 
 export const formatContent = (
@@ -41,7 +86,10 @@ export const formatContent = (
 ) => {
   // Create a new DOMParser
   const parser = new DOMParser();
-  const doc = parser.parseFromString(htmlString, 'text/html');
+  const doc = parser.parseFromString(
+    _convertMarkdownFormatToHtmlString(htmlString),
+    'text/html'
+  );
 
   // Use querySelectorAll to find all anchor tags with text content starting with "@" or "#"
   const anchorTags = doc.querySelectorAll(
