@@ -101,10 +101,7 @@ const SuccessScreen = ({
       <Card>
         <Space>
           <IconSuccessBadge data-testid="success-icon" width="20px" />
-          <Typography.Paragraph
-            className="m-b-0"
-            data-testid="success-line"
-            ellipsis={{ rows: 3 }}>
+          <Typography.Paragraph className="m-b-0" data-testid="success-line">
             {isUndefined(successMessage) ? (
               <span>
                 <span className="m-r-xss font-semibold">
