@@ -347,6 +347,16 @@ However, if the option is enabled, descriptions for all tables and columns in th
 $$
 
 $$section
+### Update Owners $(id="dbtUpdateOwners")
+
+This options updates the table owner in OpenMetadata with owners from dbt.
+
+If the option is disabled, only tables without any existing owners will have their owners updated based on the dbt manifest. 
+
+However, if the option is enabled, owners for all tables and columns in the dbt manifest will be updated in OpenMetadata.
+$$
+
+$$section
 ### Include dbt Tags $(id="includeTags")
 
 Option to include fetching the tags metadata from dbt. 
