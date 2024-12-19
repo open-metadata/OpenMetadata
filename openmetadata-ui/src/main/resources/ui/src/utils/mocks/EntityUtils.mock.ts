@@ -143,4 +143,4 @@ export const mockText =
 export const mockSearchText = 'test';
 
 export const mockHighlightedResult =
-  'This is a <mark class="text-highlighter">test</mark> description to verify highlightText method.';
+  'This is a <span class="text-highlighter">test</span> description to verify highlightText method.';

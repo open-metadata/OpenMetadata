@@ -15,6 +15,8 @@ Oracle E2E tests
 
 from typing import List
 
+import pytest
+
 from metadata.ingestion.api.status import Status
 
 from .base.e2e_types import E2EType
@@ -139,6 +141,7 @@ SELECT * from names
     def expected_filtered_mix() -> int:
         return 43
 
+    @pytest.mark.order(2)
     def test_create_table_with_profiler(self) -> None:
         # delete table in case it exists
         self.delete_table_and_view()
@@ -162,6 +165,7 @@ SELECT * from names
         sink_status, source_status = self.retrieve_statuses(result)
         self.assert_for_table_with_profiler(source_status, sink_status)
 
+    @pytest.mark.order(4)
     def test_delete_table_is_marked_as_deleted(self) -> None:
         """3. delete the new table + deploy marking tables as deleted
 
@@ -180,6 +184,7 @@ SELECT * from names
         sink_status, source_status = self.retrieve_statuses(result)
         self.assert_for_delete_table_is_marked_as_deleted(source_status, sink_status)
 
+    @pytest.mark.order(5)
     def test_schema_filter_includes(self) -> None:
         self.build_config_file(
             E2EType.INGEST_DB_FILTER_MIX,
@@ -195,9 +200,11 @@ SELECT * from names
         sink_status, source_status = self.retrieve_statuses(result)
         self.assert_filtered_tables_includes(source_status, sink_status)
 
+    @pytest.mark.order(6)
     def test_schema_filter_excludes(self) -> None:
         pass
 
+    @pytest.mark.order(7)
     def test_table_filter_includes(self) -> None:
         """6. Vanilla ingestion + include table filter pattern
 
@@ -217,6 +224,7 @@ SELECT * from names
         sink_status, source_status = self.retrieve_statuses(result)
         self.assert_filtered_tables_includes(source_status, sink_status)
 
+    @pytest.mark.order(1)
     def test_vanilla_ingestion(self) -> None:
         """6. Vanilla ingestion
 
@@ -233,6 +241,7 @@ SELECT * from names
         sink_status, source_status = self.retrieve_statuses(result)
         self.assert_for_vanilla_ingestion(source_status, sink_status)
 
+    @pytest.mark.order(8)
     def test_table_filter_excludes(self) -> None:
         """7. Vanilla ingestion + exclude table filter pattern
 
