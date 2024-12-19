@@ -133,10 +133,9 @@ export const dragAndDropNode = async (
   await page.hover(originSelector);
   await page.mouse.down();
   const box = (await destinationElement.boundingBox())!;
-  const x = (box.x + box.width / 2) * 0.25; // 0.25 as zoom factor
-  const y = (box.y + box.height / 2) * 0.25; // 0.25 as zoom factor
-  await page.mouse.move(x, y);
-  await destinationElement.hover();
+  const x = box.x + 250;
+  const y = box.y + box.height / 2;
+  await page.mouse.move(x, y, { steps: 20 });
   await page.mouse.up();
 };
 
