@@ -216,7 +216,7 @@ const IncidentManagerPageHeader = ({
       hasEditOwnerPermission:
         testCasePermission?.EditAll || testCasePermission?.EditOwners,
     };
-  }, []);
+  }, [testCasePermission]);
 
   const statusDetails = useMemo(() => {
     if (isLoading) {

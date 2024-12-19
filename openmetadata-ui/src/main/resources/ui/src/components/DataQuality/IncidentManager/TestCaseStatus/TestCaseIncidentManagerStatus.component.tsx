@@ -50,7 +50,7 @@ const TestCaseIncidentManagerStatus = ({
         permissions
       )
     );
-  }, [permissions]);
+  }, [permissions, hasPermission]);
 
   const onEditStatus = useCallback(() => setIsEditStatus(true), []);
   const onCancel = useCallback(() => setIsEditStatus(false), []);

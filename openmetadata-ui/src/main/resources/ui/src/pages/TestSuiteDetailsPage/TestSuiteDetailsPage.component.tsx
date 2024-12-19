@@ -114,8 +114,7 @@ const TestSuiteDetailsPage = () => {
         testSuitePermissions?.EditAll || testSuitePermissions?.EditOwners,
       hasEditDescriptionPermission:
         testSuitePermissions?.EditAll || testSuitePermissions?.EditDescription,
-      hasDeletePermission:
-        testSuitePermissions?.EditAll || testSuitePermissions?.Delete,
+      hasDeletePermission: testSuitePermissions?.Delete,
     };
   }, [testSuitePermissions]);
 
