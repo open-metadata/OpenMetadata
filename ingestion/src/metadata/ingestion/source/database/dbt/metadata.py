@@ -62,6 +62,7 @@ from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper
 from metadata.ingestion.lineage.sql_lineage import get_lineage_by_query
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.models.table_metadata import ColumnDescription
+from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.ingestion.source.database.database_service import DataModelLink
@@ -325,11 +326,14 @@ class DbtSource(DbtServiceSource):
             None,
         )
 
-    def _add_dbt_freshness_test_from_sources(
+    def add_dbt_sources(
         self, key: str, manifest_node, manifest_entities, dbt_objects: DbtObjects
-    ):
-        # in dbt manifest sources node name is table/view name (not test name like with test nodes)
-        # so in order for the test creation to be named precisely I am amending manifest node name within it's deepcopy
+    ) -> None:
+        """
+        Method to append dbt test cases based on sources file for later processing
+        In dbt manifest sources node name is table/view name (not test name like with test nodes)
+        So in order for the test creation to be named precisely I am amending manifest node name within it's deepcopy
+        """
         manifest_node_new = deepcopy(manifest_node)
         manifest_node_new.name = manifest_node_new.name + "_freshness"
 
@@ -348,16 +352,6 @@ class DbtSource(DbtServiceSource):
             self.context.get().dbt_tests[key + "_freshness"][
                 DbtCommonEnum.RESULTS.value
             ] = freshness_test_result
-
-    def add_dbt_sources(
-        self, key: str, manifest_node, manifest_entities, dbt_objects: DbtObjects
-    ) -> None:
-        """
-        Method to append dbt test cases based on sources file for later processing
-        """
-        self._add_dbt_freshness_test_from_sources(
-            key, manifest_node, manifest_entities, dbt_objects
-        )
 
     # pylint: disable=too-many-locals, too-many-branches, too-many-statements
     def yield_data_models(
@@ -480,7 +474,7 @@ class DbtSource(DbtServiceSource):
                         table_name=model_name,
                     )
 
-                    table_entity: Optional[
+                    table_entities: Optional[
                         Union[Table, List[Table]]
                     ] = get_entity_from_es_result(
                         entity_list=self.metadata.es_search_from_fqn(
@@ -488,10 +482,20 @@ class DbtSource(DbtServiceSource):
                             fqn_search_string=table_fqn,
                             fields="sourceHash",
                         ),
-                        fetch_multiple_entities=False,
+                        fetch_multiple_entities=True,
+                    )
+                    logger.debug(
+                        f"Found table entities from {table_fqn}: {table_entities}"
+                    )
+
+                    table_entity = next(
+                        iter(filter(lambda x: x is not None, table_entities)), None
                     )
 
                     if table_entity:
+                        logger.debug(
+                            f"Using Table Entity for datamodel: {table_entity}"
+                        )
                         data_model_link = DataModelLink(
                             table_entity=table_entity,
                             datamodel=DataModel(
@@ -947,6 +951,7 @@ class DbtSource(DbtServiceSource):
                         self.metadata, entity_link_str
                     )
                     table_fqn = get_table_fqn(entity_link_str)
+                    logger.debug(f"Table fqn found: {table_fqn}")
                     source_elements = table_fqn.split(fqn.FQN_SEPARATOR)
                     test_case_fqn = fqn.build(
                         self.metadata,
@@ -982,6 +987,7 @@ class DbtSource(DbtServiceSource):
                                 owners=None,
                             )
                         )
+                    logger.debug(f"Test case Already Exists: {test_case_fqn}")
         except Exception as err:  # pylint: disable=broad-except
             yield Either(
                 left=StackTraceError(
@@ -1071,10 +1077,17 @@ class DbtSource(DbtServiceSource):
                         else None,
                         test_case_name=manifest_node.name,
                     )
-                    self.metadata.add_test_case_results(
-                        test_results=test_case_result,
-                        test_case_fqn=test_case_fqn,
-                    )
+
+                    logger.debug(f"Adding test case results to {test_case_fqn} ")
+                    try:
+                        self.metadata.add_test_case_results(
+                            test_results=test_case_result,
+                            test_case_fqn=test_case_fqn,
+                        )
+                    except APIError as err:
+                        if err.code != 409:
+                            raise APIError(err) from err
+
         except Exception as err:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
             logger.error(
