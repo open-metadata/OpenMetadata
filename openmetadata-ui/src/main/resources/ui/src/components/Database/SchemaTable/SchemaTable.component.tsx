@@ -55,6 +55,7 @@ import {
   getColumnSorter,
   getEntityName,
   getFrequentlyJoinedColumns,
+  highlightSearchArrayElement,
   highlightSearchText,
   searchInColumns,
 } from '../../../utils/EntityUtils';
@@ -251,7 +252,7 @@ const SchemaTable = ({
       <Typography.Paragraph
         className="cursor-pointer"
         ellipsis={{ tooltip: displayValue, rows: 3 }}>
-        {stringToHTML(highlightSearchText(displayValue, searchText))}
+        {highlightSearchArrayElement(dataTypeDisplay, searchText)}
       </Typography.Paragraph>
     );
   };
