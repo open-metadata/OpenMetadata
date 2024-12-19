@@ -72,6 +72,7 @@ import org.openmetadata.service.util.ResultList;
 public class MessagingServiceResource
     extends ServiceEntityResource<
         MessagingService, MessagingServiceRepository, MessagingConnection> {
+  private final MessagingServiceMapper mapper = new MessagingServiceMapper();
   public static final String COLLECTION_PATH = "v1/services/messagingServices/";
   public static final String FIELDS = "owners,domain";
 
@@ -339,7 +340,8 @@ public class MessagingServiceResource
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateMessagingService create) {
-    MessagingService service = getService(create, securityContext.getUserPrincipal().getName());
+    MessagingService service =
+        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     Response response = create(uriInfo, securityContext, service);
     decryptOrNullify(securityContext, (MessagingService) response.getEntity());
     return response;
@@ -365,7 +367,8 @@ public class MessagingServiceResource
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateMessagingService update) {
-    MessagingService service = getService(update, securityContext.getUserPrincipal().getName());
+    MessagingService service =
+        mapper.createToEntity(update, securityContext.getUserPrincipal().getName());
     Response response = createOrUpdate(uriInfo, securityContext, unmask(service));
     decryptOrNullify(securityContext, (MessagingService) response.getEntity());
     return response;
@@ -511,13 +514,6 @@ public class MessagingServiceResource
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
-  }
-
-  private MessagingService getService(CreateMessagingService create, String user) {
-    return repository
-        .copy(new MessagingService(), create, user)
-        .withConnection(create.getConnection())
-        .withServiceType(create.getServiceType());
   }
 
   @Override

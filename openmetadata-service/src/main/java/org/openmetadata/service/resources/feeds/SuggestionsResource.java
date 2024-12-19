@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.resources.feeds;
 
-import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.EventType.SUGGESTION_CREATED;
 import static org.openmetadata.schema.type.EventType.SUGGESTION_REJECTED;
@@ -54,20 +53,16 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.SuggestionStatus;
 import org.openmetadata.schema.type.SuggestionType;
-import org.openmetadata.schema.type.TagLabel;
-import org.openmetadata.sdk.exception.SuggestionException;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.SuggestionFilter;
 import org.openmetadata.service.jdbi3.SuggestionRepository;
 import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.resources.tags.TagLabelUtil;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.PostResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
-import org.openmetadata.service.util.UserUtil;
 
 @Path("/v1/suggestions")
 @Tag(
@@ -79,9 +74,9 @@ import org.openmetadata.service.util.UserUtil;
 @Collection(name = "suggestions")
 public class SuggestionsResource {
   public static final String COLLECTION_PATH = "/v1/suggestions/";
+  private final SuggestionMapper mapper = new SuggestionMapper();
   private final SuggestionRepository dao;
   private final Authorizer authorizer;
-  private final String INVALID_SUGGESTION_REQUEST = "INVALID_SUGGESTION_REQUEST";
 
   public static void addHref(UriInfo uriInfo, List<Suggestion> suggestions) {
     if (uriInfo != null) {
@@ -410,7 +405,8 @@ public class SuggestionsResource {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateSuggestion create) {
-    Suggestion suggestion = getSuggestion(securityContext, create);
+    Suggestion suggestion =
+        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     addHref(uriInfo, dao.create(suggestion));
     return Response.created(suggestion.getHref())
         .entity(suggestion)
@@ -478,57 +474,5 @@ public class SuggestionsResource {
     authorizer.authorize(securityContext, operationContext, resourceContext);
     return dao.deleteSuggestionsForAnEntity(entity, securityContext.getUserPrincipal().getName())
         .toResponse();
-  }
-
-  private Suggestion getSuggestion(SecurityContext securityContext, CreateSuggestion create) {
-    validate(create);
-    return new Suggestion()
-        .withId(UUID.randomUUID())
-        .withDescription(create.getDescription())
-        .withEntityLink(create.getEntityLink())
-        .withType(create.getType())
-        .withDescription(create.getDescription())
-        .withTagLabels(create.getTagLabels())
-        .withStatus(SuggestionStatus.Open)
-        .withCreatedBy(UserUtil.getUserOrBot(securityContext.getUserPrincipal().getName()))
-        .withCreatedAt(System.currentTimeMillis())
-        .withUpdatedBy(securityContext.getUserPrincipal().getName())
-        .withUpdatedAt(System.currentTimeMillis());
-  }
-
-  private void validate(CreateSuggestion suggestion) {
-    if (suggestion.getEntityLink() == null) {
-      throw new SuggestionException(
-          Response.Status.BAD_REQUEST,
-          INVALID_SUGGESTION_REQUEST,
-          "Suggestion's entityLink cannot be null.");
-    }
-    MessageParser.EntityLink entityLink =
-        MessageParser.EntityLink.parse(suggestion.getEntityLink());
-    Entity.getEntityReferenceByName(
-        entityLink.getEntityType(), entityLink.getEntityFQN(), Include.NON_DELETED);
-
-    if (suggestion.getType() == SuggestionType.SuggestDescription) {
-      if (suggestion.getDescription() == null || suggestion.getDescription().isEmpty()) {
-        throw new SuggestionException(
-            Response.Status.BAD_REQUEST,
-            INVALID_SUGGESTION_REQUEST,
-            "Suggestion's description cannot be empty.");
-      }
-    } else if (suggestion.getType() == SuggestionType.SuggestTagLabel) {
-      if (suggestion.getTagLabels().isEmpty()) {
-        throw new SuggestionException(
-            Response.Status.BAD_REQUEST,
-            INVALID_SUGGESTION_REQUEST,
-            "Suggestion's tag label's cannot be empty.");
-      } else {
-        for (TagLabel label : listOrEmpty(suggestion.getTagLabels())) {
-          TagLabelUtil.applyTagCommonFields(label);
-        }
-      }
-    } else {
-      throw new SuggestionException(
-          Response.Status.BAD_REQUEST, INVALID_SUGGESTION_REQUEST, "Invalid Suggestion Type.");
-    }
   }
 }

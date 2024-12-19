@@ -75,6 +75,7 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "databaseSchemas")
 public class DatabaseSchemaResource
     extends EntityResource<DatabaseSchema, DatabaseSchemaRepository> {
+  private final DatabaseSchemaMapper mapper = new DatabaseSchemaMapper();
   public static final String COLLECTION_PATH = "v1/databaseSchemas/";
   static final String FIELDS = "owners,tables,usageSummary,tags,extension,domain,sourceHash";
 
@@ -309,7 +310,8 @@ public class DatabaseSchemaResource
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateDatabaseSchema create) {
-    DatabaseSchema schema = getDatabaseSchema(create, securityContext.getUserPrincipal().getName());
+    DatabaseSchema schema =
+        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, schema);
   }
 
@@ -390,7 +392,8 @@ public class DatabaseSchemaResource
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateDatabaseSchema create) {
-    DatabaseSchema schema = getDatabaseSchema(create, securityContext.getUserPrincipal().getName());
+    DatabaseSchema schema =
+        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, schema);
   }
 
@@ -738,14 +741,5 @@ public class DatabaseSchemaResource
 
     return Entity.getSearchRepository()
         .searchSchemaEntityRelationship(fqn, upstreamDepth, downstreamDepth, queryFilter, deleted);
-  }
-
-  private DatabaseSchema getDatabaseSchema(CreateDatabaseSchema create, String user) {
-    return repository
-        .copy(new DatabaseSchema(), create, user)
-        .withDatabase(getEntityReference(Entity.DATABASE, create.getDatabase()))
-        .withSourceUrl(create.getSourceUrl())
-        .withRetentionPeriod(create.getRetentionPeriod())
-        .withSourceHash(create.getSourceHash());
   }
 }

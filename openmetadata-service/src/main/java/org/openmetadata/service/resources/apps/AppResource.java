@@ -3,7 +3,6 @@ package org.openmetadata.service.resources.apps;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.APPLICATION;
-import static org.openmetadata.service.Entity.BOT;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.jdbi3.EntityRepository.getEntitiesFromSeedData;
 
@@ -43,12 +42,10 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppExtension;
-import org.openmetadata.schema.entity.app.AppMarketPlaceDefinition;
 import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.app.AppType;
 import org.openmetadata.schema.entity.app.CreateApp;
@@ -105,6 +102,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
   public static final List<ScheduleType> SCHEDULED_TYPES =
       List.of(ScheduleType.Scheduled, ScheduleType.ScheduledOrManual, ScheduleType.NoSchedule);
   public static final String SLACK_APPLICATION = "SlackApplication";
+  private final AppMapper mapper = new AppMapper();
 
   @Override
   public void initialize(OpenMetadataApplicationConfig config) {
@@ -133,18 +131,10 @@ public class AppResource extends EntityResource<App, AppRepository> {
     // Get Create App Requests
     for (CreateApp createApp : defaultAppCreateRequests) {
       try {
-        AppMarketPlaceDefinition definition =
-            repository
-                .getMarketPlace()
-                .getByName(
-                    null,
-                    createApp.getName(),
-                    new EntityUtil.Fields(repository.getMarketPlace().getAllowedFields()));
         App app = getAppForInit(createApp.getName());
         if (app == null) {
           app =
-              getApplication(definition, createApp, "admin")
-                  .withFullyQualifiedName(createApp.getName());
+              mapper.createToEntity(createApp, "admin").withFullyQualifiedName(createApp.getName());
           repository.initializeEntity(app);
         }
 
@@ -621,15 +611,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
       })
   public Response create(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateApp create) {
-
-    AppMarketPlaceDefinition definition =
-        repository
-            .getMarketPlace()
-            .getByName(
-                uriInfo,
-                create.getName(),
-                new EntityUtil.Fields(repository.getMarketPlace().getAllowedFields()));
-    App app = getApplication(definition, create, securityContext.getUserPrincipal().getName());
+    App app = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     limits.enforceLimits(
         securityContext,
         getResourceContext(),
@@ -749,14 +731,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
   public Response createOrUpdate(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateApp create)
       throws SchedulerException {
-    AppMarketPlaceDefinition definition =
-        repository
-            .getMarketPlace()
-            .getByName(
-                uriInfo,
-                create.getName(),
-                new EntityUtil.Fields(repository.getMarketPlace().getAllowedFields()));
-    App app = getApplication(definition, create, securityContext.getUserPrincipal().getName());
+    App app = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     AppScheduler.getInstance().deleteScheduledApplication(app);
     if (SCHEDULED_TYPES.contains(app.getScheduleType())) {
       ApplicationHandler.getInstance()
@@ -1097,52 +1072,6 @@ public class AppResource extends EntityResource<App, AppRepository> {
         secretsManager.encryptOpenMetadataConnection(openMetadataServerConnection, false));
     if (authorizer.shouldMaskPasswords(securityContext) && !forceNotMask) {
       EntityMaskerFactory.getEntityMasker().maskIngestionPipeline(ingestionPipeline);
-    }
-  }
-
-  private App getApplication(
-      AppMarketPlaceDefinition marketPlaceDefinition,
-      CreateApp createAppRequest,
-      String updatedBy) {
-    List<EntityReference> owners = repository.validateOwners(createAppRequest.getOwners());
-    App app =
-        new App()
-            .withId(UUID.randomUUID())
-            .withName(marketPlaceDefinition.getName())
-            .withDisplayName(createAppRequest.getDisplayName())
-            .withDescription(createAppRequest.getDescription())
-            .withOwners(owners)
-            .withUpdatedBy(updatedBy)
-            .withUpdatedAt(System.currentTimeMillis())
-            .withDeveloper(marketPlaceDefinition.getDeveloper())
-            .withDeveloperUrl(marketPlaceDefinition.getDeveloperUrl())
-            .withPrivacyPolicyUrl(marketPlaceDefinition.getPrivacyPolicyUrl())
-            .withSupportEmail(marketPlaceDefinition.getSupportEmail())
-            .withClassName(marketPlaceDefinition.getClassName())
-            .withAppType(marketPlaceDefinition.getAppType())
-            .withScheduleType(marketPlaceDefinition.getScheduleType())
-            .withAppConfiguration(createAppRequest.getAppConfiguration())
-            .withRuntime(marketPlaceDefinition.getRuntime())
-            .withPermission(marketPlaceDefinition.getPermission())
-            .withAppSchedule(createAppRequest.getAppSchedule())
-            .withAppLogoUrl(marketPlaceDefinition.getAppLogoUrl())
-            .withAppScreenshots(marketPlaceDefinition.getAppScreenshots())
-            .withFeatures(marketPlaceDefinition.getFeatures())
-            .withSourcePythonClass(marketPlaceDefinition.getSourcePythonClass())
-            .withAllowConfiguration(marketPlaceDefinition.getAllowConfiguration())
-            .withSystem(marketPlaceDefinition.getSystem())
-            .withSupportsInterrupt(marketPlaceDefinition.getSupportsInterrupt());
-
-    // validate Bot if provided
-    validateAndAddBot(app, createAppRequest.getBot());
-    return app;
-  }
-
-  private void validateAndAddBot(App app, String botName) {
-    if (!CommonUtil.nullOrEmpty(botName)) {
-      app.setBot(Entity.getEntityReferenceByName(BOT, botName, Include.NON_DELETED));
-    } else {
-      app.setBot(repository.createNewAppBot(app));
     }
   }
 

@@ -56,9 +56,7 @@ import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
-import org.openmetadata.service.resources.databases.DatabaseUtil;
 import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/dashboard/datamodels")
@@ -71,6 +69,7 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "datamodels")
 public class DashboardDataModelResource
     extends EntityResource<DashboardDataModel, DashboardDataModelRepository> {
+  private final DashboardDataModelMapper mapper = new DashboardDataModelMapper();
   public static final String COLLECTION_PATH = "/v1/dashboard/datamodels";
   protected static final String FIELDS = "owners,tags,followers,domain,sourceHash,extension";
 
@@ -300,7 +299,7 @@ public class DashboardDataModelResource
       @Context SecurityContext securityContext,
       @Valid CreateDashboardDataModel create) {
     DashboardDataModel dashboardDataModel =
-        getDataModel(create, securityContext.getUserPrincipal().getName());
+        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, dashboardDataModel);
   }
 
@@ -382,7 +381,7 @@ public class DashboardDataModelResource
       @Context SecurityContext securityContext,
       @Valid CreateDashboardDataModel create) {
     DashboardDataModel dashboardDataModel =
-        getDataModel(create, securityContext.getUserPrincipal().getName());
+        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, dashboardDataModel);
   }
 
@@ -540,19 +539,5 @@ public class DashboardDataModelResource
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
-  }
-
-  private DashboardDataModel getDataModel(CreateDashboardDataModel create, String user) {
-    DatabaseUtil.validateColumns(create.getColumns());
-    return repository
-        .copy(new DashboardDataModel(), create, user)
-        .withService(EntityUtil.getEntityReference(Entity.DASHBOARD_SERVICE, create.getService()))
-        .withDataModelType(create.getDataModelType())
-        .withSql(create.getSql())
-        .withDataModelType(create.getDataModelType())
-        .withServiceType(create.getServiceType())
-        .withColumns(create.getColumns())
-        .withProject(create.getProject())
-        .withSourceHash(create.getSourceHash());
   }
 }
