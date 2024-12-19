@@ -1138,7 +1138,7 @@ public class TableRepository extends EntityRepository<Table> {
             String toParent = FullyQualifiedName.getParentFQN(column);
             String columnName = FullyQualifiedName.getColumnName(column);
             try {
-              Table toTable = findByName(toParent, NON_DELETED);
+              Table toTable = findByName(toParent, ALL);
               validateColumn(toTable, columnName);
             } catch (EntityNotFoundException e) {
               throw new EntitySpecViolationException("Table not found: " + toParent);
@@ -1232,8 +1232,7 @@ public class TableRepository extends EntityRepository<Table> {
           for (String column : constraint.getReferredColumns()) {
             String toParent = FullyQualifiedName.getParentFQN(column);
             try {
-              EntityReference toTable =
-                  Entity.getEntityReferenceByName(TABLE, toParent, NON_DELETED);
+              EntityReference toTable = Entity.getEntityReferenceByName(TABLE, toParent, ALL);
               addRelationship(
                   table.getId(), toTable.getId(), TABLE, TABLE, Relationship.RELATED_TO);
             } catch (EntityNotFoundException e) {
