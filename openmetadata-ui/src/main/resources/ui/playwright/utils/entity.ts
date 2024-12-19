@@ -830,6 +830,9 @@ export const createAnnouncement = async (
   const feedDataCard = page
     .locator('#feedData')
     .getByTestId('activity-feed-card-v2');
+  const activeTextLocator = page.getByTestId('active-announcement');
+
+  await activeTextLocator.click();
 
   await expect(feedDataCard).toBeVisible();
   await expect(feedDataCard).toContainText(data.title);
@@ -890,13 +893,12 @@ export const replyAnnouncement = async (page: Page) => {
   await expect(
     page.locator('#feed-panel [data-testid="viewer-container"]')
   ).toHaveText('Reply message edited');
-
-  await page.reload();
 };
 
 export const deleteAnnouncement = async (page: Page) => {
   const feedcard = page.locator('#feedData').getByTestId('feedcardbodyV1');
-  feedcard.hover();
+  await feedcard.waitFor({ state: 'visible' });
+  await feedcard.hover();
 
   await page.click('[data-testid="delete-message"]');
   const modalText = await page.textContent('.ant-modal-body');

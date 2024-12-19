@@ -598,7 +598,7 @@ export const ActivityFeedTab = ({
                         announcementFilter === AnnoucementStatus.Active,
                     }
                   )}
-                  data-testid="active-announcements"
+                  data-testid="active-announcement"
                   onClick={handleActiveClick}>
                   {countData.data.openTaskCount} {t('label.active')}
                 </Typography.Text>
