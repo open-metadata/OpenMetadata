@@ -1,9 +1,7 @@
 {
-  "name": "RetentionPolicyApplication",
-  "displayName": "Retention Policy",
+  "name": "DataRetentionApplication",
+  "displayName": "Data Retention",
   "appConfiguration": {
-    "activityThreadsRetentionPeriod": 30,
-    "versionsRetentionPeriod": 10,
     "changeEventRetentionPeriod": 7
   },
   "appSchedule": {
