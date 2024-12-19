@@ -689,7 +689,8 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
       @Parameter(description = "Id of the logical test suite", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.DELETE);
+    OperationContext operationContext =
+        new OperationContext(Entity.TEST_SUITE, MetadataOperation.DELETE);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     TestSuite testSuite = Entity.getEntity(Entity.TEST_SUITE, id, "*", ALL);
     if (Boolean.TRUE.equals(testSuite.getExecutable())) {
@@ -724,7 +725,8 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
       @Parameter(description = "FQN of the logical test suite", schema = @Schema(type = "String"))
           @PathParam("name")
           String name) {
-    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.DELETE);
+    OperationContext operationContext =
+        new OperationContext(Entity.TEST_SUITE, MetadataOperation.DELETE);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
     TestSuite testSuite = Entity.getEntityByName(Entity.TEST_SUITE, name, "*", ALL);
     if (Boolean.TRUE.equals(testSuite.getExecutable())) {
