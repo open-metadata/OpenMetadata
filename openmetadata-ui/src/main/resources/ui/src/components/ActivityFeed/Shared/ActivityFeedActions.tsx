@@ -12,6 +12,7 @@
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Popover, Space } from 'antd';
+import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty, uniqueId } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
@@ -37,6 +38,7 @@ import {
   updateThread,
 } from '../../../rest/feedsAPI';
 import { getUpdatedThread } from '../../../utils/FeedUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
 import Reaction from '../Reactions/Reaction';
 import './activity-feed-actions.less';
@@ -182,26 +184,30 @@ const ActivityFeedActions = ({
       : { ...feed, reactions: updatedReactions };
 
     const patch = compare(originalObject, updatedObject);
-    if (!isEmpty(patch)) {
-      if (feed.type === 'Announcement' && !isAnnouncementTab) {
-        if (isPost) {
-          await updatePost(feed.id, post.id, patch);
-          const updatedthread = await getUpdatedThread(feed.id);
-          updateEntityThread(updatedthread);
+    try {
+      if (!isEmpty(patch)) {
+        if (feed.type === 'Announcement' && !isAnnouncementTab) {
+          if (isPost) {
+            await updatePost(feed.id, post.id, patch);
+            const updatedthread = await getUpdatedThread(feed.id);
+            updateEntityThread(updatedthread);
+          } else {
+            await updateThread(feed.id, patch);
+            const updatedthread = await getUpdatedThread(feed.id);
+            updateEntityThread(updatedthread);
+          }
         } else {
-          await updateThread(feed.id, patch);
-          const updatedthread = await getUpdatedThread(feed.id);
-          updateEntityThread(updatedthread);
-        }
-      } else {
-        if (isPost) {
-          await updatePost(feed.id, post.id, patch);
-          updateAnnouncementThreads && updateAnnouncementThreads();
-        } else {
-          await updateThread(feed.id, patch);
-          updateAnnouncementThreads && updateAnnouncementThreads();
+          if (isPost) {
+            await updatePost(feed.id, post.id, patch);
+            updateAnnouncementThreads && updateAnnouncementThreads();
+          } else {
+            await updateThread(feed.id, patch);
+            updateAnnouncementThreads && updateAnnouncementThreads();
+          }
         }
       }
+    } catch (error) {
+      showErrorToast(error as AxiosError);
     }
   };
 
