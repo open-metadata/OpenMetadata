@@ -1071,7 +1071,9 @@ export const approveTagsTask = async (
   await taskResolve;
 
   await redirectToHomePage(page);
+  const glossaryTermsResponse = page.waitForResponse('/api/v1/glossaryTerms*');
   await sidebarClick(page, SidebarItem.GLOSSARY);
+  await glossaryTermsResponse;
   await selectActiveGlossary(page, entity.data.displayName);
 
   const tagVisibility = await page.isVisible(
