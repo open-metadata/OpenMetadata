@@ -848,14 +848,13 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
 
               return newData;
             });
-
-            setNewAddedNode({} as Node);
           })
           .catch((err) => {
             showErrorToast(err);
           })
           .finally(() => {
             setStatus('initial');
+            setNewAddedNode({} as Node);
             setLoading(false);
           });
       }
