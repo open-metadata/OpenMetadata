@@ -684,8 +684,10 @@ test.describe('Teams Page with EditUser Permission', () => {
       displayName: `PW Edit User Team ${id}`,
       description: 'playwright edit user team description',
       teamType: 'Group',
-      users: [editOnlyUser.responseData.id],
-      defaultRoles: role.responseData.id ? [role.responseData.id] : [],
+      users: [editOnlyUser.responseData.fullyQualifiedName],
+      defaultRoles: role.responseData.fullyQualifiedName
+        ? [role.responseData.fullyQualifiedName]
+        : [],
     });
     await team.create(apiContext);
     await team2.create(apiContext);
@@ -758,8 +760,10 @@ test.describe('Teams Page with Data Consumer User', () => {
       displayName: `PW Data Consumer Team ${id}`,
       description: 'playwright data consumer team description',
       teamType: 'Group',
-      users: [user.responseData.id],
-      defaultRoles: role.responseData.id ? [role.responseData.id] : [],
+      users: [user.responseData.fullyQualifiedName],
+      defaultRoles: role.responseData.fullyQualifiedName
+        ? [role.responseData.fullyQualifiedName]
+        : [],
     });
     await team.create(apiContext);
     await team2.create(apiContext);

@@ -104,7 +104,7 @@ public class SuggestionsResourceTest extends OpenMetadataApplicationTest {
             .createRequest(test, 4)
             .withDisplayName("Team2")
             .withDescription("Team2 description")
-            .withUsers(List.of(USER2.getId()));
+            .withUsers(List.of(USER2.getFullyQualifiedName()));
     TEAM2 = teamResourceTest.createAndCheckEntity(createTeam, ADMIN_AUTH_HEADERS);
     EntityReference TEAM2_REF = TEAM2.getEntityReference();
 

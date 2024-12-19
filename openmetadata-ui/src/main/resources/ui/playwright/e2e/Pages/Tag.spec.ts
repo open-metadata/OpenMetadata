@@ -329,8 +329,10 @@ test.describe('Tag Page with Limited EditTag Permission', () => {
         displayName: `PW Limited User Access Team ${id}`,
         description: 'playwright data steward team description',
         teamType: 'Group',
-        users: [limitedAccessUser.responseData.id],
-        defaultRoles: role.responseData.id ? [role.responseData.id] : [],
+        users: [limitedAccessUser.responseData.fullyQualifiedName],
+        defaultRoles: role.responseData.fullyQualifiedName
+          ? [role.responseData.fullyQualifiedName]
+          : [],
       });
       await limitedAccessTeam.create(apiContext);
 

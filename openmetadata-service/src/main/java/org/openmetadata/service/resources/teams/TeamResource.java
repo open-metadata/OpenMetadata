@@ -764,12 +764,13 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
         .copy(new Team(), ct, user)
         .withProfile(ct.getProfile())
         .withIsJoinable(ct.getIsJoinable())
-        .withUsers(EntityUtil.toEntityReferences(ct.getUsers(), Entity.USER))
-        .withDefaultRoles(EntityUtil.toEntityReferences(ct.getDefaultRoles(), Entity.ROLE))
+        .withUsers(EntityUtil.populateEntityReferenceFromFqn(ct.getUsers(), Entity.USER))
+        .withDefaultRoles(
+            EntityUtil.populateEntityReferenceFromFqn(ct.getDefaultRoles(), Entity.ROLE))
         .withTeamType(ct.getTeamType())
-        .withParents(EntityUtil.toEntityReferences(ct.getParents(), Entity.TEAM))
-        .withChildren(EntityUtil.toEntityReferences(ct.getChildren(), Entity.TEAM))
-        .withPolicies(EntityUtil.toEntityReferences(ct.getPolicies(), Entity.POLICY))
+        .withParents(EntityUtil.populateEntityReferenceFromFqn(ct.getParents(), Entity.TEAM))
+        .withChildren(EntityUtil.populateEntityReferenceFromFqn(ct.getChildren(), Entity.TEAM))
+        .withPolicies(EntityUtil.populateEntityReferenceFromFqn(ct.getPolicies(), Entity.POLICY))
         .withEmail(ct.getEmail())
         .withDomains(EntityUtil.getEntityReferences(Entity.DOMAIN, ct.getDomains()));
   }
