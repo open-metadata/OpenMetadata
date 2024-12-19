@@ -921,7 +921,7 @@ class DbtSource(DbtServiceSource):
                 logger.debug(traceback.format_exc())
                 logger.warning(
                     f"Failed to parse the node {table_entity.fullyQualifiedName.root} "
-                    f"to update dbt description: {exc}"
+                    f"to update dbt owner: {exc}"
                 )
 
     def create_dbt_tests_definition(
