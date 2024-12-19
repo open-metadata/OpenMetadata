@@ -184,7 +184,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
           String.format(
               "%s/users/registrationConfirmation?user=%s&token=%s",
               getSmtpSettings().getOpenMetadataUrl(),
-              user.getFullyQualifiedName(),
+              URLEncoder.encode(user.getFullyQualifiedName(), StandardCharsets.UTF_8),
               mailVerificationToken);
       try {
         EmailUtil.sendEmailVerification(emailVerificationLink, user);
