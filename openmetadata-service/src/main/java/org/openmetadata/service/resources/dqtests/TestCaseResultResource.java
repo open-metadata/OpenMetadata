@@ -102,6 +102,7 @@ public class TestCaseResultResource
           @PathParam("fqn")
           String fqn,
       @Valid CreateTestCaseResult createTestCaseResults) {
+    // Needed in further validation to check if the testCase exists
     createTestCaseResults.withFqn(fqn);
     ResourceContextInterface resourceContext = TestCaseResourceContext.builder().name(fqn).build();
     OperationContext operationContext =

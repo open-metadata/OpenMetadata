@@ -44,6 +44,7 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.tests.CreateLogicalTestCases;
 import org.openmetadata.schema.api.tests.CreateTestCase;
+import org.openmetadata.schema.api.tests.CreateTestCaseResult;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestSuite;
@@ -90,6 +91,7 @@ import org.openmetadata.service.util.ResultList;
 public class TestCaseResource extends EntityResource<TestCase, TestCaseRepository> {
   public static final String COLLECTION_PATH = "/v1/dataQuality/testCases";
   private final TestCaseMapper mapper = new TestCaseMapper();
+  private final TestCaseResultMapper testCaseResultMapper = new TestCaseResultMapper();
   static final String FIELDS = "owners,testSuite,testDefinition,testSuites,incidentId,domain,tags";
   static final String SEARCH_FIELDS_EXCLUDE =
       "testPlatforms,table,database,databaseSchema,service,testSuite,dataQualityDimension,testCaseType,originEntityFQN";
@@ -915,10 +917,29 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
       TestCase testCase = repository.findByName(fqn, Include.ALL);
       repository.deleteTestCaseFailedRowsSample(testCase.getId());
     }
-    RestUtil.validateTimestampMilliseconds(testCaseResult.getTimestamp());
+    // TODO: REMOVED ONCE DEPRECATED IN TEST CASE RESOURCE
+    CreateTestCaseResult createTestCaseResult =
+        new CreateTestCaseResult()
+            .withTimestamp(testCaseResult.getTimestamp())
+            .withTestCaseStatus(testCaseResult.getTestCaseStatus())
+            .withResult(testCaseResult.getResult())
+            .withSampleData(testCaseResult.getSampleData())
+            .withTestResultValue(testCaseResult.getTestResultValue())
+            .withPassedRows(testCaseResult.getPassedRows())
+            .withFailedRows(testCaseResult.getFailedRows())
+            .withPassedRowsPercentage(testCaseResult.getPassedRowsPercentage())
+            .withFailedRowsPercentage(testCaseResult.getFailedRowsPercentage())
+            .withIncidentId(testCaseResult.getIncidentId())
+            .withMaxBound(testCaseResult.getMaxBound())
+            .withMinBound(testCaseResult.getMinBound())
+            .withFqn(fqn);
     return repository
         .addTestCaseResult(
-            securityContext.getUserPrincipal().getName(), uriInfo, fqn, testCaseResult)
+            securityContext.getUserPrincipal().getName(),
+            uriInfo,
+            fqn,
+            testCaseResultMapper.createToEntity(
+                createTestCaseResult, securityContext.getUserPrincipal().getName()))
         .toResponse();
   }
 
