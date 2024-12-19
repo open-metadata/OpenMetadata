@@ -61,6 +61,7 @@ const AsyncSelectList: FC<AsyncSelectListProps & SelectProps> = ({
   tagType,
   onCancel,
   isSubmitLoading,
+  open,
   ...props
 }) => {
   const [isLoading, setIsLoading] = useState(false);
@@ -69,6 +70,8 @@ const AsyncSelectList: FC<AsyncSelectListProps & SelectProps> = ({
   const [searchValue, setSearchValue] = useState<string>('');
   const [paging, setPaging] = useState<Paging>({} as Paging);
   const [currentPage, setCurrentPage] = useState(1);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(open);
+  const dropdownRef = useRef<HTMLDivElement | null>(null);
   const selectedTagsRef = useRef<SelectOption[]>(initialOptions ?? []);
   const { t } = useTranslation();
   const [optionFilteredCount, setOptionFilteredCount] = useState(0);
@@ -186,13 +189,18 @@ const AsyncSelectList: FC<AsyncSelectListProps & SelectProps> = ({
             htmlType="submit"
             loading={isSubmitLoading}
             size="small"
-            onClick={() => form.submit()}>
+            onClick={(event) => {
+              event.stopPropagation();
+              form.submit();
+            }}
+            onMouseDown={(e) => e.preventDefault()}>
             {t('label.update')}
           </Button>
           <Button
             data-testid="cancelAssociatedTag"
             size="small"
-            onClick={onCancel}>
+            onClick={onCancel}
+            onMouseDown={(e) => e.preventDefault()}>
             {t('label.cancel')}
           </Button>
         </Space>
@@ -286,60 +294,136 @@ const AsyncSelectList: FC<AsyncSelectListProps & SelectProps> = ({
     onChange?.(selectedValues);
   };
 
+  // Function to handle dropdown visibility change
+  const handleDropdownVisibleChange = (open: boolean) => {
+    if (open) {
+      setIsDropdownOpen(open);
+    }
+  };
+
+  // Function to prevent dropdown from closing when selecting an option
+  const handleBlur = () => {
+    const dropdownElement = dropdownRef.current;
+    if (!dropdownElement) {
+      return;
+    }
+
+    setTimeout(() => {
+      // Focus check for specific elements that should keep the dropdown open
+      const focusableElements = [
+        '.update-btn',
+        '.cancelAssociatedTag',
+        '.input',
+      ];
+
+      // Check if focus is on any of the elements in the list
+      const isFocusInsideRelevantElement = focusableElements.some((selector) =>
+        dropdownElement
+          .querySelector(selector)
+          ?.contains(document.activeElement)
+      );
+
+      // If focus is not inside any relevant element, close the dropdown
+      if (!isFocusInsideRelevantElement) {
+        setIsDropdownOpen(false);
+        onCancel?.();
+      }
+    }, 0);
+  };
+
+  // Function to handle clicks outside the dropdown
+  const handleClickOutside = (event: MouseEvent) => {
+    const dropdownElement = dropdownRef.current;
+
+    if (!dropdownElement) {
+      return;
+    }
+    const focusableElements = ['.input', '.ant-select-item', '.update-btn'];
+    const isClickInsideRelevantElement = focusableElements.some((selector) =>
+      (event.target as HTMLElement).closest(selector)
+    );
+
+    const isClickInsideDropdown = dropdownElement.contains(
+      event.target as Node
+    );
+
+    // Close dropdown only if the click is outside both dropdown and relevant elements
+    if (!isClickInsideDropdown && !isClickInsideRelevantElement) {
+      setIsDropdownOpen(false);
+      onCancel?.();
+    }
+  };
+
+  // Attach event listener for outside clicks
+  useEffect(() => {
+    const handleOutsideClick = (event: MouseEvent) => handleClickOutside(event);
+
+    document.addEventListener('mousedown', handleOutsideClick);
+
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick);
+    };
+  }, [onCancel]);
+
   useEffect(() => {
     loadOptions('');
   }, []);
 
   return (
-    <Select
-      showSearch
-      className="async-select-list"
-      data-testid="tag-selector"
-      dropdownRender={dropdownRender}
-      filterOption={false}
-      mode={mode}
-      notFoundContent={
-        isLoading ? (
-          <Loader size="small" />
-        ) : (
-          <Empty
-            description={t('label.no-entity-available', {
-              entity: t('label.tag-plural'),
-            })}
-            image={Empty.PRESENTED_IMAGE_SIMPLE}
-          />
-        )
-      }
-      optionLabelProp="label"
-      style={{ width: '100%' }}
-      tagRender={customTagRender}
-      onChange={handleChange}
-      onInputKeyDown={(event) => {
-        if (event.key === 'Backspace') {
-          return event.stopPropagation();
+    <div ref={dropdownRef}>
+      <Select
+        showSearch
+        className="async-select-list"
+        data-testid="tag-selector"
+        dropdownRender={dropdownRender}
+        filterOption={false}
+        mode={mode}
+        notFoundContent={
+          isLoading ? (
+            <Loader size="small" />
+          ) : (
+            <Empty
+              description={t('label.no-entity-available', {
+                entity: t('label.tag-plural'),
+              })}
+              image={Empty.PRESENTED_IMAGE_SIMPLE}
+            />
+          )
         }
-      }}
-      onPopupScroll={onScroll}
-      onSearch={debounceFetcher}
-      {...props}>
-      {tagOptions.map(({ label, value, displayName, data }) => (
-        <Select.Option
-          className={`${optionClassName} w-full`}
-          data={data}
-          data-testid={`tag-${value}`}
-          key={label}
-          value={value}>
-          <Tooltip
-            destroyTooltipOnHide
-            mouseEnterDelay={1.5}
-            placement="leftTop"
-            title={label}
-            trigger="hover">
-            {displayName}
-          </Tooltip>
-        </Select.Option>
-      ))}
-    </Select>
+        open={isDropdownOpen}
+        optionLabelProp="label"
+        style={{ width: '100%' }}
+        tagRender={customTagRender}
+        onBlur={handleBlur}
+        onChange={handleChange}
+        onDropdownVisibleChange={handleDropdownVisibleChange}
+        onInputKeyDown={(event) => {
+          if (event.key === 'Backspace') {
+            return event.stopPropagation();
+          }
+        }}
+        onPopupScroll={onScroll}
+        onSearch={debounceFetcher}
+        {...props}>
+        {tagOptions.map(({ label, value, displayName, data }) => (
+          <Select.Option
+            className={`${optionClassName} w-full`}
+            data={data}
+            data-testid={`tag-${value}`}
+            key={label}
+            value={value}>
+            <Tooltip
+              destroyTooltipOnHide
+              mouseEnterDelay={1.5}
+              placement="leftTop"
+              title={label}
+              trigger="hover">
+              {displayName}
+            </Tooltip>
+          </Select.Option>
+        ))}
+      </Select>
+    </div>
   );
 };
 
