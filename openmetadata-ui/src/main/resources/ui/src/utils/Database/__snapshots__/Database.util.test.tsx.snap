@@ -15,7 +15,7 @@ exports[`Database Util Database Util - schemaTableColumns should render the corr
 `;
 
 exports[`Database Util Database Util - schemaTableColumns should render the correct columns 2`] = `
-<RichTextEditorPreviewer
+<RichTextEditorPreviewerV1
   markdown="Schema 1 description"
 />
 `;

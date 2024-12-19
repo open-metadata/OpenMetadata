@@ -323,7 +323,6 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
                 trigger="onTextChange"
                 valuePropName="initialValue">
                 <RichTextEditor
-                  height="200px"
                   initialValue={testCase?.description ?? ''}
                   style={{
                     margin: 0,

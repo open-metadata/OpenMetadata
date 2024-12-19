@@ -216,7 +216,6 @@ const RuleForm: FC<RuleFormProps> = ({ ruleData, setRuleData }) => {
       </Form.Item>
       <Form.Item label={t('label.description')} name="ruleDescription">
         <RichTextEditor
-          height="200px"
           initialValue={ruleData.description || ''}
           placeHolder={t('message.write-your-description')}
           style={{ margin: 0 }}

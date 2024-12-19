@@ -423,7 +423,6 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
         name="description"
         trigger="onTextChange">
         <RichTextEditor
-          height="200px"
           initialValue={initialValue?.description || ''}
           style={{
             margin: 0,

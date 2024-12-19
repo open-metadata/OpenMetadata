@@ -20,7 +20,7 @@ import React, { FC, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../../components/common/Loader/Loader';
-import RichTextEditorPreviewer from '../../../components/common/RichTextEditor/RichTextEditorPreviewer';
+import RichTextEditorPreviewerV1 from '../../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { Policy } from '../../../generated/entity/policies/policy';
@@ -180,7 +180,7 @@ const AddAttributeModal: FC<Props> = ({
                 onClick={() => handleValueSelect(option.id)}>
                 <Col span={6}>{getEntityName(option)}</Col>
                 <Col span={16}>
-                  <RichTextEditorPreviewer
+                  <RichTextEditorPreviewerV1
                     markdown={option.description || ''}
                   />
                 </Col>

@@ -28,7 +28,7 @@ jest.mock('../../Tag/TagsViewer/TagsViewer', () =>
   jest.fn().mockImplementation(() => <div>TagsViewer</div>)
 );
 
-jest.mock('../../common/RichTextEditor/RichTextEditorPreviewer', () =>
+jest.mock('../../common/RichTextEditor/RichTextEditorPreviewerV1', () =>
   jest
     .fn()
     .mockImplementation(({ markdown }) => (

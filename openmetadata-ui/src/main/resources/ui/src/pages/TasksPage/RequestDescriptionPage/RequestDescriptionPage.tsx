@@ -62,7 +62,7 @@ const RequestDescription = () => {
   const location = useCustomLocation();
   const history = useHistory();
   const [form] = useForm();
-  const markdownRef = useRef<EditorContentRef>();
+  const markdownRef = useRef<EditorContentRef>({} as EditorContentRef);
 
   const { entityType } = useParams<{ entityType: EntityType }>();
 
@@ -129,12 +129,13 @@ const RequestDescription = () => {
             id: assignee.value,
             type: assignee.type,
           })),
-          suggestion: markdownRef.current?.getEditorContent(),
+          suggestion: markdownRef.current?.getEditorContent?.(),
           type: TaskType.RequestDescription,
           oldValue: '',
         },
         type: ThreadType.Task,
       };
+
       postThread(data)
         .then(() => {
           showSuccessToast(

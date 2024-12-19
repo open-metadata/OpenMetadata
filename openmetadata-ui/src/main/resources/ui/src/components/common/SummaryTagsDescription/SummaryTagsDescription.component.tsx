@@ -16,7 +16,7 @@ import { useTranslation } from 'react-i18next';
 import TagsViewer from '../../../components/Tag/TagsViewer/TagsViewer';
 import { BasicEntityInfo } from '../../Explore/EntitySummaryPanel/SummaryList/SummaryList.interface';
 import { EntityUnion } from '../../Explore/ExplorePage.interface';
-import RichTextEditorPreviewer from '../RichTextEditor/RichTextEditorPreviewer';
+import RichTextEditorPreviewerV1 from '../RichTextEditor/RichTextEditorPreviewerV1';
 
 const SummaryTagsDescription = ({
   tags = [],
@@ -61,7 +61,7 @@ const SummaryTagsDescription = ({
         <Col span={24}>
           <div>
             {entityDetail.description?.trim() ? (
-              <RichTextEditorPreviewer
+              <RichTextEditorPreviewerV1
                 markdown={entityDetail.description}
                 maxLength={200}
               />

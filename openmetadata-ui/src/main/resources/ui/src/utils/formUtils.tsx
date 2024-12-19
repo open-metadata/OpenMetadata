@@ -161,7 +161,7 @@ export const getField = (field: FieldProp) => {
       internalFormItemProps = {
         ...internalFormItemProps,
         trigger: 'onTextChange',
-        valuePropName: 'initialValue',
+        initialValue: props?.initialValue ?? '',
       };
 
       break;
