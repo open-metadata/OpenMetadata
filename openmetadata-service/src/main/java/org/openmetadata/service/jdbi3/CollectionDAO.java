@@ -1180,10 +1180,7 @@ public interface CollectionDAO {
                 + "AND json->>'source' = :source",
         connectionType = POSTGRES)
     void deleteLineageBySourcePipeline(
-        @BindUUID("toId") UUID toId,
-        @Bind("toEntity") String toEntity,
-        @Bind("source") String source,
-        @Bind("relation") int relation);
+        @BindUUID("toId") UUID toId, @Bind("source") String source, @Bind("relation") int relation);
 
     class FromRelationshipMapper implements RowMapper<EntityRelationshipRecord> {
       @Override

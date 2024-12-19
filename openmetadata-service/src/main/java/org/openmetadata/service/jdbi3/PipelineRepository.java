@@ -42,6 +42,8 @@ import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.LineageDetails;
+import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.Status;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.Task;
@@ -294,6 +296,18 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     pipeline.setTasks(cloneWithoutTagsAndOwners(taskWithTagsAndOwners));
     store(pipeline, update);
     pipeline.withService(service).withTasks(taskWithTagsAndOwners);
+  }
+
+  @Override
+  protected void cleanup(Pipeline pipeline) {
+    // When a pipeline is removed , the linege needs to be removed
+    daoCollection
+        .relationshipDAO()
+        .deleteLineageBySourcePipeline(
+            pipeline.getId(),
+            LineageDetails.Source.PIPELINE_LINEAGE.value(),
+            Relationship.UPSTREAM.ordinal());
+    super.cleanup(pipeline);
   }
 
   @Override
