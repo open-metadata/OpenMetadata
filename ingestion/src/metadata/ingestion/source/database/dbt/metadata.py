@@ -895,7 +895,7 @@ class DbtSource(DbtServiceSource):
         self, data_model_link: DataModelLink
     ) -> Iterable[Either[PatchedEntity]]:
         """
-        Method to process DBT owners 
+        Method to process DBT owners
         """
         table_entity: Table = data_model_link.table_entity
         if table_entity:
