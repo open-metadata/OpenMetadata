@@ -65,10 +65,11 @@ class QueryParserSource(Source, ABC):
         self.dialect = ConnectionTypeDialectMapper.dialect_of(connection_type)
         self.source_config = self.config.sourceConfig.config
         self.start, self.end = get_start_and_end(self.source_config.queryLogDuration)
-        self.engine = (
-            get_ssl_connection(self.service_connection) if get_engine else None
-        )
-        self.test_connection()
+
+        self.engine = None
+        if get_engine:
+            self.engine = get_ssl_connection(self.service_connection)
+            self.test_connection()
 
     @property
     def name(self) -> str:
