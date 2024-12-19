@@ -800,16 +800,19 @@ export const createAnnouncement = async (
   isForActivityFeedTab: boolean
 ) => {
   if (isForActivityFeedTab) {
-    const activityFeedText = (await page
-      .getByText('Activity Feeds & Tasks')
-      .isVisible())
-      ? 'Activity Feeds & Tasks'
-      : 'Activity Feeds';
-    await page.getByText(activityFeedText).click(); // For Activity Feed
+    const activityFeedSelector = page.locator(
+      'div[role="tab"][id^="rc-tabs-"][id$="-activity_feed"]'
+    );
+    await activityFeedSelector.click(); // For Activity Feed
     await page.getByTestId('announcement-sub-tab').click();
   } else {
     await page.getByText('Announcements').click(); // For Service page
   }
+
+  await expect(page.getByTestId('no-data-placeholder-container')).toContainText(
+    'No Announcements, Click on add announcement to add one.'
+  );
+
   await page.getByTestId('add-announcement-btn').click();
   const startDate = customFormatDateTime(getCurrentMillis(), 'yyyy-MM-dd');
   const endDate = customFormatDateTime(
@@ -873,6 +876,21 @@ export const replyAnnouncement = async (page: Page) => {
 
   await expect(feedDataCard).toContainText('1 Reply');
 
+  // Edit the reply message
+  await page.hover('[data-testid="feed-replies"]');
+  await page.click('[data-testid="edit-message"]');
+
+  await page.fill(
+    '[data-testid="editor-wrapper"] .ql-editor',
+    'Reply message edited'
+  );
+
+  await page.click('[data-testid="save-button"]');
+
+  await expect(
+    page.locator('#feed-panel [data-testid="viewer-container"]')
+  ).toHaveText('Reply message edited');
+
   await page.reload();
 };
 
@@ -898,16 +916,19 @@ export const createInactiveAnnouncement = async (
   isForActivityFeedTab: boolean
 ) => {
   if (isForActivityFeedTab) {
-    const activityFeedText = (await page
-      .getByText('Activity Feeds & Tasks')
-      .isVisible())
-      ? 'Activity Feeds & Tasks'
-      : 'Activity Feeds';
-    await page.getByText(activityFeedText).click(); // For Activity Feed
+    const activityFeedSelector = page.locator(
+      'div[role="tab"][id^="rc-tabs-"][id$="-activity_feed"]'
+    );
+    await activityFeedSelector.click(); // For Activity Feed
     await page.getByTestId('announcement-sub-tab').click();
   } else {
     await page.getByText('Announcements').click(); // For Service page
   }
+
+  await expect(page.getByTestId('no-data-placeholder-container')).toContainText(
+    'No Announcements, Click on add announcement to add one.'
+  );
+
   await page.getByTestId('add-announcement-btn').click();
   const startDate = customFormatDateTime(
     getEpochMillisForFutureDays(6),

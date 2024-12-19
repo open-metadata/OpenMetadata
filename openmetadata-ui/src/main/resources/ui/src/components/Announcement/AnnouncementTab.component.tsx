@@ -195,7 +195,7 @@ const AnnouncementTab: React.FC<AnnouncementTabProps> = ({
               showThreadIcon: false,
               showRepliesContainer: true,
             }}
-            emptyPlaceholderText=""
+            emptyPlaceholderText={t('message.no-announcement-message')}
             feedList={threads}
             isLoading={false}
             permissions={permissions?.EditAll}

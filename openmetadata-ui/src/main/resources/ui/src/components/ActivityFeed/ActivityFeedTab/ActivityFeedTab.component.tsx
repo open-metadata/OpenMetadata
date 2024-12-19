@@ -284,6 +284,7 @@ export const ActivityFeedTab = ({
   }, [activeTab, isUserEntity, currentUser]);
 
   const handleSaveAnnouncement = useCallback(() => {
+    handleCloseAnnouncementModal();
     getFeedData(
       feedFilter,
       undefined,
@@ -294,7 +295,6 @@ export const ActivityFeedTab = ({
       undefined,
       announcementFilter
     );
-    handleCloseAnnouncementModal();
   }, [feedFilter, entityType, fqn, announcementFilter]);
 
   const handleFeedFetchFromFeedList = useCallback(

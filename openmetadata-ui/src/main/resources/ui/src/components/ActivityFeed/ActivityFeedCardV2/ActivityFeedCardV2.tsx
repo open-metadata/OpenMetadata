@@ -14,7 +14,7 @@
 import { Avatar, Col, Row } from 'antd';
 import classNames from 'classnames';
 import { compare, Operation } from 'fast-json-patch';
-import _, { isEmpty } from 'lodash';
+import _, { isEmpty, noop } from 'lodash';
 import React, { useMemo, useState } from 'react';
 import { EntityField } from '../../../constants/Feeds.constants';
 import {
@@ -94,10 +94,7 @@ const ActivityFeedCardV2 = ({
     isThread: boolean,
     data: Operation[]
   ): Promise<void> => {
-    const callback = () => {
-      return;
-    };
-    await updateThreadData(threadId, postId, isThread, data, callback);
+    await updateThreadData(threadId, postId, isThread, data, noop);
     await fetchUpdatedThread(threadId);
   };
   const handleAnnouncementUpdate = async (

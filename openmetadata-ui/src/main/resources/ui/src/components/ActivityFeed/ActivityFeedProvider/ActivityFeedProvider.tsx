@@ -185,9 +185,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
           type === ThreadType.Announcement
             ? announcementStatus === AnnoucementStatus.Active
               ? true
-              : announcementStatus === AnnoucementStatus.Inactive
-              ? false
-              : undefined
+              : false
             : undefined;
 
         const { data, paging } = await getAllFeeds(

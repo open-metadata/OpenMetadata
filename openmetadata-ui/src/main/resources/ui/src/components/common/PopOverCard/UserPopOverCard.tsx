@@ -264,7 +264,7 @@ const UserPopOverCard: FC<Props> = ({
         <Link
           className={classNames(
             'assignee-item d-flex gap-1 cursor-pointer items-center',
-            'z-9 relative',
+            'relative',
             {
               'm-r-xs': !showUserName && showUserProfile,
             },
