@@ -21,4 +21,6 @@ export interface FeedCardFooterProps {
     showThreadIcon?: boolean;
     showRepliesContainer?: boolean;
   };
+  isAnnouncementTab?: boolean;
+  updateAnnouncementThreads?: () => void;
 }

@@ -60,6 +60,7 @@ export const getDataBaseSchemaPageBaseTabs = ({
   fetchDatabaseSchemaDetails,
   handleFeedCount,
   pagingInfo,
+  databaseSchemaPermission,
 }: DatabaseSchemaPageTabProps): TabProps[] => {
   return [
     {
@@ -162,6 +163,7 @@ export const getDataBaseSchemaPageBaseTabs = ({
             entityFeedTotalCount={feedCount.totalCount}
             entityType={EntityType.DATABASE_SCHEMA}
             fqn={databaseSchema.fullyQualifiedName ?? ''}
+            permissions={databaseSchemaPermission}
             onFeedUpdate={getEntityFeedCount}
             onUpdateEntityDetails={fetchDatabaseSchemaDetails}
             onUpdateFeedCount={handleFeedCount}

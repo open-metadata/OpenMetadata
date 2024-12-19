@@ -34,6 +34,7 @@ import {
   DATA_ASSET_ICON_DIMENSION,
   DE_ACTIVE_COLOR,
   getEntityDetailsPath,
+  serviceEntityTypes,
 } from '../../../constants/constants';
 import { SERVICE_TYPES } from '../../../constants/Services.constant';
 import { useTourProvider } from '../../../context/TourProvider/TourProvider';
@@ -69,7 +70,6 @@ import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { getDataQualityLineage } from '../../../rest/lineageAPI';
 import tableClassBase from '../../../utils/TableClassBase';
 import AnnouncementCard from '../../common/EntityPageInfos/AnnouncementCard/AnnouncementCard';
-import AnnouncementDrawer from '../../common/EntityPageInfos/AnnouncementDrawer/AnnouncementDrawer';
 import ManageButton from '../../common/EntityPageInfos/ManageButton/ManageButton';
 import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.component';
 import RetentionPeriod from '../../Database/RetentionPeriod/RetentionPeriod.component';
@@ -229,8 +229,6 @@ export const DataAssetsHeader = ({
     [votes, USER_ID]
   );
 
-  const [isAnnouncementDrawerOpen, setIsAnnouncementDrawerOpen] =
-    useState<boolean>(false);
   const [activeAnnouncement, setActiveAnnouncement] = useState<Thread>();
 
   const fetchDQFailureCount = async () => {
@@ -366,6 +364,24 @@ export const DataAssetsHeader = ({
     );
   };
 
+  const handleOpenAnnouncementsTab = () => {
+    if (!dataAsset.fullyQualifiedName) {
+      return;
+    }
+
+    const tabParams = serviceEntityTypes.includes(entityType)
+      ? [EntityTabs.ANNOUNCEMENT]
+      : [EntityTabs.ACTIVITY_FEED, ActivityFeedTabs.ANNOUNCEMENTS];
+
+    const entityLink = entityUtilClassBase.getEntityLink(
+      entityType,
+      dataAsset.fullyQualifiedName,
+      ...tabParams
+    );
+
+    history.push(entityLink);
+  };
+
   const handleShareButtonClick = async () => {
     await onCopyToClipBoard();
     setCopyTooltip(t('message.link-copy-to-clipboard'));
@@ -391,15 +407,6 @@ export const DataAssetsHeader = ({
     await onUpdateVote?.(data, dataAsset.id ?? '');
   };
 
-  const handleOpenAnnouncementDrawer = useCallback(
-    () => setIsAnnouncementDrawerOpen(true),
-    []
-  );
-
-  const handleCloseAnnouncementDrawer = useCallback(
-    () => setIsAnnouncementDrawerOpen(false),
-    []
-  );
   const handleFollowingClick = useCallback(async () => {
     setIsFollowingLoading(true);
     await onFollowClick?.();
@@ -602,11 +609,6 @@ export const DataAssetsHeader = ({
                   entityType={entityType}
                   extraDropdownContent={extraDropdownContent}
                   isRecursiveDelete={isRecursiveDelete}
-                  onAnnouncementClick={
-                    permissions?.EditAll
-                      ? handleOpenAnnouncementDrawer
-                      : undefined
-                  }
                   onEditDisplayName={onDisplayNameUpdate}
                   onProfilerSettingUpdate={onProfilerSettingUpdate}
                   onRestoreEntity={onRestoreDataAsset}
@@ -618,23 +620,13 @@ export const DataAssetsHeader = ({
               {activeAnnouncement && (
                 <AnnouncementCard
                   announcement={activeAnnouncement}
-                  onClick={handleOpenAnnouncementDrawer}
+                  onClick={handleOpenAnnouncementsTab}
                 />
               )}
             </div>
           </Space>
         </Col>
       </Row>
-
-      {isAnnouncementDrawerOpen && (
-        <AnnouncementDrawer
-          createPermission={permissions?.EditAll}
-          entityFQN={dataAsset.fullyQualifiedName ?? ''}
-          entityType={entityType}
-          open={isAnnouncementDrawerOpen}
-          onClose={handleCloseAnnouncementDrawer}
-        />
-      )}
     </>
   );
 };

@@ -395,6 +395,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
             entityFeedTotalCount={feedCount.totalCount}
             entityType={EntityType.TOPIC}
             fqn={topicDetails?.fullyQualifiedName ?? ''}
+            permissions={topicPermissions}
             onFeedUpdate={getEntityFeedCount}
             onUpdateEntityDetails={fetchTopic}
             onUpdateFeedCount={handleFeedCount}

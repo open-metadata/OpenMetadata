@@ -62,12 +62,8 @@ describe('Test manage button component', () => {
       fireEvent.click(manageButton);
 
       const deleteOption = await screen.findByTestId('delete-button');
-      const announcementOption = await screen.findByTestId(
-        'announcement-button'
-      );
 
       expect(deleteOption).toBeInTheDocument();
-      expect(announcementOption).toBeInTheDocument();
     });
   });
 
@@ -88,28 +84,6 @@ describe('Test manage button component', () => {
       fireEvent.click(deleteOption);
 
       expect(await screen.findByText('DeleteWidgetModal')).toBeInTheDocument();
-    });
-  });
-
-  it('Should call announcement callback on click of announcement option', async () => {
-    await act(async () => {
-      render(<ManageButton {...mockProps} />);
-
-      const manageButton = await screen.findByTestId('manage-button');
-
-      expect(manageButton).toBeInTheDocument();
-
-      fireEvent.click(manageButton);
-
-      const announcementOption = await screen.findByTestId(
-        'announcement-button'
-      );
-
-      expect(announcementOption).toBeInTheDocument();
-
-      fireEvent.click(announcementOption);
-
-      expect(mockAnnouncementClick).toHaveBeenCalled();
     });
   });
 

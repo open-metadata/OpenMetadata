@@ -636,6 +636,7 @@ const StoredProcedurePage = () => {
             entityFeedTotalCount={feedCount.totalCount}
             entityType={EntityType.STORED_PROCEDURE}
             fqn={entityFQN}
+            permissions={storedProcedurePermissions}
             onFeedUpdate={getEntityFeedCount}
             onUpdateEntityDetails={fetchStoredProcedureDetails}
             onUpdateFeedCount={handleFeedCount}

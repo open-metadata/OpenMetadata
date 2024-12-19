@@ -15,10 +15,9 @@ import { Button, Dropdown, Modal, Tooltip, Typography } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { capitalize, isUndefined } from 'lodash';
+import { capitalize } from 'lodash';
 import React, { FC, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as IconAnnouncementsBlack } from '../../../../assets/svg/announcements-black.svg';
 import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
 import { ReactComponent as IconDelete } from '../../../../assets/svg/ic-delete.svg';
 import { ReactComponent as IconRestore } from '../../../../assets/svg/ic-restore.svg';
@@ -26,7 +25,6 @@ import { ReactComponent as IconSetting } from '../../../../assets/svg/ic-setting
 import { ReactComponent as IconDropdown } from '../../../../assets/svg/menu.svg';
 import { NO_PERMISSION_FOR_ACTION } from '../../../../constants/HelperTextUtil';
 import { EntityType } from '../../../../enums/entity.enum';
-import { ANNOUNCEMENT_ENTITIES } from '../../../../utils/AnnouncementsUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import EntityNameModal from '../../../Modals/EntityNameModal/EntityNameModal.component';
 import { EntityName } from '../../../Modals/EntityNameModal/EntityNameModal.interface';
@@ -49,7 +47,6 @@ const ManageButton: FC<ManageButtonProps> = ({
   entityId,
   isRecursiveDelete,
   extraDropdownContent,
-  onAnnouncementClick,
   onRestoreEntity,
   deleted,
   editDisplayNamePermission,
@@ -99,14 +96,6 @@ const ManageButton: FC<ManageButtonProps> = ({
     }
   };
 
-  const showAnnouncementOption = useMemo(
-    () =>
-      onAnnouncementClick &&
-      ANNOUNCEMENT_ENTITIES.includes(entityType as EntityType) &&
-      !deleted,
-    [onAnnouncementClick, entityType, deleted]
-  );
-
   const showRenameOption = useMemo(
     () => editDisplayNamePermission && onEditDisplayName && !deleted,
     [editDisplayNamePermission, onEditDisplayName, deleted]
@@ -139,26 +128,6 @@ const ManageButton: FC<ManageButtonProps> = ({
               }
             },
             key: 'restore-button',
-          },
-        ] as ItemType[])
-      : []),
-
-    ...(showAnnouncementOption
-      ? ([
-          {
-            label: (
-              <ManageButtonItemLabel
-                description={t('message.announcement-action-description')}
-                icon={IconAnnouncementsBlack}
-                id="announcement-button"
-                name={t('label.announcement-plural')}
-              />
-            ),
-            onClick: (e) => {
-              e.domEvent.stopPropagation();
-              !isUndefined(onAnnouncementClick) && onAnnouncementClick();
-            },
-            key: 'announcement-button',
           },
         ] as ItemType[])
       : []),

@@ -708,6 +708,7 @@ const PipelineDetails = ({
             entityFeedTotalCount={feedCount.totalCount}
             entityType={EntityType.PIPELINE}
             fqn={pipelineDetails?.fullyQualifiedName ?? ''}
+            permissions={pipelinePermissions}
             onFeedUpdate={getEntityFeedCount}
             onUpdateEntityDetails={fetchPipeline}
             onUpdateFeedCount={handleFeedCount}

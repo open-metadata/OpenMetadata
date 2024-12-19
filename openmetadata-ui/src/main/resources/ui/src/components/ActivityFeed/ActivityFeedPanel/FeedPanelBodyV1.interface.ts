@@ -27,4 +27,8 @@ export interface FeedPanelBodyPropV1 {
     showRepliesContainer?: boolean;
   };
   hidePopover: boolean;
+  isAnnouncementCard?: boolean;
+  isAnnouncementTab?: boolean;
+  updateAnnouncementThreads?: () => void;
+  permissions?: boolean;
 }

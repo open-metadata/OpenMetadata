@@ -126,7 +126,7 @@ class EntityUtilClassBase {
       case EntityType.STORAGE_SERVICE:
       case EntityType.SEARCH_SERVICE:
       case EntityType.API_SERVICE:
-        return getServiceDetailsPath(fullyQualifiedName, `${indexType}s`);
+        return getServiceDetailsPath(fullyQualifiedName, `${indexType}s`, tab);
 
       case EntityType.WEBHOOK:
         return getEditWebhookPath(fullyQualifiedName);

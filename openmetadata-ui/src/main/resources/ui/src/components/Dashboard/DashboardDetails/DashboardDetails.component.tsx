@@ -722,6 +722,7 @@ const DashboardDetails = ({
             entityFeedTotalCount={feedCount.totalCount}
             entityType={EntityType.DASHBOARD}
             fqn={dashboardDetails?.fullyQualifiedName ?? ''}
+            permissions={dashboardPermissions}
             onFeedUpdate={getEntityFeedCount}
             onUpdateEntityDetails={fetchDashboard}
             onUpdateFeedCount={handleFeedCount}
