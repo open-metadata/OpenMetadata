@@ -12,6 +12,7 @@
  */
 
 import { CurveType } from 'recharts/types/shape/Curve';
+import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { Thread } from '../../../../generated/entity/feed/thread';
 import { TestCase } from '../../../../generated/tests/testCase';
 import { TestSuite } from '../../../../generated/tests/testSuite';
@@ -87,3 +88,7 @@ export type TestCaseChartDataType = {
 export interface LineChartRef {
   container: HTMLElement;
 }
+
+export type TestCasePermission = OperationPermission & {
+  fullyQualifiedName?: string;
+};
