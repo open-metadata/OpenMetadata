@@ -707,6 +707,7 @@ const ContainerPage = () => {
             entityFeedTotalCount={feedCount.totalCount}
             entityType={EntityType.CONTAINER}
             fqn={decodedContainerName}
+            permissions={containerPermissions}
             onFeedUpdate={getEntityFeedCount}
             onUpdateEntityDetails={() =>
               fetchContainerDetail(decodedContainerName)

@@ -57,7 +57,7 @@ describe('Test Add Announcement modal', () => {
   it('Should render the component', async () => {
     render(<AddAnnouncementModal {...mockProps} />);
 
-    const modal = await screen.findByTestId('add-announcement');
+    const modal = await screen.findByTestId('add-announcement-modal');
 
     const form = await screen.findByTestId('announcement-form');
 

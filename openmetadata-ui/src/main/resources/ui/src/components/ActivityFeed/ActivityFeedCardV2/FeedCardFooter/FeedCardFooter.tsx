@@ -12,16 +12,21 @@
  */
 
 import { Avatar, Button, Col, Row, Space, Tooltip, Typography } from 'antd';
-import { min, noop, sortBy } from 'lodash';
+import { compare } from 'fast-json-patch';
+import { isEmpty, min, noop, sortBy } from 'lodash';
 import React, { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ThreadIcon } from '../../../../assets/svg/thread-icon.svg';
 import { ReactionOperation } from '../../../../enums/reactions.enum';
-import { ReactionType } from '../../../../generated/type/reaction';
+import { Post, ThreadType } from '../../../../generated/entity/feed/thread';
+import { Reaction, ReactionType } from '../../../../generated/type/reaction';
+import { useApplicationStore } from '../../../../hooks/useApplicationStore';
+import { updatePost, updateThread } from '../../../../rest/feedsAPI';
 import {
   formatDateTime,
   getRelativeTime,
 } from '../../../../utils/date-time/DateTimeUtils';
+import { getUpdatedThread } from '../../../../utils/FeedUtils';
 import ProfilePicture from '../../../common/ProfilePicture/ProfilePicture';
 import { useActivityFeedProvider } from '../../ActivityFeedProvider/ActivityFeedProvider';
 import Reactions from '../../Reactions/Reactions';
@@ -35,11 +40,13 @@ function FeedCardFooter({
     showThreadIcon: true,
     showRepliesContainer: true,
   },
+  isAnnouncementTab = false,
+  updateAnnouncementThreads,
 }: Readonly<FeedCardFooterProps>) {
   const { t } = useTranslation();
   const { showDrawer, updateReactions, fetchUpdatedThread } =
     useActivityFeedProvider();
-
+  const { currentUser } = useApplicationStore();
   // The number of posts in the thread
   const postLength = useMemo(() => feed?.postsCount ?? 0, [feed?.postsCount]);
 
@@ -57,11 +64,90 @@ function FeedCardFooter({
 
     return { latestReplyTimeStamp, repliedUniqueUsersList };
   }, [feed?.posts]);
+  const { updateEntityThread } = useActivityFeedProvider();
+
+  const isFeedTypeAnnouncement = useMemo(
+    () => feed.type === ThreadType.Announcement,
+    [feed.type]
+  );
+  const applyPatch = async (patch: any) => {
+    if (!isEmpty(patch)) {
+      if (isFeedTypeAnnouncement && !isAnnouncementTab) {
+        if (isPost) {
+          await updatePost(feed.id, post.id, patch);
+        } else {
+          await updateThread(feed.id, patch);
+        }
+        const updatedthread = await getUpdatedThread(feed.id);
+        updateEntityThread(updatedthread);
+      } else {
+        if (isPost) {
+          await updatePost(feed.id, post.id, patch);
+        } else {
+          await updateThread(feed.id, patch);
+        }
+        updateAnnouncementThreads?.();
+      }
+    }
+  };
+  const updateAnnouncementsThreadReactions = async (
+    post: Post,
+    reactionType: ReactionType,
+    reactionOperation: ReactionOperation
+  ) => {
+    let updatedReactions = isPost ? post.reactions || [] : feed.reactions || [];
+    if (reactionOperation === ReactionOperation.ADD) {
+      const reactionObject = {
+        reactionType,
+        user: {
+          id: currentUser?.id as string,
+        },
+      };
+
+      updatedReactions = [...updatedReactions, reactionObject as Reaction];
+    } else {
+      updatedReactions = updatedReactions.filter(
+        (reaction) =>
+          !(
+            reaction.reactionType === reactionType &&
+            reaction.user.id === currentUser?.id
+          )
+      );
+    }
+    const originalObject = isPost
+      ? { ...post, reactions: [...(post.reactions || [])] }
+      : { ...feed, reactions: [...(feed.reactions || [])] };
+
+    const updatedObject = isPost
+      ? { ...post, reactions: updatedReactions }
+      : { ...feed, reactions: updatedReactions };
+
+    const patch = compare(originalObject, updatedObject);
+
+    applyPatch(patch);
+  };
+  const handleAnnouncementReaction = async (
+    reaction: ReactionType,
+    operation: ReactionOperation
+  ) => {
+    updateAnnouncementsThreadReactions(post, reaction, operation);
+  };
+
+  const handleDefaultReaction = async (
+    reaction: ReactionType,
+    operation: ReactionOperation
+  ) => {
+    await updateReactions(post, feed.id, !isPost, reaction, operation);
+    await fetchUpdatedThread(feed.id);
+  };
 
   const onReactionUpdate = useCallback(
     async (reaction: ReactionType, operation: ReactionOperation) => {
-      await updateReactions(post, feed.id, !isPost, reaction, operation);
-      await fetchUpdatedThread(feed.id);
+      if (isAnnouncementTab) {
+        await handleAnnouncementReaction(reaction, operation);
+      } else {
+        await handleDefaultReaction(reaction, operation);
+      }
     },
     [updateReactions, post, feed.id, isPost, fetchUpdatedThread]
   );
@@ -87,6 +173,7 @@ function FeedCardFooter({
           )}
           <Reactions
             reactions={post.reactions ?? []}
+            showAddEmoji={!isFeedTypeAnnouncement} // hide emoji if its Announcement , since we are showing add emoji thrg pop up
             onReactionSelect={onReactionUpdate ?? noop}
           />
         </Space>
@@ -97,7 +184,7 @@ function FeedCardFooter({
             className="flex items-center gap-2 p-x-xss w-full rounded-8"
             type="text"
             onClick={componentsVisibility.showThreadIcon ? showReplies : noop}>
-            {postLength > 0 && (
+            {feed.type !== ThreadType.Announcement && postLength > 0 && (
               <Avatar.Group>
                 {repliedUniqueUsersList.map((user) => (
                   <ProfilePicture

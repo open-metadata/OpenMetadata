@@ -21,7 +21,10 @@ import ActivityFeedEditor from '../../../../components/ActivityFeed/ActivityFeed
 import RichTextEditorPreviewer from '../../../../components/common/RichTextEditor/RichTextEditorPreviewer';
 import { ASSET_CARD_STYLES } from '../../../../constants/Feeds.constants';
 import { EntityType } from '../../../../enums/entity.enum';
-import { CardStyle } from '../../../../generated/entity/feed/thread';
+import {
+  CardStyle,
+  ThreadType,
+} from '../../../../generated/entity/feed/thread';
 import {
   AlertType,
   EventSubscription,
@@ -162,13 +165,23 @@ const FeedCardBodyV1 = ({
     return feedBodyStyleCardsRender;
   }, [isEditPost, message, feedBodyStyleCardsRender]);
 
+  const isAnnouncement = useMemo(
+    () => feed.type === ThreadType.Announcement,
+    [feed.type]
+  );
+
   return (
     <div
       className={classNames(
-        'feed-card-body bg-grey-5 p-sm rounded-6',
+        `feed-card-body  p-sm rounded-6 ${!isAnnouncement && 'bg-grey-5'}`,
+
         isEditPost ? '' : className
-      )}>
-      <div className="feed-message">
+      )}
+      data-testid="feedcardbodyV1">
+      <div
+        className={`feed-message ${
+          isAnnouncement ? 'feed-message--announcement' : ''
+        }`}>
         {!isUndefined(announcement) ? (
           <>
             <Row>
@@ -184,20 +197,28 @@ const FeedCardBodyV1 = ({
               </Col>
             </Row>
             <Row>
-              <Col span={24}>
+              <Col className={`${isAnnouncement && 'mt-4'}`} span={24}>
                 <Typography.Text className="font-semibold">
                   {message}
                 </Typography.Text>
               </Col>
             </Row>
-            <Row>
-              <Col span={24}>
-                <RichTextEditorPreviewer
-                  className="text-wrap"
-                  markdown={announcement.description ?? ''}
-                />
-              </Col>
-            </Row>
+            {isAnnouncement ? (
+              <Row>
+                <Col className="mb-1" span={24}>
+                  <Typography.Text>{announcement.description}</Typography.Text>
+                </Col>
+              </Row>
+            ) : (
+              <Row>
+                <Col span={24}>
+                  <RichTextEditorPreviewer
+                    className="text-wrap"
+                    markdown={announcement.description ?? ''}
+                  />
+                </Col>
+              </Row>
+            )}
           </>
         ) : (
           feedBodyRender
