@@ -346,6 +346,7 @@ dev = {
 test = {
     # Install Airflow as it's not part of `all` plugin
     "opentelemetry-exporter-otlp==1.27.0",
+    "locust~=2.32.0",
     VERSIONS["airflow"],
     "boto3-stubs",
     "mypy-boto3-glue",
