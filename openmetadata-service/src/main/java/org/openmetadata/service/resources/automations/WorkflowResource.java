@@ -83,7 +83,7 @@ import org.openmetadata.service.util.ResultList;
 public class WorkflowResource extends EntityResource<Workflow, WorkflowRepository> {
   public static final String COLLECTION_PATH = "/v1/automations/workflows";
   static final String FIELDS = "owners";
-
+  private WorkflowMapper mapper;
   private PipelineServiceClientInterface pipelineServiceClient;
   private OpenMetadataApplicationConfig openMetadataApplicationConfig;
 
@@ -94,7 +94,7 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
   @Override
   public void initialize(OpenMetadataApplicationConfig config) {
     this.openMetadataApplicationConfig = config;
-
+    this.mapper = new WorkflowMapper(config);
     this.pipelineServiceClient =
         PipelineServiceClientFactory.createPipelineServiceClient(
             config.getPipelineServiceClientConfiguration());
@@ -331,7 +331,7 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateWorkflow create) {
-    Workflow workflow = getWorkflow(create, securityContext.getUserPrincipal().getName());
+    Workflow workflow = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     Response response = create(uriInfo, securityContext, unmask(workflow));
     return Response.fromResponse(response)
         .entity(decryptOrNullify(securityContext, (Workflow) response.getEntity()))
@@ -452,7 +452,7 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateWorkflow create) {
-    Workflow workflow = getWorkflow(create, securityContext.getUserPrincipal().getName());
+    Workflow workflow = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     workflow = unmask(workflow);
     Response response = createOrUpdate(uriInfo, securityContext, workflow);
     return Response.fromResponse(response)
@@ -537,21 +537,6 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
     return Response.fromResponse(response)
         .entity(decryptOrNullify(securityContext, (Workflow) response.getEntity()))
         .build();
-  }
-
-  private Workflow getWorkflow(CreateWorkflow create, String user) {
-    OpenMetadataConnection openMetadataServerConnection =
-        new OpenMetadataConnectionBuilder(openMetadataApplicationConfig).build();
-    return repository
-        .copy(new Workflow(), create, user)
-        .withDescription(create.getDescription())
-        .withRequest(create.getRequest())
-        .withWorkflowType(create.getWorkflowType())
-        .withDisplayName(create.getDisplayName())
-        .withResponse(create.getResponse())
-        .withStatus(create.getStatus())
-        .withOpenMetadataServerConnection(openMetadataServerConnection)
-        .withName(create.getName());
   }
 
   private Workflow unmask(Workflow workflow) {
