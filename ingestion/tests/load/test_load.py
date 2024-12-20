@@ -2,8 +2,9 @@
 
 import csv
 import os
+import sys
 from pathlib import Path
-from unittest import TestCase
+from unittest import TestCase, skipIf
 
 import yaml
 
@@ -36,6 +37,7 @@ def run_all_resources(summary_file: str, locust_file: str):
 class TestAllResources(TestCase):
     """Test class to run all resources load test"""
 
+    @skipIf(sys.version_info < (3, 9), "locust is not supported on python 3.8")
     def test_all_resources(self):
         """Test all resources"""
         directory = Path(__file__).parent
