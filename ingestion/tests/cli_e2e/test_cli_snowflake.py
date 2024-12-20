@@ -98,9 +98,11 @@ class SnowflakeCliTest(CliCommonDB.TestSuite, SQACommonMethods):
             for stmt in cls.teardown_sql_statements:
                 connection.execute(stmt)
 
-    def setUp(self) -> None:
-        with self.engine.connect() as connection:
-            for sql_statements in self.prepare_snowflake_e2e:
+    @classmethod
+    def setUpClass(cls) -> None:
+        super().setUpClass()
+        with cls.engine.connect() as connection:
+            for sql_statements in cls.prepare_snowflake_e2e:
                 connection.execute(sql_statements)
 
     @staticmethod
@@ -186,7 +188,7 @@ class SnowflakeCliTest(CliCommonDB.TestSuite, SQACommonMethods):
 
     @staticmethod
     def get_includes_schemas() -> List[str]:
-        return ["e2e_test.*"]
+        return ["E2E_TEST.*"]
 
     @staticmethod
     def get_includes_tables() -> List[str]:
