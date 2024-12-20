@@ -68,7 +68,7 @@ import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResultList;
 import org.openmetadata.schema.dataInsight.custom.FormulaHolder;
-import org.openmetadata.schema.entity.data.EntityHierarchy__1;
+import org.openmetadata.schema.entity.data.EntityHierarchy;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.tests.DataQualityReport;
@@ -584,21 +584,21 @@ public class OpenSearchClient implements SearchClient {
     return response;
   }
 
-  public List<EntityHierarchy__1> buildGlossaryTermSearchHierarchy(SearchResponse searchResponse) {
-    Map<String, EntityHierarchy__1> termMap =
+  public List<EntityHierarchy> buildGlossaryTermSearchHierarchy(SearchResponse searchResponse) {
+    Map<String, EntityHierarchy> termMap =
         new LinkedHashMap<>(); // termMap represent glossary terms
-    Map<String, EntityHierarchy__1> rootTerms =
+    Map<String, EntityHierarchy> rootTerms =
         new LinkedHashMap<>(); // rootTerms represent glossaries
 
     for (var hit : searchResponse.getHits().getHits()) {
       String jsonSource = hit.getSourceAsString();
 
-      EntityHierarchy__1 term = JsonUtils.readValue(jsonSource, EntityHierarchy__1.class);
-      EntityHierarchy__1 glossaryInfo =
+      EntityHierarchy term = JsonUtils.readValue(jsonSource, EntityHierarchy.class);
+      EntityHierarchy glossaryInfo =
           JsonUtils.readTree(jsonSource).path("glossary").isMissingNode()
               ? null
               : JsonUtils.convertValue(
-                  JsonUtils.readTree(jsonSource).path("glossary"), EntityHierarchy__1.class);
+                  JsonUtils.readTree(jsonSource).path("glossary"), EntityHierarchy.class);
 
       if (glossaryInfo != null) {
         rootTerms.putIfAbsent(glossaryInfo.getFullyQualifiedName(), glossaryInfo);
@@ -618,15 +618,15 @@ public class OpenSearchClient implements SearchClient {
               String termFQN = term.getFullyQualifiedName();
 
               if (parentFQN != null && termMap.containsKey(parentFQN)) {
-                EntityHierarchy__1 parentTerm = termMap.get(parentFQN);
-                List<EntityHierarchy__1> children = parentTerm.getChildren();
+                EntityHierarchy parentTerm = termMap.get(parentFQN);
+                List<EntityHierarchy> children = parentTerm.getChildren();
                 children.removeIf(
                     child -> child.getFullyQualifiedName().equals(term.getFullyQualifiedName()));
                 children.add(term);
                 parentTerm.setChildren(children);
               } else {
                 if (rootTerms.containsKey(termFQN)) {
-                  EntityHierarchy__1 rootTerm = rootTerms.get(termFQN);
+                  EntityHierarchy rootTerm = rootTerms.get(termFQN);
                   rootTerm.setChildren(term.getChildren());
                 }
               }
