@@ -77,6 +77,7 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "databases")
 public class DatabaseResource extends EntityResource<Database, DatabaseRepository> {
   public static final String COLLECTION_PATH = "v1/databases/";
+  private final DatabaseMapper mapper = new DatabaseMapper();
   static final String FIELDS =
       "owners,databaseSchemas,usageSummary,location,tags,extension,domain,sourceHash";
 
@@ -310,7 +311,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateDatabase create) {
-    Database database = getDatabase(create, securityContext.getUserPrincipal().getName());
+    Database database = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, database);
   }
 
@@ -390,7 +391,7 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateDatabase create) {
-    Database database = getDatabase(create, securityContext.getUserPrincipal().getName());
+    Database database = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, database);
   }
 
@@ -704,14 +705,5 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     Database database = repository.deleteDatabaseProfilerConfig(id);
     return addHref(uriInfo, database);
-  }
-
-  private Database getDatabase(CreateDatabase create, String user) {
-    return repository
-        .copy(new Database(), create, user)
-        .withService(getEntityReference(Entity.DATABASE_SERVICE, create.getService()))
-        .withSourceUrl(create.getSourceUrl())
-        .withRetentionPeriod(create.getRetentionPeriod())
-        .withSourceHash(create.getSourceHash());
   }
 }

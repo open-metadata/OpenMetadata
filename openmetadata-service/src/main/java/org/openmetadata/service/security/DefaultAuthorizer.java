@@ -102,6 +102,15 @@ public class DefaultAuthorizer implements Authorizer {
   }
 
   @Override
+  public void authorizeAdmin(String adminName) {
+    SubjectContext subjectContext = SubjectContext.getSubjectContext(adminName);
+    if (subjectContext.isAdmin()) {
+      return;
+    }
+    throw new AuthorizationException(notAdmin(adminName));
+  }
+
+  @Override
   public void authorizeAdminOrBot(SecurityContext securityContext) {
     SubjectContext subjectContext = getSubjectContext(securityContext);
     if (subjectContext.isAdmin() || subjectContext.isBot()) {

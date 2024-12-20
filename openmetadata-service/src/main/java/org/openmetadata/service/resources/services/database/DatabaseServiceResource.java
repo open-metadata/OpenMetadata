@@ -80,6 +80,7 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "databaseServices")
 public class DatabaseServiceResource
     extends ServiceEntityResource<DatabaseService, DatabaseServiceRepository, DatabaseConnection> {
+  private final DatabaseServiceMapper mapper = new DatabaseServiceMapper();
   public static final String COLLECTION_PATH = "v1/services/databaseServices/";
   static final String FIELDS = "pipelines,owners,tags,domain";
 
@@ -352,7 +353,8 @@ public class DatabaseServiceResource
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateDatabaseService create) {
-    DatabaseService service = getService(create, securityContext.getUserPrincipal().getName());
+    DatabaseService service =
+        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     Response response = create(uriInfo, securityContext, service);
     decryptOrNullify(securityContext, (DatabaseService) response.getEntity());
     return response;
@@ -377,7 +379,8 @@ public class DatabaseServiceResource
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateDatabaseService update) {
-    DatabaseService service = getService(update, securityContext.getUserPrincipal().getName());
+    DatabaseService service =
+        mapper.createToEntity(update, securityContext.getUserPrincipal().getName());
     Response response = createOrUpdate(uriInfo, securityContext, unmask(service));
     decryptOrNullify(securityContext, (DatabaseService) response.getEntity());
     return response;
@@ -640,13 +643,6 @@ public class DatabaseServiceResource
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
-  }
-
-  private DatabaseService getService(CreateDatabaseService create, String user) {
-    return repository
-        .copy(new DatabaseService(), create, user)
-        .withServiceType(create.getServiceType())
-        .withConnection(create.getConnection());
   }
 
   @Override

@@ -13,8 +13,6 @@
 
 package org.openmetadata.service.resources.teams;
 
-import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-
 import io.dropwizard.jersey.PATCH;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -81,6 +79,7 @@ import org.openmetadata.service.util.ResultList;
     requiredForOps = true) // Load roles after PolicyResource are loaded at Order 0
 @Slf4j
 public class RoleResource extends EntityResource<Role, RoleRepository> {
+  private final RoleMapper mapper = new RoleMapper();
   public static final String COLLECTION_PATH = "/v1/roles/";
   public static final String FIELDS = "policies,teams,users";
 
@@ -335,7 +334,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateRole createRole) {
-    Role role = getRole(createRole, securityContext.getUserPrincipal().getName());
+    Role role = mapper.createToEntity(createRole, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, role);
   }
 
@@ -358,7 +357,7 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateRole createRole) {
-    Role role = getRole(createRole, securityContext.getUserPrincipal().getName());
+    Role role = mapper.createToEntity(createRole, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, role);
   }
 
@@ -486,19 +485,5 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
-  }
-
-  private Role getRole(CreateRole create, String user) {
-    if (nullOrEmpty(create.getPolicies())) {
-      throw new IllegalArgumentException("At least one policy is required to create a role");
-    }
-    return repository
-        .copy(new Role(), create, user)
-        .withPolicies(getEntityReferences(Entity.POLICY, create.getPolicies()));
-  }
-
-  public static EntityReference getRole(String roleName) {
-    RoleRepository roleRepository = (RoleRepository) Entity.getEntityRepository(Entity.ROLE);
-    return roleRepository.getReferenceByName(roleName, Include.NON_DELETED);
   }
 }

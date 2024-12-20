@@ -26,7 +26,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.FeedRepository;
-import org.openmetadata.service.resources.feeds.FeedResource;
+import org.openmetadata.service.resources.feeds.FeedMapper;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.util.WebsocketNotificationHandler;
 
@@ -91,7 +91,7 @@ public class CreateApprovalTaskImpl implements TaskListener {
     } catch (EntityNotFoundException ex) {
       TaskDetails taskDetails =
           new TaskDetails()
-              .withAssignees(FeedResource.formatAssignees(assignees))
+              .withAssignees(FeedMapper.formatAssignees(assignees))
               .withType(TaskType.RequestApproval)
               .withStatus(TaskStatus.Open);
 

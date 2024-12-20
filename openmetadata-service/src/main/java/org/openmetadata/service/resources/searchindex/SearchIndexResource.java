@@ -75,6 +75,7 @@ import org.openmetadata.service.util.ResultList;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "searchIndexes")
 public class SearchIndexResource extends EntityResource<SearchIndex, SearchIndexRepository> {
+  private final SearchIndexMapper mapper = new SearchIndexMapper();
   public static final String COLLECTION_PATH = "v1/searchIndexes/";
   static final String FIELDS = "owners,followers,tags,extension,domain,dataProducts,sourceHash";
 
@@ -309,7 +310,8 @@ public class SearchIndexResource extends EntityResource<SearchIndex, SearchIndex
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateSearchIndex create) {
-    SearchIndex searchIndex = getSearchIndex(create, securityContext.getUserPrincipal().getName());
+    SearchIndex searchIndex =
+        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, searchIndex);
   }
 
@@ -389,7 +391,8 @@ public class SearchIndexResource extends EntityResource<SearchIndex, SearchIndex
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateSearchIndex create) {
-    SearchIndex searchIndex = getSearchIndex(create, securityContext.getUserPrincipal().getName());
+    SearchIndex searchIndex =
+        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, searchIndex);
   }
 
@@ -625,17 +628,5 @@ public class SearchIndexResource extends EntityResource<SearchIndex, SearchIndex
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
-  }
-
-  private SearchIndex getSearchIndex(CreateSearchIndex create, String user) {
-    SearchIndex searchIndex =
-        repository
-            .copy(new SearchIndex(), create, user)
-            .withService(getEntityReference(Entity.SEARCH_SERVICE, create.getService()))
-            .withFields(create.getFields())
-            .withSearchIndexSettings(create.getSearchIndexSettings())
-            .withSourceHash(create.getSourceHash())
-            .withIndexType(create.getIndexType());
-    return searchIndex;
   }
 }

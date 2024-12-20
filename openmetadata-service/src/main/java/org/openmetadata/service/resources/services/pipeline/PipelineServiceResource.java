@@ -71,6 +71,7 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "pipelineServices")
 public class PipelineServiceResource
     extends ServiceEntityResource<PipelineService, PipelineServiceRepository, PipelineConnection> {
+  private final PipelineServiceMapper mapper = new PipelineServiceMapper();
   public static final String COLLECTION_PATH = "v1/services/pipelineServices/";
   static final String FIELDS = "pipelines,owners,domain";
 
@@ -352,7 +353,8 @@ public class PipelineServiceResource
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreatePipelineService create) {
-    PipelineService service = getService(create, securityContext.getUserPrincipal().getName());
+    PipelineService service =
+        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     Response response = create(uriInfo, securityContext, service);
     decryptOrNullify(securityContext, (PipelineService) response.getEntity());
     return response;
@@ -378,7 +380,8 @@ public class PipelineServiceResource
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreatePipelineService update) {
-    PipelineService service = getService(update, securityContext.getUserPrincipal().getName());
+    PipelineService service =
+        mapper.createToEntity(update, securityContext.getUserPrincipal().getName());
     Response response = createOrUpdate(uriInfo, securityContext, unmask(service));
     decryptOrNullify(securityContext, (PipelineService) response.getEntity());
     return response;
@@ -527,13 +530,6 @@ public class PipelineServiceResource
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
-  }
-
-  private PipelineService getService(CreatePipelineService create, String user) {
-    return repository
-        .copy(new PipelineService(), create, user)
-        .withServiceType(create.getServiceType())
-        .withConnection(create.getConnection());
   }
 
   @Override

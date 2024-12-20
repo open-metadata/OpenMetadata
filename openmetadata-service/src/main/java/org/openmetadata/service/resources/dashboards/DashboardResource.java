@@ -76,6 +76,7 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
   public static final String COLLECTION_PATH = "v1/dashboards/";
   protected static final String FIELDS =
       "owners,charts,followers,tags,usageSummary,extension,dataModels,domain,dataProducts,sourceHash";
+  private final DashboardMapper mapper = new DashboardMapper();
 
   @Override
   public Dashboard addHref(UriInfo uriInfo, Dashboard dashboard) {
@@ -310,7 +311,8 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateDashboard create) {
-    Dashboard dashboard = getDashboard(create, securityContext.getUserPrincipal().getName());
+    Dashboard dashboard =
+        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, dashboard);
   }
 
@@ -391,7 +393,8 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateDashboard create) {
-    Dashboard dashboard = getDashboard(create, securityContext.getUserPrincipal().getName());
+    Dashboard dashboard =
+        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, dashboard);
   }
 
@@ -544,17 +547,5 @@ public class DashboardResource extends EntityResource<Dashboard, DashboardReposi
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
-  }
-
-  private Dashboard getDashboard(CreateDashboard create, String user) {
-    return repository
-        .copy(new Dashboard(), create, user)
-        .withService(getEntityReference(Entity.DASHBOARD_SERVICE, create.getService()))
-        .withCharts(getEntityReferences(Entity.CHART, create.getCharts()))
-        .withDataModels(getEntityReferences(Entity.DASHBOARD_DATA_MODEL, create.getDataModels()))
-        .withSourceUrl(create.getSourceUrl())
-        .withDashboardType(create.getDashboardType())
-        .withProject(create.getProject())
-        .withSourceHash(create.getSourceHash());
   }
 }

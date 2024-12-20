@@ -51,7 +51,6 @@ import org.openmetadata.schema.api.policies.CreatePolicy;
 import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.type.EntityHistory;
-import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Function;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
@@ -82,6 +81,7 @@ import org.openmetadata.service.util.ResultList;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "policies", order = 0, requiredForOps = true)
 public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
+  private final PolicyMapper mapper = new PolicyMapper();
   public static final String COLLECTION_PATH = "v1/policies/";
   public static final String FIELDS = "owners,location,teams,roles";
 
@@ -359,7 +359,7 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreatePolicy create) {
-    Policy policy = getPolicy(create, securityContext.getUserPrincipal().getName());
+    Policy policy = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, policy);
   }
 
@@ -439,7 +439,7 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreatePolicy create) {
-    Policy policy = getPolicy(create, securityContext.getUserPrincipal().getName());
+    Policy policy = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, policy);
   }
 
@@ -530,17 +530,5 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
           String expression) {
     authorizer.authorizeAdmin(securityContext);
     CompiledRule.validateExpression(expression, Boolean.class);
-  }
-
-  private Policy getPolicy(CreatePolicy create, String user) {
-    Policy policy =
-        repository
-            .copy(new Policy(), create, user)
-            .withRules(create.getRules())
-            .withEnabled(create.getEnabled());
-    if (create.getLocation() != null) {
-      policy = policy.withLocation(new EntityReference().withId(create.getLocation()));
-    }
-    return policy;
   }
 }
