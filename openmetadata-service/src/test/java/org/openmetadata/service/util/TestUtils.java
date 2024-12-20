@@ -529,6 +529,26 @@ public final class TestUtils {
     validateEntityReferences(actual);
   }
 
+  public static void assertEntityReferenceFqn(List<String> expected, List<EntityReference> actual) {
+    if (expected == null && actual == null) {
+      return;
+    }
+    expected = listOrEmpty(expected);
+    actual = listOrEmpty(actual);
+    if (expected.isEmpty()) {
+      return;
+    }
+    assertEquals(expected.size(), actual.size());
+    for (String fqn : expected) {
+      assertNotNull(
+          actual.stream()
+              .filter(entity -> entity.getFullyQualifiedName().equals(fqn))
+              .findAny()
+              .orElse(null));
+    }
+    validateEntityReferences(actual);
+  }
+
   public static void assertEntityReferences(
       List<EntityReference> expected, List<EntityReference> actual) {
     if (expected == actual) { // Take care of both being null
@@ -539,6 +559,20 @@ public final class TestUtils {
       assertEquals(expected.size(), actual.size());
       for (EntityReference e : expected) {
         TestUtils.existsInEntityReferenceList(actual, e.getId(), true);
+      }
+    }
+  }
+
+  public static void assertEntityReferencesFqn(
+      List<EntityReference> expected, List<EntityReference> actual) {
+    if (expected == actual) { // Take care of both being null
+      return;
+    }
+    if (expected != null) {
+      actual = listOrEmpty(actual);
+      assertEquals(expected.size(), actual.size());
+      for (EntityReference e : expected) {
+        TestUtils.existsInEntityReferenceList(actual, e.getFullyQualifiedName(), true);
       }
     }
   }

@@ -949,9 +949,9 @@ base.describe('Activity feed with Data Consumer User', () => {
         displayName: `PW Team ${id}`,
         description: 'playwright team description',
         teamType: 'Group',
-        users: [viewAllUser.responseData.id],
-        defaultRoles: viewAllRoles.responseData.id
-          ? [viewAllRoles.responseData.id]
+        users: [viewAllUser.responseData.fullyQualifiedName],
+        defaultRoles: viewAllRoles.responseData.fullyQualifiedName
+          ? [viewAllRoles.responseData.fullyQualifiedName]
           : [],
       });
       await viewAllTeam.create(apiContext);
