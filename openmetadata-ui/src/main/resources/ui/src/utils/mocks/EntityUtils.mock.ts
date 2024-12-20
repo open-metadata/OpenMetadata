@@ -136,3 +136,11 @@ export const mockHighlights = {
 export const highlightedEntityDescription = `This dimension table contains the billing and shipping <span class="text-highlighter">addresses</span> of customers.`;
 
 export const highlightedEntityDisplayName = `dim_<span class="text-highlighter">address</span>`;
+
+export const mockText =
+  'This is a test description to verify highlightText method.';
+
+export const mockSearchText = 'test';
+
+export const mockHighlightedResult =
+  'This is a <span class="text-highlighter">test</span> description to verify highlightText method.';

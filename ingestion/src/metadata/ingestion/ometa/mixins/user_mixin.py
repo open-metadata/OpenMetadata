@@ -13,6 +13,7 @@ Mixin class containing User specific methods
 
 To be used by OpenMetadata class
 """
+import json
 from functools import lru_cache
 from typing import Optional, Type
 
@@ -46,16 +47,29 @@ class OMetaUserMixin:
         )
 
     @staticmethod
-    def name_search_query_es(entity: Type[T]) -> str:
+    def name_search_query_es(entity: Type[T], name: str, from_: int, size: int) -> str:
         """
         Allow for more flexible lookup following what the UI is doing when searching users.
 
         We don't want to stick to `q=name:{name}` since in case a user is named `random.user`
         but looked as `Random User`, we want to find this match.
+
+        Search should only look in name and displayName fields and should not return bots.
         """
+        query_filter = {
+            "query": {
+                "query_string": {
+                    "query": f"{name} AND isBot:false",
+                    "fields": ["name", "displayName"],
+                    "default_operator": "AND",
+                    "fuzziness": "AUTO",
+                }
+            }
+        }
+
         return (
-            "/search/query?q={name} AND isBot:false&from={from_}&size={size}&index="
-            + ES_INDEX_MAP[entity.__name__]
+            f"""/search/query?query_filter={json.dumps(query_filter)}"""
+            f"&from={from_}&size={size}&index=" + ES_INDEX_MAP[entity.__name__]
         )
 
     def _search_by_email(
@@ -103,8 +117,8 @@ class OMetaUserMixin:
             fields: Optional field list to pass to ES request
         """
         if name:
-            query_string = self.name_search_query_es(entity=entity).format(
-                name=name, from_=from_count, size=size
+            query_string = self.name_search_query_es(
+                entity=entity, name=name, from_=from_count, size=size
             )
             return self.get_entity_from_es(
                 entity=entity, query_string=query_string, fields=fields

@@ -97,6 +97,7 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "IngestionPipelines")
 public class IngestionPipelineResource
     extends EntityResource<IngestionPipeline, IngestionPipelineRepository> {
+  private IngestionPipelineMapper mapper;
   public static final String COLLECTION_PATH = "v1/services/ingestionPipelines/";
   private PipelineServiceClientInterface pipelineServiceClient;
   private OpenMetadataApplicationConfig openMetadataApplicationConfig;
@@ -116,7 +117,7 @@ public class IngestionPipelineResource
   @Override
   public void initialize(OpenMetadataApplicationConfig config) {
     this.openMetadataApplicationConfig = config;
-
+    this.mapper = new IngestionPipelineMapper(config);
     this.pipelineServiceClient =
         PipelineServiceClientFactory.createPipelineServiceClient(
             config.getPipelineServiceClientConfiguration());
@@ -426,7 +427,7 @@ public class IngestionPipelineResource
       @Context SecurityContext securityContext,
       @Valid CreateIngestionPipeline create) {
     IngestionPipeline ingestionPipeline =
-        getIngestionPipeline(create, securityContext.getUserPrincipal().getName());
+        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     Response response = create(uriInfo, securityContext, ingestionPipeline);
     validateProfileSample(ingestionPipeline);
     decryptOrNullify(securityContext, (IngestionPipeline) response.getEntity(), false);
@@ -516,7 +517,7 @@ public class IngestionPipelineResource
       @Context SecurityContext securityContext,
       @Valid CreateIngestionPipeline update) {
     IngestionPipeline ingestionPipeline =
-        getIngestionPipeline(update, securityContext.getUserPrincipal().getName());
+        mapper.createToEntity(update, securityContext.getUserPrincipal().getName());
     unmask(ingestionPipeline);
     Response response = createOrUpdate(uriInfo, securityContext, ingestionPipeline);
     validateProfileSample(ingestionPipeline);
@@ -934,20 +935,6 @@ public class IngestionPipelineResource
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     IngestionPipeline ingestionPipeline = repository.deletePipelineStatus(id);
     return addHref(uriInfo, ingestionPipeline);
-  }
-
-  private IngestionPipeline getIngestionPipeline(CreateIngestionPipeline create, String user) {
-    OpenMetadataConnection openMetadataServerConnection =
-        new OpenMetadataConnectionBuilder(openMetadataApplicationConfig).build();
-
-    return repository
-        .copy(new IngestionPipeline(), create, user)
-        .withPipelineType(create.getPipelineType())
-        .withAirflowConfig(create.getAirflowConfig())
-        .withOpenMetadataServerConnection(openMetadataServerConnection)
-        .withSourceConfig(create.getSourceConfig())
-        .withLoggerLevel(create.getLoggerLevel())
-        .withService(create.getService());
   }
 
   private void unmask(IngestionPipeline ingestionPipeline) {
