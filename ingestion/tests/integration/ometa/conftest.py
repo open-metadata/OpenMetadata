@@ -14,11 +14,14 @@ import json
 import uuid
 
 import pytest
+from metadata.generated.schema.entity.data.table import Table
 
 from metadata.generated.schema.api.data.createGlossary import CreateGlossaryRequest
 from metadata.generated.schema.api.data.createGlossaryTerm import (
     CreateGlossaryTermRequest,
 )
+from metadata.generated.schema.entity.data.database import Database
+from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.api.teams.createUser import CreateUserRequest
 from metadata.generated.schema.entity.data.glossary import Glossary
 from metadata.generated.schema.entity.data.glossaryTerm import GlossaryTerm
@@ -35,6 +38,7 @@ from metadata.workflow.metadata import MetadataWorkflow
 from ..containers import MySqlContainerConfigs, get_mysql_container
 from ..integration_base import (
     METADATA_INGESTION_CONFIG_TEMPLATE,
+    get_create_entity,
     generate_name,
     get_create_service,
 )
@@ -64,6 +68,27 @@ def service(metadata):
         recursive=True,
         hard_delete=True,
     )
+
+
+
+@pytest.fixture
+def tables(service, metadata):
+    database: Database = metadata.create_or_update(
+        data=get_create_entity(entity=Database, reference=service.name.root)
+    )
+    db_schema: DatabaseSchema = metadata.create_or_update(
+        data=get_create_entity(
+            entity=DatabaseSchema, reference=database.fullyQualifiedName
+        )
+    )
+    tables = [
+        metadata.create_or_update(
+            data=get_create_entity(entity=Table, reference=db_schema.fullyQualifiedName)
+        )
+        for _ in range(10)
+    ]
+
+    return tables
 
 
 @pytest.fixture(scope="module")
