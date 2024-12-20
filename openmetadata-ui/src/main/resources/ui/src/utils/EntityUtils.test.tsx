@@ -10,6 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { render } from '@testing-library/react';
+import React from 'react';
 import { getEntityDetailsPath } from '../constants/constants';
 import { EntityTabs, EntityType } from '../enums/entity.enum';
 import { ExplorePageTabs } from '../enums/Explore.enum';
@@ -23,12 +25,17 @@ import {
   getEntityLinkFromType,
   getEntityOverview,
   highlightEntityNameAndDescription,
+  highlightSearchArrayElement,
+  highlightSearchText,
 } from './EntityUtils';
 import {
   entityWithoutNameAndDescHighlight,
   highlightedEntityDescription,
   highlightedEntityDisplayName,
+  mockHighlightedResult,
   mockHighlights,
+  mockSearchText,
+  mockText,
 } from './mocks/EntityUtils.mock';
 
 jest.mock('../constants/constants', () => ({
@@ -198,5 +205,154 @@ describe('EntityUtils unit tests', () => {
 
       expect(sorter(item2, item1)).toBe(1);
     });
+  });
+
+  describe('highlightSearchText method', () => {
+    it('should return the text with highlighted search text', () => {
+      const result = highlightSearchText(mockText, mockSearchText);
+
+      expect(result).toBe(mockHighlightedResult);
+    });
+
+    it('should return the original text if searchText is not found', () => {
+      const result = highlightSearchText(mockText, 'nonexistent');
+
+      expect(result).toBe(mockText);
+    });
+
+    it('should return an empty string if no text is provided', () => {
+      const result = highlightSearchText('', 'test');
+
+      expect(result).toBe('');
+    });
+
+    it('should return an empty string if no searchText is provided', () => {
+      const result = highlightSearchText(mockText, '');
+
+      expect(result).toBe(mockText);
+    });
+
+    it('should return empty string if both text and searchText are missing', () => {
+      const result = highlightSearchText('', '');
+
+      expect(result).toBe('');
+    });
+
+    const falsyTestCases = [
+      { text: null, searchText: 'test', expected: '' },
+      { text: 'mockText', searchText: null, expected: 'mockText' },
+      { text: null, searchText: null, expected: '' },
+      { text: 0 as any, searchText: '', expected: 0 },
+      { text: false as any, searchText: '', expected: false },
+    ];
+
+    it.each(falsyTestCases)(
+      'should return expected when text or searchText is null or falsy',
+      ({ text, searchText, expected }) => {
+        const result = highlightSearchText(
+          text ?? undefined,
+          searchText ?? undefined
+        );
+
+        expect(result).toBe(expected);
+      }
+    );
+  });
+
+  describe('highlightSearchArrayElement method', () => {
+    it('should highlight the searchText in the text', () => {
+      const result = highlightSearchArrayElement(mockText, 'highlightText');
+      const { container } = render(<>{result}</>); // Render the result to check JSX output
+
+      // Check if the correct part of the text is wrapped in a <span> with the correct class
+      const highlighted = container.querySelector('.text-highlighter');
+
+      expect(highlighted).toBeInTheDocument();
+      expect(highlighted?.textContent).toBe('highlightText');
+    });
+
+    it('should highlight multiple occurrences of the searchText', () => {
+      const result = highlightSearchArrayElement(
+        'Data testing environment, Manually test data',
+        'data'
+      );
+      const { container } = render(<>{result}</>);
+
+      // Check that there are two highlighted parts (one for each 'hello')
+      const highlightedElements =
+        container.querySelectorAll('.text-highlighter');
+
+      expect(highlightedElements).toHaveLength(2);
+      expect(highlightedElements[0].textContent).toBe('Data');
+      expect(highlightedElements[1].textContent).toBe('data');
+    });
+
+    it('should not modify parts of the text that do not match searchText', () => {
+      const result = highlightSearchArrayElement(mockText, 'highlightText');
+      const { container } = render(<>{result}</>);
+
+      // Ensure the non-matching part is plain text
+      const nonHighlighted = container.textContent;
+
+      expect(nonHighlighted).toContain('description');
+    });
+
+    it('should not wrap searchText in the result if it does not appear in text', () => {
+      const result = highlightSearchArrayElement(mockText, 'foo');
+      const { container } = render(<>{result}</>);
+
+      // Ensure that no parts of the text are highlighted
+      const highlighted = container.querySelector('.text-highlighter');
+
+      expect(highlighted).toBeNull();
+    });
+
+    it('should handle case-insensitive search', () => {
+      const result = highlightSearchArrayElement(mockText, 'HighlightText');
+      const { container } = render(<>{result}</>);
+
+      const highlighted = container.querySelector('.text-highlighter');
+
+      expect(highlighted).toBeInTheDocument();
+      expect(highlighted?.textContent).toBe('highlightText');
+    });
+
+    it('should return an empty string if no text is provided', () => {
+      const result = highlightSearchArrayElement('', 'test');
+
+      expect(result).toBe('');
+    });
+
+    it('should return an empty string if no searchText is provided', () => {
+      const result = highlightSearchArrayElement(mockText, '');
+
+      expect(result).toBe(mockText);
+    });
+
+    it('should return empty string if both text and searchText are missing', () => {
+      const result = highlightSearchArrayElement('', '');
+
+      expect(result).toBe('');
+    });
+
+    const falsyTestCases = [
+      { text: null, searchText: 'test', expected: '' },
+      { text: 'mockText', searchText: null, expected: 'mockText' },
+      { text: null, searchText: null, expected: '' },
+      { text: 0 as any, searchText: '', expected: 0 },
+      { text: false as any, searchText: '', expected: false },
+    ];
+
+    it.each(falsyTestCases)(
+      'should return expected when text or searchText is null or falsy',
+      ({ text, searchText, expected }) => {
+        const result = highlightSearchArrayElement(
+          text ?? undefined,
+          searchText ?? undefined
+        );
+
+        expect(result).toBe(expected);
+      }
+    );
   });
 });

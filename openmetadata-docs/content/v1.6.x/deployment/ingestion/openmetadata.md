@@ -120,7 +120,7 @@ openmetadata:
 
 {% note %}
 - Note that the `openmetadata-ingestion` only supports Python versions 3.7, 3.8, 3.9 and 3.10.
-- - The supported Airflow versions are 2.3, 2.4, 2.5, 2.6, and 2.7. Starting from release 1.5, OpenMetadata will support compatibility with Airflow versions up to 2.9.
+- - The supported Airflow versions are 2.3, 2.4, 2.5, 2.6, and 2.7. Starting from release 1.6, OpenMetadata will support compatibility with Airflow versions up to 2.9.
 {% /note %}
 
 You will need to follow three steps:
