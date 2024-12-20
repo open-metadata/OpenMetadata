@@ -23,6 +23,7 @@ import { ReactComponent as RequestIcon } from '../../../assets/svg/request-icon.
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { EntityType } from '../../../enums/entity.enum';
+import { isDescriptionContentEmpty } from '../../../utils/BlockEditorUtils';
 import { getEntityFeedLink } from '../../../utils/EntityUtils';
 import {
   getRequestDescriptionPath,
@@ -90,7 +91,7 @@ const DescriptionV1 = ({
   }, [entityType, entityFqn]);
 
   const taskActionButton = useMemo(() => {
-    const hasDescription = Boolean(description.trim());
+    const hasDescription = isDescriptionContentEmpty(description.trim());
 
     const isTaskEntity = TASK_ENTITIES.includes(entityType as EntityType);
 

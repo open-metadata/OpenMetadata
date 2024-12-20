@@ -12,6 +12,7 @@
  */
 import { EditorState } from '@tiptap/pm/state';
 import { Editor } from '@tiptap/react';
+import { isEmpty } from 'lodash';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
   ENTITY_URL_MAP,
@@ -149,4 +150,14 @@ export const setEditorContent = (editor: Editor, newContent: string) => {
     storedMarks: editor.state.storedMarks,
   });
   editor.view.updateState(newEditorState);
+};
+
+/**
+ *
+ * @param content The content to check
+ * @returns Whether the content is empty or not
+ */
+export const isDescriptionContentEmpty = (content: string) => {
+  // Check if the content is empty or has only empty paragraph tags
+  return isEmpty(content) || content === '<p></p>';
 };

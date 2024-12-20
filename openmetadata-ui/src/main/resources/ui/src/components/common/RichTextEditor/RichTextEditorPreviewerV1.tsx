@@ -15,7 +15,10 @@ import classNames from 'classnames';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DESCRIPTION_MAX_PREVIEW_CHARACTERS } from '../../../constants/constants';
-import { formatContent } from '../../../utils/BlockEditorUtils';
+import {
+  formatContent,
+  isDescriptionContentEmpty,
+} from '../../../utils/BlockEditorUtils';
 import { getTrimmedContent } from '../../../utils/CommonUtils';
 import BlockEditor from '../../BlockEditor/BlockEditor';
 import { PreviewerProp } from './RichTextEditor.interface';
@@ -65,7 +68,7 @@ const RichTextEditorPreviewerV1: FC<PreviewerProp> = ({
   }, [isDescriptionExpanded]);
 
   // if markdown is empty then show no description placeholder
-  if (markdown === '' || markdown === '<p></p>') {
+  if (isDescriptionContentEmpty(markdown)) {
     return <span className="text-grey-muted">{t('label.no-description')}</span>;
   }
 

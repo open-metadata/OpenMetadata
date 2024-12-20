@@ -30,6 +30,7 @@ import { SidebarItem } from '../constant/sidebar';
 import { UserClass } from '../support/user/UserClass';
 import {
   descriptionBox,
+  descriptionBoxReadOnly,
   getAuthContext,
   getToken,
   redirectToHomePage,
@@ -265,7 +266,7 @@ export const editDescription = async (
 
   // Verify the updated description
   const description = page.locator(
-    '[data-testid="asset-description-container"] .toastui-editor-contents > p'
+    `[data-testid="asset-description-container"] ${descriptionBoxReadOnly}`
   );
 
   await expect(description).toContainText(updatedDescription);
