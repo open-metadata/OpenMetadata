@@ -757,6 +757,7 @@ export const getTableDetailPageBaseTabs = ({
         <TabsLabel
           count={tableDetails?.columns.length}
           id={EntityTabs.SCHEMA}
+          isActive={activeTab === EntityTabs.SCHEMA}
           name={t('label.schema')}
         />
       ),
