@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * This schema defines the EntityRelationship type used for establishing relationship
  * between two entities. EntityRelationship is used for capturing relationships from one
  * entity to another. For example, a database contains tables.

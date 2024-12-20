@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * Test Definition is a type of test using which test cases are created to capture data
  * quality tests against data entities.
  */

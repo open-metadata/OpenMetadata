@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * A unit of work that will be triggered as an API call to the OpenMetadata server.
  */
 export interface CreateWorkflow {
@@ -276,7 +274,7 @@ export interface RequestConnection {
  *
  * Lightdash Connection Config
  *
- * MicroStrategy Connection Config
+ * Mstr Connection Config
  *
  * Qlik Cloud Connection Config
  *
@@ -462,8 +460,7 @@ export interface ConfigClass {
      *
      * Host and port of the PinotDB Broker service.
      *
-     * Host and port of the MongoDB service when using the `mongodb` connection scheme. Only
-     * host when using the `mongodb+srv` scheme.
+     * Host and port of the MongoDB service.
      *
      * Host and port of the Doris service.
      *
@@ -492,8 +489,6 @@ export interface ConfigClass {
      * URL for the Qlik instance.
      *
      * Address for your running Lightdash instance
-     *
-     * Host and Port of the MicroStrategy instance.
      *
      * Host and Port of the Qlik Cloud instance.
      *
@@ -680,7 +675,7 @@ export interface ConfigClass {
      *
      * Password to connect to PowerBI report server.
      *
-     * Password to connect to MicroStrategy.
+     * Password to connect to MSTR.
      *
      * Password to connect to Airbyte.
      *
@@ -780,8 +775,8 @@ export interface ConfigClass {
      *
      * Username for Redash
      *
-     * Username to connect to MicroStrategy. This user should have privileges to read all the
-     * metadata in MicroStrategy.
+     * Username to connect to MSTR. This user should have privileges to read all the metadata in
+     * MSTR.
      *
      * Username to connect to Airbyte.
      *
@@ -884,7 +879,7 @@ export interface ConfigClass {
      *
      * Types of methods used to authenticate to the alation instance
      */
-    authType?: AuthConfigurationType | NoConfigAuthenticationTypes;
+    authType?: Auth;
     /**
      * SSL Configuration details.
      *
@@ -1248,14 +1243,7 @@ export interface ConfigClass {
      */
     spaceUUID?: string;
     /**
-     * Login Mode for Microstrategy's REST API connection. You can authenticate with one of the
-     * following authentication modes: `Standard (1)`, `Anonymous (8)`. Default will be
-     * `Standard (1)`. If you're using demo account for Microstrategy, it will be needed to
-     * authenticate through loginMode `8`.
-     */
-    loginMode?: string;
-    /**
-     * MicroStrategy Project Name
+     * MSTR Project Name
      *
      * Project name to create the refreshToken. Can be anything
      */
@@ -1397,13 +1385,9 @@ export interface ConfigClass {
      */
     discoveryAPI?: string;
     /**
-     * List of IDs of your DBT cloud jobs seperated by comma `,`
+     * ID of your DBT cloud job
      */
-    jobIds?: string[];
-    /**
-     * List of IDs of your DBT cloud projects seperated by comma `,`
-     */
-    projectIds?: string[];
+    jobId?: string;
     /**
      * The name of your azure data factory.
      */
@@ -1713,7 +1697,7 @@ export enum AuthProvider {
  *
  * SSL Certificates By Path
  */
-export interface AuthConfigurationType {
+export interface Auth {
     /**
      * Password to connect to source.
      *
@@ -1838,13 +1822,6 @@ export interface AzureCredentials {
      * Key Vault Name
      */
     vaultName?: string;
-}
-
-/**
- * Database Authentication types not requiring config.
- */
-export enum NoConfigAuthenticationTypes {
-    OAuth2 = "OAuth2",
 }
 
 export interface AuthenticationModeObject {
@@ -2536,7 +2513,7 @@ export interface ConnectionObject {
     /**
      * Choose Auth Config Type.
      */
-    authType?: ConnectionAuthConfigurationType;
+    authType?: AuthConfigurationType;
     /**
      * Custom OpenMetadata Classification name for Postgres policy tags.
      */
@@ -2570,12 +2547,12 @@ export interface ConnectionObject {
      * Optional name to give to the database in OpenMetadata. If left blank, we will use default
      * as the database name.
      */
-    databaseName?: string;
+    databaseName?:                  string;
+    supportsViewLineageExtraction?: boolean;
     /**
      * How to run the SQLite database. :memory: by default.
      */
-    databaseMode?:                  string;
-    supportsViewLineageExtraction?: boolean;
+    databaseMode?: string;
     [property: string]: any;
 }
 
@@ -2588,7 +2565,7 @@ export interface ConnectionObject {
  *
  * Azure Database Connection Config
  */
-export interface ConnectionAuthConfigurationType {
+export interface AuthConfigurationType {
     /**
      * Password to connect to source.
      */
@@ -2899,7 +2876,7 @@ export interface HiveMetastoreConnectionDetails {
     /**
      * Choose Auth Config Type.
      */
-    authType?: ConnectionAuthConfigurationType;
+    authType?: AuthConfigurationType;
     /**
      * Custom OpenMetadata Classification name for Postgres policy tags.
      */
@@ -2963,7 +2940,8 @@ export interface HiveMetastoreConnectionDetails {
      * restrict the metadata reading to a single schema. When left blank, OpenMetadata Ingestion
      * attempts to scan all the schemas.
      */
-    databaseSchema?: string;
+    databaseSchema?:                string;
+    supportsViewLineageExtraction?: boolean;
 }
 
 /**
@@ -3334,7 +3312,7 @@ export enum TransactionMode {
  *
  * Lightdash service type
  *
- * MicroStrategy service type
+ * Mstr service type
  *
  * Qlik Cloud service type
  *
@@ -3427,11 +3405,11 @@ export enum RESTType {
     Matillion = "Matillion",
     Metabase = "Metabase",
     MetadataES = "MetadataES",
-    MicroStrategy = "MicroStrategy",
     Mlflow = "Mlflow",
     Mode = "Mode",
     MongoDB = "MongoDB",
     Mssql = "Mssql",
+    Mstr = "Mstr",
     Mysql = "Mysql",
     Nifi = "Nifi",
     OpenLineage = "OpenLineage",

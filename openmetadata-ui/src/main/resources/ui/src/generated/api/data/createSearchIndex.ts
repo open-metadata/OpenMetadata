@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * Create a SearchIndex entity request
  */
 export interface CreateSearchIndex {
@@ -40,10 +38,6 @@ export interface CreateSearchIndex {
      * Fields in this SearchIndex.
      */
     fields: SearchIndexField[];
-    /**
-     * Whether the entity is index or index template.
-     */
-    indexType?: IndexType;
     /**
      * Life Cycle of the entity
      */
@@ -243,14 +237,6 @@ export interface Style {
      * An icon to associate with GlossaryTerm, Tag, Domain or Data Product.
      */
     iconURL?: string;
-}
-
-/**
- * Whether the entity is index or index template.
- */
-export enum IndexType {
-    Index = "Index",
-    IndexTemplate = "IndexTemplate",
 }
 
 /**

@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * Restore Entity API request to restore soft deleted entity.
  */
 export interface RestoreEntity {

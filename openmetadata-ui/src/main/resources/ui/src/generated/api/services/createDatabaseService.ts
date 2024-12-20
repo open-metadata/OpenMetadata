@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * Create Database service entity request
  */
 export interface CreateDatabaseService {
@@ -192,8 +190,7 @@ export interface ConfigClass {
      *
      * Host and port of the PinotDB Broker service.
      *
-     * Host and port of the MongoDB service when using the `mongodb` connection scheme. Only
-     * host when using the `mongodb+srv` scheme.
+     * Host and port of the MongoDB service.
      *
      * Host and port of the Doris service.
      *
@@ -535,7 +532,7 @@ export interface ConfigClass {
     /**
      * Choose Auth Config Type.
      */
-    authType?: AuthConfigurationType | NoConfigAuthenticationTypes;
+    authType?: AuthTypeClass;
     /**
      * SSL Configuration details.
      */
@@ -778,7 +775,7 @@ export enum AuthMechanismEnum {
  *
  * Azure Database Connection Config
  */
-export interface AuthConfigurationType {
+export interface AuthTypeClass {
     /**
      * Password to connect to source.
      */
@@ -865,13 +862,6 @@ export interface AzureCredentials {
      * Key Vault Name
      */
     vaultName?: string;
-}
-
-/**
- * Database Authentication types not requiring config.
- */
-export enum NoConfigAuthenticationTypes {
-    OAuth2 = "OAuth2",
 }
 
 export interface AuthenticationModeObject {
@@ -1448,7 +1438,7 @@ export interface HiveMetastoreConnectionDetails {
     /**
      * Choose Auth Config Type.
      */
-    authType?: HiveMetastoreConnectionDetailsAuthConfigurationType;
+    authType?: AuthConfigurationType;
     /**
      * Custom OpenMetadata Classification name for Postgres policy tags.
      */
@@ -1512,7 +1502,8 @@ export interface HiveMetastoreConnectionDetails {
      * restrict the metadata reading to a single schema. When left blank, OpenMetadata Ingestion
      * attempts to scan all the schemas.
      */
-    databaseSchema?: string;
+    databaseSchema?:                string;
+    supportsViewLineageExtraction?: boolean;
 }
 
 /**
@@ -1524,7 +1515,7 @@ export interface HiveMetastoreConnectionDetails {
  *
  * Azure Database Connection Config
  */
-export interface HiveMetastoreConnectionDetailsAuthConfigurationType {
+export interface AuthConfigurationType {
     /**
      * Password to connect to source.
      */

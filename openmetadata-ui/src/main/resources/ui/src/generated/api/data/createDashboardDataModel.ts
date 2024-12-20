@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * Create Dashboard Data Model entity request.
  */
 export interface CreateDashboardDataModel {
@@ -665,8 +663,8 @@ export enum DashboardServiceType {
     Lightdash = "Lightdash",
     Looker = "Looker",
     Metabase = "Metabase",
-    MicroStrategy = "MicroStrategy",
     Mode = "Mode",
+    Mstr = "Mstr",
     PowerBI = "PowerBI",
     PowerBIReportServer = "PowerBIReportServer",
     QlikCloud = "QlikCloud",
