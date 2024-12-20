@@ -47,8 +47,7 @@ version. To see what's coming in next releases, please check our [Roadmap](/rele
 - Fix: Store procedure yielding by adding Try/Except.
 - Fix: Lineage export when there is no column / pipeline edge.
 
-
-
+Full Changelog**: https://github.com/open-metadata/OpenMetadata/compare/1.5.11-release...1.5.12-release
 
 # 1.5.11 Release
 
