@@ -126,13 +126,27 @@ function FeedCardFooter({
 
     applyPatch(patch);
   };
+  const handleAnnouncementReaction = async (
+    reaction: ReactionType,
+    operation: ReactionOperation
+  ) => {
+    updateAnnouncementsThreadReactions(post, reaction, operation);
+  };
+
+  const handleDefaultReaction = async (
+    reaction: ReactionType,
+    operation: ReactionOperation
+  ) => {
+    await updateReactions(post, feed.id, !isPost, reaction, operation);
+    await fetchUpdatedThread(feed.id);
+  };
+
   const onReactionUpdate = useCallback(
     async (reaction: ReactionType, operation: ReactionOperation) => {
       if (isAnnouncementTab) {
-        updateAnnouncementsThreadReactions(post, reaction, operation);
+        await handleAnnouncementReaction(reaction, operation);
       } else {
-        await updateReactions(post, feed.id, !isPost, reaction, operation);
-        await fetchUpdatedThread(feed.id);
+        await handleDefaultReaction(reaction, operation);
       }
     },
     [updateReactions, post, feed.id, isPost, fetchUpdatedThread]
