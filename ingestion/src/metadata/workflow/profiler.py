@@ -23,6 +23,7 @@ from metadata.ingestion.source.connections import get_test_connection_fn
 from metadata.profiler.processor.processor import ProfilerProcessor
 from metadata.profiler.source.metadata import OpenMetadataSource
 from metadata.profiler.source.metadata_ext import OpenMetadataSourceExt
+from metadata.utils.helpers import retry_with_docker_host
 from metadata.utils.importer import import_sink_class
 from metadata.utils.logger import profiler_logger
 from metadata.utils.ssl_manager import get_ssl_connection
@@ -57,6 +58,9 @@ class ProfilerWorkflow(IngestionWorkflow):
         return OpenMetadataSourceExt
 
     def set_steps(self):
+        # NOTE: Call test_connection to update host value before creating the source class
+        self.test_connection()
+
         source_class = self._get_source_class()
         self.source = source_class.create(self.config.model_dump(), self.metadata)
 
@@ -66,12 +70,16 @@ class ProfilerWorkflow(IngestionWorkflow):
         self.steps = (profiler_processor, sink)
 
     def test_connection(self) -> None:
-        service_config = self.config.source.serviceConnection.root.config
-        conn = get_ssl_connection(service_config)
+        @retry_with_docker_host(config=self.config.source)
+        def main(self):
+            service_config = self.config.source.serviceConnection.root.config
+            conn = get_ssl_connection(service_config)
 
-        test_connection_fn = get_test_connection_fn(service_config)
-        result = test_connection_fn(self.metadata, conn, service_config)
-        raise_test_connection_exception(result)
+            test_connection_fn = get_test_connection_fn(service_config)
+            result = test_connection_fn(self.metadata, conn, service_config)
+            raise_test_connection_exception(result)
+
+        return main(self)
 
     def _get_sink(self) -> Sink:
         sink_type = self.config.sink.type
