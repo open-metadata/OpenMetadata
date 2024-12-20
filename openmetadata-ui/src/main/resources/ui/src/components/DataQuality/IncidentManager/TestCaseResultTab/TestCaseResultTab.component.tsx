@@ -15,7 +15,7 @@ import Icon from '@ant-design/icons/lib/components/Icon';
 import { Col, Divider, Row, Space, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { isEmpty, isUndefined } from 'lodash';
+import { isEmpty, isUndefined, startCase } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
@@ -179,7 +179,7 @@ const TestCaseResultTab = () => {
 
       <Col data-testid="parameter-container" span={24}>
         <Space direction="vertical" size="small">
-          <Space align="center" size="middle">
+          <Space align="center" size={8}>
             <Typography.Text className="right-panel-label">
               {t('label.parameter-plural')}
             </Typography.Text>
@@ -214,17 +214,33 @@ const TestCaseResultTab = () => {
               gutter={[8, 8]}
               key={param.name}>
               <Col span={24}>
-                <Typography.Text className="text-grey-muted">
-                  {`${param.name}:`}
-                </Typography.Text>
+                <Space align="center" size={8}>
+                  <Typography.Text className="right-panel-label">
+                    {startCase(param.name)}
+                  </Typography.Text>
+                  {hasEditPermission && (
+                    <Tooltip
+                      title={t('label.edit-entity', {
+                        entity: t('label.parameter'),
+                      })}>
+                      <Icon
+                        component={EditIcon}
+                        data-testid="edit-sql-param-icon"
+                        style={{ color: DE_ACTIVE_COLOR, ...ICON_DIMENSION }}
+                        onClick={() => setIsParameterEdit(true)}
+                      />
+                    </Tooltip>
+                  )}
+                </Space>
               </Col>
               <Col span={24}>
                 <SchemaEditor
-                  className="query-editor-min-h-60"
+                  className="custom-code-mirror-theme query-editor-min-h-60"
                   editorClass="table-query-editor"
                   mode={{ name: CSMode.SQL }}
                   options={{
                     styleActiveLine: false,
+                    readOnly: true,
                   }}
                   value={param.value ?? ''}
                 />
