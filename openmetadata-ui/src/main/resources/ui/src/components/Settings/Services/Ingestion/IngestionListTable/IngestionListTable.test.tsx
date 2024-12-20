@@ -15,10 +15,17 @@ import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { mockIngestionListTableProps } from '../../../../../mocks/IngestionListTable.mock';
+import { usePermissionProvider } from '../../../../../context/PermissionProvider/PermissionProvider';
+import { mockIngestionData } from '../../../../../mocks/Ingestion.mock';
+import {
+  mockESIngestionData,
+  mockIngestionListTableProps,
+} from '../../../../../mocks/IngestionListTable.mock';
 import { ENTITY_PERMISSIONS } from '../../../../../mocks/Permissions.mock';
 import { deleteIngestionPipelineById } from '../../../../../rest/ingestionPipelineAPI';
 import IngestionListTable from './IngestionListTable';
+
+const mockGetEntityPermissionByFqn = jest.fn();
 
 jest.mock('../../../../../hooks/useApplicationStore', () => ({
   useApplicationStore: jest.fn(() => ({
@@ -259,5 +266,34 @@ describe('Ingestion', () => {
     });
 
     expect(deleteIngestionPipelineById).toHaveBeenCalledWith('id');
+  });
+
+  it('should fetch the permissions for all the ingestion pipelines', async () => {
+    (usePermissionProvider as jest.Mock).mockImplementation(() => ({
+      getEntityPermissionByFqn: mockGetEntityPermissionByFqn,
+    }));
+
+    await act(async () => {
+      render(
+        <IngestionListTable
+          {...mockIngestionListTableProps}
+          ingestionData={[mockESIngestionData, mockIngestionData]}
+        />,
+        {
+          wrapper: MemoryRouter,
+        }
+      );
+    });
+
+    expect(mockGetEntityPermissionByFqn).toHaveBeenNthCalledWith(
+      1,
+      'ingestionPipeline',
+      mockESIngestionData.fullyQualifiedName
+    );
+    expect(mockGetEntityPermissionByFqn).toHaveBeenNthCalledWith(
+      2,
+      'ingestionPipeline',
+      mockIngestionData.fullyQualifiedName
+    );
   });
 });
