@@ -20,10 +20,10 @@ from metadata.generated.schema.api.data.createGlossaryTerm import (
     CreateGlossaryTermRequest,
 )
 from metadata.generated.schema.api.teams.createUser import CreateUserRequest
-from metadata.generated.schema.entity.data.glossary import Glossary
-from metadata.generated.schema.entity.data.glossaryTerm import GlossaryTerm
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
+from metadata.generated.schema.entity.data.glossary import Glossary
+from metadata.generated.schema.entity.data.glossaryTerm import GlossaryTerm
 from metadata.generated.schema.entity.services.connections.database.common.basicAuth import (
     BasicAuth,
 )

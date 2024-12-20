@@ -11,16 +11,15 @@
 """
 OMeta Bot RBAC tests
 """
-from metadata.generated.schema.configuration.searchSettings import SearchSettings
-from metadata.generated.schema.settings.settings import Settings, SettingType
-
 from _openmetadata_testutils.ometa import int_admin_ometa
+from metadata.generated.schema.configuration.searchSettings import SearchSettings
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.teams.user import AuthenticationMechanism, User
+from metadata.generated.schema.settings.settings import Settings, SettingType
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from tests.integration.ometa.conftest import service
 
-BOTS = ["pere"] # , "ingestion-bot"]
+BOTS = ["ingestion-bot", "profiler-bot"]
 
 
 def get_bot_ometa(metadata, bot: str) -> OpenMetadata:
@@ -40,11 +39,9 @@ def test_bots_rbac_pagination(metadata, service, tables):
         f'{{"service.displayName.keyword":"{service.name.root}"}}}}]}}}}]}}}}}}'
     )
 
-
     settings = Settings(
         config_type=SettingType.searchSettings,
         config_value=SearchSettings(enableAccessControl=True),
-
     )
     # Ensure search is enabled
     metadata.client.put("/system/settings", data=settings.model_dump_json())
