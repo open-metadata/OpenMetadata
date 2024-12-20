@@ -115,15 +115,11 @@ export const toastNotification = async (
   page: Page,
   message: string | RegExp
 ) => {
-  await expect(
-    page.locator('.Toastify__toast-body[role="alert"]').first()
-  ).toHaveText(message);
+  await expect(page.getByTestId('alert-bar"]')).toHaveText(message);
 
-  await page
-    .locator('.Toastify__toast')
-    .getByLabel('close', { exact: true })
-    .first()
-    .click();
+  await expect(page.getByTestId('alert-icon')).toBeVisible();
+
+  await expect(page.getByTestId('alert-icon-close')).toBeVisible();
 };
 
 export const clickOutside = async (page: Page) => {
@@ -256,13 +252,8 @@ export const replaceAllSpacialCharWith_ = (text: string) => {
 // This error toast blocks the buttons at the top
 // Below logic closes the alert if it's present to avoid flakiness in tests
 export const closeFirstPopupAlert = async (page: Page) => {
-  const toastLocator = '.Toastify__toast-body[role="alert"]';
-  const toastElement = await page.$(toastLocator);
+  const toastElement = await page.getByTestId('alert-bar');
   if (toastElement) {
-    await page
-      .locator('.Toastify__toast')
-      .getByLabel('close', { exact: true })
-      .first()
-      .click();
+    await page.getByTestId('alert-icon-close').first().click();
   }
 };
