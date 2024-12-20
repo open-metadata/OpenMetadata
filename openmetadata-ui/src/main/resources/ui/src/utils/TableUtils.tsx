@@ -753,7 +753,13 @@ export const getTableDetailPageBaseTabs = ({
 }: TableDetailPageTabProps): TabProps[] => {
   return [
     {
-      label: <TabsLabel id={EntityTabs.SCHEMA} name={t('label.schema')} />,
+      label:  (
+        <TabsLabel
+          count={tableDetails?.columns.length}
+          id={EntityTabs.SCHEMA}
+          name={t('label.schema')}
+        />
+      ),
       key: EntityTabs.SCHEMA,
       children: schemaTab,
     },
