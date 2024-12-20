@@ -330,9 +330,9 @@ export const updateDescription = async (
   isModal = false
 ) => {
   await page.getByTestId('edit-description').click();
-  await page.locator('.ProseMirror').first().click();
-  await page.locator('.ProseMirror').first().clear();
-  await page.locator('.ProseMirror').first().fill(description);
+  await page.locator(descriptionBox).first().click();
+  await page.locator(descriptionBox).first().clear();
+  await page.locator(descriptionBox).first().fill(description);
   await page.getByTestId('save').click();
 
   if (isModal) {
@@ -1352,4 +1352,17 @@ export const getEntityDisplayName = (entity?: {
   displayName?: string;
 }) => {
   return entity?.displayName || entity?.name || '';
+};
+
+/**
+ *
+ * @param description HTML string
+ * @returns Text from HTML string
+ */
+export const getTextFromHtmlString = (description?: string): string => {
+  if (!description) {
+    return '';
+  }
+
+  return description.replace(/<[^>]*>/g, '').trim();
 };

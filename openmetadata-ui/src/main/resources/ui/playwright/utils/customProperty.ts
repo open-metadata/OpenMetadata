@@ -21,7 +21,12 @@ import {
   ENTITY_PATH,
 } from '../support/entity/Entity.interface';
 import { UserClass } from '../support/user/UserClass';
-import { clickOutside, descriptionBox, uuid } from './common';
+import {
+  clickOutside,
+  descriptionBox,
+  descriptionBoxReadOnly,
+  uuid,
+} from './common';
 
 export enum CustomPropertyType {
   STRING = 'String',
@@ -274,6 +279,10 @@ export const validateValueForProperty = async (data: {
     await expect(
       page.getByRole('row', { name: `${values[0]} ${values[1]}` })
     ).toBeVisible();
+  } else if (propertyType === 'markdown') {
+    await expect(container.locator(descriptionBoxReadOnly)).toContainText(
+      value.replace(/\*|_/gi, '')
+    );
   } else if (
     ![
       'entityReference',

@@ -407,7 +407,11 @@ test(
 
       expect(body2).toEqual(
         JSON.stringify([
-          { op: 'add', path: '/description', value: 'Test case description' },
+          {
+            op: 'add',
+            path: '/description',
+            value: '<p>Test case description</p>',
+          },
         ])
       );
 
