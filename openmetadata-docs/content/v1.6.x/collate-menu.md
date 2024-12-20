@@ -686,8 +686,6 @@ site_menu:
     url: /how-to-guides/data-quality-observability/profiler/external-sample-data
   - category: How-to Guides / Data Quality and Observability / Data Profiler / External Workflow
     url: /how-to-guides/data-quality-observability/profiler/external-workflow
-  - category: How-to Guides / Data Quality and Observability / Data Profiler / Auto PII Tagging
-    url: /how-to-guides/data-quality-observability/profiler/auto-pii-tagging
   - category: How-to Guides / Data Quality and Observability / Data Observability
     url: /how-to-guides/data-quality-observability/observability
   - category: How-to Guides / Data Quality and Observability / Data Observability / Observability Alerts
@@ -773,6 +771,12 @@ site_menu:
     url: /how-to-guides/data-governance/classification/request-tags
   - category: How-to Guides / Data Governance / Classification / Auto-Classification in OpenMetadata
     url: /how-to-guides/data-governance/classification/auto
+  - category: How-to Guides / Data Governance / Classification / Auto-Classification in OpenMetadata / Workflow
+    url: /how-to-guides/data-governance/classification/auto/workflow
+  - category: How-to Guides / Data Governance / Classification / Auto-Classification in OpenMetadata / External Workflow
+    url: /how-to-guides/data-governance/classification/auto/external-workflow
+  - category: How-to Guides / Data Governance / Classification / Auto-Classification in OpenMetadata / Auto PII Tagging
+    url: /how-to-guides/data-governance/classification/auto/auto-pii-tagging
   - category: How-to Guides / Data Governance / Classification / What are Tiers
     url: /how-to-guides/data-governance/classification/tiers
   - category: How-to Guides / Data Governance / Classification / Best Practices for Classification
