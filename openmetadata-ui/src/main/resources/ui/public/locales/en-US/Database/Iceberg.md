@@ -97,6 +97,14 @@ To get the client secret, follow these steps:
 $$
 $$section
 
+### Scope $(id="scope")
+
+#### REST Catalog
+OAuth2 Scope to use for the Authentication Flow
+
+$$
+$$section
+
 ### Token $(id="token")
 
 #### REST Catalog
