@@ -151,6 +151,31 @@ const ActivityFeedActions = ({
   const handleVisibleChange = (newVisible: boolean) => {
     setVisible(newVisible);
   };
+
+  const applyPatch = async (patch: any) => {
+    try {
+      if (!isEmpty(patch)) {
+        if (feed.type === 'Announcement' && !isAnnouncementTab) {
+          if (isPost) {
+            await updatePost(feed.id, post.id, patch);
+          } else {
+            await updateThread(feed.id, patch);
+          }
+          const updatedthread = await getUpdatedThread(feed.id);
+          updateEntityThread(updatedthread);
+        } else {
+          if (isPost) {
+            await updatePost(feed.id, post.id, patch);
+          } else {
+            await updateThread(feed.id, patch);
+          }
+          updateAnnouncementThreads?.();
+        }
+      }
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
   const onReactionSelect = async (
     reactionType: ReactionType,
     reactionOperation: ReactionOperation
@@ -184,31 +209,7 @@ const ActivityFeedActions = ({
       : { ...feed, reactions: updatedReactions };
 
     const patch = compare(originalObject, updatedObject);
-    try {
-      if (!isEmpty(patch)) {
-        if (feed.type === 'Announcement' && !isAnnouncementTab) {
-          if (isPost) {
-            await updatePost(feed.id, post.id, patch);
-            const updatedthread = await getUpdatedThread(feed.id);
-            updateEntityThread(updatedthread);
-          } else {
-            await updateThread(feed.id, patch);
-            const updatedthread = await getUpdatedThread(feed.id);
-            updateEntityThread(updatedthread);
-          }
-        } else {
-          if (isPost) {
-            await updatePost(feed.id, post.id, patch);
-            updateAnnouncementThreads && updateAnnouncementThreads();
-          } else {
-            await updateThread(feed.id, patch);
-            updateAnnouncementThreads && updateAnnouncementThreads();
-          }
-        }
-      }
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
+    applyPatch(patch);
   };
 
   const isReacted = (reactionType: ReactionType) => {

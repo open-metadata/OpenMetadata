@@ -70,6 +70,26 @@ function FeedCardFooter({
     () => feed.type === ThreadType.Announcement,
     [feed.type]
   );
+  const applyPatch = async (patch: any) => {
+    if (!isEmpty(patch)) {
+      if (isFeedTypeAnnouncement && !isAnnouncementTab) {
+        if (isPost) {
+          await updatePost(feed.id, post.id, patch);
+        } else {
+          await updateThread(feed.id, patch);
+        }
+        const updatedthread = await getUpdatedThread(feed.id);
+        updateEntityThread(updatedthread);
+      } else {
+        if (isPost) {
+          await updatePost(feed.id, post.id, patch);
+        } else {
+          await updateThread(feed.id, patch);
+        }
+        updateAnnouncementThreads?.();
+      }
+    }
+  };
   const updateAnnouncementsThreadReactions = async (
     post: Post,
     reactionType: ReactionType,
@@ -104,24 +124,7 @@ function FeedCardFooter({
 
     const patch = compare(originalObject, updatedObject);
 
-    if (!isEmpty(patch)) {
-      if (isFeedTypeAnnouncement && !isAnnouncementTab) {
-        if (isPost) {
-          await updatePost(feed.id, post.id, patch);
-        } else {
-          await updateThread(feed.id, patch);
-        }
-        const updatedthread = await getUpdatedThread(feed.id);
-        updateEntityThread(updatedthread);
-      } else {
-        if (isPost) {
-          await updatePost(feed.id, post.id, patch);
-        } else {
-          await updateThread(feed.id, patch);
-        }
-        updateAnnouncementThreads && updateAnnouncementThreads();
-      }
-    }
+    applyPatch(patch);
   };
   const onReactionUpdate = useCallback(
     async (reaction: ReactionType, operation: ReactionOperation) => {
