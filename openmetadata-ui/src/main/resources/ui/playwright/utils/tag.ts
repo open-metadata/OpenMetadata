@@ -56,11 +56,6 @@ export const visitClassificationPage = async (
     .getByText(classificationDisplayName)
     .click();
 
-  // await page
-  //   .locator(`[data-testid="side-panel-classification"]`)
-  //   .filter({ hasText: classificationDisplayName })
-  //   .click();
-
   await expect(page.locator('.activeCategory')).toContainText(
     classificationDisplayName
   );
