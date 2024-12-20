@@ -13,6 +13,7 @@
 Python Dependencies
 """
 
+import sys
 from typing import Dict, List, Set
 
 from setuptools import setup
@@ -399,6 +400,9 @@ test = {
     *plugins["oracle"],
     *plugins["mssql"],
 }
+
+if sys.version_info >= (3, 9):
+    test.add("locust~=2.32.0")
 
 e2e_test = {
     # playwright dependencies
