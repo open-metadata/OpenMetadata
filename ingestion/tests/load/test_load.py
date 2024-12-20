@@ -1,37 +1,41 @@
 """Run test case result resource load test"""
 
+import csv
 import os
 from pathlib import Path
-import csv
 from unittest import TestCase
+
 import yaml
 
 from ingestion.tests.load.utils import run_load_test
 
+
 def run_all_resources(summary_file: str, locust_file: str):
     """Test test case result resource"""
     args = [
-            "locust",
-            "--headless",
-            "-H",
-            "http://localhost:8585",
-            "--user",
-            os.getenv("LOCUST_USER", "50"),
-            "--spawn-rate",
-            "1",
-            "-f",
-            str(locust_file),
-            "--run-time",
-            os.getenv("LOCUST_RUNTIME", "1m"),
-            "--only-summary",
-            "--csv",
-            str(summary_file),
-        ]
+        "locust",
+        "--headless",
+        "-H",
+        "http://localhost:8585",
+        "--user",
+        os.getenv("LOCUST_USER", "50"),
+        "--spawn-rate",
+        "1",
+        "-f",
+        str(locust_file),
+        "--run-time",
+        os.getenv("LOCUST_RUNTIME", "1m"),
+        "--only-summary",
+        "--csv",
+        str(summary_file),
+    ]
 
     run_load_test(args)
 
+
 class TestAllResources(TestCase):
     """Test class to run all resources load test"""
+
     def test_all_resources(self):
         """Test all resources"""
         directory = Path(__file__).parent
@@ -46,7 +50,7 @@ class TestAllResources(TestCase):
         with open(manifest_file, "r", encoding="utf-8") as f:
             manifest = yaml.safe_load(f)
 
-        with open(str(summary_file)+"_stats.csv", "r", encoding="utf-8") as f:
+        with open(str(summary_file) + "_stats.csv", "r", encoding="utf-8") as f:
             reader = csv.DictReader(f)
 
             for row in reader:
@@ -60,4 +64,8 @@ class TestAllResources(TestCase):
                                 stat = row.get(metric)
                                 if stat:
                                     stat = int(stat)
-                                    self.assertLessEqual(stat, threshold, msg=f"{metric} for {name} is greater than threshold")
+                                    self.assertLessEqual(
+                                        stat,
+                                        threshold,
+                                        msg=f"{metric} for {name} is greater than threshold",
+                                    )

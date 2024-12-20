@@ -1,13 +1,14 @@
 """Utils functions for load testing."""
 
-from typing import List
 import sys
+from typing import List
 
 import pytest
 from locust import main
 
 TEST_CASE_RESOURCE_PATH = "/api/v1/dataQuality/testCases"
 TEST_CASE_RESULT_RESOURCE_PATH = "/api/v1/dataQuality/testCases/testCaseResults"
+
 
 def run_load_test(args: List[str]):
     """Test test case result resource"""
