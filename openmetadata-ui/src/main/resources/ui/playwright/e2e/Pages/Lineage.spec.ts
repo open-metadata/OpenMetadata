@@ -10,8 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import test from '@playwright/test';
+import test, { expect } from '@playwright/test';
 import { get } from 'lodash';
+import { GlobalSettingOptions } from '../../constant/settings';
 import { ApiEndpointClass } from '../../support/entity/ApiEndpointClass';
 import { ContainerClass } from '../../support/entity/ContainerClass';
 import { DashboardClass } from '../../support/entity/DashboardClass';
@@ -34,16 +35,25 @@ import {
   connectEdgeBetweenNodes,
   deleteEdge,
   deleteNode,
+  editLineage,
+  fillLineageConfigForm,
+  performExpand,
   performZoomOut,
   removeColumnLineage,
   setupEntitiesForLineage,
+  verifyColumnLayerActive,
   verifyColumnLayerInactive,
+  verifyColumnLineageInCSV,
+  verifyExportLineageCSV,
   verifyNodePresent,
   visitLineageTab,
 } from '../../utils/lineage';
+import { settingClick } from '../../utils/sidebar';
 
 // use the admin user to login
-test.use({ storageState: 'playwright/.auth/admin.json' });
+test.use({
+  storageState: 'playwright/.auth/admin.json',
+});
 
 const entities = [
   TableClass,
@@ -52,6 +62,7 @@ const entities = [
   MlModelClass,
   ContainerClass,
   SearchIndexClass,
+  ApiEndpointClass,
   MetricClass,
 ] as const;
 
@@ -72,21 +83,24 @@ test.afterAll('Cleanup', async ({ browser }) => {
 for (const EntityClass of entities) {
   const defaultEntity = new EntityClass();
 
-  test.fixme(
-    `Lineage creation from ${defaultEntity.getType()} entity`,
-    async ({ browser }) => {
-      test.slow(true);
+  test(`Lineage creation from ${defaultEntity.getType()} entity`, async ({
+    browser,
+  }) => {
+    test.slow(true);
 
-      const { page } = await createNewPage(browser);
-      const { currentEntity, entities, cleanup } =
-        await setupEntitiesForLineage(page, defaultEntity);
+    const { page } = await createNewPage(browser);
+    const { currentEntity, entities, cleanup } = await setupEntitiesForLineage(
+      page,
+      defaultEntity
+    );
 
+    try {
       await test.step('Should create lineage for the entity', async () => {
         await redirectToHomePage(page);
         await currentEntity.visitEntityPage(page);
         await visitLineageTab(page);
         await verifyColumnLayerInactive(page);
-        await page.click('[data-testid="edit-lineage"]');
+        await editLineage(page);
         await performZoomOut(page);
         for (const entity of entities) {
           await connectEdgeBetweenNodes(page, currentEntity, entity);
@@ -95,6 +109,7 @@ for (const EntityClass of entities) {
         await redirectToHomePage(page);
         await currentEntity.visitEntityPage(page);
         await visitLineageTab(page);
+        await page.click('[data-testid="edit-lineage"]');
         await page
           .locator('.react-flow__controls-fitview')
           .dispatchEvent('click');
@@ -102,15 +117,28 @@ for (const EntityClass of entities) {
         for (const entity of entities) {
           await verifyNodePresent(page, entity);
         }
+        await page.click('[data-testid="edit-lineage"]');
       });
 
       await test.step('Should create pipeline between entities', async () => {
-        await page.click('[data-testid="edit-lineage"]');
-        await performZoomOut(page);
+        await redirectToHomePage(page);
+        await currentEntity.visitEntityPage(page);
+        await visitLineageTab(page);
+        await editLineage(page);
+        await page
+          .locator('.react-flow__controls-fitview')
+          .dispatchEvent('click');
 
         for (const entity of entities) {
           await applyPipelineFromModal(page, currentEntity, entity, pipeline);
         }
+      });
+
+      await test.step('Verify Lineage Export CSV', async () => {
+        await redirectToHomePage(page);
+        await currentEntity.visitEntityPage(page);
+        await visitLineageTab(page);
+        await verifyExportLineageCSV(page, currentEntity, entities, pipeline);
       });
 
       await test.step(
@@ -119,7 +147,7 @@ for (const EntityClass of entities) {
           await redirectToHomePage(page);
           await currentEntity.visitEntityPage(page);
           await visitLineageTab(page);
-          await page.click('[data-testid="edit-lineage"]');
+          await editLineage(page);
           await performZoomOut(page);
 
           for (const entity of entities) {
@@ -127,13 +155,13 @@ for (const EntityClass of entities) {
           }
         }
       );
-
+    } finally {
       await cleanup();
     }
-  );
+  });
 }
 
-test.fixme('Verify column lineage between tables', async ({ browser }) => {
+test('Verify column lineage between tables', async ({ browser }) => {
   const { page } = await createNewPage(browser);
   const { apiContext, afterAction } = await getApiContext(page);
   const table1 = new TableClass();
@@ -171,117 +199,296 @@ test.fixme('Verify column lineage between tables', async ({ browser }) => {
   await afterAction();
 });
 
-test.fixme(
-  'Verify column lineage between table and topic',
-  async ({ browser }) => {
-    const { page } = await createNewPage(browser);
-    const { apiContext, afterAction } = await getApiContext(page);
-    const table = new TableClass();
-    const topic = new TopicClass();
-    await table.create(apiContext);
-    await topic.create(apiContext);
+test('Verify column lineage between table and topic', async ({ browser }) => {
+  const { page } = await createNewPage(browser);
+  const { apiContext, afterAction } = await getApiContext(page);
+  const table = new TableClass();
+  const topic = new TopicClass();
+  await table.create(apiContext);
+  await topic.create(apiContext);
 
-    const sourceTableFqn = get(table, 'entityResponseData.fullyQualifiedName');
-    const sourceCol = `${sourceTableFqn}.${get(
-      table,
+  const sourceTableFqn = get(table, 'entityResponseData.fullyQualifiedName');
+  const sourceCol = `${sourceTableFqn}.${get(
+    table,
+    'entityResponseData.columns[0].name'
+  )}`;
+  const targetCol = get(
+    topic,
+    'entityResponseData.messageSchema.schemaFields[0].children[0].fullyQualifiedName'
+  );
+
+  await addPipelineBetweenNodes(page, table, topic);
+  await activateColumnLayer(page);
+
+  // Add column lineage
+  await addColumnLineage(page, sourceCol, targetCol);
+
+  // Verify column lineage
+  await redirectToHomePage(page);
+  await table.visitEntityPage(page);
+  await visitLineageTab(page);
+  await verifyColumnLineageInCSV(page, table, topic, sourceCol, targetCol);
+
+  await page.click('[data-testid="edit-lineage"]');
+
+  await removeColumnLineage(page, sourceCol, targetCol);
+  await page.click('[data-testid="edit-lineage"]');
+
+  await deleteNode(page, topic);
+  await table.delete(apiContext);
+  await topic.delete(apiContext);
+
+  await afterAction();
+});
+
+test('Verify column lineage between topic and api endpoint', async ({
+  browser,
+}) => {
+  const { page } = await createNewPage(browser);
+  const { apiContext, afterAction } = await getApiContext(page);
+  const topic = new TopicClass();
+  const apiEndpoint = new ApiEndpointClass();
+
+  await topic.create(apiContext);
+  await apiEndpoint.create(apiContext);
+
+  const sourceCol = get(
+    topic,
+    'entityResponseData.messageSchema.schemaFields[0].children[0].fullyQualifiedName'
+  );
+
+  const targetCol = get(
+    apiEndpoint,
+    'entityResponseData.responseSchema.schemaFields[0].children[1].fullyQualifiedName'
+  );
+
+  await addPipelineBetweenNodes(page, topic, apiEndpoint);
+  await activateColumnLayer(page);
+
+  // Add column lineage
+  await addColumnLineage(page, sourceCol, targetCol);
+  await page.click('[data-testid="edit-lineage"]');
+
+  await removeColumnLineage(page, sourceCol, targetCol);
+  await page.click('[data-testid="edit-lineage"]');
+
+  await deleteNode(page, apiEndpoint);
+  await topic.delete(apiContext);
+  await apiEndpoint.delete(apiContext);
+
+  await afterAction();
+});
+
+test('Verify column lineage between table and api endpoint', async ({
+  browser,
+}) => {
+  const { page } = await createNewPage(browser);
+  const { apiContext, afterAction } = await getApiContext(page);
+  const table = new TableClass();
+  const apiEndpoint = new ApiEndpointClass();
+  await table.create(apiContext);
+  await apiEndpoint.create(apiContext);
+
+  const sourceTableFqn = get(table, 'entityResponseData.fullyQualifiedName');
+  const sourceCol = `${sourceTableFqn}.${get(
+    table,
+    'entityResponseData.columns[0].name'
+  )}`;
+  const targetCol = get(
+    apiEndpoint,
+    'entityResponseData.responseSchema.schemaFields[0].children[0].fullyQualifiedName'
+  );
+
+  await addPipelineBetweenNodes(page, table, apiEndpoint);
+  await activateColumnLayer(page);
+
+  // Add column lineage
+  await addColumnLineage(page, sourceCol, targetCol);
+  await page.click('[data-testid="edit-lineage"]');
+  await removeColumnLineage(page, sourceCol, targetCol);
+  await page.click('[data-testid="edit-lineage"]');
+
+  await deleteNode(page, apiEndpoint);
+  await table.delete(apiContext);
+  await apiEndpoint.delete(apiContext);
+
+  await afterAction();
+});
+
+test('Verify function data in edge drawer', async ({ browser }) => {
+  const { page } = await createNewPage(browser);
+  const { apiContext, afterAction } = await getApiContext(page);
+  const table1 = new TableClass();
+  const table2 = new TableClass();
+
+  try {
+    await table1.create(apiContext);
+    await table2.create(apiContext);
+    const sourceTableFqn = get(table1, 'entityResponseData.fullyQualifiedName');
+    const sourceColName = `${sourceTableFqn}.${get(
+      table1,
       'entityResponseData.columns[0].name'
     )}`;
-    const targetCol = get(
-      topic,
-      'entityResponseData.messageSchema.schemaFields[0].children[0].fullyQualifiedName'
+
+    const targetTableFqn = get(table2, 'entityResponseData.fullyQualifiedName');
+    const targetColName = `${targetTableFqn}.${get(
+      table2,
+      'entityResponseData.columns[0].name'
+    )}`;
+
+    await addPipelineBetweenNodes(page, table1, table2);
+    await activateColumnLayer(page);
+    await addColumnLineage(page, sourceColName, targetColName);
+
+    const lineageReq = page.waitForResponse('/api/v1/lineage/getLineage?*');
+    await page.reload();
+    const lineageRes = await lineageReq;
+    const jsonRes = await lineageRes.json();
+    const edge = jsonRes.edges[0];
+    const columnData = edge.columns[0];
+
+    const newEdge = {
+      edge: {
+        fromEntity: {
+          id: edge.fromEntity.id,
+          type: edge.fromEntity.type,
+        },
+        toEntity: {
+          id: edge.toEntity.id,
+          type: edge.toEntity.type,
+        },
+        lineageDetails: {
+          columnsLineage: [
+            {
+              fromColumns: [columnData.fromColumns[0]],
+              function: 'count',
+              toColumn: columnData.toColumn,
+            },
+          ],
+          description: 'test',
+        },
+      },
+    };
+    await apiContext.put(`/api/v1/lineage`, {
+      data: newEdge,
+    });
+    const lineageReq1 = page.waitForResponse('/api/v1/lineage/getLineage?*');
+    await page.reload();
+    await lineageReq1;
+
+    await activateColumnLayer(page);
+    await page
+      .locator(
+        `[data-testid="column-edge-${btoa(sourceColName)}-${btoa(
+          targetColName
+        )}"]`
+      )
+      .dispatchEvent('click');
+
+    await page.locator('.edge-info-drawer').isVisible();
+
+    await expect(page.locator('[data-testid="Function"]')).toContainText(
+      'count'
     );
+  } finally {
+    await table1.delete(apiContext);
+    await table2.delete(apiContext);
+    await afterAction();
+  }
+});
+
+test('Verify global lineage config', async ({ browser }) => {
+  test.slow(true);
+
+  const { page } = await createNewPage(browser);
+  const { apiContext, afterAction } = await getApiContext(page);
+  const table = new TableClass();
+  const topic = new TopicClass();
+  const dashboard = new DashboardClass();
+  const mlModel = new MlModelClass();
+  const searchIndex = new SearchIndexClass();
+
+  try {
+    await table.create(apiContext);
+    await topic.create(apiContext);
+    await dashboard.create(apiContext);
+    await mlModel.create(apiContext);
+    await searchIndex.create(apiContext);
 
     await addPipelineBetweenNodes(page, table, topic);
-    await activateColumnLayer(page);
+    await addPipelineBetweenNodes(page, topic, dashboard);
+    await addPipelineBetweenNodes(page, dashboard, mlModel);
+    await addPipelineBetweenNodes(page, mlModel, searchIndex);
 
-    // Add column lineage
-    await addColumnLineage(page, sourceCol, targetCol);
-    await page.click('[data-testid="edit-lineage"]');
+    await test.step(
+      'Update global lineage config and verify lineage',
+      async () => {
+        await settingClick(page, GlobalSettingOptions.LINEAGE_CONFIG);
+        await fillLineageConfigForm(page, {
+          upstreamDepth: 1,
+          downstreamDepth: 1,
+          layer: 'Column Level Lineage',
+        });
 
-    await removeColumnLineage(page, sourceCol, targetCol);
-    await page.click('[data-testid="edit-lineage"]');
+        await topic.visitEntityPage(page);
+        await visitLineageTab(page);
+        await verifyNodePresent(page, table);
+        await verifyNodePresent(page, dashboard);
+        const mlModelFqn = get(
+          mlModel,
+          'entityResponseData.fullyQualifiedName'
+        );
+        const mlModelNode = page.locator(
+          `[data-testid="lineage-node-${mlModelFqn}"]`
+        );
 
-    await deleteNode(page, topic);
+        await expect(mlModelNode).not.toBeVisible();
+
+        await verifyColumnLayerActive(page);
+      }
+    );
+
+    await test.step(
+      'Verify Upstream and Downstream expand collapse buttons',
+      async () => {
+        await dashboard.visitEntityPage(page);
+        await visitLineageTab(page);
+        await page.getByTestId('entity-panel-close-icon').click();
+        await performZoomOut(page);
+        await verifyNodePresent(page, topic);
+        await verifyNodePresent(page, mlModel);
+        await performExpand(page, mlModel, false, searchIndex);
+        await performExpand(page, topic, true);
+      }
+    );
+
+    await test.step(
+      'Reset global lineage config and verify lineage',
+      async () => {
+        await settingClick(page, GlobalSettingOptions.LINEAGE_CONFIG);
+        await fillLineageConfigForm(page, {
+          upstreamDepth: 2,
+          downstreamDepth: 2,
+          layer: 'Entity Lineage',
+        });
+
+        await dashboard.visitEntityPage(page);
+        await visitLineageTab(page);
+
+        await verifyNodePresent(page, table);
+        await verifyNodePresent(page, dashboard);
+        await verifyNodePresent(page, mlModel);
+        await verifyNodePresent(page, searchIndex);
+        await verifyNodePresent(page, topic);
+      }
+    );
+  } finally {
     await table.delete(apiContext);
     await topic.delete(apiContext);
+    await dashboard.delete(apiContext);
+    await mlModel.delete(apiContext);
+    await searchIndex.delete(apiContext);
 
     await afterAction();
   }
-);
-
-test.fixme(
-  'Verify column lineage between topic and api endpoint',
-  async ({ browser }) => {
-    const { page } = await createNewPage(browser);
-    const { apiContext, afterAction } = await getApiContext(page);
-    const topic = new TopicClass();
-    const apiEndpoint = new ApiEndpointClass();
-
-    await topic.create(apiContext);
-    await apiEndpoint.create(apiContext);
-
-    const sourceCol = get(
-      topic,
-      'entityResponseData.messageSchema.schemaFields[0].children[0].fullyQualifiedName'
-    );
-
-    const targetCol = get(
-      apiEndpoint,
-      'entityResponseData.responseSchema.schemaFields[0].children[1].fullyQualifiedName'
-    );
-
-    await addPipelineBetweenNodes(page, topic, apiEndpoint);
-    await activateColumnLayer(page);
-
-    // Add column lineage
-    await addColumnLineage(page, sourceCol, targetCol);
-    await page.click('[data-testid="edit-lineage"]');
-
-    await removeColumnLineage(page, sourceCol, targetCol);
-    await page.click('[data-testid="edit-lineage"]');
-
-    await deleteNode(page, apiEndpoint);
-    await topic.delete(apiContext);
-    await apiEndpoint.delete(apiContext);
-
-    await afterAction();
-  }
-);
-
-test.fixme(
-  'Verify column lineage between table and api endpoint',
-  async ({ browser }) => {
-    const { page } = await createNewPage(browser);
-    const { apiContext, afterAction } = await getApiContext(page);
-    const table = new TableClass();
-    const apiEndpoint = new ApiEndpointClass();
-    await table.create(apiContext);
-    await apiEndpoint.create(apiContext);
-
-    const sourceTableFqn = get(table, 'entityResponseData.fullyQualifiedName');
-    const sourceCol = `${sourceTableFqn}.${get(
-      table,
-      'entityResponseData.columns[0].name'
-    )}`;
-    const targetCol = get(
-      apiEndpoint,
-      'entityResponseData.responseSchema.schemaFields[0].children[0].fullyQualifiedName'
-    );
-
-    await addPipelineBetweenNodes(page, table, apiEndpoint);
-    await activateColumnLayer(page);
-
-    // Add column lineage
-    await addColumnLineage(page, sourceCol, targetCol);
-    await page.click('[data-testid="edit-lineage"]');
-
-    await removeColumnLineage(page, sourceCol, targetCol);
-    await page.click('[data-testid="edit-lineage"]');
-
-    await deleteNode(page, apiEndpoint);
-    await table.delete(apiContext);
-    await apiEndpoint.delete(apiContext);
-
-    await afterAction();
-  }
-);
+});

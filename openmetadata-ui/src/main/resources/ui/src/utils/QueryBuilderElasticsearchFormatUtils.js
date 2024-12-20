@@ -181,6 +181,7 @@ function determineQueryField(fieldDataType, fullFieldName, queryType) {
 function buildRegexpParameters(value) {
   return {
     value: value,
+    case_insensitive: true,
   };
 }
 
@@ -343,48 +344,107 @@ function buildEsGroup(children, conjunction, properties, recursiveFxn, config) {
 }
 
 export function elasticSearchFormat(tree, config) {
-  // -- format the es dsl here
-  if (!tree) return undefined;
-  const type = tree.get('type');
-  const properties = tree.get('properties') || new Map();
+  try {
+    // -- format the es dsl here
+    if (!tree) return undefined;
+    const type = tree.get('type');
+    const properties = tree.get('properties') || new Map();
 
-  if (type === 'rule' && properties.get('field')) {
-    // -- field is null when a new blank rule is added
-    const operator = properties.get('operator');
-    const field = properties.get('field');
-    const value = properties.get('value').toJS();
-    const _valueType = properties.get('valueType')?.get(0);
-    const valueSrc = properties.get('valueSrc')?.get(0);
+    if (type === 'rule' && properties.get('field')) {
+      // -- field is null when a new blank rule is added
+      const operator = properties.get('operator');
+      const field = properties.get('field');
+      const value = properties.get('value').toJS();
+      const _valueType = properties.get('valueType')?.get(0);
+      const valueSrc = properties.get('valueSrc')?.get(0);
 
-    if (valueSrc === 'func') {
-      // -- elastic search doesn't support functions (that is post processing)
-      return;
+      if (valueSrc === 'func') {
+        // -- elastic search doesn't support functions (that is post processing)
+        return;
+      }
+
+      if (value && Array.isArray(value[0])) {
+        return {
+          bool: {
+            should: value[0].map((val) =>
+              buildEsRule(field, [val], operator, config, valueSrc)
+            ),
+          },
+        };
+      } else {
+        return buildEsRule(field, value, operator, config, valueSrc);
+      }
     }
 
-    if (value && Array.isArray(value[0])) {
-      return {
-        bool: {
-          should: value[0].map((val) =>
-            buildEsRule(field, [val], operator, config, valueSrc)
-          ),
-        },
-      };
-    } else {
-      return buildEsRule(field, value, operator, config, valueSrc);
+    if (type === 'group' || type === 'rule_group') {
+      let conjunction = properties.get('conjunction');
+      if (!conjunction) conjunction = defaultConjunction(config);
+      const children = tree.get('children1');
+
+      return buildEsGroup(
+        children,
+        conjunction,
+        properties,
+        elasticSearchFormat,
+        config
+      );
     }
+  } catch {
+    return {};
   }
+}
 
-  if (type === 'group' || type === 'rule_group') {
-    let conjunction = properties.get('conjunction');
-    if (!conjunction) conjunction = defaultConjunction(config);
-    const children = tree.get('children1');
+export function elasticSearchFormatForJSONLogic(tree, config) {
+  try {
+    // -- format the es dsl here
+    if (!tree) return undefined;
+    const type = tree.get('type');
+    const properties = tree.get('properties') || new Map();
 
-    return buildEsGroup(
-      children,
-      conjunction,
-      properties,
-      elasticSearchFormat,
-      config
-    );
+    if (type === 'rule' && properties.get('field')) {
+      // -- field is null when a new blank rule is added
+      const operator = properties.get('operator');
+      const field = properties.get('field');
+      const value = properties.get('value').toJS();
+      const _valueType = properties.get('valueType')?.get(0);
+      const valueSrc = properties.get('valueSrc')?.get(0);
+
+      if (valueSrc === 'func') {
+        // -- elastic search doesn't support functions (that is post processing)
+        return;
+      }
+
+      if (
+        value &&
+        Array.isArray(value[0]) &&
+        operator !== 'select_not_any_in'
+      ) {
+        return {
+          bool: {
+            should: value[0].map((val) =>
+              buildEsRule(field, [val], operator, config, valueSrc)
+            ),
+          },
+        };
+      } else {
+        return buildEsRule(field, value, operator, config, valueSrc);
+      }
+    }
+
+    if (type === 'group' || type === 'rule_group') {
+      let conjunction = properties.get('conjunction');
+      if (!conjunction) conjunction = defaultConjunction(config);
+      const children = tree.get('children1');
+
+      return buildEsGroup(
+        children,
+        conjunction,
+        properties,
+        elasticSearchFormatForJSONLogic,
+        config
+      );
+    }
+  } catch {
+    return {};
   }
 }

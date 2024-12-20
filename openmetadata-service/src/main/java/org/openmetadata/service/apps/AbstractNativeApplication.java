@@ -14,7 +14,6 @@ import org.openmetadata.schema.api.services.ingestionPipelines.CreateIngestionPi
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.app.AppType;
-import org.openmetadata.schema.entity.app.ScheduleTimeline;
 import org.openmetadata.schema.entity.app.ScheduleType;
 import org.openmetadata.schema.entity.app.ScheduledExecutionContext;
 import org.openmetadata.schema.entity.applications.configuration.ApplicationConfig;
@@ -41,6 +40,7 @@ import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 import org.quartz.JobExecutionContext;
 import org.quartz.SchedulerException;
+import org.quartz.UnableToInterruptJobException;
 
 @Getter
 @Slf4j
@@ -65,9 +65,7 @@ public class AbstractNativeApplication implements NativeApplication {
   @Override
   public void install() {
     // If the app does not have any Schedule Return without scheduling
-    if (Boolean.TRUE.equals(app.getDeleted())
-        || (app.getAppSchedule() != null
-            && app.getAppSchedule().getScheduleTimeline().equals(ScheduleTimeline.NONE))) {
+    if (Boolean.TRUE.equals(app.getDeleted()) || (app.getAppSchedule() == null)) {
       return;
     }
     if (app.getAppType().equals(AppType.Internal)
@@ -295,5 +293,16 @@ public class AbstractNativeApplication implements NativeApplication {
       JobExecutionContext jobExecutionContext, AppRunRecord appRecord, boolean update) {
     OmAppJobListener listener = getJobListener(jobExecutionContext);
     listener.pushApplicationStatusUpdates(jobExecutionContext, appRecord, update);
+  }
+
+  @Override
+  public void interrupt() throws UnableToInterruptJobException {
+    LOG.info("Interrupting the job for app: {}", this.app.getName());
+    stop();
+  }
+
+  protected void stop() {
+    LOG.info("Default stop behavior for app: {}", this.app.getName());
+    // Default implementation: no-op or generic cleanup logic
   }
 }

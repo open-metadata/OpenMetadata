@@ -20,6 +20,7 @@ import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { getEntityDetailsPath } from '../../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
+import { COMMON_RESIZABLE_PANEL_CONFIG } from '../../../constants/ResizablePanel.constants';
 import LineageProvider from '../../../context/LineageProvider/LineageProvider';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
@@ -266,6 +267,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
 
   const {
     editTagsPermission,
+    editGlossaryTermsPermission,
     editDescriptionPermission,
     editCustomAttributePermission,
     editAllPermission,
@@ -276,6 +278,9 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
     () => ({
       editTagsPermission:
         (topicPermissions.EditTags || topicPermissions.EditAll) && !deleted,
+      editGlossaryTermsPermission:
+        (topicPermissions.EditGlossaryTerms || topicPermissions.EditAll) &&
+        !deleted,
       editDescriptionPermission:
         (topicPermissions.EditDescription || topicPermissions.EditAll) &&
         !deleted,
@@ -329,6 +334,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
                       <TopicSchemaFields
                         entityFqn={decodedTopicFQN}
                         hasDescriptionEditAccess={editDescriptionPermission}
+                        hasGlossaryTermEditAccess={editGlossaryTermsPermission}
                         hasTagEditAccess={editTagsPermission}
                         isReadOnly={Boolean(topicDetails.deleted)}
                         messageSchema={topicDetails.messageSchema}
@@ -337,8 +343,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
                       />
                     </div>
                   ),
-                  minWidth: 800,
-                  flex: 0.87,
+                  ...COMMON_RESIZABLE_PANEL_CONFIG.LEFT_PANEL,
                 }}
                 secondPanel={{
                   children: (
@@ -349,6 +354,9 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
                         domain={topicDetails?.domain}
                         editCustomAttributePermission={
                           editCustomAttributePermission
+                        }
+                        editGlossaryTermsPermission={
+                          editGlossaryTermsPermission
                         }
                         editTagPermission={editTagsPermission}
                         entityFQN={decodedTopicFQN}
@@ -362,8 +370,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
                       />
                     </div>
                   ),
-                  minWidth: 320,
-                  flex: 0.13,
+                  ...COMMON_RESIZABLE_PANEL_CONFIG.RIGHT_PANEL,
                   className:
                     'entity-resizable-right-panel-container entity-resizable-panel-container',
                 }}
@@ -479,6 +486,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       onDataProductsUpdate,
       handleSchemaFieldsUpdate,
       editTagsPermission,
+      editGlossaryTermsPermission,
       editDescriptionPermission,
       editCustomAttributePermission,
       editLineagePermission,
@@ -497,6 +505,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       <Row gutter={[0, 12]}>
         <Col className="p-x-lg" span={24}>
           <DataAssetsHeader
+            isDqAlertSupported
             isRecursiveDelete
             afterDeleteAction={afterDeleteAction}
             afterDomainUpdateAction={updateTopicDetailsState}

@@ -19,6 +19,7 @@ import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { getEntityDetailsPath } from '../../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
+import { COMMON_RESIZABLE_PANEL_CONFIG } from '../../../constants/ResizablePanel.constants';
 import LineageProvider from '../../../context/LineageProvider/LineageProvider';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { Tag } from '../../../generated/entity/classification/tag';
@@ -255,6 +256,7 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
 
   const {
     editTagsPermission,
+    editGlossaryTermsPermission,
     editDescriptionPermission,
     editCustomAttributePermission,
     editAllPermission,
@@ -265,6 +267,10 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
     () => ({
       editTagsPermission:
         (apiEndpointPermissions.EditTags || apiEndpointPermissions.EditAll) &&
+        !deleted,
+      editGlossaryTermsPermission:
+        (apiEndpointPermissions.EditGlossaryTerms ||
+          apiEndpointPermissions.EditAll) &&
         !deleted,
       editDescriptionPermission:
         (apiEndpointPermissions.EditDescription ||
@@ -325,8 +331,7 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
                       />
                     </div>
                   ),
-                  minWidth: 800,
-                  flex: 0.87,
+                  ...COMMON_RESIZABLE_PANEL_CONFIG.LEFT_PANEL,
                 }}
                 secondPanel={{
                   children: (
@@ -337,6 +342,9 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
                         domain={apiEndpointDetails?.domain}
                         editCustomAttributePermission={
                           editCustomAttributePermission
+                        }
+                        editGlossaryTermsPermission={
+                          editGlossaryTermsPermission
                         }
                         editTagPermission={editTagsPermission}
                         entityFQN={decodedApiEndpointFqn}
@@ -350,8 +358,7 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
                       />
                     </div>
                   ),
-                  minWidth: 320,
-                  flex: 0.13,
+                  ...COMMON_RESIZABLE_PANEL_CONFIG.RIGHT_PANEL,
                   className:
                     'entity-resizable-right-panel-container entity-resizable-panel-container',
                 }}
@@ -438,6 +445,7 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
       onDescriptionUpdate,
       onDataProductsUpdate,
       editTagsPermission,
+      editGlossaryTermsPermission,
       editDescriptionPermission,
       editCustomAttributePermission,
       editLineagePermission,
@@ -456,6 +464,7 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
       <Row gutter={[0, 12]}>
         <Col className="p-x-lg" span={24}>
           <DataAssetsHeader
+            isDqAlertSupported
             isRecursiveDelete
             afterDeleteAction={afterDeleteAction}
             afterDomainUpdateAction={onUpdateApiEndpointDetails}

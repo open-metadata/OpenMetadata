@@ -14,6 +14,7 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.csv.CsvUtil.addExtension;
 import static org.openmetadata.csv.CsvUtil.addField;
 import static org.openmetadata.csv.CsvUtil.addGlossaryTerms;
 import static org.openmetadata.csv.CsvUtil.addOwners;
@@ -28,6 +29,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVPrinter;
@@ -72,6 +74,7 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
         "",
         "");
     supportsSearch = true;
+    parent = true;
   }
 
   @Override
@@ -180,11 +183,26 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
   }
 
   @Override
+  public void entityRelationshipReindex(DatabaseSchema original, DatabaseSchema updated) {
+    super.entityRelationshipReindex(original, updated);
+
+    // Update search indexes of assets and entity on databaseSchema displayName change
+    if (!Objects.equals(original.getDisplayName(), updated.getDisplayName())) {
+      searchRepository
+          .getSearchClient()
+          .reindexAcrossIndices("databaseSchema.fullyQualifiedName", original.getEntityReference());
+    }
+  }
+
+  @Override
   public String exportToCsv(String name, String user) throws IOException {
     DatabaseSchema schema = getByName(null, name, Fields.EMPTY_FIELDS); // Validate database schema
     TableRepository repository = (TableRepository) Entity.getEntityRepository(TABLE);
-    ListFilter filter = new ListFilter(Include.NON_DELETED).addQueryParam("databaseSchema", name);
-    List<Table> tables = repository.listAll(repository.getFields("owners,tags,domain"), filter);
+
+    List<Table> tables =
+        repository.listAllForCSV(
+            repository.getFields("owners,tags,domain,extension"), schema.getFullyQualifiedName());
+
     tables.sort(Comparator.comparing(EntityInterface::getFullyQualifiedName));
     return new DatabaseSchemaCsv(schema, user).exportCsv(tables);
   }
@@ -205,7 +223,7 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
 
     @Transaction
     @Override
-    public void entitySpecificUpdate() {
+    public void entitySpecificUpdate(boolean consolidatingChanges) {
       recordChange("retentionPeriod", original.getRetentionPeriod(), updated.getRetentionPeriod());
       recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl());
       recordChange("sourceHash", original.getSourceHash(), updated.getSourceHash());
@@ -301,7 +319,8 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
           .withRetentionPeriod(csvRecord.get(7))
           .withSourceUrl(csvRecord.get(8))
           .withColumns(nullOrEmpty(table.getColumns()) ? new ArrayList<>() : table.getColumns())
-          .withDomain(getEntityReference(printer, csvRecord, 9, Entity.DOMAIN));
+          .withDomain(getEntityReference(printer, csvRecord, 9, Entity.DOMAIN))
+          .withExtension(getExtension(printer, csvRecord, 10));
 
       if (processRecord) {
         createEntity(printer, csvRecord, table);
@@ -326,6 +345,7 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
               ? ""
               : entity.getDomain().getFullyQualifiedName();
       addField(recordList, domain);
+      addExtension(recordList, entity.getExtension());
       addRecord(csvFile, recordList);
     }
   }

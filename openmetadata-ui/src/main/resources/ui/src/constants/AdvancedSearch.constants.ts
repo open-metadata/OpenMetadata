@@ -14,7 +14,6 @@
 import { t } from 'i18next';
 import { JsonTree, Utils as QbUtils } from 'react-awesome-query-builder';
 import { EntityFields } from '../enums/AdvancedSearch.enum';
-import { SearchIndex } from '../enums/search.enum';
 
 export const COMMON_DROPDOWN_ITEMS = [
   {
@@ -22,7 +21,7 @@ export const COMMON_DROPDOWN_ITEMS = [
     key: EntityFields.DOMAIN,
   },
   {
-    label: t('label.owner'),
+    label: t('label.owner-plural'),
     key: EntityFields.OWNERS,
   },
   {
@@ -53,7 +52,7 @@ export const DATA_ASSET_DROPDOWN_ITEMS = [
     key: EntityFields.DOMAIN,
   },
   {
-    label: t('label.owner'),
+    label: t('label.owner-plural'),
     key: EntityFields.OWNERS,
   },
   {
@@ -63,6 +62,10 @@ export const DATA_ASSET_DROPDOWN_ITEMS = [
   {
     label: t('label.tier'),
     key: EntityFields.TIER,
+  },
+  {
+    label: t('label.certification'),
+    key: EntityFields.CERTIFICATION,
   },
   {
     label: t('label.service'),
@@ -90,6 +93,10 @@ export const TABLE_DROPDOWN_ITEMS = [
   {
     label: t('label.table-type'),
     key: EntityFields.TABLE_TYPE,
+  },
+  {
+    label: t('label.column-description'),
+    key: EntityFields.COLUMN_DESCRIPTION_STATUS,
   },
 ];
 
@@ -174,7 +181,7 @@ export const GLOSSARY_DROPDOWN_ITEMS = [
     key: EntityFields.DOMAIN,
   },
   {
-    label: t('label.owner'),
+    label: t('label.owner-plural'),
     key: EntityFields.OWNERS,
   },
   {
@@ -208,7 +215,7 @@ export const DATA_PRODUCT_DROPDOWN_ITEMS = [
     key: EntityFields.DOMAIN,
   },
   {
-    label: t('label.owner'),
+    label: t('label.owner-plural'),
     key: EntityFields.OWNERS,
   },
 ];
@@ -221,7 +228,7 @@ export const DOMAIN_DATAPRODUCT_DROPDOWN_ITEMS = [
     key: EntityFields.ENTITY_TYPE,
   },
   {
-    label: t('label.owner'),
+    label: t('label.owner-plural'),
     key: EntityFields.OWNERS,
   },
   {
@@ -254,7 +261,7 @@ export const GLOSSARY_ASSETS_DROPDOWN_ITEMS = [
     key: EntityFields.DOMAIN,
   },
   {
-    label: t('label.owner'),
+    label: t('label.owner-plural'),
     key: EntityFields.OWNERS,
   },
   {
@@ -283,6 +290,14 @@ export const LINEAGE_DROPDOWN_ITEMS = [
   },
 ];
 
+export const TEXT_FIELD_OPERATORS = [
+  'equal',
+  'not_equal',
+  'like',
+  'not_like',
+  'is_null',
+  'is_not_null',
+];
 /**
  * Generates a query builder tree with a group containing an empty rule
  */
@@ -321,17 +336,3 @@ export const MISC_FIELDS = ['owner.displayName', 'tags.tagFQN'];
 export const OWNER_QUICK_FILTER_DEFAULT_OPTIONS_KEY = 'displayName.keyword';
 
 export const NULL_OPTION_KEY = 'OM_NULL_FIELD';
-
-export const EXPLORE_ROOT_INDEX_MAPPING = {
-  [SearchIndex.DATABASE]: [
-    SearchIndex.DATABASE,
-    SearchIndex.DATABASE_SCHEMA,
-    SearchIndex.TABLE,
-    SearchIndex.STORED_PROCEDURE,
-  ],
-  [SearchIndex.API_ENDPOINT_INDEX]: [
-    SearchIndex.API_ENDPOINT_INDEX,
-    SearchIndex.API_COLLECTION_INDEX,
-  ],
-  Governance: [SearchIndex.GLOSSARY_TERM],
-};

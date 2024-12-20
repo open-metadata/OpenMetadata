@@ -47,7 +47,6 @@ import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.api.data.CreateAPIEndpoint;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.data.APIEndpoint;
-import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
@@ -70,6 +69,8 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "apiEndpoints")
 public class APIEndpointResource extends EntityResource<APIEndpoint, APIEndpointRepository> {
   public static final String COLLECTION_PATH = "v1/apiEndpoints/";
+  private final APIEndpointMapper mapper = new APIEndpointMapper();
+
   static final String FIELDS = "owners,followers,tags,extension,domain,dataProducts,sourceHash";
 
   @Override
@@ -305,7 +306,8 @@ public class APIEndpointResource extends EntityResource<APIEndpoint, APIEndpoint
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateAPIEndpoint create) {
-    APIEndpoint apiEndpoint = getAPIEndpoint(create, securityContext.getUserPrincipal().getName());
+    APIEndpoint apiEndpoint =
+        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, apiEndpoint);
   }
 
@@ -370,23 +372,24 @@ public class APIEndpointResource extends EntityResource<APIEndpoint, APIEndpoint
   @PUT
   @Operation(
       operationId = "createOrUpdateAPIEndpoint",
-      summary = "Update topic",
+      summary = "Update API Endpoint",
       description =
           "Create a API Endpoint, it it does not exist or update an existing API Endpoint.",
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "The updated topic ",
+            description = "The updated api endpoint ",
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = Topic.class)))
+                    schema = @Schema(implementation = APIEndpoint.class)))
       })
   public Response createOrUpdate(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateAPIEndpoint create) {
-    APIEndpoint apiEndpoint = getAPIEndpoint(create, securityContext.getUserPrincipal().getName());
+    APIEndpoint apiEndpoint =
+        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, apiEndpoint);
   }
 
@@ -552,16 +555,5 @@ public class APIEndpointResource extends EntityResource<APIEndpoint, APIEndpoint
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
-  }
-
-  private APIEndpoint getAPIEndpoint(CreateAPIEndpoint create, String user) {
-    return repository
-        .copy(new APIEndpoint(), create, user)
-        .withApiCollection(getEntityReference(Entity.API_COLLCECTION, create.getApiCollection()))
-        .withRequestMethod(create.getRequestMethod())
-        .withEndpointURL(create.getEndpointURL())
-        .withRequestSchema(create.getRequestSchema())
-        .withResponseSchema(create.getResponseSchema())
-        .withSourceHash(create.getSourceHash());
   }
 }

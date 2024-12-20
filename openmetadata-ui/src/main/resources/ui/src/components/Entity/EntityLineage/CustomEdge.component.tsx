@@ -19,11 +19,12 @@ import { EdgeProps, getBezierPath } from 'reactflow';
 import { ReactComponent as FunctionIcon } from '../../../assets/svg/ic-function.svg';
 import { ReactComponent as IconTimesCircle } from '../../../assets/svg/ic-times-circle.svg';
 import { ReactComponent as PipelineIcon } from '../../../assets/svg/pipeline-grey.svg';
+import { RED_3 } from '../../../constants/Color.constants';
 import { FOREIGN_OBJECT_SIZE } from '../../../constants/Lineage.constants';
 import { useLineageProvider } from '../../../context/LineageProvider/LineageProvider';
-import { LineageLayerView } from '../../../context/LineageProvider/LineageProvider.interface';
 import { EntityType } from '../../../enums/entity.enum';
 import { StatusType } from '../../../generated/entity/data/pipeline';
+import { LineageLayer } from '../../../generated/settings/settings';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { getColumnSourceTargetHandles } from '../../../utils/EntityLineageUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
@@ -76,6 +77,7 @@ export const CustomEdge = ({
     isPipelineRootNode,
     ...rest
   } = data;
+
   const offset = 4;
 
   const { fromEntity, toEntity, pipeline, pipelineEntityType } =
@@ -88,9 +90,20 @@ export const CustomEdge = ({
     activeLayer,
     onAddPipelineClick,
     onColumnEdgeRemove,
+    dataQualityLineage,
   } = useLineageProvider();
 
   const { theme } = useApplicationStore();
+
+  const showDqTracing = useMemo(() => {
+    return (
+      (activeLayer.includes(LineageLayer.DataObservability) &&
+        dataQualityLineage?.edges?.some(
+          (dqEdge) => dqEdge?.doc_id === edge?.doc_id
+        )) ??
+      false
+    );
+  }, [activeLayer, dataQualityLineage, edge]);
 
   const isColumnHighlighted = useMemo(() => {
     if (!isColumnLineage) {
@@ -150,10 +163,16 @@ export const CustomEdge = ({
       opacity = tracedNodes.length === 0 || isStrokeNeeded ? 1 : 0.25;
     }
 
+    let stroke = isStrokeNeeded ? theme.primaryColor : undefined;
+
+    if (showDqTracing) {
+      stroke = RED_3;
+    }
+
     return {
       ...style,
       ...{
-        stroke: isStrokeNeeded ? theme.primaryColor : undefined,
+        stroke,
         opacity,
       },
     };
@@ -164,6 +183,7 @@ export const CustomEdge = ({
     isColumnHighlighted,
     isColumnLineage,
     tracedColumns,
+    showDqTracing,
   ]);
 
   const isPipelineEdgeAllowed = (
@@ -207,7 +227,7 @@ export const CustomEdge = ({
 
   const currentPipelineStatus = useMemo(() => {
     const isPipelineActiveNow = activeLayer.includes(
-      LineageLayerView.DATA_OBSERVARABILITY
+      LineageLayer.DataObservability
     );
     const pipelineData = pipeline?.pipelineStatus;
     if (pipelineData && isPipelineActiveNow) {

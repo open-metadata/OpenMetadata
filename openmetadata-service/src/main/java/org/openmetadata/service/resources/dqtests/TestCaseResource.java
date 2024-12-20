@@ -44,6 +44,7 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.tests.CreateLogicalTestCases;
 import org.openmetadata.schema.api.tests.CreateTestCase;
+import org.openmetadata.schema.api.tests.CreateTestCaseResult;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestSuite;
@@ -89,10 +90,11 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "TestCases")
 public class TestCaseResource extends EntityResource<TestCase, TestCaseRepository> {
   public static final String COLLECTION_PATH = "/v1/dataQuality/testCases";
-
+  private final TestCaseMapper mapper = new TestCaseMapper();
+  private final TestCaseResultMapper testCaseResultMapper = new TestCaseResultMapper();
   static final String FIELDS = "owners,testSuite,testDefinition,testSuites,incidentId,domain,tags";
   static final String SEARCH_FIELDS_EXCLUDE =
-      "testPlatforms,table,database,databaseSchema,service,testSuite,dataQualityDimension,testCaseType";
+      "testPlatforms,table,database,databaseSchema,service,testSuite,dataQualityDimension,testCaseType,originEntityFQN";
 
   @Override
   public TestCase addHref(UriInfo uriInfo, TestCase test) {
@@ -635,7 +637,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     // Override OperationContext to change the entity to table and operation from CREATE to
     // EDIT_TESTS
     EntityLink entityLink = EntityLink.parse(create.getEntityLink());
-    TestCase test = getTestCase(create, securityContext.getUserPrincipal().getName(), entityLink);
+    TestCase test = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     OperationContext operationContext =
         new OperationContext(Entity.TABLE, MetadataOperation.EDIT_TESTS);
     ResourceContextInterface resourceContext =
@@ -759,7 +761,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     OperationContext operationContext =
         new OperationContext(Entity.TABLE, MetadataOperation.EDIT_TESTS);
     authorizer.authorize(securityContext, operationContext, resourceContext);
-    TestCase test = getTestCase(create, securityContext.getUserPrincipal().getName(), entityLink);
+    TestCase test = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     repository.isTestSuiteExecutable(create.getTestSuite());
     repository.prepareInternal(test, true);
     PutResponse<TestCase> response = repository.createOrUpdate(uriInfo, test);
@@ -915,10 +917,29 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
       TestCase testCase = repository.findByName(fqn, Include.ALL);
       repository.deleteTestCaseFailedRowsSample(testCase.getId());
     }
-    RestUtil.validateTimestampMilliseconds(testCaseResult.getTimestamp());
+    // TODO: REMOVED ONCE DEPRECATED IN TEST CASE RESOURCE
+    CreateTestCaseResult createTestCaseResult =
+        new CreateTestCaseResult()
+            .withTimestamp(testCaseResult.getTimestamp())
+            .withTestCaseStatus(testCaseResult.getTestCaseStatus())
+            .withResult(testCaseResult.getResult())
+            .withSampleData(testCaseResult.getSampleData())
+            .withTestResultValue(testCaseResult.getTestResultValue())
+            .withPassedRows(testCaseResult.getPassedRows())
+            .withFailedRows(testCaseResult.getFailedRows())
+            .withPassedRowsPercentage(testCaseResult.getPassedRowsPercentage())
+            .withFailedRowsPercentage(testCaseResult.getFailedRowsPercentage())
+            .withIncidentId(testCaseResult.getIncidentId())
+            .withMaxBound(testCaseResult.getMaxBound())
+            .withMinBound(testCaseResult.getMinBound())
+            .withFqn(fqn);
     return repository
         .addTestCaseResult(
-            securityContext.getUserPrincipal().getName(), uriInfo, fqn, testCaseResult)
+            securityContext.getUserPrincipal().getName(),
+            uriInfo,
+            fqn,
+            testCaseResultMapper.createToEntity(
+                createTestCaseResult, securityContext.getUserPrincipal().getName()))
         .toResponse();
   }
 
@@ -1176,20 +1197,5 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
       resourceContext = TestCaseResourceContext.builder().build();
     }
     return resourceContext;
-  }
-
-  private TestCase getTestCase(CreateTestCase create, String user, EntityLink entityLink) {
-    return repository
-        .copy(new TestCase(), create, user)
-        .withDescription(create.getDescription())
-        .withName(create.getName())
-        .withDisplayName(create.getDisplayName())
-        .withParameterValues(create.getParameterValues())
-        .withEntityLink(create.getEntityLink())
-        .withComputePassedFailedRowCount(create.getComputePassedFailedRowCount())
-        .withUseDynamicAssertion(create.getUseDynamicAssertion())
-        .withEntityFQN(entityLink.getFullyQualifiedFieldValue())
-        .withTestSuite(getEntityReference(Entity.TEST_SUITE, create.getTestSuite()))
-        .withTestDefinition(getEntityReference(Entity.TEST_DEFINITION, create.getTestDefinition()));
   }
 }

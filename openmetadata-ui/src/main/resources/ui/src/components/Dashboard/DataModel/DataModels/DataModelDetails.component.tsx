@@ -23,6 +23,7 @@ import {
   getVersionPath,
 } from '../../../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../../constants/entity.constants';
+import { COMMON_RESIZABLE_PANEL_CONFIG } from '../../../../constants/ResizablePanel.constants';
 import LineageProvider from '../../../../context/LineageProvider/LineageProvider';
 import { CSMode } from '../../../../enums/codemirror.enum';
 import { EntityTabs, EntityType } from '../../../../enums/entity.enum';
@@ -190,12 +191,17 @@ const DataModelDetails = ({
   const {
     editDescriptionPermission,
     editTagsPermission,
+    editGlossaryTermsPermission,
     editLineagePermission,
   } = useMemo(() => {
     return {
       editDescriptionPermission:
         (dataModelPermissions.EditAll ||
           dataModelPermissions.EditDescription) &&
+        !deleted,
+      editGlossaryTermsPermission:
+        (dataModelPermissions.EditGlossaryTerms ||
+          dataModelPermissions.EditAll) &&
         !deleted,
       editTagsPermission:
         (dataModelPermissions.EditAll || dataModelPermissions.EditTags) &&
@@ -252,6 +258,7 @@ const DataModelDetails = ({
                     data={dataModelData?.columns || []}
                     entityFqn={decodedDataModelFQN}
                     hasEditDescriptionPermission={editDescriptionPermission}
+                    hasEditGlossaryTermPermission={editGlossaryTermsPermission}
                     hasEditTagsPermission={editTagsPermission}
                     isReadOnly={Boolean(deleted)}
                     onThreadLinkSelect={onThreadLinkSelect}
@@ -259,8 +266,7 @@ const DataModelDetails = ({
                   />
                 </div>
               ),
-              minWidth: 800,
-              flex: 0.87,
+              ...COMMON_RESIZABLE_PANEL_CONFIG.LEFT_PANEL,
             }}
             secondPanel={{
               children: (
@@ -274,6 +280,7 @@ const DataModelDetails = ({
                         dataModelPermissions.EditCustomFields) &&
                       !deleted
                     }
+                    editGlossaryTermsPermission={editGlossaryTermsPermission}
                     editTagPermission={editTagsPermission}
                     entityFQN={decodedDataModelFQN}
                     entityId={dataModelData.id}
@@ -286,8 +293,7 @@ const DataModelDetails = ({
                   />
                 </div>
               ),
-              minWidth: 320,
-              flex: 0.13,
+              ...COMMON_RESIZABLE_PANEL_CONFIG.RIGHT_PANEL,
               className:
                 'entity-resizable-right-panel-container entity-resizable-panel-container',
             }}
@@ -301,6 +307,7 @@ const DataModelDetails = ({
     description,
     decodedDataModelFQN,
     editTagsPermission,
+    editGlossaryTermsPermission,
     deleted,
     editDescriptionPermission,
     isEditDescription,
@@ -440,6 +447,7 @@ const DataModelDetails = ({
       <Row gutter={[0, 12]}>
         <Col className="p-x-lg" span={24}>
           <DataAssetsHeader
+            isDqAlertSupported
             isRecursiveDelete
             afterDeleteAction={afterDeleteAction}
             afterDomainUpdateAction={updateDataModelDetailsState}

@@ -10,12 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+/* eslint-disable @typescript-eslint/ban-ts-comment */
 
+import { TextAreaEmoji } from '@windmillcode/quill-emoji';
 import classNames from 'classnames';
 import { debounce, isNil } from 'lodash';
-import Emoji from 'quill-emoji';
-import 'quill-emoji/dist/quill-emoji.css';
-import 'quill-mention';
+import { Parchment } from 'quill';
+import 'quill-mention/autoregister';
 import QuillMarkdown from 'quilljs-markdown';
 import React, {
   forwardRef,
@@ -29,7 +30,8 @@ import React, {
 } from 'react';
 import ReactDOMServer from 'react-dom/server';
 import { useTranslation } from 'react-i18next';
-import ReactQuill, { Quill } from 'react-quill';
+import ReactQuill, { Quill } from 'react-quill-new';
+import 'react-quill-new/dist/quill.snow.css';
 import { BORDER_COLOR } from '../../../constants/constants';
 import {
   MENTION_ALLOWED_CHARS,
@@ -51,14 +53,19 @@ import searchClassBase from '../../../utils/SearchClassBase';
 import { editorRef } from '../../common/RichTextEditor/RichTextEditor.interface';
 import './feed-editor.less';
 import { FeedEditorProp, MentionSuggestionsItem } from './FeedEditor.interface';
+import './quill-emoji.css';
 
 Quill.register('modules/markdownOptions', QuillMarkdown);
-Quill.register('modules/emoji', Emoji);
-Quill.register(LinkBlot);
+Quill.register(LinkBlot as unknown as Parchment.RegistryDefinition);
+Quill.register('modules/emoji-textarea', TextAreaEmoji, true);
 const Delta = Quill.import('delta');
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const strikethrough = (_node: any, delta: typeof Delta) => {
-  return delta.compose(new Delta().retain(delta.length(), { strike: true }));
+  // @ts-ignore
+  return 'compose' in delta && delta.compose instanceof Function
+    ? // @ts-ignore
+      delta.compose(new Delta().retain(delta.length, { strike: true }))
+    : null;
 };
 
 export const FeedEditor = forwardRef<editorRef, FeedEditorProp>(
@@ -168,7 +175,6 @@ export const FeedEditor = forwardRef<editorRef, FeedEditorProp>(
       },
       [userProfilePics]
     );
-
     /**
      * Prepare modules for editor
      */
@@ -181,7 +187,7 @@ export const FeedEditor = forwardRef<editorRef, FeedEditorProp>(
             insertRef: insertRef,
           },
         },
-        'emoji-toolbar': true,
+        'emoji-textarea': true,
         mention: {
           allowedChars: MENTION_ALLOWED_CHARS,
           mentionDenotationChars: MENTION_DENOTATION_CHARS,

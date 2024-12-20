@@ -35,6 +35,9 @@ from metadata.ingestion.api.delete import delete_entity_from_source
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import Source
 from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
+from metadata.ingestion.connections.test_connections import (
+    raise_test_connection_exception,
+)
 from metadata.ingestion.models.delete_entity import DeleteEntity
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.models.ometa_lineage import OMetaLineageRequest
@@ -219,7 +222,9 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
             f"Table FQN not found for table: {table_details} within services: {services}"
         )
 
-    def yield_tag(self, *args, **kwargs) -> Iterable[Either[OMetaTagAndClassification]]:
+    def yield_tag(
+        self, pipeline_details: Any
+    ) -> Iterable[Either[OMetaTagAndClassification]]:
         """Method to fetch pipeline tags"""
 
     def close(self):
@@ -251,7 +256,10 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
 
     def test_connection(self) -> None:
         test_connection_fn = get_test_connection_fn(self.service_connection)
-        test_connection_fn(self.metadata, self.connection_obj, self.service_connection)
+        result = test_connection_fn(
+            self.metadata, self.connection_obj, self.service_connection
+        )
+        raise_test_connection_exception(result)
 
     def register_record(self, pipeline_request: CreatePipelineRequest) -> None:
         """Mark the pipeline record as scanned and update the pipeline_source_state"""
@@ -281,6 +289,16 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
         """
         return (
             self.source_config.lineageInformation.dbServiceNames or []
+            if self.source_config.lineageInformation
+            else []
+        )
+
+    def get_storage_service_names(self) -> List[str]:
+        """
+        Get the list of storage service names
+        """
+        return (
+            self.source_config.lineageInformation.storageServiceNames or []
             if self.source_config.lineageInformation
             else []
         )

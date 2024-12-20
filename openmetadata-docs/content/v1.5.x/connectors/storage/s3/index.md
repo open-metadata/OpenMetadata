@@ -1,10 +1,10 @@
 ---
-title: S3
+title: S3 Storage
 slug: /connectors/storage/s3
 ---
 
 {% connectorDetailsHeader
-name="S3"
+name="S3 Storage"
 stage="PROD"
 platform="OpenMetadata"
 availableFeatures=["Metadata", "Structured Containers", "Unstructured Containers"]

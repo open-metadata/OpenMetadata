@@ -42,13 +42,13 @@ RUN dpkg --configure -a \
 
 # Add updated postgres/redshift dependencies based on libq
 RUN curl https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add -
-RUN echo "deb https://apt.postgresql.org/pub/repos/apt/ buster-pgdg main" > /etc/apt/sources.list.d/pgdg.list; \
+RUN echo "deb https://apt.postgresql.org/pub/repos/apt/ bullseye-pgdg main" > /etc/apt/sources.list.d/pgdg.list; \
     apt-get -qq update; \
     apt-get -qq install --no-install-recommends -y libpq-dev postgresql-client postgresql-common postgresql postgresql-contrib; \
     apt-get -qq autoremove -yqq --purge; \
     apt-get -qq clean && rm -rf /var/lib/apt/lists/*
 
-RUN if [[ $(uname -m) == "arm64" || $(uname -m) == "aarch64" ]]; \
+RUN if [ $(uname -m) = "arm64" || $(uname -m) = "aarch64" ]; \
  then \
  wget -q https://download.oracle.com/otn_software/linux/instantclient/191000/instantclient-basic-linux.arm64-19.10.0.0.0dbru.zip -O /oracle-instantclient.zip && \
  unzip -qq -d /instantclient -j /oracle-instantclient.zip && rm -f /oracle-instantclient.zip; \
@@ -60,7 +60,7 @@ RUN if [[ $(uname -m) == "arm64" || $(uname -m) == "aarch64" ]]; \
 ENV LD_LIBRARY_PATH=/instantclient
 
 # Install DB2 iAccess driver
-RUN if [[ $(uname -m) == "x86_64" ]]; \
+RUN if [ $(uname -m) = "x86_64" ]; \
   then \
   curl https://public.dhe.ibm.com/software/ibmi/products/odbc/debs/dists/1.1.0/ibmi-acs-1.1.0.list | tee /etc/apt/sources.list.d/ibmi-acs-1.1.0.list \
   && apt update \
@@ -88,10 +88,9 @@ RUN pip install "openmetadata-ingestion[${INGESTION_DEPENDENCY}]~=${RI_VERSION}"
 
 
 # Temporary workaround for https://github.com/open-metadata/OpenMetadata/issues/9593
-RUN if [[ $(uname -m) == "x86_64" ]]; \
-  then \
-  pip install "openmetadata-ingestion[db2]~=${RI_VERSION}"; \
-  fi
+RUN [ $(uname -m) = "x86_64" ] \
+  && pip install "openmetadata-ingestion[db2]~=${RI_VERSION}" \
+  || echo "DB2 not supported on ARM architectures."
 
 # Uninstalling psycopg2-binary and installing psycopg2 instead
 # because the psycopg2-binary generates a architecture specific error

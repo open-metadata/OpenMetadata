@@ -19,7 +19,6 @@ import javax.ws.rs.core.*;
 import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.api.data.CreateStoredProcedure;
 import org.openmetadata.schema.api.data.RestoreEntity;
-import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.StoredProcedure;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
@@ -43,6 +42,7 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "storedProcedures")
 public class StoredProcedureResource
     extends EntityResource<StoredProcedure, StoredProcedureRepository> {
+  private final StoredProcedureMapper mapper = new StoredProcedureMapper();
   public static final String COLLECTION_PATH = "v1/storedProcedures/";
   static final String FIELDS = "owners,tags,followers,extension,domain,sourceHash";
 
@@ -272,7 +272,7 @@ public class StoredProcedureResource
       @Context SecurityContext securityContext,
       @Valid CreateStoredProcedure create) {
     StoredProcedure storedProcedure =
-        getStoredProcedure(create, securityContext.getUserPrincipal().getName());
+        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, storedProcedure);
   }
 
@@ -354,7 +354,7 @@ public class StoredProcedureResource
       @Context SecurityContext securityContext,
       @Valid CreateStoredProcedure create) {
     StoredProcedure storedProcedure =
-        getStoredProcedure(create, securityContext.getUserPrincipal().getName());
+        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, storedProcedure);
   }
 
@@ -511,30 +511,21 @@ public class StoredProcedureResource
   @Path("/restore")
   @Operation(
       operationId = "restore",
-      summary = "Restore a soft deleted database schema.",
-      description = "Restore a soft deleted database schema.",
+      summary = "Restore a soft deleted stored procedure.",
+      description = "Restore a soft deleted stored procedure.",
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "Successfully restored the DatabaseSchema ",
+            description = "Successfully restored the StoredProcedure ",
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = DatabaseSchema.class)))
+                    schema = @Schema(implementation = StoredProcedure.class)))
       })
-  public Response restoreDatabaseSchema(
+  public Response restoreStoredProcedure(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
-  }
-
-  private StoredProcedure getStoredProcedure(CreateStoredProcedure create, String user) {
-    return repository
-        .copy(new StoredProcedure(), create, user)
-        .withDatabaseSchema(getEntityReference(Entity.DATABASE_SCHEMA, create.getDatabaseSchema()))
-        .withStoredProcedureCode(create.getStoredProcedureCode())
-        .withSourceUrl(create.getSourceUrl())
-        .withSourceHash(create.getSourceHash());
   }
 }

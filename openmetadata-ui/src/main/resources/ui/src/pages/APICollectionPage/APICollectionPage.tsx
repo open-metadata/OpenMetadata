@@ -15,7 +15,7 @@ import { Col, Row, Skeleton, Tabs, TabsProps } from 'antd';
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
 import { isEmpty, isUndefined } from 'lodash';
-import { EntityTags, PagingResponse } from 'Models';
+import { EntityTags } from 'Models';
 import React, {
   FunctionComponent,
   useCallback,
@@ -46,9 +46,11 @@ import {
   getEntityDetailsPath,
   getVersionPath,
   INITIAL_PAGING_VALUE,
+  PAGE_SIZE,
   ROUTES,
 } from '../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
+import { COMMON_RESIZABLE_PANEL_CONFIG } from '../../constants/ResizablePanel.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
@@ -68,6 +70,7 @@ import { APIEndpoint } from '../../generated/entity/data/apiEndpoint';
 import { ThreadType } from '../../generated/entity/feed/thread';
 import { Include } from '../../generated/type/include';
 import { TagLabel } from '../../generated/type/tagLabel';
+import { usePaging } from '../../hooks/paging/usePaging';
 import { useFqn } from '../../hooks/useFqn';
 import { FeedCounts } from '../../interface/feed.interface';
 import {
@@ -98,6 +101,15 @@ const APICollectionPage: FunctionComponent = () => {
   const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
   const { t } = useTranslation();
   const { getEntityPermissionByFqn } = usePermissionProvider();
+  const pagingInfo = usePaging(PAGE_SIZE);
+
+  const {
+    paging,
+    pageSize,
+    handlePagingChange,
+    handlePageChange,
+    currentPage,
+  } = pagingInfo;
 
   const { tab: activeTab = EntityTabs.API_ENDPOINT } =
     useParams<{ tab: EntityTabs }>();
@@ -111,12 +123,7 @@ const APICollectionPage: FunctionComponent = () => {
   const [apiCollection, setAPICollection] = useState<APICollection>(
     {} as APICollection
   );
-  const [apiEndpoints, setAPIEndpoints] = useState<
-    PagingResponse<APIEndpoint[]>
-  >({
-    data: [],
-    paging: { total: 0 },
-  });
+  const [apiEndpoints, setAPIEndpoints] = useState<Array<APIEndpoint>>([]);
   const [apiEndpointsLoading, setAPIEndpointsLoading] = useState<boolean>(true);
   const [isAPICollectionLoading, setIsAPICollectionLoading] =
     useState<boolean>(true);
@@ -129,8 +136,6 @@ const APICollectionPage: FunctionComponent = () => {
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
   const [showDeletedEndpoints, setShowDeletedEndpoints] =
     useState<boolean>(false);
-  const [currentEndpointsPage, setCurrentEndpointsPage] =
-    useState<number>(INITIAL_PAGING_VALUE);
 
   const extraDropdownContent = useMemo(
     () =>
@@ -144,7 +149,7 @@ const APICollectionPage: FunctionComponent = () => {
 
   const handleShowDeletedEndPoints = (value: boolean) => {
     setShowDeletedEndpoints(value);
-    setCurrentEndpointsPage(INITIAL_PAGING_VALUE);
+    handlePageChange(INITIAL_PAGING_VALUE);
   };
 
   const { currentVersion, tags, tier, apiCollectionId } = useMemo(
@@ -238,7 +243,8 @@ const APICollectionPage: FunctionComponent = () => {
           service: apiCollection?.service?.fullyQualifiedName ?? '',
           include: showDeletedEndpoints ? Include.Deleted : Include.NonDeleted,
         });
-        setAPIEndpoints(res);
+        setAPIEndpoints(res.data);
+        handlePagingChange(res.paging);
       } catch (err) {
         showErrorToast(err as AxiosError);
       } finally {
@@ -453,13 +459,13 @@ const APICollectionPage: FunctionComponent = () => {
       if (cursorType) {
         getAPICollectionEndpoints({
           paging: {
-            [cursorType]: apiEndpoints.paging[cursorType],
+            [cursorType]: paging[cursorType],
           },
         });
       }
-      setCurrentEndpointsPage(currentPage);
+      handlePageChange(currentPage);
     },
-    [apiEndpoints, getAPICollectionEndpoints]
+    [paging, getAPICollectionEndpoints]
   );
 
   const versionHandler = useCallback(() => {
@@ -502,17 +508,21 @@ const APICollectionPage: FunctionComponent = () => {
 
   useEffect(() => {
     if (viewAPICollectionPermission && decodedAPICollectionFQN) {
-      getAPICollectionEndpoints();
+      getAPICollectionEndpoints({
+        paging: { limit: pageSize },
+      });
     }
   }, [
     showDeletedEndpoints,
     decodedAPICollectionFQN,
     viewAPICollectionPermission,
     apiCollection,
+    pageSize,
   ]);
 
   const {
     editTagsPermission,
+    editGlossaryTermsPermission,
     editDescriptionPermission,
     editCustomAttributePermission,
     viewAllPermission,
@@ -520,6 +530,10 @@ const APICollectionPage: FunctionComponent = () => {
     () => ({
       editTagsPermission:
         (apiCollectionPermission.EditTags || apiCollectionPermission.EditAll) &&
+        !apiCollection.deleted,
+      editGlossaryTermsPermission:
+        (apiCollectionPermission.EditGlossaryTerms ||
+          apiCollectionPermission.EditAll) &&
         !apiCollection.deleted,
       editDescriptionPermission:
         (apiCollectionPermission.EditDescription ||
@@ -535,7 +549,7 @@ const APICollectionPage: FunctionComponent = () => {
   );
 
   const handleExtensionUpdate = async (apiCollectionData: APICollection) => {
-    await saveUpdatedAPICollectionData({
+    const response = await saveUpdatedAPICollectionData({
       ...apiCollection,
       extension: apiCollectionData.extension,
     });
@@ -546,7 +560,7 @@ const APICollectionPage: FunctionComponent = () => {
 
       return {
         ...prev,
-        extension: apiCollectionData.extension,
+        extension: response.extension,
       };
     });
   };
@@ -555,7 +569,7 @@ const APICollectionPage: FunctionComponent = () => {
     {
       label: (
         <TabsLabel
-          count={apiEndpoints.paging.total}
+          count={paging.total}
           id={EntityTabs.API_ENDPOINT}
           isActive={activeTab === EntityTabs.API_ENDPOINT}
           name={t('label.endpoint-plural')}
@@ -574,11 +588,12 @@ const APICollectionPage: FunctionComponent = () => {
                       apiCollectionDetails={apiCollection}
                       apiEndpoints={apiEndpoints}
                       apiEndpointsLoading={apiEndpointsLoading}
-                      currentEndpointsPage={currentEndpointsPage}
+                      currentEndpointsPage={currentPage}
                       description={apiCollection?.description ?? ''}
                       editDescriptionPermission={editDescriptionPermission}
                       endpointPaginationHandler={endpointPaginationHandler}
                       isEdit={isEdit}
+                      pagingInfo={pagingInfo}
                       showDeletedEndpoints={showDeletedEndpoints}
                       onCancel={onEditCancel}
                       onDescriptionEdit={onDescriptionEdit}
@@ -588,8 +603,7 @@ const APICollectionPage: FunctionComponent = () => {
                     />
                   </div>
                 ),
-                minWidth: 800,
-                flex: 0.87,
+                ...COMMON_RESIZABLE_PANEL_CONFIG.LEFT_PANEL,
               }}
               secondPanel={{
                 children: (
@@ -601,6 +615,7 @@ const APICollectionPage: FunctionComponent = () => {
                       editCustomAttributePermission={
                         editCustomAttributePermission
                       }
+                      editGlossaryTermsPermission={editGlossaryTermsPermission}
                       editTagPermission={editTagsPermission}
                       entityFQN={decodedAPICollectionFQN}
                       entityId={apiCollection?.id ?? ''}
@@ -613,8 +628,7 @@ const APICollectionPage: FunctionComponent = () => {
                     />
                   </div>
                 ),
-                minWidth: 320,
-                flex: 0.13,
+                ...COMMON_RESIZABLE_PANEL_CONFIG.RIGHT_PANEL,
                 className:
                   'entity-resizable-right-panel-container entity-resizable-panel-container',
               }}

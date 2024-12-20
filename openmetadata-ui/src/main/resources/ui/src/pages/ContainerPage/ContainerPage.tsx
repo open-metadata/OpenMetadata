@@ -44,6 +44,7 @@ import {
   ROUTES,
 } from '../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
+import { COMMON_RESIZABLE_PANEL_CONFIG } from '../../constants/ResizablePanel.constants';
 import LineageProvider from '../../context/LineageProvider/LineageProvider';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
@@ -240,6 +241,7 @@ const ContainerPage = () => {
 
   const {
     editTagsPermission,
+    editGlossaryTermsPermission,
     editDescriptionPermission,
     editCustomAttributePermission,
     editLineagePermission,
@@ -249,6 +251,10 @@ const ContainerPage = () => {
     () => ({
       editTagsPermission:
         (containerPermissions.EditTags || containerPermissions.EditAll) &&
+        !deleted,
+      editGlossaryTermsPermission:
+        (containerPermissions.EditGlossaryTerms ||
+          containerPermissions.EditAll) &&
         !deleted,
       editDescriptionPermission:
         (containerPermissions.EditDescription ||
@@ -611,6 +617,9 @@ const ContainerPage = () => {
                           dataModel={containerData?.dataModel}
                           entityFqn={decodedContainerName}
                           hasDescriptionEditAccess={editDescriptionPermission}
+                          hasGlossaryTermEditAccess={
+                            editGlossaryTermsPermission
+                          }
                           hasTagEditAccess={editTagsPermission}
                           isReadOnly={Boolean(deleted)}
                           onThreadLinkSelect={onThreadLinkSelect}
@@ -619,8 +628,7 @@ const ContainerPage = () => {
                       )}
                     </div>
                   ),
-                  minWidth: 800,
-                  flex: 0.87,
+                  ...COMMON_RESIZABLE_PANEL_CONFIG.LEFT_PANEL,
                 }}
                 secondPanel={{
                   children: (
@@ -631,6 +639,9 @@ const ContainerPage = () => {
                         domain={containerData?.domain}
                         editCustomAttributePermission={
                           editCustomAttributePermission
+                        }
+                        editGlossaryTermsPermission={
+                          editGlossaryTermsPermission
                         }
                         editTagPermission={
                           editTagsPermission && !containerData?.deleted
@@ -646,8 +657,7 @@ const ContainerPage = () => {
                       />
                     </div>
                   ),
-                  minWidth: 320,
-                  flex: 0.13,
+                  ...COMMON_RESIZABLE_PANEL_CONFIG.RIGHT_PANEL,
                   className:
                     'entity-resizable-right-panel-container entity-resizable-panel-container',
                 }}
@@ -749,6 +759,7 @@ const ContainerPage = () => {
       entityName,
       editDescriptionPermission,
       editTagsPermission,
+      editGlossaryTermsPermission,
       isEditDescription,
       editLineagePermission,
       editCustomAttributePermission,
@@ -825,6 +836,7 @@ const ContainerPage = () => {
       <Row gutter={[0, 12]}>
         <Col className="p-x-lg" span={24}>
           <DataAssetsHeader
+            isDqAlertSupported
             isRecursiveDelete
             afterDeleteAction={afterDeleteAction}
             afterDomainUpdateAction={afterDomainUpdateAction}

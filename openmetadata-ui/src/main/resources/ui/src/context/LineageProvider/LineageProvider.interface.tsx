@@ -32,6 +32,7 @@ import {
 import { SourceType } from '../../components/SearchedData/SearchedData.interface';
 import { EntityType } from '../../enums/entity.enum';
 import { EntityReference } from '../../generated/entity/type';
+import { LineageLayer } from '../../generated/settings/settings';
 
 export interface LineageProviderProps {
   children: ReactNode;
@@ -44,13 +45,9 @@ export type UpstreamDownstreamData = {
   upstreamNodes: EntityReference[];
 };
 
-export enum LineageLayerView {
-  COLUMN = 'COLUMN',
-  DATA_OBSERVARABILITY = 'DATA_OBSERVARABILITY',
-}
-
 export interface LineageContextType {
   reactFlowInstance?: ReactFlowInstance;
+  dataQualityLineage?: EntityLineageResponse;
   nodes: Node[];
   edges: Edge[];
   tracedNodes: string[];
@@ -67,7 +64,7 @@ export interface LineageContextType {
   selectedNode: SourceType;
   upstreamDownstreamData: UpstreamDownstreamData;
   selectedColumn: string;
-  activeLayer: LineageLayerView[];
+  activeLayer: LineageLayer[];
   expandAllColumns: boolean;
   toggleColumnView: () => void;
   onInitReactFlow: (reactFlowInstance: ReactFlowInstance) => void;
@@ -99,5 +96,5 @@ export interface LineageContextType {
   onAddPipelineClick: () => void;
   onConnect: (connection: Edge | Connection) => void;
   updateEntityType: (entityType: EntityType) => void;
-  onUpdateLayerView: (layers: LineageLayerView[]) => void;
+  onUpdateLayerView: (layers: LineageLayer[]) => void;
 }

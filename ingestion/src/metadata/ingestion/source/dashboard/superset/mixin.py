@@ -17,7 +17,7 @@ from typing import Iterable, List, Optional, Union
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.dashboardDataModel import DashboardDataModel
-from metadata.generated.schema.entity.data.table import Column, Table
+from metadata.generated.schema.entity.data.table import Column, DataType, Table
 from metadata.generated.schema.entity.services.connections.dashboard.supersetConnection import (
     SupersetConnection,
 )
@@ -247,6 +247,12 @@ class SupersetSourceMixin(DashboardServiceSource):
                     parsed_fields = Column(
                         dataTypeDisplay=field.type,
                         dataType=col_parse["dataType"],
+                        arrayDataType=DataType(col_parse["arrayDataType"])
+                        if col_parse.get("arrayDataType")
+                        else None,
+                        children=list(col_parse["children"])
+                        if col_parse.get("children")
+                        else None,
                         name=str(field.id),
                         displayName=field.column_name,
                         description=field.description,

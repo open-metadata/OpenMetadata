@@ -41,6 +41,9 @@ from metadata.ingestion.api.delete import delete_entity_from_source
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import Source
 from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
+from metadata.ingestion.connections.test_connections import (
+    raise_test_connection_exception,
+)
 from metadata.ingestion.models.delete_entity import DeleteEntity
 from metadata.ingestion.models.search_index_data import OMetaIndexSampleData
 from metadata.ingestion.models.topology import (
@@ -80,7 +83,7 @@ class SearchServiceTopology(ServiceTopology):
                 cache_entities=True,
             ),
         ],
-        children=["search_index"],
+        children=["search_index", "search_index_template"],
         post_process=["mark_search_indexes_as_deleted"],
     )
     search_index: Annotated[
@@ -101,6 +104,21 @@ class SearchServiceTopology(ServiceTopology):
                 consumer=["search_service"],
                 nullable=True,
             ),
+        ],
+    )
+
+    search_index_template: Annotated[
+        TopologyNode, Field(description="Search Index Template Processing Node")
+    ] = TopologyNode(
+        producer="get_search_index_template",
+        stages=[
+            NodeStage(
+                type_=SearchIndex,
+                context="search_index_template",
+                processor="yield_search_index_template",
+                consumer=["search_service"],
+                use_cache=True,
+            )
         ],
     )
 
@@ -175,6 +193,34 @@ class SearchServiceSource(TopologyRunnerMixin, Source, ABC):
                 continue
             yield index_details
 
+    def yield_search_index_template(
+        self, search_index_template_details: Any
+    ) -> Iterable[Either[CreateSearchIndexRequest]]:
+        """Method to Get Search Index Templates"""
+
+    def get_search_index_template_list(self) -> Optional[List[Any]]:
+        """Get list of all search index templates"""
+
+    def get_search_index_template_name(self, search_index_template_details: Any) -> str:
+        """Get Search Index Template Name"""
+
+    def get_search_index_template(self) -> Any:
+        if self.source_config.includeIndexTemplate:
+            for index_template_details in self.get_search_index_template_list():
+                if search_index_template_name := self.get_search_index_template_name(
+                    index_template_details
+                ):
+                    if filter_by_search_index(
+                        self.source_config.searchIndexFilterPattern,
+                        search_index_template_name,
+                    ):
+                        self.status.filter(
+                            search_index_template_name,
+                            "Search Index Template Filtered Out",
+                        )
+                        continue
+                    yield index_template_details
+
     def yield_create_request_search_service(
         self, config: WorkflowSource
     ) -> Iterable[Either[CreateSearchServiceRequest]]:
@@ -192,7 +238,10 @@ class SearchServiceSource(TopologyRunnerMixin, Source, ABC):
 
     def test_connection(self) -> None:
         test_connection_fn = get_test_connection_fn(self.service_connection)
-        test_connection_fn(self.metadata, self.connection_obj, self.service_connection)
+        result = test_connection_fn(
+            self.metadata, self.connection_obj, self.service_connection
+        )
+        raise_test_connection_exception(result)
 
     def mark_search_indexes_as_deleted(self) -> Iterable[Either[DeleteEntity]]:
         """Method to mark the search index as deleted"""

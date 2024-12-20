@@ -19,8 +19,8 @@ import {
   PROPERTY_TYPES_WITH_ENTITY_REFERENCE,
 } from '../../../../constants/CustomProperty.constants';
 import {
+  Config,
   CustomProperty,
-  EnumConfig,
 } from '../../../../generated/type/customProperty';
 import {
   FieldProp,
@@ -33,6 +33,7 @@ export interface FormData {
   description: string;
   customPropertyConfig: string[];
   multiSelect?: boolean;
+  displayName?: string;
 }
 
 interface EditCustomPropertyModalProps {
@@ -72,6 +73,17 @@ const EditCustomPropertyModal: FC<EditCustomPropertyModalProps> = ({
 
   const formFields: FieldProp[] = [
     {
+      name: 'displayName',
+      id: 'root/displayName',
+      label: t('label.display-name'),
+      required: false,
+      placeholder: t('label.display-name'),
+      type: FieldTypes.TEXT,
+      props: {
+        'data-testid': 'display-name',
+      },
+    },
+    {
       name: 'description',
       required: true,
       label: t('label.description'),
@@ -96,10 +108,12 @@ const EditCustomPropertyModal: FC<EditCustomPropertyModalProps> = ({
       placeholder: t('label.enum-value-plural'),
       onChange: (value: string[]) => {
         const enumConfig = customProperty.customPropertyConfig
-          ?.config as EnumConfig;
+          ?.config as Config;
         const updatedValues = uniq([...value, ...(enumConfig?.values ?? [])]);
         form.setFieldsValue({ customPropertyConfig: updatedValues });
       },
+      open: false,
+      className: 'trim-select',
     },
     rules: [
       {
@@ -156,19 +170,20 @@ const EditCustomPropertyModal: FC<EditCustomPropertyModalProps> = ({
 
   const initialValues = useMemo(() => {
     if (hasEnumConfig) {
-      const enumConfig = customProperty.customPropertyConfig
-        ?.config as EnumConfig;
+      const enumConfig = customProperty.customPropertyConfig?.config as Config;
 
       return {
         description: customProperty.description,
         customPropertyConfig: enumConfig?.values ?? [],
         multiSelect: Boolean(enumConfig?.multiSelect),
+        displayName: customProperty.displayName,
       };
     }
 
     return {
       description: customProperty.description,
       customPropertyConfig: customProperty.customPropertyConfig?.config,
+      displayName: customProperty.displayName,
     };
   }, [customProperty, hasEnumConfig]);
 
@@ -205,7 +220,7 @@ const EditCustomPropertyModal: FC<EditCustomPropertyModalProps> = ({
           })}
         </Typography.Text>
       }
-      width={750}
+      width={800}
       onCancel={onCancel}>
       <Form
         form={form}

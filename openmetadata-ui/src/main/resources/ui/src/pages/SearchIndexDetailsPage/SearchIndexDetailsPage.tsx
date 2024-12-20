@@ -44,6 +44,7 @@ import {
   getVersionPath,
 } from '../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
+import { COMMON_RESIZABLE_PANEL_CONFIG } from '../../constants/ResizablePanel.constants';
 import LineageProvider from '../../context/LineageProvider/LineageProvider';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
@@ -173,6 +174,7 @@ function SearchIndexDetailsPage() {
 
   const {
     editTagsPermission,
+    editGlossaryTermsPermission,
     editDescriptionPermission,
     editCustomAttributePermission,
     editLineagePermission,
@@ -182,6 +184,10 @@ function SearchIndexDetailsPage() {
     () => ({
       editTagsPermission:
         (searchIndexPermissions.EditTags || searchIndexPermissions.EditAll) &&
+        !deleted,
+      editGlossaryTermsPermission:
+        (searchIndexPermissions.EditGlossaryTerms ||
+          searchIndexPermissions.EditAll) &&
         !deleted,
       editDescriptionPermission:
         (searchIndexPermissions.EditDescription ||
@@ -406,6 +412,7 @@ function SearchIndexDetailsPage() {
                         entityFqn={decodedSearchIndexFQN}
                         fields={searchIndexDetails?.fields ?? []}
                         hasDescriptionEditAccess={editDescriptionPermission}
+                        hasGlossaryTermEditAccess={editGlossaryTermsPermission}
                         hasTagEditAccess={editTagsPermission}
                         isReadOnly={searchIndexDetails?.deleted}
                         onThreadLinkSelect={onThreadLinkSelect}
@@ -413,8 +420,7 @@ function SearchIndexDetailsPage() {
                       />
                     </div>
                   ),
-                  minWidth: 800,
-                  flex: 0.87,
+                  ...COMMON_RESIZABLE_PANEL_CONFIG.LEFT_PANEL,
                 }}
                 secondPanel={{
                   children: (
@@ -425,6 +431,9 @@ function SearchIndexDetailsPage() {
                         domain={searchIndexDetails?.domain}
                         editCustomAttributePermission={
                           editCustomAttributePermission
+                        }
+                        editGlossaryTermsPermission={
+                          editGlossaryTermsPermission
                         }
                         editTagPermission={editTagsPermission}
                         entityFQN={decodedSearchIndexFQN}
@@ -438,8 +447,7 @@ function SearchIndexDetailsPage() {
                       />
                     </div>
                   ),
-                  minWidth: 320,
-                  flex: 0.13,
+                  ...COMMON_RESIZABLE_PANEL_CONFIG.RIGHT_PANEL,
                   className:
                     'entity-resizable-right-panel-container entity-resizable-panel-container',
                 }}
@@ -563,6 +571,7 @@ function SearchIndexDetailsPage() {
     onDescriptionEdit,
     onDescriptionUpdate,
     editTagsPermission,
+    editGlossaryTermsPermission,
     editDescriptionPermission,
   ]);
 
@@ -768,6 +777,7 @@ function SearchIndexDetailsPage() {
       <Row gutter={[0, 12]}>
         <Col className="p-x-lg" data-testid="entity-page-header" span={24}>
           <DataAssetsHeader
+            isDqAlertSupported
             isRecursiveDelete
             afterDeleteAction={afterDeleteAction}
             afterDomainUpdateAction={afterDomainUpdateAction}

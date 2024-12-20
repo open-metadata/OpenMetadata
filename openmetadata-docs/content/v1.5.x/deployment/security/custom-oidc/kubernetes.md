@@ -23,12 +23,19 @@ global:
   authentication:
     provider: "custom-oidc"
     publicKeys:
-    - "{your domain}/api/v1/system/config/jwks" # Update with your Domain and Make sure this "/api/v1/system/config/jwks" is always configured to enable JWT tokens
+    - "https://{your domain}/api/v1/system/config/jwks" # Update with your Domain and Make sure this "/api/v1/system/config/jwks" is always configured to enable JWT tokens
     - "http://localhost:8080/realms/myrealm/protocol/openid-connect/certs"
     authority: "http://localhost:8080/realms/myrealm"
     clientId: "{Client ID}"
-    callbackUrl: "http://localhost:8585/callback"
+    callbackUrl: "https://{your domain}/callback"
 ```
+
+{% note %}
+
+`AUTHENTICATION_PUBLIC_KEYS` and `AUTHENTICATION_CALLBACK_URL` refers to https://{your domain} this is referring to your OpenMetdata installation domain name
+and please make sure to correctly put http or https depending on your installation.
+
+{% /note %}
 
 {% partial file="/v1.5/deployment/configure-ingestion.md" /%}
 

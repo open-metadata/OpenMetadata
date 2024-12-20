@@ -1,6 +1,7 @@
 ---
 title: Synapse
 slug: /connectors/database/synapse
+collate: true
 ---
 
 {% connectorDetailsHeader

@@ -30,6 +30,7 @@ import static org.openmetadata.service.util.email.TemplateConstants.EXPIRATION_T
 import static org.openmetadata.service.util.email.TemplateConstants.INVITE_RANDOM_PASSWORD_TEMPLATE;
 import static org.openmetadata.service.util.email.TemplateConstants.INVITE_SUBJECT;
 import static org.openmetadata.service.util.email.TemplateConstants.PASSWORD;
+import static org.openmetadata.service.util.email.TemplateConstants.PASSWORD_RESET_LINKKEY;
 import static org.openmetadata.service.util.email.TemplateConstants.PASSWORD_RESET_SUBJECT;
 import static org.openmetadata.service.util.email.TemplateConstants.REPORT_SUBJECT;
 import static org.openmetadata.service.util.email.TemplateConstants.SUPPORT_URL;
@@ -121,7 +122,7 @@ public class EmailUtil {
     return null;
   }
 
-  public static void sendAccountStatus(User user, String action, String status)
+  public static void sendAccountStatus(String userName, String email, String action, String status)
       throws IOException, TemplateException {
 
     if (Boolean.TRUE.equals(getSmtpSettings().getEnableSmtpServer())) {
@@ -129,7 +130,7 @@ public class EmailUtil {
           new TemplatePopulatorBuilder()
               .add(ENTITY, getSmtpSettings().getEmailingEntity())
               .add(SUPPORT_URL, getSmtpSettings().getSupportUrl())
-              .add(USERNAME, user.getName())
+              .add(USERNAME, userName)
               .add(ACTION_KEY, action)
               .add(ACTION_STATUS_KEY, status)
               .build();
@@ -137,11 +138,11 @@ public class EmailUtil {
       sendMail(
           getAccountStatusChangeSubject(),
           templatePopulator,
-          user.getEmail(),
+          email,
           ACCOUNT_ACTIVITY_CHANGE_TEMPLATE,
           true);
     } else {
-      LOG.warn(EMAIL_IGNORE_MSG, user.getEmail());
+      LOG.warn(EMAIL_IGNORE_MSG, userName);
     }
   }
 
@@ -179,7 +180,7 @@ public class EmailUtil {
               .add(ENTITY, getSmtpSettings().getEmailingEntity())
               .add(SUPPORT_URL, getSmtpSettings().getSupportUrl())
               .add(USERNAME, user.getName())
-              .add(EMAIL_VERIFICATION_LINKKEY, passwordResetLink)
+              .add(PASSWORD_RESET_LINKKEY, passwordResetLink)
               .add(EXPIRATION_TIME_KEY, DEFAULT_EXPIRATION_TIME)
               .build();
 

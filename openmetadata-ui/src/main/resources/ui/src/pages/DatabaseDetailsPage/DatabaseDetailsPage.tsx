@@ -51,6 +51,7 @@ import {
   ROUTES,
 } from '../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
+import { COMMON_RESIZABLE_PANEL_CONFIG } from '../../constants/ResizablePanel.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
@@ -471,6 +472,7 @@ const DatabaseDetails: FunctionComponent = () => {
 
   const {
     editTagsPermission,
+    editGlossaryTermsPermission,
     editDescriptionPermission,
     editCustomAttributePermission,
     viewAllPermission,
@@ -478,6 +480,9 @@ const DatabaseDetails: FunctionComponent = () => {
     () => ({
       editTagsPermission:
         (databasePermission.EditTags || databasePermission.EditAll) &&
+        !database.deleted,
+      editGlossaryTermsPermission:
+        (databasePermission.EditGlossaryTerms || databasePermission.EditAll) &&
         !database.deleted,
       editDescriptionPermission:
         (databasePermission.EditDescription || databasePermission.EditAll) &&
@@ -548,8 +553,7 @@ const DatabaseDetails: FunctionComponent = () => {
                       </Row>
                     </div>
                   ),
-                  minWidth: 800,
-                  flex: 0.87,
+                  ...COMMON_RESIZABLE_PANEL_CONFIG.LEFT_PANEL,
                 }}
                 secondPanel={{
                   children: (
@@ -560,6 +564,9 @@ const DatabaseDetails: FunctionComponent = () => {
                         domain={database?.domain}
                         editCustomAttributePermission={
                           editCustomAttributePermission
+                        }
+                        editGlossaryTermsPermission={
+                          editGlossaryTermsPermission
                         }
                         editTagPermission={editTagsPermission}
                         entityFQN={decodedDatabaseFQN}
@@ -573,8 +580,7 @@ const DatabaseDetails: FunctionComponent = () => {
                       />
                     </div>
                   ),
-                  minWidth: 320,
-                  flex: 0.13,
+                  ...COMMON_RESIZABLE_PANEL_CONFIG.RIGHT_PANEL,
                   className:
                     'entity-resizable-right-panel-container entity-resizable-panel-container',
                 }}
@@ -640,6 +646,7 @@ const DatabaseDetails: FunctionComponent = () => {
       schemaInstanceCount,
       feedCount.totalCount,
       editTagsPermission,
+      editGlossaryTermsPermission,
       editDescriptionPermission,
       editCustomAttributePermission,
       viewAllPermission,

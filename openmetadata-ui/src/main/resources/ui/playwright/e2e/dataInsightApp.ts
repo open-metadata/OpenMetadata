@@ -17,10 +17,12 @@ import { getApiContext, redirectToHomePage } from '../utils/common';
 // use the admin user to login
 setup.use({
   storageState: 'playwright/.auth/admin.json',
+  trace: 'retain-on-failure',
 });
 
 setup.describe.configure({
   timeout: process.env.PLAYWRIGHT_IS_OSS ? 150000 : 5600000,
+  retries: 0,
 });
 
 setup(

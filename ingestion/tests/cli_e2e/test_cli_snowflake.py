@@ -14,11 +14,10 @@ Test Snowflake connector with CLI
 """
 from datetime import datetime
 from time import sleep
-from typing import List
+from typing import List, Tuple
 
 import pytest
 
-from _openmetadata_testutils.pydantic.test_utils import assert_equal_pydantic_objects
 from metadata.generated.schema.entity.data.table import DmlOperationType, SystemProfile
 from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
 from metadata.generated.schema.tests.testCase import TestCaseParameterValue
@@ -167,7 +166,7 @@ class SnowflakeCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         result = self.run_command("profile")
         sink_status, source_status = self.retrieve_statuses(result)
         self.assert_for_table_with_profiler(source_status, sink_status)
-        self.custom_profiler_assertions()
+        self.system_profile_assertions()
 
     @staticmethod
     def expected_tables() -> int:
@@ -233,8 +232,8 @@ class SnowflakeCliTest(CliCommonDB.TestSuite, SQACommonMethods):
             """,
         ]
 
-    def custom_profiler_assertions(self):
-        cases = [
+    def get_system_profile_cases(self) -> List[Tuple[str, List[SystemProfile]]]:
+        return [
             (
                 "e2e_snowflake.E2E_DB.E2E_TEST.E2E_TABLE",
                 [
@@ -269,39 +268,23 @@ class SnowflakeCliTest(CliCommonDB.TestSuite, SQACommonMethods):
                         rowsAffected=1,
                     ),
                     SystemProfile(
-                        timestamp=Timestamp(root=0),
+                        timestamp=Timestamp(root=1),
                         operation=DmlOperationType.INSERT,
                         rowsAffected=1,
                     ),
                     SystemProfile(
-                        timestamp=Timestamp(root=0),
+                        timestamp=Timestamp(root=2),
                         operation=DmlOperationType.UPDATE,
                         rowsAffected=1,
                     ),
                     SystemProfile(
-                        timestamp=Timestamp(root=0),
+                        timestamp=Timestamp(root=3),
                         operation=DmlOperationType.DELETE,
                         rowsAffected=1,
                     ),
                 ],
             ),
         ]
-        for table_fqn, expected_profile in cases:
-            actual_profiles = self.openmetadata.get_profile_data(
-                table_fqn,
-                start_ts=int((datetime.now().timestamp() - 600) * 1000),
-                end_ts=int(datetime.now().timestamp() * 1000),
-                profile_type=SystemProfile,
-            ).entities
-            actual_profiles = sorted(actual_profiles, key=lambda x: x.timestamp.root)
-            actual_profiles = actual_profiles[-len(expected_profile) :]
-            actual_profiles = [
-                p.copy(update={"timestamp": Timestamp(root=0)}) for p in actual_profiles
-            ]
-            try:
-                assert_equal_pydantic_objects(expected_profile, actual_profiles)
-            except AssertionError as e:
-                raise AssertionError(f"Table: {table_fqn}\n{e}")
 
     @classmethod
     def wait_for_query_log(cls, timeout=600):
@@ -321,7 +304,7 @@ class SnowflakeCliTest(CliCommonDB.TestSuite, SQACommonMethods):
                 raise TimeoutError(f"Query log not updated for {timeout} seconds")
 
     def get_data_quality_table(self):
-        return "e2e_snowflake.E2E_DB.E2E_TEST.PERSONS"
+        return self.fqn_created_table()
 
     def get_test_case_definitions(self) -> List[TestCaseDefinition]:
         return [
@@ -343,4 +326,4 @@ class SnowflakeCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         ]
 
     def get_expected_test_case_results(self):
-        return [TestCaseResult(testCaseStatus=TestCaseStatus.Success)]
+        return [TestCaseResult(testCaseStatus=TestCaseStatus.Success, timestamp=0)]

@@ -33,9 +33,11 @@ from metadata.utils.credentials import GOOGLE_CREDENTIALS, set_google_credential
 
 class DatalakeGcsClient(DatalakeBaseClient):
     def __init__(
-        self, client: storage.Client, temp_credentials_file_path_list: List[str]
+        self,
+        client: storage.Client,
+        temp_credentials_file_path_list: List[str],
     ):
-        self._client = client
+        super().__init__(client=client)
         self._temp_credentials_file_path_list = temp_credentials_file_path_list
 
     @property
@@ -49,8 +51,10 @@ class DatalakeGcsClient(DatalakeBaseClient):
         if hasattr(config.securityConfig, "gcpConfig") and isinstance(
             config.securityConfig.gcpConfig.projectId, MultipleProjectId
         ):
-            gcs_config.securityConfig.gcpConfig.projectId = SingleProjectId.parse_obj(
-                gcs_config.securityConfig.gcpConfig.projectId.root[0]
+            gcs_config.securityConfig.gcpConfig.projectId = (
+                SingleProjectId.model_validate(
+                    gcs_config.securityConfig.gcpConfig.projectId.root[0]
+                )
             )
 
         if not gcs_config.securityConfig:
@@ -89,8 +93,8 @@ class DatalakeGcsClient(DatalakeBaseClient):
         gcs_config = deepcopy(config)
 
         if hasattr(gcs_config.securityConfig, "gcpConfig"):
-            gcs_config.securityConfig.gcpConfig.projectId = SingleProjectId.parse_obj(
-                database_name
+            gcs_config.securityConfig.gcpConfig.projectId = (
+                SingleProjectId.model_validate(database_name)
             )
 
         self._client = self.get_gcs_client(gcs_config)

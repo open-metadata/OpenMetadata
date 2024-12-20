@@ -52,10 +52,8 @@ import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.TEST_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.TEST_USER_NAME;
 import static org.openmetadata.service.util.TestUtils.USER_WITH_CREATE_HEADERS;
-import static org.openmetadata.service.util.TestUtils.UpdateType.CHANGE_CONSOLIDATED;
 import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.service.util.TestUtils.UpdateType.NO_CHANGE;
-import static org.openmetadata.service.util.TestUtils.UpdateType.REVERT;
 import static org.openmetadata.service.util.TestUtils.assertListNotNull;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 import static org.openmetadata.service.util.TestUtils.validateEntityReferences;
@@ -74,6 +72,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javax.ws.rs.client.WebTarget;
+import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
@@ -95,7 +94,9 @@ import org.openmetadata.schema.entity.teams.TeamHierarchy;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.ChangeDescription;
+import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.ImageList;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
@@ -600,11 +601,12 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     bu2 = updateAndCheckEntity(create, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // Change bu2 parent from Organization to bu1 using PATCH operation.
-    // Change from this PATCH is combined with the previous PUT resulting in no change
     String json = JsonUtils.pojoToJson(bu2);
-    change = getChangeDescription(bu2, REVERT);
+    change = getChangeDescription(bu2, MINOR_UPDATE);
     bu2.setParents(List.of(bu1.getEntityReference()));
-    patchEntityAndCheck(bu2, json, ADMIN_AUTH_HEADERS, REVERT, change);
+    fieldAdded(change, "parents", List.of(bu1.getEntityReference()));
+    fieldDeleted(change, "parents", List.of(ORG_TEAM.getEntityReference()));
+    patchEntityAndCheck(bu2, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }
 
   @Test
@@ -626,11 +628,11 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     fieldUpdated(change, "isJoinable", false, true);
     team = patchEntityAndCheck(team, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
-    // set isJoinable to false - change from this PATCH and the previous are consolidated resulting
-    // in no change
     json = JsonUtils.pojoToJson(team);
     team.setIsJoinable(false);
-    patchEntityAndCheck(team, json, ADMIN_AUTH_HEADERS, NO_CHANGE, null);
+    change = getChangeDescription(team, MINOR_UPDATE);
+    fieldUpdated(change, "isJoinable", true, false);
+    patchEntityAndCheck(team, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }
 
   @Test
@@ -672,10 +674,9 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     int removeDefaultRoleIndex = new Random().nextInt(roles.size());
     EntityReference deletedRole = team.getDefaultRoles().get(removeDefaultRoleIndex);
     team.getDefaultRoles().remove(removeDefaultRoleIndex);
-    change = getChangeDescription(team, CHANGE_CONSOLIDATED);
-    fieldDeleted(change, "users", CommonUtil.listOf(deletedUser));
+    change = getChangeDescription(team, MINOR_UPDATE);
     fieldDeleted(change, "defaultRoles", CommonUtil.listOf(deletedRole));
-    patchEntityAndCheck(team, json, ADMIN_AUTH_HEADERS, CHANGE_CONSOLIDATED, change);
+    patchEntityAndCheck(team, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }
 
   @Test
@@ -725,8 +726,10 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     // resulting in no change
     json = JsonUtils.pojoToJson(team);
     team.withPolicies(null);
-    change = getChangeDescription(team, REVERT);
-    patchEntityAndCheck(team, json, ADMIN_AUTH_HEADERS, REVERT, change);
+    change = getChangeDescription(team, MINOR_UPDATE);
+    fieldDeleted(
+        change, "policies", List.of(POLICY1.getEntityReference(), POLICY2.getEntityReference()));
+    patchEntityAndCheck(team, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }
 
   @Test
@@ -768,13 +771,11 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     fieldUpdated(change, "profile", PROFILE, profile1);
     team = patchEntityAndCheck(team, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
-    // Remove profile from the team - Change from this PATCH and previous are consolidated to no
-    // change
     json = JsonUtils.pojoToJson(team);
     team.withProfile(null);
-    change = getChangeDescription(team, CHANGE_CONSOLIDATED);
-    fieldDeleted(change, "profile", PROFILE);
-    patchEntityAndCheck(team, json, ADMIN_AUTH_HEADERS, CHANGE_CONSOLIDATED, change);
+    change = getChangeDescription(team, MINOR_UPDATE);
+    fieldDeleted(change, "profile", profile1);
+    patchEntityAndCheck(team, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }
 
   @Test
@@ -803,7 +804,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     String record = getRecord(1, GROUP, team.getName(), "", false, "", "invalidPolicy");
     String csv = createCsv(TeamCsv.HEADERS, listOf(record), null);
     CsvImportResult result = importCsv(team.getName(), csv, false);
-    assertSummary(result, ApiStatus.FAILURE, 2, 1, 1);
+    assertSummary(result, ApiStatus.PARTIAL_SUCCESS, 2, 1, 1);
     String[] expectedRows = {
       resultsHeader,
       getFailedRecord(record, EntityCsv.entityNotFound(8, Entity.POLICY, "invalidPolicy"))
@@ -814,7 +815,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     record = getRecord(1, GROUP, team.getName(), "", false, "invalidRole", "");
     csv = createCsv(TeamCsv.HEADERS, listOf(record), null);
     result = importCsv(team.getName(), csv, false);
-    assertSummary(result, ApiStatus.FAILURE, 2, 1, 1);
+    assertSummary(result, ApiStatus.PARTIAL_SUCCESS, 2, 1, 1);
     expectedRows =
         new String[] {
           resultsHeader,
@@ -826,7 +827,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     record = getRecord(1, GROUP, team.getName(), "user:invalidOwner", false, "", "");
     csv = createCsv(TeamCsv.HEADERS, listOf(record), null);
     result = importCsv(team.getName(), csv, false);
-    assertSummary(result, ApiStatus.FAILURE, 2, 1, 1);
+    assertSummary(result, ApiStatus.PARTIAL_SUCCESS, 2, 1, 1);
     expectedRows =
         new String[] {
           resultsHeader,
@@ -838,7 +839,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     record = getRecord(1, GROUP, "invalidParent", "", false, "", "");
     csv = createCsv(TeamCsv.HEADERS, listOf(record), null);
     result = importCsv(team.getName(), csv, false);
-    assertSummary(result, ApiStatus.FAILURE, 2, 1, 1);
+    assertSummary(result, ApiStatus.PARTIAL_SUCCESS, 2, 1, 1);
     expectedRows =
         new String[] {
           resultsHeader, getFailedRecord(record, EntityCsv.entityNotFound(4, TEAM, "invalidParent"))
@@ -849,7 +850,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     record = getRecord(1, GROUP, TEAM21.getName(), "", false, "", "");
     csv = createCsv(TeamCsv.HEADERS, listOf(record), null);
     result = importCsv(team.getName(), csv, false);
-    assertSummary(result, ApiStatus.FAILURE, 2, 1, 1);
+    assertSummary(result, ApiStatus.PARTIAL_SUCCESS, 2, 1, 1);
     expectedRows =
         new String[] {
           resultsHeader,
@@ -891,7 +892,10 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
 
     // Add new team x3 to existing rows
     String record3 = getRecord(3, GROUP, team.getName(), null, true, null, (List<Policy>) null);
-    List<String> newRecords = listOf(record3);
+    // Add new team containing dot character in name
+    String teamNameWithDotRecord =
+        getRecord("team.with.dot", GROUP, team.getName(), null, true, null, (List<Policy>) null);
+    List<String> newRecords = listOf(record3, teamNameWithDotRecord);
     testImportExport(team.getName(), TeamCsv.HEADERS, createRecords, updateRecords, newRecords);
 
     // Import to team111 a user with parent team1 - since team1 is not under team111 hierarchy,
@@ -929,6 +933,86 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     assertTrue(entity.getDomains().get(0).getInherited());
     assertEntityReferenceFromSearch(entity, expectedDomain, FIELD_DOMAINS);
     return entity;
+  }
+
+  @Test
+  void put_addDeleteTeamUser_200(TestInfo test) throws IOException {
+    // Create a team of type GROUP
+    TeamResourceTest teamResourceTest = new TeamResourceTest();
+    Team team =
+        teamResourceTest.createEntity(teamResourceTest.createRequest(test, 1), ADMIN_AUTH_HEADERS);
+    UUID teamId = team.getId();
+
+    // Add user to the team
+    UserResourceTest userResourceTest = new UserResourceTest();
+    User user1 =
+        userResourceTest.createEntity(userResourceTest.createRequest(test, 1), ADMIN_AUTH_HEADERS);
+
+    User user2 =
+        userResourceTest.createEntity(userResourceTest.createRequest(test, 2), ADMIN_AUTH_HEADERS);
+
+    addAndCheckTeamUser(
+        teamId,
+        List.of(user1.getEntityReference(), user2.getEntityReference()),
+        OK,
+        2,
+        ADMIN_AUTH_HEADERS);
+
+    CreateTeam createDepartmentTeam =
+        createRequest(test)
+            .withDomains(List.of(DOMAIN.getFullyQualifiedName()))
+            .withTeamType(DEPARTMENT);
+    Team departmentTeam = createEntity(createDepartmentTeam, ADMIN_AUTH_HEADERS);
+
+    // Add user only for GROUP type team
+    assertResponse(
+        () ->
+            addAndCheckTeamUser(
+                departmentTeam.getId(),
+                List.of(user1.getEntityReference(), user2.getEntityReference()),
+                OK,
+                0,
+                ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        CatalogExceptionMessage.invalidTeamUpdateUsers(departmentTeam.getTeamType()));
+
+    deleteAndCheckTeamUser(teamId, user1.getId(), 1, ADMIN_AUTH_HEADERS);
+    deleteAndCheckTeamUser(teamId, user2.getId(), 0, ADMIN_AUTH_HEADERS);
+  }
+
+  private void addAndCheckTeamUser(
+      UUID teamId,
+      List<EntityReference> users,
+      Response.Status status,
+      int expectedUserCount,
+      Map<String, String> authHeaders)
+      throws IOException {
+    WebTarget target = getResource("teams/" + teamId + "/users");
+    ChangeEvent event = TestUtils.put(target, users, ChangeEvent.class, status, authHeaders);
+    Team team = getEntity(teamId, authHeaders);
+    validateEntityReferences(team.getUsers());
+    assertEquals(expectedUserCount, team.getUsers().size());
+    validateChangeEvents(
+        team,
+        event.getTimestamp(),
+        EventType.ENTITY_UPDATED,
+        event.getChangeDescription(),
+        authHeaders);
+  }
+
+  private void deleteAndCheckTeamUser(
+      UUID teamId, UUID userId, int expectedUserCount, Map<String, String> authHeaders)
+      throws IOException {
+    WebTarget target = getResource("teams/" + teamId + "/users/" + userId);
+    ChangeEvent change = TestUtils.delete(target, ChangeEvent.class, authHeaders);
+    Team team = getEntity(teamId, authHeaders);
+    assertEquals(expectedUserCount, team.getUsers().size());
+    validateChangeEvents(
+        team,
+        change.getTimestamp(),
+        EventType.ENTITY_UPDATED,
+        change.getChangeDescription(),
+        authHeaders);
   }
 
   private static void validateTeam(
@@ -1214,6 +1298,56 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
         index,
         index,
         index,
+        teamType.value(),
+        parent,
+        owner,
+        isJoinable == null ? "" : isJoinable,
+        defaultRoles,
+        policies);
+  }
+
+  private String getRecord(
+      String teamName,
+      TeamType teamType,
+      String parent,
+      User owner,
+      Boolean isJoinable,
+      List<Role> defaultRoles,
+      List<Policy> policies) {
+    return getRecord(
+        teamName,
+        teamType,
+        parent != null ? parent : "",
+        owner != null ? "user:" + owner.getName() : "",
+        isJoinable,
+        defaultRoles != null
+            ? defaultRoles.stream()
+                .flatMap(r -> Stream.of(r.getName()))
+                .collect(Collectors.joining(";"))
+            : "",
+        policies != null
+            ? policies.stream()
+                .flatMap(p -> Stream.of(p.getName()))
+                .collect(Collectors.joining(";"))
+            : "");
+  }
+
+  private String getRecord(
+      String teamName,
+      TeamType teamType,
+      String parent,
+      String owner,
+      Boolean isJoinable,
+      String defaultRoles,
+      String policies) {
+    // CSV Header
+    // "name", "displayName", "description", "teamType", "parents", "owners", "isJoinable",
+    // "defaultRoles", & "policies"
+    return String.format(
+        "x%s,displayName%s,description%s,%s,%s,%s,%s,%s,%s",
+        teamName,
+        teamName,
+        teamName,
         teamType.value(),
         parent,
         owner,

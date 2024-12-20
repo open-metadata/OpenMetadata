@@ -245,10 +245,7 @@ entities.forEach((EntityClass) => {
     }
 
     test(`Announcement create & delete`, async ({ page }) => {
-      await entity.announcement(
-        page,
-        entity.entityResponseData?.['fullyQualifiedName']
-      );
+      await entity.announcement(page);
     });
 
     test(`Inactive Announcement create & delete`, async ({ page }) => {

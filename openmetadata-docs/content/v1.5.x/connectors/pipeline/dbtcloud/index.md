@@ -1,10 +1,10 @@
 ---
-title: DBTCloud
+title: dbt Cloud
 slug: /connectors/pipeline/dbtcloud
 ---
 
 {% connectorDetailsHeader
-name="DBTCloud"
+name="dbt Cloud"
 stage="PROD"
 platform="OpenMetadata"
 availableFeatures=["Pipelines", "Pipeline Status", "Lineage"]
@@ -12,12 +12,12 @@ unavailableFeatures=["Owners", "Tags"]
 / %}
 
 
-In this section, we provide guides and references to use the DBTCloud connector.
+In this section, we provide guides and references to use the dbt Cloud connector.
 
-Configure and schedule DBTCloud metadata and profiler workflows from the OpenMetadata UI:
+Configure and schedule dbt Cloud metadata and profiler workflows from the OpenMetadata UI:
 
 - [Requirements](#requirements)
-    - [DBTCloud Versions](#dbtcloud-versions)
+    - [dbt Cloud Versions](#dbt-cloud-versions)
 - [Metadata Ingestion](#metadata-ingestion)
     - [Service Name](#service-name)
     - [Connection Details](#connection-details)
@@ -29,18 +29,18 @@ Configure and schedule DBTCloud metadata and profiler workflows from the OpenMet
 
 ## Requirements
 
-### DBTCloud Versions
+### dbt Cloud Versions
 
 OpenMetadata is integrated with DBT cloud up to version [1.8](https://docs.getdbt.com/docs/get-started-dbt) and will continue to work for future DBT cloud versions.
 
 The Ingestion framework uses [DBT Cloud APIs](https://docs.getdbt.com/dbt-cloud/api-v2#/) to connect to the dbtcloud  and fetch metadata.
 
-### DBTCloud Permissions
+### dbt Cloud Permissions
 
 The DBT Clous API User token or Service account token must have the permission to fetch Metadata.
 To know more about permissions required refer [here](https://docs.getdbt.com/docs/dbt-cloud-apis/service-tokens#permissions-for-service-account-tokens).
 
-### DBTCloud Account
+### dbt Cloud Account
 
 - DBT Cloud [multi-tenant](https://docs.getdbt.com/docs/cloud/about-cloud/tenancy#multi-tenant) or [single tenant](https://docs.getdbt.com/docs/cloud/about-cloud/tenancy#single-tenant) account is required.
 - You must be on a [Team or Enterprise plan](https://www.getdbt.com/pricing/).
@@ -52,9 +52,9 @@ To know more about permissions required refer [here](https://docs.getdbt.com/doc
     file="/v1.5/connectors/metadata-ingestion-ui.md" 
     variables={
         connector: "DBTCloud", 
-        selectServicePath: "/images/v1.5/connectors/dbtcloud/select-service.webp",
-        addNewServicePath: "/images/v1.5/connectors/dbtcloud/add-new-service.webp",
-        serviceConnectionPath: "/images/v1.5/connectors/dbtcloud/service-connection.webp",
+        selectServicePath: "/images/v1.5/connectors/dbtcloud/select-service.png",
+        addNewServicePath: "/images/v1.5/connectors/dbtcloud/add-new-service.png",
+        serviceConnectionPath: "/images/v1.5/connectors/dbtcloud/service-connection.png",
     } 
 /%}
 
@@ -63,11 +63,11 @@ To know more about permissions required refer [here](https://docs.getdbt.com/doc
 
 #### Connection Details
 
-- **Host**: DBT cloud Access URL eg.`https://abc12.us1.dbt.com`. Go to your dbt cloud account settings to know your Access URL.
+- **Host**: DBT cloud Access URL eg.`https://abc12.us1.dbt.com`. Go to your dbt cloud account settings then go to the Access URLs section. In there you will find various URLs we need the `Access URL` from that section as the Host. For more info visit [here](https://docs.getdbt.com/docs/cloud/about-cloud/access-regions-ip-addresses#api-access-urls).
 
-- **Discovery API URL** : DBT cloud Access URL eg. `https://metadata.cloud.getdbt.com/graphql`. Go to your dbt cloud account settings to know your Discovery API url.
+- **Discovery API URL** : DBT cloud Discovery API URL eg. `https://abc12.metadata.us1.dbt.com/graphql`. Go to your dbt cloud account settings where you found your Access URL. In there scroll down to find `Discovery API URL` . If your `Discovery API URL` doesn't contain the `/graphql` at the end please add it. Make sure you have `/graphql` at the end of your URL. Note that `Semantic Layer GraphQL API URL` is different from `Discovery API URL`.
 
-- **Account Id** : The Account ID of your DBT cloud Project. Go to your dbt cloud account settings to know your Account Id. This will be a numeric value but in openmetadata we parse it as a string.
+- **Account Id** : The Account ID of your DBT cloud Project. Go to your dbt cloud account settings then in the `Account information` you will find `Account ID`. This will be a numeric value but in openmetadata we parse it as a string.
 
 - **Job Id** : Optional. The Job ID of your DBT cloud Job in your Project to fetch metadata for. Look for the segment after "jobs" in the URL. For instance, in a URL like `https://cloud.getdbt.com/accounts/123/projects/87477/jobs/73659994`, the job ID is `73659994`. This will be a numeric value but in openmetadata we parse it as a string. If not passed all Jobs under the Account id will be ingested.
 
@@ -92,7 +92,7 @@ Steps to retrieve and display the lineage information for a DBT Cloud service. N
 By successfully completing these steps, the lineage information for the service will be displayed.
 
 {% image
-  src="/images/v1.5/connectors/dbtcloud/lineage.webp"
+  src="/images/v1.5/connectors/dbtcloud/lineage.png"
   alt="DBT Cloud Lineage" /%}
 
 

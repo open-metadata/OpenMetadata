@@ -19,7 +19,6 @@ import static javax.ws.rs.core.Response.Status.CREATED;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.OK;
-import static org.apache.commons.lang.StringEscapeUtils.escapeCsv;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -174,6 +173,7 @@ import org.openmetadata.service.util.TestUtils;
 @Slf4j
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
+@Execution(ExecutionMode.CONCURRENT)
 public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   private final TagResourceTest tagResourceTest = new TagResourceTest();
   private final DatabaseServiceResourceTest dbServiceTest = new DatabaseServiceResourceTest();
@@ -1001,7 +1001,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     // Invalid date older than 30 days
     String invalidColumnFQN4 = table2.getFullyQualifiedName() + ".c1";
     TableJoins tableJoins4 =
-        getTableJoins(getColumnJoin(C1, invalidColumnFQN4)).withStartDate(RestUtil.today(-30));
+        getTableJoins(getColumnJoin(C1, invalidColumnFQN4)).withStartDate(RestUtil.today(-31));
     assertResponse(
         () -> putJoins(table1.getId(), tableJoins4, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
@@ -2472,6 +2472,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     // Create an entity without column description
     CreateTable createWithNullColumnDescription =
         createRequest(test, 1)
+            .withName("tableWithNullColumnDescription")
             .withDatabaseSchema(schema.getFullyQualifiedName())
             .withDescription("description")
             .withColumns(listOf(columnWithNullDescription))
@@ -2481,6 +2482,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     // Create an entity with empty column description
     CreateTable createWithEmptyColumnDescription =
         createRequest(test, 2)
+            .withName("tableWithEmptyColumnDescription")
             .withDatabaseSchema(schema.getFullyQualifiedName())
             .withDescription("description")
             .withColumns(listOf(columnWithEmptyDescription))
@@ -2490,6 +2492,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     // Create an entity with null description but with column description
     CreateTable createWithNullDescription =
         createRequest(test, 6)
+            .withName("tableWithNullDescription")
             .withDatabaseSchema(schema.getFullyQualifiedName())
             .withDescription(null)
             .withColumns(listOf(columnWithDescription))
@@ -2498,6 +2501,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     // Create an entity with description complete
     CreateTable createWithDescription =
         createRequest(test, 4)
+            .withName("tableWithDescription")
             .withDatabaseSchema(schema.getFullyQualifiedName())
             .withDescription("description")
             .withColumns(listOf(columnWithDescription))
@@ -2508,6 +2512,14 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     RestClient searchClient = getSearchClient();
     IndexMapping index = Entity.getSearchRepository().getIndexMapping(TABLE);
     Response response;
+    // lets refresh the indexes before calling search
+    Request refreshRequest =
+        new Request(
+            "POST",
+            String.format(
+                "%s/_refresh", index.getIndexName(Entity.getSearchRepository().getClusterAlias())));
+    searchClient.performRequest(refreshRequest);
+
     // Direct request to es needs to have es clusterAlias appended with indexName
     Request request =
         new Request(
@@ -2515,7 +2527,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
             String.format(
                 "%s/_search", index.getIndexName(Entity.getSearchRepository().getClusterAlias())));
     String query =
-        "{\"size\": 100,\"query\":{\"bool\":{\"must\":[{\"term\":{\"descriptionStatus\":\"INCOMPLETE\"}}]}}}";
+        "{\"size\": 1000,\"query\":{\"bool\":{\"must\":[{\"term\":{\"descriptionStatus\":\"INCOMPLETE\"}}]}}}";
     request.setJsonEntity(query);
     response = searchClient.performRequest(request);
     searchClient.close();
@@ -2542,14 +2554,14 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
                     ((LinkedHashMap<String, Object>) hit.get("_source"))
                         .get("name")
                         .equals(createWithNullDescription.getName())));
-    assertTrue(
+    assertFalse(
         hitsList.stream()
             .anyMatch(
                 hit ->
                     ((LinkedHashMap<String, Object>) hit.get("_source"))
                         .get("name")
                         .equals(createWithEmptyColumnDescription.getName())));
-    assertTrue(
+    assertFalse(
         hitsList.stream()
             .anyMatch(
                 hit ->
@@ -2726,41 +2738,29 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     // Headers: name, displayName, description, owner, tags, retentionPeriod, sourceUrl, domain
     // Create table with invalid tags field
     String resultsHeader = recordToString(EntityCsv.getResultHeaders(TableCsv.HEADERS));
-    String record = "s1,dsp1,dsc1,,Tag.invalidTag,,,,,,c1,c1,c1,,INT,,,,";
-    String csv = createCsv(TableCsv.HEADERS, listOf(record), null);
+    // Add an invalid column tag
+    String csvRecord = "c1,,,,INT,,,Tag.invalidTag,";
+    String csv = createCsv(TableCsv.HEADERS, listOf(csvRecord), null);
     CsvImportResult result = importCsv(tableName, csv, false);
-    assertSummary(result, ApiStatus.FAILURE, 2, 1, 1);
+    assertSummary(result, ApiStatus.PARTIAL_SUCCESS, 2, 1, 1);
     String[] expectedRows =
         new String[] {
           resultsHeader,
-          getFailedRecord(record, EntityCsv.entityNotFound(4, "tag", "Tag.invalidTag"))
-        };
-    assertRows(result, expectedRows);
-
-    // Add an invalid column tag
-    record = "s1,dsp1,dsc1,,,,,,,,c1,,,,INT,,,Tag.invalidTag,";
-    csv = createCsv(TableCsv.HEADERS, listOf(record), null);
-    result = importCsv(tableName, csv, false);
-    assertSummary(result, ApiStatus.FAILURE, 2, 1, 1);
-    expectedRows =
-        new String[] {
-          resultsHeader,
-          getFailedRecord(record, EntityCsv.entityNotFound(17, "tag", "Tag.invalidTag"))
+          getFailedRecord(csvRecord, EntityCsv.entityNotFound(7, "tag", "Tag.invalidTag"))
         };
     assertRows(result, expectedRows);
 
     // Update a non-existing column, this should create a new column with name "nonExistingColumn"
-    record = "s1,dsp1,dsc1,,,,,,,,nonExistingColumn,,,,INT,,,,";
-    csv = createCsv(TableCsv.HEADERS, listOf(record), null);
+    csvRecord = "nonExistingColumn,,,,INT,,,,";
+    csv = createCsv(TableCsv.HEADERS, listOf(csvRecord), null);
     result = importCsv(tableName, csv, false);
     assertSummary(result, ApiStatus.SUCCESS, 2, 2, 0);
-    expectedRows = new String[] {resultsHeader, getSuccessRecord(record, "Entity updated")};
+    expectedRows = new String[] {resultsHeader, getSuccessRecord(csvRecord, "Entity updated")};
     assertRows(result, expectedRows);
   }
 
   @Test
   void testImportExport() throws IOException {
-    String user1 = USER1.getName();
     Column c1 = new Column().withName("c1").withDataType(STRUCT);
     Column c11 = new Column().withName("c11").withDataType(INT);
     Column c2 = new Column().withName("c2").withDataType(INT);
@@ -2775,13 +2775,10 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     // Update terms with change in description
     List<String> updateRecords =
         listOf(
-            String.format(
-                "s1,dsp1,new-dsc1,user:%s,,,Tier.Tier1,P23DT23H,http://test.com,%s,c1,"
-                    + "dsp1-new,desc1,type,STRUCT,,,PII.Sensitive,",
-                user1, escapeCsv(DOMAIN.getFullyQualifiedName())),
-            ",,,,,,,,,,c1.c11,dsp11-new,desc11,type1,INT,,,PII.Sensitive,",
-            ",,,,,,,,,,c2,,,type1,INT,,,,",
-            ",,,,,,,,,,c3,,,type1,INT,,,,");
+            "c1,dsp1-new,desc1,type,STRUCT,,,PII.Sensitive,",
+            "c1.c11,dsp11-new,desc11,type1,INT,,,PII.Sensitive,",
+            "c2,,,type1,INT,,,,",
+            "c3,,,type1,INT,,,,");
 
     // Update created entity with changes
     importCsvAndValidate(table.getFullyQualifiedName(), TableCsv.HEADERS, null, updateRecords);
@@ -2955,6 +2952,48 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
         new RestoreEntity().withId(entity.getId()),
         javax.ws.rs.core.Response.Status.OK,
         ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void put_tableTableConstraintDuplicate_400(TestInfo test) throws IOException {
+    // Create table with a constraint
+    CreateTable request =
+        createRequest(test)
+            .withColumns(List.of(getColumn(C1, BIGINT, USER_ADDRESS_TAG_LABEL)))
+            .withTableConstraints(null);
+    Table table = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
+
+    // Attempt to add duplicate constraints
+    TableConstraint constraint =
+        new TableConstraint().withConstraintType(ConstraintType.UNIQUE).withColumns(List.of(C1));
+
+    request = request.withTableConstraints(List.of(constraint, constraint)); // Duplicate constraint
+    CreateTable finalRequest = request;
+    assertResponseContains(
+        () -> updateEntity(finalRequest, OK, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "Duplicate constraint found in request: ");
+  }
+
+  @Test
+  void put_tableTableConstraintInvalidColumn_400(TestInfo test) throws IOException {
+    CreateTable request =
+        createRequest(test)
+            .withColumns(List.of(getColumn(C1, BIGINT, USER_ADDRESS_TAG_LABEL)))
+            .withTableConstraints(null);
+    Table table = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
+
+    TableConstraint constraint =
+        new TableConstraint()
+            .withConstraintType(ConstraintType.UNIQUE)
+            .withColumns(List.of("invalid_column")); // Non-existent column
+
+    request = request.withTableConstraints(List.of(constraint));
+    CreateTable finalRequest = request;
+    assertResponseContains(
+        () -> updateEntity(finalRequest, OK, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "Invalid column name found in table constraint");
   }
 
   void assertFields(List<Table> tableList, String fieldsParam) {

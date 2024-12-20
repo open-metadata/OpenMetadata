@@ -13,9 +13,18 @@ Helper functions to handle SQL lineage operations
 """
 import itertools
 import traceback
-from typing import Any, Iterable, List, Optional, Tuple
+from collections import defaultdict
+from typing import Any, Iterable, List, Optional, Tuple, Union
+
+from collate_sqllineage.core.models import Column, DataFunction
+from collate_sqllineage.core.models import Table as LineageTable
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
+from metadata.generated.schema.entity.data.storedProcedure import (
+    Language,
+    StoredProcedure,
+    StoredProcedureType,
+)
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
@@ -28,6 +37,7 @@ from metadata.generated.schema.type.entityLineage import (
 from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.models import Either
+from metadata.ingestion.lineage.masker import mask_query
 from metadata.ingestion.lineage.models import (
     Dialect,
     QueryParsingError,
@@ -162,6 +172,187 @@ def get_table_fqn_from_query_name(
     return database_query, schema_query, table
 
 
+def __process_intermediate_column_lineage(
+    intermediate_column_lineage: dict,
+    result: dict,
+    source_table: str,
+    intermediate_table: str,
+    intermediate_column: str,
+    source_column: str,
+):
+    # Check intermediate dictionary for mappings
+    for (
+        target_table,
+        target_mappings,
+    ) in intermediate_column_lineage[intermediate_table].items():
+        for inter_col, target_col in target_mappings:
+            if intermediate_column == inter_col:
+                # Append to the result dictionary
+                if target_table not in result[source_table]:
+                    result[source_table][target_table] = []
+                result[source_table][target_table].append((source_column, target_col))
+
+
+def __process_column_mappings(
+    mappings: dict, result: dict, source_table: str, intermediate_column_lineage: dict
+):
+    for intermediate_table, column_pairs in mappings.items():
+        # Iterate through each column mapping in the original dictionary
+        for source_column, intermediate_column in column_pairs:
+            if intermediate_table in intermediate_column_lineage:
+                __process_intermediate_column_lineage(
+                    intermediate_column_lineage,
+                    result,
+                    source_table,
+                    intermediate_table,
+                    intermediate_column,
+                    source_column,
+                )
+
+
+def handle_udf_column_lineage(
+    column_lineage_original: dict,
+    column_lineage_generated: List[Tuple[Column, Column]],
+):
+    """
+    Handle UDF column lineage
+    """
+    try:
+        result = defaultdict(dict)
+        intermediate_column_lineage = populate_column_lineage_map(
+            column_lineage_generated
+        )
+        # Iterate through the original dictionary
+        for source_table, mappings in column_lineage_original.items():
+            __process_column_mappings(
+                mappings, result, source_table, intermediate_column_lineage
+            )
+        column_lineage_original.update(result)
+    except Exception as exc:
+        logger.debug(traceback.format_exc())
+        logger.error(f"Error handling UDF column lineage: {exc}")
+
+
+# pylint: disable=too-many-arguments
+def __process_udf_es_results(
+    metadata: OpenMetadata,
+    dialect: Dialect,
+    source_table: Union[DataFunction, LineageTable],
+    database_name: Optional[str],
+    schema_name: Optional[str],
+    service_name: Optional[str],
+    timeout_seconds: int,
+    column_lineage: dict,
+    es_result_entities: List[StoredProcedure],
+    procedure: Optional[StoredProcedure] = None,
+):
+    for entity in es_result_entities:
+        if (
+            entity.storedProcedureType == StoredProcedureType.UDF
+            and entity.storedProcedureCode
+            and entity.storedProcedureCode.language == Language.SQL
+        ):
+            expected_table_name = str(source_table).replace(
+                f"{DEFAULT_SCHEMA_NAME}.", ""
+            )
+            lineage_parser = LineageParser(
+                f"create table {str(expected_table_name)} as {entity.storedProcedureCode.code}",
+                dialect=dialect,
+                timeout_seconds=timeout_seconds,
+            )
+            handle_udf_column_lineage(column_lineage, lineage_parser.column_lineage)
+            for source in lineage_parser.source_tables or []:
+                yield from get_source_table_names(
+                    metadata,
+                    dialect,
+                    source,
+                    database_name,
+                    schema_name,
+                    service_name,
+                    timeout_seconds,
+                    column_lineage,
+                    procedure or entity,
+                )
+
+
+def __process_udf_table_names(
+    metadata: OpenMetadata,
+    dialect: Dialect,
+    source_table: Union[DataFunction, LineageTable],
+    database_name: Optional[str],
+    schema_name: Optional[str],
+    service_name: Optional[str],
+    timeout_seconds: int,
+    column_lineage: dict,
+    procedure: Optional[StoredProcedure] = None,
+):
+    database_query, schema_query, table = get_table_fqn_from_query_name(
+        str(source_table)
+    )
+    function_fqn_string = build_es_fqn_search_string(
+        database_query or database_name,
+        schema_query or schema_name,
+        service_name,
+        table,
+    )
+    es_result_entities: Optional[List[StoredProcedure]] = metadata.es_search_from_fqn(
+        entity_type=StoredProcedure,
+        fqn_search_string=function_fqn_string,
+    )
+    if es_result_entities:
+        yield from __process_udf_es_results(
+            metadata,
+            dialect,
+            source_table,
+            database_name,
+            schema_name,
+            service_name,
+            timeout_seconds,
+            column_lineage,
+            es_result_entities,
+            procedure,
+        )
+
+
+def get_source_table_names(
+    metadata: OpenMetadata,
+    dialect: Dialect,
+    source_table: Union[DataFunction, LineageTable],
+    database_name: Optional[str],
+    schema_name: Optional[str],
+    service_name: Optional[str],
+    timeout_seconds: int,
+    column_lineage: dict,
+    procedure: Optional[StoredProcedure] = None,
+) -> Iterable[Tuple[Optional[EntityReference], str]]:
+    """
+    Get source table names from DataFunction
+    """
+    try:
+        if not isinstance(source_table, DataFunction):
+            yield EntityReference(
+                id=procedure.id.root, type="storedProcedure"
+            ) if procedure else None, str(source_table)
+        else:
+            yield from __process_udf_table_names(
+                metadata,
+                dialect,
+                source_table,
+                database_name,
+                schema_name,
+                service_name,
+                timeout_seconds,
+                column_lineage,
+                procedure,
+            )
+
+    except Exception as exc:
+        logger.debug(traceback.format_exc())
+        logger.error(
+            f"Error getting source table names for table [{source_table}]: {exc}"
+        )
+
+
 def get_table_entities_from_query(
     metadata: OpenMetadata,
     service_name: str,
@@ -243,14 +434,16 @@ def get_column_lineage(
     return column_lineage
 
 
+# pylint: disable=too-many-arguments
 def _build_table_lineage(
     from_entity: Table,
     to_entity: Table,
     from_table_raw_name: str,
     to_table_raw_name: str,
-    query: str,
+    masked_query: str,
     column_lineage_map: dict,
     lineage_source: LineageSource = LineageSource.QueryLineage,
+    procedure: Optional[EntityReference] = None,
 ) -> Either[AddLineageRequest]:
     """
     Prepare the lineage request generator
@@ -275,7 +468,9 @@ def _build_table_lineage(
             from_table_raw_name=str(from_table_raw_name),
             column_lineage_map=column_lineage_map,
         )
-        lineage_details = LineageDetails(sqlQuery=query, source=lineage_source)
+        lineage_details = LineageDetails(
+            sqlQuery=masked_query, source=lineage_source, pipeline=procedure
+        )
         if col_lineage:
             lineage_details.columnsLineage = col_lineage
         lineage = AddLineageRequest(
@@ -311,9 +506,10 @@ def _create_lineage_by_table_name(
     service_name: str,
     database_name: Optional[str],
     schema_name: Optional[str],
-    query: str,
+    masked_query: str,
     column_lineage_map: dict,
     lineage_source: LineageSource = LineageSource.QueryLineage,
+    procedure: Optional[EntityReference] = None,
 ) -> Iterable[Either[AddLineageRequest]]:
     """
     This method is to create a lineage between two tables
@@ -341,10 +537,12 @@ def _create_lineage_by_table_name(
             (to_table, to_table_entities),
         ):
             if entity is None:
-                raise RuntimeError(f"Table entity not found: [{table_name}]")
+                logger.debug(
+                    f"WARNING: Table entity [{table_name}] not found in OpenMetadata"
+                )
 
         for from_entity, to_entity in itertools.product(
-            from_table_entities, to_table_entities
+            from_table_entities or [], to_table_entities or []
         ):
             if to_entity and from_entity:
                 yield _build_table_lineage(
@@ -352,9 +550,10 @@ def _create_lineage_by_table_name(
                     from_entity=from_entity,
                     to_table_raw_name=to_table,
                     from_table_raw_name=from_table,
-                    query=query,
+                    masked_query=masked_query,
                     column_lineage_map=column_lineage_map,
                     lineage_source=lineage_source,
+                    procedure=procedure,
                 )
 
     except Exception as exc:
@@ -415,9 +614,10 @@ def get_lineage_by_query(
     """
     column_lineage = {}
     query_parsing_failures = QueryParsingFailures()
+    masked_query = mask_query(query, dialect.value)
 
     try:
-        logger.debug(f"Running lineage with query: {query}")
+        logger.debug(f"Running lineage with query: {masked_query}")
         lineage_parser = LineageParser(query, dialect, timeout_seconds=timeout_seconds)
 
         raw_column_lineage = lineage_parser.column_lineage
@@ -425,17 +625,28 @@ def get_lineage_by_query(
 
         for intermediate_table in lineage_parser.intermediate_tables:
             for source_table in lineage_parser.source_tables:
-                yield from _create_lineage_by_table_name(
-                    metadata,
-                    from_table=str(source_table),
-                    to_table=str(intermediate_table),
-                    service_name=service_name,
+                for procedure, from_table_name in get_source_table_names(
+                    metadata=metadata,
+                    dialect=dialect,
+                    source_table=source_table,
                     database_name=database_name,
                     schema_name=schema_name,
-                    query=query,
-                    column_lineage_map=column_lineage,
-                    lineage_source=lineage_source,
-                )
+                    service_name=service_name,
+                    timeout_seconds=timeout_seconds,
+                    column_lineage=column_lineage,
+                ):
+                    yield from _create_lineage_by_table_name(
+                        metadata,
+                        from_table=str(from_table_name),
+                        to_table=str(intermediate_table),
+                        service_name=service_name,
+                        database_name=database_name,
+                        schema_name=schema_name,
+                        masked_query=masked_query,
+                        column_lineage_map=column_lineage,
+                        lineage_source=lineage_source,
+                        procedure=procedure,
+                    )
             for target_table in lineage_parser.target_tables:
                 yield from _create_lineage_by_table_name(
                     metadata,
@@ -444,28 +655,40 @@ def get_lineage_by_query(
                     service_name=service_name,
                     database_name=database_name,
                     schema_name=schema_name,
-                    query=query,
+                    masked_query=masked_query,
                     column_lineage_map=column_lineage,
                     lineage_source=lineage_source,
                 )
         if not lineage_parser.intermediate_tables:
             for target_table in lineage_parser.target_tables:
                 for source_table in lineage_parser.source_tables:
-                    yield from _create_lineage_by_table_name(
-                        metadata,
-                        from_table=str(source_table),
-                        to_table=str(target_table),
-                        service_name=service_name,
+                    for procedure, from_table_name in get_source_table_names(
+                        metadata=metadata,
+                        dialect=dialect,
+                        source_table=source_table,
                         database_name=database_name,
                         schema_name=schema_name,
-                        query=query,
-                        column_lineage_map=column_lineage,
-                        lineage_source=lineage_source,
-                    )
+                        service_name=service_name,
+                        timeout_seconds=timeout_seconds,
+                        column_lineage=column_lineage,
+                    ):
+                        yield from _create_lineage_by_table_name(
+                            metadata,
+                            from_table=str(from_table_name),
+                            to_table=str(target_table),
+                            service_name=service_name,
+                            database_name=database_name,
+                            schema_name=schema_name,
+                            masked_query=masked_query,
+                            column_lineage_map=column_lineage,
+                            lineage_source=lineage_source,
+                            procedure=procedure,
+                        )
         if not lineage_parser.query_parsing_success:
             query_parsing_failures.add(
                 QueryParsingError(
-                    query=query, error=lineage_parser.query_parsing_failure_reason
+                    query=masked_query,
+                    error=lineage_parser.query_parsing_failure_reason,
                 )
             )
     except Exception as exc:
@@ -492,28 +715,41 @@ def get_lineage_via_table_entity(
     """Get lineage from table entity"""
     column_lineage = {}
     query_parsing_failures = QueryParsingFailures()
+    masked_query = mask_query(query, dialect.value)
 
     try:
-        logger.debug(f"Getting lineage via table entity using query: {query}")
+        logger.debug(f"Getting lineage via table entity using query: {masked_query}")
         lineage_parser = LineageParser(query, dialect, timeout_seconds=timeout_seconds)
         to_table_name = table_entity.name.root
 
         for from_table_name in lineage_parser.source_tables:
-            yield from _create_lineage_by_table_name(
-                metadata,
-                from_table=str(from_table_name),
-                to_table=f"{schema_name}.{to_table_name}",
-                service_name=service_name,
+            for procedure, source_table in get_source_table_names(
+                metadata=metadata,
+                dialect=dialect,
+                source_table=from_table_name,
                 database_name=database_name,
                 schema_name=schema_name,
-                query=query,
-                column_lineage_map=column_lineage,
-                lineage_source=lineage_source,
-            ) or []
+                service_name=service_name,
+                timeout_seconds=timeout_seconds,
+                column_lineage=column_lineage,
+            ):
+                yield from _create_lineage_by_table_name(
+                    metadata,
+                    from_table=str(source_table),
+                    to_table=f"{schema_name}.{to_table_name}",
+                    service_name=service_name,
+                    database_name=database_name,
+                    schema_name=schema_name,
+                    masked_query=masked_query,
+                    column_lineage_map=column_lineage,
+                    lineage_source=lineage_source,
+                    procedure=procedure,
+                ) or []
         if not lineage_parser.query_parsing_success:
             query_parsing_failures.add(
                 QueryParsingError(
-                    query=query, error=lineage_parser.query_parsing_failure_reason
+                    query=masked_query,
+                    error=lineage_parser.query_parsing_failure_reason,
                 )
             )
     except Exception as exc:  # pylint: disable=broad-except

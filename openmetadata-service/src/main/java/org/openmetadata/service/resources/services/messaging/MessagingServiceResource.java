@@ -47,7 +47,6 @@ import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.services.CreateMessagingService;
-import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.MessagingService;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.entity.services.connections.TestConnectionResult;
@@ -73,6 +72,7 @@ import org.openmetadata.service.util.ResultList;
 public class MessagingServiceResource
     extends ServiceEntityResource<
         MessagingService, MessagingServiceRepository, MessagingConnection> {
+  private final MessagingServiceMapper mapper = new MessagingServiceMapper();
   public static final String COLLECTION_PATH = "v1/services/messagingServices/";
   public static final String FIELDS = "owners,domain";
 
@@ -232,7 +232,7 @@ public class MessagingServiceResource
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = DatabaseService.class)))
+                    schema = @Schema(implementation = MessagingService.class)))
       })
   public MessagingService addTestConnectionResult(
       @Context UriInfo uriInfo,
@@ -340,7 +340,8 @@ public class MessagingServiceResource
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateMessagingService create) {
-    MessagingService service = getService(create, securityContext.getUserPrincipal().getName());
+    MessagingService service =
+        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     Response response = create(uriInfo, securityContext, service);
     decryptOrNullify(securityContext, (MessagingService) response.getEntity());
     return response;
@@ -366,7 +367,8 @@ public class MessagingServiceResource
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateMessagingService update) {
-    MessagingService service = getService(update, securityContext.getUserPrincipal().getName());
+    MessagingService service =
+        mapper.createToEntity(update, securityContext.getUserPrincipal().getName());
     Response response = createOrUpdate(uriInfo, securityContext, unmask(service));
     decryptOrNullify(securityContext, (MessagingService) response.getEntity());
     return response;
@@ -512,13 +514,6 @@ public class MessagingServiceResource
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
-  }
-
-  private MessagingService getService(CreateMessagingService create, String user) {
-    return repository
-        .copy(new MessagingService(), create, user)
-        .withConnection(create.getConnection())
-        .withServiceType(create.getServiceType());
   }
 
   @Override

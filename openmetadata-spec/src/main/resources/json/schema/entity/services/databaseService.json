@@ -49,6 +49,7 @@
         "Dbt",
         "SapHana",
         "MongoDB",
+        "Cassandra",
         "Couchbase",
         "Greenplum",
         "Doris",
@@ -57,7 +58,8 @@
         "Iceberg",
         "Teradata",
         "SapErp",
-        "Synapse"
+        "Synapse",
+        "Exasol"
       ],
       "javaEnums": [
         {
@@ -163,6 +165,9 @@
           "name": "MongoDB"
         },
         {
+          "name": "Cassandra"
+        },
+        {
           "name": "Couchbase"
         },
         {
@@ -188,6 +193,9 @@
         },
         {
           "name": "Synapse"
+        },
+        {
+          "name": "Exasol"
         }
       ]
     },
@@ -298,6 +306,9 @@
               "$ref": "./connections/database/mongoDBConnection.json"
             },
             {
+              "$ref": "./connections/database/cassandraConnection.json"
+            },
+            {
               "$ref": "./connections/database/couchbaseConnection.json"
             },
             {
@@ -323,6 +334,9 @@
             },
             {
               "$ref": "./connections/database/synapseConnection.json"
+            },
+            {
+              "$ref": "./connections/database/exasolConnection.json"
             }
           ]
         }
@@ -372,7 +386,7 @@
       "items": {
         "$ref": "../../type/tagLabel.json"
       },
-      "default": null
+      "default": []
     },
     "version": {
       "description": "Metadata version of the entity.",

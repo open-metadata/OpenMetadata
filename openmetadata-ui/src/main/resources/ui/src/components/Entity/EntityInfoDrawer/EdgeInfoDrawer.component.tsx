@@ -27,6 +27,7 @@ import { EntityType } from '../../../enums/entity.enum';
 import { Source } from '../../../generated/type/entityLineage';
 import { getNameFromFQN } from '../../../utils/CommonUtils';
 import {
+  getColumnFunctionValue,
   getColumnSourceTargetHandles,
   getLineageDetailsObject,
 } from '../../../utils/EntityLineageUtils';
@@ -66,6 +67,7 @@ const EdgeInfoDrawer = ({
     const { source, target, data } = edge;
     const { sourceHandle, targetHandle } = getColumnSourceTargetHandles(edge);
     const { pipeline, pipelineEntityType } = data?.edge ?? {};
+    const isColumnLineage = sourceHandle && targetHandle;
 
     let sourceData: Node | undefined, targetData: Node | undefined;
     nodes.forEach((node) => {
@@ -121,7 +123,13 @@ const EdgeInfoDrawer = ({
       },
       functionInfo: {
         key: t('label.function'),
-        value: data.columnFunctionValue,
+        value: isColumnLineage
+          ? getColumnFunctionValue(
+              data?.edge?.columns ?? [],
+              sourceHandle ?? '',
+              targetHandle ?? ''
+            )
+          : undefined,
       },
     });
     setIsLoading(false);

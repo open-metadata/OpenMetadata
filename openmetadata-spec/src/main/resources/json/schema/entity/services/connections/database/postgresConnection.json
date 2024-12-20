@@ -45,6 +45,7 @@
     "authType": {
       "title": "Auth Configuration Type",
       "description": "Choose Auth Config Type.",
+      "mask":  true,
       "oneOf": [
         {
           "$ref": "./common/basicAuth.json"
@@ -121,6 +122,10 @@
     "sampleDataStorageConfig": {
       "title": "Storage Config for Sample Data",
       "$ref": "../connectionBasicType.json#/definitions/sampleDataStorageConfig"
+    },
+    "supportsDataDiff": {
+        "title": "Supports Data Diff Extraction.",
+        "$ref": "../connectionBasicType.json#/definitions/supportsDataDiff"
     }
   },
   "additionalProperties": false,

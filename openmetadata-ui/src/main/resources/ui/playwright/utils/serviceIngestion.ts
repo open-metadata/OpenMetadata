@@ -24,6 +24,7 @@ export enum Services {
   MLModels = GlobalSettingOptions.MLMODELS,
   Storage = GlobalSettingOptions.STORAGES,
   Search = GlobalSettingOptions.SEARCH,
+  API = GlobalSettingOptions.APIS,
 }
 
 export const getEntityTypeFromService = (service: Services) => {
@@ -42,6 +43,8 @@ export const getEntityTypeFromService = (service: Services) => {
       return EntityTypeEndpoint.MlModelService;
     case Services.Pipeline:
       return EntityTypeEndpoint.PipelineService;
+    case Services.API:
+      return EntityTypeEndpoint.ApiService;
     default:
       return EntityTypeEndpoint.DatabaseService;
   }
@@ -63,6 +66,8 @@ export const getServiceCategoryFromService = (service: Services) => {
       return 'mlmodelService';
     case Services.Pipeline:
       return 'pipelineService';
+    case Services.API:
+      return 'apiService';
     default:
       return 'databaseService';
   }
@@ -126,13 +131,17 @@ export const testConnection = async (page: Page) => {
 
   await page.getByRole('button', { name: 'OK' }).click();
 
-  await page.waitForSelector('[data-testid="success-badge"]', {
-    state: 'attached',
+  // Wait for the success badge or the warning badge to appear
+  const successBadge = page.locator('[data-testid="success-badge"]');
+
+  const warningBadge = page.locator('[data-testid="warning-badge"]');
+
+  await expect(successBadge.or(warningBadge)).toBeVisible({
     timeout: 2.5 * 60 * 1000,
   });
 
   await expect(page.getByTestId('messag-text')).toContainText(
-    'Connection test was successful.'
+    /Connection test was successful.|Test connection partially successful: Some steps had failures, we will only ingest partial metadata. Click here to view details./g
   );
 };
 

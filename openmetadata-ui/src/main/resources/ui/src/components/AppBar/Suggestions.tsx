@@ -22,6 +22,8 @@ import {
   APIEndpointSource,
   ChartSource,
   DashboardSource,
+  DatabaseSchemaSource,
+  DatabaseSource,
   DataProductSource,
   GlossarySource,
   MetricSource,
@@ -86,6 +88,12 @@ const Suggestions = ({
   const [glossaryTermSuggestions, setGlossaryTermSuggestions] = useState<
     GlossarySource[]
   >([]);
+  const [databaseSuggestions, setDatabaseSuggestions] = useState<
+    DatabaseSource[]
+  >([]);
+  const [databaseSchemaSuggestions, setDatabaseSchemaSuggestions] = useState<
+    DatabaseSchemaSource[]
+  >([]);
   const [searchIndexSuggestions, setSearchIndexSuggestions] = useState<
     SearchIndexSource[]
   >([]);
@@ -143,6 +151,10 @@ const Suggestions = ({
     setTagSuggestions(filterOptionsByIndex(options, SearchIndex.TAG));
     setDataProductSuggestions(
       filterOptionsByIndex(options, SearchIndex.DATA_PRODUCT)
+    );
+    setDatabaseSuggestions(filterOptionsByIndex(options, SearchIndex.DATABASE));
+    setDatabaseSchemaSuggestions(
+      filterOptionsByIndex(options, SearchIndex.DATABASE_SCHEMA)
     );
 
     setChartSuggestions(filterOptionsByIndex(options, SearchIndex.CHART));
@@ -211,6 +223,14 @@ const Suggestions = ({
           {
             suggestions: glossaryTermSuggestions,
             searchIndex: SearchIndex.GLOSSARY_TERM,
+          },
+          {
+            suggestions: databaseSuggestions,
+            searchIndex: SearchIndex.DATABASE,
+          },
+          {
+            suggestions: databaseSchemaSuggestions,
+            searchIndex: SearchIndex.DATABASE_SCHEMA,
           },
           { suggestions: tagSuggestions, searchIndex: SearchIndex.TAG },
           {

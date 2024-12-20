@@ -40,12 +40,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.tests.CreateTestSuite;
-import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.tests.DataQualityReport;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.tests.type.TestSummary;
 import org.openmetadata.schema.type.EntityHistory;
-import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
@@ -73,6 +71,7 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "TestSuites")
 public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteRepository> {
   public static final String COLLECTION_PATH = "/v1/dataQuality/testSuites";
+  private final TestSuiteMapper mapper = new TestSuiteMapper();
   public static final String EXECUTABLE_TEST_SUITE_DELETION_ERROR =
       "Cannot delete logical test suite. To delete logical test suite, use DELETE /v1/dataQuality/testSuites/<...>";
   public static final String NON_EXECUTABLE_TEST_SUITE_DELETION_ERROR =
@@ -230,6 +229,9 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
           @QueryParam("includeEmptyTestSuites")
           @DefaultValue("true")
           Boolean includeEmptyTestSuites,
+      @Parameter(description = "Filter a test suite by domain.", schema = @Schema(type = "string"))
+          @QueryParam("domain")
+          String domain,
       @Parameter(
               description = "Filter a test suite by fully qualified name.",
               schema = @Schema(type = "string"))
@@ -283,12 +285,13 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
     searchListFilter.addQueryParam("includeEmptyTestSuites", includeEmptyTestSuites);
     searchListFilter.addQueryParam("fullyQualifiedName", fullyQualifiedName);
     searchListFilter.addQueryParam("excludeFields", SEARCH_FIELDS_EXCLUDE);
+    searchListFilter.addQueryParam("domain", domain);
     if (!nullOrEmpty(owner)) {
       EntityInterface entity;
       try {
         entity = Entity.getEntityByName(Entity.USER, owner, "", ALL);
       } catch (Exception e) {
-        // If the owner is not a user, then we'll try to geta team
+        // If the owner is not a user, then we'll try to get a team
         entity = Entity.getEntityByName(Entity.TEAM, owner, "", ALL);
       }
       searchListFilter.addQueryParam("owners", entity.getId().toString());
@@ -552,7 +555,8 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
     create =
         create.withExecutableEntityReference(
             null); // entity reference is not applicable for logical test suites
-    TestSuite testSuite = getTestSuite(create, securityContext.getUserPrincipal().getName());
+    TestSuite testSuite =
+        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     testSuite.setExecutable(false);
     return create(uriInfo, securityContext, testSuite);
   }
@@ -577,7 +581,8 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateTestSuite create) {
-    TestSuite testSuite = getTestSuite(create, securityContext.getUserPrincipal().getName());
+    TestSuite testSuite =
+        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     testSuite.setExecutable(true);
     return create(uriInfo, securityContext, testSuite);
   }
@@ -633,7 +638,8 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
     create =
         create.withExecutableEntityReference(
             null); // entity reference is not applicable for logical test suites
-    TestSuite testSuite = getTestSuite(create, securityContext.getUserPrincipal().getName());
+    TestSuite testSuite =
+        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     testSuite.setExecutable(false);
     return createOrUpdate(uriInfo, securityContext, testSuite);
   }
@@ -658,7 +664,8 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateTestSuite create) {
-    TestSuite testSuite = getTestSuite(create, securityContext.getUserPrincipal().getName());
+    TestSuite testSuite =
+        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     testSuite.setExecutable(true);
     return createOrUpdate(uriInfo, securityContext, testSuite);
   }
@@ -824,26 +831,5 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
-  }
-
-  private TestSuite getTestSuite(CreateTestSuite create, String user) {
-    TestSuite testSuite =
-        repository
-            .copy(new TestSuite(), create, user)
-            .withDescription(create.getDescription())
-            .withDisplayName(create.getDisplayName())
-            .withName(create.getName());
-    if (create.getExecutableEntityReference() != null) {
-      Table table =
-          Entity.getEntityByName(Entity.TABLE, create.getExecutableEntityReference(), null, null);
-      EntityReference entityReference =
-          new EntityReference()
-              .withId(table.getId())
-              .withFullyQualifiedName(table.getFullyQualifiedName())
-              .withName(table.getName())
-              .withType(Entity.TABLE);
-      testSuite.setExecutableEntityReference(entityReference);
-    }
-    return testSuite;
   }
 }

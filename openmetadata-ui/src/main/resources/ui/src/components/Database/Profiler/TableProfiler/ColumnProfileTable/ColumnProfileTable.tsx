@@ -47,7 +47,7 @@ import {
 import LimitWrapper from '../../../../../hoc/LimitWrapper';
 import useCustomLocation from '../../../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../../../hooks/useFqn';
-import { getListTestCase } from '../../../../../rest/testAPI';
+import { getListTestCaseBySearch } from '../../../../../rest/testAPI';
 import { formatNumberWithComma } from '../../../../../utils/CommonUtils';
 import {
   getEntityName,
@@ -359,7 +359,7 @@ const ColumnProfileTable = () => {
   const fetchColumnTestCase = async (activeColumnFqn: string) => {
     setIsTestCaseLoading(true);
     try {
-      const { data } = await getListTestCase({
+      const { data } = await getListTestCaseBySearch({
         fields: TabSpecificField.TEST_CASE_RESULT,
         entityLink: generateEntityLink(activeColumnFqn),
         limit: PAGE_SIZE_LARGE,

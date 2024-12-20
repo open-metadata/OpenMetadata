@@ -23,7 +23,7 @@ Below are the configuration types to set up the OIDC Authentication with a Confi
 ```yaml
   authenticationConfiguration:
     clientType: ${AUTHENTICATION_CLIENT_TYPE:-confidential}
-    publicKeyUrls: ${AUTHENTICATION_PUBLIC_KEYS:-[http://localhost:8585/api/v1/system/config/jwks]}
+    publicKeyUrls: ${AUTHENTICATION_PUBLIC_KEYS:-[https://{your domain}/api/v1/system/config/jwks]}
     oidcConfiguration:
       id: ${OIDC_CLIENT_ID:-""}
       type: ${OIDC_TYPE:-""} # google, azure etc.
@@ -34,17 +34,24 @@ Below are the configuration types to set up the OIDC Authentication with a Confi
       preferredJwsAlgorithm: ${OIDC_PREFERRED_JWS:-"RS256"}
       responseType: ${OIDC_RESPONSE_TYPE:-"code"}
       disablePkce: ${OIDC_DISABLE_PKCE:-true}
-      callbackUrl: ${OIDC_CALLBACK:-"http://localhost:8585/callback"}
-      serverUrl: ${OIDC_SERVER_URL:-"http://localhost:8585"}
+      callbackUrl: ${OIDC_CALLBACK:-"https://{your domain}/callback"}
+      serverUrl: ${OIDC_SERVER_URL:-"https://{your domain}"}
       clientAuthenticationMethod: ${OIDC_CLIENT_AUTH_METHOD:-"client_secret_post"}
       tenant: ${OIDC_TENANT:-""}
       maxClockSkew: ${OIDC_MAX_CLOCK_SKEW:-""}
       customParams: ${OIDC_CUSTOM_PARAMS:-}
 ```
+{% note %}
+
+`AUTHENTICATION_PUBLIC_KEYS` and `AUTHENTICATION_CALLBACK_URL`, `OIDC_SERVER_URL` refers to https://{your domain} this is referring to your OpenMetdata installation domain name
+and please make sure to correctly put http or https depending on your installation.
+
+{% /note %}
+
 # Configuration Parameters
 
 ## Public Key Url (publicKeyUrls): 
-This needs to be updated as per different SSO providers. The default value is `http://localhost:8585/api/v1/system/config/jwks`. This is the URL where the public keys are stored. The public keys are used to verify the signature of the JWT token.
+This needs to be updated as per different SSO providers. The default value is `https://{your domain}/api/v1/system/config/jwks`. This is the URL where the public keys are stored. The public keys are used to verify the signature of the JWT token.
 
 {%important%}
 

@@ -49,6 +49,9 @@
         },
         {
           "$ref": "./common/azureConfig.json"
+        },
+        {
+          "$ref": "./common/noConfigAuthenticationTypes.json"
         }
       ]
     },
@@ -118,6 +121,10 @@
     "sampleDataStorageConfig": {
       "title": "Storage Config for Sample Data",
       "$ref": "../connectionBasicType.json#/definitions/sampleDataStorageConfig"
+    },
+    "supportsDataDiff": {
+        "title": "Supports Data Diff Extraction.",
+        "$ref": "../connectionBasicType.json#/definitions/supportsDataDiff"
     }
   },
   "additionalProperties": false,

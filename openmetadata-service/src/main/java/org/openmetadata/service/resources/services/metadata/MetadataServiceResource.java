@@ -16,7 +16,6 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
-import java.util.stream.Collectors;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
@@ -40,8 +39,6 @@ import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.services.CreateMetadataService;
-import org.openmetadata.schema.entity.data.Table;
-import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.MetadataConnection;
 import org.openmetadata.schema.entity.services.MetadataService;
 import org.openmetadata.schema.entity.services.ServiceType;
@@ -77,6 +74,7 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "metadataServices", order = 8) // init before IngestionPipelineService
 public class MetadataServiceResource
     extends ServiceEntityResource<MetadataService, MetadataServiceRepository, MetadataConnection> {
+  private final MetadataServiceMapper mapper = new MetadataServiceMapper();
   public static final String OPENMETADATA_SERVICE = "OpenMetadata";
   public static final String COLLECTION_PATH = "v1/services/metadataServices/";
   public static final String FIELDS = "pipelines,owners,tags";
@@ -272,7 +270,7 @@ public class MetadataServiceResource
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = DatabaseService.class)))
+                    schema = @Schema(implementation = MetadataService.class)))
       })
   public MetadataService addTestConnectionResult(
       @Context UriInfo uriInfo,
@@ -322,7 +320,7 @@ public class MetadataServiceResource
                     return json;
                   }
                 })
-            .collect(Collectors.toList());
+            .toList();
     entityHistory.setVersions(versions);
     return entityHistory;
   }
@@ -380,7 +378,7 @@ public class MetadataServiceResource
       @Context SecurityContext securityContext,
       @Valid CreateMetadataService create) {
     MetadataService service =
-        getMetadataService(create, securityContext.getUserPrincipal().getName());
+        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     Response response = create(uriInfo, securityContext, service);
     decryptOrNullify(securityContext, (MetadataService) response.getEntity());
     return response;
@@ -406,7 +404,7 @@ public class MetadataServiceResource
       @Context SecurityContext securityContext,
       @Valid CreateMetadataService update) {
     MetadataService service =
-        getMetadataService(update, securityContext.getUserPrincipal().getName());
+        mapper.createToEntity(update, securityContext.getUserPrincipal().getName());
     Response response = createOrUpdate(uriInfo, securityContext, unmask(service));
     decryptOrNullify(securityContext, (MetadataService) response.getEntity());
     return response;
@@ -541,24 +539,17 @@ public class MetadataServiceResource
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "Successfully restored the Table ",
+            description = "Successfully restored the MetadataService ",
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = Table.class)))
+                    schema = @Schema(implementation = MetadataService.class)))
       })
-  public Response restoreTable(
+  public Response restoreMetadataService(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
-  }
-
-  private MetadataService getMetadataService(CreateMetadataService create, String user) {
-    return repository
-        .copy(new MetadataService(), create, user)
-        .withServiceType(create.getServiceType())
-        .withConnection(create.getConnection());
   }
 
   @Override

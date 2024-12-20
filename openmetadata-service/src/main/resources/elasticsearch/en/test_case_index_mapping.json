@@ -414,7 +414,8 @@
         "type": "nested",
         "properties": {
           "tagFQN": {
-            "type": "keyword"
+            "type": "keyword",
+            "normalizer": "lowercase_normalizer"
           },
           "labelType": {
             "type": "keyword"
@@ -446,6 +447,10 @@
       },
       "deleted": {
         "type": "boolean"
+      },
+      "originEntityFQN": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
       },
       "table": {
         "properties": {

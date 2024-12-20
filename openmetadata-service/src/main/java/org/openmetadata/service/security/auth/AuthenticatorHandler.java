@@ -33,13 +33,13 @@ public interface AuthenticatorHandler {
 
   void checkIfLoginBlocked(String userName);
 
-  void recordFailedLoginAttempt(String providedIdentity, User user)
+  void recordFailedLoginAttempt(String email, String userName)
       throws TemplateException, IOException;
 
-  void validatePassword(String providedIdentity, User storedUser, String reqPassword)
+  void validatePassword(String providedIdentity, String reqPassword, User omUser)
       throws TemplateException, IOException;
 
-  User lookUserInProvider(String userName);
+  User lookUserInProvider(String email, String pwd) throws TemplateException, IOException;
 
   default User registerUser(RegistrationRequest registrationRequest) {
     throw new CustomExceptionMessage(

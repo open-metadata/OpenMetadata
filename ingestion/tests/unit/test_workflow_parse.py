@@ -19,6 +19,9 @@ from pydantic import ValidationError
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
+from metadata.generated.schema.entity.services.connections.api.restConnection import (
+    RestConnection,
+)
 from metadata.generated.schema.entity.services.connections.dashboard.tableauConnection import (
     TableauConnection,
 )
@@ -114,6 +117,10 @@ class TestWorkflowParse(TestCase):
         source_type = "Kafka"
         connection = get_connection_class(source_type, get_service_type(source_type))
         self.assertEqual(connection, KafkaConnection)
+
+        source_type = "Rest"
+        connection = get_connection_class(source_type, get_service_type(source_type))
+        self.assertEqual(connection, RestConnection)
 
     def test_get_source_config_class(self):
         """

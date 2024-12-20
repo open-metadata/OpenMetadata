@@ -33,17 +33,18 @@ import {
 import ServiceBaseClass from './ServiceBaseClass';
 
 class MysqlIngestionClass extends ServiceBaseClass {
-  name: string;
+  name = '';
   tableFilter: string[];
   profilerTable = 'alert_entity';
-  constructor() {
-    super(
-      Services.Database,
-      `pw-mysql-with-%-${uuid()}`,
-      'Mysql',
-      'bot_entity'
-    );
-    this.tableFilter = ['bot_entity', 'alert_entity', 'chart_entity'];
+  constructor(tableFilter?: string[]) {
+    const serviceName = `pw-mysql-with-%-${uuid()}`;
+    super(Services.Database, serviceName, 'Mysql', 'bot_entity');
+    this.name = serviceName;
+    this.tableFilter = tableFilter ?? [
+      'bot_entity',
+      'alert_entity',
+      'chart_entity',
+    ];
   }
 
   async createService(page: Page) {
@@ -125,14 +126,8 @@ class MysqlIngestionClass extends ServiceBaseClass {
         )
         .then((res) => res.json());
 
-      // Re-deploy before running the ingestion
-      await page.click(
-        `[data-row-key*="${response.data[0].name}"] [data-testid="more-actions"]`
-      );
-      await page.getByTestId('re-deploy-button').click();
-
       // need manual wait to settle down the deployed pipeline, before triggering the pipeline
-      await page.waitForTimeout(2000);
+      await page.waitForTimeout(3000);
 
       await page.click(
         `[data-row-key*="${response.data[0].name}"] [data-testid="more-actions"]`
@@ -140,6 +135,9 @@ class MysqlIngestionClass extends ServiceBaseClass {
       await page.getByTestId('run-button').click();
 
       await toastNotification(page, `Pipeline triggered successfully!`);
+
+      // need manual wait to make sure we are awaiting on latest run results
+      await page.waitForTimeout(2000);
 
       await this.handleIngestionRetry('profiler', page);
     });

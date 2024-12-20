@@ -43,6 +43,7 @@ import {
   ROUTES,
 } from '../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
+import { COMMON_RESIZABLE_PANEL_CONFIG } from '../../constants/ResizablePanel.constants';
 import LineageProvider from '../../context/LineageProvider/LineageProvider';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
@@ -477,27 +478,29 @@ const StoredProcedurePage = () => {
 
   const onExtensionUpdate = useCallback(
     async (updatedData: StoredProcedure) => {
-      storedProcedure &&
-        (await saveUpdatedStoredProceduresData({
+      if (storedProcedure) {
+        const response = await saveUpdatedStoredProceduresData({
           ...storedProcedure,
           extension: updatedData.extension,
-        }));
-      setStoredProcedure((prev) => {
-        if (!prev) {
-          return prev;
-        }
+        });
+        setStoredProcedure((prev) => {
+          if (!prev) {
+            return prev;
+          }
 
-        return {
-          ...prev,
-          extension: updatedData.extension,
-        };
-      });
+          return {
+            ...prev,
+            extension: response.extension,
+          };
+        });
+      }
     },
     [saveUpdatedStoredProceduresData, storedProcedure]
   );
 
   const {
     editTagsPermission,
+    editGlossaryTermsPermission,
     editDescriptionPermission,
     editCustomAttributePermission,
     editLineagePermission,
@@ -509,6 +512,10 @@ const StoredProcedurePage = () => {
         (storedProcedurePermissions.EditTags ||
           storedProcedurePermissions.EditAll) &&
         !storedProcedure?.deleted,
+      editGlossaryTermsPermission:
+        (storedProcedurePermissions.EditGlossaryTerms ||
+          storedProcedurePermissions.EditAll) &&
+        !deleted,
       editDescriptionPermission:
         (storedProcedurePermissions.EditDescription ||
           storedProcedurePermissions.EditAll) &&
@@ -577,8 +584,7 @@ const StoredProcedurePage = () => {
                       </Card>
                     </div>
                   ),
-                  minWidth: 800,
-                  flex: 0.87,
+                  ...COMMON_RESIZABLE_PANEL_CONFIG.LEFT_PANEL,
                 }}
                 secondPanel={{
                   children: (
@@ -589,6 +595,9 @@ const StoredProcedurePage = () => {
                         domain={storedProcedure?.domain}
                         editCustomAttributePermission={
                           editCustomAttributePermission
+                        }
+                        editGlossaryTermsPermission={
+                          editGlossaryTermsPermission
                         }
                         editTagPermission={editTagsPermission}
                         entityFQN={decodedStoredProcedureFQN}
@@ -602,8 +611,7 @@ const StoredProcedurePage = () => {
                       />
                     </div>
                   ),
-                  minWidth: 320,
-                  flex: 0.13,
+                  ...COMMON_RESIZABLE_PANEL_CONFIG.RIGHT_PANEL,
                   className:
                     'entity-resizable-right-panel-container entity-resizable-panel-container',
                 }}
@@ -680,6 +688,7 @@ const StoredProcedurePage = () => {
       storedProcedure,
       decodedStoredProcedureFQN,
       editTagsPermission,
+      editGlossaryTermsPermission,
       editLineagePermission,
       editDescriptionPermission,
       editCustomAttributePermission,

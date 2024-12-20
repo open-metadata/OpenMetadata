@@ -86,13 +86,13 @@ openssl x509 -in saml.crt -out samlCER.cer -outform DER
       entityId: ${SAML_IDP_ENTITY_ID:-"https://mocksaml.com/api/saml/sso"}
       ssoLoginUrl: ${SAML_IDP_SSO_LOGIN_URL:-"https://saml.example.com/entityid"}
       idpX509Certificate: ${SAML_IDP_CERTIFICATE:-""}
-      authorityUrl: ${SAML_AUTHORITY_URL:-"http://localhost:8585/api/v1/saml/login"}
+      authorityUrl: ${SAML_AUTHORITY_URL:-"https://{your domain}/api/v1/saml/login"}
       nameId: ${SAML_IDP_NAME_ID:-"urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress"}
     sp:
-      entityId: ${SAML_SP_ENTITY_ID:-"http://localhost:8585/api/v1/saml/acs"}
-      acs: ${SAML_SP_ACS:-"http://localhost:8585/api/v1/saml/acs"}
+      entityId: ${SAML_SP_ENTITY_ID:-"https://{your domain}/api/v1/saml/acs"}
+      acs: ${SAML_SP_ACS:-"https://{your domain}/api/v1/saml/acs"}
       spX509Certificate: ${SAML_SP_CERTIFICATE:-""}
-      callback: ${SAML_SP_CALLBACK:-"http://localhost:8585/saml/callback"}
+      callback: ${SAML_SP_CALLBACK:-"https://{your domain}/saml/callback"}
     security:
       strictMode: ${SAML_STRICT_MODE:-false}
       tokenValidity: ${SAML_SP_TOKEN_VALIDITY:-"3600"}

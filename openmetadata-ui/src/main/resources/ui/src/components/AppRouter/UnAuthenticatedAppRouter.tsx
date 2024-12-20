@@ -18,7 +18,6 @@ import { AuthProvider } from '../../generated/configuration/authenticationConfig
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import PageNotFound from '../../pages/PageNotFound/PageNotFound';
-import SamlCallback from '../../pages/SamlCallback';
 import AccountActivationConfirmation from '../../pages/SignUp/account-activation-confirmation.component';
 import { isProtectedRoute } from '../../utils/AuthProvider.util';
 import Auth0Callback from '../Auth/AppCallbacks/Auth0Callback/Auth0Callback';
@@ -76,10 +75,7 @@ export const UnAuthenticatedAppRouter = () => {
       {callbackComponent && (
         <Route component={callbackComponent} path={ROUTES.CALLBACK} />
       )}
-      <Route
-        component={SamlCallback}
-        path={[ROUTES.SAML_CALLBACK, ROUTES.AUTH_CALLBACK]}
-      />
+
       {!isSigningUp && (
         <Route exact path={ROUTES.HOME}>
           <Redirect to={ROUTES.SIGNIN} />

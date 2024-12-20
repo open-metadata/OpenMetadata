@@ -19,6 +19,7 @@ import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { getEntityDetailsPath, ROUTES } from '../../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
+import { COMMON_RESIZABLE_PANEL_CONFIG } from '../../../constants/ResizablePanel.constants';
 import LineageProvider from '../../../context/LineageProvider/LineageProvider';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { Tag } from '../../../generated/entity/classification/tag';
@@ -246,6 +247,7 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
 
   const {
     editTagsPermission,
+    editGlossaryTermsPermission,
     editDescriptionPermission,
     editCustomAttributePermission,
     editAllPermission,
@@ -256,6 +258,9 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
     () => ({
       editTagsPermission:
         (metricPermissions.EditTags || metricPermissions.EditAll) && !deleted,
+      editGlossaryTermsPermission:
+        (metricPermissions.EditGlossaryTerms || metricPermissions.EditAll) &&
+        !deleted,
       editDescriptionPermission:
         (metricPermissions.EditDescription || metricPermissions.EditAll) &&
         !deleted,
@@ -291,8 +296,9 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
                 firstPanel={{
                   className: 'entity-resizable-panel-container',
                   children: (
-                    <div className="d-flex flex-col gap-4 p-t-sm m-x-lg">
+                    <div className="d-flex flex-col gap-4 p-y-sm m-x-lg">
                       <DescriptionV1
+                        isDescriptionExpanded
                         description={metricDetails.description}
                         entityFqn={decodedMetricFqn}
                         entityName={entityName}
@@ -306,14 +312,9 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
                         onDescriptionUpdate={onDescriptionUpdate}
                         onThreadLinkSelect={onThreadLinkSelect}
                       />
-                      <MetricExpression
-                        metricDetails={metricDetails}
-                        onMetricUpdate={onMetricUpdate}
-                      />
                     </div>
                   ),
-                  minWidth: 800,
-                  flex: 0.87,
+                  ...COMMON_RESIZABLE_PANEL_CONFIG.LEFT_PANEL,
                 }}
                 secondPanel={{
                   children: (
@@ -334,6 +335,9 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
                         editCustomAttributePermission={
                           editCustomAttributePermission
                         }
+                        editGlossaryTermsPermission={
+                          editGlossaryTermsPermission
+                        }
                         editTagPermission={editTagsPermission}
                         entityFQN={decodedMetricFqn}
                         entityId={metricDetails.id}
@@ -346,14 +350,27 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
                       />
                     </div>
                   ),
-                  minWidth: 320,
-                  flex: 0.13,
+                  ...COMMON_RESIZABLE_PANEL_CONFIG.RIGHT_PANEL,
                   className:
                     'entity-resizable-right-panel-container entity-resizable-panel-container',
                 }}
               />
             </Col>
           </Row>
+        ),
+      },
+      {
+        label: (
+          <TabsLabel id={EntityTabs.EXPRESSION} name={t('label.expression')} />
+        ),
+        key: EntityTabs.EXPRESSION,
+        children: (
+          <div className="p-t-sm m-x-lg">
+            <MetricExpression
+              metricDetails={metricDetails}
+              onMetricUpdate={onMetricUpdate}
+            />
+          </div>
         ),
       },
       {
@@ -434,6 +451,7 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
       onDescriptionUpdate,
       onDataProductsUpdate,
       editTagsPermission,
+      editGlossaryTermsPermission,
       editDescriptionPermission,
       editCustomAttributePermission,
       editLineagePermission,
@@ -452,6 +470,7 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
       <Row gutter={[0, 12]}>
         <Col className="p-x-lg" span={24}>
           <DataAssetsHeader
+            isDqAlertSupported
             isRecursiveDelete
             afterDeleteAction={afterDeleteAction}
             afterDomainUpdateAction={onUpdateMetricDetails}

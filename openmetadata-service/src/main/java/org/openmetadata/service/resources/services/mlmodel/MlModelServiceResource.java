@@ -49,7 +49,6 @@ import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.services.CreateMlModelService;
-import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.MlModelService;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.entity.services.connections.TestConnectionResult;
@@ -74,6 +73,7 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "mlmodelServices")
 public class MlModelServiceResource
     extends ServiceEntityResource<MlModelService, MlModelServiceRepository, MlModelConnection> {
+  private final MlModelServiceMapper mapper = new MlModelServiceMapper();
   public static final String COLLECTION_PATH = "v1/services/mlmodelServices/";
   public static final String FIELDS = "pipelines,owners,tags,domain";
 
@@ -245,7 +245,7 @@ public class MlModelServiceResource
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = DatabaseService.class)))
+                    schema = @Schema(implementation = MlModelService.class)))
       })
   public MlModelService addTestConnectionResult(
       @Context UriInfo uriInfo,
@@ -352,7 +352,8 @@ public class MlModelServiceResource
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateMlModelService create) {
-    MlModelService service = getService(create, securityContext.getUserPrincipal().getName());
+    MlModelService service =
+        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     Response response = create(uriInfo, securityContext, service);
     decryptOrNullify(securityContext, (MlModelService) response.getEntity());
     return response;
@@ -378,7 +379,8 @@ public class MlModelServiceResource
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateMlModelService update) {
-    MlModelService service = getService(update, securityContext.getUserPrincipal().getName());
+    MlModelService service =
+        mapper.createToEntity(update, securityContext.getUserPrincipal().getName());
     Response response = createOrUpdate(uriInfo, securityContext, unmask(service));
     decryptOrNullify(securityContext, (MlModelService) response.getEntity());
     return response;
@@ -525,13 +527,6 @@ public class MlModelServiceResource
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
-  }
-
-  private MlModelService getService(CreateMlModelService create, String user) {
-    return repository
-        .copy(new MlModelService(), create, user)
-        .withServiceType(create.getServiceType())
-        .withConnection(create.getConnection());
   }
 
   @Override

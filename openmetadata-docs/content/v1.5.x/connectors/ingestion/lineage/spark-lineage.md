@@ -343,3 +343,40 @@ spark.openmetadata.transport.timeout 30
 ```
 
 After all these steps are completed you can start/restart your compute instance and you are ready to extract the lineage from spark to OpenMetadata.
+
+
+## Using Spark Agent with Glue
+
+Follow the below steps in order to use OpenMetadata Spark Agent with glue.
+
+### 1. Specify the OpenMetadata Spark Agent JAR URL
+
+1. Upload the OpenMetadata Spark Agent Jar to S3
+2. Navigate to the glue job,In the Job details tab, navigate to Advanced properties → Libraries → Dependent Jars path
+3. Add the S3 url of OpenMetadata Spark Agent Jar in the Dependent Jars path.
+
+{% image
+  src="/images/v1.5/connectors/spark/glue-job-jar.png"
+  alt="Glue Job Configure Jar"
+  caption="Glue Job Configure Jar"
+ /%}
+
+
+### 2. Add Spark configuration in Job Parameters
+
+In the same Job details tab, add a new property under Job parameters:
+
+1. Add the `--conf` property with following value, make sure to customize this configuration as described in the above documentation.
+
+```
+spark.extraListeners=org.openmetadata.spark.agent.OpenMetadataSparkListener --conf spark.openmetadata.transport.hostPort=https://your-org.host:port  --conf spark.openmetadata.transport.type=openmetadata --conf spark.openmetadata.transport.jwtToken=<jwt-token> --conf spark.openmetadata.transport.pipelineServiceName=glue_spark_pipeline_service --conf spark.openmetadata.transport.pipelineName=glue_pipeline_name --conf spark.openmetadata.transport.timeout=30
+```
+
+2. Add the `--user-jars-first` parameter and set its value to `true`
+
+{% image
+  src="/images/v1.5/connectors/spark/glue-job-params.png"
+  alt="Glue Job Configure Params"
+  caption="Glue Job Configure Params"
+ /%}
+

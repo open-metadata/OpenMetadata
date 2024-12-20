@@ -62,6 +62,57 @@ export const DATA_STEWARD_RULES: PolicyRulesType[] = [
   },
 ];
 
+export const DATA_CONSUMER_RULES: PolicyRulesType[] = [
+  {
+    name: 'DataConsumerPolicy-EditRule',
+    resources: ['All'],
+    operations: [
+      'EditDescription',
+      'EditGlossaryTerms',
+      'EditTags',
+      'EditTier',
+      'ViewAll',
+    ],
+    effect: 'allow',
+  },
+];
+
+export const EDIT_USER_FOR_TEAM_RULES: PolicyRulesType[] = [
+  {
+    name: 'EditUserTeams-EditRule',
+    resources: ['team'],
+    operations: ['EditUsers'],
+    effect: 'allow',
+  },
+];
+
+export const ORGANIZATION_POLICY_RULES: PolicyRulesType[] = [
+  {
+    name: 'OrganizationPolicy-NoOwner-Rule',
+    description:
+      'Allow any one to set the owner of an entity that has no owner set.',
+    effect: 'allow',
+    operations: ['EditOwners'],
+    resources: ['All'],
+    condition: 'noOwner()',
+  },
+  {
+    name: 'OrganizationPolicy-Owner-Rule',
+    description: 'Allow all the operations on an entity for the owner.',
+    effect: 'allow',
+    operations: ['All'],
+    resources: ['All'],
+    condition: 'isOwner()',
+  },
+  {
+    name: 'OrganizationPolicy-ViewAll-Rule',
+    description: 'Allow all users to discover data assets.',
+    effect: 'allow',
+    operations: ['ViewAll'],
+    resources: ['All'],
+  },
+];
+
 export const GLOBAL_SETTING_PERMISSIONS: Record<
   string,
   { testid: GlobalSettingOptions; isCustomProperty?: boolean }

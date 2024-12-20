@@ -12,6 +12,7 @@
  */
 
 import { createBrowserHistory } from 'history';
+import process from 'process';
 
 const subPath = process.env.APP_SUB_PATH ?? '';
 

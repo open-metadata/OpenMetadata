@@ -25,6 +25,7 @@ from metadata.ingestion.source.database.snowflake.queries import (
     SNOWFLAKE_QUERY_LOG_QUERY,
 )
 from metadata.profiler.metrics.system.dml_operation import DatabaseDMLOperations
+from metadata.utils.dict import ExtendedDict
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.profiler_utils import QueryResult
 
@@ -49,6 +50,7 @@ class SnowflakeStoredProcedure(BaseModel):
         None, alias="SIGNATURE", description="Used to build the source URL"
     )
     comment: Optional[str] = Field(None, alias="COMMENT")
+    procedure_type: Optional[str] = Field(None, alias="PROCEDURE_TYPE")
 
     # Update the signature to clean it up on read
     @field_validator("signature")
@@ -133,7 +135,7 @@ class SnowflakeQueryLogEntry(BaseModel):
             )
         )
         return TypeAdapter(List[SnowflakeQueryLogEntry]).validate_python(
-            map(dict, rows)
+            [ExtendedDict(r).lower_case_keys() for r in rows]
         )
 
 

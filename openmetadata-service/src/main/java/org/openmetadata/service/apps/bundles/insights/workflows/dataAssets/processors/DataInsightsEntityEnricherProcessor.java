@@ -219,6 +219,8 @@ public class DataInsightsEntityEnricherProcessor
                   .map(column -> CommonUtil.nullOrEmpty(column.getDescription()) ? 0 : 1)
                   .reduce(0, Integer::sum));
       entityMap.put("hasDescription", CommonUtil.nullOrEmpty(entity.getDescription()) ? 0 : 1);
+    } else {
+      entityMap.put("hasDescription", CommonUtil.nullOrEmpty(entity.getDescription()) ? 0 : 1);
     }
 
     // Modify Custom Property key

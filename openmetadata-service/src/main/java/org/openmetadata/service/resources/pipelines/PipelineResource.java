@@ -62,7 +62,6 @@ import org.openmetadata.service.jdbi3.PipelineRepository;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
-import org.openmetadata.service.resources.dqtests.TestCaseResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.util.ResultList;
@@ -77,6 +76,7 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "pipelines")
 public class PipelineResource extends EntityResource<Pipeline, PipelineRepository> {
   public static final String COLLECTION_PATH = "v1/pipelines/";
+  private final PipelineMapper mapper = new PipelineMapper();
   static final String FIELDS =
       "owners,tasks,pipelineStatus,followers,tags,extension,scheduleInterval,domain,sourceHash";
 
@@ -312,7 +312,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreatePipeline create) {
-    Pipeline pipeline = getPipeline(create, securityContext.getUserPrincipal().getName());
+    Pipeline pipeline = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, pipeline);
   }
 
@@ -393,7 +393,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreatePipeline create) {
-    Pipeline pipeline = getPipeline(create, securityContext.getUserPrincipal().getName());
+    Pipeline pipeline = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, pipeline);
   }
 
@@ -444,7 +444,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = TestCaseResource.TestCaseList.class)))
+                    schema = @Schema(implementation = PipelineResource.PipelineStatusList.class)))
       })
   public ResultList<PipelineStatus> list(
       @Context UriInfo uriInfo,
@@ -669,18 +669,5 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
-  }
-
-  private Pipeline getPipeline(CreatePipeline create, String user) {
-    return repository
-        .copy(new Pipeline(), create, user)
-        .withService(getEntityReference(Entity.PIPELINE_SERVICE, create.getService()))
-        .withTasks(create.getTasks())
-        .withSourceUrl(create.getSourceUrl())
-        .withConcurrency(create.getConcurrency())
-        .withStartDate(create.getStartDate())
-        .withPipelineLocation(create.getPipelineLocation())
-        .withScheduleInterval(create.getScheduleInterval())
-        .withSourceHash(create.getSourceHash());
   }
 }

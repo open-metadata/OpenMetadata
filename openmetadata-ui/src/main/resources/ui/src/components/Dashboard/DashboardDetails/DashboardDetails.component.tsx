@@ -28,6 +28,7 @@ import {
   getEntityDetailsPath,
 } from '../../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
+import { COMMON_RESIZABLE_PANEL_CONFIG } from '../../../constants/ResizablePanel.constants';
 import LineageProvider from '../../../context/LineageProvider/LineageProvider';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
@@ -43,7 +44,7 @@ import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { restoreDashboard } from '../../../rest/dashboardAPI';
 import { getFeedCounts } from '../../../utils/CommonUtils';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getColumnSorter, getEntityName } from '../../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import {
   getAllTags,
@@ -403,6 +404,17 @@ const DashboardDetails = ({
     );
   };
 
+  const hasEditGlossaryTermAccess = (record: ChartType) => {
+    const permissionsObject = chartsPermissionsArray?.find(
+      (chart) => chart.id === record.id
+    )?.permissions;
+
+    return (
+      !isUndefined(permissionsObject) &&
+      (permissionsObject.EditGlossaryTerms || permissionsObject.EditAll)
+    );
+  };
+
   const handleTagSelection = async (selectedTags: EntityTags[]) => {
     const updatedTags: TagLabel[] | undefined = createTagObject(selectedTags);
 
@@ -438,6 +450,7 @@ const DashboardDetails = ({
         key: 'chartName',
         width: 220,
         fixed: 'left',
+        sorter: getColumnSorter<ChartType, 'name'>('name'),
         render: (_, record) => {
           const chartName = getEntityName(record);
 
@@ -550,7 +563,7 @@ const DashboardDetails = ({
             entityFqn={decodedDashboardFQN}
             entityType={EntityType.DASHBOARD}
             handleTagSelection={handleChartTagSelection}
-            hasTagEditAccess={hasEditTagAccess(record)}
+            hasTagEditAccess={hasEditGlossaryTermAccess(record)}
             index={index}
             isReadOnly={deleted}
             record={record}
@@ -577,6 +590,7 @@ const DashboardDetails = ({
 
   const {
     editTagsPermission,
+    editGlossaryTermsPermission,
     editDescriptionPermission,
     editCustomAttributePermission,
     editAllPermission,
@@ -586,6 +600,10 @@ const DashboardDetails = ({
     () => ({
       editTagsPermission:
         (dashboardPermissions.EditTags || dashboardPermissions.EditAll) &&
+        !deleted,
+      editGlossaryTermsPermission:
+        (dashboardPermissions.EditGlossaryTerms ||
+          dashboardPermissions.EditAll) &&
         !deleted,
       editDescriptionPermission:
         (dashboardPermissions.EditDescription ||
@@ -652,8 +670,7 @@ const DashboardDetails = ({
                       )}
                     </div>
                   ),
-                  minWidth: 800,
-                  flex: 0.87,
+                  ...COMMON_RESIZABLE_PANEL_CONFIG.LEFT_PANEL,
                 }}
                 secondPanel={{
                   children: (
@@ -664,6 +681,9 @@ const DashboardDetails = ({
                         domain={dashboardDetails?.domain}
                         editCustomAttributePermission={
                           editCustomAttributePermission
+                        }
+                        editGlossaryTermsPermission={
+                          editGlossaryTermsPermission
                         }
                         editTagPermission={editTagsPermission}
                         entityFQN={decodedDashboardFQN}
@@ -677,8 +697,7 @@ const DashboardDetails = ({
                       />
                     </div>
                   ),
-                  minWidth: 320,
-                  flex: 0.13,
+                  ...COMMON_RESIZABLE_PANEL_CONFIG.RIGHT_PANEL,
                   className:
                     'entity-resizable-right-panel-container entity-resizable-panel-container',
                 }}
@@ -761,6 +780,7 @@ const DashboardDetails = ({
       onThreadLinkSelect,
       handleTagSelection,
       editTagsPermission,
+      editGlossaryTermsPermission,
       editLineagePermission,
       editDescriptionPermission,
       editCustomAttributePermission,
@@ -779,6 +799,7 @@ const DashboardDetails = ({
       <Row gutter={[0, 12]}>
         <Col className="p-x-lg" span={24}>
           <DataAssetsHeader
+            isDqAlertSupported
             isRecursiveDelete
             afterDeleteAction={afterDeleteAction}
             afterDomainUpdateAction={updateDashboardDetailsState}

@@ -51,6 +51,8 @@ export const useApplicationStore = create<ApplicationStore>()(
       refreshTokenKey: '',
       searchCriteria: '',
       inlineAlertDetails: undefined,
+      applications: [],
+      appPreferences: {},
 
       setInlineAlertDetails: (inlineAlertDetails) => {
         set({ inlineAlertDetails });
@@ -149,6 +151,16 @@ export const useApplicationStore = create<ApplicationStore>()(
       setRefreshToken: (refreshToken) => {
         set({ refreshTokenKey: refreshToken });
       },
+      setAppPreferences: (
+        preferences: Partial<ApplicationStore['appPreferences']>
+      ) => {
+        set((state) => ({
+          appPreferences: {
+            ...state.appPreferences,
+            ...preferences,
+          },
+        }));
+      },
       getOidcToken: () => {
         return get()?.oidcIdToken;
       },
@@ -163,6 +175,9 @@ export const useApplicationStore = create<ApplicationStore>()(
       },
       updateSearchCriteria: (criteria) => {
         set({ searchCriteria: criteria });
+      },
+      setApplicationsName: (applications: string[]) => {
+        set({ applications: applications });
       },
     }),
     {

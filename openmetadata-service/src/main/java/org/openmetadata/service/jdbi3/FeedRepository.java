@@ -197,6 +197,9 @@ public class FeedRepository {
       if (repository.supportsTags) {
         fieldList.add("tags");
       }
+      if (repository.supportsReviewers) {
+        fieldList.add("reviewers");
+      }
       return String.join(",", fieldList.toArray(new String[0]));
     }
   }
@@ -293,6 +296,10 @@ public class FeedRepository {
   }
 
   public Thread getTask(EntityLink about, TaskType taskType) {
+    return getTask(about, taskType, null);
+  }
+
+  public Thread getTask(EntityLink about, TaskType taskType, TaskStatus taskStatus) {
     List<Triple<String, String, String>> tasks =
         dao.fieldRelationshipDAO()
             .findFrom(
@@ -304,8 +311,16 @@ public class FeedRepository {
         UUID threadId = UUID.fromString(task.getLeft());
         Thread thread =
             EntityUtil.validate(threadId, dao.feedDAO().findById(threadId), Thread.class);
-        if (thread.getTask() != null && thread.getTask().getType() == taskType) {
-          return thread;
+        if (Optional.ofNullable(taskStatus).isPresent()) {
+          if (thread.getTask() != null
+              && thread.getTask().getType() == taskType
+              && thread.getTask().getStatus() == taskStatus) {
+            return thread;
+          }
+        } else {
+          if (thread.getTask() != null && thread.getTask().getType() == taskType) {
+            return thread;
+          }
         }
       }
     }
@@ -736,19 +751,21 @@ public class FeedRepository {
 
     String beforeCursor = null;
     String afterCursor = null;
-    if (filter.getPaginationType() == PaginationType.BEFORE) {
-      if (threads.size()
-          > limit) { // If extra result exists, then previous page exists - return before cursor
-        threads.remove(0);
-        beforeCursor = threads.get(0).getUpdatedAt().toString();
-      }
-      afterCursor = threads.get(threads.size() - 1).getUpdatedAt().toString();
-    } else {
-      beforeCursor = filter.getAfter() == null ? null : threads.get(0).getUpdatedAt().toString();
-      if (threads.size()
-          > limit) { // If extra result exists, then next page exists - return after cursor
-        threads.remove(limit);
-        afterCursor = threads.get(limit - 1).getUpdatedAt().toString();
+    if (!nullOrEmpty(threads)) {
+      if (filter.getPaginationType() == PaginationType.BEFORE) {
+        if (threads.size()
+            > limit) { // If extra result exists, then previous page exists - return before cursor
+          threads.remove(0);
+          beforeCursor = threads.get(0).getUpdatedAt().toString();
+        }
+        afterCursor = threads.get(threads.size() - 1).getUpdatedAt().toString();
+      } else {
+        beforeCursor = filter.getAfter() == null ? null : threads.get(0).getUpdatedAt().toString();
+        if (threads.size()
+            > limit) { // If extra result exists, then next page exists - return after cursor
+          threads.remove(limit);
+          afterCursor = threads.get(limit - 1).getUpdatedAt().toString();
+        }
       }
     }
     return new ResultList<>(threads, beforeCursor, afterCursor, total);

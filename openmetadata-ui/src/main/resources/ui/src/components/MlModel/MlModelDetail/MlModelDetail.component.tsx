@@ -21,6 +21,7 @@ import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { getEntityDetailsPath } from '../../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
+import { COMMON_RESIZABLE_PANEL_CONFIG } from '../../../constants/ResizablePanel.constants';
 import LineageProvider from '../../../context/LineageProvider/LineageProvider';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
@@ -358,6 +359,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
 
   const {
     editTagsPermission,
+    editGlossaryTermsPermission,
     editDescriptionPermission,
     editCustomAttributePermission,
     editLineagePermission,
@@ -366,6 +368,9 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
     () => ({
       editTagsPermission:
         (mlModelPermissions.EditTags || mlModelPermissions.EditAll) && !deleted,
+      editGlossaryTermsPermission:
+        (mlModelPermissions.EditGlossaryTerms || mlModelPermissions.EditAll) &&
+        !deleted,
       editDescriptionPermission:
         (mlModelPermissions.EditDescription || mlModelPermissions.EditAll) &&
         !deleted,
@@ -426,8 +431,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
                       />
                     </div>
                   ),
-                  minWidth: 800,
-                  flex: 0.87,
+                  ...COMMON_RESIZABLE_PANEL_CONFIG.LEFT_PANEL,
                 }}
                 secondPanel={{
                   children: (
@@ -438,6 +442,9 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
                         domain={mlModelDetail?.domain}
                         editCustomAttributePermission={
                           editCustomAttributePermission
+                        }
+                        editGlossaryTermsPermission={
+                          editGlossaryTermsPermission
                         }
                         editTagPermission={editTagsPermission}
                         entityFQN={decodedMlModelFqn}
@@ -451,8 +458,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
                       />
                     </div>
                   ),
-                  minWidth: 320,
-                  flex: 0.13,
+                  ...COMMON_RESIZABLE_PANEL_CONFIG.RIGHT_PANEL,
                   className:
                     'entity-resizable-right-panel-container entity-resizable-panel-container',
                 }}
@@ -548,6 +554,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
       onDescriptionEdit,
       deleted,
       editTagsPermission,
+      editGlossaryTermsPermission,
       editDescriptionPermission,
       editCustomAttributePermission,
       editLineagePermission,
@@ -564,6 +571,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
       <Row gutter={[0, 12]}>
         <Col className="p-x-lg" span={24}>
           <DataAssetsHeader
+            isDqAlertSupported
             isRecursiveDelete
             afterDeleteAction={afterDeleteAction}
             afterDomainUpdateAction={updateMlModelDetailsState}

@@ -18,7 +18,7 @@ import {
   PlaywrightWorkerArgs,
   TestType,
 } from '@playwright/test';
-import { DBT, HTTP_CONFIG_SOURCE, REDSHIFT } from '../../../constant/service';
+import { DBT, REDSHIFT } from '../../../constant/service';
 import { SidebarItem } from '../../../constant/sidebar';
 import {
   getApiContext,
@@ -35,7 +35,7 @@ import { sidebarClick } from '../../../utils/sidebar';
 import ServiceBaseClass from './ServiceBaseClass';
 
 class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
-  name: string;
+  name = '';
   filterPattern: string;
   dbtEntityFqn: string;
   schemaFilterPattern = 'dbt_automate_upgrade_tests';
@@ -51,6 +51,7 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
     const redshiftDatabase = process.env.PLAYWRIGHT_REDSHIFT_DATABASE ?? '';
 
     this.filterPattern = 'sales';
+    this.entityFQN = `${REDSHIFT.serviceName}.${redshiftDatabase}.${this.schemaFilterPattern}.${REDSHIFT.tableName}`;
     this.dbtEntityFqn = `${REDSHIFT.serviceName}.${redshiftDatabase}.${this.schemaFilterPattern}.${REDSHIFT.DBTTable}`;
   }
 
@@ -114,19 +115,27 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
       await page.waitForSelector('#root\\/dbtConfigSource__oneof_select');
       await page.selectOption(
         '#root\\/dbtConfigSource__oneof_select',
-        'DBT HTTP Config'
+        'DBT S3 Config'
       );
       await page.fill(
-        '#root\\/dbtConfigSource\\/dbtCatalogHttpPath',
-        HTTP_CONFIG_SOURCE.DBT_CATALOG_HTTP_PATH
+        '#root\\/dbtConfigSource\\/dbtSecurityConfig\\/awsAccessKeyId',
+        process.env.PLAYWRIGHT_S3_STORAGE_ACCESS_KEY_ID ?? ''
       );
       await page.fill(
-        '#root\\/dbtConfigSource\\/dbtManifestHttpPath',
-        HTTP_CONFIG_SOURCE.DBT_MANIFEST_HTTP_PATH
+        '#root\\/dbtConfigSource\\/dbtSecurityConfig\\/awsSecretAccessKey',
+        process.env.PLAYWRIGHT_S3_STORAGE_SECRET_ACCESS_KEY ?? ''
       );
       await page.fill(
-        '#root\\/dbtConfigSource\\/dbtRunResultsHttpPath',
-        HTTP_CONFIG_SOURCE.DBT_RUN_RESULTS_FILE_PATH
+        '#root\\/dbtConfigSource\\/dbtSecurityConfig\\/awsRegion',
+        DBT.awsRegion
+      );
+      await page.fill(
+        '#root\\/dbtConfigSource\\/dbtPrefixConfig\\/dbtBucketName',
+        DBT.s3BucketName
+      );
+      await page.fill(
+        '#root\\/dbtConfigSource\\/dbtPrefixConfig\\/dbtObjectPrefix',
+        DBT.s3Prefix
       );
 
       await page.click('[data-testid="submit-btn"]');
@@ -152,20 +161,17 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
         )
         .then((res) => res.json());
 
-      // Re-deploy before running the ingestion
-      await page.click(
-        `[data-row-key*="${response.data[0].name}"] [data-testid="more-actions"]`
-      );
-      await page.getByTestId('re-deploy-button').click();
-
       // need manual wait to settle down the deployed pipeline, before triggering the pipeline
-      await page.waitForTimeout(2000);
+      await page.waitForTimeout(3000);
       await page.click(
         `[data-row-key*="${response.data[0].name}"] [data-testid="more-actions"]`
       );
       await page.getByTestId('run-button').click();
 
       await toastNotification(page, `Pipeline triggered successfully!`);
+
+      // need manual wait to make sure we are awaiting on latest run results
+      await page.waitForTimeout(2000);
 
       await this.handleIngestionRetry('dbt', page);
     });
@@ -191,7 +197,7 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
       // Verify DBT in table entity
       await visitEntityPage({
         page,
-        searchTerm: REDSHIFT.DBTTable,
+        searchTerm: this.dbtEntityFqn,
         dataTestId: `${REDSHIFT.serviceName}-${REDSHIFT.DBTTable}`,
       });
 

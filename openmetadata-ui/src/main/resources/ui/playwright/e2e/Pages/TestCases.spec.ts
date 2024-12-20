@@ -43,7 +43,7 @@ test('Table difference test case', async ({ page }) => {
       table1.entityResponseData?.['fullyQualifiedName']
     )}/tableProfile/latest`
   );
-  await page.getByText('Profiler & Data Quality').click();
+  await page.getByText('Data Observability').click();
   await profileResponse;
   await page.getByRole('menuitem', { name: 'Table Profile' }).click();
 
@@ -53,12 +53,12 @@ test('Table difference test case', async ({ page }) => {
       await page.getByTestId('test-case').click();
       await page.getByTestId('test-case-name').fill(testCase.name);
       await page.getByTestId('test-type').click();
-      await page.getByTitle('Compare 2 tables for').click();
       const tableListSearchResponse = page.waitForResponse(
         `/api/v1/search/query?q=*index=table_search_index*`
       );
-      await page.click('#tableTestForm_params_table2');
+      await page.getByTestId('tableDiff').click();
       await tableListSearchResponse;
+      await page.click('#tableTestForm_params_table2');
       const tableSearchResponse = page.waitForResponse(
         `/api/v1/search/query?q=*${testCase.table2}*index=table_search_index*`
       );
@@ -99,7 +99,7 @@ test('Table difference test case', async ({ page }) => {
       await page.getByTestId('submit-test').click();
       await createTestCaseResponse;
       const tableTestResponse = page.waitForResponse(
-        `/api/v1/dataQuality/testCases/search/list?fields=*`
+        `/api/v1/dataQuality/testCases/search/list?*fields=*`
       );
       await page.getByTestId('view-service-button').click();
       await tableTestResponse;
@@ -170,7 +170,7 @@ test('Custom SQL Query', async ({ page }) => {
       table.entityResponseData?.['fullyQualifiedName']
     )}/tableProfile/latest`
   );
-  await page.getByText('Profiler & Data Quality').click();
+  await page.getByText('Data Observability').click();
   await profileResponse;
   await page.getByRole('menuitem', { name: 'Table Profile' }).click();
 
@@ -180,7 +180,7 @@ test('Custom SQL Query', async ({ page }) => {
       await page.getByTestId('test-case').click();
       await page.getByTestId('test-case-name').fill(testCase.name);
       await page.getByTestId('test-type').click();
-      await page.getByTitle('Custom SQL Query').click();
+      await page.getByTestId('tableCustomSQLQuery').click();
       await page.click('#tableTestForm_params_strategy');
       await page.locator('.CodeMirror-scroll').click();
       await page
@@ -196,7 +196,7 @@ test('Custom SQL Query', async ({ page }) => {
       await page.getByTestId('submit-test').click();
       await createTestCaseResponse;
       const tableTestResponse = page.waitForResponse(
-        `/api/v1/dataQuality/testCases/search/list?fields=*`
+        `/api/v1/dataQuality/testCases/search/list?*fields=*`
       );
       await page.getByTestId('view-service-button').click();
       await tableTestResponse;
@@ -289,7 +289,7 @@ test('Column Values To Be Not Null', async ({ page }) => {
         NEW_COLUMN_TEST_CASE_WITH_NULL_TYPE.type
       );
       await page.click(
-        `[title="${NEW_COLUMN_TEST_CASE_WITH_NULL_TYPE.label}"]`
+        `[data-testid="${NEW_COLUMN_TEST_CASE_WITH_NULL_TYPE.type}"]`
       );
       await page.fill(
         descriptionBox,
@@ -300,7 +300,7 @@ test('Column Values To Be Not Null', async ({ page }) => {
       await page.waitForSelector('[data-testid="success-line"]');
       await page.waitForSelector('[data-testid="view-service-button"]');
       const testCaseResponse = page.waitForResponse(
-        '/api/v1/dataQuality/testCases/search/list?fields=*'
+        '/api/v1/dataQuality/testCases/search/list?*fields=*'
       );
       await page.click(`[data-testid="view-service-button"]`);
       await testCaseResponse;

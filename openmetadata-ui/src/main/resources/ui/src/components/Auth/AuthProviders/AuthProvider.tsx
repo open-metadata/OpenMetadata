@@ -25,7 +25,7 @@ import {
   InternalAxiosRequestConfig,
 } from 'axios';
 import { CookieStorage } from 'cookie-storage';
-import { isEmpty, isNil, isNumber } from 'lodash';
+import { debounce, isEmpty, isNil, isNumber } from 'lodash';
 import Qs from 'qs';
 import React, {
   ComponentType,
@@ -72,6 +72,7 @@ import {
   isProtectedRoute,
   prepareUserProfileFromClaims,
 } from '../../../utils/AuthProvider.util';
+import { getOidcToken } from '../../../utils/LocalStorageUtils';
 import { getPathNameFromWindowLocation } from '../../../utils/RouterUtils';
 import { escapeESReservedCharacters } from '../../../utils/StringsUtils';
 import { showErrorToast, showInfoToast } from '../../../utils/ToastUtils';
@@ -131,7 +132,6 @@ export const AuthProvider = ({
     setJwtPrincipalClaimsMapping,
     removeRefreshToken,
     removeOidcToken,
-    getOidcToken,
     getRefreshToken,
     isApplicationLoading,
     setApplicationLoading,
@@ -179,6 +179,9 @@ export const AuthProvider = ({
     removeRefreshToken();
 
     setApplicationLoading(false);
+
+    // Upon logout, redirect to the login page
+    history.push(ROUTES.SIGNIN);
   }, [timeoutId]);
 
   useEffect(() => {
@@ -266,39 +269,6 @@ export const AuthProvider = ({
   };
 
   /**
-   * Renew Id Token handler for all the SSOs.
-   * This method will be called when the id token is about to expire.
-   */
-  const renewIdToken = async () => {
-    try {
-      if (!tokenService.current?.isTokenUpdateInProgress()) {
-        await tokenService.current?.refreshToken();
-      } else {
-        // wait for renewal to complete
-        const wait = new Promise((resolve) => {
-          setTimeout(() => {
-            return resolve(true);
-          }, 500);
-        });
-        await wait;
-
-        // should have updated token after renewal
-        return getOidcToken();
-      }
-    } catch (error) {
-      // eslint-disable-next-line no-console
-      console.error(
-        `Error while refreshing token: `,
-        (error as AxiosError).message
-      );
-
-      throw error;
-    }
-
-    return getOidcToken();
-  };
-
-  /**
    * This method will try to signIn silently when token is about to expire
    * if it's not succeed then it will proceed for logout
    */
@@ -311,10 +281,10 @@ export const AuthProvider = ({
       return;
     }
 
-    try {
-      // Try to renew token
-      const newToken = await renewIdToken();
-
+    if (!tokenService.current?.isTokenUpdateInProgress()) {
+      // For OIDC we won't be getting newToken immediately hence not updating token here
+      const newToken = await tokenService.current?.refreshToken();
+      // Start expiry timer on successful silent signIn
       if (newToken) {
         // Start expiry timer on successful silent signIn
         // eslint-disable-next-line @typescript-eslint/no-use-before-define
@@ -325,13 +295,9 @@ export const AuthProvider = ({
           await getLoggedInUserDetails();
           failedLoggedInUserRequest = null;
         }
-      } else {
-        // reset user details if silent signIn fails
-        resetUserDetails(forceLogout);
+      } else if (forceLogout) {
+        resetUserDetails(true);
       }
-    } catch (error) {
-      // reset user details if silent signIn fails
-      resetUserDetails(forceLogout);
     }
   };
 
@@ -461,16 +427,21 @@ export const AuthProvider = ({
     }
   }, [location.pathname, storeRedirectPath]);
 
-  const updateAuthInstance = (configJson: AuthenticationConfiguration) => {
+  const updateAuthInstance = async (
+    configJson: AuthenticationConfiguration
+  ) => {
     const { provider, ...otherConfigs } = configJson;
     switch (provider) {
       case AuthProviderEnum.Azure:
         {
-          setMsalInstance(
-            new PublicClientApplication(
-              otherConfigs as unknown as Configuration
-            )
+          const instance = new PublicClientApplication(
+            otherConfigs as unknown as Configuration
           );
+
+          // Need to initialize the instance before setting it
+          await instance.initialize();
+
+          setMsalInstance(instance);
         }
 
         break;
@@ -545,6 +516,7 @@ export const AuthProvider = ({
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       config: InternalAxiosRequestConfig<any>
     ) {
+      // Need to read token from local storage as it might have been updated with refresh
       const token: string = getOidcToken() || '';
       if (token) {
         if (config.headers) {
@@ -575,7 +547,8 @@ export const AuthProvider = ({
               failedLoggedInUserRequest = true;
             }
             handleStoreProtectedRedirectPath();
-            trySilentSignIn(true);
+            // try silent signIn if token is about to expire
+            debounce(() => trySilentSignIn(true), 100);
           }
         }
 
@@ -606,9 +579,11 @@ export const AuthProvider = ({
           } else {
             // get the user details if token is present and route is not auth callback and saml callback
             if (
-              ![ROUTES.AUTH_CALLBACK, ROUTES.SAML_CALLBACK].includes(
-                location.pathname
-              )
+              ![
+                ROUTES.AUTH_CALLBACK,
+                ROUTES.SAML_CALLBACK,
+                ROUTES.SILENT_CALLBACK,
+              ].includes(location.pathname)
             ) {
               getLoggedInUserDetails();
             }
@@ -763,8 +738,6 @@ export const AuthProvider = ({
       handleFailedLogin,
       updateAxiosInterceptors: initializeAxiosInterceptors,
     });
-
-    return cleanup;
   }, [handleSuccessfulLogin]);
 
   const isConfigLoading =

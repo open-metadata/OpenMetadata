@@ -21,6 +21,7 @@ from metadata.generated.schema.api.classification.createClassification import (
     CreateClassificationRequest,
 )
 from metadata.generated.schema.api.classification.createTag import CreateTagRequest
+from metadata.generated.schema.api.createBot import CreateBot
 from metadata.generated.schema.api.data.createAPICollection import (
     CreateAPICollectionRequest,
 )
@@ -213,7 +214,8 @@ ROUTES = {
     User.__name__: "/users",
     CreateUserRequest.__name__: "/users",
     AuthenticationMechanism.__name__: "/users/auth-mechanism",
-    Bot.__name__: "/bots",  # We won't allow bot creation from the client
+    Bot.__name__: "/bots",
+    CreateBot.__name__: "/bots",
     # Roles
     Role.__name__: "/roles",
     CreateRoleRequest.__name__: "/roles",

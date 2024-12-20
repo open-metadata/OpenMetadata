@@ -19,7 +19,7 @@ in the sources and send that to OpenMetadata. However, what happens with generic
 
 In these systems we can have different types of information:
 - Unstructured data, such as images or videos,
-- Structured data in single and independent files (which can also be ingested with the [Data Lake connector](/connectors/database/datalake))
+- Structured data in single and independent files (which can also be ingested with the [S3 Data Lake connector](/connectors/database/s3-datalake))
 - Structured data in partitioned files, e.g., `my_table/year=2022/...parquet`, `my_table/year=2023/...parquet`, etc.
 
 {% note %}

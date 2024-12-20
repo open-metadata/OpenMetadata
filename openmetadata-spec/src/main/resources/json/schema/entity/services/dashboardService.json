@@ -21,14 +21,16 @@
         "Redash",
         "Metabase",
         "PowerBI",
+        "PowerBIReportServer",
         "Mode",
         "CustomDashboard",
         "DomoDashboard",
         "QuickSight",
         "QlikSense",
         "Lightdash",
-        "Mstr",
-        "QlikCloud"
+        "MicroStrategy",
+        "QlikCloud",
+        "Sigma"
       ],
       "javaEnums": [
         {
@@ -50,6 +52,9 @@
           "name": "PowerBI"
         },
         {
+          "name": "PowerBIReportServer"
+        },
+        {
           "name": "Mode"
         },
         {
@@ -68,10 +73,13 @@
           "name": "Lightdash"
         },
         {
-          "name": "Mstr"
+          "name": "MicroStrategy"
         },
         {
           "name": "QlikCloud"
+        },
+        {
+          "name": "Sigma"
         }
       ]
     },
@@ -94,6 +102,9 @@
             },
             {
               "$ref": "./connections/dashboard/powerBIConnection.json"
+            },
+            {
+              "$ref": "./connections/dashboard/powerBIReportServerConnection.json"
             },
             {
               "$ref": "./connections/dashboard/redashConnection.json"
@@ -123,10 +134,13 @@
               "$ref": "./connections/dashboard/lightdashConnection.json"
             },
             {
-              "$ref": "./connections/dashboard/mstrConnection.json"
+              "$ref": "./connections/dashboard/microStrategyConnection.json"
             },
             {
               "$ref": "./connections/dashboard/qlikCloudConnection.json"
+            },
+            {
+              "$ref": "./connections/dashboard/sigmaConnection.json"
             }
           ]
         }
@@ -176,7 +190,7 @@
       "items": {
         "$ref": "../../type/tagLabel.json"
       },
-      "default": null
+      "default": []
     },
     "owners": {
       "description": "Owners of this dashboard service.",

@@ -13,12 +13,7 @@
 
 import { AxiosError } from 'axios';
 import { cloneDeep } from 'lodash';
-import {
-  getDayCron,
-  getHourCron,
-} from '../components/common/CronEditor/CronEditor.constant';
 import { ERROR_MESSAGE } from '../constants/constants';
-import { PipelineType } from '../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import {
   LabelType,
   State,
@@ -27,8 +22,8 @@ import {
 } from '../generated/type/tagLabel';
 import {
   digitFormatter,
+  filterSelectOptions,
   getBase64EncodedString,
-  getIngestionFrequency,
   getIsErrorMatch,
   getNameFromFQN,
   getServiceTypeExploreQueryFilter,
@@ -240,29 +235,6 @@ describe('Tests for CommonUtils', () => {
       });
     });
 
-    describe('getIngestionFrequency', () => {
-      it('should return the correct cron value for TestSuite pipeline', () => {
-        const pipelineType = PipelineType.TestSuite;
-        const result = getIngestionFrequency(pipelineType);
-
-        expect(result).toEqual(getHourCron({ min: 0, hour: 0 }));
-      });
-
-      it('should return the correct cron value for Metadata pipeline', () => {
-        const pipelineType = PipelineType.Metadata;
-        const result = getIngestionFrequency(pipelineType);
-
-        expect(result).toEqual(getHourCron({ min: 0, hour: 0 }));
-      });
-
-      it('should return the correct cron value for other pipeline types', () => {
-        const pipelineType = PipelineType.Profiler;
-        const result = getIngestionFrequency(pipelineType);
-
-        expect(result).toEqual(getDayCron({ min: 0, hour: 0 }));
-      });
-    });
-
     describe('prepareLabel', () => {
       it('should return label for table entity type with quotes', () => {
         const type = 'table';
@@ -321,6 +293,57 @@ describe('Tests for CommonUtils', () => {
       expect(isDeleted('false')).toBe(false);
       expect(isDeleted(undefined)).toBe(false);
       expect(isDeleted(null)).toBe(false);
+    });
+  });
+
+  describe('filterSelectOptions', () => {
+    it('should return true if input matches option labelValue', () => {
+      const input = 'test';
+      const option = {
+        labelValue: 'Test Label',
+        value: 'testValue',
+        label: 'Test Label',
+      };
+
+      expect(filterSelectOptions(input, option)).toBe(true);
+    });
+
+    it('should return true if input matches option value', () => {
+      const input = 'test';
+      const option = {
+        labelValue: 'Label',
+        label: 'Label',
+        value: 'testValue',
+      };
+
+      expect(filterSelectOptions(input, option)).toBe(true);
+    });
+
+    it('should return false if input does not match option labelValue or value', () => {
+      const input = 'test';
+      const option = { labelValue: 'Label', value: 'value', label: 'Label' };
+
+      expect(filterSelectOptions(input, option)).toBe(false);
+    });
+
+    it('should return false if option is undefined', () => {
+      const input = 'test';
+
+      expect(filterSelectOptions(input)).toBe(false);
+    });
+
+    it('should handle non-string option value gracefully', () => {
+      const input = 'test';
+      const option = { labelValue: 'Label', value: 123, label: 'Label' };
+
+      expect(filterSelectOptions(input, option)).toBe(false);
+    });
+
+    it('should handle empty input gracefully', () => {
+      const input = '';
+      const option = { labelValue: 'Label', value: 'value', label: 'Label' };
+
+      expect(filterSelectOptions(input, option)).toBe(true);
     });
   });
 });

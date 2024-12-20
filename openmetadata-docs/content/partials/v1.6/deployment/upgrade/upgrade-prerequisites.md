@@ -84,104 +84,85 @@ during the migration after bumping this value, you can increase them further.
 
 After the migration is finished, you can revert this changes.
 
-# New Versioning System for Ingestion Docker Image
-
-We are excited to announce a recent change in our version tagging system for our Ingestion Docker images. This update aims to improve consistency and clarity in our versioning, aligning our Docker image tags with our Python PyPi package versions.
-
-### Ingestion Docker Image Tags
-
-To maintain consistency, our Docker images will now follow the same 4-digit versioning system as of Python Package versions. For example, a Docker image version might look like `1.0.0.0`.
-
-Additionally, we will continue to provide a 3-digit version tag (e.g., `1.0.0`) that will always point to the latest corresponding 4-digit image tag. This ensures ease of use for those who prefer a simpler version tag while still having access to the most recent updates.
-
-### Benefits
-
-**Consistency**: Both Python applications and Docker images will have the same versioning format, making it easier to track and manage versions.
-**Clarity**: The 4-digit system provides a clear and detailed versioning structure, helping users understand the nature and scope of changes.
-**Non-Breaking Change**: This update is designed to be non-disruptive. Existing Ingestions and dependencies will remain unaffected.
-
-#### Example
-
-Here’s an example of how the new versioning works:
-
-**Python Application Version**: `1.5.0.0`
-**Docker Image Tags**:
-- `1.5.0.0` (specific version)
-- `1.5.0` (latest version in the 1.5.0.x series)
-
-We believe this update will bring greater consistency and clarity to our versioning system. As always, we value your feedback and welcome any questions or comments you may have.
-
 # Backward Incompatible Changes
 
-## 1.5.0
+## 1.6.0
 
-### Multi Owners
-OpenMetadata allows a single user or a team to be tagged as owners for any data assets. In Release 1.5.0, we allow users to tag multiple individual owners or a single team. This will allow organizations to add ownership to multiple individuals without necessarily needing to create a team around them like previously.
+### Ingestion Workflow Status
 
-This is a backward incompatible change, if you are using APIs, please make sure the owner field is now changed to “owners”
+We are updating how we compute the success percentage. Previously, we took into account for partial success the results
+of the Source (e.g., the tables we were able to properly retrieve from Snowflake, Redshift, etc.). This means that we had 
+an error threshold in there were if up to 90% of the tables were successfully ingested, we would still consider the
+workflow as successful. However, any errors when sending the information to OpenMetadata would be considered as a failure.
 
-### Import/Export Format
-To support the multi-owner format, we have now changed how we export and import the CSV file in glossary, services, database, schema, table, etc. The new format will be
-user:userName;team:TeamName
+Now, we're changing this behavior to consider the success rate of all the steps involved in the workflow. The UI will
+then show more `Partial Success` statuses rather than `Failed`, properly reflecting the real state of the workflow.
 
-If you are importing an older file, please make sure to make this change.
+### Database Metadata & Lineage Workflow
 
-### Pydantic V2
-The core of OpenMetadata are the JSON Schemas that define the metadata standard. These schemas are automatically translated into Java, Typescript, and Python code with Pydantic classes.
+With 1.6 Release we are moving the `View Lineage` & `Stored Procedure Lineage` computation from metadata workflow to lineage workflow.
 
-In this release, we have [migrated](https://docs.pydantic.dev/latest/migration/) the codebase from Pydantic V1 to Pydantic V2.
+This means that we are removing the `overrideViewLineage` property from the `DatabaseServiceMetadataPipeline` schema which will be moved to the `DatabaseServiceQueryLineagePipeline` schema.
 
-### Deployment Related Changes (OSS only)
+### Profiler & Auto Classification Workflow
 
-`./bootstrap/bootstrap_storage.sh` **removed**
+We are creating a new `Auto Classification` workflow that will take care of managing the sample data and PII classification,
+which was previously done by the Profiler workflow. This change will allow us to have a more modular and scalable system.
 
-OpenMetadata community has built rolling upgrades to database schema and the data to make upgrades easier. This tool is now called as ./bootstrap/openmetadata-ops.sh and has been part of our releases since 1.3. The `bootstrap_storage.sh` doesn’t support new native schemas in OpenMetadata. Hence, we have deleted this tool from this release.
+The Profiler workflow will now only focus on the profiling part of the data, while the Auto Classification will take care
+of the rest.
 
-While upgrading, please refer to our Upgrade Notes in the documentation. Always follow the best practices provided there.
+This means that we are removing these properties from the `DatabaseServiceProfilerPipeline` schema:
+- `generateSampleData`
+- `processPiiSensitive`
+- `confidence`
+which will be moved to the new `DatabaseServiceAutoClassificationPipeline` schema.
 
-### Database Connection Pooling
+What you will need to do:
+- If you are using the **EXTERNAL** ingestion for the profiler (YAML configuration), you will need to update your configuration,
+removing these properties as well.
+- If you still want to use the Auto PII Classification and sampling features, you can create the new workflow
+from the UI.
 
-OpenMetadata uses Jdbi to handle database-related operations such as read/write/delete. In this release, we introduced additional configs to help with connection pooling, allowing the efficient use of a database with low resources.
+### RBAC Policy Updates for `EditTags`
 
-Please update the defaults if your cluster is running at a large scale to scale up the connections efficiently.
+We have given more granularity to the `EditTags` policy. Previously, it was a single policy that allowed the user to manage
+any kind of tagging to the assets, including adding tags, glossary terms, and Tiers. 
 
-For the new configuration, please refer to the [doc](https://docs.open-metadata.org/latest/deployment/database-connection-pooling) here
+Now, we have split this policy to give further control on which kind of tagging the user can manage. The `EditTags` policy has been
+split into:
 
-### Data Insights
+- `EditTags`: to add tags.
+- `EditGlossaryTerms`: to add Glossary Terms.
+- `EditTier`: to add Tier tags.
 
-The Data Insights application is meant to give you a quick glance at your data's state and allow you to take action based on the information you receive. To continue pursuing this objective, the application was completely refactored to allow customizability.
+### Collate - Metadata Actions for ML Tagging - Deprecation Notice
 
-Part of this refactor was making Data Insights an internal application, no longer relying on an external pipeline. This means triggering Data Insights from the Python SDK will no longer be possible.
+Since we are introducing the `Auto Classification` workflow, **we are going to remove in 1.7 the `ML Tagging` action**
+from the Metadata Actions. That feature will be covered already by the `Auto Classification` workflow, which even brings
+more flexibility allow the on-the-fly usage of the sample data for classification purposes without having to store
+it in the database.
 
-With this change you will need to run a backfill on the Data Insights for the last couple of days since the Data Assets data changed.
+### Service Spec for the Ingestion Framework
 
-### UI Changes
+This impacts users who maintain their own connectors for the ingestion framework that are **NOT** part of the
+[OpenMetadata python library (openmetadata-ingestion)](https://github.com/open-metadata/OpenMetadata/tree/ff261fb3738f3a56af1c31f7151af9eca7a602d5/ingestion/src/metadata/ingestion/source).
+Introducing the ["connector specifcication class (`ServiceSpec`)"](https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/src/metadata/utils/service_spec/service_spec.py). 
+The `ServiceSpec` class serves as the entrypoint for the connector and holds the references for the classes that will be used
+to ingest and process the metadata from the source.
+You can see [postgres](https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/src/metadata/ingestion/source/database/postgres/service_spec.py) for an
+implementation example.
 
-#### New Explore Page
 
-Explore page displays hierarchically organized data assets by grouping them into `services > database > schema > tables/stored procedures`. This helps users organically find the data asset they are looking for based on a known database or schema they were using. This is a new feature and changes the way the Explore page was built in previous releases.
+### Fivetran
 
-#### Connector Schema Changes
+The filtering of Fivetran pipelines now supports using their names instead of IDs. This change may affect existing configurations that rely on pipeline IDs for filtering.
 
-In the latest release, several updates and enhancements have been made to the JSON schema across various connectors. These changes aim to improve security, configurability, and expand integration capabilities. Here's a detailed breakdown of the updates:
+### DBT Cloud Pipeline Service
 
-- **KafkaConnect**: Added `schemaRegistryTopicSuffixName` to enhance topic configuration flexibility for schema registries.
-- **GCS Datalake**: Introduced `bucketNames` field, allowing users to specify targeted storage buckets within the Google Cloud Storage environment.
-- **OpenLineage**: Added `saslConfig` to enhance security by enabling SASL (Simple Authentication and Security Layer) configuration.
-- **Salesforce**: Added sslConfig to strengthen the security layer for Salesforce connections by supporting SSL.
-- **DeltaLake**: Updated schema by moving metastoreConnection to a newly created `metastoreConfig.json` file. Additionally, introduced `configSource` to better define source configurations, with new support for `metastoreConfig.json` and `storageConfig.json`.
-- **Iceberg RestCatalog**: Removed clientId and `clientSecret` as mandatory fields, making the schema more flexible for different authentication methods.
-- **DBT Cloud Pipelines**: Added as a new connector to support cloud-native data transformation workflows using DBT.
-- **Looker**: Expanded support to include connections using GitLab integration, offering more flexible and secure version control.
-- **Tableau**: Enhanced support by adding capabilities for connecting with `TableauPublishedDatasource` and `TableauEmbeddedDatasource`, providing more granular control over data visualization and reporting.
+We are removing the field `jobId` which we required to ingest dbt metadata from a specific job, instead of this we added a new field called `jobIds` which will accept multiple job ids to ingest metadata from multiple jobs.
 
-### Include DDL
-During the Database Metadata ingestion, we can optionally pick up the DDL for both tables and views. During the metadata ingestion, we use the view DDLs to generate the View Lineage.
+### MicroStrategy
 
-To reduce the processing time for out-of-the-box workflows, we are disabling the include DDL by default, whereas before, it was enabled, which potentially led to long-running workflows.
+The `serviceType` for MicroStrategy connector is renamed from `Mstr` to `MicroStrategy`.
 
-### Secrets Manager
-Starting with the release 1.5.0, the JWT Token for the bots will be sent to the Secrets Manager if you configured one. It won't appear anymore in your dag_generated_configs in Airflow.
-
-### Python SDK
-The `metadata insight` command has been removed. Since Data Insights application was moved to be an internal system application instead of relying on external pipelines the SDK command to run the pipeline was removed.

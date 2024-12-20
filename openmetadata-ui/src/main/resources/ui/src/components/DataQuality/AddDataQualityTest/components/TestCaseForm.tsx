@@ -11,7 +11,16 @@
  *  limitations under the License.
  */
 
-import { Button, Form, FormProps, Input, Select, Space } from 'antd';
+import {
+  Button,
+  Form,
+  FormProps,
+  Input,
+  Select,
+  Space,
+  Typography,
+} from 'antd';
+import { DefaultOptionType } from 'antd/lib/select';
 import { AxiosError } from 'axios';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import { t } from 'i18next';
@@ -42,7 +51,7 @@ import {
 } from '../../../../interface/FormUtils.interface';
 import testCaseClassBase from '../../../../pages/IncidentManager/IncidentManagerDetailPage/TestCaseClassBase';
 import {
-  getListTestCase,
+  getListTestCaseBySearch,
   getListTestDefinitions,
 } from '../../../../rest/testAPI';
 import {
@@ -133,7 +142,7 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
   };
   const fetchAllTestCases = async () => {
     try {
-      const { data } = await getListTestCase({
+      const { data } = await getListTestCaseBySearch({
         limit: PAGE_SIZE_LARGE,
         entityLink: generateEntityLink(
           isColumnFqn ? `${decodedEntityFQN}.${columnName}` : decodedEntityFQN,
@@ -281,11 +290,21 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
     });
   }, [activeColumnFqn]);
 
-  const testTypeOptions = useMemo(
+  const testTypeOptions: DefaultOptionType[] = useMemo(
     () =>
       testDefinitions.map((suite) => ({
-        label: getEntityName(suite),
+        label: (
+          <div data-testid={suite.fullyQualifiedName}>
+            <Typography.Paragraph className="m-b-0">
+              {getEntityName(suite)}
+            </Typography.Paragraph>
+            <Typography.Paragraph className="m-b-0 text-grey-muted text-xs">
+              {suite.description}
+            </Typography.Paragraph>
+          </div>
+        ),
         value: suite.fullyQualifiedName ?? '',
+        labelValue: getEntityName(suite),
       })),
 
     [testDefinitions]
@@ -378,6 +397,7 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
           filterOption={filterSelectOptions}
           options={testTypeOptions}
           placeholder={t('label.select-field', { field: t('label.test-type') })}
+          popupClassName="no-wrap-option"
           onChange={handleTestDefinitionChange}
         />
       </Form.Item>

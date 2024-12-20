@@ -1,10 +1,10 @@
 ---
-title: Run the DBTCloud Connector Externally
+title: Run the dbt Cloud Connector Externally
 slug: /connectors/pipeline/dbtcloud/yaml
 ---
 
 {% connectorDetailsHeader
-name="DBTCloud"
+name="dbt Cloud"
 stage="PROD"
 platform="Collate"
 availableFeatures=["Pipelines", "Pipeline Status", "Tags"]
@@ -12,9 +12,9 @@ unavailableFeatures=["Owners", "Lineage"]
 / %}
 
 
-In this section, we provide guides and references to use the DBTCloud connector.
+In this section, we provide guides and references to use the dbt Cloud connector.
 
-Configure and schedule DBTCloud metadata and profiler workflows from the OpenMetadata UI:
+Configure and schedule dbt Cloud metadata and profiler workflows from the OpenMetadata UI:
 
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
@@ -42,7 +42,7 @@ The workflow is modeled around the following
 
 ### 1. Define the YAML Config
 
-This is a sample config for DBTCloud:
+This is a sample config for dbt Cloud:
 
 {% codePreview %}
 
@@ -52,19 +52,19 @@ This is a sample config for DBTCloud:
 
 {% codeInfo srNumber=1 %}
 
-**host**: DBT cloud Access URL eg.`https://abc12.us1.dbt.com`. Go to your dbt cloud account settings to know your Access URL.
+**host**: DBT cloud Access URL eg.`https://abc12.us1.dbt.com`. Go to your dbt cloud account settings then go to the Access URLs section. In there you will find various URLs we need the `Access URL` from that section as the Host. For more info visit [here](https://docs.getdbt.com/docs/cloud/about-cloud/access-regions-ip-addresses#api-access-urls).
 
 {% /codeInfo %}
 
 {% codeInfo srNumber=2 %}
 
-**discoveryAPI**: DBT cloud Access URL eg. `https://metadata.cloud.getdbt.com/graphql`. Go to your dbt cloud account settings to know your Discovery API url.
+**discoveryAPI**: DBT cloud Discovery API URL eg. `https://abc12.metadata.us1.dbt.com/graphql`. Go to your dbt cloud account settings where you found your Access URL. In there scroll down to find `Discovery API URL` . If your `Discovery API URL` doesn't contain the `/graphql` at the end please add it. Make sure you have `/graphql` at the end of your URL. Note that `Semantic Layer GraphQL API URL` is different from `Discovery API URL`.
 
 {% /codeInfo %}
 
 {% codeInfo srNumber=3 %}
 
-**accountId**: The Account ID of your DBT cloud Project. Go to your dbt cloud account settings to know your Account Id. This will be a numeric value but in openmetadata we parse it as a string.
+**accountId**: The Account ID of your DBT cloud Project. Go to your dbt cloud account settings then in the `Account information` you will find `Account ID`. This will be a numeric value but in openmetadata we parse it as a string.
 
 {% /codeInfo %}
 

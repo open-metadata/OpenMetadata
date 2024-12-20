@@ -87,9 +87,11 @@ om_chart_type_dict = {
     "dual_line": ChartType.Line,
     "line_multi": ChartType.Line,
     "table": ChartType.Table,
+    "levelTable": ChartType.Table,
     "dist_bar": ChartType.Bar,
     "bar": ChartType.Bar,
     "box_plot": ChartType.BoxPlot,
+    "box": ChartType.BoxPlot,
     "boxplot": ChartType.BoxPlot,
     "histogram": ChartType.Histogram,
     "treemap": ChartType.Area,
@@ -358,8 +360,7 @@ def clean_uri(uri: Union[str, Url]) -> str:
     make it http://localhost:9000
     """
     # force a string of the given Uri if needed
-    if isinstance(uri, Url):
-        uri = str(uri)
+    uri = str(uri)
     return uri[:-1] if uri.endswith("/") else uri
 
 

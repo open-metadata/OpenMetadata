@@ -337,6 +337,12 @@ export const TaskTab = ({
       );
   };
 
+  const onGlossaryTaskResolve = (status = 'approved') => {
+    const newValue = isTaskGlossaryApproval ? status : taskDetails?.suggestion;
+    const data = { newValue: newValue };
+    updateTaskData(data as TaskDetails);
+  };
+
   const onTaskResolve = () => {
     if (!isTaskGlossaryApproval && isEmpty(taskDetails?.suggestion)) {
       showErrorToast(
@@ -425,8 +431,11 @@ export const TaskTab = ({
       onTaskResolve();
     }
     setTaskAction(
-      TASK_ACTION_LIST.find((action) => action.key === info.key) ??
-        TASK_ACTION_LIST[0]
+      [
+        ...TASK_ACTION_LIST,
+        ...GLOSSARY_TASK_ACTION_LIST,
+        ...INCIDENT_TASK_ACTION_LIST,
+      ].find((action) => action.key === info.key) ?? TASK_ACTION_LIST[0]
     );
   };
 
@@ -548,7 +557,7 @@ export const TaskTab = ({
         break;
 
       case TaskActionMode.CLOSE:
-        onTaskReject();
+        onGlossaryTaskResolve('rejected');
 
         break;
     }
@@ -956,9 +965,9 @@ export const TaskTab = ({
       {isTaskTestCaseResult ? (
         <Modal
           destroyOnClose
-          maskClosable
           closable={false}
           closeIcon={null}
+          maskClosable={false}
           okButtonProps={{
             loading: isActionLoading,
           }}
@@ -1019,9 +1028,9 @@ export const TaskTab = ({
       ) : (
         <Modal
           destroyOnClose
-          maskClosable
           closable={false}
           closeIcon={null}
+          maskClosable={false}
           open={showEditTaskModel}
           title={`${t('label.edit-entity', {
             entity: t('label.task-lowercase'),
