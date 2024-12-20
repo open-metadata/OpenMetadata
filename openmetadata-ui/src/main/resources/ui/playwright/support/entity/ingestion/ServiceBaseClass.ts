@@ -98,10 +98,10 @@ class ServiceBaseClass {
       await testConnection(page);
     }
 
-    await this.submitService(this.serviceName, page);
+    await this.submitService(page);
 
     if (this.shouldAddIngestion) {
-      await this.addIngestionPipeline(this.serviceName, page);
+      await this.addIngestionPipeline(page);
     }
   }
 
@@ -149,7 +149,7 @@ class ServiceBaseClass {
     // Handle validate ingestion details in respective service here
   }
 
-  async addIngestionPipeline(serviceName: string, page: Page) {
+  async addIngestionPipeline(page: Page) {
     await page.click('[data-testid="add-ingestion-button"]');
 
     // Add ingestion page
@@ -170,7 +170,10 @@ class ServiceBaseClass {
 
     // Header available once page loads
     await page.waitForSelector('[data-testid="data-assets-header"]');
-    await page.getByTestId('loader').waitFor({ state: 'detached' });
+    await page
+      .getByTestId('table-container')
+      .getByTestId('loader')
+      .waitFor({ state: 'detached' });
     await page.getByTestId('ingestions').click();
     await page
       .getByLabel('Ingestions')
@@ -191,7 +194,7 @@ class ServiceBaseClass {
     await this.handleIngestionRetry('metadata', page);
   }
 
-  async submitService(serviceName: string, page: Page) {
+  async submitService(page: Page) {
     await page.click('[data-testid="submit-btn"]');
     await page.waitForSelector('[data-testid="success-line"]', {
       state: 'visible',
@@ -203,11 +206,39 @@ class ServiceBaseClass {
   }
 
   async scheduleIngestion(page: Page) {
-    // Schedule & Deploy
-    await page.waitForSelector('[data-testid="cron-type"]');
     await page.click('[data-testid="cron-type"]');
-    await page.waitForSelector('.ant-select-item-option-content');
-    await page.click('.ant-select-item-option-content:has-text("None")');
+    await page.click('.ant-select-item-option-content:has-text("Custom")');
+    // Check validation error thrown for a cron that is too frequent
+    // i.e. having interval less than 1 hour
+    await page.locator('#schedular-form_cron').fill('* * * 2 6');
+    await page.click('[data-testid="deploy-button"]');
+
+    await expect(
+      page.getByText(
+        'Cron schedule too frequent. Please choose at least 1-hour intervals.'
+      )
+    ).toBeAttached();
+
+    // Check validation error thrown for a cron that is invalid
+    await page.locator('#schedular-form_cron').clear();
+    await page.click('[data-testid="deploy-button"]');
+    await page.locator('#schedular-form_cron').fill('* * * 2 ');
+
+    await expect(
+      page.getByText(
+        'Error: Expression has only 4 parts. At least 5 parts are required.'
+      )
+    ).toBeAttached();
+
+    await page.locator('#schedular-form_cron').clear();
+
+    await page.waitForSelector('[data-testid="schedular-card-container"]');
+    await page
+      .getByTestId('schedular-card-container')
+      .getByText('On Demand')
+      .click();
+
+    await expect(page.locator('[data-testid="cron-type"]')).not.toBeVisible();
 
     const deployPipelinePromise = page.waitForRequest(
       `/api/v1/services/ingestionPipelines/deploy/**`
@@ -240,7 +271,7 @@ class ServiceBaseClass {
       .then((res) => res.json());
 
     const workflowData = response.data.filter(
-      (d) => d.pipelineType === ingestionType
+      (d: { pipelineType: string }) => d.pipelineType === ingestionType
     )[0];
 
     const oneHourBefore = Date.now() - 86400000;
@@ -261,7 +292,7 @@ class ServiceBaseClass {
         {
           // Custom expect message for reporting, optional.
           message: 'Wait for pipeline to be successful',
-          timeout: 600_000,
+          timeout: 750_000,
           intervals: [30_000, 15_000, 5_000],
         }
       )
@@ -315,6 +346,11 @@ class ServiceBaseClass {
     await page.click('[data-testid="submit-btn"]');
 
     // select schedule
+    await page.waitForSelector('[data-testid="schedular-card-container"]');
+    await page
+      .getByTestId('schedular-card-container')
+      .getByText('Schedule', { exact: true })
+      .click();
     await page.click('[data-testid="cron-type"]');
     await page
       .locator('.ant-select-item-option-content', { hasText: 'Hour' })
@@ -350,7 +386,14 @@ class ServiceBaseClass {
 
     // Deploy with schedule
     await page.click('[data-testid="deploy-button"]');
+
+    const getIngestionPipelines = page.waitForRequest(
+      `/api/v1/services/ingestionPipelines?**`
+    );
+
     await page.click('[data-testid="view-service-button"]');
+
+    await getIngestionPipelines;
 
     await expect(page.getByTestId('schedule-primary-details')).toHaveText(
       'At 04:04 AM'
@@ -365,7 +408,10 @@ class ServiceBaseClass {
     await page.click('[data-testid="submit-btn"]');
     await page.click('[data-testid="cron-type"]');
     await page.click('.ant-select-item-option-content:has-text("Week")');
-    await page.click('[data-value="6"]');
+    await page
+      .locator('#schedular-form_dow .week-selector-buttons')
+      .getByText('W')
+      .click();
     await page.click('[data-testid="hour-options"]');
     await page.click('#hour-select_list + .rc-virtual-list [title="05"]');
     await page.click('[data-testid="minute-options"]');
@@ -379,7 +425,7 @@ class ServiceBaseClass {
       'At 05:05 AM'
     );
     await expect(page.getByTestId('schedule-secondary-details')).toHaveText(
-      'Only on saturday'
+      'Only on wednesday'
     );
 
     // click and edit pipeline schedule for Custom
@@ -388,16 +434,18 @@ class ServiceBaseClass {
     await page.click('[data-testid="submit-btn"]');
     await page.click('[data-testid="cron-type"]');
     await page.click('.ant-select-item-option-content:has-text("Custom")');
-    await page.fill('#cron', '* * * 2 6');
+
+    // Schedule & Deploy
+    await page.locator('#schedular-form_cron').fill('0 * * 2 6');
 
     await page.click('[data-testid="deploy-button"]');
     await page.click('[data-testid="view-service-button"]');
 
     await expect(page.getByTestId('schedule-primary-details')).toHaveText(
-      'Every minute'
+      'Every hour'
     );
     await expect(page.getByTestId('schedule-secondary-details')).toHaveText(
-      'Every hour, only on saturday, only in february'
+      'Only on saturday, only in february'
     );
   }
 

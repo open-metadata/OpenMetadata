@@ -11,11 +11,22 @@
  *  limitations under the License.
  */
 import { DownOutlined } from '@ant-design/icons';
-import { Button, Col, Dropdown, Form, Row, Select, Space, Tabs } from 'antd';
+import {
+  Button,
+  Col,
+  Dropdown,
+  Form,
+  Row,
+  Select,
+  Space,
+  Tabs,
+  Tooltip,
+} from 'antd';
 import { isEmpty } from 'lodash';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
+import { ReactComponent as SettingIcon } from '../../../../../assets/svg/ic-settings-primery.svg';
 import {
   getEntityDetailsPath,
   INITIAL_PAGING_VALUE,
@@ -64,6 +75,7 @@ export const QualityTab = () => {
     testCasePaging,
     table,
     testCaseSummary,
+    onSettingButtonClick,
   } = useTableProfiler();
   const { getResourceLimit } = useLimitStore();
 
@@ -76,7 +88,12 @@ export const QualityTab = () => {
     showPagination,
   } = testCasePaging;
 
-  const editTest = permissions.EditAll || permissions.EditTests;
+  const { editTest, editDataProfile } = useMemo(() => {
+    return {
+      editTest: permissions?.EditAll || permissions?.EditTests,
+      editDataProfile: permissions?.EditAll || permissions?.EditDataProfile,
+    };
+  }, [permissions]);
   const { fqn: datasetFQN } = useFqn();
   const history = useHistory();
   const { t } = useTranslation();
@@ -176,6 +193,7 @@ export const QualityTab = () => {
                 <NextPrevious
                   isNumberBased
                   currentPage={currentPage}
+                  isLoading={isTestsLoading}
                   pageSize={pageSize}
                   paging={paging}
                   pagingHandler={handleTestCasePageChange}
@@ -291,6 +309,19 @@ export const QualityTab = () => {
                       </Dropdown>
                     </LimitWrapper>
                   </Form.Item>
+                )}
+
+                {editDataProfile && (
+                  <Tooltip
+                    placement="topRight"
+                    title={t('label.setting-plural')}>
+                    <Button
+                      className="flex-center"
+                      data-testid="profiler-setting-btn"
+                      onClick={onSettingButtonClick}>
+                      <SettingIcon />
+                    </Button>
+                  </Tooltip>
                 )}
               </Space>
             </Form>

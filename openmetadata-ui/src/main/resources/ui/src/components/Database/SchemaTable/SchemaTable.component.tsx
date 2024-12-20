@@ -12,7 +12,7 @@
  */
 
 import { FilterOutlined } from '@ant-design/icons';
-import { Button, Tooltip, Typography } from 'antd';
+import { Button, Form, Select, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { ExpandableConfig } from 'antd/lib/table/interface';
 import {
@@ -23,7 +23,6 @@ import {
   isUndefined,
   set,
   sortBy,
-  toLower,
   uniqBy,
 } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
@@ -36,7 +35,10 @@ import {
   ICON_DIMENSION,
   NO_DATA_PLACEHOLDER,
 } from '../../../constants/constants';
-import { TABLE_SCROLL_VALUE } from '../../../constants/Table.constants';
+import {
+  COLUMN_CONSTRAINT_TYPE_OPTIONS,
+  TABLE_SCROLL_VALUE,
+} from '../../../constants/Table.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
@@ -50,11 +52,15 @@ import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useFqn } from '../../../hooks/useFqn';
 import { getPartialNameFromTableFQN } from '../../../utils/CommonUtils';
 import {
+  getColumnSorter,
   getEntityName,
   getFrequentlyJoinedColumns,
+  highlightSearchArrayElement,
+  highlightSearchText,
   searchInColumns,
 } from '../../../utils/EntityUtils';
 import { getEntityColumnFQN } from '../../../utils/FeedUtils';
+import { stringToHTML } from '../../../utils/StringsUtils';
 import {
   getAllTags,
   searchTagInData,
@@ -71,22 +77,30 @@ import FilterTablePlaceHolder from '../../common/ErrorWithPlaceholder/FilterTabl
 import Table from '../../common/Table/Table';
 import TestCaseStatusSummaryIndicator from '../../common/TestCaseStatusSummaryIndicator/TestCaseStatusSummaryIndicator.component';
 import EntityNameModal from '../../Modals/EntityNameModal/EntityNameModal.component';
-import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
+import {
+  EntityName,
+  EntityNameWithAdditionFields,
+} from '../../Modals/EntityNameModal/EntityNameModal.interface';
 import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import { ColumnFilter } from '../ColumnFilter/ColumnFilter.component';
 import TableDescription from '../TableDescription/TableDescription.component';
 import TableTags from '../TableTags/TableTags.component';
-import { SchemaTableProps, TableCellRendered } from './SchemaTable.interface';
+import {
+  SchemaTableProps,
+  TableCellRendered,
+  UpdatedColumnFieldData,
+} from './SchemaTable.interface';
 
 const SchemaTable = ({
   searchText,
-  onUpdate,
   hasDescriptionEditAccess,
   hasTagEditAccess,
+  hasGlossaryTermEditAccess,
   isReadOnly = false,
-  onThreadLinkSelect,
   table,
   testCaseSummary,
+  onUpdate,
+  onThreadLinkSelect,
 }: SchemaTableProps) => {
   const { theme } = useApplicationStore();
   const { t } = useTranslation();
@@ -171,12 +185,7 @@ const SchemaTable = ({
     field,
     value,
     columns,
-  }: {
-    fqn: string;
-    field: keyof Column;
-    value?: string;
-    columns: Column[];
-  }) => {
+  }: UpdatedColumnFieldData) => {
     columns?.forEach((col) => {
       if (col.fullyQualifiedName === fqn) {
         set(col, field, value);
@@ -239,15 +248,12 @@ const SchemaTable = ({
       return NO_DATA_PLACEHOLDER;
     }
 
-    return isReadOnly ||
-      (displayValue && displayValue.length < 25 && !isReadOnly) ? (
-      toLower(displayValue)
-    ) : (
-      <Tooltip title={toLower(displayValue)}>
-        <Typography.Text ellipsis className="cursor-pointer">
-          {displayValue}
-        </Typography.Text>
-      </Tooltip>
+    return (
+      <Typography.Paragraph
+        className="cursor-pointer"
+        ellipsis={{ tooltip: displayValue, rows: 3 }}>
+        {highlightSearchArrayElement(dataTypeDisplay, searchText)}
+      </Typography.Paragraph>
     );
   };
 
@@ -261,7 +267,7 @@ const SchemaTable = ({
         <TableDescription
           columnData={{
             fqn: record.fullyQualifiedName ?? '',
-            field: record.description,
+            field: highlightSearchText(record.description, searchText),
             record,
           }}
           entityFqn={tableFqn}
@@ -310,16 +316,25 @@ const SchemaTable = ({
     setEditColumnDisplayName(record);
   };
 
-  const handleEditDisplayName = async ({ displayName }: EntityName) => {
+  const handleEditColumnData = async (data: EntityName) => {
+    const { displayName, constraint } = data as EntityNameWithAdditionFields;
     if (
       !isUndefined(editColumnDisplayName) &&
       editColumnDisplayName.fullyQualifiedName
     ) {
       const tableCols = cloneDeep(tableColumns);
+
       updateColumnFields({
         fqn: editColumnDisplayName.fullyQualifiedName,
         value: isEmpty(displayName) ? undefined : displayName,
         field: 'displayName',
+        columns: tableCols,
+      });
+
+      updateColumnFields({
+        fqn: editColumnDisplayName.fullyQualifiedName,
+        value: isEmpty(constraint) ? undefined : constraint,
+        field: 'constraint',
         columns: tableCols,
       });
       await onUpdate(tableCols);
@@ -347,6 +362,7 @@ const SchemaTable = ({
         accessor: 'name',
         width: 200,
         fixed: 'left',
+        sorter: getColumnSorter<Column, 'name'>('name'),
         render: (name: Column['name'], record: Column) => {
           const { displayName } = record;
 
@@ -361,7 +377,7 @@ const SchemaTable = ({
                 <Typography.Text
                   className="m-b-0 d-block text-grey-muted break-word"
                   data-testid="column-name">
-                  {name}
+                  {stringToHTML(highlightSearchText(name, searchText))}
                 </Typography.Text>
               </div>
               {!isEmpty(displayName) ? (
@@ -369,17 +385,16 @@ const SchemaTable = ({
                 <Typography.Text
                   className="m-b-0 d-block break-word"
                   data-testid="column-display-name">
-                  {getEntityName(record)}
+                  {stringToHTML(
+                    highlightSearchText(getEntityName(record), searchText)
+                  )}
                 </Typography.Text>
               ) : null}
+
               {(tablePermissions?.EditAll ||
                 tablePermissions?.EditDisplayName) &&
                 !isReadOnly && (
-                  <Tooltip
-                    placement="right"
-                    title={t('label.edit-entity', {
-                      entity: t('label.display-name'),
-                    })}>
+                  <Tooltip placement="right" title={t('label.edit')}>
                     <Button
                       className="cursor-pointer hover-cell-icon w-fit-content"
                       data-testid="edit-displayName-button"
@@ -405,7 +420,6 @@ const SchemaTable = ({
         dataIndex: 'dataTypeDisplay',
         key: 'dataTypeDisplay',
         accessor: 'dataTypeDisplay',
-        ellipsis: true,
         width: 150,
         render: renderDataTypeDisplay,
       },
@@ -468,7 +482,7 @@ const SchemaTable = ({
             entityFqn={tableFqn}
             entityType={EntityType.TABLE}
             handleTagSelection={handleTagSelection}
-            hasTagEditAccess={hasTagEditAccess}
+            hasTagEditAccess={hasGlossaryTermEditAccess}
             index={index}
             isReadOnly={isReadOnly}
             record={record}
@@ -505,6 +519,7 @@ const SchemaTable = ({
       isReadOnly,
       tableConstraints,
       hasTagEditAccess,
+      hasGlossaryTermEditAccess,
       handleUpdate,
       handleTagSelection,
       renderDataTypeDisplay,
@@ -514,6 +529,24 @@ const SchemaTable = ({
       tagFilter,
       testCaseCounts,
     ]
+  );
+
+  const additionalFieldsInEntityNameModal = (
+    <Form.Item
+      label={t('label.entity-type-plural', {
+        entity: t('label.constraint'),
+      })}
+      name="constraint">
+      <Select
+        data-testid="constraint-type-select"
+        options={COLUMN_CONSTRAINT_TYPE_OPTIONS}
+        placeholder={t('label.select-entity', {
+          entity: t('label.entity-type-plural', {
+            entity: t('label.constraint'),
+          }),
+        })}
+      />
+    </Form.Item>
   );
 
   useEffect(() => {
@@ -568,13 +601,14 @@ const SchemaTable = ({
       )}
       {editColumnDisplayName && (
         <EntityNameModal
+          additionalFields={additionalFieldsInEntityNameModal}
           entity={editColumnDisplayName}
           title={`${t('label.edit-entity', {
             entity: t('label.column'),
           })}: "${editColumnDisplayName?.name}"`}
           visible={Boolean(editColumnDisplayName)}
           onCancel={() => setEditColumnDisplayName(undefined)}
-          onSave={handleEditDisplayName}
+          onSave={handleEditColumnData}
         />
       )}
     </>

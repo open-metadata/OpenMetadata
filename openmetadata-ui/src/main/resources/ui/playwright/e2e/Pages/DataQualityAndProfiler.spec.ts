@@ -191,7 +191,7 @@ test('Column test case', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
     await testDefinitionResponse;
     await page.fill('#tableTestForm_testName', NEW_COLUMN_TEST_CASE.name);
     await page.click('#tableTestForm_testTypeId');
-    await page.click(`[title="${NEW_COLUMN_TEST_CASE.label}"]`);
+    await page.click(`[data-testid="${NEW_COLUMN_TEST_CASE.type}"]`);
     await page.fill(
       '#tableTestForm_params_minLength',
       NEW_COLUMN_TEST_CASE.min
@@ -493,8 +493,11 @@ test(
     await page.getByTestId('profiler').click();
     await page
       .getByTestId('profiler-tab-left-panel')
-      .getByText('Table Profile')
+      .getByText('Data Quality')
       .click();
+
+    await page.reload();
+    await page.waitForLoadState('networkidle');
 
     await page.click('[data-testid="profiler-setting-btn"]');
     await page.waitForSelector('.ant-modal-body');

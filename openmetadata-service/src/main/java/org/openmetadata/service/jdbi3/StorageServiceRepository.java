@@ -17,5 +17,6 @@ public class StorageServiceRepository
         "",
         ServiceType.STORAGE);
     supportsSearch = true;
+    parent = true;
   }
 }

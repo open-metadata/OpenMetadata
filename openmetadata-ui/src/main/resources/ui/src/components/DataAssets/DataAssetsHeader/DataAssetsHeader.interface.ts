@@ -101,6 +101,8 @@ export type DataAssetsHeaderProps = {
   allowSoftDelete?: boolean;
   showDomain?: boolean;
   isRecursiveDelete?: boolean;
+  isDqAlertSupported?: boolean;
+  badge?: React.ReactNode;
   afterDomainUpdateAction?: (asset: DataAssetWithDomains) => void;
   afterDeleteAction?: (isSoftDelete?: boolean, version?: number) => void;
   onTierUpdate: (tier?: Tag) => Promise<void>;

@@ -8,7 +8,6 @@ import static org.openmetadata.service.util.AsciiTable.printOpenMetadataText;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
-import com.codahale.metrics.NoopMetricRegistry;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
@@ -37,8 +36,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.flywaydb.core.Flyway;
 import org.flywaydb.core.api.MigrationVersion;
 import org.jdbi.v3.core.Jdbi;
-import org.jdbi.v3.sqlobject.SqlObjectPlugin;
-import org.jdbi.v3.sqlobject.SqlObjects;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.entity.app.App;
@@ -63,7 +60,6 @@ import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.MigrationDAO;
 import org.openmetadata.service.jdbi3.SystemRepository;
-import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.api.MigrationWorkflow;
 import org.openmetadata.service.resources.CollectionRegistry;
@@ -73,6 +69,7 @@ import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.secrets.SecretsManagerUpdateService;
 import org.openmetadata.service.util.jdbi.DatabaseAuthenticationProviderFactory;
+import org.openmetadata.service.util.jdbi.JdbiUtils;
 import org.slf4j.LoggerFactory;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
@@ -211,6 +208,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
       flyway.clean();
       LOG.info("Creating the OpenMetadata Schema.");
       flyway.migrate();
+      LOG.info("Running the Native Migrations.");
       validateAndRunSystemDataMigrations(true);
       LOG.info("OpenMetadata Database Schema is Updated.");
       LOG.info("create indexes.");
@@ -266,28 +264,86 @@ public class OpenMetadataOperations implements Callable<Integer> {
   public Integer reIndex(
       @Option(
               names = {"-b", "--batch-size"},
-              defaultValue = "100")
+              defaultValue = "300",
+              description = "Number of records to process in each batch.")
           int batchSize,
       @Option(
               names = {"-p", "--payload-size"},
-              defaultValue = "104857600")
+              defaultValue = "104857600",
+              description = "Maximum size of the payload in bytes.")
           long payloadSize,
       @Option(
               names = {"--recreate-indexes"},
-              defaultValue = "true")
-          boolean recreateIndexes) {
+              defaultValue = "true",
+              description = "Flag to determine if indexes should be recreated.")
+          boolean recreateIndexes,
+      @Option(
+              names = {"--producer-threads"},
+              defaultValue = "10",
+              description = "Number of threads to use for processing.")
+          int producerThreads,
+      @Option(
+              names = {"--consumer-threads"},
+              defaultValue = "5",
+              description = "Number of threads to use for processing.")
+          int consumerThreads,
+      @Option(
+              names = {"--queue-size"},
+              defaultValue = "300",
+              description = "Queue Size to use internally for reindexing.")
+          int queueSize,
+      @Option(
+              names = {"--back-off"},
+              defaultValue = "1000",
+              description = "Back-off time in milliseconds for retries.")
+          int backOff,
+      @Option(
+              names = {"--max-back-off"},
+              defaultValue = "10000",
+              description = "Max Back-off time in milliseconds for retries.")
+          int maxBackOff,
+      @Option(
+              names = {"--max-requests"},
+              defaultValue = "1000",
+              description = "Maximum number of concurrent search requests.")
+          int maxRequests,
+      @Option(
+              names = {"--retries"},
+              defaultValue = "3",
+              description = "Maximum number of retries for failed search requests.")
+          int retries) {
     try {
+      LOG.info(
+          "Running Reindexing with Batch Size: {}, Payload Size: {}, Recreate-Index: {}, Producer threads: {}, Consumer threads: {}, Queue Size: {}, Back-off: {}, Max Back-off: {}, Max Requests: {}, Retries: {}",
+          batchSize,
+          payloadSize,
+          recreateIndexes,
+          producerThreads,
+          consumerThreads,
+          queueSize,
+          backOff,
+          maxBackOff,
+          maxRequests,
+          retries);
       parseConfig();
       CollectionRegistry.initialize();
       ApplicationHandler.initialize(config);
-      // load seed data so that repositories are initialized
       CollectionRegistry.getInstance().loadSeedData(jdbi, config, null, null, null, true);
       ApplicationHandler.initialize(config);
-      // creates the default search index application
       AppScheduler.initialize(config, collectionDAO, searchRepository);
-
       String appName = "SearchIndexingApplication";
-      return executeSearchReindexApp(appName, batchSize, payloadSize, recreateIndexes);
+      return executeSearchReindexApp(
+          appName,
+          batchSize,
+          payloadSize,
+          recreateIndexes,
+          producerThreads,
+          consumerThreads,
+          queueSize,
+          backOff,
+          maxBackOff,
+          maxRequests,
+          retries);
     } catch (Exception e) {
       LOG.error("Failed to reindex due to ", e);
       return 1;
@@ -295,7 +351,17 @@ public class OpenMetadataOperations implements Callable<Integer> {
   }
 
   private int executeSearchReindexApp(
-      String appName, int batchSize, long payloadSize, boolean recreateIndexes) {
+      String appName,
+      int batchSize,
+      long payloadSize,
+      boolean recreateIndexes,
+      int producerThreads,
+      int consumerThreads,
+      int queueSize,
+      int backOff,
+      int maxBackOff,
+      int maxRequests,
+      int retries) {
     AppRepository appRepository = (AppRepository) Entity.getEntityRepository(Entity.APPLICATION);
     App originalSearchIndexApp =
         appRepository.getByName(null, appName, appRepository.getFields("id"));
@@ -309,9 +375,16 @@ public class OpenMetadataOperations implements Callable<Integer> {
         .withBatchSize(batchSize)
         .withPayLoadSize(payloadSize)
         .withRecreateIndex(recreateIndexes)
+        .withProducerThreads(producerThreads)
+        .withConsumerThreads(consumerThreads)
+        .withQueueSize(queueSize)
+        .withInitialBackoff(backOff)
+        .withMaxBackoff(maxBackOff)
+        .withMaxConcurrentRequests(maxRequests)
+        .withMaxRetries(retries)
         .withEntities(Set.of("all"));
 
-    // Update the search index app with the new batch size, payload size and recreate index flag
+    // Update the search index app with the new configurations
     App updatedSearchIndexApp = JsonUtils.deepCopy(originalSearchIndexApp, App.class);
     updatedSearchIndexApp.withAppConfiguration(updatedJob);
     JsonPatch patch = JsonUtils.getJsonPatch(originalSearchIndexApp, updatedSearchIndexApp);
@@ -324,7 +397,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
 
     int result = waitAndReturnReindexingAppStatus(updatedSearchIndexApp, currentTime);
 
-    // Repatch with original
+    // Re-patch with original configuration
     JsonPatch repatch = JsonUtils.getJsonPatch(updatedSearchIndexApp, originalSearchIndexApp);
     appRepository.patch(null, originalSearchIndexApp.getId(), "admin", repatch);
 
@@ -480,7 +553,6 @@ public class OpenMetadataOperations implements Callable<Integer> {
       PipelineServiceClientInterface pipelineServiceClient,
       List<List<String>> pipelineStatuses) {
     try {
-      // TODO: IS THIS OK?
       LOG.debug(String.format("deploying pipeline %s", pipeline.getName()));
       pipeline.setOpenMetadataServerConnection(
           new OpenMetadataConnectionBuilder(config, pipeline).build());
@@ -545,7 +617,6 @@ public class OpenMetadataOperations implements Callable<Integer> {
     String user = dataSourceFactory.getUser();
     String password = dataSourceFactory.getPassword();
     assert user != null && password != null;
-
     String flywayRootPath = config.getMigrationConfiguration().getFlywayPath();
     String location =
         "filesystem:"
@@ -568,12 +639,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
             .load();
     nativeSQLScriptRootPath = config.getMigrationConfiguration().getNativePath();
     extensionSQLScriptRootPath = config.getMigrationConfiguration().getExtensionPath();
-    jdbi = Jdbi.create(dataSourceFactory.build(new NoopMetricRegistry(), "open-metadata-ops"));
-    jdbi.installPlugin(new SqlObjectPlugin());
-    jdbi.getConfig(SqlObjects.class)
-        .setSqlLocator(
-            new ConnectionAwareAnnotationSqlLocator(
-                config.getDataSourceFactory().getDriverClass()));
+
+    jdbi = JdbiUtils.createAndSetupJDBI(dataSourceFactory);
 
     searchRepository = new SearchRepository(config.getElasticSearchConfiguration());
 

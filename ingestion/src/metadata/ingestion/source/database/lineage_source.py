@@ -15,17 +15,34 @@ import csv
 import os
 import traceback
 from abc import ABC
-from typing import Iterable, Iterator, Union
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from functools import partial
+from typing import Callable, Iterable, Iterator, List, Optional, Union
 
 from metadata.generated.schema.api.data.createQuery import CreateQueryRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
-from metadata.generated.schema.type.basic import FullyQualifiedEntityName, SqlQuery
+from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.type.basic import (
+    FullyQualifiedEntityName,
+    SqlQuery,
+    Uuid,
+)
+from metadata.generated.schema.type.entityLineage import (
+    ColumnLineage,
+    EntitiesEdge,
+    LineageDetails,
+    Source,
+)
+from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.tableQuery import TableQuery
 from metadata.ingestion.api.models import Either
-from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper
-from metadata.ingestion.lineage.sql_lineage import get_lineage_by_query
+from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper, Dialect
+from metadata.ingestion.lineage.sql_lineage import get_column_fqn, get_lineage_by_query
+from metadata.ingestion.models.ometa_lineage import OMetaLineageRequest
 from metadata.ingestion.source.database.query_parser_source import QueryParserSource
+from metadata.ingestion.source.models import TableView
 from metadata.utils import fqn
+from metadata.utils.db_utils import get_view_lineage
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -43,12 +60,14 @@ class LineageSource(QueryParserSource, ABC):
     - schema
     """
 
+    dialect: Dialect
+
     def yield_table_queries_from_logs(self) -> Iterator[TableQuery]:
         """
         Method to handle the usage from query logs
         """
         try:
-            query_log_path = self.config.sourceConfig.config.queryLogFilePath
+            query_log_path = self.source_config.queryLogFilePath
             if os.path.isfile(query_log_path):
                 file_paths = [query_log_path]
             elif os.path.isdir(query_log_path):
@@ -89,6 +108,28 @@ class LineageSource(QueryParserSource, ABC):
             )
             yield from self.yield_table_query()
 
+    def generate_lineage_in_thread(self, producer_fn: Callable, processor_fn: Callable):
+        with ThreadPoolExecutor(max_workers=self.source_config.threads) as executor:
+            futures = []
+
+            for produced_input in producer_fn():
+                futures.append(executor.submit(processor_fn, produced_input))
+
+            # Handle remaining futures after the loop
+            for future in as_completed(
+                futures, timeout=self.source_config.parsingTimeoutLimit
+            ):
+                try:
+                    results = future.result(
+                        timeout=self.source_config.parsingTimeoutLimit
+                    )
+                    yield from results
+                except Exception as exc:
+                    logger.debug(traceback.format_exc())
+                    logger.warning(
+                        f"Error processing result for {produced_input}: {exc}"
+                    )
+
     def yield_table_query(self) -> Iterator[TableQuery]:
         """
         Given an engine, iterate over the query results to
@@ -106,6 +147,7 @@ class LineageSource(QueryParserSource, ABC):
                     query_dict = dict(row)
                     try:
                         yield TableQuery(
+                            dialect=self.dialect.value,
                             query=query_dict["query_text"],
                             databaseName=self.get_database_name(query_dict),
                             serviceName=self.config.serviceName,
@@ -127,6 +169,144 @@ class LineageSource(QueryParserSource, ABC):
         )
         return fqn.get_query_checksum(table_query.query) in checksums or {}
 
+    def query_lineage_generator(
+        self, table_query: TableQuery
+    ) -> Iterable[Either[Union[AddLineageRequest, CreateQueryRequest]]]:
+        if not self._query_already_processed(table_query):
+            lineages: Iterable[Either[AddLineageRequest]] = get_lineage_by_query(
+                self.metadata,
+                query=table_query.query,
+                service_name=table_query.serviceName,
+                database_name=table_query.databaseName,
+                schema_name=table_query.databaseSchema,
+                dialect=self.dialect,
+                timeout_seconds=self.source_config.parsingTimeoutLimit,
+            )
+
+            for lineage_request in lineages or []:
+                yield lineage_request
+
+                # If we identified lineage properly, ingest the original query
+                if lineage_request.right:
+                    yield Either(
+                        right=CreateQueryRequest(
+                            query=SqlQuery(table_query.query),
+                            query_type=table_query.query_type,
+                            duration=table_query.duration,
+                            processedLineage=True,
+                            service=FullyQualifiedEntityName(self.config.serviceName),
+                        )
+                    )
+
+    def yield_query_lineage(
+        self,
+    ) -> Iterable[Either[Union[AddLineageRequest, CreateQueryRequest]]]:
+        """
+        Based on the query logs, prepare the lineage
+        and send it to the sink
+        """
+        connection_type = str(self.service_connection.type.value)
+        self.dialect = ConnectionTypeDialectMapper.dialect_of(connection_type)
+        producer_fn = self.get_table_query
+        processor_fn = self.query_lineage_generator
+        yield from self.generate_lineage_in_thread(producer_fn, processor_fn)
+
+    def view_lineage_generator(
+        self, view: TableView
+    ) -> Iterable[Either[AddLineageRequest]]:
+        try:
+            for lineage in get_view_lineage(
+                view=view,
+                metadata=self.metadata,
+                service_name=self.config.serviceName,
+                connection_type=self.service_connection.type.value,
+                timeout_seconds=self.source_config.parsingTimeoutLimit,
+            ):
+                if lineage.right is not None:
+                    yield Either(
+                        right=OMetaLineageRequest(
+                            lineage_request=lineage.right,
+                            override_lineage=self.source_config.overrideViewLineage,
+                        )
+                    )
+                else:
+                    yield lineage
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Error processing view {view}: {exc}")
+
+    def yield_view_lineage(self) -> Iterable[Either[AddLineageRequest]]:
+        logger.info("Processing View Lineage")
+        producer_fn = partial(self.metadata.yield_es_view_def, self.config.serviceName)
+        processor_fn = self.view_lineage_generator
+        yield from self.generate_lineage_in_thread(producer_fn, processor_fn)
+
+    def yield_procedure_lineage(
+        self,
+    ) -> Iterable[Either[Union[AddLineageRequest, CreateQueryRequest]]]:
+        """
+        By default stored procedure lineage is not supported.
+        """
+        logger.info(
+            f"Processing Procedure Lineage not supported for {str(self.service_connection.type.value)}"
+        )
+
+    def get_column_lineage(
+        self, from_table: Table, to_table: Table
+    ) -> List[ColumnLineage]:
+        """
+        Get the column lineage from the fields
+        """
+        try:
+            column_lineage = []
+            for column in from_table.columns:
+                field = column.name.root
+                from_column = get_column_fqn(table_entity=from_table, column=field)
+                to_column = get_column_fqn(table_entity=to_table, column=field)
+                if from_column and to_column:
+                    column_lineage.append(
+                        ColumnLineage(fromColumns=[from_column], toColumn=to_column)
+                    )
+
+            return column_lineage
+        except Exception as exc:
+            logger.debug(f"Error to get column lineage: {exc}")
+            logger.debug(traceback.format_exc())
+
+    def get_add_cross_database_lineage_request(
+        self,
+        from_entity: Table,
+        to_entity: Table,
+        column_lineage: List[ColumnLineage] = None,
+    ) -> Optional[Either[AddLineageRequest]]:
+        if from_entity and to_entity:
+            return Either(
+                right=AddLineageRequest(
+                    edge=EntitiesEdge(
+                        fromEntity=EntityReference(
+                            id=Uuid(from_entity.id.root), type="table"
+                        ),
+                        toEntity=EntityReference(
+                            id=Uuid(to_entity.id.root), type="table"
+                        ),
+                        lineageDetails=LineageDetails(
+                            source=Source.CrossDatabaseLineage,
+                            columnsLineage=column_lineage,
+                        ),
+                    )
+                )
+            )
+
+        return None
+
+    def yield_cross_database_lineage(self) -> Iterable[Either[AddLineageRequest]]:
+        """
+        By default cross database lineage is not supported.
+        """
+        logger.info(
+            f"Processing Cross Database Lineage not supported for {str(self.service_connection.type.value)}"
+        )
+
     def _iter(
         self, *_, **__
     ) -> Iterable[Either[Union[AddLineageRequest, CreateQueryRequest]]]:
@@ -134,33 +314,19 @@ class LineageSource(QueryParserSource, ABC):
         Based on the query logs, prepare the lineage
         and send it to the sink
         """
-        connection_type = str(self.service_connection.type.value)
-        dialect = ConnectionTypeDialectMapper.dialect_of(connection_type)
-        for table_query in self.get_table_query():
-            if not self._query_already_processed(table_query):
-                lineages: Iterable[Either[AddLineageRequest]] = get_lineage_by_query(
-                    self.metadata,
-                    query=table_query.query,
-                    service_name=table_query.serviceName,
-                    database_name=table_query.databaseName,
-                    schema_name=table_query.databaseSchema,
-                    dialect=dialect,
-                    timeout_seconds=self.source_config.parsingTimeoutLimit,
+        if self.source_config.processViewLineage:
+            yield from self.yield_view_lineage() or []
+        if self.source_config.processStoredProcedureLineage:
+            yield from self.yield_procedure_lineage() or []
+        if self.source_config.processQueryLineage:
+            if hasattr(self.service_connection, "supportsLineageExtraction"):
+                yield from self.yield_query_lineage() or []
+            else:
+                logger.warning(
+                    f"Lineage extraction is not supported for {str(self.service_connection.type.value)} connection"
                 )
-
-                for lineage_request in lineages or []:
-                    yield lineage_request
-
-                    # If we identified lineage properly, ingest the original query
-                    if lineage_request.right:
-                        yield Either(
-                            right=CreateQueryRequest(
-                                query=SqlQuery(table_query.query),
-                                query_type=table_query.query_type,
-                                duration=table_query.duration,
-                                processedLineage=True,
-                                service=FullyQualifiedEntityName(
-                                    self.config.serviceName
-                                ),
-                            )
-                        )
+        if (
+            self.source_config.processCrossDatabaseLineage
+            and self.source_config.crossDatabaseServiceNames
+        ):
+            yield from self.yield_cross_database_lineage() or []

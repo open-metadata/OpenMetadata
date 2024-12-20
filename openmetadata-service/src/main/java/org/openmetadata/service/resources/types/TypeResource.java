@@ -84,6 +84,8 @@ import org.openmetadata.service.util.SchemaFieldExtractor;
 @Slf4j
 public class TypeResource extends EntityResource<Type, TypeRepository> {
   public static final String COLLECTION_PATH = "v1/metadata/types/";
+  private final TypeMapper mapper = new TypeMapper();
+  public SchemaFieldExtractor extractor;
 
   @Override
   public Type addHref(UriInfo uriInfo, Type type) {
@@ -94,6 +96,7 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
 
   public TypeResource(Authorizer authorizer, Limits limits) {
     super(Entity.TYPE, authorizer, limits);
+    extractor = new SchemaFieldExtractor();
   }
 
   @Override
@@ -322,7 +325,7 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateType create) {
-    Type type = getType(create, securityContext.getUserPrincipal().getName());
+    Type type = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, type);
   }
 
@@ -401,7 +404,7 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateType create) {
-    Type type = getType(create, securityContext.getUserPrincipal().getName());
+    Type type = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, type);
   }
 
@@ -481,7 +484,6 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
     try {
       Fields fieldsParam = new Fields(Set.of("customProperties"));
       Type typeEntity = repository.getByName(uriInfo, entityType, fieldsParam, include, false);
-      SchemaFieldExtractor extractor = new SchemaFieldExtractor();
       List<SchemaFieldExtractor.FieldDefinition> fieldsList =
           extractor.extractFields(typeEntity, entityType);
       return Response.ok(fieldsList).type(MediaType.APPLICATION_JSON).build();
@@ -518,13 +520,5 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
                   + e.getMessage())
           .build();
     }
-  }
-
-  private Type getType(CreateType create, String user) {
-    return repository
-        .copy(new Type(), create, user)
-        .withFullyQualifiedName(create.getName())
-        .withCategory(create.getCategory())
-        .withSchema(create.getSchema());
   }
 }

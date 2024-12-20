@@ -77,6 +77,7 @@ import org.openmetadata.service.util.FullyQualifiedName;
 public final class Entity {
   private static volatile boolean initializedRepositories = false;
   @Getter @Setter private static CollectionDAO collectionDAO;
+  @Getter @Setter private static Jdbi jdbi;
   public static final String SEPARATOR = "."; // Fully qualified name separator
 
   // Canonical entity name to corresponding EntityRepository map
@@ -122,10 +123,13 @@ public final class Entity {
   public static final String FIELD_STYLE = "style";
 
   public static final String FIELD_LIFE_CYCLE = "lifeCycle";
+  public static final String FIELD_CERTIFICATION = "certification";
 
   public static final String FIELD_DISABLED = "disabled";
 
   public static final String FIELD_TEST_SUITES = "testSuites";
+
+  public static final String FIELD_RELATED_TERMS = "relatedTerms";
 
   //
   // Service entities
@@ -180,6 +184,7 @@ public final class Entity {
   public static final String WEB_ANALYTIC_EVENT = "webAnalyticEvent";
   public static final String DATA_INSIGHT_CUSTOM_CHART = "dataInsightCustomChart";
   public static final String DATA_INSIGHT_CHART = "dataInsightChart";
+  public static final String PAGE = "page";
 
   //
   // Policy entity
@@ -213,6 +218,7 @@ public final class Entity {
   public static final String THREAD = "THREAD";
   public static final String SUGGESTION = "SUGGESTION";
   public static final String WORKFLOW = "workflow";
+  public static final String WORKFLOW_DEFINITION = "workflowDefinition";
 
   //
   // Time series entities
@@ -226,6 +232,8 @@ public final class Entity {
   public static final String RAW_COST_ANALYSIS_REPORT_DATA = "rawCostAnalysisReportData";
   public static final String AGGREGATED_COST_ANALYSIS_REPORT_DATA =
       "aggregatedCostAnalysisReportData";
+  public static final String WORKFLOW_INSTANCE = "workflowInstance";
+  public static final String WORKFLOW_INSTANCE_STATE = "workflowInstanceState";
 
   //
   // Reserved names in OpenMetadata
@@ -240,6 +248,7 @@ public final class Entity {
   public static final String DOCUMENT = "document";
   // ServiceType - Service Entity name map
   static final Map<ServiceType, String> SERVICE_TYPE_ENTITY_MAP = new EnumMap<>(ServiceType.class);
+  public static final List<String> PARENT_ENTITY_TYPES = new ArrayList<>();
 
   static {
     SERVICE_TYPE_ENTITY_MAP.put(ServiceType.DATABASE, DATABASE_SERVICE);
@@ -251,6 +260,25 @@ public final class Entity {
     SERVICE_TYPE_ENTITY_MAP.put(ServiceType.STORAGE, STORAGE_SERVICE);
     SERVICE_TYPE_ENTITY_MAP.put(ServiceType.SEARCH, SEARCH_SERVICE);
     SERVICE_TYPE_ENTITY_MAP.put(ServiceType.API, API_SERVICE);
+    PARENT_ENTITY_TYPES.addAll(
+        listOf(
+            DATABASE_SERVICE,
+            DASHBOARD_SERVICE,
+            MESSAGING_SERVICE,
+            MLMODEL_SERVICE,
+            PIPELINE_SERVICE,
+            API_SERVICE,
+            API_COLLCECTION,
+            STORAGE_SERVICE,
+            METADATA_SERVICE,
+            SEARCH_SERVICE,
+            DATABASE,
+            DATABASE_SCHEMA,
+            CLASSIFICATION,
+            GLOSSARY,
+            DOMAIN,
+            TEST_SUITE,
+            TEAM));
   }
 
   private Entity() {}

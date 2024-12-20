@@ -11,18 +11,32 @@
  *  limitations under the License.
  */
 
-import { Typography } from 'antd';
+import Icon from '@ant-design/icons';
+import { Tag, Tooltip, Typography } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
+import classNames from 'classnames';
 import { isEmpty, isUndefined } from 'lodash';
 import React from 'react';
+import { ReactComponent as ExternalLinkIcon } from '../assets/svg/external-links.svg';
 import { StatusType } from '../components/common/StatusBadge/StatusBadge.interface';
 import { ModifiedGlossaryTerm } from '../components/Glossary/GlossaryTermTab/GlossaryTermTab.interface';
 import { ModifiedGlossary } from '../components/Glossary/useGlossary.store';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
+import {
+  ICON_DIMENSION,
+  SUCCESS_COLOR,
+  TEXT_BODY_COLOR,
+  TEXT_GREY_MUTED,
+} from '../constants/constants';
 import { EntityType } from '../enums/entity.enum';
 import { Glossary } from '../generated/entity/data/glossary';
-import { GlossaryTerm, Status } from '../generated/entity/data/glossaryTerm';
+import {
+  GlossaryTerm,
+  Status,
+  TermReference,
+} from '../generated/entity/data/glossaryTerm';
 import { getEntityName } from './EntityUtils';
+import { VersionStatus } from './EntityVersionUtils.interface';
 import Fqn from './Fqn';
 import { getGlossaryPath } from './RouterUtils';
 
@@ -116,6 +130,7 @@ export const StatusClass = {
   [Status.Draft]: StatusType.Warning,
   [Status.Rejected]: StatusType.Failure,
   [Status.Deprecated]: StatusType.Warning,
+  [Status.InReview]: StatusType.Running,
 };
 
 export const StatusFilters = Object.values(Status)
@@ -146,6 +161,30 @@ export const getGlossaryBreadcrumbs = (fqn: string) => {
   ];
 
   return breadcrumbList;
+};
+
+export const updateGlossaryTermByFqn = (
+  glossaryTerms: ModifiedGlossary[],
+  fqn: string,
+  newValue: ModifiedGlossary
+): ModifiedGlossary[] => {
+  return glossaryTerms.map((term) => {
+    if (term.fullyQualifiedName === fqn) {
+      return newValue;
+    }
+    if (term.children) {
+      return {
+        ...term,
+        children: updateGlossaryTermByFqn(
+          term.children as ModifiedGlossary[],
+          fqn,
+          newValue
+        ),
+      };
+    }
+
+    return term;
+  }) as ModifiedGlossary[];
 };
 
 // This function finds and gives you the glossary term you're looking for.
@@ -308,4 +347,82 @@ export const filterTreeNodeOptions = (
   };
 
   return filterNodes(options as ModifiedGlossaryTerm[]);
+};
+
+export const renderReferenceElement = (
+  ref: TermReference,
+  versionStatus?: VersionStatus
+) => {
+  let iconColor: string;
+  let textClassName: string;
+  if (versionStatus?.added) {
+    iconColor = SUCCESS_COLOR;
+    textClassName = 'text-success';
+  } else if (versionStatus?.removed) {
+    iconColor = TEXT_GREY_MUTED;
+    textClassName = 'text-grey-muted';
+  } else {
+    iconColor = TEXT_BODY_COLOR;
+    textClassName = 'text-body';
+  }
+
+  return (
+    <Tag
+      className={classNames(
+        'm-r-xs m-t-xs d-flex items-center term-reference-tag bg-white',
+        { 'diff-added': versionStatus?.added },
+        { 'diff-removed ': versionStatus?.removed }
+      )}
+      key={ref.name}>
+      <Tooltip placement="bottomLeft" title={ref.name}>
+        <a
+          data-testid={`reference-link-${ref.name}`}
+          href={ref?.endpoint}
+          rel="noopener noreferrer"
+          target="_blank">
+          <div className="d-flex items-center">
+            <Icon
+              className="m-r-xss"
+              component={ExternalLinkIcon}
+              data-testid="external-link-icon"
+              style={{ ...ICON_DIMENSION, color: iconColor }}
+            />
+            <span className={textClassName}>{ref.name}</span>
+          </div>
+        </a>
+      </Tooltip>
+    </Tag>
+  );
+};
+
+export const findAndUpdateNested = (
+  terms: ModifiedGlossary[],
+  newTerm: GlossaryTerm
+): ModifiedGlossary[] => {
+  // If new term has no parent, it's a top level term
+  // So just update 0 level terms no need to iterate over it
+  if (!newTerm.parent) {
+    return [...terms, newTerm as ModifiedGlossary];
+  }
+
+  // If parent is there means term is  created within a term
+  // So we need to find the parent term and update it's children
+  return terms.map((term) => {
+    if (term.fullyQualifiedName === newTerm.parent?.fullyQualifiedName) {
+      return {
+        ...term,
+        children: [...(term.children || []), newTerm] as GlossaryTerm[],
+      } as ModifiedGlossary;
+    } else if ('children' in term && term.children?.length) {
+      return {
+        ...term,
+        children: findAndUpdateNested(
+          term.children as ModifiedGlossary[],
+          newTerm
+        ),
+      } as ModifiedGlossary;
+    }
+
+    return term;
+  });
 };

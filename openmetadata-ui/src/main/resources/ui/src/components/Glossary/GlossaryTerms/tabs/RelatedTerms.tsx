@@ -27,7 +27,6 @@ import {
 } from '../../../../constants/constants';
 import { EntityField } from '../../../../constants/Feeds.constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../../../constants/HelperTextUtil';
-import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../../../enums/entity.enum';
 import { GlossaryTerm } from '../../../../generated/entity/data/glossaryTerm';
 import {
@@ -47,21 +46,17 @@ import { VersionStatus } from '../../../../utils/EntityVersionUtils.interface';
 import { getGlossaryPath } from '../../../../utils/RouterUtils';
 import { SelectOption } from '../../../common/AsyncSelectList/AsyncSelectList.interface';
 import TagButton from '../../../common/TagButton/TagButton.component';
+import { useGenericContext } from '../../../GenericProvider/GenericProvider';
 
-interface RelatedTermsProps {
-  isVersionView?: boolean;
-  permissions: OperationPermission;
-  glossaryTerm: GlossaryTerm;
-  onGlossaryTermUpdate: (data: GlossaryTerm) => Promise<void>;
-}
-
-const RelatedTerms = ({
-  isVersionView,
-  glossaryTerm,
-  permissions,
-  onGlossaryTermUpdate,
-}: RelatedTermsProps) => {
+const RelatedTerms = () => {
   const history = useHistory();
+  const {
+    data: glossaryTerm,
+    onUpdate,
+    isVersionView,
+    permissions,
+  } = useGenericContext<GlossaryTerm>();
+
   const [isIconVisible, setIsIconVisible] = useState<boolean>(true);
   const [selectedOption, setSelectedOption] = useState<EntityReference[]>([]);
 
@@ -104,7 +99,7 @@ const RelatedTerms = ({
       relatedTerms: newOptions,
     };
 
-    await onGlossaryTermUpdate(updatedGlossaryTerm);
+    await onUpdate(updatedGlossaryTerm);
     setIsIconVisible(true);
   };
 

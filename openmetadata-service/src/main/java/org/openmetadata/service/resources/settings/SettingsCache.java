@@ -13,10 +13,13 @@
 
 package org.openmetadata.service.resources.settings;
 
+import static org.openmetadata.schema.settings.SettingsType.ASSET_CERTIFICATION_SETTINGS;
 import static org.openmetadata.schema.settings.SettingsType.CUSTOM_UI_THEME_PREFERENCE;
 import static org.openmetadata.schema.settings.SettingsType.EMAIL_CONFIGURATION;
+import static org.openmetadata.schema.settings.SettingsType.LINEAGE_SETTINGS;
 import static org.openmetadata.schema.settings.SettingsType.LOGIN_CONFIGURATION;
 import static org.openmetadata.schema.settings.SettingsType.SEARCH_SETTINGS;
+import static org.openmetadata.schema.settings.SettingsType.WORKFLOW_SETTINGS;
 
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
@@ -29,7 +32,13 @@ import org.openmetadata.api.configuration.LogoConfiguration;
 import org.openmetadata.api.configuration.ThemeConfiguration;
 import org.openmetadata.api.configuration.UiThemePreference;
 import org.openmetadata.schema.api.configuration.LoginConfiguration;
-import org.openmetadata.schema.api.searcg.SearchSettings;
+import org.openmetadata.schema.api.lineage.LineageLayer;
+import org.openmetadata.schema.api.lineage.LineageSettings;
+import org.openmetadata.schema.api.search.SearchSettings;
+import org.openmetadata.schema.configuration.AssetCertificationSettings;
+import org.openmetadata.schema.configuration.ExecutorConfiguration;
+import org.openmetadata.schema.configuration.HistoryCleanUpConfiguration;
+import org.openmetadata.schema.configuration.WorkflowSettings;
 import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
@@ -109,7 +118,7 @@ public class SettingsCache {
               .withConfigValue(
                   new LoginConfiguration()
                       .withMaxLoginFailAttempts(3)
-                      .withAccessBlockTime(600)
+                      .withAccessBlockTime(30)
                       .withJwtTokenExpiryTime(3600));
       systemRepository.createNewSetting(setting);
     }
@@ -122,6 +131,47 @@ public class SettingsCache {
           new Settings()
               .withConfigType(SEARCH_SETTINGS)
               .withConfigValue(new SearchSettings().withEnableAccessControl(false));
+      systemRepository.createNewSetting(setting);
+    }
+
+    // Initialise Certification Settings
+    Settings certificationSettings =
+        systemRepository.getConfigWithKey(ASSET_CERTIFICATION_SETTINGS.toString());
+    if (certificationSettings == null) {
+      Settings setting =
+          new Settings()
+              .withConfigType(ASSET_CERTIFICATION_SETTINGS)
+              .withConfigValue(
+                  new AssetCertificationSettings()
+                      .withAllowedClassification("Certification")
+                      .withValidityPeriod("P30D"));
+      systemRepository.createNewSetting(setting);
+    }
+
+    // Initialise Workflow Settings
+    Settings workflowSettings = systemRepository.getConfigWithKey(WORKFLOW_SETTINGS.toString());
+    if (workflowSettings == null) {
+      Settings setting =
+          new Settings()
+              .withConfigType(WORKFLOW_SETTINGS)
+              .withConfigValue(
+                  new WorkflowSettings()
+                      .withExecutorConfiguration(new ExecutorConfiguration())
+                      .withHistoryCleanUpConfiguration(new HistoryCleanUpConfiguration()));
+      systemRepository.createNewSetting(setting);
+    }
+
+    Settings lineageSettings = systemRepository.getConfigWithKey(LINEAGE_SETTINGS.toString());
+    if (lineageSettings == null) {
+      // Only in case a config doesn't exist in DB we insert it
+      Settings setting =
+          new Settings()
+              .withConfigType(LINEAGE_SETTINGS)
+              .withConfigValue(
+                  new LineageSettings()
+                      .withDownstreamDepth(2)
+                      .withUpstreamDepth(2)
+                      .withLineageLayer(LineageLayer.ENTITY_LINEAGE));
       systemRepository.createNewSetting(setting);
     }
   }

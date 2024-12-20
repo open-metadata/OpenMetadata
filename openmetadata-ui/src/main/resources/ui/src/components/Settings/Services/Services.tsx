@@ -133,7 +133,6 @@ const Services = ({ serviceName }: ServicesProps) => {
       after,
       before,
       filters,
-      limit,
     }: {
       search?: string;
       limit?: number;
@@ -151,7 +150,7 @@ const Services = ({ serviceName }: ServicesProps) => {
           } = await searchService({
             search,
             searchIndex,
-            limit: limit ?? pageSize,
+            limit: pageSize,
             currentPage,
             filters,
             deleted,
@@ -164,7 +163,7 @@ const Services = ({ serviceName }: ServicesProps) => {
         } else {
           const { data, paging } = await getServices({
             serviceName,
-            limit: limit ?? pageSize,
+            limit: pageSize,
             after,
             before,
             include: deleted ? Include.Deleted : Include.NonDeleted,
@@ -192,7 +191,7 @@ const Services = ({ serviceName }: ServicesProps) => {
         setIsLoading(false);
       }
     },
-    [searchIndex, serviceName, deleted]
+    [searchIndex, serviceName, deleted, pageSize]
   );
 
   const handleServicePageChange = useCallback(
@@ -525,6 +524,7 @@ const Services = ({ serviceName }: ServicesProps) => {
         {showPagination && (
           <NextPrevious
             currentPage={currentPage}
+            isLoading={isLoading}
             isNumberBased={!isEmpty(searchTerm)}
             pageSize={pageSize}
             paging={paging}

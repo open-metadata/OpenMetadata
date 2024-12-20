@@ -47,6 +47,9 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
 
     const { afterAction, apiContext, page } = await createNewPage(browser);
 
+    for (const user of users) {
+      await user.create(apiContext);
+    }
     const { pipeline } = await table1.createTestSuiteAndPipelines(apiContext);
     for (let i = 0; i < 3; i++) {
       await table1.createTestCase(apiContext, {
@@ -65,10 +68,6 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
       pipeline,
       apiContext,
     });
-
-    for (const user of users) {
-      await user.create(apiContext);
-    }
 
     await afterAction();
   });
@@ -392,12 +391,16 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
 
   test('Validate Incident Tab in Entity details page', async ({ page }) => {
     const testCases = table1.testCasesResponseData;
-    await table1.visitEntityPage(page);
+    await visitProfilerTab(page, table1);
+
     const incidentListResponse = page.waitForResponse(
       `/api/v1/dataQuality/testCases/testCaseIncidentStatus?*originEntityFQN=${table1.entityResponseData?.['fullyQualifiedName']}*`
     );
 
-    await page.click('[data-testid="incidents"]');
+    await page
+      .getByTestId('profiler-tab-left-panel')
+      .getByText('Incidents')
+      .click();
     await incidentListResponse;
 
     for (const testCase of testCases) {

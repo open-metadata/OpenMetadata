@@ -13,13 +13,13 @@
 
 package org.openmetadata.service;
 
+import static org.openmetadata.service.util.jdbi.JdbiUtils.createAndSetupJDBI;
+
 import io.dropwizard.Application;
 import io.dropwizard.configuration.EnvironmentVariableSubstitutor;
 import io.dropwizard.configuration.SubstitutingSourceProvider;
-import io.dropwizard.db.DataSourceFactory;
 import io.dropwizard.health.conf.HealthConfiguration;
 import io.dropwizard.health.core.HealthCheckBundle;
-import io.dropwizard.jdbi3.JdbiFactory;
 import io.dropwizard.jersey.errors.EarlyEofExceptionMapper;
 import io.dropwizard.jersey.errors.LoggingExceptionMapper;
 import io.dropwizard.jersey.jackson.JsonProcessingExceptionMapper;
@@ -59,7 +59,6 @@ import org.eclipse.jetty.websocket.server.WebSocketUpgradeFilter;
 import org.glassfish.jersey.media.multipart.MultiPartFeature;
 import org.glassfish.jersey.server.ServerProperties;
 import org.jdbi.v3.core.Jdbi;
-import org.jdbi.v3.core.statement.SqlStatements;
 import org.jdbi.v3.sqlobject.SqlObjects;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
@@ -80,6 +79,7 @@ import org.openmetadata.service.exception.ConstraintViolationExceptionMapper;
 import org.openmetadata.service.exception.JsonMappingExceptionMapper;
 import org.openmetadata.service.exception.OMErrorPageHandler;
 import org.openmetadata.service.fernet.Fernet;
+import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.MigrationDAO;
@@ -126,8 +126,6 @@ import org.openmetadata.service.socket.SocketAddressFilter;
 import org.openmetadata.service.socket.WebSocketManager;
 import org.openmetadata.service.util.MicrometerBundleSingleton;
 import org.openmetadata.service.util.incidentSeverityClassifier.IncidentSeverityClassifierInterface;
-import org.openmetadata.service.util.jdbi.DatabaseAuthenticationProviderFactory;
-import org.openmetadata.service.util.jdbi.OMSqlLogger;
 import org.pac4j.core.util.CommonHelper;
 import org.quartz.SchedulerException;
 
@@ -165,6 +163,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     jdbi = createAndSetupJDBI(environment, catalogConfig.getDataSourceFactory());
     Entity.setCollectionDAO(getDao(jdbi));
+    Entity.setJdbi(jdbi);
 
     initializeSearchRepository(catalogConfig.getElasticSearchConfiguration());
     // Initialize the MigrationValidationClient, used in the Settings Repository
@@ -174,6 +173,9 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     // Configure the Fernet instance
     Fernet.getInstance().setFernetKey(catalogConfig);
+
+    // Initialize Workflow Handler
+    WorkflowHandler.initialize(catalogConfig);
 
     // Init Settings Cache after repositories
     SettingsCache.initialize(catalogConfig);
@@ -188,7 +190,10 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     EntityMaskerFactory.createEntityMasker();
 
     // Instantiate JWT Token Generator
-    JWTTokenGenerator.getInstance().init(catalogConfig.getJwtTokenConfiguration());
+    JWTTokenGenerator.getInstance()
+        .init(
+            catalogConfig.getAuthenticationConfiguration().getTokenValidationAlgorithm(),
+            catalogConfig.getJwtTokenConfiguration());
 
     // Set the Database type for choosing correct queries from annotations
     jdbi.getConfig(SqlObjects.class)
@@ -387,28 +392,6 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
                       catalogConfig.getAuthorizerConfiguration()));
       samlLogoutServlet.addMapping("/api/v1/saml/logout");
     }
-  }
-
-  private Jdbi createAndSetupJDBI(Environment environment, DataSourceFactory dbFactory) {
-    // Check for db auth providers.
-    DatabaseAuthenticationProviderFactory.get(dbFactory.getUrl())
-        .ifPresent(
-            databaseAuthenticationProvider -> {
-              String token =
-                  databaseAuthenticationProvider.authenticate(
-                      dbFactory.getUrl(), dbFactory.getUser(), dbFactory.getPassword());
-              dbFactory.setPassword(token);
-            });
-
-    Jdbi jdbiInstance = new JdbiFactory().build(environment, dbFactory, "database");
-    jdbiInstance.setSqlLogger(new OMSqlLogger());
-    // Set the Database type for choosing correct queries from annotations
-    jdbiInstance
-        .getConfig(SqlObjects.class)
-        .setSqlLocator(new ConnectionAwareAnnotationSqlLocator(dbFactory.getDriverClass()));
-    jdbiInstance.getConfig(SqlStatements.class).setUnusedBindingAllowed(true);
-
-    return jdbiInstance;
   }
 
   @SneakyThrows

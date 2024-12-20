@@ -18,6 +18,7 @@ import athenaConnection from '../jsons/connectionSchemas/connections/database/at
 import azureSQLConnection from '../jsons/connectionSchemas/connections/database/azureSQLConnection.json';
 import bigQueryConnection from '../jsons/connectionSchemas/connections/database/bigQueryConnection.json';
 import bigTableConnection from '../jsons/connectionSchemas/connections/database/bigTableConnection.json';
+import cassandraConnection from '../jsons/connectionSchemas/connections/database/cassandraConnection.json';
 import clickhouseConnection from '../jsons/connectionSchemas/connections/database/clickhouseConnection.json';
 import couchbaseConnection from '../jsons/connectionSchemas/connections/database/couchbaseConnection.json';
 import customDatabaseConnection from '../jsons/connectionSchemas/connections/database/customDatabaseConnection.json';
@@ -29,6 +30,7 @@ import domoDatabaseConnection from '../jsons/connectionSchemas/connections/datab
 import dorisConnection from '../jsons/connectionSchemas/connections/database/dorisConnection.json';
 import druidConnection from '../jsons/connectionSchemas/connections/database/druidConnection.json';
 import dynamoDBConnection from '../jsons/connectionSchemas/connections/database/dynamoDBConnection.json';
+import exasolConnection from '../jsons/connectionSchemas/connections/database/exasolConnection.json';
 import glueConnection from '../jsons/connectionSchemas/connections/database/glueConnection.json';
 import greenplumConnection from '../jsons/connectionSchemas/connections/database/greenplumConnection.json';
 import hiveConnection from '../jsons/connectionSchemas/connections/database/hiveConnection.json';
@@ -118,6 +120,11 @@ export const getDatabaseConfig = (type: DatabaseServiceType) => {
 
     case DatabaseServiceType.DynamoDB: {
       schema = dynamoDBConnection;
+
+      break;
+    }
+    case DatabaseServiceType.Exasol: {
+      schema = exasolConnection;
 
       break;
     }
@@ -228,6 +235,11 @@ export const getDatabaseConfig = (type: DatabaseServiceType) => {
     }
     case DatabaseServiceType.MongoDB: {
       schema = mongoDBConnection;
+
+      break;
+    }
+    case DatabaseServiceType.Cassandra: {
+      schema = cassandraConnection;
 
       break;
     }
