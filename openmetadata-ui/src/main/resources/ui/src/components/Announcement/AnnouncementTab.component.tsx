@@ -59,7 +59,7 @@ const AnnouncementTab: React.FC<AnnouncementTabProps> = ({
   const getThreads = async () => {
     try {
       const res = await getAnnouncements(
-        announcementFilter === AnnoucementStatus.Active ? true : false,
+        announcementFilter === AnnoucementStatus.Active,
         getEntityFeedLink(entityType, fqn)
       );
       setThreads(res.data);
