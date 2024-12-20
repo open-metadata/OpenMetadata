@@ -144,15 +144,17 @@ public class RuleEvaluator {
       return false;
     }
     List<TagLabel> tags = resourceContext.getTags();
-    LOG.debug(
-        "matchAnyTag {} resourceTags {}",
-        Arrays.toString(tagFQNs),
-        Arrays.toString(tags.toArray()));
-    for (String tagFQN : tagFQNs) {
-      TagLabel found =
-          tags.stream().filter(t -> t.getTagFQN().equals(tagFQN)).findAny().orElse(null);
-      if (found != null) {
-        return true;
+    if (!nullOrEmpty(tags)) {
+      LOG.debug(
+          "matchAnyTag {} resourceTags {}",
+          Arrays.toString(tagFQNs),
+          Arrays.toString(tags.toArray()));
+      for (String tagFQN : tagFQNs) {
+        TagLabel found =
+            tags.stream().filter(t -> t.getTagFQN().equals(tagFQN)).findAny().orElse(null);
+        if (found != null) {
+          return true;
+        }
       }
     }
     return false;
