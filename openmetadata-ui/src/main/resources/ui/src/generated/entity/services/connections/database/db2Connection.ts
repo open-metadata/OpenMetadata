@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * Db2 Connection Config
  */
 export interface Db2Connection {
@@ -26,6 +24,14 @@ export interface Db2Connection {
      * Host and port of the DB2 service.
      */
     hostPort: string;
+    /**
+     * License to connect to DB2.
+     */
+    license?: string;
+    /**
+     * License file name to connect to DB2.
+     */
+    licenseFileName?: string;
     /**
      * Password to connect to DB2.
      */
