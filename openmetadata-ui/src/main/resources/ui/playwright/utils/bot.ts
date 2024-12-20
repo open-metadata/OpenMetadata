@@ -222,7 +222,7 @@ export const redirectToBotPage = async (page: Page) => {
   await fetchResponse;
 };
 
-export const revokeTokenFromProfilerBotPage = async (page: Page) => {
+export const resetTokenFromProfilerBotPage = async (page: Page) => {
   await settingClick(page, GlobalSettingOptions.BOTS);
 
   await page.getByTestId('searchbar').click();
