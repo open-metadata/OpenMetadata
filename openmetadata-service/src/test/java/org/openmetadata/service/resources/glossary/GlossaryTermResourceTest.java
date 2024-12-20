@@ -75,7 +75,7 @@ import org.openmetadata.schema.api.data.CreateGlossaryTerm;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.data.TermReference;
 import org.openmetadata.schema.api.feed.ResolveTask;
-import org.openmetadata.schema.entity.data.EntityHierarchy__1;
+import org.openmetadata.schema.entity.data.EntityHierarchy;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.GlossaryTerm.Status;
@@ -874,7 +874,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     GlossaryTerm childGlossaryTerm = createEntity(create, ADMIN_AUTH_HEADERS);
     String response =
         getResponseFormSearchWithHierarchy("glossary_term_search_index", "*childGlossaryTerm*");
-    List<EntityHierarchy__1> glossaries = JsonUtils.readObjects(response, EntityHierarchy__1.class);
+    List<EntityHierarchy> glossaries = JsonUtils.readObjects(response, EntityHierarchy.class);
     boolean isChild =
         glossaries.stream()
             .filter(glossary -> "g1".equals(glossary.getName())) // Find glossary with name "g1"
