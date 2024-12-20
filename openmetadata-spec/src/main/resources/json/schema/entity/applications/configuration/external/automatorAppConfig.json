@@ -48,6 +48,9 @@
           "$ref": "automator/addDescriptionAction.json"
         },
         {
+          "$ref": "automator/addCustomProperties.json"
+        },
+        {
           "$ref": "automator/removeDescriptionAction.json"
         },
         {
@@ -61,6 +64,9 @@
         },
         {
           "$ref": "automator/removeOwnerAction.json"
+        },
+        {
+          "$ref": "automator/removeCustomPropertiesAction.json"
         },
         {
           "$ref": "automator/lineagePropagationAction.json"
