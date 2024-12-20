@@ -14,6 +14,45 @@ version. To see what's coming in next releases, please check our [Roadmap](/rele
 
 {% partial file="/v1.6/releases/latest.md" /%}
 
+# 1.5.15 Release 🎉
+
+{% note noteType="Tip" %}
+**Dec 17th, 2024**
+{% /note %}
+
+You can find the GitHub release [here](https://github.com/open-metadata/OpenMetadata/releases/tag/1.5.15-release).
+
+# What's Changed
+
+- Minor - Fix clean_uri and add before pagination
+- Fix downloading of app logs
+- Fix query builder state issues
+- Fix : Handle Index out of bounds exception in feed api
+- Minor: DBT v12 Model Changes
+- Fix database and schema aggregation key
+
+**Full Changelog**: https://github.com/open-metadata/OpenMetadata/compare/1.5.14-release...1.5.15-release
+
+# 1.5.14 Release
+
+{% note noteType="Tip" %}
+**Dec 12th, 2024**
+{% /note %}
+
+You can find the GitHub release [here](https://github.com/open-metadata/OpenMetadata/releases/tag/1.5.14-release).
+
+# What's Changed
+
+- Minor: Fix Powerbi refresh token on expire
+- Minor: Snowflake Support Alter Table Swap Lineage
+- Fixes: microstrategy test connection
+- Minor: Fix dbt source file issue
+- Fix: dbt manifest parsing issue
+- Minor - Add APIs to Ref Map
+- Minor: Domain only access policy prevents bots from listing
+
+**Full Changelog**: https://github.com/open-metadata/OpenMetadata/compare/1.5.13-release...1.5.14-release
+
 # 1.5.13 Release
 
 {% note noteType="Tip" %}

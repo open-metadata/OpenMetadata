@@ -14,6 +14,41 @@ version. To see what's coming in next releases, please check our [Roadmap](/rele
 
 {% partial file="/v1.5/releases/latest.md" /%}
 
+# 1.5.14 Release
+
+{% note noteType="Tip" %}
+**Dec 12th, 2024**
+{% /note %}
+
+You can find the GitHub release [here](https://github.com/open-metadata/OpenMetadata/releases/tag/1.5.14-release).
+
+# What's Changed
+
+- Minor: Fix Powerbi refresh token on expire
+- Minor: Snowflake Support Alter Table Swap Lineage
+- Fixes: microstrategy test connection
+- Minor: Fix dbt source file issue
+- Fix: dbt manifest parsing issue
+- Minor - Add APIs to Ref Map
+- Minor: Domain only access policy prevents bots from listing
+
+**Full Changelog**: https://github.com/open-metadata/OpenMetadata/compare/1.5.13-release...1.5.14-release
+
+# 1.5.13 Release
+
+{% note noteType="Tip" %}
+**Nov 29th, 2024**
+{% /note %}
+
+You can find the GitHub release [here](https://github.com/open-metadata/OpenMetadata/releases/tag/1.5.13-release).
+
+# What's Changed
+
+- Minor: microstrategy patch login mode 1.5.13.
+- MINOR: Snowflake UDF Lineage Support.
+
+**Full Changelog**: https://github.com/open-metadata/OpenMetadata/compare/1.5.12-release...1.5.13-release
+
 # 1.5.12 Release
 
 {% note noteType="Tip" %}
