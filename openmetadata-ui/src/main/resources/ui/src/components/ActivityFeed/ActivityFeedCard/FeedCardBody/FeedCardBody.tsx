@@ -21,7 +21,7 @@ import {
   getFrontEndFormat,
   MarkdownToHTMLConverter,
 } from '../../../../utils/FeedUtils';
-import RichTextEditorPreviewer from '../../../common/RichTextEditor/RichTextEditorPreviewer';
+import RichTextEditorPreviewerV1 from '../../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import ActivityFeedEditor from '../../ActivityFeedEditor/ActivityFeedEditor';
 import Reactions from '../../Reactions/Reactions';
 import { FeedBodyProp } from '../ActivityFeedCard.interface';
@@ -88,7 +88,7 @@ const FeedCardBody: FC<FeedBodyProp> = ({
           onTextChange={handleMessageUpdate}
         />
       ) : (
-        <RichTextEditorPreviewer
+        <RichTextEditorPreviewerV1
           className="activity-feed-card-text"
           markdown={getFrontEndFormat(postMessage)}
         />
@@ -114,7 +114,7 @@ const FeedCardBody: FC<FeedBodyProp> = ({
             <Typography.Text className="font-medium">
               {postMessage}
             </Typography.Text>
-            <RichTextEditorPreviewer
+            <RichTextEditorPreviewerV1
               className="activity-feed-card-text"
               markdown={announcementDetails.description || ''}
             />

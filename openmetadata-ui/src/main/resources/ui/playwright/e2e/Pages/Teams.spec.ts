@@ -23,6 +23,7 @@ import { performAdminLogin } from '../../utils/admin';
 import {
   createNewPage,
   descriptionBox,
+  descriptionBoxReadOnly,
   getApiContext,
   redirectToHomePage,
   toastNotification,
@@ -303,7 +304,9 @@ test.describe('Teams Page', () => {
 
       // Validating the updated description
       await expect(
-        page.locator('[data-testid="asset-description-container"] p')
+        page.locator(
+          `[data-testid="asset-description-container"] ${descriptionBoxReadOnly}`
+        )
       ).toContainText(updatedDescription);
     });
 

@@ -48,7 +48,7 @@ import DisplayName from '../../../common/DisplayName/DisplayName';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import NextPrevious from '../../../common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../../common/NextPrevious/NextPrevious.interface';
-import RichTextEditorPreviewer from '../../../common/RichTextEditor/RichTextEditorPreviewer';
+import RichTextEditorPreviewerV1 from '../../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import Searchbar from '../../../common/SearchBarComponent/SearchBar.component';
 import Table from '../../../common/Table/Table';
 import { EntityName } from '../../../Modals/EntityNameModal/EntityNameModal.interface';
@@ -243,7 +243,7 @@ export const DatabaseSchemaTable = ({
         key: 'description',
         render: (text: string) =>
           text?.trim() ? (
-            <RichTextEditorPreviewer markdown={text} />
+            <RichTextEditorPreviewerV1 markdown={text} />
           ) : (
             <span className="text-grey-muted">
               {t('label.no-entity', { entity: t('label.description') })}

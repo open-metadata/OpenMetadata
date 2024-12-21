@@ -25,7 +25,7 @@ import { ERROR_PLACEHOLDER_TYPE, OPERATION } from '../../../enums/common.enum';
 import { CustomProperty } from '../../../generated/type/customProperty';
 import { columnSorter, getEntityName } from '../../../utils/EntityUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import RichTextEditorPreviewer from '../../common/RichTextEditor/RichTextEditorPreviewer';
+import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import Table from '../../common/Table/Table';
 import ConfirmationModal from '../../Modals/ConfirmationModal/ConfirmationModal';
 import './custom-property-table.less';
@@ -200,7 +200,7 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
         width: 300,
         render: (text) =>
           text ? (
-            <RichTextEditorPreviewer markdown={text || ''} />
+            <RichTextEditorPreviewerV1 markdown={text || ''} />
           ) : (
             <Typography.Text
               className="text-grey-muted "

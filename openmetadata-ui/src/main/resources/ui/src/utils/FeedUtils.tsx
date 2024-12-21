@@ -295,7 +295,7 @@ const getHashTagList = (message: string) => {
   return message.match(hashtagRegEx);
 };
 
-const getEntityDetail = (item: string) => {
+export const getEntityDetail = (item: string) => {
   if (item.includes('teams')) {
     return item.match(teamsLinkRegEx);
   }

@@ -16,11 +16,10 @@ import { Button, Form, Input, Modal, Select } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
 import { toLower, trim } from 'lodash';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DomainLabel } from '../../components/common/DomainLabel/DomainLabel.component';
 import RichTextEditor from '../../components/common/RichTextEditor/RichTextEditor';
-import { EditorContentRef } from '../../components/common/RichTextEditor/RichTextEditor.interface';
 import { VALIDATION_MESSAGES } from '../../constants/constants';
 import { NAME_FIELD_RULES } from '../../constants/Form.constants';
 import { EntityType } from '../../enums/entity.enum';
@@ -52,7 +51,6 @@ const AddTeamForm: React.FC<AddTeamFormType> = ({
   const [form] = useForm();
   const [description, setDescription] = useState<string>('');
   const [allTeam, setAllTeam] = useState<Team[]>([]);
-  const markdownRef = useRef<EditorContentRef>();
   const { activeDomainEntityRef } = useDomainStore();
   const selectedDomain =
     Form.useWatch<EntityReference[]>('domains', form) ?? [];
@@ -229,7 +227,6 @@ const AddTeamForm: React.FC<AddTeamFormType> = ({
           <RichTextEditor
             data-testid="description"
             initialValue=""
-            ref={markdownRef}
             onTextChange={(value) => setDescription(value)}
           />
         </Form.Item>

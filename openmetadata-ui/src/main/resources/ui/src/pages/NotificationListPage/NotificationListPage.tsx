@@ -22,6 +22,7 @@ import DeleteWidgetModal from '../../components/common/DeleteWidget/DeleteWidget
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import NextPrevious from '../../components/common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
+import RichTextEditorPreviewerV1 from '../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
 import Table from '../../components/common/Table/Table';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
@@ -241,7 +242,7 @@ const NotificationListPage = () => {
               })}
             </Typography.Text>
           ) : (
-            description
+            <RichTextEditorPreviewerV1 markdown={description} />
           ),
       },
       {

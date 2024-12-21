@@ -16,7 +16,7 @@ import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { PropertyValue } from './PropertyValue';
 
-jest.mock('../../common/RichTextEditor/RichTextEditorPreviewer', () => {
+jest.mock('../../common/RichTextEditor/RichTextEditorPreviewerV1', () => {
   return jest
     .fn()
     .mockReturnValue(
