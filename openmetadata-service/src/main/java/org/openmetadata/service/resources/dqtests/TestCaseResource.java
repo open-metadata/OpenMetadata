@@ -832,7 +832,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
           String fqn) {
     ResourceContextInterface resourceContext = TestCaseResourceContext.builder().name(fqn).build();
     OperationContext operationContext =
-        new OperationContext(Entity.TABLE, MetadataOperation.EDIT_TESTS);
+        new OperationContext(Entity.TEST_CASE, MetadataOperation.DELETE);
     authorizer.authorize(securityContext, operationContext, resourceContext);
     return deleteByName(uriInfo, securityContext, fqn, recursive, hardDelete);
   }
@@ -856,7 +856,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
       @PathParam("id") UUID id) {
     ResourceContextInterface resourceContext = TestCaseResourceContext.builder().id(id).build();
     OperationContext operationContext =
-        new OperationContext(Entity.TEST_SUITE, MetadataOperation.EDIT_TESTS);
+        new OperationContext(Entity.TEST_CASE, MetadataOperation.DELETE);
     authorizer.authorize(securityContext, operationContext, resourceContext);
     DeleteResponse<TestCase> response =
         repository.deleteTestCaseFromLogicalTestSuite(testSuiteId, id);
