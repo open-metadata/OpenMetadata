@@ -851,6 +851,10 @@ site_menu:
     url: /releases/supported
   - category: Releases / All Releases
     url: /releases/all-releases
+  - category: Releases / All Releases / 1.5.15 Release
+    url: /releases/all-releases/#1.5.15-release
+  - category: Releases / All Releases / 1.5.14 Release
+    url: /releases/all-releases/#1.5.14-release
   - category: Releases / All Releases / 1.5.13 Release
     url: /releases/all-releases/#1.5.13-release
   - category: Releases / All Releases / 1.5.12 Release
