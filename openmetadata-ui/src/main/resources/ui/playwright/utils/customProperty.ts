@@ -113,7 +113,8 @@ export const setValueForProperty = async (data: {
   switch (propertyType) {
     case 'markdown':
       await page.locator(descriptionBox).isVisible();
-      await page.locator(descriptionBox).fill(value);
+      await page.click(descriptionBox);
+      await page.keyboard.type(value);
       await page.locator('[data-testid="save"]').click();
 
       break;
@@ -280,9 +281,9 @@ export const validateValueForProperty = async (data: {
       page.getByRole('row', { name: `${values[0]} ${values[1]}` })
     ).toBeVisible();
   } else if (propertyType === 'markdown') {
-    await expect(container.locator(descriptionBoxReadOnly)).toContainText(
-      value.replace(/\*|_/gi, '')
-    );
+    await expect(
+      container.locator(descriptionBoxReadOnly).last()
+    ).toContainText(value.replace(/\*|_/gi, ''));
   } else if (
     ![
       'entityReference',
