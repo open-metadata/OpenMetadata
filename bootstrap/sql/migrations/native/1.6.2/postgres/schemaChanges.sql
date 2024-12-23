@@ -9,7 +9,7 @@ CREATE TABLE background_jobs (
   status VARCHAR(50) NOT NULL DEFAULT 'PENDING',
   created_by VARCHAR(256) NOT NULL,
   created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
 CREATE INDEX idx_status_created_at ON background_jobs (status, created_at);
