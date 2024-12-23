@@ -3,34 +3,23 @@ site_menu:
   - category: Home
     url: /
 
-  - category: Enable Security
-    url: /deployment
-  - category: Enable Security / Ldap Authentication
-    url: /deployment/security/ldap
-  - category: Enable Security / Auth0 SSO
-    url: /deployment/security/auth0
-  - category: Enable Security / Azure SSO
-    url: /deployment/security/azure
-  - category: Enable Security / Custom OIDC SSO
-    url: /deployment/security/custom-oidc
-  - category: Enable Security / OIDC SSO
-    url: /deployment/security/oidc
-  - category: Enable Security / Google SSO
-    url: /deployment/security/google
-  - category: Enable Security / Okta SSO
-    url: /deployment/security/okta
-  - category: Enable Security / Amazon Cognito SSO
-    url: /deployment/security/amazon-cognito
-  - category: Enable Security / One Login SSO
-    url: /deployment/security/one-login
-  - category: Enable Security / Keycloak SSO
-    url: /deployment/security/keycloak
-  - category: Enable Security / Saml
-    url: /deployment/security/saml
-  - category: Enable Security / Saml / AWS
-    url: /deployment/security/saml/aws
-  - category: Enable Security / Saml / Azure
-    url: /deployment/security/saml/azure
+  - category: Getting Started
+    url: /getting-started
+
+  - category: Getting Started / Day 1
+    url: /getting-started/day-1
+  - category: Getting Started / Day 1 / Hybrid SaaS
+    url: /getting-started/day-1/hybrid-saas
+  - category: Getting Started / Day 1 / Hybrid SaaS / Airflow
+    url: /getting-started/day-1/hybrid-saas/airflow
+  - category: Getting Started / Day 1 / Hybrid SaaS / MWAA
+    url: /getting-started/day-1/hybrid-saas/mwaa
+  - category: Getting Started / Day 1 / Hybrid SaaS / GCS Composer
+    url: /getting-started/day-1/hybrid-saas/gcs-composer
+  - category: Getting Started / Day 1 / Hybrid SaaS / GitHub Actions
+    url: /getting-started/day-1/hybrid-saas/github-actions
+  - category: Getting Started / Day 1 / Hybrid SaaS / Credentials
+    url: /getting-started/day-1/hybrid-saas/credentials
 
   - category: Connectors
     url: /connectors
@@ -794,24 +783,65 @@ site_menu:
     url: /how-to-guides/data-governance/domains-&-data-products/domains
   - category: How-to Guides / Data Governance / Domains & Data Product /  How to Use Data Products
     url: /how-to-guides/data-governance/domains-&-data-products/data-products
+  - category: How-to Guides / Data Governance / Workflows
+    url: /how-to-guides/data-governance/workflows
+  - category: How-to Guides / Data Governance / Workflows / Default Workflows
+    url: /how-to-guides/data-governance/workflows/default-workflows
+  - category: How-to Guides / Data Governance / Workflows / Default Workflows / Glossary Approval Workflow
+    url: /how-to-guides/data-governance/workflows/default-workflows/glossary-approval
+  - category: How-to Guides / Data Governance / Workflows / Default Workflows / Table Certification Workflow
+    url: /how-to-guides/data-governance/workflows/default-workflows/table-certification
+  - category: How-to Guides / Data Governance / Workflows / Default Workflows / Dashboard Certification Workflow
+    url: /how-to-guides/data-governance/workflows/default-workflows/dashboard-certification
+  - category: How-to Guides / Data Governance / Workflows / Elements
+    url: /how-to-guides/data-governance/workflows/elements
+  - category: How-to Guides / Data Governance / Workflows / Elements / Triggers
+    url: /how-to-guides/data-governance/workflows/elements/triggers
+  - category: How-to Guides / Data Governance / Workflows / Elements / Triggers / Event Based Entity Trigger
+    url: /how-to-guides/data-governance/workflows/elements/triggers/event-based-entity-trigger
+  - category: How-to Guides / Data Governance / Workflows / Elements / Triggers / Periodic Batch Entity Trigger
+    url: /how-to-guides/data-governance/workflows/elements/triggers/periodic-batch-entity-trigger
+  - category: How-to Guides / Data Governance / Workflows / Elements / Nodes
+    url: /how-to-guides/data-governance/workflows/elements/nodes
+  - category: How-to Guides / Data Governance / Workflows / Elements / Nodes / Check Entity Attributes
+    url: /how-to-guides/data-governance/workflows/elements/nodes/check-entity-attributes
+  - category: How-to Guides / Data Governance / Workflows / Elements / Nodes / Create User Task
+    url: /how-to-guides/data-governance/workflows/elements/nodes/create-user-task
+  - category: How-to Guides / Data Governance / Workflows / Elements / Nodes / Set Asset Certification
+    url: /how-to-guides/data-governance/workflows/elements/nodes/set-asset-certification
+  - category: How-to Guides / Data Governance / Workflows / Elements / Nodes / Set Glossary Term Status
+    url: /how-to-guides/data-governance/workflows/elements/nodes/set-glossary-term-status
+  - category: How-to Guides / Data Governance / Workflows / How to Edit a Workflow
+    url: /how-to-guides/data-governance/workflows/how-to-edit-workflow
 
-  - category: Getting Started
-    url: /getting-started
-
-  - category: Getting Started / Day 1
-    url: /getting-started/day-1
-  - category: Getting Started / Day 1 / Hybrid SaaS
-    url: /getting-started/day-1/hybrid-saas
-  - category: Getting Started / Day 1 / Hybrid SaaS / Airflow
-    url: /getting-started/day-1/hybrid-saas/airflow
-  - category: Getting Started / Day 1 / Hybrid SaaS / MWAA
-    url: /getting-started/day-1/hybrid-saas/mwaa
-  - category: Getting Started / Day 1 / Hybrid SaaS / GCS Composer
-    url: /getting-started/day-1/hybrid-saas/gcs-composer
-  - category: Getting Started / Day 1 / Hybrid SaaS / GitHub Actions
-    url: /getting-started/day-1/hybrid-saas/github-actions
-  - category: Getting Started / Day 1 / Hybrid SaaS / Credentials
-    url: /getting-started/day-1/hybrid-saas/credentials
+  - category: Enable Security
+    url: /security
+  - category: Enable Security / Ldap Authentication
+    url: /security/ldap
+  - category: Enable Security / Auth0 SSO
+    url: /security/auth0
+  - category: Enable Security / Azure SSO
+    url: /security/azure
+  - category: Enable Security / Custom OIDC SSO
+    url: /security/custom-oidc
+  - category: Enable Security / OIDC SSO
+    url: /security/oidc
+  - category: Enable Security / Google SSO
+    url: /security/google
+  - category: Enable Security / Okta SSO
+    url: /security/okta
+  - category: Enable Security / Amazon Cognito SSO
+    url: /security/amazon-cognito
+  - category: Enable Security / One Login SSO
+    url: /security/one-login
+  - category: Enable Security / Keycloak SSO
+    url: /security/keycloak
+  - category: Enable Security / Saml
+    url: /security/saml
+  - category: Enable Security / Saml / AWS
+    url: /security/saml/aws
+  - category: Enable Security / Saml / Azure
+    url: /security/saml/azure
 
   - category: Releases
     url: /releases
@@ -821,6 +851,14 @@ site_menu:
     url: /releases/supported
   - category: Releases / All Releases
     url: /releases/all-releases
+  - category: Releases / All Releases / 1.5.15 Release
+    url: /releases/all-releases/#1.5.15-release
+  - category: Releases / All Releases / 1.5.14 Release
+    url: /releases/all-releases/#1.5.14-release
+  - category: Releases / All Releases / 1.5.13 Release
+    url: /releases/all-releases/#1.5.13-release
+  - category: Releases / All Releases / 1.5.12 Release
+    url: /releases/all-releases/#1.5.12-release
   - category: Releases / All Releases / 1.5.11 Release
     url: /releases/all-releases/#1.5.11-release
   - category: Releases / All Releases / 1.5.10 Release

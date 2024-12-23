@@ -106,7 +106,10 @@ const GlossaryTermTab = ({
     useGlossaryStore();
   const { t } = useTranslation();
 
-  const glossaryTerms = (glossaryChildTerms as ModifiedGlossaryTerm[]) ?? [];
+  const glossaryTerms = useMemo(
+    () => (glossaryChildTerms as ModifiedGlossaryTerm[]) ?? [],
+    [glossaryChildTerms]
+  );
 
   const [movedGlossaryTerm, setMovedGlossaryTerm] =
     useState<MoveGlossaryTermType>();

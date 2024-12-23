@@ -149,6 +149,7 @@ export const CustomTooltip = (props: DataInsightChartTooltipProps) => {
     dateTimeFormatter = formatDate,
     isPercentage,
     timeStampKey = 'timestampValue',
+    transformLabel = true,
   } = props;
 
   if (active && payload && payload.length) {
@@ -172,7 +173,9 @@ export const CustomTooltip = (props: DataInsightChartTooltipProps) => {
                 <Surface className="mr-2" height={12} version="1.1" width={12}>
                   <rect fill={entry.color} height="14" rx="2" width="14" />
                 </Surface>
-                {startCase(entry.name ?? (entry.dataKey as string))}
+                {transformLabel
+                  ? startCase(entry.name ?? (entry.dataKey as string))
+                  : entry.name ?? (entry.dataKey as string)}
               </span>
               <span className="font-medium">
                 {valueFormatter

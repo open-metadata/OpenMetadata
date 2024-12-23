@@ -1229,10 +1229,7 @@ public interface CollectionDAO {
                 + "AND json->>'source' = :source",
         connectionType = POSTGRES)
     void deleteLineageBySourcePipeline(
-        @BindUUID("toId") UUID toId,
-        @Bind("toEntity") String toEntity,
-        @Bind("source") String source,
-        @Bind("relation") int relation);
+        @BindUUID("toId") UUID toId, @Bind("source") String source, @Bind("relation") int relation);
 
     class FromRelationshipMapper implements RowMapper<EntityRelationshipRecord> {
       @Override
@@ -4201,7 +4198,7 @@ public interface CollectionDAO {
         @Bind("eventType") String eventType, @Bind("timestamp") long timestamp);
 
     @SqlQuery(
-        "SELECT json FROM change_event ce where ce.offset > :offset ORDER BY ce.eventTime ASC LIMIT :limit")
+        "SELECT json FROM change_event ce  WHERE ce.offset > :offset ORDER BY ce.offset ASC LIMIT :limit")
     List<String> list(@Bind("limit") long limit, @Bind("offset") long offset);
 
     @ConnectionAwareSqlQuery(value = "SELECT MAX(offset) FROM change_event", connectionType = MYSQL)

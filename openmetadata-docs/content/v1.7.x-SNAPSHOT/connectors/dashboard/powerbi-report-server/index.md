@@ -1,6 +1,6 @@
 ---
 title: Run the PowerBI Report Server Connector Externally
-slug: /connectors/dashboard/powerbireportserver/yaml
+slug: /connectors/dashboard/powerbireportserver
 ---
 
 {% connectorDetailsHeader
