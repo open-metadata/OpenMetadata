@@ -67,6 +67,7 @@ import org.openmetadata.service.jdbi3.SuggestionRepository;
 import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.jdbi3.TokenRepository;
 import org.openmetadata.service.jdbi3.UsageRepository;
+import org.openmetadata.service.jobs.JobDAO;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.indexes.SearchIndex;
@@ -77,6 +78,7 @@ import org.openmetadata.service.util.FullyQualifiedName;
 public final class Entity {
   private static volatile boolean initializedRepositories = false;
   @Getter @Setter private static CollectionDAO collectionDAO;
+  @Getter @Setter private static JobDAO jobDAO;
   @Getter @Setter private static Jdbi jdbi;
   public static final String SEPARATOR = "."; // Fully qualified name separator
 
@@ -314,6 +316,7 @@ public final class Entity {
   public static void cleanup() {
     initializedRepositories = false;
     collectionDAO = null;
+    jobDAO = null;
     searchRepository = null;
     ENTITY_REPOSITORY_MAP.clear();
   }

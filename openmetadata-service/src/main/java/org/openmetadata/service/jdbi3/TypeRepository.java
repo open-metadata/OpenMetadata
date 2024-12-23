@@ -22,13 +22,13 @@ import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.util.EntityUtil.customFieldMatch;
 import static org.openmetadata.service.util.EntityUtil.getCustomField;
 
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Optional;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -121,6 +121,11 @@ public class TypeRepository extends EntityRepository<Type> {
   @Override
   public EntityUpdater getUpdater(Type original, Type updated, Operation operation) {
     return new TypeUpdater(original, updated, operation);
+  }
+
+  @Override
+  public void postUpdate(Type original, Type updated) {
+    super.postUpdate(original, updated);
   }
 
   public PutResponse<Type> addCustomProperty(
@@ -452,6 +457,7 @@ public class TypeRepository extends EntityRepository<Type> {
 
     private void postUpdateCustomPropertyConfig(
         Type entity, CustomProperty origProperty, CustomProperty updatedProperty) {
+      String updatedBy = entity.getUpdatedBy();
       if (origProperty.getPropertyType().getName().equals("enum")) {
         EnumConfig origConfig =
             JsonUtils.convertValue(
@@ -468,34 +474,26 @@ public class TypeRepository extends EntityRepository<Type> {
                   .filter(value -> !updatedConfig.getValues().contains(value))
                   .toList();
 
-          String customPropertyFQN =
-              getCustomPropertyFQN(entity.getName(), updatedProperty.getName());
+          // Trigger background job to cleanup the existing enum values in the entity extension
+          try {
+            ObjectMapper objectMapper = new ObjectMapper();
+            String jobArgs =
+                objectMapper.writeValueAsString(
+                    Map.of(
+                        "propertyName",
+                        updatedProperty.getName(),
+                        "removedEnumKeys",
+                        removedEnumKeys,
+                        "entityType",
+                        entity.getName()));
+            long jobId =
+                jobDao.insertJob(
+                    "CUSTOM_PROPERTY_ENUM_CLEANUP", "EnumCleanupHandler", jobArgs, updatedBy);
 
-          List<CollectionDAO.ExtensionWithIdAndSchemaObject> extensions =
-              daoCollection.entityExtensionDAO().getExtensionsByPrefixBatch(customPropertyFQN);
-          List<CollectionDAO.ExtensionWithIdAndSchemaObject> updatedExtensions =
-              extensions.stream()
-                  .map(
-                      extension -> {
-                        List<String> rowValues =
-                            Optional.ofNullable(extension.getJson())
-                                .map(
-                                    json ->
-                                        JsonUtils.readValue(
-                                            json, new TypeReference<List<String>>() {}))
-                                .orElseGet(ArrayList::new);
-                        rowValues.removeAll(removedEnumKeys);
-
-                        return CollectionDAO.ExtensionWithIdAndSchemaObject.builder()
-                            .id(extension.getId())
-                            .extension(extension.getExtension())
-                            .json(JsonUtils.pojoToJson(rowValues))
-                            .jsonschema(extension.getJsonschema())
-                            .build();
-                      })
-                  .toList();
-
-          daoCollection.entityExtensionDAO().bulkUpsertExtensions(updatedExtensions);
+          } catch (Exception e) {
+            LOG.error("Failed to trigger background job for enum cleanup", e);
+            throw new RuntimeException("Failed to trigger background job", e);
+          }
         }
       }
     }
