@@ -84,16 +84,6 @@ jest.mock(
   '../../../components/common/EntityPageInfos/ManageButton/ManageButton',
   () => jest.fn().mockImplementation(() => <div>ManageButton.component</div>)
 );
-jest.mock(
-  '../../../components/common/EntityPageInfos/AnnouncementCard/AnnouncementCard',
-  () =>
-    jest.fn().mockImplementation(() => <div>AnnouncementCard.component</div>)
-);
-jest.mock(
-  '../../../components/common/EntityPageInfos/AnnouncementDrawer/AnnouncementDrawer',
-  () =>
-    jest.fn().mockImplementation(() => <div>AnnouncementDrawer.component</div>)
-);
 
 jest.mock('../../Tag/TagsV1/TagsV1.component', () =>
   jest.fn().mockImplementation(() => <div>TagsV1.component</div>)

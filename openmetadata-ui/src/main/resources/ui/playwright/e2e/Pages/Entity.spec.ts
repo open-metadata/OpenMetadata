@@ -245,11 +245,11 @@ entities.forEach((EntityClass) => {
     }
 
     test(`Announcement create & delete`, async ({ page }) => {
-      await entity.announcement(page);
+      await entity.announcement(page, true);
     });
 
     test(`Inactive Announcement create & delete`, async ({ page }) => {
-      await entity.inactiveAnnouncement(page);
+      await entity.inactiveAnnouncement(page, true);
     });
 
     test(`UpVote & DownVote entity`, async ({ page }) => {
