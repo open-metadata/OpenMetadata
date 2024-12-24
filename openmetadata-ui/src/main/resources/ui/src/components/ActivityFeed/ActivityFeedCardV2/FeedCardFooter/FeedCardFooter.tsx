@@ -141,10 +141,20 @@ function FeedCardFooter({
     await fetchUpdatedThread(feed.id);
   };
 
+  const handleReactionForAnnouncement = () => {
+    return handleAnnouncementReactionUpdate;
+  };
+
+  const handleReactionForDefault = () => {
+    return handleDefaultReactionUpdate;
+  };
+
   const getReactionHandler = () => {
-    return isAnnouncementTab
-      ? handleAnnouncementReactionUpdate
-      : handleDefaultReactionUpdate;
+    if (isAnnouncementTab) {
+      return handleReactionForAnnouncement();
+    }
+
+    return handleReactionForDefault();
   };
 
   const onReactionUpdate = useCallback(
