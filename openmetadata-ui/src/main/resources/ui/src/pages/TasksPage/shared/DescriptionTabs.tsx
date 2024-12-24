@@ -19,6 +19,7 @@ import { useTranslation } from 'react-i18next';
 import RichTextEditor from '../../../components/common/RichTextEditor/RichTextEditor';
 import { EditorContentRef } from '../../../components/common/RichTextEditor/RichTextEditor.interface';
 import RichTextEditorPreviewerV1 from '../../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
+import { isDescriptionContentEmpty } from '../../../utils/BlockEditorUtils';
 import { getDescriptionDiff } from '../../../utils/TasksUtils';
 import { DiffView } from './DiffView';
 
@@ -47,8 +48,12 @@ export const DescriptionTabs = ({
       setActiveTab(key);
       if (isEqual(key, '2')) {
         const newDescription = markdownRef.current?.getEditorContent?.();
+        const isEmptyDescription = isDescriptionContentEmpty(newDescription);
         if (newDescription) {
-          const diff = getDescriptionDiff(description, newDescription);
+          const diff = getDescriptionDiff(
+            description,
+            isEmptyDescription ? '' : newDescription
+          );
           setDiffs(diff);
         }
       } else {

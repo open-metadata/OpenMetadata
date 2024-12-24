@@ -36,6 +36,19 @@ export default Node.create({
           };
         },
       },
+      'data-diff': {
+        default: true,
+        parseHTML: (element) => element.getAttribute('data-diff'),
+        renderHTML: (attributes) => {
+          if (!attributes['data-diff']) {
+            return {};
+          }
+
+          return {
+            'data-diff': attributes['data-diff'],
+          };
+        },
+      },
     };
   },
 
