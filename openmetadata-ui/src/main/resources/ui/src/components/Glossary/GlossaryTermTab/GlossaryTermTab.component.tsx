@@ -184,7 +184,7 @@ const GlossaryTermTab = ({
         title: t('label.description'),
         dataIndex: 'description',
         key: 'description',
-        width: 200,
+        width: 250,
         render: (description: string) =>
           description.trim() ? (
             <RichTextEditorPreviewer
@@ -200,7 +200,7 @@ const GlossaryTermTab = ({
         title: t('label.reviewer'),
         dataIndex: 'reviewers',
         key: 'reviewers',
-        width: '33%',
+        width: 150,
         render: (reviewers: EntityReference[]) => (
           <OwnerLabel
             owners={reviewers}
@@ -214,7 +214,7 @@ const GlossaryTermTab = ({
         title: t('label.synonym-plural'),
         dataIndex: 'synonyms',
         key: 'synonyms',
-        width: '33%',
+        width: 150,
         render: (synonyms: string[]) => {
           return isEmpty(synonyms) ? (
             <div>{NO_DATA_PLACEHOLDER}</div>
@@ -235,14 +235,18 @@ const GlossaryTermTab = ({
         title: t('label.owner-plural'),
         dataIndex: 'owners',
         key: 'owners',
-        width: 100,
+        width: 150,
         render: (owners: EntityReference[]) => <OwnerLabel owners={owners} />,
       },
       {
         title: t('label.status'),
         dataIndex: 'status',
         key: 'status',
-        width: 100,
+        // this check is added to the width, since the last column is optional and to maintain
+        // the re-sizing of the column should not be affected the others columns width sizes.
+        ...(permissions.Create && {
+          width: 100,
+        }),
         render: (_, record) => {
           const status = record.status ?? Status.Approved;
 
@@ -261,7 +265,6 @@ const GlossaryTermTab = ({
       data.push({
         title: t('label.action-plural'),
         key: 'new-term',
-        width: 100,
         render: (_, record) => {
           const status = record.status ?? Status.Approved;
           const allowAddTerm = status === Status.Approved;
@@ -902,7 +905,6 @@ const GlossaryTermTab = ({
               pagination={false}
               rowKey="fullyQualifiedName"
               size="small"
-              tableLayout="fixed"
               onHeaderRow={onTableHeader}
               onRow={onTableRow}
             />
