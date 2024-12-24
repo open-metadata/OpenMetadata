@@ -22,7 +22,11 @@ import { SearchIndexClass } from '../../support/entity/SearchIndexClass';
 import { StoredProcedureClass } from '../../support/entity/StoredProcedureClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { TopicClass } from '../../support/entity/TopicClass';
-import { createNewPage, redirectToHomePage } from '../../utils/common';
+import {
+  createNewPage,
+  descriptionBoxReadOnly,
+  redirectToHomePage,
+} from '../../utils/common';
 import { addMultiOwner, assignTier } from '../../utils/entity';
 
 const entities = [
@@ -123,7 +127,7 @@ entities.forEach((EntityClass) => {
 
           await expect(
             page.locator(
-              '[data-testid="viewer-container"] [data-testid="diff-added"]'
+              `[data-testid="asset-description-container"] ${descriptionBoxReadOnly} [data-testid="diff-added"]`
             )
           ).toBeVisible();
 

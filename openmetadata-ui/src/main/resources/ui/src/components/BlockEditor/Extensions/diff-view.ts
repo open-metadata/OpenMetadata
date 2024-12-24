@@ -23,6 +23,19 @@ export default Node.create({
       class: {
         default: '',
       },
+      'data-testid': {
+        default: '',
+        parseHTML: (element) => element.getAttribute('data-testid'),
+        renderHTML: (attributes) => {
+          if (!attributes['data-testid']) {
+            return {};
+          }
+
+          return {
+            'data-testid': attributes['data-testid'],
+          };
+        },
+      },
     };
   },
 
