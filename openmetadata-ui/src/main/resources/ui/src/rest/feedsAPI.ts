@@ -20,6 +20,7 @@ import { CloseTask } from '../generated/api/feed/closeTask';
 import { CreateThread } from '../generated/api/feed/createThread';
 import { ResolveTask } from '../generated/api/feed/resolveTask';
 import {
+  AnnoucementStatus,
   Post,
   TaskDetails,
   Thread,
@@ -28,6 +29,7 @@ import {
 } from '../generated/entity/feed/thread';
 import { Paging } from '../generated/type/paging';
 import { EntityFieldThreadCount } from '../interface/feed.interface';
+import { getSelectedAnnouncementStatus } from '../utils/AnnouncementsUtils';
 import APIClient from './index';
 
 export const getAllFeeds = async (
@@ -37,11 +39,13 @@ export const getAllFeeds = async (
   filterType?: FeedFilter,
   taskStatus?: ThreadTaskStatus,
   userId?: string,
-  limit?: number,
-  activeAnnouncement?: boolean
+  limit?: number
 ) => {
   const isFilterAll = filterType === FeedFilter.ALL || isUndefined(filterType);
-
+  const activeAnnouncement =
+    type === ThreadType.Announcement
+      ? getSelectedAnnouncementStatus() === AnnoucementStatus.Active
+      : undefined;
   const response = await APIClient.get<{ data: Thread[]; paging: Paging }>(
     `/feed`,
     {
@@ -53,7 +57,7 @@ export const getAllFeeds = async (
         taskStatus,
         userId: isFilterAll ? undefined : userId,
         limit,
-        activeAnnouncement,
+        activeAnnouncement: activeAnnouncement,
       },
     }
   );

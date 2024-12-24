@@ -99,7 +99,6 @@ describe('ActivityFeedProvider', () => {
       'OWNER_OR_FOLLOWS',
       'Open',
       undefined,
-      undefined,
       undefined
     );
   });
@@ -120,7 +119,6 @@ describe('ActivityFeedProvider', () => {
       'OWNER_OR_FOLLOWS',
       'Closed',
       undefined,
-      undefined,
       undefined
     );
   });
@@ -139,7 +137,6 @@ describe('ActivityFeedProvider', () => {
       undefined,
       'Conversation',
       'ALL',
-      undefined,
       undefined,
       undefined,
       undefined

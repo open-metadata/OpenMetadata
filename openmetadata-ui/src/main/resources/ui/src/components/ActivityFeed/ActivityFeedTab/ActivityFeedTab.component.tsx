@@ -52,7 +52,10 @@ import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useElementInView } from '../../../hooks/useElementInView';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { getFeedCount } from '../../../rest/feedsAPI';
-import { ANNOUNCEMENT_ENTITIES } from '../../../utils/AnnouncementsUtils';
+import {
+  ANNOUNCEMENT_ENTITIES,
+  setSelectedAnnouncementStatus,
+} from '../../../utils/AnnouncementsUtils';
 import {
   getCountBadge,
   getFeedCounts,
@@ -292,8 +295,7 @@ export const ActivityFeedTab = ({
       entityType,
       fqn,
       undefined,
-      undefined,
-      announcementFilter
+      undefined
     );
   }, [feedFilter, entityType, fqn, announcementFilter]);
 
@@ -341,6 +343,7 @@ export const ActivityFeedTab = ({
   }, [refetchFeedData]);
 
   useEffect(() => {
+    setSelectedAnnouncementStatus(AnnoucementStatus.Active);
     if (fqn && !isAnnouncementActiveTab) {
       getFeedData(
         feedFilter,
@@ -358,8 +361,7 @@ export const ActivityFeedTab = ({
         entityType,
         fqn,
         undefined,
-        undefined,
-        AnnoucementStatus.Active
+        undefined
       );
     }
   }, [feedFilter, threadType, fqn]);
@@ -392,6 +394,7 @@ export const ActivityFeedTab = ({
   };
   const handleUpdateAnnouncementFilter = (filter: AnnoucementStatus) => {
     setAnnouncementFilter(filter);
+    setSelectedAnnouncementStatus(filter);
     getFeedData(
       feedFilter,
       undefined,
@@ -399,8 +402,7 @@ export const ActivityFeedTab = ({
       entityType,
       fqn,
       undefined,
-      undefined,
-      filter
+      undefined
     );
   };
 
@@ -416,8 +418,7 @@ export const ActivityFeedTab = ({
       entityType,
       fqn,
       undefined,
-      undefined,
-      announcementFilter
+      undefined
     );
   }, [feedFilter, threadType, entityType, fqn, announcementFilter]);
 

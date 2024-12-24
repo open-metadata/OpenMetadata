@@ -126,14 +126,14 @@ function FeedCardFooter({
 
     applyPatch(patch);
   };
-  const handleAnnouncementReaction = async (
+  const handleAnnouncementReactionUpdate = async (
     reaction: ReactionType,
     operation: ReactionOperation
   ) => {
     updateAnnouncementsThreadReactions(post, reaction, operation);
   };
 
-  const handleDefaultReaction = async (
+  const handleDefaultReactionUpdate = async (
     reaction: ReactionType,
     operation: ReactionOperation
   ) => {
@@ -144,9 +144,9 @@ function FeedCardFooter({
   const onReactionUpdate = useCallback(
     async (reaction: ReactionType, operation: ReactionOperation) => {
       if (isAnnouncementTab) {
-        await handleAnnouncementReaction(reaction, operation);
+        await handleAnnouncementReactionUpdate(reaction, operation);
       } else {
-        await handleDefaultReaction(reaction, operation);
+        await handleDefaultReactionUpdate(reaction, operation);
       }
     },
     [updateReactions, post, feed.id, isPost, fetchUpdatedThread]
