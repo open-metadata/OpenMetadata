@@ -189,15 +189,13 @@ const DescriptionV1 = ({
     if (suggestionData) {
       return suggestionData;
     } else {
-      return description.trim() ? (
+      return (
         <RichTextEditorPreviewerV1
           className={reduceDescription ? 'max-two-lines' : ''}
           enableSeeMoreVariant={!removeBlur}
           isDescriptionExpanded={isDescriptionExpanded}
           markdown={description}
         />
-      ) : (
-        <span>{t('label.no-description')}</span>
       );
     }
   }, [description, suggestionData, isDescriptionExpanded]);

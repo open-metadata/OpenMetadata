@@ -13,6 +13,7 @@
 import { EditorState } from '@tiptap/pm/state';
 import { Editor } from '@tiptap/react';
 import { isEmpty } from 'lodash';
+import Showdown from 'showdown';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
   ENTITY_URL_MAP,
@@ -134,12 +135,24 @@ export const isHTMLString = (content: string) => {
 };
 
 /**
+ * Convert a markdown string to an HTML string
+ */
+const _convertMarkdownStringToHtmlString = new Showdown.Converter({
+  ghCodeBlocks: false,
+  encodeEmails: false,
+  ellipsis: false,
+});
+
+/**
  * Set the content of the editor
  * @param editor The editor instance
  * @param newContent The new content to set
  */
 export const setEditorContent = (editor: Editor, newContent: string) => {
-  editor.commands.setContent(newContent);
+  // Convert the markdown string to an HTML string
+  const htmlString = _convertMarkdownStringToHtmlString.makeHtml(newContent);
+
+  editor.commands.setContent(htmlString);
 
   // Update the editor state to reflect the new content
   const newEditorState = EditorState.create({
