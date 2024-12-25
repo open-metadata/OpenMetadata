@@ -36,10 +36,9 @@ const RichTextEditorPreviewerV1: FC<PreviewerProp> = ({
 }) => {
   const { t, i18n } = useTranslation();
   const [content, setContent] = useState<string>('');
-  // initially read more will be false
+
   const [readMore, setReadMore] = useState<boolean>(false);
 
-  // read more toggle handler
   const handleReadMoreToggle = () => setReadMore((pre) => !pre);
 
   // whether has read more content or not
