@@ -181,5 +181,5 @@ export const getTextFromHtmlString = (description?: string): string => {
     return '';
   }
 
-  return description.replace(/<[^>]+?>/g, '').trim();
+  return description.replace(/<[^>]{1,1000}>/g, '').trim();
 };
