@@ -287,11 +287,11 @@ export const userMentionItemWithAvatar = (
   return wrapper;
 };
 
-const getMentionList = (message: string) => {
+export const getMentionList = (message: string) => {
   return message.match(mentionRegEx);
 };
 
-const getHashTagList = (message: string) => {
+export const getHashTagList = (message: string) => {
   return message.match(hashtagRegEx);
 };
 

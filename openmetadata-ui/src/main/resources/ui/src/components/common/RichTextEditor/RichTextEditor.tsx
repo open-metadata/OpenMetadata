@@ -52,18 +52,16 @@ const RichTextEditor = forwardRef<EditorContentRef, RichTextEditorProp>(
     }));
 
     return (
-      <div className={classNames(className)} style={style}>
-        <div data-testid="editor">
-          <BlockEditor
-            placeholder={placeholder}
-            ref={editorRef}
-            autoFocus={autofocus}
-            content={initialValue}
-            menuType="bar"
-            editable={!readonly}
-            onChange={onChangeHandler}
-          />
-        </div>
+      <div className={classNames(className)} style={style} data-testid="editor">
+        <BlockEditor
+          placeholder={placeholder}
+          ref={editorRef}
+          autoFocus={autofocus}
+          content={initialValue}
+          menuType="bar"
+          editable={!readonly}
+          onChange={onChangeHandler}
+        />
       </div>
     );
   }

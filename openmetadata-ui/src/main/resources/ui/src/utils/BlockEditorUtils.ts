@@ -15,12 +15,8 @@ import { Editor } from '@tiptap/react';
 import { isEmpty } from 'lodash';
 import Showdown from 'showdown';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
-import {
-  ENTITY_URL_MAP,
-  hashtagRegEx,
-  mentionRegEx,
-} from '../constants/Feeds.constants';
-import { getEntityDetail } from './FeedUtils';
+import { ENTITY_URL_MAP } from '../constants/Feeds.constants';
+import { getEntityDetail, getHashTagList, getMentionList } from './FeedUtils';
 
 export const getSelectedText = (state: EditorState) => {
   const { from, to } = state.selection;
@@ -45,8 +41,8 @@ const _convertMarkdownFormatToHtmlString = (markdown: string) => {
   let updatedMessage = markdown;
   const urlEntries = Object.entries(ENTITY_URL_MAP);
 
-  const mentionList = markdown.match(mentionRegEx) ?? [];
-  const hashTagList = markdown.match(hashtagRegEx) ?? [];
+  const mentionList = getMentionList(markdown) ?? [];
+  const hashTagList = getHashTagList(markdown) ?? [];
 
   const mentionMap = new Map<string, RegExpMatchArray | null>(
     mentionList.map((mention) => [mention, getEntityDetail(mention)])

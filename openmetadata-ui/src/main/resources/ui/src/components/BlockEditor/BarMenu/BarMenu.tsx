@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import classNames from 'classnames';
-import { noop } from 'lodash';
+import { noop, uniqueId } from 'lodash';
 import React, { FC, Fragment } from 'react';
 import BlockQuoteIcon from '../../../assets/svg/ic-format-block-quote.svg';
 import BoldIcon from '../../../assets/svg/ic-format-bold.svg';
@@ -119,7 +119,7 @@ const BarMenu: FC<BarMenuProps> = ({ editor, onLinkToggle }) => {
     <div className="bar-menu-wrapper">
       {formats.map((format, index) => {
         return (
-          <Fragment key={`format-group-${index}`}>
+          <Fragment key={`format-group-${uniqueId()}`}>
             <div className="bar-menu-wrapper--format-group">
               {format.map((item) => {
                 return (
