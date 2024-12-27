@@ -291,10 +291,9 @@ test('Column Values To Be Not Null', async ({ page }) => {
       await page.click(
         `[data-testid="${NEW_COLUMN_TEST_CASE_WITH_NULL_TYPE.type}"]`
       );
-      await page.fill(
-        descriptionBox,
-        NEW_COLUMN_TEST_CASE_WITH_NULL_TYPE.description
-      );
+      await page
+        .locator(descriptionBox)
+        .fill(NEW_COLUMN_TEST_CASE_WITH_NULL_TYPE.description);
 
       await page.click('[data-testid="submit-test"]');
       await page.waitForSelector('[data-testid="success-line"]');

@@ -155,6 +155,7 @@ test.describe('User with different Roles', () => {
       .getByTestId('edit-description')
       .click();
 
+    await userPage.click(descriptionBox);
     await userPage.locator(descriptionBox).clear();
 
     const removeUserDescription = userPage.waitForResponse(

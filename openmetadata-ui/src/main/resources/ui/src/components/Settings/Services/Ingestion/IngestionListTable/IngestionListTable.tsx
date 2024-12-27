@@ -46,7 +46,7 @@ import {
   showSuccessToast,
 } from '../../../../../utils/ToastUtils';
 import NextPrevious from '../../../../common/NextPrevious/NextPrevious';
-import RichTextEditorPreviewer from '../../../../common/RichTextEditor/RichTextEditorPreviewer';
+import RichTextEditorPreviewerV1 from '../../../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import ButtonSkeleton from '../../../../common/Skeleton/CommonSkeletons/ControlElements/ControlElements.component';
 import Table from '../../../../common/Table/Table';
 import EntityDeleteModal from '../../../../Modals/EntityDeleteModal/EntityDeleteModal';
@@ -257,7 +257,7 @@ function IngestionListTable({
               key: 'description',
               render: (description: string) =>
                 !isUndefined(description) && description.trim() ? (
-                  <RichTextEditorPreviewer
+                  <RichTextEditorPreviewerV1
                     markdown={description}
                     maxLength={MAX_CHAR_LIMIT_ENTITY_SUMMARY}
                   />

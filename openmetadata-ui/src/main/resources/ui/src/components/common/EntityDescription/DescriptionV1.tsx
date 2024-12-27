@@ -23,6 +23,7 @@ import { ReactComponent as RequestIcon } from '../../../assets/svg/request-icon.
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { EntityType } from '../../../enums/entity.enum';
+import { isDescriptionContentEmpty } from '../../../utils/BlockEditorUtils';
 import { getEntityFeedLink } from '../../../utils/EntityUtils';
 import {
   getRequestDescriptionPath,
@@ -33,7 +34,7 @@ import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/Mo
 import SuggestionsAlert from '../../Suggestions/SuggestionsAlert/SuggestionsAlert';
 import { useSuggestionsContext } from '../../Suggestions/SuggestionsProvider/SuggestionsProvider';
 import SuggestionsSlider from '../../Suggestions/SuggestionsSlider/SuggestionsSlider';
-import RichTextEditorPreviewer from '../RichTextEditor/RichTextEditorPreviewer';
+import RichTextEditorPreviewerV1 from '../RichTextEditor/RichTextEditorPreviewerV1';
 import { DescriptionProps } from './Description.interface';
 
 const { Text } = Typography;
@@ -90,7 +91,7 @@ const DescriptionV1 = ({
   }, [entityType, entityFqn]);
 
   const taskActionButton = useMemo(() => {
-    const hasDescription = Boolean(description.trim());
+    const hasDescription = !isDescriptionContentEmpty(description.trim());
 
     const isTaskEntity = TASK_ENTITIES.includes(entityType as EntityType);
 
@@ -188,15 +189,13 @@ const DescriptionV1 = ({
     if (suggestionData) {
       return suggestionData;
     } else {
-      return description.trim() ? (
-        <RichTextEditorPreviewer
+      return (
+        <RichTextEditorPreviewerV1
           className={reduceDescription ? 'max-two-lines' : ''}
           enableSeeMoreVariant={!removeBlur}
           isDescriptionExpanded={isDescriptionExpanded}
           markdown={description}
         />
-      ) : (
-        <span>{t('label.no-description')}</span>
       );
     }
   }, [description, suggestionData, isDescriptionExpanded]);

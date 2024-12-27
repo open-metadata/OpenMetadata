@@ -36,7 +36,7 @@ import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg'
 import DescriptionV1 from '../../../components/common/EntityDescription/DescriptionV1';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../../components/common/Loader/Loader';
-import RichTextEditorPreviewer from '../../../components/common/RichTextEditor/RichTextEditorPreviewer';
+import RichTextEditorPreviewerV1 from '../../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
 import {
@@ -398,7 +398,7 @@ const PoliciesDetailPage = () => {
                                     </Typography.Text>
                                   </Col>
                                   <Col span={22}>
-                                    <RichTextEditorPreviewer
+                                    <RichTextEditorPreviewerV1
                                       markdown={rule.description || ''}
                                     />
                                   </Col>

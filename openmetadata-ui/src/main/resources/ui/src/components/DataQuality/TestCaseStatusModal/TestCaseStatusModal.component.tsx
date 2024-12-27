@@ -13,10 +13,9 @@
 import { Form, Modal, Select } from 'antd';
 import { AxiosError } from 'axios';
 import { startCase, unionBy } from 'lodash';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import RichTextEditor from '../../../components/common/RichTextEditor/RichTextEditor';
-import { EditorContentRef } from '../../../components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor.interface';
 import { EntityType } from '../../../enums/entity.enum';
 import { CreateTestCaseResolutionStatus } from '../../../generated/api/tests/createTestCaseResolutionStatus';
 import { TestCaseFailureReasonType } from '../../../generated/tests/resolved';
@@ -43,7 +42,6 @@ export const TestCaseStatusModal = ({
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
   const [form] = Form.useForm();
-  const markdownRef = useRef<EditorContentRef>();
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [options, setOptions] = useState<Option[]>([]);
 
@@ -216,7 +214,6 @@ export const TestCaseStatusModal = ({
                 },
               ]}>
               <RichTextEditor
-                height="200px"
                 initialValue={
                   data?.testCaseResolutionStatusDetails
                     ?.testCaseFailureComment ?? ''
@@ -224,7 +221,6 @@ export const TestCaseStatusModal = ({
                 placeHolder={t('message.write-your-text', {
                   text: t('label.comment'),
                 })}
-                ref={markdownRef}
                 onTextChange={(value) =>
                   form.setFieldValue(
                     [

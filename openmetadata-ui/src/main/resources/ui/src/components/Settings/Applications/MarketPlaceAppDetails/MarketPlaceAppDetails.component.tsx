@@ -39,7 +39,7 @@ import { getEntityName } from '../../../../utils/EntityUtils';
 import { getAppInstallPath } from '../../../../utils/RouterUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import Loader from '../../../common/Loader/Loader';
-import RichTextEditorPreviewer from '../../../common/RichTextEditor/RichTextEditorPreviewer';
+import RichTextEditorPreviewerV1 from '../../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import PageLayoutV1 from '../../../PageLayoutV1/PageLayoutV1';
 import applicationsClassBase from '../AppDetails/ApplicationsClassBase';
 import AppLogo from '../AppLogo/AppLogo.component';
@@ -268,7 +268,7 @@ const MarketPlaceAppDetails = () => {
 
         <Col span={24}>
           <div className="p-md">
-            <RichTextEditorPreviewer
+            <RichTextEditorPreviewerV1
               enableSeeMoreVariant={false}
               markdown={appData?.description ?? ''}
             />

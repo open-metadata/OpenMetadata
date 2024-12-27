@@ -39,6 +39,7 @@ import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../hooks/useFqn';
 import { postThread } from '../../../rest/feedsAPI';
+import { isDescriptionContentEmpty } from '../../../utils/BlockEditorUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import {
   ENTITY_LINK_SEPARATOR,
@@ -149,7 +150,9 @@ const UpdateDescription = () => {
           id: assignee.value,
           type: assignee.type,
         })),
-        suggestion: value.description,
+        suggestion: isDescriptionContentEmpty(value.description)
+          ? ''
+          : value.description,
         type: TaskType.UpdateDescription,
         oldValue: currentDescription,
       },

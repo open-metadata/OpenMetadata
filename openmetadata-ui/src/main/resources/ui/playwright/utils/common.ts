@@ -19,8 +19,10 @@ import { sidebarClick } from './sidebar';
 
 export const uuid = () => randomUUID().split('-')[0];
 
-export const descriptionBox =
-  '.toastui-editor-md-container > .toastui-editor > .ProseMirror';
+export const descriptionBox = '.om-block-editor[contenteditable="true"]';
+export const descriptionBoxReadOnly =
+  '.om-block-editor[contenteditable="false"]';
+
 export const INVALID_NAMES = {
   MAX_LENGTH:
     'a87439625b1c2d3e4f5061728394a5b6c7d8e90a1b2c3d4e5f67890aba87439625b1c2d3e4f5061728394a5b6c7d8e90a1b2c3d4e5f67890abName can be a maximum of 128 characters',

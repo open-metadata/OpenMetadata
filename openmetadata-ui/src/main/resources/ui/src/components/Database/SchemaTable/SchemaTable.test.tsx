@@ -126,7 +126,7 @@ jest.mock('../../../hooks/authHooks', () => {
   };
 });
 
-jest.mock('../../common/RichTextEditor/RichTextEditorPreviewer', () => {
+jest.mock('../../common/RichTextEditor/RichTextEditorPreviewerV1', () => {
   return jest.fn().mockReturnValue(<p>RichTextEditorPreviewer</p>);
 });
 

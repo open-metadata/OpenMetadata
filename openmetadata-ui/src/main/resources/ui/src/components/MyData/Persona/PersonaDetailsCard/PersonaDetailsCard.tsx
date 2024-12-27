@@ -17,7 +17,7 @@ import { useHistory } from 'react-router-dom';
 import { Persona } from '../../../../generated/entity/teams/persona';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { getPersonaDetailsPath } from '../../../../utils/RouterUtils';
-import RichTextEditorPreviewer from '../../../common/RichTextEditor/RichTextEditorPreviewer';
+import RichTextEditorPreviewerV1 from '../../../common/RichTextEditor/RichTextEditorPreviewerV1';
 
 interface PersonaDetailsCardProps {
   persona: Persona;
@@ -43,7 +43,7 @@ export const PersonaDetailsCard = ({ persona }: PersonaDetailsCardProps) => {
         <Card.Meta
           description={
             persona.description ? (
-              <RichTextEditorPreviewer
+              <RichTextEditorPreviewerV1
                 className="text-grey-muted max-two-lines"
                 markdown={persona.description ?? ''}
               />

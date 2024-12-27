@@ -140,7 +140,7 @@ const TagsForm = ({
       type: FieldTypes.DESCRIPTION,
       props: {
         'data-testid': 'description',
-        initialValue: '',
+        initialValue: initialValues?.description ?? '',
         readonly: disableDescriptionField,
       },
     },

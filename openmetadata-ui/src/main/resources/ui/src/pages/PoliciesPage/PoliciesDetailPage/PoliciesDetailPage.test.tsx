@@ -49,7 +49,7 @@ jest.mock(
 );
 
 jest.mock(
-  '../../../components/common/RichTextEditor/RichTextEditorPreviewer',
+  '../../../components/common/RichTextEditor/RichTextEditorPreviewerV1',
   () => jest.fn().mockReturnValue(<div data-testid="previewer">Previewer</div>)
 );
 

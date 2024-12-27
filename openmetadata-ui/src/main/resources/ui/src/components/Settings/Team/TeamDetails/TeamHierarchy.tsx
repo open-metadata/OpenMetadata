@@ -40,7 +40,7 @@ import { isDropRestricted } from '../../../../utils/TeamUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import { DraggableBodyRowProps } from '../../../common/Draggable/DraggableBodyRowProps.interface';
 import FilterTablePlaceHolder from '../../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
-import RichTextEditorPreviewer from '../../../common/RichTextEditor/RichTextEditorPreviewer';
+import RichTextEditorPreviewerV1 from '../../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import Table from '../../../common/Table/Table';
 import { MovedTeamProps, TeamHierarchyProps } from './team.interface';
 import './teams.less';
@@ -136,7 +136,7 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
               {NO_DATA_PLACEHOLDER}
             </Typography.Paragraph>
           ) : (
-            <RichTextEditorPreviewer
+            <RichTextEditorPreviewerV1
               markdown={description}
               maxLength={DESCRIPTION_LENGTH}
               showReadMoreBtn={false}

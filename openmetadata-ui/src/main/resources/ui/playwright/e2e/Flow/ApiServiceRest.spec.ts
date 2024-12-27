@@ -40,7 +40,7 @@ test.describe('API service', () => {
 
     // step 1
     await page.getByTestId('service-name').fill(apiServiceConfig.name);
-    await page.fill(descriptionBox, apiServiceConfig.description);
+    await page.locator(descriptionBox).fill(apiServiceConfig.description);
     await page.getByTestId('next-button').click();
 
     // step 2

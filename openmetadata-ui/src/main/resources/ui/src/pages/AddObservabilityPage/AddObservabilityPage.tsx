@@ -247,7 +247,6 @@ function AddObservabilityPage() {
                         valuePropName="initialValue">
                         <RichTextEditor
                           data-testid="description"
-                          height="200px"
                           initialValue=""
                         />
                       </Form.Item>

@@ -21,7 +21,7 @@ import {
 import React from 'react';
 import { CustomPropertyTable } from './CustomPropertyTable';
 
-jest.mock('../../common/RichTextEditor/RichTextEditorPreviewer', () => {
+jest.mock('../../common/RichTextEditor/RichTextEditorPreviewerV1', () => {
   return jest.fn().mockReturnValue(<p>RichTextEditorPreview</p>);
 });
 jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => {
