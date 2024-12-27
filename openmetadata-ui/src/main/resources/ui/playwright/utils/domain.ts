@@ -151,7 +151,7 @@ const fillCommonFormItems = async (
 ) => {
   await page.locator('[data-testid="name"]').fill(entity.name);
   await page.locator('[data-testid="display-name"]').fill(entity.displayName);
-  await page.fill(descriptionBox, entity.description);
+  await page.locator(descriptionBox).fill(entity.description);
   if (!isEmpty(entity.owners) && !isUndefined(entity.owners)) {
     await addOwner({
       page,

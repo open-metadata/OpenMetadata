@@ -24,7 +24,7 @@ import {
 } from '../constant/delete';
 import { ES_RESERVED_CHARACTERS } from '../constant/entity';
 import { EntityTypeEndpoint } from '../support/entity/Entity.interface';
-import { clickOutside, redirectToHomePage } from './common';
+import { clickOutside, descriptionBox, redirectToHomePage } from './common';
 
 export const visitEntityPage = async (data: {
   page: Page;
@@ -330,9 +330,9 @@ export const updateDescription = async (
   isModal = false
 ) => {
   await page.getByTestId('edit-description').click();
-  await page.locator('.ProseMirror').first().click();
-  await page.locator('.ProseMirror').first().clear();
-  await page.locator('.ProseMirror').first().fill(description);
+  await page.locator(descriptionBox).first().click();
+  await page.locator(descriptionBox).first().clear();
+  await page.locator(descriptionBox).first().fill(description);
   await page.getByTestId('save').click();
 
   if (isModal) {
@@ -783,10 +783,7 @@ const announcementForm = async (
   await page.fill('#endTime', `${data.endDate}`);
   await page.press('#startTime', 'Enter');
 
-  await page.fill(
-    '.toastui-editor-md-container > .toastui-editor > .ProseMirror',
-    data.description
-  );
+  await page.locator(descriptionBox).fill(data.description);
 
   await page.locator('#announcement-submit').scrollIntoViewIfNeeded();
   const announcementSubmit = page.waitForResponse(
@@ -1354,4 +1351,17 @@ export const getEntityDisplayName = (entity?: {
   displayName?: string;
 }) => {
   return entity?.displayName || entity?.name || '';
+};
+
+/**
+ *
+ * @param description HTML string
+ * @returns Text from HTML string
+ */
+export const getTextFromHtmlString = (description?: string): string => {
+  if (!description) {
+    return '';
+  }
+
+  return description.replace(/<[^>]*>/g, '').trim();
 };
