@@ -22,6 +22,7 @@ import { TableClass } from '../support/entity/TableClass';
 import { TopicClass } from '../support/entity/TopicClass';
 import { TagClass } from '../support/tag/TagClass';
 import {
+  descriptionBox,
   getApiContext,
   NAME_MIN_MAX_LENGTH_VALIDATION_ERROR,
   NAME_VALIDATION_ERROR,
@@ -335,9 +336,9 @@ export const editTagPageDescription = async (page: Page, tag: TagClass) => {
 
   await expect(page.getByRole('dialog')).toBeVisible();
 
-  await page.locator('.toastui-editor-pseudo-clipboard').clear();
+  await page.locator(descriptionBox).clear();
   await page
-    .locator('.toastui-editor-pseudo-clipboard')
+    .locator(descriptionBox)
     .fill(`This is updated test description for tag ${tag.data.name}.`);
 
   const editDescription = page.waitForResponse(`/api/v1/tags/*`);
