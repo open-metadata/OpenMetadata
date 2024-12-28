@@ -1230,7 +1230,7 @@ public interface CollectionDAO {
     @SqlQuery("SELECT json FROM thread_entity WHERE id = :id")
     String findById(@BindUUID("id") UUID id);
 
-    @SqlQuery("SELECT json FROM thread_entity ORDER BY createdAt DESC")
+    @SqlQuery("SELECT json FROM thread_entity ORDER BY updatedAt DESC")
     List<String> list();
 
     @SqlQuery("SELECT count(id) FROM thread_entity <condition>")
@@ -1253,8 +1253,11 @@ public interface CollectionDAO {
     @SqlQuery("SELECT json FROM thread_entity WHERE taskId = :id")
     String findByTaskId(@Bind("id") int id);
 
-    @SqlQuery("SELECT json FROM thread_entity <condition> ORDER BY createdAt DESC LIMIT :limit")
-    List<String> list(@Bind("limit") int limit, @Define("condition") String condition);
+    @SqlQuery("SELECT json FROM thread_entity <condition> <sortingOrder> LIMIT :limit")
+    List<String> list(
+        @Bind("limit") int limit,
+        @Define("condition") String condition,
+        @Define("sortingOrder") String sortingOrder);
 
     @SqlQuery(
         "SELECT json FROM thread_entity "
@@ -1273,21 +1276,22 @@ public interface CollectionDAO {
         value =
             "SELECT json FROM thread_entity <condition> AND "
                 + "to_tsvector('simple', taskAssigneesIds) @@ to_tsquery('simple', :userTeamJsonPostgres) "
-                + "ORDER BY createdAt DESC "
+                + "<sortingOrder>  "
                 + "LIMIT :limit",
         connectionType = POSTGRES)
     @ConnectionAwareSqlQuery(
         value =
             "SELECT json FROM thread_entity <condition> AND "
                 + "MATCH(taskAssigneesIds) AGAINST (:userTeamJsonMysql IN BOOLEAN MODE) "
-                + "ORDER BY createdAt DESC "
+                + "<sortingOrder> "
                 + "LIMIT :limit",
         connectionType = MYSQL)
     List<String> listTasksAssigned(
         @Bind("userTeamJsonPostgres") String userTeamJsonPostgres,
         @Bind("userTeamJsonMysql") String userTeamJsonMysql,
         @Bind("limit") int limit,
-        @Define("condition") String condition);
+        @Define("condition") String condition,
+        @Define("sortingOrder") String sortingOrder);
 
     @ConnectionAwareSqlQuery(
         value =
@@ -1308,14 +1312,14 @@ public interface CollectionDAO {
         value =
             "SELECT json FROM thread_entity <condition> "
                 + "AND (to_tsvector('simple', taskAssigneesIds) @@ to_tsquery('simple', :userTeamJsonPostgres) OR createdBy = :username) "
-                + "ORDER BY createdAt DESC "
+                + "<sortingOrder>  "
                 + "LIMIT :limit",
         connectionType = POSTGRES)
     @ConnectionAwareSqlQuery(
         value =
             "SELECT json FROM thread_entity <condition> "
                 + "AND (MATCH(taskAssigneesIds) AGAINST (:userTeamJsonMysql IN BOOLEAN MODE) OR createdBy = :username) "
-                + "ORDER BY createdAt DESC "
+                + "<sortingOrder> "
                 + "LIMIT :limit",
         connectionType = MYSQL)
     List<String> listTasksOfUser(
@@ -1323,7 +1327,8 @@ public interface CollectionDAO {
         @Bind("userTeamJsonMysql") String userTeamJsonMysql,
         @Bind("username") String username,
         @Bind("limit") int limit,
-        @Define("condition") String condition);
+        @Define("condition") String condition,
+        @Define("sortingOrder") String sortingOrder);
 
     @ConnectionAwareSqlQuery(
         value =
@@ -1342,11 +1347,12 @@ public interface CollectionDAO {
         @Define("condition") String condition);
 
     @SqlQuery(
-        "SELECT json FROM thread_entity <condition> AND createdBy = :username ORDER BY createdAt DESC LIMIT :limit")
+        "SELECT json FROM thread_entity <condition> AND createdBy = :username <sortingOrder> LIMIT :limit")
     List<String> listTasksAssigned(
         @Bind("username") String username,
         @Bind("limit") int limit,
-        @Define("condition") String condition);
+        @Define("condition") String condition,
+        @Define("sortingOrder") String sortingOrder);
 
     @SqlQuery("SELECT count(id) FROM thread_entity <condition> AND createdBy = :username")
     int listCountTasksAssignedBy(
@@ -1359,13 +1365,14 @@ public interface CollectionDAO {
             + "((fromEntity='user' AND fromId= :userId) OR "
             + "(fromEntity='team' AND fromId IN (<teamIds>))) AND relation=8) OR "
             + "id in (SELECT toId FROM entity_relationship WHERE (fromEntity='user' AND fromId= :userId AND toEntity='THREAD' AND relation IN (1,2)))) "
-            + "ORDER BY createdAt DESC "
+            + "<sortingOrder> "
             + "LIMIT :limit")
     List<String> listThreadsByOwner(
         @BindUUID("userId") UUID userId,
         @BindList("teamIds") List<String> teamIds,
         @Bind("limit") int limit,
-        @Define("condition") String condition);
+        @Define("condition") String condition,
+        @Define("sortingOrder") String sortingOrder);
 
     @SqlQuery(
         "SELECT count(id) FROM thread_entity <condition> AND "
@@ -1405,7 +1412,8 @@ public interface CollectionDAO {
           userName,
           teamNames,
           filterRelation,
-          filter.getCondition());
+          filter.getCondition(),
+          filter.getSortingOrder());
     }
 
     @SqlQuery(
@@ -1416,7 +1424,7 @@ public interface CollectionDAO {
             + "AND (:userName IS NULL OR MD5(id) in (SELECT toFQNHash FROM field_relationship WHERE "
             + " ((fromType='user' AND fromFQNHash= :userName) OR"
             + " (fromType='team' AND fromFQNHash IN (<teamNames>))) AND toType='THREAD' AND relation= :filterRelation) )"
-            + "ORDER BY createdAt DESC "
+            + "<sortingOrder> "
             + "LIMIT :limit")
     List<String> listThreadsByEntityLink(
         @BindFQN("fqnPrefixHash") String fqnPrefixHash,
@@ -1426,7 +1434,8 @@ public interface CollectionDAO {
         @BindFQN("userName") String userName,
         @BindList("teamNames") List<String> teamNames,
         @Bind("filterRelation") int filterRelation,
-        @Define("condition") String condition);
+        @Define("condition") String condition,
+        @Define("sortingOrder") String sortingOrder);
 
     default int listCountThreadsByEntityLink(
         FeedFilter filter,
@@ -1579,14 +1588,15 @@ public interface CollectionDAO {
             + "SELECT toId FROM entity_relationship WHERE "
             + "((fromEntity='user' AND fromId= :userId) OR "
             + "(fromEntity='team' AND fromId IN (<teamIds>))) AND relation= :relation) "
-            + "ORDER BY createdAt DESC "
+            + "<sortingOrder> "
             + "LIMIT :limit")
     List<String> listThreadsByFollows(
         @BindUUID("userId") UUID userId,
         @BindList("teamIds") List<String> teamIds,
         @Bind("limit") int limit,
         @Bind("relation") int relation,
-        @Define("condition") String condition);
+        @Define("condition") String condition,
+        @Define("sortingOrder") String sortingOrder);
 
     @SqlQuery(
         "SELECT count(id) FROM thread_entity <condition> AND "
@@ -1602,7 +1612,7 @@ public interface CollectionDAO {
 
     @SqlQuery(
         "SELECT json FROM ( "
-            + "    SELECT json, createdAt FROM thread_entity te "
+            + "    SELECT json, updatedAt, id FROM thread_entity te "
             + "     <condition> AND entityId IN ( "
             + "        SELECT toId FROM entity_relationship er "
             + "        WHERE er.relation = 8 "
@@ -1612,7 +1622,7 @@ public interface CollectionDAO {
             + "        ) "
             + "    )  "
             + "    UNION   "
-            + "    SELECT json, createdAt FROM thread_entity te  "
+            + "    SELECT json, updatedAt, id FROM thread_entity te  "
             + "     <condition> AND id IN ( "
             + "        SELECT toId FROM entity_relationship er  "
             + "        WHERE er.toEntity = 'THREAD'  "
@@ -1621,7 +1631,7 @@ public interface CollectionDAO {
             + "        AND er.fromId = :userId  "
             + "    )  "
             + "    UNION   "
-            + "    SELECT json, createdAt FROM thread_entity te  "
+            + "    SELECT json, updatedAt, id FROM thread_entity te  "
             + "     <condition> AND id IN ( "
             + "        SELECT toId FROM entity_relationship er  "
             + "        WHERE er.relation = 11  "
@@ -1631,13 +1641,14 @@ public interface CollectionDAO {
             + "        ) "
             + "    )  "
             + ") AS combined  "
-            + "ORDER BY createdAt DESC  "
+            + "<sortingOrder>  "
             + "LIMIT :limit")
     List<String> listThreadsByOwnerOrFollows(
         @BindUUID("userId") UUID userId,
         @BindList("teamIds") List<String> teamIds,
         @Bind("limit") int limit,
-        @Define("condition") String condition);
+        @Define("condition") String condition,
+        @Define("sortingOrder") String sortingOrder);
 
     @SqlQuery(
         "SELECT COUNT(id) FROM ( "
@@ -1681,14 +1692,15 @@ public interface CollectionDAO {
             + "SELECT toFQNHash FROM field_relationship WHERE "
             + "((fromType='user' AND fromFQNHash= :userName) OR "
             + "(fromType='team' AND fromFQNHash IN (<teamNames>)))  AND toType='THREAD' AND relation= :relation) "
-            + "ORDER BY createdAt DESC "
+            + "<sortingOrder> "
             + "LIMIT :limit")
     List<String> listThreadsByMentions(
         @Bind("userName") String userName,
         @BindList("teamNames") List<String> teamNames,
         @Bind("limit") int limit,
         @Bind("relation") int relation,
-        @Define("condition") String condition);
+        @Define("condition") String condition,
+        @Define("sortingOrder") String sortingOrder);
 
     @SqlQuery(
         "SELECT count(id) FROM thread_entity <condition> AND "
@@ -1711,7 +1723,7 @@ public interface CollectionDAO {
             + "AND (:userName IS NULL OR MD5(id) in (SELECT toFQNHash FROM field_relationship WHERE "
             + " ((fromType='user' AND fromFQNHash= :userName) OR"
             + " (fromType='team' AND fromFQNHash IN (<teamNames>))) AND toType='THREAD' AND relation= :filterRelation) )"
-            + "ORDER BY createdAt DESC "
+            + "<sortingOrder> "
             + "LIMIT :limit")
     List<String> listThreadsByGlossaryAndTerms(
         @BindFQN("fqnPrefixHash") String fqnPrefixHash,
@@ -1722,7 +1734,8 @@ public interface CollectionDAO {
         @BindFQN("userName") String userName,
         @BindList("teamNames") List<String> teamNames,
         @Bind("filterRelation") int filterRelation,
-        @Define("condition") String condition);
+        @Define("condition") String condition,
+        @Define("sortingOrder") String sortingOrder);
 
     default List<List<String>> listCountThreadsByGlossaryAndTerms(
         EntityLink entityLink, EntityReference reference) {
