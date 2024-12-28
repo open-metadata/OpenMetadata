@@ -11,13 +11,12 @@
  *  limitations under the License.
  */
 import classNames from 'classnames';
-import { noop, uniqueId } from 'lodash';
+import { uniqueId } from 'lodash';
 import React, { FC, Fragment } from 'react';
 import BlockQuoteIcon from '../../../assets/svg/ic-format-block-quote.svg';
 import BoldIcon from '../../../assets/svg/ic-format-bold.svg';
 import UnorderedListIcon from '../../../assets/svg/ic-format-bullet-list.svg';
 import CodeBlockIcon from '../../../assets/svg/ic-format-code-block.svg';
-import HighlightIcon from '../../../assets/svg/ic-format-highlight.svg';
 import HorizontalLineIcon from '../../../assets/svg/ic-format-horizontal-line.svg';
 import ImageIcon from '../../../assets/svg/ic-format-image-inline.svg';
 import InlineCodeIcon from '../../../assets/svg/ic-format-inline-code.svg';
@@ -56,12 +55,6 @@ const BarMenu: FC<BarMenuProps> = ({ editor, onLinkToggle }) => {
         icon: InlineCodeIcon,
         command: () => editor.chain().focus().toggleCode().run(),
         isActive: () => editor.isActive('code'),
-      },
-      {
-        name: 'highlight',
-        icon: HighlightIcon,
-        command: () => noop,
-        isActive: () => editor.isActive('highlight'),
       },
     ],
     [
