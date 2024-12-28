@@ -219,6 +219,14 @@
     }
   }
 
+  &.block-editor-wrapper--bubble-menu {
+    .om-block-editor {
+      &:focus-visible {
+        outline: none;
+      }
+    }
+  }
+
   // if contenteditable is false, remove padding-bottom from last p tag
   .om-block-editor[contenteditable='false'] {
     > p:last-child {
