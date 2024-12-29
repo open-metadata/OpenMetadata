@@ -173,6 +173,7 @@ describe('Test Connection Component', () => {
     await act(async () => {
       render(<TestConnection {...mockProps} />);
     });
+    const controller = new AbortController();
 
     const testConnectionButton = screen.getByTestId('test-connection-btn');
 
@@ -180,13 +181,22 @@ describe('Test Connection Component', () => {
       userEvent.click(testConnectionButton);
     });
 
-    expect(addWorkflow).toHaveBeenCalledWith(CREATE_WORKFLOW_PAYLOAD);
+    expect(addWorkflow).toHaveBeenCalledWith(
+      CREATE_WORKFLOW_PAYLOAD,
+      controller.signal
+    );
 
-    expect(triggerWorkflowById).toHaveBeenCalledWith(WORKFLOW_DETAILS.id);
+    expect(triggerWorkflowById).toHaveBeenCalledWith(
+      WORKFLOW_DETAILS.id,
+      controller.signal
+    );
 
     jest.advanceTimersByTime(2000);
 
-    expect(getWorkflowById).toHaveBeenCalledWith(WORKFLOW_DETAILS.id);
+    expect(getWorkflowById).toHaveBeenCalledWith(
+      WORKFLOW_DETAILS.id,
+      controller.signal
+    );
   });
 
   it('Should show success message if test connection successful', async () => {
@@ -485,15 +495,23 @@ describe('Test Connection Component', () => {
       render(<TestConnection {...mockProps} />);
     });
 
+    const controller = new AbortController();
+
     const testConnectionButton = screen.getByTestId('test-connection-btn');
 
     await act(async () => {
       userEvent.click(testConnectionButton);
     });
 
-    expect(addWorkflow).toHaveBeenCalledWith(CREATE_WORKFLOW_PAYLOAD);
+    expect(addWorkflow).toHaveBeenCalledWith(
+      CREATE_WORKFLOW_PAYLOAD,
+      controller.signal
+    );
 
-    expect(triggerWorkflowById).toHaveBeenCalledWith(WORKFLOW_DETAILS.id);
+    expect(triggerWorkflowById).toHaveBeenCalledWith(
+      WORKFLOW_DETAILS.id,
+      controller.signal
+    );
 
     jest.advanceTimersByTime(2000);
 
