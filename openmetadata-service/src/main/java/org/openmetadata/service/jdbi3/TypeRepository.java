@@ -262,6 +262,18 @@ public class TypeRepository extends EntityRepository<Type> {
     }
   }
 
+  public CustomProperty getCustomPropertyType(String entityType, String propertyName) {
+    EntityUtil.Fields fieldsParam = new EntityUtil.Fields(Set.of("customProperties"));
+    Type typeEntity = getByName(null, entityType, fieldsParam, Include.ALL, false);
+    for (CustomProperty customProperty : typeEntity.getCustomProperties()) {
+      if (customProperty.getName().equals(propertyName)) {
+        return customProperty;
+      }
+    }
+    throw new IllegalArgumentException(
+        CatalogExceptionMessage.unknownCustomProperty(propertyName, entityType));
+  }
+
   /** Handles entity updated from PUT and POST operation. */
   public class TypeUpdater extends EntityUpdater {
     public TypeUpdater(Type original, Type updated, Operation operation) {
