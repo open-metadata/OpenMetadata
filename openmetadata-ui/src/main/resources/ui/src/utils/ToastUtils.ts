@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { AxiosError } from 'axios';
+import axios, { AxiosError } from 'axios';
 import { isEmpty, isString } from 'lodash';
 import React from 'react';
 import { toast } from 'react-toastify';
@@ -47,34 +47,36 @@ export const showErrorToast = (
   autoCloseTimer?: number,
   callback?: (value: React.SetStateAction<string>) => void
 ) => {
-  let errorMessage;
-  if (isString(error)) {
-    errorMessage = error.toString();
-  } else {
-    const method = error.config?.method?.toUpperCase();
-    const fallback =
-      fallbackText && fallbackText.length > 0
-        ? fallbackText
-        : i18n.t('server.unexpected-error');
-    errorMessage = getErrorText(error, fallback);
-    // do not show error toasts for 401
-    // since they will be intercepted and the user will be redirected to the signin page
-    // except for principal domain mismatch errors
-    if (
-      error &&
-      (error.response?.status === ClientErrors.UNAUTHORIZED ||
-        (error.response?.status === ClientErrors.FORBIDDEN &&
-          method === 'GET')) &&
-      !errorMessage.includes('principal domain')
-    ) {
-      return;
+  if (!axios.isCancel(error)) {
+    let errorMessage;
+    if (isString(error)) {
+      errorMessage = error.toString();
+    } else {
+      const method = (error as AxiosError).config?.method?.toUpperCase();
+      const fallback =
+        fallbackText && fallbackText.length > 0
+          ? fallbackText
+          : i18n.t('server.unexpected-error');
+      errorMessage = getErrorText(error, fallback);
+      // do not show error toasts for 401
+      // since they will be intercepted and the user will be redirected to the signin page
+      // except for principal domain mismatch errors
+      if (
+        error &&
+        ((error as AxiosError).response?.status === ClientErrors.UNAUTHORIZED ||
+          ((error as AxiosError).response?.status === ClientErrors.FORBIDDEN &&
+            method === 'GET')) &&
+        !errorMessage.includes('principal domain')
+      ) {
+        return;
+      }
     }
+    callback && callback(errorMessage);
+    toast.error(errorMessage, {
+      toastId: hashCode(errorMessage),
+      autoClose: autoCloseTimer,
+    });
   }
-  callback && callback(errorMessage);
-  toast.error(errorMessage, {
-    toastId: hashCode(errorMessage),
-    autoClose: autoCloseTimer,
-  });
 };
 
 /**

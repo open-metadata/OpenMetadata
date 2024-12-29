@@ -108,6 +108,8 @@ const TestConnection: FC<TestConnectionProps> = ({
    */
   const currentWorkflowRef = useRef(currentWorkflow);
 
+  const controllerRef = useRef<AbortController | null>(null);
+
   const serviceType = useMemo(() => {
     return getServiceType(serviceCategory);
   }, [serviceCategory]);
@@ -138,9 +140,9 @@ const TestConnection: FC<TestConnectionProps> = ({
     }
   };
 
-  const getWorkflowData = async (workflowId: string) => {
+  const getWorkflowData = async (workflowId: string, signal: AbortSignal) => {
     try {
-      const response = await getWorkflowById(workflowId);
+      const response = await getWorkflowById(workflowId, signal);
       const testConnectionStepResult = response.response?.steps ?? [];
 
       setTestConnectionStepResult(testConnectionStepResult);
@@ -180,6 +182,10 @@ const TestConnection: FC<TestConnectionProps> = ({
     setMessage(TEST_CONNECTION_TESTING_MESSAGE);
     handleResetState();
 
+    // Create a new AbortController instance
+    const controller = new AbortController();
+    controllerRef.current = controller; // Store the controller for later cancellation
+
     const updatedFormData = formatFormDataForSubmit(getData());
 
     // current interval id
@@ -203,12 +209,12 @@ const TestConnection: FC<TestConnectionProps> = ({
       setProgress(TEST_CONNECTION_PROGRESS_PERCENTAGE.TEN);
 
       // create the workflow
-      const response = await addWorkflow(createWorkflowData);
+      const response = await addWorkflow(createWorkflowData, controller.signal);
 
       setProgress(TEST_CONNECTION_PROGRESS_PERCENTAGE.TWENTY);
 
       // trigger the workflow
-      const status = await triggerWorkflowById(response.id);
+      const status = await triggerWorkflowById(response.id, controller.signal);
 
       setProgress(TEST_CONNECTION_PROGRESS_PERCENTAGE.FORTY);
 
@@ -230,7 +236,10 @@ const TestConnection: FC<TestConnectionProps> = ({
       intervalId = toNumber(
         setInterval(async () => {
           setProgress((prev) => prev + TEST_CONNECTION_PROGRESS_PERCENTAGE.ONE);
-          const workflowResponse = await getWorkflowData(response.id);
+          const workflowResponse = await getWorkflowData(
+            response.id,
+            controller.signal
+          );
           const { response: testConnectionResponse } = workflowResponse;
           const { status: testConnectionStatus, steps = [] } =
             testConnectionResponse || {};
@@ -299,7 +308,6 @@ const TestConnection: FC<TestConnectionProps> = ({
     } catch (error) {
       setProgress(TEST_CONNECTION_PROGRESS_PERCENTAGE.HUNDRED);
       clearInterval(intervalId);
-      setIsTestingConnection(false);
       setMessage(TEST_CONNECTION_FAILURE_MESSAGE);
       setTestStatus(StatusType.Failed);
       showErrorToast(error as AxiosError);
@@ -309,6 +317,8 @@ const TestConnection: FC<TestConnectionProps> = ({
       if (workflowId) {
         await handleDeleteWorkflow(workflowId);
       }
+    } finally {
+      setIsTestingConnection(false);
     }
   };
 
@@ -322,6 +332,11 @@ const TestConnection: FC<TestConnectionProps> = ({
     } else {
       testConnection();
     }
+  };
+
+  const handleCancelTestConnectionModal = () => {
+    controllerRef?.current?.abort();
+    setDialogOpen(false);
   };
 
   useEffect(() => {
@@ -341,6 +356,13 @@ const TestConnection: FC<TestConnectionProps> = ({
   }, []);
 
   // rendering
+
+  useEffect(() => {
+    // Clean up the controller when the component unmounts
+    return () => {
+      controllerRef?.current?.abort();
+    };
+  }, []);
 
   return (
     <>
@@ -435,7 +457,7 @@ const TestConnection: FC<TestConnectionProps> = ({
         progress={progress}
         testConnectionStep={testConnectionStep}
         testConnectionStepResult={testConnectionStepResult}
-        onCancel={() => setDialogOpen(false)}
+        onCancel={handleCancelTestConnectionModal}
         onConfirm={() => setDialogOpen(false)}
         onTestConnection={handleTestConnection}
       />
