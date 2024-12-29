@@ -108,7 +108,7 @@ const TestConnection: FC<TestConnectionProps> = ({
    */
   const currentWorkflowRef = useRef(currentWorkflow);
 
-  const controllerRef = useRef<AbortController | null>(null);
+  const APICancellationControllerRef = useRef<AbortController | null>(null);
 
   const serviceType = useMemo(() => {
     return getServiceType(serviceCategory);
@@ -140,9 +140,12 @@ const TestConnection: FC<TestConnectionProps> = ({
     }
   };
 
-  const getWorkflowData = async (workflowId: string, signal: AbortSignal) => {
+  const getWorkflowData = async (
+    workflowId: string,
+    apiCancelSignal: AbortSignal
+  ) => {
     try {
-      const response = await getWorkflowById(workflowId, signal);
+      const response = await getWorkflowById(workflowId, apiCancelSignal);
       const testConnectionStepResult = response.response?.steps ?? [];
 
       setTestConnectionStepResult(testConnectionStepResult);
@@ -184,7 +187,7 @@ const TestConnection: FC<TestConnectionProps> = ({
 
     // Create a new AbortController instance
     const controller = new AbortController();
-    controllerRef.current = controller; // Store the controller for later cancellation
+    APICancellationControllerRef.current = controller; // Store the controller for later cancellation
 
     const updatedFormData = formatFormDataForSubmit(getData());
 
@@ -335,7 +338,7 @@ const TestConnection: FC<TestConnectionProps> = ({
   };
 
   const handleCancelTestConnectionModal = () => {
-    controllerRef?.current?.abort();
+    APICancellationControllerRef?.current?.abort();
     setDialogOpen(false);
   };
 
@@ -360,7 +363,7 @@ const TestConnection: FC<TestConnectionProps> = ({
   useEffect(() => {
     // Clean up the controller when the component unmounts
     return () => {
-      controllerRef?.current?.abort();
+      APICancellationControllerRef?.current?.abort();
     };
   }, []);
 

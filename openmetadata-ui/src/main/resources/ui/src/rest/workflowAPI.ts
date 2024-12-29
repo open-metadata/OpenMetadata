@@ -31,13 +31,13 @@ export const getTestConnectionDefinitionByName = async (
 
 export const addWorkflow = async (
   data: CreateWorkflow,
-  signal: AbortSignal
+  apiCancelSignal: AbortSignal
 ) => {
   const response = await APIClient.post<
     CreateWorkflow,
     AxiosResponse<Workflow>
   >(`automations/workflows`, data, {
-    signal,
+    signal: apiCancelSignal,
   });
 
   return response.data;
@@ -50,13 +50,13 @@ export const addWorkflow = async (
  */
 export const triggerWorkflowById = async (
   workflowId: string,
-  signal: AbortSignal
+  apiCancelSignal: AbortSignal
 ) => {
   const response = await APIClient.post(
     `automations/workflows/trigger/${workflowId}`,
     null,
     {
-      signal,
+      signal: apiCancelSignal,
       headers: {
         'Content-Type': 'application/json',
       },
@@ -68,12 +68,12 @@ export const triggerWorkflowById = async (
 
 export const getWorkflowById = async (
   workflowId: string,
-  signal: AbortSignal
+  apiCancelSignal: AbortSignal
 ) => {
   const response = await APIClient.get<Workflow>(
     `automations/workflows/${workflowId}`,
     {
-      signal,
+      signal: apiCancelSignal,
     }
   );
 
