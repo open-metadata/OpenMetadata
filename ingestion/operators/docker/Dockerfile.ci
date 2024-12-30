@@ -48,14 +48,30 @@ RUN echo "deb https://apt.postgresql.org/pub/repos/apt/ bullseye-pgdg main" > /e
     apt-get -qq autoremove -yqq --purge; \
     apt-get -qq clean && rm -rf /var/lib/apt/lists/*
 
-RUN if [ $(uname -m) = "arm64" || $(uname -m) = "aarch64" ]; \
- then \
- wget -q https://download.oracle.com/otn_software/linux/instantclient/191000/instantclient-basic-linux.arm64-19.10.0.0.0dbru.zip -O /oracle-instantclient.zip && \
- unzip -qq -d /instantclient -j /oracle-instantclient.zip && rm -f /oracle-instantclient.zip; \
- else \
- wget -q https://download.oracle.com/otn_software/linux/instantclient/1917000/instantclient-basic-linux.x64-19.17.0.0.0dbru.zip -O /oracle-instantclient.zip && \
- unzip -qq -d /instantclient -j /oracle-instantclient.zip && rm -f /oracle-instantclient.zip; \
- fi
+# RUN if [ $(uname -m) = "arm64" || $(uname -m) = "aarch64" ]; \
+#  then \
+#  wget -q https://download.oracle.com/otn_software/linux/instantclient/191000/instantclient-basic-linux.arm64-19.10.0.0.0dbru.zip -O /oracle-instantclient.zip && \
+#  unzip -qq -d /instantclient -j /oracle-instantclient.zip && rm -f /oracle-instantclient.zip; \
+#  else \
+#  wget -q https://download.oracle.com/otn_software/linux/instantclient/1917000/instantclient-basic-linux.x64-19.17.0.0.0dbru.zip -O /oracle-instantclient.zip && \
+#  unzip -qq -d /instantclient -j /oracle-instantclient.zip && rm -f /oracle-instantclient.zip; \
+#  fi
+
+# local
+COPY ./.files/instantclient-basic-linux.arm64-19.10.0.0.0dbru.zip /root/instantclient-basic-linux.arm64-19.10.0.0.0dbru.zip
+COPY ./.files/instantclient-basic-linux.x64-19.17.0.0.0dbru.zip /root/instantclient-basic-linux.x64-19.17.0.0.0dbru.zip
+
+RUN if [ $(uname -m) = "arm64" ] || [ $(uname -m) = "aarch64" ]; then \
+      unzip -qq -d /instantclient -j /root/instantclient-basic-linux.arm64-19.10.0.0.0dbru.zip && rm -f /root/instantclient-basic-linux.arm64-19.10.0.0.0dbru.zip; \
+  else \
+      unzip -qq -d /instantclient -j /root/instantclient-basic-linux.x64-19.17.0.0.0dbru.zip && rm -f /root/instantclient-basic-linux.x64-19.17.0.0.0dbru.zip; \
+  fi
+
+
+USER airflow
+RUN pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple && \
+    python3 -m pip install --upgrade pip
+USER root
 
 ENV LD_LIBRARY_PATH=/instantclient
 

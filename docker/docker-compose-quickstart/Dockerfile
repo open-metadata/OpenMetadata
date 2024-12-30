@@ -11,6 +11,8 @@
 
 # Build stage
 FROM alpine:3 AS build
+RUN sed -i 's|http://dl-cdn.alpinelinux.org|https://mirrors.tuna.tsinghua.edu.cn|g' /etc/apk/repositories
+
 ARG RI_VERSION="1.6.0-SNAPSHOT"
 ENV RELEASE_URL="https://github.com/open-metadata/OpenMetadata/releases/download/${RI_VERSION}-release/openmetadata-${RI_VERSION}.tar.gz"
 
@@ -21,6 +23,8 @@ RUN mkdir -p /opt/openmetadata && \
 
 # Final stage
 FROM alpine:3
+RUN sed -i 's|http://dl-cdn.alpinelinux.org|https://mirrors.tuna.tsinghua.edu.cn|g' /etc/apk/repositories
+
 ARG RI_VERSION="1.6.0-SNAPSHOT"
 ARG BUILD_DATE
 ARG COMMIT_ID

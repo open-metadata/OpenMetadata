@@ -11,6 +11,7 @@
     "url": "https://github.com/open-metadata/OpenMetadata.git"
   },
   "devDependencies": {
+    "cypress": "^13.17.0",
     "quicktype": "20.0.27"
   },
   "scripts": {

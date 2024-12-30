@@ -12,6 +12,9 @@
 # Build stage
 FROM alpine:3 AS build
 
+RUN sed -i 's|http://dl-cdn.alpinelinux.org|https://mirrors.tuna.tsinghua.edu.cn|g' /etc/apk/repositories
+
+
 COPY openmetadata-dist/target/openmetadata-*.tar.gz /
 
 RUN mkdir -p /opt/openmetadata && \
@@ -22,6 +25,9 @@ RUN mkdir -p /opt/openmetadata && \
 FROM alpine:3
 
 EXPOSE 8585
+
+RUN sed -i 's|http://dl-cdn.alpinelinux.org|https://mirrors.tuna.tsinghua.edu.cn|g' /etc/apk/repositories
+
 
 RUN adduser -D openmetadata && \
     apk update && \

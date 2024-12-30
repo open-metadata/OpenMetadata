@@ -54,6 +54,9 @@ logs
 *.jar
 *.war
 *.ear
+.files
+yarn.lock
+package.json
 
 # mac dir files
 .DS_Store

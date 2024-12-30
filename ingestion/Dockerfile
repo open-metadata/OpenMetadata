@@ -5,6 +5,8 @@ USER root
 RUN curl -sS https://packages.microsoft.com/keys/microsoft.asc | apt-key add -
 RUN curl -sS https://packages.microsoft.com/config/debian/11/prod.list > /etc/apt/sources.list.d/mssql-release.list
 # Install Dependencies (listed in alphabetical order)
+
+
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get -qq update \
     && apt-get -qq install -y \
@@ -42,14 +44,30 @@ RUN apt-get -qq update \
     && rm -rf /var/lib/apt/lists/*
 COPY --from=mysql /usr/bin/mysqldump /usr/bin/mysqldump
 
-RUN if [ $(uname -m) = "arm64" || $(uname -m) = "aarch64" ]; \
- then \
- wget -q https://download.oracle.com/otn_software/linux/instantclient/191000/instantclient-basic-linux.arm64-19.10.0.0.0dbru.zip -O /oracle-instantclient.zip && \
- unzip -qq -d /instantclient -j /oracle-instantclient.zip && rm -f /oracle-instantclient.zip; \
- else \
- wget -q https://download.oracle.com/otn_software/linux/instantclient/1917000/instantclient-basic-linux.x64-19.17.0.0.0dbru.zip -O /oracle-instantclient.zip && \
- unzip -qq -d /instantclient -j /oracle-instantclient.zip && rm -f /oracle-instantclient.zip; \
- fi
+# RUN if [ $(uname -m) = "arm64" || $(uname -m) = "aarch64" ]; \
+#  then \
+#  wget -q https://download.oracle.com/otn_software/linux/instantclient/191000/instantclient-basic-linux.arm64-19.10.0.0.0dbru.zip -O /oracle-instantclient.zip && \
+#  unzip -qq -d /instantclient -j /oracle-instantclient.zip && rm -f /oracle-instantclient.zip; \
+#  else \
+#  wget -q https://download.oracle.com/otn_software/linux/instantclient/1917000/instantclient-basic-linux.x64-19.17.0.0.0dbru.zip -O /oracle-instantclient.zip && \
+#  unzip -qq -d /instantclient -j /oracle-instantclient.zip && rm -f /oracle-instantclient.zip; \
+#  fi
+
+# local
+COPY ./.files/instantclient-basic-linux.arm64-19.10.0.0.0dbru.zip /root/instantclient-basic-linux.arm64-19.10.0.0.0dbru.zip
+COPY ./.files/instantclient-basic-linux.x64-19.17.0.0.0dbru.zip /root/instantclient-basic-linux.x64-19.17.0.0.0dbru.zip
+
+RUN if [ $(uname -m) = "arm64" ] || [ $(uname -m) = "aarch64" ]; then \
+      unzip -qq -d /instantclient -j /root/instantclient-basic-linux.arm64-19.10.0.0.0dbru.zip && rm -f /root/instantclient-basic-linux.arm64-19.10.0.0.0dbru.zip; \
+  else \
+      unzip -qq -d /instantclient -j /root/instantclient-basic-linux.x64-19.17.0.0.0dbru.zip && rm -f /root/instantclient-basic-linux.x64-19.17.0.0.0dbru.zip; \
+  fi
+
+USER airflow
+RUN pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple && \
+    python3 -m pip install --upgrade pip
+USER root
+
 
 ENV LD_LIBRARY_PATH=/instantclient
 
@@ -79,7 +97,8 @@ ENV PIP_QUIET=1
 ARG RI_VERSION="1.6.0.0.dev0"
 RUN pip install --upgrade pip
 RUN pip install "openmetadata-managed-apis~=${RI_VERSION}" --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-2.9.1/constraints-3.10.txt"
-RUN pip install "openmetadata-ingestion[${INGESTION_DEPENDENCY}]~=${RI_VERSION}"
+RUN pip install "openmetadata-ingestion[${INGESTION_DEPENDENCY}]~=${RI_VERSION}"  -i https://pypi.tuna.tsinghua.edu.cn/simple
+# RUN pip install "openmetadata-ingestion[${INGESTION_DEPENDENCY}]~=${RI_VERSION}"
 
 # Temporary workaround for https://github.com/open-metadata/OpenMetadata/issues/9593
 RUN [ $(uname -m) = "x86_64" ] \
@@ -90,8 +109,8 @@ RUN [ $(uname -m) = "x86_64" ] \
 RUN pip install "python-daemon>=3.0.0"
 # remove all airflow providers except for docker and cncf kubernetes
 RUN pip freeze | grep "apache-airflow-providers" | grep --invert-match -E "docker|http|cncf|fab" | xargs pip uninstall -y
-# Uninstalling psycopg2-binary and installing psycopg2 instead 
-# because the psycopg2-binary generates a architecture specific error 
+# Uninstalling psycopg2-binary and installing psycopg2 instead
+# because the psycopg2-binary generates a architecture specific error
 # while authenticating connection with the airflow, psycopg2 solves this error
 RUN pip uninstall psycopg2-binary -y
 RUN pip install psycopg2 mysqlclient==2.1.1
