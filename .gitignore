@@ -25,6 +25,8 @@ buildNumber.properties
 
 catalog-services/catalog-services.iml
 
+gitpush.sh
+
 # local docker volume
 docker/development/docker-volume
 docker-volume
