@@ -31,6 +31,7 @@ DATABASE_TYPE
     | 'vertica'
     | 'hive2'
     | 'redshift'
+    | 'gaussdb'
     ;
 
 URI_SEPARATOR
@@ -96,4 +97,3 @@ AMP
 WS
     : [ \t\r\n]+ -> skip
     ;
-

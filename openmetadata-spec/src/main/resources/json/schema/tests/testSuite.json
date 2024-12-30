@@ -80,7 +80,7 @@
       "default": null
     },
     "serviceType": {
-      "description": "Type of database service such as MySQL, BigQuery, Snowflake, Redshift, Postgres...",
+      "description": "Type of database service such as MySQL, BigQuery, Snowflake, Redshift, Postgres, Gaussdb...",
       "javaInterfaces": [
         "org.openmetadata.schema.EnumInterface"
       ],

@@ -41,13 +41,16 @@
     },
     "connection":{
       "title": "Alation Database Connection",
-      "description": "Choose between mysql and postgres connection for alation database",
+      "description": "Choose between mysql , postgres and gaussdb connection for alation database",
       "oneOf": [
         {
           "$ref": "../database/postgresConnection.json"
         },
         {
           "$ref": "../database/mysqlConnection.json"
+        },
+        {
+          "$ref": "../database/gaussdbConnection.json"
         },
         {
           "title": "None",
