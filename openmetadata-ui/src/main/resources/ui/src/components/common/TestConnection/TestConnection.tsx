@@ -42,6 +42,7 @@ import {
   WorkflowType,
 } from '../../../generated/entity/automations/workflow';
 import { TestConnectionStep } from '../../../generated/entity/services/connections/testConnectionDefinition';
+import useAbortController from '../../../hooks/AbortController/useAbortController';
 import { useAirflowStatus } from '../../../hooks/useAirflowStatus';
 import {
   addWorkflow,
@@ -108,7 +109,7 @@ const TestConnection: FC<TestConnectionProps> = ({
    */
   const currentWorkflowRef = useRef(currentWorkflow);
 
-  const APICancellationControllerRef = useRef<AbortController | null>(null);
+  const { controller } = useAbortController();
 
   const serviceType = useMemo(() => {
     return getServiceType(serviceCategory);
@@ -184,10 +185,6 @@ const TestConnection: FC<TestConnectionProps> = ({
     setIsTestingConnection(true);
     setMessage(TEST_CONNECTION_TESTING_MESSAGE);
     handleResetState();
-
-    // Create a new AbortController instance
-    const controller = new AbortController();
-    APICancellationControllerRef.current = controller; // Store the controller for later cancellation
 
     const updatedFormData = formatFormDataForSubmit(getData());
 
@@ -350,7 +347,7 @@ const TestConnection: FC<TestConnectionProps> = ({
   };
 
   const handleCancelTestConnectionModal = () => {
-    APICancellationControllerRef?.current?.abort();
+    controller.abort();
     setDialogOpen(false);
   };
 
@@ -371,13 +368,6 @@ const TestConnection: FC<TestConnectionProps> = ({
   }, []);
 
   // rendering
-
-  useEffect(() => {
-    // Clean up the controller when the component unmounts
-    return () => {
-      APICancellationControllerRef?.current?.abort();
-    };
-  }, []);
 
   return (
     <>
