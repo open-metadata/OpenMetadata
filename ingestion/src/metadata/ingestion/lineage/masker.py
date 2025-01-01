@@ -38,11 +38,11 @@ def mask_literals_with_sqlparse(query: str):
     logger = get_logger()
 
     try:
-        parsed = sqlparse.parse(query)  # Parse the query
+        # Parse all statements in the query
+        parsed_statements = sqlparse.parse(query)
 
-        if not parsed:
+        if not parsed_statements:
             return query
-        parsed = parsed[0]
 
         def mask_token(token):
             # Mask all literals: strings, numbers, or other literal values
@@ -61,17 +61,21 @@ def mask_literals_with_sqlparse(query: str):
                 for t in token.tokens:
                     mask_token(t)
 
-        # Process all tokens
-        for token in parsed.tokens:
-            if isinstance(token, Comparison):
-                # In comparisons, mask both sides if literals
-                for t in token.tokens:
-                    mask_token(t)
-            else:
-                mask_token(token)
+        # Process each statement
+        masked_statements = []
+        for statement in parsed_statements:
+            for token in statement.tokens:
+                if isinstance(token, Comparison):
+                    # In comparisons, mask both sides if literals
+                    for t in token.tokens:
+                        mask_token(t)
+                else:
+                    mask_token(token)
+            masked_statements.append(str(statement))
 
-        # Return the formatted masked query
-        return str(parsed)
+        # Reconstruct the query with masked literals
+        return "".join(masked_statements)
+
     except Exception as exc:
         logger.debug(f"Failed to mask query with sqlparse: {exc}")
         logger.debug(traceback.format_exc())
