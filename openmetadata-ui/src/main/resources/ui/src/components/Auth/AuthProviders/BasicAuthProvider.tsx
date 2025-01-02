@@ -163,18 +163,9 @@ const BasicAuthProvider = ({
   };
 
   const handleForgotPassword = async (email: string) => {
-    try {
-      await generatePasswordResetLink(email);
-    } catch (err) {
-      if (
-        (err as AxiosError).response?.status ===
-        HTTP_STATUS_CODE.FAILED_DEPENDENCY
-      ) {
-        showErrorToast(t('server.forgot-password-email-error'));
-      } else {
-        showErrorToast(t('server.email-not-found'));
-      }
-    }
+    await generatePasswordResetLink(email);
+
+    return;
   };
 
   const handleResetPassword = async (payload: PasswordResetRequest) => {
