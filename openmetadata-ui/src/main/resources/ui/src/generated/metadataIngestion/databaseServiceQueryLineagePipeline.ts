@@ -10,12 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * DatabaseService Query Lineage Pipeline Configuration.
  */
 export interface DatabaseServiceQueryLineagePipeline {
+    /**
+     * Set 'Cross Database Service Names' to process lineage with the database.
+     */
+    crossDatabaseServiceNames?: string[];
     /**
      * Regex to only fetch databases that matches the pattern.
      */
@@ -33,6 +35,11 @@ export interface DatabaseServiceQueryLineagePipeline {
      * Configuration to set the timeout for parsing the query in seconds.
      */
     parsingTimeoutLimit?: number;
+    /**
+     * Set the 'Process Cross Database Lineage' toggle to control whether to process table
+     * lineage across different databases.
+     */
+    processCrossDatabaseLineage?: boolean;
     /**
      * Set the 'Process Query Lineage' toggle to control whether to process query lineage.
      */
