@@ -77,6 +77,7 @@ class PythonDialects(Enum):
     MySQL = "mysql"
     Oracle = "oracle"
     Postgres = "postgresql"
+    Gaussdb = "gaussdb"
     Presto = "presto"
     Redshift = "redshift"
     SingleStore = "singlestore"

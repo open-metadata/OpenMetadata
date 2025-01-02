@@ -27,6 +27,9 @@ from metadata.generated.schema.entity.services.connections.database.mysqlConnect
 from metadata.generated.schema.entity.services.connections.database.postgresConnection import (
     PostgresConnection,
 )
+from metadata.generated.schema.entity.services.connections.database.gaussdbConnection import (
+    GaussdbConnection,
+)
 from metadata.generated.schema.entity.services.connections.database.sqliteConnection import (
     SQLiteConnection,
 )
@@ -80,6 +83,14 @@ def _(airflow_connection: PostgresConnection) -> Engine:
     )
 
     return get_postgres_connection(airflow_connection)
+
+@_get_connection.register
+def _(airflow_connection: GaussdbConnection) -> Engine:
+    from metadata.ingestion.source.database.gaussdb.connection import (
+        get_connection as get_gaussdb_connection,
+    )
+
+    return get_gaussdb_connection(airflow_connection)
 
 
 @_get_connection.register
