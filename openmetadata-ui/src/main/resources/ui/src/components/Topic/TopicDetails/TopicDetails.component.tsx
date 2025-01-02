@@ -308,6 +308,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
           <TabsLabel
             count={topicDetails.messageSchema?.schemaFields?.length ?? 0}
             id={EntityTabs.SCHEMA}
+            isActive={activeTab === EntityTabs.SCHEMA}
             name={t('label.schema')}
           />
         ),
