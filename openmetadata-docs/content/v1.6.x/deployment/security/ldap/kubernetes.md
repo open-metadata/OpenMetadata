@@ -44,6 +44,7 @@ openmetadata:
           enabled: true  # Enable JWT tokens for secure communication
           publicKeyUrls:
             - "https://<your-domain>/api/v1/system/config/jwks"  # Replace with your domain
+```yaml
 
 ## Mandatory Fields for LDAP Configuration
 
@@ -70,10 +71,12 @@ openmetadata:
 
 ### TrustAll Configuration
 
-```truststoreConfigType: TrustAll
+```yaml
+truststoreConfigType: TrustAll
 trustStoreConfig:
   trustAllConfig:
     examineValidityDates: true
+```yaml
 
 ### JVMDefault Configuration
 
@@ -82,7 +85,7 @@ truststoreConfigType: JVMDefault
 trustStoreConfig:
   jvmDefaultConfig:
     verifyHostname: true
-
+```yaml
 
 ### HostName Configuration
 
@@ -92,7 +95,7 @@ trustStoreConfig:
   hostNameConfig:
     allowWildCards: false
     acceptableHostNames: [localhost]
-
+```yaml
 
 ### CustomTrustStore Configuration
 
@@ -105,5 +108,6 @@ trustStoreConfig:
     trustStoreFileFormat: JKS
     verifyHostname: true
     examineValidityDates: true
+```yaml
 
 {% partial file="/v1.5/deployment/configure-ingestion.md" /%}
