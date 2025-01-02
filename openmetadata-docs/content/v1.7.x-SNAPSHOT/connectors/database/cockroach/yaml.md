@@ -8,7 +8,8 @@ name="Cockroach"
 stage="BETA"
 platform="OpenMetadata"
 availableFeatures=["Metadata"]
-unavailableFeatures=[, "Data Profiler", "Data Quality", "dbt", "Query Usage", "Owners", "Tags", "Stored Procedures", "Lineage", "Column-level Lineage"]
+availableFeatures=["Metadata", "Data Quality", "Data Profiler"]
+unavailableFeatures=["Query Usage", "dbt", "Owners", "Lineage", "Column-level Lineage", "Tags", "Stored Procedures"]
 / %}
 
 In this section, we provide guides and references to use the Cockroach connector.
@@ -17,6 +18,8 @@ Configure and schedule Cockroach metadata and profiler workflows from the OpenMe
 
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
+- [Data Profiler](#data-profiler)
+- [Data Quality](#data-quality)
 
 {% partial file="/v1.7/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/cockroach/yaml"} /%}
 
@@ -183,6 +186,10 @@ source:
 {% /codePreview %}
 
 {% partial file="/v1.7/connectors/yaml/ingestion-cli.md" /%}
+
+{% partial file="/v1.7/connectors/yaml/data-profiler.md" variables={connector: "cockroach"} /%}
+
+{% partial file="/v1.7/connectors/yaml/data-quality.md" /%}
 
 ## Securing Cockroach Connection with SSL in OpenMetadata
 
