@@ -140,33 +140,21 @@
 }
 
 // Setting the background color of the resizable column to  where dragger is located
-.ant-table.ant-table-bordered
-  > .ant-table-container
-  > .ant-table-content
-  > table
-  > thead
-  > tr
-  > .resizable-container::before,
-.ant-table.ant-table-bordered
-  > .ant-table-container
-  > .ant-table-header
-  > table
-  > thead
-  > tr
-  > .resizable-container::before,
-.ant-table.ant-table-bordered
-  > .ant-table-container
-  > .ant-table-body
-  > table
-  > thead
-  > tr
-  > .resizable-container::before,
-.ant-table.ant-table-bordered
-  > .ant-table-container
-  > .ant-table-summary
-  > table
-  > thead
-  > tr
-  > .resizable-container::before {
-  background-color: @border-color !important;
+.ant-table.ant-table-bordered {
+  > .ant-table-container {
+    > .ant-table-content,
+    > .ant-table-header,
+    > .ant-table-body,
+    > .ant-table-summary {
+      > table {
+        > thead {
+          > tr {
+            > .resizable-container::before {
+              background-color: @border-color !important;
+            }
+          }
+        }
+      }
+    }
+  }
 }
