@@ -826,7 +826,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
                                     Entity.getEntityReferenceById(
                                         Entity.GLOSSARY_TERM, id, Include.ALL))
                             .sorted(EntityUtil.compareEntityReference)
-                            .collect(Collectors.toList())));
+                            .toList()));
 
     if (!allRecords.isEmpty()) {
       for (GlossaryTerm term : entities) {
