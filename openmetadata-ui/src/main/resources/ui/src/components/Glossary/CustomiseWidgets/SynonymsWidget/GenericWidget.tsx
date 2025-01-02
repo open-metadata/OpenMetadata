@@ -30,7 +30,7 @@ import { getJoinsFromTableJoins } from '../../../../utils/TableUtils';
 import { ExtensionTable } from '../../../common/CustomPropertyTable/ExtensionTable';
 import { DomainLabel } from '../../../common/DomainLabel/DomainLabel.component';
 import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
-import RichTextEditorPreviewer from '../../../common/RichTextEditor/RichTextEditorPreviewer';
+import RichTextEditorPreviewerV1 from '../../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import TagButton from '../../../common/TagButton/TagButton.component';
 import SchemaTable from '../../../Database/SchemaTable/SchemaTable.component';
 import DataProductsContainer from '../../../DataProducts/DataProductsContainer/DataProductsContainer.component';
@@ -217,7 +217,7 @@ export const GenericWidget = (props: WidgetCommonProps) => {
     ) {
       return (
         // eslint-disable-next-line max-len
-        <RichTextEditorPreviewer markdown="Glossary related to describing **conceptual** terms related to a Person. These terms are used to label data assets to describe the user data in those assets. Example - a table column can be labeled with `Person.PhoneNumber` tag. The associated `PII` and `PersonalData` tags are automatically applied. This is done to help users producing the data  focus on describing the data without being policy experts. The associated tags take care of applying classification tags automatically." />
+        <RichTextEditorPreviewerV1 markdown="Glossary related to describing **conceptual** terms related to a Person. These terms are used to label data assets to describe the user data in those assets. Example - a table column can be labeled with `Person.PhoneNumber` tag. The associated `PII` and `PersonalData` tags are automatically applied. This is done to help users producing the data  focus on describing the data without being policy experts. The associated tags take care of applying classification tags automatically." />
       );
     } else if (props.widgetKey.startsWith(DetailPageWidgetKeys.TABLE_SCHEMA)) {
       return (

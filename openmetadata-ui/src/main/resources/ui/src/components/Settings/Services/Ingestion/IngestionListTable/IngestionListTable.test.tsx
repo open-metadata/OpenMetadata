@@ -89,7 +89,7 @@ jest.mock(
   () => jest.fn().mockImplementation(() => <div>ButtonSkeleton</div>)
 );
 
-jest.mock('../../../../common/RichTextEditor/RichTextEditorPreviewer', () =>
+jest.mock('../../../../common/RichTextEditor/RichTextEditorPreviewerV1', () =>
   jest.fn().mockImplementation(() => <div>RichTextEditorPreviewer</div>)
 );
 
