@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import org.openmetadata.schema.jobs.JobArgs;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.util.JsonUtils;
 import org.slf4j.Logger;
@@ -22,11 +23,12 @@ public class EnumCleanupHandler implements JobHandler {
   }
 
   @Override
-  public void runJob(Map<String, Object> args) throws Exception {
-    LOG.debug("Starting EnumCleanupHandler job with args: {}", args);
-    String propertyName = (String) args.get("propertyName");
-    List<String> removedEnumKeys = (List<String>) args.get("removedEnumKeys");
-    String entityType = (String) args.get("entityType");
+  public void runJob(JobArgs jobArgs) throws Exception {
+    LOG.debug("Starting EnumCleanupHandler job with args: {}", jobArgs);
+    Map<String, Object> enumRemovalArgs = jobArgs.getAdditionalProperties();
+    String propertyName = (String) enumRemovalArgs.get("propertyName");
+    List<String> removedEnumKeys = (List<String>) enumRemovalArgs.get("removedEnumKeys");
+    String entityType = (String) enumRemovalArgs.get("entityType");
     String customPropertyFQN = getCustomPropertyFQN(entityType, propertyName);
 
     List<CollectionDAO.ExtensionWithIdAndSchemaObject> extensions =

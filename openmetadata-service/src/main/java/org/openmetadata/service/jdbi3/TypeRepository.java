@@ -40,6 +40,7 @@ import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.entity.Type;
 import org.openmetadata.schema.entity.type.Category;
 import org.openmetadata.schema.entity.type.CustomProperty;
+import org.openmetadata.schema.jobs.BackgroundJob;
 import org.openmetadata.schema.type.CustomPropertyConfig;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
@@ -49,6 +50,7 @@ import org.openmetadata.schema.type.customProperties.TableConfig;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.TypeRegistry;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.jobs.EnumCleanupHandler;
 import org.openmetadata.service.resources.types.TypeResource;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -488,7 +490,10 @@ public class TypeRepository extends EntityRepository<Type> {
                         entity.getName()));
             long jobId =
                 jobDao.insertJob(
-                    "CUSTOM_PROPERTY_ENUM_CLEANUP", "EnumCleanupHandler", jobArgs, updatedBy);
+                    BackgroundJob.JobType.CUSTOM_PROPERTY_ENUM_CLEANUP.name(),
+                    EnumCleanupHandler.class.getSimpleName(),
+                    jobArgs,
+                    updatedBy);
 
           } catch (Exception e) {
             LOG.error("Failed to trigger background job for enum cleanup", e);

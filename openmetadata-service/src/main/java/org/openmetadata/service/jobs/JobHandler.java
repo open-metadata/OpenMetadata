@@ -1,9 +1,9 @@
 package org.openmetadata.service.jobs;
 
-import java.util.Map;
+import org.openmetadata.schema.jobs.JobArgs;
 
 public interface JobHandler {
-  void runJob(Map<String, Object> args) throws Exception;
+  void runJob(JobArgs jobArgs) throws Exception;
 
   boolean sendStatusToWebSocket();
 }

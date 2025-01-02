@@ -4,6 +4,7 @@ import io.dropwizard.lifecycle.Managed;
 import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.jobs.BackgroundJob;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.socket.WebSocketManager;
 import org.openmetadata.service.util.JsonUtils;
@@ -38,12 +39,12 @@ public class GenericBackgroundWorker implements Managed {
         Optional<BackgroundJob> jobOpt = jobDao.fetchPendingJob();
         if (jobOpt.isPresent()) {
           BackgroundJob job = jobOpt.get();
-          jobDao.updateJobStatus(job.getId(), "RUNNING");
+          jobDao.updateJobStatus(job.getId(), BackgroundJob.Status.RUNNING);
           JobHandler handler = handlerRegistry.getHandler(job.getMethodName());
           try {
             handler.runJob(job.getJobArgs());
-            job.setStatus("COMPLETED");
-            jobDao.updateJobStatus(job.getId(), "COMPLETED");
+            job.setStatus(BackgroundJob.Status.COMPLETED);
+            jobDao.updateJobStatus(job.getId(), BackgroundJob.Status.COMPLETED);
             LOG.info(
                 "Background Job {} completed successfully. Type: {}, Method: {}",
                 job.getId(),
@@ -53,8 +54,8 @@ public class GenericBackgroundWorker implements Managed {
               sendJobStatusUpdate(job);
             }
           } catch (Exception e) {
-            job.setStatus("FAILED");
-            jobDao.updateJobStatus(job.getId(), "FAILED");
+            job.setStatus(BackgroundJob.Status.FAILED);
+            jobDao.updateJobStatus(job.getId(), BackgroundJob.Status.FAILED);
             if (handler.sendStatusToWebSocket()) {
               sendJobStatusUpdate(job);
             }

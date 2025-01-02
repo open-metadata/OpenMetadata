@@ -5,7 +5,6 @@ import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.Map;
 import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.mapper.RowMapper;
@@ -16,6 +15,8 @@ import org.jdbi.v3.sqlobject.customizer.Bind;
 import org.jdbi.v3.sqlobject.statement.GetGeneratedKeys;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
+import org.openmetadata.schema.jobs.BackgroundJob;
+import org.openmetadata.schema.jobs.JobArgs;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlUpdate;
 import org.openmetadata.service.util.JsonUtils;
 
@@ -47,7 +48,11 @@ public interface JobDAO {
   BackgroundJob fetchPendingJobInternal() throws StatementException;
 
   @SqlUpdate("UPDATE background_jobs SET status = :status, updated_at = NOW() WHERE id = :id")
-  void updateJobStatus(@Bind("id") long id, @Bind("status") String status);
+  void updateJobStatusInternal(@Bind("id") long id, @Bind("status") String status);
+
+  default void updateJobStatus(long id, BackgroundJob.Status status) {
+    updateJobStatusInternal(id, status.name());
+  }
 
   @Slf4j
   class BackgroundJobMapper implements RowMapper<BackgroundJob> {
@@ -55,13 +60,13 @@ public interface JobDAO {
     public BackgroundJob map(ResultSet rs, StatementContext ctx) throws SQLException {
       BackgroundJob job = new BackgroundJob();
       job.setId(rs.getLong("id"));
-      job.setJobType(rs.getString("job_type"));
+      job.setJobType(BackgroundJob.JobType.fromValue(rs.getString("job_type")));
       job.setMethodName(rs.getString("method_name"));
       String jobArgsJson = rs.getString("job_args");
 
-      Map<String, Object> jobArgs = JsonUtils.readValue(jobArgsJson, Map.class);
+      JobArgs jobArgs = JsonUtils.readValue(jobArgsJson, JobArgs.class);
       job.setJobArgs(jobArgs);
-      job.setStatus(rs.getString("status"));
+      job.setStatus(BackgroundJob.Status.fromValue(rs.getString("status")));
       job.setCreatedAt(rs.getTimestamp("created_at"));
       job.setUpdatedAt(rs.getTimestamp("updated_at"));
       job.setCreatedBy(rs.getString("created_by"));
