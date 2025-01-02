@@ -127,7 +127,13 @@ class PowerBiApiClient:
             List[PowerBIDashboard]
         """
         try:
-            response_data = self.client.get(f"/myorg/groups/{group_id}/dashboards")
+            admin = "admin/" if self.config.useAdminApis else ""
+            response_data = self.client.get(
+                f"/myorg/{admin}groups/{group_id}/dashboards"
+            )
+            if not response_data:
+                logger.debug(f"No dashboards found for workspace_id: {group_id}")
+                return None
             response = DashboardsResponse(**response_data)
             return response.value
         except Exception as exc:  # pylint: disable=broad-except
@@ -142,7 +148,11 @@ class PowerBiApiClient:
             List[PowerBIReport]
         """
         try:
-            response_data = self.client.get(f"/myorg/groups/{group_id}/reports")
+            admin = "admin/" if self.config.useAdminApis else ""
+            response_data = self.client.get(f"/myorg/{admin}groups/{group_id}/reports")
+            if not response_data:
+                logger.debug(f"No reports found for workspace_id: {group_id}")
+                return None
             response = ReportsResponse(**response_data)
             return response.value
         except Exception as exc:  # pylint: disable=broad-except
@@ -157,7 +167,11 @@ class PowerBiApiClient:
             List[Dataset]
         """
         try:
-            response_data = self.client.get(f"/myorg/groups/{group_id}/datasets")
+            admin = "admin/" if self.config.useAdminApis else ""
+            response_data = self.client.get(f"/myorg/{admin}groups/{group_id}/datasets")
+            if not response_data:
+                logger.debug(f"No datasets found for workspace_id: {group_id}")
+                return None
             response = DatasetResponse(**response_data)
             return response.value
         except Exception as exc:  # pylint: disable=broad-except
@@ -174,9 +188,13 @@ class PowerBiApiClient:
             List[Tile]
         """
         try:
+            admin = "admin/" if self.config.useAdminApis else ""
             response_data = self.client.get(
-                f"/myorg/groups/{group_id}/dashboards/{dashboard_id}/tiles"
+                f"/myorg/{admin}dashboards/{dashboard_id}/tiles"
             )
+            if not response_data:
+                logger.debug(f"No dashboard tiles found for workspace_id: {group_id}")
+                return None
             response = TilesResponse(**response_data)
             return response.value
         except Exception as exc:  # pylint: disable=broad-except

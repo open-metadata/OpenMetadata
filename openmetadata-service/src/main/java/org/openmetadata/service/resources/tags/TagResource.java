@@ -15,7 +15,6 @@ package org.openmetadata.service.resources.tags;
 
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 import static org.openmetadata.service.Entity.CLASSIFICATION;
-import static org.openmetadata.service.Entity.TAG;
 
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -91,6 +90,8 @@ import org.openmetadata.service.util.ResultList;
     name = "tags",
     order = 5) // initialize after Classification, and before Glossary and GlossaryTerm
 public class TagResource extends EntityResource<Tag, TagRepository> {
+  private final ClassificationMapper classificationMapper = new ClassificationMapper();
+  private final TagMapper mapper = new TagMapper();
   public static final String TAG_COLLECTION_PATH = "/v1/tags/";
   static final String FIELDS = "children,usageCount";
 
@@ -119,15 +120,14 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
             CLASSIFICATION, ".*json/data/tags/.*\\.json$", LoadTags.class);
     for (LoadTags loadTags : loadTagsList) {
       Classification classification =
-          ClassificationResource.getClassification(
-              classificationRepository, loadTags.getCreateClassification(), ADMIN_USER_NAME);
+          classificationMapper.createToEntity(loadTags.getCreateClassification(), ADMIN_USER_NAME);
       classificationRepository.initializeEntity(classification);
 
       List<Tag> tagsToCreate = new ArrayList<>();
       for (CreateTag createTag : loadTags.getCreateTags()) {
         createTag.withClassification(classification.getName());
         createTag.withProvider(classification.getProvider());
-        Tag tag = getTag(createTag, ADMIN_USER_NAME);
+        Tag tag = mapper.createToEntity(createTag, ADMIN_USER_NAME);
         repository.setFullyQualifiedName(tag); // FQN required for ordering tags based on hierarchy
         tagsToCreate.add(tag);
       }
@@ -352,7 +352,7 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
       })
   public Response create(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTag create) {
-    Tag tag = getTag(securityContext, create);
+    Tag tag = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, tag);
   }
 
@@ -430,7 +430,7 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
       })
   public Response createOrUpdate(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTag create) {
-    Tag tag = getTag(create, securityContext.getUserPrincipal().getName());
+    Tag tag = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, tag);
   }
 
@@ -562,19 +562,5 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
     Entity.withHref(uriInfo, tag.getClassification());
     Entity.withHref(uriInfo, tag.getParent());
     return tag;
-  }
-
-  private Tag getTag(SecurityContext securityContext, CreateTag create) {
-    return getTag(create, securityContext.getUserPrincipal().getName());
-  }
-
-  private Tag getTag(CreateTag create, String updateBy) {
-    return repository
-        .copy(new Tag(), create, updateBy)
-        .withStyle(create.getStyle())
-        .withParent(getEntityReference(TAG, create.getParent()))
-        .withClassification(getEntityReference(CLASSIFICATION, create.getClassification()))
-        .withProvider(create.getProvider())
-        .withMutuallyExclusive(create.getMutuallyExclusive());
   }
 }
