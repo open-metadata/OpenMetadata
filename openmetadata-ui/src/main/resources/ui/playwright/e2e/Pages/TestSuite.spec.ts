@@ -73,7 +73,7 @@ test('Logical TestSuite', async ({ page }) => {
   await test.step('Create', async () => {
     await page.click('[data-testid="add-test-suite-btn"]');
     await page.fill('[data-testid="test-suite-name"]', NEW_TEST_SUITE.name);
-    await page.fill(descriptionBox, NEW_TEST_SUITE.description);
+    await page.locator(descriptionBox).fill(NEW_TEST_SUITE.description);
 
     await page.click('[data-testid="submit-button"]');
     const getTestCase = page.waitForResponse(
