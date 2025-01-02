@@ -87,7 +87,6 @@ test.describe('Table pagination sorting search scenarios ', () => {
     await expect(page.getByTestId('search-error-placeholder')).toBeVisible();
   });
 
-
   test('Table page should show schema tab with count', async ({ page }) => {
     await table1.visitEntityPage(page);
 

@@ -753,7 +753,7 @@ export const getTableDetailPageBaseTabs = ({
 }: TableDetailPageTabProps): TabProps[] => {
   return [
     {
-      label:  (
+      label: (
         <TabsLabel
           count={tableDetails?.columns.length}
           id={EntityTabs.SCHEMA}
