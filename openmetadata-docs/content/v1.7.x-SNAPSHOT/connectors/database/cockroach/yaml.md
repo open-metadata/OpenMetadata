@@ -7,7 +7,6 @@ slug: /connectors/database/cockroach/yaml
 name="Cockroach"
 stage="BETA"
 platform="OpenMetadata"
-availableFeatures=["Metadata"]
 availableFeatures=["Metadata", "Data Quality", "Data Profiler"]
 unavailableFeatures=["Query Usage", "dbt", "Owners", "Lineage", "Column-level Lineage", "Tags", "Stored Procedures"]
 / %}
