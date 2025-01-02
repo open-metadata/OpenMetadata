@@ -70,7 +70,7 @@ site_menu:
     url: /connectors/database/clickhouse/yaml
   - category: Connectors / Database / Cockroach
     url: /connectors/database/cockroach
-  - category: Connectors / Database / cockroach / Run Externally
+  - category: Connectors / Database / Cockroach / Run Externally
     url: /connectors/database/cockroach/yaml
   - category: Connectors / Database / Couchbase
     url: /connectors/database/couchbase
