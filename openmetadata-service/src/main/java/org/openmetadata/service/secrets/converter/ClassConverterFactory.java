@@ -27,6 +27,7 @@ import org.openmetadata.schema.services.connections.dashboard.TableauConnection;
 import org.openmetadata.schema.services.connections.database.BigQueryConnection;
 import org.openmetadata.schema.services.connections.database.BigTableConnection;
 import org.openmetadata.schema.services.connections.database.CassandraConnection;
+import org.openmetadata.schema.services.connections.database.CockroachConnection;
 import org.openmetadata.schema.services.connections.database.DatalakeConnection;
 import org.openmetadata.schema.services.connections.database.DeltaLakeConnection;
 import org.openmetadata.schema.services.connections.database.GreenplumConnection;
@@ -85,7 +86,9 @@ public final class ClassConverterFactory {
                 TestServiceConnectionRequest.class,
                 new TestServiceConnectionRequestClassConverter()),
             Map.entry(TrinoConnection.class, new TrinoConnectionClassConverter()),
-            Map.entry(Workflow.class, new WorkflowClassConverter()));
+            Map.entry(Workflow.class, new WorkflowClassConverter()),
+            Map.entry(CockroachConnection.class, new CockroachConnectionClassConverter()));
+    Map.entry(Workflow.class, new WorkflowClassConverter());
     Map.entry(CassandraConnection.class, new CassandraConnectionClassConverter());
   }
 

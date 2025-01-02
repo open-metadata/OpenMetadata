@@ -87,7 +87,7 @@ mock_bq_config = {
         "openMetadataServerConfig": {
             "hostPort": "http://localhost:8585/api",
             "authProvider": "openmetadata",
-            "securityConfig": {"jwtToken": "jwt"},
+            "securityConfig": {"jwtToken": "bigquery"},
         }
     },
 }

@@ -511,6 +511,7 @@ export enum DatabaseServiceType {
     BigTable = "BigTable",
     Cassandra = "Cassandra",
     Clickhouse = "Clickhouse",
+    Cockroach = "Cockroach",
     Couchbase = "Couchbase",
     CustomDatabase = "CustomDatabase",
     Databricks = "Databricks",
