@@ -27,6 +27,10 @@ import {
 import './rich-text-editor-previewer.less';
 import { PreviewerProp } from './RichTextEditor.interface';
 
+/**
+ * @deprecated This component is deprecated and will be removed in future releases.
+ * Please use {@link https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-ui/src/main/resources/ui/src/components/common/RichTextEditor/RichTextEditorPreviewerV1.tsx|RichTextEditorPreviewerV1} instead of this component.
+ */
 const RichTextEditorPreviewer = ({
   markdown = '',
   className = '',
