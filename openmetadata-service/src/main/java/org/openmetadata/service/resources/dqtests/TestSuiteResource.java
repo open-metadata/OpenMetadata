@@ -16,7 +16,6 @@ import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
 import javax.json.JsonPatch;
-import javax.servlet.http.HttpServletResponse;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
 import javax.validation.constraints.Min;
@@ -42,7 +41,6 @@ import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.tests.CreateTestSuite;
 import org.openmetadata.schema.tests.DataQualityReport;
 import org.openmetadata.schema.tests.TestSuite;
-import org.openmetadata.schema.tests.type.TestSummary;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
@@ -445,42 +443,6 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
           @PathParam("version")
           String version) {
     return super.getVersionInternal(securityContext, id, version);
-  }
-
-  @GET
-  @Path("/executionSummary")
-  @Operation(
-      operationId = "getExecutionSummaryOfTestSuites",
-      summary = "Get the execution summary of test suites",
-      description = "Get the execution summary of test suites.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "Tests Execution Summary",
-            content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = TestSummary.class)))
-      })
-  public TestSummary getTestsExecutionSummary(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Context HttpServletResponse response,
-      @Parameter(
-              description = "get summary for a specific test suite",
-              schema = @Schema(type = "String", format = "uuid"))
-          @QueryParam("testSuiteId")
-          UUID testSuiteId) {
-    ResourceContext<?> resourceContext = getResourceContext();
-    OperationContext operationContext =
-        new OperationContext(Entity.TABLE, MetadataOperation.VIEW_TESTS);
-    authorizer.authorize(securityContext, operationContext, resourceContext);
-    // Set the deprecation header based on draft specification from IETF
-    // https://datatracker.ietf.org/doc/html/draft-ietf-httpapi-deprecation-header-02
-    response.setHeader("Deprecation", "Monday, October 30, 2024");
-    response.setHeader(
-        "Link", "api/v1/dataQuality/testSuites/dataQualityReport; rel=\"alternate\"");
-    return repository.getTestSummary(testSuiteId);
   }
 
   @GET
