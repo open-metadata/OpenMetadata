@@ -37,7 +37,7 @@ const ForgotPassword = () => {
     async (data: { email: string }) => {
       try {
         setLoading(true);
-        await (handleForgotPassword && handleForgotPassword(data.email));
+        await handleForgotPassword?.(data.email);
         setShowResetLinkSentAlert(true);
       } catch (error) {
         showErrorToast(
