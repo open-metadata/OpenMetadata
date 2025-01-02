@@ -1151,7 +1151,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       String updatedBy, UUID id, boolean recursive, boolean hardDelete) {
     DeleteResponse<T> response = deleteInternal(updatedBy, id, recursive, hardDelete);
     postDelete(response.entity());
-    deleteFromSearch(response.entity(), hardDelete ? ENTITY_DELETED : ENTITY_SOFT_DELETED);
+    deleteFromSearch(response.entity(), hardDelete);
     return response;
   }
 
@@ -1171,12 +1171,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   protected void postDelete(T entity) {}
 
-  public final void deleteFromSearch(T entity, EventType changeType) {
+  public final void deleteFromSearch(T entity, boolean hardDelete) {
     if (supportsSearch) {
-      if (changeType.equals(ENTITY_SOFT_DELETED)) {
-        searchRepository.softDeleteOrRestoreEntity(entity, true);
-      } else {
+      if (hardDelete) {
         searchRepository.deleteEntity(entity);
+      } else {
+        searchRepository.softDeleteOrRestoreEntity(entity, true);
       }
     }
   }
