@@ -661,6 +661,7 @@ public final class Entity {
     if (ENTITY_SERVICE_TYPE_MAP.containsKey(entityType)) {
       return ENTITY_SERVICE_TYPE_MAP.get(entityType);
     }
-    throw new IllegalArgumentException("Entity type " + entityType + " does not have a service entity");
+    throw new IllegalArgumentException(
+        "Entity type " + entityType + " does not have a service entity");
   }
 }

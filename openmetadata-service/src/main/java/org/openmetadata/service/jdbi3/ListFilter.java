@@ -12,7 +12,6 @@ import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
-import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 public class ListFilter extends Filter<ListFilter> {
@@ -56,13 +55,19 @@ public class ListFilter extends Filter<ListFilter> {
 
   public ResourceContext getResourceContext(String entityType) {
     if (queryParams.containsKey("service") && queryParams.get("service") != null) {
-      return new ResourceContext<>(Entity.getServiceType(entityType), null, queryParams.get("service"));
-    } else if(queryParams.containsKey(Entity.DATABASE) && queryParams.get(Entity.DATABASE) != null) {
+      return new ResourceContext<>(
+          Entity.getServiceType(entityType), null, queryParams.get("service"));
+    } else if (queryParams.containsKey(Entity.DATABASE)
+        && queryParams.get(Entity.DATABASE) != null) {
       return new ResourceContext<>(Entity.DATABASE, null, queryParams.get(Entity.DATABASE));
-    } else if(queryParams.containsKey(Entity.DATABASE_SCHEMA) && queryParams.get(Entity.DATABASE_SCHEMA) != null) {
-      return new ResourceContext<>(Entity.DATABASE_SCHEMA, null, queryParams.get(Entity.DATABASE_SCHEMA));
-    } else if(queryParams.containsKey(Entity.API_COLLCECTION) && queryParams.get(Entity.API_COLLCECTION) != null) {
-      return new ResourceContext<>(Entity.API_COLLCECTION, null, queryParams.get(Entity.API_COLLCECTION));
+    } else if (queryParams.containsKey(Entity.DATABASE_SCHEMA)
+        && queryParams.get(Entity.DATABASE_SCHEMA) != null) {
+      return new ResourceContext<>(
+          Entity.DATABASE_SCHEMA, null, queryParams.get(Entity.DATABASE_SCHEMA));
+    } else if (queryParams.containsKey(Entity.API_COLLCECTION)
+        && queryParams.get(Entity.API_COLLCECTION) != null) {
+      return new ResourceContext<>(
+          Entity.API_COLLCECTION, null, queryParams.get(Entity.API_COLLCECTION));
     }
     return new ResourceContext<>(entityType);
   }
