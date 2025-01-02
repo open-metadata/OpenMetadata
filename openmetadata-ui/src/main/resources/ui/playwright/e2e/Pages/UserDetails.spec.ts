@@ -163,11 +163,10 @@ test.describe('User with different Roles', () => {
       state: 'visible',
     });
 
-    await userPage.click(descriptionBox);
-    await userPage.locator(descriptionBox).fill('');
+    await userPage.locator(descriptionBox).clear();
 
     await expect(userPage.locator(descriptionBox)).not.toContainText(
-      USER_DESCRIPTION
+      'Name of the User'
     );
 
     const removeUserDescription = userPage.waitForResponse(
