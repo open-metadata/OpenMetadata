@@ -1151,6 +1151,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       String updatedBy, UUID id, boolean recursive, boolean hardDelete) {
     DeleteResponse<T> response = deleteInternal(updatedBy, id, recursive, hardDelete);
     postDelete(response.entity());
+    deleteFromSearch(response.entity(), hardDelete ? ENTITY_DELETED : ENTITY_SOFT_DELETED);
     return response;
   }
 
