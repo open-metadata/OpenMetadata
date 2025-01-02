@@ -164,8 +164,6 @@ const BasicAuthProvider = ({
 
   const handleForgotPassword = async (email: string) => {
     await generatePasswordResetLink(email);
-
-    return;
   };
 
   const handleResetPassword = async (payload: PasswordResetRequest) => {

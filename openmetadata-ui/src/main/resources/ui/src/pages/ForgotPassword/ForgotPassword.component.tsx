@@ -40,14 +40,13 @@ const ForgotPassword = () => {
         await (handleForgotPassword && handleForgotPassword(data.email));
         setShowResetLinkSentAlert(true);
       } catch (error) {
-        if (
+        showErrorToast(
           (error as AxiosError).response?.status ===
-          HTTP_STATUS_CODE.FAILED_DEPENDENCY
-        ) {
-          showErrorToast(t('server.forgot-password-email-error'));
-        } else {
-          showErrorToast(t('server.email-not-found'));
-        }
+            HTTP_STATUS_CODE.FAILED_DEPENDENCY
+            ? t('server.forgot-password-email-error')
+            : t('server.email-not-found')
+        );
+
         setShowResetLinkSentAlert(false);
       } finally {
         setLoading(false);
