@@ -17,7 +17,6 @@ from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.teams.user import AuthenticationMechanism, User
 from metadata.generated.schema.settings.settings import Settings, SettingType
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from tests.integration.ometa.conftest import service
 
 BOTS = ["ingestion-bot", "profiler-bot"]
 
