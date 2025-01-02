@@ -157,7 +157,7 @@ jest.mock(
     return jest.fn().mockImplementation(() => <div>Severity.component</div>);
   }
 );
-jest.mock('../../../common/RichTextEditor/RichTextEditorPreviewer', () => {
+jest.mock('../../../common/RichTextEditor/RichTextEditorPreviewerV1', () => {
   return jest
     .fn()
     .mockImplementation(() => <div>RichTextEditorPreviewer.component</div>);
