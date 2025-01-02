@@ -1,18 +1,6 @@
-#  Copyright 2021 Collate
-#  Licensed under the Apache License, Version 2.0 (the "License");
-#  you may not use this file except in compliance with the License.
-#  You may obtain a copy of the License at
-#  http://www.apache.org/licenses/LICENSE-2.0
-#  Unless required by applicable law or agreed to in writing, software
-#  distributed under the License is distributed on an "AS IS" BASIS,
-#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#  See the License for the specific language governing permissions and
-#  limitations under the License.
-
 """
-Test Postgres using the topology
+Test Cockroach using the topology
 """
-
 import types
 from unittest import TestCase
 from unittest.mock import patch
@@ -31,32 +19,26 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.source.database.postgres.metadata import (
+from metadata.ingestion.source.database.cockroach.metadata import (
     GEOMETRY,
     POINT,
     POLYGON,
-    PostgresSource,
+    CockroachSource,
 )
-from metadata.ingestion.source.database.postgres.usage import PostgresUsageSource
-from metadata.ingestion.source.database.postgres.utils import get_postgres_version
 
-mock_postgres_config = {
+mock_cockroach_config = {
     "source": {
-        "type": "postgres",
-        "serviceName": "local_postgres1",
+        "type": "cockroach",
+        "serviceName": "local_cockroach1",
         "serviceConnection": {
             "config": {
-                "type": "Postgres",
+                "type": "Cockroach",
                 "username": "username",
                 "authType": {
                     "password": "password",
                 },
-                "hostPort": "localhost:5432",
-                "database": "postgres",
-                "sslMode": "verify-ca",
-                "sslConfig": {
-                    "caCertificate": "CA certificate content",
-                },
+                "hostPort": "localhost:26257",
+                "database": "cockroach",
             }
         },
         "sourceConfig": {
@@ -73,58 +55,23 @@ mock_postgres_config = {
         "openMetadataServerConfig": {
             "hostPort": "http://localhost:8585/api",
             "authProvider": "openmetadata",
-            "securityConfig": {"jwtToken": "postgres"},
-        }
-    },
-}
-
-mock_postgres_usage_config = {
-    "source": {
-        "type": "postgres-usage",
-        "serviceName": "local_postgres1",
-        "serviceConnection": {
-            "config": {
-                "type": "Postgres",
-                "username": "username",
-                "authType": {
-                    "password": "password",
-                },
-                "hostPort": "localhost:5432",
-                "database": "postgres",
-            }
-        },
-        "sourceConfig": {
-            "config": {
-                "type": "DatabaseUsage",
-                "queryLogDuration": 1,
-            }
-        },
-    },
-    "sink": {
-        "type": "metadata-rest",
-        "config": {},
-    },
-    "workflowConfig": {
-        "openMetadataServerConfig": {
-            "hostPort": "http://localhost:8585/api",
-            "authProvider": "openmetadata",
-            "securityConfig": {"jwtToken": "postgres"},
+            "securityConfig": {"jwtToken": "cockroach"},
         }
     },
 }
 
 MOCK_DATABASE_SERVICE = DatabaseService(
     id="85811038-099a-11ed-861d-0242ac120002",
-    name="postgres_source",
+    name="cockroach_source",
     connection=DatabaseConnection(),
-    serviceType=DatabaseServiceType.Postgres,
+    serviceType=DatabaseServiceType.Cockroach,
 )
 
 MOCK_DATABASE = Database(
     id="2aaa012e-099a-11ed-861d-0242ac120002",
-    name="118146679784",
-    fullyQualifiedName="postgres_source.default",
-    displayName="118146679784",
+    name="default",
+    fullyQualifiedName="cockroach_source.default",
+    displayName="default",
     description="",
     service=EntityReference(
         id="85811038-099a-11ed-861d-0242ac120002",
@@ -135,7 +82,7 @@ MOCK_DATABASE = Database(
 MOCK_DATABASE_SCHEMA = DatabaseSchema(
     id="2aaa012e-099a-11ed-861d-0242ac120056",
     name="default",
-    fullyQualifiedName="postgres_source.118146679784.default",
+    fullyQualifiedName="cockroach_source.default.default",
     displayName="default",
     description="",
     database=EntityReference(
@@ -269,36 +216,28 @@ EXPECTED_COLUMN_VALUE = [
 ]
 
 
-class PostgresUnitTest(TestCase):
+class cockroachUnitTest(TestCase):
     @patch(
         "metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection"
     )
     def __init__(self, methodName, test_connection) -> None:
         super().__init__(methodName)
         test_connection.return_value = False
-        self.config = OpenMetadataWorkflowConfig.model_validate(mock_postgres_config)
-        self.postgres_source = PostgresSource.create(
-            mock_postgres_config["source"],
+        self.config = OpenMetadataWorkflowConfig.model_validate(mock_cockroach_config)
+        self.cockroach_source = CockroachSource.create(
+            mock_cockroach_config["source"],
             self.config.workflowConfig.openMetadataServerConfig,
         )
 
-        self.postgres_source.context.get().__dict__[
+        self.cockroach_source.context.get().__dict__[
             "database_service"
         ] = MOCK_DATABASE_SERVICE.name.root
-        self.postgres_source.context.get().__dict__[
+        self.cockroach_source.context.get().__dict__[
             "database"
         ] = MOCK_DATABASE.name.root
-        self.postgres_source.context.get().__dict__[
+        self.cockroach_source.context.get().__dict__[
             "database_schema"
         ] = MOCK_DATABASE_SCHEMA.name.root
-
-        self.usage_config = OpenMetadataWorkflowConfig.model_validate(
-            mock_postgres_usage_config
-        )
-        self.postgres_usage_source = PostgresUsageSource.create(
-            mock_postgres_usage_config["source"],
-            self.usage_config.workflowConfig.openMetadataServerConfig,
-        )
 
     def test_datatype(self):
         inspector = types.SimpleNamespace()
@@ -308,25 +247,12 @@ class PostgresUnitTest(TestCase):
         inspector.get_pk_constraint = lambda table_name, schema_name: []
         inspector.get_unique_constraints = lambda table_name, schema_name: []
         inspector.get_foreign_keys = lambda table_name, schema_name: []
-        result, _, _ = self.postgres_source.get_columns_and_constraints(
-            "public", "user", "postgres", inspector
+
+        result, _, _ = self.cockroach_source.get_columns_and_constraints(
+            "public", "user", "cockroach", inspector
         )
         for i, _ in enumerate(EXPECTED_COLUMN_VALUE):
             self.assertEqual(result[i], EXPECTED_COLUMN_VALUE[i])
-
-    @patch("sqlalchemy.engine.base.Engine")
-    def test_get_version_info(self, engine):
-        engine.execute.return_value = [["15.3 (Debian 15.3-1.pgdg110+1)"]]
-        self.assertEqual("15.3", get_postgres_version(engine))
-
-        engine.execute.return_value = [["11.16"]]
-        self.assertEqual("11.16", get_postgres_version(engine))
-
-        engine.execute.return_value = [["9.6.24"]]
-        self.assertEqual("9.6.24", get_postgres_version(engine))
-
-        engine.execute.return_value = [[]]
-        self.assertIsNone(get_postgres_version(engine))
 
     @patch("sqlalchemy.engine.base.Engine")
     @patch(
@@ -334,4 +260,4 @@ class PostgresUnitTest(TestCase):
     )
     def test_close_connection(self, engine, connection):
         connection.return_value = True
-        self.postgres_source.close()
+        self.cockroach_source.close()
