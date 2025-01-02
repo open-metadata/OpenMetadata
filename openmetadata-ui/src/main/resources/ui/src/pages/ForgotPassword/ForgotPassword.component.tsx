@@ -13,13 +13,16 @@
 
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button, Card, Col, Divider, Form, Input, Row, Typography } from 'antd';
+import { AxiosError } from 'axios';
 import React, { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { ReactComponent as IconSuccessBadge } from '../../assets/svg/success-badge.svg';
 import { useBasicAuth } from '../../components/Auth/AuthProviders/BasicAuthProvider';
 import BrandImage from '../../components/common/BrandImage/BrandImage';
+import { HTTP_STATUS_CODE } from '../../constants/Auth.constants';
 import { ROUTES } from '../../constants/constants';
+import { showErrorToast } from '../../utils/ToastUtils';
 import './forgot-password.styles.less';
 
 const ForgotPassword = () => {
@@ -34,9 +37,16 @@ const ForgotPassword = () => {
     async (data: { email: string }) => {
       try {
         setLoading(true);
-        handleForgotPassword && (await handleForgotPassword(data.email));
+        await handleForgotPassword?.(data.email);
         setShowResetLinkSentAlert(true);
       } catch (error) {
+        showErrorToast(
+          (error as AxiosError).response?.status ===
+            HTTP_STATUS_CODE.FAILED_DEPENDENCY
+            ? t('server.forgot-password-email-error')
+            : t('server.email-not-found')
+        );
+
         setShowResetLinkSentAlert(false);
       } finally {
         setLoading(false);
