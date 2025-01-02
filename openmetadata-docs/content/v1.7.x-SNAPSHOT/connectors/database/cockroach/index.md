@@ -7,8 +7,8 @@ slug: /connectors/database/cockroach
 name="Cockroach"
 stage="BETA"
 platform="OpenMetadata"
-availableFeatures=["Metadata"]
-unavailableFeatures=["Query Usage", "Data Quality", "dbt", "Owners", "Lineage", "Column-level Lineage", "Tags", "Stored Procedures", "Data Profiler"]
+availableFeatures=["Metadata", "Data Quality", "Data Profiler"]
+unavailableFeatures=["Query Usage", "dbt", "Owners", "Lineage", "Column-level Lineage", "Tags", "Stored Procedures"]
 / %}
 
 
@@ -19,6 +19,8 @@ Configure and schedule Cockroach metadata workflows from the OpenMetadata UI:
 
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
+- [Data Profiler](/how-to-guides/data-quality-observability/profiler/workflow)
+- [Data Quality](/how-to-guides/data-quality-observability/quality)
 
 {% partial file="/v1.7/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/cockroach/yaml"} /%}
 
