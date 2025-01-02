@@ -1,6 +1,6 @@
 ---
 title: Auto PII Tagging
-slug: /how-to-guides/data-quality-observability/profiler/auto-pii-tagging
+slug: /how-to-guides/data-governance/classification/auto/auto-pii-tagging
 ---
 
 # Auto PII Tagging
