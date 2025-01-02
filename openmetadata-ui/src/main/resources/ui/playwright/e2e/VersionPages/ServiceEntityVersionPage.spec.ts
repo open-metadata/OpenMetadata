@@ -23,7 +23,11 @@ import { MlmodelServiceClass } from '../../support/entity/service/MlmodelService
 import { PipelineServiceClass } from '../../support/entity/service/PipelineServiceClass';
 import { SearchIndexServiceClass } from '../../support/entity/service/SearchIndexServiceClass';
 import { StorageServiceClass } from '../../support/entity/service/StorageServiceClass';
-import { createNewPage, redirectToHomePage } from '../../utils/common';
+import {
+  createNewPage,
+  descriptionBoxReadOnly,
+  redirectToHomePage,
+} from '../../utils/common';
 import { addMultiOwner, assignTier } from '../../utils/entity';
 
 const entities = [
@@ -122,7 +126,7 @@ entities.forEach((EntityClass) => {
 
           await expect(
             page.locator(
-              '[data-testid="viewer-container"] [data-testid="diff-added"]'
+              `[data-testid="asset-description-container"] ${descriptionBoxReadOnly} [data-testid="diff-added"]`
             )
           ).toBeVisible();
 

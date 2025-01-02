@@ -97,6 +97,11 @@ public class NoopAuthorizer implements Authorizer {
   }
 
   @Override
+  public void authorizeAdmin(String adminName) {
+    /* Always authorize */
+  }
+
+  @Override
   public void authorizeAdminOrBot(SecurityContext securityContext) {
     /* Always authorize */
   }
