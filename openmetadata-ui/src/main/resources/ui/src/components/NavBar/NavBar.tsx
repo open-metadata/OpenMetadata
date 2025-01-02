@@ -362,12 +362,22 @@ const NavBar = ({
           onUpdateCSVExportJob(exportResponseData);
         }
       });
+      socket.on(SOCKET_EVENTS.BACKGROUND_JOB_CHANNEL, (jobResponse) => {
+        if (jobResponse) {
+          const _ = JSON.parse(jobResponse);
+          // @TODO: Handle background job response _
+          // eslint-disable-next-line no-console
+          console.log('Background Job Response: ', _);
+        }
+      });
     }
 
     return () => {
       socket && socket.off(SOCKET_EVENTS.TASK_CHANNEL);
       socket && socket.off(SOCKET_EVENTS.MENTION_CHANNEL);
       socket && socket.off(SOCKET_EVENTS.CSV_EXPORT_CHANNEL);
+      socket && socket.off(SOCKET_EVENTS.CSV_EXPORT_CHANNEL);
+      socket && socket.off(SOCKET_EVENTS.BACKGROUND_JOB_CHANNEL);
     };
   }, [socket]);
 
