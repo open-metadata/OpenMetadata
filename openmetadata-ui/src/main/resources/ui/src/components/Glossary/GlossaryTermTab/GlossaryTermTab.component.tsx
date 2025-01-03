@@ -106,10 +106,14 @@ const GlossaryTermTab = ({
     useGlossaryStore();
   const { t } = useTranslation();
 
-  const glossaryTerms = useMemo(
-    () => (glossaryChildTerms as ModifiedGlossaryTerm[]) ?? [],
-    [glossaryChildTerms]
-  );
+  const { glossaryTerms, expandableKeys } = useMemo(() => {
+    const terms = (glossaryChildTerms as ModifiedGlossaryTerm[]) ?? [];
+
+    return {
+      expandableKeys: findExpandableKeysForArray(terms),
+      glossaryTerms: terms,
+    };
+  }, [glossaryChildTerms]);
 
   const [movedGlossaryTerm, setMovedGlossaryTerm] =
     useState<MoveGlossaryTermType>();
@@ -142,10 +146,6 @@ const GlossaryTermTab = ({
 
     return null;
   }, [isGlossary, activeGlossary]);
-
-  const expandableKeys = useMemo(() => {
-    return findExpandableKeysForArray(glossaryTerms);
-  }, [glossaryTerms]);
 
   const columns = useMemo(() => {
     const data: ColumnsType<ModifiedGlossaryTerm> = [
@@ -818,6 +818,10 @@ const GlossaryTermTab = ({
     );
   }
 
+  const filteredGlossaryTerms = glossaryTerms.filter((term) =>
+    selectedStatus.includes(term.status as string)
+  );
+
   return (
     <Row className={className} gutter={[0, 16]}>
       <Col span={24}>
@@ -897,9 +901,7 @@ const GlossaryTermTab = ({
               columns={rearrangedColumns.filter((col) => !col.hidden)}
               components={TABLE_CONSTANTS}
               data-testid="glossary-terms-table"
-              dataSource={glossaryTerms.filter((term) =>
-                selectedStatus.includes(term.status as string)
-              )}
+              dataSource={filteredGlossaryTerms}
               expandable={expandableConfig}
               loading={isTableLoading}
               pagination={false}

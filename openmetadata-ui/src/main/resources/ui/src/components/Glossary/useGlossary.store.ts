@@ -18,6 +18,7 @@ import { findAndUpdateNested } from '../../utils/GlossaryUtils';
 
 export type ModifiedGlossary = Glossary & {
   children?: GlossaryTermWithChildren[];
+  childrenCount?: number;
 };
 
 export const useGlossaryStore = create<{
