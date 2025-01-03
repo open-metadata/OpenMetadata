@@ -148,7 +148,6 @@ const AddRolePage = () => {
                   label={`${t('label.description')}:`}
                   name="description">
                   <RichTextEditor
-                    initialValue={description}
                     placeHolder={t('message.write-your-description')}
                     style={{ margin: 0 }}
                     onTextChange={(value) => setDescription(value)}

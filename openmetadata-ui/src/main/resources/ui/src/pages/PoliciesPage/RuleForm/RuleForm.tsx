@@ -41,9 +41,14 @@ const { Option } = Select;
 export interface RuleFormProps {
   ruleData: Rule;
   setRuleData: (value: React.SetStateAction<Rule>) => void;
+  description?: string;
 }
 
-const RuleForm: FC<RuleFormProps> = ({ ruleData, setRuleData }) => {
+const RuleForm: FC<RuleFormProps> = ({
+  ruleData,
+  setRuleData,
+  description,
+}) => {
   const { t } = useTranslation();
   const [policyResources, setPolicyResources] = useState<ResourceDescriptor[]>(
     []
@@ -216,7 +221,7 @@ const RuleForm: FC<RuleFormProps> = ({ ruleData, setRuleData }) => {
       </Form.Item>
       <Form.Item label={t('label.description')} name="ruleDescription">
         <RichTextEditor
-          initialValue={ruleData.description || ''}
+          initialValue={description}
           placeHolder={t('message.write-your-description')}
           style={{ margin: 0 }}
           onTextChange={(value: string) =>
