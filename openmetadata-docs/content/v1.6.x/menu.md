@@ -165,6 +165,8 @@ site_menu:
     url: /deployment/security/enable-ssl/ssl-troubleshooting
   - category: Deployment / Enable Security / Enable JWT Tokens
     url: /deployment/security/enable-jwt-tokens
+  - category: Deployment / Enable Security / Configuration Reference Parameters
+    url: /deployment/security/configuration-parameters
   - category: Deployment / Enable Security / JWT Troubleshooting
     url: /deployment/security/jwt-troubleshooting
 

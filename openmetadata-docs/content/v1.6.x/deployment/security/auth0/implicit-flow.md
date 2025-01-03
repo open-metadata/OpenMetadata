@@ -61,3 +61,13 @@ After the applying these steps, you can update the configuration of your deploym
     Configure Auth0 SSO for your Kubernetes Deployment.
   {% /inlineCallout %}
 {% /inlineCalloutContainer %}
+
+{% inlineCalloutContainer %}
+  {% inlineCallout
+    color="violet-70"
+    icon="MdArrowBack"
+    bold="Auth"
+    href="/deployment/security/auth0" %}
+    Go to Auth0 Configuration
+  {% /inlineCallout %}
+{% /inlineCalloutContainer %}

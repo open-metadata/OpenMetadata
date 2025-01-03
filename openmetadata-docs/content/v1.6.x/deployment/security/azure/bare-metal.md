@@ -6,24 +6,66 @@ collate: false
 
 # Azure SSO for Bare Metal
 
-Get the `Client Id` and `Tenant ID` from Azure Application configured in [Step 3](/deployment/security/azure#step-3-where-to-find-the-credentials).
 
 ## Update conf/openmetadata.yaml
 
-```yaml
+In `openmetadata.yaml` file and use the following example as a reference. Replace the placeholder values with the details generated during your azure account and application credentials setup.
+
+Check the more information about environment variable [here](/deployment/security/configuration-parameters).
+
+
+{% codeWithLanguageSelector title="Auth Configuration" id="container-1" languagesArray=["implicit","authcode"] theme="dark" %}
+
+```implicit
+# Implicit Flow
+authorizerConfiguration:
+  className: "org.openmetadata.service.security.DefaultAuthorizer"
+  containerRequestFilter: "org.openmetadata.service.security.JwtFilter"
+  adminPrincipals:                          # Your `name` from name@domain.com
+    - "admin"
+    - "user1"
+    - "user2"
+  principalDomain: "open-metadata.org"      # Update with your Domain,The primary domain for the organization (your domain.com from name@domain.com).
 authenticationConfiguration:
-  provider: "azure"
-  publicKeyUrls:
-    - "https://login.microsoftonline.com/common/discovery/keys"
-    - "{your domain}/api/v1/system/config/jwks" # Update with your Domain and Make sure this "/api/v1/system/config/jwks" is always configured to enable JWT tokens
+  provider: "azure" 
+  publicKeyUrls:                            # Update with your azure Domain and  OMD server URL.
+    - "https://login.microsoftonline.com/common/discovery/keys""
+    - "{OMD URL}/api/v1/system/config/jwks"                    
   authority: "https://login.microsoftonline.com/{Tenant ID}"
-  clientId: "{Client ID}" # Azure Application
+  clientId: "{Client ID}"
   callbackUrl: "http://localhost:8585/callback"
+  clientType: "public"
 ```
 
-Then, 
-- Update `authorizerConfiguration` to add login names of the admin users in `adminPrincipals` section as shown below.
-- Update the `principalDomain` to your company domain name.
+```authcode
+# Auth Code Flow 
+authorizerConfiguration:
+  className: "org.openmetadata.service.security.DefaultAuthorizer"
+  containerRequestFilter: "org.openmetadata.service.security.JwtFilter"
+  adminPrincipals:                          # Your `name` from name@domain.com
+    - "admin"
+    - "user1"
+    - "user2"
+  principalDomain: "open-metadata.org"      # Update with your Domain,The primary domain for the organization (your domain.com from name@domain.com).
+authenticationConfiguration:
+  provider: "azure" 
+  publicKeyUrls:                            # Update with your azure Domain and  OMD server URL.
+    - "https://login.microsoftonline.com/common/discovery/keys""
+    - "{OMD URL}/api/v1/system/config/jwks"   
+  authority: "https://login.microsoftonline.com/{Tenant ID}"                   # Update your Tenant ID
+  clientId: "{Client ID}"                   # Update your Client ID
+  callbackUrl: "http://localhost:8585/callback"
+  clientType: "confidential"
+  oidcConfiguration:
+    id: "{Client ID}"                       # Update you azrue Client ID
+    type: "azure"     
+    secret: "{Client Secret}"               # Update with azure Client Secret
+    discoveryUri: "{azure Domain Name}/.well-known/openid-configuration"       # Update your Azure discovery URI
+    callbackUrl: http://localhost:8585/callback"
+    serverUrl: "http://localhost:8585"
+
+```
+{% /codeWithLanguageSelector %}
 
 {% note %}
 
@@ -31,15 +73,16 @@ Altering the order of claims in `jwtPrincipalClaims` may lead to problems when m
 
 {% /note %}
 
-```yaml
-authorizerConfiguration:
-  className: "org.openmetadata.service.security.DefaultAuthorizer"
-  # JWT Filter
-  containerRequestFilter: "org.openmetadata.service.security.JwtFilter"
-  adminPrincipals:
-    - "user1"
-    - "user2"
-  principalDomain: "open-metadata.org"
-```
 
 {% partial file="/v1.6/deployment/configure-ingestion.md" /%}
+
+
+{% inlineCalloutContainer %}
+  {% inlineCallout
+    color="violet-70"
+    icon="MdArrowBack"
+    bold="Azure"
+    href="/deployment/security/azure" %}
+    Go to Azure Configuration
+  {% /inlineCallout %}
+{% /inlineCalloutContainer %}

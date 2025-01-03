@@ -112,20 +112,31 @@ After the applying these steps, you can update the configuration of your deploym
     icon="celebration"
     bold="Docker Security"
     href="/deployment/security/okta/docker" %}
-    Configure Auth0 SSO for your Docker Deployment.
+    Configure OKTA SSO for your Docker Deployment.
   {% /inlineCallout %}
   {% inlineCallout
     color="violet-70"
     icon="storage"
     bold="Bare Metal Security"
     href="/deployment/security/okta/bare-metal" %}
-    Configure Auth0 SSO for your Bare Metal Deployment.
+    Configure OKTA SSO for your Bare Metal Deployment.
   {% /inlineCallout %}
   {% inlineCallout
     color="violet-70"
     icon="fit_screen"
     bold="Kubernetes Security"
     href="/deployment/security/okta/kubernetes" %}
-    Configure Auth0 SSO for your Kubernetes Deployment.
+    Configure OKTA SSO for your Kubernetes Deployment.
+  {% /inlineCallout %}
+{% /inlineCalloutContainer %}
+
+
+{% inlineCalloutContainer %}
+  {% inlineCallout
+    color="violet-70"
+    icon="MdArrowBack"
+    bold="OKTA"
+    href="/deployment/security/okta" %}
+    Go to okta Configuration
   {% /inlineCallout %}
 {% /inlineCalloutContainer %}
