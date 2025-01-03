@@ -303,6 +303,13 @@ describe('Test Connection Component', () => {
   it('Should timeout message after two minutes', async () => {
     jest.useFakeTimers();
 
+    (addWorkflow as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve({
+        ...WORKFLOW_DETAILS,
+        status: WorkflowStatus.Pending,
+      })
+    );
+
     (getWorkflowById as jest.Mock).mockImplementationOnce(() =>
       Promise.resolve({
         ...WORKFLOW_DETAILS,
