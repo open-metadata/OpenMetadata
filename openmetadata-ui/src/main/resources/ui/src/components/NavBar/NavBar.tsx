@@ -69,6 +69,7 @@ import {
   shouldRequestPermission,
 } from '../../utils/BrowserNotificationUtils';
 import { refreshPage } from '../../utils/CommonUtils';
+import { getCustomPropertyEntityPathname } from '../../utils/CustomProperty.utils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../utils/EntityUtils';
 import {
@@ -305,7 +306,7 @@ const NavBar = ({
 
           path = getSettingPath(
             GlobalSettingsMenuCategory.CUSTOM_PROPERTIES,
-            `${jobArgs.entityType}s`
+            getCustomPropertyEntityPathname(jobArgs.entityType)
           );
         }
 
