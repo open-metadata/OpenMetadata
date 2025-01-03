@@ -15,19 +15,19 @@ collate: false
 - Enter the Name and Description `(Optional)`.
 - Click on `Next` button.
 
-{% image src="/images/v1.7/deployment/security/keycloak/keycloak-step-3.png" alt="add-client" /%}
+{% image src="/images/v1.6/deployment/security/keycloak/keycloak-step-3.png" alt="add-client" /%}
 
 ### Step 2: Edit Configs of the client
 
 - Select `Standard flow` and `Implicit flow` as an `Authentication flow`.
 - Click `Next`.
 
-{% image src="/images/v1.7/deployment/security/keycloak/implicit-keycloak-step-4.png" alt="compatibility configs" /%}
+{% image src="/images/v1.6/deployment/security/keycloak/implicit-keycloak-step-4.png" alt="compatibility configs" /%}
 
 ### Step 3: Add Login Settings
 - fill the required options
 
-{% image src="/images/v1.7/deployment/security/keycloak/keycloak-step-5.png" alt="edit-settings-url.png" /%}
+{% image src="/images/v1.6/deployment/security/keycloak/keycloak-step-5.png" alt="edit-settings-url.png" /%}
 
 - Click on `Save` button.
 
@@ -69,3 +69,14 @@ After the applying these steps, the users in your realm are able to login in the
 {% note %}
 A dockerized demo for showing how this SSO works with OpenMetadata can be found [here](https://github.com/open-metadata/openmetadata-demo/tree/main/keycloak-sso).
 {% /note %}
+
+
+{% inlineCalloutContainer %}
+  {% inlineCallout
+    color="violet-70"
+    icon="MdArrowBack"
+    bold="KeyCloak"
+    href="/deployment/security/keycloak" %}
+    Go to KeyCloak Configuration
+  {% /inlineCallout %}
+{% /inlineCalloutContainer %}
