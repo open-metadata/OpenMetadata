@@ -58,6 +58,7 @@ import AssetsTabs, {
 import { AssetsOfEntity } from '../../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import EntityDeleteModal from '../../components/Modals/EntityDeleteModal/EntityDeleteModal';
 import EntityNameModal from '../../components/Modals/EntityNameModal/EntityNameModal.component';
+import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import StyleModal from '../../components/Modals/StyleModal/StyleModal.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import {
@@ -258,7 +259,7 @@ const TagPage = () => {
     }
   };
 
-  const onNameSave = async (obj: Tag) => {
+  const onNameSave = async (obj: EntityName) => {
     if (tagItem) {
       const { displayName } = obj;
       let updatedDetails = cloneDeep(tagItem);
