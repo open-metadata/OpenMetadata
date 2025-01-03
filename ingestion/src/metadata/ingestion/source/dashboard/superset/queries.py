@@ -21,6 +21,7 @@ select
     	s.datasource_id,
     	s.viz_type,
 	t.table_name,
+	t.sql,
 	t.schema,
 	db.database_name,
     db.sqlalchemy_uri
