@@ -425,7 +425,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_STATUS);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
-    return repository.addPipelineStatus(uriInfo, fqn, pipelineStatus).toResponse();
+    return repository.addPipelineStatus(fqn, pipelineStatus).toResponse();
   }
 
   @GET
