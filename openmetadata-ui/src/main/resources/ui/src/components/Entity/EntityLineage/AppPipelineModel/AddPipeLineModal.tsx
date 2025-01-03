@@ -125,9 +125,10 @@ const AddPipeLineModal = ({
       data-testid="add-edge-modal"
       footer={[
         <Button
+          danger
           data-testid="remove-edge-button"
           key="remove-edge-btn"
-          type="text"
+          type="primary"
           onClick={onRemoveEdgeClick}>
           {t('label.remove-entity', {
             entity: t('label.edge-lowercase'),
