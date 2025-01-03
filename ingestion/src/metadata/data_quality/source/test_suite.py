@@ -14,6 +14,7 @@ Test Suite Workflow Source
 
 The main goal is to get the configured table from the API.
 """
+import itertools
 from typing import Iterable, List, Optional, cast
 
 from metadata.data_quality.api.models import TableAndTests
@@ -36,7 +37,7 @@ from metadata.ingestion.api.parser import parse_workflow_config_gracefully
 from metadata.ingestion.api.step import Step
 from metadata.ingestion.api.steps import Source
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.utils import fqn
+from metadata.utils import fqn, entity_link
 from metadata.utils.constants import CUSTOM_CONNECTOR_PREFIX
 from metadata.utils.logger import test_suite_logger
 from metadata.utils.service_spec.service_spec import import_source_class
@@ -73,6 +74,9 @@ class TestSuiteSource(Source):
         Args:
             entity_fqn: entity fqn for the test case
         """
+        # Logical test suites don't have associated tables
+        if self.source_config.entityFullyQualifiedName is None:
+            return None
         table: Table = self.metadata.get_by_name(
             entity=Table,
             fqn=self.source_config.entityFullyQualifiedName.root,
@@ -106,6 +110,7 @@ class TestSuiteSource(Source):
         self.metadata.health_check()
 
     def _iter(self) -> Iterable[Either[TableAndTests]]:
+        # Basic tests suites will have a table informed
         table: Table = self._get_table_entity()
         if table:
             source_type = table.serviceType.value.lower()
@@ -119,14 +124,9 @@ class TestSuiteSource(Source):
                 )
             yield from self._process_table_suite(table)
 
+        # Logical test suites won't have a table, we'll need to group the execution by tests
         else:
-            yield Either(
-                left=StackTraceError(
-                    name="Missing Table",
-                    error=f"Could not retrieve table entity for {self.source_config.entityFullyQualifiedName.root}."
-                    " Make sure the table exists in OpenMetadata and/or the JWT Token provided is valid.",
-                )
-            )
+            yield from self._process_logical_suite()
 
     def _process_table_suite(self, table: Table) -> Iterable[Either[TableAndTests]]:
         """
@@ -152,28 +152,53 @@ class TestSuiteSource(Source):
                 )
             )
 
-        test_suite: Optional[TestSuite] = None
-        if table.testSuite:
-            test_suite = self.metadata.get_by_id(
+        test_suite: Optional[TestSuite] = self.metadata.get_by_id(
                 entity=TestSuite, entity_id=table.testSuite.id.root
             )
+        test_suite_cases = self._get_test_cases_from_test_suite(test_suite)
 
-        if test_suite and not test_suite.executable:
+        yield Either(
+            right=TableAndTests(
+                table=table,
+                test_cases=test_suite_cases,
+                service_type=self.config.source.serviceConnection.root.config.type.value,
+            )
+        )
+
+    def _process_logical_suite(self):
+        """Process logical test suite, collect all test cases and yield them in batches by table"""
+        test_suite = self.metadata.get_by_name(
+            entity=TestSuite, fqn=self.config.source.serviceName
+        )
+        if test_suite is None:
             yield Either(
                 left=StackTraceError(
-                    name="Non-executable Test Suite",
-                    error=f"The table {self.source_config.entityFullyQualifiedName.root} "
-                    "has a test suite that is not executable.",
+                    name="Test Suite not found",
+                    error=f"Test Suite with name {self.config.source.serviceName} not found",
                 )
             )
-
-        else:
-            test_suite_cases = self._get_test_cases_from_test_suite(test_suite)
-
+        test_cases: List[TestCase] = list(
+            self.metadata.list_all_entities(
+                TestCase, params={"testSuiteId": test_suite.id.root}
+            )
+        )
+        grouped_by_table = itertools.groupby(
+            test_cases, key=lambda t: entity_link.get_table_fqn(t.entityLink.root)
+        )
+        for table_fqn, group in grouped_by_table:
+            table_entity: Table = self.metadata.get_by_name(Table, table_fqn)
+            if table_entity is None:
+                yield Either(
+                    left=StackTraceError(
+                        name="Table not found",
+                        error=f"Table with fqn {table_fqn} not found for test suite {test_suite.name.root}",
+                    )
+                )
+                continue
             yield Either(
                 right=TableAndTests(
-                    table=table,
-                    test_cases=test_suite_cases,
+                    table=table_entity,
+                    test_cases=list(group),
                     service_type=self.config.source.serviceConnection.root.config.type.value,
                 )
             )

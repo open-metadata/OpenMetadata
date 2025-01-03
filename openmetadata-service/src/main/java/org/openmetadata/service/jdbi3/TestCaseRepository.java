@@ -184,7 +184,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
         findFromRecords(test.getId(), entityType, Relationship.CONTAINS, TEST_SUITE);
     for (CollectionDAO.EntityRelationshipRecord testSuiteId : records) {
       TestSuite testSuite = Entity.getEntity(TEST_SUITE, testSuiteId.getId(), "", Include.ALL);
-      if (Boolean.TRUE.equals(testSuite.getExecutable())) {
+      if (Boolean.TRUE.equals(testSuite.getBasic())) {
         return testSuite.getEntityReference();
       }
     }
@@ -427,13 +427,13 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     return daoCollection.testCaseDAO().countOfTestCases(testCaseIds);
   }
 
-  public void isTestSuiteExecutable(String testSuiteFqn) {
+  public void isTestSuiteBasic(String testSuiteFqn) {
     TestSuite testSuite = Entity.getEntityByName(Entity.TEST_SUITE, testSuiteFqn, null, null);
-    if (Boolean.FALSE.equals(testSuite.getExecutable())) {
+    if (Boolean.FALSE.equals(testSuite.getBasic())) {
       throw new IllegalArgumentException(
           "Test suite "
               + testSuite.getName()
-              + " is not executable. Cannot create test cases for non-executable test suites.");
+              + " is not basic. Cannot create test cases for non-basic test suites.");
     }
   }
 
