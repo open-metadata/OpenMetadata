@@ -87,9 +87,7 @@ def get_connection(connection: CassandraConnection):
 
         # Load CA certificate directly into memory
         ssl_context.load_verify_locations(
-            cadata=open(
-                connection.sslConfig.root.caCertificate.get_secret_value()
-            ).read()
+            cadata=connection.sslConfig.root.caCertificate.get_secret_value()
         )
 
         ssl_context.verify_mode = CERT_REQUIRED
