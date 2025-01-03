@@ -7,6 +7,7 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.jobs.BackgroundJob;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.socket.WebSocketManager;
+import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
@@ -79,7 +80,10 @@ public class GenericBackgroundWorker implements Managed {
 
   private void sendJobStatusUpdate(BackgroundJob job) {
     String jsonMessage = JsonUtils.pojoToJson(job);
-    User user = Entity.getCollectionDAO().userDAO().findEntityByName(job.getCreatedBy());
+    User user =
+        Entity.getCollectionDAO()
+            .userDAO()
+            .findEntityByName(FullyQualifiedName.quoteName(job.getCreatedBy()));
     WebSocketManager.getInstance()
         .sendToOne(user.getId(), WebSocketManager.BACKGROUND_JOB_CHANNEL, jsonMessage);
   }

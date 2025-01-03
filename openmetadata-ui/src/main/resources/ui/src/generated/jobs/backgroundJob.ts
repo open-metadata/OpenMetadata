@@ -30,7 +30,7 @@ export interface BackgroundJob {
     /**
      * Object containing job arguments.
      */
-    jobArgs: { [key: string]: any };
+    jobArgs: EnumCleanupArgs;
     /**
      * Type of the job.
      */
@@ -47,6 +47,26 @@ export interface BackgroundJob {
      * Timestamp when the job was last updated.
      */
     updatedAt: any;
+}
+
+/**
+ * Object containing job arguments.
+ *
+ * Arguments for enum removal job.
+ */
+export interface EnumCleanupArgs {
+    /**
+     * Type of the entity.
+     */
+    entityType: string;
+    /**
+     * Name of the property.
+     */
+    propertyName: string;
+    /**
+     * List of removed enum keys.
+     */
+    removedEnumKeys: string[];
 }
 
 /**

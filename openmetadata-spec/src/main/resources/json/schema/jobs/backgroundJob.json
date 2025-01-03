@@ -20,7 +20,11 @@
       "description": "JobHandler name of the method that will be executed for this job."
     },
     "jobArgs": {
-      "type": "object",
+      "oneOf": [
+        {
+          "$ref": "./enumCleanupArgs.json"
+        }
+      ],
       "description": "Object containing job arguments."
     },
     "status": {

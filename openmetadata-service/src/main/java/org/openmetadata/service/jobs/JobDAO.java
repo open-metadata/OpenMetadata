@@ -16,11 +16,21 @@ import org.jdbi.v3.sqlobject.statement.GetGeneratedKeys;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
 import org.openmetadata.schema.jobs.BackgroundJob;
-import org.openmetadata.schema.jobs.JobArgs;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlUpdate;
 import org.openmetadata.service.util.JsonUtils;
 
 public interface JobDAO {
+
+  default long insertJob(
+      BackgroundJob.JobType jobType, JobHandler handler, String jobArgs, String createdBy) {
+    try {
+      JsonUtils.readTree(jobArgs);
+    } catch (Exception e) {
+      throw new IllegalArgumentException("jobArgs must be a valid JSON string");
+    }
+    return insertJobInternal(
+        jobType.name(), handler.getClass().getSimpleName(), jobArgs, createdBy);
+  }
 
   @ConnectionAwareSqlUpdate(
       value =
@@ -32,7 +42,7 @@ public interface JobDAO {
           "INSERT INTO background_jobs (job_type, method_name, job_args,created_by) VALUES (:jobType, :methodName, :jobArgs::jsonb,:createdBy) ",
       connectionType = POSTGRES)
   @GetGeneratedKeys
-  long insertJob(
+  long insertJobInternal(
       @Bind("jobType") String jobType,
       @Bind("methodName") String methodName,
       @Bind("jobArgs") String jobArgs,
@@ -54,6 +64,15 @@ public interface JobDAO {
     updateJobStatusInternal(id, status.name());
   }
 
+  @SqlQuery(
+      "SELECT id, job_type, method_name, job_args, status, created_at, updated_at, created_by FROM background_jobs WHERE id = :id")
+  @RegisterRowMapper(BackgroundJobMapper.class)
+  BackgroundJob getJob(@Bind("id") long id) throws StatementException;
+
+  default Optional<BackgroundJob> fetchJobById(long id) {
+    return Optional.ofNullable(getJob(id));
+  }
+
   @Slf4j
   class BackgroundJobMapper implements RowMapper<BackgroundJob> {
     @Override
@@ -63,8 +82,7 @@ public interface JobDAO {
       job.setJobType(BackgroundJob.JobType.fromValue(rs.getString("job_type")));
       job.setMethodName(rs.getString("method_name"));
       String jobArgsJson = rs.getString("job_args");
-
-      JobArgs jobArgs = JsonUtils.readValue(jobArgsJson, JobArgs.class);
+      Object jobArgs = JsonUtils.readValue(jobArgsJson, Object.class);
       job.setJobArgs(jobArgs);
       job.setStatus(BackgroundJob.Status.fromValue(rs.getString("status")));
       job.setCreatedAt(rs.getTimestamp("created_at"));

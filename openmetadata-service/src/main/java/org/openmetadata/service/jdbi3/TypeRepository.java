@@ -23,12 +23,10 @@ import static org.openmetadata.service.util.EntityUtil.customFieldMatch;
 import static org.openmetadata.service.util.EntityUtil.getCustomField;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -41,6 +39,7 @@ import org.openmetadata.schema.entity.Type;
 import org.openmetadata.schema.entity.type.Category;
 import org.openmetadata.schema.entity.type.CustomProperty;
 import org.openmetadata.schema.jobs.BackgroundJob;
+import org.openmetadata.schema.jobs.EnumCleanupArgs;
 import org.openmetadata.schema.type.CustomPropertyConfig;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
@@ -478,20 +477,17 @@ public class TypeRepository extends EntityRepository<Type> {
 
           // Trigger background job to cleanup the existing enum values in the entity extension
           try {
-            ObjectMapper objectMapper = new ObjectMapper();
-            String jobArgs =
-                objectMapper.writeValueAsString(
-                    Map.of(
-                        "propertyName",
-                        updatedProperty.getName(),
-                        "removedEnumKeys",
-                        removedEnumKeys,
-                        "entityType",
-                        entity.getName()));
+            EnumCleanupArgs enumCleanupArgs =
+                new EnumCleanupArgs()
+                    .withPropertyName(updatedProperty.getName())
+                    .withRemovedEnumKeys(removedEnumKeys)
+                    .withEntityType(entity.getName());
+
+            String jobArgs = JsonUtils.pojoToJson(enumCleanupArgs);
             long jobId =
                 jobDao.insertJob(
-                    BackgroundJob.JobType.CUSTOM_PROPERTY_ENUM_CLEANUP.name(),
-                    EnumCleanupHandler.class.getSimpleName(),
+                    BackgroundJob.JobType.CUSTOM_PROPERTY_ENUM_CLEANUP,
+                    new EnumCleanupHandler(daoCollection),
                     jobArgs,
                     updatedBy);
 
