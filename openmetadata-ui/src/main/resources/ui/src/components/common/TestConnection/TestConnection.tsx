@@ -175,6 +175,7 @@ const TestConnection: FC<TestConnectionProps> = ({
 
     try {
       await deleteWorkflowById(workflowId, true);
+      setCurrentWorkflow(undefined);
     } catch (error) {
       // do not throw error for this API
     }
@@ -210,6 +211,8 @@ const TestConnection: FC<TestConnectionProps> = ({
 
       // create the workflow
       const response = await addWorkflow(createWorkflowData, controller.signal);
+
+      setCurrentWorkflow(response);
 
       setProgress(TEST_CONNECTION_PROGRESS_PERCENTAGE.TWENTY);
 
