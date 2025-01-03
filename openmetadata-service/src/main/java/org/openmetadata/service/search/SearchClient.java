@@ -42,6 +42,7 @@ public interface SearchClient {
 
   String DELETE = "delete";
   String GLOBAL_SEARCH_ALIAS = "all";
+  String DATA_ASSET_SEARCH_ALIAS = "dataAsset";
   String GLOSSARY_TERM_SEARCH_INDEX = "glossary_term_search_index";
   String TAG_SEARCH_INDEX = "tag_search_index";
   String DEFAULT_UPDATE_SCRIPT = "for (k in params.keySet()) { ctx._source.put(k, params.get(k)) }";
@@ -74,6 +75,8 @@ public interface SearchClient {
   String REMOVE_TAGS_CHILDREN_SCRIPT =
       "for (int i = 0; i < ctx._source.tags.length; i++) { if (ctx._source.tags[i].tagFQN == params.fqn) { ctx._source.tags.remove(i) }}";
 
+  String REMOVE_DATA_PRODUCTS_CHILDREN_SCRIPT =
+      "for (int i = 0; i < ctx._source.dataProducts.length; i++) { if (ctx._source.dataProducts[i].fullyQualifiedName == params.fqn) { ctx._source.dataProducts.remove(i) }}";
   String UPDATE_CERTIFICATION_SCRIPT =
       "if (ctx._source.certification != null && ctx._source.certification.tagLabel != null) {ctx._source.certification.tagLabel.style = params.style; ctx._source.certification.tagLabel.description = params.description; ctx._source.certification.tagLabel.tagFQN = params.tagFQN; ctx._source.certification.tagLabel.name = params.name;  }";
 
