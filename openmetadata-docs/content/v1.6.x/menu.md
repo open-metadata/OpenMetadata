@@ -925,7 +925,7 @@ site_menu:
   - category: How-to Guides / Data Governance / Classification / Auto-Classification in OpenMetadata / External Workflow
     url: /how-to-guides/data-governance/classification/auto/external-workflow
   - category: How-to Guides / Data Governance / Classification / Auto-Classification in OpenMetadata / Auto PII Tagging
-    url: /how-to-guides/data-governance/classification/auto/auto-pii-taggings
+    url: /how-to-guides/data-governance/classification/auto/auto-pii-tagging
   - category: How-to Guides / Data Governance / Classification / What are Tiers
     url: /how-to-guides/data-governance/classification/tiers
   - category: How-to Guides / Data Governance / Classification / Best Practices for Classification
