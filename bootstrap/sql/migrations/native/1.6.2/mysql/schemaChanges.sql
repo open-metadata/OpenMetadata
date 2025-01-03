@@ -21,3 +21,6 @@ WHERE JSON_EXTRACT(json, '$.executableEntityReference') IS NOT NULL;
 
 -- clean up the testSuites
 UPDATE test_case SET json = json_remove(json, '$.testSuites');
+
+-- clean up the testSuites in the version history too
+UPDATE entity_extension SET json = json_remove(json, '$.testSuites') WHERE jsonSchema = 'testCase';

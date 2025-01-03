@@ -63,8 +63,11 @@ class TestSuiteWorkflow(IngestionWorkflow):
     def _get_test_runner_processor(self) -> Processor:
         return TestCaseRunner.create(self.config.model_dump(), self.metadata)
 
-    def _retrieve_service_connection_if_needed(self, service_type: ServiceType) -> None:
-        """Get service object from source config `entityFullyQualifiedName`"""
+    def _retrieve_service_connection_if_needed(self, _: ServiceType) -> None:
+        """A test suite might require multiple connections (e.g., for logical test suites)
+        We'll skip this step and get the connections at runtime if they are not informed
+        in the YAML already.
+        """
         if (
             not self.config.source.serviceConnection
             and not self.metadata.config.forceEntityOverwriting

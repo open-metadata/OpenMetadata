@@ -23,3 +23,6 @@ WHERE json #>> '{executableEntityReference}' IS NOT NULL;
 
 -- clean up the testSuites
 UPDATE test_case SET json = json::jsonb #- '{testSuites}';
+
+-- clean up the testSuites in the version history too
+UPDATE entity_extension SET json = json::jsonb #- '{testSuites}' WHERE jsonSchema = 'testCase';

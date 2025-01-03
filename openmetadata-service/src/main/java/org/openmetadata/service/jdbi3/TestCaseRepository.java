@@ -244,14 +244,16 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     EntityReference testSuite = test.getTestSuite();
     EntityReference testDefinition = test.getTestDefinition();
     TestCaseResult testCaseResult = test.getTestCaseResult();
+    List<TestSuite> testSuites = test.getTestSuites();
 
     // Don't store testCaseResult, owner, database, href and tags as JSON.
     // Build it on the fly based on relationships
-    test.withTestSuite(null).withTestDefinition(null).withTestCaseResult(null);
+    test.withTestSuite(null).withTestSuites(null).withTestDefinition(null).withTestCaseResult(null);
     store(test, update);
 
     // Restore the relationships
     test.withTestSuite(testSuite)
+        .withTestSuites(testSuites)
         .withTestDefinition(testDefinition)
         .withTestCaseResult(testCaseResult);
   }

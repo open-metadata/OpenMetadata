@@ -15,11 +15,16 @@ Test Suite Workflow Source
 The main goal is to get the configured table from the API.
 """
 import itertools
-from typing import Iterable, List, Optional, cast
+import traceback
+from typing import Dict, Iterable, List, Optional, cast
 
 from metadata.data_quality.api.models import TableAndTests
 from metadata.generated.schema.api.tests.createTestSuite import CreateTestSuiteRequest
 from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.services.databaseService import (
+    DatabaseConnection,
+    DatabaseService,
+)
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
 )
@@ -62,11 +67,26 @@ class TestSuiteSource(Source):
 
         self.source_config: TestSuitePipeline = self.config.source.sourceConfig.config
 
+        # Build at runtime - if not informed in the yaml - the service connection map
+        self.service_connection_map: Dict[
+            str, DatabaseConnection
+        ] = self._load_yaml_service_connections()
+
         self.test_connection()
 
     @property
     def name(self) -> str:
         return "OpenMetadata"
+
+    def _load_yaml_service_connections(self) -> Dict[str, DatabaseConnection]:
+        """Load the service connections from the YAML file"""
+        service_connections = self.source_config.serviceConnections
+        if not service_connections:
+            return {}
+        return {
+            conn.serviceName: cast(DatabaseConnection, conn.serviceConnection.root)
+            for conn in service_connections
+        }
 
     def _get_table_entity(self) -> Optional[Table]:
         """given an entity fqn return the table entity
@@ -84,6 +104,33 @@ class TestSuiteSource(Source):
         )
 
         return table
+
+    def _get_table_service_connection(self, table: Table) -> DatabaseConnection:
+        """Get the service connection for the table"""
+        service_name = table.service.name
+
+        if service_name not in self.service_connection_map:
+            try:
+                service: DatabaseService = self.metadata.get_by_name(
+                    DatabaseService, service_name
+                )
+                if not service:
+                    raise ConnectionError(
+                        f"Could not retrieve service with name `{service_name}`. "
+                        "Typically caused by the `entityFullyQualifiedName` does not exists in OpenMetadata "
+                        "or the JWT Token is invalid."
+                    )
+                self.service_connection_map[service_name] = service.connection
+
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.error(
+                    f"Error getting service connection for service name [{service_name}]"
+                    f" using the secrets manager provider [{self.metadata.config.secretsManagerProvider}]: {exc}"
+                )
+                raise exc
+
+        return self.service_connection_map[service_name]
 
     def _get_test_cases_from_test_suite(
         self, test_suite: Optional[TestSuite]
@@ -132,6 +179,18 @@ class TestSuiteSource(Source):
         """
         Check that the table has the proper test suite built in
         """
+        try:
+            service_connection: DatabaseConnection = self._get_table_service_connection(
+                table
+            )
+        except Exception as exc:
+            yield Either(
+                left=StackTraceError(
+                    name="Error getting service connection",
+                    error=f"Error getting the service connection for table {table.name.root}: {exc}",
+                    stackTrace=traceback.format_exc(),
+                )
+            )
         # If there is no executable test suite yet for the table, we'll need to create one
         if not table.testSuite:
             executable_test_suite = CreateTestSuiteRequest(
@@ -148,7 +207,8 @@ class TestSuiteSource(Source):
             yield Either(
                 right=TableAndTests(
                     executable_test_suite=executable_test_suite,
-                    service_type=self.config.source.serviceConnection.root.config.type.value,
+                    service_type=service_connection.config.type.value,
+                    service_connection=service_connection,
                 )
             )
 
@@ -161,7 +221,8 @@ class TestSuiteSource(Source):
             right=TableAndTests(
                 table=table,
                 test_cases=test_suite_cases,
-                service_type=self.config.source.serviceConnection.root.config.type.value,
+                service_type=service_connection.config.type.value,
+                service_connection=service_connection,
             )
         )
 
@@ -179,7 +240,9 @@ class TestSuiteSource(Source):
             )
         test_cases: List[TestCase] = list(
             self.metadata.list_all_entities(
-                TestCase, params={"testSuiteId": test_suite.id.root}
+                TestCase,
+                params={"testSuiteId": test_suite.id.root},
+                fields=["testDefinition", "testSuite"],
             )
         )
         grouped_by_table = itertools.groupby(
@@ -195,11 +258,27 @@ class TestSuiteSource(Source):
                     )
                 )
                 continue
+
+            try:
+                service_connection: DatabaseConnection = (
+                    self._get_table_service_connection(table_entity)
+                )
+            except Exception as exc:
+                yield Either(
+                    left=StackTraceError(
+                        name="Error getting service connection",
+                        error=f"Error getting the service connection for table {table_entity.name.root}: {exc}",
+                        stackTrace=traceback.format_exc(),
+                    )
+                )
+                continue
+
             yield Either(
                 right=TableAndTests(
                     table=table_entity,
                     test_cases=list(group),
-                    service_type=self.config.source.serviceConnection.root.config.type.value,
+                    service_type=service_connection.config.type.value,
+                    service_connection=service_connection,
                 )
             )
 
