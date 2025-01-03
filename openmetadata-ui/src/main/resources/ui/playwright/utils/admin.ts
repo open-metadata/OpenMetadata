@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Browser } from '@playwright/test';
+import { Browser, Page } from '@playwright/test';
 import { AdminClass } from '../support/user/AdminClass';
 import { getAuthContext, getToken, redirectToHomePage } from './common';
 
@@ -27,4 +27,18 @@ export const performAdminLogin = async (browser: Browser) => {
   };
 
   return { page, apiContext, afterAction };
+};
+
+export const loginAsAdmin = async (
+  page: Page,
+  initialSetup: (page: Page) => void,
+  admin: AdminClass
+) => {
+  await admin.login(page);
+  await page.waitForURL('**/my-data');
+  await initialSetup(page);
+  await admin.logout(page);
+  await page.waitForURL('**/signin');
+  await admin.login(page);
+  await page.waitForURL('**/my-data');
 };

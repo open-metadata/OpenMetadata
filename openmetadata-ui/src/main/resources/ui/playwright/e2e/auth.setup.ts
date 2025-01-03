@@ -13,6 +13,7 @@
 import { Page, test as setup } from '@playwright/test';
 import { JWT_EXPIRY_TIME_MAP } from '../constant/login';
 import { AdminClass } from '../support/user/AdminClass';
+import { loginAsAdmin } from '../utils/admin';
 import { getApiContext } from '../utils/common';
 import { updateJWTTokenExpiryTime } from '../utils/login';
 import {
@@ -40,13 +41,7 @@ setup('authenticate as admin', async ({ page }) => {
   const admin = new AdminClass();
 
   // login with admin user
-  await admin.login(page);
-  await page.waitForURL('**/my-data');
-  await initialSetup(page);
-  await admin.logout(page);
-  await page.waitForURL('**/signin');
-  await admin.login(page);
-  await page.waitForURL('**/my-data');
+  await loginAsAdmin(page, initialSetup, admin);
 
   // End of authentication steps.
   await page.context().storageState({ path: adminFile });
