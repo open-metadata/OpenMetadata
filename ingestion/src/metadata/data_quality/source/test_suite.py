@@ -132,23 +132,19 @@ class TestSuiteSource(Source):
 
         return self.service_connection_map[service_name]
 
-    def _get_test_cases_from_test_suite(
-        self, test_suite: Optional[TestSuite]
-    ) -> List[TestCase]:
+    def _get_test_cases_from_test_suite(self, test_suite: TestSuite) -> List[TestCase]:
         """Return test cases if the test suite exists and has them"""
-        if test_suite:
-            test_cases = self.metadata.list_all_entities(
-                entity=TestCase,
-                fields=["testSuite", "entityLink", "testDefinition"],
-                params={"testSuiteId": test_suite.id.root},
-            )
-            test_cases = cast(List[TestCase], test_cases)  # satisfy type checker
-            if self.source_config.testCases is not None:
-                test_cases = [
-                    t for t in test_cases if t.name in self.source_config.testCases
-                ]
-            return test_cases
-        return []
+        test_cases = self.metadata.list_all_entities(
+            entity=TestCase,
+            fields=["testSuite", "entityLink", "testDefinition"],
+            params={"testSuiteId": test_suite.id.root},
+        )
+        test_cases = cast(List[TestCase], test_cases)  # satisfy type checker
+        if self.source_config.testCases is not None:
+            test_cases = [
+                t for t in test_cases if t.name in self.source_config.testCases
+            ]
+        return test_cases
 
     def prepare(self):
         """Nothing to prepare"""
@@ -192,6 +188,7 @@ class TestSuiteSource(Source):
                 )
             )
         # If there is no executable test suite yet for the table, we'll need to create one
+        # Then, the suite won't have yet any tests
         if not table.testSuite:
             executable_test_suite = CreateTestSuiteRequest(
                 name=fqn.build(
@@ -211,11 +208,14 @@ class TestSuiteSource(Source):
                     service_connection=service_connection,
                 )
             )
+            test_suite_cases = []
 
-        test_suite: Optional[TestSuite] = self.metadata.get_by_id(
-            entity=TestSuite, entity_id=table.testSuite.id.root
-        )
-        test_suite_cases = self._get_test_cases_from_test_suite(test_suite)
+        # Otherwise, we pick the tests already registered in the suite
+        else:
+            test_suite: Optional[TestSuite] = self.metadata.get_by_id(
+                entity=TestSuite, entity_id=table.testSuite.id.root
+            )
+            test_suite_cases = self._get_test_cases_from_test_suite(test_suite)
 
         yield Either(
             right=TableAndTests(

@@ -11,15 +11,10 @@
 """
 Workflow definition for the Data Quality
 """
-import traceback
 from typing import Optional
 
 from metadata.data_quality.processor.test_case_runner import TestCaseRunner
 from metadata.data_quality.source.test_suite import TestSuiteSource
-from metadata.generated.schema.entity.services.connections.serviceConnection import (
-    ServiceConnection,
-)
-from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.tests.testSuite import ServiceType, TestSuite
 from metadata.ingestion.api.steps import Processor, Sink
 from metadata.ingestion.ometa.utils import model_str
@@ -68,43 +63,6 @@ class TestSuiteWorkflow(IngestionWorkflow):
         We'll skip this step and get the connections at runtime if they are not informed
         in the YAML already.
         """
-        if (
-            not self.config.source.serviceConnection
-            and not self.metadata.config.forceEntityOverwriting
-            and self.config.source.sourceConfig.config.entityFullyQualifiedName
-        ):
-            fully_qualified_name = (
-                self.config.source.sourceConfig.config.entityFullyQualifiedName.root
-            )
-            try:
-                service_name = fqn.split(fully_qualified_name)[0]
-            except IndexError as exc:
-                logger.debug(traceback.format_exc())
-                raise IndexError(
-                    f"Could not retrieve service name from entity fully qualified name {fully_qualified_name}: {exc}"
-                )
-            try:
-                service: DatabaseService = self.metadata.get_by_name(
-                    DatabaseService, service_name
-                )
-                if not service:
-                    raise ConnectionError(
-                        f"Could not retrieve service with name `{service_name}`. "
-                        "Typically caused by the `entityFullyQualifiedName` does not exists in OpenMetadata "
-                        "or the JWT Token is invalid."
-                    )
-
-                self.config.source.serviceConnection = ServiceConnection(
-                    service.connection
-                )
-
-            except Exception as exc:
-                logger.debug(traceback.format_exc())
-                logger.error(
-                    f"Error getting service connection for service name [{service_name}]"
-                    f" using the secrets manager provider [{self.metadata.config.secretsManagerProvider}]: {exc}"
-                )
-                raise exc
 
     def _get_ingestion_pipeline_service(self) -> Optional[T]:
         """
