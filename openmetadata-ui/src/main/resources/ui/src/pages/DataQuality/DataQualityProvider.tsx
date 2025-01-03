@@ -22,7 +22,11 @@ import { useParams } from 'react-router-dom';
 import { INITIAL_TEST_SUMMARY } from '../../constants/TestSuite.constant';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { TestSummary } from '../../generated/tests/testCase';
-import { fetchTestCaseSummary } from '../../rest/dataQualityDashboardAPI';
+import {
+  fetchEntityCoveredWithDQ,
+  fetchTestCaseSummary,
+  fetchTotalEntityCount,
+} from '../../rest/dataQualityDashboardAPI';
 import { transformToTestCaseStatusObject } from '../../utils/DataQuality/DataQualityUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import {
@@ -56,14 +60,40 @@ const DataQualityProvider = ({ children }: { children: React.ReactNode }) => {
     setIsTestCaseSummaryLoading(true);
     try {
       const { data } = await fetchTestCaseSummary();
+      const { data: unhealthyData } = await fetchEntityCoveredWithDQ(
+        undefined,
+        true
+      );
+      const { data: totalDQCoverage } = await fetchEntityCoveredWithDQ(
+        undefined,
+        false
+      );
+
+      const { data: entityCount } = await fetchTotalEntityCount();
+
+      const unhealthy = parseInt(unhealthyData[0].originEntityFQN);
+      const total = parseInt(totalDQCoverage[0].originEntityFQN);
+      let totalEntityCount = parseInt(entityCount[0].fullyQualifiedName);
+
+      if (total > totalEntityCount) {
+        totalEntityCount = total;
+      }
+
       const updatedData = transformToTestCaseStatusObject(data);
-      setTestCaseSummary(updatedData);
+      setTestCaseSummary({
+        ...updatedData,
+        unhealthy,
+        healthy: total - unhealthy,
+        totalDQEntities: total,
+        totalEntityCount,
+      });
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
       setIsTestCaseSummaryLoading(false);
     }
   };
+
   useEffect(() => {
     if (testCasePermission?.ViewAll || testCasePermission?.ViewBasic) {
       fetchTestSummary();

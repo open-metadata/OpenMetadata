@@ -11,31 +11,47 @@
  *  limitations under the License.
  */
 import { Col, Row } from 'antd';
-import React, { FC } from 'react';
+import React, { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as TestCaseIcon } from '../../../assets/svg/all-activity-v2.svg';
+import { ReactComponent as DataAssetsCoverageIcon } from '../../../assets/svg/ic-data-assets-coverage.svg';
+import { ReactComponent as HealthCheckIcon } from '../../../assets/svg/ic-green-heart-border.svg';
 import { SummaryCard } from '../../../components/common/SummaryCard/SummaryCard.component';
+import { PRIMARY_COLOR } from '../../../constants/Color.constants';
 import { SummaryPanelProps } from './SummaryPanel.interface';
 
 export const SummaryPanel: FC<SummaryPanelProps> = ({
   testSummary: summary,
   isLoading = false,
+  showAdditionalSummary = false,
 }: SummaryPanelProps) => {
   const { t } = useTranslation();
+  const spanValue = useMemo(
+    () => (showAdditionalSummary ? 8 : 6),
+    [showAdditionalSummary]
+  );
 
   return (
     <Row wrap gutter={[16, 16]}>
-      <Col span={6}>
+      <Col span={spanValue}>
         <SummaryCard
+          inverseLabel
+          cardBackgroundClass="primary-background"
           className="h-full"
           isLoading={isLoading}
           showProgressBar={false}
           title={t('label.total-entity', { entity: t('label.test-plural') })}
+          titleIcon={
+            <TestCaseIcon color={PRIMARY_COLOR} height={16} width={16} />
+          }
           total={summary?.total ?? 0}
           value={summary?.total ?? 0}
         />
       </Col>
-      <Col span={6}>
+      <Col span={spanValue}>
         <SummaryCard
+          inverseLabel
+          cardBackgroundClass="success-background"
           isLoading={isLoading}
           title={t('label.success')}
           total={summary?.total ?? 0}
@@ -43,8 +59,10 @@ export const SummaryPanel: FC<SummaryPanelProps> = ({
           value={summary?.success ?? 0}
         />
       </Col>
-      <Col span={6}>
+      <Col span={spanValue}>
         <SummaryCard
+          inverseLabel
+          cardBackgroundClass="aborted-background"
           isLoading={isLoading}
           title={t('label.aborted')}
           total={summary?.total ?? 0}
@@ -52,8 +70,10 @@ export const SummaryPanel: FC<SummaryPanelProps> = ({
           value={summary?.aborted ?? 0}
         />
       </Col>
-      <Col span={6}>
+      <Col span={spanValue}>
         <SummaryCard
+          inverseLabel
+          cardBackgroundClass="failed-background"
           isLoading={isLoading}
           title={t('label.failed')}
           total={summary?.total ?? 0}
@@ -61,6 +81,34 @@ export const SummaryPanel: FC<SummaryPanelProps> = ({
           value={summary?.failed ?? 0}
         />
       </Col>
+      {showAdditionalSummary && (
+        <>
+          <Col span={spanValue}>
+            <SummaryCard
+              inverseLabel
+              cardBackgroundClass="success-background"
+              isLoading={isLoading}
+              title={t('label.healthy-data-asset-plural')}
+              titleIcon={<HealthCheckIcon height={16} width={16} />}
+              total={summary?.totalDQEntities ?? 0}
+              type="success"
+              value={summary?.healthy ?? 0}
+            />
+          </Col>
+          <Col span={spanValue}>
+            <SummaryCard
+              inverseLabel
+              cardBackgroundClass="primary-background"
+              isLoading={isLoading}
+              title={t('label.data-asset-plural-coverage')}
+              titleIcon={<DataAssetsCoverageIcon height={16} width={16} />}
+              total={summary?.totalEntityCount ?? 0}
+              type="acknowledged"
+              value={summary?.totalDQEntities ?? 0}
+            />
+          </Col>
+        </>
+      )}
     </Row>
   );
 };
