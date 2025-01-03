@@ -57,7 +57,12 @@ from metadata.ingestion.ometa.mixins.user_mixin import OMetaUserMixin
 from metadata.ingestion.ometa.mixins.version_mixin import OMetaVersionMixin
 from metadata.ingestion.ometa.models import EntityList
 from metadata.ingestion.ometa.routes import ROUTES
-from metadata.ingestion.ometa.utils import get_entity_type, model_str, quote, add_required_fields
+from metadata.ingestion.ometa.utils import (
+    add_required_fields,
+    get_entity_type,
+    model_str,
+    quote,
+)
 from metadata.utils.logger import ometa_logger
 from metadata.utils.secrets.secrets_manager_factory import SecretsManagerFactory
 from metadata.utils.ssl_registry import get_verify_ssl_fn

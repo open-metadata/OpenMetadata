@@ -16,7 +16,11 @@ test entity link utils
 import pytest
 from antlr4.error.Errors import ParseCancellationException
 
-from metadata.utils.entity_link import get_decoded_column, get_table_or_column_fqn, get_table_fqn
+from metadata.utils.entity_link import (
+    get_decoded_column,
+    get_table_fqn,
+    get_table_or_column_fqn,
+)
 
 
 @pytest.mark.parametrize(

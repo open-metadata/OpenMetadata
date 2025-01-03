@@ -14,7 +14,7 @@ Helper functions to handle OpenMetadata Entities' properties
 
 import re
 import string
-from typing import Any, Type, TypeVar, Union, Optional, List
+from typing import Any, List, Optional, Type, TypeVar, Union
 
 from pydantic import BaseModel
 from requests.utils import quote as url_quote
@@ -87,7 +87,9 @@ def quote(fqn: Union[FullyQualifiedEntityName, str]) -> str:
     return url_quote(model_str(fqn), safe="")
 
 
-def add_required_fields(entity: Type[T], fields: Optional[List[str]] = None) -> List[str]:
+def add_required_fields(
+    entity: Type[T], fields: Optional[List[str]] = None
+) -> List[str]:
     """Ensure we get from the API those fields required by the model"""
     if fields is not None and "*" in fields:
         return fields

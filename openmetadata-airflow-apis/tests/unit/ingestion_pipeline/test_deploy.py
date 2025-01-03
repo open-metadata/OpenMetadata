@@ -15,8 +15,6 @@ import os
 import uuid
 from unittest.mock import patch
 
-
-
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     AuthProvider,
     OpenMetadataConnection,
@@ -59,6 +57,7 @@ INGESTION_PIPELINE = IngestionPipeline(
 def test_deploy_ingestion_pipeline():
     """We can dump an ingestion pipeline to a file without exposing secrets"""
     from openmetadata_managed_apis.operations.deploy import dump_with_safe_jwt
+
     # Instantiate the Secrets Manager
     SecretsManagerFactory.clear_all()
     with patch.object(AWSSecretsManager, "get_string_value", return_value=SECRET_VALUE):

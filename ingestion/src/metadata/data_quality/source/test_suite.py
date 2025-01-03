@@ -37,7 +37,7 @@ from metadata.ingestion.api.parser import parse_workflow_config_gracefully
 from metadata.ingestion.api.step import Step
 from metadata.ingestion.api.steps import Source
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.utils import fqn, entity_link
+from metadata.utils import entity_link, fqn
 from metadata.utils.constants import CUSTOM_CONNECTOR_PREFIX
 from metadata.utils.logger import test_suite_logger
 from metadata.utils.service_spec.service_spec import import_source_class
@@ -153,8 +153,8 @@ class TestSuiteSource(Source):
             )
 
         test_suite: Optional[TestSuite] = self.metadata.get_by_id(
-                entity=TestSuite, entity_id=table.testSuite.id.root
-            )
+            entity=TestSuite, entity_id=table.testSuite.id.root
+        )
         test_suite_cases = self._get_test_cases_from_test_suite(test_suite)
 
         yield Either(

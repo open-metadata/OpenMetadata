@@ -98,7 +98,7 @@ def test_source_config(parameters, expected, monkeypatch):
         ),
     ]
     mock_metadata.get_by_id.return_value = TestSuite(
-        name="test_suite", executable=True, id=UUID(int=0)
+        name="test_suite", basic=True, id=UUID(int=0)
     )
 
     source = TestSuiteSource(
