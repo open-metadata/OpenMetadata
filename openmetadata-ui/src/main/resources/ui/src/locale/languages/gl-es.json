@@ -1499,6 +1499,7 @@
     "custom-properties-description": "Captura metadatos personalizados para enriquecer os teus activos de datos estendendo os atributos.",
     "custom-property-is-set-to-message": "{{fieldName}} está configurado para",
     "custom-property-name-validation": "O nome debe comezar en minúscula sen espazos, subliñados nin puntos.",
+    "custom-property-update": "A actualización da propiedade personalizada '{{propertyName}}' en {{entityName}} está {{status}}",
     "customize-landing-page-header": "Personalizar {{pageName}} para a persoa \"<0>{{persona}}</0>\"",
     "customize-open-metadata-description": "Adapta a experiencia de usuario de OpenMetadata ás necesidades da túa organización e equipo.",
     "data-asset-has-been-action-type": "O activo de datos foi {{actionType}}",

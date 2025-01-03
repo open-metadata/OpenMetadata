@@ -1499,6 +1499,7 @@
     "custom-properties-description": "จับข้อมูลเมตาที่กำหนดเองเพื่อเสริมสินทรัพย์ข้อมูลของคุณโดยการขยายคุณสมบัติ",
     "custom-property-is-set-to-message": "{{fieldName}} ถูกตั้งค่าเป็น",
     "custom-property-name-validation": "ชื่อจะต้องเริ่มต้นด้วยตัวพิมพ์เล็ก ไม่มีช่องว่าง, ขีดล่าง, หรือจุด",
+    "custom-property-update": "การอัปเดตคุณสมบัติที่กำหนดเอง '{{propertyName}}' ใน {{entityName}} คือ {{status}}",
     "customize-landing-page-header": "ปรับแต่ง {{pageName}} สำหรับบุคลิกภาพ \"<0>{{persona}}</0>\"",
     "customize-open-metadata-description": "ปรับแต่ง UX ของ OpenMetadata ให้เหมาะสมกับความต้องการขององค์กรและทีมของคุณ",
     "data-asset-has-been-action-type": "สินทรัพย์ข้อมูลได้ทำการ {{actionType}}",

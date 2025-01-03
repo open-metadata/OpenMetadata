@@ -1499,6 +1499,7 @@
     "custom-properties-description": " Capture custom metadata to enrich your data assets by extending the attributes.",
     "custom-property-is-set-to-message": "{{fieldName}} is set to",
     "custom-property-name-validation": "Имя должно начинаться со строчной буквы без пробелов, подчеркивания и точек.",
+    "custom-property-update": "Обновление пользовательского свойства '{{propertyName}}' в {{entityName}} имеет статус {{status}}",
     "customize-landing-page-header": "Customize {{pageName}} for Persona \"<0>{{persona}}</0>\"",
     "customize-open-metadata-description": "Tailor the OpenMetadata UX to suit your organizational and team needs.",
     "data-asset-has-been-action-type": "Объект данных был {{actionType}}",

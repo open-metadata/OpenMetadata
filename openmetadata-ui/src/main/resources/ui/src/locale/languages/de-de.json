@@ -1499,6 +1499,7 @@
     "custom-properties-description": " Capture custom metadata to enrich your data assets by extending the attributes.",
     "custom-property-is-set-to-message": "{{fieldName}} is set to",
     "custom-property-name-validation": "Der Name muss mit Kleinbuchstaben beginnen und darf keine Leerzeichen, Unterstriche oder Punkte enthalten.",
+    "custom-property-update": "Aktualisierung der benutzerdefinierten Eigenschaft '{{propertyName}}' in {{entityName}} ist {{status}}",
     "customize-landing-page-header": "Customize {{pageName}} for Persona \"<0>{{persona}}</0>\"",
     "customize-open-metadata-description": "Tailor the OpenMetadata UX to suit your organizational and team needs.",
     "data-asset-has-been-action-type": "Der Datenvermögenswert wurde {{actionType}}",
