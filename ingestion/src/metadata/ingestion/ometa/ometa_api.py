@@ -57,12 +57,7 @@ from metadata.ingestion.ometa.mixins.user_mixin import OMetaUserMixin
 from metadata.ingestion.ometa.mixins.version_mixin import OMetaVersionMixin
 from metadata.ingestion.ometa.models import EntityList
 from metadata.ingestion.ometa.routes import ROUTES
-from metadata.ingestion.ometa.utils import (
-    add_required_fields,
-    get_entity_type,
-    model_str,
-    quote,
-)
+from metadata.ingestion.ometa.utils import get_entity_type, model_str, quote
 from metadata.utils.logger import ometa_logger
 from metadata.utils.secrets.secrets_manager_factory import SecretsManagerFactory
 from metadata.utils.ssl_registry import get_verify_ssl_fn
@@ -336,7 +331,6 @@ class OpenMetadata(
         :param path: URL suffix by FQN or ID
         :param fields: List of fields to return
         """
-        fields = add_required_fields(entity, fields)
         fields_str = "?fields=" + ",".join(fields) if fields else ""
         try:
             resp = self.client.get(f"{self.get_suffix(entity)}/{path}{fields_str}")
@@ -403,7 +397,6 @@ class OpenMetadata(
         url_limit = f"?limit={limit}"
         url_after = f"&after={after}" if after else ""
         url_before = f"&before={before}" if before else ""
-        fields = add_required_fields(entity, fields)
         url_fields = f"&fields={','.join(fields)}" if fields else ""
         resp = self.client.get(
             path=f"{suffix}{url_limit}{url_after}{url_before}{url_fields}", data=params

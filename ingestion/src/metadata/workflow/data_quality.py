@@ -68,6 +68,7 @@ class TestSuiteWorkflow(IngestionWorkflow):
         if (
             not self.config.source.serviceConnection
             and not self.metadata.config.forceEntityOverwriting
+            and self.config.source.sourceConfig.config.entityFullyQualifiedName
         ):
             fully_qualified_name = (
                 self.config.source.sourceConfig.config.entityFullyQualifiedName.root
