@@ -31,7 +31,7 @@ alt="Column Data provides information"
 caption="Column Data provides information"
 /%}
 
-You can read more about [Auto PII Tagging](/how-to-guides/data-quality-observability/profiler/auto-pii-tagging) here.
+You can read more about [Auto PII Tagging](/how-to-guides/data-governance/classification/auto/auto-pii-tagging) here.
 
 ## Tag Mapping
 

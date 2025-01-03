@@ -39,23 +39,26 @@ export const TAG_INVALID_NAMES = {
 
 export const visitClassificationPage = async (
   page: Page,
-  classificationName: string
+  classificationName: string,
+  classificationDisplayName: string
 ) => {
   await redirectToHomePage(page);
   const classificationResponse = page.waitForResponse(
     '/api/v1/classifications?**'
   );
-  const fetchTags = page.waitForResponse('/api/v1/tags?*parent=*');
+  const fetchTags = page.waitForResponse(
+    `/api/v1/tags?*parent=${classificationName}**`
+  );
   await sidebarClick(page, SidebarItem.TAGS);
   await classificationResponse;
 
   await page
-    .locator(`[data-testid="side-panel-classification"]`)
-    .filter({ hasText: classificationName })
+    .getByTestId('data-summary-container')
+    .getByText(classificationDisplayName)
     .click();
 
   await expect(page.locator('.activeCategory')).toContainText(
-    classificationName
+    classificationDisplayName
   );
 
   await fetchTags;
@@ -351,7 +354,7 @@ export const editTagPageDescription = async (page: Page, tag: TagClass) => {
 };
 
 export const verifyCertificationTagPageUI = async (page: Page) => {
-  await visitClassificationPage(page, 'Certification');
+  await visitClassificationPage(page, 'Certification', 'Certification');
   const res = page.waitForResponse(`/api/v1/tags/name/*`);
   await page.getByTestId('Gold').click();
   await res;
