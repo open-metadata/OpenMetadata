@@ -67,7 +67,7 @@ authenticationConfiguration:
 ```
 {% /codeWithLanguageSelector %}
 
-{% partial file="/v1.6/deployment/configure-ingestion.md" /%}
+{% partial file="/v1.7/deployment/configure-ingestion.md" /%}
 
 {% inlineCalloutContainer %}
   {% inlineCallout
