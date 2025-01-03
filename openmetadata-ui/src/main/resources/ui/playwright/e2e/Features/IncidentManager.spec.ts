@@ -15,6 +15,7 @@ import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
 import { SidebarItem } from '../../constant/sidebar';
 import { TableClass } from '../../support/entity/TableClass';
 import { UserClass } from '../../support/user/UserClass';
+import { resetTokenFromProfilerBotPage } from '../../utils/bot';
 import {
   createNewPage,
   descriptionBox,
@@ -46,6 +47,9 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
     test.setTimeout(90000);
 
     const { afterAction, apiContext, page } = await createNewPage(browser);
+
+    // Todo: Remove this patch once the issue is fixed #19140
+    await resetTokenFromProfilerBotPage(page);
 
     for (const user of users) {
       await user.create(apiContext);

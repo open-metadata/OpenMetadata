@@ -29,7 +29,6 @@ import static org.openmetadata.service.util.EntityUtil.taskMatch;
 import java.util.ArrayList;
 import java.util.List;
 import javax.ws.rs.core.Response;
-import javax.ws.rs.core.UriInfo;
 import org.apache.commons.lang3.tuple.Triple;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
@@ -42,6 +41,8 @@ import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.LineageDetails;
+import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.Status;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.Task;
@@ -171,8 +172,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
         PipelineStatus.class);
   }
 
-  public RestUtil.PutResponse<?> addPipelineStatus(
-      UriInfo uriInfo, String fqn, PipelineStatus pipelineStatus) {
+  public RestUtil.PutResponse<?> addPipelineStatus(String fqn, PipelineStatus pipelineStatus) {
     // Validate the request content
     Pipeline pipeline = daoCollection.pipelineDAO().findEntityByName(fqn);
     pipeline.setService(getContainer(pipeline.getId()));
@@ -294,6 +294,18 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     pipeline.setTasks(cloneWithoutTagsAndOwners(taskWithTagsAndOwners));
     store(pipeline, update);
     pipeline.withService(service).withTasks(taskWithTagsAndOwners);
+  }
+
+  @Override
+  protected void cleanup(Pipeline pipeline) {
+    // When a pipeline is removed , the linege needs to be removed
+    daoCollection
+        .relationshipDAO()
+        .deleteLineageBySourcePipeline(
+            pipeline.getId(),
+            LineageDetails.Source.PIPELINE_LINEAGE.value(),
+            Relationship.UPSTREAM.ordinal());
+    super.cleanup(pipeline);
   }
 
   @Override
