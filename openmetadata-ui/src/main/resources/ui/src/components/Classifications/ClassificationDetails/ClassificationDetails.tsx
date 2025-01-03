@@ -65,6 +65,7 @@ import NextPrevious from '../../common/NextPrevious/NextPrevious';
 import { NextPreviousProps } from '../../common/NextPrevious/NextPrevious.interface';
 import Table from '../../common/Table/Table';
 import EntityHeaderTitle from '../../Entity/EntityHeaderTitle/EntityHeaderTitle.component';
+import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
 import { ClassificationDetailsProps } from './ClassificationDetails.interface';
 
 const ClassificationDetails = forwardRef(
@@ -192,10 +193,7 @@ const ClassificationDetails = forwardRef(
       [currentClassification?.disabled]
     );
 
-    const handleUpdateDisplayName = async (data: {
-      name: string;
-      displayName: string;
-    }) => {
+    const handleUpdateDisplayName = async (data: EntityName) => {
       if (
         !isUndefined(currentClassification) &&
         !isUndefined(handleUpdateClassification)
