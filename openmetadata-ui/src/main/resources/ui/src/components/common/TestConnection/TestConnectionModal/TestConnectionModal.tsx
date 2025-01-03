@@ -68,11 +68,12 @@ const TestConnectionModal: FC<TestConnectionModalProps> = ({
       closable={false}
       data-testid="test-connection-modal"
       maskClosable={false}
+      okText={t('label.stop')}
       open={isOpen}
       title={t('label.connection-status')}
       width={748}
-      onCancel={onCancel}
-      onOk={onConfirm}>
+      onCancel={onConfirm}
+      onOk={onCancel}>
       <Space
         className="p-x-md w-full overflow-hidden"
         direction="vertical"

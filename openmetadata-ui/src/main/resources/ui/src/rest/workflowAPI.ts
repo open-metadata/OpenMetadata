@@ -29,11 +29,16 @@ export const getTestConnectionDefinitionByName = async (
   return response.data;
 };
 
-export const addWorkflow = async (data: CreateWorkflow) => {
+export const addWorkflow = async (
+  data: CreateWorkflow,
+  apiCancelSignal: AbortSignal
+) => {
   const response = await APIClient.post<
     CreateWorkflow,
     AxiosResponse<Workflow>
-  >(`automations/workflows`, data);
+  >(`automations/workflows`, data, {
+    signal: apiCancelSignal,
+  });
 
   return response.data;
 };
@@ -43,17 +48,33 @@ export const addWorkflow = async (data: CreateWorkflow) => {
  * @param workflowId workflow to run
  * @returns status code like 200, 400, etc.
  */
-export const triggerWorkflowById = async (workflowId: string) => {
+export const triggerWorkflowById = async (
+  workflowId: string,
+  apiCancelSignal: AbortSignal
+) => {
   const response = await APIClient.post(
-    `automations/workflows/trigger/${workflowId}`
+    `automations/workflows/trigger/${workflowId}`,
+    null,
+    {
+      signal: apiCancelSignal,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    }
   );
 
   return response.status;
 };
 
-export const getWorkflowById = async (workflowId: string) => {
+export const getWorkflowById = async (
+  workflowId: string,
+  apiCancelSignal: AbortSignal
+) => {
   const response = await APIClient.get<Workflow>(
-    `automations/workflows/${workflowId}`
+    `automations/workflows/${workflowId}`,
+    {
+      signal: apiCancelSignal,
+    }
   );
 
   return response.data;
