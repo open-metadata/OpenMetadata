@@ -33,6 +33,7 @@ Configure and schedule DB2 metadata and profiler workflows from the OpenMetadata
 
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
+- [Lineage](/how-to-guides/data-lineage/workflow)
 - [Data Profiler](/how-to-guides/data-quality-observability/profiler/workflow)
 - [Data Quality](/how-to-guides/data-quality-observability/quality)
 - [dbt Integration](/connectors/ingestion/workflows/dbt)

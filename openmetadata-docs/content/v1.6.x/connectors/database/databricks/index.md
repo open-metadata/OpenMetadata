@@ -25,7 +25,7 @@ Configure and schedule Databricks metadata and profiler workflows from the OpenM
 - [Query Usage](/connectors/ingestion/workflows/usage)
 - [Data Profiler](/how-to-guides/data-quality-observability/profiler/workflow)
 - [Data Quality](/how-to-guides/data-quality-observability/quality)
-- [Lineage](/connectors/ingestion/lineage)
+- [Lineage](/how-to-guides/data-lineage/workflow)
 - [dbt Integration](/connectors/ingestion/workflows/dbt)
 
 {% partial file="/v1.6/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/databricks/yaml"} /%}

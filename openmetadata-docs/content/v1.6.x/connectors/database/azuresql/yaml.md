@@ -18,6 +18,7 @@ Configure and schedule AzureSQL metadata and profiler workflows from the OpenMet
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 - [Data Profiler](#data-profiler)
+- [Lineage](#lineage)
 - [Data Quality](#data-quality)
 - [dbt Integration](#dbt-integration)
 
@@ -128,6 +129,8 @@ You can download the ODBC driver from [here](https://learn.microsoft.com/en-us/s
 {% partial file="/v1.6/connectors/yaml/database/source-config-def.md" /%}
 
 {% partial file="/v1.6/connectors/yaml/ingestion-sink-def.md" /%}
+
+{% partial file="/v1.6/connectors/yaml/lineage.md" variables={connector: "azuresql"} /%}
 
 {% partial file="/v1.6/connectors/yaml/workflow-config-def.md" /%}
 

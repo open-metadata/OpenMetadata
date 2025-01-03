@@ -20,6 +20,7 @@ Configure and schedule Athena metadata and profiler workflows from the OpenMetad
     - [Service Name](#service-name)
     - [Connection Details](#connection-details)
     - [Metadata Ingestion Options](#metadata-ingestion-options)
+- [Data Lineage](/how-to-guides/data-lineage/workflow)
 - [Troubleshooting](#troubleshooting)
   - [Workflow Deployment Error](#workflow-deployment-error)
 - [Related](#related)
