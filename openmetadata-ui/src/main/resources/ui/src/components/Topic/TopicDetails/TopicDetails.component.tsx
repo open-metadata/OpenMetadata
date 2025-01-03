@@ -304,7 +304,14 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   const tabs = useMemo(
     () => [
       {
-        label: <TabsLabel id={EntityTabs.SCHEMA} name={t('label.schema')} />,
+        label: (
+          <TabsLabel
+            count={topicDetails.messageSchema?.schemaFields?.length ?? 0}
+            id={EntityTabs.SCHEMA}
+            isActive={activeTab === EntityTabs.SCHEMA}
+            name={t('label.schema')}
+          />
+        ),
         key: EntityTabs.SCHEMA,
         children: (
           <Row gutter={[0, 16]} wrap={false}>
