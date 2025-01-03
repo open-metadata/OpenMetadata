@@ -128,10 +128,13 @@ class DatabricksLineageTests(TestCase):
         super().__init__(methodName)
         config = OpenMetadataWorkflowConfig.model_validate(mock_databricks_config)
 
-        self.databricks = DatabricksLineageSource.create(
-            mock_databricks_config["source"],
-            config.workflowConfig.openMetadataServerConfig,
-        )
+        with patch(
+            "metadata.ingestion.source.database.databricks.lineage.DatabricksLineageSource.test_connection"
+        ):
+            self.databricks = DatabricksLineageSource.create(
+                mock_databricks_config["source"],
+                config.workflowConfig.openMetadataServerConfig,
+            )
 
     @patch(
         "metadata.ingestion.source.database.databricks.client.DatabricksClient.list_query_history"

@@ -70,7 +70,7 @@ from metadata.ingestion.source.metadata.amundsen.queries import (
     NEO4J_AMUNDSEN_USER_QUERY,
 )
 from metadata.utils import fqn
-from metadata.utils.helpers import get_standard_chart_type
+from metadata.utils.helpers import get_standard_chart_type, retry_with_docker_host
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.metadata_service_helper import SERVICE_TYPE_MAPPER
 from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_labels
@@ -116,6 +116,7 @@ class AmundsenSource(Source):
 
     dashboard_service: DashboardService
 
+    @retry_with_docker_host()
     def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
         super().__init__()
         self.config = config
@@ -248,9 +249,11 @@ class AmundsenSource(Source):
                 table_name = "default"
 
             database_request = CreateDatabaseRequest(
-                name=table_name
-                if hasattr(service_entity.connection.config, "supportsDatabase")
-                else "default",
+                name=(
+                    table_name
+                    if hasattr(service_entity.connection.config, "supportsDatabase")
+                    else "default"
+                ),
                 service=service_entity.fullyQualifiedName,
             )
             yield Either(right=database_request)

@@ -29,6 +29,9 @@ class AutoClassificationWorkflow(ProfilerWorkflow):
     """Auto Classification workflow implementation. Based on the Profiler logic with different steps"""
 
     def set_steps(self):
+        # NOTE: Call test_connection to update host value before creating the source class
+        self.test_connection()
+
         source_class = self._get_source_class()
         self.source = source_class.create(self.config.model_dump(), self.metadata)
 
