@@ -76,6 +76,8 @@ const TreeAsyncSelectList: FC<Omit<AsyncSelectListProps, 'fetchOptions'>> = ({
   const expandableKeys = useRef<string[]>([]);
   const [expandedRowKeys, setExpandedRowKeys] = useState<Key[]>([]);
   const [searchOptions, setSearchOptions] = useState<Glossary[] | null>(null);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(true);
+  const dropdownRef = useRef<HTMLDivElement | null>(null);
 
   const form = Form.useFormInstance();
 
@@ -111,14 +113,19 @@ const TreeAsyncSelectList: FC<Omit<AsyncSelectListProps, 'fetchOptions'>> = ({
           loading={isSubmitLoading}
           size="small"
           type="default"
-          onClick={() => form.submit()}>
+          onClick={(event) => {
+            event.stopPropagation();
+            form.submit();
+          }}
+          onMouseDown={(e) => e.preventDefault()}>
           {t('label.update')}
         </Button>
         <Button
           data-testid="cancelAssociatedTag"
           size="small"
           type="link"
-          onClick={onCancel}>
+          onClick={onCancel}
+          onMouseDown={(e) => e.preventDefault()}>
           {t('label.cancel')}
         </Button>
       </Space>
@@ -267,6 +274,81 @@ const TreeAsyncSelectList: FC<Omit<AsyncSelectListProps, 'fetchOptions'>> = ({
     }
   }, 300);
 
+  // Function to handle dropdown visibility change
+  const handleDropdownVisibleChange = (open: boolean) => {
+    if (open) {
+      setIsDropdownOpen(open);
+    }
+  };
+
+  // Function to prevent dropdown from closing when selecting an option
+  const handleBlur = () => {
+    const dropdownElement = dropdownRef.current;
+    if (!dropdownElement) {
+      return;
+    }
+
+    setTimeout(() => {
+      // Focus check for specific elements that should keep the dropdown open
+      const focusableElements = [
+        '.update-btn',
+        '.cancelAssociatedTag',
+        '.input',
+      ];
+
+      // Check if focus is on any of the elements in the list
+      const isFocusInsideRelevantElement = focusableElements.some((selector) =>
+        dropdownElement
+          .querySelector(selector)
+          ?.contains(document.activeElement)
+      );
+
+      // If focus is not inside any relevant element, close the dropdown
+      if (!isFocusInsideRelevantElement) {
+        setIsDropdownOpen(false);
+        onCancel?.();
+      }
+    }, 0);
+  };
+
+  // Function to handle clicks outside the dropdown
+  const handleClickOutside = (event: MouseEvent) => {
+    const dropdownElement = dropdownRef.current;
+
+    if (!dropdownElement) {
+      return;
+    }
+    const focusableElements = [
+      '.input',
+      '.ant-select-tree-treenode',
+      '.update-btn',
+    ];
+    const isClickInsideRelevantElement = focusableElements.some((selector) =>
+      (event.target as HTMLElement).closest(selector)
+    );
+
+    const isClickInsideDropdown = dropdownElement.contains(
+      event.target as Node
+    );
+
+    // Close dropdown only if the click is outside both dropdown and relevant elements
+    if (!isClickInsideDropdown && !isClickInsideRelevantElement) {
+      setIsDropdownOpen(false);
+      onCancel?.();
+    }
+  };
+
+  // Attach event listener for outside clicks
+  useEffect(() => {
+    const handleOutsideClick = (event: MouseEvent) => handleClickOutside(event);
+
+    document.addEventListener('mousedown', handleOutsideClick);
+
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick);
+    };
+  }, [onCancel]);
+
   useEffect(() => {
     if (glossaries.length) {
       expandableKeys.current = glossaries.map((glossary) => glossary.id);
@@ -284,53 +366,57 @@ const TreeAsyncSelectList: FC<Omit<AsyncSelectListProps, 'fetchOptions'>> = ({
   );
 
   return (
-    <TreeSelect
-      autoFocus
-      open
-      showSearch
-      treeCheckStrictly
-      treeCheckable
-      className="async-select-list"
-      data-testid="tag-selector"
-      dropdownRender={dropdownRender}
-      dropdownStyle={{ width: 300 }}
-      filterTreeNode={false}
-      loadData={({ id, name }) => {
-        if (expandableKeys.current.includes(id)) {
-          return fetchGlossaryTerm({ glossary: name as string });
-        }
+    <div ref={dropdownRef}>
+      <TreeSelect
+        autoFocus
+        showSearch
+        treeCheckStrictly
+        treeCheckable
+        className="async-select-list"
+        data-testid="tag-selector"
+        dropdownRender={dropdownRender}
+        dropdownStyle={{ width: 300 }}
+        filterTreeNode={false}
+        loadData={({ id, name }) => {
+          if (expandableKeys.current.includes(id)) {
+            return fetchGlossaryTerm({ glossary: name as string });
+          }
 
-        return Promise.resolve();
-      }}
-      notFoundContent={
-        isLoading ? (
-          <Loader size="small" />
-        ) : (
-          <Empty
-            description={t('label.no-entity-available', {
-              entity: t('label.glossary-term'),
-            })}
-            image={Empty.PRESENTED_IMAGE_SIMPLE}
+          return Promise.resolve();
+        }}
+        notFoundContent={
+          isLoading ? (
+            <Loader size="small" />
+          ) : (
+            <Empty
+              description={t('label.no-entity-available', {
+                entity: t('label.glossary-term'),
+              })}
+              image={Empty.PRESENTED_IMAGE_SIMPLE}
+            />
+          )
+        }
+        open={isDropdownOpen}
+        showCheckedStrategy={TreeSelect.SHOW_ALL}
+        style={{ width: '100%' }}
+        switcherIcon={
+          <Icon
+            component={ArrowIcon}
+            data-testid="expand-icon"
+            style={{ fontSize: '10px', color: TEXT_BODY_COLOR }}
           />
-        )
-      }
-      showCheckedStrategy={TreeSelect.SHOW_ALL}
-      style={{ width: '100%' }}
-      switcherIcon={
-        <Icon
-          component={ArrowIcon}
-          data-testid="expand-icon"
-          style={{ fontSize: '10px', color: TEXT_BODY_COLOR }}
-        />
-      }
-      tagRender={customTagRender}
-      treeData={treeData}
-      treeExpandedKeys={isEmpty(searchOptions) ? undefined : expandedRowKeys}
-      onChange={handleChange}
-      onSearch={onSearch}
-      onTreeExpand={setExpandedRowKeys}
-      {...props}
-    />
+        }
+        tagRender={customTagRender}
+        treeData={treeData}
+        treeExpandedKeys={isEmpty(searchOptions) ? undefined : expandedRowKeys}
+        onBlur={handleBlur}
+        onChange={handleChange}
+        onDropdownVisibleChange={handleDropdownVisibleChange}
+        onSearch={onSearch}
+        onTreeExpand={setExpandedRowKeys}
+        {...props}
+      />
+    </div>
   );
 };
 
