@@ -76,6 +76,7 @@ class PythonDialects(Enum):
     MSSQL = "mssql"
     MySQL = "mysql"
     Oracle = "oracle"
+    PinotDB = "pinotdb"
     Postgres = "postgresql"
     Presto = "presto"
     Redshift = "redshift"
