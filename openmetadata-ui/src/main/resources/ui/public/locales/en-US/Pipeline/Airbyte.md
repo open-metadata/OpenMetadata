@@ -25,3 +25,9 @@ $$section
 ### Password $(id="password")
 Password to connect to Airbyte.
 $$
+
+$$section
+### Api Version $(id="apiVersion")
+
+Version of the Airbyte REST API by default `api/v1`.
+$$

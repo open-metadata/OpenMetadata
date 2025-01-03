@@ -59,6 +59,23 @@ This is a sample config for Airbyte:
 
 **hostPort**: Pipeline Service Management UI URL
 
+{% /codeInfo %}
+
+{% codeInfo srNumber=2 %}
+
+**username**: Username to connect to Airbyte.
+
+{% /codeInfo %}
+
+{% codeInfo srNumber=3 %}
+
+**password**: Password to connect to Airbyte.
+
+{% /codeInfo %}
+
+{% codeInfo srNumber=4 %}
+
+**apiVersion**: Version of the Airbyte REST API by default `api/v1`.
 
 {% /codeInfo %}
 
@@ -85,6 +102,15 @@ source:
 ```
 ```yaml {% srNumber=1 %}
       hostPort: http://localhost:8000
+```
+```yaml {% srNumber=2 %}
+      username: <username>
+```
+```yaml {% srNumber=3 %}
+      password: <password>
+```
+```yaml {% srNumber=4 %}
+      apiVersion: api/v1
 ```
 
 {% partial file="/v1.6/connectors/yaml/pipeline/source-config.md" /%}
