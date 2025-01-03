@@ -409,9 +409,13 @@ export const findAndUpdateNested = (
   // So we need to find the parent term and update it's children
   return terms.map((term) => {
     if (term.fullyQualifiedName === newTerm.parent?.fullyQualifiedName) {
+      const children = [...(term.children || []), newTerm] as GlossaryTerm[];
+
       return {
         ...term,
-        children: [...(term.children || []), newTerm] as GlossaryTerm[],
+        children,
+        // Need to update childrenCount in case of 0 to update expand / collapse icon
+        childrenCount: children.length,
       } as ModifiedGlossary;
     } else if ('children' in term && term.children?.length) {
       return {
