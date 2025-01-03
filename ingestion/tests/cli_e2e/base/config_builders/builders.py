@@ -73,8 +73,7 @@ class ProfilerConfigBuilder(BaseBuilder):
 
 
 class LineageConfigBuilder(BaseBuilder):
-    """Builder class for the Lineage config
-    """
+    """Builder class for the Lineage config"""
 
     # pylint: disable=invalid-name
     def __init__(self, config: dict, config_args: dict) -> None:
@@ -91,8 +90,8 @@ class LineageConfigBuilder(BaseBuilder):
                 "type": "DatabaseLineage",
                 "queryLogDuration": 1,
                 "resultLimit": 10000,
-                "processQueryLineage": False,
-                "processStoredProcedureLineage": False,
+                "processQueryLineage": True,
+                "processStoredProcedureLineage": True,
             }
         }
         return self.config

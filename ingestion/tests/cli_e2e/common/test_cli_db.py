@@ -100,21 +100,22 @@ class CliCommonDB:
             # of https://github.com/open-metadata/OpenMetadata/pull/18558
             # we need to introduce Lineage E2E base and add view lineage check there.
 
-
-        def assert_for_test_lineage(
-                self, source_status: Status, sink_status: Status
-        ):
+        def assert_for_test_lineage(self, source_status: Status, sink_status: Status):
             self.assertEqual(len(source_status.failures), 0)
             self.assertEqual(len(source_status.warnings), 0)
             self.assertEqual(len(sink_status.failures), 0)
             self.assertEqual(len(sink_status.warnings), 0)
             self.assertGreaterEqual(len(sink_status.records), 1)
             lineage_data = self.retrieve_lineage(self.fqn_created_table())
-            retrieved_view_column_lineage_count = len(lineage_data['downstreamEdges'][0]['lineageDetails']['columnsLineage'])
-            self.assertEqual(retrieved_view_column_lineage_count, self.view_column_lineage_count())
-            
-            retrieved_lineage_node = lineage_data['nodes'][0]['fullyQualifiedName']
-            self.assertEqual(retrieved_lineage_node, self.expected_lineage_node())            
+            retrieved_view_column_lineage_count = len(
+                lineage_data["downstreamEdges"][0]["lineageDetails"]["columnsLineage"]
+            )
+            self.assertEqual(
+                retrieved_view_column_lineage_count, self.view_column_lineage_count()
+            )
+
+            retrieved_lineage_node = lineage_data["nodes"][0]["fullyQualifiedName"]
+            self.assertEqual(retrieved_lineage_node, self.expected_lineage_node())
 
         def assert_auto_classification_sample_data(
             self, source_status: Status, sink_status: Status
@@ -221,7 +222,7 @@ class CliCommonDB:
         @abstractmethod
         def view_column_lineage_count(self) -> int:
             raise NotImplementedError()
-        
+
         @abstractmethod
         def expected_lineage_node(self) -> str:
             raise NotImplementedError()

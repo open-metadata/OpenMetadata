@@ -219,7 +219,7 @@ class CliDBBase(TestCase):
             )
             self.run_command()
             self.build_config_file(
-                E2EType.LINEAGE, 
+                E2EType.LINEAGE,
                 {"source": "mysql-lineage"},
             )
             result = self.run_command()
@@ -339,13 +339,12 @@ class CliDBBase(TestCase):
             self, source_status: Status, sink_status: Status
         ) -> None:
             raise NotImplementedError()
-        
+
         @abstractmethod
         def assert_for_test_lineage(
             self, source_status: Status, sink_status: Status
         ) -> None:
             raise NotImplementedError()
-
 
         @abstractmethod
         def assert_for_table_with_profiler(

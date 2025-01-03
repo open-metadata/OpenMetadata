@@ -100,9 +100,9 @@ SELECT * from names
         which does not propagate column lineage
         """
         return 12
-    
+
     def expected_lineage_node(self) -> str:
-        return 'e2e_oracle.default.admin.admin_emp_view'
+        return "e2e_oracle.default.admin.admin_emp_view"
 
     @staticmethod
     def fqn_created_table() -> str:
@@ -279,7 +279,7 @@ SELECT * from names
         )
         self.run_command()
         self.build_config_file(
-            E2EType.LINEAGE, 
+            E2EType.LINEAGE,
             {"source": "oracle-lineage"},
         )
         result = self.run_command()
