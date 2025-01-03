@@ -12,7 +12,6 @@
 """
 Test database connectors which extend from `CommonDbSourceService` with CLI
 """
-import json
 import os
 from abc import ABC, abstractmethod
 from pathlib import Path
@@ -97,19 +96,26 @@ class CliCommonDB:
                 (len(sink_status.records) + len(sink_status.updated_records)),
                 self.expected_profiled_tables(),
             )
-            sample_data = self.retrieve_sample_data(self.fqn_created_table()).sampleData
-            self.assertEqual(len(sample_data.rows), self.inserted_rows_count())
             # Since we removed view lineage from metadata workflow as part
             # of https://github.com/open-metadata/OpenMetadata/pull/18558
             # we need to introduce Lineage E2E base and add view lineage check there.
+
+        def assert_auto_classification_sample_data(
+            self, source_status: Status, sink_status: Status
+        ):
+            self.assertEqual(len(source_status.failures), 0)
+            self.assertGreaterEqual(
+                (len(source_status.records) + len(source_status.updated_records)),
+                self.expected_profiled_tables(),
+            )
+            sample_data = self.retrieve_sample_data(self.fqn_created_table()).sampleData
+            self.assertEqual(len(sample_data.rows), self.inserted_rows_count())
 
         def assert_for_table_with_profiler_time_partition(
             self, source_status: Status, sink_status: Status
         ):
             self.assertEqual(len(source_status.failures), 0)
             self.assertEqual(len(sink_status.failures), 0)
-            sample_data = self.retrieve_sample_data(self.fqn_created_table()).sampleData
-            self.assertLessEqual(len(sample_data.rows), self.inserted_rows_count())
             profile = self.retrieve_profile(self.fqn_created_table())
             expected_profiler_time_partition_results = (
                 self.get_profiler_time_partition_results()
@@ -145,10 +151,6 @@ class CliCommonDB:
                             self.assertEqual(
                                 column_profile[key], expected_column_profile[key]
                             )
-                if sample_data:
-                    self.assertGreater(
-                        len(json.loads(sample_data.json()).get("rows")), 0
-                    )
 
         def assert_for_delete_table_is_marked_as_deleted(
             self, source_status: Status, sink_status: Status

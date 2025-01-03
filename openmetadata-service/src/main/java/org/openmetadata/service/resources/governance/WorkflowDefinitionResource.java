@@ -59,6 +59,7 @@ public class WorkflowDefinitionResource
     extends EntityResource<WorkflowDefinition, WorkflowDefinitionRepository> {
   public static final String COLLECTION_PATH = "v1/governance/workflowDefinitions/";
   static final String FIELDS = "owners";
+  private final WorkflowDefinitionMapper mapper = new WorkflowDefinitionMapper();
 
   public WorkflowDefinitionResource(Authorizer authorizer, Limits limits) {
     super(Entity.WORKFLOW_DEFINITION, authorizer, limits);
@@ -70,7 +71,6 @@ public class WorkflowDefinitionResource
 
   @Override
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
-    WorkflowHandler.initialize(config);
     repository.initSeedDataFromResources();
   }
 
@@ -278,7 +278,7 @@ public class WorkflowDefinitionResource
       @Context SecurityContext securityContext,
       @Valid CreateWorkflowDefinition create) {
     WorkflowDefinition workflowDefinition =
-        getWorkflowDefinition(create, securityContext.getUserPrincipal().getName());
+        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, workflowDefinition);
   }
 
@@ -360,7 +360,7 @@ public class WorkflowDefinitionResource
       @Context SecurityContext securityContext,
       @Valid CreateWorkflowDefinition create) {
     WorkflowDefinition workflowDefinition =
-        getWorkflowDefinition(create, securityContext.getUserPrincipal().getName());
+        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, workflowDefinition);
   }
 
@@ -475,16 +475,5 @@ public class WorkflowDefinitionResource
     } else {
       return Response.status(Response.Status.NOT_FOUND).entity(fqn).build();
     }
-  }
-
-  private WorkflowDefinition getWorkflowDefinition(CreateWorkflowDefinition create, String user) {
-    // TODO: Validate the NodeType and NodeSubType.
-    return repository
-        .copy(new WorkflowDefinition(), create, user)
-        .withFullyQualifiedName(create.getName())
-        .withType(WorkflowDefinition.Type.fromValue(create.getType().toString()))
-        .withTrigger(create.getTrigger())
-        .withNodes(create.getNodes())
-        .withEdges(create.getEdges());
   }
 }

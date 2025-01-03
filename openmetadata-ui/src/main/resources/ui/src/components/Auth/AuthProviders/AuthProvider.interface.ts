@@ -12,16 +12,10 @@
  */
 
 import { Profile } from 'oidc-client';
-import { ComponentType, ReactNode } from 'react';
 import { AuthenticationConfiguration } from '../../../generated/configuration/authenticationConfiguration';
 import { AuthorizerConfiguration } from '../../../generated/configuration/authorizerConfiguration';
 import { User } from '../../../generated/entity/teams/user';
 import { AccessTokenResponse } from '../../../rest/auth-API';
-
-export interface AuthProviderProps {
-  childComponentType: ComponentType;
-  children?: ReactNode;
-}
 
 export type UserProfile = {
   email: string;
@@ -39,13 +33,10 @@ export type OidcUser = {
 export interface AuthenticatorRef {
   invokeLogin: () => void;
   invokeLogout: () => void;
-  renewIdToken: () => Promise<string> | Promise<AccessTokenResponse>;
-}
-
-export enum JWT_PRINCIPAL_CLAIMS {
-  EMAIL = 'email',
-  PREFERRED_USERNAME = 'preferred_username',
-  SUB = 'sub',
+  renewIdToken: () =>
+    | Promise<string>
+    | Promise<AccessTokenResponse>
+    | Promise<void>;
 }
 
 export interface IAuthContext {

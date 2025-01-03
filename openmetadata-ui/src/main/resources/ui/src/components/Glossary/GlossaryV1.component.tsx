@@ -41,6 +41,7 @@ import {
   patchGlossaryTerm,
 } from '../../rest/glossaryAPI';
 import { getEntityDeleteMessage } from '../../utils/CommonUtils';
+import { updateGlossaryTermByFqn } from '../../utils/GlossaryUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useActivityFeedProvider } from '../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
@@ -84,6 +85,7 @@ const GlossaryV1 = ({
   const { getEntityPermission } = usePermissionProvider();
   const [isLoading, setIsLoading] = useState(true);
   const [isTermsLoading, setIsTermsLoading] = useState(false);
+  const [isPermissionLoading, setIsPermissionLoading] = useState(false);
 
   const [isDelete, setIsDelete] = useState<boolean>(false);
 
@@ -97,7 +99,12 @@ const GlossaryV1 = ({
 
   const [editMode, setEditMode] = useState(false);
 
-  const { activeGlossary, setGlossaryChildTerms } = useGlossaryStore();
+  const {
+    activeGlossary,
+    glossaryChildTerms,
+    setGlossaryChildTerms,
+    insertNewGlossaryTermToChildTerms,
+  } = useGlossaryStore();
 
   const { id, fullyQualifiedName } = activeGlossary ?? {};
 
@@ -126,11 +133,9 @@ const GlossaryV1 = ({
       const { data } = await getFirstLevelGlossaryTerms(
         params?.glossary ?? params?.parent ?? ''
       );
-      const children = data.map((data) =>
-        data.childrenCount ?? 0 > 0 ? { ...data, children: [] } : data
-      );
-
-      setGlossaryChildTerms(children as ModifiedGlossary[]);
+      // We are considering childrenCount fot expand collapse state
+      // Hence don't need any intervention to list response here
+      setGlossaryChildTerms(data as ModifiedGlossary[]);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -206,6 +211,17 @@ const GlossaryV1 = ({
     setIsEditModalOpen(true);
   };
 
+  const updateGlossaryTermInStore = (updatedTerm: GlossaryTerm) => {
+    const clonedTerms = cloneDeep(glossaryChildTerms);
+    const updatedGlossaryTerms = updateGlossaryTermByFqn(
+      clonedTerms,
+      updatedTerm.fullyQualifiedName ?? '',
+      updatedTerm as ModifiedGlossary
+    );
+
+    setGlossaryChildTerms(updatedGlossaryTerms);
+  };
+
   const updateGlossaryTerm = async (
     currentData: GlossaryTerm,
     updatedData: GlossaryTerm
@@ -217,8 +233,14 @@ const GlossaryV1 = ({
         throw t('server.entity-updating-error', {
           entity: t('label.glossary-term'),
         });
+      } else {
+        updateGlossaryTermInStore({
+          ...response,
+          // Since patch didn't respond with childrenCount preserve it from currentData
+          childrenCount: currentData.childrenCount,
+        });
+        setIsEditModalOpen(false);
       }
-      onTermModalSuccess();
     } catch (error) {
       if (
         (error as AxiosError).response?.status === HTTP_STATUS_CODE.CONFLICT
@@ -241,29 +263,38 @@ const GlossaryV1 = ({
     }
   };
 
-  const onTermModalSuccess = useCallback(() => {
-    loadGlossaryTerms(true);
-    if (!isGlossaryActive && tab !== 'terms') {
-      history.push(
-        getGlossaryTermDetailsPath(
-          selectedData.fullyQualifiedName || '',
-          EntityTabs.TERMS
-        )
-      );
-    }
-    setIsEditModalOpen(false);
-  }, [isGlossaryActive, tab, selectedData]);
+  const onTermModalSuccess = useCallback(
+    (term: GlossaryTerm) => {
+      // Setting loading so that nested terms are rendered again on table with change
+      setIsTermsLoading(true);
+      // Update store with newly created term
+      insertNewGlossaryTermToChildTerms(term);
+      if (!isGlossaryActive && tab !== 'terms') {
+        history.push(
+          getGlossaryTermDetailsPath(
+            selectedData.fullyQualifiedName || '',
+            EntityTabs.TERMS
+          )
+        );
+      }
+      // Close modal and set loading to false
+      setIsEditModalOpen(false);
+      setIsTermsLoading(false);
+    },
+    [isGlossaryActive, tab, selectedData]
+  );
 
   const handleGlossaryTermAdd = async (formData: GlossaryTermForm) => {
     try {
-      await addGlossaryTerm({
+      const term = await addGlossaryTerm({
         ...formData,
         glossary:
           activeGlossaryTerm?.glossary?.name ||
           (selectedData.fullyQualifiedName ?? ''),
         parent: activeGlossaryTerm?.fullyQualifiedName,
       });
-      onTermModalSuccess();
+
+      onTermModalSuccess(term);
     } catch (error) {
       if (
         (error as AxiosError).response?.status === HTTP_STATUS_CODE.CONFLICT
@@ -336,18 +367,29 @@ const GlossaryV1 = ({
     shouldRefreshTerms && loadGlossaryTerms(true);
   };
 
+  const initPermissions = async () => {
+    setIsPermissionLoading(true);
+    const permissionFetch = isGlossaryActive
+      ? fetchGlossaryPermission
+      : fetchGlossaryTermPermission;
+
+    try {
+      if (isVersionsView) {
+        isGlossaryActive
+          ? setGlossaryPermission(VERSION_VIEW_GLOSSARY_PERMISSION)
+          : setGlossaryTermPermission(VERSION_VIEW_GLOSSARY_PERMISSION);
+      } else {
+        await permissionFetch();
+      }
+    } finally {
+      setIsPermissionLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (id && !action) {
       loadGlossaryTerms();
-      if (isGlossaryActive) {
-        isVersionsView
-          ? setGlossaryPermission(VERSION_VIEW_GLOSSARY_PERMISSION)
-          : fetchGlossaryPermission();
-      } else {
-        isVersionsView
-          ? setGlossaryTermPermission(VERSION_VIEW_GLOSSARY_PERMISSION)
-          : fetchGlossaryTermPermission();
-      }
+      initPermissions();
     }
   }, [id, isGlossaryActive, isVersionsView, action]);
 
@@ -355,8 +397,9 @@ const GlossaryV1 = ({
     <ImportGlossary glossaryName={selectedData.fullyQualifiedName ?? ''} />
   ) : (
     <>
-      {isLoading && <Loader />}
+      {(isLoading || isPermissionLoading) && <Loader />}
       {!isLoading &&
+        !isPermissionLoading &&
         !isEmpty(selectedData) &&
         (isGlossaryActive ? (
           <GlossaryDetails

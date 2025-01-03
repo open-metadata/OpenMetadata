@@ -47,7 +47,7 @@ import { ReactComponent as UpDownArrowIcon } from '../../../assets/svg/ic-up-dow
 import { ReactComponent as PlusOutlinedIcon } from '../../../assets/svg/plus-outlined.svg';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { OwnerLabel } from '../../../components/common/OwnerLabel/OwnerLabel.component';
-import RichTextEditorPreviewer from '../../../components/common/RichTextEditor/RichTextEditorPreviewer';
+import RichTextEditorPreviewerV1 from '../../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
 import StatusBadge from '../../../components/common/StatusBadge/StatusBadge.component';
 import {
   API_RES_MAX_SIZE,
@@ -106,7 +106,14 @@ const GlossaryTermTab = ({
     useGlossaryStore();
   const { t } = useTranslation();
 
-  const glossaryTerms = (glossaryChildTerms as ModifiedGlossaryTerm[]) ?? [];
+  const { glossaryTerms, expandableKeys } = useMemo(() => {
+    const terms = (glossaryChildTerms as ModifiedGlossaryTerm[]) ?? [];
+
+    return {
+      expandableKeys: findExpandableKeysForArray(terms),
+      glossaryTerms: terms,
+    };
+  }, [glossaryChildTerms]);
 
   const [movedGlossaryTerm, setMovedGlossaryTerm] =
     useState<MoveGlossaryTermType>();
@@ -114,6 +121,10 @@ const GlossaryTermTab = ({
   const [isTableLoading, setIsTableLoading] = useState(false);
   const [isTableHovered, setIsTableHovered] = useState(false);
   const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
+  const listOfVisibleColumns = useMemo(() => {
+    return ['name', 'description', 'owners', 'status', 'new-term'];
+  }, []);
+
   const [isStatusDropdownVisible, setIsStatusDropdownVisible] =
     useState<boolean>(false);
   const statusOptions = useMemo(
@@ -123,7 +134,7 @@ const GlossaryTermTab = ({
   );
   const [statusDropdownSelection, setStatusDropdownSelections] = useState<
     string[]
-  >(['Approved', 'Draft']);
+  >([Status.Approved, Status.Draft, Status.InReview]);
   const [selectedStatus, setSelectedStatus] = useState<string[]>([
     ...statusDropdownSelection,
   ]);
@@ -136,10 +147,6 @@ const GlossaryTermTab = ({
     return null;
   }, [isGlossary, activeGlossary]);
 
-  const expandableKeys = useMemo(() => {
-    return findExpandableKeysForArray(glossaryTerms);
-  }, [glossaryTerms]);
-
   const columns = useMemo(() => {
     const data: ColumnsType<ModifiedGlossaryTerm> = [
       {
@@ -148,7 +155,7 @@ const GlossaryTermTab = ({
         key: 'name',
         className: 'glossary-name-column',
         ellipsis: true,
-        width: '40%',
+        width: 200,
         render: (_, record) => {
           const name = getEntityName(record);
 
@@ -177,10 +184,10 @@ const GlossaryTermTab = ({
         title: t('label.description'),
         dataIndex: 'description',
         key: 'description',
-        width: permissions.Create ? '21%' : '33%',
+        width: 250,
         render: (description: string) =>
           description.trim() ? (
-            <RichTextEditorPreviewer
+            <RichTextEditorPreviewerV1
               enableSeeMoreVariant
               markdown={description}
               maxLength={120}
@@ -193,16 +200,21 @@ const GlossaryTermTab = ({
         title: t('label.reviewer'),
         dataIndex: 'reviewers',
         key: 'reviewers',
-        width: '33%',
+        width: 150,
         render: (reviewers: EntityReference[]) => (
-          <OwnerLabel owners={reviewers} />
+          <OwnerLabel
+            owners={reviewers}
+            placeHolder={t('label.no-entity', {
+              entity: t('label.reviewer-plural'),
+            })}
+          />
         ),
       },
       {
         title: t('label.synonym-plural'),
         dataIndex: 'synonyms',
         key: 'synonyms',
-        width: '33%',
+        width: 150,
         render: (synonyms: string[]) => {
           return isEmpty(synonyms) ? (
             <div>{NO_DATA_PLACEHOLDER}</div>
@@ -223,14 +235,18 @@ const GlossaryTermTab = ({
         title: t('label.owner-plural'),
         dataIndex: 'owners',
         key: 'owners',
-        width: '17%',
+        width: 150,
         render: (owners: EntityReference[]) => <OwnerLabel owners={owners} />,
       },
       {
         title: t('label.status'),
         dataIndex: 'status',
         key: 'status',
-        width: '12%',
+        // this check is added to the width, since the last column is optional and to maintain
+        // the re-sizing of the column should not be affected the others columns width sizes.
+        ...(permissions.Create && {
+          width: 100,
+        }),
         render: (_, record) => {
           const status = record.status ?? Status.Approved;
 
@@ -249,7 +265,6 @@ const GlossaryTermTab = ({
       data.push({
         title: t('label.action-plural'),
         key: 'new-term',
-        width: '10%',
         render: (_, record) => {
           const status = record.status ?? Status.Approved;
           const allowAddTerm = status === Status.Approved;
@@ -296,11 +311,7 @@ const GlossaryTermTab = ({
     }
 
     return data;
-  }, [glossaryTerms, permissions]);
-
-  const listOfVisibleColumns = useMemo(() => {
-    return ['name', 'description', 'owners', 'status', 'new-term'];
-  }, []);
+  }, [permissions]);
 
   const defaultCheckedList = useMemo(
     () =>
@@ -807,6 +818,10 @@ const GlossaryTermTab = ({
     );
   }
 
+  const filteredGlossaryTerms = glossaryTerms.filter((term) =>
+    selectedStatus.includes(term.status as string)
+  );
+
   return (
     <Row className={className} gutter={[0, 16]}>
       <Col span={24}>
@@ -879,21 +894,19 @@ const GlossaryTermTab = ({
           <DndProvider backend={HTML5Backend}>
             <Table
               bordered
+              resizableColumns
               className={classNames('drop-over-background', {
                 'drop-over-table': isTableHovered,
               })}
               columns={rearrangedColumns.filter((col) => !col.hidden)}
               components={TABLE_CONSTANTS}
               data-testid="glossary-terms-table"
-              dataSource={glossaryTerms.filter((term) =>
-                selectedStatus.includes(term.status as string)
-              )}
+              dataSource={filteredGlossaryTerms}
               expandable={expandableConfig}
               loading={isTableLoading}
               pagination={false}
               rowKey="fullyQualifiedName"
               size="small"
-              tableLayout="fixed"
               onHeaderRow={onTableHeader}
               onRow={onTableRow}
             />

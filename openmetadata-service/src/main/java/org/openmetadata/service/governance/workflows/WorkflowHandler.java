@@ -2,6 +2,7 @@ package org.openmetadata.service.governance.workflows;
 
 import static org.openmetadata.service.governance.workflows.elements.TriggerFactory.getTriggerWorkflowId;
 
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -14,6 +15,7 @@ import org.flowable.common.engine.api.FlowableObjectNotFoundException;
 import org.flowable.engine.HistoryService;
 import org.flowable.engine.ProcessEngine;
 import org.flowable.engine.ProcessEngineConfiguration;
+import org.flowable.engine.ProcessEngines;
 import org.flowable.engine.RepositoryService;
 import org.flowable.engine.RuntimeService;
 import org.flowable.engine.TaskService;
@@ -23,27 +25,26 @@ import org.flowable.engine.repository.ProcessDefinition;
 import org.flowable.engine.runtime.Execution;
 import org.flowable.engine.runtime.ProcessInstance;
 import org.flowable.task.api.Task;
+import org.openmetadata.schema.configuration.WorkflowSettings;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.UnhandledServerException;
+import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 
 @Slf4j
 public class WorkflowHandler {
-  private final RepositoryService repositoryService;
-  private final RuntimeService runtimeService;
-  private final TaskService taskService;
-  private final HistoryService historyService;
+  private ProcessEngine processEngine;
+  private RepositoryService repositoryService;
+  private RuntimeService runtimeService;
+  private TaskService taskService;
+  private HistoryService historyService;
   private static WorkflowHandler instance;
   private static volatile boolean initialized = false;
 
   private WorkflowHandler(OpenMetadataApplicationConfig config) {
     ProcessEngineConfiguration processEngineConfiguration =
         new StandaloneProcessEngineConfiguration()
-            .setAsyncExecutorActivate(true)
-            .setAsyncExecutorCorePoolSize(50)
-            .setAsyncExecutorMaxPoolSize(100)
-            .setAsyncExecutorThreadPoolQueueSize(1000)
-            .setAsyncExecutorMaxAsyncJobsDuePerAcquisition(20)
             .setJdbcUrl(config.getDataSourceFactory().getUrl())
             .setJdbcUsername(config.getDataSourceFactory().getUser())
             .setJdbcPassword(config.getDataSourceFactory().getPassword())
@@ -56,8 +57,50 @@ public class WorkflowHandler {
       processEngineConfiguration.setDatabaseType(ProcessEngineConfiguration.DATABASE_TYPE_POSTGRES);
     }
 
+    initializeNewProcessEngine(processEngineConfiguration);
+  }
+
+  public void initializeNewProcessEngine(
+      ProcessEngineConfiguration currentProcessEngineConfiguration) {
+    ProcessEngines.destroy();
+    SystemRepository systemRepository = Entity.getSystemRepository();
+    WorkflowSettings workflowSettings = systemRepository.getWorkflowSettingsOrDefault();
+
+    StandaloneProcessEngineConfiguration processEngineConfiguration =
+        new StandaloneProcessEngineConfiguration();
+
+    // Setting Database Configuration
+    processEngineConfiguration
+        .setJdbcUrl(currentProcessEngineConfiguration.getJdbcUrl())
+        .setJdbcUsername(currentProcessEngineConfiguration.getJdbcUsername())
+        .setJdbcPassword(currentProcessEngineConfiguration.getJdbcPassword())
+        .setJdbcDriver(currentProcessEngineConfiguration.getJdbcDriver())
+        .setDatabaseType(currentProcessEngineConfiguration.getDatabaseType())
+        .setDatabaseSchemaUpdate(ProcessEngineConfiguration.DB_SCHEMA_UPDATE_FALSE);
+
+    // Setting Async Executor Configuration
+    processEngineConfiguration
+        .setAsyncExecutorActivate(true)
+        .setAsyncExecutorCorePoolSize(workflowSettings.getExecutorConfiguration().getCorePoolSize())
+        .setAsyncExecutorMaxPoolSize(workflowSettings.getExecutorConfiguration().getMaxPoolSize())
+        .setAsyncExecutorThreadPoolQueueSize(
+            workflowSettings.getExecutorConfiguration().getQueueSize())
+        .setAsyncExecutorMaxAsyncJobsDuePerAcquisition(
+            workflowSettings.getExecutorConfiguration().getTasksDuePerAcquisition());
+
+    // Setting History CleanUp
+    processEngineConfiguration
+        .setEnableHistoryCleaning(true)
+        .setCleanInstancesEndedAfter(
+            Duration.ofDays(
+                workflowSettings.getHistoryCleanUpConfiguration().getCleanAfterNumberOfDays()));
+
+    // Add Global Failure Listener
+    processEngineConfiguration.setEventListeners(List.of(new WorkflowFailureListener()));
+
     ProcessEngine processEngine = processEngineConfiguration.buildProcessEngine();
 
+    this.processEngine = processEngine;
     this.repositoryService = processEngine.getRepositoryService();
     this.runtimeService = processEngine.getRuntimeService();
     this.taskService = processEngine.getTaskService();
@@ -76,6 +119,14 @@ public class WorkflowHandler {
   public static WorkflowHandler getInstance() {
     if (initialized) return instance;
     throw new UnhandledServerException("WorkflowHandler is not initialized.");
+  }
+
+  public ProcessEngineConfiguration getProcessEngineConfiguration() {
+    if (processEngine != null) {
+      return processEngine.getProcessEngineConfiguration();
+    } else {
+      return null;
+    }
   }
 
   public void deploy(Workflow workflow) {
@@ -255,5 +306,17 @@ public class WorkflowHandler {
   public void resumeWorkflow(String workflowName) {
     repositoryService.activateProcessDefinitionByKey(
         getTriggerWorkflowId(workflowName), true, null);
+  }
+
+  public void terminateWorkflow(String workflowName) {
+    runtimeService
+        .createProcessInstanceQuery()
+        .processDefinitionKey(getTriggerWorkflowId(workflowName))
+        .list()
+        .forEach(
+            instance -> {
+              runtimeService.deleteProcessInstance(
+                  instance.getId(), "Terminating all instances due to user request.");
+            });
   }
 }

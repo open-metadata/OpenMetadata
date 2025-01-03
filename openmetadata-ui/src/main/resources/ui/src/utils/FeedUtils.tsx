@@ -143,13 +143,6 @@ export const getReplyText = (
   }`;
 };
 
-export const getThreadField = (
-  value: string,
-  separator = ENTITY_LINK_SEPARATOR
-) => {
-  return value.split(separator).slice(-2);
-};
-
 export const buildMentionLink = (entityType: string, entityFqn: string) => {
   if (entityType === EntityType.GLOSSARY_TERM) {
     return `${document.location.protocol}//${
@@ -294,15 +287,15 @@ export const userMentionItemWithAvatar = (
   return wrapper;
 };
 
-const getMentionList = (message: string) => {
+export const getMentionList = (message: string) => {
   return message.match(mentionRegEx);
 };
 
-const getHashTagList = (message: string) => {
+export const getHashTagList = (message: string) => {
   return message.match(hashtagRegEx);
 };
 
-const getEntityDetail = (item: string) => {
+export const getEntityDetail = (item: string) => {
   if (item.includes('teams')) {
     return item.match(teamsLinkRegEx);
   }
@@ -688,17 +681,6 @@ export const getTestCaseResultCount = (
     </Typography.Text>
   </div>
 );
-
-export const getTestStatusLabel = (status: TestCaseStatus) => {
-  const statusLabelMapping = {
-    [TestCaseStatus.Success]: i18next.t('label.passed'),
-    [TestCaseStatus.Failed]: i18next.t('label.failed'),
-    [TestCaseStatus.Aborted]: i18next.t('label.aborted'),
-    [TestCaseStatus.Queued]: i18next.t('label.queued'),
-  };
-
-  return statusLabelMapping[status];
-};
 
 export const formatTestStatusData = (
   testResultSummary: Array<EntityTestResultSummaryObject>

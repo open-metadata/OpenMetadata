@@ -19,8 +19,10 @@ import { sidebarClick } from './sidebar';
 
 export const uuid = () => randomUUID().split('-')[0];
 
-export const descriptionBox =
-  '.toastui-editor-md-container > .toastui-editor > .ProseMirror';
+export const descriptionBox = '.om-block-editor[contenteditable="true"]';
+export const descriptionBoxReadOnly =
+  '.om-block-editor[contenteditable="false"]';
+
 export const INVALID_NAMES = {
   MAX_LENGTH:
     'a87439625b1c2d3e4f5061728394a5b6c7d8e90a1b2c3d4e5f67890aba87439625b1c2d3e4f5061728394a5b6c7d8e90a1b2c3d4e5f67890abName can be a maximum of 128 characters',
@@ -108,14 +110,16 @@ export const getEntityTypeSearchIndexMapping = (entityType: string) => {
     Metric: 'metric_search_index',
   };
 
-  return entityMapping[entityType];
+  return entityMapping[entityType as keyof typeof entityMapping];
 };
 
 export const toastNotification = async (
   page: Page,
   message: string | RegExp
 ) => {
-  await expect(page.getByRole('alert').first()).toHaveText(message);
+  await expect(
+    page.locator('.Toastify__toast-body[role="alert"]').first()
+  ).toHaveText(message);
 
   await page
     .locator('.Toastify__toast')
@@ -247,4 +251,20 @@ export const verifyDomainPropagation = async (
 
 export const replaceAllSpacialCharWith_ = (text: string) => {
   return text.replaceAll(/[&/\\#, +()$~%.'":*?<>{}]/g, '_');
+};
+
+// Since the tests run in parallel sometimes the error toast alert pops up
+// Stating the domain or glossary does not exist since it's deleted in other test
+// This error toast blocks the buttons at the top
+// Below logic closes the alert if it's present to avoid flakiness in tests
+export const closeFirstPopupAlert = async (page: Page) => {
+  const toastLocator = '.Toastify__toast-body[role="alert"]';
+  const toastElement = await page.$(toastLocator);
+  if (toastElement) {
+    await page
+      .locator('.Toastify__toast')
+      .getByLabel('close', { exact: true })
+      .first()
+      .click();
+  }
 };

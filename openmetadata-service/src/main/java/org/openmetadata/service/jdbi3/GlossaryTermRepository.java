@@ -598,6 +598,9 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     @Override
     public EntityInterface performTask(String user, ResolveTask resolveTask) {
       // TODO: Resolve this outside
+      GlossaryTerm glossaryTerm = (GlossaryTerm) threadContext.getAboutEntity();
+      checkUpdatedByReviewer(glossaryTerm, user);
+
       UUID taskId = threadContext.getThread().getId();
       Map<String, Object> variables = new HashMap<>();
       variables.put(RESULT_VARIABLE, resolveTask.getNewValue().equalsIgnoreCase("approved"));
@@ -607,7 +610,6 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
 
       // TODO: performTask returns the updated Entity and the flow applies the new value.
       // This should be changed with the new Governance Workflows.
-      GlossaryTerm glossaryTerm = (GlossaryTerm) threadContext.getAboutEntity();
       //      glossaryTerm.setStatus(Status.APPROVED);
       return glossaryTerm;
     }
@@ -652,7 +654,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     }
   }
 
-  private void checkUpdatedByReviewer(GlossaryTerm term, String updatedBy) {
+  public static void checkUpdatedByReviewer(GlossaryTerm term, String updatedBy) {
     // Only list of allowed reviewers can change the status from DRAFT to APPROVED
     List<EntityReference> reviewers = term.getReviewers();
     if (!nullOrEmpty(reviewers)) {
@@ -932,9 +934,9 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
 
     @Transaction
     @Override
-    public void entitySpecificUpdate() {
+    public void entitySpecificUpdate(boolean consolidatingChanges) {
       validateParent();
-      updateStatus(original, updated);
+      updateStatus(original, updated, consolidatingChanges);
       updateSynonyms(original, updated);
       updateReferences(original, updated);
       updateRelatedTerms(original, updated);
@@ -998,12 +1000,14 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       }
     }
 
-    private void updateStatus(GlossaryTerm origTerm, GlossaryTerm updatedTerm) {
+    private void updateStatus(
+        GlossaryTerm origTerm, GlossaryTerm updatedTerm, boolean consolidatingChanges) {
       if (origTerm.getStatus() == updatedTerm.getStatus()) {
         return;
       }
       // Only reviewers can change from IN_REVIEW status to APPROVED/REJECTED status
-      if (origTerm.getStatus() == Status.IN_REVIEW
+      if (!consolidatingChanges
+          && origTerm.getStatus() == Status.IN_REVIEW
           && (updatedTerm.getStatus() == Status.APPROVED
               || updatedTerm.getStatus() == Status.REJECTED)) {
         checkUpdatedByReviewer(origTerm, updatedTerm.getUpdatedBy());

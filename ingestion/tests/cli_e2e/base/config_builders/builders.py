@@ -53,15 +53,42 @@ class ProfilerConfigBuilder(BaseBuilder):
         self.profilerSample = self.config_args.get("profilerSample", 100)
 
     # pylint: enable=invalid-name
-
     def build(self) -> dict:
         """build profiler config"""
         del self.config["source"]["sourceConfig"]["config"]
         self.config["source"]["sourceConfig"] = {
             "config": {
                 "type": "Profiler",
-                "generateSampleData": True,
                 "profileSample": self.profilerSample,
+            }
+        }
+
+        if self.config_args.get("includes"):
+            self.config["source"]["sourceConfig"]["config"]["schemaFilterPattern"] = {
+                "includes": self.config_args.get("includes")
+            }
+
+        self.config["processor"] = {"type": "orm-profiler", "config": {}}
+        return self.config
+
+
+class AutoClassificationConfigBuilder(BaseBuilder):
+    """Builder class for the AutoClassification config"""
+
+    # pylint: disable=invalid-name
+    def __init__(self, config: dict, config_args: dict) -> None:
+        super().__init__(config, config_args)
+        self.profilerSample = self.config_args.get("profilerSample", 100)
+
+    # pylint: enable=invalid-name
+    def build(self) -> dict:
+        """build profiler config"""
+        del self.config["source"]["sourceConfig"]["config"]
+        self.config["source"]["sourceConfig"] = {
+            "config": {
+                "type": "AutoClassification",
+                "storeSampleData": True,
+                "enableAutoClassification": False,
             }
         }
 
@@ -186,6 +213,7 @@ def builder_factory(builder, config: dict, config_args: dict):
         E2EType.INGEST_DASHBOARD_FILTER_MIX.value: DashboardMixConfigBuilder,
         E2EType.INGEST_DASHBOARD_NOT_INCLUDING.value: DashboardConfigBuilder,
         E2EType.PROFILER_PROCESSOR.value: ProfilerProcessorConfigBuilder,
+        E2EType.AUTO_CLASSIFICATION.value: AutoClassificationConfigBuilder,
     }
 
     return builder_classes.get(builder, BaseBuilder)(config, config_args)

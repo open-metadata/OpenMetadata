@@ -11,17 +11,6 @@
  *  limitations under the License.
  */
 
-import { ReactNode } from 'react';
-
-export interface DropdownOption {
-  name: ReactNode;
-  to: string;
-  disabled: boolean;
-  icon?: ReactNode;
-  isText?: boolean;
-  method?: () => void;
-}
-
 export interface NavBarProps {
   searchValue: string;
   isTourRoute?: boolean;

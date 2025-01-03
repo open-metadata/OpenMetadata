@@ -74,6 +74,9 @@ public interface SearchClient {
   String REMOVE_TAGS_CHILDREN_SCRIPT =
       "for (int i = 0; i < ctx._source.tags.length; i++) { if (ctx._source.tags[i].tagFQN == params.fqn) { ctx._source.tags.remove(i) }}";
 
+  String UPDATE_CERTIFICATION_SCRIPT =
+      "if (ctx._source.certification != null && ctx._source.certification.tagLabel != null) {ctx._source.certification.tagLabel.style = params.style; ctx._source.certification.tagLabel.description = params.description; ctx._source.certification.tagLabel.tagFQN = params.tagFQN; ctx._source.certification.tagLabel.name = params.name;  }";
+
   String REMOVE_LINEAGE_SCRIPT =
       "for (int i = 0; i < ctx._source.lineage.length; i++) { if (ctx._source.lineage[i].doc_id == '%s') { ctx._source.lineage.remove(i) }}";
 
@@ -174,6 +177,7 @@ public interface SearchClient {
       String index,
       String query,
       String filter,
+      String[] fields,
       SearchSortFilter searchSortFilter,
       int size,
       Object[] searchAfter)
@@ -264,6 +268,8 @@ public interface SearchClient {
       String indexName,
       Pair<String, String> fieldAndValue,
       Pair<String, Map<String, Object>> updates);
+
+  void updateByFqnPrefix(String indexName, String oldParentFQN, String newParentFQN);
 
   void updateChildren(
       List<String> indexName,
