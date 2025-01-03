@@ -211,7 +211,8 @@ public class MlModelRepository extends EntityRepository<MlModel> {
                       .getFeatureSources()
                       .forEach(
                           mlFeatureSource -> {
-                            EntityReference targetEntity = getEntityReference(mlFeatureSource.getDataSource(), Include.ALL);
+                            EntityReference targetEntity =
+                                getEntityReference(mlFeatureSource.getDataSource(), Include.ALL);
                             if (targetEntity != null) {
                               addRelationship(
                                   targetEntity.getId(),
