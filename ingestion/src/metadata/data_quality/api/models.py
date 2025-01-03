@@ -23,6 +23,7 @@ from pydantic import Field
 from metadata.config.common import ConfigModel
 from metadata.generated.schema.api.tests.createTestSuite import CreateTestSuiteRequest
 from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
 from metadata.generated.schema.tests.basic import TestCaseResult
 from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
 from metadata.ingestion.models.custom_pydantic import BaseModel
@@ -62,6 +63,9 @@ class TableAndTests(BaseModel):
     )
     executable_test_suite: Optional[CreateTestSuiteRequest] = Field(
         None, description="If no executable test suite is found, we'll create one"
+    )
+    service_connection: DatabaseConnection = Field(
+        ..., description="Service connection for the given table"
     )
 
 

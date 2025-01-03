@@ -134,7 +134,7 @@ class TestSuiteWorkflowTests(unittest.TestCase):
         cls.test_suite = cls.metadata.create_or_update_executable_test_suite(
             data=CreateTestSuiteRequest(
                 name="test-suite",
-                executableEntityReference=cls.table_with_suite.fullyQualifiedName.root,
+                basicEntityReference=cls.table_with_suite.fullyQualifiedName.root,
             )
         )
 

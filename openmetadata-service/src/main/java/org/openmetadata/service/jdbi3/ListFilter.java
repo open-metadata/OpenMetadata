@@ -272,22 +272,22 @@ public class ListFilter extends Filter<ListFilter> {
     }
 
     return switch (testSuiteType) {
-      case ("executable") -> {
+        // We'll clean up the executable when we deprecate the /executable endpoints
+      case "basic", "executable" -> {
         if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
           yield String.format(
-              "(JSON_UNQUOTE(JSON_EXTRACT(%s.json, '$.executable')) = 'true')", tableName);
+              "(JSON_UNQUOTE(JSON_EXTRACT(%s.json, '$.basic')) = 'true')", tableName);
         }
-        yield String.format("(%s.json->>'executable' = 'true')", tableName);
+        yield String.format("(%s.json->>'basic' = 'true')", tableName);
       }
-      case ("logical") -> {
+      case "logical" -> {
         if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
           yield String.format(
-              "(JSON_UNQUOTE(JSON_EXTRACT(%s.json, '$.executable')) = 'false' OR JSON_UNQUOTE(JSON_EXTRACT(%s.json, '$.executable')) IS NULL)",
+              "(JSON_UNQUOTE(JSON_EXTRACT(%s.json, '$.basic')) = 'false' OR JSON_UNQUOTE(JSON_EXTRACT(%s.json, '$.basic')) IS NULL)",
               tableName, tableName);
         }
         yield String.format(
-            "(%s.json->>'executable' = 'false' or %s.json -> 'executable' is null)",
-            tableName, tableName);
+            "(%s.json->>'basic' = 'false' or %s.json -> 'basic' is null)", tableName, tableName);
       }
       default -> "";
     };

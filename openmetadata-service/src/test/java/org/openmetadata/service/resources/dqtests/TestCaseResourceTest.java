@@ -248,7 +248,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     CreateTestSuite createTestSuite =
         testSuiteResourceTest.createRequest(test).withName(TEST_TABLE1.getFullyQualifiedName());
     TestSuite testSuite =
-        testSuiteResourceTest.createExecutableTestSuite(createTestSuite, ADMIN_AUTH_HEADERS);
+        testSuiteResourceTest.createBasicTestSuite(createTestSuite, ADMIN_AUTH_HEADERS);
 
     create.withEntityLink(INVALID_LINK1).withTestSuite(testSuite.getFullyQualifiedName());
     assertResponseContains(
@@ -585,7 +585,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
         CreateTestSuite createTestSuite =
             testSuiteResourceTest.createRequest(table.getFullyQualifiedName());
         TestSuite testSuite =
-            testSuiteResourceTest.createExecutableTestSuite(createTestSuite, ADMIN_AUTH_HEADERS);
+            testSuiteResourceTest.createBasicTestSuite(createTestSuite, ADMIN_AUTH_HEADERS);
         testSuites.put(table.getFullyQualifiedName(), testSuite);
       }
 
@@ -676,7 +676,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
       CreateTestSuite createTestSuite =
           testSuiteResourceTest.createRequest(table.getFullyQualifiedName());
       TestSuite testSuite =
-          testSuiteResourceTest.createExecutableTestSuite(createTestSuite, ADMIN_AUTH_HEADERS);
+          testSuiteResourceTest.createBasicTestSuite(createTestSuite, ADMIN_AUTH_HEADERS);
       testSuites.put(table.getFullyQualifiedName(), testSuite);
     }
 
@@ -899,7 +899,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     CreateTestSuite createTestSuite =
         testSuiteResourceTest.createRequest(table.getFullyQualifiedName());
     TestSuite testSuite =
-        testSuiteResourceTest.createExecutableTestSuite(createTestSuite, ADMIN_AUTH_HEADERS);
+        testSuiteResourceTest.createBasicTestSuite(createTestSuite, ADMIN_AUTH_HEADERS);
 
     CreateTestCase create =
         createRequest(testInfo)
@@ -1133,7 +1133,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     CreateTestSuite createTestSuite =
         testSuiteResourceTest.createRequest(test).withName(TEST_TABLE2.getFullyQualifiedName());
     TestSuite executableTestSuite =
-        testSuiteResourceTest.createExecutableTestSuite(createTestSuite, ADMIN_AUTH_HEADERS);
+        testSuiteResourceTest.createBasicTestSuite(createTestSuite, ADMIN_AUTH_HEADERS);
 
     // Create the test cases (need to be created against an executable test suite)
     CreateTestCase create =
@@ -2171,8 +2171,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
             .withDescription(test.getDisplayName())
             .withEntityLink(
                 String.format(
-                    "<#E::table::%s>",
-                    testSuite.getExecutableEntityReference().getFullyQualifiedName()))
+                    "<#E::table::%s>", testSuite.getBasicEntityReference().getFullyQualifiedName()))
             .withTestSuite(testSuite.getFullyQualifiedName())
             .withTestDefinition(TEST_DEFINITION1.getFullyQualifiedName());
     TestCase testCase = createAndCheckEntity(createTestCase, ADMIN_AUTH_HEADERS);
@@ -2634,7 +2633,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     Table table = tableResourceTest.createAndCheckEntity(tableReq, ADMIN_AUTH_HEADERS);
     CreateTestSuite createExecutableTestSuite =
         testSuiteResourceTest.createRequest(table.getFullyQualifiedName());
-    return testSuiteResourceTest.createExecutableTestSuite(
+    return testSuiteResourceTest.createBasicTestSuite(
         createExecutableTestSuite, ADMIN_AUTH_HEADERS);
   }
 

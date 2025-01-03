@@ -69,7 +69,7 @@ public record TestCaseIndex(TestCase testCase) implements SearchIndex {
       return;
     }
     TestSuite testSuite = Entity.getEntityOrNull(testSuiteEntityReference, "", Include.ALL);
-    EntityReference entityReference = testSuite.getExecutableEntityReference();
+    EntityReference entityReference = testSuite.getBasicEntityReference();
     TestSuiteIndex.addTestSuiteParentEntityRelations(entityReference, doc);
   }
 
