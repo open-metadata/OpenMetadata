@@ -298,6 +298,9 @@ export const TEXT_FIELD_OPERATORS = [
   'is_null',
   'is_not_null',
 ];
+
+export const DATE_FIELD_OPERATORS = ['between', 'not_between'];
+
 /**
  * Generates a query builder tree with a group containing an empty rule
  */
