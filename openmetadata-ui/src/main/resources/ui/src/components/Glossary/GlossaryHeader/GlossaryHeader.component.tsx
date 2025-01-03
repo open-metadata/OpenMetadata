@@ -71,6 +71,7 @@ import { showErrorToast } from '../../../utils/ToastUtils';
 import { TitleBreadcrumbProps } from '../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import Voting from '../../Entity/Voting/Voting.component';
 import ChangeParentHierarchy from '../../Modals/ChangeParentHierarchy/ChangeParentHierarchy.component';
+import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
 import StyleModal from '../../Modals/StyleModal/StyleModal.component';
 import { GlossaryStatusBadge } from '../GlossaryStatusBadge/GlossaryStatusBadge.component';
 import { GlossaryHeaderProps } from './GlossaryHeader.interface';
@@ -239,7 +240,7 @@ const GlossaryHeader = ({
     setIsDelete(false);
   };
 
-  const onNameSave = async (obj: { name: string; displayName: string }) => {
+  const onNameSave = async (obj: EntityName) => {
     const { name, displayName } = obj;
     let updatedDetails = cloneDeep(selectedData);
 

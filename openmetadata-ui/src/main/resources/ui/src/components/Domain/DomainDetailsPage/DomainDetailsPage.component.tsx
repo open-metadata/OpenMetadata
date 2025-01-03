@@ -102,6 +102,7 @@ import ResizablePanels from '../../common/ResizablePanels/ResizablePanels';
 import TabsLabel from '../../common/TabsLabel/TabsLabel.component';
 import { AssetSelectionModal } from '../../DataAssets/AssetsSelectionModal/AssetSelectionModal';
 import { EntityDetailsObjectInterface } from '../../Explore/ExplorePage.interface';
+import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
 import StyleModal from '../../Modals/StyleModal/StyleModal.component';
 import AddDomainForm from '../AddDomainForm/AddDomainForm.component';
 import AddSubDomainModal from '../AddSubDomainModal/AddSubDomainModal.component';
@@ -381,7 +382,7 @@ const DomainDetailsPage = ({
     setShowAddDataProductModal(true);
   }, []);
 
-  const onNameSave = (obj: { name: string; displayName: string }) => {
+  const onNameSave = (obj: EntityName) => {
     const { displayName } = obj;
     let updatedDetails = cloneDeep(domain);
 

@@ -86,6 +86,7 @@ import AssetsTabs, {
 import { AssetsOfEntity } from '../../Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import EntityDeleteModal from '../../Modals/EntityDeleteModal/EntityDeleteModal';
 import EntityNameModal from '../../Modals/EntityNameModal/EntityNameModal.component';
+import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
 import StyleModal from '../../Modals/StyleModal/StyleModal.component';
 import './data-products-details-page.less';
 import {
@@ -318,7 +319,7 @@ const DataProductsDetailsPage = ({
     assetTabRef.current?.refreshAssets();
   };
 
-  const onNameSave = (obj: { name: string; displayName: string }) => {
+  const onNameSave = (obj: EntityName) => {
     if (dataProduct) {
       const { displayName } = obj;
       let updatedDetails = cloneDeep(dataProduct);
