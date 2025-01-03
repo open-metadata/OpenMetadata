@@ -466,16 +466,17 @@ public class TypeRepository extends EntityRepository<Type> {
         EnumConfig updatedConfig =
             JsonUtils.convertValue(
                 updatedProperty.getCustomPropertyConfig().getConfig(), EnumConfig.class);
+        HashSet<String> origKeys = new HashSet<>(origConfig.getValues());
         HashSet<String> updatedKeys = new HashSet<>(updatedConfig.getValues());
 
-        if (!updatedKeys.containsAll(origConfig.getValues())) {
-          // Update the extension values with removed enum keys
-          List<String> removedEnumKeys =
-              origConfig.getValues().stream()
-                  .filter(value -> !updatedConfig.getValues().contains(value))
-                  .toList();
+        HashSet<String> removedKeys = new HashSet<>(origKeys);
+        removedKeys.removeAll(updatedKeys);
+        HashSet<String> addedKeys = new HashSet<>(updatedKeys);
+        addedKeys.removeAll(origKeys);
 
-          // Trigger background job to cleanup the existing enum values in the entity extension
+        if (!removedKeys.isEmpty() && addedKeys.isEmpty()) {
+          List<String> removedEnumKeys = new ArrayList<>(removedKeys);
+
           try {
             EnumCleanupArgs enumCleanupArgs =
                 new EnumCleanupArgs()
