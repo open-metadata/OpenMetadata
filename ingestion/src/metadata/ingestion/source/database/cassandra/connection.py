@@ -12,7 +12,10 @@
 """
 Source connection handler
 """
+import os
 from functools import partial
+from ssl import CERT_REQUIRED, PROTOCOL_TLS, SSLContext
+from tempfile import NamedTemporaryFile
 from typing import Optional
 
 from cassandra.auth import PlainTextAuthProvider
@@ -34,6 +37,7 @@ from metadata.generated.schema.entity.services.connections.database.cassandraCon
 from metadata.generated.schema.entity.services.connections.testConnectionResult import (
     TestConnectionResult,
 )
+from metadata.generated.schema.security.ssl.verifySSLConfig import SslMode
 from metadata.ingestion.connections.test_connections import test_connection_steps
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.cassandra.queries import (
@@ -77,7 +81,36 @@ def get_connection(connection: CassandraConnection):
                 password=connection.authType.password.get_secret_value(),
             )
 
-    cluster = Cluster(**cluster_config)
+    ssl_context = None
+    if connection.sslMode != SslMode.disable:
+        ssl_context = SSLContext(PROTOCOL_TLS)
+
+        # Load CA certificate directly into memory
+        ssl_context.load_verify_locations(
+            cadata=open(
+                connection.sslConfig.root.caCertificate.get_secret_value()
+            ).read()
+        )
+
+        ssl_context.verify_mode = CERT_REQUIRED
+
+        # Create temporary files since the load_cert_chain function requires
+        # file paths for the certfile and keyfile
+        with NamedTemporaryFile(delete=False, mode="w") as certfile, NamedTemporaryFile(
+            delete=False, mode="w"
+        ) as keyfile:
+            certfile.write(connection.sslConfig.root.sslCertificate.get_secret_value())
+            certfile_path = certfile.name
+
+            keyfile.write(connection.sslConfig.root.sslKey.get_secret_value())
+            keyfile_path = keyfile.name
+
+        ssl_context.load_cert_chain(certfile=certfile_path, keyfile=keyfile_path)
+
+        # Delete temporary files
+        os.remove(certfile_path), os.remove(keyfile_path)
+
+    cluster = Cluster(**cluster_config, ssl_context=ssl_context)
     session = cluster.connect()
 
     return session
