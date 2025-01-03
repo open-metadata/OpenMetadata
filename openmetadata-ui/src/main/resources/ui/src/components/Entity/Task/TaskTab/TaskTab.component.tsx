@@ -71,6 +71,10 @@ import {
 import { TagLabel } from '../../../../generated/type/tagLabel';
 import { useAuth } from '../../../../hooks/authHooks';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
+import {
+  FieldProp,
+  FieldTypes,
+} from '../../../../interface/FormUtils.interface';
 import Assignees from '../../../../pages/TasksPage/shared/Assignees';
 import DescriptionTask from '../../../../pages/TasksPage/shared/DescriptionTask';
 import TagsTask from '../../../../pages/TasksPage/shared/TagsTask';
@@ -84,6 +88,7 @@ import { postTestCaseIncidentStatus } from '../../../../rest/incidentManagerAPI'
 import { getNameFromFQN } from '../../../../utils/CommonUtils';
 import EntityLink from '../../../../utils/EntityLink';
 import { getEntityFQN } from '../../../../utils/FeedUtils';
+import { getField } from '../../../../utils/formUtils';
 import { checkPermission } from '../../../../utils/PermissionsUtils';
 import { getErrorText } from '../../../../utils/StringsUtils';
 import {
@@ -106,7 +111,6 @@ import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvi
 import InlineEdit from '../../../common/InlineEdit/InlineEdit.component';
 import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
 import EntityPopOverCard from '../../../common/PopOverCard/EntityPopOverCard';
-import RichTextEditor from '../../../common/RichTextEditor/RichTextEditor';
 import TaskTabIncidentManagerHeader from '../TaskTabIncidentManagerHeader/TaskTabIncidentManagerHeader.component';
 import './task-tab.less';
 import { TaskTabProps } from './TaskTab.interface';
@@ -897,6 +901,32 @@ export const TaskTab = ({
     </div>
   );
 
+  const descriptionField: FieldProp = useMemo(
+    () => ({
+      name: 'testCaseFailureComment',
+      required: true,
+      label: t('label.comment'),
+      id: 'root/description',
+      type: FieldTypes.DESCRIPTION,
+      rules: [
+        {
+          required: true,
+          message: t('label.field-required', {
+            field: t('label.comment'),
+          }),
+        },
+      ],
+      props: {
+        'data-testid': 'description',
+        initialValue: '',
+        placeHolder: t('message.write-your-text', {
+          text: t('label.comment'),
+        }),
+      },
+    }),
+    []
+  );
+
   return (
     <Row className="p-y-sm p-x-md" data-testid="task-tab" gutter={[0, 24]}>
       <Col
@@ -1000,25 +1030,7 @@ export const TaskTab = ({
                 ))}
               </Select>
             </Form.Item>
-            <Form.Item
-              label={t('label.comment')}
-              name="testCaseFailureComment"
-              rules={[
-                {
-                  required: true,
-                  message: t('label.field-required', {
-                    field: t('label.comment'),
-                  }),
-                },
-              ]}
-              trigger="onTextChange">
-              <RichTextEditor
-                initialValue=""
-                placeHolder={t('message.write-your-text', {
-                  text: t('label.comment'),
-                })}
-              />
-            </Form.Item>
+            {getField(descriptionField)}
           </Form>
         </Modal>
       ) : (

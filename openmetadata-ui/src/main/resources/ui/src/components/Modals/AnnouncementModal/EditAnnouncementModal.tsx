@@ -13,13 +13,14 @@
 
 import { DatePicker, Form, Input, Modal, Space } from 'antd';
 import moment from 'moment';
-import React, { FC } from 'react';
+import React, { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { VALIDATION_MESSAGES } from '../../../constants/constants';
 import { AnnouncementDetails } from '../../../generated/entity/feed/thread';
+import { FieldProp, FieldTypes } from '../../../interface/FormUtils.interface';
 import { getTimeZone } from '../../../utils/date-time/DateTimeUtils';
+import { getField } from '../../../utils/formUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import RichTextEditor from '../../common/RichTextEditor/RichTextEditor';
 import { CreateAnnouncement } from './AddAnnouncementModal';
 import './announcement-modal.less';
 
@@ -62,6 +63,22 @@ const EditAnnouncementModal: FC<Props> = ({
       onConfirm(title, updatedAnnouncement);
     }
   };
+
+  const descriptionField: FieldProp = useMemo(
+    () => ({
+      name: 'description',
+      required: false,
+      label: `${t('label.description')}:`,
+      id: 'root/description',
+      type: FieldTypes.DESCRIPTION,
+      props: {
+        'data-testid': 'description',
+        initialValue: announcement.description,
+        placeHolder: t('message.write-your-announcement-lowercase'),
+      },
+    }),
+    [announcement.description]
+  );
 
   return (
     <Modal
@@ -133,15 +150,7 @@ const EditAnnouncementModal: FC<Props> = ({
             <DatePicker className="w-full" />
           </Form.Item>
         </Space>
-        <Form.Item
-          label={`${t('label.description')}:`}
-          name="description"
-          trigger="onTextChange"
-          valuePropName="initialValue">
-          <RichTextEditor
-            placeHolder={t('message.write-your-announcement-lowercase')}
-          />
-        </Form.Item>
+        {getField(descriptionField)}
       </Form>
     </Modal>
   );

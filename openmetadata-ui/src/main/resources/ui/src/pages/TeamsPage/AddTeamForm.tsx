@@ -19,7 +19,6 @@ import { toLower, trim } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DomainLabel } from '../../components/common/DomainLabel/DomainLabel.component';
-import RichTextEditor from '../../components/common/RichTextEditor/RichTextEditor';
 import { VALIDATION_MESSAGES } from '../../constants/constants';
 import { NAME_FIELD_RULES } from '../../constants/Form.constants';
 import { EntityType } from '../../enums/entity.enum';
@@ -123,6 +122,25 @@ const AddTeamForm: React.FC<AddTeamFormType> = ({
     helperText: t('message.access-to-collaborate'),
   };
 
+  const descriptionField: FieldProp = useMemo(
+    () => ({
+      name: 'description',
+      required: false,
+      label: t('label.description'),
+      id: 'root/description',
+      type: FieldTypes.DESCRIPTION,
+      props: {
+        'data-testid': 'description',
+        initialValue: '',
+        style: {
+          marginBottom: 0,
+        },
+        onTextChange: (value: string) => setDescription(value),
+      },
+    }),
+    []
+  );
+
   useEffect(() => {
     if (visible) {
       fetchAllTeams();
@@ -218,18 +236,7 @@ const AddTeamForm: React.FC<AddTeamFormType> = ({
           />
         </Form.Item>
         {getField(isJoinableField)}
-        <Form.Item
-          label={t('label.description')}
-          name="description"
-          style={{
-            marginBottom: 0,
-          }}>
-          <RichTextEditor
-            data-testid="description"
-            initialValue=""
-            onTextChange={(value) => setDescription(value)}
-          />
-        </Form.Item>
+        {getField(descriptionField)}
         <div className="m-t-xs">
           {getField(domainsField)}
           {selectedDomain && (
