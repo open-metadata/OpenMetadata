@@ -79,7 +79,6 @@ import { getTableList, TableListParams } from '../../rest/tableAPI';
 import {
   getEntityMissingError,
   getFeedCounts,
-  handleCursorBasedFetch,
   sortTagsCaseInsensitive,
 } from '../../utils/CommonUtils';
 import databaseSchemaClassBase from '../../utils/DatabaseSchemaClassBase';
@@ -471,7 +470,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
         getSchemaTables({ [cursorType]: paging[cursorType] });
       }
       handlePageChange(currentPage);
-      history.replace({
+      history.push({
         pathname: currentPath,
         state: {
           cursorType: cursorType,
@@ -540,14 +539,17 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     const cursorValue = location?.state?.cursorValue || null;
     const currentPage = location?.state?.currentPage || null;
     if (viewDatabaseSchemaPermission && decodedDatabaseSchemaFQN) {
-      handleCursorBasedFetch(
-        cursorType,
-        cursorValue,
-        currentPage,
-        getSchemaTables,
-        handlePageChange,
-        pageSize
-      );
+      if (cursorType) {
+        // Fetch data if cursorType is present in state with cursor Value to handle browser back navigation
+        getSchemaTables({
+          [cursorType]: cursorValue,
+          limit: pageSize,
+        });
+        handlePageChange(currentPage as number);
+      } else {
+        // Otherwise, just fetch the data without cursor value
+        getSchemaTables({ limit: pageSize });
+      }
     }
   }, [
     showDeletedTables,

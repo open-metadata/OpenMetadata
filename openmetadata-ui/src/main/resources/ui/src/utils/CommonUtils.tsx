@@ -52,7 +52,6 @@ import { FEED_COUNT_INITIAL_DATA } from '../constants/entity.constants';
 import { VALIDATE_ESCAPE_START_END_REGEX } from '../constants/regex.constants';
 import { SIZE } from '../enums/common.enum';
 import { EntityType, FqnPart } from '../enums/entity.enum';
-import { CursorType } from '../enums/pagination.enum';
 import { EntityReference, User } from '../generated/entity/teams/user';
 import { TagLabel } from '../generated/type/tagLabel';
 import { FeedCounts } from '../interface/feed.interface';
@@ -824,27 +823,4 @@ const hexToRgba = (hex: string, opacity: number): string => {
   const b = bigint & 255;
 
   return `rgba(${r}, ${g}, ${b}, ${opacity.toFixed(2)})`;
-};
-
-export const handleCursorBasedFetch = (
-  cursorType: CursorType | null,
-  cursorValue: string | null,
-  currentPage: number | null,
-  fetchData: (params: any) => void,
-  handlePageChange: (page: number) => void,
-  pageSize: number
-) => {
-  // Fetch data if cursorType is present in state with cursor Value to handle browser back navigation
-  if (cursorType) {
-    fetchData({
-      [cursorType]: cursorValue,
-      limit: pageSize,
-    });
-    if (currentPage !== null) {
-      handlePageChange(currentPage as number);
-    }
-  } else {
-    // Otherwise, just fetch the data without cursor value
-    fetchData({ limit: pageSize });
-  }
 };
