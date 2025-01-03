@@ -106,7 +106,8 @@ def get_connection(connection: CassandraConnection):
         ssl_context.load_cert_chain(certfile=certfile_path, keyfile=keyfile_path)
 
         # Delete temporary files
-        os.remove(certfile_path), os.remove(keyfile_path)
+        os.remove(certfile_path)
+        os.remove(keyfile_path)
 
     cluster = Cluster(**cluster_config, ssl_context=ssl_context)
     session = cluster.connect()
