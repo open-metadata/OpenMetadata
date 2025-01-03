@@ -120,6 +120,11 @@ class TestSuiteSource(Source):
                         "Typically caused by the `entityFullyQualifiedName` does not exists in OpenMetadata "
                         "or the JWT Token is invalid."
                     )
+                if not service.connection:
+                    raise ConnectionError(
+                        f"Service with name `{service_name}` does not have a connection. "
+                        "If the connection is not stored in OpenMetadata, please provide it in the YAML file."
+                    )
                 self.service_connection_map[service_name] = service.connection
 
             except Exception as exc:
@@ -187,6 +192,7 @@ class TestSuiteSource(Source):
                     stackTrace=traceback.format_exc(),
                 )
             )
+            return
         # If there is no executable test suite yet for the table, we'll need to create one
         # Then, the suite won't have yet any tests
         if not table.testSuite:

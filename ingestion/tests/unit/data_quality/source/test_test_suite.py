@@ -5,7 +5,11 @@ import pytest
 
 from metadata.data_quality.source.test_suite import TestSuiteSource
 from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.services.connections.database.postgresConnection import (
+    PostgresConnection,
+)
 from metadata.generated.schema.entity.services.databaseService import (
+    DatabaseConnection,
     DatabaseServiceType,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
@@ -72,6 +76,19 @@ def test_source_config(parameters, expected, monkeypatch):
         },
     }
     monkeypatch.setattr(TestSuiteSource, "test_connection", Mock())
+    monkeypatch.setattr(
+        TestSuiteSource,
+        "_get_table_service_connection",
+        Mock(
+            return_value=DatabaseConnection(
+                config=PostgresConnection(
+                    username="foo",
+                    hostPort="localhost:5432",
+                    database="postgres",
+                )
+            )
+        ),
+    )
 
     mock_metadata = Mock(spec=OpenMetadata)
     mock_metadata.get_by_name.return_value = Table(
