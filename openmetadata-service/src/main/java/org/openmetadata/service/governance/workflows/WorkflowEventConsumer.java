@@ -27,11 +27,7 @@ public class WorkflowEventConsumer implements Destination<ChangeEvent> {
   // TODO: Understand if we need to consider ENTITY_NO_CHANGE, ENTITY_FIELDS_CHANGED or
   // ENTITY_RESTORED.
   private static List<EventType> validEventTypes =
-      List.of(
-          EventType.ENTITY_CREATED,
-          EventType.ENTITY_UPDATED,
-          EventType.ENTITY_SOFT_DELETED,
-          EventType.ENTITY_DELETED);
+      List.of(EventType.ENTITY_CREATED, EventType.ENTITY_UPDATED);
 
   public WorkflowEventConsumer(
       EventSubscription eventSubscription, SubscriptionDestination subscriptionDestination) {
