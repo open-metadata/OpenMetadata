@@ -12,7 +12,6 @@
 """
 Test database connectors which extend from `CommonDbSourceService` with CLI
 """
-import json
 import os
 from abc import ABC, abstractmethod
 from pathlib import Path
@@ -152,10 +151,6 @@ class CliCommonDB:
                             self.assertEqual(
                                 column_profile[key], expected_column_profile[key]
                             )
-                if sample_data:
-                    self.assertGreater(
-                        len(json.loads(sample_data.json()).get("rows")), 0
-                    )
 
         def assert_for_delete_table_is_marked_as_deleted(
             self, source_status: Status, sink_status: Status

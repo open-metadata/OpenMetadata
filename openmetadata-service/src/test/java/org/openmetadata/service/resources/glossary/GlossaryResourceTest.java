@@ -98,6 +98,7 @@ import org.openmetadata.service.jdbi3.EntityRepository.EntityUpdater;
 import org.openmetadata.service.jdbi3.GlossaryRepository.GlossaryCsv;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
+import org.openmetadata.service.resources.events.EventSubscriptionResourceTest;
 import org.openmetadata.service.resources.feeds.FeedResource;
 import org.openmetadata.service.resources.feeds.FeedResourceTest;
 import org.openmetadata.service.resources.feeds.MessageParser;
@@ -757,6 +758,10 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
 
   @Test
   void testGlossaryImportExport() throws IOException {
+    EventSubscriptionResourceTest eventSubscriptionResourceTest =
+        new EventSubscriptionResourceTest();
+    // Update poll Interval to allow Status change from workflow to take some time
+    eventSubscriptionResourceTest.updateEventSubscriptionPollInterval("WorkflowEventConsumer", 120);
     Glossary glossary = createEntity(createRequest("importExportTest"), ADMIN_AUTH_HEADERS);
     String user1 = USER1.getName();
     String user2 = USER2.getName();
@@ -934,25 +939,11 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
     List<String> newRecords =
         listOf(
             ",g3,dsp0,dsc0,h1;h2;h3,,term0;http://term0,PII.Sensitive,,,Approved,\"\"\"glossaryTermTableCol1Cp:row_1_col1_Value,,\"\";\"\"glossaryTermTableCol3Cp:row_1_col1_Value,row_1_col2_Value,row_1_col3_Value|row_2_col1_Value,row_2_col2_Value,row_2_col3_Value\"\"\"");
-    Awaitility.await()
-        .atMost(Duration.ofMillis(120 * 1000L))
-        .pollInterval(Duration.ofMillis(2000L))
-        .ignoreExceptions()
-        .until(
-            () -> {
-              try {
-                testImportExport(
-                    glossary.getName(),
-                    GlossaryCsv.HEADERS,
-                    createRecords,
-                    updateRecords,
-                    newRecords);
-                return true;
-              } catch (Exception e) {
-                // Return false to retry
-                return false;
-              }
-            });
+    testImportExport(
+        glossary.getName(), GlossaryCsv.HEADERS, createRecords, updateRecords, newRecords);
+
+    // Reset poll Interval to allow Status change from workflow
+    eventSubscriptionResourceTest.updateEventSubscriptionPollInterval("WorkflowEventConsumer", 10);
   }
 
   @Test

@@ -223,7 +223,7 @@ describe('Glossary Utils', () => {
   });
 });
 
-describe('findAndUpdateNested', () => {
+describe('Glossary Utils - findAndUpdateNested', () => {
   it('should add new term to the correct parent', () => {
     const terms: ModifiedGlossary[] = [
       {
@@ -263,6 +263,7 @@ describe('findAndUpdateNested', () => {
 
     const updatedTerms = findAndUpdateNested(terms, newTerm);
 
+    expect(updatedTerms[0].childrenCount).toBe(1);
     expect(updatedTerms[0].children).toHaveLength(1);
     expect(updatedTerms?.[0].children?.[0]).toEqual(newTerm);
   });
@@ -310,14 +311,11 @@ describe('findAndUpdateNested', () => {
 
     const updatedTerms = findAndUpdateNested(terms, newTerm);
 
-    expect(
-      updatedTerms?.[0].children && updatedTerms?.[0].children[0].children
-    ).toHaveLength(1);
-    expect(
-      updatedTerms?.[0].children &&
-        updatedTerms?.[0].children[0].children &&
-        updatedTerms?.[0].children[0].children[0]
-    ).toEqual(newTerm);
+    const modifiedTerms = updatedTerms[0].children?.[0].children ?? [];
+
+    expect(modifiedTerms).toHaveLength(1);
+    expect(updatedTerms[0].children?.[0].childrenCount).toBe(1);
+    expect(modifiedTerms[0]).toEqual(newTerm);
   });
 
   it('should not modify terms if parent is not found', () => {
