@@ -1221,7 +1221,11 @@ export const filterStatus = async (
   await saveButton.click();
 
   const glossaryTermsTable = page.getByTestId('glossary-terms-table');
-  const rows = glossaryTermsTable.locator('tbody tr');
+  // will select all <tr> elements inside the <tbody> but exclude those with aria-hidden="true"
+  // since we have added re-sizeable columns, that one <tr> entry is present in the tbody
+  const rows = glossaryTermsTable.locator(
+    'tbody.ant-table-tbody > tr:not([aria-hidden="true"])'
+  );
   const statusColumnIndex = 3;
 
   for (let i = 0; i < (await rows.count()); i++) {
