@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * OpenMetadata Ingestion Framework definition for Applications, i.e., the YAML shape we
  * require.
  */
@@ -54,8 +52,6 @@ export interface Application {
  * in the backend.
  *
  * Search Indexing App.
- *
- * This schema defines the Slack App Token Configuration
  */
 export interface CollateAIAppConfig {
     /**
@@ -129,10 +125,6 @@ export interface CollateAIAppConfig {
      */
     producerThreads?: number;
     /**
-     * Queue Size to user internally for reindexing.
-     */
-    queueSize?: number;
-    /**
      * This schema publisher run modes.
      */
     recreateIndex?: boolean;
@@ -140,14 +132,6 @@ export interface CollateAIAppConfig {
      * Recreate Indexes with updated Language
      */
     searchIndexMappingLanguage?: SearchIndexMappingLanguage;
-    /**
-     * Bot Token
-     */
-    botToken?: string;
-    /**
-     * User Token
-     */
-    userToken?: string;
 }
 
 /**

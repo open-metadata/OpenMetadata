@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * This schema defines the Audit Log type to capture the audit trail of POST, PUT, and PATCH
  * API operations.
  */

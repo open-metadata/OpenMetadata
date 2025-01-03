@@ -61,6 +61,10 @@
       "description": "Link to the resource corresponding to the tag.",
       "$ref": "../../type/basic.json#/definitions/href"
     },
+    "owners": {
+      "description": "Owners of this tag.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
     "usageCount": {
       "description": "Count of how many times this tag and children tags are used.",
       "type": "integer"

@@ -148,7 +148,6 @@ export interface EntityReference {
  * Lineage type describes how a lineage was created.
  */
 export enum Source {
-    CrossDatabaseLineage = "CrossDatabaseLineage",
     DashboardLineage = "DashboardLineage",
     DbtLineage = "DbtLineage",
     ExternalTableLineage = "ExternalTableLineage",

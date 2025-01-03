@@ -39,10 +39,6 @@ export interface CreateSearchIndex {
      */
     fields: SearchIndexField[];
     /**
-     * Whether the entity is index or index template.
-     */
-    indexType?: IndexType;
-    /**
      * Life Cycle of the entity
      */
     lifeCycle?: LifeCycle;
@@ -241,14 +237,6 @@ export interface Style {
      * An icon to associate with GlossaryTerm, Tag, Domain or Data Product.
      */
     iconURL?: string;
-}
-
-/**
- * Whether the entity is index or index template.
- */
-export enum IndexType {
-    Index = "Index",
-    IndexTemplate = "IndexTemplate",
 }
 
 /**

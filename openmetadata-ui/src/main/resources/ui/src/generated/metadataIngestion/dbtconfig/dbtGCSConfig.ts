@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * DBT Catalog, Manifest and Run Results files in GCS storage. We will search for
  * catalog.json, manifest.json and run_results.json.
  */

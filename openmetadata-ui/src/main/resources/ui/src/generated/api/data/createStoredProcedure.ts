@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * Create Stored Procedure Request
  */
 export interface CreateStoredProcedure {
@@ -64,10 +62,6 @@ export interface CreateStoredProcedure {
      * SQL Query definition.
      */
     storedProcedureCode: any[] | boolean | number | number | null | StoredProcedureCodeObject | string;
-    /**
-     * Type of the Stored Procedure.
-     */
-    storedProcedureType?: StoredProcedureType;
     /**
      * Tags for this StoredProcedure.
      */
@@ -197,16 +191,6 @@ export enum Language {
     JavaScript = "JavaScript",
     Python = "Python",
     SQL = "SQL",
-}
-
-/**
- * Type of the Stored Procedure.
- *
- * This schema defines the type of the type of Procedures
- */
-export enum StoredProcedureType {
-    StoredProcedure = "StoredProcedure",
-    Udf = "UDF",
 }
 
 /**
