@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * DBT Pipeline Configuration.
  */
 export interface DbtPipeline {
@@ -32,6 +30,10 @@ export interface DbtPipeline {
      * Optional configuration to update the description from DBT or not
      */
     dbtUpdateDescriptions?: boolean;
+    /**
+     * Optional configuration to update the owners from DBT or not
+     */
+    dbtUpdateOwners?: boolean;
     /**
      * Optional configuration to toggle the tags ingestion.
      */
