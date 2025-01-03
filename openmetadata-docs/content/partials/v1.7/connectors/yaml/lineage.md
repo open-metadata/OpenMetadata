@@ -69,6 +69,42 @@ You can find all the definitions and types for the  `sourceConfig` [here](https:
 
 {% codeInfo srNumber=49 %}
 
+**overrideViewLineage**: Set the 'Override View Lineage' toggle to control whether to override the existing view lineage.
+
+{% /codeInfo %}
+
+
+{% codeInfo srNumber=51 %}
+
+**processViewLineage**: Set the 'Process View Lineage' toggle to control whether to process view lineage.
+
+{% /codeInfo %}
+
+
+{% codeInfo srNumber=52 %}
+
+**processQueryLineage**: Set the 'Process Query Lineage' toggle to control whether to process query lineage.
+
+{% /codeInfo %}
+
+
+{% codeInfo srNumber=53 %}
+
+**processStoredProcedureLineage**: Set the 'Process Stored ProcedureLog Lineage' toggle to control whether to process stored procedure lineage.
+
+{% /codeInfo %}
+
+
+{% codeInfo srNumber=54 %}
+
+**threads**: Number of Threads to use in order to parallelize lineage ingestion.
+
+{% /codeInfo %}
+
+
+{% codeInfo srNumber=55 %}
+
+
 #### Sink Configuration
 
 To send the metadata to OpenMetadata, it needs to be specified as `type: metadata-rest`.
@@ -150,7 +186,27 @@ sink:
   config: {}
 ```
 
-{% partial file="/v1.5/connectors/yaml/workflow-config.md" /%}
+```yaml {% srNumber=51 %}
+      overrideViewLineage: false
+```
+
+```yaml {% srNumber=52 %}
+      processViewLineage: true
+```
+
+```yaml {% srNumber=53 %}
+      processQueryLineage: true
+```
+
+```yaml {% srNumber=54 %}
+      processStoredProcedureLineage: true
+```
+
+```yaml {% srNumber=55 %}
+      threads: 1
+```
+
+{% partial file="/v1.7/connectors/yaml/workflow-config.md" /%}
 
 {% /codeBlock %}
 
