@@ -211,6 +211,20 @@ class CliDBBase(TestCase):
 
             This test will need to be implemented on the database specific test classes
             """
+            self.delete_table_and_view()
+            self.create_table_and_view()
+            self.build_config_file(
+                E2EType.INGEST_DB_FILTER_SCHEMA,
+                {"includes": self.get_includes_schemas()},
+            )
+            self.run_command()
+            self.build_config_file(
+                E2EType.LINEAGE, 
+                {"source": "mysql-lineage"},
+            )
+            result = self.run_command()
+            sink_status, source_status = self.retrieve_statuses(result)
+            self.assert_for_test_lineage(source_status, sink_status)
 
         @pytest.mark.order(12)
         def test_profiler_with_time_partition(self) -> None:
@@ -325,6 +339,13 @@ class CliDBBase(TestCase):
             self, source_status: Status, sink_status: Status
         ) -> None:
             raise NotImplementedError()
+        
+        @abstractmethod
+        def assert_for_test_lineage(
+            self, source_status: Status, sink_status: Status
+        ) -> None:
+            raise NotImplementedError()
+
 
         @abstractmethod
         def assert_for_table_with_profiler(
