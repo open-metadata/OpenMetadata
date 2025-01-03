@@ -165,9 +165,9 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
           };
 
           return (
-            <Space data-testid={name}>
+            <Space align="start" data-testid={name}>
               <Tooltip title={status}>
-                <div>
+                <div className="m-t-xss">
                   <StatusBox status={status?.toLocaleLowerCase()} />
                 </div>
               </Tooltip>
@@ -393,6 +393,20 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
     isStatusLoading,
   ]);
 
+  const expandedRowRender = (record: TestCase) => {
+    const status = record.testCaseResult?.testCaseStatus;
+
+    if (status !== 'Success') {
+      return (
+        <Typography.Paragraph className="p-md m-b-0 error-msg-bg" type="danger">
+          {record.testCaseResult?.result ?? 'No error message available'}
+        </Typography.Paragraph>
+      );
+    }
+
+    return null;
+  };
+
   const fetchTestCaseStatus = async () => {
     try {
       setIsStatusLoading(true);
@@ -462,6 +476,11 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
           columns={columns}
           data-testid="test-case-table"
           dataSource={sortedData}
+          expandable={{
+            expandedRowRender: (record) => expandedRowRender(record),
+            rowExpandable: (record) =>
+              record.testCaseResult?.testCaseStatus !== 'Success',
+          }}
           loading={isLoading}
           locale={{
             emptyText: (
