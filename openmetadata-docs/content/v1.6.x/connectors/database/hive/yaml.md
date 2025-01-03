@@ -17,6 +17,7 @@ Configure and schedule Hive metadata and profiler workflows from the OpenMetadat
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 - [Data Profiler](#data-profiler)
+- [Lineage](#lineage)
 - [Data Quality](#data-quality)
 - [dbt Integration](#dbt-integration)
 - [Enable Security](#securing-hive-connection-with-ssl-in-openmetadata)
@@ -112,6 +113,8 @@ You can also ingest the metadata using Postgres metastore. This step is optional
 {% partial file="/v1.6/connectors/yaml/database/source-config-def.md" /%}
 
 {% partial file="/v1.6/connectors/yaml/ingestion-sink-def.md" /%}
+
+{% partial file="/v1.6/connectors/yaml/lineage.md" variables={connector: "hive"} /%}
 
 {% partial file="/v1.6/connectors/yaml/workflow-config-def.md" /%}
 
