@@ -107,9 +107,7 @@ const EditCustomPropertyModal: FC<EditCustomPropertyModalProps> = ({
       mode: 'tags',
       placeholder: t('label.enum-value-plural'),
       onChange: (value: string[]) => {
-        const enumConfig = customProperty.customPropertyConfig
-          ?.config as Config;
-        const updatedValues = uniq([...value, ...(enumConfig?.values ?? [])]);
+        const updatedValues = uniq([...value]);
         form.setFieldsValue({ customPropertyConfig: updatedValues });
       },
       open: false,
@@ -232,11 +230,7 @@ const EditCustomPropertyModal: FC<EditCustomPropertyModalProps> = ({
         {!isUndefined(customProperty.customPropertyConfig) && (
           <>
             {hasEnumConfig && (
-              <>
-                {generateFormFields([enumConfigField])}
-                {note}
-                {generateFormFields([multiSelectField])}
-              </>
+              <>{generateFormFields([enumConfigField, multiSelectField])}</>
             )}
 
             {hasEntityReferenceConfig && (
