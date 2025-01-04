@@ -28,6 +28,7 @@ import {
   FormItemLayout,
 } from '../../../../interface/FormUtils.interface';
 import { generateFormFields } from '../../../../utils/formUtils';
+import Banner from '../../../common/Banner/Banner';
 
 export interface FormData {
   description: string;
@@ -162,6 +163,9 @@ const EditCustomPropertyModal: FC<EditCustomPropertyModalProps> = ({
     props: {
       'data-testid': 'multiSelect',
     },
+    formItemProps: {
+      style: { marginBottom: '0px' },
+    },
     id: 'root/multiSelect',
     formItemLayout: FormItemLayout.HORIZONTAL,
   };
@@ -230,7 +234,17 @@ const EditCustomPropertyModal: FC<EditCustomPropertyModalProps> = ({
         {!isUndefined(customProperty.customPropertyConfig) && (
           <>
             {hasEnumConfig && (
-              <>{generateFormFields([enumConfigField, multiSelectField])}</>
+              <>
+                {generateFormFields([enumConfigField, multiSelectField])}
+                {isSaving && (
+                  <Banner
+                    className="border-radius"
+                    isLoading={isSaving}
+                    message={t('message.enum-property-update-message')}
+                    type="success"
+                  />
+                )}
+              </>
             )}
 
             {hasEntityReferenceConfig && (
