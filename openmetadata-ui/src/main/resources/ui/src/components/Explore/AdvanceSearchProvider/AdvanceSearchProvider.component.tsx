@@ -27,6 +27,7 @@ import {
   JsonTree,
   Utils as QbUtils,
   ValueField,
+  ValueSource,
 } from 'react-awesome-query-builder';
 import { useHistory, useParams } from 'react-router-dom';
 import { emptyJsonTree } from '../../../constants/AdvancedSearch.constants';
@@ -234,7 +235,10 @@ export const AdvanceSearchProvider = ({
               if (field.name && field.type) {
                 const { subfieldsKey, dataObject } =
                   advancedSearchClassBase.getCustomPropertiesSubFields(field);
-                subfields[subfieldsKey] = dataObject;
+                subfields[subfieldsKey] = {
+                  ...dataObject,
+                  valueSources: dataObject.valueSources as ValueSource[],
+                };
               }
             }
           );

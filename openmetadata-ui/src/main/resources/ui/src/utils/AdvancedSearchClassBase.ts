@@ -22,14 +22,19 @@ import {
   SelectFieldSettings,
 } from 'react-awesome-query-builder';
 import AntdConfig from 'react-awesome-query-builder/lib/config/antd';
+import { CustomPropertyEnumConfig } from '../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
 import {
-  DATE_FIELD_OPERATORS,
+  LIST_VALUE_OPERATORS,
+  RANGE_FIELD_OPERATORS,
   TEXT_FIELD_OPERATORS,
 } from '../constants/AdvancedSearch.constants';
 import { EntityFields, SuggestionField } from '../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { getAggregateFieldOptions } from '../rest/miscAPI';
-import { renderAdvanceSearchButtons } from './AdvancedSearchUtils';
+import {
+  getCustomPropertyAdvanceSearchEnumOptions,
+  renderAdvanceSearchButtons,
+} from './AdvancedSearchUtils';
 import { getCombinedQueryFilterObject } from './ExplorePage/ExplorePageUtils';
 import { renderQueryBuilderFilterButtons } from './QueryBuilderUtils';
 
@@ -193,12 +198,7 @@ class AdvancedSearchClassBase {
     [EntityFields.COLUMN_DESCRIPTION_STATUS]: {
       label: t('label.column-description'),
       type: 'select',
-      operators: [
-        'select_equals',
-        'select_not_equals',
-        'is_null',
-        'is_not_null',
-      ],
+      operators: LIST_VALUE_OPERATORS,
       mainWidgetProps: this.mainWidgetProps,
       valueSources: ['value'],
       fieldSettings: {
@@ -599,12 +599,7 @@ class AdvancedSearchClassBase {
       descriptionStatus: {
         label: t('label.description'),
         type: 'select',
-        operators: [
-          'select_equals',
-          'select_not_equals',
-          'is_null',
-          'is_not_null',
-        ],
+        operators: LIST_VALUE_OPERATORS,
         mainWidgetProps: this.mainWidgetProps,
         valueSources: ['value'],
         fieldSettings: {
@@ -803,7 +798,7 @@ class AdvancedSearchClassBase {
     name: string;
     type: string;
     customPropertyConfig: {
-      config: string | string[];
+      config: string | string[] | CustomPropertyEnumConfig;
     };
   }) {
     {
@@ -811,28 +806,46 @@ class AdvancedSearchClassBase {
         case 'array<entityReference>':
         case 'entityReference':
           return {
-            subfieldsKey: field.name + `.name`,
+            subfieldsKey: field.name + `.displayName`,
             dataObject: {
               type: 'select',
               label: field.name,
               fieldSettings: {
-                asyncFetch: advancedSearchClassBase.autocomplete({
+                asyncFetch: this.autocomplete({
                   searchIndex: (
                     (field.customPropertyConfig.config ?? []) as string[]
                   ).join(',') as SearchIndex,
-                  entityField: EntityFields.NAME_KEYWORD,
+                  entityField: EntityFields.DISPLAY_NAME_KEYWORD,
                 }),
                 useAsyncSearch: true,
               },
             },
           };
+
+        case 'enum':
+          return {
+            subfieldsKey: field.name,
+            dataObject: {
+              type: 'select',
+              operators: LIST_VALUE_OPERATORS,
+              fieldSettings: {
+                listValues: getCustomPropertyAdvanceSearchEnumOptions(
+                  (
+                    field.customPropertyConfig
+                      .config as CustomPropertyEnumConfig
+                  ).values
+                ),
+              },
+            },
+          };
+
         case 'date-cp':
         case 'dateTime-cp': {
           return {
             subfieldsKey: field.name,
             dataObject: {
               type: 'date',
-              operators: DATE_FIELD_OPERATORS,
+              operators: RANGE_FIELD_OPERATORS,
             },
           };
         }
@@ -841,39 +854,33 @@ class AdvancedSearchClassBase {
             subfieldsKey: field.name,
             dataObject: {
               type: 'time',
-              operators: DATE_FIELD_OPERATORS,
+              operators: RANGE_FIELD_OPERATORS,
             },
           };
         }
         case 'timeInterval': {
           return {
-            subfieldsKey: [field.name + `.start`, field.name + `.end`],
+            subfieldsKey: field.name + `.start`,
+            label: field.name,
             dataObject: {
-              type: 'text',
-              label: field.name,
+              type: 'number',
+              operators: RANGE_FIELD_OPERATORS,
             },
           };
         }
 
-        case 'table-cp': {
+        case 'timestamp':
+        case 'integer':
+        case 'number': {
           return {
-            subfieldsKey: field.name + '.first',
+            subfieldsKey: field.name,
             dataObject: {
-              type: 'text',
-              label: field.name,
-              valueSources: ['value'],
-              operators: TEXT_FIELD_OPERATORS,
+              type: 'number',
+              operators: RANGE_FIELD_OPERATORS,
             },
           };
         }
-        // case "timestamp":
-        // case "string":
-        // case "markdown":
-        // case "number":
-        // case "integer":
-        // case "email":
-        // case "enum":
-        // case "duration":
+
         default:
           return {
             subfieldsKey: field.name,
