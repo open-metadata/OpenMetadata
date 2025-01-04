@@ -1161,6 +1161,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     name = quoteFqn ? quoteName(name) : name;
     DeleteResponse<T> response = deleteInternalByName(updatedBy, name, recursive, hardDelete);
     postDelete(response.entity());
+    deleteFromSearch(response.entity(), hardDelete);
     return response;
   }
 
