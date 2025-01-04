@@ -17,6 +17,7 @@ Configure and schedule DB2 metadata and profiler workflows from the OpenMetadata
 
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
+- [Lineage](#lineage)
 - [Data Profiler](#data-profiler)
 - [Data Quality](#data-quality)
 - [dbt Integration](#dbt-integration)
@@ -121,6 +122,8 @@ This is a sample config for DB2:
 {% /codeInfo %}
 
 {% partial file="/v1.6/connectors/yaml/database/source-config-def.md" /%}
+
+{% partial file="/v1.6/connectors/yaml/lineage.md" variables={connector: "db2"} /%}
 
 {% partial file="/v1.6/connectors/yaml/ingestion-sink-def.md" /%}
 
