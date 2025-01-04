@@ -1157,6 +1157,21 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return response;
   }
 
+  @SuppressWarnings("unused")
+  @Transaction
+  public final DeleteResponse<T> deleteByNameIfExists(
+      String updatedBy, String name, boolean recursive, boolean hardDelete) {
+    name = quoteFqn ? quoteName(name) : name;
+    T entity = findByNameOrNull(name, ALL);
+    if (entity != null) {
+      DeleteResponse<T> response = deleteInternalByName(updatedBy, name, recursive, hardDelete);
+      postDelete(response.entity());
+      return response;
+    } else {
+      return new DeleteResponse<>(null, ENTITY_DELETED);
+    }
+  }
+
   @Transaction
   public final DeleteResponse<T> deleteByName(
       String updatedBy, String name, boolean recursive, boolean hardDelete) {
