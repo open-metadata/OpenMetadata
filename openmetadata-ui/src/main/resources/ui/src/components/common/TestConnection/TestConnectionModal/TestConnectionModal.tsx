@@ -34,7 +34,7 @@ interface TestConnectionModalProps {
   progress: number;
   isConnectionTimeout: boolean;
   onCancel: () => void;
-  onConfirm: () => void;
+  onStopConnection: () => void;
   onTestConnection: () => void;
 }
 
@@ -44,8 +44,8 @@ const TestConnectionModal: FC<TestConnectionModalProps> = ({
   isTestingConnection,
   testConnectionStep,
   testConnectionStepResult,
+  onStopConnection,
   onCancel,
-  onConfirm,
   isConnectionTimeout,
   onTestConnection,
 }) => {
@@ -72,8 +72,8 @@ const TestConnectionModal: FC<TestConnectionModalProps> = ({
       open={isOpen}
       title={t('label.connection-status')}
       width={748}
-      onCancel={onConfirm}
-      onOk={onCancel}>
+      onCancel={onCancel}
+      onOk={onStopConnection}>
       <Space
         className="p-x-md w-full overflow-hidden"
         direction="vertical"
