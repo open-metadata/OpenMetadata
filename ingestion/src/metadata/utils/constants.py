@@ -12,12 +12,17 @@
 """
 Define constants useful for the metadata ingestion
 """
+from metadata.generated.schema.entity.data.apiCollection import APICollection
+from metadata.generated.schema.entity.data.apiEndpoint import APIEndpoint
 from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.container import Container
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.dashboardDataModel import DashboardDataModel
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
+from metadata.generated.schema.entity.data.glossary import Glossary
+from metadata.generated.schema.entity.data.glossaryTerm import GlossaryTerm
+from metadata.generated.schema.entity.data.metric import Metric
 from metadata.generated.schema.entity.data.mlmodel import MlModel
 from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.data.searchIndex import SearchIndex
@@ -131,6 +136,8 @@ ENTITY_REFERENCE_CLASS_MAP = {
     "metadataService": MetadataService,
     "searchService": SearchService,
     # Data Asset Entities
+    "apiCollection": APICollection,
+    "apiEndpoint": APIEndpoint,
     "table": Table,
     "storedProcedure": StoredProcedure,
     "database": Database,
@@ -149,6 +156,10 @@ ENTITY_REFERENCE_CLASS_MAP = {
     # Domain
     "domain": Domain,
     "dataProduct": DataProduct,
+    # Governance
+    "metric": Metric,
+    "glossary": Glossary,
+    "glossaryTerm": GlossaryTerm,
 }
 
 ENTITY_REFERENCE_TYPE_MAP = {

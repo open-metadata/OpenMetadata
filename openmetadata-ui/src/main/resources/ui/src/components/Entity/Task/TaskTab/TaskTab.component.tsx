@@ -107,7 +107,6 @@ import InlineEdit from '../../../common/InlineEdit/InlineEdit.component';
 import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
 import EntityPopOverCard from '../../../common/PopOverCard/EntityPopOverCard';
 import RichTextEditor from '../../../common/RichTextEditor/RichTextEditor';
-import { EditorContentRef as MarkdownEditorContentRef } from '../../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor.interface';
 import TaskTabIncidentManagerHeader from '../TaskTabIncidentManagerHeader/TaskTabIncidentManagerHeader.component';
 import './task-tab.less';
 import { TaskTabProps } from './TaskTab.interface';
@@ -123,7 +122,6 @@ export const TaskTab = ({
   const history = useHistory();
   const [assigneesForm] = useForm();
   const { currentUser } = useApplicationStore();
-  const markdownRef = useRef<MarkdownEditorContentRef>();
   const updatedAssignees = Form.useWatch('assignees', assigneesForm);
   const { permissions } = usePermissionProvider();
   const { task: taskDetails } = taskThread;
@@ -431,8 +429,11 @@ export const TaskTab = ({
       onTaskResolve();
     }
     setTaskAction(
-      TASK_ACTION_LIST.find((action) => action.key === info.key) ??
-        TASK_ACTION_LIST[0]
+      [
+        ...TASK_ACTION_LIST,
+        ...GLOSSARY_TASK_ACTION_LIST,
+        ...INCIDENT_TASK_ACTION_LIST,
+      ].find((action) => action.key === info.key) ?? TASK_ACTION_LIST[0]
     );
   };
 
@@ -1012,12 +1013,10 @@ export const TaskTab = ({
               ]}
               trigger="onTextChange">
               <RichTextEditor
-                height="200px"
                 initialValue=""
                 placeHolder={t('message.write-your-text', {
                   text: t('label.comment'),
                 })}
-                ref={markdownRef}
               />
             </Form.Item>
           </Form>

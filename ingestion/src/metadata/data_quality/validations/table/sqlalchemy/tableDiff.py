@@ -25,7 +25,8 @@ from data_diff.diff_tables import DiffResultWrapper
 from data_diff.errors import DataDiffMismatchingKeyTypesError
 from data_diff.utils import ArithAlphanumeric, CaseInsensitiveDict
 from sqlalchemy import Column as SAColumn
-from sqlalchemy import create_engine, literal, select
+from sqlalchemy import literal, select
+from sqlalchemy.engine import make_url
 
 from metadata.data_quality.validations import utils
 from metadata.data_quality.validations.base_test_handler import BaseTestValidator
@@ -48,6 +49,7 @@ from metadata.generated.schema.tests.basic import (
     TestCaseStatus,
     TestResultValue,
 )
+from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.orm.converter.base import build_orm_col
 from metadata.profiler.orm.functions.md5 import MD5
 from metadata.profiler.orm.functions.substr import Substr
@@ -82,9 +84,9 @@ def build_sample_where_clause(
     reduced_concat = reduce(
         lambda c1, c2: c1.concat(c2), sql_alchemy_columns + [literal(salt)]
     )
-    sqa_dialect = create_engine(
+    sqa_dialect = make_url(
         f"{PythonDialects[table.database_service_type.name].value}://"
-    ).dialect
+    ).get_dialect()
     return str(
         select()
         .filter(
@@ -96,7 +98,7 @@ def build_sample_where_clause(
             < hex_nounce
         )
         .whereclause.compile(
-            dialect=sqa_dialect,
+            dialect=sqa_dialect(),
             compile_kwargs={"literal_binds": True},
         )
     )
@@ -430,7 +432,7 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
             self.runtime_params.table_profile_config.profileSampleType
             == ProfileSampleType.ROWS
         ):
-            row_count = self.get_row_count()
+            row_count = self.get_total_row_count()
             if row_count is None:
                 raise ValueError("Row count is required for ROWS profile sample type")
             return int(
@@ -634,5 +636,13 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
         )
 
     def get_row_count(self) -> Optional[int]:
-        self.runner._sample = None  # pylint: disable=protected-access
         return self._compute_row_count(self.runner, None)
+
+    def get_total_row_count(self) -> Optional[int]:
+        row_count = Metrics.ROW_COUNT()
+        try:
+            row = self.runner.select_first_from_table(row_count.fn())
+            return dict(row).get(Metrics.ROW_COUNT.name)
+        except Exception as e:
+            logger.error(f"Error getting row count: {e}")
+            return None

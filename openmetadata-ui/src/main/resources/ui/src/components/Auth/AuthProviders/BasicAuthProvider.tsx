@@ -12,7 +12,6 @@
  */
 
 import { AxiosError } from 'axios';
-import { JwtPayload } from 'jwt-decode';
 import React, { createContext, ReactNode, useContext, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
@@ -42,11 +41,6 @@ import { resetWebAnalyticSession } from '../../../utils/WebAnalyticsUtils';
 import { toLower } from 'lodash';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { OidcUser } from './AuthProvider.interface';
-
-export interface BasicAuthJWTPayload extends JwtPayload {
-  isBot?: false;
-  email?: string;
-}
 
 interface BasicAuthProps {
   children: ReactNode;
@@ -169,18 +163,7 @@ const BasicAuthProvider = ({
   };
 
   const handleForgotPassword = async (email: string) => {
-    try {
-      await generatePasswordResetLink(email);
-    } catch (err) {
-      if (
-        (err as AxiosError).response?.status ===
-        HTTP_STATUS_CODE.FAILED_DEPENDENCY
-      ) {
-        showErrorToast(t('server.forgot-password-email-error'));
-      } else {
-        showErrorToast(t('server.email-not-found'));
-      }
-    }
+    await generatePasswordResetLink(email);
   };
 
   const handleResetPassword = async (payload: PasswordResetRequest) => {

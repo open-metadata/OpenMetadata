@@ -61,7 +61,8 @@ function AddObservabilityPage() {
   const history = useHistory();
   const [form] = useForm<ModifiedCreateEventSubscription>();
   const { fqn } = useFqn();
-  const { setInlineAlertDetails, inlineAlertDetails } = useApplicationStore();
+  const { setInlineAlertDetails, inlineAlertDetails, currentUser } =
+    useApplicationStore();
 
   const [filterResources, setFilterResources] = useState<
     FilterResourceDescriptor[]
@@ -143,6 +144,7 @@ function AddObservabilityPage() {
           data,
           fqn,
           initialData,
+          currentUser,
           createAlertAPI: createObservabilityAlert,
           updateAlertAPI: updateObservabilityAlert,
           afterSaveAction: async (fqn: string) => {
@@ -157,7 +159,7 @@ function AddObservabilityPage() {
         setSaving(false);
       }
     },
-    [fqn, history, initialData]
+    [fqn, history, initialData, currentUser]
   );
 
   const [selectedTrigger] =
@@ -245,7 +247,6 @@ function AddObservabilityPage() {
                         valuePropName="initialValue">
                         <RichTextEditor
                           data-testid="description"
-                          height="200px"
                           initialValue=""
                         />
                       </Form.Item>

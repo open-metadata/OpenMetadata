@@ -50,11 +50,9 @@ def test_connection(
     of a metadata workflow or during an Automation Workflow
     """
 
-    job_id = int(service_connection.jobId) if service_connection.jobId else 0
-
     test_fn = {
         "GetJobs": client.test_get_jobs,
-        "GetRuns": partial(client.test_get_runs, job_id=job_id),
+        "GetRuns": partial(client.test_get_runs),
     }
 
     return test_connection_steps(
