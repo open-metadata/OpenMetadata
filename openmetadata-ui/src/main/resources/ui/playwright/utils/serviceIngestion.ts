@@ -129,7 +129,7 @@ export const testConnection = async (page: Page) => {
 
   await expect(modalTitle).toBeVisible();
 
-  await page.getByRole('button', { name: 'Stop' }).click();
+  await page.getByRole('button', { name: 'Cancel' }).click();
 
   // Wait for the success badge or the warning badge to appear
   const successBadge = page.locator('[data-testid="success-badge"]');

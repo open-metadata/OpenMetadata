@@ -249,7 +249,7 @@ const TestConnection: FC<TestConnectionProps> = ({
 
             resolve();
           } catch (error) {
-            reject(error);
+            reject(error as AxiosError);
           }
         }, FETCH_INTERVAL)
       );
