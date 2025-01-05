@@ -63,6 +63,7 @@ SUPPORTED_DIALECTS = [
     Dialects.Athena,
     Dialects.Redshift,
     Dialects.Postgres,
+    Dialects.Gaussdb,
     Dialects.MySQL,
     Dialects.MSSQL,
     Dialects.Oracle,

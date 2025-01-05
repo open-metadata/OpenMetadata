@@ -1,10 +1,10 @@
-from metadata.ingestion.source.database.postgres.lineage import PostgresLineageSource
-from metadata.ingestion.source.database.postgres.metadata import PostgresSource
-from metadata.ingestion.source.database.postgres.usage import PostgresUsageSource
+from metadata.ingestion.source.database.gaussdb.lineage import GaussdbLineageSource
+from metadata.ingestion.source.database.gaussdb.metadata import GaussdbSource
+from metadata.ingestion.source.database.gaussdb.usage import GaussdbUsageSource
 from metadata.utils.service_spec.default import DefaultDatabaseSpec
 
 ServiceSpec = DefaultDatabaseSpec(
-    metadata_source_class=PostgresSource,
-    lineage_source_class=PostgresLineageSource,
-    usage_source_class=PostgresUsageSource,
+    metadata_source_class=GaussdbSource,
+    lineage_source_class=GaussdbLineageSource,
+    usage_source_class=GaussdbUsageSource,
 )

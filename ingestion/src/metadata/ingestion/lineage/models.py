@@ -55,6 +55,9 @@ from metadata.generated.schema.entity.services.connections.database.oracleConnec
 from metadata.generated.schema.entity.services.connections.database.postgresConnection import (
     PostgresType,
 )
+from metadata.generated.schema.entity.services.connections.database.gaussdbConnection import (
+    GaussdbType,
+)
 from metadata.generated.schema.entity.services.connections.database.redshiftConnection import (
     RedshiftType,
 )
@@ -92,6 +95,7 @@ class Dialect(Enum):
     MYSQL = "mysql"
     ORACLE = "oracle"
     POSTGRES = "postgres"
+    GAUSSDB = "gaussdb"
     REDSHIFT = "redshift"
     SNOWFLAKE = "snowflake"
     SOQL = "soql"
@@ -113,6 +117,7 @@ MAP_CONNECTION_TYPE_DIALECT: Dict[str, Dialect] = {
     str(MySQLType.Mysql.value): Dialect.MYSQL,
     str(OracleType.Oracle.value): Dialect.ORACLE,
     str(PostgresType.Postgres.value): Dialect.POSTGRES,
+    str(GaussdbType.Gaussdb.value): Dialect.GAUSSDB,
     str(RedshiftType.Redshift.value): Dialect.REDSHIFT,
     str(SnowflakeType.Snowflake.value): Dialect.SNOWFLAKE,
     str(DeltaLakeType.DeltaLake.value): Dialect.SPARKSQL,

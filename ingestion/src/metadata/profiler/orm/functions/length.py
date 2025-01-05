@@ -56,6 +56,7 @@ def _(element, compiler, **kw):
 
 
 @compiles(LenFn, Dialects.Postgres)
+@compiles(LenFn, Dialects.Gaussdb)
 def _(element, compiler, **kw):
     return "LENGTH(CAST(%s AS text))" % compiler.process(element.clauses, **kw)
 
