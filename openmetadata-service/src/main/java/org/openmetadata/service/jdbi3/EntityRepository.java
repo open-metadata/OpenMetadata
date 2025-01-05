@@ -2840,6 +2840,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
         return;
       }
 
+      if (operation == Operation.PUT && updatedExtension == null) {
+        // Revert change to non-empty extension if it is being updated by a PUT request
+        // For PUT operations, existing extension can't be removed.
+        updated.setExtension(origExtension);
+        return;
+      }
+
       List<JsonNode> added = new ArrayList<>();
       List<JsonNode> deleted = new ArrayList<>();
       JsonNode origFields = JsonUtils.valueToTree(origExtension);
