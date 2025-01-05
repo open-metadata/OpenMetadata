@@ -16,6 +16,7 @@ import { Button, Tag } from 'antd';
 import classNames from 'classnames';
 import React, { Fragment, useCallback, useMemo } from 'react';
 import { EdgeProps, getBezierPath } from 'reactflow';
+import { ReactComponent as IconEditCircle } from '../../../assets/svg/ic-edit-circle.svg';
 import { ReactComponent as FunctionIcon } from '../../../assets/svg/ic-function.svg';
 import { ReactComponent as IconTimesCircle } from '../../../assets/svg/ic-times-circle.svg';
 import { ReactComponent as PipelineIcon } from '../../../assets/svg/pipeline-grey.svg';
@@ -314,13 +315,13 @@ export const CustomEdge = ({
   const getEditLineageIcon = useCallback(
     (
       dataTestId: string,
-      rotate: boolean,
       onClick:
         | ((
             event: React.MouseEvent<HTMLElement, MouseEvent>,
             data: CustomEdgeData
           ) => void)
-        | undefined
+        | undefined,
+      isPipeline?: boolean
     ) => {
       return (
         <LineageEdgeIcon offset={offset} x={edgeCenterX} y={edgeCenterY}>
@@ -331,13 +332,10 @@ export const CustomEdge = ({
               <Icon
                 alt="times-circle"
                 className="align-middle"
-                component={IconTimesCircle}
+                component={isPipeline ? IconEditCircle : IconTimesCircle}
                 style={{ fontSize: '16px' }}
               />
             }
-            style={{
-              transform: rotate ? 'rotate(45deg)' : 'none',
-            }}
             type="link"
             onClick={(event) => onClick?.(event, rest as CustomEdgeData)}
           />
@@ -377,11 +375,11 @@ export const CustomEdge = ({
         )}
       {isColumnLineageAllowed &&
         isSelectedEditMode &&
-        getEditLineageIcon('add-pipeline', true, onAddPipelineClick)}
+        getEditLineageIcon('add-pipeline', onAddPipelineClick, true)}
       {!isColumnLineageAllowed &&
         isSelectedEditMode &&
         isSelected &&
-        getEditLineageIcon('delete-button', false, onColumnEdgeRemove)}
+        getEditLineageIcon('delete-button', onColumnEdgeRemove)}
       {!isColumnLineageAllowed &&
         data.columnFunctionValue &&
         data.isExpanded &&
