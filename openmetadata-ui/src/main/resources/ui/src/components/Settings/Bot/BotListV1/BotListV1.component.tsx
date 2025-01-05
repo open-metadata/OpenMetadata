@@ -42,7 +42,7 @@ import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHol
 import FilterTablePlaceHolder from '../../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
 import NextPrevious from '../../../common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../../common/NextPrevious/NextPrevious.interface';
-import RichTextEditorPreviewer from '../../../common/RichTextEditor/RichTextEditorPreviewer';
+import RichTextEditorPreviewerV1 from '../../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import Searchbar from '../../../common/SearchBarComponent/SearchBar.component';
 import Table from '../../../common/Table/Table';
 import TitleBreadcrumb from '../../../common/TitleBreadcrumb/TitleBreadcrumb.component';
@@ -134,7 +134,7 @@ const BotListV1 = ({
         key: 'description',
         render: (_, record) =>
           record?.description ? (
-            <RichTextEditorPreviewer markdown={record?.description || ''} />
+            <RichTextEditorPreviewerV1 markdown={record?.description || ''} />
           ) : (
             <span data-testid="no-description">
               {t('label.no-entity', {

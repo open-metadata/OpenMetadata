@@ -17,7 +17,7 @@ import { useTranslation } from 'react-i18next';
 import { MAX_CHAR_LIMIT_ENTITY_SUMMARY } from '../../../../../constants/constants';
 import { getTagValue } from '../../../../../utils/CommonUtils';
 import { prepareConstraintIcon } from '../../../../../utils/TableUtils';
-import RichTextEditorPreviewer from '../../../../common/RichTextEditor/RichTextEditorPreviewer';
+import RichTextEditorPreviewerV1 from '../../../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import TagsViewer from '../../../../Tag/TagsViewer/TagsViewer';
 import { SummaryListItemProps } from './SummaryListItems.interface';
 
@@ -72,7 +72,7 @@ function SummaryListItem({
           <Col span={24}>
             <Paragraph className="text-grey-body m-y-0">
               {entityDetails.description ? (
-                <RichTextEditorPreviewer
+                <RichTextEditorPreviewerV1
                   markdown={entityDetails.description || ''}
                   maxLength={MAX_CHAR_LIMIT_ENTITY_SUMMARY}
                 />
