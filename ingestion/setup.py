@@ -180,7 +180,7 @@ plugins: Dict[str, Set[str]] = {
         VERSIONS["pymysql"],
         "psycopg2-binary",
         VERSIONS["geoalchemy2"],
-        "dagster_graphql>=1.9.0",
+        "dagster_graphql>=1.8.0",
     },
     "dbt": {
         "google-cloud",
