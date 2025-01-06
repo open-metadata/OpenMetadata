@@ -47,12 +47,6 @@ from metadata.generated.schema.entity.services.connections.database.deltaLakeCon
 from metadata.generated.schema.entity.services.connections.database.domoDatabaseConnection import (
     DomoDatabaseType,
 )
-from metadata.generated.schema.entity.services.connections.database.dorisConnection import (
-    DorisType,
-)
-from metadata.generated.schema.entity.services.connections.database.druidConnection import (
-    DruidType,
-)
 from metadata.generated.schema.entity.services.connections.database.dynamoDBConnection import (
     DynamoDBType,
 )
