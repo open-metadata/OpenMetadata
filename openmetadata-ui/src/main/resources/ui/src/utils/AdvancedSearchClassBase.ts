@@ -500,6 +500,17 @@ class AdvancedSearchClassBase {
         renderButton: isExplorePage
           ? renderAdvanceSearchButtons
           : renderQueryBuilderFilterButtons,
+
+        customFieldSelectProps: {
+          ...this.baseConfig.settings.customFieldSelectProps,
+          // Adding filterOption to search by label
+          // Since the default search behavior is by value which gives incorrect results
+          // Ex. for search term 'name', it will return 'Task' in results as well
+          //     since value for 'Task' is 'tasks.displayName.keyword'
+          filterOption: (input: string, option: { label: string }) => {
+            return option.label.toLowerCase().includes(input.toLowerCase());
+          },
+        },
       },
     };
 
