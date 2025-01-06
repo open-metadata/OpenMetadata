@@ -51,12 +51,6 @@ mock_cassandra_config = {
                 "username": "cassandra",
                 "authType": {"password": "cassandra"},
                 "hostPort": "localhost:9042",
-                "sslMode": "allow",
-                "sslConfig": {
-                    "caCertificate": "CA certificate content",
-                    "sslCertificate": "SSL certificate content",
-                    "sslKey": "SSL key content",
-                },
             },
         },
         "sourceConfig": {
