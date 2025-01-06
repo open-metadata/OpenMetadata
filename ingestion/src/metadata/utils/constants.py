@@ -74,9 +74,6 @@ from metadata.generated.schema.entity.services.connections.database.sapErpConnec
 from metadata.generated.schema.entity.services.connections.database.sasConnection import (
     SasType,
 )
-from metadata.generated.schema.entity.services.connections.database.unityCatalogConnection import (
-    DatabricksType,
-)
 from metadata.generated.schema.entity.services.dashboardService import DashboardService
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.messagingService import MessagingService
