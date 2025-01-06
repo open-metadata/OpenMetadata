@@ -17,6 +17,7 @@ import os
 import tempfile
 import traceback
 from functools import singledispatch, singledispatchmethod
+from ssl import CERT_REQUIRED, PROTOCOL_TLSv1_2, SSLContext
 from typing import Optional, Union, cast
 
 from pydantic import SecretStr
@@ -58,6 +59,7 @@ from metadata.generated.schema.entity.services.connections.pipeline.matillionCon
     MatillionConnection,
 )
 from metadata.generated.schema.security.ssl import verifySSLConfig
+from metadata.generated.schema.security.ssl.verifySSLConfig import SslMode
 from metadata.ingestion.connections.builders import init_empty_connection_arguments
 from metadata.ingestion.models.custom_pydantic import CustomSecretStr
 from metadata.ingestion.source.connections import get_connection
@@ -211,20 +213,20 @@ class SSLManager:
 
     @setup_ssl.register(CassandraConnection)
     def _(self, connection):
-        # Use the temporary file paths for SSL configuration
         connection = cast(CassandraConnection, connection)
-        ssl_args = {}
-        if connection.sslConfig.root.caCertificate:
-            ssl_args["ssl_ca"] = self.ca_file_path
-        if connection.sslConfig.root.sslCertificate:
-            ssl_args["ssl_cert"] = self.cert_file_path
-        if connection.sslConfig.root.sslKey:
-            ssl_args["ssl_key"] = self.key_file_path
+
+        if connection.sslMode != SslMode.disable:
+            ssl_context = SSLContext(PROTOCOL_TLSv1_2)
+            ssl_context.load_verify_locations(cafile=self.ca_file_path)
+            ssl_context.verify_mode = CERT_REQUIRED
+            ssl_context.load_cert_chain(
+                certfile=self.cert_file_path, keyfile=self.key_file_path
+            )
 
         connection.connectionArguments = (
             connection.connectionArguments or init_empty_connection_arguments()
         )
-        connection.connectionArguments.root["ssl_args"] = ssl_args
+        connection.connectionArguments.root["ssl_context"] = ssl_context
         return connection
 
 
@@ -316,9 +318,7 @@ def _(connection):
     ssl: Optional[verifySSLConfig.SslConfig] = service_connection.sslConfig
     if ssl and (ssl.root.caCertificate or ssl.root.sslCertificate or ssl.root.sslKey):
         return SSLManager(
-            ca=ssl.root.caCertificate,
-            cert=ssl.root.sslCertificate,
-            key=ssl.root.sslKey,
+            ca=ssl.root.caCertificate, cert=ssl.root.sslCertificate, key=ssl.root.sslKey
         )
     return None
 

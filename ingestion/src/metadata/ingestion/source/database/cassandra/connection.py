@@ -13,7 +13,6 @@
 Source connection handler
 """
 from functools import partial
-from ssl import CERT_REQUIRED, PROTOCOL_TLS, SSLContext
 from typing import Optional
 
 from cassandra.auth import PlainTextAuthProvider
@@ -35,7 +34,6 @@ from metadata.generated.schema.entity.services.connections.database.cassandraCon
 from metadata.generated.schema.entity.services.connections.testConnectionResult import (
     TestConnectionResult,
 )
-from metadata.generated.schema.security.ssl.verifySSLConfig import SslMode
 from metadata.ingestion.connections.test_connections import test_connection_steps
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.cassandra.queries import (
@@ -79,17 +77,10 @@ def get_connection(connection: CassandraConnection):
                 password=connection.authType.password.get_secret_value(),
             )
 
-    ssl_context = None
-    if connection.sslMode != SslMode.disable:
-        ssl_args = connection.connectionArguments.root["ssl_args"]
-        ssl_context = SSLContext(PROTOCOL_TLS)
-        ssl_context.load_verify_locations(cafile=ssl_args["ssl_ca"])
-        ssl_context.verify_mode = CERT_REQUIRED
-        ssl_context.load_cert_chain(
-            certfile=ssl_args["ssl_cert"], keyfile=ssl_args["ssl_key"]
-        )
-
-    cluster = Cluster(**cluster_config, ssl_context=ssl_context)
+    cluster = Cluster(
+        **cluster_config,
+        ssl_context=connection.connectionArguments.root.get("ssl_context"),
+    )
     session = cluster.connect()
 
     return session
