@@ -171,8 +171,6 @@ NON_SQA_DATABASE_CONNECTIONS = (
     CouchbaseType.Couchbase.value,
     DeltaLakeType.DeltaLake.value,
     DomoDatabaseType.DomoDatabase.value,
-    DorisType.Doris.value,
-    DruidType.Druid.value,
     DynamoDBType.DynamoDB.value,
     GlueType.Glue.value,
     IcebergType.Iceberg.value,
