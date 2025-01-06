@@ -24,7 +24,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useLocation, useParams } from 'react-router-dom';
+import { useHistory, useParams } from 'react-router-dom';
 import { useActivityFeedProvider } from '../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import ActivityThreadPanel from '../../components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
@@ -94,6 +94,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   const { t } = useTranslation();
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const pagingInfo = usePaging(PAGE_SIZE);
+  const { storeCursor, getStoredCursor } = usePaging();
 
   const {
     paging,
@@ -107,12 +108,6 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     useParams<{ tab: EntityTabs }>();
   const { fqn: decodedDatabaseSchemaFQN } = useFqn();
   const history = useHistory();
-  const location = useLocation<{
-    cursorType?: CursorType;
-    cursorValue: string;
-    currentPage: number;
-  }>();
-  const currentPath = window.location.pathname;
 
   const [threadType, setThreadType] = useState<ThreadType>(
     ThreadType.Conversation
@@ -468,18 +463,15 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     ({ cursorType, currentPage }: PagingHandlerParams) => {
       if (cursorType) {
         getSchemaTables({ [cursorType]: paging[cursorType] });
+        storeCursor({
+          cursorType: cursorType,
+          cursorValue: paging[cursorType as CursorType]!,
+          currentPage: currentPage,
+        });
       }
       handlePageChange(currentPage);
-      history.push({
-        pathname: currentPath,
-        state: {
-          cursorType: cursorType,
-          cursorValue: paging[cursorType as CursorType],
-          currentPage: currentPage,
-        },
-      });
     },
-    [paging, getSchemaTables]
+    [paging, getSchemaTables, storeCursor, handlePageChange]
   );
 
   const versionHandler = useCallback(() => {
@@ -535,17 +527,15 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   }, [viewDatabaseSchemaPermission]);
 
   useEffect(() => {
-    const cursorType = location?.state?.cursorType || null;
-    const cursorValue = location?.state?.cursorValue || null;
-    const currentPage = location?.state?.currentPage || null;
+    const cursorState = getStoredCursor();
     if (viewDatabaseSchemaPermission && decodedDatabaseSchemaFQN) {
-      if (cursorType) {
+      if (cursorState.cursorType) {
         // Fetch data if cursorType is present in state with cursor Value to handle browser back navigation
         getSchemaTables({
-          [cursorType]: cursorValue,
+          [cursorState.cursorType]: cursorState.cursorValue,
           limit: pageSize,
         });
-        handlePageChange(currentPage as number);
+        handlePageChange(cursorState.currentPage as number);
       } else {
         // Otherwise, just fetch the data without cursor value
         getSchemaTables({ limit: pageSize });

@@ -17,12 +17,20 @@ import {
   useMemo,
   useState,
 } from 'react';
+import { useHistory, useLocation } from 'react-router-dom';
 import {
   INITIAL_PAGING_VALUE,
   PAGE_SIZE_BASE,
   pagingObject,
 } from '../../constants/constants';
+import { CursorType } from '../../enums/pagination.enum';
 import { Paging } from '../../generated/type/paging';
+
+interface CursorState {
+  cursorType: CursorType | null;
+  cursorValue: string | null;
+  currentPage: number | null;
+}
 
 export interface UsePagingInterface {
   paging: Paging;
@@ -32,6 +40,12 @@ export interface UsePagingInterface {
   pageSize: number;
   handlePageSizeChange: (page: number) => void;
   showPagination: boolean;
+  storeCursor: (params: {
+    cursorType: CursorType | null;
+    cursorValue: string | null;
+    currentPage: number | null;
+  }) => void;
+  getStoredCursor: () => CursorState;
 }
 
 export const usePaging = (
@@ -40,6 +54,8 @@ export const usePaging = (
   const [paging, setPaging] = useState<Paging>(pagingObject);
   const [currentPage, setCurrentPage] = useState<number>(INITIAL_PAGING_VALUE);
   const [pageSize, setPageSize] = useState(defaultPageSize);
+  const history = useHistory();
+  const location = useLocation();
 
   const handlePageSize = useCallback(
     (page: number) => {
@@ -53,6 +69,39 @@ export const usePaging = (
     return paging.total > pageSize || pageSize !== defaultPageSize;
   }, [defaultPageSize, paging, pageSize]);
 
+  const storeCursor = useCallback(
+    ({
+      cursorType,
+      cursorValue,
+      currentPage,
+    }: {
+      cursorType: CursorType | null;
+      cursorValue: string | null;
+      currentPage: number | null;
+    }) => {
+      history.replace({
+        state: {
+          cursorType,
+          cursorValue,
+          currentPage,
+        },
+      });
+    },
+    []
+  );
+
+  const getStoredCursor = () => {
+    const cursorState = location.state as CursorState | undefined;
+
+    return cursorState
+      ? {
+          cursorType: cursorState.cursorType || null,
+          cursorValue: cursorState.cursorValue || null,
+          currentPage: cursorState.currentPage || null,
+        }
+      : { cursorType: null, cursorValue: null, currentPage: null };
+  };
+
   return {
     paging,
     handlePagingChange: setPaging,
@@ -61,5 +110,7 @@ export const usePaging = (
     pageSize,
     handlePageSizeChange: handlePageSize,
     showPagination: paginationVisible,
+    storeCursor,
+    getStoredCursor,
   };
 };
