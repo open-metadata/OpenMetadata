@@ -69,3 +69,14 @@ After the applying these steps, the users in your realm are able to login in the
 {% note %}
 A dockerized demo for showing how this SSO works with OpenMetadata can be found [here](https://github.com/open-metadata/openmetadata-demo/tree/main/keycloak-sso).
 {% /note %}
+
+
+{% inlineCalloutContainer %}
+  {% inlineCallout
+    color="violet-70"
+    icon="MdArrowBack"
+    bold="KeyCloak"
+    href="/deployment/security/keycloak" %}
+    Go to KeyCloak Configuration
+  {% /inlineCallout %}
+{% /inlineCalloutContainer %}

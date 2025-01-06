@@ -287,9 +287,7 @@ For IAM authentication, it is recommended to select the `allow` mode or another 
             caCertificate: "/path/to/ca/certificate" 
 ```
 
-## Lineage
-
-You can learn more about how to ingest lineage [here](/connectors/ingestion/workflows/lineage).
+{% partial file="/v1.6/connectors/yaml/lineage.md" variables={connector: "greenplum"} /%}
 
 ## dbt Integration
 
