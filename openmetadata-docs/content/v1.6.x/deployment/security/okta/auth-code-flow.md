@@ -106,3 +106,39 @@ The Issuer URL shows up as Dynamic by default. Change the Issuer URL to Okta URL
 {% image src="/images/v1.6/deployment/security/okta/click-edit-token.png" alt="click-edit-token" /%}
 
 
+After the applying these steps, you can update the configuration of your deployment:
+
+{% inlineCalloutContainer %}
+  {% inlineCallout
+    color="violet-70"
+    icon="celebration"
+    bold="Docker Security"
+    href="/deployment/security/okta/docker" %}
+    Configure OKTA SSO for your Docker Deployment.
+  {% /inlineCallout %}
+  {% inlineCallout
+    color="violet-70"
+    icon="storage"
+    bold="Bare Metal Security"
+    href="/deployment/security/okta/bare-metal" %}
+    Configure OKTA SSO for your Bare Metal Deployment.
+  {% /inlineCallout %}
+  {% inlineCallout
+    color="violet-70"
+    icon="fit_screen"
+    bold="Kubernetes Security"
+    href="/deployment/security/okta/kubernetes" %}
+    Configure OKTA SSO for your Kubernetes Deployment.
+  {% /inlineCallout %}
+{% /inlineCalloutContainer %}
+
+
+{% inlineCalloutContainer %}
+  {% inlineCallout
+    color="violet-70"
+    icon="MdArrowBack"
+    bold="OKTA"
+    href="/deployment/security/okta" %}
+    Go to okta Configuration
+  {% /inlineCallout %}
+{% /inlineCalloutContainer %}
