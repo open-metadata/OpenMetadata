@@ -661,6 +661,6 @@ public final class Entity {
     if (ENTITY_SERVICE_TYPE_MAP.containsKey(entityType)) {
       return ENTITY_SERVICE_TYPE_MAP.get(entityType);
     }
-    return entityType; 
+    return entityType;
   }
 }
