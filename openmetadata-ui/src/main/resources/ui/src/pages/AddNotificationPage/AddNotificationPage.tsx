@@ -33,6 +33,7 @@ import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/Error
 import InlineAlert from '../../components/common/InlineAlert/InlineAlert';
 import Loader from '../../components/common/Loader/Loader';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
+import RichTextEditor from '../../components/common/RichTextEditor/RichTextEditor';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { ROUTES, VALIDATION_MESSAGES } from '../../constants/constants';
 import { NAME_FIELD_RULES } from '../../constants/Form.constants';
@@ -48,7 +49,6 @@ import {
 import { FilterResourceDescriptor } from '../../generated/events/filterResourceDescriptor';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
-import { FieldProp, FieldTypes } from '../../interface/FormUtils.interface';
 import {
   createNotificationAlert,
   getAlertsFromName,
@@ -60,7 +60,6 @@ import {
   handleAlertSave,
 } from '../../utils/Alerts/AlertsUtil';
 import { getEntityName } from '../../utils/EntityUtils';
-import { getField } from '../../utils/formUtils';
 import {
   getNotificationAlertDetailsPath,
   getSettingPath,
@@ -202,24 +201,6 @@ const AddNotificationPage = () => {
     [selectedTrigger, supportedFilters]
   );
 
-  const descriptionField: FieldProp = useMemo(
-    () => ({
-      name: 'description',
-      required: false,
-      label: t('label.description'),
-      id: 'root/description',
-      type: FieldTypes.DESCRIPTION,
-      formItemProps: {
-        labelCol: { span: 24 },
-      },
-      props: {
-        'data-testid': 'description',
-        initialValue: '',
-      },
-    }),
-    []
-  );
-
   if (loadingCount > 0) {
     return <Loader />;
   }
@@ -283,7 +264,15 @@ const AddNotificationPage = () => {
                           <Input placeholder={t('label.name')} />
                         </Form.Item>
                       </Col>
-                      <Col span={24}>{getField(descriptionField)}</Col>
+                      <Col span={24}>
+                        <Form.Item
+                          label={t('label.description')}
+                          labelCol={{ span: 24 }}
+                          name="description"
+                          trigger="onTextChange">
+                          <RichTextEditor data-testid="description" />
+                        </Form.Item>
+                      </Col>
                       <Col span={24}>
                         <Row justify="center">
                           <Col span={24}>
