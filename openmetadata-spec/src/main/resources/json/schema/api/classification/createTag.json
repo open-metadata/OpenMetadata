@@ -45,6 +45,11 @@
       "type" : "boolean",
       "default" : "false"
     },
+    "owners": {
+      "description": "Owners of this tag.",
+      "$ref": "../../type/entityReferenceList.json",
+      "default": null
+    },
     "domain" : {
       "description": "Fully qualified name of the domain the Table belongs to.",
       "type": "string"

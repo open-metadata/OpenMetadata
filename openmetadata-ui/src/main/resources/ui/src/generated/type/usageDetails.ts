@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * This schema defines the type for usage details. Daily, weekly, and monthly aggregation of
  * usage is computed along with the percentile rank based on the usage for a given day.
  */

@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * OpenMetadata Ingestion Framework definition.
  */
 export interface Workflow {
@@ -158,7 +156,7 @@ export interface ServiceConnection {
  *
  * Lightdash Connection Config
  *
- * MicroStrategy Connection Config
+ * Mstr Connection Config
  *
  * Qlik Cloud Connection Config
  *
@@ -421,8 +419,6 @@ export interface ConfigClass {
      *
      * Address for your running Lightdash instance
      *
-     * Host and Port of the MicroStrategy instance.
-     *
      * Host and Port of the Qlik Cloud instance.
      *
      * Sigma API url.
@@ -467,8 +463,7 @@ export interface ConfigClass {
      *
      * Host and port of the PinotDB Broker service.
      *
-     * Host and port of the MongoDB service when using the `mongodb` connection scheme. Only
-     * host when using the `mongodb+srv` scheme.
+     * Host and port of the MongoDB service.
      *
      * Host and port of the Doris service.
      *
@@ -507,7 +502,7 @@ export interface ConfigClass {
      *
      * Password to connect to PowerBI report server.
      *
-     * Password to connect to MicroStrategy.
+     * Password to connect to MSTR.
      *
      * Password to connect to AzureSQL.
      *
@@ -574,8 +569,8 @@ export interface ConfigClass {
      *
      * Username for Redash
      *
-     * Username to connect to MicroStrategy. This user should have privileges to read all the
-     * metadata in MicroStrategy.
+     * Username to connect to MSTR. This user should have privileges to read all the metadata in
+     * MSTR.
      *
      * Username to connect to AzureSQL. This user should have privileges to read the metadata.
      *
@@ -739,7 +734,7 @@ export interface ConfigClass {
      *
      * Types of methods used to authenticate to the alation instance
      */
-    authType?: AuthenticationTypeForTableau | NoConfigAuthenticationTypes;
+    authType?: Auth;
     /**
      * Tableau Environment Name.
      */
@@ -854,14 +849,7 @@ export interface ConfigClass {
      */
     spaceUUID?: string;
     /**
-     * Login Mode for Microstrategy's REST API connection. You can authenticate with one of the
-     * following authentication modes: `Standard (1)`, `Anonymous (8)`. Default will be
-     * `Standard (1)`. If you're using demo account for Microstrategy, it will be needed to
-     * authenticate through loginMode `8`.
-     */
-    loginMode?: string;
-    /**
-     * MicroStrategy Project Name
+     * MSTR Project Name
      *
      * Project name to create the refreshToken. Can be anything
      */
@@ -1534,13 +1522,9 @@ export interface ConfigClass {
      */
     discoveryAPI?: string;
     /**
-     * List of IDs of your DBT cloud jobs seperated by comma `,`
+     * ID of your DBT cloud job
      */
-    jobIds?: string[];
-    /**
-     * List of IDs of your DBT cloud projects seperated by comma `,`
-     */
-    projectIds?: string[];
+    jobId?: string;
     /**
      * The name of your azure data factory.
      */
@@ -1680,7 +1664,7 @@ export enum AuthProvider {
  *
  * SSL Certificates By Path
  */
-export interface AuthenticationTypeForTableau {
+export interface Auth {
     /**
      * Password to access the service.
      *
@@ -1805,13 +1789,6 @@ export interface AzureCredentials {
      * Key Vault Name
      */
     vaultName?: string;
-}
-
-/**
- * Database Authentication types not requiring config.
- */
-export enum NoConfigAuthenticationTypes {
-    OAuth2 = "OAuth2",
 }
 
 export interface AuthenticationModeObject {
@@ -2532,7 +2509,8 @@ export interface ConnectionObject {
      * restrict the metadata reading to a single schema. When left blank, OpenMetadata Ingestion
      * attempts to scan all the schemas.
      */
-    databaseSchema?: string;
+    databaseSchema?:                string;
+    supportsViewLineageExtraction?: boolean;
     /**
      * HDB Store User Key generated from the command `hdbuserstore SET <KEY> <host:port>
      * <USERNAME> <PASSWORD>`
@@ -2541,8 +2519,7 @@ export interface ConnectionObject {
     /**
      * How to run the SQLite database. :memory: by default.
      */
-    databaseMode?:                  string;
-    supportsViewLineageExtraction?: boolean;
+    databaseMode?: string;
     [property: string]: any;
 }
 
@@ -2930,7 +2907,8 @@ export interface HiveMetastoreConnectionDetails {
      * restrict the metadata reading to a single schema. When left blank, OpenMetadata Ingestion
      * attempts to scan all the schemas.
      */
-    databaseSchema?: string;
+    databaseSchema?:                string;
+    supportsViewLineageExtraction?: boolean;
 }
 
 /**
@@ -3295,7 +3273,7 @@ export enum TransactionMode {
  *
  * Lightdash service type
  *
- * MicroStrategy service type
+ * Mstr service type
  *
  * Qlik Cloud service type
  *
@@ -3392,11 +3370,11 @@ export enum RESTType {
     Matillion = "Matillion",
     Metabase = "Metabase",
     MetadataES = "MetadataES",
-    MicroStrategy = "MicroStrategy",
     Mlflow = "Mlflow",
     Mode = "Mode",
     MongoDB = "MongoDB",
     Mssql = "Mssql",
+    Mstr = "Mstr",
     Mysql = "Mysql",
     Nifi = "Nifi",
     OpenLineage = "OpenLineage",
@@ -3458,8 +3436,6 @@ export interface SourceConfig {
  * MessagingService Metadata Pipeline Configuration.
  *
  * DatabaseService Profiler Pipeline Configuration.
- *
- * DatabaseService AutoClassification & Auto Classification Pipeline Configuration.
  *
  * PipelineService Metadata Pipeline Configuration.
  *
@@ -3665,6 +3641,9 @@ export interface Pipeline {
     projectFilterPattern?: FilterPattern;
     /**
      * Option to turn on/off generating sample data during metadata extraction.
+     *
+     * Option to turn on/off generating sample data. If enabled, profiler will ingest sample
+     * data for each table.
      */
     generateSampleData?: boolean;
     /**
@@ -3697,6 +3676,17 @@ export interface Pipeline {
      */
     computeTableMetrics?: boolean;
     /**
+     * Set the Confidence value for which you want the column to be tagged as PII. Confidence
+     * value ranges from 0 to 100. A higher number will yield less false positives but more
+     * false negatives. A lower number will yield more false positives but less false negatives.
+     */
+    confidence?: number;
+    /**
+     * Optional configuration to automatically tag columns that might contain sensitive
+     * information
+     */
+    processPiiSensitive?: boolean;
+    /**
      * Percentage of data or no. of rows used to compute the profiler metrics and run data
      * quality tests
      *
@@ -3724,22 +3714,6 @@ export interface Pipeline {
      * be found in the documentation: https://docs.openmetadata.org/latest/profler
      */
     useStatistics?: boolean;
-    /**
-     * Set the Confidence value for which you want the column to be tagged as PII. Confidence
-     * value ranges from 0 to 100. A higher number will yield less false positives but more
-     * false negatives. A lower number will yield more false positives but less false negatives.
-     */
-    confidence?: number;
-    /**
-     * Optional configuration to automatically tag columns that might contain sensitive
-     * information
-     */
-    enableAutoClassification?: boolean;
-    /**
-     * Option to turn on/off storing sample data. If enabled, we will ingest sample data for
-     * each table.
-     */
-    storeSampleData?: boolean;
     /**
      * Optional configuration to turn off fetching lineage from pipelines.
      */
@@ -3780,10 +3754,6 @@ export interface Pipeline {
      */
     markDeletedContainers?:       boolean;
     storageMetadataConfigSource?: StorageMetadataConfigurationSource;
-    /**
-     * Enable the 'Include Index Template' toggle to manage the ingestion of index template data.
-     */
-    includeIndexTemplate?: boolean;
     /**
      * Optional configuration to turn off fetching sample data for search index.
      */
@@ -3935,8 +3905,6 @@ export interface FilterPattern {
  * in the backend.
  *
  * Search Indexing App.
- *
- * This schema defines the Slack App Token Configuration
  */
 export interface CollateAIAppConfig {
     /**
@@ -4010,10 +3978,6 @@ export interface CollateAIAppConfig {
      */
     producerThreads?: number;
     /**
-     * Queue Size to user internally for reindexing.
-     */
-    queueSize?: number;
-    /**
      * This schema publisher run modes.
      */
     recreateIndex?: boolean;
@@ -4021,14 +3985,6 @@ export interface CollateAIAppConfig {
      * Recreate Indexes with updated Language
      */
     searchIndexMappingLanguage?: SearchIndexMappingLanguage;
-    /**
-     * Bot Token
-     */
-    botToken?: string;
-    /**
-     * User Token
-     */
-    userToken?: string;
 }
 
 /**
@@ -4479,10 +4435,6 @@ export interface DBTConfigurationSource {
      */
     dbtRunResultsFilePath?: string;
     /**
-     * DBT sources file path to extract the freshness test result.
-     */
-    dbtSourcesFilePath?: string;
-    /**
      * DBT catalog http file path to extract dbt models with their column schemas.
      */
     dbtCatalogHttpPath?: string;
@@ -4494,10 +4446,6 @@ export interface DBTConfigurationSource {
      * DBT run results http file path to extract the test results information.
      */
     dbtRunResultsHttpPath?: string;
-    /**
-     * DBT sources http file path to extract freshness test results information.
-     */
-    dbtSourcesHttpPath?: string;
     /**
      * Details of the bucket where the dbt files are stored
      */
@@ -4654,7 +4602,6 @@ export interface StorageMetadataBucketDetails {
 export enum ConfigType {
     APIMetadata = "ApiMetadata",
     Application = "Application",
-    AutoClassification = "AutoClassification",
     DashboardMetadata = "DashboardMetadata",
     DataInsight = "dataInsight",
     DatabaseLineage = "DatabaseLineage",

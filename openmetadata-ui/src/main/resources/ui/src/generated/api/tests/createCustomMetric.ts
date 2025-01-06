@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * Custom Metric definition that we will associate with a column.
  */
 export interface CreateCustomMetric {

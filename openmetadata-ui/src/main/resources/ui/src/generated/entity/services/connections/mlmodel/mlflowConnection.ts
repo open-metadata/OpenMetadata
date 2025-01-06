@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * MlFlow Connection Config
  */
 export interface MlflowConnection {
