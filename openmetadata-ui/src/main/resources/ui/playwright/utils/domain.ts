@@ -10,8 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page } from '@playwright/test';
+import test, { expect, Page } from '@playwright/test';
 import { get, isEmpty, isUndefined } from 'lodash';
+import { SidebarItem } from '../constant/sidebar';
 import { DataProduct } from '../support/domain/DataProduct';
 import { Domain } from '../support/domain/Domain';
 import { SubDomain } from '../support/domain/SubDomain';
@@ -27,8 +28,10 @@ import {
   INVALID_NAMES,
   NAME_MAX_LENGTH_VALIDATION_ERROR,
   NAME_VALIDATION_ERROR,
+  redirectToHomePage,
 } from './common';
 import { addOwner } from './entity';
+import { sidebarClick } from './sidebar';
 
 export const assignDomain = async (page: Page, domain: Domain['data']) => {
   await page.getByTestId('add-domain').click();
@@ -119,7 +122,20 @@ export const selectSubDomain = async (
     .click();
 
   await page.getByTestId('subdomains').getByText('Sub Domains').click();
+  const res = page.waitForResponse('/api/v1/domains/name/*');
   await page.getByTestId(subDomain.name).click();
+  await res;
+};
+
+export const selectDataProductFromTab = async (
+  page: Page,
+  dataProduct: DataProduct['data']
+) => {
+  await page.getByText('Data Products').click();
+  await page
+    .getByTestId(`explore-card-${dataProduct.name}`)
+    .getByTestId('entity-link')
+    .click();
 };
 
 export const selectDataProduct = async (
@@ -132,11 +148,7 @@ export const selectDataProduct = async (
     .locator('span')
     .click();
 
-  await page.getByText('Data Products').click();
-  await page
-    .getByTestId(`explore-card-${dataProduct.name}`)
-    .getByTestId('entity-link')
-    .click();
+  await selectDataProductFromTab(page, dataProduct);
 };
 
 const goToAssetsTab = async (page: Page, domain: Domain['data']) => {
@@ -280,10 +292,13 @@ export const createSubDomain = async (
 
 export const addAssetsToDomain = async (
   page: Page,
-  domain: Domain['data'],
-  assets: EntityClass[]
+  domain: Domain,
+  assets: EntityClass[],
+  navigateToAssetsTab = true
 ) => {
-  await goToAssetsTab(page, domain);
+  if (navigateToAssetsTab) {
+    await goToAssetsTab(page, domain.data);
+  }
   await checkAssetsCount(page, 0);
 
   await expect(page.getByTestId('no-data-placeholder')).toContainText(
@@ -309,11 +324,7 @@ export const addAssetsToDomain = async (
     await page.locator(`[data-testid="table-data-card_${fqn}"] input`).check();
   }
 
-  const assetsAddRes = page.waitForResponse(
-    `/api/v1/domains/${encodeURIComponent(
-      domain.fullyQualifiedName ?? ''
-    )}/assets/add`
-  );
+  const assetsAddRes = page.waitForResponse(`/api/v1/domains/*/assets/add`);
   await page.getByTestId('save-btn').click();
   await assetsAddRes;
 
@@ -357,7 +368,7 @@ export const addServicesToDomain = async (
 
 export const addAssetsToDataProduct = async (
   page: Page,
-  dataProduct: DataProduct['data'],
+  dataProductFqn: string,
   assets: EntityClass[]
 ) => {
   await page.getByTestId('assets').click();
@@ -384,7 +395,7 @@ export const addAssetsToDataProduct = async (
 
   const assetsAddRes = page.waitForResponse(
     `/api/v1/dataProducts/${encodeURIComponent(
-      dataProduct.fullyQualifiedName ?? ''
+      dataProductFqn ?? ''
     )}/assets/add`
   );
   await page.getByTestId('save-btn').click();
@@ -457,4 +468,90 @@ export const createDataProduct = async (
   const saveRes = page.waitForResponse('/api/v1/dataProducts');
   await page.getByTestId('save-data-product').click();
   await saveRes;
+};
+
+export const verifyDataProductAssetsAfterDelete = async (
+  page: Page,
+  {
+    domain,
+    dataProduct1,
+    dataProduct2,
+    assets,
+    subDomain,
+  }: {
+    domain: Domain;
+    dataProduct1: DataProduct;
+    dataProduct2: DataProduct;
+    assets: EntityClass[];
+    subDomain?: SubDomain;
+  }
+) => {
+  const { apiContext } = await getApiContext(page);
+  const newDataProduct1 = new DataProduct(domain, 'PW_DataProduct_Sales');
+
+  await test.step('Add assets to DataProduct Sales', async () => {
+    await redirectToHomePage(page);
+    await sidebarClick(page, SidebarItem.DOMAIN);
+    if (subDomain) {
+      await selectSubDomain(page, domain.data, subDomain.data);
+      await selectDataProductFromTab(page, dataProduct1.data);
+    } else {
+      await selectDataProduct(page, domain.data, dataProduct1.data);
+    }
+    await addAssetsToDataProduct(
+      page,
+      dataProduct1.responseData.fullyQualifiedName ?? '',
+      assets.slice(0, 2)
+    );
+  });
+
+  await test.step('Add assets to DataProduct Finance', async () => {
+    await redirectToHomePage(page);
+    await sidebarClick(page, SidebarItem.DOMAIN);
+    if (subDomain) {
+      await selectSubDomain(page, domain.data, subDomain.data);
+      await selectDataProductFromTab(page, dataProduct2.data);
+    } else {
+      await selectDataProduct(page, domain.data, dataProduct2.data);
+    }
+    await addAssetsToDataProduct(
+      page,
+      dataProduct2.responseData.fullyQualifiedName ?? '',
+      [assets[2]]
+    );
+  });
+
+  await test.step(
+    'Remove Data Product Sales and Create the same again',
+    async () => {
+      // Remove sales data product
+      await dataProduct1.delete(apiContext);
+
+      // Create sales data product again
+      await redirectToHomePage(page);
+      await sidebarClick(page, SidebarItem.DOMAIN);
+      if (subDomain) {
+        await selectSubDomain(page, domain.data, subDomain.data);
+      } else {
+        await selectDomain(page, domain.data);
+      }
+
+      await createDataProduct(page, newDataProduct1.data);
+    }
+  );
+
+  await test.step(
+    'Verify assets are not present in the newly created data product',
+    async () => {
+      await redirectToHomePage(page);
+      await sidebarClick(page, SidebarItem.DOMAIN);
+      if (subDomain) {
+        await selectSubDomain(page, domain.data, subDomain.data);
+        await selectDataProductFromTab(page, newDataProduct1.data);
+      } else {
+        await selectDataProduct(page, domain.data, newDataProduct1.data);
+      }
+      await checkAssetsCount(page, 0);
+    }
+  );
 };
