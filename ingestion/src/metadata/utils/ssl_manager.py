@@ -17,7 +17,7 @@ import os
 import tempfile
 import traceback
 from functools import singledispatch, singledispatchmethod
-from ssl import CERT_REQUIRED, PROTOCOL_TLSv1_2, SSLContext
+from ssl import CERT_REQUIRED, SSLContext
 from typing import Optional, Union, cast
 
 from pydantic import SecretStr
@@ -217,7 +217,7 @@ class SSLManager:
 
         ssl_context = None
         if connection.sslMode != SslMode.disable:
-            ssl_context = SSLContext(PROTOCOL_TLSv1_2)
+            ssl_context = SSLContext()
             ssl_context.load_verify_locations(cafile=self.ca_file_path)
             ssl_context.verify_mode = CERT_REQUIRED
             ssl_context.load_cert_chain(
