@@ -85,8 +85,6 @@ This is a sample config for Druid:
 
 {% partial file="/v1.7/connectors/yaml/database/source-config-def.md" /%}
 
-{% partial file="/v1.6/connectors/yaml/lineage.md" variables={connector: "druid"} /%}
-
 {% partial file="/v1.7/connectors/yaml/ingestion-sink-def.md" /%}
 
 {% partial file="/v1.7/connectors/yaml/workflow-config-def.md" /%}
@@ -153,6 +151,8 @@ source:
 
 
 {% partial file="/v1.7/connectors/yaml/ingestion-cli.md" /%}
+
+{% partial file="/v1.7/connectors/yaml/lineage.md" variables={connector: "druid"} /%}
 
 {% partial file="/v1.7/connectors/yaml/data-profiler.md" variables={connector: "druid"} /%}
 

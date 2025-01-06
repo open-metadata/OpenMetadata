@@ -195,8 +195,6 @@ source:
 
 {% partial file="/v1.7/connectors/yaml/ingestion-sink.md" /%}
 
-{% partial file="/v1.6/connectors/yaml/lineage.md" variables={connector: "azuresql"} /%}
-
 {% partial file="/v1.7/connectors/yaml/workflow-config.md" /%}
 
 {% /codeBlock %}
@@ -204,6 +202,8 @@ source:
 {% /codePreview %}
 
 {% partial file="/v1.7/connectors/yaml/ingestion-cli.md" /%}
+
+{% partial file="/v1.7/connectors/yaml/lineage.md" variables={connector: "azuresql"} /%}
 
 {% partial file="/v1.7/connectors/yaml/data-profiler.md" variables={connector: "azuresql"} /%}
 
