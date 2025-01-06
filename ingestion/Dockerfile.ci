@@ -55,6 +55,7 @@ COPY --from=mysql /usr/bin/mysqldump /usr/bin/mysqldump
 # local
 COPY ./.files/instantclient-basic-linux.arm64-19.10.0.0.0dbru.zip /root/instantclient-basic-linux.arm64-19.10.0.0.0dbru.zip
 COPY ./.files/instantclient-basic-linux.x64-19.17.0.0.0dbru.zip /root/instantclient-basic-linux.x64-19.17.0.0.0dbru.zip
+COPY ./.files/GaussDB_driver.zip /root/GaussDB_driver.zip
 
 RUN if [ $(uname -m) = "arm64" ] || [ $(uname -m) = "aarch64" ]; then \
       unzip -qq -d /instantclient -j /root/instantclient-basic-linux.arm64-19.10.0.0.0dbru.zip && rm -f /root/instantclient-basic-linux.arm64-19.10.0.0.0dbru.zip; \

@@ -88,6 +88,12 @@ export const POSTGRES = {
   tableName: 'order_items',
 };
 
+export const GAUSSDB = {
+  serviceType: 'Gaussdb',
+  serviceName: `pw-gaussdb-test-with-%-${uniqueID}`,
+  tableName: 'order_items',
+};
+
 export const MYSQL = 'Mysql';
 
 export const DBT = {

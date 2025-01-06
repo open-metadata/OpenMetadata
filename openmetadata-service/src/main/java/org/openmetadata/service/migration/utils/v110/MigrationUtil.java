@@ -86,14 +86,21 @@ public class MigrationUtil {
       "UPDATE %s SET %s = :nameHashColumnValue WHERE id = :id";
   private static final String POSTGRES_ENTITY_UPDATE =
       "UPDATE %s SET %s = :nameHashColumnValue WHERE id = :id";
+  private static final String GAUSSDB_ENTITY_UPDATE =
+      "UPDATE %s SET %s = :nameHashColumnValue WHERE id = :id";
+
   private static final String MYSQL_ENTITY_EXTENSION_TIME_SERIES_UPDATE =
       "UPDATE entity_extension_time_series set entityFQNHash = :entityFQNHash where entityFQN=:entityFQN";
   private static final String POSTGRES_ENTITY_EXTENSION_TIME_SERIES_UPDATE =
+      "UPDATE entity_extension_time_series set entityFQNHash = :entityFQNHash  where entityFQN=:entityFQN";
+  private static final String GAUSSDB_ENTITY_EXTENSION_TIME_SERIES_UPDATE =
       "UPDATE entity_extension_time_series set entityFQNHash = :entityFQNHash  where entityFQN=:entityFQN";
 
   private static final String MYSQL_FIELD_RELATIONSHIP_UPDATE =
       "UPDATE field_relationship SET fromFQNHash = :fromFQNHash, toFQNHash = :toFQNHash where fromFQN= :fromFQN and toFQN = :toFQN";
   private static final String POSTGRES_FIELD_RELATIONSHIP_UPDATE =
+      "UPDATE field_relationship SET fromFQNHash = :fromFQNHash, toFQNHash = :toFQNHash where fromFQN= :fromFQN and toFQN = :toFQN";
+  private static final String GAUSSDB_FIELD_RELATIONSHIP_UPDATE =
       "UPDATE field_relationship SET fromFQNHash = :fromFQNHash, toFQNHash = :toFQNHash where fromFQN= :fromFQN and toFQN = :toFQN";
 
   @SneakyThrows
@@ -111,6 +118,15 @@ public class MigrationUtil {
       readAndProcessEntity(
           handle,
           String.format(MYSQL_ENTITY_UPDATE, dao.getTableName(), nameHashColumn),
+          clazz,
+          dao,
+          false,
+          limitParam,
+          nameHashColumn);
+    } else if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isGaussDB())) {
+      readAndProcessEntity(
+          handle,
+          String.format(GAUSSDB_ENTITY_UPDATE, dao.getTableName(), nameHashColumn),
           clazz,
           dao,
           false,
@@ -142,6 +158,15 @@ public class MigrationUtil {
       readAndProcessEntity(
           handle,
           String.format(MYSQL_ENTITY_UPDATE, dao.getTableName(), nameHashColumn),
+          clazz,
+          dao,
+          true,
+          limitParam,
+          nameHashColumn);
+    } else if(Boolean.TRUE.equals(DatasourceConfig.getInstance().isGaussDB())){
+      readAndProcessEntity(
+          handle,
+          String.format(GAUSSDB_ENTITY_UPDATE, dao.getTableName(), nameHashColumn),
           clazz,
           dao,
           true,
@@ -327,6 +352,9 @@ public class MigrationUtil {
     if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
       updateFQNHashForFieldRelationship(
           handle, MYSQL_FIELD_RELATIONSHIP_UPDATE, collectionDAO, limitParam);
+    }else if(Boolean.TRUE.equals(DatasourceConfig.getInstance().isGaussDB())){
+      updateFQNHashForFieldRelationship(
+          handle, GAUSSDB_FIELD_RELATIONSHIP_UPDATE, collectionDAO, limitParam);
     } else {
       updateFQNHashForFieldRelationship(
           handle, POSTGRES_FIELD_RELATIONSHIP_UPDATE, collectionDAO, limitParam);
@@ -336,6 +364,9 @@ public class MigrationUtil {
     if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
       updateFQNHashEntityExtensionTimeSeries(
           handle, MYSQL_ENTITY_EXTENSION_TIME_SERIES_UPDATE, collectionDAO, limitParam);
+    }else if(Boolean.TRUE.equals(DatasourceConfig.getInstance().isGaussDB())){
+      updateFQNHashEntityExtensionTimeSeries(
+          handle, GAUSSDB_ENTITY_EXTENSION_TIME_SERIES_UPDATE, collectionDAO, limitParam);
     } else {
       updateFQNHashEntityExtensionTimeSeries(
           handle, POSTGRES_ENTITY_EXTENSION_TIME_SERIES_UPDATE, collectionDAO, limitParam);

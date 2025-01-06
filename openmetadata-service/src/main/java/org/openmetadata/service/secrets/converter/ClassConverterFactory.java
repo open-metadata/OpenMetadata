@@ -62,6 +62,7 @@ public final class ClassConverterFactory {
             Map.entry(RedshiftConnection.class, new RedshiftConnectionClassConverter()),
             Map.entry(GreenplumConnection.class, new GreenplumConnectionClassConverter()),
             Map.entry(PostgresConnection.class, new PostgresConnectionClassConverter()),
+            Map.entry(GaussdbConnection.class, new GaussdbConnectionClassConverter()),
             Map.entry(SapHanaConnection.class, new SapHanaConnectionClassConverter()),
             Map.entry(StorageConfig.class, new StorageConfigClassConverter()),
             Map.entry(SupersetConnection.class, new SupersetConnectionClassConverter()),
