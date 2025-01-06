@@ -15,9 +15,8 @@ import traceback
 from collections import namedtuple
 from typing import Iterable, Optional, Tuple
 
-from sqlalchemy import String as SqlAlchemyString
 from sqlalchemy import sql
-from sqlalchemy.dialects.postgresql.base import ischema_names
+from sqlalchemy.dialects.postgresql.base import PGDialect
 
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import (
@@ -44,10 +43,14 @@ from metadata.ingestion.source.database.cockroach.queries import (
     COCKROACH_GET_VIEW_NAMES,
     COCKROACH_SCHEMA_COMMENTS,
 )
-from metadata.ingestion.source.database.column_type_parser import create_sqlalchemy_type
 from metadata.ingestion.source.database.common_db_source import (
     CommonDbSourceService,
     TableNameAndType,
+)
+from metadata.ingestion.source.database.common_pg_mappings import (
+    INTERVAL_TYPE_MAP,
+    RELKIND_MAP,
+    ischema_names,
 )
 from metadata.ingestion.source.database.multi_db_source import MultiDBSource
 from metadata.utils import fqn
@@ -64,40 +67,7 @@ TableKey = namedtuple("TableKey", ["schema", "table_name"])
 
 logger = ingestion_logger()
 
-RELKIND_MAP = {
-    "r": TableType.Regular,
-    "p": TableType.Partitioned,
-    "f": TableType.Foreign,
-    "v": TableType.View,
-}
-INTERVAL_TYPE_MAP = {
-    "list": PartitionIntervalTypes.COLUMN_VALUE,
-    "range": PartitionIntervalTypes.TIME_UNIT,
-}
-
-GEOMETRY = create_sqlalchemy_type("GEOMETRY")
-POINT = create_sqlalchemy_type("POINT")
-POLYGON = create_sqlalchemy_type("POLYGON")
-
-ischema_names.update(
-    {
-        "geometry": GEOMETRY,
-        "point": POINT,
-        "polygon": POLYGON,
-        "box": create_sqlalchemy_type("BOX"),
-        "bpchar": SqlAlchemyString,
-        "circle": create_sqlalchemy_type("CIRCLE"),
-        "line": create_sqlalchemy_type("LINE"),
-        "lseg": create_sqlalchemy_type("LSEG"),
-        "path": create_sqlalchemy_type("PATH"),
-        "pg_lsn": create_sqlalchemy_type("PG_LSN"),
-        "pg_snapshot": create_sqlalchemy_type("PG_SNAPSHOT"),
-        "tsquery": create_sqlalchemy_type("TSQUERY"),
-        "txid_snapshot": create_sqlalchemy_type("TXID_SNAPSHOT"),
-        "xid": SqlAlchemyString,
-        "xml": create_sqlalchemy_type("XML"),
-    }
-)
+PGDialect.ischema_names = ischema_names
 
 
 class CockroachSource(CommonDbSourceService, MultiDBSource):
