@@ -42,7 +42,8 @@ class PostgresCliTest(CliCommonDB.TestSuite, SQACommonMethods):
     column21  time with time zone,
     column22  timestamp without time zone,
     column23  timestamp with time zone,
-    column24  uuid
+    column24  uuid,
+    column25 _text
 );
     """
 
@@ -76,7 +77,8 @@ class PostgresCliTest(CliCommonDB.TestSuite, SQACommonMethods):
             '12:34:56+02'::time with time zone ,
             '2022-08-08 12:34:56'::timestamp without time zone ,
             '2022-08-08 12:34:56+02'::timestamp with time zone ,
-            'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11'::uuid
+            'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11'::uuid,
+            '{23}'
    )""",
     ]
 
