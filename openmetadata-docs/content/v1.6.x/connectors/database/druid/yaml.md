@@ -141,8 +141,6 @@ source:
 
 {% partial file="/v1.6/connectors/yaml/database/source-config.md" /%}
 
-{% partial file="/v1.6/connectors/yaml/lineage.md" variables={connector: "druid"} /%}
-
 {% partial file="/v1.6/connectors/yaml/ingestion-sink.md" /%}
 
 {% partial file="/v1.6/connectors/yaml/workflow-config.md" /%}
@@ -153,6 +151,8 @@ source:
 
 
 {% partial file="/v1.6/connectors/yaml/ingestion-cli.md" /%}
+
+{% partial file="/v1.6/connectors/yaml/lineage.md" variables={connector: "druid"} /%}
 
 {% partial file="/v1.6/connectors/yaml/data-profiler.md" variables={connector: "druid"} /%}
 
