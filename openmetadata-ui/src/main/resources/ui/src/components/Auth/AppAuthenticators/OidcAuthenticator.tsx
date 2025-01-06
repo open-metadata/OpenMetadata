@@ -28,6 +28,7 @@ import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import SignInPage from '../../../pages/LoginPage/SignInPage';
 import TokenService from '../../../utils/Auth/TokenService/TokenServiceUtil';
+import { setOidcToken } from '../../../utils/LocalStorageUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import Loader from '../../common/Loader/Loader';
 import {
@@ -72,7 +73,6 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
       updateAxiosInterceptors,
       currentUser,
       newUser,
-      setOidcToken,
       isApplicationLoading,
     } = useApplicationStore();
     const history = useHistory();
@@ -107,6 +107,7 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
       setOidcToken(user.id_token);
       updateAxiosInterceptors();
       // Clear the refresh token in progress flag
+      // Since refresh token request completes with a callback
       TokenService.getInstance().clearRefreshInProgress();
     };
 

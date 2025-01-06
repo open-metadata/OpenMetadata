@@ -26,6 +26,11 @@ import {
 } from '../../../rest/auth-API';
 
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import {
+  getRefreshToken,
+  setOidcToken,
+  setRefreshToken,
+} from '../../../utils/LocalStorageUtils';
 import Loader from '../../common/Loader/Loader';
 import { useBasicAuth } from '../AuthProviders/BasicAuthProvider';
 
@@ -40,9 +45,7 @@ const BasicAuthenticator = forwardRef(
     const {
       setIsAuthenticated,
       authConfig,
-      getRefreshToken,
-      setRefreshToken,
-      setOidcToken,
+
       isApplicationLoading,
     } = useApplicationStore();
 

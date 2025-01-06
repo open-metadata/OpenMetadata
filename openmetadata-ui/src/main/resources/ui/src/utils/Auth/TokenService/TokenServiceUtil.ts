@@ -26,12 +26,14 @@ type RenewTokenCallback = () =>
 class TokenService {
   channel: BroadcastChannel;
   renewToken: RenewTokenCallback | null = null;
+  refreshSuccessCallback: (() => void) | null = null;
   private static _instance: TokenService;
 
   constructor() {
     this.channel = new BroadcastChannel('auth_channel');
     this.channel.onmessage = this.handleTokenUpdate.bind(this);
     this.clearRefreshInProgress();
+    this.refreshToken = this.refreshToken.bind(this);
   }
 
   // This method will update token across tabs on receiving message to the channel
@@ -42,13 +44,8 @@ class TokenService {
       data: { type, token },
     } = event;
     if (type === 'TOKEN_UPDATE' && token) {
-      if (typeof token !== 'string') {
-        useApplicationStore.getState().setOidcToken(token.accessToken);
-        useApplicationStore.getState().setRefreshToken(token.refreshToken);
-        useApplicationStore.getState().updateAxiosInterceptors();
-      } else {
-        useApplicationStore.getState().setOidcToken(token);
-      }
+      // Token is updated in localStorage hence no need to pass it
+      this.refreshSuccessCallback && this.refreshSuccessCallback();
     }
   }
 
@@ -65,8 +62,16 @@ class TokenService {
     this.renewToken = renewToken;
   }
 
+  public updateRefreshSuccessCallback(callback: () => void) {
+    this.refreshSuccessCallback = callback;
+  }
+
   // Refresh the token if it is expired
   async refreshToken() {
+    if (this.isTokenUpdateInProgress()) {
+      return;
+    }
+
     const token = getOidcToken();
     const { isExpired, timeoutExpiry } = extractDetailsFromToken(token);
 
@@ -95,6 +100,7 @@ class TokenService {
         if ((error as AxiosError).message !== 'Frame window timed out') {
           // Perform logout for any error
           useApplicationStore.getState().onLogoutHandler();
+          this.clearRefreshInProgress();
         }
         // Do nothing
       } finally {
