@@ -248,7 +248,7 @@ plugins: Dict[str, Set[str]] = {
         "impyla~=0.18.0",
     },
     "iceberg": {
-        "pyiceberg[hive,glue,dynamodb,s3fs,adlfs,gcsfs]==0.8.1",
+        "pyiceberg[hive,glue,dynamodb,s3fs,adlfs,gcsfs]==0.7.1",
         # Forcing the version of a few packages so it plays nicely with other requirements.
         VERSIONS["pydantic"],
         VERSIONS["adlfs"],

@@ -28,6 +28,28 @@ from metadata.ingestion.source.database.iceberg.catalog.base import IcebergCatal
 class IcebergGlueCatalog(IcebergCatalogBase):
     """Responsible for building a PyIceberg Glue Catalog."""
 
+    @staticmethod
+    def override_boto3_glue_client(catalog: GlueCatalog, parameters: dict):
+        """
+        Overrides the boto3 client created by PyIceberg.
+        This is needed because PyIceberg 0.4.0 has a bug
+        where they try to pass the 'aws_access_key_id' as 'aws_secret_key_id' and
+        it breaks.
+        """
+        boto_session_config_keys = [
+            "aws_access_key_id",
+            "aws_secret_access_key",
+            "aws_session_token",
+            "region_name",
+            "profile_name",
+        ]
+
+        session_config = {
+            k: v for k, v in parameters.items() if k in boto_session_config_keys
+        }
+        session = boto3.Session(**session_config)
+        catalog.glue = session.client("glue")
+
     @classmethod
     def get_catalog(cls, catalog: IcebergCatalog) -> Catalog:
         """Returns a Glue Catalog for the given connection and file storage.
@@ -46,16 +68,21 @@ class IcebergGlueCatalog(IcebergCatalogBase):
 
             parameters = {
                 **parameters,
-                "glue.access-key-id": aws_config.awsAccessKeyId,
-                "glue.secret-access-key": aws_config.awsSecretAccessKey.get_secret_value()
+                "aws_access_key_id": aws_config.awsAccessKeyId,
+                "aws_secret_access_key": aws_config.awsSecretAccessKey.get_secret_value()
                 if aws_config.awsSecretAccessKey
                 else None,
-                "glue.session-token": aws_config.awsSessionToken,
-                "glue.region": aws_config.awsRegion,
-                "glue.profile-name": aws_config.profileName,
+                "aws_session_token": aws_config.awsSessionToken,
+                "region_name": aws_config.awsRegion,
+                "profile_name": aws_config.profileName,
                 # Needed because the way PyIceberg instantiates the PyArrowFileIO
                 # is different from how they instantiate the Boto3 Client.
                 **cls.get_fs_parameters(aws_config),
             }
 
-        return GlueCatalog(catalog.name, **parameters)
+        glue_catalog: GlueCatalog = GlueCatalog(catalog.name, **parameters)
+
+        # HACK: Overriding the Boto3 Glue client due to PyIceberg 0.4.0 Bug.
+        cls.override_boto3_glue_client(glue_catalog, parameters)
+
+        return glue_catalog
