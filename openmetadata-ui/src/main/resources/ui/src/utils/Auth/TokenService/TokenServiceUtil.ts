@@ -16,6 +16,8 @@ import { AccessTokenResponse } from '../../../rest/auth-API';
 import { extractDetailsFromToken } from '../../AuthProvider.util';
 import { getOidcToken } from '../../LocalStorageUtils';
 
+const REFRESH_IN_PROGRESS_KEY = 'refreshInProgress'; // Key to track if refresh is in progress
+
 type RenewTokenCallback = () =>
   | Promise<string>
   | Promise<AccessTokenResponse>
@@ -23,14 +25,13 @@ type RenewTokenCallback = () =>
 
 class TokenService {
   channel: BroadcastChannel;
-  renewToken: RenewTokenCallback;
-  tokeUpdateInProgress: boolean;
+  renewToken: RenewTokenCallback | null = null;
+  private static _instance: TokenService;
 
-  constructor(renewToken: RenewTokenCallback) {
+  constructor() {
     this.channel = new BroadcastChannel('auth_channel');
-    this.renewToken = renewToken;
     this.channel.onmessage = this.handleTokenUpdate.bind(this);
-    this.tokeUpdateInProgress = false;
+    this.clearRefreshInProgress();
   }
 
   // This method will update token across tabs on receiving message to the channel
@@ -49,6 +50,19 @@ class TokenService {
         useApplicationStore.getState().setOidcToken(token);
       }
     }
+  }
+
+  // Singleton instance of TokenService
+  static getInstance() {
+    if (!TokenService._instance) {
+      TokenService._instance = new TokenService();
+    }
+
+    return TokenService._instance;
+  }
+
+  public updateRenewToken(renewToken: RenewTokenCallback) {
+    this.renewToken = renewToken;
   }
 
   // Refresh the token if it is expired
@@ -74,7 +88,7 @@ class TokenService {
     let response: string | AccessTokenResponse | null | void = null;
     if (typeof this.renewToken === 'function') {
       try {
-        this.tokeUpdateInProgress = true;
+        this.setRefreshInProgress();
         response = await this.renewToken();
       } catch (error) {
         // Silent Frame window timeout error since it doesn't affect refresh token process
@@ -84,16 +98,28 @@ class TokenService {
         }
         // Do nothing
       } finally {
-        this.tokeUpdateInProgress = false;
+        // If response is not null then clear the refresh flag
+        // For Callback based refresh token, response will be void
+        response && this.clearRefreshInProgress();
       }
     }
 
     return response;
   }
 
-  // Tracker for any ongoing token update
+  // Set refresh in progress (used by the tab that initiates the refresh)
+  setRefreshInProgress() {
+    localStorage.setItem(REFRESH_IN_PROGRESS_KEY, 'true');
+  }
+
+  // Clear the refresh flag (used after refresh is complete)
+  clearRefreshInProgress() {
+    localStorage.removeItem(REFRESH_IN_PROGRESS_KEY);
+  }
+
+  // Check if a refresh is already in progress (used by other tabs)
   isTokenUpdateInProgress() {
-    return this.tokeUpdateInProgress;
+    return localStorage.getItem(REFRESH_IN_PROGRESS_KEY) === 'true';
   }
 }
 

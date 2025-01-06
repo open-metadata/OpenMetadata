@@ -137,7 +137,7 @@ export const AuthProvider = ({
     setApplicationLoading,
   } = useApplicationStore();
   const { updateDomains, updateDomainLoading } = useDomainStore();
-  const tokenService = useRef<TokenService>();
+  const tokenService = useRef<TokenService>(TokenService.getInstance());
 
   const location = useCustomLocation();
   const history = useHistory();
@@ -186,7 +186,7 @@ export const AuthProvider = ({
 
   useEffect(() => {
     if (authenticatorRef.current?.renewIdToken) {
-      tokenService.current = new TokenService(
+      tokenService.current.updateRenewToken(
         authenticatorRef.current?.renewIdToken
       );
     }
