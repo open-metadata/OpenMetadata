@@ -71,9 +71,6 @@ from metadata.generated.schema.entity.services.connections.database.sapErpConnec
 from metadata.generated.schema.entity.services.connections.database.sasConnection import (
     SasType,
 )
-from metadata.generated.schema.entity.services.connections.database.unityCatalogConnection import (
-    DatabricksType,
-)
 from metadata.generated.schema.entity.services.dashboardService import DashboardService
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.messagingService import MessagingService
@@ -165,7 +162,6 @@ NON_SQA_DATABASE_CONNECTIONS = (
     DatalakeType.Datalake.value,
     BigtableType.BigTable.value,
     CouchbaseType.Couchbase.value,
-    DatabricksType.UnityCatalog.value,
     DeltaLakeType.DeltaLake.value,
     DomoDatabaseType.DomoDatabase.value,
     DorisType.Doris.value,
