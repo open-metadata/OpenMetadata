@@ -19,6 +19,7 @@ Configure and schedule PinotDB metadata and profiler workflows from the OpenMeta
 - [Data Profiler](/how-to-guides/data-quality-observability/profiler/workflow)
 - [Data Quality](/how-to-guides/data-quality-observability/quality)
 - [dbt Integration](/connectors/ingestion/workflows/dbt)
+- [Lineage](/how-to-guides/data-lineage/workflow)
 
 {% partial file="/v1.6/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/pinotdb/yaml"} /%}
 

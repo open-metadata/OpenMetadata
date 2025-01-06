@@ -19,6 +19,7 @@ Configure and schedule Singlestore metadata and profiler workflows from the Open
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 - [Data Profiler](#data-profiler)
+- [Lineage](#lineage)
 - [Data Quality](#data-quality)
 - [dbt Integration](#dbt-integration)
 
@@ -150,6 +151,8 @@ source:
 {% /codePreview %}
 
 {% partial file="/v1.6/connectors/yaml/ingestion-cli.md" /%}
+
+{% partial file="/v1.6/connectors/yaml/lineage.md" variables={connector: "singlestore"} /%}
 
 {% partial file="/v1.6/connectors/yaml/data-profiler.md" variables={connector: "singlestore"} /%}
 
