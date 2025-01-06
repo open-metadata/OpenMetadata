@@ -137,6 +137,7 @@ describe('getEntitySpecificQueryBuilderFields', () => {
     ]);
 
     expect(Object.keys(result)).toEqual([
+      EntityFields.API_COLLECTION,
       EntityFields.REQUEST_SCHEMA_FIELD,
       EntityFields.RESPONSE_SCHEMA_FIELD,
     ]);
