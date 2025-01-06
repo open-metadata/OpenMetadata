@@ -122,8 +122,6 @@ This is a sample config for DB2:
 
 {% partial file="/v1.7/connectors/yaml/database/source-config-def.md" /%}
 
-{% partial file="/v1.6/connectors/yaml/lineage.md" variables={connector: "db2"} /%}
-
 {% partial file="/v1.7/connectors/yaml/ingestion-sink-def.md" /%}
 
 {% partial file="/v1.7/connectors/yaml/workflow-config-def.md" /%}
@@ -195,6 +193,8 @@ source:
 {% /codePreview %}
 
 {% partial file="/v1.7/connectors/yaml/ingestion-cli.md" /%}
+
+{% partial file="/v1.7/connectors/yaml/lineage.md" variables={connector: "db2"} /%}
 
 {% partial file="/v1.7/connectors/yaml/data-profiler.md" variables={connector: "db2"} /%}
 
