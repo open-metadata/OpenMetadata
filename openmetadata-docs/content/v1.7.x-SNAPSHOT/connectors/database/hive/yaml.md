@@ -114,8 +114,6 @@ You can also ingest the metadata using Postgres metastore. This step is optional
 
 {% partial file="/v1.7/connectors/yaml/ingestion-sink-def.md" /%}
 
-{% partial file="/v1.7/connectors/yaml/lineage.md" variables={connector: "hive"} /%}
-
 {% partial file="/v1.7/connectors/yaml/workflow-config-def.md" /%}
 
 #### Advanced Configuration
@@ -200,6 +198,8 @@ source:
 {% /codePreview %}
 
 {% partial file="/v1.7/connectors/yaml/ingestion-cli.md" /%}
+
+{% partial file="/v1.7/connectors/yaml/lineage.md" variables={connector: "hive"} /%}
 
 {% partial file="/v1.7/connectors/yaml/data-profiler.md" variables={connector: "hive"} /%}
 
