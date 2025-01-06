@@ -82,9 +82,8 @@ def get_connection(connection: CassandraConnection):
     ssl_context = None
     if connection.sslMode != SslMode.disable:
         ssl_args = connection.connectionArguments.root["ssl_args"]
-
         ssl_context = SSLContext(PROTOCOL_TLS)
-        ssl_context.load_verify_locations(cadata=ssl_args["ssl_ca"])
+        ssl_context.load_verify_locations(cafile=ssl_args["ssl_ca"])
         ssl_context.verify_mode = CERT_REQUIRED
         ssl_context.load_cert_chain(
             certfile=ssl_args["ssl_cert"], keyfile=ssl_args["ssl_key"]

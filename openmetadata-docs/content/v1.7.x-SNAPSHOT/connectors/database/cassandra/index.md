@@ -74,8 +74,6 @@ There are a couple of types of SSL modes that Cassandra supports which can be ad
 
 In order to integrate SSL in the Metadata Ingestion Config, the user will have to add the SSL config under sslConfig which is placed in the source.
 
-{% partial file="/v1.7/connectors/database/advanced-configuration.md" /%}
-
 {% /extraContent %}
 
 {% partial file="/v1.7/connectors/test-connection.md" /%}

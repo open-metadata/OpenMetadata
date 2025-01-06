@@ -221,6 +221,9 @@ class SSLManager:
         if connection.sslConfig.root.sslKey:
             ssl_args["ssl_key"] = self.key_file_path
 
+        connection.connectionArguments = (
+            connection.connectionArguments or init_empty_connection_arguments()
+        )
         connection.connectionArguments.root["ssl_args"] = ssl_args
         return connection
 

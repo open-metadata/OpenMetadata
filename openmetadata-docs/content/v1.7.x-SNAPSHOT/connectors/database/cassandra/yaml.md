@@ -133,66 +133,6 @@ verify-full: The driver will negotiate an SSL connection, verify that the server
 
 {% /codeInfo %}
 
-{% /codeInfoContainer %}
-
-{% codeBlock fileName="filename.yaml" %}
-
-```yaml {% isCodeBlock=true %}
-source:
-  type: postgres
-  serviceName: local_postgres
-  serviceConnection:
-    config:
-      type: Postgres
-```
-```yaml {% srNumber=1 %}
-      username: username
-```
-```yaml {% srNumber=2 %}
-      authType: 
-            password: <password>
-```
-```yaml {% srNumber=3 %}
-      authType: 
-            awsConfig:
-                  awsAccessKeyId: access key id
-                  awsSecretAccessKey: access secret key
-                  awsRegion: aws region name
-```
-```yaml {% srNumber=4 %}
-      hostPort: localhost:5432
-```
-```yaml {% srNumber=5 %}
-      database: database
-```
-```yaml {% srNumber=6 %}
-      ingestAllDatabases: true
-```
-
-
-{% partial file="/v1.7/connectors/yaml/database/source-config.md" /%}
-
-{% partial file="/v1.7/connectors/yaml/ingestion-sink.md" /%}
-
-{% partial file="/v1.7/connectors/yaml/workflow-config.md" /%}
-
-{% /codeBlock %}
-
-{% /codePreview %}
-
-{% partial file="/v1.7/connectors/yaml/ingestion-cli.md" /%}
-
-{% partial file="/v1.7/connectors/yaml/query-usage.md" variables={connector: "postgres"} /%}
-
-{% partial file="/v1.7/connectors/yaml/lineage.md" variables={connector: "postgres"} /%}
-
-{% partial file="/v1.7/connectors/yaml/data-profiler.md" variables={connector: "postgres"} /%}
-
-{% partial file="/v1.7/connectors/yaml/auto-classification.md" variables={connector: "postgres"} /%}
-
-{% partial file="/v1.7/connectors/yaml/data-quality.md" /%}
-
-
 {% /codeInfo %}
 
 {% /codeInfoContainer %}
