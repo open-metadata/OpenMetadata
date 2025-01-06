@@ -165,6 +165,8 @@ site_menu:
     url: /deployment/security/enable-ssl/ssl-troubleshooting
   - category: Deployment / Enable Security / Enable JWT Tokens
     url: /deployment/security/enable-jwt-tokens
+  - category: Deployment / Enable Security / Configuration Reference Parameters
+    url: /deployment/security/configuration-parameters
   - category: Deployment / Enable Security / JWT Troubleshooting
     url: /deployment/security/jwt-troubleshooting
 
@@ -925,7 +927,7 @@ site_menu:
   - category: How-to Guides / Data Governance / Classification / Auto-Classification in OpenMetadata / External Workflow
     url: /how-to-guides/data-governance/classification/auto/external-workflow
   - category: How-to Guides / Data Governance / Classification / Auto-Classification in OpenMetadata / Auto PII Tagging
-    url: /how-to-guides/data-governance/classification/auto/auto-pii-taggings
+    url: /how-to-guides/data-governance/classification/auto/auto-pii-tagging
   - category: How-to Guides / Data Governance / Classification / What are Tiers
     url: /how-to-guides/data-governance/classification/tiers
   - category: How-to Guides / Data Governance / Classification / Best Practices for Classification
