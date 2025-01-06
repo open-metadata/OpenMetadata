@@ -14,7 +14,14 @@ import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button, Modal } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { isEqual, isUndefined, uniq, uniqueId, uniqWith } from 'lodash';
+import {
+  isEmpty,
+  isEqual,
+  isUndefined,
+  uniq,
+  uniqueId,
+  uniqWith,
+} from 'lodash';
 import { LoadingState } from 'Models';
 import QueryString from 'qs';
 import React, {
@@ -836,6 +843,8 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
               currentEdge.columns = updatedColumns; // update current edge with new columns
             }
 
+            setNewAddedNode({} as Node);
+
             setEntityLineage((pre) => {
               const newData = {
                 ...pre,
@@ -848,8 +857,6 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
 
               return newData;
             });
-
-            setNewAddedNode({} as Node);
           })
           .catch((err) => {
             showErrorToast(err);
@@ -1211,7 +1218,9 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
 
   useEffect(() => {
     if (!loading) {
-      redrawLineage(entityLineage);
+      if (isEmpty(newAddedNode)) {
+        redrawLineage(entityLineage);
+      }
     }
   }, [entityLineage, loading]);
 
