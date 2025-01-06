@@ -235,7 +235,7 @@ class PowerBiApiClient:
             params_data = {"$top": "1"}
             response_data = self.client.get(api_url, data=params_data)
             if not response_data:
-                logger.debug(f"No groups/workspaces found")
+                logger.debug("No groups/workspaces found")
                 return None
             response = GroupsResponse(**response_data)
             count = response.odata_count
@@ -249,7 +249,7 @@ class PowerBiApiClient:
                 }
                 response_data = self.client.get(api_url, data=params_data)
                 if not response_data:
-                    logger.debug(f"No more groups/workspaces found")
+                    logger.debug("No more groups/workspaces found")
                     continue
                 response = GroupsResponse(**response_data)
                 workspaces.extend(response.value)
