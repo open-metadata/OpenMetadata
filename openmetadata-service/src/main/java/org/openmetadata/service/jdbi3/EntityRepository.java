@@ -114,6 +114,7 @@ import javax.ws.rs.core.Response.Status;
 import javax.ws.rs.core.UriInfo;
 import lombok.Getter;
 import lombok.NonNull;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
@@ -216,10 +217,9 @@ import org.slf4j.LoggerFactory;
  * relationship table when required to ensure, the data stored is efficiently and consistently, and relationship
  * information does not become stale.
  */
+@Slf4j
 @Repository()
 public abstract class EntityRepository<T extends EntityInterface> {
-  private static final Logger LOG = LoggerFactory.getLogger(EntityRepository.class);
-
   public record EntityHistoryWithOffset(EntityHistory entityHistory, int nextOffset) {}
 
   public static final LoadingCache<Pair<String, String>, EntityInterface> CACHE_WITH_NAME =
