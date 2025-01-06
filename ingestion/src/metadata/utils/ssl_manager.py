@@ -19,6 +19,9 @@ import traceback
 from functools import singledispatch, singledispatchmethod
 from typing import Optional, Union, cast
 
+from metadata.generated.schema.entity.services.connections.database.cassandraConnection import (
+    CassandraConnection,
+)
 from pydantic import SecretStr
 
 from metadata.generated.schema.entity.services.connections.connectionBasicType import (
@@ -201,9 +204,24 @@ class SSLManager:
         connection = cast(KafkaConnection, connection)
         connection.schemaRegistryConfig["ssl.ca.location"] = self.ca_file_path
         connection.schemaRegistryConfig["ssl.key.location"] = self.key_file_path
-        connection.schemaRegistryConfig[
-            "ssl.certificate.location"
-        ] = self.cert_file_path
+        connection.schemaRegistryConfig["ssl.certificate.location"] = (
+            self.cert_file_path
+        )
+        return connection
+
+    @setup_ssl.register(CassandraConnection)
+    def _(self, connection):
+        # Use the temporary file paths for SSL configuration
+        connection = cast(CassandraConnection, connection)
+        ssl_args = {}
+        if connection.sslConfig.root.caCertificate:
+            ssl_args["ssl_ca"] = self.ca_file_path
+        if connection.sslConfig.root.sslCertificate:
+            ssl_args["ssl_cert"] = self.cert_file_path
+        if connection.sslConfig.root.sslKey:
+            ssl_args["ssl_key"] = self.key_file_path
+
+        connection.connectionArguments.root["ssl_args"] = ssl_args
         return connection
 
 
@@ -216,9 +234,9 @@ def check_ssl_and_init(_) -> Optional[SSLManager]:
 def _(connection) -> Union[SSLManager, None]:
     service_connection = cast(MatillionConnection, connection)
     if service_connection.connection:
-        ssl: Optional[
-            verifySSLConfig.SslConfig
-        ] = service_connection.connection.sslConfig
+        ssl: Optional[verifySSLConfig.SslConfig] = (
+            service_connection.connection.sslConfig
+        )
         if ssl and ssl.root.caCertificate:
             ssl_dict: dict[str, Union[CustomSecretStr, None]] = {
                 "ca": ssl.root.caCertificate
@@ -285,6 +303,19 @@ def _(connection):
     if connection.sslMode:
         return SSLManager(
             ca=connection.sslConfig.root.caCertificate if connection.sslConfig else None
+        )
+    return None
+
+
+@check_ssl_and_init.register(CassandraConnection)
+def _(connection):
+    service_connection = cast(CassandraConnection, connection)
+    ssl: Optional[verifySSLConfig.SslConfig] = service_connection.sslConfig
+    if ssl and (ssl.root.caCertificate or ssl.root.sslCertificate or ssl.root.sslKey):
+        return SSLManager(
+            ca=ssl.root.caCertificate,
+            cert=ssl.root.sslCertificate,
+            key=ssl.root.sslKey,
         )
     return None
 

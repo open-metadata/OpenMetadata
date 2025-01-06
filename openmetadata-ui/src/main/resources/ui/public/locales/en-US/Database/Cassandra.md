@@ -62,6 +62,11 @@ In the case of Cassandra, we won't have a Keyspace/Database as such. If you'd li
 $$
 
 $$section
+### Connection Arguments $(id="connectionArguments")
+Additional connection arguments that can be sent to the service during connection.
+$$
+
+$$section
 ### SSL Mode $(id="sslMode")
 SSL Mode to connect to Cassandra instance. By default, SSL is disabled.
 $$

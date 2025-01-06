@@ -49,6 +49,10 @@
             "description": "Optional name to give to the database in OpenMetadata. If left blank, we will use default as the database name.",
             "type": "string"
         },
+        "connectionArguments": {
+            "title": "Connection Arguments",
+            "$ref": "../connectionBasicType.json#/definitions/connectionArguments"
+        },
         "sslMode": {
             "title": "SSL Mode",
             "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/sslMode"
