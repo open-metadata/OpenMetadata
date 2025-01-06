@@ -189,3 +189,17 @@ source:
 {% /codePreview %}
 
 {% partial file="/v1.7/connectors/yaml/ingestion-cli.md" /%}
+
+## Securing Cassandra Connection with SSL in OpenMetadata
+
+To establish secure connections between OpenMetadata and a Cassandra database, you can use any SSL mode provided by Cassandra, except disable.
+
+Under `Advanced Config`, after selecting the SSL mode, provide the CA certificate, SSL certificate and SSL key.
+
+```yaml
+      sslMode: allow
+      sslConfig:
+            caCertificate: "/path/to/ca/certificate"
+            sslCertificate: "/path/to/ssl/certificate"
+            sslKey: "/path/to/ssl/key"
+```
