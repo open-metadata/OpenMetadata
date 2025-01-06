@@ -2406,5 +2406,32 @@ export const highlightSearchText = (
 
   const regex = new RegExp(`(${searchText})`, 'gi');
 
-  return text.replace(regex, `<mark class="text-highlighter">$1</mark>`);
+  return text.replace(regex, `<span class="text-highlighter">$1</span>`);
+};
+
+/**
+ * It searches for a given text in a given string and returns an array that contains the string parts that have
+ * highlighted element if match found.
+ * @param text - The text to search in.
+ * @param searchText - The text to search for.
+ * @returns An Array of string or JSX.Element which contains highlighted element.
+ */
+export const highlightSearchArrayElement = (
+  text?: string,
+  searchText?: string
+): string | (string | JSX.Element)[] => {
+  if (!searchText || !text) {
+    return text ?? '';
+  }
+  const stringParts = text.split(new RegExp(`(${searchText})`, 'gi'));
+
+  return stringParts.map((part, index) =>
+    part.toLowerCase() === (searchText ?? '').toLowerCase() ? (
+      <span className="text-highlighter" key={`${part}-${index}`}>
+        {part}
+      </span>
+    ) : (
+      part
+    )
+  );
 };

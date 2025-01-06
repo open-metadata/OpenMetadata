@@ -130,6 +130,10 @@ test.describe('User with different Roles', () => {
       .getByTestId('edit-description')
       .click();
 
+    await userPage.waitForSelector('[role="dialog"].ant-modal', {
+      state: 'visible',
+    });
+
     // Add description content
     await userPage.locator(descriptionBox).fill(USER_DESCRIPTION);
 
@@ -155,7 +159,15 @@ test.describe('User with different Roles', () => {
       .getByTestId('edit-description')
       .click();
 
+    await userPage.waitForSelector('[role="dialog"].ant-modal', {
+      state: 'visible',
+    });
+
     await userPage.locator(descriptionBox).clear();
+
+    await expect(userPage.locator(descriptionBox)).not.toContainText(
+      'Name of the User'
+    );
 
     const removeUserDescription = userPage.waitForResponse(
       (response) => response.request().method() === 'PATCH'

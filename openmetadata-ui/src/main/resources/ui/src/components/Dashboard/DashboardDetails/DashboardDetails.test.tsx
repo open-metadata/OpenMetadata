@@ -99,7 +99,7 @@ jest.mock('../../common/TabsLabel/TabsLabel.component', () => {
 jest.mock('../../common/EntityDescription/DescriptionV1', () => {
   return jest.fn().mockReturnValue(<p>Description Component</p>);
 });
-jest.mock('../../common/RichTextEditor/RichTextEditorPreviewer', () => {
+jest.mock('../../common/RichTextEditor/RichTextEditorPreviewerV1', () => {
   return jest.fn().mockReturnValue(<p>RichTextEditorPreviwer</p>);
 });
 

@@ -141,7 +141,7 @@ test('Query Entity', async ({ page }) => {
 
     // Update Description
     await page.click(`[data-testid="edit-description"]`);
-    await page.fill(descriptionBox, 'updated description');
+    await page.locator(descriptionBox).fill('updated description');
     const updateDescriptionResponse = page.waitForResponse(
       (response) =>
         response.url().includes('/api/v1/queries/') &&

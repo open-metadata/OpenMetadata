@@ -782,7 +782,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
   Map<String, String> parseCursorMap(String param) {
     Map<String, String> cursorMap;
     if (param == null) {
-      cursorMap = Map.of("name", null, "id", null);
+      cursorMap = new HashMap<>();
+      cursorMap.put("name", null);
+      cursorMap.put("id", null);
     } else if (nullOrEmpty(param)) {
       cursorMap = Map.of("name", "", "id", "");
     } else {
@@ -1150,6 +1152,21 @@ public abstract class EntityRepository<T extends EntityInterface> {
     DeleteResponse<T> response = deleteInternal(updatedBy, id, recursive, hardDelete);
     postDelete(response.entity());
     return response;
+  }
+
+  @SuppressWarnings("unused")
+  @Transaction
+  public final DeleteResponse<T> deleteByNameIfExists(
+      String updatedBy, String name, boolean recursive, boolean hardDelete) {
+    name = quoteFqn ? quoteName(name) : name;
+    T entity = findByNameOrNull(name, ALL);
+    if (entity != null) {
+      DeleteResponse<T> response = deleteInternalByName(updatedBy, name, recursive, hardDelete);
+      postDelete(response.entity());
+      return response;
+    } else {
+      return new DeleteResponse<>(null, ENTITY_DELETED);
+    }
   }
 
   @Transaction
@@ -2053,11 +2070,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
-  private boolean validateIfAllRefsAreEntityType(List<EntityReference> list, String entityType) {
+  private static boolean validateIfAllRefsAreEntityType(
+      List<EntityReference> list, String entityType) {
     return list.stream().allMatch(obj -> obj.getType().equals(entityType));
   }
 
-  public final void validateReviewers(List<EntityReference> entityReferences) {
+  public static void validateReviewers(List<EntityReference> entityReferences) {
     if (!nullOrEmpty(entityReferences)) {
       boolean areAllTeam = validateIfAllRefsAreEntityType(entityReferences, TEAM);
       boolean areAllUsers = validateIfAllRefsAreEntityType(entityReferences, USER);
@@ -2415,7 +2433,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
-  public final List<EntityReference> validateOwners(List<EntityReference> owners) {
+  public static List<EntityReference> validateOwners(List<EntityReference> owners) {
     if (nullOrEmpty(owners)) {
       return null;
     }
@@ -2818,6 +2836,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
       if (updatedByBot() && operation == Operation.PUT) {
         // Revert extension field, if being updated by a bot with a PUT request to avoid overwriting
         // custom extension
+        updated.setExtension(origExtension);
+        return;
+      }
+
+      if (operation == Operation.PUT && updatedExtension == null) {
+        // Revert change to non-empty extension if it is being updated by a PUT request
+        // For PUT operations, existing extension can't be removed.
         updated.setExtension(origExtension);
         return;
       }
