@@ -19,9 +19,6 @@ import traceback
 from functools import singledispatch, singledispatchmethod
 from typing import Optional, Union, cast
 
-from metadata.generated.schema.entity.services.connections.database.cassandraConnection import (
-    CassandraConnection,
-)
 from pydantic import SecretStr
 
 from metadata.generated.schema.entity.services.connections.connectionBasicType import (
@@ -29,6 +26,9 @@ from metadata.generated.schema.entity.services.connections.connectionBasicType i
 )
 from metadata.generated.schema.entity.services.connections.dashboard.qlikSenseConnection import (
     QlikSenseConnection,
+)
+from metadata.generated.schema.entity.services.connections.database.cassandraConnection import (
+    CassandraConnection,
 )
 from metadata.generated.schema.entity.services.connections.database.dorisConnection import (
     DorisConnection,
@@ -204,9 +204,9 @@ class SSLManager:
         connection = cast(KafkaConnection, connection)
         connection.schemaRegistryConfig["ssl.ca.location"] = self.ca_file_path
         connection.schemaRegistryConfig["ssl.key.location"] = self.key_file_path
-        connection.schemaRegistryConfig["ssl.certificate.location"] = (
-            self.cert_file_path
-        )
+        connection.schemaRegistryConfig[
+            "ssl.certificate.location"
+        ] = self.cert_file_path
         return connection
 
     @setup_ssl.register(CassandraConnection)
@@ -234,9 +234,9 @@ def check_ssl_and_init(_) -> Optional[SSLManager]:
 def _(connection) -> Union[SSLManager, None]:
     service_connection = cast(MatillionConnection, connection)
     if service_connection.connection:
-        ssl: Optional[verifySSLConfig.SslConfig] = (
-            service_connection.connection.sslConfig
-        )
+        ssl: Optional[
+            verifySSLConfig.SslConfig
+        ] = service_connection.connection.sslConfig
         if ssl and ssl.root.caCertificate:
             ssl_dict: dict[str, Union[CustomSecretStr, None]] = {
                 "ca": ssl.root.caCertificate
