@@ -172,7 +172,6 @@ NON_SQA_DATABASE_CONNECTIONS = (
     DatalakeType.Datalake.value,
     BigtableType.BigTable.value,
     CouchbaseType.Couchbase.value,
-    DatabricksType.UnityCatalog.value,
     DeltaLakeType.DeltaLake.value,
     DomoDatabaseType.DomoDatabase.value,
     DorisType.Doris.value,
