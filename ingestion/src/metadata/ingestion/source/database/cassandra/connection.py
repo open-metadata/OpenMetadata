@@ -34,6 +34,7 @@ from metadata.generated.schema.entity.services.connections.database.cassandraCon
 from metadata.generated.schema.entity.services.connections.testConnectionResult import (
     TestConnectionResult,
 )
+from metadata.ingestion.connections.builders import init_empty_connection_arguments
 from metadata.ingestion.connections.test_connections import test_connection_steps
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.cassandra.queries import (
@@ -76,6 +77,10 @@ def get_connection(connection: CassandraConnection):
                 username=connection.username,
                 password=connection.authType.password.get_secret_value(),
             )
+
+    connection.connectionArguments = (
+        connection.connectionArguments or init_empty_connection_arguments()
+    )
 
     cluster = Cluster(
         **cluster_config,
