@@ -232,8 +232,11 @@ def run_sampled_test_suite_workflow(metadata, run_ingestion, ingestion_config):
         ),
     )
     workflow_config = deepcopy(DATA_QUALITY_CONFIG)
-    workflow_config["source"]["serviceConnection"] = ingestion_config["source"][
-        "serviceConnection"
+    workflow_config["source"]["sourceConfig"]["config"]["serviceConnections"] = [
+        {
+            "serviceName": ingestion_config["source"]["serviceName"],
+            "serviceConnection": ingestion_config["source"]["serviceConnection"],
+        }
     ]
     ingestion_workflow = TestSuiteWorkflow.create(workflow_config)
     ingestion_workflow.execute()
@@ -262,8 +265,11 @@ def run_partitioned_test_suite_workflow(metadata, run_ingestion, ingestion_confi
         ),
     )
     workflow_config = deepcopy(DATA_QUALITY_CONFIG)
-    workflow_config["source"]["serviceConnection"] = ingestion_config["source"][
-        "serviceConnection"
+    workflow_config["source"]["sourceConfig"]["config"]["serviceConnections"] = [
+        {
+            "serviceName": ingestion_config["source"]["serviceName"],
+            "serviceConnection": ingestion_config["source"]["serviceConnection"],
+        }
     ]
     ingestion_workflow = TestSuiteWorkflow.create(workflow_config)
     ingestion_workflow.execute()
