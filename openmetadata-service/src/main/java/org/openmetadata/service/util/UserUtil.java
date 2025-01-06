@@ -19,6 +19,7 @@ import static org.openmetadata.schema.entity.teams.AuthenticationMechanism.AuthT
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.ADMIN_ROLE;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
+import static org.openmetadata.service.jdbi3.UserRepository.AUTH_MECHANISM_FIELD;
 
 import at.favre.lib.crypto.bcrypt.BCrypt;
 import java.util.ArrayList;
@@ -77,7 +78,7 @@ public final class UserUtil {
     try {
       // Create Required Fields List
       Set<String> fieldList = new HashSet<>(userRepository.getPatchFields().getFieldList());
-      fieldList.add("authenticationMechanism");
+      fieldList.add(AUTH_MECHANISM_FIELD);
 
       // Fetch Original User, is available
       User originalUser = userRepository.getByName(null, username, new Fields(fieldList));
