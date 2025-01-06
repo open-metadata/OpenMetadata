@@ -1155,6 +1155,21 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return response;
   }
 
+  @SuppressWarnings("unused")
+  @Transaction
+  public final DeleteResponse<T> deleteByNameIfExists(
+      String updatedBy, String name, boolean recursive, boolean hardDelete) {
+    name = quoteFqn ? quoteName(name) : name;
+    T entity = findByNameOrNull(name, ALL);
+    if (entity != null) {
+      DeleteResponse<T> response = deleteInternalByName(updatedBy, name, recursive, hardDelete);
+      postDelete(response.entity());
+      return response;
+    } else {
+      return new DeleteResponse<>(null, ENTITY_DELETED);
+    }
+  }
+
   @Transaction
   public final DeleteResponse<T> deleteByName(
       String updatedBy, String name, boolean recursive, boolean hardDelete) {
@@ -2823,6 +2838,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
       if (updatedByBot() && operation == Operation.PUT) {
         // Revert extension field, if being updated by a bot with a PUT request to avoid overwriting
         // custom extension
+        updated.setExtension(origExtension);
+        return;
+      }
+
+      if (operation == Operation.PUT && updatedExtension == null) {
+        // Revert change to non-empty extension if it is being updated by a PUT request
+        // For PUT operations, existing extension can't be removed.
         updated.setExtension(origExtension);
         return;
       }
