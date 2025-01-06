@@ -62,13 +62,13 @@ class PowerBICliTest(CliCommonDashboard.TestSuite):
         return 44
 
     def expected_datamodel_lineage(self) -> int:
-        return 33
+        return 164
 
     def expected_tags(self) -> int:
         return 0
 
     def expected_filtered_mix(self) -> int:
-        return 24
+        return 26
 
     def expected_filtered_sink_mix(self) -> int:
         return 53
