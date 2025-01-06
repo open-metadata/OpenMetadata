@@ -215,6 +215,7 @@ class SSLManager:
     def _(self, connection):
         connection = cast(CassandraConnection, connection)
 
+        ssl_context = None
         if connection.sslMode != SslMode.disable:
             ssl_context = SSLContext(PROTOCOL_TLSv1_2)
             ssl_context.load_verify_locations(cafile=self.ca_file_path)
