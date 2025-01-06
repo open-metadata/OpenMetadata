@@ -676,7 +676,9 @@ public class OpenSearchClient implements SearchClient {
                     entity -> {
                       entity.setChildren(new ArrayList<>());
                       return entity;
-                    }));
+                    },
+                    (existing, replacement) -> existing,
+                    LinkedHashMap::new));
 
     List<EntityHierarchy> rootDomains = new ArrayList<>();
 
