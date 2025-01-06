@@ -2,17 +2,17 @@ package org.openmetadata.service.config;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
-import io.dropwizard.Configuration;
-import io.dropwizard.ConfiguredBundle;
-import io.dropwizard.setup.Bootstrap;
-import io.dropwizard.setup.Environment;
-import java.util.Collections;
+import io.dropwizard.core.Configuration;
+import io.dropwizard.core.ConfiguredBundle;
+import io.dropwizard.core.setup.Bootstrap;
+import io.dropwizard.core.setup.Environment;
+import jakarta.servlet.DispatcherType;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
-import javax.servlet.DispatcherType;
-import javax.servlet.FilterRegistration;
+import org.eclipse.jetty.server.session.SessionHandler;
+import org.eclipse.jetty.servlet.FilterHolder;
 import org.eclipse.jetty.servlets.HeaderFilter;
 
 public abstract class OMWebBundle<T extends Configuration> implements ConfiguredBundle<T> {
@@ -75,15 +75,25 @@ public abstract class OMWebBundle<T extends Configuration> implements Configured
 
   protected void configureHeaderFilter(
       Environment environment, String uriPath, String urlPattern, Map<String, String> headers) {
+
     String headerConfig =
         headers.entrySet().stream()
             .map(entry -> "set " + entry.getKey() + ": " + entry.getValue())
             .collect(Collectors.joining(","));
-    Map<String, String> filterConfig = Collections.singletonMap("headerConfig", headerConfig);
-    FilterRegistration.Dynamic filter =
-        environment.servlets().addFilter("header-filter-" + uriPath, HeaderFilter.class);
-    filter.addMappingForUrlPatterns(EnumSet.of(DispatcherType.REQUEST), true, urlPattern);
-    filter.setInitParameters(filterConfig);
+
+    FilterHolder holder = new FilterHolder(new HeaderFilter());
+    holder.setName("header-filter-" + uriPath);
+    holder.setInitParameter("headerConfig", headerConfig);
+
+    // Add the filter to Jetty's application context with the specified URL pattern
+    // Note: ensure you have a session handler if needed
+    if (environment.getApplicationContext().getSessionHandler() == null) {
+      environment.getApplicationContext().setSessionHandler(new SessionHandler());
+    }
+
+    environment
+        .getApplicationContext()
+        .addFilter(holder, urlPattern, EnumSet.of(DispatcherType.REQUEST));
   }
 
   private String deriveUrlPattern(String uri) {

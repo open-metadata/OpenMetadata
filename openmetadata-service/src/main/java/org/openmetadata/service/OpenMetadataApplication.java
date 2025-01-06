@@ -15,23 +15,23 @@ package org.openmetadata.service;
 
 import static org.openmetadata.service.util.jdbi.JdbiUtils.createAndSetupJDBI;
 
-import io.dropwizard.Application;
 import io.dropwizard.configuration.EnvironmentVariableSubstitutor;
 import io.dropwizard.configuration.SubstitutingSourceProvider;
-import io.dropwizard.health.conf.HealthConfiguration;
-import io.dropwizard.health.core.HealthCheckBundle;
+import io.dropwizard.core.Application;
+import io.dropwizard.core.server.DefaultServerFactory;
+import io.dropwizard.core.setup.Bootstrap;
+import io.dropwizard.core.setup.Environment;
 import io.dropwizard.jersey.errors.EarlyEofExceptionMapper;
 import io.dropwizard.jersey.errors.LoggingExceptionMapper;
 import io.dropwizard.jersey.jackson.JsonProcessingExceptionMapper;
 import io.dropwizard.jetty.MutableServletContextHandler;
 import io.dropwizard.lifecycle.Managed;
-import io.dropwizard.server.DefaultServerFactory;
-import io.dropwizard.setup.Bootstrap;
-import io.dropwizard.setup.Environment;
 import io.federecio.dropwizard.swagger.SwaggerBundle;
 import io.federecio.dropwizard.swagger.SwaggerBundleConfiguration;
 import io.socket.engineio.server.EngineIoServerOptions;
 import io.socket.engineio.server.JettyWebSocketHandler;
+import jakarta.servlet.DispatcherType;
+import jakarta.servlet.FilterRegistration;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.security.KeyStoreException;
@@ -40,10 +40,7 @@ import java.security.cert.CertificateException;
 import java.util.EnumSet;
 import java.util.Optional;
 import javax.naming.ConfigurationException;
-import javax.servlet.DispatcherType;
-import javax.servlet.FilterRegistration;
 import javax.servlet.ServletException;
-import javax.servlet.ServletRegistration;
 import javax.ws.rs.container.ContainerRequestFilter;
 import javax.ws.rs.container.ContainerResponseFilter;
 import javax.ws.rs.core.Response;
@@ -282,28 +279,25 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
               config.getAuthenticationConfiguration(), config.getAuthorizerConfiguration());
 
       // Register Servlets
-      ServletRegistration.Dynamic authLogin =
-          environment
-              .servlets()
-              .addServlet("oauth_login", new AuthLoginServlet(authenticationCodeFlowHandler));
-      authLogin.addMapping("/api/v1/auth/login");
-      ServletRegistration.Dynamic authCallback =
-          environment
-              .servlets()
-              .addServlet("auth_callback", new AuthCallbackServlet(authenticationCodeFlowHandler));
-      authCallback.addMapping("/callback");
+      ServletHolder authLoginHolder =
+          new ServletHolder(new AuthLoginServlet(authenticationCodeFlowHandler));
+      authLoginHolder.setName("oauth_login");
+      environment.getApplicationContext().addServlet(authLoginHolder, "/api/v1/auth/login");
 
-      ServletRegistration.Dynamic authLogout =
-          environment
-              .servlets()
-              .addServlet("auth_logout", new AuthLogoutServlet(authenticationCodeFlowHandler));
-      authLogout.addMapping("/api/v1/auth/logout");
+      ServletHolder authCallbackHolder =
+          new ServletHolder(new AuthCallbackServlet(authenticationCodeFlowHandler));
+      authCallbackHolder.setName("auth_callback");
+      environment.getApplicationContext().addServlet(authCallbackHolder, "/callback");
 
-      ServletRegistration.Dynamic refreshServlet =
-          environment
-              .servlets()
-              .addServlet("auth_refresh", new AuthRefreshServlet(authenticationCodeFlowHandler));
-      refreshServlet.addMapping("/api/v1/auth/refresh");
+      ServletHolder authLogoutHolder =
+          new ServletHolder(new AuthLogoutServlet(authenticationCodeFlowHandler));
+      authLogoutHolder.setName("auth_logout");
+      environment.getApplicationContext().addServlet(authLogoutHolder, "/api/v1/auth/logout");
+
+      ServletHolder refreshHolder =
+          new ServletHolder(new AuthRefreshServlet(authenticationCodeFlowHandler));
+      refreshHolder.setName("auth_refresh");
+      environment.getApplicationContext().addServlet(refreshHolder, "/api/v1/auth/refresh");
     }
   }
 
@@ -334,7 +328,8 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
   private void registerMicrometerFilter(
       Environment environment, EventMonitorConfiguration eventMonitorConfiguration) {
     FilterRegistration.Dynamic micrometerFilter =
-        environment.servlets().addFilter("OMMicrometerHttpFilter", new OMMicrometerHttpFilter());
+        environment.servlets().addFilter("OMMicrometerHttpFilter", OMMicrometerHttpFilter.class);
+
     micrometerFilter.addMappingForUrlPatterns(
         EnumSet.allOf(DispatcherType.class), true, eventMonitorConfiguration.getPathPattern());
   }
@@ -343,8 +338,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     // Handle Asset Using Servlet
     OpenMetadataAssetServlet assetServlet =
         new OpenMetadataAssetServlet("/assets", "/", "index.html", webConfiguration);
-    String pathPattern = "/" + '*';
-    environment.servlets().addServlet("static", assetServlet).addMapping(pathPattern);
+    environment.servlets().addServlet("static", assetServlet).addMapping("/*");
   }
 
   protected CollectionDAO getDao(Jdbi jdbi) {
@@ -354,43 +348,52 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
   private void registerSamlServlets(
       OpenMetadataApplicationConfig catalogConfig, Environment environment)
       throws IOException, CertificateException, KeyStoreException, NoSuchAlgorithmException {
+
     if (catalogConfig.getAuthenticationConfiguration() != null
         && catalogConfig.getAuthenticationConfiguration().getProvider().equals(AuthProvider.SAML)) {
 
-      // Set up a Session Manager
+      // Ensure we have a session handler
       MutableServletContextHandler contextHandler = environment.getApplicationContext();
       if (contextHandler.getSessionHandler() == null) {
         contextHandler.setSessionHandler(new SessionHandler());
       }
 
+      // Initialize default SAML settings (e.g. IDP metadata, SP keys, etc.)
       SamlSettingsHolder.getInstance().initDefaultSettings(catalogConfig);
-      ServletRegistration.Dynamic samlRedirectServlet =
-          environment.servlets().addServlet("saml_login", new SamlLoginServlet());
-      samlRedirectServlet.addMapping("/api/v1/saml/login");
-      ServletRegistration.Dynamic samlReceiverServlet =
-          environment
-              .servlets()
-              .addServlet(
-                  "saml_acs",
-                  new SamlAssertionConsumerServlet(catalogConfig.getAuthorizerConfiguration()));
-      samlReceiverServlet.addMapping("/api/v1/saml/acs");
-      ServletRegistration.Dynamic samlMetadataServlet =
-          environment.servlets().addServlet("saml_metadata", new SamlMetadataServlet());
-      samlMetadataServlet.addMapping("/api/v1/saml/metadata");
 
-      ServletRegistration.Dynamic samlRefreshServlet =
-          environment.servlets().addServlet("saml_refresh_token", new SamlTokenRefreshServlet());
-      samlRefreshServlet.addMapping("/api/v1/saml/refresh");
+      // 1) SAML Login
+      ServletHolder samlLoginHolder = new ServletHolder();
+      samlLoginHolder.setName("saml_login");
+      samlLoginHolder.setServlet(new SamlLoginServlet());
+      contextHandler.addServlet(samlLoginHolder, "/api/v1/saml/login");
 
-      ServletRegistration.Dynamic samlLogoutServlet =
-          environment
-              .servlets()
-              .addServlet(
-                  "saml_logout_token",
-                  new SamlLogoutServlet(
-                      catalogConfig.getAuthenticationConfiguration(),
-                      catalogConfig.getAuthorizerConfiguration()));
-      samlLogoutServlet.addMapping("/api/v1/saml/logout");
+      // 2) SAML Assertion Consumer (ACS)
+      ServletHolder samlAcsHolder = new ServletHolder();
+      samlAcsHolder.setName("saml_acs");
+      samlAcsHolder.setServlet(
+          new SamlAssertionConsumerServlet(catalogConfig.getAuthorizerConfiguration()));
+      contextHandler.addServlet(samlAcsHolder, "/api/v1/saml/acs");
+
+      // 3) SAML Metadata
+      ServletHolder samlMetadataHolder = new ServletHolder();
+      samlMetadataHolder.setName("saml_metadata");
+      samlMetadataHolder.setServlet(new SamlMetadataServlet());
+      contextHandler.addServlet(samlMetadataHolder, "/api/v1/saml/metadata");
+
+      // 4) SAML Token Refresh
+      ServletHolder samlRefreshHolder = new ServletHolder();
+      samlRefreshHolder.setName("saml_refresh_token");
+      samlRefreshHolder.setServlet(new SamlTokenRefreshServlet());
+      contextHandler.addServlet(samlRefreshHolder, "/api/v1/saml/refresh");
+
+      // 5) SAML Logout
+      ServletHolder samlLogoutHolder = new ServletHolder();
+      samlLogoutHolder.setName("saml_logout_token");
+      samlLogoutHolder.setServlet(
+          new SamlLogoutServlet(
+              catalogConfig.getAuthenticationConfiguration(),
+              catalogConfig.getAuthorizerConfiguration()));
+      contextHandler.addServlet(samlLogoutHolder, "/api/v1/saml/logout");
     }
   }
 
@@ -400,6 +403,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     bootstrap.setConfigurationSourceProvider(
         new SubstitutingSourceProvider(
             bootstrap.getConfigurationSourceProvider(), new EnvironmentVariableSubstitutor(false)));
+
     bootstrap.addBundle(
         new SwaggerBundle<>() {
           @Override
@@ -408,15 +412,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
             return catalogConfig.getSwaggerBundleConfig();
           }
         });
-    bootstrap.addBundle(
-        new HealthCheckBundle<>() {
-          @Override
-          protected HealthConfiguration getHealthConfiguration(
-              final OpenMetadataApplicationConfig configuration) {
-            return configuration.getHealthConfiguration();
-          }
-        });
-    bootstrap.addBundle(MicrometerBundleSingleton.getInstance());
+
     bootstrap.addBundle(
         new OMWebBundle<>() {
           @Override
@@ -592,10 +588,11 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     eioOptions.setAllowedCorsOrigins(null);
     WebSocketManager.WebSocketManagerBuilder.build(eioOptions);
     environment.getApplicationContext().setContextPath("/");
+    FilterHolder socketAddressFilterHolder = new FilterHolder();
+    socketAddressFilterHolder.setFilter(socketAddressFilter);
     environment
         .getApplicationContext()
-        .addFilter(
-            new FilterHolder(socketAddressFilter), pathSpec, EnumSet.of(DispatcherType.REQUEST));
+        .addFilter(socketAddressFilterHolder, pathSpec, EnumSet.of(DispatcherType.REQUEST));
     environment.getApplicationContext().addServlet(new ServletHolder(new FeedServlet()), pathSpec);
     // Upgrade connection to websocket from Http
     try {
@@ -609,7 +606,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
                       new JettyWebSocketHandler(
                           WebSocketManager.getInstance().getEngineIoServer())));
     } catch (ServletException ex) {
-      LOG.error("Websocket Upgrade Filter error : " + ex.getMessage());
+      LOG.error("Websocket Upgrade Filter error : {}", ex.getMessage());
     }
   }
 

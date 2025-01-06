@@ -119,6 +119,7 @@ public class FeedRepository {
   public static final String DELETED_TEAM_NAME = "DeletedTeam";
   public static final String DELETED_TEAM_DISPLAY = "Team was deleted";
   private static final long MAX_SECONDS_TIMESTAMP = 2147483647L;
+  private static final org.slf4j.Logger LOG = log;
 
   private final CollectionDAO dao;
   private static final MessageDecorator<FeedMessage> FEED_MESSAGE_FORMATTER =
