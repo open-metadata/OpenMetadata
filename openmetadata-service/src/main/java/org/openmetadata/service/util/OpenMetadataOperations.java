@@ -229,10 +229,10 @@ public class OpenMetadataOperations implements Callable<Integer> {
   @Command(name = "reset-password", description = "Reset the password for a user.")
   public Integer resetUserPassword(
       @Option(
-              names = {"-u", "--user"},
-              description = "UserName for which to reset the password.",
+              names = {"-e", "--email"},
+              description = "Email for which to reset the password.",
               required = true)
-          String userName,
+          String email,
       @Option(
               names = {"-p", "--password"},
               description = "Enter user password",
@@ -241,7 +241,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
               required = true)
           char[] password) {
     try {
-      LOG.info("Resetting password for user : {}", userName);
+      LOG.info("Resetting password for user : {}", email);
       if (nullOrEmpty(password)) {
         throw new IllegalArgumentException("Password cannot be empty.");
       }
@@ -258,8 +258,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
       UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
       Set<String> fieldList = new HashSet<>(userRepository.getPatchFields().getFieldList());
       fieldList.add(AUTH_MECHANISM_FIELD);
-      User originalUser =
-          userRepository.getByName(null, userName, new EntityUtil.Fields(fieldList));
+      User originalUser = userRepository.getByEmail(null, email, new EntityUtil.Fields(fieldList));
 
       // Check if the user is a bot user
       if (Boolean.TRUE.equals(originalUser.getIsBot())) {
