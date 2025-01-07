@@ -9,6 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """S3 object store extraction metadata"""
+import hashlib
 import json
 import secrets
 import traceback
@@ -58,6 +59,7 @@ from metadata.ingestion.source.storage.storage_service import (
     OPENMETADATA_TEMPLATE_FILE_NAME,
     StorageServiceSource,
 )
+from metadata.readers.dataframe.reader_factory import SupportedTypes
 from metadata.readers.file.base import ReadException
 from metadata.readers.file.config_source_factory import get_reader
 from metadata.utils import fqn
@@ -70,6 +72,8 @@ logger = ingestion_logger()
 S3_CLIENT_ROOT_RESPONSE = "Contents"
 
 WILD_CARD = "*"
+
+STRUCTURED_FORMATS = tuple(item.value for item in SupportedTypes)
 
 
 class S3Metric(Enum):
@@ -88,7 +92,7 @@ class S3Source(StorageServiceSource):
         self.cloudwatch_client = self.connection.cloudwatch_client
 
         self._bucket_cache: Dict[str, Container] = {}
-        self._unstructured_container_cache: Dict[str, Tuple[str, str]] = {}
+        self._container_cache: Dict[str, Tuple[str, str]] = {}
         self.s3_reader = get_reader(config_source=S3Config(), client=self.s3_client)
 
     @classmethod
@@ -100,6 +104,31 @@ class S3Source(StorageServiceSource):
         if not isinstance(connection, S3Connection):
             raise InvalidSourceException(f"Expected S3Connection, but got {connection}")
         return cls(config, metadata)
+
+    def _yield_all_containers(
+        self,
+        bucket_response: S3BucketResponse,
+        entries: List[MetadataEntry],
+        parent: Optional[EntityReference] = None,
+    ) -> Iterable[S3ContainerDetails]:
+        # yield structured containers which will be registered as a single container
+        yield from self._generate_structured_one_level_containers(
+            bucket_response=bucket_response,
+            entries=entries,
+            parent=parent,
+        )
+        # yield structured multi level containers
+        yield from self._generate_structured_multi_level_containers(
+            bucket_response=bucket_response,
+            entries=entries,
+            parent=parent,
+        )
+        # yield unstructured containers
+        yield from self._generate_unstructured_containers(
+            bucket_response=bucket_response,
+            entries=entries,
+            parent=parent,
+        )
 
     def get_containers(self) -> Iterable[S3ContainerDetails]:
         bucket_results = self.fetch_buckets()
@@ -121,7 +150,7 @@ class S3Source(StorageServiceSource):
                     entity=Container, fqn=container_fqn
                 )
                 self._bucket_cache[bucket_name] = container_entity
-                self._unstructured_container_cache[container_fqn] = (
+                self._container_cache[container_fqn] = (
                     container_entity.id.root,
                     KEY_SEPARATOR,
                 )
@@ -137,34 +166,22 @@ class S3Source(StorageServiceSource):
                     # Check if we have entries in the manifest file belonging to this bucket
                     if manifest_entries_for_current_bucket:
                         # ingest all the relevant valid paths from it
-                        yield from self._generate_structured_containers(
+                        yield from self._yield_all_containers(
                             bucket_response=bucket_response,
                             entries=manifest_entries_for_current_bucket,
                             parent=parent_entity,
                         )
-                        yield from self._generate_unstructured_containers(
-                            bucket_response=bucket_response,
-                            entries=manifest_entries_for_current_bucket,
-                            parent=parent_entity,
-                        )
-                        # nothing else do to for the current bucket, skipping to the next
                         continue
                 # If no global file, or no valid entries in the manifest, check for bucket level metadata file
                 metadata_config = self._load_metadata_file(bucket_name=bucket_name)
                 if metadata_config:
-                    yield from self._generate_structured_containers(
+                    yield from self._yield_all_containers(
                         bucket_response=bucket_response,
                         entries=metadata_config.entries,
                         parent=parent_entity,
                     )
-                    yield from self._generate_unstructured_containers(
-                        bucket_response=bucket_response,
-                        entries=metadata_config.entries,
-                        parent=parent_entity,
-                    )
-
                 # clean up the cache after each bucket
-                self._unstructured_container_cache.clear()
+                self._container_cache.clear()
 
             except ValidationError as err:
                 self.status.failed(
@@ -246,11 +263,33 @@ class S3Source(StorageServiceSource):
             logger.debug(f"Failed to ingest tags due to: {exc}")
             logger.debug(traceback.format_exc())
 
+    def get_container_name(self, container_details: S3ContainerDetails):
+        """
+        Suppose a bucket has two folders with same name,
+        dir A with path s3://bucket/dirA and 
+        dir B with path s3://bucket/random/path/dirA
+
+        for both the folders the name of leaf node/dir is dirA
+        but the full path is different.
+
+        In such cases, we can use the full path as the name, 
+        because the full path is unique for each folder,
+        and using hash of the full path makes fqns more human readable and reduces the length of fqn.
+
+        If we do not use this approach both dirA and dirA will update the same container because of same name.
+        """
+        if container_details.useFullPathAsName:
+            return EntityName(
+                hashlib.md5(container_details.fullPath.encode()).hexdigest()
+            )
+        return EntityName(container_details.name)
+
     def yield_create_container_requests(
         self, container_details: S3ContainerDetails
     ) -> Iterable[Either[CreateContainerRequest]]:
         container_request = CreateContainerRequest(
-            name=EntityName(container_details.name),
+            name=self.get_container_name(container_details),
+            displayName=str(container_details.name),
             prefix=container_details.prefix,
             numberOfObjects=container_details.number_of_objects,
             size=container_details.size,
@@ -285,7 +324,10 @@ class S3Source(StorageServiceSource):
     ) -> Optional[S3ContainerDetails]:
         bucket_name = bucket_response.name
 
-        if not metadata_entry.structureFormat:
+        if (
+            not metadata_entry.structureFormat
+            or metadata_entry.registerStructuredFileHierarchy is True
+        ):
             return None
 
         sample_key = self._get_sample_file_path(
@@ -293,26 +335,7 @@ class S3Source(StorageServiceSource):
         )
         # if we have a sample file to fetch a schema from
         if sample_key:
-            try:
-                columns = self._get_columns(
-                    container_name=bucket_name,
-                    sample_key=sample_key,
-                    metadata_entry=metadata_entry,
-                    config_source=S3Config(
-                        securityConfig=self.service_connection.awsConfig
-                    ),
-                    client=self.s3_client,
-                )
-            except Exception as err:
-                logger.warning()
-                self.status.failed(
-                    error=StackTraceError(
-                        name=f"{bucket_name}/{sample_key}",
-                        error=f"Error extracting columns from [{bucket_name}/{sample_key}] due to: [{err}]",
-                        stackTrace=traceback.format_exc(),
-                    )
-                )
-                return None
+            columns = self.__get_columns(sample_key, bucket_name, metadata_entry)
             if columns:
                 prefix = (
                     f"{KEY_SEPARATOR}{metadata_entry.dataPath.strip(KEY_SEPARATOR)}"
@@ -336,7 +359,7 @@ class S3Source(StorageServiceSource):
                 )
         return None
 
-    def _generate_structured_containers(
+    def _generate_structured_one_level_containers(
         self,
         bucket_response: S3BucketResponse,
         entries: List[MetadataEntry],
@@ -345,7 +368,7 @@ class S3Source(StorageServiceSource):
         for metadata_entry in entries:
             logger.info(
                 f"Extracting metadata from path {metadata_entry.dataPath.strip(KEY_SEPARATOR)} "
-                f"and generating structured container"
+                "and generating structured container one level"
             )
             structured_container: Optional[
                 S3ContainerDetails
@@ -357,9 +380,150 @@ class S3Source(StorageServiceSource):
             if structured_container:
                 yield structured_container
 
+    def _generate_structured_multi_level_containers(
+        self,
+        bucket_response: S3BucketResponse,
+        entries: List[MetadataEntry],
+        parent: Optional[EntityReference] = None,
+    ) -> Iterable[S3ContainerDetails]:
+        for metadata_entry in entries:
+            if (
+                metadata_entry.structureFormat
+                and metadata_entry.registerStructuredFileHierarchy
+            ):
+                yield from self._yield_nested_structured_containers(
+                    bucket_response=bucket_response,
+                    metadata_entry=metadata_entry,
+                    parent=parent,
+                )
+
+    def __get_columns(
+        self,
+        key: str,
+        bucket_name: str,
+        metadata_entry: MetadataEntry,
+        derive_format: bool = False,
+    ) -> bool:
+        try:
+            return self._get_columns(
+                container_name=bucket_name,
+                sample_key=key,
+                metadata_entry=metadata_entry,
+                config_source=S3Config(
+                    securityConfig=self.service_connection.awsConfig
+                ),
+                client=self.s3_client,
+                derive_format=derive_format,
+            )
+        except Exception as err:
+            logger.warning(f"Failed to extract columns from file {key}")
+            self.status.failed(
+                error=StackTraceError(
+                    name=f"{bucket_name}/{key}",
+                    error=f"Error extracting columns from [{bucket_name}/{key}] due to: [{err}]",
+                    stackTrace=traceback.format_exc(),
+                )
+            )
+        return None
+
+    def _yield_nested_structured_containers(
+        self,
+        bucket_response: S3BucketResponse,
+        metadata_entry: MetadataEntry,
+        parent: Optional[EntityReference] = None,
+    ) -> Iterable[S3ContainerDetails]:
+        """
+        Args:
+            bucket_response (S3BucketResponse): The response from the S3 bucket.
+            metadata_entry (MetadataEntry): The metadata entry containing data path and structure format.
+            parent (Optional[EntityReference]): The parent entity reference, if any.
+        Yields:
+            S3ContainerDetails: Details of the structured container including name, prefix, size, 
+            container FQN, parent reference, full path, data model, and source URL.
+        
+        Method to yield nested structured containers in case when registerStructuredFileHierarchy is enabled
+        """
+        bucket_name = bucket_response.name
+        response = self.s3_client.list_objects_v2(
+            Bucket=bucket_name, Prefix=metadata_entry.dataPath
+        )
+        candidate_keys = [
+            entry["Key"]
+            for entry in response[S3_CLIENT_ROOT_RESPONSE]
+            if entry and entry.get("Key") and not entry.get("Key").endswith("/")
+        ]
+        for key in candidate_keys:
+            if self.is_valid_structured_file(metadata_entry.structureFormat, key):
+                list_of_parent = key.strip(KEY_SEPARATOR).split(KEY_SEPARATOR)
+                if (
+                    metadata_entry.depth >= 0
+                    and len(list_of_parent) > metadata_entry.depth + 1
+                ):
+                    logger.warning(
+                        f"Depth specified in metadata entry is less than the actual depth of the directory structure"
+                    )
+                    continue
+                columns = self.__get_columns(key, bucket_name, metadata_entry, True)
+                if not columns:
+                    logger.warning(f"No Columns Found")
+                    continue
+                logger.info(
+                    f"Extracting metadata from path {key.strip(KEY_SEPARATOR)} "
+                    f"and generating unstructured container"
+                )
+                yield from self._yield_parents_of_container(
+                    bucket_name, list_of_parent, parent, True
+                )
+                parent_fqn = self.get_container_fqn(
+                    bucket_name, list_of_parent[:-1], True
+                )
+                parent_id, parent_path = self._container_cache[parent_fqn]
+                container_fqn = self.get_container_fqn(
+                    bucket_name, list_of_parent, True
+                )
+                size = self.get_size(bucket_name, key)
+                yield S3ContainerDetails(
+                    name=list_of_parent[-1],
+                    prefix=self._clean_path(parent_path + KEY_SEPARATOR),
+                    file_formats=[],
+                    size=size,
+                    container_fqn=container_fqn,
+                    leaf_container=True,
+                    parent=EntityReference(id=parent_id, type="container"),
+                    fullPath=self._get_full_path(bucket_name, key),
+                    data_model=ContainerDataModel(isPartitioned=False, columns=columns),
+                    sourceUrl=self._get_object_source_url(
+                        bucket_name=bucket_name,
+                        prefix=self._clean_path(
+                            parent_path + KEY_SEPARATOR + list_of_parent[-1]
+                        ),
+                    ),
+                )
+
+    def is_valid_structured_file(self, accepted_extensions: str, key: str) -> bool:
+        """
+        Check if the given key corresponds to a valid structured file based on the accepted extensions.
+        Args:
+            accepted_extensions (str): A comma-separated string of accepted file extensions or a wildcard character.
+            key (str): The key (filename) to be checked.
+        Returns:
+            bool: True if the key ends with one of the accepted extensions or matches the wildcard, False otherwise.
+        """
+        # Split the string into a list of values
+        if (
+            accepted_extensions == WILD_CARD or accepted_extensions is None
+        ) and key.endswith(STRUCTURED_FORMATS):
+            return True
+
+        for ext in accepted_extensions.split(","):
+            if key.endswith(ext):
+                return True
+
+        return False
+
     def is_valid_unstructured_file(self, accepted_extensions: List, key: str) -> bool:
         # Split the string into a list of values
-        if WILD_CARD in accepted_extensions:
+        if WILD_CARD in accepted_extensions and not key.endswith(STRUCTURED_FORMATS):
             return True
 
         for ext in accepted_extensions:
@@ -368,24 +532,64 @@ class S3Source(StorageServiceSource):
 
         return False
 
-    def _yield_parents_of_unstructured_container(
+    def get_container_fqn(
+        self,
+        bucket_name: str,
+        list_of_parent: List[str],
+        useFullPathAsName: bool = False,
+    ):
+        """
+        Args:
+            bucket_name (str): The name of the bucket.
+            list_of_parent (List[str]): A list of parent directories or folders.
+            useFullPathAsName (bool, optional): Flag to determine if the full path should be used as the name. Defaults to False.
+        Returns:
+            str: The fully qualified name (FQN) of the container.
+        
+        Generate the fully qualified name (FQN) for a container in an object store.
+
+        suppose key is this s3://bucket/random/path/dirA
+
+        fqn will be 
+
+        service_name.bucket_name.md5(s3://bucket/random).md5(s3://bucket/random/path).md5(s3://bucket/random/path/dirA)
+        to maintain the uniqueness of the container name when useFullPathAsName is True.
+        """
+        if useFullPathAsName is False:
+            return fqn._build(  # pylint: disable=protected-access
+                *(
+                    self.context.get().objectstore_service,
+                    bucket_name,
+                    *list_of_parent,
+                )
+            )
+        container_fqn = fqn._build(  # pylint: disable=protected-access
+            self.context.get().objectstore_service,
+            bucket_name,
+        )
+        full_path = self._get_full_path(bucket_name)
+        for i in list_of_parent:
+            full_path += KEY_SEPARATOR + i
+            container_fqn += (
+                fqn.FQN_SEPARATOR + hashlib.md5(full_path.encode()).hexdigest()
+            )
+        return container_fqn
+
+    def _yield_parents_of_container(
         self,
         bucket_name: str,
         list_of_parent: List[str],
         parent: Optional[EntityReference] = None,
+        useFullPathAsName: bool = False,
     ):
         full_path = self._get_full_path(bucket_name)
         sub_parent = parent
         for i in range(len(list_of_parent) - 1):
-            container_fqn = fqn._build(  # pylint: disable=protected-access
-                *(
-                    self.context.get().objectstore_service,
-                    bucket_name,
-                    *list_of_parent[: i + 1],
-                )
+            container_fqn = self.get_container_fqn(
+                bucket_name, list_of_parent[: i + 1], useFullPathAsName
             )
-            if container_fqn in self._unstructured_container_cache:
-                parent_id, full_path = self._unstructured_container_cache[container_fqn]
+            if container_fqn in self._container_cache:
+                parent_id, full_path = self._container_cache[container_fqn]
                 sub_parent = EntityReference(id=parent_id, type="container")
                 continue
             yield S3ContainerDetails(
@@ -400,12 +604,13 @@ class S3Source(StorageServiceSource):
                         full_path + KEY_SEPARATOR + list_of_parent[i]
                     ),
                 ),
+                useFullPathAsName=useFullPathAsName,
             )
             container_entity = self.metadata.get_by_name(
                 entity=Container, fqn=container_fqn
             )
             full_path += KEY_SEPARATOR + list_of_parent[i]
-            self._unstructured_container_cache[container_fqn] = (
+            self._container_cache[container_fqn] = (
                 container_entity.id.root,
                 full_path,
             )
@@ -433,7 +638,7 @@ class S3Source(StorageServiceSource):
                     f"and generating unstructured container"
                 )
                 list_of_parent = key.strip(KEY_SEPARATOR).split(KEY_SEPARATOR)
-                yield from self._yield_parents_of_unstructured_container(
+                yield from self._yield_parents_of_container(
                     bucket_name, list_of_parent, parent
                 )
                 parent_fqn = fqn._build(  # pylint: disable=protected-access
@@ -443,7 +648,7 @@ class S3Source(StorageServiceSource):
                         *list_of_parent[:-1],
                     )
                 )
-                parent_id, parent_path = self._unstructured_container_cache[parent_fqn]
+                parent_id, parent_path = self._container_cache[parent_fqn]
                 container_fqn = fqn._build(  # pylint: disable=protected-access
                     *(
                         self.context.get().objectstore_service,

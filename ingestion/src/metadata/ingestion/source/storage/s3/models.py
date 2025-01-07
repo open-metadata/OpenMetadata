@@ -101,3 +101,6 @@ class S3ContainerDetails(BaseModel):
     fullPath: Optional[str] = Field(
         None, description="Full path of the container/file."
     )
+    useFullPathAsName: Optional[bool] = Field(
+        False, description="Use full path as name."
+    )

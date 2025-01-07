@@ -22,6 +22,18 @@
           "type": "string",
           "default": null
         },
+        "depth": {
+          "title": "Depth",
+          "description": "How many levels of the directory structure should be ingested",
+          "type": "integer",
+          "default": -1
+        },
+        "registerStructuredFileHierarchy": {
+          "title": "Include all structured files",
+          "description": "Flag indicating whether all structured files in the container should be ingested",
+          "type": "boolean",
+          "default": false
+        },
         "unstructuredFormats": {
           "title": "Unstructured format",
           "description": "What the unstructured formats you want to ingest, eg. png, pdf, jpg.",

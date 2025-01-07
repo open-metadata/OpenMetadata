@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * Definition of the properties contained by an object store container template config file
  */
 export interface ContainerMetadataConfig {
@@ -32,6 +30,10 @@ export interface MetadataEntry {
      */
     dataPath: string;
     /**
+     * How many levels of the directory structure should be ingested
+     */
+    depth?: number;
+    /**
      * Flag indicating whether the container's data is partitioned
      */
     isPartitioned?: boolean;
@@ -39,6 +41,10 @@ export interface MetadataEntry {
      * What are the partition columns in case the container's data is partitioned
      */
     partitionColumns?: Column[];
+    /**
+     * Flag indicating whether all structured files in the container should be ingested
+     */
+    registerStructuredFileHierarchy?: boolean;
     /**
      * For delimited files such as CSV, what is the separator being used?
      */

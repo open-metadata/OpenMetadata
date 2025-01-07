@@ -69,6 +69,15 @@ In case you want to ingest all unstructured files with irrespective of their fil
 
 {% /codeInfo %}
 
+{% codeInfo srNumber=7 %}
+
+**Structured Non-Partition Container**: One can register non-partitioned structured files in OpenMetadata. To do that you need to enable the flag `registerStructuredFileHierarchy` for your entry in the `openmetadata.json` file. You can also specify which extensions of files you want to ingest within the `structureFormat` field, if you specify this field as `"*"` all the supported structured files will get ingested.
+
+You can also control the depth up to which you want to include the files, for example 0 depth specifies look into current directory only, depth 1 specifies look into current directory and 1 level of sub directory and so on. If depth is specified as -1 it will ingest from all the available nested subfolder.
+
+{% /codeInfo %}
+
+
 
 {% /codeInfoContainer %}
 
@@ -135,6 +144,26 @@ In case you want to ingest all unstructured files with irrespective of their fil
         {
             "dataPath": "path/to/unstructured_folder_all",
             "unstructuredFormats": ["*"]
+        }
+```
+```json {% srNumber=7 %}
+        {
+            "dataPath": "test-datalake",
+            "structureFormat": "csv",
+            "depth": 2,
+            "registerStructuredFileHierarchy": true
+        },
+        {
+            "dataPath": "/",
+            "structureFormat": "*",
+            "depth": -1,
+            "registerStructuredFileHierarchy": true
+        },
+        {
+            "dataPath": "/",
+            "structureFormat": "json,csv",
+            "depth": 0,
+            "registerStructuredFileHierarchy": true
         }
     ]
 }

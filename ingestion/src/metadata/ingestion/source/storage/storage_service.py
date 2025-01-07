@@ -290,11 +290,29 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
         # Adding the ending separator so that we only read files from the right directory, for example:
         # if we have files in `transactions/*` and `transactions_old/*`, only passing the prefix as
         # `transactions` would list files for both directories. We need the prefix to be `transactions/`.
+        if metadata_entry.dataPath.strip(KEY_SEPARATOR) == "":
+            return ""
         result = f"{metadata_entry.dataPath.strip(KEY_SEPARATOR)}{KEY_SEPARATOR}"
         if not metadata_entry.structureFormat:
             logger.warning(f"Ignoring un-structured metadata entry {result}")
             return None
         return result
+
+    @staticmethod
+    def _get_file_extension(
+        key: str, structure_format: str, derive_format: bool = False
+    ) -> Optional[SupportedTypes]:
+        """
+        In case of registerStructuredFileHierarchy enabled, structure_format could be * 
+        or could be comma separated list of accepted extensions like csv, parquet, avro
+        hence we need to derive the format from the key (file uri/path) 
+        """
+        if derive_format is False:
+            return SupportedTypes(structure_format)
+        valid_extension = tuple(item.value for item in SupportedTypes)
+        for extension in valid_extension:
+            if key.endswith(extension):
+                return SupportedTypes(extension)
 
     @staticmethod
     def extract_column_definitions(
@@ -303,15 +321,19 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
         config_source: ConfigSource,
         client: Any,
         metadata_entry: MetadataEntry,
+        derive_format: bool = False,
     ) -> List[Column]:
         """Extract Column related metadata from s3"""
+        file_extension = StorageServiceSource._get_file_extension(
+            sample_key, metadata_entry.structureFormat, derive_format
+        )
         data_structure_details, raw_data = fetch_dataframe(
             config_source=config_source,
             client=client,
             file_fqn=DatalakeTableSchemaWrapper(
                 key=sample_key,
                 bucket_name=bucket_name,
-                file_extension=SupportedTypes(metadata_entry.structureFormat),
+                file_extension=file_extension,
                 separator=metadata_entry.separator,
             ),
             fetch_raw_data=True,
@@ -319,7 +341,7 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
         columns = []
         column_parser = DataFrameColumnParser.create(
             data_structure_details,
-            SupportedTypes(metadata_entry.structureFormat),
+            file_extension,
             raw_data=raw_data,
         )
         columns = column_parser.get_columns()
@@ -332,9 +354,15 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
         metadata_entry: MetadataEntry,
         config_source: ConfigSource,
         client: Any,
+        derive_format: bool = False,
     ) -> Optional[List[Column]]:
         """Get the columns from the file and partition information"""
         extracted_cols = self.extract_column_definitions(
-            container_name, sample_key, config_source, client, metadata_entry
+            container_name,
+            sample_key,
+            config_source,
+            client,
+            metadata_entry,
+            derive_format,
         )
         return (metadata_entry.partitionColumns or []) + (extracted_cols or [])

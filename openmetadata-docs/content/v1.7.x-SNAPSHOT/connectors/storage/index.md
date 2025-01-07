@@ -117,6 +117,13 @@ Our global manifest looks like follows:
             "containerName": "collate-demo-storage"
         },
         {
+            "dataPath": "test-datalake",
+            "structureFormat": "csv",
+            "depth": 2,
+            "registerStructuredFileHierarchy": true,
+            "containerName": "collate-demo-storage"
+        },
+        {
             "dataPath": "cities_multiple",
             "structureFormat": "parquet",
             "isPartitioned": true,
