@@ -582,8 +582,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
       @Context SecurityContext securityContext,
       @Context HttpServletResponse response,
       @Valid CreateTestSuite create) {
-    TestSuite testSuite =
-        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+    TestSuite testSuite = getTestSuite(create, securityContext.getUserPrincipal().getName());
     testSuite.setBasic(true);
     // Set the deprecation header based on draft specification from IETF
     // https://datatracker.ietf.org/doc/html/draft-ietf-httpapi-deprecation-header-02
@@ -723,8 +722,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateTestSuite create) {
-    TestSuite testSuite =
-        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+    TestSuite testSuite = getTestSuite(create, securityContext.getUserPrincipal().getName());
     testSuite.setBasic(true);
     return createOrUpdate(uriInfo, securityContext, testSuite);
   }
@@ -981,16 +979,16 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
             .withDescription(create.getDescription())
             .withDisplayName(create.getDisplayName())
             .withName(create.getName());
-    if (create.getExecutableEntityReference() != null) {
+    if (create.getBasicEntityReference() != null) {
       Table table =
-          Entity.getEntityByName(Entity.TABLE, create.getExecutableEntityReference(), null, null);
+          Entity.getEntityByName(Entity.TABLE, create.getBasicEntityReference(), null, null);
       EntityReference entityReference =
           new EntityReference()
               .withId(table.getId())
               .withFullyQualifiedName(table.getFullyQualifiedName())
               .withName(table.getName())
               .withType(Entity.TABLE);
-      testSuite.setExecutableEntityReference(entityReference);
+      testSuite.setBasicEntityReference(entityReference);
     }
     return testSuite;
   }
