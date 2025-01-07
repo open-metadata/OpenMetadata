@@ -94,6 +94,12 @@ class SqlColumnHandlerMixin:
                 parsed_string["name"] = column["name"]
         else:
             col_type = ColumnTypeParser.get_column_type(column["type"])
+            # For arrays, we'll get the item type if possible, or parse the string representation of the column
+            # if SQLAlchemy does not provide any further information
+            if col_type == "ARRAY" and getattr(column["type"], "item_type"):
+                arr_data_type = ColumnTypeParser.get_column_type(
+                    column["type"].item_type
+                )
             if col_type == "ARRAY" and re.match(
                 r"(?:\w*)(?:\()(\w*)(?:.*)", str(column["type"])
             ):
