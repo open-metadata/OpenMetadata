@@ -228,7 +228,7 @@ class OMetaTestsMixin:
 
         create_test_suite = CreateTestSuiteRequest(
             name=f"{table_entity.fullyQualifiedName.root}.TestSuite",
-            executableEntityReference=table_entity.fullyQualifiedName.root,
+            basicEntityReference=table_entity.fullyQualifiedName.root,
         )  # type: ignore
         test_suite = self.create_or_update_executable_test_suite(create_test_suite)
         return test_suite

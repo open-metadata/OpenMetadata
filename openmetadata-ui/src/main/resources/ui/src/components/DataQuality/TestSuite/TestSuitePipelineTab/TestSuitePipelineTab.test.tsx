@@ -38,8 +38,8 @@ const mockTestSuite = {
   updatedAt: 1692766701920,
   updatedBy: 'admin',
   deleted: false,
-  executable: true,
-  executableEntityReference: {
+  basic: true,
+  basicEntityReference: {
     id: 'e926d275-441e-49ee-a073-ad509f625a14',
     type: 'table',
     name: 'web_analytic_event',

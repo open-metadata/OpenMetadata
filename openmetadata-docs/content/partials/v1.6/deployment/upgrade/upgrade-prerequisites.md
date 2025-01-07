@@ -86,6 +86,122 @@ After the migration is finished, you can revert this changes.
 
 # Backward Incompatible Changes
 
+## 1.6.2
+
+### Executable Logical Test Suites
+
+We are introducing a new feature that allows users to execute logical test suites. This feature will allow users to run
+groups of Data Quality tests, even if they belong to different tables (or even services!). Note that before, you could
+only schedule and execute the tests for each of the tables.
+
+From the UI, you can now create a new Test Suite, add any tests you want and create and schedule the run.
+
+This change, however, requires some adjustments if you are directly interacting with the OpenMetadata API or if you
+are running the ingestions externally:
+
+#### `/executable` endpoints Changes
+
+CRUD operations around "executable" Test Suites - the ones directly related to a single table - were managed by the
+`/executable` endpoints, e.g., `POST /v1/dataQuality/testSuites/executable`. We'll keep this endpoints until the next release,
+but users should update their operations to use the new `/base` endpoints, e.g., `POST /v1/dataQuality/testSuites/base`.
+
+This is to adjust the naming convention since all Test Suites are executable, so we're differentiating between "base" and
+"logical" Test Suites.
+
+In the meantime, you can use the `/executable` endpoints to create and manage the Test Suites, but you'll get deprecation
+headers in the response. We recommend migrating to the new endpoints as soon as possible to avoid any issues when the `/executable`
+endpoints get completely removed.
+
+#### YAML Changes
+
+If you're running the DQ Workflows externally AND YOU ARE NOT STORING THE SERVICE INFORMATION IN OPENMETADATA, this is how they'll change:
+
+A YAML file for 1.5.x would look like this:
+
+```yaml
+source:
+  type: testsuite
+  serviceName: red # Test Suite Name 
+  serviceConnection:
+    config:
+      hostPort: <host> 
+      username: <user>
+      password: <password>
+      database: <database>
+      type: Redshift
+  sourceConfig:
+    config:
+      type: TestSuite
+      entityFullyQualifiedName: red.dev.dbt_jaffle.customers
+      profileSampleType: PERCENTAGE
+processor:
+  type: "orm-test-runner"
+  config: {}
+sink:
+  type: metadata-rest
+  config: {}
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: http://localhost:8585/api
+    authProvider: openmetadata
+    securityConfig:
+      jwtToken: "..."
+```
+
+Basically, if you are not storing the service connection in OpenMetadata, you could leverage the `source.serviceConnection`
+entry to pass that information.
+
+However, with the ability to execute Logical Test Suites, you can now have multiple tests from different services! This means,
+that the connection information needs to be placed differently. The new YAML file would look like this:
+
+```yaml
+source:
+  type: testsuite
+  serviceName: Logical # Test Suite Name 
+  sourceConfig:
+    config:
+      type: TestSuite
+      serviceConnections:
+      - serviceName: red
+        serviceConnection:
+          config:
+            hostPort: <host>
+            username: <user>
+            password: <password>
+            database: <database>
+            type: Redshift
+      - serviceName: snowflake
+        serviceConnection:
+          config:
+            hostPort: <host>
+            username: <user>
+            password: <password>
+            database: <database>
+            type: Snowflake
+processor:
+  type: "orm-test-runner"
+  config: {}
+sink:
+  type: metadata-rest
+  config: {}
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: http://localhost:8585/api
+    authProvider: openmetadata
+    securityConfig:
+      jwtToken: "..."
+```
+
+As you can see, you can pass multiple `serviceConnections` to the `sourceConfig` entry, each one with the connection information
+and the `serviceName` they are linked to.
+
+{% note noteType="Warning" %}
+
+If you are already storing the service connection information in OpenMetadata (e.g., because you have created the services via the UI),
+there's nothing you need to do. The ingestion will automatically pick up the connection information from the service.
+
+{% /note %}
+
 ## 1.6.0
 
 ### Ingestion Workflow Status

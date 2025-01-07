@@ -637,7 +637,7 @@ test('TestCase filters', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
   await filterTable1.createTestSuiteAndPipelines(apiContext);
   const { testSuiteData: testSuite2Response } =
     await filterTable1.createTestSuiteAndPipelines(apiContext, {
-      executableEntityReference: filterTable2Response?.['fullyQualifiedName'],
+      basicEntityReference: filterTable2Response?.['fullyQualifiedName'],
     });
 
   const testCaseResult = {

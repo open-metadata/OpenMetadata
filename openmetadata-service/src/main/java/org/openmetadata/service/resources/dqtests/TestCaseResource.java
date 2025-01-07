@@ -130,8 +130,8 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
           "Get a list of test. Use `fields` "
               + "parameter to get only necessary fields. Use cursor-based pagination to limit the number "
               + "entries in the list using `limit` and `before` or `after` query params."
-              + "Use the `testSuite` field to get the executable Test Suite linked to this test case "
-              + "or use the `testSuites` field to list test suites (executable and logical) linked.",
+              + "Use the `testSuite` field to get the Basic Test Suite linked to this test case "
+              + "or use the `testSuites` field to list test suites (Basic and Logical) linked.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -242,8 +242,8 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
           "Get a list of test cases using the search service. Use `fields` "
               + "parameter to get only necessary fields. Use offset/limit pagination to limit the number "
               + "entries in the list using `limit` and `offset` query params."
-              + "Use the `testSuite` field to get the executable Test Suite linked to this test case "
-              + "or use the `testSuites` field to list test suites (executable and logical) linked.",
+              + "Use the `testSuite` field to get the Basic Test Suite linked to this test case "
+              + "or use the `testSuites` field to list test suites (Basic and Logical) linked.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -647,7 +647,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
         new CreateResourceContext<>(entityType, test),
         new OperationContext(Entity.TEST_CASE, MetadataOperation.EDIT_TESTS));
     authorizer.authorize(securityContext, operationContext, resourceContext);
-    repository.isTestSuiteExecutable(create.getTestSuite());
+    repository.isTestSuiteBasic(create.getTestSuite());
     test = addHref(uriInfo, repository.create(uriInfo, test));
     return Response.created(test.getHref()).entity(test).build();
   }
@@ -762,7 +762,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
         new OperationContext(Entity.TABLE, MetadataOperation.EDIT_TESTS);
     authorizer.authorize(securityContext, operationContext, resourceContext);
     TestCase test = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
-    repository.isTestSuiteExecutable(create.getTestSuite());
+    repository.isTestSuiteBasic(create.getTestSuite());
     repository.prepareInternal(test, true);
     PutResponse<TestCase> response = repository.createOrUpdate(uriInfo, test);
     addHref(uriInfo, response.getEntity());
@@ -1167,9 +1167,8 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     ResourceContextInterface resourceContext =
         TestCaseResourceContext.builder().entity(testSuite).build();
     authorizer.authorize(securityContext, operationContext, resourceContext);
-    if (Boolean.TRUE.equals(testSuite.getExecutable())) {
-      throw new IllegalArgumentException(
-          "You are trying to add test cases to an executable test suite.");
+    if (Boolean.TRUE.equals(testSuite.getBasic())) {
+      throw new IllegalArgumentException("You are trying to add test cases to a basic test suite.");
     }
     List<UUID> testCaseIds = createLogicalTestCases.getTestCaseIds();
 

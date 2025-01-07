@@ -83,7 +83,7 @@ const FeedCardBodyV1 = ({
       if (ASSET_CARD_STYLES.includes(cardStyle as CardStyle)) {
         const entityInfo = feed.feedInfo?.entitySpecificInfo?.entity;
         const isExecutableTestSuite =
-          entityType === EntityType.TEST_SUITE && entityInfo.executable;
+          entityType === EntityType.TEST_SUITE && entityInfo.basic;
         const isObservabilityAlert =
           entityType === EntityType.EVENT_SUBSCRIPTION &&
           (entityInfo as EventSubscription).alertType ===

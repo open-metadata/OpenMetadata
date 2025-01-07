@@ -184,7 +184,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
         findFromRecords(test.getId(), entityType, Relationship.CONTAINS, TEST_SUITE);
     for (CollectionDAO.EntityRelationshipRecord testSuiteId : records) {
       TestSuite testSuite = Entity.getEntity(TEST_SUITE, testSuiteId.getId(), "", Include.ALL);
-      if (Boolean.TRUE.equals(testSuite.getExecutable())) {
+      if (Boolean.TRUE.equals(testSuite.getBasic())) {
         return testSuite.getEntityReference();
       }
     }
@@ -244,14 +244,16 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     EntityReference testSuite = test.getTestSuite();
     EntityReference testDefinition = test.getTestDefinition();
     TestCaseResult testCaseResult = test.getTestCaseResult();
+    List<TestSuite> testSuites = test.getTestSuites();
 
     // Don't store testCaseResult, owner, database, href and tags as JSON.
     // Build it on the fly based on relationships
-    test.withTestSuite(null).withTestDefinition(null).withTestCaseResult(null);
+    test.withTestSuite(null).withTestSuites(null).withTestDefinition(null).withTestCaseResult(null);
     store(test, update);
 
     // Restore the relationships
     test.withTestSuite(testSuite)
+        .withTestSuites(testSuites)
         .withTestDefinition(testDefinition)
         .withTestCaseResult(testCaseResult);
   }
@@ -427,13 +429,13 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     return daoCollection.testCaseDAO().countOfTestCases(testCaseIds);
   }
 
-  public void isTestSuiteExecutable(String testSuiteFqn) {
+  public void isTestSuiteBasic(String testSuiteFqn) {
     TestSuite testSuite = Entity.getEntityByName(Entity.TEST_SUITE, testSuiteFqn, null, null);
-    if (Boolean.FALSE.equals(testSuite.getExecutable())) {
+    if (Boolean.FALSE.equals(testSuite.getBasic())) {
       throw new IllegalArgumentException(
           "Test suite "
               + testSuite.getName()
-              + " is not executable. Cannot create test cases for non-executable test suites.");
+              + " is not basic. Cannot create test cases for non-basic test suites.");
     }
   }
 

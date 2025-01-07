@@ -235,11 +235,10 @@ export class TableClass extends EntityClass {
     }
 
     const testSuiteData = await apiContext
-      .post('/api/v1/dataQuality/testSuites/executable', {
+      .post('/api/v1/dataQuality/testSuites/basic', {
         data: {
           name: `pw-test-suite-${uuid()}`,
-          executableEntityReference:
-            this.entityResponseData?.['fullyQualifiedName'],
+          basicEntityReference: this.entityResponseData?.['fullyQualifiedName'],
           description: 'Playwright test suite for table',
           ...testSuite,
         },

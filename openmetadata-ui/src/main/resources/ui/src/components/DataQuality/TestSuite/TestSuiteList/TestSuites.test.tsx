@@ -40,12 +40,12 @@ const mockList = {
       name: 'sample_data.ecommerce_db.shopify.dim_address.testSuite',
       fullyQualifiedName:
         'sample_data.ecommerce_db.shopify.dim_address.testSuite',
-      description: 'This is an executable test suite linked to an entity',
+      description: 'This is an basic test suite linked to an entity',
       serviceType: 'TestSuite',
       href: 'href',
       deleted: false,
-      executable: true,
-      executableEntityReference: {
+      basic: true,
+      basicEntityReference: {
         id: 'id1',
         type: 'table',
         name: 'dim_address',
@@ -161,7 +161,7 @@ describe('TestSuites component', () => {
     ).toBeInTheDocument();
   });
 
-  it('should send testSuiteType executable in api, if active tab is tables', async () => {
+  it('should send testSuiteType basic in api, if active tab is tables', async () => {
     const mockGetListTestSuites = getListTestSuitesBySearch as jest.Mock;
 
     render(<TestSuites />);
@@ -180,7 +180,7 @@ describe('TestSuites component', () => {
       sortNestedMode: ['max'],
       sortNestedPath: 'testCaseResultSummary',
       sortType: 'desc',
-      testSuiteType: 'executable',
+      testSuiteType: 'basic',
     });
   });
 
@@ -202,7 +202,7 @@ describe('TestSuites component', () => {
       sortNestedMode: ['max'],
       sortNestedPath: 'testCaseResultSummary',
       sortType: 'desc',
-      testSuiteType: 'executable',
+      testSuiteType: 'basic',
     });
   });
 

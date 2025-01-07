@@ -92,17 +92,17 @@ describe('EntityUtils unit tests', () => {
   describe('getBreadcrumbForTestSuite', () => {
     const testSuiteData: TestSuite = {
       name: 'testSuite',
-      executableEntityReference: {
+      basicEntityReference: {
         fullyQualifiedName: 'test/testSuite',
         id: '123',
         type: 'testType',
       },
     };
 
-    it('should get breadcrumb if data is executable', () => {
+    it('should get breadcrumb if data is basic', () => {
       const result = getBreadcrumbForTestSuite({
         ...testSuiteData,
-        executable: true,
+        basic: true,
       });
 
       expect(result).toEqual([
@@ -111,7 +111,7 @@ describe('EntityUtils unit tests', () => {
       ]);
     });
 
-    it('should get breadcrumb if data is not executable', () => {
+    it('should get breadcrumb if data is not basic', () => {
       const result = getBreadcrumbForTestSuite(testSuiteData);
 
       expect(result).toEqual([
