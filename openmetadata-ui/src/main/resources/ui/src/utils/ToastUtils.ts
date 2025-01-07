@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { AxiosError } from 'axios';
+import { AxiosError, isCancel } from 'axios';
 import { isEmpty, isString } from 'lodash';
 import React from 'react';
 import { toast } from 'react-toastify';
@@ -47,11 +47,14 @@ export const showErrorToast = (
   autoCloseTimer?: number,
   callback?: (value: React.SetStateAction<string>) => void
 ) => {
+  if (isCancel(error)) {
+    return;
+  }
   let errorMessage;
   if (isString(error)) {
     errorMessage = error.toString();
   } else {
-    const method = error.config?.method?.toUpperCase();
+    const method = (error as AxiosError).config?.method?.toUpperCase();
     const fallback =
       fallbackText && fallbackText.length > 0
         ? fallbackText
@@ -62,8 +65,8 @@ export const showErrorToast = (
     // except for principal domain mismatch errors
     if (
       error &&
-      (error.response?.status === ClientErrors.UNAUTHORIZED ||
-        (error.response?.status === ClientErrors.FORBIDDEN &&
+      ((error as AxiosError).response?.status === ClientErrors.UNAUTHORIZED ||
+        ((error as AxiosError).response?.status === ClientErrors.FORBIDDEN &&
           method === 'GET')) &&
       !errorMessage.includes('principal domain')
     ) {
