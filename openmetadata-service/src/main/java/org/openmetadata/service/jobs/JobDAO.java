@@ -14,12 +14,15 @@ import org.jdbi.v3.sqlobject.config.RegisterRowMapper;
 import org.jdbi.v3.sqlobject.customizer.Bind;
 import org.jdbi.v3.sqlobject.statement.GetGeneratedKeys;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
-import org.jdbi.v3.sqlobject.statement.SqlUpdate;
 import org.openmetadata.schema.jobs.BackgroundJob;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlUpdate;
 import org.openmetadata.service.util.JsonUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public interface JobDAO {
+
+  Logger LOG = LoggerFactory.getLogger(JobDAO.class);
 
   default long insertJob(
       BackgroundJob.JobType jobType, JobHandler handler, String jobArgs, String createdBy) {
@@ -34,12 +37,12 @@ public interface JobDAO {
 
   @ConnectionAwareSqlUpdate(
       value =
-          "INSERT INTO background_jobs (job_type, method_name, job_args, created_by) "
+          "INSERT INTO background_jobs (jobType, methodName, jobArgs, createdBy) "
               + "VALUES (:jobType, :methodName, :jobArgs, :createdBy)",
       connectionType = MYSQL)
   @ConnectionAwareSqlUpdate(
       value =
-          "INSERT INTO background_jobs (job_type, method_name, job_args,created_by) VALUES (:jobType, :methodName, :jobArgs::jsonb,:createdBy) ",
+          "INSERT INTO background_jobs (jobType, methodName, jobArgs,createdBy) VALUES (:jobType, :methodName, :jobArgs::jsonb,:createdBy) ",
       connectionType = POSTGRES)
   @GetGeneratedKeys
   long insertJobInternal(
@@ -48,16 +51,23 @@ public interface JobDAO {
       @Bind("jobArgs") String jobArgs,
       @Bind("createdBy") String createdBy);
 
-  default Optional<BackgroundJob> fetchPendingJob() {
+  default Optional<BackgroundJob> fetchPendingJob() throws BackgroundJobException {
     return Optional.ofNullable(fetchPendingJobInternal());
   }
 
   @SqlQuery(
-      "SELECT id,job_type,method_name,job_args,status,created_at,updated_at,created_by  FROM background_jobs WHERE status = 'PENDING' ORDER BY created_at LIMIT 1")
+      "SELECT id,jobType,methodName,jobArgs,status,createdAt,updatedAt,createdBy  FROM background_jobs WHERE status = 'PENDING' ORDER BY createdAt LIMIT 1")
   @RegisterRowMapper(BackgroundJobMapper.class)
   BackgroundJob fetchPendingJobInternal() throws StatementException;
 
-  @SqlUpdate("UPDATE background_jobs SET status = :status, updated_at = NOW() WHERE id = :id")
+  @ConnectionAwareSqlUpdate(
+      value =
+          "UPDATE background_jobs SET status = :status, updatedAt = (UNIX_TIMESTAMP(NOW(3)) * 1000) WHERE id = :id",
+      connectionType = MYSQL)
+  @ConnectionAwareSqlUpdate(
+      value =
+          "UPDATE background_jobs SET status = :status, updatedAt = (EXTRACT(EPOCH FROM NOW()) * 1000) WHERE id = :id",
+      connectionType = POSTGRES)
   void updateJobStatusInternal(@Bind("id") long id, @Bind("status") String status);
 
   default void updateJobStatus(long id, BackgroundJob.Status status) {
@@ -65,7 +75,7 @@ public interface JobDAO {
   }
 
   @SqlQuery(
-      "SELECT id, job_type, method_name, job_args, status, created_at, updated_at, created_by FROM background_jobs WHERE id = :id")
+      "SELECT id, jobType, methodName, jobArgs, status, createdAt, updatedAt, createdBy FROM background_jobs WHERE id = :id")
   @RegisterRowMapper(BackgroundJobMapper.class)
   BackgroundJob getJob(@Bind("id") long id) throws StatementException;
 
@@ -75,20 +85,29 @@ public interface JobDAO {
 
   @Slf4j
   class BackgroundJobMapper implements RowMapper<BackgroundJob> {
+
     @Override
     public BackgroundJob map(ResultSet rs, StatementContext ctx) throws SQLException {
-      BackgroundJob job = new BackgroundJob();
-      job.setId(rs.getLong("id"));
-      job.setJobType(BackgroundJob.JobType.fromValue(rs.getString("job_type")));
-      job.setMethodName(rs.getString("method_name"));
-      String jobArgsJson = rs.getString("job_args");
-      Object jobArgs = JsonUtils.readValue(jobArgsJson, Object.class);
-      job.setJobArgs(jobArgs);
-      job.setStatus(BackgroundJob.Status.fromValue(rs.getString("status")));
-      job.setCreatedAt(rs.getTimestamp("created_at"));
-      job.setUpdatedAt(rs.getTimestamp("updated_at"));
-      job.setCreatedBy(rs.getString("created_by"));
-      return job;
+      long jobId = rs.getLong("id");
+      try {
+        BackgroundJob job = new BackgroundJob();
+        job.setId(jobId);
+        job.setJobType(BackgroundJob.JobType.fromValue(rs.getString("jobType")));
+        job.setMethodName(rs.getString("methodName"));
+
+        String jobArgsJson = rs.getString("jobArgs");
+        Object jobArgs = JsonUtils.readValue(jobArgsJson, Object.class);
+        job.setJobArgs(jobArgs);
+
+        job.setStatus(BackgroundJob.Status.fromValue(rs.getString("status")));
+        job.setCreatedAt(rs.getLong("createdAt"));
+        job.setUpdatedAt(rs.getLong("updatedAt"));
+        job.setCreatedBy(rs.getString("createdBy"));
+
+        return job;
+      } catch (Exception e) {
+        throw new BackgroundJobException(jobId, "Failed to fetch/map pending job.", e);
+      }
     }
   }
 }

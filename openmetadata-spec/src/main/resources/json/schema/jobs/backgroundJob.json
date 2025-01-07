@@ -37,12 +37,12 @@
       "description": "User or Bot who triggered the background job."
     },
     "createdAt": {
-      "existingJavaType": "java.sql.Timestamp",
-      "description": "Timestamp when the job was created."
+      "description": "Timestamp when the job was created in Unix epoch time milliseconds.",
+      "$ref": "../type/basic.json#/definitions/timestamp"
     },
     "updatedAt": {
-      "existingJavaType": "java.sql.Timestamp",
-      "description": "Timestamp when the job was last updated."
+      "description": "Time when job was last updated in Unix epoch time milliseconds.",
+      "$ref": "../type/basic.json#/definitions/timestamp"
     }
   },
   "required": ["id", "jobType", "methodName", "jobArgs", "status", "createdBy", "createdAt", "updatedAt"],

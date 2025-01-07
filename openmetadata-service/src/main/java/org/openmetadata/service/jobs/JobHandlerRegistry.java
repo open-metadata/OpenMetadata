@@ -3,6 +3,7 @@ package org.openmetadata.service.jobs;
 import java.util.HashMap;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.jobs.BackgroundJob;
 
 @Slf4j
 public class JobHandlerRegistry {
@@ -13,10 +14,12 @@ public class JobHandlerRegistry {
     handlers.put(methodName, handler);
   }
 
-  public JobHandler getHandler(String methodName) {
+  public JobHandler getHandler(BackgroundJob job) {
+    String methodName = job.getMethodName();
+    Long jobId = job.getId();
     JobHandler handler = handlers.get(methodName);
     if (handler == null) {
-      throw new IllegalArgumentException("No handler registered for " + methodName);
+      throw new BackgroundJobException(jobId, "No handler registered for " + methodName);
     }
     return handler;
   }

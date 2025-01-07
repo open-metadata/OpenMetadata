@@ -3,13 +3,17 @@ ALTER TABLE data_quality_data_time_series ADD INDEX `idx_timestamp_desc` (timest
 
 CREATE TABLE background_jobs (
   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  job_type VARCHAR(256) NOT NULL,
-  method_name VARCHAR(256) NOT NULL,
-  job_args JSON NOT NULL,
+  jobType VARCHAR(256) NOT NULL,
+  methodName VARCHAR(256) NOT NULL,
+  jobArgs JSON NOT NULL,
   status VARCHAR(50) NOT NULL DEFAULT 'PENDING',
-  created_by VARCHAR(256) NOT NULL,
-  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+  createdBy VARCHAR(256) NOT NULL,
+  createdAt BIGINT UNSIGNED NOT NULL DEFAULT (UNIX_TIMESTAMP(NOW(3)) * 1000),
+  updatedAt BIGINT UNSIGNED NOT NULL DEFAULT (UNIX_TIMESTAMP(NOW(3)) * 1000)
 );
 
-CREATE INDEX idx_status_created_at ON background_jobs (status, created_at);
+CREATE INDEX idx_status_createdAt ON background_jobs (status, createdAt);
+CREATE INDEX idx_createdBy ON background_jobs (createdBy);
+CREATE INDEX idx_status ON background_jobs (status);
+CREATE INDEX idx_jobType ON background_jobs (jobType);
+CREATE INDEX idx_updatedAt ON background_jobs (updatedAt);

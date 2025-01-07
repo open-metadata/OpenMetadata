@@ -16,9 +16,9 @@
  */
 export interface BackgroundJob {
     /**
-     * Timestamp when the job was created.
+     * Timestamp when the job was created in Unix epoch time milliseconds.
      */
-    createdAt: any;
+    createdAt: number;
     /**
      * User or Bot who triggered the background job.
      */
@@ -44,9 +44,9 @@ export interface BackgroundJob {
      */
     status: Status;
     /**
-     * Timestamp when the job was last updated.
+     * Time when job was last updated in Unix epoch time milliseconds.
      */
-    updatedAt: any;
+    updatedAt: number;
 }
 
 /**

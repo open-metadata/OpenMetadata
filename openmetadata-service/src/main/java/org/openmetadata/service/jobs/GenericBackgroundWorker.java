@@ -12,6 +12,11 @@ import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class GenericBackgroundWorker implements Managed {
+
+  private static final int INITIAL_BACKOFF_SECONDS = 1;
+  private static final int MAX_BACKOFF_SECONDS = 600; // 10 minutes
+  private static final int NO_JOB_SLEEP_SECONDS = 10; // Sleep if no jobs are available
+
   private final JobDAO jobDao;
   private final JobHandlerRegistry handlerRegistry;
   private volatile boolean running = true;
@@ -35,46 +40,75 @@ public class GenericBackgroundWorker implements Managed {
   }
 
   private void runWorker() {
+    int backoff = INITIAL_BACKOFF_SECONDS;
+
     while (running) {
       try {
         Optional<BackgroundJob> jobOpt = jobDao.fetchPendingJob();
         if (jobOpt.isPresent()) {
-          BackgroundJob job = jobOpt.get();
-          jobDao.updateJobStatus(job.getId(), BackgroundJob.Status.RUNNING);
-          JobHandler handler = handlerRegistry.getHandler(job.getMethodName());
-          try {
-            handler.runJob(job.getJobArgs());
-            job.setStatus(BackgroundJob.Status.COMPLETED);
-            jobDao.updateJobStatus(job.getId(), BackgroundJob.Status.COMPLETED);
-            LOG.info(
-                "Background Job {} completed successfully. Type: {}, Method: {}",
-                job.getId(),
-                job.getJobType(),
-                job.getMethodName());
-            if (handler.sendStatusToWebSocket()) {
-              sendJobStatusUpdate(job);
-            }
-          } catch (Exception e) {
-            job.setStatus(BackgroundJob.Status.FAILED);
-            jobDao.updateJobStatus(job.getId(), BackgroundJob.Status.FAILED);
-            if (handler.sendStatusToWebSocket()) {
-              sendJobStatusUpdate(job);
-            }
-            LOG.error(
-                "Background Job {} failed. Type: {}, Method: {}. Error: {}",
-                job.getId(),
-                job.getJobType(),
-                job.getMethodName(),
-                e.getMessage(),
-                e);
-          }
+          processJob(jobOpt.get());
+          backoff = INITIAL_BACKOFF_SECONDS; // Reset backoff after successful processing
         } else {
-          // No jobs, sleep
-          Thread.sleep(10_000);
+          sleep(NO_JOB_SLEEP_SECONDS);
         }
+      } catch (BackgroundJobException e) {
+        long jobId = e.getJobId();
+        jobDao.updateJobStatus(jobId, BackgroundJob.Status.FAILED);
+        LOG.error("Background Job {} failed. Error: {}", jobId, e.getMessage(), e);
       } catch (Exception e) {
         LOG.error("Unexpected error in background job worker: {}", e.getMessage(), e);
+        backoff = Math.min(backoff * 5, MAX_BACKOFF_SECONDS); // Exponential backoff with max limit
+        sleep(backoff);
       }
+    }
+
+    LOG.info("Background job worker terminated successfully.");
+  }
+
+  private void processJob(BackgroundJob job) {
+    try {
+      jobDao.updateJobStatus(job.getId(), BackgroundJob.Status.RUNNING);
+      JobHandler handler = handlerRegistry.getHandler(job);
+      handler.runJob(job);
+      markJobAsCompleted(job);
+
+      if (handler.sendStatusToWebSocket()) {
+        sendJobStatusUpdate(job);
+      }
+    } catch (BackgroundJobException e) {
+      markJobAsFailed(job, e);
+      sendJobStatusUpdate(job);
+    }
+  }
+
+  private void markJobAsCompleted(BackgroundJob job) {
+    job.setStatus(BackgroundJob.Status.COMPLETED);
+    jobDao.updateJobStatus(job.getId(), BackgroundJob.Status.COMPLETED);
+    LOG.info(
+        "Background Job {} completed successfully. Type: {}, Method: {}",
+        job.getId(),
+        job.getJobType(),
+        job.getMethodName());
+  }
+
+  private void markJobAsFailed(BackgroundJob job, Exception e) {
+    job.setStatus(BackgroundJob.Status.FAILED);
+    jobDao.updateJobStatus(job.getId(), BackgroundJob.Status.FAILED);
+    LOG.error(
+        "Background Job {} failed. Type: {}, Method: {}. Error: {}",
+        job.getId(),
+        job.getJobType(),
+        job.getMethodName(),
+        e.getMessage(),
+        e);
+  }
+
+  private void sleep(int seconds) {
+    try {
+      Thread.sleep(seconds * 1000L);
+    } catch (InterruptedException ie) {
+      LOG.error("Worker interrupted during sleep");
+      Thread.currentThread().interrupt();
     }
   }
 
