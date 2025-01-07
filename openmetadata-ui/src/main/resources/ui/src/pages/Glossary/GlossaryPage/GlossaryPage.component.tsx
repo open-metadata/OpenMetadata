@@ -168,7 +168,7 @@ const GlossaryPage = () => {
             TabSpecificField.DOMAIN,
           ],
           limit: PAGE_SIZE_LARGE,
-          after: nextPage,
+          ...(nextPage && { after: nextPage }),
         });
 
         allGlossaries = [...allGlossaries, ...data];
@@ -475,6 +475,7 @@ const GlossaryPage = () => {
             <GlossaryLeftPanel glossaries={glossaries} />
             <div
               className="h-[1px] w-full"
+              data-testid="glossary-left-panel-scroller"
               ref={elementRef as RefObject<HTMLDivElement>}
             />
             {isMoreGlossaryLoading && <Loader />}

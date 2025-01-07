@@ -1186,6 +1186,37 @@ test.describe('Glossary tests', () => {
     }
   });
 
+  test('should check for glossary term pagination', async ({ browser }) => {
+    const { page, afterAction, apiContext } = await performAdminLogin(browser);
+    const glossaries = [];
+    for (let i = 0; i < 60; i++) {
+      const glossary = new Glossary(`PW_GLOSSARY_TEST_${i + 1}`);
+      await glossary.create(apiContext);
+      glossaries.push(glossary);
+    }
+
+    try {
+      await redirectToHomePage(page);
+      const glossaryRes = page.waitForResponse('/api/v1/glossaries?*');
+      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await glossaryRes;
+
+      const glossaryAfterRes = page.waitForResponse(
+        '/api/v1/glossaries?*after=*'
+      );
+      await page
+        .getByTestId('glossary-left-panel-scroller')
+        .scrollIntoViewIfNeeded();
+
+      await glossaryAfterRes;
+    } finally {
+      for (const glossary of glossaries) {
+        await glossary.delete(apiContext);
+      }
+      await afterAction();
+    }
+  });
+
   test.afterAll(async ({ browser }) => {
     const { afterAction, apiContext } = await performAdminLogin(browser);
     await user1.delete(apiContext);
