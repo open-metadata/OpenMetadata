@@ -130,7 +130,7 @@ const QueryCard: FC<QueryCardProp> = ({
             return (
               existingTable ?? {
                 id: (option.value as string) ?? '',
-                displayName: option.labelValue as string,
+                displayName: option.labelName as string,
                 type: EntityType.TABLE,
               }
             );

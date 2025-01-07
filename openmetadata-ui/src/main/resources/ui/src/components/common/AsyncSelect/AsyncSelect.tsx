@@ -71,7 +71,7 @@ export const AsyncSelect = ({
       }}
       onSelect={handleSelection}
       {...restProps}
-      optionLabelProp="labelValue"
+      optionLabelProp="labelName"
     />
   );
 };
