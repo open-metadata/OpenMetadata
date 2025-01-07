@@ -14,8 +14,8 @@ Test Redshift connector with CLI
 """
 from pathlib import Path
 from typing import List
-import pytest
 
+import pytest
 from sqlalchemy.engine import Engine
 
 from metadata.ingestion.api.status import Status
@@ -62,7 +62,7 @@ class DbtCliTest(CliDBTBase.TestSuite):
             "local_redshift.dev.dbt_cli_e2e.customers",
             "local_redshift.dev.dbt_cli_e2e.orders",
         ]
-    
+
     @pytest.mark.order(11)
     def test_lineage(self) -> None:
         pytest.skip("Lineage not configured. Skipping Test")

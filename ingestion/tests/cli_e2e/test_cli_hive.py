@@ -108,7 +108,7 @@ class HiveCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         which does not propagate column lineage
         """
         return 3
-    
+
     def expected_lineage_node(self) -> str:
         return "e2e_hive.default.e2e_cli_tests.view_persons"
 

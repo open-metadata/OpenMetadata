@@ -14,6 +14,7 @@ Test Metabase connector with CLI
 """
 from pathlib import Path
 from typing import List
+
 import pytest
 
 from .base.test_cli import PATH_TO_RESOURCES

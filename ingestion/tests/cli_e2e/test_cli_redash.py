@@ -13,6 +13,7 @@
 Test Redash connector with CLI
 """
 from typing import List
+
 import pytest
 
 from .common.test_cli_dashboard import CliCommonDashboard

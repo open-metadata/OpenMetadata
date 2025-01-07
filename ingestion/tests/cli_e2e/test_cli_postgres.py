@@ -107,7 +107,7 @@ class PostgresCliTest(CliCommonDB.TestSuite, SQACommonMethods):
 
     def view_column_lineage_count(self) -> int:
         return 22
-    
+
     def expected_lineage_node(self) -> str:
         return "local_postgres.E2EDB.public.view_all_datatypes"
 

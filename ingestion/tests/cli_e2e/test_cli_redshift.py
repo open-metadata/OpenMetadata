@@ -109,7 +109,7 @@ class RedshiftCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         Gives us the lineage for the view_listing
         """
         return 9
-    
+
     def expected_lineage_node(self) -> str:
         return "e2e_redshift.e2e_cli_tests.dbt_jaffle.view_listing"
 
