@@ -44,12 +44,6 @@ from metadata.generated.schema.entity.services.connections.database.deltaLakeCon
 from metadata.generated.schema.entity.services.connections.database.domoDatabaseConnection import (
     DomoDatabaseType,
 )
-from metadata.generated.schema.entity.services.connections.database.dorisConnection import (
-    DorisType,
-)
-from metadata.generated.schema.entity.services.connections.database.druidConnection import (
-    DruidType,
-)
 from metadata.generated.schema.entity.services.connections.database.dynamoDBConnection import (
     DynamoDBType,
 )
@@ -164,8 +158,6 @@ NON_SQA_DATABASE_CONNECTIONS = (
     CouchbaseType.Couchbase.value,
     DeltaLakeType.DeltaLake.value,
     DomoDatabaseType.DomoDatabase.value,
-    DorisType.Doris.value,
-    DruidType.Druid.value,
     DynamoDBType.DynamoDB.value,
     GlueType.Glue.value,
     IcebergType.Iceberg.value,
