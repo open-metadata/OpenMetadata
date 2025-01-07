@@ -38,6 +38,7 @@ import { EntityReference } from '../../generated/type/entityReference';
 import LimitWrapper from '../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useGridLayoutDirection } from '../../hooks/useGridLayoutDirection';
+import { useWelcomeStore } from '../../hooks/useWelcomeStore';
 import { getDocumentByFQN } from '../../rest/DocStoreAPI';
 import { getActiveAnnouncement } from '../../rest/feedsAPI';
 import { searchQuery } from '../../rest/searchAPI';
@@ -52,6 +53,7 @@ const ReactGridLayout = WidthProvider(RGL);
 const MyDataPage = () => {
   const { t } = useTranslation();
   const { currentUser, selectedPersona } = useApplicationStore();
+  const { isWelcomeVisible } = useWelcomeStore();
   const [followedData, setFollowedData] = useState<Array<EntityReference>>([]);
   const [followedDataCount, setFollowedDataCount] = useState(0);
   const [isLoadingOwnedData, setIsLoadingOwnedData] = useState<boolean>(false);
@@ -108,7 +110,7 @@ const MyDataPage = () => {
 
   useEffect(() => {
     isMounted.current = true;
-    updateWelcomeScreen(!usernameExistsInCookie);
+    updateWelcomeScreen(!usernameExistsInCookie && isWelcomeVisible);
 
     return () => updateWelcomeScreen(false);
   }, []);
