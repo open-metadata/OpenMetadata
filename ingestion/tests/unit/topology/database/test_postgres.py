@@ -31,12 +31,12 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.source.database.postgres.metadata import (
+from metadata.ingestion.source.database.common_pg_mappings import (
     GEOMETRY,
     POINT,
     POLYGON,
-    PostgresSource,
 )
+from metadata.ingestion.source.database.postgres.metadata import PostgresSource
 from metadata.ingestion.source.database.postgres.usage import PostgresUsageSource
 from metadata.ingestion.source.database.postgres.utils import get_postgres_version
 

@@ -9,18 +9,22 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """
-Postgres source module
+Cockroach source module
 """
 import traceback
 from collections import namedtuple
-from typing import Iterable, Optional
+from typing import Iterable, Optional, Tuple
 
-from sqlalchemy import String as SqlAlchemyString
 from sqlalchemy import sql
-from sqlalchemy.dialects.postgresql.base import ischema_names
+from sqlalchemy.dialects.postgresql.base import PGDialect
 
 from metadata.generated.schema.entity.data.database import Database
-from metadata.generated.schema.entity.data.table import TableType
+from metadata.generated.schema.entity.data.table import (
+    PartitionColumnDetails,
+    PartitionIntervalTypes,
+    TablePartition,
+    TableType,
+)
 from metadata.generated.schema.entity.services.connections.database.cockroachConnection import (
     CockroachConnection,
 )
@@ -34,14 +38,19 @@ from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.cockroach.queries import (
     COCKROACH_GET_DB_NAMES,
+    COCKROACH_GET_PARTITION_DETAILS,
     COCKROACH_GET_TABLE_NAMES,
     COCKROACH_GET_VIEW_NAMES,
     COCKROACH_SCHEMA_COMMENTS,
 )
-from metadata.ingestion.source.database.column_type_parser import create_sqlalchemy_type
 from metadata.ingestion.source.database.common_db_source import (
     CommonDbSourceService,
     TableNameAndType,
+)
+from metadata.ingestion.source.database.common_pg_mappings import (
+    INTERVAL_TYPE_MAP,
+    RELKIND_MAP,
+    ischema_names,
 )
 from metadata.ingestion.source.database.multi_db_source import MultiDBSource
 from metadata.utils import fqn
@@ -58,36 +67,7 @@ TableKey = namedtuple("TableKey", ["schema", "table_name"])
 
 logger = ingestion_logger()
 
-RELKIND_MAP = {
-    "r": TableType.Regular,
-    "p": TableType.Partitioned,
-    "f": TableType.Foreign,
-    "v": TableType.View,
-}
-
-GEOMETRY = create_sqlalchemy_type("GEOMETRY")
-POINT = create_sqlalchemy_type("POINT")
-POLYGON = create_sqlalchemy_type("POLYGON")
-
-ischema_names.update(
-    {
-        "geometry": GEOMETRY,
-        "point": POINT,
-        "polygon": POLYGON,
-        "box": create_sqlalchemy_type("BOX"),
-        "bpchar": SqlAlchemyString,
-        "circle": create_sqlalchemy_type("CIRCLE"),
-        "line": create_sqlalchemy_type("LINE"),
-        "lseg": create_sqlalchemy_type("LSEG"),
-        "path": create_sqlalchemy_type("PATH"),
-        "pg_lsn": create_sqlalchemy_type("PG_LSN"),
-        "pg_snapshot": create_sqlalchemy_type("PG_SNAPSHOT"),
-        "tsquery": create_sqlalchemy_type("TSQUERY"),
-        "txid_snapshot": create_sqlalchemy_type("TXID_SNAPSHOT"),
-        "xid": SqlAlchemyString,
-        "xml": create_sqlalchemy_type("XML"),
-    }
-)
+PGDialect.ischema_names = ischema_names
 
 
 class CockroachSource(CommonDbSourceService, MultiDBSource):
@@ -202,3 +182,25 @@ class CockroachSource(CommonDbSourceService, MultiDBSource):
                     logger.error(
                         f"Error trying to connect to database {new_database}: {exc}"
                     )
+
+    def get_table_partition_details(
+        self, table_name: str, schema_name: str, inspector
+    ) -> Tuple[bool, TablePartition]:
+        result = self.engine.execute(
+            COCKROACH_GET_PARTITION_DETAILS, table_name=table_name
+        ).all()
+        if result:
+            partition_details = TablePartition(
+                columns=[
+                    PartitionColumnDetails(
+                        columnName=row[1],
+                        intervalType=INTERVAL_TYPE_MAP.get(
+                            row[2], PartitionIntervalTypes.COLUMN_VALUE
+                        ),
+                        interval=None,
+                    )
+                    for row in result
+                ]
+            )
+            return True, partition_details
+        return False, None

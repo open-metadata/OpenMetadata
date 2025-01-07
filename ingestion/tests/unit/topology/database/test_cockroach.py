@@ -19,11 +19,11 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.source.database.cockroach.metadata import (
+from metadata.ingestion.source.database.cockroach.metadata import CockroachSource
+from metadata.ingestion.source.database.common_pg_mappings import (
     GEOMETRY,
     POINT,
     POLYGON,
-    CockroachSource,
 )
 
 mock_cockroach_config = {
