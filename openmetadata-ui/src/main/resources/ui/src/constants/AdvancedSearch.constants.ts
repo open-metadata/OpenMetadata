@@ -351,3 +351,9 @@ export const EXPLORE_ROOT_INDEX_MAPPING = {
   ],
   Governance: [SearchIndex.GLOSSARY_TERM],
 };
+export const SEARCH_INDICES_WITH_COLUMNS_FIELD = [
+  SearchIndex.TABLE,
+  SearchIndex.DASHBOARD_DATA_MODEL,
+  SearchIndex.DATA_ASSET,
+  SearchIndex.ALL,
+];
