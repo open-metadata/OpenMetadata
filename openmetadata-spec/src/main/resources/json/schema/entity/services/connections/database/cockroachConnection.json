@@ -86,8 +86,12 @@
     "supportsMetadataExtraction": {
       "title": "Supports Metadata Extraction",
       "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    },
+    "supportsProfiler": {
+      "title": "Supports Profiler",
+      "$ref": "../connectionBasicType.json#/definitions/supportsProfiler"
     }
   },
   "additionalProperties": false,
-    "required": ["hostPort", "username"]
+    "required": ["hostPort", "username", "database"]
 }
