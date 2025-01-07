@@ -56,11 +56,12 @@
       "type": "string"
     },
     "testSuite": {
-      "description": "Test Suite that this test case belongs to.",
+      "description": "Basic Test Suite that this test case belongs to.",
       "$ref": "../type/entityReference.json"
     },
     "testSuites": {
       "type": "array",
+      "description": "Basic and Logical Test Suites this test case belongs to",
       "items": {
         "$ref": "./testSuite.json"
       }
