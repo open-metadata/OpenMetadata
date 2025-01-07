@@ -2551,7 +2551,10 @@ export const highlightSearchText = (
 
   const regex = new RegExp(`(${searchText})`, 'gi');
 
-  return text.replace(regex, `<span class="text-highlighter">$1</span>`);
+  return text.replace(
+    regex,
+    `<span data-highlight="true" class="text-highlighter">$1</span>`
+  );
 };
 
 /**
