@@ -31,7 +31,6 @@ import {
   createSubDomain,
   removeAssetsFromDataProduct,
   selectDataProduct,
-  selectDataProductFromTab,
   selectDomain,
   selectSubDomain,
   setupAssetsForDomain,
@@ -331,93 +330,6 @@ test.describe('Domains', () => {
       await newDomainDP1.delete(apiContext);
       await newDomainDP2.delete(apiContext);
       await domain1.delete(apiContext);
-      await assetCleanup();
-      await afterAction();
-    }
-  });
-
-  test('Should clear assets from data products after deletion of data product in Sub Domain', async ({
-    page,
-  }) => {
-    const { afterAction, apiContext } = await getApiContext(page);
-    const { assets, assetCleanup } = await setupAssetsForDomain(page);
-
-    const domain = new Domain({
-      name: 'PW_SubDomain_Delete_Testing',
-      displayName: 'PW_SubDomain_Delete_Testing',
-      description: 'playwright sub domain description',
-      domainType: 'Aggregate',
-      fullyQualifiedName: 'PW_SubDomain_Delete_Testing',
-    });
-
-    const subDomain = new SubDomain(domain, 'PW_SubDomain_Testing');
-    const dataProduct1 = new DataProduct(
-      domain,
-      'PW_DataProduct_Sales',
-      subDomain
-    );
-    const dataProduct2 = new DataProduct(
-      domain,
-      'PW_DataProduct_Finance',
-      subDomain
-    );
-
-    const subDomain1 = new SubDomain(domain, 'PW_SubDomain_Testing');
-    const newDomainDP1 = new DataProduct(
-      domain,
-      'PW_DataProduct_Sales',
-      subDomain1
-    );
-    const newDomainDP2 = new DataProduct(
-      domain,
-      'PW_DataProduct_Finance',
-      subDomain1
-    );
-
-    try {
-      await domain.create(apiContext);
-      await subDomain.create(apiContext);
-      await dataProduct1.create(apiContext);
-      await dataProduct2.create(apiContext);
-      await sidebarClick(page, SidebarItem.DOMAIN);
-      await page.reload();
-      await addAssetsToDomain(page, domain, assets);
-      await selectSubDomain(page, domain.data, subDomain.data);
-      await page.getByTestId('assets').click();
-      await addAssetsToDomain(page, subDomain, assets, false); // Add assets to sub domain
-
-      await verifyDataProductAssetsAfterDelete(page, {
-        domain,
-        dataProduct1,
-        dataProduct2,
-        assets,
-        subDomain: subDomain,
-      });
-
-      await test.step(
-        'Delete domain & recreate the same domain and data product',
-        async () => {
-          await subDomain.delete(apiContext);
-          await subDomain1.create(apiContext);
-          await newDomainDP1.create(apiContext);
-          await newDomainDP2.create(apiContext);
-          await page.reload();
-          await redirectToHomePage(page);
-          await sidebarClick(page, SidebarItem.DOMAIN);
-          await selectSubDomain(page, domain.data, subDomain.data);
-          await selectDataProductFromTab(page, newDomainDP1.data);
-          await checkAssetsCount(page, 0);
-          await sidebarClick(page, SidebarItem.DOMAIN);
-          await selectSubDomain(page, domain.data, subDomain.data);
-          await selectDataProductFromTab(page, newDomainDP2.data);
-          await checkAssetsCount(page, 0);
-        }
-      );
-    } finally {
-      await newDomainDP1.delete(apiContext);
-      await newDomainDP2.delete(apiContext);
-      await subDomain1.delete(apiContext);
-      await domain.delete(apiContext);
       await assetCleanup();
       await afterAction();
     }

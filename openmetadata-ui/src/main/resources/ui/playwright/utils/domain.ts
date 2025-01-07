@@ -116,10 +116,18 @@ export const selectSubDomain = async (
   domain: Domain['data'],
   subDomain: SubDomain['data']
 ) => {
-  await page
-    .getByRole('menuitem', { name: domain.displayName })
-    .locator('span')
-    .click();
+  const menuItem = page.getByRole('menuitem', { name: domain.displayName });
+  const isSelected = await menuItem.evaluate((element) => {
+    return element.classList.contains('ant-menu-item-selected');
+  });
+
+  if (!isSelected) {
+    const subDomainRes = page.waitForResponse(
+      '/api/v1/search/query?*&from=0&size=50&index=domain_search_index'
+    );
+    await menuItem.click();
+    await subDomainRes;
+  }
 
   await page.getByTestId('subdomains').getByText('Sub Domains').click();
   const res = page.waitForResponse(
@@ -134,10 +142,17 @@ export const selectDataProductFromTab = async (
   dataProduct: DataProduct['data']
 ) => {
   await page.getByText('Data Products').click();
+
+  const dpRes = page.waitForResponse(
+    '/api/v1/search/query?*&from=0&size=50&index=data_product_search_index'
+  );
+
   await page
     .getByTestId(`explore-card-${dataProduct.name}`)
     .getByTestId('entity-link')
     .click();
+
+  await dpRes;
 };
 
 export const selectDataProduct = async (
