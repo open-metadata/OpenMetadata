@@ -38,7 +38,7 @@ Returns the number of columns in the Table.
 System metrics provide information related to DML operations performed on the table. These metrics present a concise view of your data freshness. In a typical data processing flow tables are updated at a certain frequency. Table freshness will be monitored by confirming a set of operations has been performed against the table. To increase trust in your data assets, OpenMetadata will monitor the `INSERT`, `UPDATE` and `DELETE` operations performed against your table to showcase 2 metrics related to freshness (see below for more details). With this information, you are able to see when a specific operation was last perform and how many rows it affected. 
 
 {% image
-  src="/images/v1.4/features/ingestion/workflows/profiler/profiler-freshness-metrics.png"
+  src="/images/v1.7/features/ingestion/workflows/profiler/profiler-freshness-metrics.png"
   alt="table profile freshness metrics"
   caption="table profile freshness metrics"
  /%}
@@ -162,7 +162,7 @@ Custom metrics in OpenMetadata enhance profiling capabilities by enabling users 
 - Navigate to the **Database** and switch to the **Profile and Data** tab. Click on **Table Profile**, and on the right-hand side, select the **Add** option to access the custom metric feature.
 
 {% image
-  src="/images/v1.6/features/ingestion/workflows/profiler/custom-metric1.png"
+  src="/images/v1.7/features/ingestion/workflows/profiler/custom-metric1.png"
   alt="Click Add Custom Metric"
   caption="Click Add Custom Metric"
  /%}
@@ -170,7 +170,7 @@ Custom metrics in OpenMetadata enhance profiling capabilities by enabling users 
 - Enter a meaningful name for the custom metric and input the required SQL query based on your data requirements.
 
 {% image
-  src="/images/v1.6/features/ingestion/workflows/profiler/custom-metric2.png"
+  src="/images/v1.7/features/ingestion/workflows/profiler/custom-metric2.png"
   alt="Input SQL query"
   caption="Input SQL query"
  /%}
@@ -178,7 +178,7 @@ Custom metrics in OpenMetadata enhance profiling capabilities by enabling users 
 - Once the custom metric is defined, run the **ingestion** process in the **Database Services**.
 
 {% image
-  src="/images/v1.6/features/ingestion/workflows/profiler/custom-metric3.png"
+  src="/images/v1.7/features/ingestion/workflows/profiler/custom-metric3.png"
   alt="Run Ingestion"
   caption="Run Ingestion"
  /%}
@@ -186,7 +186,7 @@ Custom metrics in OpenMetadata enhance profiling capabilities by enabling users 
 - After the ingestion process is complete, return to the same dataset to view the computed custom metric within the table profile.
 
 {% image
-  src="/images/v1.6/features/ingestion/workflows/profiler/custom-metric4.png"
+  src="/images/v1.7/features/ingestion/workflows/profiler/custom-metric4.png"
   alt="View Custom Metric"
   caption="View Custom Metric"
  /%}

@@ -338,16 +338,9 @@ export const OWNER_QUICK_FILTER_DEFAULT_OPTIONS_KEY = 'displayName.keyword';
 
 export const NULL_OPTION_KEY = 'OM_NULL_FIELD';
 
-export const EXPLORE_ROOT_INDEX_MAPPING = {
-  [SearchIndex.DATABASE]: [
-    SearchIndex.DATABASE,
-    SearchIndex.DATABASE_SCHEMA,
-    SearchIndex.TABLE,
-    SearchIndex.STORED_PROCEDURE,
-  ],
-  [SearchIndex.API_ENDPOINT_INDEX]: [
-    SearchIndex.API_ENDPOINT_INDEX,
-    SearchIndex.API_COLLECTION_INDEX,
-  ],
-  Governance: [SearchIndex.GLOSSARY_TERM],
-};
+export const SEARCH_INDICES_WITH_COLUMNS_FIELD = [
+  SearchIndex.TABLE,
+  SearchIndex.DASHBOARD_DATA_MODEL,
+  SearchIndex.DATA_ASSET,
+  SearchIndex.ALL,
+];

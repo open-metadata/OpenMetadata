@@ -43,10 +43,4 @@ Watch the video to understand OpenMetadata’s native Data Profiler and Data Qua
     href="/how-to-guides/data-quality-observability/profiler/external-workflow"%}
     Run a single workflow profiler for the entire source externally.
  {%/inlineCallout%}
- {%inlineCallout
-    icon="MdOutlinePersonPin"
-    bold="Auto PII Tagging"
-    href="/how-to-guides/data-quality-observability/profiler/auto-pii-tagging"%}
-    Auto tag data as PII Sensitive/NonSensitive at the column level.
- {%/inlineCallout%}
 {%/inlineCalloutContainer%}

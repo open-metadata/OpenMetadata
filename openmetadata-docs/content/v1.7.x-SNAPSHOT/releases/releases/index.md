@@ -12,7 +12,81 @@ version. To see what's coming in next releases, please check our [Roadmap](/rele
 
 {% /note %}
 
-{% partial file="/v1.6/releases/latest.md" /%}
+{% partial file="/v1.7/releases/latest.md" /%}
+
+# 1.5.15 Release 🎉
+
+{% note noteType="Tip" %}
+**Dec 17th, 2024**
+{% /note %}
+
+You can find the GitHub release [here](https://github.com/open-metadata/OpenMetadata/releases/tag/1.5.15-release).
+
+# What's Changed
+
+- Minor - Fix clean_uri and add before pagination
+- Fix downloading of app logs
+- Fix query builder state issues
+- Fix : Handle Index out of bounds exception in feed api
+- Minor: DBT v12 Model Changes
+- Fix database and schema aggregation key
+
+**Full Changelog**: https://github.com/open-metadata/OpenMetadata/compare/1.5.14-release...1.5.15-release
+
+# 1.5.14 Release
+
+{% note noteType="Tip" %}
+**Dec 12th, 2024**
+{% /note %}
+
+You can find the GitHub release [here](https://github.com/open-metadata/OpenMetadata/releases/tag/1.5.14-release).
+
+# What's Changed
+
+- Minor: Fix Powerbi refresh token on expire
+- Minor: Snowflake Support Alter Table Swap Lineage
+- Fixes: microstrategy test connection
+- Minor: Fix dbt source file issue
+- Fix: dbt manifest parsing issue
+- Minor - Add APIs to Ref Map
+- Minor: Domain only access policy prevents bots from listing
+
+**Full Changelog**: https://github.com/open-metadata/OpenMetadata/compare/1.5.13-release...1.5.14-release
+
+# 1.5.13 Release
+
+{% note noteType="Tip" %}
+**Nov 28th, 2024**
+{% /note %}
+
+# What's Changed
+
+- Fix Microstrategy Login Mode
+- Add Snowflake UDF Lineage Support
+
+**Full Changelog**: https://github.com/open-metadata/OpenMetadata/compare/1.5.12-release...1.5.13-release
+
+# 1.5.12 Release
+
+{% note noteType="Tip" %}
+**Nov 26th, 2024**
+{% /note %}
+
+# What's Changed
+
+- Improvement: Added async apis for csv import.
+- Improvement: Skip domain check for bots and admin
+- Improvement: MYSQL lineage and usage.
+- Minor: Added Lineage Field back to SearchLineage.
+- Fix: Database is missing from the search dropdown
+- Fix: Bad Representation of owners.
+- Fix: The Daily Active Users Summary Card in Data Insights.
+- Fix: The processing of URL Encoded Assets in Data Insights.
+- Fix: Column Level Lineage export.
+- Fix: Store procedure yielding by adding Try/Except.
+- Fix: Lineage export when there is no column / pipeline edge.
+
+Full Changelog**: https://github.com/open-metadata/OpenMetadata/compare/1.5.11-release...1.5.12-release
 
 # 1.5.11 Release
 

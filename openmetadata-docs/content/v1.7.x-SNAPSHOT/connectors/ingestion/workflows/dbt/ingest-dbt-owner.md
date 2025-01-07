@@ -54,12 +54,12 @@ While linking the owner from `manifest.json` or `catalog.json` files to the enti
 **1.** Click on the `Users` section from homepage
 
 {% image
-  src="/images/v1.6/features/ingestion/workflows/dbt/ingest_dbt_owner/click-users-page.png"
+  src="/images/v1.7/features/ingestion/workflows/dbt/ingest_dbt_owner/click-users-page.png"
   alt="click-users-page"
   caption="Click Users page"
  /%}
 {% image
-  src="/images/v1.6/features/ingestion/workflows/dbt/ingest_dbt_owner/click-users-page1.png"
+  src="/images/v1.7/features/ingestion/workflows/dbt/ingest_dbt_owner/click-users-page1.png"
   alt="click-users-page"
   caption="Click Users page"
  /%}
@@ -67,7 +67,7 @@ While linking the owner from `manifest.json` or `catalog.json` files to the enti
 **2.** Click on the `Add User` button
 
 {% image
-  src="/images/v1.6/features/ingestion/workflows/dbt/ingest_dbt_owner/click-add-user.png"
+  src="/images/v1.7/features/ingestion/workflows/dbt/ingest_dbt_owner/click-add-user.png"
   alt="click-add-user"
   caption="Click Add User"
  /%}
@@ -82,7 +82,7 @@ If the owner's name in `manifest.json` or `catalog.json` file is `openmetadata`,
 {% /note %}
 
 {% image
-  src="/images/v1.6/features/ingestion/workflows/dbt/ingest_dbt_owner/add-user-dbt.png"
+  src="/images/v1.7/features/ingestion/workflows/dbt/ingest_dbt_owner/add-user-dbt.png"
   alt="add-user-dbt"
   caption="Add User"
  /%}
@@ -92,12 +92,12 @@ If the owner's name in `manifest.json` or `catalog.json` file is `openmetadata`,
 **1.** Click on the `Teams` section from homepage
 
 {% image
-  src="/images/v1.6/features/ingestion/workflows/dbt/ingest_dbt_owner/click-teams-page.png"
+  src="/images/v1.7/features/ingestion/workflows/dbt/ingest_dbt_owner/click-teams-page.png"
   alt="click-teams-page"
   caption="Click Teams page"
  /%}
  {% image
-  src="/images/v1.6/features/ingestion/workflows/dbt/ingest_dbt_owner/click-teams-page2.png"
+  src="/images/v1.7/features/ingestion/workflows/dbt/ingest_dbt_owner/click-teams-page2.png"
   alt="click-teams-page"
   caption="Click Teams page"
  /%}
@@ -105,7 +105,7 @@ If the owner's name in `manifest.json` or `catalog.json` file is `openmetadata`,
 **2.** Click on the `Add Team` button
 
 {% image
-  src="/images/v1.6/features/ingestion/workflows/dbt/ingest_dbt_owner/click-add-team.png"
+  src="/images/v1.7/features/ingestion/workflows/dbt/ingest_dbt_owner/click-add-team.png"
   alt="click-add-team"
   caption="Click Add Team"
  /%}
@@ -120,7 +120,7 @@ If the owner's name in `manifest.json` or `catalog.json` file is `openmetadata`,
 {% /note %}
 
 {% image
-  src="/images/v1.6/features/ingestion/workflows/dbt/ingest_dbt_owner/add-team-dbt.png"
+  src="/images/v1.7/features/ingestion/workflows/dbt/ingest_dbt_owner/add-team-dbt.png"
   alt="add-team-dbt"
   caption="Add Team"
  /%}
@@ -131,15 +131,23 @@ If the owner's name in `manifest.json` or `catalog.json` file is `openmetadata`,
 After running the ingestion workflow with dbt you can see the created user or team getting linked to the table as it's owner as it was specified in the `manifest.json` or `catalog.json` file.
 
 {% image
-  src="/images/v1.6/features/ingestion/workflows/dbt/ingest_dbt_owner/linked-user.png"
+  src="/images/v1.7/features/ingestion/workflows/dbt/ingest_dbt_owner/linked-user.png"
   alt="linked-user"
   caption="Linked User"
  /%}
 
 
 
-{% note %}
+## Overriding the existing table Owners
 
-If a table already has a owner linked to it, owner from the dbt will not update the current owner.
+To establish a unified and reliable system for owners, a single source of truth is necessary. It either is directly OpenMetadata, if individuals want to go there and keep updating, or if they prefer to keep it centralized in dbt, then we can always rely on that directly.
 
-{% /note %}
+When the `Update Owners` toggle is enabled during the configuration of dbt ingestion, existing owners of tables will be overwritten with the dbt owners.
+
+If toggle is disabled during the configuration of dbt ingestion, dbt owners will only be updated for tables in OpenMetadata that currently have no owners. Existing owners will remain unchanged and will not be overwritten with dbt owners.
+
+{% image
+  src="/images/v1.6/features/ingestion/workflows/dbt/dbt-features/dbt-update-owners.webp"
+  alt="update-dbt-owners"
+  caption="Update dbt Owners"
+ /%}

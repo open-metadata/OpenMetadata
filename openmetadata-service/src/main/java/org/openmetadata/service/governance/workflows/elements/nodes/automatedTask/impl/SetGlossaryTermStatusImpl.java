@@ -35,7 +35,7 @@ public class SetGlossaryTermStatusImpl implements JavaDelegate {
       String status = (String) statusExpr.getValue(execution);
       String user =
           Optional.ofNullable((String) execution.getVariable(RESOLVED_BY_VARIABLE))
-              .orElse(glossaryTerm.getUpdatedBy());
+              .orElse("governance-bot");
 
       setStatus(glossaryTerm, user, status);
     } catch (Exception exc) {

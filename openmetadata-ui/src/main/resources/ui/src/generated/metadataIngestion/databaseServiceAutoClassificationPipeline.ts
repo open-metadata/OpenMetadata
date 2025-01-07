@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * DatabaseService AutoClassification & Auto Classification Pipeline Configuration.
  */
 export interface DatabaseServiceAutoClassificationPipeline {
@@ -41,16 +39,9 @@ export interface DatabaseServiceAutoClassificationPipeline {
      */
     includeViews?: boolean;
     /**
-     * Percentage of data or no. of rows used to compute the profiler metrics and run data
-     * quality tests
-     */
-    profileSample?:     number;
-    profileSampleType?: ProfileSampleType;
-    /**
      * Number of sample rows to ingest when 'Generate Sample Data' is enabled
      */
-    sampleDataCount?:    number;
-    samplingMethodType?: SamplingMethodType;
+    sampleDataCount?: number;
     /**
      * Regex to only fetch tables or databases that matches the pattern.
      */
@@ -96,22 +87,6 @@ export interface FilterPattern {
      * List of strings/regex patterns to match and include only database entities that match.
      */
     includes?: string[];
-}
-
-/**
- * Type of Profile Sample (percentage or rows)
- */
-export enum ProfileSampleType {
-    Percentage = "PERCENTAGE",
-    Rows = "ROWS",
-}
-
-/**
- * Type of Sampling Method (BERNOULLI or SYSTEM)
- */
-export enum SamplingMethodType {
-    Bernoulli = "BERNOULLI",
-    System = "SYSTEM",
 }
 
 /**

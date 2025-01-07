@@ -131,6 +131,7 @@ import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.feed.Suggestion;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.entity.type.Style;
 import org.openmetadata.schema.system.EntityError;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.AssetCertification;
@@ -781,7 +782,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
   Map<String, String> parseCursorMap(String param) {
     Map<String, String> cursorMap;
     if (param == null) {
-      cursorMap = Map.of("name", null, "id", null);
+      cursorMap = new HashMap<>();
+      cursorMap.put("name", null);
+      cursorMap.put("id", null);
     } else if (nullOrEmpty(param)) {
       cursorMap = Map.of("name", "", "id", "");
     } else {
@@ -1149,6 +1152,21 @@ public abstract class EntityRepository<T extends EntityInterface> {
     DeleteResponse<T> response = deleteInternal(updatedBy, id, recursive, hardDelete);
     postDelete(response.entity());
     return response;
+  }
+
+  @SuppressWarnings("unused")
+  @Transaction
+  public final DeleteResponse<T> deleteByNameIfExists(
+      String updatedBy, String name, boolean recursive, boolean hardDelete) {
+    name = quoteFqn ? quoteName(name) : name;
+    T entity = findByNameOrNull(name, ALL);
+    if (entity != null) {
+      DeleteResponse<T> response = deleteInternalByName(updatedBy, name, recursive, hardDelete);
+      postDelete(response.entity());
+      return response;
+    } else {
+      return new DeleteResponse<>(null, ENTITY_DELETED);
+    }
   }
 
   @Transaction
@@ -2052,11 +2070,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
-  private boolean validateIfAllRefsAreEntityType(List<EntityReference> list, String entityType) {
+  private static boolean validateIfAllRefsAreEntityType(
+      List<EntityReference> list, String entityType) {
     return list.stream().allMatch(obj -> obj.getType().equals(entityType));
   }
 
-  public final void validateReviewers(List<EntityReference> entityReferences) {
+  public static void validateReviewers(List<EntityReference> entityReferences) {
     if (!nullOrEmpty(entityReferences)) {
       boolean areAllTeam = validateIfAllRefsAreEntityType(entityReferences, TEAM);
       boolean areAllUsers = validateIfAllRefsAreEntityType(entityReferences, USER);
@@ -2414,7 +2433,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
-  public final List<EntityReference> validateOwners(List<EntityReference> owners) {
+  public static List<EntityReference> validateOwners(List<EntityReference> owners) {
     if (nullOrEmpty(owners)) {
       return null;
     }
@@ -2821,6 +2840,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
         return;
       }
 
+      if (operation == Operation.PUT && updatedExtension == null) {
+        // Revert change to non-empty extension if it is being updated by a PUT request
+        // For PUT operations, existing extension can't be removed.
+        updated.setExtension(origExtension);
+        return;
+      }
+
       List<JsonNode> added = new ArrayList<>();
       List<JsonNode> deleted = new ArrayList<>();
       JsonNode origFields = JsonUtils.valueToTree(origExtension);
@@ -2969,6 +2995,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     private void updateStyle() {
       if (supportsStyle) {
+        Style originalStyle = original.getStyle();
+        Style updatedStyle = updated.getStyle();
+
+        if (originalStyle == updatedStyle) return;
+        if (operation == Operation.PUT && updatedStyle == null) {
+          updatedStyle = originalStyle;
+          updated.setStyle(updatedStyle);
+        }
         recordChange(FIELD_STYLE, original.getStyle(), updated.getStyle(), true);
       }
     }
@@ -3023,7 +3057,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
       SystemRepository systemRepository = Entity.getSystemRepository();
       AssetCertificationSettings assetCertificationSettings =
-          systemRepository.getAssetCertificationSettings();
+          systemRepository.getAssetCertificationSettingOrDefault();
 
       String certificationLabel = updatedCertification.getTagLabel().getTagFQN();
 

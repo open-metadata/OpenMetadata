@@ -16,11 +16,12 @@ In this section, we provide guides and references to use the Vertica connector.
 Configure and schedule Vertica metadata and profiler workflows from the OpenMetadata UI:
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
+- [Lineage](#lineage)
 - [Data Profiler](#data-profiler)
 - [Data Quality](#data-quality)
 - [dbt Integration](#dbt-integration)
 
-{% partial file="/v1.6/connectors/external-ingestion-deployment.md" /%}
+{% partial file="/v1.7/connectors/external-ingestion-deployment.md" /%}
 
 ## Requirements
 
@@ -72,7 +73,7 @@ GRANT SELECT ON ALL TABLES IN SCHEMA <schema> TO openmetadata;
 
 ### Python Requirements
 
-{% partial file="/v1.6/connectors/python-requirements.md" /%}
+{% partial file="/v1.7/connectors/python-requirements.md" /%}
 
 To run the Vertica ingestion, you will need to install:
 
@@ -128,11 +129,11 @@ This is a sample config for Vertica:
 
 {% /codeInfo %}
 
-{% partial file="/v1.6/connectors/yaml/database/source-config-def.md" /%}
+{% partial file="/v1.7/connectors/yaml/database/source-config-def.md" /%}
 
-{% partial file="/v1.6/connectors/yaml/ingestion-sink-def.md" /%}
+{% partial file="/v1.7/connectors/yaml/ingestion-sink-def.md" /%}
 
-{% partial file="/v1.6/connectors/yaml/workflow-config-def.md" /%}
+{% partial file="/v1.7/connectors/yaml/workflow-config-def.md" /%}
 
 #### Advanced Configuration
 
@@ -183,23 +184,25 @@ source:
       #   key: value
 ```
 
-{% partial file="/v1.6/connectors/yaml/database/source-config.md" /%}
+{% partial file="/v1.7/connectors/yaml/database/source-config.md" /%}
 
-{% partial file="/v1.6/connectors/yaml/ingestion-sink.md" /%}
+{% partial file="/v1.7/connectors/yaml/ingestion-sink.md" /%}
 
-{% partial file="/v1.6/connectors/yaml/workflow-config.md" /%}
+{% partial file="/v1.7/connectors/yaml/workflow-config.md" /%}
 
 {% /codeBlock %}
 
 {% /codePreview %}
 
-{% partial file="/v1.6/connectors/yaml/ingestion-cli.md" /%}
+{% partial file="/v1.7/connectors/yaml/ingestion-cli.md" /%}
 
-{% partial file="/v1.6/connectors/yaml/data-profiler.md" variables={connector: "vertica"} /%}
+{% partial file="/v1.7/connectors/yaml/lineage.md" variables={connector: "vertica"} /%}
 
-{% partial file="/v1.6/connectors/yaml/auto-classification.md" variables={connector: "vertica"} /%}
+{% partial file="/v1.7/connectors/yaml/data-profiler.md" variables={connector: "vertica"} /%}
 
-{% partial file="/v1.6/connectors/yaml/data-quality.md" /%}
+{% partial file="/v1.7/connectors/yaml/auto-classification.md" variables={connector: "vertica"} /%}
+
+{% partial file="/v1.7/connectors/yaml/data-quality.md" /%}
 
 ## dbt Integration
 
