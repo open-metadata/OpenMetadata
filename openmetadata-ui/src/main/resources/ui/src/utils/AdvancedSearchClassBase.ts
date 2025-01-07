@@ -839,31 +839,11 @@ class AdvancedSearchClassBase {
             },
           };
 
-        case 'date-cp':
-        case 'dateTime-cp': {
+        case 'date-cp': {
           return {
             subfieldsKey: field.name,
             dataObject: {
               type: 'date',
-              operators: RANGE_FIELD_OPERATORS,
-            },
-          };
-        }
-        case 'time-cp': {
-          return {
-            subfieldsKey: field.name,
-            dataObject: {
-              type: 'time',
-              operators: RANGE_FIELD_OPERATORS,
-            },
-          };
-        }
-        case 'timeInterval': {
-          return {
-            subfieldsKey: field.name + `.start`,
-            label: field.name,
-            dataObject: {
-              type: 'number',
               operators: RANGE_FIELD_OPERATORS,
             },
           };
