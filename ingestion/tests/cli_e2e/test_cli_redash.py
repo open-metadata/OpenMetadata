@@ -13,6 +13,7 @@
 Test Redash connector with CLI
 """
 from typing import List
+import pytest
 
 from .common.test_cli_dashboard import CliCommonDashboard
 
@@ -65,3 +66,7 @@ class RedashCliTest(CliCommonDashboard.TestSuite):
 
     def expected_dashboards_and_charts_after_patch(self) -> int:
         return 1
+
+    @pytest.mark.order(11)
+    def test_lineage(self) -> None:
+        pytest.skip("Lineage not configured. Skipping Test")

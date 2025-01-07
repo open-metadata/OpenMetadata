@@ -73,6 +73,9 @@ class BigqueryCliTest(CliCommonDB.TestSuite, SQACommonMethods):
 
     def view_column_lineage_count(self) -> int:
         return 2
+    
+    def expected_lineage_node(self) -> str:
+        return "local_bigquery_multiple.modified-leaf-330420.do_not_touch.view_orders"
 
     @staticmethod
     def _expected_profiled_tables() -> int:

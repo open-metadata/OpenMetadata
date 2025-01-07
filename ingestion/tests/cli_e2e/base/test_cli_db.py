@@ -220,7 +220,7 @@ class CliDBBase(TestCase):
             self.run_command()
             self.build_config_file(
                 E2EType.LINEAGE,
-                {"source": "mysql-lineage"},
+                {"source": f"{self.get_connector_name()}-lineage"},
             )
             result = self.run_command()
             sink_status, source_status = self.retrieve_statuses(result)

@@ -83,6 +83,9 @@ class MSSQLCliTest(CliCommonDB.TestSuite, SQACommonMethods):
 
     def view_column_lineage_count(self) -> int:
         return 4
+    
+    def expected_lineage_node(self) -> str:
+        return "mssql.e2e_cli_tests.dbo.view_persons"
 
     @staticmethod
     def fqn_created_table() -> str:
