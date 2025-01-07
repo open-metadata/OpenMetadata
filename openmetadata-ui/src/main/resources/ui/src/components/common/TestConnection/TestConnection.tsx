@@ -42,6 +42,7 @@ import {
   WorkflowType,
 } from '../../../generated/entity/automations/workflow';
 import { TestConnectionStep } from '../../../generated/entity/services/connections/testConnectionDefinition';
+import useAbortController from '../../../hooks/AbortController/useAbortController';
 import { useAirflowStatus } from '../../../hooks/useAirflowStatus';
 import {
   addWorkflow,
@@ -108,6 +109,8 @@ const TestConnection: FC<TestConnectionProps> = ({
    */
   const currentWorkflowRef = useRef(currentWorkflow);
 
+  const { controller } = useAbortController();
+
   const serviceType = useMemo(() => {
     return getServiceType(serviceCategory);
   }, [serviceCategory]);
@@ -138,9 +141,12 @@ const TestConnection: FC<TestConnectionProps> = ({
     }
   };
 
-  const getWorkflowData = async (workflowId: string) => {
+  const getWorkflowData = async (
+    workflowId: string,
+    apiCancelSignal: AbortSignal
+  ) => {
     try {
-      const response = await getWorkflowById(workflowId);
+      const response = await getWorkflowById(workflowId, apiCancelSignal);
       const testConnectionStepResult = response.response?.steps ?? [];
 
       setTestConnectionStepResult(testConnectionStepResult);
@@ -169,9 +175,85 @@ const TestConnection: FC<TestConnectionProps> = ({
 
     try {
       await deleteWorkflowById(workflowId, true);
+      setCurrentWorkflow(undefined);
     } catch (error) {
       // do not throw error for this API
     }
+  };
+
+  const handleCompletionStatus = async (
+    isTestConnectionSuccess: boolean,
+    steps: TestConnectionStepResult[]
+  ) => {
+    setProgress(TEST_CONNECTION_PROGRESS_PERCENTAGE.HUNDRED);
+    if (isTestConnectionSuccess) {
+      setTestStatus(StatusType.Successful);
+      setMessage(TEST_CONNECTION_SUCCESS_MESSAGE);
+    } else {
+      const isMandatoryStepsFailing = steps.some(
+        (step) => step.mandatory && !step.passed
+      );
+      setTestStatus(isMandatoryStepsFailing ? StatusType.Failed : 'Warning');
+      setMessage(
+        isMandatoryStepsFailing
+          ? TEST_CONNECTION_FAILURE_MESSAGE
+          : TEST_CONNECTION_WARNING_MESSAGE
+      );
+    }
+  };
+
+  const handleWorkflowPolling = async (
+    response: Workflow,
+    intervalId: number | undefined
+  ) => {
+    // return a promise that wraps the interval and handles errors inside it
+    return new Promise<void>((resolve, reject) => {
+      /**
+       * fetch workflow repeatedly with 2s interval
+       * until status is either Failed or Successful
+       */
+      intervalId = toNumber(
+        setInterval(async () => {
+          setProgress((prev) => prev + TEST_CONNECTION_PROGRESS_PERCENTAGE.ONE);
+          try {
+            const workflowResponse = await getWorkflowData(
+              response.id,
+              controller.signal
+            );
+            const { response: testConnectionResponse } = workflowResponse;
+            const { status: testConnectionStatus, steps = [] } =
+              testConnectionResponse || {};
+
+            const isWorkflowCompleted = WORKFLOW_COMPLETE_STATUS.includes(
+              workflowResponse.status as WorkflowStatus
+            );
+
+            const isTestConnectionSuccess =
+              testConnectionStatus === StatusType.Successful;
+
+            if (!isWorkflowCompleted) {
+              return;
+            }
+
+            // Handle completion status
+            await handleCompletionStatus(isTestConnectionSuccess, steps);
+
+            // clear the current interval
+            clearInterval(intervalId);
+
+            // set testing connection to false
+            setIsTestingConnection(false);
+
+            // delete the workflow once it's finished
+            await handleDeleteWorkflow(workflowResponse.id);
+
+            resolve();
+          } catch (error) {
+            reject(error as AxiosError);
+          }
+        }, FETCH_INTERVAL)
+      );
+    });
   };
 
   // handlers
@@ -203,12 +285,14 @@ const TestConnection: FC<TestConnectionProps> = ({
       setProgress(TEST_CONNECTION_PROGRESS_PERCENTAGE.TEN);
 
       // create the workflow
-      const response = await addWorkflow(createWorkflowData);
+      const response = await addWorkflow(createWorkflowData, controller.signal);
+
+      setCurrentWorkflow(response);
 
       setProgress(TEST_CONNECTION_PROGRESS_PERCENTAGE.TWENTY);
 
       // trigger the workflow
-      const status = await triggerWorkflowById(response.id);
+      const status = await triggerWorkflowById(response.id, controller.signal);
 
       setProgress(TEST_CONNECTION_PROGRESS_PERCENTAGE.FORTY);
 
@@ -222,58 +306,6 @@ const TestConnection: FC<TestConnectionProps> = ({
 
         return;
       }
-
-      /**
-       * fetch workflow repeatedly with 2s interval
-       * until status is either Failed or Successful
-       */
-      intervalId = toNumber(
-        setInterval(async () => {
-          setProgress((prev) => prev + TEST_CONNECTION_PROGRESS_PERCENTAGE.ONE);
-          const workflowResponse = await getWorkflowData(response.id);
-          const { response: testConnectionResponse } = workflowResponse;
-          const { status: testConnectionStatus, steps = [] } =
-            testConnectionResponse || {};
-
-          const isWorkflowCompleted = WORKFLOW_COMPLETE_STATUS.includes(
-            workflowResponse.status as WorkflowStatus
-          );
-
-          const isTestConnectionSuccess =
-            testConnectionStatus === StatusType.Successful;
-
-          if (!isWorkflowCompleted) {
-            return;
-          }
-
-          setProgress(TEST_CONNECTION_PROGRESS_PERCENTAGE.HUNDRED);
-          if (isTestConnectionSuccess) {
-            setTestStatus(StatusType.Successful);
-            setMessage(TEST_CONNECTION_SUCCESS_MESSAGE);
-          } else {
-            const isMandatoryStepsFailing = steps.some(
-              (step) => step.mandatory && !step.passed
-            );
-            setTestStatus(
-              isMandatoryStepsFailing ? StatusType.Failed : 'Warning'
-            );
-            setMessage(
-              isMandatoryStepsFailing
-                ? TEST_CONNECTION_FAILURE_MESSAGE
-                : TEST_CONNECTION_WARNING_MESSAGE
-            );
-          }
-
-          // clear the current interval
-          clearInterval(intervalId);
-
-          // set testing connection to false
-          setIsTestingConnection(false);
-
-          // delete the workflow once it's finished
-          await handleDeleteWorkflow(workflowResponse.id);
-        }, FETCH_INTERVAL)
-      );
 
       // stop fetching the workflow after 2 minutes
       setTimeout(() => {
@@ -296,6 +328,9 @@ const TestConnection: FC<TestConnectionProps> = ({
         setIsTestingConnection(false);
         setProgress(TEST_CONNECTION_PROGRESS_PERCENTAGE.HUNDRED);
       }, FETCHING_EXPIRY_TIME);
+
+      // Handle workflow polling and completion
+      await handleWorkflowPolling(response, intervalId);
     } catch (error) {
       setProgress(TEST_CONNECTION_PROGRESS_PERCENTAGE.HUNDRED);
       clearInterval(intervalId);
@@ -322,6 +357,11 @@ const TestConnection: FC<TestConnectionProps> = ({
     } else {
       testConnection();
     }
+  };
+
+  const handleCancelTestConnectionModal = () => {
+    controller.abort();
+    setDialogOpen(false);
   };
 
   useEffect(() => {
@@ -435,7 +475,7 @@ const TestConnection: FC<TestConnectionProps> = ({
         progress={progress}
         testConnectionStep={testConnectionStep}
         testConnectionStepResult={testConnectionStepResult}
-        onCancel={() => setDialogOpen(false)}
+        onCancel={handleCancelTestConnectionModal}
         onConfirm={() => setDialogOpen(false)}
         onTestConnection={handleTestConnection}
       />
