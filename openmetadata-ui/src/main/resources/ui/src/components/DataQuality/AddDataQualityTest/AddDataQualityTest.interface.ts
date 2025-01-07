@@ -49,7 +49,7 @@ export type TestSuiteIngestionDataType = {
 export interface AddTestSuitePipelineProps {
   initialData?: Partial<TestSuiteIngestionDataType>;
   isLoading: boolean;
-  testSuiteFQN?: string;
+  testSuite?: TestSuite;
   onSubmit: (data: TestSuiteIngestionDataType) => void;
   includePeriodOptions?: string[];
   onCancel?: () => void;

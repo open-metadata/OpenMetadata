@@ -292,7 +292,7 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
             includePeriodOptions={schedulerOptions}
             initialData={initialFormData}
             isLoading={isLoading}
-            testSuiteFQN={testSuite?.fullyQualifiedName}
+            testSuite={testSuite}
             onCancel={onCancel}
             onSubmit={handleIngestionSubmit}
           />
