@@ -73,10 +73,10 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "TestSuites")
 public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteRepository> {
   public static final String COLLECTION_PATH = "/v1/dataQuality/testSuites";
-  public static final String EXECUTABLE_TEST_SUITE_DELETION_ERROR =
+  public static final String BASIC_TEST_SUITE_DELETION_ERROR =
       "Cannot delete logical test suite. To delete logical test suite, use DELETE /v1/dataQuality/testSuites/<...>";
-  public static final String NON_EXECUTABLE_TEST_SUITE_DELETION_ERROR =
-      "Cannot delete executable test suite. To delete executable test suite, use DELETE /v1/dataQuality/testSuites/executable/<...>";
+  public static final String NON_BASIC_TEST_SUITE_DELETION_ERROR =
+      "Cannot delete executable test suite. To delete executable test suite, use DELETE /v1/dataQuality/testSuites/basic/<...>";
 
   static final String FIELDS = "owners,tests,summary";
   static final String SEARCH_FIELDS_EXCLUDE = "table,database,databaseSchema,service";
@@ -131,7 +131,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
       @Parameter(
               description =
                   "Returns executable or logical test suites. If omitted, returns all test suites.",
-              schema = @Schema(type = "string", example = "executable"))
+              schema = @Schema(type = "string", example = "basic"))
           @QueryParam("testSuiteType")
           String testSuiteType,
       @Parameter(
@@ -554,10 +554,10 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
       @Context SecurityContext securityContext,
       @Valid CreateTestSuite create) {
     create =
-        create.withExecutableEntityReference(
+        create.withBasicEntityReference(
             null); // entity reference is not applicable for logical test suites
     TestSuite testSuite = getTestSuite(create, securityContext.getUserPrincipal().getName());
-    testSuite.setExecutable(false);
+    testSuite.setBasic(false);
     return create(uriInfo, securityContext, testSuite);
   }
 
@@ -580,9 +580,41 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
   public Response createExecutable(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
+      @Context HttpServletResponse response,
+      @Valid CreateTestSuite create) {
+    TestSuite testSuite =
+        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+    testSuite.setBasic(true);
+    // Set the deprecation header based on draft specification from IETF
+    // https://datatracker.ietf.org/doc/html/draft-ietf-httpapi-deprecation-header-02
+    response.setHeader("Deprecation", "Monday, March 24, 2025");
+    response.setHeader("Link", "api/v1/dataQuality/testSuites/basic; rel=\"alternate\"");
+    return create(uriInfo, securityContext, testSuite);
+  }
+
+  @POST
+  @Path("/basic")
+  @Operation(
+      operationId = "createBasicTestSuite",
+      summary = "Create a basic test suite",
+      description = "Create a basic test suite.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Basic test suite",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = TestSuite.class))),
+        @ApiResponse(responseCode = "400", description = "Bad request")
+      })
+  public Response createBasic(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Context HttpServletResponse response,
       @Valid CreateTestSuite create) {
     TestSuite testSuite = getTestSuite(create, securityContext.getUserPrincipal().getName());
-    testSuite.setExecutable(true);
+    testSuite.setBasic(true);
     return create(uriInfo, securityContext, testSuite);
   }
 
@@ -635,10 +667,10 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
       @Context SecurityContext securityContext,
       @Valid CreateTestSuite create) {
     create =
-        create.withExecutableEntityReference(
+        create.withBasicEntityReference(
             null); // entity reference is not applicable for logical test suites
     TestSuite testSuite = getTestSuite(create, securityContext.getUserPrincipal().getName());
-    testSuite.setExecutable(false);
+    testSuite.setBasic(false);
     return createOrUpdate(uriInfo, securityContext, testSuite);
   }
 
@@ -661,9 +693,39 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
   public Response createOrUpdateExecutable(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
+      @Context HttpServletResponse response,
       @Valid CreateTestSuite create) {
     TestSuite testSuite = getTestSuite(create, securityContext.getUserPrincipal().getName());
-    testSuite.setExecutable(true);
+    testSuite.setBasic(true);
+    // Set the deprecation header based on draft specification from IETF
+    // https://datatracker.ietf.org/doc/html/draft-ietf-httpapi-deprecation-header-02
+    response.setHeader("Deprecation", "Monday, March 24, 2025");
+    response.setHeader("Link", "api/v1/dataQuality/testSuites/basic; rel=\"alternate\"");
+    return createOrUpdate(uriInfo, securityContext, testSuite);
+  }
+
+  @PUT
+  @Path("/basic")
+  @Operation(
+      operationId = "createOrUpdateBasicTestSuite",
+      summary = "Create or Update Basic test suite",
+      description = "Create a Basic TestSuite if it does not exist or update an existing one.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The updated test definition ",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = TestSuite.class)))
+      })
+  public Response createOrUpdateBasic(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid CreateTestSuite create) {
+    TestSuite testSuite =
+        mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+    testSuite.setBasic(true);
     return createOrUpdate(uriInfo, securityContext, testSuite);
   }
 
@@ -692,8 +754,8 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.DELETE);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     TestSuite testSuite = Entity.getEntity(Entity.TEST_SUITE, id, "*", ALL);
-    if (Boolean.TRUE.equals(testSuite.getExecutable())) {
-      throw new IllegalArgumentException(NON_EXECUTABLE_TEST_SUITE_DELETION_ERROR);
+    if (Boolean.TRUE.equals(testSuite.getBasic())) {
+      throw new IllegalArgumentException(NON_BASIC_TEST_SUITE_DELETION_ERROR);
     }
     RestUtil.DeleteResponse<TestSuite> response =
         repository.deleteLogicalTestSuite(securityContext, testSuite, hardDelete);
@@ -727,8 +789,8 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.DELETE);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
     TestSuite testSuite = Entity.getEntityByName(Entity.TEST_SUITE, name, "*", ALL);
-    if (Boolean.TRUE.equals(testSuite.getExecutable())) {
-      throw new IllegalArgumentException(NON_EXECUTABLE_TEST_SUITE_DELETION_ERROR);
+    if (Boolean.TRUE.equals(testSuite.getBasic())) {
+      throw new IllegalArgumentException(NON_BASIC_TEST_SUITE_DELETION_ERROR);
     }
     RestUtil.DeleteResponse<TestSuite> response =
         repository.deleteLogicalTestSuite(securityContext, testSuite, hardDelete);
@@ -751,6 +813,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
   public Response deleteExecutable(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
+      @Context HttpServletResponse response,
       @Parameter(
               description = "Recursively delete this entity and it's children. (Default `false`)")
           @DefaultValue("false")
@@ -766,8 +829,48 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.DELETE);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
     TestSuite testSuite = Entity.getEntityByName(Entity.TEST_SUITE, name, "*", ALL);
-    if (Boolean.FALSE.equals(testSuite.getExecutable())) {
-      throw new IllegalArgumentException(EXECUTABLE_TEST_SUITE_DELETION_ERROR);
+    if (Boolean.FALSE.equals(testSuite.getBasic())) {
+      throw new IllegalArgumentException(BASIC_TEST_SUITE_DELETION_ERROR);
+    }
+    // Set the deprecation header based on draft specification from IETF
+    // https://datatracker.ietf.org/doc/html/draft-ietf-httpapi-deprecation-header-02
+    response.setHeader("Deprecation", "Monday, March 24, 2025");
+    response.setHeader("Link", "api/v1/dataQuality/testSuites/basic; rel=\"alternate\"");
+    return deleteByName(uriInfo, securityContext, name, recursive, hardDelete);
+  }
+
+  @DELETE
+  @Path("/basic/name/{name}")
+  @Operation(
+      operationId = "deleteTestSuiteByName",
+      summary = "Delete a test suite",
+      description = "Delete a test suite by `name`.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Test suite for instance {name} is not found")
+      })
+  public Response deleteBasic(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Recursively delete this entity and it's children. (Default `false`)")
+          @DefaultValue("false")
+          @QueryParam("recursive")
+          boolean recursive,
+      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
+      @Parameter(description = "Name of the test suite", schema = @Schema(type = "string"))
+          @PathParam("name")
+          String name) {
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.DELETE);
+    authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
+    TestSuite testSuite = Entity.getEntityByName(Entity.TEST_SUITE, name, "*", ALL);
+    if (Boolean.FALSE.equals(testSuite.getBasic())) {
+      throw new IllegalArgumentException(BASIC_TEST_SUITE_DELETION_ERROR);
     }
     return deleteByName(uriInfo, securityContext, name, recursive, hardDelete);
   }
@@ -787,6 +890,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
   public Response deleteExecutable(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
+      @Context HttpServletResponse response,
       @Parameter(
               description = "Recursively delete this entity and it's children. (Default `false`)")
           @DefaultValue("false")
@@ -802,8 +906,48 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.DELETE);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     TestSuite testSuite = Entity.getEntity(Entity.TEST_SUITE, id, "*", ALL);
-    if (Boolean.FALSE.equals(testSuite.getExecutable())) {
-      throw new IllegalArgumentException(EXECUTABLE_TEST_SUITE_DELETION_ERROR);
+    if (Boolean.FALSE.equals(testSuite.getBasic())) {
+      throw new IllegalArgumentException(BASIC_TEST_SUITE_DELETION_ERROR);
+    }
+    // Set the deprecation header based on draft specification from IETF
+    // https://datatracker.ietf.org/doc/html/draft-ietf-httpapi-deprecation-header-02
+    response.setHeader("Deprecation", "Monday, March 24, 2025");
+    response.setHeader("Link", "api/v1/dataQuality/testSuites/basic; rel=\"alternate\"");
+    return delete(uriInfo, securityContext, id, recursive, hardDelete);
+  }
+
+  @DELETE
+  @Path("/basic/{id}")
+  @Operation(
+      operationId = "deleteTestSuite",
+      summary = "Delete a test suite",
+      description = "Delete a test suite by `Id`.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "OK"),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Test suite for instance {id} is not found")
+      })
+  public Response deleteBasic(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Recursively delete this entity and it's children. (Default `false`)")
+          @DefaultValue("false")
+          @QueryParam("recursive")
+          boolean recursive,
+      @Parameter(description = "Hard delete the entity. (Default = `false`)")
+          @QueryParam("hardDelete")
+          @DefaultValue("false")
+          boolean hardDelete,
+      @Parameter(description = "Id of the test suite", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id) {
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.DELETE);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+    TestSuite testSuite = Entity.getEntity(Entity.TEST_SUITE, id, "*", ALL);
+    if (Boolean.FALSE.equals(testSuite.getBasic())) {
+      throw new IllegalArgumentException(BASIC_TEST_SUITE_DELETION_ERROR);
     }
     return delete(uriInfo, securityContext, id, recursive, hardDelete);
   }

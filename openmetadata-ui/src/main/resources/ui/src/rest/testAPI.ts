@@ -37,7 +37,7 @@ import { getEncodedFqn } from '../utils/StringsUtils';
 import APIClient from './index';
 
 export enum TestSuiteType {
-  executable = 'executable',
+  basic = 'basic',
   logical = 'logical',
 }
 export enum TestCaseType {
@@ -321,7 +321,7 @@ export const createExecutableTestSuite = async (data: CreateTestSuite) => {
   const response = await APIClient.post<
     CreateTestSuite,
     AxiosResponse<TestSuite>
-  >(`${testSuiteUrl}/executable`, data);
+  >(`${testSuiteUrl}/basic`, data);
 
   return response.data;
 };

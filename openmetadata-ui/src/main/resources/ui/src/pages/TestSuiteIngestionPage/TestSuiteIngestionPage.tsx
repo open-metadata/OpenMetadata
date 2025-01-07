@@ -22,12 +22,7 @@ import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/Ti
 import RightPanel from '../../components/DataQuality/AddDataQualityTest/components/RightPanel';
 import { TEST_SUITE_INGESTION_PAGE_DATA } from '../../components/DataQuality/AddDataQualityTest/rightPanelData';
 import TestSuiteIngestion from '../../components/DataQuality/AddDataQualityTest/TestSuiteIngestion';
-import { getEntityDetailsPath } from '../../constants/constants';
-import {
-  EntityTabs,
-  EntityType,
-  TabSpecificField,
-} from '../../enums/entity.enum';
+import { TabSpecificField } from '../../enums/entity.enum';
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { TestSuite } from '../../generated/tests/testSuite';
 import { useFqn } from '../../hooks/useFqn';
@@ -35,6 +30,7 @@ import { getIngestionPipelineByFqn } from '../../rest/ingestionPipelineAPI';
 import { getTestSuiteByName } from '../../rest/testAPI';
 import { getEntityName } from '../../utils/EntityUtils';
 import { getDataQualityPagePath } from '../../utils/RouterUtils';
+import { getTestSuiteDetailsPath } from '../../utils/TestSuiteUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const TestSuiteIngestionPage = () => {
@@ -78,12 +74,15 @@ const TestSuiteIngestionPage = () => {
           url: getDataQualityPagePath(),
         },
         {
-          name: getEntityName(response.executableEntityReference),
-          url: getEntityDetailsPath(
-            EntityType.TABLE,
-            response.executableEntityReference?.fullyQualifiedName ?? '',
-            EntityTabs.PROFILER
+          name: getEntityName(
+            response.basic ? response.basicEntityReference : response
           ),
+          url: getTestSuiteDetailsPath({
+            isExecutableTestSuite: response.basic,
+            fullyQualifiedName: response.basic
+              ? response.basicEntityReference?.fullyQualifiedName ?? ''
+              : response.fullyQualifiedName ?? '',
+          }),
         },
         {
           name: `${ingestionFQN ? t('label.edit') : t('label.add')} ${t(
