@@ -15,16 +15,16 @@ public class TestSuiteMapper implements EntityMapper<TestSuite, CreateTestSuite>
             .withDescription(create.getDescription())
             .withDisplayName(create.getDisplayName())
             .withName(create.getName());
-    if (create.getExecutableEntityReference() != null) {
+    if (create.getBasicEntityReference() != null) {
       Table table =
-          Entity.getEntityByName(Entity.TABLE, create.getExecutableEntityReference(), null, null);
+          Entity.getEntityByName(Entity.TABLE, create.getBasicEntityReference(), null, null);
       EntityReference entityReference =
           new EntityReference()
               .withId(table.getId())
               .withFullyQualifiedName(table.getFullyQualifiedName())
               .withName(table.getName())
               .withType(Entity.TABLE);
-      testSuite.setExecutableEntityReference(entityReference);
+      testSuite.setBasicEntityReference(entityReference);
     }
     return testSuite;
   }
