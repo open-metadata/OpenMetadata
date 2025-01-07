@@ -46,7 +46,7 @@ import {
   updateFieldTags,
 } from '../../../utils/TableUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import RichTextEditorPreviewer from '../../common/RichTextEditor/RichTextEditorPreviewer';
+import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import ToggleExpandButton from '../../common/ToggleExpandButton/ToggleExpandButton';
 import { ColumnFilter } from '../../Database/ColumnFilter/ColumnFilter.component';
 import SchemaEditor from '../../Database/SchemaEditor/SchemaEditor';
@@ -134,7 +134,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
         <Tooltip destroyTooltipOnHide title={getEntityName(record)}>
           <span className="break-word">
             {isVersionView ? (
-              <RichTextEditorPreviewer markdown={getEntityName(record)} />
+              <RichTextEditorPreviewerV1 markdown={getEntityName(record)} />
             ) : (
               getEntityName(record)
             )}
@@ -149,7 +149,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
     (dataType: DataTypeTopic, record: Field) => (
       <Typography.Text>
         {isVersionView ? (
-          <RichTextEditorPreviewer
+          <RichTextEditorPreviewerV1
             markdown={record.dataTypeDisplay ?? dataType}
           />
         ) : (

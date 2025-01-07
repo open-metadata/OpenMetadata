@@ -57,6 +57,7 @@ VERSIONS = {
     "giturlparse": "giturlparse",
     "validators": "validators~=0.22.0",
     "teradata": "teradatasqlalchemy>=20.0.0.0",
+    "cockroach": "sqlalchemy-cockroachdb~=2.0",
     "cassandra": "cassandra-driver>=3.28.0",
 }
 
@@ -77,7 +78,7 @@ COMMONS = {
     },
     "kafka": {
         VERSIONS["avro"],
-        "confluent_kafka==2.1.1",
+        "confluent_kafka>=2.1.1",
         "fastavro>=1.2.0",
         # Due to https://github.com/grpc/grpc/issues/30843#issuecomment-1303816925
         # use >= v1.47.2 https://github.com/grpc/grpc/blob/v1.47.2/tools/distrib/python/grpcio_tools/grpc_version.py#L17
@@ -138,7 +139,7 @@ base_requirements = {
     "requests>=2.23",
     "requests-aws4auth~=1.1",  # Only depends on requests as external package. Leaving as base.
     "sqlalchemy>=1.4.0,<2",
-    "collate-sqllineage~=1.5.0",
+    "collate-sqllineage~=1.6.0",
     "tabulate==0.9.0",
     "typing-inspect",
     "packaging",  # For version parsing
@@ -233,6 +234,10 @@ plugins: Dict[str, Set[str]] = {
     "glue": {VERSIONS["boto3"]},
     "great-expectations": {VERSIONS["great-expectations"]},
     "greenplum": {*COMMONS["postgres"]},
+    "cockroach": {
+        VERSIONS["cockroach"],
+        "psycopg2-binary",
+    },
     "hive": {
         *COMMONS["hive"],
         "thrift>=0.13,<1",
@@ -380,6 +385,7 @@ test = {
     VERSIONS["avro"],  # Sample Data
     VERSIONS["grpc-tools"],
     VERSIONS["neo4j"],
+    VERSIONS["cockroach"],
     "testcontainers==3.7.1;python_version<'3.9'",
     "testcontainers~=4.8.0;python_version>='3.9'",
     "minio==7.2.5",

@@ -45,6 +45,7 @@
     "authType": {
       "title": "Auth Configuration Type",
       "description": "Choose Auth Config Type.",
+      "mask":  true,
       "oneOf": [
         {
           "$ref": "./common/basicAuth.json"

@@ -13,10 +13,8 @@
 
 package org.openmetadata.service.secrets.converter;
 
-import com.mysql.cj.MysqlConnection;
 import java.util.Map;
 import lombok.Getter;
-import org.flywaydb.core.internal.database.redshift.RedshiftConnection;
 import org.openmetadata.schema.auth.SSOAuthMechanism;
 import org.openmetadata.schema.entity.automations.TestServiceConnectionRequest;
 import org.openmetadata.schema.entity.automations.Workflow;
@@ -29,12 +27,15 @@ import org.openmetadata.schema.services.connections.dashboard.TableauConnection;
 import org.openmetadata.schema.services.connections.database.BigQueryConnection;
 import org.openmetadata.schema.services.connections.database.BigTableConnection;
 import org.openmetadata.schema.services.connections.database.CassandraConnection;
+import org.openmetadata.schema.services.connections.database.CockroachConnection;
 import org.openmetadata.schema.services.connections.database.DatalakeConnection;
 import org.openmetadata.schema.services.connections.database.DeltaLakeConnection;
 import org.openmetadata.schema.services.connections.database.GreenplumConnection;
 import org.openmetadata.schema.services.connections.database.HiveConnection;
 import org.openmetadata.schema.services.connections.database.IcebergConnection;
+import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.database.PostgresConnection;
+import org.openmetadata.schema.services.connections.database.RedshiftConnection;
 import org.openmetadata.schema.services.connections.database.SalesforceConnection;
 import org.openmetadata.schema.services.connections.database.SapHanaConnection;
 import org.openmetadata.schema.services.connections.database.TrinoConnection;
@@ -85,7 +86,9 @@ public final class ClassConverterFactory {
                 TestServiceConnectionRequest.class,
                 new TestServiceConnectionRequestClassConverter()),
             Map.entry(TrinoConnection.class, new TrinoConnectionClassConverter()),
-            Map.entry(Workflow.class, new WorkflowClassConverter()));
+            Map.entry(Workflow.class, new WorkflowClassConverter()),
+            Map.entry(CockroachConnection.class, new CockroachConnectionClassConverter()));
+    Map.entry(Workflow.class, new WorkflowClassConverter());
     Map.entry(CassandraConnection.class, new CassandraConnectionClassConverter());
   }
 

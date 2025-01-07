@@ -12,10 +12,13 @@
  */
 import { create } from 'zustand';
 import { Glossary } from '../../generated/entity/data/glossary';
+import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
 import { GlossaryTermWithChildren } from '../../rest/glossaryAPI';
+import { findAndUpdateNested } from '../../utils/GlossaryUtils';
 
 export type ModifiedGlossary = Glossary & {
   children?: GlossaryTermWithChildren[];
+  childrenCount?: number;
 };
 
 export const useGlossaryStore = create<{
@@ -27,6 +30,7 @@ export const useGlossaryStore = create<{
   updateGlossary: (glossary: Glossary) => void;
   updateActiveGlossary: (glossary: Partial<ModifiedGlossary>) => void;
   setGlossaryChildTerms: (glossaryChildTerms: ModifiedGlossary[]) => void;
+  insertNewGlossaryTermToChildTerms: (glossary: GlossaryTerm) => void;
 }>()((set, get) => ({
   glossaries: [],
   activeGlossary: {} as ModifiedGlossary,
@@ -66,6 +70,14 @@ export const useGlossaryStore = create<{
     if (index !== -1) {
       glossaries[index] = updatedGlossary;
     }
+  },
+  insertNewGlossaryTermToChildTerms: (glossary: GlossaryTerm) => {
+    const { glossaryChildTerms } = get();
+
+    // Typically used to updated the glossary term list in the glossary page
+    set({
+      glossaryChildTerms: findAndUpdateNested(glossaryChildTerms, glossary),
+    });
   },
   setGlossaryChildTerms: (glossaryChildTerms: ModifiedGlossary[]) => {
     set({ glossaryChildTerms });

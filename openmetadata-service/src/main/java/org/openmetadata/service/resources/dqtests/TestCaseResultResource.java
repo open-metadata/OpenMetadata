@@ -67,6 +67,7 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "TestCaseResults")
 public class TestCaseResultResource
     extends EntityTimeSeriesResource<TestCaseResult, TestCaseResultRepository> {
+  private final TestCaseResultMapper mapper = new TestCaseResultMapper();
   static final String FIELDS = "testCase,testDefinition";
 
   public TestCaseResultResource(Authorizer authorizer) {
@@ -101,12 +102,17 @@ public class TestCaseResultResource
           @PathParam("fqn")
           String fqn,
       @Valid CreateTestCaseResult createTestCaseResults) {
+    // Needed in further validation to check if the testCase exists
+    createTestCaseResults.withFqn(fqn);
     ResourceContextInterface resourceContext = TestCaseResourceContext.builder().name(fqn).build();
     OperationContext operationContext =
         new OperationContext(Entity.TABLE, MetadataOperation.EDIT_TESTS);
     authorizer.authorize(securityContext, operationContext, resourceContext);
     return repository.addTestCaseResult(
-        securityContext.getUserPrincipal().getName(), uriInfo, fqn, createTestCaseResults);
+        securityContext.getUserPrincipal().getName(),
+        uriInfo,
+        fqn,
+        mapper.createToEntity(createTestCaseResults, securityContext.getUserPrincipal().getName()));
   }
 
   @GET
