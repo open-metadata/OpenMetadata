@@ -12,6 +12,7 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  issues: write
 env:
   CURRENT_RELEASE_ENDPOINT: ${{ vars.CURRENT_RELEASE_ENDPOINT }}  # Endpoint that returns the current release version in json format
 jobs:
