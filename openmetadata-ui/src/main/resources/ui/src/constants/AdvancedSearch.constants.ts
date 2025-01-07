@@ -14,6 +14,7 @@
 import { t } from 'i18next';
 import { JsonTree, Utils as QbUtils } from 'react-awesome-query-builder';
 import { EntityFields } from '../enums/AdvancedSearch.enum';
+import { SearchIndex } from '../enums/search.enum';
 
 export const COMMON_DROPDOWN_ITEMS = [
   {
@@ -336,3 +337,10 @@ export const MISC_FIELDS = ['owner.displayName', 'tags.tagFQN'];
 export const OWNER_QUICK_FILTER_DEFAULT_OPTIONS_KEY = 'displayName.keyword';
 
 export const NULL_OPTION_KEY = 'OM_NULL_FIELD';
+
+export const SEARCH_INDICES_WITH_COLUMNS_FIELD = [
+  SearchIndex.TABLE,
+  SearchIndex.DASHBOARD_DATA_MODEL,
+  SearchIndex.DATA_ASSET,
+  SearchIndex.ALL,
+];
