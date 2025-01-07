@@ -40,7 +40,7 @@ public class SetEntityCertificationImpl implements JavaDelegate {
               .orElse(null);
       String user =
           Optional.ofNullable((String) execution.getVariable(RESOLVED_BY_VARIABLE))
-              .orElse(entity.getUpdatedBy());
+              .orElse("governance-bot");
 
       setStatus(entity, entityType, user, certification);
     } catch (Exception exc) {

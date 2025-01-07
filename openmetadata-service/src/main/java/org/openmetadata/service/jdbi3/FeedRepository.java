@@ -972,7 +972,8 @@ public class FeedRepository {
       String createdByUserName = thread.getCreatedBy();
       User createdByUser =
           Entity.getEntityByName(USER, createdByUserName, TEAMS_FIELD, NON_DELETED);
-      if (Boolean.TRUE.equals(createdByUser.getIsBot())) {
+      if (Boolean.TRUE.equals(createdByUser.getIsBot())
+          && !createdByUser.getName().equals("governance-bot")) {
         throw new IllegalArgumentException("Task cannot be created by bot only by user or teams");
       }
 
