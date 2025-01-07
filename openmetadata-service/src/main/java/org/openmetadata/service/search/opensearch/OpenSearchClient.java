@@ -777,6 +777,7 @@ public class OpenSearchClient implements SearchClient {
       boolean deleted,
       String entityType)
       throws IOException {
+    Set<String> visitedFqn = new HashSet<>();
     if (entityType.equalsIgnoreCase(Entity.PIPELINE)
         || entityType.equalsIgnoreCase(Entity.STORED_PROCEDURE)) {
       return searchPipelineLineage(fqn, upstreamDepth, downstreamDepth, queryFilter, deleted);
@@ -801,6 +802,7 @@ public class OpenSearchClient implements SearchClient {
     }
     getLineage(
         fqn,
+        visitedFqn,
         downstreamDepth,
         edges,
         nodes,
@@ -808,7 +810,14 @@ public class OpenSearchClient implements SearchClient {
         "lineage.fromEntity.fqnHash.keyword",
         deleted);
     getLineage(
-        fqn, upstreamDepth, edges, nodes, queryFilter, "lineage.toEntity.fqnHash.keyword", deleted);
+        fqn,
+        visitedFqn,
+        upstreamDepth,
+        edges,
+        nodes,
+        queryFilter,
+        "lineage.toEntity.fqnHash.keyword",
+        deleted);
     responseMap.put("edges", edges);
     responseMap.put("nodes", nodes);
     return responseMap;
@@ -1032,6 +1041,7 @@ public class OpenSearchClient implements SearchClient {
 
   private void getLineage(
       String fqn,
+      Set<String> visitedFqn,
       int depth,
       Set<Map<String, Object>> edges,
       Set<Map<String, Object>> nodes,
@@ -1039,9 +1049,10 @@ public class OpenSearchClient implements SearchClient {
       String direction,
       boolean deleted)
       throws IOException {
-    if (depth <= 0) {
+    if (depth <= 0 || visitedFqn.contains(fqn)) {
       return;
     }
+    visitedFqn.add(fqn);
     os.org.opensearch.action.search.SearchRequest searchRequest =
         new os.org.opensearch.action.search.SearchRequest(
             Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS));
@@ -1073,13 +1084,27 @@ public class OpenSearchClient implements SearchClient {
           if (!edges.contains(lin) && fromEntity.get("fqn").equals(fqn)) {
             edges.add(lin);
             getLineage(
-                toEntity.get("fqn"), depth - 1, edges, nodes, queryFilter, direction, deleted);
+                toEntity.get("fqn"),
+                visitedFqn,
+                depth - 1,
+                edges,
+                nodes,
+                queryFilter,
+                direction,
+                deleted);
           }
         } else {
           if (!edges.contains(lin) && toEntity.get("fqn").equals(fqn)) {
             edges.add(lin);
             getLineage(
-                fromEntity.get("fqn"), depth - 1, edges, nodes, queryFilter, direction, deleted);
+                fromEntity.get("fqn"),
+                visitedFqn,
+                depth - 1,
+                edges,
+                nodes,
+                queryFilter,
+                direction,
+                deleted);
           }
         }
       }
@@ -1226,6 +1251,7 @@ public class OpenSearchClient implements SearchClient {
   private Map<String, Object> searchPipelineLineage(
       String fqn, int upstreamDepth, int downstreamDepth, String queryFilter, boolean deleted)
       throws IOException {
+    Set<String> visitedFqn = new HashSet<>();
     Map<String, Object> responseMap = new HashMap<>();
     Set<Map<String, Object>> edges = new HashSet<>();
     Set<Map<String, Object>> nodes = new HashSet<>();
@@ -1263,6 +1289,7 @@ public class OpenSearchClient implements SearchClient {
           edges.add(lin);
           getLineage(
               fromEntity.get("fqn"),
+              visitedFqn,
               upstreamDepth,
               edges,
               nodes,
@@ -1271,6 +1298,7 @@ public class OpenSearchClient implements SearchClient {
               deleted);
           getLineage(
               toEntity.get("fqn"),
+              visitedFqn,
               downstreamDepth,
               edges,
               nodes,
@@ -1281,9 +1309,23 @@ public class OpenSearchClient implements SearchClient {
       }
     }
     getLineage(
-        fqn, downstreamDepth, edges, nodes, queryFilter, "lineage.fromEntity.fqn.keyword", deleted);
+        fqn,
+        visitedFqn,
+        downstreamDepth,
+        edges,
+        nodes,
+        queryFilter,
+        "lineage.fromEntity.fqn.keyword",
+        deleted);
     getLineage(
-        fqn, upstreamDepth, edges, nodes, queryFilter, "lineage.toEntity.fqn.keyword", deleted);
+        fqn,
+        visitedFqn,
+        upstreamDepth,
+        edges,
+        nodes,
+        queryFilter,
+        "lineage.toEntity.fqn.keyword",
+        deleted);
 
     if (edges.isEmpty()) {
       os.org.opensearch.action.search.SearchRequest searchRequestForEntity =
