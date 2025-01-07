@@ -248,6 +248,8 @@ public final class Entity {
   public static final String DOCUMENT = "document";
   // ServiceType - Service Entity name map
   static final Map<ServiceType, String> SERVICE_TYPE_ENTITY_MAP = new EnumMap<>(ServiceType.class);
+  // entity type to service entity name map
+  static final Map<String, String> ENTITY_SERVICE_TYPE_MAP = new HashMap<>();
   public static final List<String> PARENT_ENTITY_TYPES = new ArrayList<>();
 
   static {
@@ -260,6 +262,24 @@ public final class Entity {
     SERVICE_TYPE_ENTITY_MAP.put(ServiceType.STORAGE, STORAGE_SERVICE);
     SERVICE_TYPE_ENTITY_MAP.put(ServiceType.SEARCH, SEARCH_SERVICE);
     SERVICE_TYPE_ENTITY_MAP.put(ServiceType.API, API_SERVICE);
+
+    ENTITY_SERVICE_TYPE_MAP.put(DATABASE, DATABASE_SERVICE);
+    ENTITY_SERVICE_TYPE_MAP.put(DATABASE_SCHEMA, DATABASE_SERVICE);
+    ENTITY_SERVICE_TYPE_MAP.put(TABLE, DATABASE_SERVICE);
+    ENTITY_SERVICE_TYPE_MAP.put(STORED_PROCEDURE, DATABASE_SERVICE);
+    ENTITY_SERVICE_TYPE_MAP.put(QUERY, DATABASE_SERVICE);
+    ENTITY_SERVICE_TYPE_MAP.put(DASHBOARD, DASHBOARD_SERVICE);
+    ENTITY_SERVICE_TYPE_MAP.put(DASHBOARD_DATA_MODEL, DASHBOARD_SERVICE);
+    ENTITY_SERVICE_TYPE_MAP.put(CHART, DASHBOARD_SERVICE);
+    ENTITY_SERVICE_TYPE_MAP.put(PIPELINE, PIPELINE_SERVICE);
+    ENTITY_SERVICE_TYPE_MAP.put(MLMODEL, MLMODEL_SERVICE);
+    ENTITY_SERVICE_TYPE_MAP.put(TOPIC, MESSAGING_SERVICE);
+    ENTITY_SERVICE_TYPE_MAP.put(API, API_SERVICE);
+    ENTITY_SERVICE_TYPE_MAP.put(API_COLLCECTION, API_SERVICE);
+    ENTITY_SERVICE_TYPE_MAP.put(API_ENDPOINT, API_SERVICE);
+    ENTITY_SERVICE_TYPE_MAP.put(CONTAINER, STORAGE_SERVICE);
+    ENTITY_SERVICE_TYPE_MAP.put(SEARCH_INDEX, SEARCH_SERVICE);
+
     PARENT_ENTITY_TYPES.addAll(
         listOf(
             DATABASE_SERVICE,
@@ -635,5 +655,12 @@ public final class Entity {
 
   public static <T> T getSearchRepo() {
     return (T) searchRepository;
+  }
+
+  public static String getServiceType(String entityType) {
+    if (ENTITY_SERVICE_TYPE_MAP.containsKey(entityType)) {
+      return ENTITY_SERVICE_TYPE_MAP.get(entityType);
+    }
+    return entityType;
   }
 }
