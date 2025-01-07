@@ -217,6 +217,15 @@ public interface SearchClient {
         Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
   }
 
+  /*
+   Used for listing knowledge page hierarchy for a given active Page and page type, used in Elastic/Open SearchClientExtension
+  */
+  default ResultList listPageHierarchyForActivePage(
+      String activeFqn, String pageType, int offset, int limit) {
+    throw new CustomExceptionMessage(
+        Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
+  }
+
   @SuppressWarnings("unused")
   default ResultList searchPageHierarchy(String query, String pageType, int offset, int limit) {
     throw new CustomExceptionMessage(
