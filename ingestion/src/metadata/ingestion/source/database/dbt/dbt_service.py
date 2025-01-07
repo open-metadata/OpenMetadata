@@ -122,6 +122,11 @@ class DbtServiceTopology(ServiceTopology):
                 processor="process_dbt_descriptions",
                 nullable=True,
             ),
+            NodeStage(
+                type_=DataModelLink,
+                processor="process_dbt_owners",
+                nullable=True,
+            ),
         ],
     )
     process_dbt_tests: Annotated[
@@ -291,6 +296,12 @@ class DbtServiceSource(TopologyRunnerMixin, Source, ABC):
     def process_dbt_descriptions(self, data_model_link: DataModelLink):
         """
         Method to process DBT descriptions using patch APIs
+        """
+
+    @abstractmethod
+    def process_dbt_owners(self, data_model_link: DataModelLink):
+        """
+        Method to process DBT owners using patch APIs
         """
 
     def get_dbt_tests(self) -> dict:

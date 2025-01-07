@@ -61,6 +61,7 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper
 from metadata.ingestion.lineage.sql_lineage import get_lineage_by_query
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
+from metadata.ingestion.models.patch_request import PatchedEntity, PatchRequest
 from metadata.ingestion.models.table_metadata import ColumnDescription
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -888,6 +889,47 @@ class DbtSource(DbtServiceSource):
                 logger.warning(
                     f"Failed to parse the node {table_entity.fullyQualifiedName.root} "
                     f"to update dbt description: {exc}"
+                )
+
+    def process_dbt_owners(
+        self, data_model_link: DataModelLink
+    ) -> Iterable[Either[PatchedEntity]]:
+        """
+        Method to process DBT owners
+        """
+        table_entity: Table = data_model_link.table_entity
+        if table_entity:
+            logger.debug(
+                f"Processing DBT owners for: {table_entity.fullyQualifiedName.root}"
+            )
+            try:
+                data_model = data_model_link.datamodel
+                if (
+                    data_model.resourceType != DbtCommonEnum.SOURCE.value
+                    and self.source_config.dbtUpdateOwners
+                ):
+                    logger.debug(
+                        f"Overwriting owners with DBT owners: {table_entity.fullyQualifiedName.root}"
+                    )
+                    if data_model.owners:
+                        new_entity = deepcopy(table_entity)
+                        new_entity.owners = data_model.owners
+                        yield Either(
+                            right=PatchRequest(
+                                original_entity=table_entity,
+                                new_entity=new_entity,
+                                override_metadata=True,
+                            )
+                        )
+
+            except Exception as exc:  # pylint: disable=broad-except
+                yield Either(
+                    left=StackTraceError(
+                        name=str(table_entity.fullyQualifiedName.root),
+                        error=f"Failed to parse the node"
+                        f"{table_entity.fullyQualifiedName.root} to update dbt owner: {exc}",
+                        stackTrace=traceback.format_exc(),
+                    )
                 )
 
     def create_dbt_tests_definition(
