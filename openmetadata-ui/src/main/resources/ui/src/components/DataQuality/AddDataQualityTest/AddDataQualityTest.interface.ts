@@ -18,6 +18,7 @@ import { IngestionPipeline } from '../../../generated/entity/services/ingestionP
 import { TestCase } from '../../../generated/tests/testCase';
 import { TestDefinition } from '../../../generated/tests/testDefinition';
 import { TestSuite } from '../../../generated/tests/testSuite';
+import { ListTestCaseParamsBySearch } from '../../../rest/testAPI';
 
 export interface AddDataQualityTestProps {
   table: Table;
@@ -52,6 +53,7 @@ export interface AddTestSuitePipelineProps {
   onSubmit: (data: TestSuiteIngestionDataType) => void;
   includePeriodOptions?: string[];
   onCancel?: () => void;
+  testCaseParams?: ListTestCaseParamsBySearch;
 }
 
 export interface RightPanelProps {

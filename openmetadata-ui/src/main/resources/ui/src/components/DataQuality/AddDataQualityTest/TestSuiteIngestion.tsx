@@ -157,7 +157,9 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
   const createIngestionPipeline = async (data: TestSuiteIngestionDataType) => {
     const tableName = replaceAllSpacialCharWith_(
       getNameFromFQN(
-        testSuite.executableEntityReference?.fullyQualifiedName ?? ''
+        (testSuite.basic
+          ? testSuite.basicEntityReference?.fullyQualifiedName
+          : testSuite.fullyQualifiedName) ?? ''
       )
     );
     const updatedName =
@@ -179,7 +181,7 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
         config: {
           type: ConfigType.TestSuite,
           entityFullyQualifiedName:
-            testSuite.executableEntityReference?.fullyQualifiedName,
+            testSuite.basicEntityReference?.fullyQualifiedName,
           testCases: data?.testCases,
         },
       },
