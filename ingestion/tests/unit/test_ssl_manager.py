@@ -128,13 +128,16 @@ class KafkaSourceSSLTest(TestCase):
 
 
 class CassandraSourceSSLTest(TestCase):
-    @patch("metadata.ingestion.source.database.cassandra.connection.get_connection")
+    @patch("metadata.utils.ssl_manager.SSLManager.setup_ssl")
     @patch(
         "metadata.ingestion.source.database.cassandra.metadata.CassandraSource.test_connection"
     )
-    def test_init(self, get_connection, test_connection):
+    @patch("metadata.ingestion.source.database.cassandra.connection.get_connection")
+    def test_init(self, get_connection, test_connection, setup_ssl):
         get_connection.return_value = True
         test_connection.return_value = True
+        setup_ssl.side_effect = lambda x: x
+
         config = WorkflowSource(
             **{
                 "type": "cassandra",
