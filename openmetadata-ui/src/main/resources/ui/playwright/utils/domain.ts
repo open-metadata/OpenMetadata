@@ -331,7 +331,7 @@ export const addAssetsToDomain = async (
   await assetsAddRes;
 
   const countRes = page.waitForResponse(
-    '/api/v1/search/query?q=*&from=0&size=0&index=all'
+    '/api/v1/search/query?q=*&index=all&from=0&size=15'
   );
   await page.reload();
   await countRes;
