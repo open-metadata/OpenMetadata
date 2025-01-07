@@ -244,13 +244,7 @@ class TestSuiteSource(Source):
                     error=f"Test Suite with name {self.config.source.serviceName} not found",
                 )
             )
-        test_cases: List[TestCase] = list(
-            self.metadata.list_all_entities(
-                TestCase,
-                params={"testSuiteId": test_suite.id.root},
-                fields=["testDefinition", "testSuite"],
-            )
-        )
+        test_cases: List[TestCase] = self._get_test_cases_from_test_suite(test_suite)
         grouped_by_table = itertools.groupby(
             test_cases, key=lambda t: entity_link.get_table_fqn(t.entityLink.root)
         )
