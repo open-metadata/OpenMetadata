@@ -94,7 +94,6 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   const { t } = useTranslation();
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const pagingInfo = usePaging(PAGE_SIZE);
-  const { storeCursor, getStoredCursor } = usePaging();
 
   const {
     paging,
@@ -102,6 +101,8 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     handlePagingChange,
     currentPage,
     handlePageChange,
+    storeCursor,
+    getStoredCursor,
   } = pagingInfo;
 
   const { tab: activeTab = EntityTabs.TABLE } =

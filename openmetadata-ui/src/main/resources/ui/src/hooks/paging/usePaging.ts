@@ -17,7 +17,7 @@ import {
   useMemo,
   useState,
 } from 'react';
-import { useHistory, useLocation } from 'react-router-dom';
+import { useHistory } from 'react-router-dom';
 import {
   INITIAL_PAGING_VALUE,
   PAGE_SIZE_BASE,
@@ -25,6 +25,7 @@ import {
 } from '../../constants/constants';
 import { CursorType } from '../../enums/pagination.enum';
 import { Paging } from '../../generated/type/paging';
+import useCustomLocation from '../useCustomLocation/useCustomLocation';
 
 interface CursorState {
   cursorType: CursorType | null;
@@ -55,7 +56,7 @@ export const usePaging = (
   const [currentPage, setCurrentPage] = useState<number>(INITIAL_PAGING_VALUE);
   const [pageSize, setPageSize] = useState(defaultPageSize);
   const history = useHistory();
-  const location = useLocation();
+  const location = useCustomLocation();
 
   const handlePageSize = useCallback(
     (page: number) => {
