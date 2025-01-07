@@ -122,7 +122,9 @@ export const selectSubDomain = async (
     .click();
 
   await page.getByTestId('subdomains').getByText('Sub Domains').click();
-  const res = page.waitForResponse('/api/v1/domains/name/*');
+  const res = page.waitForResponse(
+    '/api/v1/search/query?*&index=data_product_search_index'
+  );
   await page.getByTestId(subDomain.name).click();
   await res;
 };
@@ -327,6 +329,12 @@ export const addAssetsToDomain = async (
   const assetsAddRes = page.waitForResponse(`/api/v1/domains/*/assets/add`);
   await page.getByTestId('save-btn').click();
   await assetsAddRes;
+
+  const countRes = page.waitForResponse(
+    '/api/v1/search/query?q=*&from=0&size=0&index=all'
+  );
+  await page.reload();
+  await countRes;
 
   await checkAssetsCount(page, assets.length);
 };
