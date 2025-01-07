@@ -355,7 +355,7 @@ const TestSuiteDetailsPage = () => {
         ),
       },
       {
-        label: t('label.pipeline'),
+        label: t('label.pipeline-plural'),
         key: EntityTabs.PIPELINE,
         children: (
           <TestSuitePipelineTab isLogicalTestSuite testSuite={testSuite} />

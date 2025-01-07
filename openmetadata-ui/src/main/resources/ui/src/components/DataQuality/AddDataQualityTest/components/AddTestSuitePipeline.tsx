@@ -43,21 +43,24 @@ const AddTestSuitePipeline = ({
   onSubmit,
   onCancel,
   includePeriodOptions,
-  testSuiteFQN,
+  testSuite,
 }: AddTestSuitePipelineProps) => {
   const { t } = useTranslation();
   const history = useHistory();
   const { fqn, ingestionFQN } = useFqn();
   const location = useCustomLocation();
 
-  const { testSuiteId } = useMemo(() => {
+  const testSuiteId = useMemo(() => {
     const param = location.search;
     const searchData = QueryString.parse(
       param.startsWith('?') ? param.substring(1) : param
     );
+    const testSuiteIdData =
+      testSuite?.id ?? (searchData as { testSuiteId: string }).testSuiteId;
 
-    return searchData as { testSuiteId: string };
+    return testSuite?.basic ? undefined : testSuiteIdData;
   }, [location.search]);
+
   const [selectAllTestCases, setSelectAllTestCases] = useState(
     initialData?.selectAllTestCases
   );
@@ -168,7 +171,7 @@ const AddTestSuitePipeline = ({
                   filters={
                     !testSuiteId
                       ? `testSuite.fullyQualifiedName:${escapeESReservedCharacters(
-                          testSuiteFQN ?? fqn
+                          testSuite?.fullyQualifiedName ?? fqn
                         )}`
                       : undefined
                   }
