@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { EntityReference, TestCase } from '../../../generated/tests/testCase';
+import { ListTestCaseParamsBySearch } from '../../../rest/testAPI';
 
 export interface AddTestCaseModalProps {
   onCancel?: () => void;
@@ -20,6 +21,7 @@ export interface AddTestCaseModalProps {
   cancelText?: string;
   submitText?: string;
   filters?: string;
+  testCaseParams?: ListTestCaseParamsBySearch;
   selectedTest?: string[];
   showButton?: boolean;
 }
