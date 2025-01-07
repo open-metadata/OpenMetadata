@@ -130,8 +130,6 @@ You can download the ODBC driver from [here](https://learn.microsoft.com/en-us/s
 
 {% partial file="/v1.6/connectors/yaml/ingestion-sink-def.md" /%}
 
-{% partial file="/v1.6/connectors/yaml/lineage.md" variables={connector: "azuresql"} /%}
-
 {% partial file="/v1.6/connectors/yaml/workflow-config-def.md" /%}
 
 #### Advanced Configuration
@@ -204,6 +202,8 @@ source:
 {% /codePreview %}
 
 {% partial file="/v1.6/connectors/yaml/ingestion-cli.md" /%}
+
+{% partial file="/v1.6/connectors/yaml/lineage.md" variables={connector: "azuresql"} /%}
 
 {% partial file="/v1.6/connectors/yaml/data-profiler.md" variables={connector: "azuresql"} /%}
 
