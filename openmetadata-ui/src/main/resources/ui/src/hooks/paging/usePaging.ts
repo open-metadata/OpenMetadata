@@ -41,12 +41,12 @@ export interface UsePagingInterface {
   pageSize: number;
   handlePageSizeChange: (page: number) => void;
   showPagination: boolean;
-  storeCursor: (params: {
+  handlePagingCursorChange: (params: {
     cursorType: CursorType | null;
     cursorValue: string | null;
     currentPage: number | null;
   }) => void;
-  getStoredCursor: () => CursorState;
+  pagingCursor: () => CursorState;
 }
 
 export const usePaging = (
@@ -70,7 +70,7 @@ export const usePaging = (
     return paging.total > pageSize || pageSize !== defaultPageSize;
   }, [defaultPageSize, paging, pageSize]);
 
-  const storeCursor = useCallback(
+  const handlePagingCursorChange = useCallback(
     ({
       cursorType,
       cursorValue,
@@ -91,16 +91,14 @@ export const usePaging = (
     []
   );
 
-  const getStoredCursor = () => {
+  const pagingCursor = () => {
     const cursorState = location.state as CursorState | undefined;
 
-    return cursorState
-      ? {
-          cursorType: cursorState.cursorType || null,
-          cursorValue: cursorState.cursorValue || null,
-          currentPage: cursorState.currentPage || null,
-        }
-      : { cursorType: null, cursorValue: null, currentPage: null };
+    return {
+      cursorType: cursorState?.cursorType || null,
+      cursorValue: cursorState?.cursorValue || null,
+      currentPage: cursorState?.currentPage || null,
+    };
   };
 
   return {
@@ -111,7 +109,7 @@ export const usePaging = (
     pageSize,
     handlePageSizeChange: handlePageSize,
     showPagination: paginationVisible,
-    storeCursor,
-    getStoredCursor,
+    handlePagingCursorChange,
+    pagingCursor,
   };
 };

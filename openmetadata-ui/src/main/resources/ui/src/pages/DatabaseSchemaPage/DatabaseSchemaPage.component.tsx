@@ -101,8 +101,8 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     handlePagingChange,
     currentPage,
     handlePageChange,
-    storeCursor,
-    getStoredCursor,
+    handlePagingCursorChange,
+    pagingCursor,
   } = pagingInfo;
 
   const { tab: activeTab = EntityTabs.TABLE } =
@@ -464,7 +464,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     ({ cursorType, currentPage }: PagingHandlerParams) => {
       if (cursorType) {
         getSchemaTables({ [cursorType]: paging[cursorType] });
-        storeCursor({
+        handlePagingCursorChange({
           cursorType: cursorType,
           cursorValue: paging[cursorType as CursorType]!,
           currentPage: currentPage,
@@ -472,7 +472,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       }
       handlePageChange(currentPage);
     },
-    [paging, getSchemaTables, storeCursor, handlePageChange]
+    [paging, getSchemaTables, handlePagingCursorChange, handlePageChange]
   );
 
   const versionHandler = useCallback(() => {
@@ -528,7 +528,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   }, [viewDatabaseSchemaPermission]);
 
   useEffect(() => {
-    const cursorState = getStoredCursor();
+    const cursorState = pagingCursor();
     if (viewDatabaseSchemaPermission && decodedDatabaseSchemaFQN) {
       if (cursorState.cursorType) {
         // Fetch data if cursorType is present in state with cursor Value to handle browser back navigation
