@@ -33,13 +33,6 @@ export interface MovedTeamProps {
   to?: Team;
 }
 
-export interface TableExpandableDataProps {
-  expanded: boolean;
-  onExpand: (record: Team, event: React.MouseEvent<HTMLElement>) => void;
-  expandable: boolean;
-  record: Team;
-}
-
 export enum TeamsPageTab {
   TEAMS = 'teams',
   USERS = 'users',

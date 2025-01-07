@@ -43,6 +43,7 @@ from metadata.ingestion.models.topology import (
 )
 from metadata.ingestion.source.database.database_service import DataModelLink
 from metadata.ingestion.source.database.dbt.constants import (
+    REQUIRED_CONSTRAINT_KEYS,
     REQUIRED_NODE_KEYS,
     REQUIRED_RESULTS_KEYS,
 )
@@ -187,6 +188,20 @@ class DbtServiceSource(TopologyRunnerMixin, Source, ABC):
                 ]
                 for key in keys_to_delete:
                     del value[key]
+                if value.get("columns"):
+                    for col_name, value in value[
+                        "columns"
+                    ].items():  # pylint: disable=unused-variable
+                        if value.get("constraints"):
+                            keys_to_delete = [
+                                key
+                                for key in value
+                                if key.lower() not in REQUIRED_CONSTRAINT_KEYS
+                            ]
+                            for key in keys_to_delete:
+                                del value[key]
+                        else:
+                            value["constraints"] = None
 
     def remove_run_result_non_required_keys(self, run_results: List[dict]):
         """

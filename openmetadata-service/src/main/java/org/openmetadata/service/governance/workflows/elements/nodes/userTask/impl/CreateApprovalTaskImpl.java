@@ -2,7 +2,6 @@ package org.openmetadata.service.governance.workflows.elements.nodes.userTask.im
 
 import static org.openmetadata.service.governance.workflows.Workflow.EXCEPTION_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
-import static org.openmetadata.service.governance.workflows.Workflow.STAGE_INSTANCE_STATE_ID_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.WORKFLOW_RUNTIME_EXCEPTION;
 import static org.openmetadata.service.governance.workflows.WorkflowHandler.getProcessDefinitionKeyFromId;
 
@@ -27,8 +26,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.FeedRepository;
-import org.openmetadata.service.jdbi3.WorkflowInstanceStateRepository;
-import org.openmetadata.service.resources.feeds.FeedResource;
+import org.openmetadata.service.resources.feeds.FeedMapper;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.util.WebsocketNotificationHandler;
 
@@ -45,13 +43,6 @@ public class CreateApprovalTaskImpl implements TaskListener {
 
       Thread task = createApprovalTask(entity, assignees);
       WorkflowHandler.getInstance().setCustomTaskId(delegateTask.getId(), task.getId());
-
-      UUID workflowInstanceStateId =
-          (UUID) delegateTask.getVariable(STAGE_INSTANCE_STATE_ID_VARIABLE);
-      WorkflowInstanceStateRepository workflowInstanceStateRepository =
-          (WorkflowInstanceStateRepository)
-              Entity.getEntityTimeSeriesRepository(Entity.WORKFLOW_INSTANCE_STATE);
-      workflowInstanceStateRepository.updateStageWithTask(task.getId(), workflowInstanceStateId);
     } catch (Exception exc) {
       LOG.error(
           String.format(
@@ -100,7 +91,7 @@ public class CreateApprovalTaskImpl implements TaskListener {
     } catch (EntityNotFoundException ex) {
       TaskDetails taskDetails =
           new TaskDetails()
-              .withAssignees(FeedResource.formatAssignees(assignees))
+              .withAssignees(FeedMapper.formatAssignees(assignees))
               .withType(TaskType.RequestApproval)
               .withStatus(TaskStatus.Open);
 

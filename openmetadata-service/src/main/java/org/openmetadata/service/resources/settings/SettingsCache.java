@@ -19,6 +19,7 @@ import static org.openmetadata.schema.settings.SettingsType.EMAIL_CONFIGURATION;
 import static org.openmetadata.schema.settings.SettingsType.LINEAGE_SETTINGS;
 import static org.openmetadata.schema.settings.SettingsType.LOGIN_CONFIGURATION;
 import static org.openmetadata.schema.settings.SettingsType.SEARCH_SETTINGS;
+import static org.openmetadata.schema.settings.SettingsType.WORKFLOW_SETTINGS;
 
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
@@ -35,6 +36,9 @@ import org.openmetadata.schema.api.lineage.LineageLayer;
 import org.openmetadata.schema.api.lineage.LineageSettings;
 import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.configuration.AssetCertificationSettings;
+import org.openmetadata.schema.configuration.ExecutorConfiguration;
+import org.openmetadata.schema.configuration.HistoryCleanUpConfiguration;
+import org.openmetadata.schema.configuration.WorkflowSettings;
 import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
@@ -114,7 +118,7 @@ public class SettingsCache {
               .withConfigValue(
                   new LoginConfiguration()
                       .withMaxLoginFailAttempts(3)
-                      .withAccessBlockTime(600)
+                      .withAccessBlockTime(30)
                       .withJwtTokenExpiryTime(3600));
       systemRepository.createNewSetting(setting);
     }
@@ -141,6 +145,19 @@ public class SettingsCache {
                   new AssetCertificationSettings()
                       .withAllowedClassification("Certification")
                       .withValidityPeriod("P30D"));
+      systemRepository.createNewSetting(setting);
+    }
+
+    // Initialise Workflow Settings
+    Settings workflowSettings = systemRepository.getConfigWithKey(WORKFLOW_SETTINGS.toString());
+    if (workflowSettings == null) {
+      Settings setting =
+          new Settings()
+              .withConfigType(WORKFLOW_SETTINGS)
+              .withConfigValue(
+                  new WorkflowSettings()
+                      .withExecutorConfiguration(new ExecutorConfiguration())
+                      .withHistoryCleanUpConfiguration(new HistoryCleanUpConfiguration()));
       systemRepository.createNewSetting(setting);
     }
 

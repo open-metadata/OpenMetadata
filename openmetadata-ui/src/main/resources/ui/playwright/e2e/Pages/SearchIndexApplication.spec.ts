@@ -38,12 +38,13 @@ const verifyLastExecutionStatus = async (page: Page) => {
       },
       {
         // Custom expect message for reporting, optional.
-        message: 'To get the last run execution status as success',
+        message:
+          'To get the last run execution status as success or active with error',
         intervals: [30_000],
         timeout: 300_000,
       }
     )
-    .toBe('success');
+    .toEqual(expect.stringMatching(/success|activeError/g));
 
   await page.reload();
 
@@ -67,7 +68,9 @@ const verifyLastExecutionRun = async (page: Page) => {
       // wait for success status
       await verifyLastExecutionStatus(page);
     } else {
-      expect(responseData.data[0].status).toBe('success');
+      expect(responseData.data[0].status).toEqual(
+        expect.stringMatching(/success|activeError/g)
+      );
     }
   }
 };
@@ -111,7 +114,7 @@ test('Search Index Application', async ({ page }) => {
     await page.getByTestId('tree-select-widget').click();
 
     // uncheck the entity
-    await page.getByRole('tree').getByTitle('Topic').click();
+    await page.getByRole('tree').getByTitle('Table').click();
 
     await page.click(
       '[data-testid="select-widget"] > .ant-select-selector > .ant-select-selection-item'

@@ -20,7 +20,7 @@ import { Link } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import NextPrevious from '../../components/common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
-import RichTextEditorPreviewer from '../../components/common/RichTextEditor/RichTextEditorPreviewer';
+import RichTextEditorPreviewerV1 from '../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
 import Table from '../../components/common/Table/Table';
 import { EntityType } from '../../enums/entity.enum';
 import { Include } from '../../generated/type/include';
@@ -115,7 +115,7 @@ const StoredProcedureTab = () => {
               {t('label.no-description')}
             </Typography.Text>
           ) : (
-            <RichTextEditorPreviewer markdown={text} />
+            <RichTextEditorPreviewerV1 markdown={text} />
           ),
       },
     ],

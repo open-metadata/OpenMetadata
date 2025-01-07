@@ -74,6 +74,9 @@ public interface SearchClient {
   String REMOVE_TAGS_CHILDREN_SCRIPT =
       "for (int i = 0; i < ctx._source.tags.length; i++) { if (ctx._source.tags[i].tagFQN == params.fqn) { ctx._source.tags.remove(i) }}";
 
+  String UPDATE_CERTIFICATION_SCRIPT =
+      "if (ctx._source.certification != null && ctx._source.certification.tagLabel != null) {ctx._source.certification.tagLabel.style = params.style; ctx._source.certification.tagLabel.description = params.description; ctx._source.certification.tagLabel.tagFQN = params.tagFQN; ctx._source.certification.tagLabel.name = params.name;  }";
+
   String REMOVE_LINEAGE_SCRIPT =
       "for (int i = 0; i < ctx._source.lineage.length; i++) { if (ctx._source.lineage[i].doc_id == '%s') { ctx._source.lineage.remove(i) }}";
 
@@ -206,7 +209,8 @@ public interface SearchClient {
    Used for listing knowledge page hierarchy for a given parent and page type, used in Elastic/Open SearchClientExtension
   */
   @SuppressWarnings("unused")
-  default ResultList listPageHierarchy(String parent, String pageType, int offset, int limit) {
+  default ResultList listPageHierarchy(
+      String parent, String activeFqn, String pageType, int offset, int limit) {
     throw new CustomExceptionMessage(
         Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
   }
