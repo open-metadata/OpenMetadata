@@ -144,7 +144,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     Fields fields = getFields(fieldsParam);
     OperationContext listOperationContext =
         new OperationContext(entityType, getViewOperations(fields));
-
+    ResourceContext resourceContext = filter.getResourceContext(entityType);
     return listInternal(
         uriInfo,
         securityContext,
@@ -154,7 +154,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
         before,
         after,
         listOperationContext,
-        getResourceContext());
+        resourceContext);
   }
 
   public ResultList<T> listInternal(
