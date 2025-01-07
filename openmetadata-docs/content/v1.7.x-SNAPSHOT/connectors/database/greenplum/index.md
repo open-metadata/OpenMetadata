@@ -20,7 +20,7 @@ Configure and schedule Greenplum metadata and profiler workflows from the OpenMe
 - [Query Usage](/connectors/ingestion/workflows/usage)
 - [Data Profiler](/how-to-guides/data-quality-observability/profiler/workflow)
 - [Data Quality](/how-to-guides/data-quality-observability/quality)
-- [Lineage](/connectors/ingestion/lineage)
+- [Lineage](/how-to-guides/data-lineage/workflow)
 - [dbt Integration](/connectors/ingestion/workflows/dbt)
 - [Enable Security](#securing-greenplum-connection-with-ssl-in-openmetadata)
 
