@@ -157,7 +157,10 @@ function IngestionListTable({
   const fetchIngestionPipelinesPermission = useCallback(async () => {
     try {
       const promises = ingestionData.map((item) =>
-        getEntityPermissionByFqn(ResourceEntity.INGESTION_PIPELINE, item.name)
+        getEntityPermissionByFqn(
+          ResourceEntity.INGESTION_PIPELINE,
+          item.fullyQualifiedName ?? ''
+        )
       );
       const response = await Promise.allSettled(promises);
 

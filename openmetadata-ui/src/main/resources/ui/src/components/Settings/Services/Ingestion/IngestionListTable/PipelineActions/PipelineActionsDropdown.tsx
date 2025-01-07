@@ -50,6 +50,7 @@ function PipelineActionsDropdown({
   handleIsConfirmationModalOpen,
   onIngestionWorkflowsUpdate,
   ingestionPipelinePermissions,
+  moreActionButtonProps,
 }: Readonly<PipelineActionsDropdownProps>) {
   const history = useHistory();
   const { t } = useTranslation();
@@ -270,6 +271,7 @@ function PipelineActionsDropdown({
           icon={<MoreIcon />}
           type="link"
           onClick={() => setIsOpen((value) => !value)}
+          {...moreActionButtonProps}
         />
       </Dropdown>
       {isKillModalOpen && selectedPipeline && id === selectedPipeline?.id && (

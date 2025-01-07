@@ -359,7 +359,7 @@ export const getSuccessMessage = (
 
   return (
     <Typography.Text>
-      <Typography.Text className="font-medium">{`"${ingestionName}"`}</Typography.Text>
+      <Typography.Text className="font-medium break-word">{`"${ingestionName}"`}</Typography.Text>
       <Typography.Text>
         {status === FormSubmitType.ADD ? createMessage : updateMessage}
       </Typography.Text>
