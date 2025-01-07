@@ -4,7 +4,7 @@ slug: /deployment/security/saml/docker
 collate: false
 ---
 
-# Keycloak SSO for Docker
+# SAML SSO for Docker
 
 To enable security for the Docker deployment, follow the next steps:
 
