@@ -80,6 +80,8 @@ openssl x509 -in saml.crt -out samlCER.cer -outform DER
 
 - Open the downloaded metadata xml file, and populate the following properties in `openmetadata.yml`
 ```yaml
+  authenticationConfiguration:
+    provider: ${AUTHENTICATION_PROVIDER:-saml}
   samlConfiguration:
     debugMode: ${SAML_DEBUG_MODE:-false}
     idp:
