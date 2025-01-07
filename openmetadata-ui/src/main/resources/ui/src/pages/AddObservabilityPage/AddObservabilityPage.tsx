@@ -243,11 +243,10 @@ function AddObservabilityPage() {
                         label={t('label.description')}
                         labelCol={{ span: 24 }}
                         name="description"
-                        trigger="onTextChange"
-                        valuePropName="initialValue">
+                        trigger="onTextChange">
                         <RichTextEditor
                           data-testid="description"
-                          initialValue=""
+                          initialValue={alert?.description}
                         />
                       </Form.Item>
                     </Col>

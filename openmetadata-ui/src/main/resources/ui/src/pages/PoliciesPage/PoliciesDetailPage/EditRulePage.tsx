@@ -56,6 +56,8 @@ const EditRulePage = () => {
   const [policy, setPolicy] = useState<Policy>({} as Policy);
   const [ruleData, setRuleData] = useState<Rule>(InitialData);
 
+  const selectedRuleRef = React.useRef<Rule | undefined>(InitialData);
+
   const breadcrumb = useMemo(
     () => [
       {
@@ -89,6 +91,7 @@ const EditRulePage = () => {
       if (data) {
         setPolicy(data);
         const selectedRule = data.rules.find((rule) => rule.name === ruleName);
+        selectedRuleRef.current = selectedRule;
         setRuleData(selectedRule ?? InitialData);
       } else {
         setPolicy({} as Policy);
@@ -183,7 +186,11 @@ const EditRulePage = () => {
               }}
               layout="vertical"
               onFinish={handleSubmit}>
-              <RuleForm ruleData={ruleData} setRuleData={setRuleData} />
+              <RuleForm
+                description={selectedRuleRef.current?.description}
+                ruleData={ruleData}
+                setRuleData={setRuleData}
+              />
               <Space align="center" className="w-full justify-end">
                 <Button
                   data-testid="cancel-btn"
