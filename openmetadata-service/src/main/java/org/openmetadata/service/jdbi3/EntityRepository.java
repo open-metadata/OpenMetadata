@@ -2635,7 +2635,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
    *       version goes to v-1 and new version v0 replaces v1 for the entity.
    * </ol>
    *
-   * @see TableRepository.TableUpdater#entitySpecificUpdate() for example.
+   * @see TableRepository.TableUpdater #entitySpecificUpdate() for example.
    */
   public class EntityUpdater {
     private static volatile long sessionTimeoutMillis = 10L * 60 * 1000; // 10 minutes
