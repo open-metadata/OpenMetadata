@@ -1187,6 +1187,8 @@ test.describe('Glossary tests', () => {
   });
 
   test('should check for glossary term pagination', async ({ browser }) => {
+    test.slow(true);
+
     const { page, afterAction, apiContext } = await performAdminLogin(browser);
     const glossaries = [];
     for (let i = 0; i < 60; i++) {
@@ -1208,7 +1210,20 @@ test.describe('Glossary tests', () => {
         .getByTestId('glossary-left-panel-scroller')
         .scrollIntoViewIfNeeded();
 
-      await glossaryAfterRes;
+      const res = await glossaryAfterRes;
+      const json = await res.json();
+
+      const firstGlossaryName = json.data[0].displayName;
+
+      await expect(
+        page.getByRole('menuitem', { name: firstGlossaryName })
+      ).toBeVisible();
+
+      const lastGlossaryName = json.data[json.data.length - 1].displayName;
+
+      await expect(
+        page.getByRole('menuitem', { name: lastGlossaryName })
+      ).toBeVisible();
     } finally {
       for (const glossary of glossaries) {
         await glossary.delete(apiContext);
