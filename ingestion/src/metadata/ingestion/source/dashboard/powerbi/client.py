@@ -234,6 +234,9 @@ class PowerBiApiClient:
             entities_per_page = self.config.pagination_entity_per_page
             params_data = {"$top": "1"}
             response_data = self.client.get(api_url, data=params_data)
+            if not response_data:
+                logger.debug("No groups/workspaces found")
+                return None
             response = GroupsResponse(**response_data)
             count = response.odata_count
             indexes = math.ceil(count / entities_per_page)
@@ -245,6 +248,9 @@ class PowerBiApiClient:
                     "$skip": str(index * entities_per_page),
                 }
                 response_data = self.client.get(api_url, data=params_data)
+                if not response_data:
+                    logger.debug("No more groups/workspaces found")
+                    continue
                 response = GroupsResponse(**response_data)
                 workspaces.extend(response.value)
             return workspaces
@@ -280,6 +286,7 @@ class PowerBiApiClient:
     def fetch_workspace_scan_status(
         self, scan_id: str
     ) -> Optional[WorkSpaceScanResponse]:
+        # deprecated in favour to avoide bulk data prepare
         """Get Workspace scan status by id method
         Args:
             scan_id:
@@ -298,6 +305,7 @@ class PowerBiApiClient:
         return None
 
     def fetch_workspace_scan_result(self, scan_id: str) -> Optional[Workspaces]:
+        # deprecated in favour to avoide bulk data prepare
         """Get Workspace scan result by id method
         Args:
             scan_id:
@@ -319,6 +327,7 @@ class PowerBiApiClient:
         """
         Method to poll the scan status endpoint until the timeout
         """
+        # deprecated in favour to avoide bulk data prepare
         min_sleep_time = 3
         if min_sleep_time > timeout:
             logger.info(f"Timeout is set to minimum sleep time: {timeout}")

@@ -167,7 +167,7 @@ class PowerbiSource(DashboardServiceSource):
         Method to iterate through dashboard lists filter dashboards & yield dashboard details
         """
         # fetch all workspaces/groups & apply filter pattern
-        all_workspaces = self.client.api_client.fetch_all_workspaces()
+        all_workspaces = self.client.api_client.fetch_all_workspaces() or []
         all_workspaces = self.get_filtered_workspaces(all_workspaces)
         for workspace in all_workspaces:
             # prepare additional data for specific workspace (datasets, reports, dashboards)
