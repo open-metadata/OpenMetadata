@@ -15,6 +15,10 @@
  */
 export interface AirbyteConnection {
     /**
+     * Airbyte API version.
+     */
+    apiVersion?: string;
+    /**
      * Pipeline Service Management/UI URL.
      */
     hostPort: string;
