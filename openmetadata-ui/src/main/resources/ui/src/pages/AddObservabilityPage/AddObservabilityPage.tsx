@@ -246,7 +246,7 @@ function AddObservabilityPage() {
                         trigger="onTextChange">
                         <RichTextEditor
                           data-testid="description"
-                          initialValue=""
+                          initialValue={alert?.description}
                         />
                       </Form.Item>
                     </Col>

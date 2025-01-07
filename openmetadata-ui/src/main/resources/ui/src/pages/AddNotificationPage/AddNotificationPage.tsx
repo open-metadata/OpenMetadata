@@ -270,7 +270,10 @@ const AddNotificationPage = () => {
                           labelCol={{ span: 24 }}
                           name="description"
                           trigger="onTextChange">
-                          <RichTextEditor data-testid="description" />
+                          <RichTextEditor
+                            data-testid="description"
+                            initialValue={alert?.description}
+                          />
                         </Form.Item>
                       </Col>
                       <Col span={24}>
