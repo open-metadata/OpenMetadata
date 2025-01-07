@@ -15,7 +15,7 @@ import userEvent from '@testing-library/user-event';
 import React from 'react';
 import TestConnectionModal from './TestConnectionModal';
 const onCancelMock = jest.fn();
-const onStopConnectionMock = jest.fn();
+const onConfirmMock = jest.fn();
 
 const testConnectionStep = [
   {
@@ -50,7 +50,7 @@ describe('TestConnectionModal', () => {
         testConnectionStep={testConnectionStep}
         testConnectionStepResult={testConnectionStepResult}
         onCancel={onCancelMock}
-        onStopConnection={onStopConnectionMock}
+        onConfirm={onConfirmMock}
         onTestConnection={mockOnTestConnection}
       />
     );
@@ -68,7 +68,7 @@ describe('TestConnectionModal', () => {
         testConnectionStep={testConnectionStep}
         testConnectionStepResult={testConnectionStepResult}
         onCancel={onCancelMock}
-        onStopConnection={onStopConnectionMock}
+        onConfirm={onConfirmMock}
         onTestConnection={mockOnTestConnection}
       />
     );
@@ -87,7 +87,7 @@ describe('TestConnectionModal', () => {
         testConnectionStep={testConnectionStep}
         testConnectionStepResult={testConnectionStepResult}
         onCancel={onCancelMock}
-        onStopConnection={onStopConnectionMock}
+        onConfirm={onConfirmMock}
         onTestConnection={mockOnTestConnection}
       />
     );
@@ -105,7 +105,7 @@ describe('TestConnectionModal', () => {
         testConnectionStep={testConnectionStep}
         testConnectionStepResult={testConnectionStepResult}
         onCancel={onCancelMock}
-        onStopConnection={onStopConnectionMock}
+        onConfirm={onConfirmMock}
         onTestConnection={mockOnTestConnection}
       />
     );
@@ -123,7 +123,7 @@ describe('TestConnectionModal', () => {
         testConnectionStep={testConnectionStep}
         testConnectionStepResult={testConnectionStepResult}
         onCancel={onCancelMock}
-        onStopConnection={onStopConnectionMock}
+        onConfirm={onConfirmMock}
         onTestConnection={mockOnTestConnection}
       />
     );
@@ -141,7 +141,7 @@ describe('TestConnectionModal', () => {
         testConnectionStep={testConnectionStep}
         testConnectionStepResult={testConnectionStepResult}
         onCancel={onCancelMock}
-        onStopConnection={onStopConnectionMock}
+        onConfirm={onConfirmMock}
         onTestConnection={mockOnTestConnection}
       />
     );
@@ -152,7 +152,7 @@ describe('TestConnectionModal', () => {
     expect(onCancelMock).toHaveBeenCalled();
   });
 
-  it('Should call onStopConnection when the confirm button is clicked', () => {
+  it('Should call onConfirm when the confirm button is clicked', () => {
     render(
       <TestConnectionModal
         isOpen
@@ -162,15 +162,15 @@ describe('TestConnectionModal', () => {
         testConnectionStep={testConnectionStep}
         testConnectionStepResult={testConnectionStepResult}
         onCancel={onCancelMock}
-        onStopConnection={onStopConnectionMock}
+        onConfirm={onConfirmMock}
         onTestConnection={mockOnTestConnection}
       />
     );
-    const stopConnectionButton = screen.getByText('label.stop');
+    const okButton = screen.getByText('OK');
 
-    fireEvent.click(stopConnectionButton);
+    fireEvent.click(okButton);
 
-    expect(onStopConnectionMock).toHaveBeenCalled();
+    expect(onConfirmMock).toHaveBeenCalled();
   });
 
   it('Should render the progress bar with proper value', () => {
@@ -183,7 +183,7 @@ describe('TestConnectionModal', () => {
         testConnectionStep={testConnectionStep}
         testConnectionStepResult={testConnectionStepResult}
         onCancel={onCancelMock}
-        onStopConnection={onStopConnectionMock}
+        onConfirm={onConfirmMock}
         onTestConnection={mockOnTestConnection}
       />
     );
@@ -204,7 +204,7 @@ describe('TestConnectionModal', () => {
         testConnectionStep={testConnectionStep}
         testConnectionStepResult={testConnectionStepResult}
         onCancel={onCancelMock}
-        onStopConnection={onStopConnectionMock}
+        onConfirm={onConfirmMock}
         onTestConnection={mockOnTestConnection}
       />
     );
@@ -224,7 +224,7 @@ describe('TestConnectionModal', () => {
         testConnectionStep={testConnectionStep}
         testConnectionStepResult={testConnectionStepResult}
         onCancel={onCancelMock}
-        onStopConnection={onStopConnectionMock}
+        onConfirm={onConfirmMock}
         onTestConnection={mockOnTestConnection}
       />
     );
