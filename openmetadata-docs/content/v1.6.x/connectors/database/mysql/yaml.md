@@ -18,6 +18,7 @@ Configure and schedule MySQL metadata and profiler workflows from the OpenMetada
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 - [Data Profiler](#data-profiler)
+- [Lineage](#lineage)
 - [Data Quality](#data-quality)
 - [dbt Integration](#dbt-integration)
 - [Enable Security](#securing-mysql-connection-with-ssl-in-openmetadata)
@@ -475,6 +476,8 @@ source:
 {% /codePreview %}
 
 {% partial file="/v1.6/connectors/yaml/ingestion-cli.md" /%}
+
+{% partial file="/v1.6/connectors/yaml/lineage.md" variables={connector: "mysql"} /%}
 
 {% partial file="/v1.6/connectors/yaml/data-profiler.md" variables={connector: "mysql"} /%}
 

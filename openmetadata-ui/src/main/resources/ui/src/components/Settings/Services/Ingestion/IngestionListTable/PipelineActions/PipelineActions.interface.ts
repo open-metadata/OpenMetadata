@@ -11,10 +11,11 @@
  *  limitations under the License.
  */
 
-import { IngestionServicePermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
-import { ServiceCategory } from '../../../../enums/service.enum';
-import { IngestionPipeline } from '../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { SelectedRowDetails } from './ingestion.interface';
+import { ButtonProps } from 'antd';
+import { IngestionServicePermission } from '../../../../../../context/PermissionProvider/PermissionProvider.interface';
+import { ServiceCategory } from '../../../../../../enums/service.enum';
+import { IngestionPipeline } from '../../../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { SelectedRowDetails } from '../../ingestion.interface';
 
 export interface PipelineActionsProps {
   pipeline: IngestionPipeline;
@@ -28,4 +29,5 @@ export interface PipelineActionsProps {
   handleEnableDisableIngestion?: (id: string) => Promise<void>;
   handleIsConfirmationModalOpen: (value: boolean) => void;
   onIngestionWorkflowsUpdate?: () => void;
+  moreActionButtonProps?: ButtonProps;
 }

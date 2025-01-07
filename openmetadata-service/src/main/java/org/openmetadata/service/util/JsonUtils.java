@@ -39,6 +39,7 @@ import java.io.StringReader;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -638,6 +639,24 @@ public final class JsonUtils {
       LOG.error("Failed to convert POJO to JsonNode", e);
       throw new RuntimeException("POJO to JsonNode conversion failed", e);
     }
+  }
+
+  @SuppressWarnings("unused")
+  public static Map<String, Object> getMapFromJson(String json) {
+    return (Map<String, Object>) (JsonUtils.readValue(json, Map.class));
+  }
+
+  @SuppressWarnings("unused")
+  public static <T> T convertObjectWithFilteredFields(
+      Object input, Set<String> fields, Class<T> clazz) {
+    Map<String, Object> inputMap = JsonUtils.getMap(input);
+    Map<String, Object> result = new HashMap<>();
+    for (String field : fields) {
+      if (inputMap.containsKey(field)) {
+        result.put(field, inputMap.get(field));
+      }
+    }
+    return JsonUtils.convertValue(result, clazz);
   }
 
   public static JsonPatch convertFgeToJavax(com.github.fge.jsonpatch.JsonPatch fgeJsonPatch) {
