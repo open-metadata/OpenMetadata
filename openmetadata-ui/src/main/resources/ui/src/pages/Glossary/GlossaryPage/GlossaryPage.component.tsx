@@ -14,7 +14,13 @@
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, {
+  RefObject,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -32,6 +38,7 @@ import {
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { PAGE_SIZE_LARGE, ROUTES } from '../../../constants/constants';
 import { GLOSSARIES_DOCS } from '../../../constants/docs.constants';
+import { observerOptions } from '../../../constants/Mydata.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
@@ -39,6 +46,8 @@ import { EntityAction, TabSpecificField } from '../../../enums/entity.enum';
 import { Glossary } from '../../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import { Operation } from '../../../generated/entity/policies/policy';
+import { usePaging } from '../../../hooks/paging/usePaging';
+import { useElementInView } from '../../../hooks/useElementInView';
 import { useFqn } from '../../../hooks/useFqn';
 import {
   deleteGlossary,
@@ -62,8 +71,16 @@ const GlossaryPage = () => {
   const { fqn: glossaryFqn } = useFqn();
   const history = useHistory();
   const { action } = useParams<{ action: EntityAction }>();
+  const [initialised, setInitialised] = useState(false);
 
   const [isLoading, setIsLoading] = useState(true);
+  const [isMoreGlossaryLoading, setIsMoreGlossaryLoading] =
+    useState<boolean>(false);
+  const [elementRef, isInView] = useElementInView({
+    ...observerOptions,
+    rootMargin: '10px',
+  });
+  const { paging, pageSize, handlePagingChange } = usePaging();
 
   const [isRightPanelLoading, setIsRightPanelLoading] = useState(true);
   const [previewAsset, setPreviewAsset] =
@@ -133,11 +150,58 @@ const GlossaryPage = () => {
     history.push(ROUTES.ADD_GLOSSARY);
   };
 
-  const fetchGlossaryList = async () => {
-    setIsRightPanelLoading(true);
-    setIsLoading(true);
+  const fetchGlossaryList = useCallback(async () => {
     try {
-      const { data } = await getGlossariesList({
+      let allGlossaries: Glossary[] = [];
+      let nextPage = paging.after;
+      let isGlossaryFound = false;
+      setInitialised(false);
+      setIsLoading(true);
+
+      do {
+        const { data, paging: glossaryPaging } = await getGlossariesList({
+          fields: [
+            TabSpecificField.OWNERS,
+            TabSpecificField.TAGS,
+            TabSpecificField.REVIEWERS,
+            TabSpecificField.VOTES,
+            TabSpecificField.DOMAIN,
+          ],
+          limit: PAGE_SIZE_LARGE,
+          ...(nextPage && { after: nextPage }),
+        });
+
+        allGlossaries = [...allGlossaries, ...data];
+
+        if (glossaryFqn) {
+          isGlossaryFound = allGlossaries.some(
+            (item) => item.fullyQualifiedName === glossaryFqn
+          );
+        } else {
+          isGlossaryFound = true; // limit to first 50 records only if no glossaryFqn
+        }
+
+        nextPage = glossaryPaging?.after;
+
+        handlePagingChange(glossaryPaging);
+      } while (nextPage && !isGlossaryFound);
+
+      setGlossaries(allGlossaries);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsLoading(false);
+      setInitialised(true);
+    }
+  }, [paging.after, glossaryFqn]);
+
+  const fetchNextGlossaryItems = async (after?: string) => {
+    try {
+      let allGlossaries: Glossary[] = glossaries;
+
+      setIsMoreGlossaryLoading(true);
+
+      const { data, paging: glossaryPaging } = await getGlossariesList({
         fields: [
           TabSpecificField.OWNERS,
           TabSpecificField.TAGS,
@@ -145,20 +209,32 @@ const GlossaryPage = () => {
           TabSpecificField.VOTES,
           TabSpecificField.DOMAIN,
         ],
-
         limit: PAGE_SIZE_LARGE,
+        after: after,
       });
-      setGlossaries(data);
+
+      allGlossaries = [...allGlossaries, ...data];
+      handlePagingChange(glossaryPaging);
+
+      setGlossaries(allGlossaries);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
-      setIsLoading(false);
-      setIsRightPanelLoading(false);
+      setIsMoreGlossaryLoading(false);
     }
   };
+
   useEffect(() => {
-    fetchGlossaryList();
-  }, []);
+    if (!initialised) {
+      fetchGlossaryList();
+    }
+  }, [initialised]);
+
+  useEffect(() => {
+    if (paging?.after && isInView && !isMoreGlossaryLoading) {
+      fetchNextGlossaryItems(paging.after);
+    }
+  }, [paging, isInView, isMoreGlossaryLoading, pageSize]);
 
   const fetchGlossaryTermDetails = async () => {
     setIsRightPanelLoading(true);
@@ -205,10 +281,7 @@ const GlossaryPage = () => {
     const jsonPatch = compare(activeGlossary as Glossary, updatedData);
 
     try {
-      const response = await patchGlossaries(
-        activeGlossary?.id as string,
-        jsonPatch
-      );
+      const response = await patchGlossaries(activeGlossary?.id, jsonPatch);
 
       updateActiveGlossary({ ...updatedData, ...response });
 
@@ -256,13 +329,13 @@ const GlossaryPage = () => {
       setIsLoading(true);
       // check if the glossary available
       const updatedGlossaries = glossaries.filter((item) => item.id !== id);
+      setGlossaries(updatedGlossaries);
       const glossaryPath =
         updatedGlossaries.length > 0
           ? getGlossaryPath(updatedGlossaries[0].fullyQualifiedName)
           : getGlossaryPath();
 
       history.push(glossaryPath);
-      fetchGlossaryList();
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -270,6 +343,8 @@ const GlossaryPage = () => {
           entity: t('label.glossary'),
         })
       );
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -395,7 +470,17 @@ const GlossaryPage = () => {
         className: 'content-resizable-panel-container',
         minWidth: 280,
         flex: 0.13,
-        children: <GlossaryLeftPanel glossaries={glossaries} />,
+        children: (
+          <>
+            <GlossaryLeftPanel glossaries={glossaries} />
+            <div
+              className="h-[1px] w-full"
+              data-testid="glossary-left-panel-scroller"
+              ref={elementRef as RefObject<HTMLDivElement>}
+            />
+            {isMoreGlossaryLoading && <Loader />}
+          </>
+        ),
       }}
       hideFirstPanel={isImportAction}
       pageTitle={t('label.glossary')}
