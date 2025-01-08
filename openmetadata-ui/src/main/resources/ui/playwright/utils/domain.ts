@@ -141,18 +141,20 @@ export const selectDataProductFromTab = async (
   page: Page,
   dataProduct: DataProduct['data']
 ) => {
-  await page.getByText('Data Products').click();
-
   const dpRes = page.waitForResponse(
     '/api/v1/search/query?*&from=0&size=50&index=data_product_search_index'
   );
+  await page.getByText('Data Products').click();
+
+  await dpRes;
+
+  const dpDataRes = page.waitForResponse('/api/v1/dataProducts/name/*');
 
   await page
     .getByTestId(`explore-card-${dataProduct.name}`)
     .getByTestId('entity-link')
     .click();
-
-  await dpRes;
+  await dpDataRes;
 };
 
 export const selectDataProduct = async (
