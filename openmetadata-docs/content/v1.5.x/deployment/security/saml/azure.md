@@ -111,6 +111,7 @@ openssl x509 -in saml.crt -out samlCER.cer -outform DER
 ```
 
 - Populate the above config from xml metadata
+{% image src="/images/v1.5/deployment/security/saml/aws/saml-aws-8.png" alt="populate-metadata" /%}
 
 - IDP Config         
     `entityID` -> Populate it from Metadata XML Entity ID
