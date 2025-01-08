@@ -24,7 +24,7 @@ export interface PipelineActionsDropdownProps {
   deployIngestion?: (id: string, displayName: string) => Promise<void>;
   handleEditClick: ((fqn: string) => void) | undefined;
   ingestionPipelinePermissions?: IngestionServicePermission;
-  handleDeleteSelection: (row: SelectedRowDetails) => void;
+  handleDeleteSelection?: (row: SelectedRowDetails) => void;
   handleIsConfirmationModalOpen: (value: boolean) => void;
   onIngestionWorkflowsUpdate?: () => void;
   moreActionButtonProps?: ButtonProps;

@@ -24,7 +24,7 @@ export interface PipelineActionsProps {
   serviceName?: string;
   deployIngestion?: (id: string, displayName: string) => Promise<void>;
   triggerIngestion?: (id: string, displayName: string) => Promise<void>;
-  handleDeleteSelection: (row: SelectedRowDetails) => void;
+  handleDeleteSelection?: (row: SelectedRowDetails) => void;
   handleEditClick?: (fqn: string) => void;
   handleEnableDisableIngestion?: (id: string) => Promise<void>;
   handleIsConfirmationModalOpen: (value: boolean) => void;
