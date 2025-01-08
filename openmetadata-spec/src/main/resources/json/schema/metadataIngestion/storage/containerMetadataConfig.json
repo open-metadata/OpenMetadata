@@ -31,6 +31,12 @@
           },
           "default": null
         },
+        "depth":{
+          "title": "Depth",
+          "description": "Depth of the data path in the container",
+          "type": "integer",
+          "default": 0
+        },
         "separator": {
           "title": "Separator",
           "description": "For delimited files such as CSV, what is the separator being used?",
