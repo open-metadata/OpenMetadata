@@ -51,3 +51,7 @@ export interface AdvanceSearchContext {
 }
 
 export type FilterObject = Record<string, string[]>;
+export interface CustomPropertyEnumConfig {
+  multiSelect: boolean;
+  values: string[];
+}

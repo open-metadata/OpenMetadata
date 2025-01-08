@@ -10,34 +10,19 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-/**
- * Airbyte Metadata Database Connection Config
- */
-export interface AirbyteConnection {
-    /**
-     * Pipeline Service Management/UI URL.
-     */
-    hostPort: string;
-    /**
-     * Password to connect to Airbyte.
-     */
-    password?:                   string;
-    supportsMetadataExtraction?: boolean;
-    /**
-     * Service Type
-     */
-    type?: AirbyteType;
-    /**
-     * Username to connect to Airbyte.
-     */
-    username?: string;
-}
+import { expect, Page } from '@playwright/test';
 
-/**
- * Service Type
- *
- * Service type.
- */
-export enum AirbyteType {
-    Airbyte = "Airbyte",
-}
+export const advanceSearchSaveFilter = async (
+  page: Page,
+  propertyValue: string
+) => {
+  const searchResponse = page.waitForResponse(
+    '/api/v1/search/query?*index=dataAsset&from=0&size=10*'
+  );
+  await page.getByTestId('apply-btn').click();
+
+  const res = await searchResponse;
+  const json = await res.json();
+
+  expect(JSON.stringify(json)).toContain(propertyValue);
+};

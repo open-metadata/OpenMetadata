@@ -299,6 +299,16 @@ export const TEXT_FIELD_OPERATORS = [
   'is_null',
   'is_not_null',
 ];
+
+export const RANGE_FIELD_OPERATORS = ['between', 'not_between'];
+
+export const LIST_VALUE_OPERATORS = [
+  'select_equals',
+  'select_not_equals',
+  'is_null',
+  'is_not_null',
+];
+
 /**
  * Generates a query builder tree with a group containing an empty rule
  */
