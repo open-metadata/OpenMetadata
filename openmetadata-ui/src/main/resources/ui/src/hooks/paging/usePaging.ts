@@ -17,7 +17,7 @@ import {
   useMemo,
   useState,
 } from 'react';
-import { useHistory } from 'react-router-dom';
+import { useHistory, useLocation } from 'react-router-dom';
 import {
   INITIAL_PAGING_VALUE,
   PAGE_SIZE_BASE,
@@ -25,12 +25,15 @@ import {
 } from '../../constants/constants';
 import { CursorType } from '../../enums/pagination.enum';
 import { Paging } from '../../generated/type/paging';
-import useCustomLocation from '../useCustomLocation/useCustomLocation';
 
 interface CursorState {
   cursorType: CursorType | null;
   cursorValue: string | null;
   currentPage: number | null;
+}
+
+interface LocationState {
+  [path: string]: CursorState;
 }
 
 export interface UsePagingInterface {
@@ -48,7 +51,6 @@ export interface UsePagingInterface {
   }) => void;
   pagingCursor: () => CursorState;
 }
-
 export const usePaging = (
   defaultPageSize = PAGE_SIZE_BASE
 ): UsePagingInterface => {
@@ -56,7 +58,7 @@ export const usePaging = (
   const [currentPage, setCurrentPage] = useState<number>(INITIAL_PAGING_VALUE);
   const [pageSize, setPageSize] = useState(defaultPageSize);
   const history = useHistory();
-  const location = useCustomLocation();
+  const location = useLocation<LocationState>();
 
   const handlePageSize = useCallback(
     (page: number) => {
@@ -70,29 +72,26 @@ export const usePaging = (
     return paging.total > pageSize || pageSize !== defaultPageSize;
   }, [defaultPageSize, paging, pageSize]);
 
-  const handlePagingCursorChange = useCallback(
-    ({
-      cursorType,
-      cursorValue,
-      currentPage,
-    }: {
-      cursorType: CursorType | null;
-      cursorValue: string | null;
-      currentPage: number | null;
-    }) => {
-      history.replace({
-        state: {
-          cursorType,
-          cursorValue,
-          currentPage,
-        },
-      });
-    },
-    []
-  );
+  // store cursor values for each page's tab with pathname as the key
+  const handlePagingCursorChange = ({
+    cursorType,
+    cursorValue,
+    currentPage,
+  }: CursorState) => {
+    const path = location.pathname;
+    history.replace({
+      ...location,
+      state: {
+        ...(location.state || {}),
+        [path]: { cursorType, cursorValue, currentPage },
+      },
+    });
+  };
 
+  // fetch stored cursor values on page reload
   const pagingCursor = () => {
-    const cursorState = location.state as CursorState | undefined;
+    const path = location.pathname;
+    const cursorState = location?.state?.[path];
 
     return {
       cursorType: cursorState?.cursorType || null,

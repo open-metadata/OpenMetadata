@@ -65,6 +65,7 @@ import { ThreadType } from '../../generated/entity/feed/thread';
 import { Include } from '../../generated/type/include';
 import { TagLabel } from '../../generated/type/tagLabel';
 import { usePaging } from '../../hooks/paging/usePaging';
+import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../hooks/useFqn';
 import { FeedCounts } from '../../interface/feed.interface';
 import {
@@ -107,6 +108,21 @@ const DatabaseSchemaPage: FunctionComponent = () => {
 
   const { tab: activeTab = EntityTabs.TABLE } =
     useParams<{ tab: EntityTabs }>();
+  useEffect(() => {
+    if (activeTab === EntityTabs.TABLE) {
+      // If no tab parameter is in the URL, update the URL to include the default tab
+      history.push({
+        pathname: getEntityDetailsPath(
+          EntityType.DATABASE_SCHEMA,
+          decodedDatabaseSchemaFQN,
+          activeTab
+        ),
+        state: {
+          ...(location.state as any),
+        },
+      });
+    }
+  }, []);
   const { fqn: decodedDatabaseSchemaFQN } = useFqn();
   const history = useHistory();
 
@@ -134,6 +150,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
 
   const [updateProfilerSetting, setUpdateProfilerSetting] =
     useState<boolean>(false);
+  const location = useCustomLocation();
 
   const extraDropdownContent = useMemo(
     () =>
@@ -320,10 +337,13 @@ const DatabaseSchemaPage: FunctionComponent = () => {
             decodedDatabaseSchemaFQN,
             activeKey
           ),
+          state: {
+            ...(location.state as any),
+          },
         });
       }
     },
-    [activeTab, decodedDatabaseSchemaFQN]
+    [activeTab, decodedDatabaseSchemaFQN, location.state]
   );
 
   const handleUpdateOwner = useCallback(
@@ -548,6 +568,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     viewDatabaseSchemaPermission,
     deleted,
     pageSize,
+    activeTab,
   ]);
 
   const {
