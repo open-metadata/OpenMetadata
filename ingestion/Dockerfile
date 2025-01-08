@@ -5,8 +5,6 @@ USER root
 RUN curl -sS https://packages.microsoft.com/keys/microsoft.asc | apt-key add -
 RUN curl -sS https://packages.microsoft.com/config/debian/11/prod.list > /etc/apt/sources.list.d/mssql-release.list
 # Install Dependencies (listed in alphabetical order)
-
-
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get -qq update \
     && apt-get -qq install -y \
@@ -57,6 +55,7 @@ COPY --from=mysql /usr/bin/mysqldump /usr/bin/mysqldump
 COPY ./.files/instantclient-basic-linux.arm64-19.10.0.0.0dbru.zip /root/instantclient-basic-linux.arm64-19.10.0.0.0dbru.zip
 COPY ./.files/instantclient-basic-linux.x64-19.17.0.0.0dbru.zip /root/instantclient-basic-linux.x64-19.17.0.0.0dbru.zip
 
+
 RUN if [ $(uname -m) = "arm64" ] || [ $(uname -m) = "aarch64" ]; then \
       unzip -qq -d /instantclient -j /root/instantclient-basic-linux.arm64-19.10.0.0.0dbru.zip && rm -f /root/instantclient-basic-linux.arm64-19.10.0.0.0dbru.zip; \
   else \
@@ -67,7 +66,6 @@ USER airflow
 RUN pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple && \
     python3 -m pip install --upgrade pip
 USER root
-
 
 ENV LD_LIBRARY_PATH=/instantclient
 
@@ -96,9 +94,11 @@ ENV PIP_NO_CACHE_DIR=1
 ENV PIP_QUIET=1
 ARG RI_VERSION="1.6.0.0.dev0"
 RUN pip install --upgrade pip
-RUN pip install "openmetadata-managed-apis~=${RI_VERSION}" --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-2.9.1/constraints-3.10.txt"
-RUN pip install "openmetadata-ingestion[${INGESTION_DEPENDENCY}]~=${RI_VERSION}"  -i https://pypi.tuna.tsinghua.edu.cn/simple
-# RUN pip install "openmetadata-ingestion[${INGESTION_DEPENDENCY}]~=${RI_VERSION}"
+
+COPY ./.files/constraints-3.10.txt  /opt/
+# RUN pip install "openmetadata-managed-apis~=${RI_VERSION}" --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-2.9.1/constraints-3.10.txt"
+RUN pip install "openmetadata-managed-apis~=${RI_VERSION}" --constraint "/opt/constraints-3.10.txt"
+RUN pip install "openmetadata-ingestion[${INGESTION_DEPENDENCY}]~=${RI_VERSION}"
 
 # Temporary workaround for https://github.com/open-metadata/OpenMetadata/issues/9593
 RUN [ $(uname -m) = "x86_64" ] \
@@ -113,7 +113,22 @@ RUN pip freeze | grep "apache-airflow-providers" | grep --invert-match -E "docke
 # because the psycopg2-binary generates a architecture specific error
 # while authenticating connection with the airflow, psycopg2 solves this error
 RUN pip uninstall psycopg2-binary -y
-RUN pip install psycopg2 mysqlclient==2.1.1
+# RUN pip install psycopg2 mysqlclient==2.1.1
+RUN pip install mysqlclient==2.1.1
+
+COPY ./.files/GaussDB_driver.zip /home/airflow/GaussDB_driver.zip
+RUN unzip -q /home/airflow/GaussDB_driver.zip -d /home/airflow/ && \
+    rm -rf /home/airflow/GaussDB_driver.zip && \
+    \cp /home/airflow/GaussDB_driver/Centralized/Hce2_arm_64/GaussDB-Kernel_505.2.0_Hce_64bit_Python.tar.gz /home/airflow/ && \
+    tar -zxf /home/airflow/GaussDB-Kernel_505.2.0_Hce_64bit_Python.tar.gz -C /home/airflow/ && \
+    rm -rf /home/airflow/GaussDB-Kernel_505.2.0_Hce_64bit_Python.tar.gz && \
+    rm -rf /home/airflow/GaussDB_driver && \
+    \cp /home/airflow/psycopg2 $(/home/airflow/.local/bin/python3 -c 'import site; print(site.getsitepackages()[0])') -r && \
+    chmod 755 $(/home/airflow/.local/bin/python3 -c 'import site; print(site.getsitepackages()[0])')/psycopg2 -R
+
+ENV PYTHONPATH="${PYTHONPATH}:$(/home/airflow/.local/bin/python3 -c 'import site; print(site.getsitepackages()[0])')"
+ENV LD_LIBRARY_PATH="/home/airflow/lib:$LD_LIBRARY_PATH"
+
 # Make required folders for openmetadata-airflow-apis
 RUN mkdir -p /opt/airflow/dag_generated_configs
 # This is required as it's responsible to create airflow.cfg file

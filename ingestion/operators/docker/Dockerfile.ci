@@ -112,4 +112,18 @@ COPY ingestion/operators/docker/*.py .
 # because the psycopg2-binary generates a architecture specific error
 # while authenticating connection with the airflow, psycopg2 solves this error
 RUN pip uninstall psycopg2-binary -y
-RUN pip install psycopg2 mysqlclient==2.1.1
+RUN pip install mysqlclient==2.1.1
+
+# install gaussdb driver
+COPY ./.files/GaussDB_driver.zip /home/airflow/GaussDB_driver.zip
+RUN unzip -q /home/airflow/GaussDB_driver.zip -d /home/airflow/ && \
+    rm -rf /home/airflow/GaussDB_driver.zip && \
+    \cp /home/airflow/GaussDB_driver/Centralized/Hce2_arm_64/GaussDB-Kernel_505.2.0_Hce_64bit_Python.tar.gz /home/airflow/ && \
+    tar -zxf /home/airflow/GaussDB-Kernel_505.2.0_Hce_64bit_Python.tar.gz -C /home/airflow/ && \
+    rm -rf /home/airflow/GaussDB-Kernel_505.2.0_Hce_64bit_Python.tar.gz && \
+    rm -rf /home/airflow/GaussDB_driver && \
+    \cp /home/airflow/psycopg2 $(/home/airflow/.local/bin/python3 -c 'import site; print(site.getsitepackages()[0])') -r && \
+    chmod 755 $(/home/airflow/.local/bin/python3 -c 'import site; print(site.getsitepackages()[0])')/psycopg2 -R
+
+ENV PYTHONPATH="${PYTHONPATH}:$(/home/airflow/.local/bin/python3 -c 'import site; print(site.getsitepackages()[0])')"
+ENV LD_LIBRARY_PATH="/home/airflow/lib:$LD_LIBRARY_PATH"

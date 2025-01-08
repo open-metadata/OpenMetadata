@@ -90,7 +90,11 @@ COPY --chown=airflow:0 openmetadata-airflow-apis /home/airflow/openmetadata-airf
 COPY --chown=airflow:0 ingestion/examples/airflow/dags /opt/airflow/dags
 
 USER airflow
-ARG AIRFLOW_CONSTRAINTS_LOCATION="https://raw.githubusercontent.com/apache/airflow/constraints-2.9.1/constraints-3.10.txt"
+
+
+COPY ./.files/constraints-3.10.txt  /opt/
+ARG AIRFLOW_CONSTRAINTS_LOCATION="/opt/constraints-3.10.txt"
+# ARG AIRFLOW_CONSTRAINTS_LOCATION="https://raw.githubusercontent.com/apache/airflow/constraints-2.9.1/constraints-3.10.txt"
 
 # Disable pip cache dir
 # https://pip.pypa.io/en/stable/topics/caching/#avoiding-caching
@@ -107,7 +111,8 @@ WORKDIR /home/airflow/ingestion
 
 # Argument to provide for Ingestion Dependencies to install. Defaults to all
 ARG INGESTION_DEPENDENCY="all"
-RUN pip install ".[${INGESTION_DEPENDENCY}]"  -i https://pypi.tuna.tsinghua.edu.cn/simple
+RUN pip install ".[${INGESTION_DEPENDENCY}]"
+# RUN pip install ".[${INGESTION_DEPENDENCY}]"  -i https://pypi.tuna.tsinghua.edu.cn/simple
 
 # Temporary workaround for https://github.com/open-metadata/OpenMetadata/issues/9593
 RUN [ $(uname -m) = "x86_64" ] \
@@ -124,7 +129,22 @@ RUN pip freeze | grep "apache-airflow-providers" | grep --invert-match -E "docke
 # because the psycopg2-binary generates a architecture specific error
 # while authenticating connection with the airflow, psycopg2 solves this error
 RUN pip uninstall psycopg2-binary -y
-RUN pip install psycopg2 mysqlclient==2.1.1
+RUN pip install mysqlclient==2.1.1
+
+# install gaussdb driver
+COPY ./.files/GaussDB_driver.zip /home/airflow/GaussDB_driver.zip
+RUN unzip -q /home/airflow/GaussDB_driver.zip -d /home/airflow/ && \
+    rm -rf /home/airflow/GaussDB_driver.zip && \
+    \cp /home/airflow/GaussDB_driver/Centralized/Hce2_arm_64/GaussDB-Kernel_505.2.0_Hce_64bit_Python.tar.gz /home/airflow/ && \
+    tar -zxf /home/airflow/GaussDB-Kernel_505.2.0_Hce_64bit_Python.tar.gz -C /home/airflow/ && \
+    rm -rf /home/airflow/GaussDB-Kernel_505.2.0_Hce_64bit_Python.tar.gz && \
+    rm -rf /home/airflow/GaussDB_driver && \
+    \cp /home/airflow/psycopg2 $(/home/airflow/.local/bin/python3 -c 'import site; print(site.getsitepackages()[0])') -r && \
+    chmod 755 $(/home/airflow/.local/bin/python3 -c 'import site; print(site.getsitepackages()[0])')/psycopg2 -R
+
+ENV PYTHONPATH="${PYTHONPATH}:$(/home/airflow/.local/bin/python3 -c 'import site; print(site.getsitepackages()[0])')"
+ENV LD_LIBRARY_PATH="/home/airflow/lib:$LD_LIBRARY_PATH"
+
 # Make required folders for openmetadata-airflow-apis
 RUN mkdir -p /opt/airflow/dag_generated_configs
 

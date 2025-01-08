@@ -21,8 +21,7 @@ import java.util.Map;
 @JsonFormat(shape = JsonFormat.Shape.OBJECT)
 public enum ConnectionType {
   MYSQL("com.mysql.cj.jdbc.Driver"),
-  POSTGRES("org.postgresql.Driver"),
-  GAUSSDB("org.postgresql.Driver");
+  POSTGRES("org.postgresql.Driver");
 
   public final String label;
 

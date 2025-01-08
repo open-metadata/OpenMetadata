@@ -26,13 +26,14 @@ FROM alpine:3
 
 EXPOSE 8585
 
-RUN sed -i 's|http://dl-cdn.alpinelinux.org|https://mirrors.tuna.tsinghua.edu.cn|g' /etc/apk/repositories
-
-
 RUN adduser -D openmetadata && \
+    echo "https://mirrors.aliyun.com/alpine/v3.18/main" > /etc/apk/repositories && \
+    echo "https://mirrors.aliyun.com/alpine/v3.18/community" >> /etc/apk/repositories && \
+    rm -rf /var/cache/apk/* && \
     apk update && \
-    apk upgrade && \
-    apk add --update --no-cache bash openjdk17-jre
+    apk add --no-cache bash openjdk17
+
+
 
 COPY --chown=openmetadata:openmetadata --from=build /opt/openmetadata /opt/openmetadata
 COPY --chmod=755 docker/openmetadata-start.sh /

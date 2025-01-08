@@ -27,7 +27,4 @@ public class DatasourceConfig {
     return ConnectionType.MYSQL.equals(connectionType);
   }
 
-  public Boolean isGaussDB() {
-    return ConnectionType.GAUSSDB.equals(connectionType);
-  }
 }
