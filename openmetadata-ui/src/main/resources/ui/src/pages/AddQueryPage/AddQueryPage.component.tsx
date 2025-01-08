@@ -109,6 +109,7 @@ const AddQueryPage = () => {
       const options = data.hits.hits.map((value) => ({
         label: getEntityLabel(value._source),
         value: value._source.id,
+        labelName: getEntityName(value._source),
       }));
 
       return table
@@ -267,6 +268,7 @@ const AddQueryPage = () => {
                     api={fetchTableEntity}
                     data-testid="query-used-in"
                     mode="multiple"
+                    optionLabelProp="labelName"
                     options={initialOptions}
                     placeholder={t('label.please-select-entity', {
                       entity: t('label.query-used-in'),
