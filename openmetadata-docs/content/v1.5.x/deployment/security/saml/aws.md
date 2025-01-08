@@ -83,9 +83,10 @@ Security requirements for your **production** environment:
       keyStorePassword: ${SAML_KEYSTORE_PASSWORD:-""}
 ```
 
-- Populate the above config from xml metadata
+- Populate the above config from [xml metadata](/deployment/security/saml/xml_file)
 
 {% image src="/images/v1.5/deployment/security/saml/aws/saml-aws-8.png" alt="populate-metadata" /%}
+
 
 - IDP Config         
     `entityID` -> Populate it from Metadata XML Entity ID
