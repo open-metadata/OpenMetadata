@@ -99,7 +99,7 @@ openssl x509 -in saml.crt -out samlCER.cer -outform DER
     idp:
       entityId: ${SAML_IDP_ENTITY_ID:-"https://mocksaml.com/api/saml/sso"}
       ssoLoginUrl: ${SAML_IDP_SSO_LOGIN_URL:-"https://saml.example.com/entityid"}
-      idpX509Certificate: ${SAML_IDP_CERTIFICATE:-""}
+      idpX509Certificate: ${SAML_IDP_CERTIFICATE:-""}   #Pass the certificate as a string
       authorityUrl: ${SAML_AUTHORITY_URL:-"http://localhost:8585/api/v1/saml/login"}
       nameId: ${SAML_IDP_NAME_ID:-"urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress"}
     sp:
