@@ -145,6 +145,12 @@ jest.mock('../DataInsightPage/DataInsightProvider', async () => {
   return jest.fn().mockImplementation(({ children }) => <>{children}</>);
 });
 
+jest.mock('../../hooks/useWelcomeStore', () => ({
+  useWelcomeStore: jest.fn().mockReturnValue({
+    isWelcomeVisible: true,
+  }),
+}));
+
 jest.mock('../DataInsightPage/DataInsightProvider', () => {
   return {
     __esModule: true,

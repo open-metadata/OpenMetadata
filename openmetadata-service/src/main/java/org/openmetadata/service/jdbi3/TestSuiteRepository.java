@@ -127,10 +127,10 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
 
   @Override
   public void setInheritedFields(TestSuite testSuite, EntityUtil.Fields fields) {
-    if (Boolean.TRUE.equals(testSuite.getExecutable())) {
+    if (Boolean.TRUE.equals(testSuite.getBasic())) {
       Table table =
           Entity.getEntity(
-              TABLE, testSuite.getExecutableEntityReference().getId(), "owners,domain", ALL);
+              TABLE, testSuite.getBasicEntityReference().getId(), "owners,domain", ALL);
       inheritOwners(testSuite, fields, table);
       inheritDomain(testSuite, fields, table);
     }
@@ -145,10 +145,10 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
 
   @Override
   public void setFullyQualifiedName(TestSuite testSuite) {
-    if (testSuite.getExecutableEntityReference() != null) {
+    if (testSuite.getBasicEntityReference() != null) {
       testSuite.setFullyQualifiedName(
           FullyQualifiedName.add(
-              testSuite.getExecutableEntityReference().getFullyQualifiedName(), "testSuite"));
+              testSuite.getBasicEntityReference().getFullyQualifiedName(), "testSuite"));
     } else {
       testSuite.setFullyQualifiedName(quoteName(testSuite.getName()));
     }
@@ -328,22 +328,21 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
   @Override
   protected void postCreate(TestSuite entity) {
     super.postCreate(entity);
-    if (Boolean.TRUE.equals(entity.getExecutable())
-        && entity.getExecutableEntityReference() != null) {
+    if (Boolean.TRUE.equals(entity.getBasic()) && entity.getBasicEntityReference() != null) {
       // Update table index with test suite field
       EntityInterface entityInterface =
-          getEntity(entity.getExecutableEntityReference(), "testSuite", ALL);
+          getEntity(entity.getBasicEntityReference(), "testSuite", ALL);
       IndexMapping indexMapping =
-          searchRepository.getIndexMapping(entity.getExecutableEntityReference().getType());
+          searchRepository.getIndexMapping(entity.getBasicEntityReference().getType());
       SearchClient searchClient = searchRepository.getSearchClient();
       SearchIndex index =
           searchRepository
               .getSearchIndexFactory()
-              .buildIndex(entity.getExecutableEntityReference().getType(), entityInterface);
+              .buildIndex(entity.getBasicEntityReference().getType(), entityInterface);
       Map<String, Object> doc = index.buildSearchIndexDoc();
       searchClient.updateEntity(
           indexMapping.getIndexName(searchRepository.getClusterAlias()),
-          entity.getExecutableEntityReference().getId().toString(),
+          entity.getBasicEntityReference().getId().toString(),
           doc,
           "ctx._source.testSuite = params.testSuite;");
     }
@@ -413,7 +412,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
 
   @Override
   public void storeRelationships(TestSuite entity) {
-    if (Boolean.TRUE.equals(entity.getExecutable())) {
+    if (Boolean.TRUE.equals(entity.getBasic())) {
       storeExecutableRelationship(entity);
     }
   }
@@ -421,10 +420,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
   public void storeExecutableRelationship(TestSuite testSuite) {
     Table table =
         Entity.getEntityByName(
-            Entity.TABLE,
-            testSuite.getExecutableEntityReference().getFullyQualifiedName(),
-            null,
-            null);
+            Entity.TABLE, testSuite.getBasicEntityReference().getFullyQualifiedName(), null, null);
     addRelationship(
         table.getId(), testSuite.getId(), Entity.TABLE, TEST_SUITE, Relationship.CONTAINS);
   }
@@ -492,8 +488,8 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
         .withHref(testSuite.getHref())
         .withId(testSuite.getId())
         .withName(testSuite.getName())
-        .withExecutable(testSuite.getExecutable())
-        .withExecutableEntityReference(testSuite.getExecutableEntityReference())
+        .withBasic(testSuite.getBasic())
+        .withBasicEntityReference(testSuite.getBasicEntityReference())
         .withServiceType(testSuite.getServiceType())
         .withOwners(testSuite.getOwners())
         .withUpdatedBy(testSuite.getUpdatedBy())

@@ -16,6 +16,18 @@ Security requirements for your **production** environment:
 
 {% /note %}
 
+{% note %}
+
+## Key Notes on SAML Configuration
+
+1. **Set `AUTHENTICATION_PROVIDER` to `saml` (lowercase):**  
+   Ensure the `AUTHENTICATION_PROVIDER` field in your environment variables is explicitly set to `saml` for SAML authentication to function correctly. Without this, SAML integration will not work.
+
+2. **Routing to IDP:**  
+   Users will only be routed to the IDP upon sign-in if `AUTHENTICATION_PROVIDER` is set to `saml`.
+
+{% /note %}
+
 ## Create OpenMetadata application
 
 ### Step 1: Configure a new Application in Microsoft Entra ID
@@ -150,4 +162,4 @@ Security requirements for your **production** environment:
 
 ### Step 4: Start the server
 
-- Set up for SAML is done, you should be routed to your IDP on trying to Sign-in.
+- Start the OpenMetadata server. With `AUTHENTICATION_PROVIDER` set to saml, you should be routed to the IDP upon sign-in.

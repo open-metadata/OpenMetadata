@@ -75,6 +75,8 @@ site_menu:
     url: /deployment/security/ldap/docker
   - category: Deployment / Enable Security / Ldap Authentication / Bare Metal
     url: /deployment/security/ldap/bare-metal
+   - category: Deployment / Enable Security / Ldap Authentication / Kubernetes
+    url: /deployment/security/ldap/kubernetes  
   - category: Deployment / Enable Security / Auth0 SSO
     url: /deployment/security/auth0
   - category: Deployment / Enable Security / Auth0 SSO / Docker
@@ -266,6 +268,10 @@ site_menu:
     url: /connectors/database/clickhouse
   - category: Connectors / Database / Clickhouse / Run Externally
     url: /connectors/database/clickhouse/yaml
+  - category: Connectors / Database / Cockroach
+    url: /connectors/database/cockroach
+  - category: Connectors / Database / cockroach / Run Externally
+    url: /connectors/database/cockroach/yaml
   - category: Connectors / Database / Couchbase
     url: /connectors/database/couchbase
   - category: Connectors / Database / Couchbase / Run Externally
@@ -1550,6 +1556,8 @@ site_menu:
     url: /main-concepts/metadata-standard/schemas/entity/services/connections/database/common
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Database / Common / JwtAuth
     url: /main-concepts/metadata-standard/schemas/entity/services/connections/database/common/jwtauth
+  - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Database / CockroachConnection
+    url: /main-concepts/metadata-standard/schemas/entity/services/connections/database/cockroachconnection
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Database / CouchbaseConnection
     url: /main-concepts/metadata-standard/schemas/entity/services/connections/database/couchbaseconnection
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Database / CustomDatabaseConnection
