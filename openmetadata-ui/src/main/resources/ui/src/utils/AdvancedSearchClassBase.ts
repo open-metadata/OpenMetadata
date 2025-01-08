@@ -337,7 +337,7 @@ class AdvancedSearchClassBase {
   /**
    * Fields specific to Glossary
    */
-  glossaryQueryBuilderFields: Fields = {
+  glossaryTermQueryBuilderFields: Fields = {
     [EntityFields.GLOSSARY_TERM_STATUS]: {
       label: t('label.status'),
       type: 'select',
@@ -346,6 +346,18 @@ class AdvancedSearchClassBase {
         asyncFetch: this.autocomplete({
           searchIndex: SearchIndex.GLOSSARY_TERM,
           entityField: EntityFields.GLOSSARY_TERM_STATUS,
+        }),
+        useAsyncSearch: true,
+      },
+    },
+    [EntityFields.GLOSSARY]: {
+      label: t('label.glossary'),
+      type: 'select',
+      mainWidgetProps: this.mainWidgetProps,
+      fieldSettings: {
+        asyncFetch: this.autocomplete({
+          searchIndex: SearchIndex.GLOSSARY_TERM,
+          entityField: EntityFields.GLOSSARY,
         }),
         useAsyncSearch: true,
       },
@@ -742,7 +754,7 @@ class AdvancedSearchClassBase {
       [SearchIndex.SEARCH_INDEX]: this.searchIndexQueryBuilderFields,
       [SearchIndex.DASHBOARD_DATA_MODEL]: this.dataModelQueryBuilderFields,
       [SearchIndex.API_ENDPOINT_INDEX]: this.apiEndpointQueryBuilderFields,
-      [SearchIndex.GLOSSARY_TERM]: this.glossaryQueryBuilderFields,
+      [SearchIndex.GLOSSARY_TERM]: this.glossaryTermQueryBuilderFields,
       [SearchIndex.DATABASE_SCHEMA]: this.databaseSchemaQueryBuilderFields,
       [SearchIndex.STORED_PROCEDURE]: this.storedProcedureQueryBuilderFields,
       [SearchIndex.ALL]: {
@@ -766,7 +778,7 @@ class AdvancedSearchClassBase {
         ...this.searchIndexQueryBuilderFields,
         ...this.dataModelQueryBuilderFields,
         ...this.apiEndpointQueryBuilderFields,
-        ...this.glossaryQueryBuilderFields,
+        ...this.glossaryTermQueryBuilderFields,
       },
     };
 
@@ -866,6 +878,8 @@ class AdvancedSearchClassBase {
       SearchIndex.API_SERVICE_INDEX,
       SearchIndex.API_ENDPOINT_INDEX,
       SearchIndex.API_COLLECTION_INDEX,
+      SearchIndex.DASHBOARD_DATA_MODEL,
+      SearchIndex.STORED_PROCEDURE,
     ];
 
     const shouldAddServiceField =
