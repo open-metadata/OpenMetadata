@@ -22,11 +22,20 @@ import {
   SelectFieldSettings,
 } from 'react-awesome-query-builder';
 import AntdConfig from 'react-awesome-query-builder/lib/config/antd';
-import { SEARCH_INDICES_WITH_COLUMNS_FIELD } from '../constants/AdvancedSearch.constants';
+import { CustomPropertyEnumConfig } from '../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
+import {
+  LIST_VALUE_OPERATORS,
+  RANGE_FIELD_OPERATORS,
+  SEARCH_INDICES_WITH_COLUMNS_FIELD,
+  TEXT_FIELD_OPERATORS,
+} from '../constants/AdvancedSearch.constants';
 import { EntityFields, SuggestionField } from '../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { getAggregateFieldOptions } from '../rest/miscAPI';
-import { renderAdvanceSearchButtons } from './AdvancedSearchUtils';
+import {
+  getCustomPropertyAdvanceSearchEnumOptions,
+  renderAdvanceSearchButtons,
+} from './AdvancedSearchUtils';
 import { getCombinedQueryFilterObject } from './ExplorePage/ExplorePageUtils';
 import { renderQueryBuilderFilterButtons } from './QueryBuilderUtils';
 
@@ -208,12 +217,7 @@ class AdvancedSearchClassBase {
     [EntityFields.COLUMN_DESCRIPTION_STATUS]: {
       label: t('label.column-description'),
       type: 'select',
-      operators: [
-        'select_equals',
-        'select_not_equals',
-        'is_null',
-        'is_not_null',
-      ],
+      operators: LIST_VALUE_OPERATORS,
       mainWidgetProps: this.mainWidgetProps,
       valueSources: ['value'],
       fieldSettings: {
@@ -680,12 +684,7 @@ class AdvancedSearchClassBase {
       descriptionStatus: {
         label: t('label.description'),
         type: 'select',
-        operators: [
-          'select_equals',
-          'select_not_equals',
-          'is_null',
-          'is_not_null',
-        ],
+        operators: LIST_VALUE_OPERATORS,
         mainWidgetProps: this.mainWidgetProps,
         valueSources: ['value'],
         fieldSettings: {
@@ -899,6 +898,86 @@ class AdvancedSearchClassBase {
       },
     };
   };
+
+  public getCustomPropertiesSubFields(field: {
+    name: string;
+    type: string;
+    customPropertyConfig: {
+      config: string | string[] | CustomPropertyEnumConfig;
+    };
+  }) {
+    {
+      switch (field.type) {
+        case 'array<entityReference>':
+        case 'entityReference':
+          return {
+            subfieldsKey: field.name + `.displayName`,
+            dataObject: {
+              type: 'select',
+              label: field.name,
+              fieldSettings: {
+                asyncFetch: this.autocomplete({
+                  searchIndex: (
+                    (field.customPropertyConfig.config ?? []) as string[]
+                  ).join(',') as SearchIndex,
+                  entityField: EntityFields.DISPLAY_NAME_KEYWORD,
+                }),
+                useAsyncSearch: true,
+              },
+            },
+          };
+
+        case 'enum':
+          return {
+            subfieldsKey: field.name,
+            dataObject: {
+              type: 'select',
+              operators: LIST_VALUE_OPERATORS,
+              fieldSettings: {
+                listValues: getCustomPropertyAdvanceSearchEnumOptions(
+                  (
+                    field.customPropertyConfig
+                      .config as CustomPropertyEnumConfig
+                  ).values
+                ),
+              },
+            },
+          };
+
+        case 'date-cp': {
+          return {
+            subfieldsKey: field.name,
+            dataObject: {
+              type: 'date',
+              operators: RANGE_FIELD_OPERATORS,
+            },
+          };
+        }
+
+        case 'timestamp':
+        case 'integer':
+        case 'number': {
+          return {
+            subfieldsKey: field.name,
+            dataObject: {
+              type: 'number',
+              operators: RANGE_FIELD_OPERATORS,
+            },
+          };
+        }
+
+        default:
+          return {
+            subfieldsKey: field.name,
+            dataObject: {
+              type: 'text',
+              valueSources: ['value'],
+              operators: TEXT_FIELD_OPERATORS,
+            },
+          };
+      }
+    }
+  }
 }
 
 const advancedSearchClassBase = new AdvancedSearchClassBase();
