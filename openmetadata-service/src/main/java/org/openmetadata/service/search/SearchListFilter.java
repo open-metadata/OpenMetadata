@@ -257,8 +257,8 @@ public class SearchListFilter extends Filter<SearchListFilter> {
     boolean includeEmptyTestSuites = Boolean.parseBoolean(getQueryParam("includeEmptyTestSuites"));
 
     if (testSuiteType != null) {
-      boolean executable = !testSuiteType.equals("logical");
-      conditions.add(String.format("{\"term\": {\"executable\": \"%s\"}}", executable));
+      boolean basic = !testSuiteType.equals("logical");
+      conditions.add(String.format("{\"term\": {\"basic\": \"%s\"}}", basic));
     }
 
     if (!includeEmptyTestSuites) {

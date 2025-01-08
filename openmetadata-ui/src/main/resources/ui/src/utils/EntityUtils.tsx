@@ -1777,12 +1777,12 @@ export const getBreadcrumbForTestCase = (entity: TestCase): TitleLink[] => [
 ];
 
 export const getBreadcrumbForTestSuite = (entity: TestSuite) => {
-  return entity.executable
+  return entity.basic
     ? [
         {
-          name: getEntityName(entity.executableEntityReference),
+          name: getEntityName(entity.basicEntityReference),
           url: getEntityLinkFromType(
-            entity.executableEntityReference?.fullyQualifiedName ?? '',
+            entity.basicEntityReference?.fullyQualifiedName ?? '',
             EntityType.TABLE
           ),
         },
@@ -2352,6 +2352,9 @@ export const getEntityNameLabel = (entityName?: string) => {
     query: t('label.query'),
     THREAD: t('label.thread'),
     app: t('label.application'),
+    apiCollection: t('label.api-collection'),
+    apiEndpoint: t('label.api-endpoint'),
+    metric: t('label.metric'),
   };
 
   return (
@@ -2404,7 +2407,10 @@ export const highlightSearchText = (
 
   const regex = new RegExp(`(${searchText})`, 'gi');
 
-  return text.replace(regex, `<span class="text-highlighter">$1</span>`);
+  return text.replace(
+    regex,
+    `<span data-highlight="true" class="text-highlighter">$1</span>`
+  );
 };
 
 /**
