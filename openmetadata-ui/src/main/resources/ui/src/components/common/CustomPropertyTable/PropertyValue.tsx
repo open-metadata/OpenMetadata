@@ -905,7 +905,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
 
         return (
           <div
-            className="d-flex justify-center flex-wrap gap-3"
+            className="d-flex justify-center flex-wrap gap-2 py-2"
             data-testid="time-interval-value">
             <div className="d-flex flex-column gap-2 items-center">
               <StartTimeIcon height={30} width={30} />
