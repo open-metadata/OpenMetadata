@@ -23,15 +23,14 @@ type RenewTokenCallback = () =>
   | Promise<AccessTokenResponse>
   | Promise<void>;
 
+const REFRESHED_KEY = 'tokenRefreshed';
+
 class TokenService {
-  channel: BroadcastChannel;
   renewToken: RenewTokenCallback | null = null;
   refreshSuccessCallback: (() => void) | null = null;
   private static _instance: TokenService;
 
   constructor() {
-    this.channel = new BroadcastChannel('auth_channel');
-    this.channel.onmessage = this.handleTokenUpdate.bind(this);
     this.clearRefreshInProgress();
     this.refreshToken = this.refreshToken.bind(this);
   }
@@ -63,7 +62,13 @@ class TokenService {
   }
 
   public updateRefreshSuccessCallback(callback: () => void) {
-    this.refreshSuccessCallback = callback;
+    window.addEventListener('storage', (event) => {
+      if (event.key === REFRESHED_KEY && event.newValue === 'true') {
+        callback(); // Notify the tab that the token was refreshed
+        // Clear once notified
+        localStorage.removeItem(REFRESHED_KEY);
+      }
+    });
   }
 
   // Refresh the token if it is expired
@@ -80,11 +85,12 @@ class TokenService {
       // Logic to refresh the token
       const newToken = await this.fetchNewToken();
       // To update all the tabs on updating channel token
-      this.channel.postMessage({ type: 'TOKEN_UPDATE', token: newToken });
+      // Notify all tabs that the token has been refreshed
+      localStorage.setItem(REFRESHED_KEY, 'true');
 
       return newToken;
     } else {
-      return token;
+      return null;
     }
   }
 
