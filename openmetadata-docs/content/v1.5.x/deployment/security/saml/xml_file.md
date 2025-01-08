@@ -1,3 +1,9 @@
+---
+title: SAML XML File
+slug: /deployment/security/saml/xml_file
+collate: false
+---
+
 Here is the example XML code file to understand how to add certificate for SAML
 
 ```xml
