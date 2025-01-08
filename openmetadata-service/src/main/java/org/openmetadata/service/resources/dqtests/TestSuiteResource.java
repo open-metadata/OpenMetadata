@@ -757,7 +757,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
     }
     RestUtil.DeleteResponse<TestSuite> response =
         repository.deleteLogicalTestSuite(securityContext, testSuite, hardDelete);
-    repository.deleteFromSearch(response.entity(), response.changeType());
+    repository.deleteFromSearch(response.entity(), hardDelete);
     addHref(uriInfo, response.entity());
     return response.toResponse();
   }

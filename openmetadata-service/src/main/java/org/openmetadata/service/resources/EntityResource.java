@@ -361,7 +361,6 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     DeleteResponse<T> response =
         repository.delete(securityContext.getUserPrincipal().getName(), id, recursive, hardDelete);
-    repository.deleteFromSearch(response.entity(), response.changeType());
     if (hardDelete) {
       limits.invalidateCache(entityType);
     }
@@ -380,7 +379,6 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     DeleteResponse<T> response =
         repository.deleteByName(
             securityContext.getUserPrincipal().getName(), name, recursive, hardDelete);
-    repository.deleteFromSearch(response.entity(), response.changeType());
     addHref(uriInfo, response.entity());
     return response.toResponse();
   }
