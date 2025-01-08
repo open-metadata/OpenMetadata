@@ -64,7 +64,7 @@ Ingestion is a simple Python framework to ingest metadata from external sources 
 
 OpenMetadata defines and uses a set of components called `Connectors` for metadata ingestion. Each data service requires its own connector. See the documentation on how to [build a connector]() for details on developing connectors for new services.
 
-1. Workflow [`OpenMetadata/ingestion/src/metadata/ingestion/api/workflow.py`](https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/src/metadata/workflow/metadata.py)
+1. Workflow [`ingestion/src/metadata/workflow/metadata.py`](https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/src/metadata/workflow/metadata.py)
 2. Source [`ingestion/src/metadata/ingestion/api/steps.py#L36`](https://github.com/open-metadata/OpenMetadata/blob/ea205d3ff4c6ede659059fca5447cd808f37d93c/ingestion/src/metadata/ingestion/api/steps.py#L36)
 3. Processor [`ingestion/src/metadata/ingestion/api/steps.py#L75`](https://github.com/open-metadata/OpenMetadata/blob/ea205d3ff4c6ede659059fca5447cd808f37d93c/ingestion/src/metadata/ingestion/api/steps.py#L75)
 4. Sink [`ingestion/src/metadata/ingestion/api/steps.py#L63`]( https://github.com/open-metadata/OpenMetadata/blob/ea205d3ff4c6ede659059fca5447cd808f37d93c/ingestion/src/metadata/ingestion/api/steps.py#L63)
