@@ -136,7 +136,7 @@ function PipelineActionsDropdown({
 
   const handleConfirmDelete = useCallback(
     (id: string, name: string, displayName?: string) => {
-      handleDeleteSelection({
+      handleDeleteSelection?.({
         id,
         name,
         displayName,
