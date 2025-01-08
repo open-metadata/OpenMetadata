@@ -65,7 +65,10 @@ test.describe('Advanced Search Custom Property', () => {
 
       await page.getByTestId('custom_properties').click(); // Tab Click
 
-      await page.getByTestId(durationPropertyName).locator('svg').click(); // Add Custom Property Value
+      await page
+        .getByTestId(`custom-property-${durationPropertyName}-card`)
+        .locator('svg')
+        .click(); // Add Custom Property Value
 
       await page.getByTestId('duration-input').fill(durationPropertyValue);
 
