@@ -419,9 +419,7 @@ export const addAssetsToDataProduct = async (
   }
 
   const assetsAddRes = page.waitForResponse(
-    `/api/v1/dataProducts/${encodeURIComponent(
-      dataProductFqn ?? ''
-    )}/assets/add`
+    `/api/v1/dataProducts/*/assets/add`
   );
   await page.getByTestId('save-btn').click();
   await assetsAddRes;
