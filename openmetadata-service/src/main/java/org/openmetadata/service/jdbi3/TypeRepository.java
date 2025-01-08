@@ -38,6 +38,8 @@ import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.entity.Type;
 import org.openmetadata.schema.entity.type.Category;
 import org.openmetadata.schema.entity.type.CustomProperty;
+import org.openmetadata.schema.jobs.BackgroundJob;
+import org.openmetadata.schema.jobs.EnumCleanupArgs;
 import org.openmetadata.schema.type.CustomPropertyConfig;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
@@ -47,6 +49,7 @@ import org.openmetadata.schema.type.customProperties.TableConfig;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.TypeRegistry;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.jobs.EnumCleanupHandler;
 import org.openmetadata.service.resources.types.TypeResource;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -119,6 +122,11 @@ public class TypeRepository extends EntityRepository<Type> {
   @Override
   public EntityUpdater getUpdater(Type original, Type updated, Operation operation) {
     return new TypeUpdater(original, updated, operation);
+  }
+
+  @Override
+  public void postUpdate(Type original, Type updated) {
+    super.postUpdate(original, updated);
   }
 
   public PutResponse<Type> addCustomProperty(
@@ -428,6 +436,7 @@ public class TypeRepository extends EntityRepository<Type> {
                 Relationship.HAS.ordinal(),
                 "customProperty",
                 customPropertyJson);
+        postUpdateCustomPropertyConfig(entity, origProperty, updatedProperty);
       }
     }
 
@@ -443,9 +452,50 @@ public class TypeRepository extends EntityRepository<Type> {
         HashSet<String> updatedValues = new HashSet<>(updatedConfig.getValues());
         if (updatedValues.size() != updatedConfig.getValues().size()) {
           throw new IllegalArgumentException("Enum Custom Property values cannot have duplicates.");
-        } else if (!updatedValues.containsAll(origConfig.getValues())) {
-          throw new IllegalArgumentException(
-              "Existing Enum Custom Property values cannot be removed.");
+        }
+      }
+    }
+
+    private void postUpdateCustomPropertyConfig(
+        Type entity, CustomProperty origProperty, CustomProperty updatedProperty) {
+      String updatedBy = entity.getUpdatedBy();
+      if (origProperty.getPropertyType().getName().equals("enum")) {
+        EnumConfig origConfig =
+            JsonUtils.convertValue(
+                origProperty.getCustomPropertyConfig().getConfig(), EnumConfig.class);
+        EnumConfig updatedConfig =
+            JsonUtils.convertValue(
+                updatedProperty.getCustomPropertyConfig().getConfig(), EnumConfig.class);
+        HashSet<String> origKeys = new HashSet<>(origConfig.getValues());
+        HashSet<String> updatedKeys = new HashSet<>(updatedConfig.getValues());
+
+        HashSet<String> removedKeys = new HashSet<>(origKeys);
+        removedKeys.removeAll(updatedKeys);
+        HashSet<String> addedKeys = new HashSet<>(updatedKeys);
+        addedKeys.removeAll(origKeys);
+
+        if (!removedKeys.isEmpty() && addedKeys.isEmpty()) {
+          List<String> removedEnumKeys = new ArrayList<>(removedKeys);
+
+          try {
+            EnumCleanupArgs enumCleanupArgs =
+                new EnumCleanupArgs()
+                    .withPropertyName(updatedProperty.getName())
+                    .withRemovedEnumKeys(removedEnumKeys)
+                    .withEntityType(entity.getName());
+
+            String jobArgs = JsonUtils.pojoToJson(enumCleanupArgs);
+            long jobId =
+                jobDao.insertJob(
+                    BackgroundJob.JobType.CUSTOM_PROPERTY_ENUM_CLEANUP,
+                    new EnumCleanupHandler(daoCollection),
+                    jobArgs,
+                    updatedBy);
+
+          } catch (Exception e) {
+            LOG.error("Failed to trigger background job for enum cleanup", e);
+            throw new RuntimeException("Failed to trigger background job", e);
+          }
         }
       }
     }
