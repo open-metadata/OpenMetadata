@@ -775,7 +775,7 @@ public class ElasticSearchClient implements SearchClient {
       boolean deleted,
       String entityType)
       throws IOException {
-    Set<String> visitedFqn = new HashSet<>();
+    Set<String> visitedFQN = new HashSet<>();
     Map<String, Object> responseMap = new HashMap<>();
     Set<Map<String, Object>> edges = new HashSet<>();
     Set<Map<String, Object>> nodes = new HashSet<>();
@@ -800,7 +800,7 @@ public class ElasticSearchClient implements SearchClient {
     }
     getLineage(
         fqn,
-        visitedFqn,
+        visitedFQN,
         downstreamDepth,
         edges,
         nodes,
@@ -809,7 +809,7 @@ public class ElasticSearchClient implements SearchClient {
         deleted);
     getLineage(
         fqn,
-        visitedFqn,
+        visitedFQN,
         upstreamDepth,
         edges,
         nodes,
@@ -1041,7 +1041,7 @@ public class ElasticSearchClient implements SearchClient {
 
   private void getLineage(
       String fqn,
-      Set<String> visitedFqn,
+      Set<String> visitedFQN,
       int depth,
       Set<Map<String, Object>> edges,
       Set<Map<String, Object>> nodes,
@@ -1049,10 +1049,10 @@ public class ElasticSearchClient implements SearchClient {
       String direction,
       boolean deleted)
       throws IOException {
-    if (depth <= 0 || visitedFqn.contains(fqn)) {
+    if (depth <= 0 || visitedFQN.contains(fqn)) {
       return;
     }
-    visitedFqn.add(fqn);
+    visitedFQN.add(fqn);
     es.org.elasticsearch.action.search.SearchRequest searchRequest =
         new es.org.elasticsearch.action.search.SearchRequest(
             Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS));
@@ -1083,7 +1083,7 @@ public class ElasticSearchClient implements SearchClient {
             edges.add(lin);
             getLineage(
                 toEntity.get("fqn"),
-                visitedFqn,
+                visitedFQN,
                 depth - 1,
                 edges,
                 nodes,
@@ -1096,7 +1096,7 @@ public class ElasticSearchClient implements SearchClient {
             edges.add(lin);
             getLineage(
                 fromEntity.get("fqn"),
-                visitedFqn,
+                visitedFQN,
                 depth - 1,
                 edges,
                 nodes,
@@ -1254,7 +1254,7 @@ public class ElasticSearchClient implements SearchClient {
       boolean deleted,
       Map<String, Object> responseMap)
       throws IOException {
-    Set<String> visitedFqn = new HashSet<>();
+    Set<String> visitedFQN = new HashSet<>();
     Set<Map<String, Object>> edges = new HashSet<>();
     Set<Map<String, Object>> nodes = new HashSet<>();
     es.org.elasticsearch.action.search.SearchRequest searchRequest =
@@ -1289,7 +1289,7 @@ public class ElasticSearchClient implements SearchClient {
           edges.add(lin);
           getLineage(
               fromEntity.get("fqn"),
-              visitedFqn,
+              visitedFQN,
               upstreamDepth,
               edges,
               nodes,
@@ -1298,7 +1298,7 @@ public class ElasticSearchClient implements SearchClient {
               deleted);
           getLineage(
               toEntity.get("fqn"),
-              visitedFqn,
+              visitedFQN,
               downstreamDepth,
               edges,
               nodes,
@@ -1310,7 +1310,7 @@ public class ElasticSearchClient implements SearchClient {
     }
     getLineage(
         fqn,
-        visitedFqn,
+        visitedFQN,
         downstreamDepth,
         edges,
         nodes,
@@ -1319,7 +1319,7 @@ public class ElasticSearchClient implements SearchClient {
         deleted);
     getLineage(
         fqn,
-        visitedFqn,
+        visitedFQN,
         upstreamDepth,
         edges,
         nodes,
