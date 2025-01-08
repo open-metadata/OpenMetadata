@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,12 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * Schema corresponding to a Test Suite
  */
 export interface CreateTestSuite {
+    /**
+     * Entity reference the test suite needs to execute the test against. Only applicable if the
+     * test suite is basic.
+     */
+    basicEntityReference?: string;
     /**
      * Description of the test suite.
      */
@@ -28,11 +31,6 @@ export interface CreateTestSuite {
      * Fully qualified name of the domain the Table belongs to.
      */
     domain?: string;
-    /**
-     * FQN of the entity the test suite is executed against. Only applicable for executable test
-     * suites.
-     */
-    executableEntityReference?: string;
     /**
      * Name that identifies this test suite.
      */

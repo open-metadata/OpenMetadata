@@ -56,6 +56,7 @@ def _(element, compiler, **kw):
     return "LENGTH(%s)" % compiler.process(element.clauses, **kw)
 
 
+@compiles(LenFn, Dialects.Cockroach)
 @compiles(LenFn, Dialects.Postgres)
 def _(element, compiler, **kw):
     return "LENGTH(CAST(%s AS text))" % compiler.process(element.clauses, **kw)
