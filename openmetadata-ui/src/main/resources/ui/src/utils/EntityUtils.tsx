@@ -163,11 +163,13 @@ export const getEntityLabel = (entity: {
   name?: string;
   fullyQualifiedName?: string;
 }): JSX.Element => (
-  <Space direction="vertical" size={0}>
-    <Typography.Text>{getEntityName(entity)}</Typography.Text>
-    <Typography.Text className="text-gray-400 text-xs break-word">
+  <Space className="w-full whitespace-normal" direction="vertical" size={0}>
+    <Typography.Paragraph className="m-b-0">
+      {getEntityName(entity)}
+    </Typography.Paragraph>
+    <Typography.Paragraph className="text-grey-muted text-xs">
       {entity?.fullyQualifiedName}
-    </Typography.Text>
+    </Typography.Paragraph>
   </Space>
 );
 
