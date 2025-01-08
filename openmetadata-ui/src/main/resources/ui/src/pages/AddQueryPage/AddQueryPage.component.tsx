@@ -256,6 +256,7 @@ const AddQueryPage = () => {
                     api={fetchTableEntity}
                     data-testid="query-used-in"
                     mode="multiple"
+                    optionLabelProp="labelName"
                     options={initialOptions}
                     placeholder={t('label.please-select-entity', {
                       entity: t('label.query-used-in'),

@@ -177,6 +177,7 @@ const QueryUsedByOtherTable = ({
         data-testid="edit-query-used-in"
         defaultValue={defaultValue}
         mode="multiple"
+        optionLabelProp="labelName"
         options={initialOptions}
         placeholder={t('label.please-select-entity', {
           entity: t('label.query-used-in'),
