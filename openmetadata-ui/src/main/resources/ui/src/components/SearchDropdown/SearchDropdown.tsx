@@ -241,7 +241,7 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
         bodyStyle={{ padding: 0 }}
         className="custom-dropdown-render"
         data-testid="drop-down-menu">
-        <Space direction="vertical" size={0}>
+        <Space className="w-full" direction="vertical" size={0}>
           <div className="p-t-sm p-x-sm">
             <Input
               autoFocus
