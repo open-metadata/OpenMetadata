@@ -75,7 +75,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   private static final String UPDATE_FIELDS =
       "owners,entityLink,testSuite,testSuites,testDefinition";
   private static final String PATCH_FIELDS =
-      "owners,entityLink,testSuite,testDefinition,computePassedFailedRowCount,useDynamicAssertion";
+      "owners,entityLink,testSuite,testSuites,testDefinition,computePassedFailedRowCount,useDynamicAssertion";
   public static final String FAILED_ROWS_SAMPLE_EXTENSION = "testCase.failedRowsSample";
 
   public TestCaseRepository() {
