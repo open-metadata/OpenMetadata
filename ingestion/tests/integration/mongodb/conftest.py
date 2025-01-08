@@ -19,7 +19,7 @@ from metadata.generated.schema.entity.services.databaseService import (
 @pytest.fixture(scope="module")
 def mongodbContainer(tmp_path_factory):
     """
-    Start a Mongodb container with the dvdrental database.
+    Start a Mongodb container
     """
     from testcontainers.mongodb import MongoDbContainer
 
