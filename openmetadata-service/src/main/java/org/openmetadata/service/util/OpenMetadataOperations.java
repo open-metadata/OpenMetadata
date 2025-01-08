@@ -4,7 +4,9 @@ import static org.flywaydb.core.internal.info.MigrationInfoDumper.dumpToAsciiTab
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.formatter.decorators.MessageDecorator.getDateStringEpochMilli;
+import static org.openmetadata.service.jdbi3.UserRepository.AUTH_MECHANISM_FIELD;
 import static org.openmetadata.service.util.AsciiTable.printOpenMetadataText;
+import static org.openmetadata.service.util.UserUtil.updateUserWithHashedPwd;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
@@ -23,6 +25,7 @@ import java.io.File;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -41,6 +44,8 @@ import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
+import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.system.EventPublisherJob;
@@ -60,6 +65,7 @@ import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.MigrationDAO;
 import org.openmetadata.service.jdbi3.SystemRepository;
+import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.api.MigrationWorkflow;
 import org.openmetadata.service.resources.CollectionRegistry;
@@ -166,13 +172,12 @@ public class OpenMetadataOperations implements Callable<Integer> {
   public Integer syncEmailFromEnv() {
     try {
       parseConfig();
-      Entity.setCollectionDAO(jdbi.onDemand(CollectionDAO.class));
-      SystemRepository systemRepository = new SystemRepository();
       Settings updatedSettings =
           new Settings()
               .withConfigType(SettingsType.EMAIL_CONFIGURATION)
               .withConfigValue(config.getSmtpSettings());
-      systemRepository.createOrUpdate(updatedSettings);
+      Entity.getSystemRepository().createOrUpdate(updatedSettings);
+      LOG.info("Synced Email Configuration from Environment.");
       return 0;
     } catch (Exception e) {
       LOG.error("Email Sync failed due to ", e);
@@ -217,6 +222,58 @@ public class OpenMetadataOperations implements Callable<Integer> {
       return 0;
     } catch (Exception e) {
       LOG.error("Failed to drop create due to ", e);
+      return 1;
+    }
+  }
+
+  @Command(name = "reset-password", description = "Reset the password for a user.")
+  public Integer resetUserPassword(
+      @Option(
+              names = {"-e", "--email"},
+              description = "Email for which to reset the password.",
+              required = true)
+          String email,
+      @Option(
+              names = {"-p", "--password"},
+              description = "Enter user password",
+              arity = "0..1",
+              interactive = true,
+              required = true)
+          char[] password) {
+    try {
+      LOG.info("Resetting password for user : {}", email);
+      if (nullOrEmpty(password)) {
+        throw new IllegalArgumentException("Password cannot be empty.");
+      }
+      parseConfig();
+      CollectionRegistry.initialize();
+      AuthProvider authProvider = config.getAuthenticationConfiguration().getProvider();
+
+      // Only Basic Auth provider is supported for password reset
+      if (!authProvider.equals(AuthProvider.BASIC)) {
+        LOG.error("Auth Provider is Not Basic. Cannot apply Password");
+        return 1;
+      }
+
+      UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
+      Set<String> fieldList = new HashSet<>(userRepository.getPatchFields().getFieldList());
+      fieldList.add(AUTH_MECHANISM_FIELD);
+      User originalUser = userRepository.getByEmail(null, email, new EntityUtil.Fields(fieldList));
+
+      // Check if the user is a bot user
+      if (Boolean.TRUE.equals(originalUser.getIsBot())) {
+        LOG.error("Bot user : {} cannot have password.", originalUser.getName());
+        return 1;
+      }
+
+      User updatedUser = JsonUtils.deepCopy(originalUser, User.class);
+      String inputPwd = new String(password);
+      updateUserWithHashedPwd(updatedUser, inputPwd);
+      UserUtil.addOrUpdateUser(updatedUser);
+      LOG.info("Password updated successfully.");
+      return 0;
+    } catch (Exception e) {
+      LOG.error("Failed to reset user password.", e);
       return 1;
     }
   }
@@ -652,6 +709,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
     collectionDAO = jdbi.onDemand(CollectionDAO.class);
     Entity.setSearchRepository(searchRepository);
     Entity.setCollectionDAO(collectionDAO);
+    Entity.setSystemRepository(new SystemRepository());
     Entity.initializeRepositories(config, jdbi);
   }
 
