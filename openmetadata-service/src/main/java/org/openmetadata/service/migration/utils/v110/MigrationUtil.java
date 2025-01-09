@@ -460,16 +460,17 @@ public class MigrationUtil {
             .withDescription(create.getDescription())
             .withDisplayName(create.getDisplayName())
             .withName(create.getName());
-    if (create.getBasicEntityReference() != null) {
+    if (create.getExecutableEntityReference() != null) {
       Table table =
-          Entity.getEntityByName(Entity.TABLE, create.getBasicEntityReference(), "", Include.ALL);
+          Entity.getEntityByName(
+              Entity.TABLE, create.getExecutableEntityReference(), "", Include.ALL);
       EntityReference entityReference =
           new EntityReference()
               .withId(table.getId())
               .withFullyQualifiedName(table.getFullyQualifiedName())
               .withName(table.getName())
               .withType(Entity.TABLE);
-      testSuite.setBasicEntityReference(entityReference);
+      testSuite.setExecutableEntityReference(entityReference);
     }
     return testSuite;
   }
@@ -516,9 +517,9 @@ public class MigrationUtil {
                       new CreateTestSuite()
                           .withName(FullyQualifiedName.buildHash(nativeTestSuiteFqn))
                           .withDisplayName(nativeTestSuiteFqn)
-                          .withBasicEntityReference(entityLink.getEntityFQN()),
+                          .withExecutableEntityReference(entityLink.getEntityFQN()),
                       "ingestion-bot")
-                  .withBasic(true)
+                  .withExecutable(true)
                   .withFullyQualifiedName(nativeTestSuiteFqn);
           testSuiteRepository.prepareInternal(newExecutableTestSuite, false);
           try {
@@ -533,7 +534,7 @@ public class MigrationUtil {
           }
           // add relationship between executable TestSuite with Table
           testSuiteRepository.addRelationship(
-              newExecutableTestSuite.getBasicEntityReference().getId(),
+              newExecutableTestSuite.getExecutableEntityReference().getId(),
               newExecutableTestSuite.getId(),
               Entity.TABLE,
               TEST_SUITE,
@@ -564,7 +565,7 @@ public class MigrationUtil {
     ListFilter filter = new ListFilter(Include.ALL);
     List<TestSuite> testSuites = testSuiteRepository.listAll(new Fields(Set.of("id")), filter);
     for (TestSuite testSuite : testSuites) {
-      testSuite.setBasic(false);
+      testSuite.setExecutable(false);
       List<CollectionDAO.EntityRelationshipRecord> ingestionPipelineRecords =
           collectionDAO
               .relationshipDAO()

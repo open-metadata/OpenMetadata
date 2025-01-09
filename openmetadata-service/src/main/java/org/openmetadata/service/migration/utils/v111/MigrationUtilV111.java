@@ -106,16 +106,16 @@ public class MigrationUtilV111 {
         suite = JsonUtils.readValue(pgObject.getValue(), TestSuite.class);
       }
       // Only Test Suite which are executable needs to be updated
-      if (Boolean.TRUE.equals(suite.getBasic())) {
-        if (suite.getBasicEntityReference() != null) {
+      if (Boolean.TRUE.equals(suite.getExecutable())) {
+        if (suite.getExecutableEntityReference() != null) {
           updateTestSuite(handle, suite, updateSql);
         } else {
           String entityName = StringUtils.replaceOnce(suite.getDisplayName(), ".testSuite", "");
           try {
             Table table = collectionDAO.tableDAO().findEntityByName(entityName, Include.ALL);
             // Update Test Suite
-            suite.setBasic(true);
-            suite.setBasicEntityReference(table.getEntityReference());
+            suite.setExecutable(true);
+            suite.setExecutableEntityReference(table.getEntityReference());
             updateTestSuite(handle, suite, updateSql);
             removeDuplicateTestCases(collectionDAO, handle, getSql);
           } catch (Exception ex) {
@@ -133,9 +133,9 @@ public class MigrationUtilV111 {
   }
 
   public static void updateTestSuite(Handle handle, TestSuite suite, String updateSql) {
-    if (suite.getBasicEntityReference() != null) {
+    if (suite.getExecutableEntityReference() != null) {
       try {
-        EntityReference executableEntityRef = suite.getBasicEntityReference();
+        EntityReference executableEntityRef = suite.getExecutableEntityReference();
         // Run new Migrations
         suite.setName(String.format("%s.testSuite", executableEntityRef.getName()));
         suite.setFullyQualifiedName(
