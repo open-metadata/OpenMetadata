@@ -13,9 +13,12 @@
 import { Col, Row } from 'antd';
 import React, { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as TestCaseAbortedIcon } from '../../../assets/svg/aborted-status.svg';
 import { ReactComponent as TestCaseIcon } from '../../../assets/svg/all-activity-v2.svg';
+import { ReactComponent as TestCaseFailedIcon } from '../../../assets/svg/failed-status.svg';
 import { ReactComponent as DataAssetsCoverageIcon } from '../../../assets/svg/ic-data-assets-coverage.svg';
 import { ReactComponent as HealthCheckIcon } from '../../../assets/svg/ic-green-heart-border.svg';
+import { ReactComponent as TestCaseSuccessIcon } from '../../../assets/svg/success-colored.svg';
 import { SummaryCard } from '../../../components/common/SummaryCard/SummaryCard.component';
 import { PRIMARY_COLOR } from '../../../constants/Color.constants';
 import { SummaryPanelProps } from './SummaryPanel.interface';
@@ -54,6 +57,7 @@ export const SummaryPanel: FC<SummaryPanelProps> = ({
           cardBackgroundClass="success-background"
           isLoading={isLoading}
           title={t('label.success')}
+          titleIcon={<TestCaseSuccessIcon height={16} width={16} />}
           total={summary?.total ?? 0}
           type="success"
           value={summary?.success ?? 0}
@@ -65,6 +69,7 @@ export const SummaryPanel: FC<SummaryPanelProps> = ({
           cardBackgroundClass="aborted-background"
           isLoading={isLoading}
           title={t('label.aborted')}
+          titleIcon={<TestCaseAbortedIcon height={16} width={16} />}
           total={summary?.total ?? 0}
           type="aborted"
           value={summary?.aborted ?? 0}
@@ -76,6 +81,7 @@ export const SummaryPanel: FC<SummaryPanelProps> = ({
           cardBackgroundClass="failed-background"
           isLoading={isLoading}
           title={t('label.failed')}
+          titleIcon={<TestCaseFailedIcon height={16} width={16} />}
           total={summary?.total ?? 0}
           type="failed"
           value={summary?.failed ?? 0}
