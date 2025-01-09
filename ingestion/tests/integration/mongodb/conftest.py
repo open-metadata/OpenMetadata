@@ -28,8 +28,7 @@ def mongodbContainer(tmp_path_factory):
     with (
         try_bind(container, 27017, None) if not os.getenv("CI") else container
     ) as container:
-        session = container.get_connection_client()
-        db = session.get_database("local")
+        db = container.get_connection_client().test
         db.user_profiles.insert_one(
             {
                 "user_id": "123e4567-e89b-12d3-a456-426614174000",
