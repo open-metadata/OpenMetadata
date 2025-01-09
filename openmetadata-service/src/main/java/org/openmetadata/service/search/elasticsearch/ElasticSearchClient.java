@@ -1257,55 +1257,75 @@ public class ElasticSearchClient implements SearchClient {
     Set<String> visitedFQN = new HashSet<>();
     Set<Map<String, Object>> edges = new HashSet<>();
     Set<Map<String, Object>> nodes = new HashSet<>();
-    es.org.elasticsearch.action.search.SearchRequest searchRequest =
-        new es.org.elasticsearch.action.search.SearchRequest(
-            Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS));
-    es.org.elasticsearch.index.query.BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery();
-    boolQueryBuilder.should(
-        QueryBuilders.boolQuery()
-            .must(QueryBuilders.termQuery("lineage.pipeline.fullyQualifiedName.keyword", fqn)));
-    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-    searchSourceBuilder.fetchSource(null, SOURCE_FIELDS_TO_EXCLUDE.toArray(String[]::new));
-    searchSourceBuilder.query(boolQueryBuilder);
-    if (CommonUtil.nullOrEmpty(deleted)) {
-      searchSourceBuilder.query(
+    Object[] searchAfter = null;
+    long processedRecords = 0;
+    long totalRecords = -1;
+    while (totalRecords != processedRecords) {
+      es.org.elasticsearch.action.search.SearchRequest searchRequest =
+          new es.org.elasticsearch.action.search.SearchRequest(
+              Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS));
+      es.org.elasticsearch.index.query.BoolQueryBuilder boolQueryBuilder =
+          QueryBuilders.boolQuery();
+      boolQueryBuilder.should(
           QueryBuilders.boolQuery()
-              .must(boolQueryBuilder)
-              .must(QueryBuilders.termQuery("deleted", deleted)));
-    }
-    buildSearchSourceFilter(queryFilter, searchSourceBuilder);
-    searchRequest.source(searchSourceBuilder);
-    SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
-    for (var hit : searchResponse.getHits().getHits()) {
-      List<Map<String, Object>> lineage =
-          (List<Map<String, Object>>) hit.getSourceAsMap().get("lineage");
-      HashMap<String, Object> tempMap = new HashMap<>(JsonUtils.getMap(hit.getSourceAsMap()));
-      nodes.add(tempMap);
-      for (Map<String, Object> lin : lineage) {
-        HashMap<String, String> fromEntity = (HashMap<String, String>) lin.get("fromEntity");
-        HashMap<String, String> toEntity = (HashMap<String, String>) lin.get("toEntity");
-        HashMap<String, String> pipeline = (HashMap<String, String>) lin.get("pipeline");
-        if (pipeline != null && pipeline.get("fullyQualifiedName").equalsIgnoreCase(fqn)) {
-          edges.add(lin);
-          getLineage(
-              fromEntity.get("fqn"),
-              visitedFQN,
-              upstreamDepth,
-              edges,
-              nodes,
-              queryFilter,
-              "lineage.toEntity.fqn.keyword",
-              deleted);
-          getLineage(
-              toEntity.get("fqn"),
-              visitedFQN,
-              downstreamDepth,
-              edges,
-              nodes,
-              queryFilter,
-              "lineage.fromEntity.fqn.keyword",
-              deleted);
+              .must(QueryBuilders.termQuery("lineage.pipeline.fullyQualifiedName.keyword", fqn)));
+      SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+      searchSourceBuilder.fetchSource(null, SOURCE_FIELDS_TO_EXCLUDE.toArray(String[]::new));
+      FieldSortBuilder sortBuilder = SortBuilders.fieldSort("fullyQualifiedName");
+      searchSourceBuilder.sort(sortBuilder);
+      searchSourceBuilder.query(boolQueryBuilder);
+      if (searchAfter != null) {
+        searchSourceBuilder.searchAfter(searchAfter);
+      }
+      if (CommonUtil.nullOrEmpty(deleted)) {
+        searchSourceBuilder.query(
+            QueryBuilders.boolQuery()
+                .must(boolQueryBuilder)
+                .must(QueryBuilders.termQuery("deleted", deleted)));
+      }
+      buildSearchSourceFilter(queryFilter, searchSourceBuilder);
+      searchRequest.source(searchSourceBuilder);
+      SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
+
+      for (var hit : searchResponse.getHits().getHits()) {
+        List<Map<String, Object>> lineage =
+            (List<Map<String, Object>>) hit.getSourceAsMap().get("lineage");
+        HashMap<String, Object> tempMap = new HashMap<>(JsonUtils.getMap(hit.getSourceAsMap()));
+        nodes.add(tempMap);
+        for (Map<String, Object> lin : lineage) {
+          HashMap<String, String> fromEntity = (HashMap<String, String>) lin.get("fromEntity");
+          HashMap<String, String> toEntity = (HashMap<String, String>) lin.get("toEntity");
+          HashMap<String, String> pipeline = (HashMap<String, String>) lin.get("pipeline");
+          if (pipeline != null && pipeline.get("fullyQualifiedName").equalsIgnoreCase(fqn)) {
+            edges.add(lin);
+            getLineage(
+                fromEntity.get("fqn"),
+                visitedFQN,
+                upstreamDepth,
+                edges,
+                nodes,
+                queryFilter,
+                "lineage.toEntity.fqn.keyword",
+                deleted);
+            getLineage(
+                toEntity.get("fqn"),
+                visitedFQN,
+                downstreamDepth,
+                edges,
+                nodes,
+                queryFilter,
+                "lineage.fromEntity.fqn.keyword",
+                deleted);
+          }
         }
+      }
+      totalRecords = searchResponse.getHits().getTotalHits().value;
+      int currentHits = searchResponse.getHits().getHits().length;
+      processedRecords += currentHits;
+      if (currentHits > 0) {
+        searchAfter = searchResponse.getHits().getHits()[currentHits - 1].getSortValues();
+      } else {
+        searchAfter = null;
       }
     }
     getLineage(
