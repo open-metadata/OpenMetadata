@@ -48,13 +48,13 @@ public class MigrationUtil {
         testSuiteRepository.listAll(
             new EntityUtil.Fields(Set.of("id")), new ListFilter(Include.ALL));
     for (TestSuite suite : testSuites) {
-      if (suite.getBasicEntityReference() != null
-          && (!suite.getBasic() || !suite.getFullyQualifiedName().contains("testSuite"))) {
-        String tableFQN = suite.getBasicEntityReference().getFullyQualifiedName();
+      if (suite.getExecutableEntityReference() != null
+          && (!suite.getExecutable() || !suite.getFullyQualifiedName().contains("testSuite"))) {
+        String tableFQN = suite.getExecutableEntityReference().getFullyQualifiedName();
         String suiteFQN = tableFQN + ".testSuite";
         suite.setName(suiteFQN);
         suite.setFullyQualifiedName(suiteFQN);
-        suite.setBasic(true);
+        suite.setExecutable(true);
         collectionDAO.testSuiteDAO().update(suite);
       }
     }
@@ -80,7 +80,7 @@ public class MigrationUtil {
               try {
                 TestSuite existingTestSuite =
                     testSuiteRepository.getDao().findEntityById(existingTestSuiteRel.getId());
-                if (Boolean.TRUE.equals(existingTestSuite.getBasic())
+                if (Boolean.TRUE.equals(existingTestSuite.getExecutable())
                     && existingTestSuite.getFullyQualifiedName().equals(executableTestSuiteFQN)) {
                   // There is a native test suite associated with this testCase.
                   relationWithExecutableTestSuiteExists = true;
@@ -111,7 +111,7 @@ public class MigrationUtil {
         // check from table -> nativeTestSuite there should only one relation
         List<CollectionDAO.EntityRelationshipRecord> testSuiteRels =
             testSuiteRepository.findToRecords(
-                executableTestSuite.getBasicEntityReference().getId(),
+                executableTestSuite.getExecutableEntityReference().getId(),
                 TABLE,
                 Relationship.CONTAINS,
                 TEST_SUITE);
@@ -122,7 +122,7 @@ public class MigrationUtil {
             // if testsuite cannot be retrieved but the relation exists, then this is orphaned
             // relation, we will delete the relation
             testSuiteRepository.deleteRelationship(
-                executableTestSuite.getBasicEntityReference().getId(),
+                executableTestSuite.getExecutableEntityReference().getId(),
                 TABLE,
                 testSuiteRel.getId(),
                 TEST_SUITE,
@@ -158,9 +158,9 @@ public class MigrationUtil {
                   new CreateTestSuite()
                       .withName(FullyQualifiedName.buildHash(executableTestSuiteFQN))
                       .withDisplayName(executableTestSuiteFQN)
-                      .withBasicEntityReference(entityLink.getEntityFQN()),
+                      .withExecutableEntityReference(entityLink.getEntityFQN()),
                   "ingestion-bot")
-              .withBasic(true)
+              .withExecutable(true)
               .withFullyQualifiedName(executableTestSuiteFQN);
       testSuiteRepository.prepareInternal(newExecutableTestSuite, false);
       testSuiteRepository
@@ -169,7 +169,7 @@ public class MigrationUtil {
               "fqnHash", newExecutableTestSuite, newExecutableTestSuite.getFullyQualifiedName());
       // add relationship between executable TestSuite with Table
       testSuiteRepository.addRelationship(
-          newExecutableTestSuite.getBasicEntityReference().getId(),
+          newExecutableTestSuite.getExecutableEntityReference().getId(),
           newExecutableTestSuite.getId(),
           Entity.TABLE,
           TEST_SUITE,
