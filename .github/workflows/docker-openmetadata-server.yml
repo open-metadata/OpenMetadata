@@ -83,6 +83,25 @@ jobs:
           asset_name: openmetadata-${{ inputs.DOCKER_RELEASE_TAG }}.tar.gz
           asset_content_type: application/tar.gz
 
+      - name: Upload docker-compose files
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.attach_release.outputs.UPLOAD_URL }}
+          asset_path: |
+            ./docker/docker-compose-quickstart/docker-compose.yml
+            ./docker/docker-compose-quickstart/docker-compose-postgres.yml
+            ./docker/docker-compose-openmetadata/docker-compose-openmetadata.yml
+            ./docker/docker-compose-ingestion/docker-compose-ingestion.yml
+          asset_name: |
+            docker-compose.yml
+            docker-compose-postgres.yml
+            docker-compose-openmetadata.yml
+            docker-compose-ingestion.yml
+          asset_content_type: application/yaml
+
+
   push_to_docker_hub:
     runs-on: ubuntu-latest
     if: ${{ always() && contains(join(needs.*.result, ','), 'success') }}
