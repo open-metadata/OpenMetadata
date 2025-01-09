@@ -32,6 +32,10 @@ export interface CreateTestSuite {
      */
     domain?: string;
     /**
+     * DEPRECATED in 1.6.2: use 'basicEntityReference'
+     */
+    executableEntityReference?: string;
+    /**
      * Name that identifies this test suite.
      */
     name: string;

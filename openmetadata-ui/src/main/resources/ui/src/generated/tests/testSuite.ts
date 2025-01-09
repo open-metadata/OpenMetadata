@@ -51,6 +51,14 @@ export interface TestSuite {
      */
     domain?: EntityReference;
     /**
+     * DEPRECATED in 1.6.2: Use 'basic'
+     */
+    executable?: boolean;
+    /**
+     * DEPRECATED in 1.6.2: Use 'basicEntityReference'.
+     */
+    executableEntityReference?: EntityReference;
+    /**
      * FullyQualifiedName same as `name`.
      */
     fullyQualifiedName?: string;
@@ -126,6 +134,8 @@ export interface TestSuite {
  *
  * Domain the test Suite belongs to. When not set, the test Suite inherits the domain from
  * the table it belongs to.
+ *
+ * DEPRECATED in 1.6.2: Use 'basicEntityReference'.
  *
  * Owners of this TestCase definition.
  *
