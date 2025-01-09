@@ -102,7 +102,6 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     handlePagingChange,
     currentPage,
     handlePageChange,
-    handlePagingCursorChange,
     pagingCursor,
   } = pagingInfo;
 
@@ -484,15 +483,14 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     ({ cursorType, currentPage }: PagingHandlerParams) => {
       if (cursorType) {
         getSchemaTables({ [cursorType]: paging[cursorType] });
-        handlePagingCursorChange({
+        handlePageChange(currentPage, {
           cursorType: cursorType,
           cursorValue: paging[cursorType as CursorType]!,
-          currentPage: currentPage,
         });
       }
       handlePageChange(currentPage);
     },
-    [paging, getSchemaTables, handlePagingCursorChange, handlePageChange]
+    [paging, getSchemaTables, handlePageChange]
   );
 
   const versionHandler = useCallback(() => {

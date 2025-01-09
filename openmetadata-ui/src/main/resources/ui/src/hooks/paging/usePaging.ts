@@ -40,15 +40,13 @@ export interface UsePagingInterface {
   paging: Paging;
   handlePagingChange: Dispatch<SetStateAction<Paging>>;
   currentPage: number;
-  handlePageChange: Dispatch<SetStateAction<number>>;
+  handlePageChange: (
+    page: number,
+    cursorData?: Omit<CursorState, 'currentPage'>
+  ) => void;
   pageSize: number;
   handlePageSizeChange: (page: number) => void;
   showPagination: boolean;
-  handlePagingCursorChange: (params: {
-    cursorType: CursorType | null;
-    cursorValue: string | null;
-    currentPage: number | null;
-  }) => void;
   pagingCursor: () => CursorState;
 }
 export const usePaging = (
@@ -72,22 +70,6 @@ export const usePaging = (
     return paging.total > pageSize || pageSize !== defaultPageSize;
   }, [defaultPageSize, paging, pageSize]);
 
-  // store cursor values for each page's tab with pathname as the key
-  const handlePagingCursorChange = ({
-    cursorType,
-    cursorValue,
-    currentPage,
-  }: CursorState) => {
-    const path = location.pathname;
-    history.replace({
-      ...location,
-      state: {
-        ...(location.state || {}),
-        [path]: { cursorType, cursorValue, currentPage },
-      },
-    });
-  };
-
   // fetch stored cursor values on page reload
   const pagingCursor = () => {
     const path = location.pathname;
@@ -100,15 +82,35 @@ export const usePaging = (
     };
   };
 
+  const handlePageChange = (
+    page: number,
+    cursorData?: Omit<CursorState, 'currentPage'>
+  ) => {
+    setCurrentPage(page);
+    if (cursorData) {
+      const path = location.pathname;
+      history.replace({
+        ...location,
+        state: {
+          ...(location.state || {}),
+          [path]: {
+            cursorType: cursorData.cursorType,
+            cursorValue: cursorData.cursorValue,
+            currentPage: page,
+          },
+        },
+      });
+    }
+  };
+
   return {
     paging,
     handlePagingChange: setPaging,
     currentPage,
-    handlePageChange: setCurrentPage,
+    handlePageChange,
     pageSize,
     handlePageSizeChange: handlePageSize,
     showPagination: paginationVisible,
-    handlePagingCursorChange,
     pagingCursor,
   };
 };
