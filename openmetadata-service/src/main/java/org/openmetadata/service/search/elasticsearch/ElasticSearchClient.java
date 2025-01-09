@@ -775,7 +775,6 @@ public class ElasticSearchClient implements SearchClient {
       boolean deleted,
       String entityType)
       throws IOException {
-    Set<String> visitedFQN = new HashSet<>();
     Map<String, Object> responseMap = new HashMap<>();
     Set<Map<String, Object>> edges = new HashSet<>();
     Set<Map<String, Object>> nodes = new HashSet<>();
@@ -800,7 +799,6 @@ public class ElasticSearchClient implements SearchClient {
     }
     getLineage(
         fqn,
-        visitedFQN,
         downstreamDepth,
         edges,
         nodes,
@@ -808,14 +806,7 @@ public class ElasticSearchClient implements SearchClient {
         "lineage.fromEntity.fqnHash.keyword",
         deleted);
     getLineage(
-        fqn,
-        visitedFQN,
-        upstreamDepth,
-        edges,
-        nodes,
-        queryFilter,
-        "lineage.toEntity.fqnHash.keyword",
-        deleted);
+        fqn, upstreamDepth, edges, nodes, queryFilter, "lineage.toEntity.fqnHash.keyword", deleted);
     responseMap.put("edges", edges);
     responseMap.put("nodes", nodes);
     return responseMap;
@@ -1041,7 +1032,6 @@ public class ElasticSearchClient implements SearchClient {
 
   private void getLineage(
       String fqn,
-      Set<String> visitedFQN,
       int depth,
       Set<Map<String, Object>> edges,
       Set<Map<String, Object>> nodes,
@@ -1049,10 +1039,9 @@ public class ElasticSearchClient implements SearchClient {
       String direction,
       boolean deleted)
       throws IOException {
-    if (depth <= 0 || visitedFQN.contains(fqn)) {
+    if (depth <= 0) {
       return;
     }
-    visitedFQN.add(fqn);
     es.org.elasticsearch.action.search.SearchRequest searchRequest =
         new es.org.elasticsearch.action.search.SearchRequest(
             Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS));
@@ -1082,27 +1071,13 @@ public class ElasticSearchClient implements SearchClient {
           if (!edges.contains(lin) && fromEntity.get("fqn").equals(fqn)) {
             edges.add(lin);
             getLineage(
-                toEntity.get("fqn"),
-                visitedFQN,
-                depth - 1,
-                edges,
-                nodes,
-                queryFilter,
-                direction,
-                deleted);
+                toEntity.get("fqn"), depth - 1, edges, nodes, queryFilter, direction, deleted);
           }
         } else {
           if (!edges.contains(lin) && toEntity.get("fqn").equals(fqn)) {
             edges.add(lin);
             getLineage(
-                fromEntity.get("fqn"),
-                visitedFQN,
-                depth - 1,
-                edges,
-                nodes,
-                queryFilter,
-                direction,
-                deleted);
+                fromEntity.get("fqn"), depth - 1, edges, nodes, queryFilter, direction, deleted);
           }
         }
       }
@@ -1254,7 +1229,6 @@ public class ElasticSearchClient implements SearchClient {
       boolean deleted,
       Map<String, Object> responseMap)
       throws IOException {
-    Set<String> visitedFQN = new HashSet<>();
     Set<Map<String, Object>> edges = new HashSet<>();
     Set<Map<String, Object>> nodes = new HashSet<>();
     Object[] searchAfter = null;
@@ -1300,7 +1274,6 @@ public class ElasticSearchClient implements SearchClient {
             edges.add(lin);
             getLineage(
                 fromEntity.get("fqn"),
-                visitedFQN,
                 upstreamDepth,
                 edges,
                 nodes,
@@ -1309,7 +1282,6 @@ public class ElasticSearchClient implements SearchClient {
                 deleted);
             getLineage(
                 toEntity.get("fqn"),
-                visitedFQN,
                 downstreamDepth,
                 edges,
                 nodes,
@@ -1329,23 +1301,9 @@ public class ElasticSearchClient implements SearchClient {
       }
     }
     getLineage(
-        fqn,
-        visitedFQN,
-        downstreamDepth,
-        edges,
-        nodes,
-        queryFilter,
-        "lineage.fromEntity.fqn.keyword",
-        deleted);
+        fqn, downstreamDepth, edges, nodes, queryFilter, "lineage.fromEntity.fqn.keyword", deleted);
     getLineage(
-        fqn,
-        visitedFQN,
-        upstreamDepth,
-        edges,
-        nodes,
-        queryFilter,
-        "lineage.toEntity.fqn.keyword",
-        deleted);
+        fqn, upstreamDepth, edges, nodes, queryFilter, "lineage.toEntity.fqn.keyword", deleted);
 
     // TODO: Fix this , this is hack
     if (edges.isEmpty()) {
