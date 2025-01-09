@@ -26,6 +26,7 @@ import ActivityFeedProvider from '../../components/ActivityFeed/ActivityFeedProv
 import Loader from '../../components/common/Loader/Loader';
 import WelcomeScreen from '../../components/MyData/WelcomeScreen/WelcomeScreen.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
+import { useApplicationsProvider } from '../../components/Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import {
   KNOWLEDGE_LIST_LENGTH,
   LOGGED_IN_USER_STORAGE_KEY,
@@ -38,6 +39,7 @@ import { EntityReference } from '../../generated/type/entityReference';
 import LimitWrapper from '../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useGridLayoutDirection } from '../../hooks/useGridLayoutDirection';
+import { useWelcomeStore } from '../../hooks/useWelcomeStore';
 import { getDocumentByFQN } from '../../rest/DocStoreAPI';
 import { getActiveAnnouncement } from '../../rest/feedsAPI';
 import { searchQuery } from '../../rest/searchAPI';
@@ -52,6 +54,8 @@ const ReactGridLayout = WidthProvider(RGL);
 const MyDataPage = () => {
   const { t } = useTranslation();
   const { currentUser, selectedPersona } = useApplicationStore();
+  const { loading: applicationsLoading } = useApplicationsProvider();
+  const { isWelcomeVisible } = useWelcomeStore();
   const [followedData, setFollowedData] = useState<Array<EntityReference>>([]);
   const [followedDataCount, setFollowedDataCount] = useState(0);
   const [isLoadingOwnedData, setIsLoadingOwnedData] = useState<boolean>(false);
@@ -112,12 +116,12 @@ const MyDataPage = () => {
   };
 
   useEffect(() => {
-    fetchDocument();
-  }, [selectedPersona]);
+    !applicationsLoading && fetchDocument();
+  }, [selectedPersona, applicationsLoading]);
 
   useEffect(() => {
     isMounted.current = true;
-    updateWelcomeScreen(!usernameExistsInCookie);
+    updateWelcomeScreen(!usernameExistsInCookie && isWelcomeVisible);
 
     return () => updateWelcomeScreen(false);
   }, []);
@@ -214,7 +218,7 @@ const MyDataPage = () => {
       <PageLayoutV1
         mainContainerClassName="p-t-0"
         pageTitle={t('label.my-data')}>
-        {isLoading ? (
+        {isLoading || applicationsLoading ? (
           <div className="ant-layout-content flex-center">
             <Loader />
           </div>

@@ -52,14 +52,12 @@ jest.mock('../../../utils/CommonUtils', () => {
     getNameFromFQN: jest.fn().mockImplementation((fqn) => fqn),
   };
 });
-jest.mock('../../../rest/searchAPI', () => {
+jest.mock('../../../rest/testAPI', () => {
   return {
-    searchQuery: jest.fn().mockResolvedValue({
-      hits: {
-        hits: [],
-        total: {
-          value: 0,
-        },
+    getListTestCaseBySearch: jest.fn().mockResolvedValue({
+      data: [],
+      paging: {
+        total: 0,
       },
     }),
   };

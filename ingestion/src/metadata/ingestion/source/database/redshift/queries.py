@@ -328,7 +328,7 @@ Q_HISTORY as (
         pid as query_session_id,
         starttime as query_start_time,
         endtime as query_end_time,
-        b.usename as query_user_name
+        cast(b.usename as varchar) as query_user_name
     from STL_QUERY q
     join pg_catalog.pg_user b
       on b.usesysid = q.userid
