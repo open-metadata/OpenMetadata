@@ -2,6 +2,7 @@ package org.openmetadata.service.util;
 
 import static org.flywaydb.core.internal.info.MigrationInfoDumper.dumpToAsciiTable;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.formatter.decorators.MessageDecorator.getDateStringEpochMilli;
 import static org.openmetadata.service.jdbi3.UserRepository.AUTH_MECHANISM_FIELD;
@@ -42,7 +43,12 @@ import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.entity.app.App;
+import org.openmetadata.schema.entity.app.AppConfiguration;
+import org.openmetadata.schema.entity.app.AppMarketPlaceDefinition;
 import org.openmetadata.schema.entity.app.AppRunRecord;
+import org.openmetadata.schema.entity.app.AppSchedule;
+import org.openmetadata.schema.entity.app.CreateApp;
+import org.openmetadata.schema.entity.app.ScheduleTimeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
@@ -58,6 +64,7 @@ import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.fernet.Fernet;
+import org.openmetadata.service.jdbi3.AppMarketPlaceRepository;
 import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
@@ -69,11 +76,13 @@ import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.api.MigrationWorkflow;
 import org.openmetadata.service.resources.CollectionRegistry;
+import org.openmetadata.service.resources.apps.AppMapper;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.secrets.SecretsManagerUpdateService;
+import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.util.jdbi.DatabaseAuthenticationProviderFactory;
 import org.openmetadata.service.util.jdbi.JdbiUtils;
 import org.slf4j.LoggerFactory;
@@ -181,6 +190,49 @@ public class OpenMetadataOperations implements Callable<Integer> {
       return 0;
     } catch (Exception e) {
       LOG.error("Email Sync failed due to ", e);
+      return 1;
+    }
+  }
+
+  @Command(name = "install-app", description = "Install the application from App MarketPlace.")
+  public Integer installApp(
+      @Option(
+              names = {"-n", "--name"},
+              description = "Number of records to process in each batch.",
+              required = true)
+          String appName) {
+    try {
+      parseConfig();
+      CollectionRegistry.initialize();
+      ApplicationHandler.initialize(config);
+      CollectionRegistry.getInstance().loadSeedData(jdbi, config, null, null, null, true);
+      ApplicationHandler.initialize(config);
+      AppScheduler.initialize(config, collectionDAO, searchRepository);
+      // Instantiate JWT Token Generator
+      JWTTokenGenerator.getInstance()
+          .init(
+              config.getAuthenticationConfiguration().getTokenValidationAlgorithm(),
+              config.getJwtTokenConfiguration());
+      AppMarketPlaceRepository marketPlaceRepository =
+          (AppMarketPlaceRepository) Entity.getEntityRepository(Entity.APP_MARKET_PLACE_DEF);
+      AppMarketPlaceDefinition definition =
+          marketPlaceRepository.getByName(null, appName, marketPlaceRepository.getFields("id"));
+      AppRepository appRepository = (AppRepository) Entity.getEntityRepository(Entity.APPLICATION);
+      CreateApp createApp =
+          new CreateApp()
+              .withName(definition.getName())
+              .withDescription(definition.getDescription())
+              .withDisplayName(definition.getDisplayName())
+              .withAppSchedule(new AppSchedule().withScheduleTimeline(ScheduleTimeline.NONE))
+              .withAppConfiguration(new AppConfiguration());
+      AppMapper appMapper = new AppMapper();
+      App entity = appMapper.createToEntity(createApp, ADMIN_USER_NAME);
+      appRepository.prepareInternal(entity, true);
+      appRepository.createOrUpdate(null, entity);
+      LOG.info("App Installed.");
+      return 0;
+    } catch (Exception e) {
+      LOG.error("Install Application Failed ", e);
       return 1;
     }
   }
