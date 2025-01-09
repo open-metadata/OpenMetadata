@@ -101,6 +101,9 @@ SELECT * from names
         """
         return 12
 
+    def expected_lineage_node(self) -> str:
+        return "e2e_oracle.default.admin.admin_emp_view"
+
     @staticmethod
     def fqn_created_table() -> str:
         return "e2e_oracle.default.admin.ADMIN_EMP"
