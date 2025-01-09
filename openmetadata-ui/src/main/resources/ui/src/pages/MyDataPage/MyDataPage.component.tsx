@@ -116,8 +116,8 @@ const MyDataPage = () => {
   };
 
   useEffect(() => {
-    fetchDocument();
-  }, [selectedPersona]);
+    !applicationsLoading && fetchDocument();
+  }, [selectedPersona, applicationsLoading]);
 
   useEffect(() => {
     isMounted.current = true;
