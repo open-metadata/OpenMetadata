@@ -18,7 +18,7 @@ Ensure you have `quicktype` installed. If not, install it using the commands bel
 
 Navigate to the `openmetadata-ui` directory and install dependencies:
 
-```python
+```bash
 cd openmetadata-ui/src/main/resources/ui
 yarn install
 ```
@@ -26,7 +26,7 @@ yarn install
 
 Return to the root folder, add the relevant files to the staging area, and execute the following command:
 
-```python
+```bash
 changed_files=$(git diff --cached --name-only --diff-filter=ACM | grep 'openmetadata-spec/src/main/resources/json/schema/')
 ```
 
@@ -36,7 +36,7 @@ This command identifies all staged files located in the `openmetadata-spec/src/m
 
 Run the following script to generate TypeScript types for the identified JSON schema files:
 
-```python
+```bash
 ./openmetadata-ui/src/main/resources/ui/json2ts.sh $changed_files
 ```
 
