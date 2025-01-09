@@ -31,7 +31,7 @@ import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { CookieStorage } from 'cookie-storage';
 import i18next from 'i18next';
-import { debounce, upperCase } from 'lodash';
+import { debounce, startCase, upperCase } from 'lodash';
 import { MenuInfo } from 'rc-menu/lib/interface';
 import React, {
   useCallback,
@@ -53,9 +53,11 @@ import {
   NOTIFICATION_READ_TIMER,
   SOCKET_EVENTS,
 } from '../../constants/constants';
+import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import { HELP_ITEMS_ENUM } from '../../constants/Navbar.constants';
 import { useWebSocketConnector } from '../../context/WebSocketProvider/WebSocketProvider';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
+import { BackgroundJob, JobType } from '../../generated/jobs/backgroundJob';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { useDomainStore } from '../../hooks/useDomainStore';
@@ -67,6 +69,7 @@ import {
   shouldRequestPermission,
 } from '../../utils/BrowserNotificationUtils';
 import { refreshPage } from '../../utils/CommonUtils';
+import { getCustomPropertyEntityPathname } from '../../utils/CustomProperty.utils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../utils/EntityUtils';
 import {
@@ -81,6 +84,7 @@ import {
 import { isCommandKeyPress, Keys } from '../../utils/KeyboardUtil';
 import { getHelpDropdownItems } from '../../utils/NavbarUtils';
 import {
+  getSettingPath,
   inPageSearchOptions,
   isInPageSearchAllowed,
 } from '../../utils/RouterUtils';
@@ -252,15 +256,18 @@ const NavBar = ({
   const showBrowserNotification = (
     about: string,
     createdBy: string,
-    type: string
+    type: string,
+    backgroundJobData?: BackgroundJob
   ) => {
     if (!hasNotificationPermission()) {
       return;
     }
+
     const entityType = getEntityType(about);
     const entityFQN = getEntityFQN(about) ?? '';
     let body;
     let path: string;
+
     switch (type) {
       case 'Task':
         body = t('message.user-assign-new-task', {
@@ -280,6 +287,31 @@ const NavBar = ({
           user: createdBy,
         });
         path = prepareFeedLink(entityType as string, entityFQN as string);
+
+        break;
+
+      case 'BackgroundJob': {
+        if (!backgroundJobData) {
+          break;
+        }
+
+        const { jobArgs, status, jobType } = backgroundJobData;
+
+        if (jobType === JobType.CustomPropertyEnumCleanup) {
+          body = t('message.custom-property-update', {
+            propertyName: jobArgs.propertyName,
+            entityName: jobArgs.entityType,
+            status: startCase(status.toLowerCase()),
+          });
+
+          path = getSettingPath(
+            GlobalSettingsMenuCategory.CUSTOM_PROPERTIES,
+            getCustomPropertyEntityPathname(jobArgs.entityType)
+          );
+        }
+
+        break;
+      }
     }
     const notification = new Notification('Notification From OpenMetadata', {
       body: body,
@@ -362,12 +394,25 @@ const NavBar = ({
           onUpdateCSVExportJob(exportResponseData);
         }
       });
+      socket.on(SOCKET_EVENTS.BACKGROUND_JOB_CHANNEL, (jobResponse) => {
+        if (jobResponse) {
+          const jobResponseData: BackgroundJob = JSON.parse(jobResponse);
+          showBrowserNotification(
+            '',
+            jobResponseData.createdBy,
+            'BackgroundJob',
+            jobResponseData
+          );
+        }
+      });
     }
 
     return () => {
       socket && socket.off(SOCKET_EVENTS.TASK_CHANNEL);
       socket && socket.off(SOCKET_EVENTS.MENTION_CHANNEL);
       socket && socket.off(SOCKET_EVENTS.CSV_EXPORT_CHANNEL);
+      socket && socket.off(SOCKET_EVENTS.CSV_EXPORT_CHANNEL);
+      socket && socket.off(SOCKET_EVENTS.BACKGROUND_JOB_CHANNEL);
     };
   }, [socket]);
 
