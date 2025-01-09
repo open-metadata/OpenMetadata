@@ -4,7 +4,7 @@ slug: /deployment/ingestion/external/airflow
 collate: false
 ---
 
-{% partial file="/v1.6/deployment/external-ingestion.md" /%}
+{% partial file="/v1.7/deployment/external-ingestion.md" /%}
 
 # Run the ingestion from your Airflow
 
@@ -26,11 +26,11 @@ Install the `openmetadata-ingestion` package in your Airflow environment. This a
 pip3 install openmetadata-ingestion[<plugin>]==x.y.z
 ```
 -Replace [<plugin>](https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/setup.py) with the sources to ingest, such as mysql, snowflake, or s3.
--Replace x.y.z with the OpenMetadata version matching your server (e.g., 1.5.12).
+-Replace x.y.z with the OpenMetadata version matching your server (e.g., 1.6.1).
 
 ### Example
 ```
-pip3 install openmetadata-ingestion[mysql,snowflake,s3]==1.5.12
+pip3 install openmetadata-ingestion[mysql,snowflake,s3]==1.6.1
 ```
 ### Example DAG
 
@@ -260,4 +260,4 @@ with DAG(
 - All imports must occur inside the function.  
 - Avoid referencing variables outside the function's scope.
 
-{% partial file="/v1.6/deployment/run-connectors-class.md" /%}
+{% partial file="/v1.7/deployment/run-connectors-class.md" /%}

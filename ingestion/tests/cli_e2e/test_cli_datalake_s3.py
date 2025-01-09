@@ -63,6 +63,9 @@ class DatalakeCliTest(CliCommonDB.TestSuite):
     def view_column_lineage_count(self) -> int:
         pass
 
+    def expected_lineage_node(self) -> str:
+        pass
+
     @staticmethod
     def fqn_created_table() -> str:
         return 'aws_datalake.default.aws-datalake-e2e."sales/sales.csv"'
@@ -128,3 +131,7 @@ class DatalakeCliTest(CliCommonDB.TestSuite):
         result = self.run_command("profile")
         sink_status, source_status = self.retrieve_statuses(result)
         self.assert_for_table_with_profiler(source_status, sink_status)
+
+    @pytest.mark.order(11)
+    def test_lineage(self) -> None:
+        pytest.skip("Lineage not configured. Skipping Test")

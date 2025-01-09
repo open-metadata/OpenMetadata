@@ -15,18 +15,19 @@ import { Button, Form, Input, Select, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { t } from 'i18next';
 import { trim } from 'lodash';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import ResizablePanels from '../../../components/common/ResizablePanels/ResizablePanels';
-import RichTextEditor from '../../../components/common/RichTextEditor/RichTextEditor';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { ERROR_MESSAGE } from '../../../constants/constants';
 import { NAME_FIELD_RULES } from '../../../constants/Form.constants';
 import { GlobalSettingOptions } from '../../../constants/GlobalSettings.constants';
 import { TabSpecificField } from '../../../enums/entity.enum';
 import { Policy } from '../../../generated/entity/policies/policy';
+import { FieldProp, FieldTypes } from '../../../interface/FormUtils.interface';
 import { addRole, getPolicies } from '../../../rest/rolesAPIV1';
 import { getIsErrorMatch } from '../../../utils/CommonUtils';
+import { getField } from '../../../utils/formUtils';
 import {
   getPath,
   getRoleWithFqnPath,
@@ -107,6 +108,26 @@ const AddRolePage = () => {
     }
   };
 
+  const descriptionField: FieldProp = useMemo(
+    () => ({
+      name: 'description',
+      required: false,
+      label: `${t('label.description')}:`,
+      id: 'root/description',
+      type: FieldTypes.DESCRIPTION,
+      props: {
+        'data-testid': 'description',
+        initialValue: '',
+        style: {
+          margin: 0,
+        },
+        placeHolder: t('message.write-your-description'),
+        onTextChange: (value: string) => setDescription(value),
+      },
+    }),
+    []
+  );
+
   useEffect(() => {
     fetchPolicies();
   }, []);
@@ -144,17 +165,8 @@ const AddRolePage = () => {
                     onChange={(e) => setName(e.target.value)}
                   />
                 </Form.Item>
-                <Form.Item
-                  label={`${t('label.description')}:`}
-                  name="description">
-                  <RichTextEditor
-                    height="200px"
-                    initialValue={description}
-                    placeHolder={t('message.write-your-description')}
-                    style={{ margin: 0 }}
-                    onTextChange={(value) => setDescription(value)}
-                  />
-                </Form.Item>
+                {getField(descriptionField)}
+
                 <Form.Item
                   label={`${t('label.select-a-policy')}:`}
                   name="policies"

@@ -73,11 +73,11 @@ test('Logical TestSuite', async ({ page }) => {
   await test.step('Create', async () => {
     await page.click('[data-testid="add-test-suite-btn"]');
     await page.fill('[data-testid="test-suite-name"]', NEW_TEST_SUITE.name);
-    await page.fill(descriptionBox, NEW_TEST_SUITE.description);
+    await page.locator(descriptionBox).fill(NEW_TEST_SUITE.description);
 
     await page.click('[data-testid="submit-button"]');
     const getTestCase = page.waitForResponse(
-      '/api/v1/search/query?q=*&index=test_case_search_index*'
+      `/api/v1/dataQuality/testCases/search/list?*${testCaseName1}*`
     );
     await page.fill('[data-testid="searchbar"]', testCaseName1);
     await getTestCase;
@@ -127,13 +127,13 @@ test('Logical TestSuite', async ({ page }) => {
 
   await test.step('Add test case to logical test suite', async () => {
     const testCaseResponse = page.waitForResponse(
-      '/api/v1/search/query?q=*&index=test_case_search_index*'
+      '/api/v1/dataQuality/testCases/search/list*'
     );
     await page.click('[data-testid="add-test-case-btn"]');
     await testCaseResponse;
 
     const getTestCase = page.waitForResponse(
-      `/api/v1/search/query?q=*${testCaseName2}*&index=test_case_search_index*`
+      `/api/v1/dataQuality/testCases/search/list?*${testCaseName2}*`
     );
     await page.fill('[data-testid="searchbar"]', testCaseName2);
     await getTestCase;
@@ -147,6 +147,31 @@ test('Logical TestSuite', async ({ page }) => {
     await page.waitForSelector('.ant-modal-content', {
       state: 'detached',
     });
+  });
+
+  await test.step('Add test suite pipeline', async () => {
+    await page.getByRole('tab', { name: 'Pipeline' }).click();
+
+    await expect(page.getByTestId('add-placeholder-button')).toBeVisible();
+
+    await page.getByTestId('add-placeholder-button').click();
+    await page.getByTestId('select-all-test-cases').click();
+
+    await expect(page.getByTestId('cron-type').getByText('Day')).toBeAttached();
+
+    await page.getByTestId('deploy-button').click();
+
+    await expect(page.getByTestId('view-service-button')).toBeVisible();
+
+    await page.waitForSelector('[data-testid="body-text"]', {
+      state: 'detached',
+    });
+
+    await expect(page.getByTestId('success-line')).toContainText(
+      /has been created and deployed successfully/
+    );
+
+    await page.getByTestId('view-service-button').click();
   });
 
   await test.step('Remove test case from logical test suite', async () => {

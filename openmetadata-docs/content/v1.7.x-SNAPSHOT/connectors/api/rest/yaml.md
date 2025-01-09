@@ -18,13 +18,13 @@ Configure and schedule REST metadata workflows from the OpenMetadata UI:
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 
-{% partial file="/v1.6/connectors/external-ingestion-deployment.md" /%}
+{% partial file="/v1.7/connectors/external-ingestion-deployment.md" /%}
 
 ## Requirements
 
 ### Python Requirements
 
-{% partial file="/v1.6/connectors/python-requirements.md" /%}
+{% partial file="/v1.7/connectors/python-requirements.md" /%}
 
 
 ### Generate OpenAPI Schema URL
@@ -46,7 +46,7 @@ This is a sample config for OpenAPI:
 
 {% codeInfo srNumber=1 %}
 
-**OpenAPI Schema URL**: 
+**OpenAPI Schema URL**:
 An OpenAPI schema URL typically refers to the URL where the OpenAPI Specification (OAS) document of a web service is hosted. The document defines the service's API, including available endpoints, request/response formats, authentication methods, etc. It is usually in JSON format. for e.g. `https://petstore3.swagger.io/api/v3/openapi.json`
 
 **Token**: An authentication token to connect to an OpenAPI schema URL. It is only required if the API schema is protected or secured.
@@ -63,7 +63,7 @@ source:
   serviceName: openapi_rest
   serviceConnection:
     config:
-      type: REST
+      type: ApiMetadata
 ```
 ```yaml {% srNumber=1 %}
       openAPISchemaURL: https://docs.open-metadata.org/swagger.json
@@ -71,14 +71,14 @@ source:
 ```
 
 
-{% partial file="/v1.6/connectors/yaml/database/source-config.md" /%}
+{% partial file="/v1.7/connectors/yaml/api/source-config.md" /%}
 
-{% partial file="/v1.6/connectors/yaml/ingestion-sink.md" /%}
+{% partial file="/v1.7/connectors/yaml/ingestion-sink.md" /%}
 
-{% partial file="/v1.6/connectors/yaml/workflow-config.md" /%}
+{% partial file="/v1.7/connectors/yaml/workflow-config.md" /%}
 
 {% /codeBlock %}
 
 {% /codePreview %}
 
-{% partial file="/v1.6/connectors/yaml/ingestion-cli.md" /%}
+{% partial file="/v1.7/connectors/yaml/ingestion-cli.md" /%}

@@ -47,6 +47,7 @@ import org.openmetadata.schema.api.tests.CreateTestSuite;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
 import org.openmetadata.schema.auth.JWTTokenExpiry;
 import org.openmetadata.schema.configuration.AssetCertificationSettings;
+import org.openmetadata.schema.configuration.WorkflowSettings;
 import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
@@ -80,6 +81,7 @@ import org.openmetadata.service.resources.storages.ContainerResourceTest;
 import org.openmetadata.service.resources.teams.TeamResourceTest;
 import org.openmetadata.service.resources.teams.UserResourceTest;
 import org.openmetadata.service.resources.topics.TopicResourceTest;
+import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.TestUtils;
 
@@ -189,10 +191,10 @@ public class SystemResourceTest extends OpenMetadataApplicationTest {
     // Test Email Config
     Settings emailSettings = getSystemConfig(SettingsType.EMAIL_CONFIGURATION);
     SmtpSettings smtp = JsonUtils.convertValue(emailSettings.getConfigValue(), SmtpSettings.class);
-    // Password for Email is encrypted using fernet
+    // Password for Email is always sent in hidden
     SmtpSettings expected = config.getSmtpSettings();
-    expected.setPassword(smtp.getPassword());
-    assertEquals(config.getSmtpSettings(), smtp);
+    expected.setPassword(PasswordEntityMasker.PASSWORD_MASK);
+    assertEquals(expected, smtp);
 
     // Test Custom Ui Theme Preference Config
     Settings uiThemeConfigWrapped = getSystemConfig(SettingsType.CUSTOM_UI_THEME_PREFERENCE);
@@ -435,7 +437,7 @@ public class SystemResourceTest extends OpenMetadataApplicationTest {
 
     // Assert default values
     assertEquals(3, loginConfig.getMaxLoginFailAttempts());
-    assertEquals(600, loginConfig.getAccessBlockTime());
+    assertEquals(30, loginConfig.getAccessBlockTime());
     assertEquals(3600, loginConfig.getJwtTokenExpiryTime());
 
     // Update login configuration
@@ -549,6 +551,48 @@ public class SystemResourceTest extends OpenMetadataApplicationTest {
     // Assert updated values
     assertEquals(3, updatedLineageConfig.getUpstreamDepth());
     assertEquals(4, updatedLineageConfig.getDownstreamDepth());
+  }
+
+  @Test
+  void testWorkflowSettings() throws HttpResponseException {
+    // Retrieve the default workflow settings
+    Settings setting = getSystemConfig(SettingsType.WORKFLOW_SETTINGS);
+    WorkflowSettings workflowSettings =
+        JsonUtils.convertValue(setting.getConfigValue(), WorkflowSettings.class);
+
+    // Assert default values
+    assertEquals(50, workflowSettings.getExecutorConfiguration().getCorePoolSize());
+    assertEquals(1000, workflowSettings.getExecutorConfiguration().getQueueSize());
+    assertEquals(100, workflowSettings.getExecutorConfiguration().getMaxPoolSize());
+    assertEquals(20, workflowSettings.getExecutorConfiguration().getTasksDuePerAcquisition());
+    assertEquals(7, workflowSettings.getHistoryCleanUpConfiguration().getCleanAfterNumberOfDays());
+
+    // Update workflow settings
+    workflowSettings.getExecutorConfiguration().setCorePoolSize(100);
+    workflowSettings.getExecutorConfiguration().setQueueSize(2000);
+    workflowSettings.getExecutorConfiguration().setMaxPoolSize(200);
+    workflowSettings.getExecutorConfiguration().setTasksDuePerAcquisition(40);
+    workflowSettings.getHistoryCleanUpConfiguration().setCleanAfterNumberOfDays(10);
+
+    Settings updatedSetting =
+        new Settings()
+            .withConfigType(SettingsType.WORKFLOW_SETTINGS)
+            .withConfigValue(workflowSettings);
+
+    updateSystemConfig(updatedSetting);
+
+    // Retrieve the updated settings
+    Settings updatedSettings = getSystemConfig(SettingsType.WORKFLOW_SETTINGS);
+    WorkflowSettings updateWorkflowSettings =
+        JsonUtils.convertValue(updatedSettings.getConfigValue(), WorkflowSettings.class);
+
+    // Assert updated values
+    assertEquals(100, updateWorkflowSettings.getExecutorConfiguration().getCorePoolSize());
+    assertEquals(2000, updateWorkflowSettings.getExecutorConfiguration().getQueueSize());
+    assertEquals(200, updateWorkflowSettings.getExecutorConfiguration().getMaxPoolSize());
+    assertEquals(40, updateWorkflowSettings.getExecutorConfiguration().getTasksDuePerAcquisition());
+    assertEquals(
+        10, updateWorkflowSettings.getHistoryCleanUpConfiguration().getCleanAfterNumberOfDays());
   }
 
   @Test

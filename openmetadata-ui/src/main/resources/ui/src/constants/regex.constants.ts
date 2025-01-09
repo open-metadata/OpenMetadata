@@ -11,14 +11,8 @@
  *  limitations under the License.
  */
 
-import { FQN_SEPARATOR_CHAR } from './char.constants';
-
 export const UrlEntityCharRegEx = /[#.%;?/\\]/g;
 export const EMAIL_REG_EX = /^\S+@\S+\.\S+$/;
-export const FQN_REGEX = new RegExp(
-  `("${FQN_SEPARATOR_CHAR}*?"|[^"${FQN_SEPARATOR_CHAR}\\s]+)(?=\\s*.|\\s*$)`,
-  'g'
-);
 
 /**
  * strings that contain a combination of letters, alphanumeric characters, hyphens,
@@ -28,13 +22,8 @@ export const ENTITY_NAME_REGEX = /^((?!::).)*$/;
 
 export const TAG_NAME_REGEX = /^[\p{L}\p{M}\w\- .&()]+$/u;
 
-export const delimiterRegex = /[\\[\]\\()\\;\\,\\|\\{}\\``\\/\\<>\\^]/g;
-export const nameWithSpace = /\s/g;
-
 export const passwordRegex =
   /^(?=.*\d)(?=.*[A-Z])(?=.*[a-z])(?=.*[^\w\d\s:])([^\s]){8,56}$/g;
-
-export const allowedNameRegEx = /[`!@#$%^&*()+=[\]{};:"\\|,.<>/?~]/;
 
 export const ONEOF_ANYOF_ALLOF_REGEX = /(oneof|anyof|allof)/;
 
@@ -46,7 +35,6 @@ export const CUSTOM_PROPERTY_NAME_REGEX =
 
 export const ENDS_WITH_NUMBER_REGEX = /\d+$/;
 
-export const VALID_OBJECT_KEY_REGEX = /^[_$a-zA-Z][_$a-zA-Z0-9]*$/;
 export const HEX_COLOR_CODE_REGEX = /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/;
 
 export const TASK_SANITIZE_VALUE_REGEX = /^"|"$/g;

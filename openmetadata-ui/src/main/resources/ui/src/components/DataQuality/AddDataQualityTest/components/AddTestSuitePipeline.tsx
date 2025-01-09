@@ -13,11 +13,13 @@
 import { Col, Form, Row } from 'antd';
 import { FormProviderProps } from 'antd/lib/form/context';
 import { isEmpty, isString } from 'lodash';
-import React, { useState } from 'react';
+import QueryString from 'qs';
+import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { DEFAULT_SCHEDULE_CRON_DAILY } from '../../../../constants/Schedular.constants';
 import { TestCase } from '../../../../generated/tests/testCase';
+import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../../hooks/useFqn';
 import {
   FieldProp,
@@ -41,11 +43,24 @@ const AddTestSuitePipeline = ({
   onSubmit,
   onCancel,
   includePeriodOptions,
-  testSuiteFQN,
+  testSuite,
 }: AddTestSuitePipelineProps) => {
   const { t } = useTranslation();
   const history = useHistory();
   const { fqn, ingestionFQN } = useFqn();
+  const location = useCustomLocation();
+
+  const testSuiteId = useMemo(() => {
+    const param = location.search;
+    const searchData = QueryString.parse(
+      param.startsWith('?') ? param.substring(1) : param
+    );
+    const testSuiteIdData =
+      testSuite?.id ?? (searchData as { testSuiteId: string }).testSuiteId;
+
+    return testSuite?.basic ? undefined : testSuiteIdData;
+  }, [location.search]);
+
   const [selectAllTestCases, setSelectAllTestCases] = useState(
     initialData?.selectAllTestCases
   );
@@ -153,10 +168,15 @@ const AddTestSuitePipeline = ({
                 ]}
                 valuePropName="selectedTest">
                 <AddTestCaseList
-                  filters={`testSuite.fullyQualifiedName:${escapeESReservedCharacters(
-                    testSuiteFQN ?? fqn
-                  )}`}
+                  filters={
+                    !testSuiteId
+                      ? `testSuite.fullyQualifiedName:${escapeESReservedCharacters(
+                          testSuite?.fullyQualifiedName ?? fqn
+                        )}`
+                      : undefined
+                  }
                   showButton={false}
+                  testCaseParams={{ testSuiteId }}
                 />
               </Form.Item>
             </Col>

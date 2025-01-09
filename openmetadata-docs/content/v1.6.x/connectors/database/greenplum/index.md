@@ -7,7 +7,7 @@ slug: /connectors/database/greenplum
 name="Greenplum"
 stage="BETA"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Data Profiler", "Data Quality", "dbt"]
+availableFeatures=["Metadata", "Data Profiler", "Data Quality", "dbt", "View Lineage"]
 unavailableFeatures=["Query Usage", "Owners", "Tags", "Stored Procedures", "Lineage", "Column-level Lineage"]
 / %}
 
@@ -20,7 +20,7 @@ Configure and schedule Greenplum metadata and profiler workflows from the OpenMe
 - [Query Usage](/connectors/ingestion/workflows/usage)
 - [Data Profiler](/how-to-guides/data-quality-observability/profiler/workflow)
 - [Data Quality](/how-to-guides/data-quality-observability/quality)
-- [Lineage](/connectors/ingestion/lineage)
+- [Lineage](/how-to-guides/data-lineage/workflow)
 - [dbt Integration](/connectors/ingestion/workflows/dbt)
 - [Enable Security](#securing-greenplum-connection-with-ssl-in-openmetadata)
 

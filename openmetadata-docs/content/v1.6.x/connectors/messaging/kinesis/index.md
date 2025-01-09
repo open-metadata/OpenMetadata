@@ -56,7 +56,7 @@ For more information on Kinesis permissions visit the [AWS Kinesis official docu
   variables={
     connector: "Kinesis", 
     selectServicePath: "/images/v1.6/connectors/kinesis/select-service.png",
-    addNewServicePath: "/images/v1.6/connectors//add-new-service.png",
+    addNewServicePath: "/images/v1.6/connectors/add-new-service.png",
     serviceConnectionPath: "/images/v1.6/connectors/kinesis/service-connection.png",
 } 
 /%}

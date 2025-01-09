@@ -18,13 +18,13 @@ Configure and schedule Airbyte metadata and profiler workflows from the OpenMeta
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 
-{% partial file="/v1.6/connectors/external-ingestion-deployment.md" /%}
+{% partial file="/v1.7/connectors/external-ingestion-deployment.md" /%}
 
 ## Requirements
 
 ### Python Requirements
 
-{% partial file="/v1.6/connectors/python-requirements.md" /%}
+{% partial file="/v1.7/connectors/python-requirements.md" /%}
 
 To run the Airbyte ingestion, you will need to install:
 
@@ -59,15 +59,32 @@ This is a sample config for Airbyte:
 
 **hostPort**: Pipeline Service Management UI URL
 
+{% /codeInfo %}
+
+{% codeInfo srNumber=2 %}
+
+**username**: Username to connect to Airbyte.
+
+{% /codeInfo %}
+
+{% codeInfo srNumber=3 %}
+
+**password**: Password to connect to Airbyte.
+
+{% /codeInfo %}
+
+{% codeInfo srNumber=4 %}
+
+**apiVersion**: Version of the Airbyte REST API by default `api/v1`.
 
 {% /codeInfo %}
 
 
-{% partial file="/v1.6/connectors/yaml/pipeline/source-config-def.md" /%}
+{% partial file="/v1.7/connectors/yaml/pipeline/source-config-def.md" /%}
 
-{% partial file="/v1.6/connectors/yaml/ingestion-sink-def.md" /%}
+{% partial file="/v1.7/connectors/yaml/ingestion-sink-def.md" /%}
 
-{% partial file="/v1.6/connectors/yaml/workflow-config-def.md" /%}
+{% partial file="/v1.7/connectors/yaml/workflow-config-def.md" /%}
 
 
 {% /codeInfoContainer %}
@@ -86,15 +103,24 @@ source:
 ```yaml {% srNumber=1 %}
       hostPort: http://localhost:8000
 ```
+```yaml {% srNumber=2 %}
+      username: <username>
+```
+```yaml {% srNumber=3 %}
+      password: <password>
+```
+```yaml {% srNumber=4 %}
+      apiVersion: api/v1
+```
 
-{% partial file="/v1.6/connectors/yaml/pipeline/source-config.md" /%}
+{% partial file="/v1.7/connectors/yaml/pipeline/source-config.md" /%}
 
-{% partial file="/v1.6/connectors/yaml/ingestion-sink.md" /%}
+{% partial file="/v1.7/connectors/yaml/ingestion-sink.md" /%}
 
-{% partial file="/v1.6/connectors/yaml/workflow-config.md" /%}
+{% partial file="/v1.7/connectors/yaml/workflow-config.md" /%}
 
 {% /codeBlock %}
 
 {% /codePreview %}
 
-{% partial file="/v1.6/connectors/yaml/ingestion-cli.md" /%}
+{% partial file="/v1.7/connectors/yaml/ingestion-cli.md" /%}

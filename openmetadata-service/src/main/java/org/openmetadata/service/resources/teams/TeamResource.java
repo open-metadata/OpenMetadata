@@ -14,8 +14,6 @@
 package org.openmetadata.service.resources.teams;
 
 import static org.openmetadata.common.utils.CommonUtil.listOf;
-import static org.openmetadata.service.exception.CatalogExceptionMessage.CREATE_GROUP;
-import static org.openmetadata.service.exception.CatalogExceptionMessage.CREATE_ORGANIZATION;
 
 import io.dropwizard.jersey.PATCH;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
@@ -52,7 +50,6 @@ import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.teams.CreateTeam;
-import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.TeamHierarchy;
 import org.openmetadata.schema.type.ChangeEvent;
@@ -72,9 +69,7 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.util.CSVExportResponse;
-import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 
@@ -93,6 +88,7 @@ import org.openmetadata.service.util.ResultList;
     requiredForOps = true) // Load after roles, and policy resources
 public class TeamResource extends EntityResource<Team, TeamRepository> {
   public static final String COLLECTION_PATH = "/v1/teams/";
+  private final TeamMapper mapper = new TeamMapper();
   static final String FIELDS =
       "owners,profile,users,owns,defaultRoles,parents,children,policies,userCount,childrenCount,domains";
 
@@ -379,7 +375,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
       })
   public Response create(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTeam ct) {
-    Team team = getTeam(ct, securityContext.getUserPrincipal().getName());
+    Team team = mapper.createToEntity(ct, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, team);
   }
 
@@ -400,7 +396,7 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
       })
   public Response createOrUpdate(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateTeam ct) {
-    Team team = getTeam(ct, securityContext.getUserPrincipal().getName());
+    Team team = mapper.createToEntity(ct, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, team);
   }
 
@@ -687,10 +683,6 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
       @Context SecurityContext securityContext,
       @PathParam("teamId") UUID teamId,
       List<EntityReference> users) {
-
-    OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
-    authorizer.authorize(securityContext, operationContext, getResourceContextById(teamId));
     return repository
         .updateTeamUsers(securityContext.getUserPrincipal().getName(), teamId, users)
         .toResponse();
@@ -721,10 +713,6 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
       @Parameter(description = "Id of the user being removed", schema = @Schema(type = "string"))
           @PathParam("userId")
           String userId) {
-
-    OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
-    authorizer.authorize(securityContext, operationContext, getResourceContextById(teamId));
     return repository
         .deleteTeamUser(
             securityContext.getUserPrincipal().getName(), teamId, UUID.fromString(userId))
@@ -760,26 +748,5 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
           boolean dryRun,
       String csv) {
     return importCsvInternalAsync(securityContext, name, csv, dryRun);
-  }
-
-  private Team getTeam(CreateTeam ct, String user) {
-    if (ct.getTeamType().equals(TeamType.ORGANIZATION)) {
-      throw new IllegalArgumentException(CREATE_ORGANIZATION);
-    }
-    if (ct.getTeamType().equals(TeamType.GROUP) && ct.getChildren() != null) {
-      throw new IllegalArgumentException(CREATE_GROUP);
-    }
-    return repository
-        .copy(new Team(), ct, user)
-        .withProfile(ct.getProfile())
-        .withIsJoinable(ct.getIsJoinable())
-        .withUsers(EntityUtil.toEntityReferences(ct.getUsers(), Entity.USER))
-        .withDefaultRoles(EntityUtil.toEntityReferences(ct.getDefaultRoles(), Entity.ROLE))
-        .withTeamType(ct.getTeamType())
-        .withParents(EntityUtil.toEntityReferences(ct.getParents(), Entity.TEAM))
-        .withChildren(EntityUtil.toEntityReferences(ct.getChildren(), Entity.TEAM))
-        .withPolicies(EntityUtil.toEntityReferences(ct.getPolicies(), Entity.POLICY))
-        .withEmail(ct.getEmail())
-        .withDomains(EntityUtil.getEntityReferences(Entity.DOMAIN, ct.getDomains()));
   }
 }
