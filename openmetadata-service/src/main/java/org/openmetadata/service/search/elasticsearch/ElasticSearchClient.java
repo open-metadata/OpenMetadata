@@ -1322,10 +1322,9 @@ public class ElasticSearchClient implements SearchClient {
       totalRecords = searchResponse.getHits().getTotalHits().value;
       int currentHits = searchResponse.getHits().getHits().length;
       processedRecords += currentHits;
-      if (currentHits > 0){
+      if (currentHits > 0) {
         searchAfter = searchResponse.getHits().getHits()[currentHits - 1].getSortValues();
-      }
-      else {
+      } else {
         searchAfter = null;
       }
     }
