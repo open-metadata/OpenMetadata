@@ -82,6 +82,7 @@ import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.secrets.SecretsManagerUpdateService;
+import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.util.jdbi.DatabaseAuthenticationProviderFactory;
 import org.openmetadata.service.util.jdbi.JdbiUtils;
 import org.slf4j.LoggerFactory;
@@ -207,6 +208,11 @@ public class OpenMetadataOperations implements Callable<Integer> {
       CollectionRegistry.getInstance().loadSeedData(jdbi, config, null, null, null, true);
       ApplicationHandler.initialize(config);
       AppScheduler.initialize(config, collectionDAO, searchRepository);
+      // Instantiate JWT Token Generator
+      JWTTokenGenerator.getInstance()
+          .init(
+              config.getAuthenticationConfiguration().getTokenValidationAlgorithm(),
+              config.getJwtTokenConfiguration());
       AppMarketPlaceRepository marketPlaceRepository =
           (AppMarketPlaceRepository) Entity.getEntityRepository(Entity.APP_MARKET_PLACE_DEF);
       AppMarketPlaceDefinition definition =
