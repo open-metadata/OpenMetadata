@@ -916,6 +916,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
       repository.deleteTestCaseFailedRowsSample(testCase.getId());
     }
     RestUtil.validateTimestampMilliseconds(testCaseResult.getTimestamp());
+    testCaseResult.withId(UUID.randomUUID()).withTestCaseFQN(fqn);
     return repository
         .addTestCaseResult(
             securityContext.getUserPrincipal().getName(), uriInfo, fqn, testCaseResult)
