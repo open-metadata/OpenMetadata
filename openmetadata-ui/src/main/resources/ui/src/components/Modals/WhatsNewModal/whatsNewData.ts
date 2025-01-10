@@ -1457,7 +1457,7 @@ Since we are introducing the Auto Classification workflow, we are going to remov
   {
     id: 58,
     version: 'v1.6.2',
-    description: 'Released on 8th January 2025.',
+    description: 'Released on 10th January 2025.',
     features: [],
     changeLogs: {
       Improvements: `- **Fix**: Test case getting removed from logical test suite after editing the test case.
@@ -1473,7 +1473,6 @@ Since we are introducing the Auto Classification workflow, we are going to remov
 - **Fix**: Column lineage ingestion failed to parse column due to subquery raw_name AttributeError.
 - **Fix**: Data Insight Tier Filter does not work.
 - **Fix**: Add depth support for storage connector.
-- **Fix**: The tag also adding to a different asset when a different asset with the same name is updated with the tag.
 - **Fix**: Replace the description editor with a new block editor.
 - **Fix**: Redshift Metadata ingestion failing for Stored Procedure.
 - **Fix**: Lineage view not showing all the nodes in case of circular lineage.
@@ -1484,7 +1483,6 @@ Since we are introducing the Auto Classification workflow, we are going to remov
 - **Fix**: Auto Classification Ingestion - AttributeError: 'DataType' object has no attribute 'dialect_impl'.
 - **Fix**: Adding the profiler for doris failing to execute.
 - **Fix**: Unable to remove existing values from custom property (enum data type).
-- **Improvement**: Ability to disable soft delete when Ingestion pipeline fails.
 - **Improvement**: Ability to sort the DI charts based on date or term.
 - **Improvement**: Support test connection api cancellation on click of cancel.
 - **Improvement**: Highlight the search term for schema table on table details page.
