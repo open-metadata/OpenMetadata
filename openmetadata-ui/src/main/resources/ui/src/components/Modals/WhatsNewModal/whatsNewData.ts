@@ -1470,7 +1470,7 @@ Since we are introducing the Auto Classification workflow, we are going to remov
   {
     id: 58,
     version: 'v1.6.2',
-    description: 'Released on 9th January 2025.',
+    description: 'Released on 10th January 2025.',
     features: [],
     changeLogs: {
       Improvements: `- **Fix**: Test case getting removed from logical test suite after editing the test case.
