@@ -103,6 +103,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     currentPage,
     handlePageChange,
     pagingCursor,
+    handlePageSizeChange,
   } = pagingInfo;
 
   const { tab: activeTab = EntityTabs.TABLE } =
@@ -483,14 +484,18 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     ({ cursorType, currentPage }: PagingHandlerParams) => {
       if (cursorType) {
         getSchemaTables({ [cursorType]: paging[cursorType] });
-        handlePageChange(currentPage, {
-          cursorType: cursorType,
-          cursorValue: paging[cursorType as CursorType]!,
-        });
+        handlePageChange(
+          currentPage,
+          {
+            cursorType: cursorType,
+            cursorValue: paging[cursorType as CursorType]!,
+          },
+          pageSize
+        );
       }
       handlePageChange(currentPage);
     },
-    [paging, getSchemaTables, handlePageChange]
+    [paging, getSchemaTables, handlePageChange, pageSize]
   );
 
   const versionHandler = useCallback(() => {
@@ -548,16 +553,27 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   useEffect(() => {
     const cursorState = pagingCursor();
     if (viewDatabaseSchemaPermission && decodedDatabaseSchemaFQN) {
-      if (cursorState.cursorType) {
+      if (cursorState.cursorData?.cursorType && cursorState?.pageSize) {
         // Fetch data if cursorType is present in state with cursor Value to handle browser back navigation
         getSchemaTables({
-          [cursorState.cursorType]: cursorState.cursorValue,
-          limit: pageSize,
+          [cursorState?.cursorData?.cursorType]:
+            cursorState?.cursorData?.cursorValue,
         });
+
+        handlePageSizeChange(cursorState?.pageSize, false);
         handlePageChange(cursorState.currentPage as number);
       } else {
         // Otherwise, just fetch the data without cursor value
         getSchemaTables({ limit: pageSize });
+        handlePageChange(
+          currentPage,
+          {
+            cursorType: null,
+            cursorValue: null,
+          },
+          cursorState?.pageSize || pageSize
+        );
+        handlePageSizeChange(cursorState?.pageSize || pageSize);
       }
     }
   }, [

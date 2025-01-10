@@ -30,11 +30,16 @@ import useCustomLocation from '../useCustomLocation/useCustomLocation';
 interface CursorState {
   cursorType: CursorType | null;
   cursorValue: string | null;
+}
+
+interface PagingStateData {
+  cursorData: CursorState;
   currentPage: number | null;
+  pageSize: number | null;
 }
 
 interface LocationState {
-  [path: string]: CursorState;
+  [path: string]: PagingStateData;
 }
 
 export interface UsePagingInterface {
@@ -43,12 +48,13 @@ export interface UsePagingInterface {
   currentPage: number;
   handlePageChange: (
     page: number,
-    cursorData?: Omit<CursorState, 'currentPage'>
+    cursorData?: CursorState,
+    pageSize?: number | null
   ) => void;
   pageSize: number;
-  handlePageSizeChange: (page: number) => void;
+  handlePageSizeChange: (page: number, resetHistoryState?: boolean) => void;
   showPagination: boolean;
-  pagingCursor: () => CursorState;
+  pagingCursor: () => PagingStateData;
 }
 export const usePaging = (
   defaultPageSize = PAGE_SIZE_BASE
@@ -60,33 +66,58 @@ export const usePaging = (
   const location = useCustomLocation();
 
   const handlePageSize = useCallback(
-    (page: number) => {
+    (page: number, resetHistoryState = true) => {
       setPageSize(page);
       setCurrentPage(INITIAL_PAGING_VALUE);
-    },
-    [setPageSize, setCurrentPage]
-  );
 
+      // Update location state to persist pageSize for navigation
+      const path = location.pathname;
+      const state = (location.state as LocationState) || {};
+      const cursorState = state[path] || {};
+
+      history.replace({
+        ...location,
+        state: {
+          ...state,
+          [path]: {
+            // ...cursorState,
+            pageSize: page,
+            cursorData: resetHistoryState
+              ? { cursorType: null, cursorValue: null }
+              : cursorState.cursorData,
+            currentPage: resetHistoryState
+              ? INITIAL_PAGING_VALUE
+              : cursorState.currentPage,
+          },
+        },
+      });
+    },
+    [setPageSize, setCurrentPage, location, history]
+  );
   const paginationVisible = useMemo(() => {
     return paging.total > pageSize || pageSize !== defaultPageSize;
   }, [defaultPageSize, paging, pageSize]);
 
-  // fetch stored cursor values on page reload
-  const pagingCursor = () => {
+  // Fetch stored cursor values on page reload
+  const pagingCursor = useCallback(() => {
     const path = location.pathname;
     const state = (location.state as LocationState) || {};
     const cursorState = state[path];
 
     return {
-      cursorType: cursorState?.cursorType || null,
-      cursorValue: cursorState?.cursorValue || null,
+      cursorData: {
+        cursorType: cursorState?.cursorData.cursorType || null,
+        cursorValue: cursorState?.cursorData.cursorValue || null,
+      },
       currentPage: cursorState?.currentPage || null,
+      pageSize: cursorState?.pageSize || null,
     };
-  };
+  }, [location]);
 
   const handlePageChange = (
     page: number,
-    cursorData?: Omit<CursorState, 'currentPage'>
+    cursorData?: CursorState,
+    pageSize?: number | null
   ) => {
     setCurrentPage(page);
     if (cursorData) {
@@ -96,9 +127,9 @@ export const usePaging = (
         state: {
           ...(location.state || {}),
           [path]: {
-            cursorType: cursorData.cursorType,
-            cursorValue: cursorData.cursorValue,
+            cursorData,
             currentPage: page,
+            pageSize,
           },
         },
       });
