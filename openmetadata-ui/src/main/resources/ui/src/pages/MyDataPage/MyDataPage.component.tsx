@@ -53,7 +53,7 @@ const ReactGridLayout = WidthProvider(RGL);
 
 const MyDataPage = () => {
   const { t } = useTranslation();
-  const { currentUser, selectedPersona, applications } = useApplicationStore();
+  const { currentUser, selectedPersona } = useApplicationStore();
   const { loading: applicationsLoading } = useApplicationsProvider();
   const { isWelcomeVisible } = useWelcomeStore();
   const [followedData, setFollowedData] = useState<Array<EntityReference>>([]);
@@ -205,20 +205,16 @@ const MyDataPage = () => {
   // call the hook to set the direction of the grid layout
   useGridLayoutDirection(isLoading);
 
-  const isOnboardingInstalled = applications.includes(
-    t('onboarding-application')
-  );
+  if (isLoading || applicationsLoading) {
+    return <Loader fullScreen />;
+  }
 
   if (showWelcomeScreen) {
-    if (applicationsLoading) {
-      return <Loader />;
-    } else if (!isOnboardingInstalled) {
-      return (
-        <div className="bg-white full-height">
-          <WelcomeScreen onClose={() => updateWelcomeScreen(false)} />
-        </div>
-      );
-    }
+    return (
+      <div className="bg-white full-height">
+        <WelcomeScreen onClose={() => updateWelcomeScreen(false)} />
+      </div>
+    );
   }
 
   return (
@@ -226,30 +222,21 @@ const MyDataPage = () => {
       <PageLayoutV1
         mainContainerClassName="p-t-0"
         pageTitle={t('label.my-data')}>
-        {isLoading || applicationsLoading ? (
-          <div className="ant-layout-content flex-center">
-            <Loader />
-          </div>
-        ) : (
-          <>
-            <ReactGridLayout
-              className="bg-white"
-              cols={4}
-              compactType="vertical"
-              isDraggable={false}
-              isResizable={false}
-              margin={[
-                customizePageClassBase.landingPageWidgetMargin,
-                customizePageClassBase.landingPageWidgetMargin,
-              ]}
-              rowHeight={100}>
-              {widgets}
-            </ReactGridLayout>
-            <LimitWrapper resource="dataAssets">
-              <br />
-            </LimitWrapper>
-          </>
-        )}
+        <ReactGridLayout
+          className="bg-white"
+          cols={4}
+          isDraggable={false}
+          isResizable={false}
+          margin={[
+            customizePageClassBase.landingPageWidgetMargin,
+            customizePageClassBase.landingPageWidgetMargin,
+          ]}
+          rowHeight={100}>
+          {widgets}
+        </ReactGridLayout>
+        <LimitWrapper resource="dataAssets">
+          <br />
+        </LimitWrapper>
       </PageLayoutV1>
     </ActivityFeedProvider>
   );
