@@ -53,7 +53,7 @@ Select {% $connector %} as the Service type and click _Next_.
 {% stepVisualInfo %}
 
 {% image
-  src=/images/v1.6/connectors/select-service-type.png
+  src="/images/v1.6/connectors/select-service-type.png"
   alt="Select Service"
   caption="Select your Service from the list" /%}
 
@@ -81,7 +81,7 @@ Note that when the name is set, it cannot be changed.
 {% stepVisualInfo %}
 
 {% image
-  src=/images/v1.6/connectors/add-service-name.png
+  src="/images/v1.6/connectors/add-service-name.png"
   alt="Add New Service"
   caption="Provide a Name and description for your Service" /%}
 
@@ -103,7 +103,7 @@ helper documentation on the right-hand side panel in the UI.
 {% stepVisualInfo %}
 
 {% image
-  src=/images/v1.6/connectors/configure-service-connection.png
+  src="/images/v1.6/connectors/configure-service-connection.png"
   alt="Configure Service connection"
   caption="Configure the Service connection by filling the form" /%}
 
