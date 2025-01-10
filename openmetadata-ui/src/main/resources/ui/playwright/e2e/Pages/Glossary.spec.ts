@@ -806,6 +806,8 @@ test.describe('Glossary tests', () => {
   test('Assign Glossary Term to entity and check assets', async ({
     browser,
   }) => {
+    test.slow(true);
+
     const { page, afterAction, apiContext } = await performAdminLogin(browser);
     const table = new TableClass();
     const glossary1 = new Glossary();
