@@ -350,10 +350,9 @@ site_menu:
 
   - category: Connectors / Pipeline / Matillion / Run Externally
     url: /connectors/pipeline/matillion/yaml
-  - category: Connectors / Pipeline / DataFactory
+  - category: Connectors / Pipeline / Azure Data Factory
     url: /connectors/pipeline/datafactory
-
-  - category: Connectors / Pipeline / DataFactory / Run Externally
+  - category: Connectors / Pipeline / Azure Data Factory / Run Externally
     url: /connectors/pipeline/datafactory/yaml
   - category: Connectors / Pipeline / Stitch
     url: /connectors/pipeline/stitch
