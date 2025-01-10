@@ -21,14 +21,10 @@ on:
       - opened
       - synchronize
       - reopened
-    paths:
-      - docker/**
     paths-ignore:
       - openmetadata-docs/**
       - .github/**
       - openmetadata-dist/**
-      
-
 permissions:
   contents: read
 
