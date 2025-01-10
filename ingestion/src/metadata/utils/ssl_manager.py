@@ -17,6 +17,7 @@ import os
 import tempfile
 import traceback
 from functools import singledispatch, singledispatchmethod
+from ssl import CERT_REQUIRED, SSLContext
 from typing import Optional, Union, cast
 
 from pydantic import SecretStr
@@ -26,6 +27,9 @@ from metadata.generated.schema.entity.services.connections.connectionBasicType i
 )
 from metadata.generated.schema.entity.services.connections.dashboard.qlikSenseConnection import (
     QlikSenseConnection,
+)
+from metadata.generated.schema.entity.services.connections.database.cassandraConnection import (
+    CassandraConnection,
 )
 from metadata.generated.schema.entity.services.connections.database.dorisConnection import (
     DorisConnection,
@@ -55,6 +59,7 @@ from metadata.generated.schema.entity.services.connections.pipeline.matillionCon
     MatillionConnection,
 )
 from metadata.generated.schema.security.ssl import verifySSLConfig
+from metadata.generated.schema.security.ssl.verifySSLConfig import SslMode
 from metadata.ingestion.connections.builders import init_empty_connection_arguments
 from metadata.ingestion.models.custom_pydantic import CustomSecretStr
 from metadata.ingestion.source.connections import get_connection
@@ -206,6 +211,25 @@ class SSLManager:
         ] = self.cert_file_path
         return connection
 
+    @setup_ssl.register(CassandraConnection)
+    def _(self, connection):
+        connection = cast(CassandraConnection, connection)
+
+        ssl_context = None
+        if connection.sslMode != SslMode.disable:
+            ssl_context = SSLContext()
+            ssl_context.load_verify_locations(cafile=self.ca_file_path)
+            ssl_context.verify_mode = CERT_REQUIRED
+            ssl_context.load_cert_chain(
+                certfile=self.cert_file_path, keyfile=self.key_file_path
+            )
+
+        connection.connectionArguments = (
+            connection.connectionArguments or init_empty_connection_arguments()
+        )
+        connection.connectionArguments.root["ssl_context"] = ssl_context
+        return connection
+
 
 @singledispatch
 def check_ssl_and_init(_) -> Optional[SSLManager]:
@@ -285,6 +309,17 @@ def _(connection):
     if connection.sslMode:
         return SSLManager(
             ca=connection.sslConfig.root.caCertificate if connection.sslConfig else None
+        )
+    return None
+
+
+@check_ssl_and_init.register(CassandraConnection)
+def _(connection):
+    service_connection = cast(CassandraConnection, connection)
+    ssl: Optional[verifySSLConfig.SslConfig] = service_connection.sslConfig
+    if ssl and (ssl.root.caCertificate or ssl.root.sslCertificate or ssl.root.sslKey):
+        return SSLManager(
+            ca=ssl.root.caCertificate, cert=ssl.root.sslCertificate, key=ssl.root.sslKey
         )
     return None
 
