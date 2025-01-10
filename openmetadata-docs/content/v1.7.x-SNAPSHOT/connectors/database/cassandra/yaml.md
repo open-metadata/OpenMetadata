@@ -17,6 +17,8 @@ Configure and schedule Cassandra metadata workflows from the OpenMetadata UI:
 
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
+- [Enable Security](#securing-cassandra-connection-with-ssl-in-openmetadata)
+
 
 {% partial file="/v1.7/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/cassandra/yaml"} /%}
 
@@ -102,8 +104,36 @@ Configuration for connecting to DataStax Astra DB in the cloud.
 
 {% partial file="/v1.7/connectors/yaml/workflow-config-def.md" /%}
 
+#### Advanced Configuration
+
+{% codeInfo srNumber=6 %}
+
+**Connection Arguments (Optional)**: Enter the details for any additional connection arguments such as security or protocol configs that can be sent to database during the connection. These details must be added as Key-Value pairs.
+
 {% /codeInfo %}
 
+{% codeInfo srNumber=7 %}
+
+The sslConfig and sslMode are used to configure the SSL (Secure Sockets Layer) connection between your application and the PostgreSQL server.
+
+- **caCertificate**: Provide the path to ssl ca file.
+
+- **sslCertificate**: Provide the path to ssl client certificate file (ssl_cert).
+
+- **sslKey**: Provide the path to ssl client certificate file (ssl_key).
+
+**sslMode**: This field controls whether a secure SSL/TLS connection will be negotiated with the server. There are several modes you can choose:
+
+disable: No SSL/TLS encryption will be used; the data sent over the network is not encrypted.
+allow: The driver will try to negotiate a non-SSL connection but if the server insists on SSL, it will switch to SSL.
+prefer (the default): The driver will try to negotiate an SSL connection but if the server does not support SSL, it will switch to a non-SSL connection.
+require: The driver will try to negotiate an SSL connection. If the server does not support SSL, the driver will not fall back to a non-SSL connection.
+verify-ca: The driver will negotiate an SSL connection and verify that the server certificate is issued by a trusted certificate authority (CA).
+verify-full: The driver will negotiate an SSL connection, verify that the server certificate is issued by a trusted CA and check that the server host name matches the one in the certificate.
+
+{% /codeInfo %}
+
+{% /codeInfo %}
 
 {% /codeInfoContainer %}
 
@@ -135,6 +165,17 @@ source:
           requestTimeout: <Timeout in seconds>
           connectTimeout: <Timeout in seconds>
 ```
+```yaml {% srNumber=6 %}
+      # connectionArguments:
+      #   key: value
+```
+```yaml {% srNumber=7 %}
+      # sslConfig:
+            # caCertificate: "path/to/ca/certificate"
+            # sslCertificate: "path/to/ssl/certificate"
+            # sslKey: "path/to/ssl/key"
+      # sslMode: disable #allow prefer require verify-ca verify-full
+```
 
 
 {% partial file="/v1.7/connectors/yaml/database/source-config.md" /%}
@@ -148,3 +189,17 @@ source:
 {% /codePreview %}
 
 {% partial file="/v1.7/connectors/yaml/ingestion-cli.md" /%}
+
+## Securing Cassandra Connection with SSL in OpenMetadata
+
+To establish secure connections between OpenMetadata and a Cassandra database, you can use any SSL mode provided by Cassandra, except disable.
+
+Under `Advanced Config`, after selecting the SSL mode, provide the CA certificate, SSL certificate and SSL key.
+
+```yaml
+      sslMode: allow
+      sslConfig:
+            caCertificate: "/path/to/ca/certificate"
+            sslCertificate: "/path/to/ssl/certificate"
+            sslKey: "/path/to/ssl/key"
+```

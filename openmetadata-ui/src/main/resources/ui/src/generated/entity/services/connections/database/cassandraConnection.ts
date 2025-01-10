@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -17,7 +17,8 @@ export interface CassandraConnection {
     /**
      * Choose Auth Config Type.
      */
-    authType?: AuthConfigurationType;
+    authType?:            AuthConfigurationType;
+    connectionArguments?: { [key: string]: any };
     /**
      * Optional name to give to the database in OpenMetadata. If left blank, we will use default
      * as the database name.
@@ -28,6 +29,8 @@ export interface CassandraConnection {
      * host when using the `cassandra+srv` scheme.
      */
     hostPort?:                   string;
+    sslConfig?:                  Config;
+    sslMode?:                    SSLMode;
     supportsMetadataExtraction?: boolean;
     /**
      * Service Type
@@ -80,6 +83,38 @@ export interface DataStaxAstraDBConfiguration {
      */
     token?: string;
     [property: string]: any;
+}
+
+/**
+ * Client SSL configuration
+ *
+ * OpenMetadata Client configured to validate SSL certificates.
+ */
+export interface Config {
+    /**
+     * The CA certificate used for SSL validation.
+     */
+    caCertificate?: string;
+    /**
+     * The SSL certificate used for client authentication.
+     */
+    sslCertificate?: string;
+    /**
+     * The private key associated with the SSL certificate.
+     */
+    sslKey?: string;
+}
+
+/**
+ * SSL Mode to connect to database.
+ */
+export enum SSLMode {
+    Allow = "allow",
+    Disable = "disable",
+    Prefer = "prefer",
+    Require = "require",
+    VerifyCA = "verify-ca",
+    VerifyFull = "verify-full",
 }
 
 /**

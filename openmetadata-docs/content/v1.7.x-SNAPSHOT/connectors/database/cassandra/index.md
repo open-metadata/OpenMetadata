@@ -18,6 +18,7 @@ Configure and schedule Cassandra metadata workflows from the OpenMetadata UI:
 
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
+- [Enable Security](#securing-cassandra-connection-with-ssl-in-openmetadata)
 
 {% partial file="/v1.7/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/cassandra/yaml"} /%}
 
@@ -59,6 +60,19 @@ Configuration for connecting to DataStax Astra DB in the cloud.
   - **token**: The Astra DB application token used for authentication.
   - **secureConnectBundle**: File path to the Secure Connect Bundle (.zip) used for a secure connection to DataStax Astra DB.
 
+**SSL Modes**
+
+There are a couple of types of SSL modes that Cassandra supports which can be added to ConnectionArguments, they are as follows:
+- **disable**: SSL is disabled and the connection is not encrypted.
+- **allow**: SSL is used if the server requires it.
+- **prefer**: SSL is used if the server supports it.
+- **require**: SSL is required.
+- **verify-ca**: SSL must be used and the server certificate must be verified.
+- **verify-full**: SSL must be used. The server certificate must be verified, and the server hostname must match the hostname attribute on the certificate.
+
+**SSL Configuration**
+
+In order to integrate SSL in the Metadata Ingestion Config, the user will have to add the SSL config under sslConfig which is placed in the source.
 
 {% /extraContent %}
 
@@ -69,6 +83,18 @@ Configuration for connecting to DataStax Astra DB in the cloud.
 {% partial file="/v1.7/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
+
+## Securing Cassandra Connection with SSL in OpenMetadata
+
+To establish secure connections between OpenMetadata and a Cassandra database, you can use any SSL mode provided by Cassandra, except disable.
+
+Under `Advanced Config`, after selecting the SSL mode, provide the CA certificate, SSL certificate and SSL key.
+
+{% image
+  src="/images/v1.7/connectors/ssl_connection.png"
+  alt="SSL Configuration"
+  height="450px"
+  caption="SSL Configuration" /%}
 
 {% partial file="/v1.7/connectors/troubleshooting.md" /%}
 
