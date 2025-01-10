@@ -127,8 +127,13 @@ def unmask_password(create_service_request):
     """
 
     def patch_password(service: DatabaseService):
-        service.connection.config.authType.password = (
-            create_service_request.connection.config.authType.password
+        if hasattr(service.connection.config, "authType"):
+            service.connection.config.authType.password = (
+                create_service_request.connection.config.authType.password
+            )
+            return service
+        service.connection.config.password = (
+            create_service_request.connection.config.password
         )
         return service
 
