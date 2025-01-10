@@ -53,7 +53,7 @@ const ReactGridLayout = WidthProvider(RGL);
 
 const MyDataPage = () => {
   const { t } = useTranslation();
-  const { currentUser, selectedPersona } = useApplicationStore();
+  const { currentUser, selectedPersona, applications } = useApplicationStore();
   const { loading: applicationsLoading } = useApplicationsProvider();
   const { isWelcomeVisible } = useWelcomeStore();
   const [followedData, setFollowedData] = useState<Array<EntityReference>>([]);
@@ -124,7 +124,7 @@ const MyDataPage = () => {
     updateWelcomeScreen(!usernameExistsInCookie && isWelcomeVisible);
 
     return () => updateWelcomeScreen(false);
-  }, []);
+  }, [isWelcomeVisible]);
 
   const fetchUserFollowedData = async () => {
     if (!currentUser?.id) {
@@ -205,12 +205,20 @@ const MyDataPage = () => {
   // call the hook to set the direction of the grid layout
   useGridLayoutDirection(isLoading);
 
+  const isOnboardingInstalled = applications.includes(
+    t('onboarding-application')
+  );
+
   if (showWelcomeScreen) {
-    return (
-      <div className="bg-white full-height">
-        <WelcomeScreen onClose={() => updateWelcomeScreen(false)} />
-      </div>
-    );
+    if (applicationsLoading) {
+      return <Loader />;
+    } else if (!isOnboardingInstalled) {
+      return (
+        <div className="bg-white full-height">
+          <WelcomeScreen onClose={() => updateWelcomeScreen(false)} />
+        </div>
+      );
+    }
   }
 
   return (
