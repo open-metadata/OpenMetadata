@@ -18,7 +18,7 @@ interface WelcomeStore {
 }
 
 export const useWelcomeStore = create<WelcomeStore>()((set) => ({
-  isWelcomeVisible: false,
+  isWelcomeVisible: true,
   setIsWelcomeVisible: (isVisible: boolean) => {
     set({ isWelcomeVisible: isVisible });
   },

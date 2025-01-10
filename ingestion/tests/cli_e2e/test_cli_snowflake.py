@@ -180,6 +180,9 @@ class SnowflakeCliTest(CliCommonDB.TestSuite, SQACommonMethods):
     def view_column_lineage_count(self) -> int:
         return 2
 
+    def expected_lineage_node(self) -> str:
+        return "e2e_snowflake.E2E_DB.E2E_TEST.view_persons"
+
     @staticmethod
     def fqn_created_table() -> str:
         return "e2e_snowflake.E2E_DB.E2E_TEST.PERSONS"
