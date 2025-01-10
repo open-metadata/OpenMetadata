@@ -338,22 +338,12 @@ class ColumnTypeParser:
         )
 
     @staticmethod
-    def _parse_datatype_string(  # pylint: disable=too-many-return-statements
+    def _parse_datatype_string(
         data_type: str, **kwargs: Any  # pylint: disable=unused-argument
     ) -> Union[object, Dict[str, object]]:
-        # pylint: disable=too-many-branches
         data_type = data_type.lower().strip()
         data_type = data_type.replace(" ", "")
-        if data_type.startswith("array"):
-            # Set arrayDataType to UNKNOWN for Snowflake table array columns
-            # to prevent validation error requiring non-null arrayDataType
-            if data_type == "array":
-                data_type_string = {
-                    "dataType": "ARRAY",
-                    "arrayDataType": DataType.UNKNOWN.value,
-                    "dataTypeDisplay": data_type,
-                }
-                return data_type_string
+        if data_type.startswith("array<"):
             if data_type[-1] != ">":
                 raise ValueError(f"expected '>' found: {data_type}")
             arr_data_type = ColumnTypeParser._parse_primitive_datatype_string(
@@ -394,7 +384,6 @@ class ColumnTypeParser:
             return ColumnTypeParser._parse_struct_fields_string(data_type[7:-1])
         if ":" in data_type:
             return ColumnTypeParser._parse_struct_fields_string(data_type)
-
         return ColumnTypeParser._parse_primitive_datatype_string(data_type)
 
     @staticmethod

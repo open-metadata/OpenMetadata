@@ -247,7 +247,12 @@ class SupersetSourceMixin(DashboardServiceSource):
                     parsed_fields = Column(
                         dataTypeDisplay=field.type,
                         dataType=col_parse["dataType"],
-                        arrayDataType=DataType(col_parse["arrayDataType"])
+                        # Set arrayDataType to UNKNOWN for Snowflake table array columns
+                        # to prevent validation error requiring non-null arrayDataType
+                        arrayDataType=DataType.UNKNOWN.value
+                        if col_parse["dataType"] == "ARRAY"
+                        and not col_parse.get("arrayDataType")
+                        else DataType(col_parse["arrayDataType"])
                         if col_parse.get("arrayDataType")
                         else None,
                         children=list(col_parse["children"])
