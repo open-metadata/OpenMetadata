@@ -11,6 +11,7 @@
 {% connectorInfoCard name="Couchbase" stage="BETA" href="/connectors/database/couchbase" platform="OpenMetadata" / %}
 {% connectorInfoCard name="Databricks" stage="PROD" href="/connectors/database/databricks" platform="OpenMetadata" / %}
 {% connectorInfoCard name="DB2" stage="PROD" href="/connectors/database/db2" platform="OpenMetadata" / %}
+{% connectorInfoCard name="dbt" stage="PROD" href="/connectors/ingestion/workflows/dbt/configure-dbt-workflow-from-ui" platform="OpenMetadata" / %}
 {% connectorInfoCard name="Delta Lake" stage="PROD" href="/connectors/database/deltalake" platform="OpenMetadata" / %}
 {% connectorInfoCard name="Domo" stage="PROD" href="/connectors/database/domo-database" platform="OpenMetadata" / %}
 {% connectorInfoCard name="Doris" stage="PROD" href="/connectors/database/doris" platform="OpenMetadata" / %}
