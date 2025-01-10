@@ -124,7 +124,7 @@ const MyDataPage = () => {
     updateWelcomeScreen(!usernameExistsInCookie && isWelcomeVisible);
 
     return () => updateWelcomeScreen(false);
-  }, []);
+  }, [isWelcomeVisible]);
 
   const fetchUserFollowedData = async () => {
     if (!currentUser?.id) {
@@ -205,6 +205,10 @@ const MyDataPage = () => {
   // call the hook to set the direction of the grid layout
   useGridLayoutDirection(isLoading);
 
+  if (isLoading || applicationsLoading) {
+    return <Loader fullScreen />;
+  }
+
   if (showWelcomeScreen) {
     return (
       <div className="bg-white full-height">
@@ -218,30 +222,21 @@ const MyDataPage = () => {
       <PageLayoutV1
         mainContainerClassName="p-t-0"
         pageTitle={t('label.my-data')}>
-        {isLoading || applicationsLoading ? (
-          <div className="ant-layout-content flex-center">
-            <Loader />
-          </div>
-        ) : (
-          <>
-            <ReactGridLayout
-              className="bg-white"
-              cols={4}
-              compactType="vertical"
-              isDraggable={false}
-              isResizable={false}
-              margin={[
-                customizePageClassBase.landingPageWidgetMargin,
-                customizePageClassBase.landingPageWidgetMargin,
-              ]}
-              rowHeight={100}>
-              {widgets}
-            </ReactGridLayout>
-            <LimitWrapper resource="dataAssets">
-              <br />
-            </LimitWrapper>
-          </>
-        )}
+        <ReactGridLayout
+          className="bg-white"
+          cols={4}
+          isDraggable={false}
+          isResizable={false}
+          margin={[
+            customizePageClassBase.landingPageWidgetMargin,
+            customizePageClassBase.landingPageWidgetMargin,
+          ]}
+          rowHeight={100}>
+          {widgets}
+        </ReactGridLayout>
+        <LimitWrapper resource="dataAssets">
+          <br />
+        </LimitWrapper>
       </PageLayoutV1>
     </ActivityFeedProvider>
   );
