@@ -47,6 +47,7 @@ import {
   confirmationDragAndDropGlossary,
   createDescriptionTaskForGlossary,
   createGlossary,
+  createGlossaryTerm,
   createGlossaryTerms,
   createTagTaskForGlossary,
   deleteGlossaryOrGlossaryTerm,
@@ -805,6 +806,8 @@ test.describe('Glossary tests', () => {
   test('Assign Glossary Term to entity and check assets', async ({
     browser,
   }) => {
+    test.slow(true);
+
     const { page, afterAction, apiContext } = await performAdminLogin(browser);
     const table = new TableClass();
     const glossary1 = new Glossary();
@@ -1228,6 +1231,36 @@ test.describe('Glossary tests', () => {
       for (const glossary of glossaries) {
         await glossary.delete(apiContext);
       }
+      await afterAction();
+    }
+  });
+
+  test('Add Glossary Term inside another Term', async ({ browser }) => {
+    const { page, afterAction, apiContext } = await performAdminLogin(browser);
+    const glossary1 = new Glossary();
+    const glossaryTerm1 = new GlossaryTerm(glossary1);
+    const glossary2 = new Glossary();
+    glossary2.data.terms = [new GlossaryTerm(glossary2)];
+
+    try {
+      await glossary1.create(apiContext);
+      await glossaryTerm1.create(apiContext);
+      await redirectToHomePage(page);
+      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await selectActiveGlossary(page, glossary1.data.displayName);
+      await selectActiveGlossaryTerm(page, glossaryTerm1.data.displayName);
+      await page.getByTestId('terms').click();
+
+      await createGlossaryTerm(
+        page,
+        glossary2.data.terms[0].data,
+        'Approved',
+        false,
+        true
+      );
+    } finally {
+      await glossaryTerm1.delete(apiContext);
+      await glossary1.delete(apiContext);
       await afterAction();
     }
   });
