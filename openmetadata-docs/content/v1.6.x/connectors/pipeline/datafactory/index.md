@@ -5,7 +5,7 @@ collate: true
 ---
 
 {% connectorDetailsHeader
-name="Data Factory"
+name="Azure Data Factory"
 stage="PROD"
 platform="Collate"
 availableFeatures=["Pipelines", "Pipeline Status", "Lineage"]
