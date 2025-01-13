@@ -38,10 +38,9 @@ When adding documentation for a new connector, ensure the following steps are co
 - Upload the connector's logo to the directory:  
   `/images/connectors`
 
-### 3. Update Menus
+### 3. Update Menu
 - Update the following files to reflect the addition of the new connector:
   - `menu.md`
-  - `collate-menu.md`
 
 ### 4. Update Homepage Connectors List
 - Add the new connector to the homepage connectors list.  
