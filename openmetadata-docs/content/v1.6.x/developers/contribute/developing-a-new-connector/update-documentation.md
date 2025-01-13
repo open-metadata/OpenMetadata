@@ -25,6 +25,35 @@ Once the documentation is done, it's important to add it to the proper indexes a
 
 This will guarantee that the connector is shown in the menus.
 
+## Guidelines for Adding Connector Documentation
+
+When adding documentation for a new connector, ensure the following steps are completed:
+
+### 1. Update the Connectors List
+- Add the connector entry to the relevant version file located at:  
+  `partials/v1.x.x/...connectors-list.md`  
+  This ensures the connector is displayed in the list for the appropriate version.
+
+### 2. Add Connector Logo
+- Upload the connector's logo to the directory:  
+  `/images/connectors`
+
+### 3. Update Menu
+- Update the following files to reflect the addition of the new connector:
+  - `menu.md`
+
+### 4. Update Homepage Connectors List
+- Add the new connector to the homepage connectors list.  
+  **Note:** Ping the responsible person to ensure this step is completed.
+
+### 5. Include Installation Images
+- Add images for the installation steps of the connector.  
+  Images should be added for **all versions** in the following directory:  
+  `/images/[version]/connectors/[connectorName]`  
+- Ensure the images align with the steps described in the installation documentation for the connector.
+
+By following these guidelines, the connector documentation will be consistent and meet the required standards.
+
 ## How to test the Documentation
 
 You can check your changes in the documentation by building it locally using `make docker-docs`. This will pull the OpenMetadata documentation Docker images and mount the project as a volume.
