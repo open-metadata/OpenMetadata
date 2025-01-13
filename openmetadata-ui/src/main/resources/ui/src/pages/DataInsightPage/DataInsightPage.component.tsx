@@ -23,6 +23,7 @@ import {
 } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import ResizableLeftPanels from '../../components/common/ResizablePanels/ResizableLeftPanels';
+import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { ROUTES } from '../../constants/constants';
 import { ENTITIES_CHARTS } from '../../constants/DataInsight.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
@@ -110,66 +111,67 @@ const DataInsightPage = () => {
       return data;
     }, [viewDataInsightChartPermission, viewKPIPermission, tab]);
 
-  if (!viewDataInsightChartPermission && !viewKPIPermission) {
-    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
-  }
-
-  if (noDataInsightPermission || noKPIPermission) {
-    return (
-      <Row align="middle" className="w-full h-full" justify="center">
-        <Col span={24}>
-          <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
-        </Col>
-      </Row>
-    );
-  }
-
   return (
-    <ResizableLeftPanels
-      className="content-height-with-resizable-panel"
-      firstPanel={{
-        className: 'content-resizable-panel-container',
-        minWidth: 280,
-        flex: 0.13,
-        children: <LeftPanel />,
-      }}
-      pageTitle={t('label.data-insight')}
-      secondPanel={{
-        children: (
-          <DataInsightProvider>
-            <Row
-              className="page-container"
-              data-testid="data-insight-container"
-              gutter={[16, 16]}>
-              {isHeaderVisible && (
-                <Col span={24}>
-                  <DataInsightHeader onScrollToChart={handleScrollToChart} />
-                </Col>
-              )}
-              <Col span={24}>
-                <Switch>
-                  {dataInsightTabs.map((tab) => (
-                    <Route
-                      exact
-                      component={tab.component}
-                      key={tab.key}
-                      path={tab.path}
-                    />
-                  ))}
-
-                  <Route exact path={ROUTES.DATA_INSIGHT}>
-                    <Redirect to={getDataInsightPathWithFqn()} />
-                  </Route>
-                </Switch>
-              </Col>
-            </Row>
-          </DataInsightProvider>
-        ),
-        className: 'content-resizable-panel-container p-t-sm',
-        minWidth: 800,
-        flex: 0.87,
-      }}
-    />
+    <PageLayoutV1 pageTitle={t('label.data-insight')}>
+      {!viewDataInsightChartPermission && !viewKPIPermission ? (
+        <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
+      ) : noDataInsightPermission || noKPIPermission ? (
+        <Row align="middle" className="w-full h-full" justify="center">
+          <Col span={24}>
+            <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
+          </Col>
+        </Row>
+      ) : (
+        <div className="m--t-sm">
+          <ResizableLeftPanels
+            className="content-height-with-resizable-panel"
+            firstPanel={{
+              className: 'content-resizable-panel-container',
+              minWidth: 280,
+              flex: 0.13,
+              children: <LeftPanel />,
+            }}
+            pageTitle={t('label.data-insight')}
+            secondPanel={{
+              children: (
+                <DataInsightProvider>
+                  <Row
+                    className="page-container"
+                    data-testid="data-insight-container"
+                    gutter={[16, 16]}>
+                    {isHeaderVisible && (
+                      <Col span={24}>
+                        <DataInsightHeader
+                          onScrollToChart={handleScrollToChart}
+                        />
+                      </Col>
+                    )}
+                    <Col span={24}>
+                      <Switch>
+                        {dataInsightTabs.map((tab) => (
+                          <Route
+                            exact
+                            component={tab.component}
+                            key={tab.key}
+                            path={tab.path}
+                          />
+                        ))}
+                        <Route exact path={ROUTES.DATA_INSIGHT}>
+                          <Redirect to={getDataInsightPathWithFqn()} />
+                        </Route>
+                      </Switch>
+                    </Col>
+                  </Row>
+                </DataInsightProvider>
+              ),
+              className: 'content-resizable-panel-container p-t-sm',
+              minWidth: 800,
+              flex: 0.87,
+            }}
+          />
+        </div>
+      )}
+    </PageLayoutV1>
   );
 };
 

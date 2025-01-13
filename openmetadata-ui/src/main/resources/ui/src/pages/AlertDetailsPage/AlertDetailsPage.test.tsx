@@ -84,6 +84,15 @@ jest.mock('../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
 
+jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => {
+  return jest.fn(({ children, pageTitle }) => (
+    <div data-testid="page-layout-v1">
+      <h1>{pageTitle}</h1>
+      <div>{children}</div>
+    </div>
+  ));
+});
+
 jest.mock(
   '../../components/Alerts/AlertDetails/AlertConfigDetails/AlertConfigDetails',
   () => jest.fn().mockImplementation(() => <div>AlertConfigDetails</div>)

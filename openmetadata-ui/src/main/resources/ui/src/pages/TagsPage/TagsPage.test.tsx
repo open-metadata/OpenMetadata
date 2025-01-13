@@ -231,6 +231,15 @@ jest.mock('../../utils/TagsUtils', () => ({
     .mockImplementation(() => <a href="/">Usage Count</a>),
 }));
 
+jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => {
+  return jest.fn(({ children, pageTitle }) => (
+    <div data-testid="page-layout-v1">
+      <h1>{pageTitle}</h1>
+      <div>{children}</div>
+    </div>
+  ));
+});
+
 jest.mock('../../components/common/ResizablePanels/ResizableLeftPanels', () =>
   jest.fn().mockImplementation(({ firstPanel, secondPanel }) => (
     <div>
