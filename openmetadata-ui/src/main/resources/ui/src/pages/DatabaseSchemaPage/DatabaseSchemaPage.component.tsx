@@ -150,6 +150,26 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   const handleShowDeletedTables = (value: boolean) => {
     setShowDeletedTables(value);
     handlePageChange(INITIAL_PAGING_VALUE);
+
+    const path = location.pathname;
+    const searchParams = new URLSearchParams(location.search);
+
+    searchParams.set('showDeletedTables', value.toString());
+    history.replace({
+      pathname: path,
+      search: searchParams.toString(),
+      state: {
+        ...((location.state as any) || {}),
+        [path]: {
+          ...((location.state as any)?.[path] || {}),
+          currentPage: INITIAL_PAGING_VALUE,
+          cursorData: {
+            cursorType: null,
+            cursorValue: null,
+          },
+        },
+      },
+    });
   };
 
   const { version: currentVersion, deleted } = useMemo(
@@ -524,6 +544,13 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   }, [decodedDatabaseSchemaFQN]);
 
   useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const showDeletedTablesParam = searchParams.get('showDeletedTables');
+    setShowDeletedTables(showDeletedTablesParam === 'true'); // Default to `false` if param is missing
+  }, [location]);
+
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
     if (activeTab === EntityTabs.TABLE) {
       // If no tab parameter is in the URL, update the URL to include the default tab
       history.push({
@@ -532,6 +559,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
           decodedDatabaseSchemaFQN,
           activeTab
         ),
+        search: searchParams.toString(),
         state: {
           ...(location.state as any),
         },
