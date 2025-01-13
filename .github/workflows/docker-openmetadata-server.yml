@@ -87,9 +87,9 @@ jobs:
         run: |
           pwd
           ls -la
-          ls -la ../openmetadata/docker/docker-compose-quickstart/ || echo "quickstart directory not found"
-          ls -la ../openmetadata/docker/docker-compose-openmetadata/ || echo "openmetadata directory not found"
-          ls -la ../openmetadata/docker/docker-compose-ingestion/ || echo "ingestion directory not found"
+          ls -la ../OpenMetadata/docker/docker-compose-quickstart/ || echo "quickstart directory not found"
+          ls -la ../OpenMetadata/docker/docker-compose-openmetadata/ || echo "openmetadata directory not found"
+          ls -la ../OpenMetadata/docker/docker-compose-ingestion/ || echo "ingestion directory not found"
 
       - name: Upload docker-compose.yml
         uses: actions/upload-release-asset@v1
@@ -97,7 +97,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.attach_release.outputs.UPLOAD_URL }}
-          asset_path: ../openmetadata/docker/docker-compose-quickstart/docker-compose.yml
+          asset_path: ../OpenMetadata/docker/docker-compose-quickstart/docker-compose.yml
           asset_name: docker-compose.yml
           asset_content_type: application/yaml
 
@@ -107,7 +107,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.attach_release.outputs.UPLOAD_URL }}
-          asset_path: ../openmetadata/docker/docker-compose-quickstart/docker-compose-postgres.yml
+          asset_path: ../OpenMetadata/docker/docker-compose-quickstart/docker-compose-postgres.yml
           asset_name: docker-compose-postgres.yml
           asset_content_type: application/yaml
 
@@ -117,7 +117,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.attach_release.outputs.UPLOAD_URL }}
-          asset_path: ../openmetadata/docker/docker-compose-openmetadata/docker-compose-openmetadata.yml
+          asset_path: ../OpenMetadata/docker/docker-compose-openmetadata/docker-compose-openmetadata.yml
           asset_name: docker-compose-openmetadata.yml
           asset_content_type: application/yaml
 
@@ -127,7 +127,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.attach_release.outputs.UPLOAD_URL }}
-          asset_path: ../openmetadata/docker/docker-compose-ingestion/docker-compose-ingestion.yml
+          asset_path: ../OpenMetadata/docker/docker-compose-ingestion/docker-compose-ingestion.yml
           asset_name: docker-compose-ingestion.yml
           asset_content_type: application/yaml
 
