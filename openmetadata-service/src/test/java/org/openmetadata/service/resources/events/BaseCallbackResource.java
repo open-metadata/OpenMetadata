@@ -141,7 +141,7 @@ public abstract class BaseCallbackResource<T> {
     entityCallbackMap.clear();
   }
 
-  static class EventDetails<T> {
+  public static class EventDetails<T> {
     @Getter @Setter long firstEventTime;
     @Getter @Setter long latestEventTime;
     @Getter final ConcurrentLinkedQueue<T> events = new ConcurrentLinkedQueue<>();
