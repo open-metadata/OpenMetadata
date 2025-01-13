@@ -47,7 +47,7 @@ export interface UsePagingInterface {
   handlePagingChange: Dispatch<SetStateAction<Paging>>;
   currentPage: number;
   handlePageChange: (
-    page: number,
+    page: number | ((page: number) => number),
     cursorData?: CursorState,
     pageSize?: number | null
   ) => void;
@@ -74,13 +74,11 @@ export const usePaging = (
       const path = location.pathname;
       const state = (location.state as LocationState) || {};
       const cursorState = state[path] || {};
-
       history.replace({
         ...location,
         state: {
           ...state,
           [path]: {
-            // ...cursorState,
             pageSize: page,
             cursorData: resetHistoryState
               ? { cursorType: null, cursorValue: null }
@@ -115,7 +113,7 @@ export const usePaging = (
   }, [location]);
 
   const handlePageChange = (
-    page: number,
+    page: number | ((page: number) => number),
     cursorData?: CursorState,
     pageSize?: number | null
   ) => {
@@ -125,7 +123,7 @@ export const usePaging = (
       history.replace({
         ...location,
         state: {
-          ...(location.state || {}),
+          ...((location.state as any) || {}),
           [path]: {
             cursorData,
             currentPage: page,

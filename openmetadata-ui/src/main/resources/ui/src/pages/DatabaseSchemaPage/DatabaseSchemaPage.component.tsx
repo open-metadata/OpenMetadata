@@ -108,21 +108,6 @@ const DatabaseSchemaPage: FunctionComponent = () => {
 
   const { tab: activeTab = EntityTabs.TABLE } =
     useParams<{ tab: EntityTabs }>();
-  useEffect(() => {
-    if (activeTab === EntityTabs.TABLE) {
-      // If no tab parameter is in the URL, update the URL to include the default tab
-      history.push({
-        pathname: getEntityDetailsPath(
-          EntityType.DATABASE_SCHEMA,
-          decodedDatabaseSchemaFQN,
-          activeTab
-        ),
-        state: {
-          ...(location.state as any),
-        },
-      });
-    }
-  }, []);
   const { fqn: decodedDatabaseSchemaFQN } = useFqn();
   const history = useHistory();
 
@@ -539,6 +524,22 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   }, [decodedDatabaseSchemaFQN]);
 
   useEffect(() => {
+    if (activeTab === EntityTabs.TABLE) {
+      // If no tab parameter is in the URL, update the URL to include the default tab
+      history.push({
+        pathname: getEntityDetailsPath(
+          EntityType.DATABASE_SCHEMA,
+          decodedDatabaseSchemaFQN,
+          activeTab
+        ),
+        state: {
+          ...(location.state as any),
+        },
+      });
+    }
+  }, []);
+
+  useEffect(() => {
     fetchDatabaseSchemaPermission();
   }, [decodedDatabaseSchemaFQN]);
 
@@ -553,7 +554,11 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   useEffect(() => {
     const cursorState = pagingCursor();
     if (viewDatabaseSchemaPermission && decodedDatabaseSchemaFQN) {
-      if (cursorState.cursorData?.cursorType && cursorState?.pageSize) {
+      if (
+        cursorState.cursorData?.cursorType &&
+        cursorState?.pageSize &&
+        !showDeletedTables
+      ) {
         // Fetch data if cursorType is present in state with cursor Value to handle browser back navigation
         getSchemaTables({
           [cursorState?.cursorData?.cursorType]:
@@ -564,16 +569,18 @@ const DatabaseSchemaPage: FunctionComponent = () => {
         handlePageChange(cursorState.currentPage as number);
       } else {
         // Otherwise, just fetch the data without cursor value
-        getSchemaTables({ limit: pageSize });
-        handlePageChange(
-          currentPage,
-          {
-            cursorType: null,
-            cursorValue: null,
-          },
-          cursorState?.pageSize || pageSize
-        );
-        handlePageSizeChange(cursorState?.pageSize || pageSize);
+        if (activeTab === EntityTabs.TABLE) {
+          getSchemaTables({ limit: pageSize });
+          handlePageChange(
+            currentPage,
+            {
+              cursorType: null,
+              cursorValue: null,
+            },
+            cursorState?.pageSize || pageSize
+          );
+          handlePageSizeChange(cursorState?.pageSize || pageSize);
+        }
       }
     }
   }, [
