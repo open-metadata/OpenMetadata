@@ -53,10 +53,13 @@ jest.mock('../../../../hooks/useApplicationStore', () => {
     useApplicationStore: jest.fn(() => ({
       authConfig: {},
       handleSuccessfulLogin: mockHandleSuccessfulLogin,
-      setOidcToken: jest.fn(),
     })),
   };
 });
+
+jest.mock('../../../../utils/LocalStorageUtils', () => ({
+  setOidcToken: jest.fn(),
+}));
 
 describe('Test Auth0Callback component', () => {
   afterEach(() => {

@@ -23,9 +23,12 @@ jest.mock('./RapiDocReact', () => {
   ));
 });
 
+jest.mock('../../utils/LocalStorageUtils', () => ({
+  getOidcToken: jest.fn().mockReturnValue('fakeToken'),
+}));
+
 jest.mock('../../hooks/useApplicationStore', () => ({
   useApplicationStore: jest.fn().mockImplementation(() => ({
-    getOidcToken: () => 'fakeToken',
     theme: {
       primaryColor: '#9c27b0',
     },

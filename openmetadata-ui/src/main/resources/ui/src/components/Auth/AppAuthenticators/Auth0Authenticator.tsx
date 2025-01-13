@@ -22,6 +22,7 @@ import { useTranslation } from 'react-i18next';
 import { AuthProvider } from '../../../generated/settings/settings';
 
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { setOidcToken } from '../../../utils/LocalStorageUtils';
 import { AuthenticatorRef } from '../AuthProviders/AuthProvider.interface';
 
 interface Props {
@@ -31,8 +32,7 @@ interface Props {
 
 const Auth0Authenticator = forwardRef<AuthenticatorRef, Props>(
   ({ children, onLogoutSuccess }: Props, ref) => {
-    const { setIsAuthenticated, authConfig, setOidcToken } =
-      useApplicationStore();
+    const { setIsAuthenticated, authConfig } = useApplicationStore();
     const { t } = useTranslation();
     const { loginWithRedirect, getAccessTokenSilently, getIdTokenClaims } =
       useAuth0();
