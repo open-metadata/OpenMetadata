@@ -35,6 +35,7 @@ import {
   ModifiedGlossary,
   useGlossaryStore,
 } from '../../../components/Glossary/useGlossary.store';
+import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { PAGE_SIZE_LARGE, ROUTES } from '../../../constants/constants';
 import { GLOSSARIES_DOCS } from '../../../constants/docs.constants';
@@ -415,110 +416,120 @@ const GlossaryPage = () => {
     []
   );
 
-  if (isLoading) {
-    return <Loader />;
-  }
+  const renderContent = () => {
+    if (isLoading) {
+      return <Loader />;
+    }
 
-  if (!(viewBasicGlossaryPermission || viewAllGlossaryPermission)) {
-    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
-  }
+    if (!(viewBasicGlossaryPermission || viewAllGlossaryPermission)) {
+      return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+    }
 
-  if (glossaries.length === 0 && !isLoading) {
-    return (
-      <ErrorPlaceHolder
-        buttonId="add-glossary"
-        className="mt-0-important"
-        doc={GLOSSARIES_DOCS}
-        heading={t('label.glossary')}
-        permission={createGlossaryPermission}
-        type={
-          createGlossaryPermission
-            ? ERROR_PLACEHOLDER_TYPE.CREATE
-            : ERROR_PLACEHOLDER_TYPE.NO_DATA
-        }
-        onClick={handleAddGlossaryClick}
-      />
-    );
-  }
-
-  const glossaryElement = (
-    <div className="p-t-sm">
-      {isRightPanelLoading ? (
-        <Loader />
-      ) : (
-        <GlossaryV1
-          isGlossaryActive={isGlossaryActive}
-          isSummaryPanelOpen={Boolean(previewAsset)}
-          isVersionsView={false}
-          refreshActiveGlossaryTerm={fetchGlossaryTermDetails}
-          selectedData={activeGlossary as Glossary}
-          updateGlossary={updateGlossary}
-          updateVote={updateVote}
-          onAssetClick={handleAssetClick}
-          onGlossaryDelete={handleGlossaryDelete}
-          onGlossaryTermDelete={handleGlossaryTermDelete}
-          onGlossaryTermUpdate={handleGlossaryTermUpdate}
+    if (glossaries.length === 0 && !isLoading) {
+      return (
+        <ErrorPlaceHolder
+          buttonId="add-glossary"
+          className="mt-0-important"
+          doc={GLOSSARIES_DOCS}
+          heading={t('label.glossary')}
+          permission={createGlossaryPermission}
+          type={
+            createGlossaryPermission
+              ? ERROR_PLACEHOLDER_TYPE.CREATE
+              : ERROR_PLACEHOLDER_TYPE.NO_DATA
+          }
+          onClick={handleAddGlossaryClick}
         />
-      )}
-    </div>
-  );
+      );
+    }
 
-  const resizableLayout = isGlossaryActive ? (
-    <ResizableLeftPanels
-      className="content-height-with-resizable-panel"
-      firstPanel={{
-        className: 'content-resizable-panel-container',
-        minWidth: 280,
-        flex: 0.13,
-        children: (
-          <>
-            <GlossaryLeftPanel glossaries={glossaries} />
-            <div
-              className="h-[1px] w-full"
-              data-testid="glossary-left-panel-scroller"
-              ref={elementRef as RefObject<HTMLDivElement>}
-            />
-            {isMoreGlossaryLoading && <Loader />}
-          </>
-        ),
-      }}
-      hideFirstPanel={isImportAction}
-      pageTitle={t('label.glossary')}
-      secondPanel={{
-        children: glossaryElement,
-        className: 'content-resizable-panel-container',
-        minWidth: 800,
-        flex: 0.87,
-      }}
-    />
-  ) : (
-    <ResizablePanels
-      className="content-height-with-resizable-panel"
-      firstPanel={{
-        className: 'content-resizable-panel-container',
-        children: glossaryElement,
-        minWidth: 700,
-        flex: 0.7,
-      }}
-      hideSecondPanel={!previewAsset}
-      pageTitle={t('label.glossary')}
-      secondPanel={{
-        children: previewAsset && (
-          <EntitySummaryPanel
-            entityDetails={previewAsset}
-            handleClosePanel={() => setPreviewAsset(undefined)}
-            highlights={{ 'tag.name': [glossaryFqn] }}
+    const glossaryElement = (
+      <div className="p-t-sm">
+        {isRightPanelLoading ? (
+          <Loader />
+        ) : (
+          <GlossaryV1
+            isGlossaryActive={isGlossaryActive}
+            isSummaryPanelOpen={Boolean(previewAsset)}
+            isVersionsView={false}
+            refreshActiveGlossaryTerm={fetchGlossaryTermDetails}
+            selectedData={activeGlossary as Glossary}
+            updateGlossary={updateGlossary}
+            updateVote={updateVote}
+            onAssetClick={handleAssetClick}
+            onGlossaryDelete={handleGlossaryDelete}
+            onGlossaryTermDelete={handleGlossaryTermDelete}
+            onGlossaryTermUpdate={handleGlossaryTermUpdate}
           />
-        ),
-        className:
-          'content-resizable-panel-container entity-summary-resizable-right-panel-container',
-        minWidth: 400,
-        flex: 0.3,
-      }}
-    />
-  );
+        )}
+      </div>
+    );
 
-  return <>{resizableLayout}</>;
+    return isGlossaryActive ? (
+      <div className="m--t-sm">
+        <ResizableLeftPanels
+          className="content-height-with-resizable-panel"
+          firstPanel={{
+            className: 'content-resizable-panel-container',
+            minWidth: 280,
+            flex: 0.13,
+            children: (
+              <>
+                <GlossaryLeftPanel glossaries={glossaries} />
+                <div
+                  className="h-[1px] w-full"
+                  data-testid="glossary-left-panel-scroller"
+                  ref={elementRef as RefObject<HTMLDivElement>}
+                />
+                {isMoreGlossaryLoading && <Loader />}
+              </>
+            ),
+          }}
+          hideFirstPanel={isImportAction}
+          pageTitle={t('label.glossary')}
+          secondPanel={{
+            children: glossaryElement,
+            className: 'content-resizable-panel-container',
+            minWidth: 800,
+            flex: 0.87,
+          }}
+        />
+      </div>
+    ) : (
+      <div className="m--t-sm">
+        <ResizablePanels
+          className="content-height-with-resizable-panel"
+          firstPanel={{
+            className: 'content-resizable-panel-container',
+            children: glossaryElement,
+            minWidth: 700,
+            flex: 0.7,
+          }}
+          hideSecondPanel={!previewAsset}
+          pageTitle={t('label.glossary')}
+          secondPanel={{
+            children: previewAsset && (
+              <EntitySummaryPanel
+                entityDetails={previewAsset}
+                handleClosePanel={() => setPreviewAsset(undefined)}
+                highlights={{ 'tag.name': [glossaryFqn] }}
+              />
+            ),
+            className:
+              'content-resizable-panel-container entity-summary-resizable-right-panel-container',
+            minWidth: 400,
+            flex: 0.3,
+          }}
+        />
+      </div>
+    );
+  };
+
+  return (
+    <PageLayoutV1 pageTitle={t('label.glossary')}>
+      {renderContent()}
+    </PageLayoutV1>
+  );
 };
 
 export default GlossaryPage;

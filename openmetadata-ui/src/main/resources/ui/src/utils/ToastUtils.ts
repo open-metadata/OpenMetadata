@@ -11,13 +11,52 @@
  *  limitations under the License.
  */
 
-import { AxiosError, isCancel } from 'axios';
+import { AlertProps } from 'antd';
+import { AxiosError } from 'axios';
 import { isEmpty, isString } from 'lodash';
 import React from 'react';
-import { toast } from 'react-toastify';
+import { ReactComponent as ErrorIcon } from '../assets/svg/ic-error.svg';
+import { ReactComponent as InfoIcon } from '../assets/svg/ic-info-tag.svg';
+import { ReactComponent as SuccessIcon } from '../assets/svg/ic-success.svg';
+import { ReactComponent as WarningIcon } from '../assets/svg/ic-warning-tag.svg';
 import { ClientErrors } from '../enums/Axios.enum';
+import { useAlertStore } from '../hooks/useAlertStore';
 import i18n from './i18next/LocalUtil';
 import { getErrorText } from './StringsUtils';
+
+export const getIconAndClassName = (type: AlertProps['type']) => {
+  switch (type) {
+    case 'info':
+      return {
+        icon: InfoIcon,
+        className: 'info',
+      };
+
+    case 'success':
+      return {
+        icon: SuccessIcon,
+        className: 'success',
+      };
+
+    case 'warning':
+      return {
+        icon: WarningIcon,
+        className: 'warning',
+      };
+
+    case 'error':
+      return {
+        icon: ErrorIcon,
+        className: 'error',
+      };
+
+    default:
+      return {
+        icon: null,
+        className: '',
+      };
+  }
+};
 
 export const hashCode = (str: string) => {
   let hash = 0,
@@ -42,19 +81,18 @@ export const hashCode = (str: string) => {
  * @param autoCloseTimer Set the delay in ms to close the toast automatically.
  */
 export const showErrorToast = (
-  error: AxiosError | string,
+  error: AxiosError | string | JSX.Element,
   fallbackText?: string,
   autoCloseTimer?: number,
-  callback?: (value: React.SetStateAction<string>) => void
+  callback?: (value: React.SetStateAction<string | JSX.Element>) => void
 ) => {
-  if (isCancel(error)) {
-    return;
-  }
   let errorMessage;
-  if (isString(error)) {
+  if (React.isValidElement(error)) {
+    errorMessage = error;
+  } else if (isString(error)) {
     errorMessage = error.toString();
-  } else {
-    const method = (error as AxiosError).config?.method?.toUpperCase();
+  } else if ('config' in error && 'response' in error) {
+    const method = error.config?.method?.toUpperCase();
     const fallback =
       fallbackText && fallbackText.length > 0
         ? fallbackText
@@ -65,19 +103,20 @@ export const showErrorToast = (
     // except for principal domain mismatch errors
     if (
       error &&
-      ((error as AxiosError).response?.status === ClientErrors.UNAUTHORIZED ||
-        ((error as AxiosError).response?.status === ClientErrors.FORBIDDEN &&
+      (error.response?.status === ClientErrors.UNAUTHORIZED ||
+        (error.response?.status === ClientErrors.FORBIDDEN &&
           method === 'GET')) &&
       !errorMessage.includes('principal domain')
     ) {
       return;
     }
+  } else {
+    errorMessage = fallbackText ?? i18n.t('server.unexpected-error');
   }
   callback && callback(errorMessage);
-  toast.error(errorMessage, {
-    toastId: hashCode(errorMessage),
-    autoClose: autoCloseTimer,
-  });
+  useAlertStore
+    .getState()
+    .addAlert({ type: 'error', message: errorMessage }, autoCloseTimer);
 };
 
 /**
@@ -86,9 +125,9 @@ export const showErrorToast = (
  * @param autoCloseTimer Set the delay in ms to close the toast automatically. `Default: 5000`
  */
 export const showSuccessToast = (message: string, autoCloseTimer = 5000) => {
-  toast.success(message, {
-    autoClose: autoCloseTimer,
-  });
+  useAlertStore
+    .getState()
+    .addAlert({ type: 'success', message }, autoCloseTimer);
 };
 
 /**
@@ -97,7 +136,5 @@ export const showSuccessToast = (message: string, autoCloseTimer = 5000) => {
  * @param autoCloseTimer Set the delay in ms to close the toast automatically. `Default: 5000`
  */
 export const showInfoToast = (message: string, autoCloseTimer = 5000) => {
-  toast.info(message, {
-    autoClose: autoCloseTimer,
-  });
+  useAlertStore.getState().addAlert({ type: 'info', message }, autoCloseTimer);
 };
