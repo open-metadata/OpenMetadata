@@ -193,7 +193,7 @@ POSTGRES_SQL_COLUMNS = """
     """
 
 POSTGRES_GET_SERVER_VERSION = """
-show server_version
+show server_version_num
 """
 
 POSTGRES_FETCH_FK = """
