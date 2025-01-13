@@ -4,7 +4,6 @@ import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.CREATED;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.OK;
-import static org.junit.Assert.assertNotNull;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.schema.type.ColumnDataType.INT;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
@@ -451,7 +450,10 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
             .withName(createRequest.getName())
             .withAppConfiguration(new AppConfiguration());
     createEntity(installApp, ADMIN_AUTH_HEADERS);
-    TestUtils.get(getResource(String.format("events/subscriptions/name/%s", subscriptionName)), EventSubscription.class, ADMIN_AUTH_HEADERS);
+    TestUtils.get(
+        getResource(String.format("events/subscriptions/name/%s", subscriptionName)),
+        EventSubscription.class,
+        ADMIN_AUTH_HEADERS);
 
     // make change in the system
     TableResourceTest tableResourceTest = new TableResourceTest();
@@ -490,10 +492,13 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
 
     // assert event subscription was deleted
     TestUtils.assertResponse(
-            () ->TestUtils.get(getResource(String.format("events/subscriptions/name/%s", subscriptionName)), EventSubscription.class, ADMIN_AUTH_HEADERS),
-            NOT_FOUND,
-            String.format("eventsubscription instance for %s not found", subscriptionName)
-    );
+        () ->
+            TestUtils.get(
+                getResource(String.format("events/subscriptions/name/%s", subscriptionName)),
+                EventSubscription.class,
+                ADMIN_AUTH_HEADERS),
+        NOT_FOUND,
+        String.format("eventsubscription instance for %s not found", subscriptionName));
   }
 
   @Override

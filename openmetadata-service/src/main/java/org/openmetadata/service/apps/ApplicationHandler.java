@@ -8,7 +8,6 @@ import static org.openmetadata.service.apps.scheduler.AppScheduler.APP_NAME;
 import io.dropwizard.configuration.ConfigurationException;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Optional;
@@ -26,7 +25,6 @@ import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.events.scheduled.EventSubscriptionScheduler;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.jdbi3.AppMarketPlaceRepository;
 import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -98,17 +96,17 @@ public class ApplicationHandler {
 
   public void triggerApplicationOnDemand(
       App app, CollectionDAO daoCollection, SearchRepository searchRepository) {
-      try {
-          runAppInit(app, daoCollection, searchRepository).triggerOnDemand();
-      } catch (ClassNotFoundException
-               | NoSuchMethodException
-               | InvocationTargetException
-               | InstantiationException
-               | IllegalAccessException e) {
-        LOG.error("Failed to install application {}", app.getName(), e);
-        throw AppException.byMessage(
-                app.getName(), "triggerOnDemand", e.getMessage(), Response.Status.INTERNAL_SERVER_ERROR);
-      }
+    try {
+      runAppInit(app, daoCollection, searchRepository).triggerOnDemand();
+    } catch (ClassNotFoundException
+        | NoSuchMethodException
+        | InvocationTargetException
+        | InstantiationException
+        | IllegalAccessException e) {
+      LOG.error("Failed to install application {}", app.getName(), e);
+      throw AppException.byMessage(
+          app.getName(), "triggerOnDemand", e.getMessage(), Response.Status.INTERNAL_SERVER_ERROR);
+    }
   }
 
   public void installApplication(

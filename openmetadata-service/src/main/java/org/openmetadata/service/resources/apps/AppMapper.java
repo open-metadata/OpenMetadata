@@ -55,7 +55,7 @@ public class AppMapper implements EntityMapper<App, CreateApp> {
             .withAllowConfiguration(marketPlaceDefinition.getAllowConfiguration())
             .withSystem(marketPlaceDefinition.getSystem())
             .withSupportsInterrupt(marketPlaceDefinition.getSupportsInterrupt())
-                .withFullyQualifiedName(marketPlaceDefinition.getFullyQualifiedName());
+            .withFullyQualifiedName(marketPlaceDefinition.getFullyQualifiedName());
 
     // validate Bot if provided
     validateAndAddBot(app, createAppRequest.getBot());
