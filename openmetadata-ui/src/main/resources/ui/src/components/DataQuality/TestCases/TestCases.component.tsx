@@ -111,8 +111,8 @@ export const TestCases = () => {
 
     return params as TestCaseSearchParams;
   }, [location.search]);
-  const { searchValue = '' } = params;
 
+  const { searchValue = '' } = params;
   const [testCase, setTestCase] = useState<TestCase[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [selectedFilter, setSelectedFilter] = useState<string[]>([
@@ -416,7 +416,6 @@ export const TestCases = () => {
       key: filter,
       label: startCase(name),
       value: filter,
-      onClick: handleMenuClick,
     }));
   }, []);
 
@@ -497,6 +496,7 @@ export const TestCases = () => {
                 menu={{
                   items: filterMenu,
                   selectedKeys: selectedFilter,
+                  onClick: handleMenuClick,
                 }}
                 trigger={['click']}>
                 <Button
@@ -641,6 +641,7 @@ export const TestCases = () => {
       </Col>
       <Col span={24}>
         <SummaryPanel
+          showAdditionalSummary
           isLoading={isTestCaseSummaryLoading}
           testSummary={testCaseSummary}
         />

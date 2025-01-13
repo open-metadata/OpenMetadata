@@ -25,6 +25,11 @@
     margin-bottom: 4px;
   }
 
+  .inverse-label {
+    display: flex;
+    flex-direction: column-reverse;
+  }
+
   .summary-card-description {
     font-weight: 500;
     font-size: 18px;
@@ -35,6 +40,19 @@
     .ant-progress-text {
       font-weight: 500;
     }
+  }
+
+  &.success-background {
+    background-color: @green-8;
+  }
+  &.failed-background {
+    background-color: @red-8;
+  }
+  &.aborted-background {
+    background-color: @yellow-8;
+  }
+  &.primary-background {
+    background-color: @blue-8;
   }
 
   .new.ant-progress-circle {
