@@ -47,6 +47,14 @@ export const fetchEntityCoveredWithDQ = (
     );
   }
 
+  if (filters?.entityFQN) {
+    mustFilter.push({
+      term: {
+        entityFQN: filters.entityFQN,
+      },
+    });
+  }
+
   return getDataQualityReport({
     q: JSON.stringify({
       query: {
@@ -89,6 +97,14 @@ export const fetchTotalEntityCount = (
             'tier.tagFQN': tag,
           },
         })),
+      },
+    });
+  }
+
+  if (filters?.entityFQN) {
+    mustFilter.push({
+      term: {
+        'fullyQualifiedName.keyword': filters.entityFQN,
       },
     });
   }

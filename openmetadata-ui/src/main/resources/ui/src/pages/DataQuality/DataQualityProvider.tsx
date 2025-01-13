@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { AxiosError } from 'axios';
+import QueryString from 'qs';
 import React, {
   createContext,
   useContext,
@@ -19,9 +20,11 @@ import React, {
   useState,
 } from 'react';
 import { useParams } from 'react-router-dom';
+import { DataQualityPageParams } from '../../components/DataQuality/DataQuality.interface';
 import { INITIAL_TEST_SUMMARY } from '../../constants/TestSuite.constant';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { TestSummary } from '../../generated/tests/testCase';
+import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import {
   fetchEntityCoveredWithDQ,
   fetchTestCaseSummary,
@@ -40,6 +43,17 @@ export const DataQualityContext = createContext<DataQualityContextInterface>(
 
 const DataQualityProvider = ({ children }: { children: React.ReactNode }) => {
   const { tab: activeTab } = useParams<{ tab: DataQualityPageTabs }>();
+  const location = useCustomLocation();
+  const params = useMemo(() => {
+    const search = location.search;
+
+    const params = QueryString.parse(
+      search.startsWith('?') ? search.substring(1) : search
+    );
+
+    return params as DataQualityPageParams;
+  }, [location.search]);
+
   const [testCaseSummary, setTestCaseSummary] =
     useState<TestSummary>(INITIAL_TEST_SUMMARY);
   const [isTestCaseSummaryLoading, setIsTestCaseSummaryLoading] =
@@ -56,20 +70,27 @@ const DataQualityProvider = ({ children }: { children: React.ReactNode }) => {
     };
   }, [testCaseSummary, isTestCaseSummaryLoading, activeTab]);
 
-  const fetchTestSummary = async () => {
+  const fetchTestSummary = async (params?: DataQualityPageParams) => {
+    const filters = {
+      ownerFqn: params?.owner ? JSON.parse(params.owner)?.name : undefined,
+      tier: params?.tier ? [params.tier] : undefined,
+      tags: params?.tags,
+      entityFQN: params?.tableFqn,
+    };
+
     setIsTestCaseSummaryLoading(true);
     try {
-      const { data } = await fetchTestCaseSummary();
+      const { data } = await fetchTestCaseSummary(filters);
       const { data: unhealthyData } = await fetchEntityCoveredWithDQ(
-        undefined,
+        filters,
         true
       );
       const { data: totalDQCoverage } = await fetchEntityCoveredWithDQ(
-        undefined,
+        filters,
         false
       );
 
-      const { data: entityCount } = await fetchTotalEntityCount();
+      const { data: entityCount } = await fetchTotalEntityCount(filters);
 
       const unhealthy = parseInt(unhealthyData[0].originEntityFQN);
       const total = parseInt(totalDQCoverage[0].originEntityFQN);
@@ -96,11 +117,11 @@ const DataQualityProvider = ({ children }: { children: React.ReactNode }) => {
 
   useEffect(() => {
     if (testCasePermission?.ViewAll || testCasePermission?.ViewBasic) {
-      fetchTestSummary();
+      fetchTestSummary(params);
     } else {
       setIsTestCaseSummaryLoading(false);
     }
-  }, []);
+  }, [params]);
 
   return (
     <DataQualityContext.Provider value={dataQualityContextValue}>
