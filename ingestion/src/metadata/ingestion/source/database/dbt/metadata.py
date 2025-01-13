@@ -372,15 +372,18 @@ class DbtSource(DbtServiceSource):
                 iter(filter(lambda x: x is not None, table_entities)), None
             )
 
-            return table_entity
-        except Exception as exc:
-            logger.debug(traceback.format_exc())
+            if table_entity:
+                return table_entity
             logger.warning(
                 f"Unable to find the table '{table_fqn}' in OpenMetadata"
                 "Please check if the table exists and is ingested in OpenMetadata"
                 "Also name, database, schema of the manifest node matches with the table present "
-                f"in OpenMetadata: {exc}"
+                "in OpenMetadata"
             )
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Failed to get table entity from OpenMetadata: {exc}")
+
         return None
 
     # pylint: disable=too-many-locals, too-many-branches, too-many-statements
