@@ -34,13 +34,11 @@ import { usePermissionProvider } from '../../../context/PermissionProvider/Permi
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
-import { Operation } from '../../../generated/entity/policies/policy';
 import { EntityReference } from '../../../generated/tests/testCase';
 import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { getTestCaseByFqn, updateTestCaseById } from '../../../rest/testAPI';
 import { getFeedCounts } from '../../../utils/CommonUtils';
-import { checkPermission } from '../../../utils/PermissionsUtils';
 import { getIncidentManagerDetailPagePath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { IncidentManagerTabs } from '../IncidentManager.interface';
@@ -58,33 +56,32 @@ const IncidentManagerDetailPage = () => {
 
   const { fqn: testCaseFQN } = useFqn();
 
-  const { isLoading, setIsLoading, setTestCase, testCase, reset } =
-    useTestCaseStore();
+  const {
+    isLoading,
+    setIsLoading,
+    setTestCase,
+    testCase,
+    reset,
+    isPermissionLoading,
+    testCasePermission,
+    setTestCasePermission,
+    setIsPermissionLoading,
+  } = useTestCaseStore();
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
   );
 
-  const { permissions } = usePermissionProvider();
+  const { getEntityPermissionByFqn } = usePermissionProvider();
   const { hasViewPermission, editDisplayNamePermission, hasDeletePermission } =
     useMemo(() => {
       return {
-        hasViewPermission: checkPermission(
-          Operation.ViewAll,
-          ResourceEntity.TEST_CASE,
-          permissions
-        ),
-        editDisplayNamePermission: checkPermission(
-          Operation.EditDisplayName,
-          ResourceEntity.TEST_CASE,
-          permissions
-        ),
-        hasDeletePermission: checkPermission(
-          Operation.Delete,
-          ResourceEntity.TEST_CASE,
-          permissions
-        ),
+        hasViewPermission:
+          testCasePermission?.ViewAll || testCasePermission?.ViewBasic,
+        editDisplayNamePermission:
+          testCasePermission?.EditAll || testCasePermission?.EditDisplayName,
+        hasDeletePermission: testCasePermission?.Delete,
       };
-    }, [permissions]);
+    }, [testCasePermission]);
 
   const tabDetails: TabsProps['items'] = useMemo(() => {
     const tabs = testCaseClassBase.getTab(feedCount.openTaskCount);
@@ -95,6 +92,22 @@ const IncidentManagerDetailPage = () => {
       children: <Tab />,
     }));
   }, [feedCount.openTaskCount, testCaseClassBase.showSqlQueryTab]);
+
+  const fetchTestCasePermission = async () => {
+    setIsPermissionLoading(true);
+    try {
+      const response = await getEntityPermissionByFqn(
+        ResourceEntity.TEST_CASE,
+        testCaseFQN
+      );
+
+      setTestCasePermission(response);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsPermissionLoading(false);
+    }
+  };
 
   const fetchTestCaseData = async () => {
     setIsLoading(true);
@@ -196,6 +209,12 @@ const IncidentManagerDetailPage = () => {
   }, [testCaseFQN]);
 
   useEffect(() => {
+    if (testCaseFQN) {
+      fetchTestCasePermission();
+    }
+  }, [testCaseFQN]);
+
+  useEffect(() => {
     if (hasViewPermission && testCaseFQN) {
       fetchTestCaseData();
       getEntityFeedCount();
@@ -210,7 +229,7 @@ const IncidentManagerDetailPage = () => {
     };
   }, [testCaseFQN, hasViewPermission]);
 
-  if (isLoading) {
+  if (isLoading || isPermissionLoading) {
     return <Loader />;
   }
 
