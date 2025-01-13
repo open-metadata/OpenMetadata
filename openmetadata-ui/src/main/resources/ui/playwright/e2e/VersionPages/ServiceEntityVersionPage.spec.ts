@@ -25,6 +25,7 @@ import { SearchIndexServiceClass } from '../../support/entity/service/SearchInde
 import { StorageServiceClass } from '../../support/entity/service/StorageServiceClass';
 import {
   createNewPage,
+  descriptionBoxReadOnly,
   redirectToHomePage,
   toastNotification,
 } from '../../utils/common';
@@ -126,7 +127,7 @@ entities.forEach((EntityClass) => {
 
           await expect(
             page.locator(
-              '[data-testid="viewer-container"] [data-testid="diff-added"]'
+              `[data-testid="asset-description-container"] ${descriptionBoxReadOnly} [data-testid="diff-added"]`
             )
           ).toBeVisible();
 

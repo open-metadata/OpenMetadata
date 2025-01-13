@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * Schema to create a new test case result .
  */
 export interface CreateTestCaseResult {
@@ -24,6 +22,10 @@ export interface CreateTestCaseResult {
      * Percentage of rows that failed.
      */
     failedRowsPercentage?: number;
+    /**
+     * Fqn of the test case against which this test case result is added.
+     */
+    fqn?: string;
     /**
      * Incident State ID associated with this result. This association happens when the result
      * is created, and will stay there even when the incident is resolved.

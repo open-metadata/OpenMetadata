@@ -21,6 +21,10 @@ import {
 } from '../../../rest/glossaryAPI';
 import GlossaryPage from './GlossaryPage.component';
 
+jest.mock('../../../hooks/useFqn', () => ({
+  useFqn: jest.fn().mockReturnValue({ fqn: 'Business Glossary' }),
+}));
+
 jest.mock('react-router-dom', () => ({
   useHistory: () => ({
     push: jest.fn(),
@@ -98,7 +102,9 @@ jest.mock('../../../rest/glossaryAPI', () => ({
     .mockImplementation(() => Promise.resolve({ data: MOCK_GLOSSARY })),
   getGlossariesList: jest
     .fn()
-    .mockImplementation(() => Promise.resolve({ data: [MOCK_GLOSSARY] })),
+    .mockImplementation(() =>
+      Promise.resolve({ data: [MOCK_GLOSSARY], paging: { total: 1 } })
+    ),
   patchGlossaryTerm: jest
     .fn()
     .mockImplementation(() => Promise.resolve({ data: MOCK_GLOSSARY })),

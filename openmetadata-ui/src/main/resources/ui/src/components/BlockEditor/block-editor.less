@@ -203,6 +203,42 @@
   .tippy-box {
     max-width: 400px !important;
   }
+
+  &.block-editor-wrapper--bar-menu {
+    border: 1px solid #dadde6;
+    border-radius: 4px;
+
+    // do not show drag handle and block handle in bar menu mode
+    .om-drag-handle,
+    .om-block-handle {
+      display: none;
+    }
+    .om-block-editor {
+      max-height: 300px;
+      overflow: auto;
+      padding-left: 24px;
+      padding-right: 24px;
+      padding-top: 8px;
+      &:focus-visible {
+        outline: none;
+      }
+    }
+  }
+
+  &.block-editor-wrapper--bubble-menu {
+    .om-block-editor {
+      &:focus-visible {
+        outline: none;
+      }
+    }
+  }
+
+  // if contenteditable is false, remove padding-bottom from last p tag
+  .om-block-editor[contenteditable='false'] {
+    > p:last-child {
+      padding-bottom: 0;
+    }
+  }
 }
 
 .menu-wrapper {
@@ -388,7 +424,7 @@
     width: 100%;
   }
 }
-.om-image-node-embed-link-btn-col {
+body .om-image-node-embed-link-btn-col {
   display: flex;
   justify-content: flex-end;
 }
