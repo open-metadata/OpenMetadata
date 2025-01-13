@@ -184,6 +184,8 @@ import org.openmetadata.service.util.RestUtil.DeleteResponse;
 import org.openmetadata.service.util.RestUtil.PatchResponse;
 import org.openmetadata.service.util.RestUtil.PutResponse;
 import org.openmetadata.service.util.ResultList;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * This is the base class used by Entity Resources to perform READ and WRITE operations to the backend database to

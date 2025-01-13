@@ -11,7 +11,7 @@
   <artifactId>openmetadata-service</artifactId>
 
   <properties>
-    <dropwizard.swagger.version>2.0.12-1</dropwizard.swagger.version>
+    <dropwizard.swagger.version>4.0.5-1</dropwizard.swagger.version>
     <sonar.junit.reportPaths>${project.basedir}/target/surefire-reports</sonar.junit.reportPaths>
     <sonar.coverage.jacoco.xmlReportPaths>${project.basedir}/target/site/jacoco-aggregate/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
     <sonar.tests>${project.basedir}/src/test/java</sonar.tests>
@@ -130,6 +130,10 @@
     <dependency>
       <groupId>io.dropwizard</groupId>
       <artifactId>dropwizard-jdbi3</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.jdbi</groupId>
+      <artifactId>jdbi3-sqlobject</artifactId>
     </dependency>
     <dependency>
       <groupId>com.mysql</groupId>
@@ -263,10 +267,6 @@
       <artifactId>jackson-annotations</artifactId>
     </dependency>
     <dependency>
-      <groupId>io.dropwizard.modules</groupId>
-      <artifactId>dropwizard-health</artifactId>
-    </dependency>
-    <dependency>
       <groupId>com.fasterxml.jackson.core</groupId>
       <artifactId>jackson-databind</artifactId>
     </dependency>
@@ -369,6 +369,18 @@
     <dependency>
       <groupId>com.github.erosb</groupId>
       <artifactId>everit-json-schema</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>org.apache.felix</groupId>
+      <artifactId>org.apache.felix.http.wrappers</artifactId>
+      <version>1.1.8</version>
+    </dependency>
+
+    <dependency>
+      <groupId>javax.servlet</groupId>
+      <artifactId>javax.servlet-api</artifactId>
+      <version>4.0.1</version>
     </dependency>
 
     <!-- Dependencies for cloudwatch monitoring -->
@@ -745,6 +757,17 @@
     <dependency>
       <groupId>com.microsoft.azure</groupId>
       <artifactId>msal4j</artifactId>
+    </dependency>
+      <dependency>
+          <groupId>org.projectlombok</groupId>
+          <artifactId>lombok</artifactId>
+          <scope>provided</scope>
+      </dependency>
+    <dependency>
+      <groupId>io.swagger</groupId>
+      <artifactId>swagger-annotations</artifactId>
+      <version>1.6.14</version>
+      <scope>compile</scope>
     </dependency>
   </dependencies>
 

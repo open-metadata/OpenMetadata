@@ -9,8 +9,6 @@ import static org.openmetadata.service.jdbi3.UserRepository.AUTH_MECHANISM_FIELD
 import static org.openmetadata.service.util.AsciiTable.printOpenMetadataText;
 import static org.openmetadata.service.util.UserUtil.updateUserWithHashedPwd;
 
-import ch.qos.logback.classic.Level;
-import ch.qos.logback.classic.Logger;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
@@ -85,7 +83,6 @@ import org.openmetadata.service.secrets.SecretsManagerUpdateService;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.util.jdbi.DatabaseAuthenticationProviderFactory;
 import org.openmetadata.service.util.jdbi.JdbiUtils;
-import org.slf4j.LoggerFactory;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
@@ -691,10 +688,6 @@ public class OpenMetadataOperations implements Callable<Integer> {
   }
 
   private void parseConfig() throws Exception {
-    if (debug) {
-      Logger root = (Logger) LoggerFactory.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME);
-      root.setLevel(Level.DEBUG);
-    }
     ObjectMapper objectMapper = Jackson.newObjectMapper();
     Validator validator = Validators.newValidator();
     YamlConfigurationFactory<OpenMetadataApplicationConfig> factory =
