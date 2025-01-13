@@ -52,6 +52,10 @@ class RedashApiClient:
             f"api/dashboards/{slug}?legacy=true",
         )
 
+    def get_dashboard_by_id(self, id: int):
+        """GET api/dashboards/<id>"""
+        return self.client.get(f"api/dashboards/{id}")
+
     def paginate(self, resource, page=1, page_size=25, **kwargs):
         """Load all items of a paginated resource"""
 
