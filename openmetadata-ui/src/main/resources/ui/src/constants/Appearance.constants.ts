@@ -17,3 +17,5 @@ export const DEFAULT_THEME = {
   warningColor: '#ffc34e',
   errorColor: '#ff4c3b',
 };
+
+export const MAX_MODAL_WIDTH = 900;
