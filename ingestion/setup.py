@@ -364,6 +364,7 @@ test = {
     "dirty-equals",
     # install dbt dependency
     "dbt-artifacts-parser",
+    "dbt-postgres", # for running dbt lineage tests
     "freezegun",
     VERSIONS["sqlalchemy-databricks"],
     VERSIONS["databricks-sdk"],
