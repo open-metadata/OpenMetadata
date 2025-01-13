@@ -192,6 +192,7 @@ jest.mock('react-router-dom', () => ({
       push: jest.fn(),
     },
   })),
+  useLocation: jest.fn(),
   useParams: jest.fn().mockImplementation(() => mockParams),
 }));
 

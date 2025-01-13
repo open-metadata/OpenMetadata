@@ -56,6 +56,7 @@ import {
   EntityType,
   TabSpecificField,
 } from '../../enums/entity.enum';
+import { CursorType } from '../../enums/pagination.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { Tag } from '../../generated/entity/classification/tag';
 import { DatabaseSchema } from '../../generated/entity/data/databaseSchema';
@@ -64,6 +65,7 @@ import { ThreadType } from '../../generated/entity/feed/thread';
 import { Include } from '../../generated/type/include';
 import { TagLabel } from '../../generated/type/tagLabel';
 import { usePaging } from '../../hooks/paging/usePaging';
+import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../hooks/useFqn';
 import { FeedCounts } from '../../interface/feed.interface';
 import {
@@ -100,6 +102,8 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     handlePagingChange,
     currentPage,
     handlePageChange,
+    pagingCursor,
+    handlePageSizeChange,
   } = pagingInfo;
 
   const { tab: activeTab = EntityTabs.TABLE } =
@@ -131,6 +135,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
 
   const [updateProfilerSetting, setUpdateProfilerSetting] =
     useState<boolean>(false);
+  const location = useCustomLocation();
 
   const extraDropdownContent = useMemo(
     () =>
@@ -145,6 +150,26 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   const handleShowDeletedTables = (value: boolean) => {
     setShowDeletedTables(value);
     handlePageChange(INITIAL_PAGING_VALUE);
+
+    const path = location.pathname;
+    const searchParams = new URLSearchParams(location.search);
+
+    searchParams.set('showDeletedTables', value.toString());
+    history.replace({
+      pathname: path,
+      search: searchParams.toString(),
+      state: {
+        ...((location.state as any) || {}),
+        [path]: {
+          ...((location.state as any)?.[path] || {}),
+          currentPage: INITIAL_PAGING_VALUE,
+          cursorData: {
+            cursorType: null,
+            cursorValue: null,
+          },
+        },
+      },
+    });
   };
 
   const { version: currentVersion, deleted } = useMemo(
@@ -317,10 +342,13 @@ const DatabaseSchemaPage: FunctionComponent = () => {
             decodedDatabaseSchemaFQN,
             activeKey
           ),
+          state: {
+            ...(location.state as any),
+          },
         });
       }
     },
-    [activeTab, decodedDatabaseSchemaFQN]
+    [activeTab, decodedDatabaseSchemaFQN, location.state]
   );
 
   const handleUpdateOwner = useCallback(
@@ -461,10 +489,18 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     ({ cursorType, currentPage }: PagingHandlerParams) => {
       if (cursorType) {
         getSchemaTables({ [cursorType]: paging[cursorType] });
+        handlePageChange(
+          currentPage,
+          {
+            cursorType: cursorType,
+            cursorValue: paging[cursorType as CursorType]!,
+          },
+          pageSize
+        );
       }
       handlePageChange(currentPage);
     },
-    [paging, getSchemaTables]
+    [paging, getSchemaTables, handlePageChange, pageSize]
   );
 
   const versionHandler = useCallback(() => {
@@ -508,6 +544,30 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   }, [decodedDatabaseSchemaFQN]);
 
   useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const showDeletedTablesParam = searchParams.get('showDeletedTables');
+    setShowDeletedTables(showDeletedTablesParam === 'true'); // Default to `false` if param is missing
+  }, [location]);
+
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    if (activeTab === EntityTabs.TABLE) {
+      // If no tab parameter is in the URL, update the URL to include the default tab
+      history.push({
+        pathname: getEntityDetailsPath(
+          EntityType.DATABASE_SCHEMA,
+          decodedDatabaseSchemaFQN,
+          activeTab
+        ),
+        search: searchParams.toString(),
+        state: {
+          ...(location.state as any),
+        },
+      });
+    }
+  }, []);
+
+  useEffect(() => {
     fetchDatabaseSchemaPermission();
   }, [decodedDatabaseSchemaFQN]);
 
@@ -520,8 +580,36 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   }, [viewDatabaseSchemaPermission]);
 
   useEffect(() => {
+    const cursorState = pagingCursor();
     if (viewDatabaseSchemaPermission && decodedDatabaseSchemaFQN) {
-      getSchemaTables({ limit: pageSize });
+      if (
+        cursorState.cursorData?.cursorType &&
+        cursorState?.pageSize &&
+        !showDeletedTables
+      ) {
+        // Fetch data if cursorType is present in state with cursor Value to handle browser back navigation
+        getSchemaTables({
+          [cursorState?.cursorData?.cursorType]:
+            cursorState?.cursorData?.cursorValue,
+        });
+
+        handlePageSizeChange(cursorState?.pageSize, false);
+        handlePageChange(cursorState.currentPage as number);
+      } else {
+        // Otherwise, just fetch the data without cursor value
+        if (activeTab === EntityTabs.TABLE) {
+          getSchemaTables({ limit: pageSize });
+          handlePageChange(
+            currentPage,
+            {
+              cursorType: null,
+              cursorValue: null,
+            },
+            cursorState?.pageSize || pageSize
+          );
+          handlePageSizeChange(cursorState?.pageSize || pageSize);
+        }
+      }
     }
   }, [
     showDeletedTables,
@@ -529,6 +617,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     viewDatabaseSchemaPermission,
     deleted,
     pageSize,
+    activeTab,
   ]);
 
   const {

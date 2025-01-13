@@ -17,49 +17,131 @@ import {
   useMemo,
   useState,
 } from 'react';
+import { useHistory } from 'react-router-dom';
 import {
   INITIAL_PAGING_VALUE,
   PAGE_SIZE_BASE,
   pagingObject,
 } from '../../constants/constants';
+import { CursorType } from '../../enums/pagination.enum';
 import { Paging } from '../../generated/type/paging';
+import useCustomLocation from '../useCustomLocation/useCustomLocation';
+
+interface CursorState {
+  cursorType: CursorType | null;
+  cursorValue: string | null;
+}
+
+interface PagingStateData {
+  cursorData: CursorState;
+  currentPage: number | null;
+  pageSize: number | null;
+}
+
+interface LocationState {
+  [path: string]: PagingStateData;
+}
 
 export interface UsePagingInterface {
   paging: Paging;
   handlePagingChange: Dispatch<SetStateAction<Paging>>;
   currentPage: number;
-  handlePageChange: Dispatch<SetStateAction<number>>;
+  handlePageChange: (
+    page: number | ((page: number) => number),
+    cursorData?: CursorState,
+    pageSize?: number | null
+  ) => void;
   pageSize: number;
-  handlePageSizeChange: (page: number) => void;
+  handlePageSizeChange: (page: number, resetHistoryState?: boolean) => void;
   showPagination: boolean;
+  pagingCursor: () => PagingStateData;
 }
-
 export const usePaging = (
   defaultPageSize = PAGE_SIZE_BASE
 ): UsePagingInterface => {
   const [paging, setPaging] = useState<Paging>(pagingObject);
   const [currentPage, setCurrentPage] = useState<number>(INITIAL_PAGING_VALUE);
   const [pageSize, setPageSize] = useState(defaultPageSize);
+  const history = useHistory();
+  const location = useCustomLocation();
 
   const handlePageSize = useCallback(
-    (page: number) => {
+    (page: number, resetHistoryState = true) => {
       setPageSize(page);
       setCurrentPage(INITIAL_PAGING_VALUE);
-    },
-    [setPageSize, setCurrentPage]
-  );
 
+      // Update location state to persist pageSize for navigation
+      const path = location.pathname;
+      const state = (location.state as LocationState) || {};
+      const cursorState = state[path] || {};
+      history.replace({
+        ...location,
+        state: {
+          ...state,
+          [path]: {
+            pageSize: page,
+            cursorData: resetHistoryState
+              ? { cursorType: null, cursorValue: null }
+              : cursorState.cursorData,
+            currentPage: resetHistoryState
+              ? INITIAL_PAGING_VALUE
+              : cursorState.currentPage,
+          },
+        },
+      });
+    },
+    [setPageSize, setCurrentPage, location, history]
+  );
   const paginationVisible = useMemo(() => {
     return paging.total > pageSize || pageSize !== defaultPageSize;
   }, [defaultPageSize, paging, pageSize]);
+
+  // Fetch stored cursor values on page reload
+  const pagingCursor = useCallback(() => {
+    const path = location.pathname;
+    const state = (location.state as LocationState) || {};
+    const cursorState = state[path];
+
+    return {
+      cursorData: {
+        cursorType: cursorState?.cursorData.cursorType || null,
+        cursorValue: cursorState?.cursorData.cursorValue || null,
+      },
+      currentPage: cursorState?.currentPage || null,
+      pageSize: cursorState?.pageSize || null,
+    };
+  }, [location]);
+
+  const handlePageChange = (
+    page: number | ((page: number) => number),
+    cursorData?: CursorState,
+    pageSize?: number | null
+  ) => {
+    setCurrentPage(page);
+    if (cursorData) {
+      const path = location.pathname;
+      history.replace({
+        ...location,
+        state: {
+          ...((location.state as any) || {}),
+          [path]: {
+            cursorData,
+            currentPage: page,
+            pageSize,
+          },
+        },
+      });
+    }
+  };
 
   return {
     paging,
     handlePagingChange: setPaging,
     currentPage,
-    handlePageChange: setCurrentPage,
+    handlePageChange,
     pageSize,
     handlePageSizeChange: handlePageSize,
     showPagination: paginationVisible,
+    pagingCursor,
   };
 };
