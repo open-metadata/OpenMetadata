@@ -163,7 +163,9 @@ test.describe('User with different Roles', () => {
       state: 'visible',
     });
 
-    await userPage.locator(descriptionBox).clear();
+    await userPage.click(descriptionBox);
+    await userPage.keyboard.press('ControlOrMeta+A');
+    await userPage.keyboard.press('Backspace');
 
     await expect(userPage.locator(descriptionBox)).not.toContainText(
       'Name of the User'

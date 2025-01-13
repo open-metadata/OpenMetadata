@@ -777,7 +777,6 @@ public class OpenSearchClient implements SearchClient {
       boolean deleted,
       String entityType)
       throws IOException {
-    Set<String> visitedFQN = new HashSet<>();
     if (entityType.equalsIgnoreCase(Entity.PIPELINE)
         || entityType.equalsIgnoreCase(Entity.STORED_PROCEDURE)) {
       return searchPipelineLineage(fqn, upstreamDepth, downstreamDepth, queryFilter, deleted);
@@ -802,7 +801,6 @@ public class OpenSearchClient implements SearchClient {
     }
     getLineage(
         fqn,
-        visitedFQN,
         downstreamDepth,
         edges,
         nodes,
@@ -810,14 +808,7 @@ public class OpenSearchClient implements SearchClient {
         "lineage.fromEntity.fqnHash.keyword",
         deleted);
     getLineage(
-        fqn,
-        visitedFQN,
-        upstreamDepth,
-        edges,
-        nodes,
-        queryFilter,
-        "lineage.toEntity.fqnHash.keyword",
-        deleted);
+        fqn, upstreamDepth, edges, nodes, queryFilter, "lineage.toEntity.fqnHash.keyword", deleted);
     responseMap.put("edges", edges);
     responseMap.put("nodes", nodes);
     return responseMap;
@@ -1041,7 +1032,6 @@ public class OpenSearchClient implements SearchClient {
 
   private void getLineage(
       String fqn,
-      Set<String> visitedFQN,
       int depth,
       Set<Map<String, Object>> edges,
       Set<Map<String, Object>> nodes,
@@ -1049,10 +1039,9 @@ public class OpenSearchClient implements SearchClient {
       String direction,
       boolean deleted)
       throws IOException {
-    if (depth <= 0 || visitedFQN.contains(fqn)) {
+    if (depth <= 0) {
       return;
     }
-    visitedFQN.add(fqn);
     os.org.opensearch.action.search.SearchRequest searchRequest =
         new os.org.opensearch.action.search.SearchRequest(
             Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS));
@@ -1084,27 +1073,13 @@ public class OpenSearchClient implements SearchClient {
           if (!edges.contains(lin) && fromEntity.get("fqn").equals(fqn)) {
             edges.add(lin);
             getLineage(
-                toEntity.get("fqn"),
-                visitedFQN,
-                depth - 1,
-                edges,
-                nodes,
-                queryFilter,
-                direction,
-                deleted);
+                toEntity.get("fqn"), depth - 1, edges, nodes, queryFilter, direction, deleted);
           }
         } else {
           if (!edges.contains(lin) && toEntity.get("fqn").equals(fqn)) {
             edges.add(lin);
             getLineage(
-                fromEntity.get("fqn"),
-                visitedFQN,
-                depth - 1,
-                edges,
-                nodes,
-                queryFilter,
-                direction,
-                deleted);
+                fromEntity.get("fqn"), depth - 1, edges, nodes, queryFilter, direction, deleted);
           }
         }
       }
@@ -1251,81 +1226,82 @@ public class OpenSearchClient implements SearchClient {
   private Map<String, Object> searchPipelineLineage(
       String fqn, int upstreamDepth, int downstreamDepth, String queryFilter, boolean deleted)
       throws IOException {
-    Set<String> visitedFQN = new HashSet<>();
     Map<String, Object> responseMap = new HashMap<>();
     Set<Map<String, Object>> edges = new HashSet<>();
     Set<Map<String, Object>> nodes = new HashSet<>();
     responseMap.put("entity", null);
-    os.org.opensearch.action.search.SearchRequest searchRequest =
-        new os.org.opensearch.action.search.SearchRequest(
-            Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS));
-    BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery();
-    boolQueryBuilder.should(
-        QueryBuilders.boolQuery()
-            .must(QueryBuilders.termQuery("lineage.pipeline.fullyQualifiedName.keyword", fqn)));
-    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-    searchSourceBuilder.fetchSource(null, SOURCE_FIELDS_TO_EXCLUDE.toArray(String[]::new));
-    searchSourceBuilder.query(boolQueryBuilder);
-    if (CommonUtil.nullOrEmpty(deleted)) {
-      searchSourceBuilder.query(
+    Object[] searchAfter = null;
+    long processedRecords = 0;
+    long totalRecords = -1;
+    while (totalRecords != processedRecords) {
+      os.org.opensearch.action.search.SearchRequest searchRequest =
+          new os.org.opensearch.action.search.SearchRequest(
+              Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS));
+      BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery();
+      boolQueryBuilder.should(
           QueryBuilders.boolQuery()
-              .must(boolQueryBuilder)
-              .must(QueryBuilders.termQuery("deleted", deleted)));
-    }
-    buildSearchSourceFilter(queryFilter, searchSourceBuilder);
+              .must(QueryBuilders.termQuery("lineage.pipeline.fullyQualifiedName.keyword", fqn)));
+      SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+      searchSourceBuilder.fetchSource(null, SOURCE_FIELDS_TO_EXCLUDE.toArray(String[]::new));
+      FieldSortBuilder sortBuilder = SortBuilders.fieldSort("fullyQualifiedName");
+      searchSourceBuilder.sort(sortBuilder);
+      searchSourceBuilder.query(boolQueryBuilder);
+      if (searchAfter != null) {
+        searchSourceBuilder.searchAfter(searchAfter);
+      }
+      if (CommonUtil.nullOrEmpty(deleted)) {
+        searchSourceBuilder.query(
+            QueryBuilders.boolQuery()
+                .must(boolQueryBuilder)
+                .must(QueryBuilders.termQuery("deleted", deleted)));
+      }
+      buildSearchSourceFilter(queryFilter, searchSourceBuilder);
 
-    searchRequest.source(searchSourceBuilder);
-    SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
-    for (var hit : searchResponse.getHits().getHits()) {
-      List<Map<String, Object>> lineage =
-          (List<Map<String, Object>>) hit.getSourceAsMap().get("lineage");
-      HashMap<String, Object> tempMap = new HashMap<>(JsonUtils.getMap(hit.getSourceAsMap()));
-      nodes.add(tempMap);
-      for (Map<String, Object> lin : lineage) {
-        HashMap<String, String> fromEntity = (HashMap<String, String>) lin.get("fromEntity");
-        HashMap<String, String> toEntity = (HashMap<String, String>) lin.get("toEntity");
-        HashMap<String, String> pipeline = (HashMap<String, String>) lin.get("pipeline");
-        if (pipeline != null && pipeline.get("fullyQualifiedName").equalsIgnoreCase(fqn)) {
-          edges.add(lin);
-          getLineage(
-              fromEntity.get("fqn"),
-              visitedFQN,
-              upstreamDepth,
-              edges,
-              nodes,
-              queryFilter,
-              "lineage.toEntity.fqn.keyword",
-              deleted);
-          getLineage(
-              toEntity.get("fqn"),
-              visitedFQN,
-              downstreamDepth,
-              edges,
-              nodes,
-              queryFilter,
-              "lineage.fromEntity.fqn.keyword",
-              deleted);
+      searchRequest.source(searchSourceBuilder);
+      SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
+      for (var hit : searchResponse.getHits().getHits()) {
+        List<Map<String, Object>> lineage =
+            (List<Map<String, Object>>) hit.getSourceAsMap().get("lineage");
+        HashMap<String, Object> tempMap = new HashMap<>(JsonUtils.getMap(hit.getSourceAsMap()));
+        nodes.add(tempMap);
+        for (Map<String, Object> lin : lineage) {
+          HashMap<String, String> fromEntity = (HashMap<String, String>) lin.get("fromEntity");
+          HashMap<String, String> toEntity = (HashMap<String, String>) lin.get("toEntity");
+          HashMap<String, String> pipeline = (HashMap<String, String>) lin.get("pipeline");
+          if (pipeline != null && pipeline.get("fullyQualifiedName").equalsIgnoreCase(fqn)) {
+            edges.add(lin);
+            getLineage(
+                fromEntity.get("fqn"),
+                upstreamDepth,
+                edges,
+                nodes,
+                queryFilter,
+                "lineage.toEntity.fqn.keyword",
+                deleted);
+            getLineage(
+                toEntity.get("fqn"),
+                downstreamDepth,
+                edges,
+                nodes,
+                queryFilter,
+                "lineage.fromEntity.fqn.keyword",
+                deleted);
+          }
         }
+      }
+      totalRecords = searchResponse.getHits().getTotalHits().value;
+      int currentHits = searchResponse.getHits().getHits().length;
+      processedRecords += currentHits;
+      if (currentHits > 0) {
+        searchAfter = searchResponse.getHits().getHits()[currentHits - 1].getSortValues();
+      } else {
+        searchAfter = null;
       }
     }
     getLineage(
-        fqn,
-        visitedFQN,
-        downstreamDepth,
-        edges,
-        nodes,
-        queryFilter,
-        "lineage.fromEntity.fqn.keyword",
-        deleted);
+        fqn, downstreamDepth, edges, nodes, queryFilter, "lineage.fromEntity.fqn.keyword", deleted);
     getLineage(
-        fqn,
-        visitedFQN,
-        upstreamDepth,
-        edges,
-        nodes,
-        queryFilter,
-        "lineage.toEntity.fqn.keyword",
-        deleted);
+        fqn, upstreamDepth, edges, nodes, queryFilter, "lineage.toEntity.fqn.keyword", deleted);
 
     if (edges.isEmpty()) {
       os.org.opensearch.action.search.SearchRequest searchRequestForEntity =
