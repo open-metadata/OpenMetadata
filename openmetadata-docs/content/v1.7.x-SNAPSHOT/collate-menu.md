@@ -68,6 +68,10 @@ site_menu:
     url: /connectors/database/clickhouse
   - category: Connectors / Database / Clickhouse / Run Externally
     url: /connectors/database/clickhouse/yaml
+  - category: Connectors / Database / Cockroach
+    url: /connectors/database/cockroach
+  - category: Connectors / Database / Cockroach / Run Externally
+    url: /connectors/database/cockroach/yaml
   - category: Connectors / Database / Couchbase
     url: /connectors/database/couchbase
   - category: Connectors / Database / Couchbase / Run Externally
@@ -354,10 +358,9 @@ site_menu:
 
   - category: Connectors / Pipeline / Matillion / Run Externally
     url: /connectors/pipeline/matillion/yaml
-  - category: Connectors / Pipeline / DataFactory
+  - category: Connectors / Pipeline / Azure Data Factory
     url: /connectors/pipeline/datafactory
-
-  - category: Connectors / Pipeline / DataFactory / Run Externally
+  - category: Connectors / Pipeline / Azure Data Factory / Run Externally
     url: /connectors/pipeline/datafactory/yaml
   - category: Connectors / Pipeline / Stitch
     url: /connectors/pipeline/stitch
@@ -689,8 +692,6 @@ site_menu:
   - category: How-to Guides / Data Quality and Observability / Data Profiler / Sample Data
     url: /how-to-guides/data-quality-observability/profiler/external-sample-data
   - category: How-to Guides / Data Quality and Observability / Data Profiler / External Workflow
-    url: /how-to-guides/data-quality-observability/profiler/external-workflow
-  - category: How-to Guides / Data Quality and Observability / Data Profiler / Auto PII Tagging
     url: /how-to-guides/data-quality-observability/profiler/auto-pii-tagging
   - category: How-to Guides / Data Quality and Observability / Data Observability
     url: /how-to-guides/data-quality-observability/observability
@@ -777,6 +778,12 @@ site_menu:
     url: /how-to-guides/data-governance/classification/request-tags
   - category: How-to Guides / Data Governance / Classification / Auto-Classification in OpenMetadata
     url: /how-to-guides/data-governance/classification/auto
+  - category: How-to Guides / Data Governance / Classification / Auto-Classification in OpenMetadata / Workflow
+    url: /how-to-guides/data-governance/classification/auto/workflow
+  - category: How-to Guides / Data Governance / Classification / Auto-Classification in OpenMetadata / External Workflow
+    url: /how-to-guides/data-governance/classification/auto/external-workflow
+  - category: How-to Guides / Data Governance / Classification / Auto-Classification in OpenMetadata / Auto PII Tagging
+    url: /how-to-guides/data-governance/classification/auto/auto-pii-tagging
   - category: How-to Guides / Data Governance / Classification / What are Tiers
     url: /how-to-guides/data-governance/classification/tiers
   - category: How-to Guides / Data Governance / Classification / Best Practices for Classification
@@ -825,6 +832,12 @@ site_menu:
     url: /releases/supported
   - category: Releases / All Releases
     url: /releases/all-releases
+  - category: Releases / All Releases / 1.6.1 Release
+    url: /releases/all-releases/#1.6.1-release
+  - category: Releases / All Releases / 1.5.15 Release
+    url: /releases/all-releases/#1.5.15-release
+  - category: Releases / All Releases / 1.5.14 Release
+    url: /releases/all-releases/#1.5.14-release
   - category: Releases / All Releases / 1.5.13 Release
     url: /releases/all-releases/#1.5.13-release
   - category: Releases / All Releases / 1.5.12 Release
@@ -1410,6 +1423,8 @@ site_menu:
     url: /main-concepts/metadata-standard/schemas/entity/services/connections/database/common
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Database / Common / JwtAuth
     url: /main-concepts/metadata-standard/schemas/entity/services/connections/database/common/jwtauth
+  - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Database / CockroachConnection
+    url: /main-concepts/metadata-standard/schemas/entity/services/connections/database/cockroachconnection
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Database / CouchbaseConnection
     url: /main-concepts/metadata-standard/schemas/entity/services/connections/database/couchbaseconnection
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Database / CustomDatabaseConnection

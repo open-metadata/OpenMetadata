@@ -76,7 +76,7 @@ import SchemaEditor from '../../Database/SchemaEditor/SchemaEditor';
 import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import InlineEdit from '../InlineEdit/InlineEdit.component';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';
-import RichTextEditorPreviewer from '../RichTextEditor/RichTextEditorPreviewer';
+import RichTextEditorPreviewerV1 from '../RichTextEditor/RichTextEditorPreviewerV1';
 import {
   PropertyValueProps,
   PropertyValueType,
@@ -755,7 +755,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
       const isKeyAdded = versionDataKeys?.includes(propertyName);
 
       return (
-        <RichTextEditorPreviewer
+        <RichTextEditorPreviewerV1
           className={isKeyAdded ? 'diff-added' : ''}
           markdown={String(value) || ''}
         />
@@ -763,7 +763,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
     }
     switch (propertyType.name) {
       case 'markdown':
-        return <RichTextEditorPreviewer markdown={value || ''} />;
+        return <RichTextEditorPreviewerV1 markdown={value || ''} />;
 
       case 'enum':
         return (
@@ -905,7 +905,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
 
         return (
           <div
-            className="d-flex justify-center flex-wrap gap-3"
+            className="d-flex justify-center flex-wrap gap-2 py-2"
             data-testid="time-interval-value">
             <div className="d-flex flex-column gap-2 items-center">
               <StartTimeIcon height={30} width={30} />
@@ -1034,7 +1034,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
           </Col>
           {!isRenderedInRightPanel && (
             <Col span={24}>
-              <RichTextEditorPreviewer
+              <RichTextEditorPreviewerV1
                 className="text-grey-muted property-description"
                 markdown={property.description || ''}
                 maxLength={70}
