@@ -51,6 +51,7 @@ import java.util.stream.Stream;
 import javax.json.JsonObject;
 import javax.net.ssl.SSLContext;
 import javax.ws.rs.core.Response;
+import lombok.Getter;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang.WordUtils;
@@ -67,7 +68,7 @@ import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResultList;
 import org.openmetadata.schema.dataInsight.custom.FormulaHolder;
-import org.openmetadata.schema.entity.data.EntityHierarchy__1;
+import org.openmetadata.schema.entity.data.EntityHierarchy;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.tests.DataQualityReport;
@@ -214,7 +215,7 @@ import os.org.opensearch.search.suggest.completion.context.CategoryQueryContext;
 @Slf4j
 // Not tagged with Repository annotation as it is programmatically initialized
 public class OpenSearchClient implements SearchClient {
-  protected final RestHighLevelClient client;
+  @Getter protected final RestHighLevelClient client;
   public static final NamedXContentRegistry X_CONTENT_REGISTRY;
   private final boolean isClientAvailable;
   private final RBACConditionEvaluator rbacConditionEvaluator;
@@ -583,21 +584,21 @@ public class OpenSearchClient implements SearchClient {
     return response;
   }
 
-  public List<EntityHierarchy__1> buildGlossaryTermSearchHierarchy(SearchResponse searchResponse) {
-    Map<String, EntityHierarchy__1> termMap =
+  public List<EntityHierarchy> buildGlossaryTermSearchHierarchy(SearchResponse searchResponse) {
+    Map<String, EntityHierarchy> termMap =
         new LinkedHashMap<>(); // termMap represent glossary terms
-    Map<String, EntityHierarchy__1> rootTerms =
+    Map<String, EntityHierarchy> rootTerms =
         new LinkedHashMap<>(); // rootTerms represent glossaries
 
     for (var hit : searchResponse.getHits().getHits()) {
       String jsonSource = hit.getSourceAsString();
 
-      EntityHierarchy__1 term = JsonUtils.readValue(jsonSource, EntityHierarchy__1.class);
-      EntityHierarchy__1 glossaryInfo =
+      EntityHierarchy term = JsonUtils.readValue(jsonSource, EntityHierarchy.class);
+      EntityHierarchy glossaryInfo =
           JsonUtils.readTree(jsonSource).path("glossary").isMissingNode()
               ? null
               : JsonUtils.convertValue(
-                  JsonUtils.readTree(jsonSource).path("glossary"), EntityHierarchy__1.class);
+                  JsonUtils.readTree(jsonSource).path("glossary"), EntityHierarchy.class);
 
       if (glossaryInfo != null) {
         rootTerms.putIfAbsent(glossaryInfo.getFullyQualifiedName(), glossaryInfo);
@@ -617,15 +618,15 @@ public class OpenSearchClient implements SearchClient {
               String termFQN = term.getFullyQualifiedName();
 
               if (parentFQN != null && termMap.containsKey(parentFQN)) {
-                EntityHierarchy__1 parentTerm = termMap.get(parentFQN);
-                List<EntityHierarchy__1> children = parentTerm.getChildren();
+                EntityHierarchy parentTerm = termMap.get(parentFQN);
+                List<EntityHierarchy> children = parentTerm.getChildren();
                 children.removeIf(
                     child -> child.getFullyQualifiedName().equals(term.getFullyQualifiedName()));
                 children.add(term);
                 parentTerm.setChildren(children);
               } else {
                 if (rootTerms.containsKey(termFQN)) {
-                  EntityHierarchy__1 rootTerm = rootTerms.get(termFQN);
+                  EntityHierarchy rootTerm = rootTerms.get(termFQN);
                   rootTerm.setChildren(term.getChildren());
                 }
               }
@@ -686,6 +687,76 @@ public class OpenSearchClient implements SearchClient {
   }
 
   @Override
+  public SearchResultListMapper listWithDeepPagination(
+      String index,
+      String query,
+      String filter,
+      String[] fields,
+      SearchSortFilter searchSortFilter,
+      int size,
+      Object[] searchAfter)
+      throws IOException {
+    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+    if (!nullOrEmpty(query)) {
+      searchSourceBuilder = getSearchSourceBuilder(index, query, 0, size);
+    }
+    if (!nullOrEmpty(fields)) {
+      searchSourceBuilder.fetchSource(fields, null);
+    }
+
+    List<Map<String, Object>> results = new ArrayList<>();
+
+    if (Optional.ofNullable(filter).isPresent()) {
+      getSearchFilter(filter, searchSourceBuilder, !nullOrEmpty(query));
+    }
+
+    searchSourceBuilder.timeout(new TimeValue(30, TimeUnit.SECONDS));
+    searchSourceBuilder.from(0);
+    searchSourceBuilder.size(size);
+
+    if (Optional.ofNullable(searchAfter).isPresent()) {
+      searchSourceBuilder.searchAfter(searchAfter);
+    }
+
+    if (searchSortFilter.isSorted()) {
+      FieldSortBuilder fieldSortBuilder =
+          SortBuilders.fieldSort(searchSortFilter.getSortField())
+              .order(SortOrder.fromString(searchSortFilter.getSortType()));
+      if (searchSortFilter.isNested()) {
+        NestedSortBuilder nestedSortBuilder =
+            new NestedSortBuilder(searchSortFilter.getSortNestedPath());
+        fieldSortBuilder.setNestedSort(nestedSortBuilder);
+        fieldSortBuilder.sortMode(
+            SortMode.valueOf(searchSortFilter.getSortNestedMode().toUpperCase()));
+      }
+      searchSourceBuilder.sort(fieldSortBuilder);
+    }
+    try {
+      SearchResponse response =
+          client.search(
+              new os.org.opensearch.action.search.SearchRequest(index).source(searchSourceBuilder),
+              RequestOptions.DEFAULT);
+      SearchHits searchHits = response.getHits();
+      List<SearchHit> hits = List.of(searchHits.getHits());
+      Object[] lastHitSortValues = null;
+
+      if (!hits.isEmpty()) {
+        lastHitSortValues = hits.get(hits.size() - 1).getSortValues();
+      }
+
+      hits.forEach(hit -> results.add(hit.getSourceAsMap()));
+      return new SearchResultListMapper(
+          results, searchHits.getTotalHits().value, lastHitSortValues);
+    } catch (OpenSearchStatusException e) {
+      if (e.status() == RestStatus.NOT_FOUND) {
+        throw new SearchIndexNotFoundException(String.format("Failed to to find index %s", index));
+      } else {
+        throw new SearchException(String.format("Search failed due to %s", e.getDetailedMessage()));
+      }
+    }
+  }
+
+  @Override
   public Response searchBySourceUrl(String sourceUrl) throws IOException {
     os.org.opensearch.action.search.SearchRequest searchRequest =
         new os.org.opensearch.action.search.SearchRequest(
@@ -718,7 +789,6 @@ public class OpenSearchClient implements SearchClient {
             Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS));
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
     List<String> sourceFieldsToExcludeCopy = new ArrayList<>(SOURCE_FIELDS_TO_EXCLUDE);
-    sourceFieldsToExcludeCopy.add("lineage");
     searchSourceBuilder.fetchSource(null, sourceFieldsToExcludeCopy.toArray(String[]::new));
     searchSourceBuilder.query(
         QueryBuilders.boolQuery().must(QueryBuilders.termQuery("fullyQualifiedName", fqn)));
@@ -995,7 +1065,6 @@ public class OpenSearchClient implements SearchClient {
       List<Map<String, Object>> lineage =
           (List<Map<String, Object>>) hit.getSourceAsMap().get("lineage");
       HashMap<String, Object> tempMap = new HashMap<>(JsonUtils.getMap(hit.getSourceAsMap()));
-      tempMap.remove("lineage");
       nodes.add(tempMap);
       for (Map<String, Object> lin : lineage) {
         HashMap<String, String> fromEntity = (HashMap<String, String>) lin.get("fromEntity");
@@ -1039,7 +1108,8 @@ public class OpenSearchClient implements SearchClient {
         nodesWithFailures,
         new HashSet<>());
     for (String nodeWithFailure : nodesWithFailures) {
-      traceBackDQLineage(nodeWithFailure, allEdges, allNodes, nodes, edges, new HashSet<>());
+      traceBackDQLineage(
+          nodeWithFailure, nodesWithFailures, allEdges, allNodes, nodes, edges, new HashSet<>());
     }
   }
 
@@ -1096,6 +1166,7 @@ public class OpenSearchClient implements SearchClient {
 
   private void traceBackDQLineage(
       String nodeFailureId,
+      Set<String> nodesWithFailures,
       Map<String, List<Map<String, Object>>> allEdges,
       Map<String, Map<String, Object>> allNodes,
       Set<Map<String, Object>> nodes,
@@ -1106,7 +1177,14 @@ public class OpenSearchClient implements SearchClient {
     }
 
     processedNodes.add(nodeFailureId);
-    nodes.add(allNodes.get(nodeFailureId));
+    if (nodesWithFailures.contains(nodeFailureId)) {
+      Map<String, Object> node = allNodes.get(nodeFailureId);
+      if (node != null) {
+        node.keySet().removeAll(FIELDS_TO_REMOVE);
+        node.remove("lineage");
+        nodes.add(node);
+      }
+    }
     List<Map<String, Object>> edgesForNode = allEdges.get(nodeFailureId);
     if (edgesForNode != null) {
       for (Map<String, Object> edge : edgesForNode) {
@@ -1115,7 +1193,14 @@ public class OpenSearchClient implements SearchClient {
         if (!fromEntityId.equals(nodeFailureId)) continue; // skip if the edge is from the node
         Map<String, String> toEntity = (Map<String, String>) edge.get("toEntity");
         edges.add(edge);
-        traceBackDQLineage(toEntity.get("id"), allEdges, allNodes, nodes, edges, processedNodes);
+        traceBackDQLineage(
+            toEntity.get("id"),
+            nodesWithFailures,
+            allEdges,
+            allNodes,
+            nodes,
+            edges,
+            processedNodes);
       }
     }
   }
@@ -1145,55 +1230,72 @@ public class OpenSearchClient implements SearchClient {
     Set<Map<String, Object>> edges = new HashSet<>();
     Set<Map<String, Object>> nodes = new HashSet<>();
     responseMap.put("entity", null);
-    os.org.opensearch.action.search.SearchRequest searchRequest =
-        new os.org.opensearch.action.search.SearchRequest(
-            Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS));
-    BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery();
-    boolQueryBuilder.should(
-        QueryBuilders.boolQuery()
-            .must(QueryBuilders.termQuery("lineage.pipeline.fullyQualifiedName.keyword", fqn)));
-    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-    searchSourceBuilder.fetchSource(null, SOURCE_FIELDS_TO_EXCLUDE.toArray(String[]::new));
-    searchSourceBuilder.query(boolQueryBuilder);
-    if (CommonUtil.nullOrEmpty(deleted)) {
-      searchSourceBuilder.query(
+    Object[] searchAfter = null;
+    long processedRecords = 0;
+    long totalRecords = -1;
+    while (totalRecords != processedRecords) {
+      os.org.opensearch.action.search.SearchRequest searchRequest =
+          new os.org.opensearch.action.search.SearchRequest(
+              Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS));
+      BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery();
+      boolQueryBuilder.should(
           QueryBuilders.boolQuery()
-              .must(boolQueryBuilder)
-              .must(QueryBuilders.termQuery("deleted", deleted)));
-    }
-    buildSearchSourceFilter(queryFilter, searchSourceBuilder);
+              .must(QueryBuilders.termQuery("lineage.pipeline.fullyQualifiedName.keyword", fqn)));
+      SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+      searchSourceBuilder.fetchSource(null, SOURCE_FIELDS_TO_EXCLUDE.toArray(String[]::new));
+      FieldSortBuilder sortBuilder = SortBuilders.fieldSort("fullyQualifiedName");
+      searchSourceBuilder.sort(sortBuilder);
+      searchSourceBuilder.query(boolQueryBuilder);
+      if (searchAfter != null) {
+        searchSourceBuilder.searchAfter(searchAfter);
+      }
+      if (CommonUtil.nullOrEmpty(deleted)) {
+        searchSourceBuilder.query(
+            QueryBuilders.boolQuery()
+                .must(boolQueryBuilder)
+                .must(QueryBuilders.termQuery("deleted", deleted)));
+      }
+      buildSearchSourceFilter(queryFilter, searchSourceBuilder);
 
-    searchRequest.source(searchSourceBuilder);
-    SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
-    for (var hit : searchResponse.getHits().getHits()) {
-      List<Map<String, Object>> lineage =
-          (List<Map<String, Object>>) hit.getSourceAsMap().get("lineage");
-      HashMap<String, Object> tempMap = new HashMap<>(JsonUtils.getMap(hit.getSourceAsMap()));
-      tempMap.remove("lineage");
-      nodes.add(tempMap);
-      for (Map<String, Object> lin : lineage) {
-        HashMap<String, String> fromEntity = (HashMap<String, String>) lin.get("fromEntity");
-        HashMap<String, String> toEntity = (HashMap<String, String>) lin.get("toEntity");
-        HashMap<String, String> pipeline = (HashMap<String, String>) lin.get("pipeline");
-        if (pipeline != null && pipeline.get("fullyQualifiedName").equalsIgnoreCase(fqn)) {
-          edges.add(lin);
-          getLineage(
-              fromEntity.get("fqn"),
-              upstreamDepth,
-              edges,
-              nodes,
-              queryFilter,
-              "lineage.toEntity.fqn.keyword",
-              deleted);
-          getLineage(
-              toEntity.get("fqn"),
-              downstreamDepth,
-              edges,
-              nodes,
-              queryFilter,
-              "lineage.fromEntity.fqn.keyword",
-              deleted);
+      searchRequest.source(searchSourceBuilder);
+      SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
+      for (var hit : searchResponse.getHits().getHits()) {
+        List<Map<String, Object>> lineage =
+            (List<Map<String, Object>>) hit.getSourceAsMap().get("lineage");
+        HashMap<String, Object> tempMap = new HashMap<>(JsonUtils.getMap(hit.getSourceAsMap()));
+        nodes.add(tempMap);
+        for (Map<String, Object> lin : lineage) {
+          HashMap<String, String> fromEntity = (HashMap<String, String>) lin.get("fromEntity");
+          HashMap<String, String> toEntity = (HashMap<String, String>) lin.get("toEntity");
+          HashMap<String, String> pipeline = (HashMap<String, String>) lin.get("pipeline");
+          if (pipeline != null && pipeline.get("fullyQualifiedName").equalsIgnoreCase(fqn)) {
+            edges.add(lin);
+            getLineage(
+                fromEntity.get("fqn"),
+                upstreamDepth,
+                edges,
+                nodes,
+                queryFilter,
+                "lineage.toEntity.fqn.keyword",
+                deleted);
+            getLineage(
+                toEntity.get("fqn"),
+                downstreamDepth,
+                edges,
+                nodes,
+                queryFilter,
+                "lineage.fromEntity.fqn.keyword",
+                deleted);
+          }
         }
+      }
+      totalRecords = searchResponse.getHits().getTotalHits().value;
+      int currentHits = searchResponse.getHits().getHits().length;
+      processedRecords += currentHits;
+      if (currentHits > 0) {
+        searchAfter = searchResponse.getHits().getHits()[currentHits - 1].getSortValues();
+      } else {
+        searchAfter = null;
       }
     }
     getLineage(
@@ -1775,6 +1877,10 @@ public class OpenSearchClient implements SearchClient {
         .aggregation(
             AggregationBuilders.terms("tier.tagFQN").field("tier.tagFQN").size(MAX_AGGREGATE_SIZE))
         .aggregation(
+            AggregationBuilders.terms("certification.tagLabel.tagFQN")
+                .field("certification.tagLabel.tagFQN")
+                .size(MAX_AGGREGATE_SIZE))
+        .aggregation(
             AggregationBuilders.terms(OWNER_DISPLAY_NAME_KEYWORD)
                 .field(OWNER_DISPLAY_NAME_KEYWORD)
                 .size(MAX_AGGREGATE_SIZE))
@@ -2021,6 +2127,42 @@ public class OpenSearchClient implements SearchClient {
   }
 
   @Override
+  public void updateByFqnPrefix(String indexName, String oldParentFQN, String newParentFQN) {
+    // Match all children documents whose fullyQualifiedName starts with the old parent's FQN
+    PrefixQueryBuilder prefixQuery =
+        new PrefixQueryBuilder("fullyQualifiedName", oldParentFQN + ".");
+
+    UpdateByQueryRequest updateByQueryRequest = new UpdateByQueryRequest(indexName);
+    updateByQueryRequest.setQuery(prefixQuery);
+
+    Map<String, Object> params = new HashMap<>();
+    params.put("oldParentFQN", oldParentFQN);
+    params.put("newParentFQN", newParentFQN);
+
+    String painlessScript =
+        "String updatedFQN = ctx._source.fullyQualifiedName.replace(params.oldParentFQN, params.newParentFQN); "
+            + "ctx._source.fullyQualifiedName = updatedFQN; "
+            + "ctx._source.fqnDepth = updatedFQN.splitOnToken('.').length; "
+            + "if (ctx._source.containsKey('parent')) { "
+            + "    if (ctx._source.parent.containsKey('fullyQualifiedName')) { "
+            + "        String parentFQN = ctx._source.parent.fullyQualifiedName; "
+            + "        ctx._source.parent.fullyQualifiedName = parentFQN.replace(params.oldParentFQN, params.newParentFQN); "
+            + "    } "
+            + "}";
+    Script inlineScript =
+        new Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, painlessScript, params);
+
+    updateByQueryRequest.setScript(inlineScript);
+
+    try {
+      updateOpenSearchByQuery(updateByQueryRequest);
+      LOG.info("Successfully propagated FQN updates for parent FQN: {}", oldParentFQN);
+    } catch (Exception e) {
+      LOG.error("Error while propagating FQN updates: {}", e.getMessage(), e);
+    }
+  }
+
+  @Override
   public void updateLineage(
       String indexName, Pair<String, String> fieldAndValue, Map<String, Object> lineagaData) {
     if (isClientAvailable) {
@@ -2106,13 +2248,7 @@ public class OpenSearchClient implements SearchClient {
 
   /** */
   @Override
-  public void close() {
-    try {
-      this.client.close();
-    } catch (Exception e) {
-      LOG.error("Failed to close open search", e);
-    }
-  }
+  public void close() {}
 
   @Override
   public BulkResponse bulk(BulkRequest data, RequestOptions options) throws IOException {

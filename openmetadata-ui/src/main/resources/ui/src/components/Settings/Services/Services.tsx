@@ -62,7 +62,7 @@ import { ListView } from '../../common/ListView/ListView.component';
 import NextPrevious from '../../common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
 import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
-import RichTextEditorPreviewer from '../../common/RichTextEditor/RichTextEditorPreviewer';
+import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import ButtonSkeleton from '../../common/Skeleton/CommonSkeletons/ControlElements/ControlElements.component';
 import { ColumnFilter } from '../../Database/ColumnFilter/ColumnFilter.component';
 import PageHeader from '../../PageHeader/PageHeader.component';
@@ -133,7 +133,6 @@ const Services = ({ serviceName }: ServicesProps) => {
       after,
       before,
       filters,
-      limit,
     }: {
       search?: string;
       limit?: number;
@@ -151,7 +150,7 @@ const Services = ({ serviceName }: ServicesProps) => {
           } = await searchService({
             search,
             searchIndex,
-            limit: limit ?? pageSize,
+            limit: pageSize,
             currentPage,
             filters,
             deleted,
@@ -164,7 +163,7 @@ const Services = ({ serviceName }: ServicesProps) => {
         } else {
           const { data, paging } = await getServices({
             serviceName,
-            limit: limit ?? pageSize,
+            limit: pageSize,
             after,
             before,
             include: deleted ? Include.Deleted : Include.NonDeleted,
@@ -192,7 +191,7 @@ const Services = ({ serviceName }: ServicesProps) => {
         setIsLoading(false);
       }
     },
-    [searchIndex, serviceName, deleted]
+    [searchIndex, serviceName, deleted, pageSize]
   );
 
   const handleServicePageChange = useCallback(
@@ -327,7 +326,7 @@ const Services = ({ serviceName }: ServicesProps) => {
       width: 200,
       render: (description) =>
         description ? (
-          <RichTextEditorPreviewer
+          <RichTextEditorPreviewerV1
             className="max-two-lines"
             enableSeeMoreVariant={false}
             markdown={description}
@@ -391,7 +390,7 @@ const Services = ({ serviceName }: ServicesProps) => {
                   className="p-t-xs text-grey-body break-all description-text"
                   data-testid="service-description">
                   {service.description ? (
-                    <RichTextEditorPreviewer
+                    <RichTextEditorPreviewerV1
                       className="max-two-lines"
                       enableSeeMoreVariant={false}
                       markdown={service.description}

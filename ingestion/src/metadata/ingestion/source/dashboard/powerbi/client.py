@@ -64,11 +64,10 @@ class PowerBiApiClient:
             client_credential=self.config.clientSecret.get_secret_value(),
             authority=self.config.authorityURI + self.config.tenantId,
         )
-        self.auth_token = self.get_auth_token()
         client_config = ClientConfig(
             base_url="https://api.powerbi.com",
             api_version="v1.0",
-            auth_token=lambda: self.auth_token,
+            auth_token=self.get_auth_token,
             auth_header="Authorization",
             allow_redirects=True,
             retry_codes=[429],
@@ -128,7 +127,13 @@ class PowerBiApiClient:
             List[PowerBIDashboard]
         """
         try:
-            response_data = self.client.get(f"/myorg/groups/{group_id}/dashboards")
+            admin = "admin/" if self.config.useAdminApis else ""
+            response_data = self.client.get(
+                f"/myorg/{admin}groups/{group_id}/dashboards"
+            )
+            if not response_data:
+                logger.debug(f"No dashboards found for workspace_id: {group_id}")
+                return None
             response = DashboardsResponse(**response_data)
             return response.value
         except Exception as exc:  # pylint: disable=broad-except
@@ -143,7 +148,11 @@ class PowerBiApiClient:
             List[PowerBIReport]
         """
         try:
-            response_data = self.client.get(f"/myorg/groups/{group_id}/reports")
+            admin = "admin/" if self.config.useAdminApis else ""
+            response_data = self.client.get(f"/myorg/{admin}groups/{group_id}/reports")
+            if not response_data:
+                logger.debug(f"No reports found for workspace_id: {group_id}")
+                return None
             response = ReportsResponse(**response_data)
             return response.value
         except Exception as exc:  # pylint: disable=broad-except
@@ -158,7 +167,11 @@ class PowerBiApiClient:
             List[Dataset]
         """
         try:
-            response_data = self.client.get(f"/myorg/groups/{group_id}/datasets")
+            admin = "admin/" if self.config.useAdminApis else ""
+            response_data = self.client.get(f"/myorg/{admin}groups/{group_id}/datasets")
+            if not response_data:
+                logger.debug(f"No datasets found for workspace_id: {group_id}")
+                return None
             response = DatasetResponse(**response_data)
             return response.value
         except Exception as exc:  # pylint: disable=broad-except
@@ -175,9 +188,13 @@ class PowerBiApiClient:
             List[Tile]
         """
         try:
+            admin = "admin/" if self.config.useAdminApis else ""
             response_data = self.client.get(
-                f"/myorg/groups/{group_id}/dashboards/{dashboard_id}/tiles"
+                f"/myorg/{admin}dashboards/{dashboard_id}/tiles"
             )
+            if not response_data:
+                logger.debug(f"No dashboard tiles found for workspace_id: {group_id}")
+                return None
             response = TilesResponse(**response_data)
             return response.value
         except Exception as exc:  # pylint: disable=broad-except
@@ -217,6 +234,9 @@ class PowerBiApiClient:
             entities_per_page = self.config.pagination_entity_per_page
             params_data = {"$top": "1"}
             response_data = self.client.get(api_url, data=params_data)
+            if not response_data:
+                logger.debug("No groups/workspaces found")
+                return None
             response = GroupsResponse(**response_data)
             count = response.odata_count
             indexes = math.ceil(count / entities_per_page)
@@ -228,6 +248,9 @@ class PowerBiApiClient:
                     "$skip": str(index * entities_per_page),
                 }
                 response_data = self.client.get(api_url, data=params_data)
+                if not response_data:
+                    logger.debug("No more groups/workspaces found")
+                    continue
                 response = GroupsResponse(**response_data)
                 workspaces.extend(response.value)
             return workspaces
@@ -263,6 +286,7 @@ class PowerBiApiClient:
     def fetch_workspace_scan_status(
         self, scan_id: str
     ) -> Optional[WorkSpaceScanResponse]:
+        # deprecated in favour to avoide bulk data prepare
         """Get Workspace scan status by id method
         Args:
             scan_id:
@@ -281,6 +305,7 @@ class PowerBiApiClient:
         return None
 
     def fetch_workspace_scan_result(self, scan_id: str) -> Optional[Workspaces]:
+        # deprecated in favour to avoide bulk data prepare
         """Get Workspace scan result by id method
         Args:
             scan_id:
@@ -302,6 +327,7 @@ class PowerBiApiClient:
         """
         Method to poll the scan status endpoint until the timeout
         """
+        # deprecated in favour to avoide bulk data prepare
         min_sleep_time = 3
         if min_sleep_time > timeout:
             logger.info(f"Timeout is set to minimum sleep time: {timeout}")

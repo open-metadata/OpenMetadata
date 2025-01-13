@@ -51,6 +51,17 @@ def _(elements, compiler, **kwargs):
     return "percentile_cont(%s , %s) OVER()" % (col, percentile)
 
 
+# pylint: disable=unused-argument
+@compiles(MedianFn, Dialects.Cockroach)
+def _(elements, compiler, **kwargs):
+    col = compiler.process(elements.clauses.clauses[0])
+    percentile = elements.clauses.clauses[2].value
+    return "percentile_cont(%.2f) WITHIN GROUP (ORDER BY %s ASC)" % (
+        percentile,
+        f"(({col})::float8)",
+    )
+
+
 @compiles(MedianFn, Dialects.ClickHouse)
 def _(elements, compiler, **kwargs):
     col, _, percentile = [

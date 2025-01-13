@@ -24,13 +24,13 @@ from metadata.profiler.interface.sqlalchemy.profiler_interface import (
 )
 from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.processor.runner import QueryRunner
-from metadata.profiler.source.single_store.metrics.window.first_quartile import (
+from metadata.profiler.source.database.single_store.metrics.window.first_quartile import (
     SingleStoreFirstQuartile,
 )
-from metadata.profiler.source.single_store.metrics.window.median import (
+from metadata.profiler.source.database.single_store.metrics.window.median import (
     SingleStoreMedian,
 )
-from metadata.profiler.source.single_store.metrics.window.third_quartile import (
+from metadata.profiler.source.database.single_store.metrics.window.third_quartile import (
     SingleStoreThirdQuartile,
 )
 from metadata.utils.logger import profiler_interface_registry_logger
@@ -76,11 +76,11 @@ class SingleStoreProfilerInterface(SQAProfilerInterface):
                 return dict(row)
         except ProgrammingError:
             logger.info(
-                f"Skipping window metrics for {runner.table.__tablename__}.{column.name} due to overflow"
+                f"Skipping window metrics for {runner.table_name}.{column.name} due to overflow"
             )
             return None
 
         except Exception as exc:
-            msg = f"Error trying to compute profile for {runner.table.__tablename__}.{column.name}: {exc}"
+            msg = f"Error trying to compute profile for {runner.table_name}.{column.name}: {exc}"
             handle_query_exception(msg, exc, session)
         return None

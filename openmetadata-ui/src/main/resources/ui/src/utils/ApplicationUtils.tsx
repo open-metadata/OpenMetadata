@@ -58,8 +58,21 @@ export const getStatusFromPipelineState = (status: PipelineState) => {
 };
 
 export const getEntityStatsData = (data: EntityStats): EntityStatsData[] => {
-  return Object.keys(data).map((key) => ({
-    name: upperFirst(key),
-    ...data[key as EntityTypeSearchIndex],
-  }));
+  const filteredRow = ['failedRecords', 'totalRecords', 'successRecords'];
+
+  const result = Object.keys(data).reduce((acc, key) => {
+    if (filteredRow.includes(key)) {
+      return acc;
+    }
+
+    return [
+      ...acc,
+      {
+        name: upperFirst(key),
+        ...data[key as EntityTypeSearchIndex],
+      },
+    ];
+  }, [] as EntityStatsData[]);
+
+  return result.sort((a, b) => a.name.localeCompare(b.name));
 };

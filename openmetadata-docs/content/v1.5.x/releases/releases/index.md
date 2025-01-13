@@ -14,6 +14,106 @@ version. To see what's coming in next releases, please check our [Roadmap](/rele
 
 {% partial file="/v1.5/releases/latest.md" /%}
 
+# 1.5.14 Release
+
+{% note noteType="Tip" %}
+**Dec 12th, 2024**
+{% /note %}
+
+You can find the GitHub release [here](https://github.com/open-metadata/OpenMetadata/releases/tag/1.5.14-release).
+
+# What's Changed
+
+- Minor: Fix Powerbi refresh token on expire
+- Minor: Snowflake Support Alter Table Swap Lineage
+- Fixes: microstrategy test connection
+- Minor: Fix dbt source file issue
+- Fix: dbt manifest parsing issue
+- Minor - Add APIs to Ref Map
+- Minor: Domain only access policy prevents bots from listing
+
+**Full Changelog**: https://github.com/open-metadata/OpenMetadata/compare/1.5.13-release...1.5.14-release
+
+# 1.5.13 Release
+
+{% note noteType="Tip" %}
+**Nov 29th, 2024**
+{% /note %}
+
+You can find the GitHub release [here](https://github.com/open-metadata/OpenMetadata/releases/tag/1.5.13-release).
+
+# What's Changed
+
+- Minor: microstrategy patch login mode 1.5.13.
+- MINOR: Snowflake UDF Lineage Support.
+
+**Full Changelog**: https://github.com/open-metadata/OpenMetadata/compare/1.5.12-release...1.5.13-release
+
+# 1.5.12 Release
+
+{% note noteType="Tip" %}
+**Nov 26th, 2024**
+{% /note %}
+
+You can find the GitHub release [here](https://github.com/open-metadata/OpenMetadata/releases/tag/1.5.12-release).
+
+# What's Changed
+
+- Improvement: Added async apis for csv import.
+- Improvement: Skip domain check for bots and admin
+- Improvement: MYSQL lineage and usage.
+- Minor: Added Lineage Field back to SearchLineage.
+- Fix: Database is missing from the search dropdown
+- Fix: Bad Representation of owners.
+- Fix: The Daily Active Users Summary Card in Data Insights.
+- Fix: The processing of URL Encoded Assets in Data Insights.
+- Fix: Column Level Lineage export.
+- Fix: Store procedure yielding by adding Try/Except.
+- Fix: Lineage export when there is no column / pipeline edge.
+
+**Full Changelog**: https://github.com/open-metadata/OpenMetadata/compare/1.5.11-release...1.5.12-release
+
+# 1.5.11 Release
+
+{% note noteType="Tip" %}
+**Nov 15th, 2024**
+{% /note %}
+
+You can find the GitHub release [here](https://github.com/open-metadata/OpenMetadata/releases/tag/1.5.11-release).
+
+# What's Changed
+
+- Improvement: Search Index App, Parallelize the search indexing process.
+- Improvement: Mask SQL Queries where conditions data in Usage & Lineage Workflow.
+- Improvement: Databricks query run optimization to reduce the costs in retrieving metadata.
+- Improvement: Added support for lineage default depth settings. Admins can control the default Lineage Upstream and Downstream depth.
+- Improvement: Add Column Value to be At Expected Location Test.
+- Improvement: Scaling Export API to 10000s of assets, Introduced Async API and push export data using websockets
+- Fix: User count doesn't update on adding to the team while using search.
+- Fix: Sample data json formatting while displaying in the UI.
+- Fix: Return s3 endpoint as str() instead of Url.
+- Fix: Materialized View Lineage.
+- Fix: Custom property save config.
+
+**Full Changelog**: https://github.com/open-metadata/OpenMetadata/compare/1.5.10-release...1.5.11-release
+
+# 1.5.10 Release
+
+{% note noteType="Tip" %}
+**Oct 31st, 2024**
+{% /note %}
+
+You can find the GitHub release [here](https://github.com/open-metadata/OpenMetadata/releases/tag/1.5.10-release).
+
+# What's Changed
+
+- Fix encoding issue for teams search query.
+- Fix disable empty rule for query builder widget.
+- Fix unable to add more enum values for enum cp.
+- Fix navigate to listing for deleting a service.
+
+**Full Changelog**: https://github.com/open-metadata/OpenMetadata/compare/1.5.9-release...1.5.10-release
+
 # 1.5.9 Release
 
 {% note noteType="Tip" %}
@@ -408,7 +508,7 @@ We are also making the discovery of data more accessible for users introducing a
 
 {% youtube videoId="45ekUIRO1Ec" start="0:00" end="1:11" width="560px" height="315px" /%}
 
-## Pipeline Status Widget
+## Pipeline Status Widget (Collate)
 
 We are also adding another widget you can use to customize the Landing Page of the User Personas in your organization.
 

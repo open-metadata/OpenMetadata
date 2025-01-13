@@ -62,7 +62,9 @@ class OMetaUserTest(TestCase):
 
         cls.user_1: User = cls.metadata.create_or_update(
             data=CreateUserRequest(
-                name="random.user.es", email="random.user.es@getcollate.io"
+                name="random.user.es",
+                email="random.user.es@getcollate.io",
+                description="test",
             ),
         )
 
@@ -161,6 +163,11 @@ class OMetaUserTest(TestCase):
         # Non existing email returns None
         self.assertIsNone(self.metadata.get_reference_by_name(name="idonotexist"))
 
+        # when searching for "data" user we should not get DataInsightsApplicationBot in result
+        team_data = self.metadata.get_reference_by_name(name="data").root[0]
+        self.assertEqual(team_data.name, "Data")
+        self.assertEqual(team_data.type, "team")
+
         # We can get the user matching its name
         self.assertEqual(
             self.user_1.id,
@@ -192,4 +199,9 @@ class OMetaUserTest(TestCase):
         # if team is not group, return none
         self.assertIsNone(
             self.metadata.get_reference_by_name(name="Organization", is_owner=True)
+        )
+
+        # description should not affect in search
+        self.assertIsNone(
+            self.metadata.get_reference_by_name(name="test", is_owner=True)
         )

@@ -51,7 +51,7 @@ import {
   updateFieldDescription,
   updateFieldTags,
 } from '../../../utils/TableUtils';
-import RichTextEditorPreviewer from '../../common/RichTextEditor/RichTextEditorPreviewer';
+import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import ToggleExpandButton from '../../common/ToggleExpandButton/ToggleExpandButton';
 import { ColumnFilter } from '../../Database/ColumnFilter/ColumnFilter.component';
 import TableDescription from '../../Database/TableDescription/TableDescription.component';
@@ -201,7 +201,7 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
         <Tooltip destroyTooltipOnHide title={getEntityName(record)}>
           <span className="break-word">
             {isVersionView ? (
-              <RichTextEditorPreviewer markdown={getEntityName(record)} />
+              <RichTextEditorPreviewerV1 markdown={getEntityName(record)} />
             ) : (
               getEntityName(record)
             )}
@@ -216,7 +216,7 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
     (dataType: DataType, record: Field) => (
       <Typography.Text>
         {isVersionView ? (
-          <RichTextEditorPreviewer
+          <RichTextEditorPreviewerV1
             markdown={record.dataTypeDisplay ?? dataType}
           />
         ) : (
@@ -368,7 +368,9 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
             entityFqn={apiEndpointDetails.fullyQualifiedName ?? ''}
             entityType={EntityType.API_ENDPOINT}
             handleTagSelection={handleFieldTagsChange}
-            hasTagEditAccess={permissions.EditTags || permissions.EditAll}
+            hasTagEditAccess={
+              permissions.EditGlossaryTerms || permissions.EditAll
+            }
             index={index}
             isReadOnly={Boolean(apiEndpointDetails.deleted) || isVersionView}
             record={record}

@@ -1001,7 +1001,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     // Invalid date older than 30 days
     String invalidColumnFQN4 = table2.getFullyQualifiedName() + ".c1";
     TableJoins tableJoins4 =
-        getTableJoins(getColumnJoin(C1, invalidColumnFQN4)).withStartDate(RestUtil.today(-30));
+        getTableJoins(getColumnJoin(C1, invalidColumnFQN4)).withStartDate(RestUtil.today(-31));
     assertResponse(
         () -> putJoins(table1.getId(), tableJoins4, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
@@ -2225,7 +2225,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     CreateTestSuite createTestSuite =
         testSuiteResourceTest.createRequest(table.getFullyQualifiedName());
     TestSuite testSuite =
-        testSuiteResourceTest.createExecutableTestSuite(createTestSuite, ADMIN_AUTH_HEADERS);
+        testSuiteResourceTest.createBasicTestSuite(createTestSuite, ADMIN_AUTH_HEADERS);
 
     CreateTestCase createTestCase =
         testCaseResourceTest
@@ -2293,7 +2293,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     CreateTestSuite createTestSuite =
         testSuiteResourceTest.createRequest(table.getFullyQualifiedName());
     TestSuite testSuite =
-        testSuiteResourceTest.createExecutableTestSuite(createTestSuite, ADMIN_AUTH_HEADERS);
+        testSuiteResourceTest.createBasicTestSuite(createTestSuite, ADMIN_AUTH_HEADERS);
 
     CreateTestCase createTestCase =
         testCaseResourceTest
@@ -2433,8 +2433,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     CreateTestSuite createExecutableTestSuite =
         testSuiteResourceTest.createRequest(table1.getFullyQualifiedName());
     TestSuite executableTestSuite =
-        testSuiteResourceTest.createExecutableTestSuite(
-            createExecutableTestSuite, ADMIN_AUTH_HEADERS);
+        testSuiteResourceTest.createBasicTestSuite(createExecutableTestSuite, ADMIN_AUTH_HEADERS);
 
     HashMap<String, String> queryParams = new HashMap<>();
     queryParams.put("includeEmptyTestSuite", "false");
@@ -2554,14 +2553,14 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
                     ((LinkedHashMap<String, Object>) hit.get("_source"))
                         .get("name")
                         .equals(createWithNullDescription.getName())));
-    assertTrue(
+    assertFalse(
         hitsList.stream()
             .anyMatch(
                 hit ->
                     ((LinkedHashMap<String, Object>) hit.get("_source"))
                         .get("name")
                         .equals(createWithEmptyColumnDescription.getName())));
-    assertTrue(
+    assertFalse(
         hitsList.stream()
             .anyMatch(
                 hit ->
@@ -2952,6 +2951,48 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
         new RestoreEntity().withId(entity.getId()),
         javax.ws.rs.core.Response.Status.OK,
         ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void put_tableTableConstraintDuplicate_400(TestInfo test) throws IOException {
+    // Create table with a constraint
+    CreateTable request =
+        createRequest(test)
+            .withColumns(List.of(getColumn(C1, BIGINT, USER_ADDRESS_TAG_LABEL)))
+            .withTableConstraints(null);
+    Table table = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
+
+    // Attempt to add duplicate constraints
+    TableConstraint constraint =
+        new TableConstraint().withConstraintType(ConstraintType.UNIQUE).withColumns(List.of(C1));
+
+    request = request.withTableConstraints(List.of(constraint, constraint)); // Duplicate constraint
+    CreateTable finalRequest = request;
+    assertResponseContains(
+        () -> updateEntity(finalRequest, OK, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "Duplicate constraint found in request: ");
+  }
+
+  @Test
+  void put_tableTableConstraintInvalidColumn_400(TestInfo test) throws IOException {
+    CreateTable request =
+        createRequest(test)
+            .withColumns(List.of(getColumn(C1, BIGINT, USER_ADDRESS_TAG_LABEL)))
+            .withTableConstraints(null);
+    Table table = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
+
+    TableConstraint constraint =
+        new TableConstraint()
+            .withConstraintType(ConstraintType.UNIQUE)
+            .withColumns(List.of("invalid_column")); // Non-existent column
+
+    request = request.withTableConstraints(List.of(constraint));
+    CreateTable finalRequest = request;
+    assertResponseContains(
+        () -> updateEntity(finalRequest, OK, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "Invalid column name found in table constraint");
   }
 
   void assertFields(List<Table> tableList, String fieldsParam) {

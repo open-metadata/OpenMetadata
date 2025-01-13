@@ -27,6 +27,7 @@ import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.type.TypeFactory;
 import com.fasterxml.jackson.datatype.jsr353.JSR353Module;
+import com.github.fge.jsonpatch.JsonPatchException;
 import com.github.fge.jsonpatch.diff.JsonDiff;
 import com.jayway.jsonpath.DocumentContext;
 import com.jayway.jsonpath.JsonPath;
@@ -38,6 +39,7 @@ import java.io.StringReader;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -66,6 +68,7 @@ import org.openmetadata.annotations.ExposedField;
 import org.openmetadata.annotations.IgnoreMaskedFieldAnnotationIntrospector;
 import org.openmetadata.annotations.MaskedField;
 import org.openmetadata.annotations.OnlyExposedFieldAnnotationIntrospector;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.Type;
 import org.openmetadata.schema.entity.type.Category;
 import org.openmetadata.service.exception.UnhandledServerException;
@@ -290,6 +293,41 @@ public final class JsonUtils {
     JsonNode source = valueToTree(v1);
     JsonNode dest = valueToTree(v2);
     return Json.createPatch(treeToValue(JsonDiff.asJson(source, dest), JsonArray.class));
+  }
+
+  private static JsonNode applyJsonPatch(JsonPatch patch, JsonNode targetNode)
+      throws JsonPatchException, IOException {
+    // Convert javax.json.JsonPatch to com.github.fge.jsonpatch.JsonPatch
+    String patchString = patch.toString();
+    JsonNode patchNode;
+    try {
+      patchNode = OBJECT_MAPPER.readTree(patchString);
+    } catch (JsonProcessingException e) {
+      LOG.error("Failed to parse JsonPatch string: {}", patchString, e);
+      throw new RuntimeException("Invalid JsonPatch format", e);
+    }
+    com.github.fge.jsonpatch.JsonPatch jacksonPatch =
+        com.github.fge.jsonpatch.JsonPatch.fromJson(patchNode);
+    return jacksonPatch.apply(targetNode);
+  }
+
+  public static <T extends EntityInterface> T applyJsonPatch(
+      T original, JsonPatch patch, Class<T> clz) {
+    try {
+      // Convert original entity to JsonNode
+      JsonNode originalNode = OBJECT_MAPPER.valueToTree(original);
+
+      // Apply the JSON Patch
+      JsonNode patchedNode = applyJsonPatch(patch, originalNode);
+
+      // Deserialize the patched JsonNode back to the entity class
+      return OBJECT_MAPPER.treeToValue(patchedNode, clz);
+    } catch (JsonPatchException | JsonProcessingException e) {
+      LOG.error("Failed to apply JSON Patch: {}", e.getMessage(), e);
+      throw new RuntimeException("Failed to apply JSON Patch", e);
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
   }
 
   public static JsonValue readJson(String s) {
@@ -523,6 +561,10 @@ public final class JsonUtils {
     return list;
   }
 
+  public static ObjectMapper getObjectMapper() {
+    return OBJECT_MAPPER;
+  }
+
   static class SortedNodeFactory extends JsonNodeFactory {
     @Override
     public ObjectNode objectNode() {
@@ -588,5 +630,41 @@ public final class JsonUtils {
       case STRING -> String.class;
       case MISSING, NULL, POJO -> Object.class;
     };
+  }
+
+  public static JsonNode pojoToJsonNode(Object obj) {
+    try {
+      return OBJECT_MAPPER.valueToTree(obj);
+    } catch (Exception e) {
+      LOG.error("Failed to convert POJO to JsonNode", e);
+      throw new RuntimeException("POJO to JsonNode conversion failed", e);
+    }
+  }
+
+  @SuppressWarnings("unused")
+  public static Map<String, Object> getMapFromJson(String json) {
+    return (Map<String, Object>) (JsonUtils.readValue(json, Map.class));
+  }
+
+  @SuppressWarnings("unused")
+  public static <T> T convertObjectWithFilteredFields(
+      Object input, Set<String> fields, Class<T> clazz) {
+    Map<String, Object> inputMap = JsonUtils.getMap(input);
+    Map<String, Object> result = new HashMap<>();
+    for (String field : fields) {
+      if (inputMap.containsKey(field)) {
+        result.put(field, inputMap.get(field));
+      }
+    }
+    return JsonUtils.convertValue(result, clazz);
+  }
+
+  public static JsonPatch convertFgeToJavax(com.github.fge.jsonpatch.JsonPatch fgeJsonPatch) {
+    String jsonString = fgeJsonPatch.toString();
+
+    try (JsonReader reader = Json.createReader(new StringReader(jsonString))) {
+      JsonArray patchArray = reader.readArray();
+      return Json.createPatch(patchArray);
+    }
   }
 }

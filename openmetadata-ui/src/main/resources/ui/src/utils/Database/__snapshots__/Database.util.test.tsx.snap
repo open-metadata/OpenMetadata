@@ -15,15 +15,23 @@ exports[`Database Util Database Util - schemaTableColumns should render the corr
 `;
 
 exports[`Database Util Database Util - schemaTableColumns should render the correct columns 2`] = `
-<RichTextEditorPreviewer
+<RichTextEditorPreviewerV1
   markdown="Schema 1 description"
 />
 `;
 
 exports[`Database Util Database Util - schemaTableColumns should render the correct columns 3`] = `
-Array [
-  "John Doe",
-]
+<OwnerLabel
+  owners={
+    Array [
+      Object {
+        "id": "1",
+        "name": "John Doe",
+        "type": "user",
+      },
+    ]
+  }
+/>
 `;
 
 exports[`Database Util Database Util - schemaTableColumns should render the correct columns 4`] = `" 80th label.pctile-lowercase"`;

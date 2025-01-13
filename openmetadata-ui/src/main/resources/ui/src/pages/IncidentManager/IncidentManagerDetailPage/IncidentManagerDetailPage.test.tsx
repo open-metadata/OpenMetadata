@@ -45,7 +45,7 @@ const mockTestCaseData = {
     name: 'sample_data.ecommerce_db.shopify.dim_address.testSuite',
     fullyQualifiedName:
       'sample_data.ecommerce_db.shopify.dim_address.testSuite',
-    description: 'This is an executable test suite linked to an entity',
+    description: 'This is an basic test suite linked to an entity',
     deleted: false,
     href: 'http://localhost:8585/api/v1/dataQuality/testSuites/fe44ef1a-1b83-4872-bef6-fbd1885986b8',
   },
@@ -78,6 +78,8 @@ const mockUseTestCase: UseTestCaseStoreInterface = {
   reset: jest.fn(),
   showAILearningBanner: false,
   setShowAILearningBanner: jest.fn(),
+  dqLineageData: undefined,
+  setDqLineageData: jest.fn(),
 };
 jest.mock('./useTestCase.store', () => ({
   useTestCaseStore: jest.fn().mockImplementation(() => mockUseTestCase),

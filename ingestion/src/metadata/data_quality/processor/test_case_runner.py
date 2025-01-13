@@ -23,12 +23,11 @@ from metadata.data_quality.api.models import (
     TestCaseResults,
     TestSuiteProcessorConfig,
 )
+from metadata.data_quality.runner.base_test_suite_source import BaseTestSuiteRunner
 from metadata.data_quality.runner.core import DataTestsRunner
-from metadata.data_quality.runner.test_suite_source_factory import (
-    test_suite_source_factory,
-)
 from metadata.generated.schema.api.tests.createTestCase import CreateTestCaseRequest
 from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
 )
@@ -95,12 +94,9 @@ class TestCaseRunner(Processor):
             record.table, openmetadata_test_cases
         )
 
-        test_suite_runner = test_suite_source_factory.create(
-            record.service_type.lower(),
-            self.config,
-            self.metadata,
-            record.table,
-        ).get_data_quality_runner()
+        test_suite_runner = self.get_test_suite_runner(
+            record.table, record.service_connection
+        )
 
         logger.debug(
             f"Found {len(openmetadata_test_cases)} test cases for table {record.table.fullyQualifiedName.root}"
@@ -357,3 +353,10 @@ class TestCaseRunner(Processor):
             else:
                 result.append(tc)
         return result
+
+    def get_test_suite_runner(
+        self, table: Table, service_connection: DatabaseConnection
+    ):
+        return BaseTestSuiteRunner(
+            self.config, self.metadata, table, service_connection
+        ).get_data_quality_runner()

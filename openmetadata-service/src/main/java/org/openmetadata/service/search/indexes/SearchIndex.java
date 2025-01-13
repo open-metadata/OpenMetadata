@@ -18,6 +18,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
@@ -96,6 +97,9 @@ public interface SearchIndex {
             entity.getFullyQualifiedName(),
             suggest.stream().map(SearchSuggest::getInput).toList()));
     map.put("deleted", entity.getDeleted() != null && entity.getDeleted());
+
+    Optional.ofNullable(entity.getCertification())
+        .ifPresent(assetCertification -> map.put("certification", assetCertification));
     return map;
   }
 
@@ -243,12 +247,15 @@ public interface SearchIndex {
     // We need to query the table_entity table to find the references this current table
     // has with other tables. We pick this info from the ES however in case of re-indexing this info
     // needs to be picked from the db
-    CollectionDAO dao = Entity.getCollectionDAO();
-    List<String> json_array =
-        dao.tableDAO().findRelatedTables(entity.getFullyQualifiedName() + "%");
-    for (String json : json_array) {
-      Table foreign_table = JsonUtils.readValue(json, Table.class);
-      processConstraints(foreign_table, entity, constraints, false);
+    List<CollectionDAO.EntityRelationshipRecord> relatedTables =
+        Entity.getCollectionDAO()
+            .relationshipDAO()
+            .findFrom(entity.getId(), Entity.TABLE, Relationship.RELATED_TO.ordinal());
+
+    for (CollectionDAO.EntityRelationshipRecord table : relatedTables) {
+      Table foreignTable =
+          Entity.getEntity(Entity.TABLE, table.getId(), "tableConstraints", NON_DELETED);
+      processConstraints(foreignTable, entity, constraints, false);
     }
     return constraints;
   }

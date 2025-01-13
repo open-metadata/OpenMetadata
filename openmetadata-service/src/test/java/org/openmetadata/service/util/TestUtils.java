@@ -105,6 +105,9 @@ public final class TestUtils {
   public static String LONG_ENTITY_NAME = "a".repeat(256 + 1);
   public static final Map<String, String> ADMIN_AUTH_HEADERS =
       authHeaders(ADMIN_USER_NAME + "@open-metadata.org");
+  public static final String GOVERNANCE_BOT = "governance-bot";
+  public static final Map<String, String> GOVERNANCE_BOT_AUTH_HEADERS =
+      authHeaders(GOVERNANCE_BOT + "@open-metadata.org");
   public static final String INGESTION_BOT = "ingestion-bot";
   public static final Map<String, String> INGESTION_BOT_AUTH_HEADERS =
       authHeaders(INGESTION_BOT + "@open-metadata.org");
@@ -710,7 +713,8 @@ public final class TestUtils {
   public static void assertFieldExists(
       DocumentContext jsonContext, String jsonPath, String fieldName) {
     List<Map<String, Object>> result = jsonContext.read(jsonPath, List.class);
-    assertTrue(result.size() > 0, "The query should contain '" + fieldName + "' term.");
+    assertFalse(
+        (result == null || result.isEmpty()), "The query should contain '" + fieldName + "' term.");
   }
 
   public static void assertFieldDoesNotExist(

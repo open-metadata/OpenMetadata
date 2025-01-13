@@ -29,6 +29,7 @@ import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.tests.TestCaseParameterValue;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.changeEvent.msteams.TeamsMessage;
@@ -41,6 +42,7 @@ import org.openmetadata.service.apps.bundles.changeEvent.msteams.TeamsMessage.Te
 import org.openmetadata.service.exception.UnhandledServerException;
 
 public class MSTeamsMessageDecorator implements MessageDecorator<TeamsMessage> {
+  private static final String TEST_CASE_RESULT = "testCaseResult";
 
   @Override
   public String getBold() {
@@ -98,16 +100,12 @@ public class MSTeamsMessageDecorator implements MessageDecorator<TeamsMessage> {
   }
 
   @Override
-  public TeamsMessage buildTestMessage(String publisherName) {
-    return getTeamTestMessage(publisherName);
+  public TeamsMessage buildTestMessage() {
+    return getTeamTestMessage();
   }
 
-  public TeamsMessage getTeamTestMessage(String publisherName) {
-    if (publisherName.isEmpty()) {
-      throw new UnhandledServerException("Publisher name not found.");
-    }
-
-    return createConnectionTestMessage(publisherName);
+  public TeamsMessage getTeamTestMessage() {
+    return createConnectionTestMessage();
   }
 
   private TeamsMessage createMessage(
@@ -119,9 +117,23 @@ public class MSTeamsMessageDecorator implements MessageDecorator<TeamsMessage> {
     String entityType = event.getEntityType();
 
     return switch (entityType) {
-      case Entity.TEST_CASE -> createDQMessage(publisherName, event, outgoingMessage);
+      case Entity.TEST_CASE -> createTestCaseMessage(publisherName, event, outgoingMessage);
       default -> createGeneralChangeEventMessage(publisherName, event, outgoingMessage);
     };
+  }
+
+  private TeamsMessage createTestCaseMessage(
+      String publisherName, ChangeEvent event, OutgoingMessage outgoingMessage) {
+    List<FieldChange> fieldsAdded = event.getChangeDescription().getFieldsAdded();
+    List<FieldChange> fieldsUpdated = event.getChangeDescription().getFieldsUpdated();
+
+    boolean hasRelevantChange =
+        fieldsAdded.stream().anyMatch(field -> TEST_CASE_RESULT.equals(field.getName()))
+            || fieldsUpdated.stream().anyMatch(field -> TEST_CASE_RESULT.equals(field.getName()));
+
+    return hasRelevantChange
+        ? createDQMessage(event, outgoingMessage)
+        : createGeneralChangeEventMessage(publisherName, event, outgoingMessage);
   }
 
   private TeamsMessage createGeneralChangeEventMessage(
@@ -177,11 +189,9 @@ public class MSTeamsMessageDecorator implements MessageDecorator<TeamsMessage> {
     return TeamsMessage.builder().type("message").attachments(List.of(attachment)).build();
   }
 
-  private TeamsMessage createDQMessage(
-      String publisherName, ChangeEvent event, OutgoingMessage outgoingMessage) {
-
+  private TeamsMessage createDQMessage(ChangeEvent event, OutgoingMessage outgoingMessage) {
     Map<DQ_Template_Section, Map<Enum<?>, Object>> dqTemplateData =
-        buildDQTemplateData(publisherName, event, outgoingMessage);
+        MessageDecorator.buildDQTemplateData(event, outgoingMessage);
 
     TextBlock changeEventDetailsTextBlock = createHeader();
 
@@ -497,22 +507,20 @@ public class MSTeamsMessageDecorator implements MessageDecorator<TeamsMessage> {
         .collect(Collectors.toList());
   }
 
-  private TeamsMessage createConnectionTestMessage(String publisherName) {
+  private TeamsMessage createConnectionTestMessage() {
     Image imageItem = createOMImageMessage();
 
     Column column1 =
         Column.builder().type("Column").width("auto").items(List.of(imageItem)).build();
 
     TextBlock textBlock1 = createTextBlock("Connection Successful \u2705", "Bolder", "Large");
-    TextBlock textBlock2 =
-        createTextBlock(applyBoldFormat("Publisher:") + publisherName, null, null);
-    TextBlock textBlock3 = createTextBlock(CONNECTION_TEST_DESCRIPTION, null, null);
+    TextBlock textBlock2 = createTextBlock(CONNECTION_TEST_DESCRIPTION, null, null);
 
     Column column2 =
         Column.builder()
             .type("Column")
             .width("stretch")
-            .items(List.of(textBlock1, textBlock2, textBlock3))
+            .items(List.of(textBlock1, textBlock2))
             .build();
 
     ColumnSet columnSet =
@@ -571,33 +579,6 @@ public class MSTeamsMessageDecorator implements MessageDecorator<TeamsMessage> {
             General_Template_Section.EVENT_DETAILS,
             EventDetailsKeys.OUTGOING_MESSAGE,
             outgoingMessage);
-
-    return builder.build();
-  }
-
-  // todo - complete buildDQTemplateData fn
-  private Map<DQ_Template_Section, Map<Enum<?>, Object>> buildDQTemplateData(
-      String publisherName, ChangeEvent event, OutgoingMessage outgoingMessage) {
-
-    TemplateDataBuilder<DQ_Template_Section> builder = new TemplateDataBuilder<>();
-
-    // Use DQ_Template_Section directly
-    builder
-        .add(
-            DQ_Template_Section.EVENT_DETAILS,
-            EventDetailsKeys.EVENT_TYPE,
-            event.getEventType().value())
-        .add(DQ_Template_Section.EVENT_DETAILS, EventDetailsKeys.UPDATED_BY, event.getUserName())
-        .add(DQ_Template_Section.EVENT_DETAILS, EventDetailsKeys.ENTITY_TYPE, event.getEntityType())
-        .add(
-            DQ_Template_Section.EVENT_DETAILS,
-            EventDetailsKeys.ENTITY_FQN,
-            MessageDecorator.getFQNForChangeEventEntity(event))
-        .add(
-            DQ_Template_Section.EVENT_DETAILS,
-            EventDetailsKeys.TIME,
-            new Date(event.getTimestamp()).toString())
-        .add(DQ_Template_Section.EVENT_DETAILS, EventDetailsKeys.OUTGOING_MESSAGE, outgoingMessage);
 
     return builder.build();
   }

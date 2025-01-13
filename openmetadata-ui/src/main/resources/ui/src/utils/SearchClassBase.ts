@@ -164,6 +164,11 @@ class SearchClassBase {
   public getGlobalSearchOptions() {
     return [
       { value: '', label: i18n.t('label.all') },
+      { value: SearchIndex.DATABASE, label: i18n.t('label.database') },
+      {
+        value: SearchIndex.DATABASE_SCHEMA,
+        label: i18n.t('label.database-schema'),
+      },
       { value: SearchIndex.TABLE, label: i18n.t('label.table') },
       { value: SearchIndex.TOPIC, label: i18n.t('label.topic') },
       { value: SearchIndex.DASHBOARD, label: i18n.t('label.dashboard') },
@@ -552,7 +557,7 @@ class SearchClassBase {
   ): string | { pathname: string } {
     if (entity.entityType === EntityType.TEST_SUITE) {
       return getTestSuiteDetailsPath({
-        isExecutableTestSuite: (entity as TestSuite).executable,
+        isExecutableTestSuite: (entity as TestSuite).basic,
         fullyQualifiedName: entity.fullyQualifiedName ?? '',
       });
     }

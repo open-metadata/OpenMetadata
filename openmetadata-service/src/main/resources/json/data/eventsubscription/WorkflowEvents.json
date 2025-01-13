@@ -1,0 +1,20 @@
+{
+  "name": "WorkflowEventConsumer",
+  "fullyQualifiedName": "WorkflowEventConsumer",
+  "displayName": "Workflow Event Consumer",
+  "description": "Consumers EntityChange Events in order to trigger Workflows, if they exist.",
+  "alertType": "GovernanceWorkflowChangeEvent",
+  "filteringRules":{
+    "resources": ["all"]
+  },
+  "destinations": [
+    {
+      "id": "fc9e7a84-5dbd-4e63-8b78-6c3a7bf04a60",
+      "category": "External",
+      "type": "GovernanceWorkflowChangeEvent"
+    }
+  ],
+  "provider" : "system",
+  "pollInterval" : 10,
+  "enabled" : true
+}

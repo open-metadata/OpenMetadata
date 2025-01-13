@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { ExclamationCircleFilled } from '@ant-design/icons';
-import { Badge, Col, Row, Typography } from 'antd';
+import { Badge, Col, Divider, Row, Typography } from 'antd';
 import { isEmpty } from 'lodash';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -21,6 +21,7 @@ import { TEXT_COLOR } from '../../../constants/Color.constants';
 import { ROUTES } from '../../../constants/constants';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { stringToHTML } from '../../../utils/StringsUtils';
+import CertificationTag from '../../common/CertificationTag/CertificationTag';
 import './entity-header-title.less';
 import { EntityHeaderTitleProps } from './EntityHeaderTitle.interface';
 
@@ -37,6 +38,7 @@ const EntityHeaderTitle = ({
   className,
   color,
   showName = true,
+  certification,
 }: EntityHeaderTitleProps) => {
   const { t } = useTranslation();
   const location = useCustomLocation();
@@ -53,7 +55,7 @@ const EntityHeaderTitle = ({
       data-testid={`${serviceName}-${name}`}
       gutter={12}
       wrap={false}>
-      {icon && <Col>{icon}</Col>}
+      {icon && <Col className="flex-center">{icon}</Col>}
       <Col
         className={
           deleted || badge ? 'w-max-full-140' : 'entity-header-content'
@@ -83,6 +85,14 @@ const EntityHeaderTitle = ({
           )}
         </Typography.Text>
       </Col>
+      {certification && (
+        <Col className="text-xs">
+          <div className="d-flex items-center">
+            <Divider className="m-x-xs h-6 m-r-sm" type="vertical" />
+            <CertificationTag certification={certification} />
+          </div>
+        </Col>
+      )}
       {isDisabled && (
         <Badge
           className="m-l-xs badge-grey"
