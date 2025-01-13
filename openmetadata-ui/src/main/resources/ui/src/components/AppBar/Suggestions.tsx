@@ -273,7 +273,6 @@ const Suggestions = ({
         '',
         searchCriteria ?? SearchIndex.DATA_ASSET,
         false,
-        false,
         false
       );
 
