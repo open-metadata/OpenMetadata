@@ -233,7 +233,7 @@ class SupersetSourceMixin(DashboardServiceSource):
         to prevent validation error requiring non-null arrayDataType
         """
         if col_parse["dataType"] == "ARRAY" and not col_parse.get("arrayDataType"):
-            return DataType.UNKNOWN.value
+            return DataType.UNKNOWN
         if col_parse.get("arrayDataType"):
             return DataType(col_parse["arrayDataType"])
         return None
