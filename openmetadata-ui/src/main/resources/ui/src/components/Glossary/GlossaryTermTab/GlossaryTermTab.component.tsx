@@ -184,7 +184,7 @@ const GlossaryTermTab = ({
         title: t('label.description'),
         dataIndex: 'description',
         key: 'description',
-        width: isGlossary ? 250 : 800,
+        width: isGlossary ? 250 : 650,
         render: (description: string) =>
           description.trim() ? (
             <RichTextEditorPreviewerV1
