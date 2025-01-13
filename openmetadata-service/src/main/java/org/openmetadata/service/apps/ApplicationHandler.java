@@ -98,7 +98,17 @@ public class ApplicationHandler {
 
   public void triggerApplicationOnDemand(
       App app, CollectionDAO daoCollection, SearchRepository searchRepository) {
-    runMethodFromApplication(app, daoCollection, searchRepository, "triggerOnDemand");
+      try {
+          runAppInit(app, daoCollection, searchRepository).triggerOnDemand();
+      } catch (ClassNotFoundException
+               | NoSuchMethodException
+               | InvocationTargetException
+               | InstantiationException
+               | IllegalAccessException e) {
+        LOG.error("Failed to install application {}", app.getName(), e);
+        throw AppException.byMessage(
+                app.getName(), "triggerOnDemand", e.getMessage(), Response.Status.INTERNAL_SERVER_ERROR);
+      }
   }
 
   public void installApplication(
@@ -222,29 +232,6 @@ public class ApplicationHandler {
     resource.init(app);
 
     return resource;
-  }
-
-  /**
-   * Load an App from its className and call its methods dynamically
-   */
-  public void runMethodFromApplication(
-      App app, CollectionDAO daoCollection, SearchRepository searchRepository, String methodName) {
-    // Native Application
-    setAppRuntimeProperties(app);
-    try {
-      Object resource = runAppInit(app, daoCollection, searchRepository);
-      // Call method on demand
-      Method scheduleMethod = resource.getClass().getMethod(methodName);
-      scheduleMethod.invoke(resource);
-
-    } catch (NoSuchMethodException | InstantiationException | IllegalAccessException e) {
-      LOG.error("Exception encountered", e);
-      throw new UnhandledServerException(e.getMessage());
-    } catch (ClassNotFoundException e) {
-      throw new UnhandledServerException(e.getMessage());
-    } catch (InvocationTargetException e) {
-      throw AppException.byMessage(app.getName(), methodName, e.getTargetException().getMessage());
-    }
   }
 
   public void migrateQuartzConfig(App application) throws SchedulerException {
