@@ -256,6 +256,8 @@ public interface SearchClient {
 
   void createEntity(String indexName, String docId, String doc);
 
+  void createEntities(String indexName, List<Map<String, String>> docsAndIds) throws IOException;
+
   void createTimeSeriesEntity(String indexName, String docId, String doc);
 
   void updateEntity(String indexName, String docId, Map<String, Object> doc, String scriptTxt);

@@ -259,6 +259,32 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   }
 
   @Override
+  public void storeEntities(List<TestCase> testCases) {
+    List<TestCase> testCasesToStore = new ArrayList<>();
+    for (TestCase testCase : testCases) {
+      EntityReference testSuite = testCase.getTestSuite();
+      EntityReference testDefinition = testCase.getTestDefinition();
+      TestCaseResult testCaseResult = testCase.getTestCaseResult();
+      List<TestSuite> testSuites = testCase.getTestSuites();
+
+      testCasesToStore.add(
+          testCase
+              .withTestSuite(null)
+              .withTestSuites(null)
+              .withTestDefinition(null)
+              .withTestCaseResult(null));
+
+      // restore the relationships
+      testCase
+          .withTestSuite(testSuite)
+          .withTestSuites(testSuites)
+          .withTestDefinition(testDefinition)
+          .withTestCaseResult(testCaseResult);
+    }
+    storeMany(testCasesToStore);
+  }
+
+  @Override
   public void storeRelationships(TestCase test) {
     EntityLink entityLink = EntityLink.parse(test.getEntityLink());
     EntityUtil.validateEntityLink(entityLink);

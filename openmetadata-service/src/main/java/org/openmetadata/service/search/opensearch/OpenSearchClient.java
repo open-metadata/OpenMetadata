@@ -134,6 +134,7 @@ import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 import os.org.opensearch.OpenSearchException;
 import os.org.opensearch.OpenSearchStatusException;
+import os.org.opensearch.action.ActionListener;
 import os.org.opensearch.action.admin.indices.alias.IndicesAliasesRequest;
 import os.org.opensearch.action.admin.indices.delete.DeleteIndexRequest;
 import os.org.opensearch.action.bulk.BulkRequest;
@@ -1935,6 +1936,40 @@ public class OpenSearchClient implements SearchClient {
       updateRequest.doc(doc, XContentType.JSON);
       updateRequest.docAsUpsert(true);
       updateSearch(updateRequest);
+    }
+  }
+
+  @Override
+  public void createEntities(String indexName, List<Map<String, String>> docsAndIds)
+      throws IOException {
+    if (isClientAvailable) {
+      BulkRequest bulkRequest = new BulkRequest();
+      for (Map<String, String> docAndId : docsAndIds) {
+        Map.Entry<String, String> entry = docAndId.entrySet().iterator().next();
+        UpdateRequest updateRequest = new UpdateRequest(indexName, entry.getKey());
+        updateRequest.doc(entry.getValue(), XContentType.JSON);
+        bulkRequest.add(updateRequest);
+      }
+      bulkRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE);
+      ActionListener<BulkResponse> listener =
+          new ActionListener<BulkResponse>() {
+            @Override
+            public void onResponse(BulkResponse bulkItemResponses) {
+              if (bulkItemResponses.hasFailures()) {
+                LOG.error(
+                    "Failed to create entities in ElasticSearch: {}",
+                    bulkItemResponses.buildFailureMessage());
+              } else {
+                LOG.debug("Successfully created {} entities in ElasticSearch", docsAndIds.size());
+              }
+            }
+
+            @Override
+            public void onFailure(Exception e) {
+              LOG.error("Failed to create entities in ElasticSearch", e);
+            }
+          };
+      client.bulkAsync(bulkRequest, RequestOptions.DEFAULT, listener);
     }
   }
 

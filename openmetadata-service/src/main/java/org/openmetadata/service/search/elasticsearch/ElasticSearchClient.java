@@ -38,6 +38,7 @@ import static org.openmetadata.service.util.FullyQualifiedName.getParentFQN;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import es.org.elasticsearch.ElasticsearchStatusException;
+import es.org.elasticsearch.action.ActionListener;
 import es.org.elasticsearch.action.admin.indices.alias.IndicesAliasesRequest;
 import es.org.elasticsearch.action.admin.indices.delete.DeleteIndexRequest;
 import es.org.elasticsearch.action.bulk.BulkRequest;
@@ -45,6 +46,7 @@ import es.org.elasticsearch.action.bulk.BulkResponse;
 import es.org.elasticsearch.action.delete.DeleteRequest;
 import es.org.elasticsearch.action.get.GetRequest;
 import es.org.elasticsearch.action.get.GetResponse;
+import es.org.elasticsearch.action.index.IndexRequest;
 import es.org.elasticsearch.action.search.SearchResponse;
 import es.org.elasticsearch.action.support.WriteRequest;
 import es.org.elasticsearch.action.support.master.AcknowledgedResponse;
@@ -1950,6 +1952,42 @@ public class ElasticSearchClient implements SearchClient {
       updateRequest.docAsUpsert(true);
       updateRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE);
       updateElasticSearch(updateRequest);
+    }
+  }
+
+  @Override
+  public void createEntities(String indexName, List<Map<String, String>> docsAndIds)
+      throws IOException {
+    if (isClientAvailable) {
+      BulkRequest bulkRequest = new BulkRequest();
+      for (Map<String, String> docAndId : docsAndIds) {
+        Map.Entry<String, String> entry = docAndId.entrySet().iterator().next();
+        IndexRequest indexRequest =
+            new IndexRequest(indexName)
+                .id(entry.getKey())
+                .source(entry.getValue(), XContentType.JSON);
+        bulkRequest.add(indexRequest);
+      }
+      bulkRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE);
+      ActionListener<BulkResponse> listener =
+          new ActionListener<BulkResponse>() {
+            @Override
+            public void onResponse(BulkResponse bulkItemResponses) {
+              if (bulkItemResponses.hasFailures()) {
+                LOG.error(
+                    "Failed to create entities in ElasticSearch: {}",
+                    bulkItemResponses.buildFailureMessage());
+              } else {
+                LOG.debug("Successfully created {} entities in ElasticSearch", docsAndIds.size());
+              }
+            }
+
+            @Override
+            public void onFailure(Exception e) {
+              LOG.error("Failed to create entities in ElasticSearch", e);
+            }
+          };
+      client.bulkAsync(bulkRequest, RequestOptions.DEFAULT, listener);
     }
   }
 
