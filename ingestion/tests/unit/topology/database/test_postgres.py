@@ -316,14 +316,15 @@ class PostgresUnitTest(TestCase):
 
     @patch("sqlalchemy.engine.base.Engine")
     def test_get_version_info(self, engine):
-        engine.execute.return_value = [["15.3 (Debian 15.3-1.pgdg110+1)"]]
-        self.assertEqual("15.3", get_postgres_version(engine))
+        # outdated with a switch to get_server_version_num instead of get_+server_version
+        # engine.execute.return_value = [["15.3 (Debian 15.3-1.pgdg110+1)"]]
+        # self.assertEqual("15.3", get_postgres_version(engine))
 
-        engine.execute.return_value = [["11.16"]]
-        self.assertEqual("11.16", get_postgres_version(engine))
+        engine.execute.return_value = [["110016"]]
+        self.assertEqual("110016", get_postgres_version(engine))
 
-        engine.execute.return_value = [["9.6.24"]]
-        self.assertEqual("9.6.24", get_postgres_version(engine))
+        engine.execute.return_value = [["90624"]]
+        self.assertEqual("90624", get_postgres_version(engine))
 
         engine.execute.return_value = [[]]
         self.assertIsNone(get_postgres_version(engine))
