@@ -54,9 +54,7 @@ from metadata.generated.schema.api.data.createStoredProcedure import (
 )
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.data.createTopic import CreateTopicRequest
-from metadata.generated.schema.api.docStore.createDocument import (
-    Document as CreateDocumentRequest,
-)
+from metadata.generated.schema.api.docStore.createDocument import CreateDocumentRequest
 from metadata.generated.schema.api.domains.createDataProduct import (
     CreateDataProductRequest,
 )

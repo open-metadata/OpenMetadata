@@ -29,7 +29,7 @@ class RedashApiClient:
         self.config = config
         client_config = ClientConfig(
             base_url=str(config.hostPort),
-            api_version="",
+            api_version="api",
             access_token=config.apiKey.get_secret_value(),
             auth_header="Authorization",
             auth_token_mode="Key",
@@ -41,20 +41,11 @@ class RedashApiClient:
         """GET api/dashboards"""
 
         params_data = {"page": page, "page_size": page_size}
-        return self.client.get(path="api/dashboards", data=params_data)
+        return self.client.get(path="/dashboards", data=params_data)
 
-    def get_dashboard(self, slug):
-        """GET api/dashboards/<slug>"""
-
-        # The API changed from redash v9 onwards
-        # legacy=true allows us to get the results in the old way
-        return self.client.get(
-            f"api/dashboards/{slug}?legacy=true",
-        )
-
-    def get_dashboard_by_id(self, dashboard_id: int):
+    def get_dashboard(self, dashboard_id: int):
         """GET api/dashboards/<id>"""
-        return self.client.get(f"api/dashboards/{dashboard_id}")
+        return self.client.get(f"/dashboards/{dashboard_id}")
 
     def paginate(self, resource, page=1, page_size=25, **kwargs):
         """Load all items of a paginated resource"""

@@ -115,7 +115,7 @@ class RedashSource(DashboardServiceSource):
         return dashboard["name"]
 
     def get_dashboard_details(self, dashboard: dict) -> dict:
-        return self.client.get_dashboard_by_id(dashboard["id"])
+        return self.client.get_dashboard(dashboard["id"])
 
     def get_owner_ref(self, dashboard_details) -> Optional[EntityReferenceList]:
         """
