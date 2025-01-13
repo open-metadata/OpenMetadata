@@ -99,4 +99,4 @@ class IcebergDynamoDbCatalog(IcebergCatalogBase):
                 **cls.get_fs_parameters(aws_config),
             }
 
-        return CustomDynamoDbCatalog(catalog.name, **parameters)
+        return DynamoDbCatalog(catalog.name, **parameters)
