@@ -85,7 +85,7 @@ VIEW_QUERY_MAPS = {
 
 def _quoted_name(entity_name: Optional[str]) -> Optional[str]:
     if entity_name:
-        return fqn.quote_name(entity_name)
+        return fqn.quote_name_snowflake(entity_name)
 
     return None
 
@@ -159,7 +159,7 @@ def _get_query_parameters(
     return parameters
 
 
-def get_table_names(self, connection, schema: str, **kw):
+def get_table_names(self, connection, schema: str, **kw): # OK
     """Return the Table names to process based on the incremental setup."""
     incremental = kw.get("incremental")
 
@@ -218,10 +218,10 @@ def get_view_definition(  # pylint: disable=unused-argument
     schema = schema or self.default_schema_name
     if schema:
         cursor = connection.execute(
-            f"SELECT GET_DDL('VIEW','{schema}.{view_name}') AS \"text\""
+            f"SELECT GET_DDL('VIEW',{fqn.quote_name_snowflake(schema, view_name)}) AS \"text\""
         )
     else:
-        cursor = connection.execute(f"SELECT GET_DDL('VIEW','{view_name}') AS \"text\"")
+        cursor = connection.execute(f"SELECT GET_DDL('VIEW',{fqn.quote_name_snowflake(view_name)}) AS \"text\"")
     n2i = self.__class__._map_name_to_idx(cursor)  # pylint: disable=protected-access
     try:
         ret = cursor.fetchone()
@@ -256,8 +256,8 @@ def get_schema_columns(self, connection, schema, **kw):
     None, as it is cacheable and is an unexpected return type for this function"""
     ans = {}
     current_database, _ = self._current_database_schema(connection, **kw)
-    full_schema_name = self._denormalize_quote_join(
-        current_database, fqn.quote_name(schema)
+    full_schema_name = fqn.quote_name_snowflake(
+        current_database, schema
     )
     try:
         schema_primary_keys = self._get_schema_primary_keys(
@@ -265,7 +265,7 @@ def get_schema_columns(self, connection, schema, **kw):
         )
         result = connection.execute(
             text(SNOWFLAKE_GET_SCHEMA_COLUMNS),
-            {"table_schema": self.denormalize_name(fqn.unquote_name(schema))}
+            {"table_schema": schema}
             # removing " " from schema name because schema name is in the WHERE clause of a query
         )
 
@@ -288,7 +288,9 @@ def get_schema_columns(self, connection, schema, **kw):
         identity_start,
         identity_increment,
     ) in result:
-        table_name = self.normalize_name(fqn.quote_name(table_name))
+        table_name = self.normalize_name(
+            fqn.quote_name_snowflake(table_name)
+        )
         column_name = self.normalize_name(column_name)
         if table_name not in ans:
             ans[table_name] = []
@@ -362,11 +364,12 @@ def get_pk_constraint(self, connection, table_name, schema=None, **kw):
     schema = schema or self.default_schema_name
     schema = _quoted_name(entity_name=schema)
     current_database, current_schema = self._current_database_schema(connection, **kw)
-    full_schema_name = self._denormalize_quote_join(
+    full_schema_name = fqn.quote_name_snowflake(
         current_database, schema if schema else current_schema
     )
+
     return self._get_schema_primary_keys(
-        connection, self.denormalize_name(full_schema_name), **kw
+        connection, full_schema_name, **kw
     ).get(table_name, {"constrained_columns": [], "name": None})
 
 
@@ -378,7 +381,7 @@ def get_foreign_keys(self, connection, table_name, schema=None, **kw):
     schema = schema or self.default_schema_name
     schema = _quoted_name(entity_name=schema)
     current_database, current_schema = self._current_database_schema(connection, **kw)
-    full_schema_name = self._denormalize_quote_join(
+    full_schema_name = fqn.quote_name_snowflake(
         current_database, schema if schema else current_schema
     )
 
@@ -391,6 +394,7 @@ def get_foreign_keys(self, connection, table_name, schema=None, **kw):
 @reflection.cache
 def get_schema_foreign_keys(self, connection, schema, **kw):
     current_database, current_schema = self._current_database_schema(connection, **kw)
+    schema = fqn.quote_name_snowflake(schema)
     result = connection.execute(
         text(
             f"SHOW /* sqlalchemy:_get_schema_foreign_keys */ IMPORTED KEYS IN SCHEMA {schema}"
@@ -452,7 +456,7 @@ def get_unique_constraints(self, connection, table_name, schema, **kw):
     schema = schema or self.default_schema_name
     schema = _quoted_name(entity_name=schema)
     current_database, current_schema = self._current_database_schema(connection, **kw)
-    full_schema_name = self._denormalize_quote_join(
+    full_schema_name = fqn.quote_name_snowflake(
         current_database, schema if schema else current_schema
     )
     return self._get_schema_unique_constraints(
@@ -473,7 +477,7 @@ def get_columns(self, connection, table_name, schema=None, **kw):
     if schema_columns is None:
         # Too many results, fall back to only query about single table
         return self._get_table_columns(connection, table_name, schema, **kw)
-    normalized_table_name = self.normalize_name(fqn.quote_name(table_name))
+    normalized_table_name = self.normalize_name(fqn.quote_name_snowflake(table_name))
     if normalized_table_name not in schema_columns:
         raise sa_exc.NoSuchTableError()
     return schema_columns[normalized_table_name]
@@ -487,7 +491,9 @@ def get_table_ddl(
     Gets the Table DDL
     """
     schema = schema or self.default_schema_name
-    table_name = f"{schema}.{table_name}" if schema else table_name
+    table_name = fqn.quote_name_snowflake(
+        f"{schema}.{table_name}" if schema else table_name
+    )
     cursor = connection.execute(SNOWFLAKE_GET_TABLE_DDL.format(table_name=table_name))
     try:
         result = cursor.fetchone()

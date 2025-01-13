@@ -122,6 +122,69 @@ def quote_name(name: str) -> str:
     raise ValueError("Invalid name " + name)
 
 
+def quote_name_snowflake(*names: str) -> str:
+    """
+    Quote names according to Snowflake conventions.
+    Handles individual name parts and dot-separated names.
+    
+    Rules:
+    - Removes duplicate quotes
+    - Adds quotes if missing when necessary
+    - Handles dot-separated names by quoting each part separately
+    - Only quotes when required by Snowflake conventions
+    """
+    if not names:
+        return names  # type: ignore
+        
+    def needs_quotes(part: str) -> bool:
+        """Check if a name part needs quotes based on Snowflake rules"""
+        # Already properly quoted
+        if re.match(r'^"[^"]+?"$', part):
+            return False
+            
+        # Contains special characters
+        if re.search(r'[^A-Za-z0-9_]', part):
+            return True
+            
+        # Reserved words should be quoted
+        reserved_words = {'table', 'schema', 'database', 'select', 'from', 'where'}
+        if part.lower() in reserved_words and not quoted_parts:
+            return True
+            
+        # Contains any lowercase letters (since unquoted identifiers become uppercase)
+        if any(c.islower() for c in part):
+            return True
+            
+        return False
+        
+    def clean_quotes(part: str) -> str:
+        """Remove existing quotes and clean up the name"""
+        # Remove all quotes
+        cleaned = re.sub(r'"', '', part)
+        return cleaned
+        
+    def quote_part(part: str) -> str:
+        """Quote a single name part if necessary"""
+        if not part:  # Handle empty strings
+            return '""'
+            
+        cleaned = clean_quotes(part)
+        if needs_quotes(cleaned):
+            return f'"{cleaned}"'
+        return cleaned.upper()  # Return uppercase if not quoted
+        
+    # Process each argument and handle any dot-separated parts within them
+    quoted_parts = []
+    for name in names:
+        if not name:  # Skip empty strings
+            continue
+        # Split by dots and handle each part
+        parts = re.split(r'\.(?=(?:[^"]*"[^"]*")*[^"]*$)', name)
+        quoted_parts.extend(quote_part(part) for part in parts)
+    
+    return '.'.join(quoted_parts)
+
+
 def build(
     metadata: Optional[OpenMetadata], entity_type: Type[T], **kwargs
 ) -> Optional[str]:

@@ -254,7 +254,7 @@ class SnowflakeSource(
     def set_external_location_map(self, database_name: str) -> None:
         self.external_location_map.clear()
         results = self.engine.execute(
-            SNOWFLAKE_GET_EXTERNAL_LOCATIONS.format(database_name=database_name)
+            SNOWFLAKE_GET_EXTERNAL_LOCATIONS.format(database_name=fqn.unquote_name(database_name))
         ).all()
         self.external_location_map = {
             (row.database_name, row.schema_name, row.name): row.location
@@ -294,6 +294,7 @@ class SnowflakeSource(
             yield configured_db
         else:
             for new_database in self.get_database_names_raw():
+                new_database = fqn.quote_name_snowflake(new_database)
                 database_fqn = fqn.build(
                     self.metadata,
                     entity_type=Database,
@@ -416,8 +417,8 @@ class SnowflakeSource(
             try:
                 result = self.connection.execute(
                     SNOWFLAKE_FETCH_ALL_TAGS.format(
-                        database_name=self.context.get().database,
-                        schema_name=schema_name,
+                        database_name=fqn.unquote_name(self.context.get().database),
+                        schema_name=fqn.unquote_name(schema_name),
                     )
                 )
 
@@ -429,8 +430,8 @@ class SnowflakeSource(
                     )
                     result = self.connection.execute(
                         SNOWFLAKE_FETCH_ALL_TAGS.format(
-                            database_name=f'"{self.context.get().database}"',
-                            schema_name=f'"{self.context.get().database_schema}"',
+                            database_name=fqn.unquote_name(self.context.get().database),
+                            schema_name=fqn.unquote_name(self.context.get().database_schema),
                         )
                     )
                 except Exception as inner_exc:
