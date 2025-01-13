@@ -354,6 +354,35 @@ class DbtSource(DbtServiceSource):
                 DbtCommonEnum.RESULTS.value
             ] = freshness_test_result
 
+    def _get_table_entity(self, table_fqn) -> Optional[Table]:
+        try:
+            table_entities: Optional[
+                Union[Table, List[Table]]
+            ] = get_entity_from_es_result(
+                entity_list=self.metadata.es_search_from_fqn(
+                    entity_type=Table,
+                    fqn_search_string=table_fqn,
+                    fields="sourceHash",
+                ),
+                fetch_multiple_entities=True,
+            )
+            logger.debug(f"Found table entities from {table_fqn}: {table_entities}")
+
+            table_entity = next(
+                iter(filter(lambda x: x is not None, table_entities)), None
+            )
+
+            return table_entity
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Unable to find the table '{table_fqn}' in OpenMetadata"
+                "Please check if the table exists and is ingested in OpenMetadata"
+                "Also name, database, schema of the manifest node matches with the table present "
+                f"in OpenMetadata: {exc}"
+            )
+        return None
+
     # pylint: disable=too-many-locals, too-many-branches, too-many-statements
     def yield_data_models(
         self, dbt_objects: DbtObjects
@@ -465,35 +494,16 @@ class DbtSource(DbtServiceSource):
                     dbt_compiled_query = get_dbt_compiled_query(manifest_node)
                     dbt_raw_query = get_dbt_raw_query(manifest_node)
 
-                    # Get the table entity from ES
                     table_fqn = fqn.build(
                         self.metadata,
                         entity_type=Table,
-                        service_name="*",
+                        service_name=self.config.serviceName,
                         database_name=get_corrected_name(manifest_node.database),
                         schema_name=get_corrected_name(manifest_node.schema_),
                         table_name=model_name,
                     )
 
-                    table_entities: Optional[
-                        Union[Table, List[Table]]
-                    ] = get_entity_from_es_result(
-                        entity_list=self.metadata.es_search_from_fqn(
-                            entity_type=Table,
-                            fqn_search_string=table_fqn,
-                            fields="sourceHash",
-                        ),
-                        fetch_multiple_entities=True,
-                    )
-                    logger.debug(
-                        f"Found table entities from {table_fqn}: {table_entities}"
-                    )
-
-                    table_entity = next(
-                        iter(filter(lambda x: x is not None, table_entities)), None
-                    )
-
-                    if table_entity:
+                    if table_entity := self._get_table_entity(table_fqn=table_fqn):
                         logger.debug(
                             f"Using Table Entity for datamodel: {table_entity}"
                         )
@@ -527,13 +537,7 @@ class DbtSource(DbtServiceSource):
                         )
                         yield Either(right=data_model_link)
                         self.context.get().data_model_links.append(data_model_link)
-                    else:
-                        logger.warning(
-                            f"Unable to find the table '{table_fqn}' in OpenMetadata"
-                            "Please check if the table exists and is ingested in OpenMetadata"
-                            "Also name, database, schema of the manifest node matches with the table present "
-                            "in OpenMetadata"
-                        )
+
                 except Exception as exc:
                     yield Either(
                         left=StackTraceError(
@@ -577,22 +581,14 @@ class DbtSource(DbtServiceSource):
                         parent_fqn = fqn.build(
                             self.metadata,
                             entity_type=Table,
-                            service_name="*",
+                            service_name=self.config.serviceName,
                             database_name=get_corrected_name(parent_node.database),
                             schema_name=get_corrected_name(parent_node.schema_),
                             table_name=table_name,
                         )
 
                         # check if the parent table exists in OM before adding it to the upstream list
-                        parent_table_entity: Optional[
-                            Union[Table, List[Table]]
-                        ] = get_entity_from_es_result(
-                            entity_list=self.metadata.es_search_from_fqn(
-                                entity_type=Table, fqn_search_string=parent_fqn
-                            ),
-                            fetch_multiple_entities=False,
-                        )
-                        if parent_table_entity:
+                        if self._get_table_entity(table_fqn=parent_fqn):
                             upstream_nodes.append(parent_fqn)
                 except Exception as exc:  # pylint: disable=broad-except
                     logger.debug(traceback.format_exc())
@@ -605,22 +601,14 @@ class DbtSource(DbtServiceSource):
             parent_fqn = fqn.build(
                 self.metadata,
                 entity_type=Table,
-                service_name="*",
+                service_name=self.config.serviceName,
                 database_name=get_corrected_name(dbt_node.database),
                 schema_name=get_corrected_name(dbt_node.schema_),
                 table_name=dbt_node.name,
             )
 
             # check if the parent table exists in OM before adding it to the upstream list
-            parent_table_entity: Optional[
-                Union[Table, List[Table]]
-            ] = get_entity_from_es_result(
-                entity_list=self.metadata.es_search_from_fqn(
-                    entity_type=Table, fqn_search_string=parent_fqn
-                ),
-                fetch_multiple_entities=False,
-            )
-            if parent_table_entity:
+            if self._get_table_entity(table_fqn=parent_fqn):
                 upstream_nodes.append(parent_fqn)
 
         return upstream_nodes
@@ -712,14 +700,8 @@ class DbtSource(DbtServiceSource):
 
         for upstream_node in data_model_link.datamodel.upstream:
             try:
-                from_es_result = self.metadata.es_search_from_fqn(
-                    entity_type=Table,
-                    fqn_search_string=upstream_node,
-                )
-                from_entity: Optional[
-                    Union[Table, List[Table]]
-                ] = get_entity_from_es_result(
-                    entity_list=from_es_result, fetch_multiple_entities=False
+                from_entity: Optional[Table] = self._get_table_entity(
+                    table_fqn=upstream_node
                 )
                 if from_entity and to_entity:
                     yield Either(
