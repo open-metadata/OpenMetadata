@@ -1219,13 +1219,17 @@ test.describe('Glossary tests', () => {
       const firstGlossaryName = json.data[0].displayName;
 
       await expect(
-        page.getByRole('menuitem', { name: firstGlossaryName })
+        page
+          .getByTestId('glossary-left-panel')
+          .getByRole('menuitem', { name: firstGlossaryName })
       ).toBeVisible();
 
       const lastGlossaryName = json.data[json.data.length - 1].displayName;
 
       await expect(
-        page.getByRole('menuitem', { name: lastGlossaryName })
+        page
+          .getByTestId('glossary-left-panel')
+          .getByRole('menuitem', { name: lastGlossaryName })
       ).toBeVisible();
     } finally {
       for (const glossary of glossaries) {
