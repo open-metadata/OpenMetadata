@@ -33,7 +33,11 @@ const AlertBar = ({ type, message }: AlertBarProps): JSX.Element => {
       afterClose={resetAlert}
       className={classNames(className, 'alert-container', animationClass)}
       closeIcon={
-        <CrossIcon color="currentColor" data-testid="alert-icon-close" />
+        <CrossIcon
+          className="alert-close-icon"
+          color="currentColor"
+          data-testid="alert-icon-close"
+        />
       }
       data-testid="alert-bar"
       description={message}

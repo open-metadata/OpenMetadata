@@ -39,7 +39,7 @@
   backdrop-filter: blur(500px);
 
   &.show-alert {
-    animation: resize-show-animation 1.2s ease-in-out forwards;
+    animation: resize-show-animation 0.8s ease-in-out forwards;
     position: fixed;
     top: 64px;
     z-index: 20;
@@ -47,7 +47,7 @@
   }
 
   &.hide-alert {
-    animation: resize-hide-animation 1.2s ease-in-out forwards;
+    animation: resize-hide-animation 0.8s ease-in-out forwards;
   }
 
   &.info {
@@ -80,5 +80,12 @@
 
   .ant-alert-description {
     font-size: 16px;
+  }
+
+  .alert-close-icon {
+    margin-right: 6px;
+    display: flex;
+    align-items: center;
+    margin-top: 3px;
   }
 }
