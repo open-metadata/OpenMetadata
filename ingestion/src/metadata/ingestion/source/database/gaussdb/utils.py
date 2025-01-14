@@ -26,7 +26,6 @@ from sqlalchemy.sql import sqltypes
 
 from metadata.generated.schema.entity.data.table import Column
 from metadata.ingestion.source.database.gaussdb.queries import (
-    GAUSSDB_COL_IDENTITY,
     GAUSSDB_FETCH_FK,
     GAUSSDB_GET_JSON_FIELDS,
     GAUSSDB_GET_SERVER_VERSION,
@@ -222,18 +221,10 @@ def get_columns(  # pylint: disable=too-many-locals
     table_oid = self.get_table_oid(
         connection, table_name, schema, info_cache=kw.get("info_cache")
     )
-
     generated = (
-        "a.attgenerated as generated"
-        if self.server_version_info >= (12,)
-        else "NULL as generated"
+        "NULL as generated"
     )
-    if self.server_version_info >= (10,):
-        # a.attidentity != '' is required or it will reflect also
-        # serial columns as identity.
-        identity = GAUSSDB_COL_IDENTITY
-    else:
-        identity = "NULL as identity_options"
+    identity = "NULL as identity_options"
 
     sql_col_query = GAUSSDB_SQL_COLUMNS.format(
         generated=generated,
@@ -514,32 +505,46 @@ def get_view_definition(
     )
 
 
-def get_gaussdb_version(engine) -> Optional[str]:
-    """
-    return the gaussdb version in major.minor.patch format
-    """
-    try:
-        results = engine.execute(GAUSSDB_GET_SERVER_VERSION)
-        for res in results:
-            version_string = str(res[0])
-            opening_parenthesis_index = version_string.find("(")
-            if opening_parenthesis_index != -1:
-                return version_string[:opening_parenthesis_index].strip()
-            return version_string
-    except Exception as err:
-        logger.warning(f"Unable to fetch the gaussdb Version - {err}")
-        logger.debug(traceback.format_exc())
-    return None
 
+import re
+from typing import Optional
+
+def get_gaussdb_version(self,engine) -> Optional[str]:
+    """
+    Return the GaussDB version in major.minor.patch format.
+    """
+    result = engine.execute(GAUSSDB_GET_SERVER_VERSION)
+    result_string = result.scalar()
+    if not result_string:
+        raise ValueError("Query result is empty or None.")
+    logger.debug(f"Query result: {result_string}")
+
+
+    match = re.match(
+        r".*(?:PostgreSQL|EnterpriseDB|GaussDB Kernel) "
+        r"(\d+)\.?(\d+)?(?:\.(\d+))?(?:\.\d+)?(?:devel|beta)?",
+        result_string,
+    )
+    if not match:
+        logger.error(f"Could not match the version string: {result_string}")
+        raise AssertionError(
+            "Could not determine version from string '%s'" % result_string
+        )
+
+    logger.debug(f"Match groups: {match.groups()}")
+
+    version_tuple = tuple([int(x) for x in match.group(1, 2, 3) if x is not None])
+    logger.debug(f"Parsed version tuple: {version_tuple}")
+
+    return version_tuple
+
+
+# def get_gaussdb_version_wrapper(connection):
+    # return get_gaussdb_version(None,connection)
 
 def get_gaussdb_time_column_name(engine) -> str:
     """
     Return the correct column name for the time column based on gaussdb version
     """
     time_column_name = "total_elapse_time"
-    gaussdb_version = get_gaussdb_version(engine)
-    if gaussdb_version and version.parse(gaussdb_version) < version.parse(
-        OLD_GAUSSDB_VERSION
-    ):
-        time_column_name = "total_elapse_time"
     return time_column_name

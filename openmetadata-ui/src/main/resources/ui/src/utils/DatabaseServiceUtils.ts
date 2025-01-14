@@ -30,6 +30,7 @@ import dorisConnection from '../jsons/connectionSchemas/connections/database/dor
 import druidConnection from '../jsons/connectionSchemas/connections/database/druidConnection.json';
 import dynamoDBConnection from '../jsons/connectionSchemas/connections/database/dynamoDBConnection.json';
 import exasolConnection from '../jsons/connectionSchemas/connections/database/exasolConnection.json';
+import gaussdbConnection from '../jsons/connectionSchemas/connections/database/gaussdbConnection.json';
 import glueConnection from '../jsons/connectionSchemas/connections/database/glueConnection.json';
 import greenplumConnection from '../jsons/connectionSchemas/connections/database/greenplumConnection.json';
 import hiveConnection from '../jsons/connectionSchemas/connections/database/hiveConnection.json';
@@ -164,6 +165,11 @@ export const getDatabaseConfig = (type: DatabaseServiceType) => {
     }
     case DatabaseServiceType.Postgres: {
       schema = postgresConnection;
+
+      break;
+    }
+    case DatabaseServiceType.Gaussdb: {
+      schema = gaussdbConnection;
 
       break;
     }

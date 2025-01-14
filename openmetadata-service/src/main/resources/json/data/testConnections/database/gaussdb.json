@@ -35,14 +35,14 @@
       },
       {
         "name": "GetTags",
-        "description": "Check if we can access pg_policy, pg_class & pg_namespace tables to get the policy tags attached to tables.",
-        "errorMessage": "Failed to fetch policy tags, please validate if the user has at least select privileges for pg_policy, pg_class & pg_namespace tables.",
+        "description": "Check if we can access pg_rlspolicy, pg_class & pg_namespace tables to get the policy tags attached to tables.",
+        "errorMessage": "Failed to fetch policy tags, please validate if the user has at least select privileges for pg_rlspolicy, pg_class & pg_namespace tables.",
         "mandatory": false
       },
       {
         "name": "GetQueries",
-        "description":"Check if we can access the pg_stat_statements table to get query logs, These queries are analyzed in the usage & lineage workflow.",
-        "errorMessage": "Failed to fetch queries, please validate if gaussdb instance has pg_stat_statements extension installed and the user has at least select privileges for pg_stat_statements table.",
+        "description":"Check if we can access the dbe_perf.statement table to get query logs, These queries are analyzed in the usage & lineage workflow.",
+        "errorMessage": "Failed to fetch queries, please validate if gaussdb instance has dbe_perf.statement extension installed and the user has at least select privileges for dbe_perf.statement table.",
         "mandatory": false
       }
     ]

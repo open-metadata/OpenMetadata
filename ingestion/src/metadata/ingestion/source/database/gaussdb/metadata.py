@@ -65,12 +65,16 @@ from metadata.ingestion.source.database.gaussdb.queries import (
 from metadata.ingestion.source.database.gaussdb.utils import (
     get_column_info,
     get_columns,
+    get_column_args,
+    get_column_default,
     get_etable_owner,
     get_foreign_keys,
     get_json_fields_and_type,
     get_table_comment,
     get_table_owner,
     get_view_definition,
+    get_gaussdb_version,
+    get_gaussdb_time_column_name
 )
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database
@@ -143,6 +147,10 @@ PGDialect.get_all_view_definitions = get_all_view_definitions
 PGDialect.get_all_table_owners = get_all_table_owners
 PGDialect.get_table_owner = get_table_owner
 PGDialect.ischema_names = ischema_names
+PGDialect._get_server_version_info = get_gaussdb_version
+PGDialect._get_time_column_name = get_gaussdb_time_column_name
+PGDialect.get_column_args = get_column_args
+PGDialect.get_column_default = get_column_default
 
 Inspector.get_all_table_ddls = get_all_table_ddls
 Inspector.get_table_ddl = get_table_ddl

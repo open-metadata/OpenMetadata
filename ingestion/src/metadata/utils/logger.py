@@ -167,7 +167,7 @@ def query_runner_logger():
     return logging.getLogger(Loggers.QUERY_RUNNER.value)
 
 
-def set_loggers_level(level: Union[int, str] = logging.INFO):
+def set_loggers_level(level: Union[int, str] = logging.DEBUG):
     """
     Set all loggers levels
     :param level: logging level
@@ -179,7 +179,7 @@ def log_ansi_encoded_string(
     color: Optional[ANSI] = None,
     bold: bool = False,
     message: str = "",
-    level=logging.INFO,
+    level=logging.DEBUG,
 ):
     utils_logger().log(
         level=level,

@@ -152,26 +152,6 @@ GAUSSDB_GET_DB_NAMES = """
 select datname from pg_catalog.pg_database
 """
 
-GAUSSDB_COL_IDENTITY = """\
-  (SELECT json_build_object(
-      'always', a.attidentity = 'a',
-      'start', s.last_number,
-      'increment', s.increment_by,
-      'minvalue', s.min_value,
-      'maxvalue', s.max_value,
-      'cache', s.cache_size,
-      'cycle', s.cycle_flag)
-  FROM ADM_SEQUENCES s
-  JOIN PG_STATIO_ALL_SEQUENCES p on p.relname=s.sequence_name
-  JOIN pg_catalog.pg_class c on p.relid = c."oid"
-  WHERE c.relkind = 'S'
-  AND a.attidentity != ''
-  AND s.seqrelid = pg_catalog.pg_get_serial_sequence(
-      a.attrelid::regclass::text, a.attname
-  )::regclass::oid
-  ) as identity_options\
-"""
-
 GAUSSDB_SQL_COLUMNS = """
         SELECT a.attname,
             pg_catalog.format_type(a.atttypid, a.atttypmod),
@@ -195,7 +175,7 @@ GAUSSDB_SQL_COLUMNS = """
     """
 
 GAUSSDB_GET_SERVER_VERSION = """
-show server_version
+select version()
 """
 
 GAUSSDB_FETCH_FK = """

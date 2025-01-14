@@ -118,7 +118,7 @@ ignore-paths = [
     ".*/src/metadata/ingestion/source/.*/service_spec.py",
     "ingestion/src/metadata/profiler/metrics",
     "ingestion/src/metadata/profiler/source/databricks",
-    
+
     # metadata ingestion sources
     "ingestion/src/metadata/ingestion/source/api/rest/connection.py",
     "ingestion/src/metadata/ingestion/source/api/rest/metadata.py",
@@ -176,6 +176,13 @@ ignore-paths = [
     "ingestion/src/metadata/ingestion/source/database/postgres/metrics.py",
     "ingestion/src/metadata/ingestion/source/database/postgres/types/money.py",
     "ingestion/src/metadata/ingestion/source/database/postgres/utils.py",
+    "ingestion/src/metadata/ingestion/source/database/gaussdb/connection.py",
+    "ingestion/src/metadata/ingestion/source/database/gaussdb/converter_orm.py",
+    "ingestion/src/metadata/ingestion/source/database/gaussdb/lineage.py",
+    "ingestion/src/metadata/ingestion/source/database/gaussdb/metadata.py",
+    "ingestion/src/metadata/ingestion/source/database/gaussdb/metrics.py",
+    "ingestion/src/metadata/ingestion/source/database/gaussdb/types/money.py",
+    "ingestion/src/metadata/ingestion/source/database/gaussdb/utils.py",
     "ingestion/src/metadata/ingestion/source/database/redshift/incremental_table_processor.py",
     "ingestion/src/metadata/ingestion/source/database/redshift/lineage.py",
     "ingestion/src/metadata/ingestion/source/database/redshift/models.py",

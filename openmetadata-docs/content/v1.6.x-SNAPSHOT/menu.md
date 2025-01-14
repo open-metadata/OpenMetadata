@@ -11,9 +11,9 @@ site_menu:
     url: /quick-start/local-kubernetes-deployment
   - category: Quickstart / Try the OpenMetadata Sandbox
     url: /quick-start/sandbox
-  - category: Quickstart / Getting Started  
+  - category: Quickstart / Getting Started
     url: /quick-start/getting-started
-  - category: Quickstart / Getting Started / Day 1  
+  - category: Quickstart / Getting Started / Day 1
     url: /quick-start/getting-started/day-1
   - category: Quickstart / Getting Started / Day 1 / Database Service Setup
     url: /quick-start/getting-started/day-1/database-service-setup
@@ -354,6 +354,12 @@ site_menu:
     url: /connectors/database/postgres/yaml
   - category: Connectors / Database / Postgres / Troubleshooting
     url: /connectors/database/postgres/troubleshooting
+  - category: Connectors / Database / Gaussdb
+    url: /connectors/database/gaussdb
+  - category: Connectors / Database / Gaussdb / Run Externally
+    url: /connectors/database/gaussdb/yaml
+  - category: Connectors / Database / Gaussdb / Troubleshooting
+    url: /connectors/database/gaussdb/troubleshooting
   - category: Connectors / Database / Presto
     url: /connectors/database/presto
   - category: Connectors / Database / Presto / Run Externally
@@ -733,8 +739,8 @@ site_menu:
     url: /how-to-guides/admin-guide/how-to-add-custom-logo
   - category: How-to Guides / Admin Guide / Reindexing Search
     url: /how-to-guides/admin-guide/Reindexing-Search
-  - category: How-to Guides / Admin Guide / Persona and Landing Page Customization 
-    url: /how-to-guides/admin-guide/persona-landing-page-customization 
+  - category: How-to Guides / Admin Guide / Persona and Landing Page Customization
+    url: /how-to-guides/admin-guide/persona-landing-page-customization
   - category: How-to Guides / Admin Guide / Persona and Landing Page Customization / How to Customize a Landing Page
     url: /how-to-guides/admin-guide/persona-landing-page-customization/customizable-landing-page
   - category: How-to Guides / Admin Guide / Persona and Landing Page Customization / How to Define Personas
@@ -821,11 +827,11 @@ site_menu:
     url: /how-to-guides/data-quality-observability/quality/test
   - category: How-to Guides / Data Quality and Observability / Data Quality / Configure Data Quality
     url: /how-to-guides/data-quality-observability/quality/configure
-  - category: How-to Guides / Data Quality Observability / Data Quality / Adding Test Cases  
+  - category: How-to Guides / Data Quality Observability / Data Quality / Adding Test Cases
     url: /how-to-guides/data-quality-observability/quality/adding-test-cases
-  - category: How-to Guides / Data Quality Observability / Data Quality / Adding Test Suites  
+  - category: How-to Guides / Data Quality Observability / Data Quality / Adding Test Suites
     url: /how-to-guides/data-quality-observability/quality/adding-test-suites
-  - category: How-to Guides / Data Quality Observability / Data Quality / Test Cases From YAML Config  
+  - category: How-to Guides / Data Quality Observability / Data Quality / Test Cases From YAML Config
     url: /how-to-guides/data-quality-observability/quality/test-cases-from-yaml-config
   - category: How-to Guides / Data Quality Observability / Data Quality / How to Visualize Test Results
     url: /how-to-guides/data-quality-observability/quality/visualize

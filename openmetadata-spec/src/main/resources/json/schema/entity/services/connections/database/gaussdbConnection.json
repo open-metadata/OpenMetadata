@@ -1,5 +1,5 @@
 {
-  "$id": "https://open-metadata.org/schema/entity/services/connections/database/gaussdbConnection.json",
+  "$id": "https://github.com/pangpang20/OpenMetadata/blob/gaussdb-dev/openmetadata-spec/src/main/resources/json/schema/entity/services/connections/database/gaussdbConnection.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "GaussdbConnection",
   "description": "Gaussdb Database Connection Config",
