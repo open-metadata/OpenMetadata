@@ -50,7 +50,7 @@ const MOCK_DATA = [
   },
 ];
 const mockPush = jest.fn();
-
+const mockLocationPathname = '/mock-path';
 jest.mock('react-router-dom', () => ({
   Link: jest
     .fn()
@@ -61,6 +61,9 @@ jest.mock('react-router-dom', () => ({
     ),
   useHistory: jest.fn().mockImplementation(() => ({
     push: mockPush,
+  })),
+  useLocation: jest.fn().mockImplementation(() => ({
+    pathname: mockLocationPathname,
   })),
 }));
 
