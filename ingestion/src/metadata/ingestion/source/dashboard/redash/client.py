@@ -13,6 +13,7 @@ REST Auth & Client for Redash
 """
 
 from metadata.ingestion.ometa.client import REST, ClientConfig
+from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import utils_logger
 
 logger = utils_logger()
@@ -28,7 +29,7 @@ class RedashApiClient:
     def __init__(self, config):
         self.config = config
         client_config = ClientConfig(
-            base_url=str(config.hostPort),
+            base_url=clean_uri(config.hostPort),
             api_version="api",
             access_token=config.apiKey.get_secret_value(),
             auth_header="Authorization",
