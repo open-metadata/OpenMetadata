@@ -227,6 +227,17 @@ class SupersetSourceMixin(DashboardServiceSource):
         """clean datatype of column fetched from superset"""
         return datatype.replace("()", "")
 
+    def parse_array_data_type(self, col_parse: dict) -> Optional[str]:
+        """
+        Set arrayDataType to UNKNOWN for Snowflake table array columns
+        to prevent validation error requiring non-null arrayDataType
+        """
+        if col_parse["dataType"] == "ARRAY" and not col_parse.get("arrayDataType"):
+            return DataType.UNKNOWN
+        if col_parse.get("arrayDataType"):
+            return DataType(col_parse["arrayDataType"])
+        return None
+
     def get_column_info(
         self, data_source: List[Union[DataSourceResult, FetchColumn]]
     ) -> Optional[List[Column]]:
@@ -247,9 +258,7 @@ class SupersetSourceMixin(DashboardServiceSource):
                     parsed_fields = Column(
                         dataTypeDisplay=field.type,
                         dataType=col_parse["dataType"],
-                        arrayDataType=DataType(col_parse["arrayDataType"])
-                        if col_parse.get("arrayDataType")
-                        else None,
+                        arrayDataType=self.parse_array_data_type(col_parse),
                         children=list(col_parse["children"])
                         if col_parse.get("children")
                         else None,
