@@ -65,7 +65,7 @@ const App: FC = () => {
         '/favicon.png';
     const link = document.querySelectorAll('link[rel~="icon"]');
 
-    if (link) {
+    if (!isEmpty(link)) {
       link.forEach((item) => {
         item.setAttribute('href', faviconHref);
       });
