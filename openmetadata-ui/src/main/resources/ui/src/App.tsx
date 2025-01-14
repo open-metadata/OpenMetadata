@@ -60,10 +60,12 @@ const App: FC = () => {
       ? '/favicon.png'
       : applicationConfig?.customLogoConfig?.customFaviconUrlPath ??
         '/favicon.png';
-    const link = document.querySelector('link[rel~="icon"]');
+    const link = document.querySelectorAll('link[rel~="icon"]');
 
-    if (link) {
-      link.setAttribute('href', faviconHref);
+    if (!isEmpty(link)) {
+      link.forEach((item) => {
+        item.setAttribute('href', faviconHref);
+      });
     }
   }, [applicationConfig]);
 

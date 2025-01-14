@@ -69,8 +69,6 @@ This is a sample config for Doris:
 
 {% codeInfo srNumber=2 %}
 
-{% codeInfo srNumber=2 %}
-
 **password**: Password to connect to Doris.
 
 {% /codeInfo %}
