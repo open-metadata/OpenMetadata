@@ -682,11 +682,11 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     Set<String> testSuites =
         createTestCases.stream().map(CreateTestCase::getTestSuite).collect(Collectors.toSet());
 
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.CREATE);
+
     entityLinks.forEach(
         link -> {
           EntityLink entityLink = EntityLink.parse(link);
-          OperationContext operationContext =
-              new OperationContext(Entity.TABLE, MetadataOperation.EDIT_TESTS);
           ResourceContextInterface resourceContext =
               TestCaseResourceContext.builder().entityLink(entityLink).build();
           authorizer.authorize(securityContext, operationContext, resourceContext);

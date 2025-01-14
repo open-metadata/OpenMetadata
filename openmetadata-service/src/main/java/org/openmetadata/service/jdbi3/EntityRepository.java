@@ -75,6 +75,7 @@ import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.google.common.util.concurrent.UncheckedExecutionException;
+import com.google.gson.Gson;
 import com.networknt.schema.JsonSchema;
 import com.networknt.schema.ValidationMessage;
 import java.io.IOException;
@@ -1512,6 +1513,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   protected void storeMany(List<T> entities) {
     List<EntityInterface> nullifiedEntities = new ArrayList<>();
+    Gson gson = new Gson();
     for (T entity : entities) {
       // Don't store owner, database, href and tags as JSON. Build it on the fly based on
       // relationships
@@ -1524,7 +1526,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
       List<EntityReference> experts = entity.getExperts();
       nullifyEntityFields(entity);
 
-      nullifiedEntities.add(entity);
+      String jsonCopy = gson.toJson(entity);
+      nullifiedEntities.add(gson.fromJson(jsonCopy, entityClass));
 
       // Restore the relationships
       entity.setOwners(owners);
