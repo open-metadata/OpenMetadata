@@ -45,7 +45,7 @@ from metadata.utils.sqlalchemy_utils import (
 
 logger = utils_logger()
 
-OLD_POSTGRES_VERSION = "13.0"
+OLD_POSTGRES_VERSION = "130000"
 
 
 def get_etable_owner(
@@ -523,9 +523,6 @@ def get_postgres_version(engine) -> Optional[str]:
         results = engine.execute(POSTGRES_GET_SERVER_VERSION)
         for res in results:
             version_string = str(res[0])
-            opening_parenthesis_index = version_string.find("(")
-            if opening_parenthesis_index != -1:
-                return version_string[:opening_parenthesis_index].strip()
             return version_string
     except Exception as err:
         logger.warning(f"Unable to fetch the Postgres Version - {err}")
