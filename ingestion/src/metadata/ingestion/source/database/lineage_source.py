@@ -23,7 +23,10 @@ from metadata.generated.schema.type.basic import FullyQualifiedEntityName, SqlQu
 from metadata.generated.schema.type.tableQuery import TableQuery
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper
-from metadata.ingestion.lineage.sql_lineage import get_lineage_by_query
+from metadata.ingestion.lineage.sql_lineage import (
+    get_lineage_by_graph,
+    get_lineage_by_query,
+)
 from metadata.ingestion.source.database.query_parser_source import QueryParserSource
 from metadata.utils import fqn
 from metadata.utils.logger import ingestion_logger
@@ -137,6 +140,10 @@ class LineageSource(QueryParserSource, ABC):
         """
         connection_type = str(self.service_connection.type.value)
         dialect = ConnectionTypeDialectMapper.dialect_of(connection_type)
+        import networkx as nx
+
+        # Create a directed graph
+        graph = nx.DiGraph()
         for table_query in self.get_table_query():
             if not self._query_already_processed(table_query):
                 lineages: Iterable[Either[AddLineageRequest]] = get_lineage_by_query(
@@ -147,6 +154,7 @@ class LineageSource(QueryParserSource, ABC):
                     schema_name=table_query.databaseSchema,
                     dialect=dialect,
                     timeout_seconds=self.source_config.parsingTimeoutLimit,
+                    graph=graph,
                 )
 
                 for lineage_request in lineages or []:
@@ -165,3 +173,4 @@ class LineageSource(QueryParserSource, ABC):
                                 ),
                             )
                         )
+        yield from get_lineage_by_graph(graph=graph)
