@@ -110,7 +110,7 @@ export const AddTestCaseList = ({
   const handleSubmit = async () => {
     setIsLoading(true);
     const testCaseIds = [...(selectedItems?.values() ?? [])];
-    onSubmit?.(testCaseIds);
+    await onSubmit?.(testCaseIds);
     setIsLoading(false);
   };
 

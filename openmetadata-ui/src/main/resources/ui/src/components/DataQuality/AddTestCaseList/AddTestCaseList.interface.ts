@@ -15,7 +15,7 @@ import { ListTestCaseParamsBySearch } from '../../../rest/testAPI';
 
 export interface AddTestCaseModalProps {
   onCancel?: () => void;
-  onSubmit?: (testCases: TestCase[]) => void;
+  onSubmit?: (testCases: TestCase[]) => void | Promise<void>;
   onChange?: (testCases: TestCase[]) => void;
   existingTest?: EntityReference[];
   cancelText?: string;
