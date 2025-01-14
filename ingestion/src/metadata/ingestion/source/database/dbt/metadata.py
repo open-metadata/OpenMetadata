@@ -376,7 +376,8 @@ class DbtSource(DbtServiceSource):
 
             if self.source_config.searchAcrossDatabases:
                 logger.warning(
-                    f"Table {table_fqn} not found under service: {self.config.serviceName}. Trying to find table across services"
+                    f"Table {table_fqn} not found under service: {self.config.serviceName}."
+                    "Trying to find table across services"
                 )
                 _, database_name, schema_name, table_name = fqn.split(table_fqn)
                 table_fqn = fqn.build(
@@ -394,7 +395,8 @@ class DbtSource(DbtServiceSource):
             logger.warning(
                 f"Unable to find the table '{table_fqn}' in OpenMetadata. "
                 "Please check if the table exists and is ingested in OpenMetadata. "
-                "Also, ensure the name, database, and schema of the manifest node match the table present in OpenMetadata."
+                "Also, ensure the name, database, and schema of the manifest node"
+                "match the table present in OpenMetadata."
             )
         except Exception as exc:
             logger.debug(traceback.format_exc())
@@ -402,7 +404,7 @@ class DbtSource(DbtServiceSource):
 
         return None
 
-    # pylint: disable=too-many-locals, too-many-branches, too-many-statements
+    # pylint: disable=too-many-locals, too-many-branches
     def yield_data_models(
         self, dbt_objects: DbtObjects
     ) -> Iterable[Either[DataModelLink]]:
