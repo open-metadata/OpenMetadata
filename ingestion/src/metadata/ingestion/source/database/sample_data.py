@@ -101,7 +101,6 @@ from metadata.generated.schema.entity.services.mlmodelService import MlModelServ
 from metadata.generated.schema.entity.services.pipelineService import PipelineService
 from metadata.generated.schema.entity.services.searchService import SearchService
 from metadata.generated.schema.entity.services.storageService import StorageService
-from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
@@ -681,7 +680,7 @@ class SampleDataSource(
         """
         for team in self.teams["teams"]:
             team_to_ingest = CreateTeamRequest(
-                name=team["name"], teamType=team["teamType"],parents=team.get("parent")
+                name=team["name"], teamType=team["teamType"], parents=team.get("parent")
             )
             yield Either(right=team_to_ingest)
 
