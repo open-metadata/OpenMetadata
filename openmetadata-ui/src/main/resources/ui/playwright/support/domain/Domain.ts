@@ -16,6 +16,8 @@ import { uuid } from '../../utils/common';
 type UserTeamRef = {
   name: string;
   type: string;
+  fullyQualifiedName?: string;
+  id?: string;
 };
 
 type ResponseDataType = {
@@ -26,7 +28,7 @@ type ResponseDataType = {
   id?: string;
   fullyQualifiedName?: string;
   owners?: UserTeamRef[];
-  experts?: UserTeamRef[];
+  experts?: string[];
 };
 
 export class Domain {

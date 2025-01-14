@@ -334,6 +334,61 @@ test.describe('Domains', () => {
       await afterAction();
     }
   });
+
+  test('Should inherit owners and experts from parent domain', async ({
+    page,
+  }) => {
+    const { afterAction, apiContext } = await getApiContext(page);
+    const user1 = new UserClass();
+    const user2 = new UserClass();
+    let domain;
+    let dataProduct;
+    try {
+      await user1.create(apiContext);
+      await user2.create(apiContext);
+
+      domain = new Domain({
+        name: 'PW_Domain_Inherit_Testing',
+        displayName: 'PW_Domain_Inherit_Testing',
+        description: 'playwright domain description',
+        domainType: 'Aggregate',
+        fullyQualifiedName: 'PW_Domain_Inherit_Testing',
+        owners: [
+          {
+            name: user1.responseData.name,
+            type: 'user',
+            fullyQualifiedName: user1.responseData.fullyQualifiedName ?? '',
+            id: user1.responseData.id,
+          },
+        ],
+        experts: [user2.responseData.name],
+      });
+      dataProduct = new DataProduct(domain);
+      await domain.create(apiContext);
+      await dataProduct.create(apiContext);
+
+      await page.reload();
+      await redirectToHomePage(page);
+
+      await sidebarClick(page, SidebarItem.DOMAIN);
+      await selectDomain(page, domain.data);
+      await selectDataProduct(page, domain.data, dataProduct.data);
+
+      await expect(
+        page.getByTestId('domain-owner-name').getByTestId('owner-label')
+      ).toContainText(user1.responseData.displayName);
+
+      await expect(
+        page.getByTestId('domain-expert-name').getByTestId('owner-label')
+      ).toContainText(user2.responseData.displayName);
+    } finally {
+      await dataProduct?.delete(apiContext);
+      await domain?.delete(apiContext);
+      await user1.delete(apiContext);
+      await user2.delete(apiContext);
+      await afterAction();
+    }
+  });
 });
 
 test.describe('Domains Rbac', () => {

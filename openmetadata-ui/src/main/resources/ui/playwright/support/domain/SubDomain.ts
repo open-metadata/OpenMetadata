@@ -17,6 +17,8 @@ import { Domain } from './Domain';
 type UserTeamRef = {
   name: string;
   type: string;
+  fullyQualifiedName?: string;
+  id?: string;
 };
 
 type ResponseDataType = {
@@ -27,7 +29,7 @@ type ResponseDataType = {
   id?: string;
   fullyQualifiedName?: string;
   owners?: UserTeamRef[];
-  experts?: UserTeamRef[];
+  experts?: string[];
   parent?: string;
 };
 
