@@ -56,7 +56,6 @@ import {
   EntityType,
   TabSpecificField,
 } from '../../enums/entity.enum';
-import { CursorType } from '../../enums/pagination.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { Tag } from '../../generated/entity/classification/tag';
 import { DatabaseSchema } from '../../generated/entity/data/databaseSchema';
@@ -487,7 +486,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
           currentPage,
           {
             cursorType: cursorType,
-            cursorValue: paging[cursorType as CursorType]!,
+            cursorValue: paging[cursorType]!,
           },
           pageSize
         );
@@ -594,9 +593,9 @@ const DatabaseSchemaPage: FunctionComponent = () => {
           cursorType: null,
           cursorValue: null,
         },
-        cursorState?.pageSize || pageSize
+        cursorState?.pageSize ?? pageSize
       );
-      handlePageSizeChange(cursorState?.pageSize || pageSize);
+      handlePageSizeChange(cursorState?.pageSize ?? pageSize);
     }
   }, []);
 
