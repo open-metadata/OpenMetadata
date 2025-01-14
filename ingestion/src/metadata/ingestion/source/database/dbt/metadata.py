@@ -15,7 +15,7 @@ DBT source methods.
 import traceback
 from copy import deepcopy
 from datetime import datetime
-from typing import Any, Iterable, List, Optional, Union
+from typing import Any, Iterable, List, Optional
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.tests.createTestCase import CreateTestCaseRequest
@@ -99,7 +99,7 @@ from metadata.utils.elasticsearch import get_entity_from_es_result
 from metadata.utils.entity_link import get_table_fqn
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_labels
-from metadata.utils.time_utils import convert_timestamp_to_milliseconds
+from metadata.utils.time_utils import datetime_to_timestamp
 
 logger = ingestion_logger()
 
@@ -355,30 +355,46 @@ class DbtSource(DbtServiceSource):
             ] = freshness_test_result
 
     def _get_table_entity(self, table_fqn) -> Optional[Table]:
-        try:
-            table_entities: Optional[
-                Union[Table, List[Table]]
-            ] = get_entity_from_es_result(
+        def search_table(fqn_search_string: str) -> Optional[Table]:
+            table_entities = get_entity_from_es_result(
                 entity_list=self.metadata.es_search_from_fqn(
                     entity_type=Table,
-                    fqn_search_string=table_fqn,
+                    fqn_search_string=fqn_search_string,
                     fields="sourceHash",
                 ),
                 fetch_multiple_entities=True,
             )
-            logger.debug(f"Found table entities from {table_fqn}: {table_entities}")
-
-            table_entity = next(
-                iter(filter(lambda x: x is not None, table_entities)), None
+            logger.debug(
+                f"Found table entities from {fqn_search_string}: {table_entities}"
             )
+            return next(iter(filter(None, table_entities)), None)
 
+        try:
+            table_entity = search_table(table_fqn)
             if table_entity:
                 return table_entity
+
+            if self.source_config.searchAcrossDatabases:
+                logger.warning(
+                    f"Table {table_fqn} not found under service: {self.config.serviceName}. Trying to find table across services"
+                )
+                _, database_name, schema_name, table_name = fqn.split(table_fqn)
+                table_fqn = fqn.build(
+                    self.metadata,
+                    entity_type=Table,
+                    service_name="*",
+                    database_name=database_name,
+                    schema_name=schema_name,
+                    table_name=table_name,
+                )
+                table_entity = search_table(table_fqn)
+                if table_entity:
+                    return table_entity
+
             logger.warning(
-                f"Unable to find the table '{table_fqn}' in OpenMetadata"
-                "Please check if the table exists and is ingested in OpenMetadata"
-                "Also name, database, schema of the manifest node matches with the table present "
-                "in OpenMetadata"
+                f"Unable to find the table '{table_fqn}' in OpenMetadata. "
+                "Please check if the table exists and is ingested in OpenMetadata. "
+                "Also, ensure the name, database, and schema of the manifest node match the table present in OpenMetadata."
             )
         except Exception as exc:
             logger.debug(traceback.format_exc())
@@ -1075,9 +1091,7 @@ class DbtSource(DbtServiceSource):
 
                 # Create the test case result object
                 test_case_result = TestCaseResult(
-                    timestamp=Timestamp(
-                        convert_timestamp_to_milliseconds(dbt_timestamp.timestamp())
-                    ),
+                    timestamp=Timestamp(datetime_to_timestamp(dbt_timestamp)),
                     testCaseStatus=test_case_status,
                     testResultValue=[
                         TestResultValue(
