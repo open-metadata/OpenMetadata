@@ -231,6 +231,10 @@ module.exports = {
           from: path.join(__dirname, 'public/GoldCertification.svg'),
           to: outputPath,
         },
+        {
+          from: path.join(__dirname, 'public/plugins'),
+          to: outputPath,
+        },
       ],
     }),
 

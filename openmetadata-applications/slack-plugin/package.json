@@ -1,0 +1,25 @@
+{
+    "name": "slack-plugin",
+    "version": "1.0.0",
+    "description": "A sample TypeScript plugin for the plugin system.",
+    "main": "./dist/SlackPlugin.js",
+    "type": "module",
+    "scripts": {
+        "build": "webpack"
+    },
+    "dependencies": {
+        "antd": "4.24.0",
+        "react": "^17.0.2",
+        "react-dom": "^17.0.2",
+        "react-pluggable": "^0.4.3",
+        "@ant-design/icons": "^4.7.0"
+    },
+    "devDependencies": {
+        "@types/react": "^17.0.8",
+        "babel-loader": "^8.0.0",
+        "typescript": "^5.0.0",
+        "webpack": "5.94.0",
+        "webpack-cli": "^5.1.4",
+        "ts-loader": "^8.0.14"
+    }
+}

@@ -25,6 +25,7 @@ import {
 import { SidebarItem } from '../../../enums/sidebar.enum';
 import leftSidebarClassBase from '../../../utils/LeftSidebarClassBase';
 
+import { usePluginStore } from 'react-pluggable';
 import { EntityType } from '../../../enums/entity.enum';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
@@ -46,6 +47,8 @@ const LeftSidebar = () => {
   const [showConfirmLogoutModal, setShowConfirmLogoutModal] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(true);
   const { selectedPersona } = useApplicationStore();
+  const pluginStore = usePluginStore();
+  const pluginItems = pluginStore.executeFunction('sidebarAdd');
 
   const { currentPersonaDocStore, setCurrentPersonaDocStore } =
     useCustomizeStore();
@@ -55,9 +58,9 @@ const LeftSidebar = () => {
   }, [currentPersonaDocStore]);
 
   const sideBarItems = isEmpty(navigationItems)
-    ? leftSidebarClassBase.getSidebarItems()
+    ? [...leftSidebarClassBase.getSidebarItems(), pluginItems || []]
     : filterAndArrangeTreeByKeys(
-        leftSidebarClassBase.getSidebarItems(),
+        [...leftSidebarClassBase.getSidebarItems(), pluginItems || []],
         getNestedKeysFromNavigationItems(navigationItems)
       );
 

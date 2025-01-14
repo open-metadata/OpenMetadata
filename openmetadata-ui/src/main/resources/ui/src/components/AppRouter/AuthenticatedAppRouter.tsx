@@ -26,6 +26,7 @@ import DataQualityPage from '../../pages/DataQuality/DataQualityPage';
 import ForbiddenPage from '../../pages/ForbiddenPage/ForbiddenPage';
 import TagPage from '../../pages/TagPage/TagPage';
 import { checkPermission, userPermissions } from '../../utils/PermissionsUtils';
+import { useApplicationsProvider } from '../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import AdminProtectedRoute from './AdminProtectedRoute';
 import withSuspenseFallback from './withSuspenseFallback';
 
@@ -269,6 +270,7 @@ const AddMetricPage = withSuspenseFallback(
 
 const AuthenticatedAppRouter: FunctionComponent = () => {
   const { permissions } = usePermissionProvider();
+  const { applicationRoutes } = useApplicationsProvider();
 
   const createBotPermission = useMemo(
     () =>
@@ -279,6 +281,9 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
 
   return (
     <Switch>
+      {applicationRoutes.map((route, index) => {
+        return <Route key={index} {...route} />;
+      })}
       <Route exact component={ForbiddenPage} path={ROUTES.FORBIDDEN} />
 
       <Route exact component={MyDataPage} path={ROUTES.MY_DATA} />

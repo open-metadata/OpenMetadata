@@ -15,6 +15,7 @@ const path = require('path');
 const ForkTsCheckerWebpackPlugin = require('fork-ts-checker-webpack-plugin');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const CopyWebpackPlugin = require('copy-webpack-plugin');
+const ProvidePlugin = require('webpack').ProvidePlugin;
 const process = require('process');
 
 const outputPath = path.join(__dirname, 'build');
@@ -51,7 +52,13 @@ module.exports = {
           fullySpecified: false,
         },
       },
-
+      {
+        test: /\.js$/,
+        use: {
+          loader: 'babel-loader',
+        },
+        exclude: /node_modules/,
+      },
       // .ts and .tsx files to be handled by ts-loader
       {
         test: /\.(ts|tsx)$/,
@@ -109,7 +116,7 @@ module.exports = {
   // Module resolution
   resolve: {
     // File types to be handled
-    extensions: ['.ts', '.tsx', '.js', '.css', '.less', '.svg'],
+    extensions: ['.ts', '.tsx', '.js', '.css', '.less', '.svg', '...'],
     fallback: {
       https: require.resolve('https-browserify'),
       fs: false,
@@ -128,6 +135,9 @@ module.exports = {
       typescript: {
         configFile: 'tsconfig.json',
       },
+    }),
+    new ProvidePlugin({
+      AntDesignIcons: ['@ant-design/icons'], // Expose as global variable
     }),
     // Generate index.html from template
     new HtmlWebpackPlugin({
@@ -177,6 +187,10 @@ module.exports = {
         },
         {
           from: path.join(__dirname, 'public/locales'),
+          to: outputPath,
+        },
+        {
+          from: path.join(__dirname, 'public/plugins'),
           to: outputPath,
         },
       ],

@@ -15,6 +15,11 @@ import { isEmpty } from 'lodash';
 import React, { FC, useEffect } from 'react';
 import { HelmetProvider } from 'react-helmet-async';
 import { I18nextProvider } from 'react-i18next';
+import {
+  createPluginStore,
+  PluginProvider,
+  RendererPlugin,
+} from 'react-pluggable';
 import { Router } from 'react-router-dom';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.min.css';
@@ -34,6 +39,9 @@ import { getCustomUiThemePreference } from './rest/settingConfigAPI';
 import { history } from './utils/HistoryUtils';
 import i18n from './utils/i18next/LocalUtil';
 import { getThemeConfig } from './utils/ThemeUtils';
+
+const pluginStore = createPluginStore();
+pluginStore.install(new RendererPlugin());
 
 const App: FC = () => {
   const { applicationConfig, setApplicationConfig } = useApplicationStore();
@@ -83,11 +91,13 @@ const App: FC = () => {
                       <WebAnalyticsProvider>
                         <PermissionProvider>
                           <WebSocketProvider>
-                            <ApplicationsProvider>
-                              <EntityExportModalProvider>
-                                <AppRouter />
-                              </EntityExportModalProvider>
-                            </ApplicationsProvider>
+                            <PluginProvider pluginStore={pluginStore}>
+                              <ApplicationsProvider>
+                                <EntityExportModalProvider>
+                                  <AppRouter />
+                                </EntityExportModalProvider>
+                              </ApplicationsProvider>
+                            </PluginProvider>
                           </WebSocketProvider>
                         </PermissionProvider>
                       </WebAnalyticsProvider>

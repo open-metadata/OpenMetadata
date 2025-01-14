@@ -61,6 +61,7 @@ import { getTierTags } from '../../../utils/TableUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 
 import QueryString from 'qs';
+import { usePluginStore } from 'react-pluggable';
 import { ReactComponent as RedAlertIcon } from '../../../assets/svg/ic-alert-red.svg';
 import { TAG_START_WITH } from '../../../constants/Tag.constants';
 import { LineageLayer } from '../../../generated/configuration/lineageSettings';
@@ -176,6 +177,10 @@ export const DataAssetsHeader = ({
   const [dqFailureCount, setDqFailureCount] = useState(0);
   const [isFollowingLoading, setIsFollowingLoading] = useState(false);
   const history = useHistory();
+  const pluginStore = usePluginStore();
+
+  const Renderer = pluginStore.executeFunction('Renderer.getRendererComponent');
+
   const icon = useMemo(() => {
     const serviceType = get(dataAsset, 'serviceType', '');
 
@@ -587,6 +592,9 @@ export const DataAssetsHeader = ({
                     onClick={handleShareButtonClick}
                   />
                 </Tooltip>
+
+                <Renderer placement="EntityHeaderButtonGroup.button" />
+
                 <ManageButton
                   afterDeleteAction={afterDeleteAction}
                   allowSoftDelete={!dataAsset.deleted && allowSoftDelete}
