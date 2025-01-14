@@ -52,9 +52,9 @@ export interface UsePagingInterface {
     pageSize?: number | null
   ) => void;
   pageSize: number;
-  handlePageSizeChange: (page: number, resetHistoryState?: boolean) => void;
+  handlePageSizeChange: (page: number) => void;
   showPagination: boolean;
-  pagingCursor: () => PagingStateData;
+  pagingCursor: PagingStateData;
 }
 export const usePaging = (
   defaultPageSize = PAGE_SIZE_BASE
@@ -64,9 +64,10 @@ export const usePaging = (
   const [pageSize, setPageSize] = useState(defaultPageSize);
   const history = useHistory();
   const location = useCustomLocation();
+  const state = location.state;
 
   const handlePageSize = useCallback(
-    (page: number, resetHistoryState = true) => {
+    (page: number) => {
       setPageSize(page);
       setCurrentPage(INITIAL_PAGING_VALUE);
 
@@ -78,15 +79,14 @@ export const usePaging = (
         ...location,
         state: {
           ...state,
-          [path]: {
-            pageSize: page,
-            cursorData: resetHistoryState
-              ? { cursorType: null, cursorValue: null }
-              : cursorState.cursorData,
-            currentPage: resetHistoryState
-              ? INITIAL_PAGING_VALUE
-              : cursorState.currentPage,
-          },
+          pageSize: page,
+          cursorData: cursorState?.cursorData?.cursorType
+            ? cursorState.cursorData
+            : { cursorType: null, cursorValue: null },
+
+          currentPage: cursorState?.cursorData?.cursorType
+            ? cursorState.currentPage
+            : INITIAL_PAGING_VALUE,
         },
       });
     },
@@ -96,22 +96,6 @@ export const usePaging = (
     return paging.total > pageSize || pageSize !== defaultPageSize;
   }, [defaultPageSize, paging, pageSize]);
 
-  // Fetch stored cursor values on page reload
-  const pagingCursor = useCallback(() => {
-    const path = location.pathname;
-    const state = (location.state as LocationState) || {};
-    const cursorState = state[path];
-
-    return {
-      cursorData: {
-        cursorType: cursorState?.cursorData.cursorType || null,
-        cursorValue: cursorState?.cursorData.cursorValue || null,
-      },
-      currentPage: cursorState?.currentPage || null,
-      pageSize: cursorState?.pageSize || null,
-    };
-  }, [location]);
-
   const handlePageChange = (
     page: number | ((page: number) => number),
     cursorData?: CursorState,
@@ -119,16 +103,14 @@ export const usePaging = (
   ) => {
     setCurrentPage(page);
     if (cursorData) {
-      const path = location.pathname;
       history.replace({
         ...location,
         state: {
           ...((location.state as any) || {}),
-          [path]: {
-            cursorData,
-            currentPage: page,
-            pageSize,
-          },
+
+          cursorData,
+          currentPage: page,
+          pageSize,
         },
       });
     }
@@ -142,6 +124,6 @@ export const usePaging = (
     pageSize,
     handlePageSizeChange: handlePageSize,
     showPagination: paginationVisible,
-    pagingCursor,
+    pagingCursor: state as PagingStateData,
   };
 };

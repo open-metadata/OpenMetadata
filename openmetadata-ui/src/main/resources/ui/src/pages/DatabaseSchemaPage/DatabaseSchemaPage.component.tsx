@@ -159,15 +159,12 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       pathname: path,
       search: searchParams.toString(),
       state: {
-        ...((location.state as any) || {}),
-        [path]: {
-          ...((location.state as any)?.[path] || {}),
-          currentPage: INITIAL_PAGING_VALUE,
-          cursorData: {
-            cursorType: null,
-            cursorValue: null,
-          },
+        currentPage: INITIAL_PAGING_VALUE,
+        cursorData: {
+          cursorType: null,
+          cursorValue: null,
         },
+        pageSize,
       },
     });
   };
@@ -342,13 +339,10 @@ const DatabaseSchemaPage: FunctionComponent = () => {
             decodedDatabaseSchemaFQN,
             activeKey
           ),
-          state: {
-            ...(location.state as any),
-          },
         });
       }
     },
-    [activeTab, decodedDatabaseSchemaFQN, location.state]
+    [activeTab, decodedDatabaseSchemaFQN]
   );
 
   const handleUpdateOwner = useCallback(
@@ -550,24 +544,6 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   }, [location]);
 
   useEffect(() => {
-    const searchParams = new URLSearchParams(location.search);
-    if (activeTab === EntityTabs.TABLE) {
-      // If no tab parameter is in the URL, update the URL to include the default tab
-      history.push({
-        pathname: getEntityDetailsPath(
-          EntityType.DATABASE_SCHEMA,
-          decodedDatabaseSchemaFQN,
-          activeTab
-        ),
-        search: searchParams.toString(),
-        state: {
-          ...(location.state as any),
-        },
-      });
-    }
-  }, []);
-
-  useEffect(() => {
     fetchDatabaseSchemaPermission();
   }, [decodedDatabaseSchemaFQN]);
 
@@ -580,35 +556,17 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   }, [viewDatabaseSchemaPermission]);
 
   useEffect(() => {
-    const cursorState = pagingCursor();
+    const cursorState = pagingCursor;
     if (viewDatabaseSchemaPermission && decodedDatabaseSchemaFQN) {
-      if (
-        cursorState.cursorData?.cursorType &&
-        cursorState?.pageSize &&
-        !showDeletedTables
-      ) {
+      if (cursorState?.cursorData?.cursorType) {
         // Fetch data if cursorType is present in state with cursor Value to handle browser back navigation
         getSchemaTables({
           [cursorState?.cursorData?.cursorType]:
             cursorState?.cursorData?.cursorValue,
         });
-
-        handlePageSizeChange(cursorState?.pageSize, false);
-        handlePageChange(cursorState.currentPage as number);
       } else {
         // Otherwise, just fetch the data without cursor value
-        if (activeTab === EntityTabs.TABLE) {
-          getSchemaTables({ limit: pageSize });
-          handlePageChange(
-            currentPage,
-            {
-              cursorType: null,
-              cursorValue: null,
-            },
-            cursorState?.pageSize || pageSize
-          );
-          handlePageSizeChange(cursorState?.pageSize || pageSize);
-        }
+        getSchemaTables({ limit: pageSize });
       }
     }
   }, [
@@ -617,8 +575,30 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     viewDatabaseSchemaPermission,
     deleted,
     pageSize,
-    activeTab,
   ]);
+
+  // set pagesize and current page on page reload from history state if present
+  useEffect(() => {
+    const cursorState = pagingCursor;
+    if (cursorState?.cursorData?.cursorType) {
+      handlePageSizeChange(cursorState?.pageSize as number);
+      handlePageChange(
+        cursorState.currentPage as number,
+        cursorState?.cursorData,
+        cursorState?.pageSize
+      );
+    } else {
+      handlePageChange(
+        currentPage,
+        {
+          cursorType: null,
+          cursorValue: null,
+        },
+        cursorState?.pageSize || pageSize
+      );
+      handlePageSizeChange(cursorState?.pageSize || pageSize);
+    }
+  }, []);
 
   const {
     editTagsPermission,
