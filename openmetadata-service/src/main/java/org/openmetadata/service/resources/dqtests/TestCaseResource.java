@@ -792,12 +792,6 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
       @Parameter(description = "Id of the test case", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    // Override OperationContext to change the entity to table and operation from DELETE to
-    // EDIT_TESTS
-    ResourceContextInterface resourceContext = TestCaseResourceContext.builder().id(id).build();
-    OperationContext operationContext =
-        new OperationContext(Entity.TABLE, MetadataOperation.EDIT_TESTS);
-    authorizer.authorize(securityContext, operationContext, resourceContext);
     return delete(uriInfo, securityContext, id, recursive, hardDelete);
   }
 
