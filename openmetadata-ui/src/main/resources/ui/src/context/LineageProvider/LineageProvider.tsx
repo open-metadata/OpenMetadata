@@ -434,6 +434,8 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
 
       setTracedColumns(connectedColumnEdges);
       setTracedNodes([]);
+      setSelectedEdge(undefined);
+      setIsDrawerOpen(false);
     },
     [nodes, edges]
   );
