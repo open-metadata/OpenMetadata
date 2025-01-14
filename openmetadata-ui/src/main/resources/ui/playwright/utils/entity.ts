@@ -797,6 +797,7 @@ const announcementForm = async (
   );
   await page.click('#announcement-submit');
   await announcementSubmit;
+  await page.click('[data-testid="announcement-close"]');
   await page.click('[data-testid="alert-icon-close"]');
 };
 

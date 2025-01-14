@@ -254,8 +254,9 @@ export const replaceAllSpacialCharWith_ = (text: string) => {
 // This error toast blocks the buttons at the top
 // Below logic closes the alert if it's present to avoid flakiness in tests
 export const closeFirstPopupAlert = async (page: Page) => {
-  const toastElement = await page.getByTestId('alert-bar');
-  if (toastElement) {
+  const toastElement = page.getByTestId('alert-bar');
+
+  if ((await toastElement.count()) > 0) {
     await page.getByTestId('alert-icon-close').first().click();
   }
 };

@@ -20,6 +20,7 @@ import { useHistory } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
 import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
+import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import PipelineDetails from '../../components/Pipeline/PipelineDetails/PipelineDetails.component';
 import { getVersionPath, ROUTES } from '../../constants/constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
@@ -300,39 +301,50 @@ const PipelineDetailsPage = () => {
     fetchResourcePermission(decodedPipelineFQN);
   }, [decodedPipelineFQN]);
 
-  if (isLoading) {
-    return <Loader />;
-  }
+  const renderContent = () => {
+    if (isLoading) {
+      return <Loader />;
+    }
 
-  if (isError) {
+    if (isError) {
+      return (
+        <ErrorPlaceHolder>
+          {getEntityMissingError('pipeline', decodedPipelineFQN)}
+        </ErrorPlaceHolder>
+      );
+    }
+
+    if (!pipelinePermissions.ViewAll && !pipelinePermissions.ViewBasic) {
+      return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+    }
+
     return (
-      <ErrorPlaceHolder>
-        {getEntityMissingError('pipeline', decodedPipelineFQN)}
-      </ErrorPlaceHolder>
+      <PipelineDetails
+        descriptionUpdateHandler={descriptionUpdateHandler}
+        fetchPipeline={() => fetchPipelineDetail(decodedPipelineFQN)}
+        followPipelineHandler={followPipeline}
+        handleToggleDelete={handleToggleDelete}
+        paging={paging}
+        pipelineDetails={pipelineDetails}
+        pipelineFQN={decodedPipelineFQN}
+        settingsUpdateHandler={settingsUpdateHandler}
+        taskUpdateHandler={onTaskUpdate}
+        unFollowPipelineHandler={unFollowPipeline}
+        updatePipelineDetailsState={updatePipelineDetailsState}
+        versionHandler={versionHandler}
+        onExtensionUpdate={handleExtensionUpdate}
+        onUpdateVote={updateVote}
+      />
     );
-  }
-
-  if (!pipelinePermissions.ViewAll && !pipelinePermissions.ViewBasic) {
-    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
-  }
+  };
 
   return (
-    <PipelineDetails
-      descriptionUpdateHandler={descriptionUpdateHandler}
-      fetchPipeline={() => fetchPipelineDetail(decodedPipelineFQN)}
-      followPipelineHandler={followPipeline}
-      handleToggleDelete={handleToggleDelete}
-      paging={paging}
-      pipelineDetails={pipelineDetails}
-      pipelineFQN={decodedPipelineFQN}
-      settingsUpdateHandler={settingsUpdateHandler}
-      taskUpdateHandler={onTaskUpdate}
-      unFollowPipelineHandler={unFollowPipeline}
-      updatePipelineDetailsState={updatePipelineDetailsState}
-      versionHandler={versionHandler}
-      onExtensionUpdate={handleExtensionUpdate}
-      onUpdateVote={updateVote}
-    />
+    <PageLayoutV1
+      pageTitle={t('label.entity-detail-plural', {
+        entity: pipelineDetails.name,
+      })}>
+      {renderContent()}
+    </PageLayoutV1>
   );
 };
 

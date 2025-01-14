@@ -177,16 +177,22 @@ const DomainPage = () => {
     }
   }, [rootDomains, domainFqn]);
 
-  return (
-    <PageLayoutV1 pageTitle={t('label.domain')}>
-      {domainLoading ? (
-        <Loader />
-      ) : !(viewBasicDomainPermission || viewAllDomainPermission) ? (
+  const renderContent = () => {
+    if (domainLoading) {
+      return <Loader />;
+    }
+
+    if (!(viewBasicDomainPermission || viewAllDomainPermission)) {
+      return (
         <ErrorPlaceHolder
           className="mt-0-important"
           type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
         />
-      ) : isEmpty(rootDomains) ? (
+      );
+    }
+
+    if (isEmpty(rootDomains)) {
+      return (
         <ErrorPlaceHolder
           buttonId="add-domain"
           className="mt-0-important"
@@ -200,27 +206,33 @@ const DomainPage = () => {
           onClick={handleAddDomainClick}>
           {t('message.domains-not-configured')}
         </ErrorPlaceHolder>
-      ) : (
-        <div className="m--t-sm">
-          <ResizableLeftPanels
-            className="content-height-with-resizable-panel"
-            firstPanel={{
-              className: 'content-resizable-panel-container',
-              minWidth: 280,
-              flex: 0.13,
-              children: <DomainsLeftPanel domains={rootDomains} />,
-            }}
-            pageTitle={t('label.domain')}
-            secondPanel={{
-              children: domainPageRender,
-              className: 'content-resizable-panel-container p-t-sm',
-              minWidth: 800,
-              flex: 0.87,
-            }}
-          />
-        </div>
-      )}
-    </PageLayoutV1>
+      );
+    }
+
+    return (
+      <div className="m--t-sm">
+        <ResizableLeftPanels
+          className="content-height-with-resizable-panel"
+          firstPanel={{
+            className: 'content-resizable-panel-container',
+            minWidth: 280,
+            flex: 0.13,
+            children: <DomainsLeftPanel domains={rootDomains} />,
+          }}
+          pageTitle={t('label.domain')}
+          secondPanel={{
+            children: domainPageRender,
+            className: 'content-resizable-panel-container p-t-sm',
+            minWidth: 800,
+            flex: 0.87,
+          }}
+        />
+      </div>
+    );
+  };
+
+  return (
+    <PageLayoutV1 pageTitle={t('label.domain')}>{renderContent()}</PageLayoutV1>
   );
 };
 

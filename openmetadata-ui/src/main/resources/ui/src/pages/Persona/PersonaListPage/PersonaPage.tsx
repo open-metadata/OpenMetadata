@@ -120,23 +120,23 @@ export const PersonaPage = () => {
     }
   };
 
-  if (isEmpty(persona) && !isLoading) {
-    return (
-      <>
-        {errorPlaceHolder}
-        {Boolean(addEditPersona) && (
-          <AddEditPersonaForm
-            persona={addEditPersona}
-            onCancel={handlePersonalAddEditCancel}
-            onSave={handlePersonaAddEditSave}
-          />
-        )}
-      </>
-    );
-  }
+  const renderContent = () => {
+    if (isEmpty(persona) && !isLoading) {
+      return (
+        <>
+          {errorPlaceHolder}
+          {Boolean(addEditPersona) && (
+            <AddEditPersonaForm
+              persona={addEditPersona}
+              onCancel={handlePersonalAddEditCancel}
+              onSave={handlePersonaAddEditSave}
+            />
+          )}
+        </>
+      );
+    }
 
-  return (
-    <PageLayoutV1 pageTitle={t('label.persona-plural')}>
+    return (
       <Row className="user-listing page-container p-b-md" gutter={[16, 16]}>
         <Col span={24}>
           <TitleBreadcrumb titleLinks={breadcrumbs} />
@@ -189,6 +189,12 @@ export const PersonaPage = () => {
           />
         )}
       </Row>
+    );
+  };
+
+  return (
+    <PageLayoutV1 pageTitle={t('label.persona-plural')}>
+      {renderContent()}
     </PageLayoutV1>
   );
 };
