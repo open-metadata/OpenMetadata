@@ -54,6 +54,7 @@ from metadata.utils import fqn
 from metadata.utils.constants import DEFAULT_DATABASE
 from metadata.utils.datalake.datalake_utils import DataFrameColumnParser
 from metadata.utils.filters import filter_by_schema, filter_by_table
+from metadata.utils.helpers import retry_with_docker_host
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.ssl_manager import check_ssl_and_init
 
@@ -79,6 +80,7 @@ class CommonNoSQLSource(DatabaseServiceSource, ABC):
     Database metadata from NoSQL source
     """
 
+    @retry_with_docker_host()
     def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
         super().__init__()
         self.config = config

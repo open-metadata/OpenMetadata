@@ -295,10 +295,13 @@ class PostgresUnitTest(TestCase):
         self.usage_config = OpenMetadataWorkflowConfig.model_validate(
             mock_postgres_usage_config
         )
-        self.postgres_usage_source = PostgresUsageSource.create(
-            mock_postgres_usage_config["source"],
-            self.usage_config.workflowConfig.openMetadataServerConfig,
-        )
+        with patch(
+            "metadata.ingestion.source.database.postgres.usage.PostgresUsageSource.test_connection"
+        ):
+            self.postgres_usage_source = PostgresUsageSource.create(
+                mock_postgres_usage_config["source"],
+                self.usage_config.workflowConfig.openMetadataServerConfig,
+            )
 
     def test_datatype(self):
         inspector = types.SimpleNamespace()

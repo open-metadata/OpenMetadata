@@ -97,6 +97,7 @@ from metadata.ingestion.source.database.multi_db_source import MultiDBSource
 from metadata.utils import fqn
 from metadata.utils.credentials import GOOGLE_CREDENTIALS
 from metadata.utils.filters import filter_by_database, filter_by_schema
+from metadata.utils.helpers import retry_with_docker_host
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import (
     get_all_table_ddls,
@@ -162,9 +163,11 @@ def get_columns(bq_schema):
             "precision": field.precision,
             "scale": field.scale,
             "max_length": field.max_length,
-            "system_data_type": _array_sys_data_type_repr(col_type)
-            if str(col_type) == "ARRAY"
-            else str(col_type),
+            "system_data_type": (
+                _array_sys_data_type_repr(col_type)
+                if str(col_type) == "ARRAY"
+                else str(col_type)
+            ),
             "is_complex": is_complex_type(str(col_type)),
             "policy_tags": None,
         }
@@ -223,6 +226,7 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
     Database metadata from Bigquery Source
     """
 
+    @retry_with_docker_host()
     def __init__(self, config, metadata, incremental_configuration: IncrementalConfig):
         # Check if the engine is established before setting project IDs
         # This ensures that we don't try to set project IDs when there is no engine
@@ -685,9 +689,11 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
                 return True, TablePartition(
                     columns=[
                         PartitionColumnDetails(
-                            columnName="_PARTITIONTIME"
-                            if table.time_partitioning.type_ == "HOUR"
-                            else "_PARTITIONDATE",
+                            columnName=(
+                                "_PARTITIONTIME"
+                                if table.time_partitioning.type_ == "HOUR"
+                                else "_PARTITIONDATE"
+                            ),
                             interval=str(table.time_partitioning.type_),
                             intervalType=PartitionIntervalTypes.INGESTION_TIME,
                         )
