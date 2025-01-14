@@ -115,7 +115,7 @@ class RedashSource(DashboardServiceSource):
         return dashboard["name"]
 
     def get_dashboard_details(self, dashboard: dict) -> dict:
-        return self.client.get_dashboard(dashboard["slug"])
+        return self.client.get_dashboard(dashboard["id"])
 
     def get_owner_ref(self, dashboard_details) -> Optional[EntityReferenceList]:
         """
@@ -160,9 +160,9 @@ class RedashSource(DashboardServiceSource):
             dashboard_request = CreateDashboardRequest(
                 name=EntityName(str(dashboard_details["id"])),
                 displayName=dashboard_details.get("name"),
-                description=Markdown(dashboard_description)
-                if dashboard_description
-                else None,
+                description=(
+                    Markdown(dashboard_description) if dashboard_description else None
+                ),
                 charts=[
                     FullyQualifiedEntityName(
                         fqn.build(
@@ -275,9 +275,11 @@ class RedashSource(DashboardServiceSource):
                 yield Either(
                     right=CreateChartRequest(
                         name=EntityName(str(widgets["id"])),
-                        displayName=chart_display_name
-                        if visualization and visualization["query"]
-                        else "",
+                        displayName=(
+                            chart_display_name
+                            if visualization and visualization["query"]
+                            else ""
+                        ),
                         chartType=get_standard_chart_type(
                             visualization["type"] if visualization else ""
                         ),
@@ -285,9 +287,11 @@ class RedashSource(DashboardServiceSource):
                             self.context.get().dashboard_service
                         ),
                         sourceUrl=SourceUrl(self.get_dashboard_url(dashboard_details)),
-                        description=Markdown(visualization["description"])
-                        if visualization
-                        else None,
+                        description=(
+                            Markdown(visualization["description"])
+                            if visualization
+                            else None
+                        ),
                     )
                 )
             except Exception as exc:
