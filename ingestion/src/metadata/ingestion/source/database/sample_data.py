@@ -681,26 +681,8 @@ class SampleDataSource(
         """
         for team in self.teams["teams"]:
             team_to_ingest = CreateTeamRequest(
-                name=team["name"], teamType=team["teamType"]
+                name=team["name"], teamType=team["teamType"],parents=team.get("parent")
             )
-            if team["parent"] is not None:
-                parent_list_id = []
-                for parent in team["parent"]:
-                    tries = 3
-                    parent_object = self.metadata.get_by_name(entity=Team, fqn=parent)
-                    while not parent_object and tries > 0:
-                        logger.info(f"Trying to GET {parent} Parent Team")
-                        parent_object = self.metadata.get_by_name(
-                            entity=Team,
-                            fqn=parent,
-                        )
-                        tries -= 1
-
-                    if parent_object:
-                        parent_list_id.append(parent_object.id)
-
-                team_to_ingest.parents = parent_list_id
-
             yield Either(right=team_to_ingest)
 
     def ingest_mysql(self) -> Iterable[Either[Entity]]:
