@@ -38,10 +38,6 @@ interface PagingStateData {
   pageSize: number | null;
 }
 
-interface LocationState {
-  [path: string]: PagingStateData;
-}
-
 export interface UsePagingInterface {
   paging: Paging;
   handlePagingChange: Dispatch<SetStateAction<Paging>>;
@@ -72,21 +68,14 @@ export const usePaging = (
       setCurrentPage(INITIAL_PAGING_VALUE);
 
       // Update location state to persist pageSize for navigation
-      const path = location.pathname;
-      const state = (location.state as LocationState) || {};
-      const cursorState = state[path] || {};
       history.replace({
         ...location,
         state: {
-          ...state,
+          ...(location.state as any),
           pageSize: page,
-          cursorData: cursorState?.cursorData?.cursorType
-            ? cursorState.cursorData
-            : { cursorType: null, cursorValue: null },
+          cursorData: { cursorType: null, cursorValue: null },
 
-          currentPage: cursorState?.cursorData?.cursorType
-            ? cursorState.currentPage
-            : INITIAL_PAGING_VALUE,
+          currentPage: INITIAL_PAGING_VALUE,
         },
       });
     },
@@ -107,7 +96,6 @@ export const usePaging = (
         ...location,
         state: {
           ...((location.state as any) || {}),
-
           cursorData,
           currentPage: page,
           pageSize,
