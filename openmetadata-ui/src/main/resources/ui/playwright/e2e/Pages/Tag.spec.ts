@@ -18,7 +18,12 @@ import { TagClass } from '../../support/tag/TagClass';
 import { TeamClass } from '../../support/team/TeamClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
-import { getApiContext, redirectToHomePage, uuid } from '../../utils/common';
+import {
+  descriptionBox,
+  getApiContext,
+  redirectToHomePage,
+  uuid,
+} from '../../utils/common';
 import {
   addAssetsToTag,
   editTagPageDescription,
@@ -172,9 +177,9 @@ test.describe('Tag Page with Admin Roles', () => {
 
     await expect(adminPage.getByRole('dialog')).toBeVisible();
 
-    await adminPage.locator('.toastui-editor-pseudo-clipboard').clear();
+    await adminPage.locator(descriptionBox).clear();
     await adminPage
-      .locator('.toastui-editor-pseudo-clipboard')
+      .locator(descriptionBox)
       .fill(`This is updated test description for tag ${tag.data.name}.`);
 
     const editDescription = adminPage.waitForResponse(`/api/v1/tags/*`);

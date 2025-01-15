@@ -40,12 +40,8 @@ export const createTeam = async (page: Page, isPublic?: boolean) => {
     await page.getByTestId('isJoinable-switch-button').click();
   }
 
-  await page
-    .locator('.toastui-editor-md-container > .toastui-editor > .ProseMirror')
-    .isVisible();
-  await page
-    .locator('.toastui-editor-md-container > .toastui-editor > .ProseMirror')
-    .fill(teamData.description);
+  await page.locator(descriptionBox).isVisible();
+  await page.locator(descriptionBox).fill(teamData.description);
 
   const createTeamResponse = page.waitForResponse('/api/v1/teams');
 
@@ -226,7 +222,7 @@ export const addTeamHierarchy = async (
     await page.click(`.ant-select-dropdown [title="${teamDetails.teamType}"]`);
   }
 
-  await page.fill(descriptionBox, teamDetails.description);
+  await page.locator(descriptionBox).fill(teamDetails.description);
 
   // Saving the created team
   const saveTeamResponse = page.waitForResponse('/api/v1/teams');
@@ -352,4 +348,18 @@ export const addUserInTeam = async (page: Page, user: UserClass) => {
   await expect(
     page.locator(`[data-testid="${userName.toLowerCase()}"]`)
   ).toBeVisible();
+};
+
+export const checkTeamTabCount = async (page: Page) => {
+  const fetchResponse = page.waitForResponse(
+    '/api/v1/teams/name/*?fields=*childrenCount*include=all'
+  );
+  const response = await fetchResponse;
+  const jsonRes = await response.json();
+
+  await expect(
+    page.locator(
+      '[data-testid="teams"] [data-testid="count"] [data-testid="filter-count"]'
+    )
+  ).toContainText(jsonRes.childrenCount.toString());
 };

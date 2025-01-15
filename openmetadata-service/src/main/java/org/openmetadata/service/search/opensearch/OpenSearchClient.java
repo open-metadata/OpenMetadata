@@ -68,7 +68,7 @@ import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResultList;
 import org.openmetadata.schema.dataInsight.custom.FormulaHolder;
-import org.openmetadata.schema.entity.data.EntityHierarchy__1;
+import org.openmetadata.schema.entity.data.EntityHierarchy;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.tests.DataQualityReport;
@@ -134,6 +134,7 @@ import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 import os.org.opensearch.OpenSearchException;
 import os.org.opensearch.OpenSearchStatusException;
+import os.org.opensearch.action.ActionListener;
 import os.org.opensearch.action.admin.indices.alias.IndicesAliasesRequest;
 import os.org.opensearch.action.admin.indices.delete.DeleteIndexRequest;
 import os.org.opensearch.action.bulk.BulkRequest;
@@ -584,21 +585,21 @@ public class OpenSearchClient implements SearchClient {
     return response;
   }
 
-  public List<EntityHierarchy__1> buildGlossaryTermSearchHierarchy(SearchResponse searchResponse) {
-    Map<String, EntityHierarchy__1> termMap =
+  public List<EntityHierarchy> buildGlossaryTermSearchHierarchy(SearchResponse searchResponse) {
+    Map<String, EntityHierarchy> termMap =
         new LinkedHashMap<>(); // termMap represent glossary terms
-    Map<String, EntityHierarchy__1> rootTerms =
+    Map<String, EntityHierarchy> rootTerms =
         new LinkedHashMap<>(); // rootTerms represent glossaries
 
     for (var hit : searchResponse.getHits().getHits()) {
       String jsonSource = hit.getSourceAsString();
 
-      EntityHierarchy__1 term = JsonUtils.readValue(jsonSource, EntityHierarchy__1.class);
-      EntityHierarchy__1 glossaryInfo =
+      EntityHierarchy term = JsonUtils.readValue(jsonSource, EntityHierarchy.class);
+      EntityHierarchy glossaryInfo =
           JsonUtils.readTree(jsonSource).path("glossary").isMissingNode()
               ? null
               : JsonUtils.convertValue(
-                  JsonUtils.readTree(jsonSource).path("glossary"), EntityHierarchy__1.class);
+                  JsonUtils.readTree(jsonSource).path("glossary"), EntityHierarchy.class);
 
       if (glossaryInfo != null) {
         rootTerms.putIfAbsent(glossaryInfo.getFullyQualifiedName(), glossaryInfo);
@@ -618,15 +619,15 @@ public class OpenSearchClient implements SearchClient {
               String termFQN = term.getFullyQualifiedName();
 
               if (parentFQN != null && termMap.containsKey(parentFQN)) {
-                EntityHierarchy__1 parentTerm = termMap.get(parentFQN);
-                List<EntityHierarchy__1> children = parentTerm.getChildren();
+                EntityHierarchy parentTerm = termMap.get(parentFQN);
+                List<EntityHierarchy> children = parentTerm.getChildren();
                 children.removeIf(
                     child -> child.getFullyQualifiedName().equals(term.getFullyQualifiedName()));
                 children.add(term);
                 parentTerm.setChildren(children);
               } else {
                 if (rootTerms.containsKey(termFQN)) {
-                  EntityHierarchy__1 rootTerm = rootTerms.get(termFQN);
+                  EntityHierarchy rootTerm = rootTerms.get(termFQN);
                   rootTerm.setChildren(term.getChildren());
                 }
               }
@@ -1230,54 +1231,72 @@ public class OpenSearchClient implements SearchClient {
     Set<Map<String, Object>> edges = new HashSet<>();
     Set<Map<String, Object>> nodes = new HashSet<>();
     responseMap.put("entity", null);
-    os.org.opensearch.action.search.SearchRequest searchRequest =
-        new os.org.opensearch.action.search.SearchRequest(
-            Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS));
-    BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery();
-    boolQueryBuilder.should(
-        QueryBuilders.boolQuery()
-            .must(QueryBuilders.termQuery("lineage.pipeline.fullyQualifiedName.keyword", fqn)));
-    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-    searchSourceBuilder.fetchSource(null, SOURCE_FIELDS_TO_EXCLUDE.toArray(String[]::new));
-    searchSourceBuilder.query(boolQueryBuilder);
-    if (CommonUtil.nullOrEmpty(deleted)) {
-      searchSourceBuilder.query(
+    Object[] searchAfter = null;
+    long processedRecords = 0;
+    long totalRecords = -1;
+    while (totalRecords != processedRecords) {
+      os.org.opensearch.action.search.SearchRequest searchRequest =
+          new os.org.opensearch.action.search.SearchRequest(
+              Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS));
+      BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery();
+      boolQueryBuilder.should(
           QueryBuilders.boolQuery()
-              .must(boolQueryBuilder)
-              .must(QueryBuilders.termQuery("deleted", deleted)));
-    }
-    buildSearchSourceFilter(queryFilter, searchSourceBuilder);
+              .must(QueryBuilders.termQuery("lineage.pipeline.fullyQualifiedName.keyword", fqn)));
+      SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+      searchSourceBuilder.fetchSource(null, SOURCE_FIELDS_TO_EXCLUDE.toArray(String[]::new));
+      FieldSortBuilder sortBuilder = SortBuilders.fieldSort("fullyQualifiedName");
+      searchSourceBuilder.sort(sortBuilder);
+      searchSourceBuilder.query(boolQueryBuilder);
+      if (searchAfter != null) {
+        searchSourceBuilder.searchAfter(searchAfter);
+      }
+      if (CommonUtil.nullOrEmpty(deleted)) {
+        searchSourceBuilder.query(
+            QueryBuilders.boolQuery()
+                .must(boolQueryBuilder)
+                .must(QueryBuilders.termQuery("deleted", deleted)));
+      }
+      buildSearchSourceFilter(queryFilter, searchSourceBuilder);
 
-    searchRequest.source(searchSourceBuilder);
-    SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
-    for (var hit : searchResponse.getHits().getHits()) {
-      List<Map<String, Object>> lineage =
-          (List<Map<String, Object>>) hit.getSourceAsMap().get("lineage");
-      HashMap<String, Object> tempMap = new HashMap<>(JsonUtils.getMap(hit.getSourceAsMap()));
-      nodes.add(tempMap);
-      for (Map<String, Object> lin : lineage) {
-        HashMap<String, String> fromEntity = (HashMap<String, String>) lin.get("fromEntity");
-        HashMap<String, String> toEntity = (HashMap<String, String>) lin.get("toEntity");
-        HashMap<String, String> pipeline = (HashMap<String, String>) lin.get("pipeline");
-        if (pipeline != null && pipeline.get("fullyQualifiedName").equalsIgnoreCase(fqn)) {
-          edges.add(lin);
-          getLineage(
-              fromEntity.get("fqn"),
-              upstreamDepth,
-              edges,
-              nodes,
-              queryFilter,
-              "lineage.toEntity.fqn.keyword",
-              deleted);
-          getLineage(
-              toEntity.get("fqn"),
-              downstreamDepth,
-              edges,
-              nodes,
-              queryFilter,
-              "lineage.fromEntity.fqn.keyword",
-              deleted);
+      searchRequest.source(searchSourceBuilder);
+      SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
+      for (var hit : searchResponse.getHits().getHits()) {
+        List<Map<String, Object>> lineage =
+            (List<Map<String, Object>>) hit.getSourceAsMap().get("lineage");
+        HashMap<String, Object> tempMap = new HashMap<>(JsonUtils.getMap(hit.getSourceAsMap()));
+        nodes.add(tempMap);
+        for (Map<String, Object> lin : lineage) {
+          HashMap<String, String> fromEntity = (HashMap<String, String>) lin.get("fromEntity");
+          HashMap<String, String> toEntity = (HashMap<String, String>) lin.get("toEntity");
+          HashMap<String, String> pipeline = (HashMap<String, String>) lin.get("pipeline");
+          if (pipeline != null && pipeline.get("fullyQualifiedName").equalsIgnoreCase(fqn)) {
+            edges.add(lin);
+            getLineage(
+                fromEntity.get("fqn"),
+                upstreamDepth,
+                edges,
+                nodes,
+                queryFilter,
+                "lineage.toEntity.fqn.keyword",
+                deleted);
+            getLineage(
+                toEntity.get("fqn"),
+                downstreamDepth,
+                edges,
+                nodes,
+                queryFilter,
+                "lineage.fromEntity.fqn.keyword",
+                deleted);
+          }
         }
+      }
+      totalRecords = searchResponse.getHits().getTotalHits().value;
+      int currentHits = searchResponse.getHits().getHits().length;
+      processedRecords += currentHits;
+      if (currentHits > 0) {
+        searchAfter = searchResponse.getHits().getHits()[currentHits - 1].getSortValues();
+      } else {
+        searchAfter = null;
       }
     }
     getLineage(
@@ -1917,6 +1936,40 @@ public class OpenSearchClient implements SearchClient {
       updateRequest.doc(doc, XContentType.JSON);
       updateRequest.docAsUpsert(true);
       updateSearch(updateRequest);
+    }
+  }
+
+  @Override
+  public void createEntities(String indexName, List<Map<String, String>> docsAndIds)
+      throws IOException {
+    if (isClientAvailable) {
+      BulkRequest bulkRequest = new BulkRequest();
+      for (Map<String, String> docAndId : docsAndIds) {
+        Map.Entry<String, String> entry = docAndId.entrySet().iterator().next();
+        UpdateRequest updateRequest = new UpdateRequest(indexName, entry.getKey());
+        updateRequest.doc(entry.getValue(), XContentType.JSON);
+        bulkRequest.add(updateRequest);
+      }
+      bulkRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE);
+      ActionListener<BulkResponse> listener =
+          new ActionListener<BulkResponse>() {
+            @Override
+            public void onResponse(BulkResponse bulkItemResponses) {
+              if (bulkItemResponses.hasFailures()) {
+                LOG.error(
+                    "Failed to create entities in ElasticSearch: {}",
+                    bulkItemResponses.buildFailureMessage());
+              } else {
+                LOG.debug("Successfully created {} entities in ElasticSearch", docsAndIds.size());
+              }
+            }
+
+            @Override
+            public void onFailure(Exception e) {
+              LOG.error("Failed to create entities in ElasticSearch", e);
+            }
+          };
+      client.bulkAsync(bulkRequest, RequestOptions.DEFAULT, listener);
     }
   }
 

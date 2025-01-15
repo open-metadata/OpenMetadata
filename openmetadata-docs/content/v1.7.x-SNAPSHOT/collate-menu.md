@@ -3,34 +3,23 @@ site_menu:
   - category: Home
     url: /
 
-  - category: Enable Security
-    url: /deployment
-  - category: Enable Security / Ldap Authentication
-    url: /deployment/security/ldap
-  - category: Enable Security / Auth0 SSO
-    url: /deployment/security/auth0
-  - category: Enable Security / Azure SSO
-    url: /deployment/security/azure
-  - category: Enable Security / Custom OIDC SSO
-    url: /deployment/security/custom-oidc
-  - category: Enable Security / OIDC SSO
-    url: /deployment/security/oidc
-  - category: Enable Security / Google SSO
-    url: /deployment/security/google
-  - category: Enable Security / Okta SSO
-    url: /deployment/security/okta
-  - category: Enable Security / Amazon Cognito SSO
-    url: /deployment/security/amazon-cognito
-  - category: Enable Security / One Login SSO
-    url: /deployment/security/one-login
-  - category: Enable Security / Keycloak SSO
-    url: /deployment/security/keycloak
-  - category: Enable Security / Saml
-    url: /deployment/security/saml
-  - category: Enable Security / Saml / AWS
-    url: /deployment/security/saml/aws
-  - category: Enable Security / Saml / Azure
-    url: /deployment/security/saml/azure
+  - category: Getting Started
+    url: /getting-started
+
+  - category: Getting Started / Day 1
+    url: /getting-started/day-1
+  - category: Getting Started / Day 1 / Hybrid SaaS
+    url: /getting-started/day-1/hybrid-saas
+  - category: Getting Started / Day 1 / Hybrid SaaS / Airflow
+    url: /getting-started/day-1/hybrid-saas/airflow
+  - category: Getting Started / Day 1 / Hybrid SaaS / MWAA
+    url: /getting-started/day-1/hybrid-saas/mwaa
+  - category: Getting Started / Day 1 / Hybrid SaaS / GCS Composer
+    url: /getting-started/day-1/hybrid-saas/gcs-composer
+  - category: Getting Started / Day 1 / Hybrid SaaS / GitHub Actions
+    url: /getting-started/day-1/hybrid-saas/github-actions
+  - category: Getting Started / Day 1 / Hybrid SaaS / Credentials
+    url: /getting-started/day-1/hybrid-saas/credentials
 
   - category: Connectors
     url: /connectors
@@ -79,6 +68,10 @@ site_menu:
     url: /connectors/database/clickhouse
   - category: Connectors / Database / Clickhouse / Run Externally
     url: /connectors/database/clickhouse/yaml
+  - category: Connectors / Database / Cockroach
+    url: /connectors/database/cockroach
+  - category: Connectors / Database / Cockroach / Run Externally
+    url: /connectors/database/cockroach/yaml
   - category: Connectors / Database / Couchbase
     url: /connectors/database/couchbase
   - category: Connectors / Database / Couchbase / Run Externally
@@ -365,10 +358,9 @@ site_menu:
 
   - category: Connectors / Pipeline / Matillion / Run Externally
     url: /connectors/pipeline/matillion/yaml
-  - category: Connectors / Pipeline / DataFactory
+  - category: Connectors / Pipeline / Azure Data Factory
     url: /connectors/pipeline/datafactory
-
-  - category: Connectors / Pipeline / DataFactory / Run Externally
+  - category: Connectors / Pipeline / Azure Data Factory / Run Externally
     url: /connectors/pipeline/datafactory/yaml
   - category: Connectors / Pipeline / Stitch
     url: /connectors/pipeline/stitch
@@ -700,8 +692,6 @@ site_menu:
   - category: How-to Guides / Data Quality and Observability / Data Profiler / Sample Data
     url: /how-to-guides/data-quality-observability/profiler/external-sample-data
   - category: How-to Guides / Data Quality and Observability / Data Profiler / External Workflow
-    url: /how-to-guides/data-quality-observability/profiler/external-workflow
-  - category: How-to Guides / Data Quality and Observability / Data Profiler / Auto PII Tagging
     url: /how-to-guides/data-quality-observability/profiler/auto-pii-tagging
   - category: How-to Guides / Data Quality and Observability / Data Observability
     url: /how-to-guides/data-quality-observability/observability
@@ -788,6 +778,12 @@ site_menu:
     url: /how-to-guides/data-governance/classification/request-tags
   - category: How-to Guides / Data Governance / Classification / Auto-Classification in OpenMetadata
     url: /how-to-guides/data-governance/classification/auto
+  - category: How-to Guides / Data Governance / Classification / Auto-Classification in OpenMetadata / Workflow
+    url: /how-to-guides/data-governance/classification/auto/workflow
+  - category: How-to Guides / Data Governance / Classification / Auto-Classification in OpenMetadata / External Workflow
+    url: /how-to-guides/data-governance/classification/auto/external-workflow
+  - category: How-to Guides / Data Governance / Classification / Auto-Classification in OpenMetadata / Auto PII Tagging
+    url: /how-to-guides/data-governance/classification/auto/auto-pii-tagging
   - category: How-to Guides / Data Governance / Classification / What are Tiers
     url: /how-to-guides/data-governance/classification/tiers
   - category: How-to Guides / Data Governance / Classification / Best Practices for Classification
@@ -799,23 +795,34 @@ site_menu:
   - category: How-to Guides / Data Governance / Domains & Data Product /  How to Use Data Products
     url: /how-to-guides/data-governance/domains-&-data-products/data-products
 
-  - category: Getting Started
-    url: /getting-started
-
-  - category: Getting Started / Day 1
-    url: /getting-started/day-1
-  - category: Getting Started / Day 1 / Hybrid SaaS
-    url: /getting-started/day-1/hybrid-saas
-  - category: Getting Started / Day 1 / Hybrid SaaS / Airflow
-    url: /getting-started/day-1/hybrid-saas/airflow
-  - category: Getting Started / Day 1 / Hybrid SaaS / MWAA
-    url: /getting-started/day-1/hybrid-saas/mwaa
-  - category: Getting Started / Day 1 / Hybrid SaaS / GCS Composer
-    url: /getting-started/day-1/hybrid-saas/gcs-composer
-  - category: Getting Started / Day 1 / Hybrid SaaS / GitHub Actions
-    url: /getting-started/day-1/hybrid-saas/github-actions
-  - category: Getting Started / Day 1 / Hybrid SaaS / Credentials
-    url: /getting-started/day-1/hybrid-saas/credentials
+  - category: Enable Security
+    url: /security
+  - category: Enable Security / Ldap Authentication
+    url: /security/ldap
+  - category: Enable Security / Auth0 SSO
+    url: /security/auth0
+  - category: Enable Security / Azure SSO
+    url: /security/azure
+  - category: Enable Security / Custom OIDC SSO
+    url: /security/custom-oidc
+  - category: Enable Security / OIDC SSO
+    url: /security/oidc
+  - category: Enable Security / Google SSO
+    url: /security/google
+  - category: Enable Security / Okta SSO
+    url: /security/okta
+  - category: Enable Security / Amazon Cognito SSO
+    url: /security/amazon-cognito
+  - category: Enable Security / One Login SSO
+    url: /security/one-login
+  - category: Enable Security / Keycloak SSO
+    url: /security/keycloak
+  - category: Enable Security / Saml
+    url: /security/saml
+  - category: Enable Security / Saml / AWS
+    url: /security/saml/aws
+  - category: Enable Security / Saml / Azure
+    url: /security/saml/azure
 
   - category: Releases
     url: /releases
@@ -825,6 +832,16 @@ site_menu:
     url: /releases/supported
   - category: Releases / All Releases
     url: /releases/all-releases
+  - category: Releases / All Releases / 1.6.1 Release
+    url: /releases/all-releases/#1.6.1-release
+  - category: Releases / All Releases / 1.5.15 Release
+    url: /releases/all-releases/#1.5.15-release
+  - category: Releases / All Releases / 1.5.14 Release
+    url: /releases/all-releases/#1.5.14-release
+  - category: Releases / All Releases / 1.5.13 Release
+    url: /releases/all-releases/#1.5.13-release
+  - category: Releases / All Releases / 1.5.12 Release
+    url: /releases/all-releases/#1.5.12-release
   - category: Releases / All Releases / 1.5.11 Release
     url: /releases/all-releases/#1.5.11-release
   - category: Releases / All Releases / 1.5.10 Release
@@ -1406,6 +1423,8 @@ site_menu:
     url: /main-concepts/metadata-standard/schemas/entity/services/connections/database/common
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Database / Common / JwtAuth
     url: /main-concepts/metadata-standard/schemas/entity/services/connections/database/common/jwtauth
+  - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Database / CockroachConnection
+    url: /main-concepts/metadata-standard/schemas/entity/services/connections/database/cockroachconnection
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Database / CouchbaseConnection
     url: /main-concepts/metadata-standard/schemas/entity/services/connections/database/couchbaseconnection
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Database / CustomDatabaseConnection

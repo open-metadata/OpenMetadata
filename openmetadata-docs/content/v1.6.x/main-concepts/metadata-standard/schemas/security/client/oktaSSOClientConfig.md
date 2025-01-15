@@ -11,10 +11,10 @@ slug: /main-concepts/metadata-standard/schemas/security/client/oktassoclientconf
 
 - **`clientId`** *(string)*: Okta Client ID.
 - **`orgURL`** *(string)*: Okta org url.
-- **`privateKey`** *(string)*: Okta Private Key.
+- **`privateKey`** *(string, format: password)*: Okta Private Key.
 - **`email`** *(string)*: Okta Service account Email.
 - **`scopes`** *(array)*: Okta client scopes.
   - **Items** *(string)*
 
 
-Documentation file automatically generated at 2023-10-27 13:55:46.343512.
+Documentation file automatically generated at 2025-01-15 09:05:25.266839+00:00.
