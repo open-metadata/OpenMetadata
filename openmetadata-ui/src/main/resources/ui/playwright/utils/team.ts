@@ -349,3 +349,17 @@ export const addUserInTeam = async (page: Page, user: UserClass) => {
     page.locator(`[data-testid="${userName.toLowerCase()}"]`)
   ).toBeVisible();
 };
+
+export const checkTeamTabCount = async (page: Page) => {
+  const fetchResponse = page.waitForResponse(
+    '/api/v1/teams/name/*?fields=*childrenCount*include=all'
+  );
+  const response = await fetchResponse;
+  const jsonRes = await response.json();
+
+  await expect(
+    page.locator(
+      '[data-testid="teams"] [data-testid="count"] [data-testid="filter-count"]'
+    )
+  ).toContainText(jsonRes.childrenCount.toString());
+};

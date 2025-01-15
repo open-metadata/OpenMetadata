@@ -288,8 +288,8 @@ const TeamsPage = () => {
 
       const res = await createTeam(teamData);
       if (res) {
-        fetchTeamBasicDetails(selectedTeam.name, true);
         handleAddTeam(false);
+        await fetchTeamBasicDetails(selectedTeam.name, true);
         loadAdvancedDetails();
       }
     } catch (error) {
