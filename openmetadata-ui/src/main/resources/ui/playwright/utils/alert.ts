@@ -37,7 +37,7 @@ import {
   toastNotification,
   uuid,
 } from './common';
-import { getEntityDisplayName } from './entity';
+import { getEntityDisplayName, getTextFromHtmlString } from './entity';
 import { validateFormNameFieldInput } from './form';
 import {
   addFilterWithUsersListInput,
@@ -502,9 +502,9 @@ export const verifyAlertDetails = async ({
   );
 
   if (description) {
-    // Check alert name
-    await expect(page.getByTestId('alert-description')).toContainText(
-      description
+    // Check alert description
+    await expect(page.getByTestId('markdown-parser')).toContainText(
+      getTextFromHtmlString(description)
     );
   }
 

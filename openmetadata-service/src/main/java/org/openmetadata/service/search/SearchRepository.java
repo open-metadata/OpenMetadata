@@ -16,6 +16,7 @@ import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
 import static org.openmetadata.service.search.SearchClient.PROPAGATE_ENTITY_REFERENCE_FIELD_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.PROPAGATE_FIELD_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.PROPAGATE_TEST_SUITES_SCRIPT;
+import static org.openmetadata.service.search.SearchClient.REMOVE_DATA_PRODUCTS_CHILDREN_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.REMOVE_DOMAINS_CHILDREN_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.REMOVE_OWNERS_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.REMOVE_PROPAGATED_ENTITY_REFERENCE_FIELD_SCRIPT;
@@ -38,6 +39,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -726,6 +728,13 @@ public class SearchRepository {
             indexMapping.getChildAliases(clusterAlias),
             List.of(new ImmutablePair<>(entityType + ".id", docId)));
       }
+      case Entity.DATA_PRODUCT -> searchClient.updateChildren(
+          GLOBAL_SEARCH_ALIAS,
+          new ImmutablePair<>("dataProducts.id", docId),
+          new ImmutablePair<>(
+              REMOVE_DATA_PRODUCTS_CHILDREN_SCRIPT,
+              Collections.singletonMap("fqn", entity.getFullyQualifiedName())));
+
       case Entity.TAG, Entity.GLOSSARY_TERM -> searchClient.updateChildren(
           GLOBAL_SEARCH_ALIAS,
           new ImmutablePair<>("tags.tagFQN", entity.getFullyQualifiedName()),
@@ -744,7 +753,7 @@ public class SearchRepository {
       }
       case Entity.TEST_SUITE -> {
         TestSuite testSuite = (TestSuite) entity;
-        if (Boolean.TRUE.equals(testSuite.getExecutable())) {
+        if (Boolean.TRUE.equals(testSuite.getBasic())) {
           searchClient.deleteEntityByFields(
               indexMapping.getChildAliases(clusterAlias),
               List.of(new ImmutablePair<>("testSuite.id", docId)));
@@ -1056,5 +1065,9 @@ public class SearchRepository {
       LOG.error("Error while getting entities from ES for validation", ex);
     }
     return new ArrayList<>();
+  }
+
+  public Set<String> getSearchEntities() {
+    return new HashSet<>(entityIndexMap.keySet());
   }
 }

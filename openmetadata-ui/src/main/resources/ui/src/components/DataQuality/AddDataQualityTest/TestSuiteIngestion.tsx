@@ -157,7 +157,9 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
   const createIngestionPipeline = async (data: TestSuiteIngestionDataType) => {
     const tableName = replaceAllSpacialCharWith_(
       getNameFromFQN(
-        testSuite.executableEntityReference?.fullyQualifiedName ?? ''
+        (testSuite.basic
+          ? testSuite.basicEntityReference?.fullyQualifiedName
+          : testSuite.fullyQualifiedName) ?? ''
       )
     );
     const updatedName =
@@ -179,16 +181,19 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
         config: {
           type: ConfigType.TestSuite,
           entityFullyQualifiedName:
-            testSuite.executableEntityReference?.fullyQualifiedName,
+            testSuite.basicEntityReference?.fullyQualifiedName,
           testCases: data?.testCases,
         },
       },
     };
+    try {
+      const ingestion = await addIngestionPipeline(ingestionPayload);
 
-    const ingestion = await addIngestionPipeline(ingestionPayload);
-
-    setIngestionData(ingestion);
-    handleIngestionDeploy(ingestion.id);
+      setIngestionData(ingestion);
+      handleIngestionDeploy(ingestion.id);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
   };
 
   const onUpdateIngestionPipeline = async (
@@ -290,7 +295,7 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
             includePeriodOptions={schedulerOptions}
             initialData={initialFormData}
             isLoading={isLoading}
-            testSuiteFQN={testSuite?.fullyQualifiedName}
+            testSuite={testSuite}
             onCancel={onCancel}
             onSubmit={handleIngestionSubmit}
           />

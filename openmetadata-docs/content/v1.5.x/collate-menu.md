@@ -136,6 +136,8 @@ site_menu:
     url: /connectors/database/mssql
   - category: Connectors / Database / MSSQL / Run Externally
     url: /connectors/database/mssql/yaml
+  - category: Connectors / Database / MSSQL / Troubleshooting
+    url: /connectors/database/mssql/troubleshooting
   - category: Connectors / Database / MySQL
     url: /connectors/database/mysql
   - category: Connectors / Database / MySQL / Run Externally
@@ -796,6 +798,12 @@ site_menu:
     url: /releases/supported
   - category: Releases / All Releases
     url: /releases/all-releases
+  - category: Releases / All Releases / 1.5.14 Release
+    url: /releases/all-releases/#1.5.14-release
+  - category: Releases / All Releases / 1.5.13 Release
+    url: /releases/all-releases/#1.5.13-release
+  - category: Releases / All Releases / 1.5.12 Release
+    url: /releases/all-releases/#1.5.12-release
   - category: Releases / All Releases / 1.5.11 Release
     url: /releases/all-releases/#1.5.11-release
   - category: Releases / All Releases / 1.5.10 Release

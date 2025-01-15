@@ -1,7 +1,7 @@
 package org.openmetadata.service.search.indexes;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import static org.openmetadata.schema.type.Include.NON_DELETED;
+import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
 import static org.openmetadata.service.Entity.getEntityByName;
@@ -196,7 +196,7 @@ public interface SearchIndex {
           String destinationIndexName = null;
           try {
             if (updateForeignTableIndex) {
-              relatedEntity = getEntityByName(Entity.TABLE, relatedEntityFQN, "*", NON_DELETED);
+              relatedEntity = getEntityByName(Entity.TABLE, relatedEntityFQN, "*", ALL);
               IndexMapping destinationIndexMapping =
                   Entity.getSearchRepository()
                       .getIndexMapping(relatedEntity.getEntityReference().getType());
@@ -253,8 +253,7 @@ public interface SearchIndex {
             .findFrom(entity.getId(), Entity.TABLE, Relationship.RELATED_TO.ordinal());
 
     for (CollectionDAO.EntityRelationshipRecord table : relatedTables) {
-      Table foreignTable =
-          Entity.getEntity(Entity.TABLE, table.getId(), "tableConstraints", NON_DELETED);
+      Table foreignTable = Entity.getEntity(Entity.TABLE, table.getId(), "tableConstraints", ALL);
       processConstraints(foreignTable, entity, constraints, false);
     }
     return constraints;
