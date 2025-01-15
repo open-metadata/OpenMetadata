@@ -336,6 +336,16 @@ $$section
 Set the `Enable Debug Log` toggle to set the logging level of the process to debug. You can check these logs in the Ingestion tab of the service and dig deeper into any errors you might find.
 $$
 
+
+$$section
+### Search Tables Across Databases $(id="searchAcrossDatabases")
+
+Option to search across database services for tables or not for processing dbt metadata ingestion.
+If this option is enabled, OpenMetadata will first search for tables within the same database service if tables are not found it will search across all database services.
+
+If the option is disabled, the search will be limited to the tables within the same database service.
+$$
+
 $$section
 ### Update Descriptions $(id="dbtUpdateDescriptions")
 
