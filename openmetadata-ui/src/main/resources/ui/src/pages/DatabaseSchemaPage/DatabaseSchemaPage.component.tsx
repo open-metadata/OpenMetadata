@@ -102,7 +102,6 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     currentPage,
     handlePageChange,
     pagingCursor,
-    handlePageSizeChange,
   } = pagingInfo;
 
   const { tab: activeTab = EntityTabs.TABLE } =
@@ -150,21 +149,12 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     setShowDeletedTables(value);
     handlePageChange(INITIAL_PAGING_VALUE);
 
-    const path = location.pathname;
     const searchParams = new URLSearchParams(location.search);
 
     searchParams.set('showDeletedTables', value.toString());
     history.replace({
-      pathname: path,
       search: searchParams.toString(),
-      state: {
-        currentPage: INITIAL_PAGING_VALUE,
-        cursorData: {
-          cursorType: null,
-          cursorValue: null,
-        },
-        pageSize,
-      },
+      state: {},
     });
   };
 
@@ -575,29 +565,6 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     deleted,
     pageSize,
   ]);
-
-  // set pagesize and current page on page reload from history state if present
-  useEffect(() => {
-    const cursorState = pagingCursor;
-    if (cursorState?.cursorData?.cursorType) {
-      handlePageSizeChange(cursorState?.pageSize as number);
-      handlePageChange(
-        cursorState.currentPage as number,
-        cursorState?.cursorData,
-        cursorState?.pageSize
-      );
-    } else {
-      handlePageChange(
-        currentPage,
-        {
-          cursorType: null,
-          cursorValue: null,
-        },
-        cursorState?.pageSize ?? pageSize
-      );
-      handlePageSizeChange(cursorState?.pageSize ?? pageSize);
-    }
-  }, []);
 
   const {
     editTagsPermission,

@@ -14,6 +14,7 @@ import {
   Dispatch,
   SetStateAction,
   useCallback,
+  useEffect,
   useMemo,
   useState,
 } from 'react';
@@ -32,7 +33,7 @@ interface CursorState {
   cursorValue: string | null;
 }
 
-interface PagingStateData {
+interface PagingHistoryStateData {
   cursorData: CursorState;
   currentPage: number | null;
   pageSize: number | null;
@@ -50,7 +51,7 @@ export interface UsePagingInterface {
   pageSize: number;
   handlePageSizeChange: (page: number) => void;
   showPagination: boolean;
-  pagingCursor: PagingStateData;
+  pagingCursor: PagingHistoryStateData;
 }
 export const usePaging = (
   defaultPageSize = PAGE_SIZE_BASE
@@ -60,7 +61,12 @@ export const usePaging = (
   const [pageSize, setPageSize] = useState(defaultPageSize);
   const history = useHistory();
   const location = useCustomLocation();
-  const state = location.state;
+  const historyState = location.state as any;
+  const pagingCursorHistoryState: PagingHistoryStateData = {
+    cursorData: historyState?.cursorData,
+    currentPage: historyState?.currentPage,
+    pageSize: historyState?.pageSize,
+  };
 
   const handlePageSize = useCallback(
     (page: number) => {
@@ -71,11 +77,7 @@ export const usePaging = (
       history.replace({
         ...location,
         state: {
-          ...(location.state as any),
           pageSize: page,
-          cursorData: { cursorType: null, cursorValue: null },
-
-          currentPage: INITIAL_PAGING_VALUE,
         },
       });
     },
@@ -85,24 +87,41 @@ export const usePaging = (
     return paging.total > pageSize || pageSize !== defaultPageSize;
   }, [defaultPageSize, paging, pageSize]);
 
-  const handlePageChange = (
-    page: number | ((page: number) => number),
-    cursorData?: CursorState,
-    pageSize?: number | null
-  ) => {
-    setCurrentPage(page);
-    if (cursorData) {
-      history.replace({
-        ...location,
-        state: {
-          ...((location.state as any) || {}),
-          cursorData,
-          currentPage: page,
-          pageSize,
-        },
-      });
-    }
-  };
+  const handlePageChange = useCallback(
+    (
+      page: number | ((page: number) => number),
+      cursorData?: CursorState,
+      pageSize?: number | null
+    ) => {
+      setCurrentPage(page);
+      if (cursorData) {
+        history.replace({
+          ...location,
+          state: {
+            ...((location.state as any) || {}),
+            cursorData,
+            currentPage: page,
+            pageSize,
+          },
+        });
+      }
+    },
+    [setCurrentPage, history, location]
+  );
+
+  // set pagesize and current page on page reload from history state if present
+  useEffect(() => {
+    const pageSizeToUse = historyState?.pageSize ?? pageSize;
+    const cursorData = historyState?.cursorData?.cursorType
+      ? historyState.cursorData
+      : { cursorType: null, cursorValue: null };
+    const pageToUse = historyState?.cursorData?.cursorType
+      ? historyState.currentPage
+      : currentPage;
+
+    handlePageSize(pageSizeToUse);
+    handlePageChange(pageToUse, cursorData, pageSizeToUse);
+  }, []);
 
   return {
     paging,
@@ -112,6 +131,6 @@ export const usePaging = (
     pageSize,
     handlePageSizeChange: handlePageSize,
     showPagination: paginationVisible,
-    pagingCursor: state as PagingStateData,
+    pagingCursor: pagingCursorHistoryState,
   };
 };
