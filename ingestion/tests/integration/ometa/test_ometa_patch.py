@@ -184,12 +184,18 @@ class OMetaTableTest(TestCase):
 
         cls.team_1 = cls.metadata.create_or_update(
             data=get_create_team_entity(
-                name="Team 1", users=[cls.user_1.id, cls.user_2.id]
+                name="Team 1",
+                users=[
+                    cls.user_1.fullyQualifiedName.root,
+                    cls.user_2.fullyQualifiedName.root,
+                ],
             )
         )
 
         cls.team_2 = cls.metadata.create_or_update(
-            data=get_create_team_entity(name="Team 2", users=[cls.user_2.id])
+            data=get_create_team_entity(
+                name="Team 2", users=[cls.user_2.fullyQualifiedName.root]
+            )
         )
 
         cls.owner_user_1 = EntityReferenceList(
