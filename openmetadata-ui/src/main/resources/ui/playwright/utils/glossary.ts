@@ -62,11 +62,14 @@ export const selectActiveGlossary = async (
   const isSelected = await menuItem.evaluate((element) => {
     return element.classList.contains('ant-menu-item-selected');
   });
-
   if (!isSelected) {
     const glossaryResponse = page.waitForResponse('/api/v1/glossaryTerms*');
     await menuItem.click();
     await glossaryResponse;
+  } else {
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
   }
 };
 

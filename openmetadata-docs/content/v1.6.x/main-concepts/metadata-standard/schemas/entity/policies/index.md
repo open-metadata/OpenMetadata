@@ -5,4 +5,11 @@ slug: /main-concepts/metadata-standard/schemas/entity/policies
 
 # Policies
 
-Documentation file automatically generated at 2023-10-27 13:55:46.343512.
+This folder contains the following items:
+
+- [**Policy**](/main-concepts/metadata-standard/schemas/entity/policies/policy)
+- [**AccessControl**](/main-concepts/metadata-standard/schemas/entity/policies/accesscontrol)
+- [**Filters**](/main-concepts/metadata-standard/schemas/entity/policies/filters)
+
+
+Documentation file automatically generated at 2025-01-15 09:05:25.266839+00:00.
