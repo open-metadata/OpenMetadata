@@ -64,8 +64,8 @@ import { ThreadType } from '../../generated/entity/feed/thread';
 import { Include } from '../../generated/type/include';
 import { TagLabel } from '../../generated/type/tagLabel';
 import { usePaging } from '../../hooks/paging/usePaging';
-import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../hooks/useFqn';
+import { useTableFilters } from '../../hooks/useTableFilters';
 import { FeedCounts } from '../../interface/feed.interface';
 import {
   getDatabaseSchemaDetailsByFQN,
@@ -104,6 +104,13 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     pagingCursor,
   } = pagingInfo;
 
+  const INITIAL_TABLE_FILTERS = {
+    showDeletedTables: false,
+  };
+
+  const { filters: tableFilters, setFilter } = useTableFilters(
+    INITIAL_TABLE_FILTERS
+  );
   const { tab: activeTab = EntityTabs.TABLE } =
     useParams<{ tab: EntityTabs }>();
   const { fqn: decodedDatabaseSchemaFQN } = useFqn();
@@ -128,12 +135,10 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   const [threadLink, setThreadLink] = useState<string>('');
   const [databaseSchemaPermission, setDatabaseSchemaPermission] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
-  const [showDeletedTables, setShowDeletedTables] = useState<boolean>(false);
   const [storedProcedureCount, setStoredProcedureCount] = useState(0);
 
   const [updateProfilerSetting, setUpdateProfilerSetting] =
     useState<boolean>(false);
-  const location = useCustomLocation();
 
   const extraDropdownContent = useMemo(
     () =>
@@ -146,16 +151,8 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   );
 
   const handleShowDeletedTables = (value: boolean) => {
-    setShowDeletedTables(value);
+    setFilter('showDeletedTables', value);
     handlePageChange(INITIAL_PAGING_VALUE);
-
-    const searchParams = new URLSearchParams(location.search);
-
-    searchParams.set('showDeletedTables', value.toString());
-    history.replace({
-      search: searchParams.toString(),
-      state: {},
-    });
   };
 
   const { version: currentVersion, deleted } = useMemo(
@@ -237,7 +234,9 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       const { description: schemaDescription = '' } = response;
       setDatabaseSchema(response);
       setDescription(schemaDescription);
-      setShowDeletedTables(response.deleted ?? false);
+      if (tableFilters.showDeletedTables === undefined) {
+        setFilter('showDeletedTables', response.deleted ?? false);
+      }
     } catch (err) {
       // Error
       if ((err as AxiosError)?.response?.status === ClientErrors.FORBIDDEN) {
@@ -256,7 +255,9 @@ const DatabaseSchemaPage: FunctionComponent = () => {
           ...params,
           databaseSchema: decodedDatabaseSchemaFQN,
           limit: pageSize,
-          include: showDeletedTables ? Include.Deleted : Include.NonDeleted,
+          include: tableFilters.showDeletedTables
+            ? Include.Deleted
+            : Include.NonDeleted,
         });
         setTableData(res.data);
         handlePagingChange(res.paging);
@@ -266,7 +267,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
         setTableDataLoading(false);
       }
     },
-    [decodedDatabaseSchemaFQN, showDeletedTables, pageSize]
+    [decodedDatabaseSchemaFQN, tableFilters.showDeletedTables, pageSize]
   );
 
   const onDescriptionEdit = useCallback((): void => {
@@ -527,12 +528,6 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   }, [decodedDatabaseSchemaFQN]);
 
   useEffect(() => {
-    const searchParams = new URLSearchParams(location.search);
-    const showDeletedTablesParam = searchParams.get('showDeletedTables');
-    setShowDeletedTables(showDeletedTablesParam === 'true'); // Default to `false` if param is missing
-  }, [location]);
-
-  useEffect(() => {
     fetchDatabaseSchemaPermission();
   }, [decodedDatabaseSchemaFQN]);
 
@@ -559,7 +554,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       }
     }
   }, [
-    showDeletedTables,
+    tableFilters.showDeletedTables,
     decodedDatabaseSchemaFQN,
     viewDatabaseSchemaPermission,
     deleted,
@@ -623,7 +618,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
         description,
         editDescriptionPermission,
         isEdit,
-        showDeletedTables,
+        showDeletedTables: tableFilters.showDeletedTables,
         tableDataLoading,
         editCustomAttributePermission,
         editTagsPermission,
@@ -655,7 +650,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       description,
       editDescriptionPermission,
       isEdit,
-      showDeletedTables,
+      tableFilters.showDeletedTables,
       tableDataLoading,
       editCustomAttributePermission,
       editTagsPermission,
