@@ -24,6 +24,10 @@ Configure and schedule Doris metadata and profiler workflows from the OpenMetada
 
 {% partial file="/v1.7/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/doris/yaml"} /%}
 
+## Ways to Authenticate:
+
+Here are the methods to [authenticate](/connectors/database/doris/connections) user credentials with the Doris connector.
+
 ## Requirements
 
 Metadata: Doris >= 1.2.0, Data Profiler: Doris >= 2.0.2
@@ -41,22 +45,6 @@ serviceConnectionPath: "/images/v1.7/connectors/doris/service-connection.png",
 /%}
 
 {% stepsContainer %}
-{% extraContent parentTagName="stepsContainer" %}
-
-#### Connection Details
-
-- **Username**: Specify the User to connect to Doris. It should have enough privileges to read all the metadata.
-- **Password**: Password to connect to Doris.
-- **Host and Port**: Enter the fully qualified hostname and port number for your Doris deployment in the Host and Port field.
-- **databaseName**: Optional name to give to the database in OpenMetadata. If left blank, we will use default as the database name.
-- **databaseSchema**: databaseSchema of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single databaseSchema. When left blank, OpenMetadata Ingestion attempts to scan all the databaseSchema.
-- **caCertificate**: Provide the path to ssl ca file.
-- **sslCertificate**: Provide the path to ssl client certificate file (ssl_cert).
-- **sslKey**: Provide the path to ssl client certificate file (ssl_key).
-
-{% partial file="/v1.7/connectors/database/advanced-configuration.md" /%}
-
-{% /extraContent %}
 
 {% partial file="/v1.7/connectors/test-connection.md" /%}
 

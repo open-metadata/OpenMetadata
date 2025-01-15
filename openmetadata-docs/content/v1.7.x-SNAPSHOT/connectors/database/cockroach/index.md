@@ -11,8 +11,6 @@ availableFeatures=["Metadata", "Data Quality", "Data Profiler"]
 unavailableFeatures=["Query Usage", "dbt", "Owners", "Lineage", "Column-level Lineage", "Tags", "Stored Procedures"]
 / %}
 
-
-
 In this section, we provide guides and references to use the Cockroach connector.
 
 Configure and schedule Cockroach metadata workflows from the OpenMetadata UI:
@@ -23,6 +21,10 @@ Configure and schedule Cockroach metadata workflows from the OpenMetadata UI:
 - [Data Quality](/how-to-guides/data-quality-observability/quality)
 
 {% partial file="/v1.7/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/cockroach/yaml"} /%}
+
+## Ways to Authenticate:
+
+Here are the methods to [authenticate](/connectors/database/cockroach/connections) user credentials with the Cockroach connector.
 
 ## Requirements
 
@@ -39,19 +41,6 @@ Configure and schedule Cockroach metadata workflows from the OpenMetadata UI:
 /%}
 
 {% stepsContainer %}
-{% extraContent parentTagName="stepsContainer" %}
-
-
-#### Connection Details
-
-- **Username**: Specify the User to connect to Cockroach. It should have enough privileges to read all the metadata.
-- **Auth Type**: Basic Auth or IAM based auth to connect to instances / cloud rds.
-  - **Basic Auth**: 
-    - **Password**: Password to connect to Cockroach
-  
-- **Host and Port**: Enter the fully qualified hostname and port number for your Cockroach deployment in the Host and Port field.
-
-{% /extraContent %}
 
 {% partial file="/v1.7/connectors/test-connection.md" /%}
 

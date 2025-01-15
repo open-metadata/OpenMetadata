@@ -22,6 +22,10 @@ Configure and schedule PinotDB metadata and profiler workflows from the OpenMeta
 
 {% partial file="/v1.5/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/pinotdb/yaml"} /%}
 
+## Ways to Authenticate:
+
+Here are the methods to [authenticate](/connectors/database/pinotdb/connections) user credentials with the PinotDB connector.
+
 ## Metadata Ingestion
 
 {% partial 
@@ -35,22 +39,6 @@ Configure and schedule PinotDB metadata and profiler workflows from the OpenMeta
 /%}
 
 {% stepsContainer %}
-{% extraContent parentTagName="stepsContainer" %}
-
-#### Connection Details
-
-- **Username**: Specify the User to connect to PinotDB. It should have enough privileges to read all the metadata.
-- **Password**: Password to connect to PinotDB.
-- **Host and Port**: Enter the fully qualified hostname and port number for your PinotDB deployment in the Host and Port field.
-- **databaseName**: Optional name to give to the database in OpenMetadata. If left blank, we will use default as the database name.
-- **databaseSchema**: databaseSchema of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single databaseSchema. When left blank, OpenMetadata Ingestion attempts to scan all the databaseSchema.
-- **caCertificate**: Provide the path to ssl ca file.
-- **sslCertificate**: Provide the path to ssl client certificate file (ssl_cert).
-- **sslKey**: Provide the path to ssl client certificate file (ssl_key).
-
-{% partial file="/v1.5/connectors/database/advanced-configuration.md" /%}
-
-{% /extraContent %}
 
 {% partial file="/v1.5/connectors/test-connection.md" /%}
 

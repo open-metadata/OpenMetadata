@@ -39,6 +39,10 @@ Configure and schedule DB2 metadata and profiler workflows from the OpenMetadata
 
 {% partial file="/v1.5/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/db2/yaml"} /%}
 
+## Ways to Authenticate:
+
+Here are the methods to [authenticate](/connectors/database/db2/connections) user credentials with the DB2 connector.
+
 ## Requirements
 
 To create a new Db2 user please follow the guidelines mentioned [here](https://www.ibm.com/docs/ko/samfess/8.2.0?topic=schema-creating-users-manually)
@@ -79,25 +83,6 @@ Executing the profiler workflow or data quality tests, will require the user to 
 /%}
 
 {% stepsContainer %}
-{% extraContent parentTagName="stepsContainer" %}
-
-#### Connection Details
-
-- **Username**: Specify the User to connect to DB2. It should have enough privileges to read all the metadata.
-- **Password**: Password to connect to DB2.
-- **database**: Database of the data source.
-- **Host and Port**: Enter the fully qualified hostname and port number for your DB2 deployment in the Host and Port field.
-
-{% note %}
-If you are using DB2 for IBM i:
-
-- From advanced config you need to chose `ibmi` scheme
-- In Host and Port you should not add the Port Number.
-{% /note %}
-
-{% partial file="/v1.5/connectors/database/advanced-configuration.md" /%}
-
-{% /extraContent %}
 
 {% partial file="/v1.5/connectors/test-connection.md" /%}
 

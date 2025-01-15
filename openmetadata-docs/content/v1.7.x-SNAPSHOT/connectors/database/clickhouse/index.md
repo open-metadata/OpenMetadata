@@ -29,6 +29,10 @@ Configure and schedule Clickhouse metadata and profiler workflows from the OpenM
 
 {% partial file="/v1.7/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/clickhouse/yaml"} /%}
 
+## Ways to Authenticate:
+
+Here are the methods to [authenticate](/connectors/database/clickhouse/connections) user credentials with the Clickhouse connector.
+
 ## Requirements
 
 Clickhouse user must grant `SELECT` privilege on `system.*` and schema/tables to fetch the metadata of tables and views.
