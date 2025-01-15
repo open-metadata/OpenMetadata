@@ -23,6 +23,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import javax.json.JsonPatch;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriInfo;
@@ -77,6 +79,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   private static final String PATCH_FIELDS =
       "owners,entityLink,testSuite,testSuites,testDefinition,computePassedFailedRowCount,useDynamicAssertion";
   public static final String FAILED_ROWS_SAMPLE_EXTENSION = "testCase.failedRowsSample";
+  private final ExecutorService asyncExecutor = Executors.newFixedThreadPool(1);
 
   public TestCaseRepository() {
     super(
@@ -338,7 +341,17 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   @Override
   protected void cleanup(TestCase entityInterface) {
     super.cleanup(entityInterface);
-    deleteAllTestCaseResults(entityInterface.getFullyQualifiedName());
+    asyncExecutor.submit(
+        () -> {
+          try {
+            deleteAllTestCaseResults(entityInterface.getFullyQualifiedName());
+          } catch (Exception e) {
+            LOG.error(
+                "Error deleting test case results for test case {}",
+                entityInterface.getFullyQualifiedName(),
+                e);
+          }
+        });
   }
 
   public RestUtil.PutResponse<TestCaseResult> deleteTestCaseResult(
