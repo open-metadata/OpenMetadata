@@ -14,6 +14,7 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -650,6 +651,62 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     repository.isTestSuiteBasic(create.getTestSuite());
     test = addHref(uriInfo, repository.create(uriInfo, test));
     return Response.created(test.getHref()).entity(test).build();
+  }
+
+  @POST
+  @Path("/createMany")
+  @Operation(
+      operationId = "createManyTestCase",
+      summary = "Create multiple test cases at once",
+      description = "Create multiple test cases at once up to a limit of 100 per request.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The test",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = TestCase.class))),
+        @ApiResponse(responseCode = "400", description = "Bad request"),
+        @ApiResponse(
+            responseCode = "413",
+            description = "Request entity too large (more than 100 test cases)")
+      })
+  public Response createMany(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid List<CreateTestCase> createTestCases) {
+    List<TestCase> testCases = new ArrayList<>();
+    Set<String> entityLinks =
+        createTestCases.stream().map(CreateTestCase::getEntityLink).collect(Collectors.toSet());
+    Set<String> testSuites =
+        createTestCases.stream().map(CreateTestCase::getTestSuite).collect(Collectors.toSet());
+
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.CREATE);
+
+    entityLinks.forEach(
+        link -> {
+          EntityLink entityLink = EntityLink.parse(link);
+          ResourceContextInterface resourceContext =
+              TestCaseResourceContext.builder().entityLink(entityLink).build();
+          authorizer.authorize(securityContext, operationContext, resourceContext);
+        });
+
+    testSuites.forEach(repository::isTestSuiteBasic);
+    limits.enforceBulkSizeLimit(entityType, createTestCases.size());
+
+    createTestCases.forEach(
+        create -> {
+          TestCase test =
+              mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+          limits.enforceLimits(
+              securityContext,
+              new CreateResourceContext<>(entityType, test),
+              new OperationContext(Entity.TEST_CASE, MetadataOperation.EDIT_TESTS));
+          testCases.add(test);
+        });
+    repository.createMany(uriInfo, testCases);
+    return Response.ok(testCases).build();
   }
 
   @PATCH
