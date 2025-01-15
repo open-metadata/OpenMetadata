@@ -91,6 +91,9 @@ class MysqlCliTest(CliCommonDB.TestSuite, SQACommonMethods):
     def view_column_lineage_count(self) -> int:
         return 22
 
+    def expected_lineage_node(self) -> str:
+        return "local_mysql.default.openmetadata_db.view_persons"
+
     @staticmethod
     def fqn_created_table() -> str:
         return "local_mysql.default.openmetadata_db.persons"

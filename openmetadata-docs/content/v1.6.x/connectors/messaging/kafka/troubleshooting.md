@@ -12,12 +12,9 @@ be able to connect. The accepted values for the consumer can be found in the fol
 [link](https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md), while the ones optional for
 the schema registry are [here](https://docs.confluent.io/platform/current/clients/confluent-kafka-python/html/index.html#schemaregistryclient).
 
-The image below shows what the configuration of a local Kafka server with a secured schema registry would look like:
-
-{% image
-src="/images/v1.6/connectors/kafka/kafka-config.png"
-alt="Configuration of a local Kafka server with a secured schema registry"
-caption="Configuration of a local Kafka server with a secured schema registry" /%}
+If you encounter issues connecting to the Schema Registry, ensure that the protocol is explicitly specified in the Schema Registry URL. For example:
+- Use `http://localhost:8081` instead of `localhost:8081`.
+The Schema Registry requires a properly formatted URL, including the protocol (`http://` or `https://`). While this differentiation is expected in the Schema Registry configuration, it may not be immediately apparent.
 
 In case you are performing the ingestion through the CLI with a YAML file, the service connection config should look
 like this:

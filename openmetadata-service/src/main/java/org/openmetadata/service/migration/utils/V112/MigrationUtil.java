@@ -25,8 +25,9 @@ public class MigrationUtil {
         testSuiteRepository.listAll(
             new EntityUtil.Fields(Set.of("id")), new ListFilter(Include.ALL));
     for (TestSuite suite : testSuites) {
-      if (Boolean.TRUE.equals(suite.getBasic()) && suite.getBasicEntityReference() != null) {
-        String tableFQN = suite.getBasicEntityReference().getFullyQualifiedName();
+      if (Boolean.TRUE.equals(suite.getExecutable())
+          && suite.getExecutableEntityReference() != null) {
+        String tableFQN = suite.getExecutableEntityReference().getFullyQualifiedName();
         String suiteFQN = tableFQN + ".testSuite";
         suite.setName(suiteFQN);
         suite.setFullyQualifiedName(suiteFQN);
