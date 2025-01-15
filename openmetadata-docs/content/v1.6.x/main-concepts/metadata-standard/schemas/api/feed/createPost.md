@@ -13,4 +13,4 @@ slug: /main-concepts/metadata-standard/schemas/api/feed/createpost
 - **`from`** *(string)*: Name of the User posting the message.
 
 
-Documentation file automatically generated at 2023-10-27 13:55:46.343512.
+Documentation file automatically generated at 2025-01-15 09:05:25.266839+00:00.

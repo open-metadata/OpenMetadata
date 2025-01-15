@@ -13,7 +13,7 @@ slug: /main-concepts/metadata-standard/schemas/auth/changepasswordrequest
 - **`oldPassword`** *(string)*: Name that identifies this Custom Metric.
 - **`newPassword`** *(string)*: Name of the column in a table.
 - **`confirmPassword`** *(string)*: Name of the column in a table.
-- **`requestType`** *(string)*: Name of the column in a table. Must be one of: `['SELF', 'USER']`. Default: `SELF`.
+- **`requestType`** *(string)*: Name of the column in a table. Must be one of: `["SELF", "USER"]`. Default: `"SELF"`.
 
 
-Documentation file automatically generated at 2023-10-27 13:55:46.343512.
+Documentation file automatically generated at 2025-01-15 09:05:25.266839+00:00.

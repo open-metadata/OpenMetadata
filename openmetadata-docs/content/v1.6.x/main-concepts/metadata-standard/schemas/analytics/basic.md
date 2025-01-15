@@ -9,11 +9,11 @@ slug: /main-concepts/metadata-standard/schemas/analytics/basic
 
 ## Definitions
 
-- **`webAnalyticEventType`** *(string)*: event type. Must be one of: `['PageView', 'CustomEvent']`.
+- **`webAnalyticEventType`** *(string)*: event type. Must be one of: `["PageView", "CustomEvent"]`.
 - **`fullUrl`** *(string)*: complete URL of the page.
 - **`url`** *(string)*: url part after the domain specification.
 - **`hostname`** *(string)*: domain name.
-- **`sessionId`**: Unique ID identifying a session. Refer to *../type/basic.json#/definitions/uuid*.
+- **`sessionId`**: Unique ID identifying a session. Refer to *[../type/basic.json#/definitions/uuid](#/type/basic.json#/definitions/uuid)*.
 
 
-Documentation file automatically generated at 2023-10-27 13:55:46.343512.
+Documentation file automatically generated at 2025-01-15 09:05:25.266839+00:00.

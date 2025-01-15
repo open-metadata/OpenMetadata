@@ -5,4 +5,14 @@ slug: /main-concepts/metadata-standard/schemas/security
 
 # Security
 
-Documentation file automatically generated at 2023-10-27 13:55:46.343512.
+This folder contains the following items:
+
+- [**Ssl**](/main-concepts/metadata-standard/schemas/security/ssl)
+- [**SecurityConfiguration**](/main-concepts/metadata-standard/schemas/security/securityconfiguration)
+- [**Secrets**](/main-concepts/metadata-standard/schemas/security/secrets)
+- [**Sasl**](/main-concepts/metadata-standard/schemas/security/sasl)
+- [**Client**](/main-concepts/metadata-standard/schemas/security/client)
+- [**Credentials**](/main-concepts/metadata-standard/schemas/security/credentials)
+
+
+Documentation file automatically generated at 2025-01-15 09:05:25.266839+00:00.

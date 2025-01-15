@@ -10,6 +10,7 @@ slug: /main-concepts/metadata-standard/schemas/api/feed/closetask
 ## Properties
 
 - **`comment`** *(string)*: The closing comment explaining why the task is being closed.
+- **`testCaseFQN`**: Fully qualified name of the test case. Refer to *[../../type/basic.json#/definitions/fullyQualifiedEntityName](#/../type/basic.json#/definitions/fullyQualifiedEntityName)*.
 
 
-Documentation file automatically generated at 2023-10-27 13:55:46.343512.
+Documentation file automatically generated at 2025-01-15 09:05:25.266839+00:00.

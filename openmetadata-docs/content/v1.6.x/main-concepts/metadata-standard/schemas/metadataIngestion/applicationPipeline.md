@@ -9,11 +9,13 @@ slug: /main-concepts/metadata-standard/schemas/metadataingestion/applicationpipe
 
 ## Properties
 
-- **`type`**: Pipeline type. Refer to *#/definitions/testSuiteConfigType*. Default: `TestSuite`.
-- **`entityFullyQualifiedName`**: Fully qualified name of the application to be executed. Refer to *../type/basic.json#/definitions/fullyQualifiedEntityName*.
+- **`type`**: Pipeline type. Refer to *[#/definitions/applicationConfigType](#definitions/applicationConfigType)*. Default: `"Application"`.
+- **`sourcePythonClass`** *(string)*: Source Python Class Name to run the application.
+- **`appConfig`**: Application configuration. Refer to *[../entity/applications/configuration/applicationConfig.json#/definitions/appConfig](#/entity/applications/configuration/applicationConfig.json#/definitions/appConfig)*.
+- **`appPrivateConfig`**: Application private configuration. Refer to *[../entity/applications/configuration/applicationConfig.json#/definitions/privateConfig](#/entity/applications/configuration/applicationConfig.json#/definitions/privateConfig)*.
 ## Definitions
 
-- **`testSuiteConfigType`** *(string)*: Pipeline Source Config For Application Pipeline type. Must be one of: `['Application']`. Default: `Application`.
+- **`applicationConfigType`** *(string)*: Pipeline Source Config For Application Pipeline type. Nothing is required. Must be one of: `["Application"]`. Default: `"Application"`.
 
 
-Documentation file automatically generated at 2023-10-27 13:55:46.343512.
+Documentation file automatically generated at 2025-01-15 09:05:25.266839+00:00.
