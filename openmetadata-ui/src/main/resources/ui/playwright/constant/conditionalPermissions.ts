@@ -112,6 +112,7 @@ export const assetsData = [
     assetOwnerUrl: `/service/${pipelineWithOwner.serviceType}`,
     assetTagUrl: `/service/${pipelineWithTag.serviceType}`,
   },
+  // TODO: Uncomment when search index permission issue is fixed
   // {
   //   asset: ServiceTypes.SEARCH_SERVICES,
   //   withOwner: searchIndexWithOwner,
