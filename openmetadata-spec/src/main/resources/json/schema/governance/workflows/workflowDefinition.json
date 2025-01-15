@@ -11,7 +11,8 @@
       "type": "string",
       "enum": [
         "eventBasedEntityWorkflow",
-        "periodicBatchEntityWorkflow"
+        "periodicBatchEntityWorkflow",
+        "periodicWorkflow"
       ]
     }
   },

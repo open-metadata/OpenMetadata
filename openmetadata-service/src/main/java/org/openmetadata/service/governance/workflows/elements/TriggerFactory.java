@@ -2,9 +2,11 @@ package org.openmetadata.service.governance.workflows.elements;
 
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.trigger.PeriodicBatchEntityTriggerDefinition;
+import org.openmetadata.schema.governance.workflows.elements.nodes.trigger.PeriodicTriggerDefinition;
 import org.openmetadata.schema.governance.workflows.elements.triggers.EventBasedEntityTriggerDefinition;
 import org.openmetadata.service.governance.workflows.elements.triggers.EventBasedEntityTrigger;
 import org.openmetadata.service.governance.workflows.elements.triggers.PeriodicBatchEntityTrigger;
+import org.openmetadata.service.governance.workflows.elements.triggers.PeriodicTrigger;
 import org.openmetadata.service.util.JsonUtils;
 
 public class TriggerFactory {
@@ -23,6 +25,11 @@ public class TriggerFactory {
           triggerWorkflowId,
           JsonUtils.readOrConvertValue(
               workflowDefinition.getTrigger(), PeriodicBatchEntityTriggerDefinition.class));
+      case PERIODIC_WORKFLOW -> new PeriodicTrigger(
+          mainWorkflowName,
+          triggerWorkflowId,
+          JsonUtils.readOrConvertValue(
+              workflowDefinition.getTrigger(), PeriodicTriggerDefinition.class));
     };
   }
 
