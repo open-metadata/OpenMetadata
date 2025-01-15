@@ -29,7 +29,6 @@ import java.util.concurrent.TimeUnit;
 import javax.annotation.CheckForNull;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.StringUtils;
 import org.openmetadata.api.configuration.LogoConfiguration;
 import org.openmetadata.api.configuration.ThemeConfiguration;
 import org.openmetadata.api.configuration.UiThemePreference;
@@ -89,11 +88,13 @@ public class SettingsCache {
     Settings storedOpenMetadataBaseUrlConfiguration =
         systemRepository.getConfigWithKey(OPEN_METADATA_BASE_URL_CONFIGURATION.toString());
     if (storedOpenMetadataBaseUrlConfiguration == null) {
+      OpenMetadataBaseUrlConfiguration openMetadataBaseUrlConfiguration =
+          applicationConfig.getOpenMetadataBaseUrlConfiguration();
+
       Settings setting =
           new Settings()
               .withConfigType(OPEN_METADATA_BASE_URL_CONFIGURATION)
-              .withConfigValue(
-                  new OpenMetadataBaseUrlConfiguration().withOpenMetadataUrl(StringUtils.EMPTY));
+              .withConfigValue(openMetadataBaseUrlConfiguration);
       systemRepository.createNewSetting(setting);
     }
 
