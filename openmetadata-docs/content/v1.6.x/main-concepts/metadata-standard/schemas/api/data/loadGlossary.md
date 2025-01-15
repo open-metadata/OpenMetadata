@@ -9,9 +9,9 @@ slug: /main-concepts/metadata-standard/schemas/api/data/loadglossary
 
 ## Properties
 
-- **`createGlossary`**: Refer to *createGlossary.json*.
-- **`createTerms`** *(array)*
-  - **Items**: Refer to *createGlossaryTerm.json*.
+- **`createGlossary`**: Refer to *[createGlossary.json](#eateGlossary.json)*.
+- **`createTerms`** *(array)*: Length must be at least 1.
+  - **Items**: Refer to *[createGlossaryTerm.json](#eateGlossaryTerm.json)*.
 
 
-Documentation file automatically generated at 2023-10-27 13:55:46.343512.
+Documentation file automatically generated at 2025-01-15 09:05:25.266839+00:00.
