@@ -156,8 +156,8 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
 
   @Override
   public EntityInterface getParentEntity(TestSuite entity, String fields) {
-    if (entity.getExecutable()) {
-      return Entity.getEntity(entity.getExecutableEntityReference(), fields, ALL);
+    if (entity.getBasic()) {
+      return Entity.getEntity(entity.getBasicEntityReference(), fields, ALL);
     }
     return null;
   }
