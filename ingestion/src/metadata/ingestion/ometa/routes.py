@@ -54,6 +54,7 @@ from metadata.generated.schema.api.data.createStoredProcedure import (
 )
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.data.createTopic import CreateTopicRequest
+from metadata.generated.schema.api.docStore.createDocument import CreateDocumentRequest
 from metadata.generated.schema.api.domains.createDataProduct import (
     CreateDataProductRequest,
 )
@@ -136,6 +137,7 @@ from metadata.generated.schema.entity.data.searchIndex import SearchIndex
 from metadata.generated.schema.entity.data.storedProcedure import StoredProcedure
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.data.topic import Topic
+from metadata.generated.schema.entity.docStore.document import Document
 from metadata.generated.schema.entity.domains.dataProduct import DataProduct
 from metadata.generated.schema.entity.domains.domain import Domain
 from metadata.generated.schema.entity.feed.suggestion import Suggestion
@@ -198,6 +200,8 @@ ROUTES = {
     CreateAPIEndpointRequest.__name__: "/apiEndpoints",
     APICollection.__name__: "/apiCollections",
     CreateAPICollectionRequest.__name__: "/apiCollections",
+    Document.__name__: "/docStore",
+    CreateDocumentRequest.__name__: "/docStore",
     # Classifications
     Tag.__name__: "/tags",
     CreateTagRequest.__name__: "/tags",

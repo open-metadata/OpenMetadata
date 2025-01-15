@@ -28,6 +28,7 @@ import { GlossaryTerm } from '../support/glossary/GlossaryTerm';
 import {
   clickOutside,
   closeFirstPopupAlert,
+  descriptionBox,
   getApiContext,
   INVALID_NAMES,
   NAME_MAX_LENGTH_VALIDATION_ERROR,
@@ -47,9 +48,6 @@ type TaskEntity = {
 
 const GLOSSARY_NAME_VALIDATION_ERROR = 'Name size must be between 1 and 128';
 
-export const descriptionBox =
-  '.toastui-editor-md-container > .toastui-editor > .ProseMirror';
-
 export const checkDisplayName = async (page: Page, displayName: string) => {
   await expect(page.getByTestId('entity-header-display-name')).toHaveText(
     displayName
@@ -64,11 +62,14 @@ export const selectActiveGlossary = async (
   const isSelected = await menuItem.evaluate((element) => {
     return element.classList.contains('ant-menu-item-selected');
   });
-
   if (!isSelected) {
     const glossaryResponse = page.waitForResponse('/api/v1/glossaryTerms*');
     await menuItem.click();
     await glossaryResponse;
+  } else {
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
   }
 };
 
@@ -244,7 +245,7 @@ export const createGlossary = async (
 
   await page.fill('[data-testid="name"]', glossaryData.name);
 
-  await page.fill(descriptionBox, glossaryData.description);
+  await page.locator(descriptionBox).fill(glossaryData.description);
 
   await expect(
     page.locator('[data-testid="form-item-alert"]')
@@ -390,12 +391,18 @@ export const deleteGlossary = async (page: Page, glossary: GlossaryData) => {
 export const fillGlossaryTermDetails = async (
   page: Page,
   term: GlossaryTermData,
-  validateCreateForm = true
+  validateCreateForm = true,
+  isGlossaryTerm = false
 ) => {
   // Safety check to close potential glossary not found alert
   // Arrived due to parallel testing
   await closeFirstPopupAlert(page);
-  await page.click('[data-testid="add-new-tag-button-header"]');
+
+  if (isGlossaryTerm) {
+    await page.click('[data-testid="add-placeholder-button"]');
+  } else {
+    await page.click('[data-testid="add-new-tag-button-header"]');
+  }
 
   await page.waitForSelector('[role="dialog"].edit-glossary-modal');
 
@@ -588,28 +595,39 @@ export const updateGlossaryTermDataFromTree = async (
 export const validateGlossaryTerm = async (
   page: Page,
   term: GlossaryTermData,
-  status: 'Draft' | 'Approved'
+  status: 'Draft' | 'Approved',
+  isGlossaryTermPage = false
 ) => {
   // eslint-disable-next-line no-useless-escape
   const escapedFqn = term.fullyQualifiedName.replace(/\"/g, '\\"');
   const termSelector = `[data-row-key="${escapedFqn}"]`;
   const statusSelector = `[data-testid="${escapedFqn}-status"]`;
 
-  await expect(page.locator(termSelector)).toContainText(term.name);
-  await expect(page.locator(statusSelector)).toContainText(status);
+  if (isGlossaryTermPage) {
+    await expect(page.getByTestId(term.name)).toBeVisible();
+  } else {
+    await expect(page.locator(termSelector)).toContainText(term.name);
+    await expect(page.locator(statusSelector)).toContainText(status);
+  }
 };
 
 export const createGlossaryTerm = async (
   page: Page,
   term: GlossaryTermData,
   status: 'Draft' | 'Approved',
-  validateCreateForm = true
+  validateCreateForm = true,
+  isGlossaryTermPage = false
 ) => {
-  await fillGlossaryTermDetails(page, term, validateCreateForm);
+  await fillGlossaryTermDetails(
+    page,
+    term,
+    validateCreateForm,
+    isGlossaryTermPage
+  );
   const glossaryTermResponse = page.waitForResponse('/api/v1/glossaryTerms');
   await page.click('[data-testid="save-glossary-term"]');
   await glossaryTermResponse;
-  await validateGlossaryTerm(page, term, status);
+  await validateGlossaryTerm(page, term, status, isGlossaryTermPage);
 };
 
 export const createGlossaryTerms = async (
@@ -1071,7 +1089,9 @@ export const approveTagsTask = async (
   await taskResolve;
 
   await redirectToHomePage(page);
+  const glossaryTermsResponse = page.waitForResponse('/api/v1/glossaryTerms*');
   await sidebarClick(page, SidebarItem.GLOSSARY);
+  await glossaryTermsResponse;
   await selectActiveGlossary(page, entity.data.displayName);
 
   const tagVisibility = await page.isVisible(
@@ -1221,7 +1241,11 @@ export const filterStatus = async (
   await saveButton.click();
 
   const glossaryTermsTable = page.getByTestId('glossary-terms-table');
-  const rows = glossaryTermsTable.locator('tbody tr');
+  // will select all <tr> elements inside the <tbody> but exclude those with aria-hidden="true"
+  // since we have added re-sizeable columns, that one <tr> entry is present in the tbody
+  const rows = glossaryTermsTable.locator(
+    'tbody.ant-table-tbody > tr:not([aria-hidden="true"])'
+  );
   const statusColumnIndex = 3;
 
   for (let i = 0; i < (await rows.count()); i++) {

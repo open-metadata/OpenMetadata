@@ -169,6 +169,7 @@ import org.openmetadata.service.jdbi3.CollectionDAO.EntityVersionPair;
 import org.openmetadata.service.jdbi3.CollectionDAO.ExtensionRecord;
 import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
 import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
+import org.openmetadata.service.jobs.JobDAO;
 import org.openmetadata.service.resources.tags.TagLabelUtil;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchListFilter;
@@ -237,6 +238,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   @Getter protected final String entityType;
   @Getter protected final EntityDAO<T> dao;
   @Getter protected final CollectionDAO daoCollection;
+  @Getter protected final JobDAO jobDao;
   @Getter protected final SearchRepository searchRepository;
   @Getter protected final Set<String> allowedFields;
   public final boolean supportsSoftDelete;
@@ -278,6 +280,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     allowedFields = getEntityFields(entityClass);
     this.dao = entityDAO;
     this.daoCollection = Entity.getCollectionDAO();
+    this.jobDao = Entity.getJobDAO();
     this.searchRepository = Entity.getSearchRepository();
     this.entityType = entityType;
     this.patchFields = getFields(patchFields);
@@ -782,7 +785,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
   Map<String, String> parseCursorMap(String param) {
     Map<String, String> cursorMap;
     if (param == null) {
-      cursorMap = Map.of("name", null, "id", null);
+      cursorMap = new HashMap<>();
+      cursorMap.put("name", null);
+      cursorMap.put("id", null);
     } else if (nullOrEmpty(param)) {
       cursorMap = Map.of("name", "", "id", "");
     } else {
@@ -1149,7 +1154,23 @@ public abstract class EntityRepository<T extends EntityInterface> {
       String updatedBy, UUID id, boolean recursive, boolean hardDelete) {
     DeleteResponse<T> response = deleteInternal(updatedBy, id, recursive, hardDelete);
     postDelete(response.entity());
+    deleteFromSearch(response.entity(), hardDelete);
     return response;
+  }
+
+  @SuppressWarnings("unused")
+  @Transaction
+  public final DeleteResponse<T> deleteByNameIfExists(
+      String updatedBy, String name, boolean recursive, boolean hardDelete) {
+    name = quoteFqn ? quoteName(name) : name;
+    T entity = findByNameOrNull(name, ALL);
+    if (entity != null) {
+      DeleteResponse<T> response = deleteInternalByName(updatedBy, name, recursive, hardDelete);
+      postDelete(response.entity());
+      return response;
+    } else {
+      return new DeleteResponse<>(null, ENTITY_DELETED);
+    }
   }
 
   @Transaction
@@ -1158,6 +1179,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     name = quoteFqn ? quoteName(name) : name;
     DeleteResponse<T> response = deleteInternalByName(updatedBy, name, recursive, hardDelete);
     postDelete(response.entity());
+    deleteFromSearch(response.entity(), hardDelete);
     return response;
   }
 
@@ -1168,12 +1190,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   protected void postDelete(T entity) {}
 
-  public final void deleteFromSearch(T entity, EventType changeType) {
+  public final void deleteFromSearch(T entity, boolean hardDelete) {
     if (supportsSearch) {
-      if (changeType.equals(ENTITY_SOFT_DELETED)) {
-        searchRepository.softDeleteOrRestoreEntity(entity, true);
-      } else {
+      if (hardDelete) {
         searchRepository.deleteEntity(entity);
+      } else {
+        searchRepository.softDeleteOrRestoreEntity(entity, true);
       }
     }
   }
@@ -2053,11 +2075,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
-  private boolean validateIfAllRefsAreEntityType(List<EntityReference> list, String entityType) {
+  private static boolean validateIfAllRefsAreEntityType(
+      List<EntityReference> list, String entityType) {
     return list.stream().allMatch(obj -> obj.getType().equals(entityType));
   }
 
-  public final void validateReviewers(List<EntityReference> entityReferences) {
+  public static void validateReviewers(List<EntityReference> entityReferences) {
     if (!nullOrEmpty(entityReferences)) {
       boolean areAllTeam = validateIfAllRefsAreEntityType(entityReferences, TEAM);
       boolean areAllUsers = validateIfAllRefsAreEntityType(entityReferences, USER);
@@ -2415,7 +2438,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
-  public final List<EntityReference> validateOwners(List<EntityReference> owners) {
+  public static List<EntityReference> validateOwners(List<EntityReference> owners) {
     if (nullOrEmpty(owners)) {
       return null;
     }
@@ -2818,6 +2841,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
       if (updatedByBot() && operation == Operation.PUT) {
         // Revert extension field, if being updated by a bot with a PUT request to avoid overwriting
         // custom extension
+        updated.setExtension(origExtension);
+        return;
+      }
+
+      if (operation == Operation.PUT && updatedExtension == null) {
+        // Revert change to non-empty extension if it is being updated by a PUT request
+        // For PUT operations, existing extension can't be removed.
         updated.setExtension(origExtension);
         return;
       }

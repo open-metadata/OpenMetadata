@@ -77,16 +77,17 @@ export class TableClass extends EntityClass {
       children: [
         {
           name: 'first_name',
-          dataType: 'VARCHAR',
+          dataType: 'STRUCT',
           dataLength: 100,
-          dataTypeDisplay: 'varchar',
+          dataTypeDisplay:
+            'struct<username:varchar(32),name:varchar(32),sex:char(1),address:varchar(128),mail:varchar(64),birthdate:varchar(16)>',
           description: 'First name of the staff member.',
         },
         {
           name: 'last_name',
-          dataType: 'VARCHAR',
+          dataType: 'ARRAY',
           dataLength: 100,
-          dataTypeDisplay: 'varchar',
+          dataTypeDisplay: 'array<struct<type:string,provider:array<int>>>',
         },
       ],
     },
@@ -234,11 +235,10 @@ export class TableClass extends EntityClass {
     }
 
     const testSuiteData = await apiContext
-      .post('/api/v1/dataQuality/testSuites/executable', {
+      .post('/api/v1/dataQuality/testSuites/basic', {
         data: {
           name: `pw-test-suite-${uuid()}`,
-          executableEntityReference:
-            this.entityResponseData?.['fullyQualifiedName'],
+          basicEntityReference: this.entityResponseData?.['fullyQualifiedName'],
           description: 'Playwright test suite for table',
           ...testSuite,
         },

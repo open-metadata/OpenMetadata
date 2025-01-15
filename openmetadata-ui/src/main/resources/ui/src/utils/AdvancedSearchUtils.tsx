@@ -14,7 +14,7 @@
 import Icon, { CloseCircleOutlined, PlusOutlined } from '@ant-design/icons';
 import { Button, Checkbox, MenuProps, Space, Typography } from 'antd';
 import i18next from 'i18next';
-import { isArray, isEmpty } from 'lodash';
+import { isArray, isEmpty, toLower } from 'lodash';
 import React from 'react';
 import {
   AsyncFetchListValues,
@@ -387,4 +387,26 @@ export const getTreeConfig = ({
   return searchOutputType === SearchOutputType.ElasticSearch
     ? advancedSearchClassBase.getQbConfigs(tierOptions, index, isExplorePage)
     : jsonLogicSearchClassBase.getQbConfigs(tierOptions, index, isExplorePage);
+};
+
+export const formatQueryValueBasedOnType = (
+  value: string[],
+  field: string,
+  type: string
+) => {
+  if (field.includes('extension') && type === 'text') {
+    return value.map((item) => toLower(item));
+  }
+
+  return value;
+};
+
+export const getCustomPropertyAdvanceSearchEnumOptions = (
+  enumValues: string[]
+) => {
+  return enumValues.reduce((acc: Record<string, string>, value) => {
+    acc[value] = value;
+
+    return acc;
+  }, {});
 };

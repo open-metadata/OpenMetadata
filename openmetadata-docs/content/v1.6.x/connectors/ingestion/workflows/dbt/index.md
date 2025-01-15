@@ -105,7 +105,7 @@ Table and column level tags can be imported from dbt
 Please refer [here](/connectors/ingestion/workflows/dbt/ingest-dbt-tags) for adding dbt tags
 
 {% image
-  src="/images/v1.6/features/ingestion/workflows/dbt/dbt-features/dbt-tags.webp"
+  src="/images/v1.6/features/ingestion/workflows/dbt/dbt-features/dbt-tags.png"
   alt="dbt-tags"
   caption="dbt Tags"
  /%}
@@ -156,7 +156,7 @@ Table and column level Tiers can be imported from dbt
 Please refer [here](/connectors/ingestion/workflows/dbt/ingest-dbt-tier) for adding dbt tiers
 
 {% image
-  src="/images/v1.6/features/ingestion/workflows/dbt/dbt-features/dbt-tier.webp"
+  src="/images/v1.6/features/ingestion/workflows/dbt/dbt-features/dbt-tier.png"
   alt="dbt-tiers"
   caption="dbt Tiers"
  /%}
@@ -169,7 +169,7 @@ Table and column level Glossary can be imported from dbt
 Please refer [here](/connectors/ingestion/workflows/dbt/ingest-dbt-glossary) for adding dbt glossary
 
 {% image
-  src="/images/v1.6/features/ingestion/workflows/dbt/dbt-features/dbt-glossary.webp"
+  src="/images/v1.6/features/ingestion/workflows/dbt/dbt-features/dbt-glossary.png"
   alt="dbt-glossary"
   caption="dbt Glossary"
  /%}

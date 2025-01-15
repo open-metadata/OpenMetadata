@@ -38,6 +38,12 @@ Configure and schedule Airbyte metadata and profiler workflows from the OpenMeta
 
 - **Host and Port**: Pipeline Service Management UI URL
 
+- **Username**: Username to connect to Airbyte.
+
+- **Password**: Password to connect to Airbyte.
+
+- **API Version**: Version of the Airbyte REST API by default `api/v1`.
+
 {% /extraContent %}
 
 {% partial file="/v1.6/connectors/test-connection.md" /%}

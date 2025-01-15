@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * Test case is a test definition to capture data quality tests against tables, columns, and
  * other data assets.
  */
@@ -98,9 +96,12 @@ export interface TestCase {
      */
     testDefinition: EntityReference;
     /**
-     * Test Suite that this test case belongs to.
+     * Basic Test Suite that this test case belongs to.
      */
-    testSuite:   EntityReference;
+    testSuite: EntityReference;
+    /**
+     * Basic and Logical Test Suites this test case belongs to
+     */
     testSuites?: TestSuite[];
     /**
      * Last update time corresponding to the new version of the entity in Unix epoch time
@@ -184,13 +185,15 @@ export interface FieldChange {
  *
  * Test definition that this test case is based on.
  *
- * Test Suite that this test case belongs to.
+ * Basic Test Suite that this test case belongs to.
+ *
+ * Entity reference the test suite needs to execute the test against. Only applicable if the
+ * test suite is basic.
  *
  * Domain the test Suite belongs to. When not set, the test Suite inherits the domain from
  * the table it belongs to.
  *
- * Entity reference the test suite is executed against. Only applicable if the test suite is
- * executable.
+ * DEPRECATED in 1.6.2: Use 'basicEntityReference'.
  */
 export interface EntityReference {
     /**
@@ -462,6 +465,16 @@ export interface TestResultValue {
  */
 export interface TestSuite {
     /**
+     * Indicates if the test suite is basic, i.e., the parent suite of a test and linked to an
+     * entity. Set on the backend.
+     */
+    basic?: boolean;
+    /**
+     * Entity reference the test suite needs to execute the test against. Only applicable if the
+     * test suite is basic.
+     */
+    basicEntityReference?: EntityReference;
+    /**
      * Change that lead to this version of the entity.
      */
     changeDescription?: ChangeDescription;
@@ -487,12 +500,11 @@ export interface TestSuite {
      */
     domain?: EntityReference;
     /**
-     * Indicates if the test suite is executable. Set on the backend.
+     * DEPRECATED in 1.6.2: Use 'basic'
      */
     executable?: boolean;
     /**
-     * Entity reference the test suite is executed against. Only applicable if the test suite is
-     * executable.
+     * DEPRECATED in 1.6.2: Use 'basicEntityReference'.
      */
     executableEntityReference?: EntityReference;
     /**
@@ -520,8 +532,7 @@ export interface TestSuite {
      */
     owners?: EntityReference[];
     /**
-     * References to pipelines deployed for this database service to extract metadata, usage,
-     * lineage etc..
+     * References to pipelines deployed for this Test Suite to execute the tests.
      */
     pipelines?: EntityReference[];
     /**

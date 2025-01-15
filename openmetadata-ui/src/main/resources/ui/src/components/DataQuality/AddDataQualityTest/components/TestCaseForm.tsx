@@ -63,7 +63,6 @@ import { getEntityName } from '../../../../utils/EntityUtils';
 import { generateFormFields } from '../../../../utils/formUtils';
 import { generateEntityLink } from '../../../../utils/TableUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
-import RichTextEditor from '../../../common/RichTextEditor/RichTextEditor';
 import {
   TestCaseFormProps,
   TestCaseFormType,
@@ -249,6 +248,24 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
     );
   };
 
+  const descriptionField: FieldProp = useMemo(
+    () => ({
+      name: 'description',
+      required: false,
+      label: t('label.description'),
+      id: 'root/description',
+      type: FieldTypes.DESCRIPTION,
+      props: {
+        'data-testid': 'description',
+        initialValue: initialValue?.description ?? '',
+        style: {
+          margin: 0,
+        },
+      },
+    }),
+    [initialValue?.description]
+  );
+
   useEffect(() => {
     const selectedColumn = table.columns.find(
       (column) => column.name === columnName
@@ -418,18 +435,8 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
           getFieldValue('useDynamicAssertion') ? null : generateParamsField
         }
       </Form.Item>
-      <Form.Item
-        label={t('label.description')}
-        name="description"
-        trigger="onTextChange">
-        <RichTextEditor
-          height="200px"
-          initialValue={initialValue?.description || ''}
-          style={{
-            margin: 0,
-          }}
-        />
-      </Form.Item>
+
+      {generateFormFields([descriptionField])}
 
       {isComputeRowCountFieldVisible ? generateFormFields(formFields) : null}
 

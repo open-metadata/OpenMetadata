@@ -15,10 +15,9 @@ import { Button, Divider, Form, Input, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { t } from 'i18next';
 import { trim } from 'lodash';
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import ResizablePanels from '../../../components/common/ResizablePanels/ResizablePanels';
-import RichTextEditor from '../../../components/common/RichTextEditor/RichTextEditor';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { ERROR_MESSAGE } from '../../../constants/constants';
 import { NAME_FIELD_RULES } from '../../../constants/Form.constants';
@@ -28,8 +27,10 @@ import {
   Effect,
   Rule,
 } from '../../../generated/api/policies/createPolicy';
+import { FieldProp, FieldTypes } from '../../../interface/FormUtils.interface';
 import { addPolicy } from '../../../rest/rolesAPIV1';
 import { getIsErrorMatch } from '../../../utils/CommonUtils';
+import { getField } from '../../../utils/formUtils';
 import {
   getPath,
   getPolicyWithFqnPath,
@@ -106,6 +107,26 @@ const AddPolicyPage = () => {
     }
   };
 
+  const descriptionField: FieldProp = useMemo(
+    () => ({
+      name: 'description',
+      required: false,
+      label: `${t('label.description')}:`,
+      id: 'root/description',
+      type: FieldTypes.DESCRIPTION,
+      props: {
+        'data-testid': 'description',
+        initialValue: '',
+        style: {
+          margin: 0,
+        },
+        placeHolder: t('message.write-your-description'),
+        onTextChange: (value: string) => setDescription(value),
+      },
+    }),
+    []
+  );
+
   return (
     <ResizablePanels
       className="content-height-with-resizable-panel"
@@ -143,17 +164,7 @@ const AddPolicyPage = () => {
                   />
                 </Form.Item>
 
-                <Form.Item
-                  label={`${t('label.description')}:`}
-                  name="description">
-                  <RichTextEditor
-                    height="200px"
-                    initialValue={description}
-                    placeHolder={t('message.write-your-description')}
-                    style={{ margin: 0 }}
-                    onTextChange={(value) => setDescription(value)}
-                  />
-                </Form.Item>
+                {getField(descriptionField)}
 
                 <Divider data-testid="add-rule-divider">
                   {t('label.add-entity', {

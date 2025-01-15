@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Modal, Row, Space } from 'antd';
+import { Button, Col, Modal, Row, Space, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -30,6 +30,7 @@ import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadc
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import DataQualityTab from '../../components/Database/Profiler/DataQualityTab/DataQualityTab';
 import { AddTestCaseList } from '../../components/DataQuality/AddTestCaseList/AddTestCaseList.component';
+import TestSuitePipelineTab from '../../components/DataQuality/TestSuite/TestSuitePipelineTab/TestSuitePipelineTab.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { INITIAL_PAGING_VALUE } from '../../constants/constants';
 import { DEFAULT_SORT_ORDER } from '../../constants/profiler.constant';
@@ -39,7 +40,11 @@ import {
   ResourceEntity,
 } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ACTION_TYPE, ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
-import { EntityType, TabSpecificField } from '../../enums/entity.enum';
+import {
+  EntityTabs,
+  EntityType,
+  TabSpecificField,
+} from '../../enums/entity.enum';
 import { TestCase } from '../../generated/tests/testCase';
 import { TestSuite } from '../../generated/tests/testSuite';
 import { Include } from '../../generated/type/include';
@@ -340,6 +345,48 @@ const TestSuiteDetailsPage = () => {
     [currentPage, paging, pageSize, handlePageSizeChange, handleTestCasePaging]
   );
 
+  const tabs = useMemo(
+    () => [
+      {
+        label: t('label.test-case-plural'),
+        key: EntityTabs.TEST_CASES,
+        children: (
+          <DataQualityTab
+            afterDeleteAction={fetchTestCases}
+            breadcrumbData={incidentUrlState}
+            fetchTestCases={handleSortTestCase}
+            isLoading={isLoading || isTestCaseLoading}
+            pagingData={pagingData}
+            removeFromTestSuite={testSuite ? { testSuite } : undefined}
+            showPagination={showPagination}
+            testCases={testCaseResult}
+            onTestCaseResultUpdate={handleTestSuiteUpdate}
+            onTestUpdate={handleTestSuiteUpdate}
+          />
+        ),
+      },
+      {
+        label: t('label.pipeline-plural'),
+        key: EntityTabs.PIPELINE,
+        children: (
+          <TestSuitePipelineTab isLogicalTestSuite testSuite={testSuite} />
+        ),
+      },
+    ],
+    [
+      testSuite,
+      incidentUrlState,
+      isLoading,
+      isTestCaseLoading,
+      pagingData,
+      showPagination,
+      testCaseResult,
+      handleTestSuiteUpdate,
+      handleSortTestCase,
+      fetchTestCases,
+    ]
+  );
+
   if (isLoading) {
     return <Loader />;
   }
@@ -409,18 +456,7 @@ const TestSuiteDetailsPage = () => {
         </Col>
 
         <Col span={24}>
-          <DataQualityTab
-            afterDeleteAction={fetchTestCases}
-            breadcrumbData={incidentUrlState}
-            fetchTestCases={handleSortTestCase}
-            isLoading={isLoading || isTestCaseLoading}
-            pagingData={pagingData}
-            removeFromTestSuite={{ testSuite: testSuite as TestSuite }}
-            showPagination={showPagination}
-            testCases={testCaseResult}
-            onTestCaseResultUpdate={handleTestSuiteUpdate}
-            onTestUpdate={handleTestSuiteUpdate}
-          />
+          <Tabs items={tabs} />
         </Col>
         <Col span={24}>
           <Modal

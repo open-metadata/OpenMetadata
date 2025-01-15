@@ -18,6 +18,7 @@ Configure and schedule Singlestore metadata and profiler workflows from the Open
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 - [Data Profiler](/how-to-guides/data-quality-observability/profiler/workflow)
+- [Lineage](/how-to-guides/data-lineage/workflow)
 - [Data Quality](/how-to-guides/data-quality-observability/quality)
 - [dbt Integration](/connectors/ingestion/workflows/dbt)
 

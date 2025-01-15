@@ -38,6 +38,7 @@ import org.quartz.Trigger;
 import org.quartz.TriggerBuilder;
 import org.quartz.TriggerKey;
 import org.quartz.impl.StdSchedulerFactory;
+import org.quartz.impl.matchers.GroupMatcher;
 
 @Slf4j
 public class AppScheduler {
@@ -93,8 +94,30 @@ public class AppScheduler {
         .getListenerManager()
         .addJobListener(new OmAppJobListener(dao), jobGroupEquals(APPS_JOB_GROUP));
 
+    this.resetErrorTriggers();
+
     // Start Scheduler
     this.scheduler.start();
+  }
+
+  private void resetErrorTriggers() {
+    try {
+      scheduler
+          .getTriggerKeys(GroupMatcher.anyGroup())
+          .forEach(
+              triggerKey -> {
+                try {
+                  if (scheduler.getTriggerState(triggerKey) == Trigger.TriggerState.ERROR) {
+                    LOG.info("Resetting trigger {} from error state", triggerKey);
+                    scheduler.resetTriggerFromErrorState(triggerKey);
+                  }
+                } catch (SchedulerException e) {
+                  throw new RuntimeException(e);
+                }
+              });
+    } catch (SchedulerException ex) {
+      LOG.error("Failed to reset failed triggers", ex);
+    }
   }
 
   public static void initialize(
