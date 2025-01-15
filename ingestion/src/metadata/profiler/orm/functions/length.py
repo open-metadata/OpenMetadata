@@ -43,6 +43,7 @@ def _(element, compiler, **kw):
 @compiles(LenFn, Dialects.MariaDB)
 @compiles(LenFn, Dialects.Athena)
 @compiles(LenFn, Dialects.Trino)
+@compiles(LenFn, Dialects.PinotDB)
 @compiles(LenFn, Dialects.Presto)
 @compiles(LenFn, Dialects.BigQuery)
 @compiles(LenFn, Dialects.Oracle)
@@ -55,6 +56,7 @@ def _(element, compiler, **kw):
     return "LENGTH(%s)" % compiler.process(element.clauses, **kw)
 
 
+@compiles(LenFn, Dialects.Cockroach)
 @compiles(LenFn, Dialects.Postgres)
 def _(element, compiler, **kw):
     return "LENGTH(CAST(%s AS text))" % compiler.process(element.clauses, **kw)

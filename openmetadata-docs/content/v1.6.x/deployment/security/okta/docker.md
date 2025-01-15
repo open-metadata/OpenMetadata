@@ -10,76 +10,64 @@ To enable security for the Docker deployment, follow the next steps:
 
 ## 1. Create an .env file
 
-Create an `openmetadata_okta.env` file and add the following contents as an example. Use the information
-generated when setting up the account.
+Create an `openmetadata_okta.env` file and use the following example as a reference. Replace the placeholder values with the details generated during your Okta account and application credentials setup.
 
-Note: Make sure to add the Ingestion Client ID for the Service application in `AUTHORIZER_INGESTION_PRINCIPALS`. This can be found in Okta -> Applications -> Applications, Refer to Step 3 for `Creating Service Application`.
+Check the more information about environment variable [here](/deployment/security/configuration-parameters).
 
-### 1.1 Before 0.12.1
 
-OM_AUTH_AIRFLOW_OKTA_PRIVATE_KEY to be set as per the example below using the escape sequence for quotes.
+{% codeWithLanguageSelector title="Auth Configuration" id="container-1" languagesArray=["implicit","authcode"] theme="dark" %}
 
-```shell
-# OpenMetadata Server Authentication Configuration
+```implicit
+# Implicit Flow
 AUTHORIZER_CLASS_NAME=org.openmetadata.service.security.DefaultAuthorizer
 AUTHORIZER_REQUEST_FILTER=org.openmetadata.service.security.JwtFilter
-AUTHORIZER_ADMIN_PRINCIPALS=[admin]  # Your `name` from name@domain.com
-AUTHORIZER_INGESTION_PRINCIPALS=[ingestion-bot, <service_application_client_id>]
-AUTHORIZER_PRINCIPAL_DOMAIN=open-metadata.org # Update with your domain
-
-AUTHENTICATION_PROVIDER=okta
-AUTHENTICATION_PUBLIC_KEYS=[{ISSUER_URL}/v1/keys, {your domain}/api/v1/system/config/jwks] # Update with your Domain and Make sure this "/api/v1/system/config/jwks" is always configured to enable JWT tokens
-AUTHENTICATION_AUTHORITY={ISSUER_URL} # Update with your Issuer URL
-AUTHENTICATION_CLIENT_ID={CLIENT_ID - SPA APP} # Update with your Client ID
-AUTHENTICATION_CALLBACK_URL=http://localhost:8585/callback
-
-# Airflow Configuration
-AIRFLOW_AUTH_PROVIDER=okta
-OM_AUTH_AIRFLOW_OKTA_CLIENT_ID={OM_AUTH_AIRFLOW_OKTA_CLIENT_ID:-""}
-OM_AUTH_AIRFLOW_OKTA_ORGANIZATION_URL={OM_AUTH_AIRFLOW_OKTA_ORGANIZATION_URL:-""}
-OM_AUTH_AIRFLOW_OKTA_PRIVATE_KEY=\'{"p":"lorem","kty":"RSA","q":"ipsum","d":"dolor","e":"AQAB","use":"sig","kid":"0oa5p908cltOc4fsl5d7","qi":"lorem","dp":"lorem","alg":"RS256","dq":"ipsum","n":"dolor"}\'
-OM_AUTH_AIRFLOW_OKTA_SA_EMAIL={OM_AUTH_AIRFLOW_OKTA_SA_EMAIL:-""}
-OM_AUTH_AIRFLOW_OKTA_SCOPES={OM_AUTH_AIRFLOW_OKTA_SCOPES:-[]}
-```
-
-### 1.2 After 0.12.1
-
-```shell
-# OpenMetadata Server Authentication Configuration
-AUTHORIZER_CLASS_NAME=org.openmetadata.service.security.DefaultAuthorizer
-AUTHORIZER_REQUEST_FILTER=org.openmetadata.service.security.JwtFilter
-AUTHORIZER_ADMIN_PRINCIPALS=[admin]  # Your `name` from name@domain.com
-AUTHORIZER_INGESTION_PRINCIPALS=[ingestion-bot, <service_application_client_id>]
-AUTHORIZER_PRINCIPAL_DOMAIN=open-metadata.org # Update with your domain
-
+AUTHORIZER_ADMIN_PRINCIPALS=[admin]                 # john.doe from john.doe@example.com
+AUTHORIZER_PRINCIPAL_DOMAIN=open-metadata.org       # Update with your Domain,The primary domain for the organization (example.com from john.doe@example.com).
 AUTHENTICATION_PROVIDER=okta
 AUTHENTICATION_PUBLIC_KEYS={ISSUER_URL}/v1/keys # Update with your Issuer URL
-AUTHENTICATION_AUTHORITY={ISSUER_URL} # Update with your Issuer URL
-AUTHENTICATION_CLIENT_ID={CLIENT_ID - SPA APP} # Update with your Client ID
+AUTHENTICATION_AUTHORITY={ISSUER_URL}           # Update with your Issuer URL
+AUTHENTICATION_CLIENT_ID={CLIENT_ID}            # Update with your Client ID
 AUTHENTICATION_CALLBACK_URL=http://localhost:8585/callback
+AUTHENTICATION_CLIENT_TYPE= public
 ```
 
-### 1.3 After 0.13.0
-
-```shell
-# OpenMetadata Server Authentication Configuration
+```authcode
+# Auth Code Flow 
 AUTHORIZER_CLASS_NAME=org.openmetadata.service.security.DefaultAuthorizer
 AUTHORIZER_REQUEST_FILTER=org.openmetadata.service.security.JwtFilter
-AUTHORIZER_ADMIN_PRINCIPALS=[admin]  # Your `name` from name@domain.com
-AUTHORIZER_PRINCIPAL_DOMAIN=open-metadata.org # Update with your domain
-
+AUTHORIZER_ADMIN_PRINCIPALS=[admin]                 # john.doe from john.doe@example.com
+AUTHORIZER_PRINCIPAL_DOMAIN=open-metadata.org       # Update with your Domain,The primary domain for the organization (example.com from john.doe@example.com).
 AUTHENTICATION_PROVIDER=okta
-AUTHENTICATION_PUBLIC_KEYS={ISSUER_URL}/v1/keys # Update with your Issuer URL
-AUTHENTICATION_AUTHORITY={ISSUER_URL} # Update with your Issuer URL
-AUTHENTICATION_CLIENT_ID={CLIENT_ID - SPA APP} # Update with your Client ID
-AUTHENTICATION_CALLBACK_URL=http://localhost:8585/callback
-```
+AUTHENTICATION_PUBLIC_KEYS=[{ISSUER_URL}/v1/keys,{your domain}/api/v1/system/config/jwks]   # Update with your Issuer URL and  Domain also Make sure this "/api/v1/system/config/jwks" is always configured to enable JWT tokens
+AUTHENTICATION_AUTHORITY={ISSUER_URL}           # Update with your Issuer URL
+AUTHENTICATION_CLIENT_ID={Client ID}            # Update with your Client ID
+AUTHENTICATION_CALLBACK_URL=http://localhost:8585/callback 
+AUTHENTICATION_CLIENT_TYPE=confidential
 
-**Note:** Follow [this](/developers/bots) guide to configure the `ingestion-bot` credentials for
-ingesting data from Airflow.
+OIDC_CLIENT_ID={Client ID}                      # Update with your Client ID
+OIDC_TYPE=okta
+OIDC_CLIENT_SECRET={Client Secret}              # Update with your Client Secret
+OIDC_DISCOVERY_URI: http://{ISSUER_URL}/.well-known/openid-configuration        # Update with your Issuer URL
+OIDC_CALLBACK: ${OIDC_CALLBACK:-"http://localhost:8585/callback"}
+
+```
+{% /codeWithLanguageSelector %}
+
 
 ## 2. Start Docker
 
 ```commandline
 docker compose --env-file ~/openmetadata_okta.env up -d
 ```
+
+{% partial file="/v1.6/deployment/configure-ingestion.md" /%}
+
+{% inlineCalloutContainer %}
+  {% inlineCallout
+    color="violet-70"
+    icon="MdArrowBack"
+    bold="OKTA"
+    href="/deployment/security/okta" %}
+    Go to okta Configuration
+  {% /inlineCallout %}
+{% /inlineCalloutContainer %}

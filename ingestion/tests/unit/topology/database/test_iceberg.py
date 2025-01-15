@@ -390,7 +390,7 @@ MOCK_HIVE_CONFIG = {
         "openMetadataServerConfig": {
             "hostPort": "http://localhost:8585/api",
             "authProvider": "openmetadata",
-            "securityConfig": {"jwtToken": "token"},
+            "securityConfig": {"jwtToken": "iceberg"},
         }
     },
 }
@@ -415,7 +415,7 @@ MOCK_REST_CONFIG = {
         "openMetadataServerConfig": {
             "hostPort": "http://localhost:8585/api",
             "authProvider": "openmetadata",
-            "securityConfig": {"jwtToken": "token"},
+            "securityConfig": {"jwtToken": "iceberg"},
         }
     },
 }
@@ -447,7 +447,7 @@ MOCK_GLUE_CONFIG = {
         "openMetadataServerConfig": {
             "hostPort": "http://localhost:8585/api",
             "authProvider": "openmetadata",
-            "securityConfig": {"jwtToken": "token"},
+            "securityConfig": {"jwtToken": "iceberg"},
         }
     },
 }
@@ -481,7 +481,7 @@ MOCK_DYNAMO_CONFIG = {
         "openMetadataServerConfig": {
             "hostPort": "http://localhost:8585/api",
             "authProvider": "openmetadata",
-            "securityConfig": {"jwtToken": "token"},
+            "securityConfig": {"jwtToken": "iceberg"},
         }
     },
 }

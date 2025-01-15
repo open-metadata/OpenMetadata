@@ -76,6 +76,7 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "pipelines")
 public class PipelineResource extends EntityResource<Pipeline, PipelineRepository> {
   public static final String COLLECTION_PATH = "v1/pipelines/";
+  private final PipelineMapper mapper = new PipelineMapper();
   static final String FIELDS =
       "owners,tasks,pipelineStatus,followers,tags,extension,scheduleInterval,domain,sourceHash";
 
@@ -311,7 +312,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreatePipeline create) {
-    Pipeline pipeline = getPipeline(create, securityContext.getUserPrincipal().getName());
+    Pipeline pipeline = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, pipeline);
   }
 
@@ -392,7 +393,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreatePipeline create) {
-    Pipeline pipeline = getPipeline(create, securityContext.getUserPrincipal().getName());
+    Pipeline pipeline = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, pipeline);
   }
 
@@ -424,7 +425,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_STATUS);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
-    return repository.addPipelineStatus(uriInfo, fqn, pipelineStatus).toResponse();
+    return repository.addPipelineStatus(fqn, pipelineStatus).toResponse();
   }
 
   @GET
@@ -668,18 +669,5 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
-  }
-
-  private Pipeline getPipeline(CreatePipeline create, String user) {
-    return repository
-        .copy(new Pipeline(), create, user)
-        .withService(getEntityReference(Entity.PIPELINE_SERVICE, create.getService()))
-        .withTasks(create.getTasks())
-        .withSourceUrl(create.getSourceUrl())
-        .withConcurrency(create.getConcurrency())
-        .withStartDate(create.getStartDate())
-        .withPipelineLocation(create.getPipelineLocation())
-        .withScheduleInterval(create.getScheduleInterval())
-        .withSourceHash(create.getSourceHash());
   }
 }

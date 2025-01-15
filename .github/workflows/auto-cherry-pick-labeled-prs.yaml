@@ -5,13 +5,14 @@ run-name: OpenMetadata release cherry-pick PR #${{ github.event.pull_request.num
 
 # yamllint disable-line rule:truthy
 on:
-  pull_request:
+  pull_request_target:
     types: [closed]
     branches:
       - main
 permissions:
   contents: write
   pull-requests: write
+  issues: write
 env:
   CURRENT_RELEASE_ENDPOINT: ${{ vars.CURRENT_RELEASE_ENDPOINT }}  # Endpoint that returns the current release version in json format
 jobs:
