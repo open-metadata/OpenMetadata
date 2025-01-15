@@ -267,6 +267,7 @@ const IncidentManagerPageHeader = ({
 
           <TestCaseIncidentManagerStatus
             data={testCaseStatusData}
+            hasPermission={hasEditStatusPermission}
             usersList={initialAssignees}
             onSubmit={onIncidentStatusUpdate}
           />
@@ -298,13 +299,20 @@ const IncidentManagerPageHeader = ({
           <span className="text-grey-muted">{`${t('label.severity')}: `}</span>
 
           <Severity
+            hasPermission={hasEditStatusPermission}
             severity={testCaseStatusData.severity}
             onSubmit={handleSeverityUpdate}
           />
         </Typography.Text>
       </>
     );
-  }, [testCaseStatusData, isLoading, activeTask, initialAssignees]);
+  }, [
+    testCaseStatusData,
+    isLoading,
+    activeTask,
+    initialAssignees,
+    hasEditStatusPermission,
+  ]);
 
   return (
     <Space wrap align="center">
