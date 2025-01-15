@@ -18,6 +18,7 @@ Configure and schedule Druid metadata and profiler workflows from the OpenMetada
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 - [Data Profiler](#data-profiler)
+- [Lineage](#lineage)
 - [Data Quality](#data-quality)
 - [dbt Integration](#dbt-integration)
 
@@ -150,6 +151,8 @@ source:
 
 
 {% partial file="/v1.7/connectors/yaml/ingestion-cli.md" /%}
+
+{% partial file="/v1.7/connectors/yaml/lineage.md" variables={connector: "druid"} /%}
 
 {% partial file="/v1.7/connectors/yaml/data-profiler.md" variables={connector: "druid"} /%}
 

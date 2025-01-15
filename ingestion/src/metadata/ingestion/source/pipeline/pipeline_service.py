@@ -54,6 +54,7 @@ from metadata.ingestion.source.pipeline.openlineage.models import TableDetails
 from metadata.ingestion.source.pipeline.openlineage.utils import FQNNotFoundException
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_pipeline
+from metadata.utils.helpers import retry_with_docker_host
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -133,6 +134,7 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
     context = TopologyContextManager(topology)
     pipeline_source_state: Set = set()
 
+    @retry_with_docker_host()
     def __init__(
         self,
         config: WorkflowSource,
