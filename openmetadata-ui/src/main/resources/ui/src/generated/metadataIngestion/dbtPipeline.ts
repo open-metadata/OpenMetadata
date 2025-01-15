@@ -47,6 +47,10 @@ export interface DbtPipeline {
      */
     schemaFilterPattern?: FilterPattern;
     /**
+     * Optional configuration to search across databases for tables or not
+     */
+    searchAcrossDatabases?: boolean;
+    /**
      * Regex exclude tables or databases that matches the pattern.
      */
     tableFilterPattern?: FilterPattern;
