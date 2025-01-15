@@ -183,7 +183,7 @@ source:
   serviceName: local_sagemaker
   serviceConnection:
     config:
-      type: Sagemaker
+      type: SageMaker
       awsConfig:
 ```
 ```yaml {% srNumber=1 %}
