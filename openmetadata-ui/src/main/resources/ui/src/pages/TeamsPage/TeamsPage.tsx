@@ -288,7 +288,7 @@ const TeamsPage = () => {
 
       const res = await createTeam(teamData);
       if (res) {
-        fetchTeamBasicDetails(selectedTeam.name, true);
+        await fetchTeamBasicDetails(selectedTeam.name, true);
         handleAddTeam(false);
         loadAdvancedDetails();
       }
