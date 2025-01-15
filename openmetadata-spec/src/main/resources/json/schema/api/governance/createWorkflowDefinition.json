@@ -41,6 +41,7 @@
       "description": "List of processes used on the workflow.",
       "type": "array",
       "items": {
+        "existingJavaType": "org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface",
         "oneOf": [
           {
             "$ref": "../../governance/workflows/elements/nodes/automatedTask/checkEntityAttributesTask.json"

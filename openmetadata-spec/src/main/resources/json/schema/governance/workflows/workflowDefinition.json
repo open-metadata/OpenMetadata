@@ -73,7 +73,12 @@
       "description": "Workflow Trigger."
     },
     "nodes": {
-      "description": "List of nodes used on the workflow."
+      "description": "List of nodes used on the workflow.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "existingJavaType": "org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface"
+      }
     },
     "edges": {
       "description": "List of edges that connect the workflow elements and guide its flow.",
