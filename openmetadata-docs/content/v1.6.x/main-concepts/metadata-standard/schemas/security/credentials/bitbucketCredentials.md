@@ -9,14 +9,14 @@ slug: /main-concepts/metadata-standard/schemas/security/credentials/bitbucketcre
 
 ## Properties
 
-- **`type`**: Credentials Type. Refer to *#/definitions/bitbucketType*. Default: `BitBucket`.
-- **`repositoryOwner`**: Refer to *gitCredentials.json#/definitions/repositoryOwner*.
-- **`repositoryName`**: Refer to *gitCredentials.json#/definitions/repositoryName*.
-- **`token`**: Refer to *gitCredentials.json#/definitions/token*.
+- **`type`**: Credentials Type. Refer to *[#/definitions/bitbucketType](#definitions/bitbucketType)*. Default: `"BitBucket"`.
+- **`repositoryOwner`**: Refer to *[gitCredentials.json#/definitions/repositoryOwner](#tCredentials.json#/definitions/repositoryOwner)*.
+- **`repositoryName`**: Refer to *[gitCredentials.json#/definitions/repositoryName](#tCredentials.json#/definitions/repositoryName)*.
+- **`token`**: Refer to *[gitCredentials.json#/definitions/token](#tCredentials.json#/definitions/token)*.
 - **`branch`** *(string)*: Main production branch of the repository. E.g., `main`.
 ## Definitions
 
-- **`bitbucketType`** *(string)*: BitBucket Credentials type. Must be one of: `['BitBucket']`. Default: `BitBucket`.
+- **`bitbucketType`** *(string)*: BitBucket Credentials type. Must be one of: `["BitBucket"]`. Default: `"BitBucket"`.
 
 
-Documentation file automatically generated at 2023-10-27 13:55:46.343512.
+Documentation file automatically generated at 2025-01-15 09:05:25.266839+00:00.
