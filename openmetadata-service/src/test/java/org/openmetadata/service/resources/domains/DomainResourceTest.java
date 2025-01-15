@@ -153,6 +153,14 @@ public class DomainResourceTest extends EntityResourceTest<Domain, CreateDomain>
         .withExperts(listOf(USER1.getFullyQualifiedName()));
   }
 
+  public CreateDomain createRequestWithoutOwnersExperts(String name) {
+    return new CreateDomain()
+        .withName(name)
+        .withDomainType(DomainType.AGGREGATE)
+        .withDescription("name")
+        .withStyle(new Style().withColor("#FFA07A").withIconURL("https://domainIcon"));
+  }
+
   @Override
   public void validateCreatedEntity(
       Domain createdEntity, CreateDomain request, Map<String, String> authHeaders) {

@@ -37,7 +37,7 @@ import { getFilterTags } from '../../../utils/TableTags/TableTags.utils';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
 import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
 import Loader from '../../common/Loader/Loader';
-import RichTextEditorPreviewer from '../../common/RichTextEditor/RichTextEditorPreviewer';
+import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import TabsLabel from '../../common/TabsLabel/TabsLabel.component';
 import DataAssetsVersionHeader from '../../DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
 import DataProductsContainer from '../../DataProducts/DataProductsContainer/DataProductsContainer.component';
@@ -111,14 +111,14 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
         key: 'name',
         width: 250,
         render: (_, record) => (
-          <RichTextEditorPreviewer markdown={getEntityName(record)} />
+          <RichTextEditorPreviewerV1 markdown={getEntityName(record)} />
         ),
       },
       {
         title: t('label.task-entity', { entity: t('label.type-lowercase') }),
         dataIndex: 'taskType',
         key: 'taskType',
-        render: (taskType) => <RichTextEditorPreviewer markdown={taskType} />,
+        render: (taskType) => <RichTextEditorPreviewerV1 markdown={taskType} />,
       },
       {
         title: t('label.description'),
@@ -126,7 +126,7 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
         key: 'description',
         render: (text) =>
           text ? (
-            <RichTextEditorPreviewer markdown={text} />
+            <RichTextEditorPreviewerV1 markdown={text} />
           ) : (
             <span className="text-grey-muted">{t('label.no-description')}</span>
           ),
