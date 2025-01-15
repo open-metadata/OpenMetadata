@@ -222,15 +222,21 @@ export const redirectToBotPage = async (page: Page) => {
   await fetchResponse;
 };
 
-export const resetTokenFromProfilerBotPage = async (page: Page) => {
+export const resetTokenFromBotPage = async (
+  page: Page,
+  bot: {
+    name: string;
+    testId: string;
+  }
+) => {
   await settingClick(page, GlobalSettingOptions.BOTS);
 
   await page.getByTestId('searchbar').click();
-  await page.getByTestId('searchbar').fill('profiler');
+  await page.getByTestId('searchbar').fill(bot.name);
 
-  await expect(page.getByTestId('bot-link-ProfilerBot')).toBeVisible();
+  await expect(page.getByTestId(bot.testId)).toBeVisible();
 
-  await page.getByTestId('bot-link-ProfilerBot').click();
+  await page.getByTestId(bot.testId).click();
 
   await expect(page.getByTestId('revoke-button')).toBeVisible();
 

@@ -18,7 +18,7 @@ import {
   TestType,
 } from '@playwright/test';
 import { env } from 'process';
-import { resetTokenFromProfilerBotPage } from '../../../utils/bot';
+import { resetTokenFromBotPage } from '../../../utils/bot';
 import {
   getApiContext,
   redirectToHomePage,
@@ -87,7 +87,10 @@ class MysqlIngestionClass extends ServiceBaseClass {
       await redirectToHomePage(page);
 
       // Todo: Remove this patch once the issue is fixed #19140
-      await resetTokenFromProfilerBotPage(page);
+      await resetTokenFromBotPage(page, {
+        name: 'profiler',
+        testId: 'bot-link-ProfilerBot',
+      });
 
       await visitServiceDetailsPage(
         page,
