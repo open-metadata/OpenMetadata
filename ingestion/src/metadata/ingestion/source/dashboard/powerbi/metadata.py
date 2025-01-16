@@ -263,7 +263,12 @@ class PowerbiSource(DashboardServiceSource):
         """
         Method to yield datamodel for each workspace
         """
-        workspace_datasets = self.context.get().workspace.datasets
+        if isinstance(dashboard_details, PowerBIReport):
+            workspace_datasets = self._fetch_dataset_from_workspace(
+                dashboard_details.datasetId
+            )
+        else:
+            workspace_datasets = self.context.get().workspace.datasets
         for dataset in workspace_datasets:
             if filter_by_datamodel(
                 self.source_config.dataModelFilterPattern, dataset.name
