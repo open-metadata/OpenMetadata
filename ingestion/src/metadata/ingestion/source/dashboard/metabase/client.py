@@ -13,7 +13,7 @@ REST Auth & Client for Metabase
 """
 import json
 import traceback
-from typing import List, Optional
+from typing import List, Optional, Dict
 
 import requests
 
@@ -31,6 +31,7 @@ from metadata.ingestion.source.dashboard.metabase.models import (
     MetabaseDatabase,
     MetabaseTable,
     MetabaseUser,
+    MetabaseChart,
 )
 from metadata.utils.constants import AUTHORIZATION_HEADER, NO_ACCESS_TOKEN
 from metadata.utils.helpers import clean_uri
@@ -145,15 +146,37 @@ class MetabaseClient:
             logger.debug(traceback.format_exc())
             logger.warning("Failed to fetch the collections list")
         return []
+    
+    def get_charts_dict(self) -> Dict:
+        charts_dict = {}
+        try:
+            resp_charts = self.client.get("/card")
+            if resp_charts:
+                for chart_data in resp_charts:
+                    chart = MetabaseChart.model_validate(chart_data)
+                    charts_dict[chart.id] = chart
+            return charts_dict
+        except Exception:
+            logger.debug(traceback.format_exc())
+            logger.warning("Failed to fetch the collections list")
+        return {}
 
     def get_dashboard_details(
-        self, dashboard_id: str
+        self, dashboard_id: str, charts_dict: Dict, orphan_charts_id: List
     ) -> Optional[MetabaseDashboardDetails]:
         """
         Get Dashboard Details
         """
         if not dashboard_id:
             return None  # don't call api if dashboard_id is None
+        if dashboard_id == "19d13415-7e76-4efc-ab22-3ffbe5e2ae9c":
+            dashboard_data = {
+                    "description": "Contains charts not associated with any dashboard",
+                    "name": "Default Dashboard",
+                    "id": "19d13415-7e76-4efc-ab22-3ffbe5e2ae9c",
+                    "card_ids": orphan_charts_id
+                }
+            return MetabaseDashboardDetails(**dashboard_data)
         try:
             resp_dashboard = self.client.get(f"/dashboard/{dashboard_id}")
             if resp_dashboard:
@@ -161,7 +184,24 @@ class MetabaseClient:
                 # https://www.metabase.com/releases/metabase-48#fyi--breaking-changes
                 if "ordered_cards" in resp_dashboard:
                     resp_dashboard["dashcards"] = resp_dashboard["ordered_cards"]
-                return MetabaseDashboardDetails(**resp_dashboard)
+                card_ids = []
+                for card in resp_dashboard["dashcards"]:
+                    if card.get("card") and card["card"].get("id"):
+                        card_id = str(card["card"]["id"])
+                        card_ids.append(card_id)
+                        if card_id in charts_dict:
+                            charts_dict[card_id].dashboard_ids.append(dashboard_id)
+
+                dashboard_data = {
+                    "description": resp_dashboard.get("description"),
+                    "name": resp_dashboard.get("name"),
+                    "id": resp_dashboard.get("id"),
+                    "creator_id": resp_dashboard.get("creator_id"),
+                    "collection_id": resp_dashboard.get("collection_id"),
+                    "card_ids": card_ids
+                }
+
+                return MetabaseDashboardDetails(**dashboard_data)
         except Exception:
             logger.debug(traceback.format_exc())
             logger.warning(f"Failed to fetch the dashboard with id: {dashboard_id}")

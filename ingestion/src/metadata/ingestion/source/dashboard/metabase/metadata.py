@@ -11,7 +11,7 @@
 """Metabase source module"""
 
 import traceback
-from typing import Any, Iterable, List, Optional
+from typing import Any, Iterable, List, Optional, Dict
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
@@ -92,16 +92,23 @@ class MetabaseSource(DashboardServiceSource):
     ):
         super().__init__(config, metadata)
         self.collections: List[MetabaseCollection] = []
+        self.dashboards_list: List[MetabaseDashboard] = []
+        self.charts_dict: Dict[str] = {}
+        self.orphan_charts_id: List[str] = []
+        self._default_dashboard_added = False
+        
 
     def prepare(self):
         self.collections = self.client.get_collections_list()
+        self.charts_dict = self.client.get_charts_dict()
         return super().prepare()
 
     def get_dashboards_list(self) -> Optional[List[MetabaseDashboard]]:
         """
         Get List of all dashboards
         """
-        return self.client.get_dashboards_list(self.collections)
+        self.dashboards_list = self.client.get_dashboards_list(self.collections)
+        return self.dashboards_list
 
     def get_dashboard_name(self, dashboard: MetabaseDashboard) -> str:
         """
@@ -115,7 +122,29 @@ class MetabaseSource(DashboardServiceSource):
         """
         Get Dashboard Details
         """
-        return self.client.get_dashboard_details(dashboard.id)
+        retrieved_dashboards =  self.client.get_dashboard_details(dashboard.id, self.charts_dict, self.orphan_charts_id)
+        if (
+            retrieved_dashboards
+            and dashboard == self.dashboards_list[-1]
+            and not self._default_dashboard_added
+        ):
+            self.orphan_charts_id = [
+                chart_id
+                for chart_id, chart in self.charts_dict.items()
+                if not chart.dashboard_ids
+            ]
+            if self.orphan_charts_id:
+                #add the default dashboard to the dashboards list
+                # dashboards = self.get_dashboards_list()
+                default_dashboard = MetabaseDashboard(
+                    id="19d13415-7e76-4efc-ab22-3ffbe5e2ae9c",
+                    name="Default Dashboard",
+                    description="Contains charts not associated with any dashboard",
+                    collection_id=None
+                )
+                if default_dashboard not in self.dashboards_list:
+                    self.dashboards_list.append(default_dashboard)
+        return retrieved_dashboards
 
     def get_project_name(self, dashboard_details: Any) -> Optional[str]:
         """
@@ -211,10 +240,10 @@ class MetabaseSource(DashboardServiceSource):
         Returns:
             Iterable[CreateChartRequest]
         """
-        charts = dashboard_details.dashcards
-        for chart in charts:
+        chart_ids = dashboard_details.card_ids
+        for chart_id in chart_ids:
             try:
-                chart_details = chart.card
+                chart_details = self.charts_dict[chart_id]
                 if not chart_details.id or not chart_details.name:
                     continue
                 chart_url = (
@@ -240,7 +269,7 @@ class MetabaseSource(DashboardServiceSource):
                 yield Either(
                     left=StackTraceError(
                         name="Chart",
-                        error=f"Error creating chart [{chart}]: {exc}",
+                        error=f"Error creating chart [{self.charts_dict[chart_id]}]: {exc}",
                         stackTrace=traceback.format_exc(),
                     )
                 )
