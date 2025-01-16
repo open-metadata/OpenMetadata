@@ -122,6 +122,22 @@ following [link](https://docs.confluent.io/platform/current/clients/confluent-ka
 
 {% /codeInfo %}
 
+{% codeInfo srNumber=9 %}
+**securityProtocol**: security.protocol consumer config property. It accepts `PLAINTEXT`,`SASL_PLAINTEXT`, `SASL_SSL`, `SSL`.
+{% /codeInfo %}
+
+{% codeInfo srNumber=10 %}
+**schemaRegistryTopicSuffixName**: Schema Registry Topic Suffix Name. The suffix to be appended to the topic name to get topic schema from registry.
+{% /codeInfo %}
+
+{% codeInfo srNumber=11 %}
+**schemaRegistrySSL**: Schema Registry SSL Config. Configuration for enabling SSL for the Schema Registry connection.
+{% /codeInfo %}
+
+{% codeInfo srNumber=12 %}
+**supportsMetadataExtraction**: Supports Metadata Extraction. `supportsMetadataExtraction` supports boolean value either true or false.
+{% /codeInfo %}
+
 {% partial file="/v1.6/connectors/yaml/messaging/source-config-def.md" /%}
 
 {% partial file="/v1.6/connectors/yaml/ingestion-sink-def.md" /%}
@@ -163,6 +179,18 @@ source:
 ```
 ```yaml {% srNumber=8 %}
       schemaRegistryConfig: {}
+```
+```yaml {% srNumber=9 %}
+      # securityProtocol: PLAINTEXT
+```
+```yaml {% srNumber=10 %}
+      # schemaRegistryTopicSuffixName: -value
+```
+```yaml {% srNumber=11 %}
+      # schemaRegistrySSL: ""
+```
+```yaml {% srNumber=12 %}
+      # supportsMetadataExtraction: true
 ```
 
 {% partial file="/v1.6/connectors/yaml/messaging/source-config.md" /%}

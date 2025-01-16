@@ -18,13 +18,13 @@ Configure and schedule Redpanda metadata and profiler workflows from the OpenMet
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 
-{% partial file="/v1.7/connectors/external-ingestion-deployment.md" /%}
+{% partial file="/v1.6/connectors/external-ingestion-deployment.md" /%}
 
 ## Requirements
 
 ### Python Requirements
 
-{% partial file="/v1.7/connectors/python-requirements.md" /%}
+{% partial file="/v1.6/connectors/python-requirements.md" /%}
 
 To run the Redpanda ingestion, you will need to install:
 
@@ -117,11 +117,19 @@ following [link](https://docs.confluent.io/platform/current/clients/confluent-ka
 
 {% /codeInfo %}
 
-{% partial file="/v1.7/connectors/yaml/messaging/source-config-def.md" /%}
+{% codeInfo srNumber=9 %}
+**securityProtocol**: security.protocol consumer config property. It accepts `PLAINTEXT`,`SASL_PLAINTEXT`, `SASL_SSL`, `SSL`.
+{% /codeInfo}
 
-{% partial file="/v1.7/connectors/yaml/ingestion-sink-def.md" /%}
+{% codeInfo srNumber=10 %}
+**supportsMetadataExtraction**: Supports Metadata Extraction. `supportsMetadataExtraction` supports boolean value either true or false.
+{% /codeInfo %}
 
-{% partial file="/v1.7/connectors/yaml/workflow-config-def.md" /%}
+{% partial file="/v1.6/connectors/yaml/messaging/source-config-def.md" /%}
+
+{% partial file="/v1.6/connectors/yaml/ingestion-sink-def.md" /%}
+
+{% partial file="/v1.6/connectors/yaml/workflow-config-def.md" /%}
 
 {% /codeInfoContainer %}
 
@@ -159,15 +167,22 @@ source:
 ```yaml {% srNumber=8 %}
       schemaRegistryConfig: {}
 ```
+```yaml {% srNumber=9 %}  
+      # securityProtocol: PLAINTEXT
+```
+```yaml {% srNumber=10 %}
+      # supportsMetadataExtraction: true
+```
 
-{% partial file="/v1.7/connectors/yaml/messaging/source-config.md" /%}
 
-{% partial file="/v1.7/connectors/yaml/ingestion-sink.md" /%}
+{% partial file="/v1.6/connectors/yaml/messaging/source-config.md" /%}
 
-{% partial file="/v1.7/connectors/yaml/workflow-config.md" /%}
+{% partial file="/v1.6/connectors/yaml/ingestion-sink.md" /%}
+
+{% partial file="/v1.6/connectors/yaml/workflow-config.md" /%}
 
 {% /codeBlock %}
 
 {% /codePreview %}
 
-{% partial file="/v1.7/connectors/yaml/ingestion-cli.md" /%}
+{% partial file="/v1.6/connectors/yaml/ingestion-cli.md" /%}
