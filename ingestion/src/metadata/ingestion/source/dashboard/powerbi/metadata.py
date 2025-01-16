@@ -264,6 +264,7 @@ class PowerbiSource(DashboardServiceSource):
         Method to yield datamodel for each workspace
         """
         if isinstance(dashboard_details, PowerBIReport):
+            # for `PowerBIReport` type dashboard, only link datasets mentioned in API response
             workspace_datasets = self._fetch_dataset_from_workspace(
                 dashboard_details.datasetId
             )
