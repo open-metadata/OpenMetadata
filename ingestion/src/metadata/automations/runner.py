@@ -73,18 +73,18 @@ def _(
 
     try:
         connection = get_connection(request.connection.config)
-
-        host_port_str = str(request.connection.config.hostPort or "")
-        if "localhost" in host_port_str:
-            result = test_connection_fn(metadata, connection, request.connection.config)
-            raise_test_connection_exception(result)
+        if hasattr(request.connection.config, "hostPort"):
+            host_port_str = str(request.connection.config.hostPort or "")
+            if "localhost" in host_port_str:
+                result = test_connection_fn(metadata, connection, request.connection.config)
+                raise_test_connection_exception(result)
 
         test_connection_fn(
             metadata, connection, request.connection.config, automation_workflow
         )
     except Exception as error:
         host_port_str = str(getattr(request.connection.config, "hostPort", None) or "")
-        if "localhost" not in host_port_str:
+        if not host_port_str or "localhost" not in host_port_str:
             raise error
 
         host_port_type = type(request.connection.config.hostPort)
