@@ -204,7 +204,9 @@ const TestConnection: FC<TestConnectionProps> = ({
 
   const handleWorkflowPolling = async (
     response: Workflow,
-    intervalId: number | undefined
+    intervalObject: {
+      intervalId?: number;
+    }
   ) => {
     // return a promise that wraps the interval and handles errors inside it
     return new Promise<void>((resolve, reject) => {
@@ -212,7 +214,7 @@ const TestConnection: FC<TestConnectionProps> = ({
        * fetch workflow repeatedly with 2s interval
        * until status is either Failed or Successful
        */
-      intervalId = toNumber(
+      intervalObject.intervalId = toNumber(
         setInterval(async () => {
           setProgress((prev) => prev + TEST_CONNECTION_PROGRESS_PERCENTAGE.ONE);
           try {
@@ -239,7 +241,7 @@ const TestConnection: FC<TestConnectionProps> = ({
             await handleCompletionStatus(isTestConnectionSuccess, steps);
 
             // clear the current interval
-            clearInterval(intervalId);
+            clearInterval(intervalObject.intervalId);
 
             // set testing connection to false
             setIsTestingConnection(false);
@@ -265,7 +267,9 @@ const TestConnection: FC<TestConnectionProps> = ({
     const updatedFormData = formatFormDataForSubmit(getData());
 
     // current interval id
-    let intervalId: number | undefined;
+    const intervalObject: {
+      intervalId?: number;
+    } = {};
 
     try {
       const createWorkflowData: CreateWorkflow = {
@@ -310,7 +314,7 @@ const TestConnection: FC<TestConnectionProps> = ({
       // stop fetching the workflow after 2 minutes
       setTimeout(() => {
         // clear the current interval
-        clearInterval(intervalId);
+        clearInterval(intervalObject.intervalId);
 
         // using reference to ensure call back should have latest value
         const currentWorkflowStatus = currentWorkflowRef.current
@@ -330,10 +334,10 @@ const TestConnection: FC<TestConnectionProps> = ({
       }, FETCHING_EXPIRY_TIME);
 
       // Handle workflow polling and completion
-      await handleWorkflowPolling(response, intervalId);
+      await handleWorkflowPolling(response, intervalObject);
     } catch (error) {
       setProgress(TEST_CONNECTION_PROGRESS_PERCENTAGE.HUNDRED);
-      clearInterval(intervalId);
+      clearInterval(intervalObject.intervalId);
       setIsTestingConnection(false);
       setMessage(TEST_CONNECTION_FAILURE_MESSAGE);
       setTestStatus(StatusType.Failed);

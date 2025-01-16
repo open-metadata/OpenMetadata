@@ -331,6 +331,10 @@ describe('Test Connection Component', () => {
     expect(
       screen.getByText('message.test-connection-taking-too-long')
     ).toBeInTheDocument();
+
+    // 59 since it will make this amount of call, and after timeout it should not make more api calls
+    expect(getWorkflowById).toHaveBeenCalledTimes(59);
+    expect(getWorkflowById).not.toHaveBeenCalledTimes(60);
   });
 
   it('Should not show the connection status modal if test connection definition API fails', async () => {
