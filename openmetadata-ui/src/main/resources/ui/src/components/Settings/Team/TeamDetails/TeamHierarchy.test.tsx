@@ -51,9 +51,20 @@ jest.mock('../../../../rest/teamsAPI', () => ({
     .mockImplementation(() => Promise.resolve(MOCK_CURRENT_TEAM)),
 }));
 
-jest.mock('../../../../utils/EntityUtils', () => ({
-  getEntityName: jest.fn().mockReturnValue('entityName'),
+jest.mock('../../../../utils/StringsUtils', () => ({
+  ...jest.requireActual('../../../../utils/StringsUtils'),
+  stringToHTML: jest.fn((text) => text),
 }));
+
+jest.mock('../../../../utils/EntityUtils', () => {
+  const actual = jest.requireActual('../../../../utils/EntityUtils');
+
+  return {
+    ...actual,
+    getEntityName: jest.fn().mockReturnValue('entityName'),
+    highlightSearchText: jest.fn((text) => text),
+  };
+});
 
 jest.mock('../../../../utils/RouterUtils', () => ({
   getTeamsWithFqnPath: jest.fn().mockReturnValue([]),

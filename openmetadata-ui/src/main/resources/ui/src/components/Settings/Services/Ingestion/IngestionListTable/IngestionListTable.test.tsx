@@ -106,6 +106,11 @@ jest.mock('../../../../../utils/IngestionListTableUtils', () => ({
   renderTypeField: jest.fn().mockImplementation(() => <div>typeField</div>),
 }));
 
+jest.mock('../../../../../utils/EntityUtils', () => ({
+  ...jest.requireActual('../../../../../utils/EntityUtils'),
+  highlightSearchText: jest.fn((text) => text),
+}));
+
 describe('Ingestion', () => {
   it('should render custom emptyPlaceholder if passed', async () => {
     await act(async () => {
