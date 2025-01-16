@@ -14,7 +14,6 @@ import {
   Dispatch,
   SetStateAction,
   useCallback,
-  useEffect,
   useMemo,
   useState,
 } from 'react';
@@ -45,8 +44,7 @@ export interface UsePagingInterface {
   currentPage: number;
   handlePageChange: (
     page: number | ((page: number) => number),
-    cursorData?: CursorState,
-    pageSize?: number | null
+    cursorData?: CursorState
   ) => void;
   pageSize: number;
   handlePageSizeChange: (page: number) => void;
@@ -56,12 +54,19 @@ export interface UsePagingInterface {
 export const usePaging = (
   defaultPageSize = PAGE_SIZE_BASE
 ): UsePagingInterface => {
-  const [paging, setPaging] = useState<Paging>(pagingObject);
-  const [currentPage, setCurrentPage] = useState<number>(INITIAL_PAGING_VALUE);
-  const [pageSize, setPageSize] = useState(defaultPageSize);
+  // Extract initial values from history state if present
   const history = useHistory();
   const location = useCustomLocation();
   const historyState = location.state as any;
+  const initialPageSize = historyState?.pageSize ?? defaultPageSize;
+  const initialCurrentPage = historyState?.cursorData?.cursorType
+    ? historyState.currentPage
+    : INITIAL_PAGING_VALUE;
+
+  const [paging, setPaging] = useState<Paging>(pagingObject);
+  const [currentPage, setCurrentPage] = useState<number>(initialCurrentPage);
+  const [pageSize, setPageSize] = useState<number>(initialPageSize);
+
   const pagingCursorHistoryState: PagingHistoryStateData = {
     cursorData: historyState?.cursorData,
     currentPage: historyState?.currentPage,
@@ -88,11 +93,7 @@ export const usePaging = (
   }, [defaultPageSize, paging, pageSize]);
 
   const handlePageChange = useCallback(
-    (
-      page: number | ((page: number) => number),
-      cursorData?: CursorState,
-      pageSize?: number | null
-    ) => {
+    (page: number | ((page: number) => number), cursorData?: CursorState) => {
       setCurrentPage(page);
       if (cursorData) {
         history.replace({
@@ -108,20 +109,6 @@ export const usePaging = (
     },
     [setCurrentPage, history, location]
   );
-
-  // set pagesize and current page on page reload from history state if present
-  useEffect(() => {
-    const pageSizeToUse = historyState?.pageSize ?? pageSize;
-    const cursorData = historyState?.cursorData?.cursorType
-      ? historyState.cursorData
-      : { cursorType: null, cursorValue: null };
-    const pageToUse = historyState?.cursorData?.cursorType
-      ? historyState.currentPage
-      : currentPage;
-
-    handlePageSize(pageSizeToUse);
-    handlePageChange(pageToUse, cursorData, pageSizeToUse);
-  }, []);
 
   return {
     paging,
