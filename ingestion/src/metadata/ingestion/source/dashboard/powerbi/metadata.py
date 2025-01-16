@@ -265,8 +265,8 @@ class PowerbiSource(DashboardServiceSource):
         """
         if isinstance(dashboard_details, PowerBIReport):
             # for `PowerBIReport` type dashboard, only link datasets mentioned in API response
-            workspace_datasets = self._fetch_dataset_from_workspace(
-                dashboard_details.datasetId
+            workspace_datasets = (
+                self._fetch_dataset_from_workspace(dashboard_details.datasetId) or []
             )
         else:
             workspace_datasets = self.context.get().workspace.datasets
