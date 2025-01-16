@@ -403,7 +403,16 @@ class ESMixin(Generic[T]):
                 "bool": {
                     "must": [
                         {"term": {"service.name.keyword": service_name}},
-                        {"term": {"tableType": TableType.View.value}},
+                        {
+                            "term": {
+                                "tableType": [
+                                    TableType.View.value,
+                                    TableType.MaterializedView.value,
+                                    TableType.SecureView.value,
+                                    TableType.Dynamic.value,
+                                ]
+                            }
+                        },
                         {"term": {"deleted": False}},
                         {"exists": {"field": "schemaDefinition"}},
                     ]
