@@ -41,7 +41,11 @@ import {
   patchDatabaseSchemaDetails,
 } from '../../../../rest/databaseAPI';
 import { searchQuery } from '../../../../rest/searchAPI';
-import { getEntityName } from '../../../../utils/EntityUtils';
+import {
+  getEntityName,
+  highlightSearchText,
+} from '../../../../utils/EntityUtils';
+import { stringToHTML } from '../../../../utils/StringsUtils';
 import { getUsagePercentile } from '../../../../utils/TableUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import DisplayName from '../../../common/DisplayName/DisplayName';
@@ -221,7 +225,9 @@ export const DatabaseSchemaTable = ({
         render: (_, record: DatabaseSchema) => (
           <DisplayName
             allowRename={allowEditDisplayNamePermission}
-            displayName={record.displayName}
+            displayName={stringToHTML(
+              highlightSearchText(record.displayName, searchValue)
+            )}
             id={record.id ?? ''}
             key={record.id}
             link={
@@ -232,7 +238,7 @@ export const DatabaseSchemaTable = ({
                   )
                 : ''
             }
-            name={record.name}
+            name={stringToHTML(highlightSearchText(record.name, searchValue))}
             onEditDisplayName={handleDisplayNameUpdate}
           />
         ),

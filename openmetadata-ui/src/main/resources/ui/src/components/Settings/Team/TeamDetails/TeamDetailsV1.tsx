@@ -710,6 +710,7 @@ const TeamDetailsV1 = ({
             currentTeam={currentTeam}
             data={childTeamList}
             isFetchingAllTeamAdvancedDetails={isFetchingAllTeamAdvancedDetails}
+            searchTerm={searchTerm}
             onTeamExpand={onTeamExpand}
           />
         </Col>

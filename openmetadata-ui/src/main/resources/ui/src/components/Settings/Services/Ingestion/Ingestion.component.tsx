@@ -193,6 +193,7 @@ const Ingestion: React.FC<IngestionProps> = ({
           isNumberBasedPaging={!isEmpty(searchText)}
           pipelineIdToFetchStatus={pipelineIdToFetchStatus}
           pipelineType={pipelineType}
+          searchText={searchText}
           serviceCategory={serviceCategory}
           serviceName={serviceName}
           triggerIngestion={triggerIngestion}
