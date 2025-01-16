@@ -17,6 +17,7 @@ import static org.openmetadata.service.Entity.populateEntityFieldTags;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.service.security.mask.PIIMasker.maskSampleData;
 
+import com.google.gson.Gson;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -256,6 +257,35 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
         .withTestSuites(testSuites)
         .withTestDefinition(testDefinition)
         .withTestCaseResult(testCaseResult);
+  }
+
+  @Override
+  public void storeEntities(List<TestCase> testCases) {
+    List<TestCase> testCasesToStore = new ArrayList<>();
+    Gson gson = new Gson();
+    for (TestCase testCase : testCases) {
+      EntityReference testSuite = testCase.getTestSuite();
+      EntityReference testDefinition = testCase.getTestDefinition();
+      TestCaseResult testCaseResult = testCase.getTestCaseResult();
+      List<TestSuite> testSuites = testCase.getTestSuites();
+
+      String jsonCopy =
+          gson.toJson(
+              testCase
+                  .withTestSuite(null)
+                  .withTestSuites(null)
+                  .withTestDefinition(null)
+                  .withTestCaseResult(null));
+      testCasesToStore.add(gson.fromJson(jsonCopy, TestCase.class));
+
+      // restore the relationships
+      testCase
+          .withTestSuite(testSuite)
+          .withTestSuites(testSuites)
+          .withTestDefinition(testDefinition)
+          .withTestCaseResult(testCaseResult);
+    }
+    storeMany(testCasesToStore);
   }
 
   @Override

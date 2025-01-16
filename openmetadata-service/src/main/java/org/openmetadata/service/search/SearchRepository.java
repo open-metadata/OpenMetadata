@@ -298,6 +298,31 @@ public class SearchRepository {
     }
   }
 
+  public void createEntities(List<EntityInterface> entities) {
+    if (!nullOrEmpty(entities)) {
+      // All entities in the list are of the same type
+      String entityType = entities.get(0).getEntityReference().getType();
+      IndexMapping indexMapping = entityIndexMap.get(entityType);
+      List<Map<String, String>> docs = new ArrayList<>();
+      for (EntityInterface entity : entities) {
+        SearchIndex index = searchIndexFactory.buildIndex(entityType, entity);
+        String doc = JsonUtils.pojoToJson(index.buildSearchIndexDoc());
+        docs.add(Collections.singletonMap(entity.getId().toString(), doc));
+      }
+
+      try {
+        searchClient.createEntities(indexMapping.getIndexName(clusterAlias), docs);
+      } catch (Exception ie) {
+        LOG.error(
+            "Issue in Creating entities document for entityType [{}]. Reason[{}], Cause[{}], Stack [{}]",
+            entityType,
+            ie.getMessage(),
+            ie.getCause(),
+            ExceptionUtils.getStackTrace(ie));
+      }
+    }
+  }
+
   public void createTimeSeriesEntity(EntityTimeSeriesInterface entity) {
     if (entity != null) {
       String entityType;

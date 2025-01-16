@@ -434,6 +434,8 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
 
       setTracedColumns(connectedColumnEdges);
       setTracedNodes([]);
+      setSelectedEdge(undefined);
+      setIsDrawerOpen(false);
     },
     [nodes, edges]
   );
@@ -710,6 +712,8 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     setActiveNode(undefined);
     setSelectedNode({} as SourceType);
     setIsDrawerOpen(true);
+    setTracedNodes([]);
+    setTracedColumns([]);
   }, []);
 
   const onLineageEditClick = useCallback(() => {
