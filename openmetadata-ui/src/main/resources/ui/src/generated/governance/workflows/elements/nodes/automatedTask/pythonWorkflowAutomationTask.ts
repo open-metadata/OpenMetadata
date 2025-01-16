@@ -11,14 +11,23 @@
  *  limitations under the License.
  */
 /**
- * SubType of the Node.
+ * Sets the GlossaryTerm Status to the configured value.
  */
-export enum NodeSubType {
-    CheckEntityAttributesTask = "checkEntityAttributesTask",
-    EndEvent = "endEvent",
-    PythonWorkflowAutomationTask = "pythonWorkflowAutomationTask",
-    SetEntityCertificationTask = "setEntityCertificationTask",
-    SetGlossaryTermStatusTask = "setGlossaryTermStatusTask",
-    StartEvent = "startEvent",
-    UserApprovalTask = "userApprovalTask",
+export interface PythonWorkflowAutomationTask {
+    config?: { [key: string]: any };
+    /**
+     * Description of the Node.
+     */
+    description?: string;
+    /**
+     * Display Name that identifies this Node.
+     */
+    displayName?: string;
+    /**
+     * Name that identifies this Node.
+     */
+    name?:    string;
+    subType?: string;
+    type?:    string;
+    [property: string]: any;
 }
