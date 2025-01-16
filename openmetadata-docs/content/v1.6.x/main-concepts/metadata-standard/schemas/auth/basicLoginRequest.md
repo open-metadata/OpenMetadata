@@ -9,8 +9,8 @@ slug: /main-concepts/metadata-standard/schemas/auth/basicloginrequest
 
 ## Properties
 
-- **`email`**: Email address of the user. Refer to *../type/basic.json#/definitions/email*.
+- **`email`**: Email address of the user. Refer to *[../type/basic.json#/definitions/email](#/type/basic.json#/definitions/email)*.
 - **`password`** *(string)*: Name of the column in a table.
 
 
-Documentation file automatically generated at 2023-10-27 13:55:46.343512.
+Documentation file automatically generated at 2025-01-15 09:05:25.266839+00:00.

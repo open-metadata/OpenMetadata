@@ -314,10 +314,16 @@ public final class TestUtils {
 
   public static <K> void post(WebTarget target, K request, Map<String, String> headers)
       throws HttpResponseException {
+    post(target, request, Status.CREATED.getStatusCode(), headers);
+  }
+
+  public static <K> void post(
+      WebTarget target, K request, int expectedStatus, Map<String, String> headers)
+      throws HttpResponseException {
     Entity<K> entity =
         (request == null) ? null : Entity.entity(request, MediaType.APPLICATION_JSON);
     Response response = SecurityUtil.addHeaders(target, headers).post(entity);
-    readResponse(response, Status.CREATED.getStatusCode());
+    readResponse(response, expectedStatus);
   }
 
   public static <T, K> T post(
