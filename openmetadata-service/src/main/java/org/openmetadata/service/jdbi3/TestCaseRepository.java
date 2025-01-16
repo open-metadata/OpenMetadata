@@ -371,17 +371,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   @Override
   protected void cleanup(TestCase entityInterface) {
     super.cleanup(entityInterface);
-    asyncExecutor.submit(
-        () -> {
-          try {
-            deleteAllTestCaseResults(entityInterface.getFullyQualifiedName());
-          } catch (Exception e) {
-            LOG.error(
-                "Error deleting test case results for test case {}",
-                entityInterface.getFullyQualifiedName(),
-                e);
-          }
-        });
+    deleteAllTestCaseResults(entityInterface.getFullyQualifiedName());
   }
 
   public RestUtil.PutResponse<TestCaseResult> deleteTestCaseResult(
@@ -395,10 +385,17 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   }
 
   private void deleteAllTestCaseResults(String fqn) {
-    // Delete all the test case results
     TestCaseResultRepository testCaseResultRepository =
         (TestCaseResultRepository) Entity.getEntityTimeSeriesRepository(TEST_CASE_RESULT);
     testCaseResultRepository.deleteAllTestCaseResults(fqn);
+    asyncExecutor.submit(
+        () -> {
+          try {
+            testCaseResultRepository.deleteAllTestCaseResults(fqn);
+          } catch (Exception e) {
+            LOG.error("Error deleting test case results for test case {}", fqn, e);
+          }
+        });
   }
 
   @SneakyThrows
