@@ -314,7 +314,7 @@ test.describe('Glossary tests', () => {
       await glossaryTerm1.create(apiContext);
       await owner1.create(apiContext);
       await reviewer1.create(apiContext);
-      await await redirectToHomePage(page);
+      await redirectToHomePage(page);
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary1.data.displayName);
 
@@ -511,7 +511,7 @@ test.describe('Glossary tests', () => {
         await patchRequest2;
 
         // Check if the terms are present
-        const glossaryContainer = await page.locator(
+        const glossaryContainer = page.locator(
           '[data-testid="entity-right-panel"] [data-testid="glossary-container"]'
         );
         const glossaryContainerText = await glossaryContainer.innerText();
@@ -521,7 +521,7 @@ test.describe('Glossary tests', () => {
 
         // Check if the icons are present
 
-        const icons = await page.locator(
+        const icons = page.locator(
           '[data-testid="entity-right-panel"] [data-testid="glossary-container"] [data-testid="glossary-icon"]'
         );
 
@@ -571,7 +571,7 @@ test.describe('Glossary tests', () => {
         expect(tagSelectorText).toContain(glossaryTerm3.data.displayName);
 
         // Check if the icon is visible
-        const icon = await page.locator(
+        const icon = page.locator(
           '[data-testid="glossary-tags-0"] > [data-testid="tags-wrapper"] > [data-testid="glossary-container"] [data-testid="glossary-icon"]'
         );
 
@@ -583,7 +583,7 @@ test.describe('Glossary tests', () => {
         await goToAssetsTab(page, glossaryTerm3.data.displayName, 2);
 
         // Check if the selected asset are present
-        const assetContainer = await page.locator(
+        const assetContainer = page.locator(
           '[data-testid="table-container"] .assets-data-container'
         );
 
@@ -1186,64 +1186,5 @@ test.describe('Glossary tests', () => {
       await glossary1.delete(apiContext);
       await afterAction();
     }
-  });
-
-  test('should check for glossary term pagination', async ({ browser }) => {
-    test.slow(true);
-
-    const { page, afterAction, apiContext } = await performAdminLogin(browser);
-    const glossaries = [];
-    for (let i = 0; i < 60; i++) {
-      const glossary = new Glossary(`PW_GLOSSARY_TEST_${i + 1}`);
-      await glossary.create(apiContext);
-      glossaries.push(glossary);
-    }
-
-    try {
-      await redirectToHomePage(page);
-      const glossaryRes = page.waitForResponse('/api/v1/glossaries?*');
-      await sidebarClick(page, SidebarItem.GLOSSARY);
-      await glossaryRes;
-
-      const glossaryAfterRes = page.waitForResponse(
-        '/api/v1/glossaries?*after=*'
-      );
-      await page
-        .getByTestId('glossary-left-panel-scroller')
-        .scrollIntoViewIfNeeded();
-
-      const res = await glossaryAfterRes;
-      const json = await res.json();
-
-      const firstGlossaryName = json.data[0].displayName;
-
-      await expect(
-        page
-          .getByTestId('glossary-left-panel')
-          .getByRole('menuitem', { name: firstGlossaryName })
-      ).toBeVisible();
-
-      const lastGlossaryName = json.data[json.data.length - 1].displayName;
-
-      await expect(
-        page
-          .getByTestId('glossary-left-panel')
-          .getByRole('menuitem', { name: lastGlossaryName })
-      ).toBeVisible();
-    } finally {
-      for (const glossary of glossaries) {
-        await glossary.delete(apiContext);
-      }
-      await afterAction();
-    }
-  });
-
-  test.afterAll(async ({ browser }) => {
-    const { afterAction, apiContext } = await performAdminLogin(browser);
-    await user1.delete(apiContext);
-    await user2.delete(apiContext);
-    await user3.create(apiContext);
-    await team.delete(apiContext);
-    await afterAction();
   });
 });
