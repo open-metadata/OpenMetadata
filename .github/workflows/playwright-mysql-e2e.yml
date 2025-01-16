@@ -39,7 +39,7 @@ concurrency:
 
 jobs:
   playwright-ci-mysql:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     environment: test
     strategy:
       fail-fast: false
