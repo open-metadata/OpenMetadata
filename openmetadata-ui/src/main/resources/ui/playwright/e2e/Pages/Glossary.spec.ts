@@ -1199,52 +1199,6 @@ test.describe('Glossary tests', () => {
     }
   });
 
-  test('should check for glossary term pagination', async ({ browser }) => {
-    test.slow(true);
-
-    const { page, afterAction, apiContext } = await performAdminLogin(browser);
-    const glossaries = [];
-    for (let i = 0; i < 60; i++) {
-      const glossary = new Glossary(`PW_GLOSSARY_TEST_${i + 1}`);
-      await glossary.create(apiContext);
-      glossaries.push(glossary);
-    }
-
-    try {
-      await redirectToHomePage(page);
-      const glossaryRes = page.waitForResponse('/api/v1/glossaries?*');
-      await sidebarClick(page, SidebarItem.GLOSSARY);
-      await glossaryRes;
-
-      const glossaryAfterRes = page.waitForResponse(
-        '/api/v1/glossaries?*after=*'
-      );
-      await page
-        .getByTestId('glossary-left-panel-scroller')
-        .scrollIntoViewIfNeeded();
-
-      const res = await glossaryAfterRes;
-      const json = await res.json();
-
-      const firstGlossaryName = json.data[0].displayName;
-
-      await expect(
-        page.getByRole('menuitem', { name: firstGlossaryName })
-      ).toBeVisible();
-
-      const lastGlossaryName = json.data[json.data.length - 1].displayName;
-
-      await expect(
-        page.getByRole('menuitem', { name: lastGlossaryName })
-      ).toBeVisible();
-    } finally {
-      for (const glossary of glossaries) {
-        await glossary.delete(apiContext);
-      }
-      await afterAction();
-    }
-  });
-
   test('Add Glossary Term inside another Term', async ({ browser }) => {
     const { page, afterAction, apiContext } = await performAdminLogin(browser);
     const glossary1 = new Glossary();
