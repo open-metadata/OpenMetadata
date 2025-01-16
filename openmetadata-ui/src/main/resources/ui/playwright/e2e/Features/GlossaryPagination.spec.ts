@@ -21,6 +21,10 @@ test.use({
 });
 
 test.describe('Glossary tests', () => {
+  test.beforeEach(async ({ page }) => {
+    await redirectToHomePage(page);
+  });
+
   test('should check for glossary term pagination', async ({ page }) => {
     test.slow(true);
 
