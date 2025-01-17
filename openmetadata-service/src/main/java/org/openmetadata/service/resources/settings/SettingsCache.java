@@ -79,7 +79,7 @@ public class SettingsCache {
     Settings storedSettings = systemRepository.getConfigWithKey(EMAIL_CONFIGURATION.toString());
     if (storedSettings == null) {
       // Only in case a config doesn't exist in DB we insert it
-      SmtpSettings emailConfig = applicationConfig.getSmtpSettings();
+      SmtpSettings emailConfig = new SmtpSettings().withPassword(StringUtils.EMPTY);
       Settings setting =
           new Settings().withConfigType(EMAIL_CONFIGURATION).withConfigValue(emailConfig);
       systemRepository.createNewSetting(setting);
