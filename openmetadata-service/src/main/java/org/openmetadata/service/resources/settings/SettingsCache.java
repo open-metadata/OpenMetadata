@@ -22,6 +22,7 @@ import static org.openmetadata.schema.settings.SettingsType.OPEN_METADATA_BASE_U
 import static org.openmetadata.schema.settings.SettingsType.SEARCH_SETTINGS;
 import static org.openmetadata.schema.settings.SettingsType.WORKFLOW_SETTINGS;
 
+import com.cronutils.utils.StringUtils;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
@@ -88,13 +89,12 @@ public class SettingsCache {
     Settings storedOpenMetadataBaseUrlConfiguration =
         systemRepository.getConfigWithKey(OPEN_METADATA_BASE_URL_CONFIGURATION.toString());
     if (storedOpenMetadataBaseUrlConfiguration == null) {
-      OpenMetadataBaseUrlConfiguration openMetadataBaseUrlConfiguration =
-          applicationConfig.getOpenMetadataBaseUrlConfiguration();
 
       Settings setting =
           new Settings()
               .withConfigType(OPEN_METADATA_BASE_URL_CONFIGURATION)
-              .withConfigValue(openMetadataBaseUrlConfiguration);
+              .withConfigValue(
+                  new OpenMetadataBaseUrlConfiguration().withOpenMetadataUrl(StringUtils.EMPTY));
       systemRepository.createNewSetting(setting);
     }
 

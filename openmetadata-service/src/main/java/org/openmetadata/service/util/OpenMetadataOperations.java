@@ -194,6 +194,31 @@ public class OpenMetadataOperations implements Callable<Integer> {
     }
   }
 
+  @Command(
+      name = "setOpenMetadataUrl",
+      description = "Set or update the OpenMetadata URL in the system repository")
+  public Integer setOpenMetadataUrl(
+      @Option(
+              names = {"-u", "--url"},
+              description = "OpenMetadata URL to store in the system repository",
+              required = true)
+          String openMetadataUrl) {
+    try {
+      parseConfig();
+      Settings updatedSettings =
+          new Settings()
+              .withConfigType(SettingsType.OPEN_METADATA_BASE_URL_CONFIGURATION)
+              .withConfigValue(openMetadataUrl);
+
+      Entity.getSystemRepository().createOrUpdate(updatedSettings);
+      LOG.info("Updated OpenMetadata URL to: {}", openMetadataUrl);
+      return 0;
+    } catch (Exception e) {
+      LOG.error("Failed to set OpenMetadata URL due to: ", e);
+      return 1;
+    }
+  }
+
   @Command(name = "install-app", description = "Install the application from App MarketPlace.")
   public Integer installApp(
       @Option(

@@ -221,9 +221,6 @@ email:
   password: "test"
   transportationStrategy: "SMTP_TLS"
 
-openMetadataBaseUrlConfiguration:
-  openMetadataUrl: ${OM_BASE_URL:-"http://localhost:8585"}
-
 fernetConfiguration:
   fernetKey: ${FERNET_KEY:-ihZpp5gmmDvVsgoOG6OVivKWwC9vd5JQ}
 
