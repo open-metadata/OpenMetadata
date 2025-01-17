@@ -139,7 +139,7 @@ const WhatsNewModal: FunctionComponent<WhatsNewModalProps> = ({
                         onClick={() => {
                           handleToggleChange(ToggleType.CHANGE_LOG);
                         }}>
-                        {t('label.change-log')}
+                        {t('label.change-log-plural')}
                       </Button>
                     </Button.Group>
                   </div>
