@@ -128,6 +128,8 @@ class MetabaseSource(DashboardServiceSource):
             and dashboard == self.dashboards_list[-1]
             and not self._default_dashboard_added
         ):
+            # If processing the last dashboard, identify any orphaned charts (not associated with dashboards)
+            # and create a default dashboard to maintain visibility of these charts
             self.orphan_charts_id = [
                 chart_id
                 for chart_id, chart in self.charts_dict.items()
@@ -135,9 +137,8 @@ class MetabaseSource(DashboardServiceSource):
             ]
             if self.orphan_charts_id:
                 #add the default dashboard to the dashboards list
-                # dashboards = self.get_dashboards_list()
                 default_dashboard = MetabaseDashboard(
-                    id="19d13415-7e76-4efc-ab22-3ffbe5e2ae9c",
+                    id="-1",
                     name="Default Dashboard",
                     description="Contains charts not associated with any dashboard",
                     collection_id=None
@@ -151,6 +152,9 @@ class MetabaseSource(DashboardServiceSource):
         Method to get the project name by searching the dataset using id in the workspace dict
         """
         try:
+            # Return default collection for the default dashboard containing orphaned charts
+            if dashboard_details.id == "-1":
+                return "Default Collection"
             if dashboard_details.collection_id:
                 collection_name = next(
                     (

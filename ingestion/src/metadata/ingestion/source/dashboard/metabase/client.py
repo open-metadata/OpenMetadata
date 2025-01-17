@@ -160,6 +160,19 @@ class MetabaseClient:
             logger.debug(traceback.format_exc())
             logger.warning("Failed to fetch the collections list")
         return {}
+    
+    def _create_default_dashboard_details(self, orphan_charts_id: List) -> MetabaseDashboardDetails:
+        """ 
+        Returns:
+            MetabaseDashboardDetails object representing the default dashboard containing orphaned charts
+        """
+        dashboard_data = {
+            "description": "Contains charts not associated with any dashboard",
+            "name": "Default Dashboard",
+            "id": "-1",
+            "card_ids": orphan_charts_id
+        }
+        return MetabaseDashboardDetails(**dashboard_data)
 
     def get_dashboard_details(
         self, dashboard_id: str, charts_dict: Dict, orphan_charts_id: List
@@ -169,14 +182,8 @@ class MetabaseClient:
         """
         if not dashboard_id:
             return None  # don't call api if dashboard_id is None
-        if dashboard_id == "19d13415-7e76-4efc-ab22-3ffbe5e2ae9c":
-            dashboard_data = {
-                    "description": "Contains charts not associated with any dashboard",
-                    "name": "Default Dashboard",
-                    "id": "19d13415-7e76-4efc-ab22-3ffbe5e2ae9c",
-                    "card_ids": orphan_charts_id
-                }
-            return MetabaseDashboardDetails(**dashboard_data)
+        if dashboard_id == "-1":
+            return self._create_default_dashboard_details(orphan_charts_id)
         try:
             resp_dashboard = self.client.get(f"/dashboard/{dashboard_id}")
             if resp_dashboard:
