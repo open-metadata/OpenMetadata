@@ -700,7 +700,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   public final List<T> listAllForCSV(Fields fields, String parentFqn) {
-    List<String> jsons = listAllByParentFqn(parentFqn);
+    ListFilter filter = new ListFilter(Include.NON_DELETED);
+    List<String> jsons = listAllByParentFqn(parentFqn, filter);
     List<T> entities = new ArrayList<>();
     setFieldsInBulk(jsons, fields, entities);
     return entities;
@@ -723,6 +724,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
     String startHash = fqnPrefixHash + ".00000000000000000000000000000000";
     String endHash = fqnPrefixHash + ".ffffffffffffffffffffffffffffffff";
     return dao.listAll(startHash, endHash);
+  }
+
+  public List<String> listAllByParentFqn(String parentFqn, ListFilter filter) {
+    String fqnPrefixHash = FullyQualifiedName.buildHash(parentFqn);
+    String startHash = fqnPrefixHash + ".00000000000000000000000000000000";
+    String endHash = fqnPrefixHash + ".ffffffffffffffffffffffffffffffff";
+    return dao.listAll(startHash, endHash, filter);
   }
 
   public ResultList<T> listAfter(
