@@ -1490,6 +1490,7 @@
     "create-new-glossary-guide": "Un glosario é un vocabulario controlado que se usa para definir os conceptos e a terminoloxía nunha organización. Os glosarios poden ser específicos dun determinado dominio (por exemplo, glosario empresarial, glosario técnico). No glosario, poden definirse os termos e conceptos estándar, xunto cos sinónimos e termos relacionados. Pódese establecer control sobre como e quen pode engadir termos ao glosario.",
     "create-or-update-email-account-for-bot": "Cambiar o correo electrónico da conta actualizará ou creará un novo usuario bot.",
     "created-this-task-lowercase": "creou esta tarefa",
+    "cron-dow-validation-failure": "A parte DOW debe ser >= 0 e <= 6",
     "cron-less-than-hour-message": "Horario Cron demasiado frecuente. Escolle intervalos de polo menos 1 hora.",
     "custom-classification-name-dbt-tags": "Nome da clasificación personalizada de OpenMetadata para etiquetas dbt",
     "custom-favicon-url-path-message": "Ruta URL para o icono favicon.",
