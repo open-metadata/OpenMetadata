@@ -16,10 +16,7 @@ import { useHistory } from 'react-router-dom';
 import { useLocationSearch } from './LocationSearch/useLocationSearch';
 import useCustomLocation from './useCustomLocation/useCustomLocation';
 
-type FilterState = Record<string, string | boolean | string[]>;
-type UpdatedFilters = {
-  [key: string]: string | string[] | boolean;
-};
+type FilterState = Record<string, string | boolean | string[] | null>;
 
 export const useTableFilters = <T extends FilterState>(initialFilters: T) => {
   const location = useCustomLocation();
@@ -34,20 +31,14 @@ export const useTableFilters = <T extends FilterState>(initialFilters: T) => {
       const initialValue = initialFilters[key as keyof T];
 
       if (paramValue !== undefined && paramValue !== null) {
-        // Handle boolean types
         if (typeof initialValue === 'boolean') {
           parsedFilters[key as keyof T] = (paramValue === 'true') as T[keyof T];
-        }
-        // Handle array types
-        else if (Array.isArray(initialValue)) {
-          // Check if paramValue is a string before calling split
+        } else if (Array.isArray(initialValue)) {
           parsedFilters[key as keyof T] =
             typeof paramValue === 'string'
               ? (paramValue.split(',').map((val) => val.trim()) as T[keyof T])
               : (paramValue as T[keyof T]);
-        }
-        // Handle other types
-        else {
+        } else {
           parsedFilters[key as keyof T] = paramValue as T[keyof T];
         }
       }
@@ -56,9 +47,7 @@ export const useTableFilters = <T extends FilterState>(initialFilters: T) => {
     return parsedFilters;
   };
 
-  const updateUrlWithFilters = (updatedFilters: {
-    [key: string]: string | boolean | string[] | null;
-  }) => {
+  const updateUrlWithFilters = (updatedFilters: FilterState) => {
     const currentQueryParams = qs.parse(window.location.search, {
       ignoreQueryPrefix: true,
     });
@@ -72,7 +61,6 @@ export const useTableFilters = <T extends FilterState>(initialFilters: T) => {
     Object.keys(mergedQueryParams).forEach((key) => {
       const value = mergedQueryParams[key];
 
-      // Check if the value is null, undefined, or an empty array
       if (value == null || (Array.isArray(value) && value.length === 0)) {
         delete mergedQueryParams[key];
       } else if (Array.isArray(value)) {
@@ -97,7 +85,7 @@ export const useTableFilters = <T extends FilterState>(initialFilters: T) => {
   };
 
   // Update multiple filters at a time
-  const setFilters = (newFilters: UpdatedFilters) => {
+  const setFilters = (newFilters: FilterState) => {
     updateUrlWithFilters(newFilters);
   };
 
