@@ -15,7 +15,7 @@
  /**
  * This schema defines Document. A Generic entity to capture any kind of Json Payload.
  */
- export interface CreateDocument {
+export interface CreateDocument {
     data: { [key: string]: any };
     /**
      * Description of the DocStore Entity.
