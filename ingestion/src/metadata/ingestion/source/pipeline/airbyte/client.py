@@ -20,6 +20,7 @@ from metadata.generated.schema.entity.services.connections.pipeline.airbyteConne
 from metadata.ingestion.ometa.client import REST, APIError, ClientConfig
 from metadata.utils.constants import AUTHORIZATION_HEADER, NO_ACCESS_TOKEN
 from metadata.utils.credentials import generate_http_basic_token
+from metadata.utils.helpers import clean_uri
 
 
 class AirbyteClient:
@@ -30,8 +31,8 @@ class AirbyteClient:
     def __init__(self, config: AirbyteConnection):
         self.config = config
         client_config: ClientConfig = ClientConfig(
-            base_url=str(self.config.hostPort),
-            api_version="api/v1",
+            base_url=clean_uri(self.config.hostPort),
+            api_version=self.config.apiVersion,
             auth_header=AUTHORIZATION_HEADER,
             auth_token=lambda: (NO_ACCESS_TOKEN, 0),
         )

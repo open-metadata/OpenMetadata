@@ -24,7 +24,7 @@ export interface CockroachConnection {
      * Optional name to give to the database in OpenMetadata. If left blank, we will use default
      * as the database name.
      */
-    database?: string;
+    database: string;
     /**
      * Database Schema of the data source. This is optional parameter, if you would like to
      * restrict the metadata reading to a single schema. When left blank, OpenMetadata Ingestion
@@ -50,6 +50,7 @@ export interface CockroachConnection {
     sslConfig?:                  Config;
     sslMode?:                    SSLMode;
     supportsMetadataExtraction?: boolean;
+    supportsProfiler?:           boolean;
     /**
      * Service Type
      */

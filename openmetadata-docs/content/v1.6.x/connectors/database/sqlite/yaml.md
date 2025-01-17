@@ -164,9 +164,7 @@ source:
 
 {% partial file="/v1.6/connectors/yaml/data-quality.md" /%}
 
-## Lineage
-
-You can learn more about how to ingest lineage [here](/connectors/ingestion/workflows/lineage).
+{% partial file="/v1.6/connectors/yaml/lineage.md" variables={connector: "sqlite"} /%}
 
 ## dbt Integration
 

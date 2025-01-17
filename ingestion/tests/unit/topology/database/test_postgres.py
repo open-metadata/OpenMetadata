@@ -31,12 +31,12 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.source.database.postgres.metadata import (
+from metadata.ingestion.source.database.common_pg_mappings import (
     GEOMETRY,
     POINT,
     POLYGON,
-    PostgresSource,
 )
+from metadata.ingestion.source.database.postgres.metadata import PostgresSource
 from metadata.ingestion.source.database.postgres.usage import PostgresUsageSource
 from metadata.ingestion.source.database.postgres.utils import get_postgres_version
 
@@ -295,10 +295,13 @@ class PostgresUnitTest(TestCase):
         self.usage_config = OpenMetadataWorkflowConfig.model_validate(
             mock_postgres_usage_config
         )
-        self.postgres_usage_source = PostgresUsageSource.create(
-            mock_postgres_usage_config["source"],
-            self.usage_config.workflowConfig.openMetadataServerConfig,
-        )
+        with patch(
+            "metadata.ingestion.source.database.postgres.usage.PostgresUsageSource.test_connection"
+        ):
+            self.postgres_usage_source = PostgresUsageSource.create(
+                mock_postgres_usage_config["source"],
+                self.usage_config.workflowConfig.openMetadataServerConfig,
+            )
 
     def test_datatype(self):
         inspector = types.SimpleNamespace()
@@ -316,14 +319,15 @@ class PostgresUnitTest(TestCase):
 
     @patch("sqlalchemy.engine.base.Engine")
     def test_get_version_info(self, engine):
-        engine.execute.return_value = [["15.3 (Debian 15.3-1.pgdg110+1)"]]
-        self.assertEqual("15.3", get_postgres_version(engine))
+        # outdated with a switch to get_server_version_num instead of get_+server_version
+        # engine.execute.return_value = [["15.3 (Debian 15.3-1.pgdg110+1)"]]
+        # self.assertEqual("15.3", get_postgres_version(engine))
 
-        engine.execute.return_value = [["11.16"]]
-        self.assertEqual("11.16", get_postgres_version(engine))
+        engine.execute.return_value = [["110016"]]
+        self.assertEqual("110016", get_postgres_version(engine))
 
-        engine.execute.return_value = [["9.6.24"]]
-        self.assertEqual("9.6.24", get_postgres_version(engine))
+        engine.execute.return_value = [["90624"]]
+        self.assertEqual("90624", get_postgres_version(engine))
 
         engine.execute.return_value = [[]]
         self.assertIsNone(get_postgres_version(engine))
