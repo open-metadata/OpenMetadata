@@ -9,8 +9,10 @@
   "definitions": {
     "type": {
       "type": "string",
+      "javaType": "org.openmetadata.schema.governance.workflows.TriggerType",
       "enum": [
         "eventBasedEntityWorkflow",
+        "customSignalWorkflow",
         "periodicBatchEntityWorkflow"
       ]
     }
@@ -70,7 +72,13 @@
       "$ref": "#/definitions/type"
     },
     "trigger": {
-      "description": "Workflow Trigger."
+      "description": "Workflow Trigger.",
+      "existingJavaType": "org.openmetadata.schema.governance.workflows.elements.WorkflowTriggerInterface",
+      "properties": {
+        "type": {
+          "$ref": "#/definitions/type"
+        }
+      }
     },
     "nodes": {
       "description": "List of nodes used on the workflow.",

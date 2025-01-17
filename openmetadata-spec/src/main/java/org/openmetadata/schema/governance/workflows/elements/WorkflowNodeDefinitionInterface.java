@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.CheckEntityAttributesTaskDefinition;
+import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.JsonLogicTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.PythonWorkflowAutomationTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.SetEntityCertificationTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.SetGlossaryTermStatusTaskDefinition;
@@ -30,7 +31,8 @@ import org.openmetadata.schema.governance.workflows.elements.nodes.userTask.User
   @JsonSubTypes.Type(value = UserApprovalTaskDefinition.class, name = "userApprovalTask"),
   @JsonSubTypes.Type(
       value = PythonWorkflowAutomationTaskDefinition.class,
-      name = "pythonWorkflowAutomationTask")
+      name = "pythonWorkflowAutomationTask"),
+  @JsonSubTypes.Type(value = JsonLogicTaskDefinition.class, name = "jsonLogicTask"),
 })
 public interface WorkflowNodeDefinitionInterface {
   String getType();

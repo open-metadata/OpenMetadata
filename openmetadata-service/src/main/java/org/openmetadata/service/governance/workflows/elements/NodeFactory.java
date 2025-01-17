@@ -1,14 +1,17 @@
 package org.openmetadata.service.governance.workflows.elements;
 
+import java.lang.reflect.InvocationTargetException;
 import org.openmetadata.schema.governance.workflows.elements.NodeSubType;
 import org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.CheckEntityAttributesTaskDefinition;
+import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.JsonLogicTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.SetEntityCertificationTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.SetGlossaryTermStatusTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.endEvent.EndEventDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.startEvent.StartEventDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.userTask.UserApprovalTaskDefinition;
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.CheckEntityAttributesTask;
+import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.JsonLogicFilterTask;
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.NoOpTask;
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.SetEntityCertificationTask;
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.SetGlossaryTermStatusTask;
@@ -29,6 +32,7 @@ public class NodeFactory {
           (SetGlossaryTermStatusTaskDefinition) nodeDefinition);
       case USER_APPROVAL_TASK -> new UserApprovalTask((UserApprovalTaskDefinition) nodeDefinition);
       case PYTHON_WORKFLOW_AUTOMATION_TASK -> new NoOpTask(nodeDefinition);
+      case JSON_LOGIC_TASK -> new JsonLogicFilterTask((JsonLogicTaskDefinition) nodeDefinition);
     };
   }
 }

@@ -61,7 +61,7 @@ export interface WorkflowDefinition {
     /**
      * Workflow Trigger.
      */
-    trigger?: any;
+    trigger?: any[] | boolean | number | number | null | TriggerObject | string;
     type?:    Type;
     /**
      * Last update time corresponding to the new version of the entity in Unix epoch time
@@ -193,7 +193,13 @@ export interface EntityReference {
     type: string;
 }
 
+export interface TriggerObject {
+    type?: Type;
+    [property: string]: any;
+}
+
 export enum Type {
+    CustomSignalWorkflow = "customSignalWorkflow",
     EventBasedEntityWorkflow = "eventBasedEntityWorkflow",
     PeriodicBatchEntityWorkflow = "periodicBatchEntityWorkflow",
 }

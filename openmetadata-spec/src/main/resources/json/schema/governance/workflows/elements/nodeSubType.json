@@ -12,6 +12,7 @@
     "setGlossaryTermStatusTask",
     "endEvent",
     "startEvent",
-    "pythonWorkflowAutomationTask"
+    "pythonWorkflowAutomationTask",
+    "jsonLogicTask"
   ]
 }
