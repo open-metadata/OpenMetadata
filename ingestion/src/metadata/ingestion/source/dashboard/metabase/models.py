@@ -85,17 +85,12 @@ class MetabaseChart(BaseModel):
     dashboard_ids: List[str] = []
 
 
-class DashCard(BaseModel):
-    card: MetabaseChart
-
-
 class MetabaseDashboardDetails(BaseModel):
     """
     Metabase dashboard details model
     """
 
     description: Optional[str] = None
-    # dashcards: List[DashCard]
     card_ids: List[str] = []
     name: Optional[str] = None
     id: MetabaseStrId

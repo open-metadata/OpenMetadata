@@ -11,7 +11,7 @@
 """Metabase source module"""
 
 import traceback
-from typing import Any, Iterable, List, Optional, Dict
+from typing import Any, Dict, Iterable, List, Optional
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
@@ -96,7 +96,6 @@ class MetabaseSource(DashboardServiceSource):
         self.charts_dict: Dict[str] = {}
         self.orphan_charts_id: List[str] = []
         self._default_dashboard_added = False
-        
 
     def prepare(self):
         self.collections = self.client.get_collections_list()
@@ -122,7 +121,9 @@ class MetabaseSource(DashboardServiceSource):
         """
         Get Dashboard Details
         """
-        retrieved_dashboards =  self.client.get_dashboard_details(dashboard.id, self.charts_dict, self.orphan_charts_id)
+        retrieved_dashboards = self.client.get_dashboard_details(
+            dashboard.id, self.charts_dict, self.orphan_charts_id
+        )
         if (
             retrieved_dashboards
             and dashboard == self.dashboards_list[-1]
@@ -136,12 +137,12 @@ class MetabaseSource(DashboardServiceSource):
                 if not chart.dashboard_ids
             ]
             if self.orphan_charts_id:
-                #add the default dashboard to the dashboards list
+                # add the default dashboard to the dashboards list
                 default_dashboard = MetabaseDashboard(
                     id="-1",
                     name="Default Dashboard",
                     description="Contains charts not associated with any dashboard",
-                    collection_id=None
+                    collection_id=None,
                 )
                 if default_dashboard not in self.dashboards_list:
                     self.dashboards_list.append(default_dashboard)
@@ -290,13 +291,13 @@ class MetabaseSource(DashboardServiceSource):
         """
         if not db_service_name:
             return
-        chart_list, dashboard_name = (
-            dashboard_details.dashcards,
+        chart_ids, dashboard_name = (
+            dashboard_details.card_ids,
             str(dashboard_details.id),
         )
-        for chart in chart_list:
+        for chart_id in chart_ids:
             try:
-                chart_details = chart.card
+                chart_details = self.charts_dict[chart_id]
                 if (
                     chart_details.dataset_query is None
                     or chart_details.dataset_query.type is None

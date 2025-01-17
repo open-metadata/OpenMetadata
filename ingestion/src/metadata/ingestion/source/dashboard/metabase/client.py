@@ -13,7 +13,7 @@ REST Auth & Client for Metabase
 """
 import json
 import traceback
-from typing import List, Optional, Dict
+from typing import Dict, List, Optional
 
 import requests
 
@@ -23,6 +23,7 @@ from metadata.generated.schema.entity.services.connections.dashboard.metabaseCon
 from metadata.ingestion.connections.test_connections import SourceConnectionException
 from metadata.ingestion.ometa.client import REST, ClientConfig
 from metadata.ingestion.source.dashboard.metabase.models import (
+    MetabaseChart,
     MetabaseCollection,
     MetabaseCollectionList,
     MetabaseDashboard,
@@ -31,7 +32,6 @@ from metadata.ingestion.source.dashboard.metabase.models import (
     MetabaseDatabase,
     MetabaseTable,
     MetabaseUser,
-    MetabaseChart,
 )
 from metadata.utils.constants import AUTHORIZATION_HEADER, NO_ACCESS_TOKEN
 from metadata.utils.helpers import clean_uri
@@ -146,7 +146,7 @@ class MetabaseClient:
             logger.debug(traceback.format_exc())
             logger.warning("Failed to fetch the collections list")
         return []
-    
+
     def get_charts_dict(self) -> Dict:
         charts_dict = {}
         try:
@@ -160,9 +160,11 @@ class MetabaseClient:
             logger.debug(traceback.format_exc())
             logger.warning("Failed to fetch the collections list")
         return {}
-    
-    def _create_default_dashboard_details(self, orphan_charts_id: List) -> MetabaseDashboardDetails:
-        """ 
+
+    def _create_default_dashboard_details(
+        self, orphan_charts_id: List
+    ) -> MetabaseDashboardDetails:
+        """
         Returns:
             MetabaseDashboardDetails object representing the default dashboard containing orphaned charts
         """
@@ -170,7 +172,7 @@ class MetabaseClient:
             "description": "Contains charts not associated with any dashboard",
             "name": "Default Dashboard",
             "id": "-1",
-            "card_ids": orphan_charts_id
+            "card_ids": orphan_charts_id,
         }
         return MetabaseDashboardDetails(**dashboard_data)
 
@@ -205,7 +207,7 @@ class MetabaseClient:
                     "id": resp_dashboard.get("id"),
                     "creator_id": resp_dashboard.get("creator_id"),
                     "collection_id": resp_dashboard.get("collection_id"),
-                    "card_ids": card_ids
+                    "card_ids": card_ids,
                 }
 
                 return MetabaseDashboardDetails(**dashboard_data)
