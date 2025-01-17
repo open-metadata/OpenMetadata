@@ -44,10 +44,6 @@ To extract metadata using the Cassandra connector, ensure the user in the connec
 /%}
 
 {% stepsContainer %}
-{% extraContent parentTagName="stepsContainer" %}
-
-
-{% /extraContent %}
 
 {% partial file="/v1.7/connectors/test-connection.md" /%}
 
