@@ -7,6 +7,7 @@ import static org.openmetadata.service.apps.bundles.insights.utils.TimestampUtil
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.ENTITY_TYPE_KEY;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getInitialStatsForEntities;
 
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -29,11 +30,13 @@ import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.proce
 import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.DataInsightsEntityEnricherProcessor;
 import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.DataInsightsOpenSearchProcessor;
 import org.openmetadata.service.exception.SearchIndexException;
+import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.elasticsearch.ElasticSearchIndexSink;
 import org.openmetadata.service.search.opensearch.OpenSearchIndexSink;
+import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.workflows.interfaces.Processor;
 import org.openmetadata.service.workflows.interfaces.Sink;
@@ -43,6 +46,7 @@ import org.openmetadata.service.workflows.searchIndex.PaginatedEntitiesSource;
 @Slf4j
 public class DataAssetsWorkflow {
   public static final String DATA_STREAM_KEY = "DataStreamKey";
+  public static final String ENTITY_TYPE_FIELDS_KEY = "EnityTypeFields";
   private final int retentionDays = 30;
   private final Long startTimestamp;
   private final Long endTimestamp;
@@ -51,6 +55,7 @@ public class DataAssetsWorkflow {
   private final CollectionDAO collectionDAO;
   private final List<PaginatedEntitiesSource> sources = new ArrayList<>();
   private final Set<String> entityTypes;
+  private final Map<String, Map<String, List<String>>> entityTypeFields;
 
   private DataInsightsEntityEnricherProcessor entityEnricher;
   private Processor entityProcessor;
@@ -91,10 +96,20 @@ public class DataAssetsWorkflow {
           TimestampUtils.getStartOfDayTimestamp(TimestampUtils.subtractDays(timestamp, 1));
     }
 
+    Map<String, Map<String, List<String>>> entityTypeFields = null;
+
+    try (InputStream in = getClass().getResourceAsStream("/dataInsights/config.json")) {
+      assert in != null;
+      entityTypeFields = JsonUtils.readOrConvertValue(new String(in.readAllBytes()), Map.class);
+    } catch (Exception e) {
+      throw new UnhandledServerException("Failed to load DataInsight Search Configurations.");
+    }
+
     this.batchSize = batchSize;
     this.searchRepository = searchRepository;
     this.collectionDAO = collectionDAO;
     this.entityTypes = entityTypes;
+    this.entityTypeFields = entityTypeFields;
   }
 
   private void initialize() {
@@ -146,6 +161,7 @@ public class DataAssetsWorkflow {
       deleteDataBeforeInserting(getDataStreamName(source.getEntityType()));
       contextData.put(DATA_STREAM_KEY, getDataStreamName(source.getEntityType()));
       contextData.put(ENTITY_TYPE_KEY, source.getEntityType());
+      contextData.put(ENTITY_TYPE_FIELDS_KEY, getEntityTypeFields(source.getEntityType()));
 
       while (!source.isDone().get()) {
         try {
@@ -161,6 +177,12 @@ public class DataAssetsWorkflow {
         }
       }
     }
+  }
+
+  private List<String> getEntityTypeFields(String entityType) {
+    List<String> fields = entityTypeFields.get("mappingFields").get("common");
+    fields.addAll(entityTypeFields.get("mappingFields").get(entityType));
+    return fields;
   }
 
   private void processEntity(

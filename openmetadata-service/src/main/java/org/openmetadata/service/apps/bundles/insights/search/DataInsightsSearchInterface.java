@@ -3,6 +3,7 @@ package org.openmetadata.service.apps.bundles.insights.search;
 import java.io.IOException;
 import java.io.InputStream;
 import org.openmetadata.service.exception.UnhandledServerException;
+import org.openmetadata.service.search.models.IndexMapping;
 
 public interface DataInsightsSearchInterface {
 
@@ -23,7 +24,9 @@ public interface DataInsightsSearchInterface {
     }
   }
 
-  void createDataAssetsDataStream(String name) throws IOException;
+  void createDataAssetsDataStream(
+      String name, String entityType, IndexMapping entityIndexMapping, String language)
+      throws IOException;
 
   void deleteDataAssetDataStream(String name) throws IOException;
 

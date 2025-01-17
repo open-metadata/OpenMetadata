@@ -1,7 +1,11 @@
 package org.openmetadata.service.apps.bundles.insights.search.opensearch;
 
 import java.io.IOException;
+import java.util.List;
+import java.util.Map;
 import org.openmetadata.service.apps.bundles.insights.search.DataInsightsSearchInterface;
+import org.openmetadata.service.search.models.IndexMapping;
+import org.openmetadata.service.util.JsonUtils;
 import os.org.opensearch.client.Request;
 import os.org.opensearch.client.Response;
 import os.org.opensearch.client.ResponseException;
@@ -62,15 +66,64 @@ public class OpenSearchDataInsightsClient implements DataInsightsSearchInterface
     return response.getStatusLine().getStatusCode() == 200;
   }
 
+  private String buildMapping(
+      String entityType,
+      IndexMapping entityIndexMapping,
+      String language,
+      String indexMappingTemplateStr) {
+    Map<String, Map<String, Map<String, Map<String, Object>>>> indexMappingTemplate =
+        JsonUtils.readOrConvertValue(indexMappingTemplateStr, Map.class);
+    Map<String, Map<String, List<String>>> entityConfig =
+        JsonUtils.readOrConvertValue(readResource("/dataInsights/config.json"), Map.class);
+    Map<String, Map<String, Map<String, Object>>> entityIndexMap =
+        JsonUtils.readOrConvertValue(
+            readResource(
+                String.format(entityIndexMapping.getIndexMappingFile(), language.toLowerCase())),
+            Map.class);
+
+    List<String> entityAttributes = entityConfig.get("mappingFields").get("common");
+    entityAttributes.addAll(entityConfig.get("mappingFields").get(entityType));
+
+    indexMappingTemplate
+        .get("template")
+        .get("settings")
+        .put("analysis", entityIndexMap.get("settings").get("analysis"));
+
+    for (String attribute : entityAttributes) {
+      if (!indexMappingTemplate
+          .get("template")
+          .get("mappings")
+          .get("properties")
+          .containsKey(attribute)) {
+        Object value = entityIndexMap.get("mappings").get("properties").get(attribute);
+        if (value != null) {
+          indexMappingTemplate
+              .get("template")
+              .get("mappings")
+              .get("properties")
+              .put(attribute, value);
+        }
+      }
+    }
+
+    return JsonUtils.pojoToJson(indexMappingTemplate);
+  }
+
   @Override
-  public void createDataAssetsDataStream(String name) throws IOException {
+  public void createDataAssetsDataStream(
+      String name, String entityType, IndexMapping entityIndexMapping, String language)
+      throws IOException {
     String resourcePath = "/dataInsights/opensearch";
     createLifecyclePolicy(
         "di-data-assets-lifecycle",
         readResource(String.format("%s/indexLifecyclePolicy.json", resourcePath)));
     createComponentTemplate(
         "di-data-assets-mapping",
-        readResource(String.format("%s/indexMappingsTemplate.json", resourcePath)));
+        buildMapping(
+            entityType,
+            entityIndexMapping,
+            language,
+            readResource(String.format("%s/indexMappingsTemplate.json", resourcePath))));
     createIndexTemplate(
         "di-data-assets", readResource(String.format("%s/indexTemplate.json", resourcePath)));
     createDataStream(name);
