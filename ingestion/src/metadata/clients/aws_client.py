@@ -54,7 +54,7 @@ class AWSAssumeRoleCredentialResponse(BaseModel):
     SessionToken: Optional[str] = Field(
         default=None,
     )
-    Expiration: Optional[datetime.datetime] = Field()
+    Expiration: Optional[datetime.datetime] = None
 
 
 class AWSAssumeRoleCredentialWrapper(BaseModel):
