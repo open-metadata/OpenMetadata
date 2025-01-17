@@ -77,6 +77,7 @@ from metadata.utils.execution_time_tracker import (
     calculate_execution_time_generator,
 )
 from metadata.utils.filters import filter_by_table
+from metadata.utils.helpers import retry_with_docker_host
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.ssl_manager import SSLManager, check_ssl_and_init
 
@@ -108,6 +109,7 @@ class CommonDbSourceService(
     - fetch_column_tags implemented at SqlColumnHandler. Sources should override this when needed
     """
 
+    @retry_with_docker_host()
     def __init__(
         self,
         config: WorkflowSource,

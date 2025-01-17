@@ -20,6 +20,8 @@ The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetada
 
 **includeDDL**: Optional configuration to toggle the DDL Statements ingestion.
 
+**overrideMetadata** *(boolean)*: Set the 'Override Metadata' toggle to control whether to override the existing metadata in the OpenMetadata server with the metadata fetched from the source. If the toggle is set to true, the metadata fetched from the source will override the existing metadata in the OpenMetadata server. If the toggle is set to false, the metadata fetched from the source will not override the existing metadata in the OpenMetadata server. This is applicable for fields like description, tags, owner and displayName.
+
 **queryLogDuration**: Configuration to tune how far we want to look back in query logs to process Stored Procedures results. 
 
 **queryParsingTimeoutLimit**: Configuration to set the timeout for parsing the query in seconds.
@@ -29,6 +31,8 @@ The `sourceConfig` is defined [here](https://github.com/open-metadata/OpenMetada
 **databaseFilterPattern**, **schemaFilterPattern**, **tableFilterPattern**: Note that the filter supports regex as include or exclude. You can find examples [here](/connectors/ingestion/workflows/metadata/filter-patterns/database)
 
 **threads (beta)**: The number of threads to use when extracting the metadata using multithreading. Please take a look [here](/connectors/ingestion/workflows/metadata/multithreading) before configuring this.
+
+**databaseMetadataConfigType** *(string)*: Database Source Config Metadata Pipeline type.
 
 **incremental (beta)**: Incremental Extraction configuration. Currently implemented for:
 

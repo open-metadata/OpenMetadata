@@ -18,6 +18,7 @@ Configure and schedule Cassandra metadata workflows from the OpenMetadata UI:
 
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
+- [Enable Security](#securing-cassandra-connection-with-ssl-in-openmetadata)
 
 {% partial file="/v1.7/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/cassandra/yaml"} /%}
 
@@ -52,6 +53,18 @@ To extract metadata using the Cassandra connector, ensure the user in the connec
 {% partial file="/v1.7/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
+
+## Securing Cassandra Connection with SSL in OpenMetadata
+
+To establish secure connections between OpenMetadata and a Cassandra database, you can use any SSL mode provided by Cassandra, except disable.
+
+Under `Advanced Config`, after selecting the SSL mode, provide the CA certificate, SSL certificate and SSL key.
+
+{% image
+  src="/images/v1.7/connectors/ssl_connection.png"
+  alt="SSL Configuration"
+  height="450px"
+  caption="SSL Configuration" /%}
 
 {% partial file="/v1.7/connectors/troubleshooting.md" /%}
 
