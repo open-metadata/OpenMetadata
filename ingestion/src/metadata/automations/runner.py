@@ -76,7 +76,9 @@ def _(
         if hasattr(request.connection.config, "hostPort"):
             host_port_str = str(request.connection.config.hostPort or "")
             if "localhost" in host_port_str:
-                result = test_connection_fn(metadata, connection, request.connection.config)
+                result = test_connection_fn(
+                    metadata, connection, request.connection.config
+                )
                 raise_test_connection_exception(result)
 
         test_connection_fn(
