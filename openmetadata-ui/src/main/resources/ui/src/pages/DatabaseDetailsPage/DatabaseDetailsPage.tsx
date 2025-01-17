@@ -355,6 +355,8 @@ const DatabaseDetails: FunctionComponent = () => {
     if (databasePermission.ViewAll || databasePermission.ViewBasic) {
       getDetailsByFQN();
       fetchDatabaseSchemaCount();
+    } else {
+      setIsDatabaseDetailsLoading(false);
     }
   }, [databasePermission, decodedDatabaseFQN]);
 

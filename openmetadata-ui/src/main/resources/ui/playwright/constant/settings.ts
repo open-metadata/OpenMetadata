@@ -21,6 +21,18 @@ export enum GlobalSettingsMenuCategory {
   APPLICATIONS = 'apps',
 }
 
+export enum ServiceTypes {
+  API_SERVICES = 'apiServices',
+  DATABASE_SERVICES = 'databaseServices',
+  MESSAGING_SERVICES = 'messagingServices',
+  PIPELINE_SERVICES = 'pipelineServices',
+  DASHBOARD_SERVICES = 'dashboardServices',
+  ML_MODEL_SERVICES = 'mlmodelServices',
+  STORAGE_SERVICES = 'storageServices',
+  METADATA_SERVICES = 'metadataServices',
+  SEARCH_SERVICES = 'searchServices',
+}
+
 export enum GlobalSettingOptions {
   USERS = 'users',
   ADMINS = 'admins',
@@ -80,6 +92,10 @@ export enum GlobalSettingOptions {
 export const SETTINGS_OPTIONS_PATH = {
   // Services
 
+  [GlobalSettingOptions.API_COLLECTIONS]: [
+    GlobalSettingsMenuCategory.SERVICES,
+    `${GlobalSettingsMenuCategory.SERVICES}.${GlobalSettingOptions.API_COLLECTIONS}`,
+  ],
   [GlobalSettingOptions.DATABASES]: [
     GlobalSettingsMenuCategory.SERVICES,
     `${GlobalSettingsMenuCategory.SERVICES}.${GlobalSettingOptions.DATABASES}`,

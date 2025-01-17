@@ -13,6 +13,7 @@
 import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import { SERVICE_TYPE } from '../../constant/service';
+import { ServiceTypes } from '../../constant/settings';
 import { uuid } from '../../utils/common';
 import { visitEntityPage } from '../../utils/entity';
 import { visitServiceDetailsPage } from '../../utils/service';
@@ -149,6 +150,8 @@ export class ApiCollectionClass extends EntityClass {
 
   constructor(name?: string) {
     super(EntityTypeEndpoint.API_COLLECTION);
+    this.serviceCategory = SERVICE_TYPE.ApiService;
+    this.serviceType = ServiceTypes.API_SERVICES;
     this.service.name = name ?? this.service.name;
     this.type = 'Api Collection';
   }

@@ -13,6 +13,7 @@
 import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import { SERVICE_TYPE } from '../../constant/service';
+import { ServiceTypes } from '../../constant/settings';
 import { uuid } from '../../utils/common';
 import { visitEntityPage } from '../../utils/entity';
 import {
@@ -107,6 +108,7 @@ export class TopicClass extends EntityClass {
     this.childrenTabId = 'schema';
     this.childrenSelectorId = this.children[0].name;
     this.serviceCategory = SERVICE_TYPE.Messaging;
+    this.serviceType = ServiceTypes.MESSAGING_SERVICES;
   }
 
   async create(apiContext: APIRequestContext) {
