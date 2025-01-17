@@ -79,7 +79,15 @@ public class SettingsCache {
     Settings storedSettings = systemRepository.getConfigWithKey(EMAIL_CONFIGURATION.toString());
     if (storedSettings == null) {
       // Only in case a config doesn't exist in DB we insert it
-      SmtpSettings emailConfig = new SmtpSettings().withPassword(StringUtils.EMPTY);
+      SmtpSettings emailConfig =
+          new SmtpSettings()
+              .withPassword(StringUtils.EMPTY)
+              .withEmailingEntity("OpenMetadata")
+              .withSupportUrl("https://slack.open-metadata.org")
+              .withEnableSmtpServer(Boolean.FALSE)
+              .withTransportationStrategy(SmtpSettings.TransportationStrategy.SMTP_TLS)
+              .withTemplates(SmtpSettings.Templates.OPENMETADATA);
+
       Settings setting =
           new Settings().withConfigType(EMAIL_CONFIGURATION).withConfigValue(emailConfig);
       systemRepository.createNewSetting(setting);
