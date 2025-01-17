@@ -76,6 +76,10 @@ const DataQualityProvider = ({ children }: { children: React.ReactNode }) => {
       tier: params?.tier ? [params.tier] : undefined,
       tags: params?.tags,
       entityFQN: params?.tableFqn,
+      serviceName: params?.serviceName,
+      testPlatforms: params?.testPlatforms,
+      dataQualityDimension: params?.dataQualityDimension,
+      testCaseStatus: params?.testCaseStatus,
     };
 
     setIsTestCaseSummaryLoading(true);

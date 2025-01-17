@@ -35,4 +35,8 @@ export type DataQualityDashboardChartFilters = {
   endTs?: number;
   entityFQN?: string;
   entityType?: EntityType;
+  serviceName?: string;
+  testPlatforms?: string[];
+  dataQualityDimension?: string;
+  testCaseStatus?: string;
 };
