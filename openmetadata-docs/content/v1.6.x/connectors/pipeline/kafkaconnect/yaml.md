@@ -78,6 +78,9 @@ This is a sample config for KafkaConnect:
 
 {% /codeInfo %}
 
+{% codeInfo srNumber=4 %}
+**messagingServiceName**: Name of the Kafka Messaging Service associated with this KafkaConnect Pipeline Service. e.g. local_kafka.
+{% /codeInfo %}
 
 {% partial file="/v1.6/connectors/yaml/pipeline/source-config-def.md" /%}
 
@@ -108,6 +111,9 @@ source:
         authType:
           username: username
           password: password
+```
+```yaml {% srNumber=4 %}
+        # messagingServiceName: ""
 ```
 
 {% partial file="/v1.6/connectors/yaml/pipeline/source-config.md" /%}
