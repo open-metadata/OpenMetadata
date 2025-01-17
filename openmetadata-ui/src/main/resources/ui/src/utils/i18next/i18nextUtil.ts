@@ -75,7 +75,7 @@ export const getInitOptions = (): InitOptions => {
     },
     fallbackLng: ['en-US'],
     detection: {
-      order: ['cookie'],
+      order: ['querystring', 'cookie', 'navigator'],
       caches: ['cookie'], // cache user language on
     },
     interpolation: {
