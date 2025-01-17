@@ -27,4 +27,19 @@
       #   excludes:
       #     - project3
       #     - project4
+      # dataModelFilterPattern:
+      #   includes:
+      #     - dataModel1
+      #     - dataModel2
+      #   excludes:
+      #     - dataModel3
+      #     - dataModel4
+      # includeOwners: false # true
+      # markDeletedDashboards: true # false
+      # markDeletedDataModels: true # false
+      # includeTags: true # false
+      # includeDataModels: true # false
+      # includeDraftDashboard: true # false
+      # overrideMetadata: false # true
+      # overrideLineage: false # true
 ```
