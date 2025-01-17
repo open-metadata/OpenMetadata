@@ -18,7 +18,7 @@ You can also ingest the metadata using Mysql metastore. This step is optional if
 - **Host and Port**: Enter the fully qualified hostname and port number for your MySQL Metastore deployment in the Host and Port field in the format `hostname:port`.
 - **databaseSchema**: Enter the database schema which is associated with the metastore.
 
-{% partial file="/v1.5/connectors/database/advanced-configuration.md" /%}
+{% partial file="/v1.7/connectors/database/advanced-configuration.md" /%}
 
 #### For Postgres Metastore Connection
 
