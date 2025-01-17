@@ -34,6 +34,7 @@ import {
   selectDomain,
   selectSubDomain,
   setupAssetsForDomain,
+  verifyDataProductAssetsAfterDelete,
   verifyDomain,
 } from '../../utils/domain';
 import { sidebarClick } from '../../utils/sidebar';
@@ -61,7 +62,7 @@ test.describe('Domains', () => {
     await test.step('Add assets to domain', async () => {
       await redirectToHomePage(page);
       await sidebarClick(page, SidebarItem.DOMAIN);
-      await addAssetsToDomain(page, domain.data, assets);
+      await addAssetsToDomain(page, domain, assets);
     });
 
     await test.step('Delete domain using delete modal', async () => {
@@ -100,7 +101,7 @@ test.describe('Domains', () => {
     await domain.create(apiContext);
     await sidebarClick(page, SidebarItem.DOMAIN);
     await page.reload();
-    await addAssetsToDomain(page, domain.data, assets);
+    await addAssetsToDomain(page, domain, assets);
 
     await test.step('Create DataProducts', async () => {
       await selectDomain(page, domain.data);
@@ -115,7 +116,11 @@ test.describe('Domains', () => {
       await redirectToHomePage(page);
       await sidebarClick(page, SidebarItem.DOMAIN);
       await selectDataProduct(page, domain.data, dataProduct1.data);
-      await addAssetsToDataProduct(page, dataProduct1.data, assets);
+      await addAssetsToDataProduct(
+        page,
+        dataProduct1.data.fullyQualifiedName ?? '',
+        assets
+      );
     });
 
     await test.step('Remove assets from DataProducts', async () => {
@@ -220,7 +225,7 @@ test.describe('Domains', () => {
     await domain.create(apiContext);
     await page.reload();
     await sidebarClick(page, SidebarItem.DOMAIN);
-    await addAssetsToDomain(page, domain.data, assets);
+    await addAssetsToDomain(page, domain, assets);
     await page.getByTestId('documentation').click();
     const updatedDomainName = 'PW Domain Updated';
 
@@ -263,6 +268,126 @@ test.describe('Domains', () => {
 
     await domain.delete(apiContext);
     await afterAction();
+  });
+
+  test('Should clear assets from data products after deletion of data product in Domain', async ({
+    page,
+  }) => {
+    const { afterAction, apiContext } = await getApiContext(page);
+    const { assets, assetCleanup } = await setupAssetsForDomain(page);
+    const domain = new Domain({
+      name: 'PW_Domain_Delete_Testing',
+      displayName: 'PW_Domain_Delete_Testing',
+      description: 'playwright domain description',
+      domainType: 'Aggregate',
+      fullyQualifiedName: 'PW_Domain_Delete_Testing',
+    });
+    const dataProduct1 = new DataProduct(domain, 'PW_DataProduct_Sales');
+    const dataProduct2 = new DataProduct(domain, 'PW_DataProduct_Finance');
+
+    const domain1 = new Domain({
+      name: 'PW_Domain_Delete_Testing',
+      displayName: 'PW_Domain_Delete_Testing',
+      description: 'playwright domain description',
+      domainType: 'Aggregate',
+      fullyQualifiedName: 'PW_Domain_Delete_Testing',
+    });
+    const newDomainDP1 = new DataProduct(domain1, 'PW_DataProduct_Sales');
+    const newDomainDP2 = new DataProduct(domain1, 'PW_DataProduct_Finance');
+
+    try {
+      await domain.create(apiContext);
+      await dataProduct1.create(apiContext);
+      await dataProduct2.create(apiContext);
+      await sidebarClick(page, SidebarItem.DOMAIN);
+      await page.reload();
+      await addAssetsToDomain(page, domain, assets);
+      await verifyDataProductAssetsAfterDelete(page, {
+        domain,
+        dataProduct1,
+        dataProduct2,
+        assets,
+      });
+
+      await test.step(
+        'Delete domain & recreate the same domain and data product',
+        async () => {
+          await domain.delete(apiContext);
+          await domain1.create(apiContext);
+          await newDomainDP1.create(apiContext);
+          await newDomainDP2.create(apiContext);
+          await page.reload();
+          await redirectToHomePage(page);
+          await sidebarClick(page, SidebarItem.DOMAIN);
+          await selectDataProduct(page, domain1.data, newDomainDP1.data);
+          await checkAssetsCount(page, 0);
+          await sidebarClick(page, SidebarItem.DOMAIN);
+          await selectDataProduct(page, domain1.data, newDomainDP2.data);
+          await checkAssetsCount(page, 0);
+        }
+      );
+    } finally {
+      await newDomainDP1.delete(apiContext);
+      await newDomainDP2.delete(apiContext);
+      await domain1.delete(apiContext);
+      await assetCleanup();
+      await afterAction();
+    }
+  });
+
+  test('Should inherit owners and experts from parent domain', async ({
+    page,
+  }) => {
+    const { afterAction, apiContext } = await getApiContext(page);
+    const user1 = new UserClass();
+    const user2 = new UserClass();
+    let domain;
+    let dataProduct;
+    try {
+      await user1.create(apiContext);
+      await user2.create(apiContext);
+
+      domain = new Domain({
+        name: 'PW_Domain_Inherit_Testing',
+        displayName: 'PW_Domain_Inherit_Testing',
+        description: 'playwright domain description',
+        domainType: 'Aggregate',
+        fullyQualifiedName: 'PW_Domain_Inherit_Testing',
+        owners: [
+          {
+            name: user1.responseData.name,
+            type: 'user',
+            fullyQualifiedName: user1.responseData.fullyQualifiedName ?? '',
+            id: user1.responseData.id,
+          },
+        ],
+        experts: [user2.responseData.name],
+      });
+      dataProduct = new DataProduct(domain);
+      await domain.create(apiContext);
+      await dataProduct.create(apiContext);
+
+      await page.reload();
+      await redirectToHomePage(page);
+
+      await sidebarClick(page, SidebarItem.DOMAIN);
+      await selectDomain(page, domain.data);
+      await selectDataProduct(page, domain.data, dataProduct.data);
+
+      await expect(
+        page.getByTestId('domain-owner-name').getByTestId('owner-label')
+      ).toContainText(user1.responseData.displayName);
+
+      await expect(
+        page.getByTestId('domain-expert-name').getByTestId('owner-label')
+      ).toContainText(user2.responseData.displayName);
+    } finally {
+      await dataProduct?.delete(apiContext);
+      await domain?.delete(apiContext);
+      await user1.delete(apiContext);
+      await user2.delete(apiContext);
+      await afterAction();
+    }
   });
 });
 
@@ -343,13 +468,13 @@ test.describe('Domains Rbac', () => {
       await redirectToHomePage(page);
       await sidebarClick(page, SidebarItem.DOMAIN);
       await selectDomain(page, domain1.data);
-      await addAssetsToDomain(page, domain1.data, domainAssset1);
+      await addAssetsToDomain(page, domain1, domainAssset1);
 
       // Add assets to domain 2
       await redirectToHomePage(page);
       await sidebarClick(page, SidebarItem.DOMAIN);
       await selectDomain(page, domain2.data);
-      await addAssetsToDomain(page, domain2.data, domainAssset2);
+      await addAssetsToDomain(page, domain2, domainAssset2);
     });
 
     await test.step('User with access to multiple domains', async () => {

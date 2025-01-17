@@ -75,6 +75,8 @@ site_menu:
     url: /deployment/security/ldap/docker
   - category: Deployment / Enable Security / Ldap Authentication / Bare Metal
     url: /deployment/security/ldap/bare-metal
+  - category: Deployment / Enable Security / Ldap Authentication / Kubernetes
+    url: /deployment/security/ldap/kubernetes
   - category: Deployment / Enable Security / Auth0 SSO
     url: /deployment/security/auth0
   - category: Deployment / Enable Security / Auth0 SSO / Docker
@@ -165,6 +167,8 @@ site_menu:
     url: /deployment/security/enable-ssl/ssl-troubleshooting
   - category: Deployment / Enable Security / Enable JWT Tokens
     url: /deployment/security/enable-jwt-tokens
+  - category: Deployment / Enable Security / Configuration Reference Parameters
+    url: /deployment/security/configuration-parameters
   - category: Deployment / Enable Security / JWT Troubleshooting
     url: /deployment/security/jwt-troubleshooting
 
@@ -945,6 +949,8 @@ site_menu:
     url: /releases/supported
   - category: Releases / All Releases
     url: /releases/all-releases
+  - category: Releases / All Releases / 1.6.1 Release
+    url: /releases/all-releases/#1.6.1-release
   - category: Releases / All Releases / 1.5.15 Release
     url: /releases/all-releases/#1.5.15-release
   - category: Releases / All Releases / 1.5.14 Release

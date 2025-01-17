@@ -13,8 +13,8 @@
 
 import { AddIngestionButtonProps } from '../components/Settings/Services/Ingestion/AddIngestionButton.interface';
 import { IngestionListTableProps } from '../components/Settings/Services/Ingestion/IngestionListTable/IngestionListTable.interface';
+import { PipelineActionsProps } from '../components/Settings/Services/Ingestion/IngestionListTable/PipelineActions/PipelineActions.interface';
 import { PipelineActionsDropdownProps } from '../components/Settings/Services/Ingestion/IngestionListTable/PipelineActions/PipelineActionsDropdown.interface';
-import { PipelineActionsProps } from '../components/Settings/Services/Ingestion/PipelineActions.interface';
 import { CursorType } from '../enums/pagination.enum';
 import { ServiceCategory } from '../enums/service.enum';
 import { DatabaseServiceType } from '../generated/entity/data/database';
