@@ -43,6 +43,9 @@ from metadata.generated.schema.entity.services.connections.database.hiveConnecti
 from metadata.generated.schema.entity.services.connections.database.impalaConnection import (
     ImpalaType,
 )
+from metadata.generated.schema.entity.services.connections.database.mariaDBConnection import (
+    MariaDBType,
+)
 from metadata.generated.schema.entity.services.connections.database.mssqlConnection import (
     MssqlType,
 )
@@ -57,6 +60,9 @@ from metadata.generated.schema.entity.services.connections.database.postgresConn
 )
 from metadata.generated.schema.entity.services.connections.database.redshiftConnection import (
     RedshiftType,
+)
+from metadata.generated.schema.entity.services.connections.database.singleStoreConnection import (
+    SingleStoreType,
 )
 from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
     SnowflakeType,
@@ -120,6 +126,8 @@ MAP_CONNECTION_TYPE_DIALECT: Dict[str, Dialect] = {
     str(MssqlType.Mssql.value): Dialect.TSQL,
     str(AzureSQLType.AzureSQL.value): Dialect.TSQL,
     str(TeradataType.Teradata.value): Dialect.TERADATA,
+    str(MariaDBType.MariaDB.value): Dialect.MYSQL,
+    str(SingleStoreType.SingleStore.value): Dialect.MYSQL,
 }
 
 
