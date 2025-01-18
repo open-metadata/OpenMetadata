@@ -80,14 +80,8 @@ If activated the profiler will compute metric for view entity types. Note that i
 Set this flag when you want to apply the filters on Fully Qualified Names (e.g service_name.db_name.schema_name.table_name) instead of applying them to the raw name of the asset (e.g table_name).
 This Flag is useful in scenarios when you have different schemas with same name in multiple databases, or tables with same name in different schemas, and you want to filter out only one of them.
 
-**Generate Sample Data**  
-Whether the profiler should ingest sample data
-
 **Compute Metrics**  
 Set the Compute Metrics toggle off to not perform any metric computation during the profiler ingestion workflow. Used in combination with Ingest Sample Data toggle on allows you to only ingest sample data.
-
-**Process Pii Sensitive (Optional)**  
-Configuration to automatically tag columns that might contain sensitive information. PII data will be infered from the column name. If `Generate Sample Data` is toggled on OpenMetadata will leverage machine learning to infer which column may contain PII sensitive data.
 
 **Advanced Configuration**  
 
