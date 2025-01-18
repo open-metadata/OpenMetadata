@@ -176,6 +176,34 @@ class MetabaseClient:
         }
         return MetabaseDashboardDetails(**dashboard_data)
 
+    def _process_dashboard_response(
+        self, resp_dashboard: Dict, charts_dict: Dict, dashboard_id: str
+    ) -> MetabaseDashboardDetails:
+        """
+        Process dashboard response and create MetabaseDashboardDetails object
+        """
+        if "ordered_cards" in resp_dashboard:
+            resp_dashboard["dashcards"] = resp_dashboard["ordered_cards"]
+
+        card_ids = []
+        for card in resp_dashboard["dashcards"]:
+            if card.get("card") and card["card"].get("id"):
+                card_id = str(card["card"]["id"])
+                card_ids.append(card_id)
+                if card_id in charts_dict:
+                    charts_dict[card_id].dashboard_ids.append(dashboard_id)
+
+        dashboard_data = {
+            "description": resp_dashboard.get("description"),
+            "name": resp_dashboard.get("name"),
+            "id": resp_dashboard.get("id"),
+            "creator_id": resp_dashboard.get("creator_id"),
+            "collection_id": resp_dashboard.get("collection_id"),
+            "card_ids": card_ids,
+        }
+
+        return MetabaseDashboardDetails(**dashboard_data)
+
     def get_dashboard_details(
         self, dashboard_id: str, charts_dict: Dict, orphan_charts_id: List
     ) -> Optional[MetabaseDashboardDetails]:
@@ -191,26 +219,9 @@ class MetabaseClient:
             if resp_dashboard:
                 # Small hack needed to support Metabase versions older than 0.48
                 # https://www.metabase.com/releases/metabase-48#fyi--breaking-changes
-                if "ordered_cards" in resp_dashboard:
-                    resp_dashboard["dashcards"] = resp_dashboard["ordered_cards"]
-                card_ids = []
-                for card in resp_dashboard["dashcards"]:
-                    if card.get("card") and card["card"].get("id"):
-                        card_id = str(card["card"]["id"])
-                        card_ids.append(card_id)
-                        if card_id in charts_dict:
-                            charts_dict[card_id].dashboard_ids.append(dashboard_id)
-
-                dashboard_data = {
-                    "description": resp_dashboard.get("description"),
-                    "name": resp_dashboard.get("name"),
-                    "id": resp_dashboard.get("id"),
-                    "creator_id": resp_dashboard.get("creator_id"),
-                    "collection_id": resp_dashboard.get("collection_id"),
-                    "card_ids": card_ids,
-                }
-
-                return MetabaseDashboardDetails(**dashboard_data)
+                return self._process_dashboard_response(
+                    resp_dashboard, charts_dict, dashboard_id
+                )
         except Exception:
             logger.debug(traceback.format_exc())
             logger.warning(f"Failed to fetch the dashboard with id: {dashboard_id}")
