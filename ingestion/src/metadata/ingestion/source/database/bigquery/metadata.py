@@ -671,6 +671,31 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
             database = self.context.get().database
             table = self.client.get_table(fqn._build(database, schema_name, table_name))
             columns = inspector.get_columns(table_name, schema_name, db_name=database)
+            if hasattr(table, "external_data_configuration") and hasattr(
+                table.external_data_configuration, "hive_partitioning"
+            ):
+                # Ingesting External Hive Partitioned Tables
+                from google.cloud.bigquery.external_config import (  # pylint: disable=import-outside-toplevel
+                    HivePartitioningOptions,
+                )
+
+                partition_details: HivePartitioningOptions = (
+                    table.external_data_configuration.hive_partitioning
+                )
+                return True, TablePartition(
+                    columns=[
+                        PartitionColumnDetails(
+                            columnName=self._get_partition_column_name(
+                                columns=columns,
+                                partition_field_name=field,
+                            ),
+                            interval=str(partition_details._properties.get("mode")),
+                            intervalType=PartitionIntervalTypes.OTHER,
+                        )
+                        for field in partition_details._properties.get("fields")
+                    ]
+                )
+
             if table.time_partitioning is not None:
                 if table.time_partitioning.field:
                     table_partition = TablePartition(

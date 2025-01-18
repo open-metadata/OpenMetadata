@@ -49,7 +49,7 @@ def validate_athena_injected_partitioning(
 
     column_partitions: Optional[List[PartitionColumnDetails]] = table_partitions.columns
     if not column_partitions:
-        raise RuntimeError("Table parition is set but no columns are defined.")
+        raise RuntimeError("Table partition is set but no columns are defined.")
 
     for column_partition in column_partitions:
         if column_partition.intervalType == PartitionIntervalTypes.INJECTED:
@@ -163,6 +163,7 @@ def _handle_bigquery_partition(
                 partitionIntegerRangeStart=1,
                 partitionIntegerRangeEnd=10000,
             )
+        # TODO: Allow External Hive Partitioning for profiler
         raise TypeError(
             f"Unsupported partition type {partition.intervalType}. Skipping table"
         )
