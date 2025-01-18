@@ -385,6 +385,10 @@ export const getResourceEntityFromServiceCategory = (
     case ServiceCategory.STORAGE_SERVICES:
       return ResourceEntity.STORAGE_SERVICE;
 
+    case 'searchIndex':
+    case ServiceCategory.SEARCH_SERVICES:
+      return ResourceEntity.SEARCH_SERVICE;
+
     case ServiceCategory.API_SERVICES:
       return ResourceEntity.API_SERVICE;
   }
