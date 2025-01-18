@@ -80,6 +80,7 @@ const DataQualityProvider = ({ children }: { children: React.ReactNode }) => {
       testPlatforms: params?.testPlatforms,
       dataQualityDimension: params?.dataQualityDimension,
       testCaseStatus: params?.testCaseStatus,
+      testCaseType: params?.testCaseType,
     };
 
     setIsTestCaseSummaryLoading(true);

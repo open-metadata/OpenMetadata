@@ -33,7 +33,7 @@ import {
   TestDefinition,
 } from '../../generated/tests/testDefinition';
 import { DataQualityDashboardChartFilters } from '../../pages/DataQuality/DataQualityPage.interface';
-import { ListTestCaseParamsBySearch } from '../../rest/testAPI';
+import { ListTestCaseParamsBySearch, TestCaseType } from '../../rest/testAPI';
 import { generateEntityLink } from '../TableUtils';
 
 /**
@@ -311,6 +311,18 @@ export const buildDataQualityDashboardFilters = (data: {
         'testCaseResult.testCaseStatus': filters.testCaseStatus,
       },
     });
+  }
+
+  if (filters?.testCaseType) {
+    if (filters.testCaseType === TestCaseType.table) {
+      mustFilter.push({
+        bool: { must_not: [{ regexp: { entityLink: '.*::columns::.*' } }] },
+      });
+    }
+
+    if (filters.testCaseType === TestCaseType.column) {
+      mustFilter.push({ regexp: { entityLink: '.*::columns::.*' } });
+    }
   }
 
   return mustFilter;
