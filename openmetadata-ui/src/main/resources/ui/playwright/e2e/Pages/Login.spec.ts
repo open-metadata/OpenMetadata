@@ -11,14 +11,22 @@
  *  limitations under the License.
  */
 import { expect, test } from '@playwright/test';
-import { LOGIN_ERROR_MESSAGE } from '../../constant/login';
+import { JWT_EXPIRY_TIME_MAP, LOGIN_ERROR_MESSAGE } from '../../constant/login';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
+import { redirectToHomePage } from '../../utils/common';
+import { updateJWTTokenExpiryTime } from '../../utils/login';
+import { visitUserProfilePage } from '../../utils/user';
 
 const user = new UserClass();
 const CREDENTIALS = user.data;
 const invalidEmail = 'userTest@openmetadata.org';
 const invalidPassword = 'testUsers@123';
+
+test.describe.configure({
+  // 5 minutes max for refresh token tests
+  timeout: 5 * 60 * 1000,
+});
 
 test.describe('Login flow should work properly', () => {
   test.afterAll('Cleanup', async ({ browser }) => {
@@ -28,6 +36,18 @@ test.describe('Login flow should work properly', () => {
     );
     user.responseData = await response.json();
     await user.delete(apiContext);
+    await afterAction();
+  });
+
+  test.beforeAll('Create user', async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+
+    // update expiry for 3 mins
+    await updateJWTTokenExpiryTime(
+      apiContext,
+      JWT_EXPIRY_TIME_MAP['3 minutes']
+    );
+
     await afterAction();
   });
 
@@ -110,5 +130,38 @@ test.describe('Login flow should work properly', () => {
     // Click on Forgot button
     await page.getByRole('button', { name: 'Submit' }).click();
     await page.locator('[data-testid="go-back-button"]').click();
+  });
+
+  test('Refresh should work', async ({ browser }) => {
+    const browserContext = await browser.newContext();
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    const page1 = await browserContext.newPage(),
+      page2 = await browserContext.newPage();
+    //   page3 = await browserContext.newPage();
+
+    const testUser = new UserClass();
+    await testUser.create(apiContext);
+
+    await afterAction();
+
+    await test.step('login', async () => {
+      // User login
+
+      await testUser.login(page1);
+      await redirectToHomePage(page1);
+      await redirectToHomePage(page2);
+
+      const refreshCall = page1.waitForResponse('**/refresh', {
+        timeout: 3 * 60 * 1000,
+      });
+
+      await refreshCall;
+
+      await redirectToHomePage(page1);
+
+      await visitUserProfilePage(page1, testUser.responseData.name);
+      await redirectToHomePage(page2);
+      await visitUserProfilePage(page2, testUser.responseData.name);
+    });
   });
 });
