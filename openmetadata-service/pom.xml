@@ -16,10 +16,10 @@
     <sonar.coverage.jacoco.xmlReportPaths>${project.basedir}/target/site/jacoco-aggregate/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
     <sonar.tests>${project.basedir}/src/test/java</sonar.tests>
     <org.testcontainers.version>1.20.4</org.testcontainers.version>
-    <awssdk.version>2.29.20</awssdk.version>
-    <azure-identity.version>1.14.2</azure-identity.version>
-    <azure-kv.version>4.9.0</azure-kv.version>
-    <azure-identity-extensions.version>1.0.0</azure-identity-extensions.version>
+    <awssdk.version>2.30.1</awssdk.version>
+    <azure-identity.version>1.15.0</azure-identity.version>
+    <azure-kv.version>4.9.1</azure-kv.version>
+    <azure-identity-extensions.version>1.2.0</azure-identity-extensions.version>
     <expiring.map.version>0.5.11</expiring.map.version>
     <java.saml>2.9.0</java.saml>
     <xmlsec.version>2.3.4</xmlsec.version>
@@ -46,7 +46,7 @@
       <dependency>
         <groupId>com.google.cloud</groupId>
         <artifactId>libraries-bom</artifactId>
-        <version>26.49.0</version>
+        <version>26.53.0</version>
         <type>pom</type>
         <scope>import</scope>
       </dependency>
@@ -634,12 +634,12 @@
     <dependency>
       <groupId>org.apache.commons</groupId>
       <artifactId>commons-csv</artifactId>
-      <version>1.12.0</version>
+      <version>1.13.0</version>
     </dependency>
     <dependency>
       <groupId>com.opencsv</groupId>
       <artifactId>opencsv</artifactId>
-      <version>5.9</version>
+      <version>5.10</version>
     </dependency>
     <dependency>
       <groupId>com.onelogin</groupId>
@@ -685,7 +685,7 @@
     <dependency>
       <groupId>com.google.guava</groupId>
       <artifactId>guava</artifactId>
-      <version>33.3.1-jre</version>
+      <version>33.4.0-jre</version>
       <scope>compile</scope>
     </dependency>
     <dependency>
@@ -705,7 +705,7 @@
     <dependency>
       <groupId>com.slack.api</groupId>
       <artifactId>bolt-servlet</artifactId>
-      <version>1.44.2</version>
+      <version>1.45.1</version>
       <scope>compile</scope>
     </dependency>
     <dependency>
