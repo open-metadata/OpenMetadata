@@ -163,7 +163,7 @@ def _handle_bigquery_partition(
                 partitionIntegerRangeStart=1,
                 partitionIntegerRangeEnd=10000,
             )
-        # TODO: Allow External Hive Partitioning for profiler    
+        # TODO: Allow External Hive Partitioning for profiler
         raise TypeError(
             f"Unsupported partition type {partition.intervalType}. Skipping table"
         )
