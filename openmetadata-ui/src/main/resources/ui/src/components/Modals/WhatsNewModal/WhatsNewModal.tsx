@@ -139,9 +139,7 @@ const WhatsNewModal: FunctionComponent<WhatsNewModalProps> = ({
                         onClick={() => {
                           handleToggleChange(ToggleType.CHANGE_LOG);
                         }}>
-                        {t('label.change-entity', {
-                          entity: t('label.log-plural'),
-                        })}
+                        {t('label.change-log-plural')}
                       </Button>
                     </Button.Group>
                   </div>

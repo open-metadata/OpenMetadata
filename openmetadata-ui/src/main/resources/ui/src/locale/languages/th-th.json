@@ -149,6 +149,7 @@
     "category-plural": "หมวดหมู่หลายรายการ",
     "certification": "Certification",
     "change-entity": "เปลี่ยน {{entity}}",
+    "change-log-plural": "บันทึกการเปลี่ยนแปลง",
     "change-parent-entity": "เปลี่ยนผู้ปกครอง {{entity}}",
     "chart": "กราฟ",
     "chart-entity": "กราฟ {{entity}}",
