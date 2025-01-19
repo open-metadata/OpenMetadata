@@ -149,6 +149,7 @@
     "category-plural": "分类",
     "certification": "Certification",
     "change-entity": "更改{{entity}}",
+    "change-log-plural": "变更日志",
     "change-parent-entity": "更改父级{{entity}}",
     "chart": "图表",
     "chart-entity": "图表{{entity}}",
