@@ -39,17 +39,20 @@ test.describe('Login flow should work properly', () => {
     await afterAction();
   });
 
-  test.beforeAll('Create user', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
+  test.beforeAll(
+    'Update token timer to be 3 minutes for new token created',
+    async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
 
-    // update expiry for 3 mins
-    await updateJWTTokenExpiryTime(
-      apiContext,
-      JWT_EXPIRY_TIME_MAP['3 minutes']
-    );
+      // update expiry for 3 mins
+      await updateJWTTokenExpiryTime(
+        apiContext,
+        JWT_EXPIRY_TIME_MAP['3 minutes']
+      );
 
-    await afterAction();
-  });
+      await afterAction();
+    }
+  );
 
   test('Signup and Login with signed up credentials', async ({ page }) => {
     await page.goto('/');
@@ -144,7 +147,7 @@ test.describe('Login flow should work properly', () => {
 
     await afterAction();
 
-    await test.step('login', async () => {
+    await test.step('Login and wait for refresh call is made', async () => {
       // User login
 
       await testUser.login(page1);
