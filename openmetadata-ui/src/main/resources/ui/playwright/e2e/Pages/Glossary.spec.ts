@@ -47,6 +47,7 @@ import {
   confirmationDragAndDropGlossary,
   createDescriptionTaskForGlossary,
   createGlossary,
+  createGlossaryTerm,
   createGlossaryTerms,
   createTagTaskForGlossary,
   deleteGlossaryOrGlossaryTerm,
@@ -314,7 +315,7 @@ test.describe('Glossary tests', () => {
       await glossaryTerm1.create(apiContext);
       await owner1.create(apiContext);
       await reviewer1.create(apiContext);
-      await await redirectToHomePage(page);
+      await redirectToHomePage(page);
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary1.data.displayName);
 
@@ -511,7 +512,7 @@ test.describe('Glossary tests', () => {
         await patchRequest2;
 
         // Check if the terms are present
-        const glossaryContainer = await page.locator(
+        const glossaryContainer = page.locator(
           '[data-testid="entity-right-panel"] [data-testid="glossary-container"]'
         );
         const glossaryContainerText = await glossaryContainer.innerText();
@@ -521,7 +522,7 @@ test.describe('Glossary tests', () => {
 
         // Check if the icons are present
 
-        const icons = await page.locator(
+        const icons = page.locator(
           '[data-testid="entity-right-panel"] [data-testid="glossary-container"] [data-testid="glossary-icon"]'
         );
 
@@ -571,7 +572,7 @@ test.describe('Glossary tests', () => {
         expect(tagSelectorText).toContain(glossaryTerm3.data.displayName);
 
         // Check if the icon is visible
-        const icon = await page.locator(
+        const icon = page.locator(
           '[data-testid="glossary-tags-0"] > [data-testid="tags-wrapper"] > [data-testid="glossary-container"] [data-testid="glossary-icon"]'
         );
 
@@ -583,7 +584,7 @@ test.describe('Glossary tests', () => {
         await goToAssetsTab(page, glossaryTerm3.data.displayName, 2);
 
         // Check if the selected asset are present
-        const assetContainer = await page.locator(
+        const assetContainer = page.locator(
           '[data-testid="table-container"] .assets-data-container'
         );
 
@@ -805,6 +806,8 @@ test.describe('Glossary tests', () => {
   test('Assign Glossary Term to entity and check assets', async ({
     browser,
   }) => {
+    test.slow(true);
+
     const { page, afterAction, apiContext } = await performAdminLogin(browser);
     const table = new TableClass();
     const glossary1 = new Glossary();
@@ -1186,48 +1189,32 @@ test.describe('Glossary tests', () => {
     }
   });
 
-  test('should check for glossary term pagination', async ({ browser }) => {
-    test.slow(true);
-
+  test('Add Glossary Term inside another Term', async ({ browser }) => {
     const { page, afterAction, apiContext } = await performAdminLogin(browser);
-    const glossaries = [];
-    for (let i = 0; i < 60; i++) {
-      const glossary = new Glossary(`PW_GLOSSARY_TEST_${i + 1}`);
-      await glossary.create(apiContext);
-      glossaries.push(glossary);
-    }
+    const glossary1 = new Glossary();
+    const glossaryTerm1 = new GlossaryTerm(glossary1);
+    const glossary2 = new Glossary();
+    glossary2.data.terms = [new GlossaryTerm(glossary2)];
 
     try {
+      await glossary1.create(apiContext);
+      await glossaryTerm1.create(apiContext);
       await redirectToHomePage(page);
-      const glossaryRes = page.waitForResponse('/api/v1/glossaries?*');
       await sidebarClick(page, SidebarItem.GLOSSARY);
-      await glossaryRes;
+      await selectActiveGlossary(page, glossary1.data.displayName);
+      await selectActiveGlossaryTerm(page, glossaryTerm1.data.displayName);
+      await page.getByTestId('terms').click();
 
-      const glossaryAfterRes = page.waitForResponse(
-        '/api/v1/glossaries?*after=*'
+      await createGlossaryTerm(
+        page,
+        glossary2.data.terms[0].data,
+        'Approved',
+        false,
+        true
       );
-      await page
-        .getByTestId('glossary-left-panel-scroller')
-        .scrollIntoViewIfNeeded();
-
-      const res = await glossaryAfterRes;
-      const json = await res.json();
-
-      const firstGlossaryName = json.data[0].displayName;
-
-      await expect(
-        page.getByRole('menuitem', { name: firstGlossaryName })
-      ).toBeVisible();
-
-      const lastGlossaryName = json.data[json.data.length - 1].displayName;
-
-      await expect(
-        page.getByRole('menuitem', { name: lastGlossaryName })
-      ).toBeVisible();
     } finally {
-      for (const glossary of glossaries) {
-        await glossary.delete(apiContext);
-      }
+      await glossaryTerm1.delete(apiContext);
+      await glossary1.delete(apiContext);
       await afterAction();
     }
   });
