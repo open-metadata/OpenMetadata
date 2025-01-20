@@ -46,6 +46,7 @@ import org.jdbi.v3.core.statement.StatementException;
 import org.jdbi.v3.sqlobject.CreateSqlObject;
 import org.jdbi.v3.sqlobject.config.RegisterRowMapper;
 import org.jdbi.v3.sqlobject.customizer.Bind;
+import org.jdbi.v3.sqlobject.customizer.BindBean;
 import org.jdbi.v3.sqlobject.customizer.BindBeanList;
 import org.jdbi.v3.sqlobject.customizer.BindList;
 import org.jdbi.v3.sqlobject.customizer.BindMap;
@@ -53,6 +54,7 @@ import org.jdbi.v3.sqlobject.customizer.Define;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
 import org.jdbi.v3.sqlobject.statement.UseRowMapper;
+import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.api.configuration.UiThemePreference;
 import org.openmetadata.schema.TokenInterface;
 import org.openmetadata.schema.analytics.ReportData;
@@ -141,6 +143,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO.TagUsageDAO.TagLabelMapper;
 import org.openmetadata.service.jdbi3.CollectionDAO.UsageDAO.UsageDetailsMapper;
 import org.openmetadata.service.jdbi3.FeedRepository.FilterType;
+import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlBatch;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlQuery;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlUpdate;
 import org.openmetadata.service.resources.events.subscription.TypedEvent;
@@ -711,6 +714,24 @@ public interface CollectionDAO {
         @Bind("jsonSchema") String jsonSchema,
         @Bind("json") String json);
 
+    @Transaction
+    @ConnectionAwareSqlBatch(
+        value =
+            "REPLACE INTO entity_extension(id, extension, jsonSchema, json) "
+                + "VALUES (:id, :extension, :jsonSchema, :json)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlBatch(
+        value =
+            "INSERT INTO entity_extension(id, extension, jsonSchema, json) "
+                + "VALUES (:id, :extension, :jsonSchema, (:json :: jsonb)) "
+                + "ON CONFLICT (id, extension) DO UPDATE SET jsonSchema = EXCLUDED.jsonSchema, json = EXCLUDED.json",
+        connectionType = POSTGRES)
+    void insertMany(
+        @BindUUID("id") List<UUID> id,
+        @Bind("extension") List<String> extension,
+        @Bind("jsonSchema") String jsonSchema,
+        @Bind("json") List<String> json);
+
     @ConnectionAwareSqlUpdate(
         value = "UPDATE entity_extension SET json = :json where (json -> '$.id') = :id",
         connectionType = MYSQL)
@@ -730,6 +751,30 @@ public interface CollectionDAO {
     @RegisterRowMapper(ExtensionRecordWithIdMapper.class)
     List<ExtensionRecordWithId> getExtensionsBatch(
         @BindList("ids") List<String> ids, @Bind("extensionPrefix") String extensionPrefix);
+
+    @SqlQuery(
+        "SELECT id, extension, json, jsonschema "
+            + "FROM entity_extension "
+            + "WHERE extension LIKE CONCAT(:extensionPrefix, '%') "
+            + "ORDER BY id, extension")
+    @RegisterRowMapper(ExtensionWithIdAndSchemaRowMapper.class)
+    List<ExtensionWithIdAndSchemaObject> getExtensionsByPrefixBatch(
+        @Bind("extensionPrefix") String extensionPrefix);
+
+    @Transaction
+    @ConnectionAwareSqlBatch(
+        value =
+            "INSERT INTO entity_extension (id, extension, json, jsonschema) "
+                + "VALUES (:id, :extension, :json, :jsonschema) "
+                + "ON DUPLICATE KEY UPDATE json = VALUES(json), jsonschema = VALUES(jsonschema)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlBatch(
+        value =
+            "INSERT INTO entity_extension (id, extension, json,jsonschema) VALUES (:id, :extension, :json::jsonb,:jsonschema) "
+                + "ON CONFLICT (id, extension) DO UPDATE SET json = EXCLUDED.json , jsonschema = EXCLUDED.jsonschema",
+        connectionType = POSTGRES)
+    void bulkUpsertExtensions(
+        @BindBean List<ExtensionWithIdAndSchemaObject> extensionWithIdObjects);
 
     @RegisterRowMapper(ExtensionMapper.class)
     @SqlQuery(
@@ -789,6 +834,28 @@ public interface CollectionDAO {
       String extensionName = rs.getString("extension");
       String extensionJson = rs.getString("json");
       return new ExtensionRecordWithId(UUID.fromString(id), extensionName, extensionJson);
+    }
+  }
+
+  @Getter
+  @Setter
+  @Builder
+  class ExtensionWithIdAndSchemaObject {
+    private String id;
+    private String extension;
+    private String json;
+    private String jsonschema;
+  }
+
+  class ExtensionWithIdAndSchemaRowMapper implements RowMapper<ExtensionWithIdAndSchemaObject> {
+    @Override
+    public ExtensionWithIdAndSchemaObject map(ResultSet rs, StatementContext ctx)
+        throws SQLException {
+      String id = rs.getString("id");
+      String extensionName = rs.getString("extension");
+      String extensionJson = rs.getString("json");
+      String jsonSchema = rs.getString("jsonschema");
+      return new ExtensionWithIdAndSchemaObject(id, extensionName, extensionJson, jsonSchema);
     }
   }
 

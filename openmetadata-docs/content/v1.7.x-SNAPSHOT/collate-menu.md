@@ -68,6 +68,10 @@ site_menu:
     url: /connectors/database/clickhouse
   - category: Connectors / Database / Clickhouse / Run Externally
     url: /connectors/database/clickhouse/yaml
+  - category: Connectors / Database / Cockroach
+    url: /connectors/database/cockroach
+  - category: Connectors / Database / Cockroach / Run Externally
+    url: /connectors/database/cockroach/yaml
   - category: Connectors / Database / Couchbase
     url: /connectors/database/couchbase
   - category: Connectors / Database / Couchbase / Run Externally
@@ -354,10 +358,9 @@ site_menu:
 
   - category: Connectors / Pipeline / Matillion / Run Externally
     url: /connectors/pipeline/matillion/yaml
-  - category: Connectors / Pipeline / DataFactory
+  - category: Connectors / Pipeline / Azure Data Factory
     url: /connectors/pipeline/datafactory
-
-  - category: Connectors / Pipeline / DataFactory / Run Externally
+  - category: Connectors / Pipeline / Azure Data Factory / Run Externally
     url: /connectors/pipeline/datafactory/yaml
   - category: Connectors / Pipeline / Stitch
     url: /connectors/pipeline/stitch
@@ -829,6 +832,8 @@ site_menu:
     url: /releases/supported
   - category: Releases / All Releases
     url: /releases/all-releases
+  - category: Releases / All Releases / 1.6.1 Release
+    url: /releases/all-releases/#1.6.1-release
   - category: Releases / All Releases / 1.5.15 Release
     url: /releases/all-releases/#1.5.15-release
   - category: Releases / All Releases / 1.5.14 Release
@@ -1418,6 +1423,8 @@ site_menu:
     url: /main-concepts/metadata-standard/schemas/entity/services/connections/database/common
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Database / Common / JwtAuth
     url: /main-concepts/metadata-standard/schemas/entity/services/connections/database/common/jwtauth
+  - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Database / CockroachConnection
+    url: /main-concepts/metadata-standard/schemas/entity/services/connections/database/cockroachconnection
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Database / CouchbaseConnection
     url: /main-concepts/metadata-standard/schemas/entity/services/connections/database/couchbaseconnection
   - category: Main Concepts / Metadata Standard / Schemas / Entity / Services / Connections / Database / CustomDatabaseConnection

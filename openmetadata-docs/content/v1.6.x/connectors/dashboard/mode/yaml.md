@@ -98,6 +98,10 @@ Name of the mode workspace from where the metadata is to be fetched.
 
 {% /codeInfo %}
 
+{% codeInfo srNumber=5 %}
+**filterQueryParam**: Filter query parameter for some of the Mode API calls.
+{% /codeInfo %}
+
 {% partial file="/v1.6/connectors/yaml/dashboard/source-config-def.md" /%}
 
 {% partial file="/v1.6/connectors/yaml/ingestion-sink-def.md" /%}
@@ -127,6 +131,9 @@ source:
 ```
 ```yaml {% srNumber=4 %}
       workspace_name: workspace_name
+```
+```yaml {% srNumber=5 %}
+      # filterQueryParam: ""
 ```
 
 {% partial file="/v1.6/connectors/yaml/dashboard/source-config.md" /%}

@@ -49,6 +49,7 @@ from metadata.generated.schema.type.basic import (
 )
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
+from metadata.ingestion.models.ometa_lineage import OMetaLineageRequest
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
@@ -167,7 +168,7 @@ class PowerbiSource(DashboardServiceSource):
         Method to iterate through dashboard lists filter dashboards & yield dashboard details
         """
         # fetch all workspaces/groups & apply filter pattern
-        all_workspaces = self.client.api_client.fetch_all_workspaces()
+        all_workspaces = self.client.api_client.fetch_all_workspaces() or []
         all_workspaces = self.get_filtered_workspaces(all_workspaces)
         for workspace in all_workspaces:
             # prepare additional data for specific workspace (datasets, reports, dashboards)
@@ -761,3 +762,85 @@ class PowerbiSource(DashboardServiceSource):
                 f"Error fetching project name for {dashboard_details.id}: {exc}"
             )
         return None
+
+    def yield_dashboard_lineage(
+        self, dashboard_details: Any
+    ) -> Iterable[Either[OMetaLineageRequest]]:
+        """
+        Yields lineage if config is enabled.
+
+        We will look for the data in all the services
+        we have informed.
+        """
+        for lineage in self.yield_datamodel_dashboard_lineage(dashboard_details) or []:
+            if lineage.right is not None:
+                yield Either(
+                    right=OMetaLineageRequest(
+                        lineage_request=lineage.right,
+                        override_lineage=self.source_config.overrideLineage,
+                    )
+                )
+            else:
+                yield lineage
+
+        db_service_names = self.get_db_service_names()
+        for db_service_name in db_service_names or []:
+            yield from self.yield_dashboard_lineage_details(
+                dashboard_details, db_service_name
+            ) or []
+
+    def yield_datamodel_dashboard_lineage(
+        self, dashboard_details: Any
+    ) -> Iterable[Either[AddLineageRequest]]:
+        """
+        Returns:
+            Lineage request between Data Models and Dashboards
+        """
+        dashboard_fqn = fqn.build(
+            self.metadata,
+            entity_type=Dashboard,
+            service_name=self.context.get().dashboard_service,
+            dashboard_name=dashboard_details.id,
+        )
+        dashboard_entity = self.metadata.get_by_name(
+            entity=Dashboard, fqn=dashboard_fqn
+        )
+        if isinstance(dashboard_details, PowerBIReport):
+            datamodel_fqn = fqn.build(
+                metadata=self.metadata,
+                entity_type=DashboardDataModel,
+                service_name=self.context.get().dashboard_service,
+                data_model_name=dashboard_details.datasetId,
+            )
+            datamodel_entity = self.metadata.get_by_name(
+                entity=DashboardDataModel, fqn=datamodel_fqn
+            )
+            if dashboard_entity and datamodel_entity:
+                yield self._get_add_lineage_request(
+                    to_entity=dashboard_entity, from_entity=datamodel_entity
+                )
+        else:
+            if (
+                hasattr(self.context.get(), "dataModels")
+                and self.context.get().dataModels
+            ):
+                for datamodel in self.context.get().dataModels:
+                    try:
+                        datamodel_fqn = fqn.build(
+                            metadata=self.metadata,
+                            entity_type=DashboardDataModel,
+                            service_name=self.context.get().dashboard_service,
+                            data_model_name=datamodel,
+                        )
+                        datamodel_entity = self.metadata.get_by_name(
+                            entity=DashboardDataModel, fqn=datamodel_fqn
+                        )
+                        if dashboard_entity and datamodel_entity:
+                            yield self._get_add_lineage_request(
+                                to_entity=dashboard_entity, from_entity=datamodel_entity
+                            )
+                    except Exception as err:
+                        logger.debug(traceback.format_exc())
+                        logger.error(
+                            f"Error to yield dashboard lineage details for data model name [{str(datamodel)}]: {err}"
+                        )

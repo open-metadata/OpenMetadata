@@ -33,9 +33,14 @@
       "description": "Owners of this test suite",
       "$ref": "../../type/entityReferenceList.json"
     },
-    "executableEntityReference": {
-      "description": "FQN of the entity the test suite is executed against. Only applicable for executable test suites.",
+    "basicEntityReference": {
+      "description": "Entity reference the test suite needs to execute the test against. Only applicable if the test suite is basic.",
       "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "executableEntityReference": {
+      "description": "DEPRECATED in 1.6.2: use 'basicEntityReference'",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName",
+      "deprecated": true
     },
     "domain": {
       "description": "Fully qualified name of the domain the Table belongs to.",

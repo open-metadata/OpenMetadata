@@ -803,25 +803,30 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     allRecords.addAll(fromRecords);
     allRecords.addAll(toRecords);
 
-    Map<UUID, List<EntityReference>> relatedTermsMap = new HashMap<>();
+    Map<UUID, Set<UUID>> relatedTermIdsMap = new HashMap<>();
 
     for (CollectionDAO.EntityRelationshipObject rec : allRecords) {
-      UUID termId;
-      UUID relatedTermId;
+      UUID termId = UUID.fromString(rec.getFromId());
+      UUID relatedTermId = UUID.fromString(rec.getToId());
 
-      if (termIdsSet.contains(rec.getFromId())) {
-        termId = UUID.fromString(rec.getFromId());
-        relatedTermId = UUID.fromString(rec.getToId());
-      } else {
-        termId = UUID.fromString(rec.getToId());
-        relatedTermId = UUID.fromString(rec.getFromId());
-      }
-
-      EntityReference relatedTermRef =
-          new EntityReference().withId(relatedTermId).withType(Entity.GLOSSARY_TERM);
-
-      relatedTermsMap.computeIfAbsent(termId, k -> new ArrayList<>()).add(relatedTermRef);
+      // store the bidirectional relationship in related-term map
+      relatedTermIdsMap.computeIfAbsent(termId, k -> new HashSet<>()).add(relatedTermId);
+      relatedTermIdsMap.computeIfAbsent(relatedTermId, k -> new HashSet<>()).add(termId);
     }
+
+    Map<UUID, List<EntityReference>> relatedTermsMap =
+        relatedTermIdsMap.entrySet().stream()
+            .collect(
+                Collectors.toMap(
+                    Map.Entry::getKey,
+                    entry ->
+                        entry.getValue().stream()
+                            .map(
+                                id ->
+                                    Entity.getEntityReferenceById(
+                                        Entity.GLOSSARY_TERM, id, Include.ALL))
+                            .sorted(EntityUtil.compareEntityReference)
+                            .toList()));
 
     if (!allRecords.isEmpty()) {
       for (GlossaryTerm term : entities) {
