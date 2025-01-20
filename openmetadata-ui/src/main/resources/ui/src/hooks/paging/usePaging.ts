@@ -85,7 +85,7 @@ export const usePaging = (
         },
       });
     },
-    [setPageSize, setCurrentPage, location, history]
+    [setPageSize, setCurrentPage, history]
   );
   const paginationVisible = useMemo(() => {
     return paging.total > pageSize || pageSize !== defaultPageSize;
@@ -96,9 +96,7 @@ export const usePaging = (
       setCurrentPage(page);
       if (cursorData) {
         history.replace({
-          ...location,
           state: {
-            ...((location.state as any) || {}),
             cursorData,
             currentPage: page,
             pageSize,
@@ -106,7 +104,7 @@ export const usePaging = (
         });
       }
     },
-    [setCurrentPage, history, location]
+    [setCurrentPage, history]
   );
 
   return {
