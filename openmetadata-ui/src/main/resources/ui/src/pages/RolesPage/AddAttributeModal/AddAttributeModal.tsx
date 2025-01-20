@@ -189,7 +189,7 @@ const AddAttributeModal: FC<Props> = ({
                 <Col span={16}>
                   <RichTextEditorPreviewerV1
                     markdown={highlightSearchText(
-                      option.description || '',
+                      option.description ?? '',
                       searchTerm
                     )}
                   />

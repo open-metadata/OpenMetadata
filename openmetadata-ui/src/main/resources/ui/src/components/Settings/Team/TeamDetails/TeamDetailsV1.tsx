@@ -211,7 +211,7 @@ const TeamDetailsV1 = ({
 
   const teamCount = useMemo(
     () =>
-      isOrganization && currentTeam && currentTeam.childrenCount
+      isOrganization && currentTeam?.childrenCount
         ? currentTeam.childrenCount + 1
         : childTeamList.length,
     [childTeamList, isOrganization, currentTeam.childrenCount]
