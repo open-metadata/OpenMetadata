@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { AxiosError } from 'axios';
+import { pick } from 'lodash';
 import QueryString from 'qs';
 import React, {
   createContext,
@@ -72,15 +73,17 @@ const DataQualityProvider = ({ children }: { children: React.ReactNode }) => {
 
   const fetchTestSummary = async (params?: DataQualityPageParams) => {
     const filters = {
+      ...pick(params, [
+        'tags',
+        'serviceName',
+        'testPlatforms',
+        'dataQualityDimension',
+        'testCaseStatus',
+        'testCaseType',
+      ]),
       ownerFqn: params?.owner ? JSON.parse(params.owner)?.name : undefined,
       tier: params?.tier ? [params.tier] : undefined,
-      tags: params?.tags,
       entityFQN: params?.tableFqn,
-      serviceName: params?.serviceName,
-      testPlatforms: params?.testPlatforms,
-      dataQualityDimension: params?.dataQualityDimension,
-      testCaseStatus: params?.testCaseStatus,
-      testCaseType: params?.testCaseType,
     };
 
     setIsTestCaseSummaryLoading(true);

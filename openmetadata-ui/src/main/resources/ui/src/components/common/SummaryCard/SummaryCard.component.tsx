@@ -53,7 +53,9 @@ export const SummaryCard = ({
     <Space
       className={classNames('summary-card', cardBackgroundClass, className)}
       data-testid="summary-card-container">
-      <div className={classNames({ 'inverse-label': inverseLabel })}>
+      <div
+        className={classNames({ 'inverse-label': inverseLabel })}
+        data-testid="summary-card-label">
         <Space align="center" size={8}>
           {titleIcon}
           <Typography.Paragraph
