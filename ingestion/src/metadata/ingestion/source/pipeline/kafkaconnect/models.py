@@ -27,7 +27,7 @@ class KafkaConnectTasks(BaseModel):
         default="UNASSIGNED", description="State of the task (e.g., RUNNING, STOPPED)"
     )
     worker_id: Optional[str] = Field(
-        ..., description="ID of the worker running the task"
+        default=None, description="ID of the worker running the task"
     )
 
 
@@ -43,15 +43,15 @@ class KafkaConnectPipelineDetails(BaseModel):
         default="UNASSIGNED",
         description="State of the connector (e.g., RUNNING, STOPPED)",
     )
-    tasks: Optional[List[KafkaConnectTasks]]
-    topics: Optional[List[KafkaConnectTopics]]
-    conn_type: Optional[str] = Field(..., alias="type")
+    tasks: Optional[List[KafkaConnectTasks]] = []
+    topics: Optional[List[KafkaConnectTopics]] = []
+    conn_type: Optional[str] = Field(default="UNKNOWN", alias="type")
 
 
 class KafkaConnectDatasetDetails(BaseModel):
-    table: Optional[str]
-    database: Optional[str]
-    container_name: Optional[str]
+    table: Optional[str] = None
+    database: Optional[str] = None
+    container_name: Optional[str] = None
 
     @property
     def dataset_type(self):
