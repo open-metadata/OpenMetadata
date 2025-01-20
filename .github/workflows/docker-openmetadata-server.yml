@@ -85,6 +85,8 @@ jobs:
 
       - name: Docker files upload
         uses: softprops/action-gh-release@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           files: |
             docker/docker-compose-quickstart/docker-compose.yml
