@@ -34,6 +34,10 @@ test.describe('Login flow should work properly', () => {
     const response = await page.request.get(
       `/api/v1/users/name/${user.getUserName()}`
     );
+
+    // reset token expiry to 4 hours
+    await updateJWTTokenExpiryTime(apiContext, JWT_EXPIRY_TIME_MAP['4 hours']);
+
     user.responseData = await response.json();
     await user.delete(apiContext);
     await afterAction();
@@ -140,7 +144,6 @@ test.describe('Login flow should work properly', () => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
     const page1 = await browserContext.newPage(),
       page2 = await browserContext.newPage();
-    //   page3 = await browserContext.newPage();
 
     const testUser = new UserClass();
     await testUser.create(apiContext);
