@@ -13,6 +13,7 @@
 import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import { SERVICE_TYPE } from '../../constant/service';
+import { ServiceTypes } from '../../constant/settings';
 import { uuid } from '../../utils/common';
 import { visitEntityPage } from '../../utils/entity';
 import {
@@ -70,6 +71,7 @@ export class DashboardDataModelClass extends EntityClass {
     this.childrenTabId = 'model';
     this.childrenSelectorId = this.children[0].name;
     this.serviceCategory = SERVICE_TYPE.Dashboard;
+    this.serviceType = ServiceTypes.DASHBOARD_SERVICES;
   }
 
   async create(apiContext: APIRequestContext) {

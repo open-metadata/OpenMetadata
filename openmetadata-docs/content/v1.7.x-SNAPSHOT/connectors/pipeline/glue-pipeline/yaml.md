@@ -17,7 +17,7 @@ Configure and schedule Glue metadata and profiler workflows from the OpenMetadat
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 
-{% partial file="/v1.7/connectors/external-ingestion-deployment.md" /%}
+{% partial file="/v1.6/connectors/external-ingestion-deployment.md" /%}
 
 ## Requirements
 
@@ -32,7 +32,7 @@ The user must have the following permissions for the ingestion to run successful
 
 ### Python Requirements
 
-{% partial file="/v1.7/connectors/python-requirements.md" /%}
+{% partial file="/v1.6/connectors/python-requirements.md" /%}
 
 To run the Glue ingestion, you will need to install:
 
@@ -99,12 +99,28 @@ This is a sample config for Glue:
 
 {% /codeInfo %}
 
+{% codeInfo srNumber=6 %}
+**profileName**: The name of a profile to use with the boto session.
+{% /codeInfo %}
 
-{% partial file="/v1.7/connectors/yaml/pipeline/source-config-def.md" /%}
+{% codeInfo srNumber=7 %}
+**assumeRoleArn**: The Amazon Resource Name (ARN) of the role to assume. Required Field in case of Assume Role.
+{% /codeInfo %}
 
-{% partial file="/v1.7/connectors/yaml/ingestion-sink-def.md" /%}
+{% codeInfo srNumber=8 %}
+**assumeRoleSessionName**: An identifier for the assumed role session. Use the role session name to uniquely identify a session when the same role is assumed by different principals or for different reasons. Required Field in case of Assume Role.
+{% /codeInfo %}
 
-{% partial file="/v1.7/connectors/yaml/workflow-config-def.md" /%}
+{% codeInfo srNumber=9 %}
+**assumeRoleSourceIdentity**:  The Amazon Resource Name (ARN) of the role to assume. Optional Field in case of Assume Role.
+{% /codeInfo %}
+
+
+{% partial file="/v1.6/connectors/yaml/pipeline/source-config-def.md" /%}
+
+{% partial file="/v1.6/connectors/yaml/ingestion-sink-def.md" /%}
+
+{% partial file="/v1.6/connectors/yaml/workflow-config-def.md" /%}
 
 {% /codeInfoContainer %}
 
@@ -134,15 +150,28 @@ source:
 ```yaml {% srNumber=5 %}
         # endPointURL: https://glue.us-east-2.amazonaws.com/
 ```
+```yaml {% srNumber=6 %}
+        # profileName: ""
+```
+```yaml {% srNumber=7 %}
+        # assumeRoleArn: ""
+```
+```yaml {% srNumber=8 %}
+        # assumeRoleSessionName: OpenMetadataSession
+```
+```yaml {% srNumber=9 %}
+        # assumeRoleSourceIdentity : ""
+```
 
-{% partial file="/v1.7/connectors/yaml/pipeline/source-config.md" /%}
 
-{% partial file="/v1.7/connectors/yaml/ingestion-sink.md" /%}
+{% partial file="/v1.6/connectors/yaml/pipeline/source-config.md" /%}
 
-{% partial file="/v1.7/connectors/yaml/workflow-config.md" /%}
+{% partial file="/v1.6/connectors/yaml/ingestion-sink.md" /%}
+
+{% partial file="/v1.6/connectors/yaml/workflow-config.md" /%}
 
 {% /codeBlock %}
 
 {% /codePreview %}
 
-{% partial file="/v1.7/connectors/yaml/ingestion-cli.md" /%}
+{% partial file="/v1.6/connectors/yaml/ingestion-cli.md" /%}
