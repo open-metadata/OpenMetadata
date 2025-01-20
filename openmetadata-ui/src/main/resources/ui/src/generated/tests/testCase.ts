@@ -192,6 +192,8 @@ export interface FieldChange {
  *
  * Domain the test Suite belongs to. When not set, the test Suite inherits the domain from
  * the table it belongs to.
+ *
+ * DEPRECATED in 1.6.2: Use 'basicEntityReference'.
  */
 export interface EntityReference {
     /**
@@ -497,6 +499,14 @@ export interface TestSuite {
      * the table it belongs to.
      */
     domain?: EntityReference;
+    /**
+     * DEPRECATED in 1.6.2: Use 'basic'
+     */
+    executable?: boolean;
+    /**
+     * DEPRECATED in 1.6.2: Use 'basicEntityReference'.
+     */
+    executableEntityReference?: EntityReference;
     /**
      * FullyQualifiedName same as `name`.
      */
