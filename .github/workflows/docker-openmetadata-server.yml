@@ -86,10 +86,8 @@ jobs:
           asset_name: openmetadata-${{ inputs.DOCKER_RELEASE_TAG }}.tar.gz
           asset_content_type: application/tar.gz
 
-      - name: Docker files upload
+      - name: Upload Dockerfiles to release
         uses: softprops/action-gh-release@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: ${{ inputs.DOCKER_RELEASE_TAG }}-release
           files: |
