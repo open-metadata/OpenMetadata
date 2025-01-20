@@ -1,6 +1,5 @@
 package org.openmetadata.service.governance.workflows.elements;
 
-import java.lang.reflect.InvocationTargetException;
 import org.openmetadata.schema.governance.workflows.elements.NodeSubType;
 import org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.CheckEntityAttributesTaskDefinition;

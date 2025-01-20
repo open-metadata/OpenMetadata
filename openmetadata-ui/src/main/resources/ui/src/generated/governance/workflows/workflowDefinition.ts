@@ -23,6 +23,10 @@ export interface WorkflowDefinition {
      */
     deleted?: boolean;
     /**
+     * When `true` indicates the workflow is deployed.
+     */
+    deployed?: boolean;
+    /**
      * Description of the workflow definition.
      */
     description: string;
@@ -62,7 +66,6 @@ export interface WorkflowDefinition {
      * Workflow Trigger.
      */
     trigger?: any[] | boolean | number | number | null | TriggerObject | string;
-    type?:    Type;
     /**
      * Last update time corresponding to the new version of the entity in Unix epoch time
      * milliseconds.
@@ -199,7 +202,7 @@ export interface TriggerObject {
 }
 
 export enum Type {
-    CustomSignalWorkflow = "customSignalWorkflow",
-    EventBasedEntityWorkflow = "eventBasedEntityWorkflow",
-    PeriodicBatchEntityWorkflow = "periodicBatchEntityWorkflow",
+    CustomSignal = "customSignal",
+    EventBasedEntity = "eventBasedEntity",
+    PeriodicBatchEntity = "periodicBatchEntity",
 }

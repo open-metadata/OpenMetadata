@@ -23,7 +23,7 @@
   "properties": {
     "type": {
       "type": "string",
-      "default": "customSignalWorkflow"
+      "default": "customSignal"
     },
     "config": {
       "$ref": "#/definitions/config"

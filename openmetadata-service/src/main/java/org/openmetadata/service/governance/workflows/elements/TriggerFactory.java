@@ -1,5 +1,6 @@
 package org.openmetadata.service.governance.workflows.elements;
 
+import org.openmetadata.schema.governance.workflows.TriggerType;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.trigger.PeriodicBatchEntityTriggerDefinition;
 import org.openmetadata.schema.governance.workflows.elements.triggers.CustomSignalTriggerDefinition;
@@ -12,16 +13,16 @@ public class TriggerFactory {
   public static TriggerInterface createTrigger(WorkflowDefinition workflow) {
     String triggerWorkflowId = getTriggerWorkflowId(workflow.getFullyQualifiedName());
 
-    return switch (workflow.getType()) {
-      case EVENT_BASED_ENTITY_WORKFLOW -> new EventBasedEntityTrigger(
+    return switch (TriggerType.fromValue(workflow.getTrigger().getType())) {
+      case EVENT_BASED_ENTITY -> new EventBasedEntityTrigger(
           workflow.getName(),
           triggerWorkflowId,
           (EventBasedEntityTriggerDefinition) workflow.getTrigger());
-      case CUSTOM_SIGNAL_WORKFLOW -> new CustomSignalTrigger(
+      case CUSTOM_SIGNAL -> new CustomSignalTrigger(
           workflow.getName(),
           triggerWorkflowId,
           (CustomSignalTriggerDefinition) workflow.getTrigger());
-      case PERIODIC_BATCH_ENTITY_WORKFLOW -> new PeriodicBatchEntityTrigger(
+      case PERIODIC_BATCH_ENTITY -> new PeriodicBatchEntityTrigger(
           workflow.getName(),
           triggerWorkflowId,
           (PeriodicBatchEntityTriggerDefinition) workflow.getTrigger());

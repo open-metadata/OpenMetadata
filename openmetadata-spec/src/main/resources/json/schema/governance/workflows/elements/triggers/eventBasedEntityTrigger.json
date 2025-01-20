@@ -50,7 +50,7 @@
   "properties": {
     "type": {
       "type": "string",
-      "default": "eventBasedEntityWorkflow"
+      "default": "eventBasedEntity"
     },
     "config": {
       "$ref": "#/definitions/config"

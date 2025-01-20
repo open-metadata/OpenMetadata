@@ -8,18 +8,15 @@ import org.openmetadata.schema.governance.workflows.elements.triggers.EventBased
 
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "type")
 @JsonSubTypes({
-  @JsonSubTypes.Type(
-      value = EventBasedEntityTriggerDefinition.class,
-      name = "eventBasedEntityWorkflow"),
-  @JsonSubTypes.Type(value = CustomSignalTriggerDefinition.class, name = "customSignalWorkflow"),
+  @JsonSubTypes.Type(value = EventBasedEntityTriggerDefinition.class, name = "eventBasedEntity"),
+  @JsonSubTypes.Type(value = CustomSignalTriggerDefinition.class, name = "customSignal"),
   @JsonSubTypes.Type(
       value = PeriodicBatchEntityTriggerDefinition.class,
-      name = "periodicBatchEntityWorkflow"),
+      name = "periodicBatchEntity"),
 })
 public interface WorkflowTriggerInterface {
-  // TODO If set as enum, it results in null when the JSON is deserialized. Maybe there can be
-  // another
-  // way to validate it on deserialization.
+  // TODO If set as enum, it results in null when the JSON is deserialized.
+  // Maybe there can be another way to validate it on deserialization.
   String getType();
 
   Object getConfig();

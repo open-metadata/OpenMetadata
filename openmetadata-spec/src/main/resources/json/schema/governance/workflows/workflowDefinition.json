@@ -11,9 +11,9 @@
       "type": "string",
       "javaType": "org.openmetadata.schema.governance.workflows.TriggerType",
       "enum": [
-        "eventBasedEntityWorkflow",
-        "customSignalWorkflow",
-        "periodicBatchEntityWorkflow"
+        "eventBasedEntity",
+        "customSignal",
+        "periodicBatchEntity"
       ]
     }
   },
@@ -68,8 +68,9 @@
       "type": "boolean",
       "default": false
     },
-    "type": {
-      "$ref": "#/definitions/type"
+    "deployed": {
+      "description": "When `true` indicates the workflow is deployed.",
+      "type": "boolean"
     },
     "trigger": {
       "description": "Workflow Trigger.",

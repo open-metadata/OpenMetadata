@@ -47,11 +47,13 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
 
   @Override
   protected void postDelete(WorkflowDefinition entity) {
-    WorkflowHandler.getInstance().deleteWorkflowDefinition(entity.getName());
+    WorkflowHandler.getInstance().deleteWorkflowDefinition(entity);
   }
 
   @Override
-  protected void setFields(WorkflowDefinition entity, EntityUtil.Fields fields) {}
+  protected void setFields(WorkflowDefinition entity, EntityUtil.Fields fields) {
+    entity.withDeployed(WorkflowHandler.getInstance().isDeployed(entity));
+  }
 
   @Override
   protected void clearFields(WorkflowDefinition entity, EntityUtil.Fields fields) {}
@@ -74,17 +76,9 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
     @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
-      updateType();
       updateTrigger();
       updateNodes();
       updateEdges();
-    }
-
-    private void updateType() {
-      if (original.getType() == updated.getType()) {
-        return;
-      }
-      recordChange("type", original.getType(), updated.getType());
     }
 
     private void updateTrigger() {

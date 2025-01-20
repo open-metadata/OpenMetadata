@@ -215,7 +215,7 @@ public class WorkflowDefinitionResource
             new EntityUtil.Fields(repository.getAllowedFields()),
             Include.NON_DELETED,
             false);
-    WorkflowHandler.getInstance().deleteWorkflowDefinition(wd.getName());
+    WorkflowHandler.getInstance().deleteWorkflowDefinition(wd);
     WorkflowHandler.getInstance().deploy(new Workflow(wd));
     return Response.status(Response.Status.OK).entity("Workflow Redeployed").build();
   }

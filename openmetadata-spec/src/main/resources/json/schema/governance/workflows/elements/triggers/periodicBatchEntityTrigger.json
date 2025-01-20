@@ -42,7 +42,7 @@
   "properties": {
     "type": {
       "type": "string",
-      "default": "periodicBatchEntityWorkflow"
+      "default": "periodicBatchEntity"
     },
     "config": {
       "$ref": "#/definitions/config"

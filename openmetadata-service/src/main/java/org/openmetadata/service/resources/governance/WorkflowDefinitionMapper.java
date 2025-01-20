@@ -10,7 +10,6 @@ public class WorkflowDefinitionMapper
   public WorkflowDefinition createToEntity(CreateWorkflowDefinition create, String user) {
     return copy(new WorkflowDefinition(), create, user)
         .withFullyQualifiedName(create.getName())
-        .withType(create.getType())
         .withTrigger(create.getTrigger())
         .withNodes(create.getNodes())
         .withEdges(create.getEdges());
