@@ -13,6 +13,7 @@
 import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import { SERVICE_TYPE } from '../../constant/service';
+import { ServiceTypes } from '../../constant/settings';
 import { uuid } from '../../utils/common';
 import { visitEntityPage } from '../../utils/entity';
 import {
@@ -105,6 +106,7 @@ export class SearchIndexClass extends EntityClass {
     this.childrenTabId = 'fields';
     this.childrenSelectorId = this.children[0].fullyQualifiedName;
     this.serviceCategory = SERVICE_TYPE.Search;
+    this.serviceType = ServiceTypes.SEARCH_SERVICES;
   }
 
   async create(apiContext: APIRequestContext) {
