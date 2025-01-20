@@ -7,8 +7,6 @@ slug: /how-to-guides/data-quality-observability/observability/alerts
 OpenMetadata provides a native way to get alerted in case of test case failure allowing you to proactively resolve data incidents
 
 ## Setting Up Alerts
-To set up an alert on a test case or test suite, navigate to the observability menu and select `Alerts` and click on `Add Alert`.
-
 {%inlineCalloutContainer%}
  {%inlineCallout
     icon="MdGppGood"
@@ -17,6 +15,8 @@ To set up an alert on a test case or test suite, navigate to the observability m
     Setting up alerts requires create permission on the `Eventsubscription` entity. More info here.
  {%/inlineCallout%}
 {%/inlineCalloutContainer%}
+
+To set up an alert on a test case or test suite, navigate to the observability menu and select `Alerts` and click on `Add Alert`.
 
 {% image
   src="/images/v1.6/features/ingestion/workflows/profiler/alerts-menu.png"
