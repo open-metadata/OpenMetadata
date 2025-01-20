@@ -13,10 +13,12 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { FeedFilter } from '../../../enums/mydata.enum';
+import { ActivityFeedTabs } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import FeedsFilterPopover from './FeedsFilterPopover.component';
 
 const onUpdateMock = jest.fn();
 const mockProps = {
+  feedTab: ActivityFeedTabs.ALL,
   defaultFilter: FeedFilter.ALL,
   onUpdate: onUpdateMock,
 };

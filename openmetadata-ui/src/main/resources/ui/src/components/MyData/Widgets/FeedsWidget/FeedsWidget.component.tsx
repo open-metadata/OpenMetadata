@@ -20,6 +20,7 @@ import { Link, useHistory } from 'react-router-dom';
 import { PAGE_SIZE_MEDIUM, ROUTES } from '../../../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../../constants/entity.constants';
 import { mockFeedData } from '../../../../constants/mockTourData.constants';
+import { TAB_SUPPORTED_FILTER } from '../../../../constants/Widgets.constant';
 import { useTourProvider } from '../../../../context/TourProvider/TourProvider';
 import { EntityTabs, EntityType } from '../../../../enums/entity.enum';
 import { FeedFilter } from '../../../../enums/mydata.enum';
@@ -76,7 +77,7 @@ const FeedsWidget = ({
       getFeedData(FeedFilter.MENTIONS);
     } else if (activeTab === ActivityFeedTabs.TASKS) {
       getFeedData(
-        FeedFilter.OWNER,
+        defaultFilter,
         undefined,
         ThreadType.Task,
         undefined,
@@ -106,7 +107,12 @@ const FeedsWidget = ({
     [count.openTaskCount, activeTab]
   );
 
-  const onTabChange = (key: string) => setActiveTab(key as ActivityFeedTabs);
+  const onTabChange = (key: string) => {
+    if (key === ActivityFeedTabs.TASKS) {
+      setDefaultFilter(FeedFilter.OWNER);
+    }
+    setActiveTab(key as ActivityFeedTabs);
+  };
 
   const redirectToUserPage = useCallback(() => {
     history.push(
@@ -259,13 +265,10 @@ const FeedsWidget = ({
         ]}
         tabBarExtraContent={
           <Space>
-            {activeTab === ActivityFeedTabs.ALL && (
+            {TAB_SUPPORTED_FILTER.includes(activeTab) && (
               <FeedsFilterPopover
-                defaultFilter={
-                  currentUser?.isAdmin
-                    ? FeedFilter.ALL
-                    : FeedFilter.OWNER_OR_FOLLOWS
-                }
+                defaultFilter={defaultFilter}
+                feedTab={activeTab}
                 onUpdate={onFilterUpdate}
               />
             )}
