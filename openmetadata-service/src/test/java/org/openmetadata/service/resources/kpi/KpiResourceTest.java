@@ -83,7 +83,10 @@ public class KpiResourceTest extends EntityResourceTest<Kpi, CreateKpiRequest> {
             String.format("%s-%s", "di-data-assets", dataAssetType).toLowerCase();
         if (!searchInterface.dataAssetDataStreamExists(dataStreamName)) {
           searchInterface.createDataAssetsDataStream(
-              dataStreamName, dataAssetType, getSearchRepository().getIndexMapping(dataAssetType));
+              dataStreamName,
+              dataAssetType,
+              getSearchRepository().getIndexMapping(dataAssetType),
+              "en");
         }
       }
     } catch (IOException ex) {
