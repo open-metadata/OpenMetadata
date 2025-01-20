@@ -146,6 +146,7 @@ class MetabaseSource(DashboardServiceSource):
                 )
                 if default_dashboard not in self.dashboards_list:
                     self.dashboards_list.append(default_dashboard)
+                    self._default_dashboard_added = True
         return retrieved_dashboards
 
     def get_project_name(self, dashboard_details: Any) -> Optional[str]:
