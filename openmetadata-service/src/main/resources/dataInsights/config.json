@@ -61,7 +61,8 @@
     "pipeline": [
       "service",
       "serviceType",
-      "pipelineStatus"
+      "pipelineStatus",
+      "tasks"
     ],
     "topic": [
       "service",

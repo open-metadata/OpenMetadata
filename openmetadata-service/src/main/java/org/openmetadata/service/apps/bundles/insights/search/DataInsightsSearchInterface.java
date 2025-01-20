@@ -2,10 +2,13 @@ package org.openmetadata.service.apps.bundles.insights.search;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.List;
 import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.search.models.IndexMapping;
+import org.openmetadata.service.util.JsonUtils;
 
 public interface DataInsightsSearchInterface {
+  String DATA_INSIGHTS_SEARCH_CONFIG_PATH = "/dataInsights/config.json";
 
   void createLifecyclePolicy(String name, String policy) throws IOException;
 
@@ -22,6 +25,47 @@ public interface DataInsightsSearchInterface {
     } catch (Exception e) {
       throw new UnhandledServerException("Failed to load DataInsight Search Configurations.");
     }
+  }
+
+  default String buildMapping(
+      String entityType,
+      IndexMapping entityIndexMapping,
+      String language,
+      String indexMappingTemplateStr) {
+    IndexMappingTemplate indexMappingTemplate =
+        JsonUtils.readOrConvertValue(indexMappingTemplateStr, IndexMappingTemplate.class);
+    DataInsightsSearchConfiguration dataInsightsSearchConfiguration =
+        JsonUtils.readOrConvertValue(
+            readResource(DATA_INSIGHTS_SEARCH_CONFIG_PATH), DataInsightsSearchConfiguration.class);
+    EntityIndexMap entityIndexMap =
+        JsonUtils.readOrConvertValue(
+            readResource(
+                String.format(entityIndexMapping.getIndexMappingFile(), language.toLowerCase())),
+            EntityIndexMap.class);
+
+    List<String> entityAttributes =
+        dataInsightsSearchConfiguration.getMappingFields().get("common");
+    entityAttributes.addAll(dataInsightsSearchConfiguration.getMappingFields().get(entityType));
+
+    indexMappingTemplate
+        .getTemplate()
+        .getSettings()
+        .put("analysis", entityIndexMap.getSettings().get("analysis"));
+
+    for (String attribute : entityAttributes) {
+      if (!indexMappingTemplate
+          .getTemplate()
+          .getMappings()
+          .getProperties()
+          .containsKey(attribute)) {
+        Object value = entityIndexMap.getMappings().getProperties().get(attribute);
+        if (value != null) {
+          indexMappingTemplate.getTemplate().getMappings().getProperties().put(attribute, value);
+        }
+      }
+    }
+
+    return JsonUtils.pojoToJson(indexMappingTemplate);
   }
 
   void createDataAssetsDataStream(
