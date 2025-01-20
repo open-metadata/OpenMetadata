@@ -736,6 +736,8 @@ def get_lineage_by_graph(
         queries = set()
         clean_queries = False
         previous_node = None
+        edges = " -> ".join(str(node) for node in sequence)
+        logger.debug(f"graph edges {edges}")
         for node in sequence:
             try:
                 if clean_queries:
