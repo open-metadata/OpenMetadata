@@ -26,6 +26,7 @@ import {
   isTourRoute,
 } from '../../utils/AuthProvider.util';
 import { addToRecentSearched } from '../../utils/CommonUtils';
+import { getOidcToken } from '../../utils/LocalStorageUtils';
 import searchClassBase from '../../utils/SearchClassBase';
 import NavBar from '../NavBar/NavBar';
 import './app-bar.style.less';
@@ -37,7 +38,7 @@ const Appbar: React.FC = (): JSX.Element => {
   const { isTourOpen, updateTourPage, updateTourSearch, tourSearchValue } =
     useTourProvider();
 
-  const { isAuthenticated, searchCriteria, getOidcToken, trySilentSignIn } =
+  const { isAuthenticated, searchCriteria, trySilentSignIn } =
     useApplicationStore();
 
   const parsedQueryString = Qs.parse(

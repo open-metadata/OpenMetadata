@@ -20,6 +20,7 @@ import React, {
   useMemo,
 } from 'react';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { setOidcToken } from '../../../utils/LocalStorageUtils';
 import { OidcUser } from './AuthProvider.interface';
 
 interface Props {
@@ -31,7 +32,7 @@ export const OktaAuthProvider: FunctionComponent<Props> = ({
   children,
   onLoginSuccess,
 }: Props) => {
-  const { authConfig, setOidcToken } = useApplicationStore();
+  const { authConfig } = useApplicationStore();
   const { clientId, issuer, redirectUri, scopes, pkce } =
     authConfig as OktaAuthOptions;
 

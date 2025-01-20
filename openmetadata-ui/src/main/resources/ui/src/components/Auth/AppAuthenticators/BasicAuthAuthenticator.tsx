@@ -26,6 +26,11 @@ import {
 } from '../../../rest/auth-API';
 
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import {
+  getRefreshToken,
+  setOidcToken,
+  setRefreshToken,
+} from '../../../utils/LocalStorageUtils';
 import Loader from '../../common/Loader/Loader';
 import { useBasicAuth } from '../AuthProviders/BasicAuthProvider';
 
@@ -40,9 +45,7 @@ const BasicAuthenticator = forwardRef(
     const {
       setIsAuthenticated,
       authConfig,
-      getRefreshToken,
-      setRefreshToken,
-      setOidcToken,
+
       isApplicationLoading,
     } = useApplicationStore();
 
@@ -54,7 +57,13 @@ const BasicAuthenticator = forwardRef(
           authConfig?.provider !== AuthProvider.Basic &&
           authConfig?.provider !== AuthProvider.LDAP
         ) {
-          Promise.reject(t('message.authProvider-is-not-basic'));
+          return Promise.reject(
+            new Error(t('message.authProvider-is-not-basic'))
+          );
+        }
+
+        if (!refreshToken) {
+          return Promise.reject(new Error(t('message.no-token-available')));
         }
 
         const response = await getAccessTokenOnExpiry({
