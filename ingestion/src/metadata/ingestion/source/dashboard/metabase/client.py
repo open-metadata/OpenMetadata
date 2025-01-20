@@ -158,7 +158,7 @@ class MetabaseClient:
             return charts_dict
         except Exception:
             logger.debug(traceback.format_exc())
-            logger.warning("Failed to fetch the collections list")
+            logger.warning("Failed to fetch the cards")
         return {}
 
     def _create_default_dashboard_details(
