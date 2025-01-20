@@ -49,6 +49,7 @@ import {
 import { generateFormFields } from '../../../../../utils/formUtils';
 import { getCurrentLocaleForConstrue } from '../../../../../utils/i18next/i18nextUtil';
 import {
+  cronValidator,
   getCron,
   getDefaultScheduleValue,
   getHourMinuteSelect,
@@ -360,22 +361,7 @@ const ScheduleInterval = <T,>({
                       }),
                     },
                     {
-                      validator: async (_, value) => {
-                        // Check if cron is valid and get the description
-                        const description = cronstrue.toString(value);
-
-                        // Check if cron has a frequency of less than an hour
-                        const isFrequencyInMinutes = /Every \d* *minute/.test(
-                          description
-                        );
-                        if (isFrequencyInMinutes) {
-                          return Promise.reject(
-                            t('message.cron-less-than-hour-message')
-                          );
-                        }
-
-                        return Promise.resolve();
-                      },
+                      validator: cronValidator,
                     },
                   ]}>
                   <Input />
