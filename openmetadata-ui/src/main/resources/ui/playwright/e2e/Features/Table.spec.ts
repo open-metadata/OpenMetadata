@@ -92,4 +92,64 @@ test.describe('Table pagination sorting search scenarios ', () => {
 
     await expect(page.getByRole('tab', { name: 'Schema' })).toContainText('4');
   });
+
+  test.describe(
+    'should persist table pagination state while the user paginates and performs a browser back action',
+    () => {
+      test.beforeEach(async ({ page }) => {
+        await page.goto('/databaseSchema/sample_data.ecommerce_db.shopify');
+
+        await expect(page.getByTestId('databaseSchema-tables')).toBeVisible();
+      });
+
+      const getFirstRowColumnLink = (page: any) => {
+        const table = page.locator('[data-testid="databaseSchema-tables"]');
+        const firstRowFirstColumn = table.locator(
+          'tbody tr:first-child td:first-child'
+        );
+
+        return firstRowFirstColumn.locator('[data-testid="column-name"] a');
+      };
+
+      test('should persist current page', async ({ page }) => {
+        await page.getByTestId('next').click();
+
+        const initialPageIndicator = await page
+          .locator('[data-testid="page-indicator"]')
+          .textContent();
+
+        const linkInColumn = getFirstRowColumnLink(page);
+        await linkInColumn.click();
+
+        await page.goBack();
+
+        const pageIndicatorAfterBack = await page
+          .locator('[data-testid="page-indicator"]')
+          .textContent();
+
+        expect(pageIndicatorAfterBack).toBe(initialPageIndicator);
+      });
+
+      test('should persist page size', async ({ page }) => {
+        const pageSizeDropdown = page.getByTestId(
+          'page-size-selection-dropdown'
+        );
+        await pageSizeDropdown.click();
+
+        const dropdownOptions = page.locator('.ant-dropdown-menu');
+
+        await expect(dropdownOptions).toBeVisible();
+
+        const optionToSelect = dropdownOptions.locator('text="15 / Page"');
+        await optionToSelect.click();
+
+        const linkInColumn = getFirstRowColumnLink(page);
+        await linkInColumn.click();
+
+        await page.goBack();
+
+        await expect(pageSizeDropdown).toHaveText('15 / Page');
+      });
+    }
+  );
 });
