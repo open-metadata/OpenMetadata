@@ -85,14 +85,15 @@ jobs:
 
       - name: Docker files upload
         uses: softprops/action-gh-release@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        tag_name: ${{ inputs.DOCKER_RELEASE_TAG }}-release
         with:
           files: |
             docker/docker-compose-quickstart/docker-compose.yml
             docker/docker-compose-quickstart/docker-compose-postgres.yml
             docker/docker-compose-openmetadata/docker-compose-openmetadata.yml
             docker/docker-compose-ingestion/docker-compose-ingestion.yml
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
          
   push_to_docker_hub:
     runs-on: ubuntu-latest
