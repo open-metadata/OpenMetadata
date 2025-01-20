@@ -51,7 +51,6 @@ export const fillDescriptionDetails = async (
   await page.fill(descriptionBox, description);
 
   await page.click('[data-testid="save"]');
-  await page.click('.InovuaReactDataGrid__cell--cell-active');
 };
 
 export const fillOwnerDetails = async (page: Page, owners: string[]) => {
