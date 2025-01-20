@@ -95,9 +95,18 @@ source:
 ```
 ```yaml {% srNumber=3 %}
         sslConfig:
-            caCertificate:
-            sslCertificate:
-            sslKey:
+                caCertificate: |
+                        -----BEGIN CERTIFICATE-----
+                        sample certificate
+                        -----END CERTIFICATE-----
+                sslCertificate: |
+                        -----BEGIN CERTIFICATE-----
+                        sample certificate
+                        -----END CERTIFICATE-----
+                sslKey: |
+                        -----BEGIN PRIVATE KEY-----
+                        sample certificate
+                        -----END PRIVATE KEY-----
 ```
 
 {% partial file="/v1.6/connectors/yaml/pipeline/source-config.md" /%}

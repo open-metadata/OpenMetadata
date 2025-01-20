@@ -216,6 +216,14 @@ Refer to the section [here](/connectors/dashboard/powerbi#powerbi-admin-and-nona
 
 {% /codeInfo %}
 
+{% codeInfo srNumber=9 %}
+**pbitFilesSource**: Source to get the .pbit files to extract lineage information. Select one of local, azureConfig, gcsConfig, s3Config.
+- `pbitFileConfigType`: Determines the storage backend type (azure, gcs, or s3).	
+- `securityConfig`: Authentication credentials for accessing the storage backend.
+- `prefixConfig`: Details of the location in the storage backend.
+- `pbitFilesExtractDir`: Specifies the local directory where extracted .pbit files will be stored for processing.
+{% /codeInfo %}
+
 {% partial file="/v1.6/connectors/yaml/dashboard/source-config-def.md" /%}
 
 {% partial file="/v1.6/connectors/yaml/ingestion-sink-def.md" /%}
@@ -258,6 +266,79 @@ source:
 ```
 ```yaml {% srNumber=8 %}
       # useAdminApis: true (default)
+```
+```yaml {% srNumber=9 %}
+      
+      # Select one of local, azureConfig, gcsConfig, s3Config.
+      # For Azure
+      # pbitFilesSource: 
+      #   pbitFileConfigType: azure  # Specify the storage type as Azure Blob Storage
+      #   securityConfig:
+      #     clientId: ""            # Azure application Client ID
+      #     clientSecret: ""        # Azure application Client Secret
+      #     tenantId: ""            # Azure tenant ID
+      #     accountName: ""         # Azure storage account name
+      #     vaultName: ""           # Optional: Azure vault name for secrets management
+      #     scopes: ""              # Optional: OAuth scopes for Azure
+      #   prefixConfig:
+      #     bucketName: ""          # Name of the Azure Blob Storage container
+      #     objectPrefix: ""        # Path prefix to locate files within the container
+      #   pbitFilesExtractDir: /tmp/pbitFiles  # Local directory for extracted files
+
+      # For gcsConfig
+      # GCP credentials configurations
+      # We support two ways of authenticating to GCP: via GCP Credentials Values or GCP Credentials Path.
+
+      # Option 1: Authenticate using GCP Credentials Values
+      # pbitFilesSource: 
+      #   pbitFileConfigType: gcs  # Specify the storage type as Google Cloud Storage
+      #   securityConfig: 
+      #     type: service_account  # Authentication type
+      #     projectId: ""          # GCP project ID (can be single or multiple)
+      #     privateKeyId: ""       # Private Key ID from GCP service account
+      #     privateKey: ""         # Private Key from GCP service account
+      #     clientEmail: ""        # Service account email
+      #     clientId: ""           # Client ID
+      #     authUri: "https://accounts.google.com/o/oauth2/auth"  # OAuth URI
+      #     authProviderX509CertUrl: "https://www.googleapis.com/oauth2/v1/certs"
+      #     clientX509CertUrl: ""  # Certificate URL
+      #   prefixConfig:
+      #     bucketName: ""         # Name of the GCS bucket
+      #     objectPrefix: ""       # Path prefix to locate files within the bucket
+      #   pbitFilesExtractDir: /tmp/pbitFiles  # Local directory for extracted files
+
+      # Option 2: Authenticate using Raw Credential Values
+      # pbitFilesSource: 
+      #   pbitFileConfigType: gcs  # Specify the storage type as Google Cloud Storage
+      #   securityConfig:
+      #     type: external_account # Authentication type
+      #     externalType: "external_account"  # External account authentication
+      #     audience: ""           # Audience for token validation
+      #     subjectTokenType: ""   # Type of subject token
+      #     tokenURL: ""           # URL to obtain the token
+      #     credentialSource: {}   # Raw JSON object with credential source details
+      #   prefixConfig:
+      #     bucketName: ""         # Name of the GCS bucket
+      #     objectPrefix: ""       # Path prefix to locate files within the bucket
+      #   pbitFilesExtractDir: /tmp/pbitFiles  # Local directory for extracted files
+
+      # For s3Config
+      # pbitFilesSource:
+      #   pbitFileConfigType: s3  # Specify the storage type as Amazon S3
+      #   securityConfig:
+      #     awsAccessKeyId: ""          # AWS Access Key ID
+      #     awsSecretAccessKey: ""      # AWS Secret Access Key
+      #     awsRegion: ""               # AWS region for the bucket
+      #     awsSessionToken: ""         # Optional session token
+      #     endPointURL: ""             # Optional custom S3 endpoint URL
+      #     profileName: ""             # Optional AWS CLI profile name
+      #     assumeRoleArn: ""           # ARN of the role to assume (if required)
+      #     assumeRoleSessionName: ""   # Session name for assumed role
+      #     assumeRoleSourceIdentity: "" # Source identity for assumed session
+      #   prefixConfig:
+      #     bucketName: ""              # Name of the S3 bucket
+      #     objectPrefix: ""            # Path prefix to locate files within the bucket
+      #   pbitFilesExtractDir: /tmp/pbitFiles  # Local directory for extracted files
 ```
 
 {% partial file="/v1.6/connectors/yaml/dashboard/source-config.md" /%}
