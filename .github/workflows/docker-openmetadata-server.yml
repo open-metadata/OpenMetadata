@@ -63,8 +63,6 @@ jobs:
     
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
           
       - name: Fetch Release Data
         env:
@@ -95,10 +93,10 @@ jobs:
         with:
           tag_name: ${{ inputs.DOCKER_RELEASE_TAG }}-release
           files: |
-            ../OpenMetadata/docker/docker-compose-quickstart/docker-compose.yml
-            ../OpenMetadata/docker/docker-compose-quickstart/docker-compose-postgres.yml
-            ../OpenMetadata/docker/docker-compose-openmetadata/docker-compose-openmetadata.yml
-            ../OpenMetadata/docker/docker-compose-ingestion/docker-compose-ingestion.yml
+              docker/docker-compose-quickstart/docker-compose.yml
+              docker/docker-compose-quickstart/docker-compose-postgres.yml
+              docker/docker-compose-openmetadata/docker-compose-openmetadata.yml
+              docker/docker-compose-ingestion/docker-compose-ingestion.yml
          
   push_to_docker_hub:
     runs-on: ubuntu-latest
