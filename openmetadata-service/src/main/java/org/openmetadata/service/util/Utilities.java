@@ -1,11 +1,16 @@
 package org.openmetadata.service.util;
 
+import java.time.DayOfWeek;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.TemporalAdjusters;
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.commons.lang3.tuple.Pair;
 
 public class Utilities {
   private Utilities() {}
@@ -28,6 +33,29 @@ public class Utilities {
     }
 
     return lastSevenDays;
+  }
+
+  // Adjust endTime to Monday (previousOrSame) and define "previous" week as that Monday minus 1
+  // week.
+  public static Pair<Long, Long> getPreviousWeekRange(long endTimeMillis) {
+    // Define the previous week's time range (Monday to Sunday)
+    ZonedDateTime endZdt =
+        ZonedDateTime.ofInstant(Instant.ofEpochMilli(endTimeMillis), ZoneOffset.UTC);
+
+    // Current week's Monday
+    ZonedDateTime currentWeekMonday =
+        endZdt.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
+
+    // Previous week's Monday
+    ZonedDateTime previousWeekMonday = currentWeekMonday.minusWeeks(1);
+
+    // Sunday = Monday + 6
+    ZonedDateTime previousWeekSunday = previousWeekMonday.plusDays(6);
+
+    long start = previousWeekMonday.toInstant().toEpochMilli();
+    long end = previousWeekSunday.toInstant().toEpochMilli();
+
+    return Pair.of(start, end);
   }
 
   public static String getMonthAndDateFromEpoch(long epochTimestamp) {

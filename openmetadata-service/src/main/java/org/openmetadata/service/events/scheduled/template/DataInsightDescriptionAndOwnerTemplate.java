@@ -44,8 +44,12 @@ public class DataInsightDescriptionAndOwnerTemplate {
   @Setter private int numberOfDaysChange;
   @Setter private Map<String, Double> tierMap;
   @Setter private Map<String, Integer> dateMap;
+  @Getter @Setter double weeklyGrowth;
+  @Getter @Setter double weeklyGrowthPercent;
 
   public DataInsightDescriptionAndOwnerTemplate(
+      double weeklyDifference,
+      double weeklyGrowthPercent,
       MetricType metricType,
       KpiCriteria criteria,
       String totalAssets,
@@ -58,6 +62,8 @@ public class DataInsightDescriptionAndOwnerTemplate {
       int numberOfDaysChange,
       Map<String, Double> tierMap,
       Map<String, Integer> dateMap) {
+    this.weeklyGrowth = weeklyDifference;
+    this.weeklyGrowthPercent = weeklyGrowthPercent;
     this.percentCompleted = String.format("%.2f", percentCompleted);
     this.targetKpi = targetKpi;
     this.changeCount = String.valueOf(changeCount);

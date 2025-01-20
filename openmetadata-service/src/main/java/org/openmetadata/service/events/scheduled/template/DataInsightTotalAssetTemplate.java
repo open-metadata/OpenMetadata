@@ -29,13 +29,19 @@ public class DataInsightTotalAssetTemplate {
   @Setter private String completeMessage;
   @Setter private int numberOfDaysChange;
   @Setter private Map<String, Integer> dateMap;
+  @Getter @Setter double weeklyGrowth;
+  @Getter @Setter double weeklyGrowthPercent;
 
   public DataInsightTotalAssetTemplate(
+      double weeklyDifference,
+      double weeklyGrowthPercent,
       String totalDataAssets,
       int assetsAddedOrRemoved,
       Double percentChangeTotalAssets,
       int numberOfDaysChange,
       Map<String, Integer> dateMap) {
+    this.weeklyGrowth = weeklyDifference;
+    this.weeklyGrowthPercent = weeklyGrowthPercent;
     this.totalDataAssets = totalDataAssets;
     this.changeInTotalAssets = String.valueOf(assetsAddedOrRemoved);
     this.percentChangeTotalAssets = String.format("%.2f", percentChangeTotalAssets);

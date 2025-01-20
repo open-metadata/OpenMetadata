@@ -220,9 +220,30 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
 
     int changeInTotalAssets = (int) Math.abs(currentCount - previousCount);
 
+    Pair<Long, Long> previousWeekRange = Utilities.getPreviousWeekRange(timeConfig.endTime());
+    long previousWeekStart = previousWeekRange.getLeft();
+    long previousWeekEnd = previousWeekRange.getRight();
+
+    // data for that previous Monday–Sunday window
+    Map<String, Double> prevWeekDateWithCount =
+        getDateMapWithCountFromChart("total_data_assets", previousWeekStart, previousWeekEnd, team);
+
+    // Sum the previous week's total and reuse the *current* week's map (dateWithCount) for
+    // comparison
+    double previousWeekTotal = sumMapValues(prevWeekDateWithCount);
+    double currentWeekTotal = sumMapValues(dateWithCount);
+
+    double weeklyDifference = Math.abs(currentWeekTotal - previousWeekTotal);
+    double weeklyGrowthPercent = 0.0;
+    if (previousWeekTotal != 0.0) {
+      weeklyGrowthPercent = ((currentWeekTotal - previousWeekTotal) / previousWeekTotal) * 100.0;
+    }
+
     if (previousCount == 0D) {
       // it should be undefined
       return new DataInsightTotalAssetTemplate(
+          weeklyDifference,
+          weeklyGrowthPercent,
           String.valueOf(currentCount.intValue()),
           currentCount.intValue(),
           0d,
@@ -230,12 +251,18 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
           dateMap);
     } else {
       return new DataInsightTotalAssetTemplate(
+          weeklyDifference,
+          weeklyGrowthPercent,
           String.valueOf(currentCount.intValue()),
           changeInTotalAssets,
           ((currentCount - previousCount) / previousCount) * 100,
           timeConfig.numberOfDaysChange(),
           dateMap);
     }
+  }
+
+  private double sumMapValues(Map<String, Double> map) {
+    return map.values().stream().mapToDouble(Double::doubleValue).sum();
   }
 
   private DataInsightDescriptionAndOwnerTemplate createDescriptionTemplate(
@@ -278,6 +305,27 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
 
     int changeCount = (int) Math.abs(currentCompletedDescription - previousCompletedDescription);
 
+    Pair<Long, Long> prevWeekRange = Utilities.getPreviousWeekRange(timeConfig.endTime());
+    long previousWeekStart = prevWeekRange.getLeft();
+    long previousWeekEnd = prevWeekRange.getRight();
+
+    // Query the "description KPI" for the PREVIOUS week
+    Map<String, Double> prevWeekDescData =
+        getDateMapWithCountFromChart(
+            "number_of_data_asset_with_description_kpi", previousWeekStart, previousWeekEnd, team);
+
+    double prevWeekDescTotal = sumMapValues(prevWeekDescData);
+    double currWeekDescTotal = sumMapValues(dateWithCount);
+
+    // Weekly difference (absolute)
+    double weeklyDifference = Math.abs(currWeekDescTotal - prevWeekDescTotal);
+
+    // Weekly growth %
+    double weeklyGrowthPercent = 0.0;
+    if (prevWeekDescTotal != 0.0) {
+      weeklyGrowthPercent = ((currWeekDescTotal - prevWeekDescTotal) / prevWeekDescTotal) * 100.0;
+    }
+
     return getTemplate(
         DataInsightDescriptionAndOwnerTemplate.MetricType.DESCRIPTION,
         "percentage_of_data_asset_with_description_kpi",
@@ -286,7 +334,9 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
         currentPercentCompleted - previousPercentCompleted,
         currentCompletedDescription.intValue(),
         timeConfig.numberOfDaysChange(),
-        dateMap);
+        dateMap,
+        weeklyDifference,
+        weeklyGrowthPercent);
   }
 
   private DataInsightDescriptionAndOwnerTemplate createOwnershipTemplate(
@@ -329,6 +379,24 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
 
     int changeCount = (int) Math.abs(currentHasOwner - previousHasOwner);
 
+    Pair<Long, Long> prevWeekRange = Utilities.getPreviousWeekRange(timeConfig.endTime());
+    long previousWeekStart = prevWeekRange.getLeft();
+    long previousWeekEnd = prevWeekRange.getRight();
+
+    Map<String, Double> prevWeekOwnerData =
+        getDateMapWithCountFromChart(
+            "number_of_data_asset_with_owner_kpi", previousWeekStart, previousWeekEnd, team);
+
+    double prevWeekOwnerTotal = sumMapValues(prevWeekOwnerData);
+    double currWeekOwnerTotal = sumMapValues(dateWithCount);
+
+    double weeklyDifference = Math.abs(currWeekOwnerTotal - prevWeekOwnerTotal);
+
+    double weeklyGrowthPercent = 0.0;
+    if (prevWeekOwnerTotal != 0.0) {
+      weeklyGrowthPercent =
+          ((currWeekOwnerTotal - prevWeekOwnerTotal) / prevWeekOwnerTotal) * 100.0;
+    }
     return getTemplate(
         DataInsightDescriptionAndOwnerTemplate.MetricType.OWNER,
         "percentage_of_data_asset_with_owner_kpi",
@@ -337,7 +405,9 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
         currentPercentCompleted - previousPercentCompleted,
         currentHasOwner.intValue(),
         timeConfig.numberOfDaysChange(),
-        dateMap);
+        dateMap,
+        weeklyDifference,
+        weeklyGrowthPercent);
   }
 
   private DataInsightDescriptionAndOwnerTemplate createTierTemplate(
@@ -381,7 +451,28 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
     // TODO: Understand if we actually use this tierData for anything.
     Map<String, Double> tierData = new HashMap<>();
 
+    Pair<Long, Long> prevWeekRange = Utilities.getPreviousWeekRange(timeConfig.endTime());
+    long previousWeekStart = prevWeekRange.getLeft();
+    long previousWeekEnd = prevWeekRange.getRight();
+
+    Map<String, Double> prevWeekOwnerData =
+        getDateMapWithCountFromChart(
+            "total_data_assets_by_tier", previousWeekStart, previousWeekEnd, team);
+
+    double prevWeekOwnerTotal = sumMapValues(prevWeekOwnerData);
+    double currWeekOwnerTotal = sumMapValues(dateWithCount);
+
+    double weeklyDifference = Math.abs(currWeekOwnerTotal - prevWeekOwnerTotal);
+
+    double weeklyGrowthPercent = 0.0;
+    if (prevWeekOwnerTotal != 0.0) {
+      weeklyGrowthPercent =
+          ((currWeekOwnerTotal - prevWeekOwnerTotal) / prevWeekOwnerTotal) * 100.0;
+    }
+
     return new DataInsightDescriptionAndOwnerTemplate(
+        weeklyDifference,
+        weeklyGrowthPercent,
         DataInsightDescriptionAndOwnerTemplate.MetricType.TIER,
         null,
         String.valueOf(currentHasTier.intValue()),
@@ -469,7 +560,9 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
       Double percentChange,
       int totalAssets,
       int numberOfDaysChange,
-      Map<String, Integer> dateMap) {
+      Map<String, Integer> dateMap,
+      double weeklyDifference,
+      double weeklyGrowthPercent) {
 
     List<Kpi> kpiList = getAvailableKpi();
     Kpi validKpi = null;
@@ -507,6 +600,8 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
     }
 
     return new DataInsightDescriptionAndOwnerTemplate(
+        weeklyDifference,
+        weeklyGrowthPercent,
         metricType,
         criteria,
         String.valueOf(totalAssets),
