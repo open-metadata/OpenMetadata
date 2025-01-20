@@ -14,6 +14,8 @@
 package org.openmetadata.service.resources.teams;
 
 import static org.openmetadata.common.utils.CommonUtil.listOf;
+import static org.openmetadata.service.exception.CatalogExceptionMessage.CREATE_GROUP;
+import static org.openmetadata.service.exception.CatalogExceptionMessage.CREATE_ORGANIZATION;
 
 import io.dropwizard.jersey.PATCH;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
@@ -70,6 +72,7 @@ import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.util.CSVExportResponse;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 
@@ -748,27 +751,5 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
           boolean dryRun,
       String csv) {
     return importCsvInternalAsync(securityContext, name, csv, dryRun);
-  }
-
-  private Team getTeam(CreateTeam ct, String user) {
-    if (ct.getTeamType().equals(TeamType.ORGANIZATION)) {
-      throw new IllegalArgumentException(CREATE_ORGANIZATION);
-    }
-    if (ct.getTeamType().equals(TeamType.GROUP) && ct.getChildren() != null) {
-      throw new IllegalArgumentException(CREATE_GROUP);
-    }
-    return repository
-        .copy(new Team(), ct, user)
-        .withProfile(ct.getProfile())
-        .withIsJoinable(ct.getIsJoinable())
-        .withUsers(EntityUtil.populateEntityReferenceFromFqn(ct.getUsers(), Entity.USER))
-        .withDefaultRoles(
-            EntityUtil.populateEntityReferenceFromFqn(ct.getDefaultRoles(), Entity.ROLE))
-        .withTeamType(ct.getTeamType())
-        .withParents(EntityUtil.populateEntityReferenceFromFqn(ct.getParents(), Entity.TEAM))
-        .withChildren(EntityUtil.populateEntityReferenceFromFqn(ct.getChildren(), Entity.TEAM))
-        .withPolicies(EntityUtil.populateEntityReferenceFromFqn(ct.getPolicies(), Entity.POLICY))
-        .withEmail(ct.getEmail())
-        .withDomains(EntityUtil.getEntityReferences(Entity.DOMAIN, ct.getDomains()));
   }
 }
