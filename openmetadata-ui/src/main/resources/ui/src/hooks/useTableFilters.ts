@@ -79,15 +79,10 @@ export const useTableFilters = <T extends FilterState>(initialFilters: T) => {
     [location.search, initialFilters]
   );
 
-  // Update a single filter
-  const setFilter = (key: string, value: string | boolean) => {
-    updateUrlWithFilters({ [key]: value });
-  };
-
   // Update multiple filters at a time
   const setFilters = (newFilters: FilterState) => {
     updateUrlWithFilters(newFilters);
   };
 
-  return { filters, setFilter, setFilters };
+  return { filters, setFilters };
 };

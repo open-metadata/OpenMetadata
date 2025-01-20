@@ -80,7 +80,6 @@ export const usePaging = (
 
       // Update location state to persist pageSize for navigation
       history.replace({
-        ...location,
         state: {
           pageSize: page,
         },

@@ -40,6 +40,7 @@ import {
   getEntityDetailsPath,
   getVersionPath,
   INITIAL_PAGING_VALUE,
+  INITIAL_TABLE_FILTERS,
   PAGE_SIZE,
   ROUTES,
 } from '../../constants/constants';
@@ -104,11 +105,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     pagingCursor,
   } = pagingInfo;
 
-  const INITIAL_TABLE_FILTERS = {
-    showDeletedTables: false,
-  };
-
-  const { filters: tableFilters, setFilter } = useTableFilters(
+  const { filters: tableFilters, setFilters } = useTableFilters(
     INITIAL_TABLE_FILTERS
   );
   const { tab: activeTab = EntityTabs.TABLE } =
@@ -151,7 +148,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   );
 
   const handleShowDeletedTables = (value: boolean) => {
-    setFilter('showDeletedTables', value);
+    setFilters({ showDeletedTables: value });
     handlePageChange(INITIAL_PAGING_VALUE);
   };
 
@@ -235,7 +232,10 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       setDatabaseSchema(response);
       setDescription(schemaDescription);
       if (tableFilters.showDeletedTables === undefined) {
-        setFilter('showDeletedTables', response.deleted ?? false);
+        setFilters({
+          showDeletedTables:
+            response.deleted ?? INITIAL_TABLE_FILTERS.showDeletedTables,
+        });
       }
     } catch (err) {
       // Error
