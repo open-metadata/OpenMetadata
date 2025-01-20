@@ -63,8 +63,6 @@ jobs:
     
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
         
       - name: Fetch Release Data
         env:
@@ -88,53 +86,17 @@ jobs:
           asset_name: openmetadata-${{ inputs.DOCKER_RELEASE_TAG }}.tar.gz
           asset_content_type: application/tar.gz
 
-      - name: List files for debugging
-        run: |
-          pwd
-          ls -la
-          ls -la ../OpenMetadata/docker/docker-compose-quickstart/ || echo "quickstart directory not found"
-          ls -la ../OpenMetadata/docker/docker-compose-openmetadata/ || echo "openmetadata directory not found"
-          ls -la ../OpenMetadata/docker/docker-compose-ingestion/ || echo "ingestion directory not found"
-
-      - name: Upload docker-compose.yml
-        uses: actions/upload-release-asset@v1
+      - name: Docker files upload
+        uses: softprops/action-gh-release@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          upload_url: ${{ steps.attach_release.outputs.UPLOAD_URL }}
-          asset_path: ../OpenMetadata/docker/docker-compose-quickstart/docker-compose.yml
-          asset_name: docker-compose.yml
-          asset_content_type: application/yaml
-
-      - name: Upload docker-compose-postgres.yml
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.attach_release.outputs.UPLOAD_URL }}
-          asset_path: ../OpenMetadata/docker/docker-compose-quickstart/docker-compose-postgres.yml
-          asset_name: docker-compose-postgres.yml
-          asset_content_type: application/yaml
-
-      - name: Upload docker-compose-openmetadata.yml
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.attach_release.outputs.UPLOAD_URL }}
-          asset_path: ../OpenMetadata/docker/docker-compose-openmetadata/docker-compose-openmetadata.yml
-          asset_name: docker-compose-openmetadata.yml
-          asset_content_type: application/yaml
-
-      - name: Upload docker-compose-ingestion.yml
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.attach_release.outputs.UPLOAD_URL }}
-          asset_path: ../OpenMetadata/docker/docker-compose-ingestion/docker-compose-ingestion.yml
-          asset_name: docker-compose-ingestion.yml
-          asset_content_type: application/yaml
+          tag_name: ${{ inputs.DOCKER_RELEASE_TAG }}-release
+          files: |
+              docker/docker-compose-quickstart/docker-compose.yml
+              docker/docker-compose-quickstart/docker-compose-postgres.yml
+              docker/docker-compose-openmetadata/docker-compose-openmetadata.yml
+              docker/docker-compose-ingestion/docker-compose-ingestion.yml
 
   push_to_docker_hub:
     runs-on: ubuntu-latest
