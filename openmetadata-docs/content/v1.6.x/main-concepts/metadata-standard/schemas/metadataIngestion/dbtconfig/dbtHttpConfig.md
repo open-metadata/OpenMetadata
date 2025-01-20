@@ -9,9 +9,11 @@ slug: /main-concepts/metadata-standard/schemas/metadataingestion/dbtconfig/dbtht
 
 ## Properties
 
+- **`dbtConfigType`** *(string)*: dbt Configuration type. Must be one of: `["http"]`. Default: `"http"`.
 - **`dbtCatalogHttpPath`** *(string)*: DBT catalog http file path to extract dbt models with their column schemas.
 - **`dbtManifestHttpPath`** *(string)*: DBT manifest http file path to extract dbt models and associate with tables.
 - **`dbtRunResultsHttpPath`** *(string)*: DBT run results http file path to extract the test results information.
+- **`dbtSourcesHttpPath`** *(string)*: DBT sources http file path to extract freshness test results information.
 
 
-Documentation file automatically generated at 2023-10-27 13:55:46.343512.
+Documentation file automatically generated at 2025-01-15 09:05:25.266839+00:00.
