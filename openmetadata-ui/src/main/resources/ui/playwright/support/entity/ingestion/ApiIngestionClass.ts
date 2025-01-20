@@ -21,7 +21,7 @@ import ServiceBaseClass from './ServiceBaseClass';
 
 class ApiIngestionClass extends ServiceBaseClass {
   constructor() {
-    super(Services.API, `pw-api-with-%-${uuid()}`, 'Rest', 'Containers');
+    super(Services.API, `pw-api-with-%-${uuid()}`, 'Rest', 'store');
   }
 
   async createService(page: Page) {
