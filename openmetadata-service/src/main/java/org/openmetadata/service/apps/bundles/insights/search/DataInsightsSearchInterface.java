@@ -34,25 +34,23 @@ public interface DataInsightsSearchInterface {
       String indexMappingTemplateStr) {
     IndexMappingTemplate indexMappingTemplate =
         JsonUtils.readOrConvertValue(indexMappingTemplateStr, IndexMappingTemplate.class);
-    DataInsightsSearchConfiguration dataInsightsSearchConfiguration =
-        JsonUtils.readOrConvertValue(
-            readResource(DATA_INSIGHTS_SEARCH_CONFIG_PATH), DataInsightsSearchConfiguration.class);
     EntityIndexMap entityIndexMap =
         JsonUtils.readOrConvertValue(
             readResource(
                 String.format(entityIndexMapping.getIndexMappingFile(), language.toLowerCase())),
             EntityIndexMap.class);
 
-    List<String> entityAttributes =
-        dataInsightsSearchConfiguration.getMappingFields().get("common");
-    entityAttributes.addAll(dataInsightsSearchConfiguration.getMappingFields().get(entityType));
+    DataInsightsSearchConfiguration dataInsightsSearchConfiguration =
+        readDataInsightsSearchConfiguration();
+    List<String> entityAttributeFields =
+        getEntityAttributeFields(dataInsightsSearchConfiguration, entityType);
 
     indexMappingTemplate
         .getTemplate()
         .getSettings()
         .put("analysis", entityIndexMap.getSettings().get("analysis"));
 
-    for (String attribute : entityAttributes) {
+    for (String attribute : entityAttributeFields) {
       if (!indexMappingTemplate
           .getTemplate()
           .getMappings()
@@ -66,6 +64,21 @@ public interface DataInsightsSearchInterface {
     }
 
     return JsonUtils.pojoToJson(indexMappingTemplate);
+  }
+
+  default DataInsightsSearchConfiguration readDataInsightsSearchConfiguration() {
+    return JsonUtils.readOrConvertValue(
+        readResource(DATA_INSIGHTS_SEARCH_CONFIG_PATH), DataInsightsSearchConfiguration.class);
+  }
+
+  default List<String> getEntityAttributeFields(
+      DataInsightsSearchConfiguration dataInsightsSearchConfiguration, String entityType) {
+    List<String> entityAttributeFields =
+        dataInsightsSearchConfiguration.getMappingFields().get("common");
+    entityAttributeFields.addAll(
+        dataInsightsSearchConfiguration.getMappingFields().get(entityType));
+
+    return entityAttributeFields;
   }
 
   void createDataAssetsDataStream(

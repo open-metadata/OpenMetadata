@@ -320,7 +320,13 @@ public class DataInsightsApp extends AbstractNativeApplication {
   private WorkflowStats processDataAssets() {
     DataAssetsWorkflow workflow =
         new DataAssetsWorkflow(
-            timestamp, batchSize, backfill, dataAssetTypes, collectionDAO, searchRepository);
+            timestamp,
+            batchSize,
+            backfill,
+            dataAssetTypes,
+            collectionDAO,
+            searchRepository,
+            getSearchInterface());
     WorkflowStats workflowStats = workflow.getWorkflowStats();
 
     try {
