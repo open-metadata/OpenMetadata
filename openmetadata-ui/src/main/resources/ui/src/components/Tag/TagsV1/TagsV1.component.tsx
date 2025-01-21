@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Tag, Tooltip, Typography } from 'antd';
+import { Tag, Typography } from 'antd';
 import classNames from 'classnames';
 import React, { useMemo } from 'react';
 import { Link } from 'react-router-dom';
@@ -26,7 +26,7 @@ import {
   getClassificationTagPath,
   getGlossaryPath,
 } from '../../../utils/RouterUtils';
-import { getTagDisplay, getTagTooltip } from '../../../utils/TagsUtils';
+import { getTagDisplay } from '../../../utils/TagsUtils';
 import { HighlightedTagLabel } from '../../Explore/EntitySummaryPanel/SummaryList/SummaryList.interface';
 import { TagsV1Props } from './TagsV1.interface';
 import './tagsV1.less';
@@ -185,14 +185,15 @@ const TagsV1 = ({
   }
 
   return (
-    <Tooltip
+    <Typography.Text
       className="cursor-pointer"
-      mouseEnterDelay={0.5}
-      placement="bottomLeft"
-      title={tooltipOverride ?? getTagTooltip(tag.tagFQN, tag.description)}
-      trigger="hover">
+      // mouseEnterDelay={0.5}
+      // placement="bottomLeft"
+      // title={tooltipOverride ?? getTagTooltip(tag.tagFQN, tag.description)}
+      // trigger="hover"
+    >
       {tagChip}
-    </Tooltip>
+    </Typography.Text>
   );
 };
 
