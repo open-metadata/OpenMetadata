@@ -24,7 +24,18 @@ import os
 import traceback
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Iterable, List, Optional, Sequence, Set, Type, Union, cast
+from typing import (
+    Dict,
+    Iterable,
+    List,
+    Optional,
+    Sequence,
+    Set,
+    Type,
+    Union,
+    cast,
+    get_args,
+)
 
 import giturlparse
 import lkml
@@ -39,6 +50,8 @@ from looker_sdk.sdk.api40.models import (
     LookmlModelNavExplore,
     Project,
 )
+from pydantic import ValidationError
+
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.data.createDashboardDataModel import (
@@ -115,8 +128,6 @@ from metadata.utils import fqn
 from metadata.utils.filters import filter_by_chart, filter_by_datamodel
 from metadata.utils.helpers import clean_uri, get_standard_chart_type
 from metadata.utils.logger import ingestion_logger
-from pydantic import ValidationError
-from typing import get_args
 
 logger = ingestion_logger()
 
