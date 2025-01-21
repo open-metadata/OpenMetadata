@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { isArray, isEmpty, isNil } from 'lodash';
 import qs, { ParsedQs } from 'qs';
 import { useMemo } from 'react';
 import { useHistory } from 'react-router-dom';
@@ -30,10 +31,10 @@ export const useTableFilters = <T extends FilterState>(initialFilters: T) => {
       const paramValue = searchQuery[key];
       const initialValue = initialFilters[key as keyof T];
 
-      if (paramValue !== undefined && paramValue !== null) {
+      if (!isNil(paramValue)) {
         if (typeof initialValue === 'boolean') {
           parsedFilters[key as keyof T] = (paramValue === 'true') as T[keyof T];
-        } else if (Array.isArray(initialValue)) {
+        } else if (isArray(initialValue)) {
           parsedFilters[key as keyof T] =
             typeof paramValue === 'string'
               ? (paramValue.split(',').map((val) => val.trim()) as T[keyof T])
@@ -47,6 +48,7 @@ export const useTableFilters = <T extends FilterState>(initialFilters: T) => {
     return parsedFilters;
   };
 
+  // Update URL with the filters applied for the table as query parameters.
   const updateUrlWithFilters = (updatedFilters: FilterState) => {
     const currentQueryParams = qs.parse(window.location.search, {
       ignoreQueryPrefix: true,
@@ -61,9 +63,9 @@ export const useTableFilters = <T extends FilterState>(initialFilters: T) => {
     Object.keys(mergedQueryParams).forEach((key) => {
       const value = mergedQueryParams[key];
 
-      if (value == null || (Array.isArray(value) && value.length === 0)) {
+      if (isNil(value) || (isArray(value) && isEmpty(value))) {
         delete mergedQueryParams[key];
-      } else if (Array.isArray(value)) {
+      } else if (isArray(value)) {
         mergedQueryParams[key] = value.join(',');
       }
     });
