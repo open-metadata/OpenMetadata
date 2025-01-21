@@ -19,6 +19,8 @@ import { isUndefined, omit, omitBy } from 'lodash';
 import React, { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
+  DATABASES_WITHOUT_INCREMENTAL_EXTRACTION_SUPPORT,
+  EXCLUDE_INCREMENTAL_EXTRACTION_SUPPORT_UI_SCHEMA,
   INGESTION_ELASTIC_SEARCH_WORKFLOW_UI_SCHEMA,
   INGESTION_WORKFLOW_UI_SCHEMA,
 } from '../../../../../constants/Services.constant';
@@ -26,6 +28,7 @@ import {
   DbtConfigType,
   PipelineType,
 } from '../../../../../generated/api/services/ingestionPipelines/createIngestionPipeline';
+import { DatabaseServiceType } from '../../../../../generated/entity/data/database';
 import {
   IngestionWorkflowData,
   IngestionWorkflowFormProps,
@@ -50,6 +53,7 @@ const IngestionWorkflowForm: FC<IngestionWorkflowFormProps> = ({
   onFocus,
   onSubmit,
   onChange,
+  serviceType,
 }) => {
   const [internalData, setInternalData] =
     useState<IngestionWorkflowData>(workflowData);
@@ -71,12 +75,24 @@ const IngestionWorkflowForm: FC<IngestionWorkflowFormProps> = ({
 
   const isDbtPipeline = pipeLineType === PipelineType.Dbt;
 
+  const isIncrementalExtractionNotSupported =
+    DATABASES_WITHOUT_INCREMENTAL_EXTRACTION_SUPPORT.includes(
+      serviceType as DatabaseServiceType
+    );
+
   const uiSchema = useMemo(() => {
     let commonSchema = { ...INGESTION_WORKFLOW_UI_SCHEMA };
     if (isElasticSearchPipeline) {
       commonSchema = {
         ...commonSchema,
         ...INGESTION_ELASTIC_SEARCH_WORKFLOW_UI_SCHEMA,
+      };
+    }
+
+    if (isIncrementalExtractionNotSupported) {
+      commonSchema = {
+        ...commonSchema,
+        ...EXCLUDE_INCREMENTAL_EXTRACTION_SUPPORT_UI_SCHEMA,
       };
     }
 

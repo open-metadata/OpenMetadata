@@ -22,7 +22,10 @@ import {
   DashboardConnection,
   DashboardService,
 } from '../generated/entity/services/dashboardService';
-import { DatabaseService } from '../generated/entity/services/databaseService';
+import {
+  DatabaseService,
+  DatabaseServiceType,
+} from '../generated/entity/services/databaseService';
 import {
   MessagingConnection,
   MessagingService,
@@ -135,4 +138,5 @@ export interface IngestionWorkflowFormProps {
   onFocus: (fieldId: string) => void;
   onSubmit: (data: IngestionWorkflowData) => void;
   onChange?: (data: IngestionWorkflowData) => void;
+  serviceType?: DatabaseServiceType;
 }
