@@ -38,7 +38,8 @@ public class AppMarketPlaceMapper
             .withSourcePythonClass(create.getSourcePythonClass())
             .withAllowConfiguration(create.getAllowConfiguration())
             .withSystem(create.getSystem())
-            .withSupportsInterrupt(create.getSupportsInterrupt());
+            .withSupportsInterrupt(create.getSupportsInterrupt())
+            .withEventSubscriptions(create.getEventSubscriptions());
 
     // Validate App
     validateApplication(app);
