@@ -568,13 +568,11 @@ class LookerSource(DashboardServiceSource):
 
             db_service_names = self.get_db_service_names()
 
-            for db_service_name in db_service_names or []:
-                db_service = self.metadata.get_by_name(DatabaseService, db_service_name)
-                dialect = ConnectionTypeDialectMapper.dialect_of(
-                    db_service.connection.config.type.value
-                )
-                if view.sql_table_name:
-                    sql_table_name = self._render_table_name(view.sql_table_name)
+            if view.sql_table_name:
+                sql_table_name = self._render_table_name(view.sql_table_name)
+
+                for db_service_name in db_service_names or []:
+                    dialect = self._get_db_dialect(db_service_name)
                     source_table_name = self._clean_table_name(sql_table_name, dialect)
 
                     # View to the source is only there if we are informing the dbServiceNames
@@ -584,14 +582,14 @@ class LookerSource(DashboardServiceSource):
                         to_entity=self._view_data_model,
                     )
 
-                elif view.derived_table:
-                    sql_query = view.derived_table.sql
-                    if not sql_query:
-                        return
-
+            elif view.derived_table:
+                sql_query = view.derived_table.sql
+                if not sql_query:
+                    return
+                for db_service_name in db_service_names or []:
                     lineage_parser = LineageParser(
                         sql_query,
-                        dialect,
+                        self._get_db_dialect(db_service_name),
                         timeout_seconds=30,
                     )
                     if lineage_parser.source_tables:
@@ -610,6 +608,12 @@ class LookerSource(DashboardServiceSource):
                     stackTrace=traceback.format_exc(),
                 )
             )
+
+    def _get_db_dialect(self, db_service_name) -> Dialect:
+        db_service = self.metadata.get_by_name(DatabaseService, db_service_name)
+        return ConnectionTypeDialectMapper.dialect_of(
+            db_service.connection.config.type.value
+        )
 
     def get_dashboards_list(self) -> List[DashboardBase]:
         """
