@@ -16,12 +16,14 @@ package org.openmetadata.service.security.saml;
 import static org.openmetadata.service.security.AuthenticationCodeFlowHandler.checkAndStoreRedirectUriInSession;
 
 import com.onelogin.saml2.Auth;
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import javax.servlet.annotation.WebServlet;
-import javax.servlet.http.HttpServlet;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.felix.http.javaxwrappers.HttpServletRequestWrapper;
+import org.apache.felix.http.javaxwrappers.HttpServletResponseWrapper;
 
 /**
  * This Servlet initiates a login and sends a login request to the IDP. After a successful processing it redirects user
@@ -36,7 +38,11 @@ public class SamlLoginServlet extends HttpServlet {
     Auth auth;
     try {
       checkAndStoreRedirectUriInSession(req);
-      auth = new Auth(SamlSettingsHolder.getInstance().getSaml2Settings(), req, resp);
+      auth =
+          new Auth(
+              SamlSettingsHolder.getInstance().getSaml2Settings(),
+              new HttpServletRequestWrapper(req),
+              new HttpServletResponseWrapper(resp));
       auth.login(SamlSettingsHolder.getInstance().getRelayState());
     } catch (Exception e) {
       resp.setContentType("text/html; charset=UTF-8");
