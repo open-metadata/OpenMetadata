@@ -869,15 +869,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   public final ResultList<T> listWithOffset(
-          ListWithOffsetFunction<ListFilter, Integer, Integer, List<String>> callable,
-          Function<ListFilter, Integer> countCallable,
-          ListFilter filter,
-          Integer limitParam,
-          String offset,
-          boolean skipErrors,
-          Fields fields,
-          UriInfo uriInfo
-  ) {
+      ListWithOffsetFunction<ListFilter, Integer, Integer, List<String>> callable,
+      Function<ListFilter, Integer> countCallable,
+      ListFilter filter,
+      Integer limitParam,
+      String offset,
+      boolean skipErrors,
+      Fields fields,
+      UriInfo uriInfo) {
     List<T> entities = new ArrayList<>();
     List<EntityError> errors = new ArrayList<>();
 
@@ -887,17 +886,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
     String afterOffset = getAfterOffset(offsetInt, limitParam, total);
     String beforeOffset = getBeforeOffset(offsetInt, limitParam);
     if (limitParam > 0) {
-      List<String> jsons =
-              callable.apply(
-                      filter,
-                      limitParam,
-                      offsetInt
-              );
-      Iterator<Either<T, EntityError>> iterator = serializeJsons(
-              jsons,
-              fields,
-              uriInfo
-      );
+      List<String> jsons = callable.apply(filter, limitParam, offsetInt);
+      Iterator<Either<T, EntityError>> iterator = serializeJsons(jsons, fields, uriInfo);
       while (iterator.hasNext()) {
         Either<T, EntityError> either = iterator.next();
         if (either.right().isPresent()) {
@@ -1598,6 +1588,23 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return daoCollection
         .entityExtensionTimeSeriesDao()
         .listBetweenTimestampsByOrder(fqn, extension, startTs, endTs, orderBy);
+  }
+
+  @Transaction
+  public ResultList<T> getEntitiesWithTestSuite(
+      ListFilter filter, Integer limit, String offset, EntityUtil.Fields fields) {
+    CollectionDAO.TestSuiteDAO testSuiteDAO = daoCollection.testSuiteDAO();
+    return listWithOffset(
+        (filterParam, limitParam, offsetParam) ->
+            testSuiteDAO.listEntitiesWithTestsuite(
+                filterParam, dao.getTableName(), entityType, limitParam, offsetParam),
+        (filterParam) -> testSuiteDAO.countEntitiesWithTestsuite(filterParam, entityType),
+        filter,
+        limit,
+        offset,
+        false,
+        fields,
+        null);
   }
 
   @Transaction
@@ -3947,11 +3954,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   private Iterator<Either<T, EntityError>> serializeJsons(
-          List<String> jsons,
-          Fields fields,
-          UriInfo uriInfo) {
+      List<String> jsons, Fields fields, UriInfo uriInfo) {
     return new Iterator<>() {
       private final Iterator<String> iterator = jsons.iterator();
+
       @Override
       public boolean hasNext() {
         return iterator.hasNext();
@@ -3962,16 +3968,17 @@ public abstract class EntityRepository<T extends EntityInterface> {
         String json = iterator.next();
         T entity = JsonUtils.readValue(json, entityClass);
         try {
+          setFieldsInternal(entity, fields);
           setInheritedFields(entity, fields);
           clearFieldsInternal(entity, fields);
           if (!nullOrEmpty(uriInfo)) {
-              entity = withHref(uriInfo, entity);
+            entity = withHref(uriInfo, entity);
           }
           return Either.left(entity);
         } catch (Exception e) {
           clearFieldsInternal(entity, fields);
           EntityError entityError =
-                  new EntityError().withMessage(e.getMessage()).withEntity(entity);
+              new EntityError().withMessage(e.getMessage()).withEntity(entity);
           return Either.right(entityError);
         }
       }
