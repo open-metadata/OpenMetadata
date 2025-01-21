@@ -44,7 +44,7 @@ jobs:
           docker-images: false
           swap-storage: true
     - name: Wait for the labeler
-      uses: action/cache@v4
+      uses: lewagon/wait-on-check-action@v1.3.3
       if: ${{ github.event_name == 'pull_request_target' }}
       with:
         ref: ${{ github.event.pull_request.head.sha }}
@@ -117,7 +117,7 @@ jobs:
         sed -i 's/openmetadata_managed_apis/\/github\/workspace\/openmetadata-airflow-apis\/openmetadata_managed_apis/g' openmetadata-airflow-apis/ci-coverage.xml
 
     - name: Push Results in PR to Sonar
-      uses: sonarsource/sonarcloud-github-action@v4
+      uses: sonarsource/sonarcloud-github-action@master
       if: ${{ github.event_name == 'pull_request_target' }}
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -133,7 +133,7 @@ jobs:
           -Dsonar.pullrequest.provider=github
 
     - name: Push Results to Sonar
-      uses: sonarsource/sonarcloud-github-action@v4
+      uses: sonarsource/sonarcloud-github-action@master
       if: ${{ github.event_name == 'push' }}
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
