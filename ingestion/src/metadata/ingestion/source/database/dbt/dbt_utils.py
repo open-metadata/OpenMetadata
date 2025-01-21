@@ -142,7 +142,7 @@ def get_dbt_raw_query(mnode) -> Optional[str]:
         return mnode.raw_code
     if hasattr(mnode, RawQueriesEnum.RAW_SQL.value) and mnode.raw_sql:
         return mnode.raw_sql
-    logger.debug(f"Unable to get DBT compiled query for node - {mnode.name}")
+    logger.debug(f"Unable to get DBT raw query for node - {mnode.name}")
     return None
 
 
