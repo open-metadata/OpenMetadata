@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * This schema defines the EventSubscription entity. An Event Subscription has trigger,
  * filters and Subscription
  */
@@ -29,6 +27,10 @@ export interface EventSubscription {
      * Change that led to this version of the Event Subscription.
      */
     changeDescription?: ChangeDescription;
+    /**
+     * Java class for the Event Subscription.
+     */
+    className?: string;
     /**
      * A short description of the Event Subscription, comprehensible to regular users.
      */
@@ -204,6 +206,8 @@ export enum SubscriptionCategory {
  * This schema defines webhook for receiving events from OpenMetadata.
  *
  * This schema defines email config for receiving events from OpenMetadata.
+ *
+ * A generic map that can be deserialized later.
  */
 export interface Webhook {
     /**
@@ -245,6 +249,7 @@ export interface Webhook {
      * Send the Mails to Owners
      */
     sendToOwners?: boolean;
+    [property: string]: any;
 }
 
 /**
