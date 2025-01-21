@@ -17,6 +17,7 @@ import static org.openmetadata.service.apps.bundles.changeEvent.AbstractEventCon
 import static org.openmetadata.service.apps.bundles.changeEvent.AbstractEventConsumer.ALERT_OFFSET_KEY;
 import static org.openmetadata.service.events.subscription.AlertUtil.getStartingOffset;
 
+import java.lang.reflect.InvocationTargetException;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
@@ -37,6 +38,7 @@ import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.entity.events.SubscriptionStatus;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.apps.bundles.changeEvent.AbstractEventConsumer;
 import org.openmetadata.service.apps.bundles.changeEvent.AlertPublisher;
 import org.openmetadata.service.events.subscription.AlertUtil;
 import org.openmetadata.service.jdbi3.EntityRepository;
@@ -87,9 +89,23 @@ public class EventSubscriptionScheduler {
   }
 
   @Transaction
-  public void addSubscriptionPublisher(EventSubscription eventSubscription)
-      throws SchedulerException {
-    AlertPublisher alertPublisher = new AlertPublisher();
+  public void addSubscriptionPublisher(EventSubscription eventSubscription, boolean reinstall)
+      throws SchedulerException,
+          ClassNotFoundException,
+          NoSuchMethodException,
+          InvocationTargetException,
+          InstantiationException,
+          IllegalAccessException {
+    Class<? extends AbstractEventConsumer> defaultClass = AlertPublisher.class;
+    Class<? extends AbstractEventConsumer> clazz =
+        Class.forName(
+                Optional.ofNullable(eventSubscription.getClassName())
+                    .orElse(defaultClass.getCanonicalName()))
+            .asSubclass(AbstractEventConsumer.class);
+    AbstractEventConsumer publisher = clazz.getDeclaredConstructor().newInstance();
+    if (reinstall && isSubscriptionRegistered(eventSubscription)) {
+      deleteEventSubscriptionPublisher(eventSubscription);
+    }
     if (Boolean.FALSE.equals(
         eventSubscription.getEnabled())) { // Only add webhook that is enabled for publishing events
       eventSubscription
@@ -111,7 +127,7 @@ public class EventSubscriptionScheduler {
                       getSubscriptionStatusAtCurrentTime(SubscriptionStatus.Status.ACTIVE)));
       JobDetail jobDetail =
           jobBuilder(
-              alertPublisher,
+              publisher,
               eventSubscription,
               String.format("%s", eventSubscription.getId().toString()));
       Trigger trigger = trigger(eventSubscription);
@@ -127,8 +143,17 @@ public class EventSubscriptionScheduler {
     }
   }
 
+  public boolean isSubscriptionRegistered(EventSubscription eventSubscription) {
+    try {
+      return alertsScheduler.checkExists(getJobKey(eventSubscription));
+    } catch (SchedulerException e) {
+      LOG.error("Failed to check if subscription is registered: {}", eventSubscription.getId(), e);
+      return false;
+    }
+  }
+
   private JobDetail jobBuilder(
-      AlertPublisher publisher, EventSubscription eventSubscription, String jobIdentity) {
+      AbstractEventConsumer publisher, EventSubscription eventSubscription, String jobIdentity) {
     JobDataMap dataMap = new JobDataMap();
     dataMap.put(ALERT_INFO_KEY, eventSubscription);
     dataMap.put(ALERT_OFFSET_KEY, getStartingOffset(eventSubscription.getId()));
@@ -158,7 +183,7 @@ public class EventSubscriptionScheduler {
     // Remove Existing Subscription Publisher
     deleteEventSubscriptionPublisher(eventSubscription);
     if (Boolean.TRUE.equals(eventSubscription.getEnabled())) {
-      addSubscriptionPublisher(eventSubscription);
+      addSubscriptionPublisher(eventSubscription, true);
     }
   }
 
@@ -534,6 +559,14 @@ public class EventSubscriptionScheduler {
 
   public boolean doesRecordExist(UUID id) {
     return Entity.getCollectionDAO().changeEventDAO().recordExists(id.toString()) > 0;
+  }
+
+  public static JobKey getJobKey(EventSubscription eventSubscription) {
+    return getJobKey(eventSubscription.getId());
+  }
+
+  private static JobKey getJobKey(UUID subscriptionId) {
+    return new JobKey(subscriptionId.toString(), ALERT_JOB_GROUP);
   }
 
   public static void shutDown() throws SchedulerException {
