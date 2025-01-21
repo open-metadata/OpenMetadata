@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import qs from 'qs';
 import {
   Dispatch,
   SetStateAction,
@@ -78,15 +79,19 @@ export const usePaging = (
     (page: number) => {
       setPageSize(page);
       setCurrentPage(INITIAL_PAGING_VALUE);
-
+      const searchParams = qs.stringify(
+        qs.parse(location.search, { ignoreQueryPrefix: true }),
+        { addQueryPrefix: true }
+      );
       // Update location state to persist pageSize for navigation
       history.replace({
         state: {
           pageSize: page,
         },
+        search: searchParams,
       });
     },
-    [setPageSize, setCurrentPage, history]
+    [setPageSize, setCurrentPage, history, location]
   );
   const paginationVisible = useMemo(() => {
     return paging.total > pageSize || pageSize !== defaultPageSize;
@@ -98,6 +103,10 @@ export const usePaging = (
       cursorData?: CursorState,
       pageSize?: number
     ) => {
+      const searchParams = qs.stringify(
+        qs.parse(location.search, { ignoreQueryPrefix: true }),
+        { addQueryPrefix: true }
+      );
       setCurrentPage(page);
       if (cursorData) {
         history.replace({
@@ -106,10 +115,11 @@ export const usePaging = (
             currentPage: page,
             pageSize,
           },
+          search: searchParams,
         });
       }
     },
-    [setCurrentPage, history]
+    [setCurrentPage, history, location]
   );
 
   return {
