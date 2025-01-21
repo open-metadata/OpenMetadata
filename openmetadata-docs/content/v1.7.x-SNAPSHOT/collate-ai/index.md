@@ -6,7 +6,7 @@ collate: true
 
 # Collate AI Technical Documentation
 
-{%  youtube videoId="6glMYLzxNqk" start="0:00" end="04:20" width="560px" height="315px" /%}
+{%  youtube videoId="6glMYLzxNqk" start="0:00" end="04:20" width="800px" height="450px" /%}
 
 Collate AI is an AI-powered tool within Collate that simplifies and enhances metadata management. By integrating generative AI, Collate AI assists users in automating the documentation of data assets, writing and optimizing SQL queries, and interacting with data through natural language. This first-of-its-kind data copilot improves productivity by automating tedious tasks and providing intelligent insights into your data environment.
 

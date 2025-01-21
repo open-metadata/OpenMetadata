@@ -6,7 +6,7 @@ collate: true
 
 # Hybrid SaaS
 
-{%  youtube url="https://drive.google.com/file/d/16-2l9EYBE9DjlHepPKTpVFvashMy1buu/preview" start="0:00" end="6:47" width="560px" height="315px" /%}
+{%  youtube url="https://drive.google.com/file/d/16-2l9EYBE9DjlHepPKTpVFvashMy1buu/preview" start="0:00" end="6:47" width="800px" height="450px" /%}
 
 There's two options on how to set up a data connector:
 1. **Run the connector in Collate SaaS**: In this scenario, you'll get an IP when you add the service. You need to give
