@@ -38,7 +38,6 @@ const TagsV1 = ({
   showOnlyName = false,
   isVersionPage = false,
   tagProps,
-  tooltipOverride,
   tagType,
   size,
 }: TagsV1Props) => {
@@ -185,15 +184,7 @@ const TagsV1 = ({
   }
 
   return (
-    <Typography.Text
-      className="cursor-pointer"
-      // mouseEnterDelay={0.5}
-      // placement="bottomLeft"
-      // title={tooltipOverride ?? getTagTooltip(tag.tagFQN, tag.description)}
-      // trigger="hover"
-    >
-      {tagChip}
-    </Typography.Text>
+    <Typography.Text className="cursor-pointer">{tagChip}</Typography.Text>
   );
 };
 
