@@ -764,7 +764,9 @@ def get_lineage_by_graph(
                                     to_table_raw_name=str(node),
                                     from_table_raw_name=str(from_node),
                                     masked_query="\n--------\n".join(queries),
-                                    column_lineage_map={},
+                                    column_lineage_map={
+                                        str(node): {str(from_node): [("*", "*")]}
+                                    },
                                     lineage_source=LineageSource.QueryLineage,
                                     procedure=None,
                                 )
