@@ -1397,6 +1397,11 @@ public interface CollectionDAO {
         @Define("condition") String condition,
         @Define("sortingOrder") String sortingOrder);
 
+    @SqlQuery(
+        "SELECT id FROM thread_entity WHERE type = 'Conversation' AND createdAt < :cutoffMillis LIMIT :batchSize")
+    List<UUID> fetchConversationThreadIdsOlderThan(
+        @Bind("cutoffMillis") long cutoffMillis, @Bind("batchSize") int batchSize);
+
     @ConnectionAwareSqlQuery(
         value =
             "SELECT count(id) FROM thread_entity <condition> "
@@ -2257,6 +2262,52 @@ public interface CollectionDAO {
         connectionType = POSTGRES)
     void deleteOldRecords(
         @Bind("eventSubscriptionId") String eventSubscriptionId, @Bind("limit") long limit);
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "DELETE FROM successful_sent_change_events "
+                + "WHERE timestamp < :cutoff ORDER BY timestamp LIMIT :limit",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "DELETE FROM successful_sent_change_events "
+                + "WHERE ctid IN ( "
+                + "  SELECT ctid FROM successful_sent_change_events "
+                + "  WHERE timestamp < :cutoff ORDER BY timestamp LIMIT :limit "
+                + ")",
+        connectionType = POSTGRES)
+    int deleteSuccessfulSentChangeEventsInBatches(
+        @Bind("cutoff") long cutoff, @Bind("limit") int limit);
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "DELETE FROM change_event "
+                + "WHERE eventTime < :cutoff ORDER BY eventTime LIMIT :limit",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "DELETE FROM change_event "
+                + "WHERE ctid IN ( "
+                + "  SELECT ctid FROM change_event "
+                + "  WHERE eventTime < :cutoff ORDER BY eventTime LIMIT :limit "
+                + ")",
+        connectionType = POSTGRES)
+    int deleteChangeEventsInBatches(@Bind("cutoff") long cutoff, @Bind("limit") int limit);
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "DELETE FROM consumers_dlq "
+                + "WHERE timestamp < :cutoff ORDER BY timestamp LIMIT :limit",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "DELETE FROM consumers_dlq "
+                + "WHERE ctid IN ( "
+                + "  SELECT ctid FROM consumers_dlq "
+                + "  WHERE timestamp < :cutoff ORDER BY timestamp LIMIT :limit "
+                + ")",
+        connectionType = POSTGRES)
+    int deleteConsumersDlqInBatches(@Bind("cutoff") long cutoff, @Bind("limit") int limit);
 
     @SqlQuery(
         "SELECT json FROM successful_sent_change_events WHERE event_subscription_id = :eventSubscriptionId ORDER BY timestamp DESC LIMIT :limit OFFSET :paginationOffset")
