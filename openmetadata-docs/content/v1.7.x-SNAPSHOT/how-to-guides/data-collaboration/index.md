@@ -16,7 +16,7 @@ There are three important aspects of data collaboration in OpenMetadata:
 
 Watch the video on how to use the collaboration features in OpenMetadata.
 
-{%  youtube videoId="M6mbFLA1bQc" start="0:00" end="5:58" width="560px" height="315px" /%}
+{%  youtube videoId="M6mbFLA1bQc" start="0:00" end="5:58" width="800px" height="450px" /%}
 
 {%inlineCalloutContainer%}
  {%inlineCallout
