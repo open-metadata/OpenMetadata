@@ -27,6 +27,9 @@
         },
         {
           "$ref": "internal/collateAIQualityAgentAppConfig.json"
+        },
+        {
+          "$ref": "internal/dataRetentionConfiguration.json"
         }
       ]
     },
