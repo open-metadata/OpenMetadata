@@ -27,6 +27,7 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -143,19 +144,18 @@ public class EventSubscriptionResource
   }
 
   private void initializeEventSubscriptions() {
-    try {
-      CollectionDAO daoCollection = repository.getDaoCollection();
-      List<String> listAllEventsSubscriptions =
-          daoCollection.eventSubscriptionDAO().listAllEventsSubscriptions();
-      List<EventSubscription> eventSubList =
-          JsonUtils.readObjects(listAllEventsSubscriptions, EventSubscription.class);
-      for (EventSubscription subscription : eventSubList) {
-        EventSubscriptionScheduler.getInstance().addSubscriptionPublisher(subscription);
-      }
-    } catch (Exception ex) {
-      // Starting application should not fail
-      LOG.warn("Exception during initializeEventSubscriptions", ex);
-    }
+    CollectionDAO daoCollection = repository.getDaoCollection();
+    daoCollection.eventSubscriptionDAO().listAllEventsSubscriptions().stream()
+        .map(obj -> JsonUtils.readValue(obj, EventSubscription.class))
+        .forEach(
+            subscription -> {
+              try {
+                EventSubscriptionScheduler.getInstance()
+                    .addSubscriptionPublisher(subscription, true);
+              } catch (Exception ex) {
+                LOG.error("Failed to initialize subscription: {}", subscription.getId(), ex);
+              }
+            });
   }
 
   @GET
@@ -293,12 +293,17 @@ public class EventSubscriptionResource
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateEventSubscription request)
-      throws SchedulerException {
+      throws SchedulerException,
+          ClassNotFoundException,
+          InvocationTargetException,
+          NoSuchMethodException,
+          InstantiationException,
+          IllegalAccessException {
     EventSubscription eventSub =
         mapper.createToEntity(request, securityContext.getUserPrincipal().getName());
     // Only one Creation is allowed
     Response response = create(uriInfo, securityContext, eventSub);
-    EventSubscriptionScheduler.getInstance().addSubscriptionPublisher(eventSub);
+    EventSubscriptionScheduler.getInstance().addSubscriptionPublisher(eventSub, false);
     return response;
   }
 
