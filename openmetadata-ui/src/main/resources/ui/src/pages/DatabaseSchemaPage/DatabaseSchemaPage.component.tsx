@@ -473,10 +473,14 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     ({ cursorType, currentPage }: PagingHandlerParams) => {
       if (cursorType) {
         getSchemaTables({ [cursorType]: paging[cursorType] });
-        handlePageChange(currentPage, {
-          cursorType: cursorType,
-          cursorValue: paging[cursorType]!,
-        });
+        handlePageChange(
+          currentPage,
+          {
+            cursorType: cursorType,
+            cursorValue: paging[cursorType]!,
+          },
+          pageSize
+        );
       }
       handlePageChange(currentPage);
     },

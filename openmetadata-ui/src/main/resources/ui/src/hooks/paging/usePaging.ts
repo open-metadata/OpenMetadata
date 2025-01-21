@@ -44,7 +44,8 @@ export interface UsePagingInterface {
   currentPage: number;
   handlePageChange: (
     page: number | ((page: number) => number),
-    cursorData?: CursorState
+    cursorData?: CursorState,
+    pageSize?: number
   ) => void;
   pageSize: number;
   handlePageSizeChange: (page: number) => void;
@@ -92,7 +93,11 @@ export const usePaging = (
   }, [defaultPageSize, paging, pageSize]);
 
   const handlePageChange = useCallback(
-    (page: number | ((page: number) => number), cursorData?: CursorState) => {
+    (
+      page: number | ((page: number) => number),
+      cursorData?: CursorState,
+      pageSize?: number
+    ) => {
       setCurrentPage(page);
       if (cursorData) {
         history.replace({
