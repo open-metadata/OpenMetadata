@@ -422,24 +422,30 @@ const GlossaryPage = () => {
     }
 
     if (!(viewBasicGlossaryPermission || viewAllGlossaryPermission)) {
-      return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+      return (
+        <div className="d-flex justify-center items-center">
+          <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
+        </div>
+      );
     }
 
     if (glossaries.length === 0 && !isLoading) {
       return (
-        <ErrorPlaceHolder
-          buttonId="add-glossary"
-          className="mt-0-important"
-          doc={GLOSSARIES_DOCS}
-          heading={t('label.glossary')}
-          permission={createGlossaryPermission}
-          type={
-            createGlossaryPermission
-              ? ERROR_PLACEHOLDER_TYPE.CREATE
-              : ERROR_PLACEHOLDER_TYPE.NO_DATA
-          }
-          onClick={handleAddGlossaryClick}
-        />
+        <div className="d-flex justify-center items-center full-height">
+          <ErrorPlaceHolder
+            buttonId="add-glossary"
+            className="mt-0-important"
+            doc={GLOSSARIES_DOCS}
+            heading={t('label.glossary')}
+            permission={createGlossaryPermission}
+            type={
+              createGlossaryPermission
+                ? ERROR_PLACEHOLDER_TYPE.CREATE
+                : ERROR_PLACEHOLDER_TYPE.NO_DATA
+            }
+            onClick={handleAddGlossaryClick}
+          />
+        </div>
       );
     }
 

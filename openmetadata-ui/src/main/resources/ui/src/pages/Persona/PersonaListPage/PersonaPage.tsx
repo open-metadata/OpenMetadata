@@ -123,7 +123,7 @@ export const PersonaPage = () => {
   const renderContent = () => {
     if (isEmpty(persona) && !isLoading) {
       return (
-        <>
+        <div className="d-flex justify-center items-center full-height">
           {errorPlaceHolder}
           {Boolean(addEditPersona) && (
             <AddEditPersonaForm
@@ -132,7 +132,7 @@ export const PersonaPage = () => {
               onSave={handlePersonaAddEditSave}
             />
           )}
-        </>
+        </div>
       );
     }
 

@@ -184,28 +184,32 @@ const DomainPage = () => {
 
     if (!(viewBasicDomainPermission || viewAllDomainPermission)) {
       return (
-        <ErrorPlaceHolder
-          className="mt-0-important"
-          type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-        />
+        <div className="d-flex justify-center items-center full-height">
+          <ErrorPlaceHolder
+            className="mt-0-important"
+            type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+          />
+        </div>
       );
     }
 
     if (isEmpty(rootDomains)) {
       return (
-        <ErrorPlaceHolder
-          buttonId="add-domain"
-          className="mt-0-important"
-          heading={t('label.domain')}
-          permission={createDomainPermission}
-          type={
-            createDomainPermission
-              ? ERROR_PLACEHOLDER_TYPE.CREATE
-              : ERROR_PLACEHOLDER_TYPE.CUSTOM
-          }
-          onClick={handleAddDomainClick}>
-          {t('message.domains-not-configured')}
-        </ErrorPlaceHolder>
+        <div className="d-flex justify-center items-center full-height">
+          <ErrorPlaceHolder
+            buttonId="add-domain"
+            className="mt-0-important"
+            heading={t('label.domain')}
+            permission={createDomainPermission}
+            type={
+              createDomainPermission
+                ? ERROR_PLACEHOLDER_TYPE.CREATE
+                : ERROR_PLACEHOLDER_TYPE.CUSTOM
+            }
+            onClick={handleAddDomainClick}>
+            {t('message.domains-not-configured')}
+          </ErrorPlaceHolder>
+        </div>
       );
     }
 
