@@ -70,6 +70,7 @@ const SuggestionsProvider = ({ children }: { children?: ReactNode }) => {
     try {
       const { data } = await getSuggestionsList({
         entityFQN,
+        limit: 500,
       });
       setSuggestions(data);
 
