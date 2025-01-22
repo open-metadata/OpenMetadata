@@ -20,6 +20,10 @@ Configure and schedule SAS metadata workflow from the OpenMetadata UI:
 
 {% partial file="/v1.7/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/sas/yaml"} /%}
 
+## Ways to Authenticate:
+
+Here are the methods to [authenticate](/connectors/database/sas/connections) user credentials with the SAS connector.
+
 ## Requirements
 
 {%inlineCallout icon="description" bold="OpenMetadata 1.3 or later" href="/deployment"%}
@@ -41,16 +45,6 @@ Prepare the SAS Service and configure the Ingestion:
 /%}
 
 {% stepsContainer %}
-{% extraContent parentTagName="stepsContainer" %}
-
-#### Connection Details
-
-- **ServerHost**: Host and port of the SAS Viya deployment.
-- **Username**: Username to connect to SAS Viya. This user should have privileges to read all the metadata in SAS Information Catalog.
-- **Password**: Password to connect to SAS Viya.
-- **Filter**: A filter expression specifying items for import. For more information [see](https://developer.sas.com/apis/rest/DataManagement/#catalog)
-
-{% /extraContent %}
 
 {% partial file="/v1.7/connectors/test-connection.md" /%}
 

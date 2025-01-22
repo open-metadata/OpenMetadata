@@ -22,6 +22,10 @@ Configure and schedule Cassandra metadata workflows from the OpenMetadata UI:
 
 {% partial file="/v1.7/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/cassandra/yaml"} /%}
 
+## Ways to Authenticate:
+
+Here are the methods to [authenticate](/connectors/database/cassandra/connections) user credentials with the Cassandra connector.
+
 ## Requirements
 
 To extract metadata using the Cassandra connector, ensure the user in the connection has the following permissions:
@@ -41,40 +45,6 @@ To extract metadata using the Cassandra connector, ensure the user in the connec
 /%}
 
 {% stepsContainer %}
-{% extraContent parentTagName="stepsContainer" %}
-
-#### Connection Details
-
-- **Username**: Username to connect to Cassandra. This user must have the necessary permissions to perform metadata extraction and table queries.
-- **Host Port**: When using the `cassandra` connecion schema, the hostPort parameter specifies the host and port of the Cassandra. This should be specified as a string in the format `hostname:port`. E.g., `localhost:9042`.- **databaseName**: Optional name to give to the database in OpenMetadata. If left blank, we will use default as the database name.
-
-**Auth Type**: Following authentication types are supported:
-1. **Basic Authentication**:
-We'll use the user credentials to connect to Cassandra
-- **password**: Password of the user.
-
-2. **DataStax Astra DB Configuration**: 
-Configuration for connecting to DataStax Astra DB in the cloud.
-  - **connectTimeout**: Timeout in seconds for establishing new connections to Cassandra.
-  - **requestTimeout**: Timeout in seconds for individual Cassandra requests.
-  - **token**: The Astra DB application token used for authentication.
-  - **secureConnectBundle**: File path to the Secure Connect Bundle (.zip) used for a secure connection to DataStax Astra DB.
-
-**SSL Modes**
-
-There are a couple of types of SSL modes that Cassandra supports which can be added to ConnectionArguments, they are as follows:
-- **disable**: SSL is disabled and the connection is not encrypted.
-- **allow**: SSL is used if the server requires it.
-- **prefer**: SSL is used if the server supports it.
-- **require**: SSL is required.
-- **verify-ca**: SSL must be used and the server certificate must be verified.
-- **verify-full**: SSL must be used. The server certificate must be verified, and the server hostname must match the hostname attribute on the certificate.
-
-**SSL Configuration**
-
-In order to integrate SSL in the Metadata Ingestion Config, the user will have to add the SSL config under sslConfig which is placed in the source.
-
-{% /extraContent %}
 
 {% partial file="/v1.7/connectors/test-connection.md" /%}
 

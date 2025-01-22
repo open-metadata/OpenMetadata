@@ -24,6 +24,10 @@ Configure and schedule Vertica metadata and profiler workflows from the OpenMeta
 
 {% partial file="/v1.5/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/vertica/yaml"} /%}
 
+## Ways to Authenticate:
+
+Here are the methods to [authenticate](/connectors/database/vertica/connections) user credentials with the Vertica connector.
+
 ## Requirements
 
 ### Permissions
@@ -84,17 +88,6 @@ GRANT SELECT ON ALL TABLES IN SCHEMA <schema> TO openmetadata;
 /%}
 
 {% stepsContainer %}
-{% extraContent parentTagName="stepsContainer" %}
-
-#### Connection Details
-
-- **Username**: Specify the User to connect to Vertica. It should have enough privileges to read all the metadata.
-- **Password**: Password to connect to Vertica.
-- **Host and Port**: Enter the fully qualified hostname and port number for your Vertica deployment in the Host and Port field.
-
-{% partial file="/v1.5/connectors/database/advanced-configuration.md" /%}
-
-{% /extraContent %}
 
 {% partial file="/v1.5/connectors/test-connection.md" /%}
 

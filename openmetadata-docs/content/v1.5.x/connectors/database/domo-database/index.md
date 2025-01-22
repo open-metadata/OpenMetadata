@@ -22,6 +22,10 @@ Configure and schedule DomoDatabase metadata and profiler workflows from the Ope
 
 {% partial file="/v1.5/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/domo-database/yaml"} /%}
 
+## Ways to Authenticate:
+
+Here are the methods to [authenticate](/connectors/database/domo/connections) user credentials with the Domo connector.
+
 ## Requirements
 
 For metadata ingestion, make sure to add at least `data` scopes to the clientId provided.
@@ -40,17 +44,6 @@ For questions related to scopes, click [here](https://developer.domo.com/portal/
 /%}
 
 {% stepsContainer %}
-{% extraContent parentTagName="stepsContainer" %}
-
-#### Connection Details
-
-- **Client ID**: Client ID for DOMO Database.
-- **Secret Token**: Secret Token to Connect DOMO Database.
-- **Access Token**: Access to Connect to DOMO Database.
-- **Api Host**: API Host to Connect to DOMO Database instance.
-- **Instance Domain**: URL to connect to your Domo instance UI. For example `https://<your>.domo.com`.
-
-{% /extraContent %}
 
 {% partial file="/v1.5/connectors/test-connection.md" /%}
 

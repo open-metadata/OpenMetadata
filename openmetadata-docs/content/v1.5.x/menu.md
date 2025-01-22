@@ -232,194 +232,276 @@ site_menu:
     url: /connectors/database/adls-datalake/yaml
   - category: Connectors / Database / ADLS Datalake / Troubleshooting
     url: /connectors/database/adls-datalake/troubleshooting
+  - category: Connectors / Database / ADLS Datalake / Connections
+      url: /connectors/database/adls-datalake/connections
   - category: Connectors / Database / Athena
     url: /connectors/database/athena
   - category: Connectors / Database / Athena / Run Externally
     url: /connectors/database/athena/yaml
+  - category: Connectors / Database / Athena / Connections
+    url: /connectors/database/athena/connections
   - category: Connectors / Database / AzureSQL
     url: /connectors/database/azuresql
   - category: Connectors / Database / AzureSQL / Run Externally
     url: /connectors/database/azuresql/yaml
   - category: Connectors / Database / AzureSQL / Troubleshooting
     url: /connectors/database/azuresql/troubleshooting
+  - category: Connectors / Database / AzureSQL / Connections
+    url: /connectors/database/azuresql/connections
   - category: Connectors / Database / BigQuery
     url: /connectors/database/bigquery
   - category: Connectors / Database / BigQuery / Run Externally
     url: /connectors/database/bigquery/yaml
   - category: Connectors / Database / BigQuery / Create Credentials
     url: /connectors/database/bigquery/create-credentials
+  - category: Connectors / Database / BigQuery / Connections
+    url: /connectors/database/bigquery/connections
   - category: Connectors / Database / BigTable
     url: /connectors/database/bigtable
   - category: Connectors / Database / BigTable / Run Externally
     url: /connectors/database/bigtable/yaml
   - category: Connectors / Database / BigTable / Roles
     url: /connectors/database/bigtable/roles
+  - category: Connectors / Database / BigTable / Connections
+    url: /connectors/database/bigtable/connections
   - category: Connectors / Database / Clickhouse
     url: /connectors/database/clickhouse
   - category: Connectors / Database / Clickhouse / Run Externally
     url: /connectors/database/clickhouse/yaml
+  - category: Connectors / Database / Clickhouse / Connections
+    url: /connectors/database/clickhouse/connections
   - category: Connectors / Database / Couchbase
     url: /connectors/database/couchbase
   - category: Connectors / Database / Couchbase / Run Externally
     url: /connectors/database/couchbase/yaml
+  - category: Connectors / Database / Couchbase / Connections
+    url: /connectors/database/couchbase/connections
   - category: Connectors / Database / Databricks
     url: /connectors/database/databricks
   - category: Connectors / Database / Databricks / Run Externally
     url: /connectors/database/databricks/yaml
   - category: Connectors / Database / Databricks / Troubleshooting
     url: /connectors/database/databricks/troubleshooting
+  - category: Connectors / Database / Databricks / Connections
+    url: /connectors/database/databricks/connections
   - category: Connectors / Database / DB2
     url: /connectors/database/db2
   - category: Connectors / Database / DB2 / Run Externally
     url: /connectors/database/db2/yaml
+  - category: Connectors / Database / DB2 / Connections
+    url: /connectors/database/db2/connections
   - category: Connectors / Database / DeltaLake
     url: /connectors/database/deltalake
   - category: Connectors / Database / DeltaLake / Run Externally
     url: /connectors/database/deltalake/yaml
+  - category: Connectors / Database / DeltaLake / Connections
+    url: /connectors/database/deltalake/connections
   - category: Connectors / Database / Domo Database
     url: /connectors/database/domo-database
   - category: Connectors / Database / Domo Database / Run Externally
     url: /connectors/database/domo-database/yaml
   - category: Connectors / Database / Domo Database / Troubleshoot
     url: /connectors/database/domo-database/troubleshoot
+  - category: Connectors / Database / Domo Database / Connections
+    url: /connectors/database/domo/connections
   - category: Connectors / Database / Doris
     url: /connectors/database/doris
   - category: Connectors / Database / Doris / Run Externally
     url: /connectors/database/doris/yaml
+  - category: Connectors / Database / Doris / Connections
+    url: /connectors/database/doris/connections
   - category: Connectors / Database / Druid
     url: /connectors/database/druid
   - category: Connectors / Database / Druid / Run Externally
     url: /connectors/database/druid/yaml
+  - category: Connectors / Database / Druid / Connections
+    url: /connectors/database/druid/connections
   - category: Connectors / Database / DynamoDB
     url: /connectors/database/dynamodb
   - category: Connectors / Database / DynamoDB / Run Externally
     url: /connectors/database/dynamodb/yaml
+  - category: Connectors / Database / DynamoDB / Connections
+    url: /connectors/database/dynamodb/connections
   - category: Connectors / Database / GCS Datalake
     url: /connectors/database/gcs-datalake
   - category: Connectors / Database / GCS Datalake / Run Externally
     url: /connectors/database/gcs-datalake/yaml
+  - category: Connectors / Database / GCS Datalake / Connections
+    url: /connectors/database/gcs/connections
   - category: Connectors / Database / Glue
     url: /connectors/database/glue
   - category: Connectors / Database / Glue / Run Externally
     url: /connectors/database/glue/yaml
+  - category: Connectors / Database / Glue / Connections
+    url: /connectors/database/glue/connections
   - category: Connectors / Database / Greenplum
     url: /connectors/database/greenplum
   - category: Connectors / Database / Greenplum / Run Externally
     url: /connectors/database/greenplum/yaml
+  - category: Connectors / Database / Greenplum / Connections
+    url: /connectors/database/greenplum/connections
   - category: Connectors / Database / Hive
     url: /connectors/database/hive
   - category: Connectors / Database / Hive / Run Externally
     url: /connectors/database/hive/yaml
   - category: Connectors / Database / Hive / Troubleshooting
     url: /connectors/database/hive/troubleshooting
+  - category: Connectors / Database / Hive / Connections
+    url: /connectors/database/hive/connections
   - category: Connectors / Database / Iceberg
     url: /connectors/database/iceberg
   - category: Connectors / Database / Iceberg / Run Externally
     url: /connectors/database/iceberg/yaml
+  - category: Connectors / Database / Iceberg / Connections
+    url: /connectors/database/iceberg/connections
   - category: Connectors / Database / Impala
     url: /connectors/database/impala
   - category: Connectors / Database / Impala / Run Externally
     url: /connectors/database/impala/yaml
   - category: Connectors / Database / Impala / Troubleshooting
     url: /connectors/database/impala/troubleshooting
+  - category: Connectors / Database / Impala / Connections
+    url: /connectors/database/impala/connections
   - category: Connectors / Database / MariaDB
     url: /connectors/database/mariadb
   - category: Connectors / Database / MariaDB / Run Externally
     url: /connectors/database/mariadb/yaml
+  - category: Connectors / Database / MariaDB / Connections
+    url: /connectors/database/mariadb/connections
   - category: Connectors / Database / MongoDB
     url: /connectors/database/mongodb
   - category: Connectors / Database / MongoDB / Run Externally
     url: /connectors/database/mongodb/yaml
+  - category: Connectors / Database / MongoDB/ Connections
+    url: /connectors/database/mongodb/connections
   - category: Connectors / Database / MSSQL
     url: /connectors/database/mssql
   - category: Connectors / Database / MSSQL / Run Externally
     url: /connectors/database/mssql/yaml
   - category: Connectors / Database / MSSQL / Troubleshooting
     url: /connectors/database/mssql/troubleshooting
+  - category: Connectors / Database / MSSQL / Connections
+    url: /connectors/database/mssql/connections
   - category: Connectors / Database / MySQL
     url: /connectors/database/mysql
   - category: Connectors / Database / MySQL / Run Externally
     url: /connectors/database/mysql/yaml
+  - category: Connectors / Database / MySQL / Connections
+    url: /connectors/database/mysql/connections
   - category: Connectors / Database / Oracle
     url: /connectors/database/oracle
   - category: Connectors / Database / Oracle / Run Externally
     url: /connectors/database/oracle/yaml
+  - category: Connectors / Database / Oracle / Connections
+    url: /connectors/database/oracle/connections
   - category: Connectors / Database / PinotDB
     url: /connectors/database/pinotdb
   - category: Connectors / Database / PinotDB / Run Externally
     url: /connectors/database/pinotdb/yaml
+  - category: Connectors / Database / PinotDB / Connections
+    url: /connectors/database/pinotdb/connections
   - category: Connectors / Database / Postgres
     url: /connectors/database/postgres
   - category: Connectors / Database / Postgres / Run Externally
     url: /connectors/database/postgres/yaml
   - category: Connectors / Database / Postgres / Troubleshooting
     url: /connectors/database/postgres/troubleshooting
+  - category: Connectors / Database / Postgres / Connections
+    url: /connectors/database/postgres/connections
   - category: Connectors / Database / Presto
     url: /connectors/database/presto
   - category: Connectors / Database / Presto / Run Externally
     url: /connectors/database/presto/yaml
+  - category: Connectors / Database / Presto / Connections
+    url: /connectors/database/presto/connections
   - category: Connectors / Database / Redshift
     url: /connectors/database/redshift
   - category: Connectors / Database / Redshift / Run Externally
     url: /connectors/database/redshift/yaml
   - category: Connectors / Database / Redshift / Troubleshooting
     url: /connectors/database/redshift/troubleshooting
+  - category: Connectors / Database / Redshift / Connections
+    url: /connectors/database/redshift/connections
   - category: Connectors / Database / Salesforce
     url: /connectors/database/salesforce
   - category: Connectors / Database / Salesforce / Run Externally
     url: /connectors/database/salesforce/yaml
+  - category: Connectors / Database / Salesforce / Connections
+    url: /connectors/database/salesforce/connections
   - category: Connectors / Database / SAP Hana
     url: /connectors/database/sap-hana
   - category: Connectors / Database / SAP Hana / Run Externally
     url: /connectors/database/sap-hana/yaml
+  - category: Connectors / Database / SAP Hana / Connections
+    url: /connectors/database/sap-hana/connections
   - category: Connectors / Database / SAP ERP
     url: /connectors/database/sap-erp
   - category: Connectors / Database / SAP ERP / Run Externally
     url: /connectors/database/sap-erp/yaml
   - category: Connectors / Database / SAP ERP / Setup SAP ERP APIs
     url: /connectors/database/sap-erp/setup-sap-apis
+  - category: Connectors / Database / SAP ERP / Connections
+    url: /connectors/database/sap-erp/connections
   - category: Connectors / Database / SAS
     url: /connectors/database/sas
   - category: Connectors / Database / SAS / Run Externally
     url: /connectors/database/sas/yaml
+  - category: Connectors / Database / SAS / Connections
+    url: /connectors/database/sas/connections
   - category: Connectors / Database / SingleStore
     url: /connectors/database/singlestore
   - category: Connectors / Database / SingleStore / Run Externally
     url: /connectors/database/singlestore/yaml
+  - category: Connectors / Database / SingleStore / Connections
+    url: /connectors/database/singlestore/connections
   - category: Connectors / Database / Snowflake
     url: /connectors/database/snowflake
   - category: Connectors / Database / Snowflake / Run Externally
     url: /connectors/database/snowflake/yaml
+  - category: Connectors / Database / Snowflake / Connections
+    url: /connectors/database/snowflake/connections
   - category: Connectors / Database / SQLite
     url: /connectors/database/sqlite
   - category: Connectors / Database / SQLite / Run Externally
     url: /connectors/database/sqlite/yaml
+  - category: Connectors / Database / SQLite / Connections
+    url: /connectors/database/sqlite/connections
   - category: Connectors / Database / S3 Datalake
     url: /connectors/database/s3-datalake
   - category: Connectors / Database / S3 Datalake / Run Externally
     url: /connectors/database/s3-datalake/yaml
   - category: Connectors / Database / S3 Datalake / Troubleshooting
     url: /connectors/database/s3-datalake/troubleshooting
+  - category: Connectors / Database / S3 Datalake / Connections
+    url: /connectors/database/s3/connections
   - category: Connectors / Database / Teradata
     url: /connectors/database/teradata
   - category: Connectors / Database / Teradata / Run Externally
     url: /connectors/database/teradata/yaml
+  - category: Connectors / Database / Teradata / Connections
+    url: /connectors/database/teradata/connections
   - category: Connectors / Database / Trino
     url: /connectors/database/trino
   - category: Connectors / Database / Trino / Run Externally
     url: /connectors/database/trino/yaml
+  - category: Connectors / Database / Trino / Connections
+    url: /connectors/database/trino/connections
   - category: Connectors / Database / Unity Catalog
     url: /connectors/database/unity-catalog
   - category: Connectors / Database / Unity Catalog / Run Externally
     url: /connectors/database/unity-catalog/yaml
   - category: Connectors / Database / Unity Catalog / Troubleshooting
     url: /connectors/database/unity-catalog/troubleshooting
+  - category: Connectors / Database / Unity Catalog / Connections
+    url: /connectors/database/unity-catalog/connections
   - category: Connectors / Database / Vertica
     url: /connectors/database/vertica
   - category: Connectors / Database / Vertica / Run Externally
     url: /connectors/database/vertica/yaml
   - category: Connectors / Database / Vertica / Troubleshooting
     url: /connectors/database/vertica/troubleshooting
+  - category: Connectors / Database / Vertica / Connections
+    url: /connectors/database/vertica/connections
 
   - category: Connectors / Dashboard
     url: /connectors/dashboard

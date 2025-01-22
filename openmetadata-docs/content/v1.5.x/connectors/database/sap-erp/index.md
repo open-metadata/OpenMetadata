@@ -22,6 +22,10 @@ Configure and schedule SAP ERP metadata workflow from the OpenMetadata UI:
 
 {% partial file="/v1.5/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/sap-erp/yaml"} /%}
 
+## Ways to Authenticate:
+
+Here are the methods to [authenticate](/connectors/database/sap-erp/connections) user credentials with the SAP-ERP connector.
+
 ## Requirements
 
 To ingest the SAP ERP metadata, CDS Views and OData services need to be setup to efficiently expose SAP data. To achieve this, data must be exposed via RESTful interfaces.
@@ -40,19 +44,6 @@ Follow the guide [here](/connectors/database/sap-erp/setup-sap-apis) to setup th
 /%}
 
 {% stepsContainer %}
-{% extraContent parentTagName="stepsContainer" %}
-
-#### Connection Details
-
-- **Host and Port**: This parameter specifies the host and port of the SAP ERP instance. This should be specified as a string in the format `https://hostname.com`.
-- **API Key**: Api Key to authenticate the SAP ERP Apis.
-- **database**: Optional name to give to the database in OpenMetadata. If left blank, we will use `default` as the database name.
-- **databaseSchema**: Optional name to give to the database schema in OpenMetadata. If left blank, we will use `default` as the database schema name.
-- **paginationLimit**: Pagination limit used while querying the SAP ERP APIs for fetching the entities.
-
-{% partial file="/v1.5/connectors/database/advanced-configuration.md" /%}
-
-{% /extraContent %}
 
 {% partial file="/v1.5/connectors/test-connection.md" /%}
 
