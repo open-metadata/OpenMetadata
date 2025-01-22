@@ -88,12 +88,10 @@ describe('SummaryCard component', () => {
   });
 
   it("should render card background based on 'cardBackgroundClass'", async () => {
-    render(
-      <SummaryCard {...mockProps} cardBackgroundClass="success-background" />
-    );
+    render(<SummaryCard {...mockProps} cardBackgroundClass="bg-success" />);
 
     const container = await screen.findByTestId('summary-card-container');
 
-    expect(container).toHaveClass('success-background');
+    expect(container).toHaveClass('bg-success');
   });
 });

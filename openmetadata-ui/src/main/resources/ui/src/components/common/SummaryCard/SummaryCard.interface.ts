@@ -21,8 +21,8 @@ export interface SummaryCardProps {
   inverseLabel?: boolean;
   titleIcon?: React.ReactElement;
   cardBackgroundClass?:
-    | 'success-background'
-    | 'failed-background'
-    | 'aborted-background'
-    | 'primary-background';
+    | 'bg-success'
+    | 'bg-failed'
+    | 'bg-aborted'
+    | 'bg-primary';
 }

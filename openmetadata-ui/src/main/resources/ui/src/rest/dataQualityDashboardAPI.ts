@@ -84,18 +84,7 @@ export const fetchTestCaseSummary = (
 export const fetchTestCaseSummaryByDimension = (
   filters?: DataQualityDashboardChartFilters
 ) => {
-  const mustFilter = [];
-  if (filters?.ownerFqn) {
-    mustFilter.push(buildMustEsFilterForOwner(filters.ownerFqn));
-  }
-  if (filters?.tags || filters?.tier) {
-    mustFilter.push(
-      buildMustEsFilterForTags([
-        ...(filters?.tags ?? []),
-        ...(filters?.tier ?? []),
-      ])
-    );
-  }
+  const mustFilter = buildDataQualityDashboardFilters({ filters });
 
   return getDataQualityReport({
     q: JSON.stringify({

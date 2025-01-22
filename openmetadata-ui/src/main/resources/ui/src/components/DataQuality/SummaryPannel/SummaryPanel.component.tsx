@@ -39,7 +39,7 @@ export const SummaryPanel: FC<SummaryPanelProps> = ({
       <Col span={spanValue}>
         <SummaryCard
           inverseLabel
-          cardBackgroundClass="primary-background"
+          cardBackgroundClass="bg-primary"
           className="h-full"
           isLoading={isLoading}
           showProgressBar={false}
@@ -54,7 +54,7 @@ export const SummaryPanel: FC<SummaryPanelProps> = ({
       <Col span={spanValue}>
         <SummaryCard
           inverseLabel
-          cardBackgroundClass="success-background"
+          cardBackgroundClass="bg-success"
           isLoading={isLoading}
           title={t('label.success')}
           titleIcon={<TestCaseSuccessIcon height={16} width={16} />}
@@ -66,7 +66,7 @@ export const SummaryPanel: FC<SummaryPanelProps> = ({
       <Col span={spanValue}>
         <SummaryCard
           inverseLabel
-          cardBackgroundClass="aborted-background"
+          cardBackgroundClass="bg-aborted"
           isLoading={isLoading}
           title={t('label.aborted')}
           titleIcon={<TestCaseAbortedIcon height={16} width={16} />}
@@ -78,7 +78,7 @@ export const SummaryPanel: FC<SummaryPanelProps> = ({
       <Col span={spanValue}>
         <SummaryCard
           inverseLabel
-          cardBackgroundClass="failed-background"
+          cardBackgroundClass="bg-failed"
           isLoading={isLoading}
           title={t('label.failed')}
           titleIcon={<TestCaseFailedIcon height={16} width={16} />}
@@ -92,7 +92,7 @@ export const SummaryPanel: FC<SummaryPanelProps> = ({
           <Col span={spanValue}>
             <SummaryCard
               inverseLabel
-              cardBackgroundClass="success-background"
+              cardBackgroundClass="bg-success"
               isLoading={isLoading}
               title={t('label.healthy-data-asset-plural')}
               titleIcon={<HealthCheckIcon height={16} width={16} />}
@@ -104,7 +104,7 @@ export const SummaryPanel: FC<SummaryPanelProps> = ({
           <Col span={spanValue}>
             <SummaryCard
               inverseLabel
-              cardBackgroundClass="primary-background"
+              cardBackgroundClass="bg-primary"
               isLoading={isLoading}
               title={t('label.data-asset-plural-coverage')}
               titleIcon={<DataAssetsCoverageIcon height={16} width={16} />}
