@@ -40,5 +40,5 @@ export interface RichTextEditorProp extends HTMLAttributes<HTMLDivElement> {
 }
 
 export interface EditorContentRef {
-  getEditorContent: () => string | undefined;
+  getEditorContent: () => string;
 }

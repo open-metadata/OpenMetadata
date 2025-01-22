@@ -47,7 +47,7 @@ const RichTextEditor = forwardRef<EditorContentRef, RichTextEditorProp>(
         const htmlContent = editorRef.current?.editor?.getHTML() ?? '';
         const backendFormat = formatContent(htmlContent, 'server');
 
-        return backendFormat === '<p></p>' ? undefined : backendFormat;
+        return backendFormat === '<p></p>' ? '' : backendFormat;
       },
     }));
 

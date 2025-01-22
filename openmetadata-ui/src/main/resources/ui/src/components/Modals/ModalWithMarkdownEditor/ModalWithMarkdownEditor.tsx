@@ -41,7 +41,8 @@ export const ModalWithMarkdownEditor: FunctionComponent<ModalWithMarkdownEditorP
       if (markdownRef.current) {
         setIsLoading(true);
         try {
-          const content = markdownRef.current?.getEditorContent?.()?.trim();
+          const content =
+            markdownRef.current?.getEditorContent?.()?.trim() ?? '';
           await onSave?.(content);
         } catch (error) {
           showErrorToast(error as AxiosError);
