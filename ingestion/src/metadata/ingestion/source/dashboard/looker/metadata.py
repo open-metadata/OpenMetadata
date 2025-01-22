@@ -729,7 +729,7 @@ class LookerSource(DashboardServiceSource):
         return None
 
     @staticmethod
-    def _clean_table_name(table_name: str, dialect: Dialect) -> str:
+    def _clean_table_name(table_name: str, dialect: Dialect = Dialect.ANSI) -> str:
         """
         sql_table_names might be renamed when defining
         an explore. E.g., customers as cust
