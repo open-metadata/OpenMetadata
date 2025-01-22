@@ -161,6 +161,7 @@ const TagsContainerV2 = ({
       showAddTagButton ? (
         <Col className="m-t-xss" onClick={handleAddClick}>
           <TagsV1
+            isEditTags={isEditTags}
             startWith={TAG_START_WITH.PLUS}
             tag={isGlossaryType ? GLOSSARY_CONSTANT : TAG_CONSTANT}
             tagType={tagType}
@@ -348,6 +349,7 @@ const TagsContainerV2 = ({
         {showAddTagButton ? (
           <div onClick={handleAddClick}>
             <TagsV1
+              isEditTags={isEditTags}
               startWith={TAG_START_WITH.PLUS}
               tag={isGlossaryType ? GLOSSARY_CONSTANT : TAG_CONSTANT}
               tagType={tagType}
