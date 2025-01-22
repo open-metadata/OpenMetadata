@@ -51,6 +51,10 @@ export const fillDescriptionDetails = async (
   await page.fill(descriptionBox, description);
 
   await page.click('[data-testid="save"]');
+
+  await expect(
+    page.locator('.InovuaReactDataGrid__cell--cell-active')
+  ).not.toContainText('<p>');
 };
 
 export const fillOwnerDetails = async (page: Page, owners: string[]) => {
