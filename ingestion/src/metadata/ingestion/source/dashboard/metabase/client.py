@@ -33,7 +33,11 @@ from metadata.ingestion.source.dashboard.metabase.models import (
     MetabaseTable,
     MetabaseUser,
 )
-from metadata.utils.constants import AUTHORIZATION_HEADER, NO_ACCESS_TOKEN
+from metadata.utils.constants import (
+    AUTHORIZATION_HEADER,
+    DEFAULT_DASHBAORD,
+    NO_ACCESS_TOKEN,
+)
 from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import ingestion_logger
 
@@ -168,13 +172,10 @@ class MetabaseClient:
         Returns:
             MetabaseDashboardDetails object representing the default dashboard containing orphaned charts
         """
-        dashboard_data = {
-            "description": "Contains charts not associated with any dashboard",
-            "name": "Default Dashboard",
-            "id": "-1",
-            "card_ids": orphan_charts_id,
-        }
-        return MetabaseDashboardDetails(**dashboard_data)
+        return MetabaseDashboardDetails(
+            id=DEFAULT_DASHBAORD,
+            card_ids=orphan_charts_id,
+        )
 
     def _process_dashboard_response(
         self, resp_dashboard: Dict, charts_dict: Dict, dashboard_id: str
@@ -186,23 +187,21 @@ class MetabaseClient:
             resp_dashboard["dashcards"] = resp_dashboard["ordered_cards"]
 
         card_ids = []
-        for card in resp_dashboard["dashcards"]:
+        for card in resp_dashboard.get("dashcards", []):
             if card.get("card") and card["card"].get("id"):
                 card_id = str(card["card"]["id"])
                 card_ids.append(card_id)
                 if card_id in charts_dict:
                     charts_dict[card_id].dashboard_ids.append(dashboard_id)
 
-        dashboard_data = {
-            "description": resp_dashboard.get("description"),
-            "name": resp_dashboard.get("name"),
-            "id": resp_dashboard.get("id"),
-            "creator_id": resp_dashboard.get("creator_id"),
-            "collection_id": resp_dashboard.get("collection_id"),
-            "card_ids": card_ids,
-        }
-
-        return MetabaseDashboardDetails(**dashboard_data)
+        return MetabaseDashboardDetails(
+            description=resp_dashboard.get("description"),
+            name=resp_dashboard.get("name"),
+            id=resp_dashboard.get("id"),
+            creator_id=resp_dashboard.get("creator_id"),
+            collection_id=resp_dashboard.get("collection_id"),
+            card_ids=card_ids,
+        )
 
     def get_dashboard_details(
         self, dashboard_id: str, charts_dict: Dict, orphan_charts_id: List
@@ -212,7 +211,7 @@ class MetabaseClient:
         """
         if not dashboard_id:
             return None  # don't call api if dashboard_id is None
-        if dashboard_id == "-1":
+        if dashboard_id == DEFAULT_DASHBAORD:
             return self._create_default_dashboard_details(orphan_charts_id)
         try:
             resp_dashboard = self.client.get(f"/dashboard/{dashboard_id}")

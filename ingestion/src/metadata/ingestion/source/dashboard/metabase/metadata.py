@@ -54,6 +54,7 @@ from metadata.ingestion.source.dashboard.metabase.models import (
     MetabaseDashboardDetails,
 )
 from metadata.utils import fqn
+from metadata.utils.constants import DEFAULT_DASHBAORD
 from metadata.utils.filters import filter_by_chart
 from metadata.utils.helpers import (
     clean_uri,
@@ -139,14 +140,11 @@ class MetabaseSource(DashboardServiceSource):
             if self.orphan_charts_id:
                 # add the default dashboard to the dashboards list
                 default_dashboard = MetabaseDashboard(
-                    id="-1",
-                    name="Default Dashboard",
-                    description="Contains charts not associated with any dashboard",
-                    collection_id=None,
+                    name=DEFAULT_DASHBAORD,
+                    id=DEFAULT_DASHBAORD,
                 )
-                if default_dashboard not in self.dashboards_list:
-                    self.dashboards_list.append(default_dashboard)
-                    self._default_dashboard_added = True
+                self.dashboards_list.append(default_dashboard)
+                self._default_dashboard_added = True
         return retrieved_dashboards
 
     def get_project_name(self, dashboard_details: Any) -> Optional[str]:
@@ -154,9 +152,9 @@ class MetabaseSource(DashboardServiceSource):
         Method to get the project name by searching the dataset using id in the workspace dict
         """
         try:
-            # Return default collection for the default dashboard containing orphaned charts
-            if dashboard_details.id == "-1":
-                return "Default Collection"
+            # Return default for the default dashboard containing orphaned charts
+            if dashboard_details.id == DEFAULT_DASHBAORD:
+                return DEFAULT_DASHBAORD
             if dashboard_details.collection_id:
                 collection_name = next(
                     (
@@ -199,10 +197,14 @@ class MetabaseSource(DashboardServiceSource):
         Method to Get Dashboard Entity
         """
         try:
+            # dashboard_url to be empty for default dashboard
             dashboard_url = (
-                f"{clean_uri(self.service_connection.hostPort)}/dashboard/{dashboard_details.id}-"
+                ""
+                if dashboard_details.id == DEFAULT_DASHBAORD
+                else f"{clean_uri(self.service_connection.hostPort)}/dashboard/{dashboard_details.id}-"
                 f"{replace_special_with(raw=dashboard_details.name.lower(), replacement='-')}"
             )
+
             dashboard_request = CreateDashboardRequest(
                 name=EntityName(str(dashboard_details.id)),
                 sourceUrl=SourceUrl(dashboard_url),
