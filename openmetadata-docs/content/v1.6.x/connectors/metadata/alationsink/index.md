@@ -23,8 +23,6 @@ Configure and schedule Alation Sink metadata workflow from the OpenMetadata UI:
 - [Data Mapping and Assumptions](#data-mapping-and-assumptions)
 - [Metadata Ingestion](#metadata-ingestion)
 
-{% partial file="/v1.6/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/metadata/alation/yaml"} /%}
-
 {% partial file="/v1.6/connectors/external-ingestion-deployment.md" /%}
 
 ## Requirements
