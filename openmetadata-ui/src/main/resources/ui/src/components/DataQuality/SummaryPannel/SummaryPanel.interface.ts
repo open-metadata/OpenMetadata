@@ -15,4 +15,5 @@ import { TestSummary } from '../../../generated/tests/testSuite';
 export interface SummaryPanelProps {
   testSummary: TestSummary;
   isLoading?: boolean;
+  showAdditionalSummary?: boolean;
 }
