@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { DataProduct } from '../../../../generated/entity/domains/dataProduct';
 import { Domain } from '../../../../generated/entity/domains/domain';
 
@@ -21,7 +22,7 @@ export interface DocumentationTabProps {
   onExtensionUpdate?: (updatedDataProduct: DataProduct) => Promise<void>;
   editCustomAttributePermission?: boolean;
   viewAllPermission?: boolean;
-  isEditDescription?: boolean;
+  permissions?: OperationPermission;
 }
 
 export enum DocumentationEntity {
