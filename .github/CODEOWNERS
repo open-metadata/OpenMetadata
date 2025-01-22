@@ -2,6 +2,7 @@
 
 # Review from UI owners for changes around UI code
 /openmetadata-ui/src/main/resources/ui/ @open-metadata/ui
+/openmetadata-ui/src/main/resources/ui/src/generated
 
 # Review from Backend owners for changes around Backend code
 /openmetadata-service/ @open-metadata/backend
