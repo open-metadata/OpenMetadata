@@ -54,8 +54,6 @@ const DocumentationTab = ({
   domain,
   onUpdate,
   onExtensionUpdate,
-  editCustomAttributePermission,
-  viewAllPermission,
   isVersionsView = false,
   type = DocumentationEntity.DOMAIN,
   permissions,
@@ -69,28 +67,39 @@ const DocumentationTab = ({
       ? ResourceEntity.DOMAIN
       : ResourceEntity.DATA_PRODUCT;
 
-  const { editDescriptionPermission, editOwnerPermission, editAllPermission } =
-    useMemo(() => {
-      if (isVersionsView) {
-        return {
-          editDescriptionPermission: false,
-          editOwnerPermission: false,
-          editAllPermission: false,
-        };
-      }
-
-      const editDescription = permissions?.EditDescription;
-
-      const editOwner = permissions?.EditOwners;
-
-      const editAll = permissions?.EditAll;
-
+  const {
+    editDescriptionPermission,
+    editOwnerPermission,
+    editAllPermission,
+    editCustomAttributePermission,
+    viewAllPermission,
+  } = useMemo(() => {
+    if (isVersionsView) {
       return {
-        editDescriptionPermission: editAll || editDescription,
-        editOwnerPermission: editAll || editOwner,
-        editAllPermission: editAll,
+        editDescriptionPermission: false,
+        editOwnerPermission: false,
+        editAllPermission: false,
       };
-    }, [permissions, isVersionsView, resourceType]);
+    }
+
+    const editDescription = permissions?.EditDescription;
+
+    const editOwner = permissions?.EditOwners;
+
+    const editAll = permissions?.EditAll;
+
+    const editCustomAttribute = permissions?.EditCustomFields;
+
+    const viewAll = permissions?.ViewAll;
+
+    return {
+      editDescriptionPermission: editAll || editDescription,
+      editOwnerPermission: editAll || editOwner,
+      editAllPermission: editAll,
+      editCustomAttributePermission: editAll || editCustomAttribute,
+      viewAllPermission: viewAll,
+    };
+  }, [permissions, isVersionsView, resourceType]);
 
   const description = useMemo(
     () =>

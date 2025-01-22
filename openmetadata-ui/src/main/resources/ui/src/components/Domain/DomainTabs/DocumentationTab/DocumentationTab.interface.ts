@@ -20,8 +20,6 @@ export interface DocumentationTabProps {
   isVersionsView?: boolean;
   type?: DocumentationEntity;
   onExtensionUpdate?: (updatedDataProduct: DataProduct) => Promise<void>;
-  editCustomAttributePermission?: boolean;
-  viewAllPermission?: boolean;
   permissions?: OperationPermission;
 }
 
