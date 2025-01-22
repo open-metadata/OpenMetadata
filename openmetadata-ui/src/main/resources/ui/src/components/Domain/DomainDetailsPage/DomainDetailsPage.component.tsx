@@ -200,6 +200,10 @@ const DomainDetailsPage = ({
     return domainPermission.EditAll || domainPermission.EditDisplayName;
   }, [domainPermission]);
 
+  const editDescriptionPermission = useMemo(() => {
+    return domainPermission.EditAll || domainPermission.EditDescription;
+  }, [domainPermission]);
+
   const addButtonContent = [
     {
       label: t('label.asset-plural'),
@@ -509,6 +513,7 @@ const DomainDetailsPage = ({
         children: (
           <DocumentationTab
             domain={domain}
+            isEditDescription={editDescriptionPermission}
             isVersionsView={isVersionsView}
             onUpdate={(data: Domain | DataProduct) => onUpdate(data as Domain)}
           />

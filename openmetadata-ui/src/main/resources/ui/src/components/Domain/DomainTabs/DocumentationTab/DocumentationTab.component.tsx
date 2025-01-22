@@ -61,6 +61,7 @@ const DocumentationTab = ({
   viewAllPermission,
   isVersionsView = false,
   type = DocumentationEntity.DOMAIN,
+  isEditDescription,
 }: DocumentationTabProps) => {
   const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
@@ -72,40 +73,39 @@ const DocumentationTab = ({
       ? ResourceEntity.DOMAIN
       : ResourceEntity.DATA_PRODUCT;
 
-  const { editDescriptionPermission, editOwnerPermission, editAllPermission } =
-    useMemo(() => {
-      if (isVersionsView) {
-        return {
-          editDescriptionPermission: false,
-          editOwnerPermission: false,
-          editAllPermission: false,
-        };
-      }
-
-      const editDescription = checkPermission(
-        Operation.EditDescription,
-        resourceType,
-        permissions
-      );
-
-      const editOwner = checkPermission(
-        Operation.EditOwners,
-        resourceType,
-        permissions
-      );
-
-      const editAll = checkPermission(
-        Operation.EditAll,
-        resourceType,
-        permissions
-      );
-
+  const { editOwnerPermission, editAllPermission } = useMemo(() => {
+    if (isVersionsView) {
       return {
-        editDescriptionPermission: editDescription || editAll,
-        editOwnerPermission: editOwner || editAll,
-        editAllPermission: editAll,
+        editDescriptionPermission: false,
+        editOwnerPermission: false,
+        editAllPermission: false,
       };
-    }, [permissions, isVersionsView, resourceType]);
+    }
+
+    const editDescription = checkPermission(
+      Operation.EditDescription,
+      resourceType,
+      permissions
+    );
+
+    const editOwner = checkPermission(
+      Operation.EditOwners,
+      resourceType,
+      permissions
+    );
+
+    const editAll = checkPermission(
+      Operation.EditAll,
+      resourceType,
+      permissions
+    );
+
+    return {
+      editDescriptionPermission: editDescription || editAll,
+      editOwnerPermission: editOwner || editAll,
+      editAllPermission: editAll,
+    };
+  }, [permissions, isVersionsView, resourceType]);
 
   const description = useMemo(
     () =>
@@ -183,7 +183,7 @@ const DocumentationTab = ({
               description={description}
               entityName={getEntityName(domain)}
               entityType={EntityType.DOMAIN}
-              hasEditAccess={editDescriptionPermission}
+              hasEditAccess={isEditDescription}
               isEdit={isDescriptionEditable}
               showCommentsIcon={false}
               onCancel={() => setIsDescriptionEditable(false)}

@@ -21,6 +21,7 @@ export interface DocumentationTabProps {
   onExtensionUpdate?: (updatedDataProduct: DataProduct) => Promise<void>;
   editCustomAttributePermission?: boolean;
   viewAllPermission?: boolean;
+  isEditDescription?: boolean;
 }
 
 export enum DocumentationEntity {

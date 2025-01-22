@@ -132,6 +132,12 @@ const DataProductsDetailsPage = ({
     ];
   }, [dataProduct.domain]);
 
+  const isEditDescription = useMemo(() => {
+    return (
+      dataProductPermission.EditAll || dataProductPermission.EditDescription
+    );
+  }, [dataProductPermission]);
+
   const [name, displayName] = useMemo(() => {
     const defaultName = dataProduct.name;
     const defaultDisplayName = dataProduct.displayName;
@@ -415,6 +421,7 @@ const DataProductsDetailsPage = ({
                 dataProductPermission.EditCustomFields) &&
               !isVersionsView
             }
+            isEditDescription={isEditDescription}
             isVersionsView={isVersionsView}
             type={DocumentationEntity.DATA_PRODUCT}
             viewAllPermission={dataProductPermission.ViewAll}
