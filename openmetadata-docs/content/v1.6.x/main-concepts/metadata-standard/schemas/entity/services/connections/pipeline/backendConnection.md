@@ -9,10 +9,10 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/connections/pipel
 
 ## Properties
 
-- **`type`**: Service Type. Refer to *#/definitions/BackendType*. Default: `Backend`.
+- **`type`**: Service Type. Refer to *[#/definitions/BackendType](#definitions/BackendType)*. Default: `"Backend"`.
 ## Definitions
 
-- **`BackendType`** *(string)*: Service type. Must be one of: `['Backend']`. Default: `Backend`.
+- **`BackendType`** *(string)*: Service type. Must be one of: `["Backend"]`. Default: `"Backend"`.
 
 
-Documentation file automatically generated at 2023-10-27 13:55:46.343512.
+Documentation file automatically generated at 2025-01-15 09:05:25.266839+00:00.

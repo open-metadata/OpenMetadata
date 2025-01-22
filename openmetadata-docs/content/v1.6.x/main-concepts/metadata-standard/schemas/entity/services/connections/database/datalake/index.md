@@ -5,4 +5,11 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/connections/datab
 
 # Datalake
 
-Documentation file automatically generated at 2023-10-27 13:55:46.343512.
+This folder contains the following items:
+
+- [**AzureConfig**](/main-concepts/metadata-standard/schemas/entity/services/connections/database/datalake/azureconfig)
+- [**S3Config**](/main-concepts/metadata-standard/schemas/entity/services/connections/database/datalake/s3config)
+- [**GcsConfig**](/main-concepts/metadata-standard/schemas/entity/services/connections/database/datalake/gcsconfig)
+
+
+Documentation file automatically generated at 2025-01-15 09:05:25.266839+00:00.
