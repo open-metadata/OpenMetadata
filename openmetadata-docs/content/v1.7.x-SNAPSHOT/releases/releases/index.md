@@ -642,19 +642,19 @@ OpenMetadata has been driving innovation in Data Quality in Open Source. Many or
 
 In 1.5.1, we are bringing in **Anomaly Detection** based on AI to predict when an anomaly happens based on our learning historical data and automatically sending notifications to the owners of the table to warn them of the impending incidents
 
-{% youtube videoId="BPuNC8vPcsw" start="0:00" end="1:01" width="560px" height="315px" /%}
+{% youtube videoId="BPuNC8vPcsw" start="0:00" end="1:01" width="800px" height="450px" /%}
 
 ## Enhanced Data Quality Dashboard (Collate)
 
 We also have improved the Table Data quality dashboard to showcase the tests categorized and make it easy for everyone to consume. When there are issues, the new dashboard makes it easier to understand the Data Quality coverage of your tables and the possible impact each test failure has by organizing tests into different groups.
 
-{% youtube videoId="bXcQBtZuyoU" start="0:00" end="2:10" width="560px" height="315px" /%}
+{% youtube videoId="bXcQBtZuyoU" start="0:00" end="2:10" width="800px" height="450px" /%}
 
 ## Freshness Data Quality Tests (Collate)
 
 Working with old data can lead to making wrong decisions. With the new Freshness test, you can validate that your data arrives at the right time. Freshness tests are a critical part of any data team's toolset. Bringing these tests together with lineage information and the Incident Manager, your team will be able to quickly detect issues related to missing data or stuck pipelines.
 
-{% youtube videoId="QRcR3m9cCGo" start="0:00" end="1:09" width="560px" height="315px" /%}
+{% youtube videoId="QRcR3m9cCGo" start="0:00" end="1:09" width="800px" height="450px" /%}
 
 ## Data Diff Data Quality Tests
 
@@ -662,7 +662,7 @@ Data quality checks are important not only within a single table but also betwee
 
 We are introducing the **table difference data quality test** to validate that multiple appearances of the same information remain consistent. Note that the test allows you to specify which column to use as a key and which columns you want to compare, and even add filters in the data to give you more control over multiple use cases.
 
-{% youtube videoId="oxZVS_UGrE4" start="0:00" end="2:22" width="560px" height="315px" /%}
+{% youtube videoId="oxZVS_UGrE4" start="0:00" end="2:22" width="800px" height="450px" /%}
 
 ## Domains RBAC & Subdomains
 
@@ -676,7 +676,7 @@ With the 1.5.1 release, we are adding more stricter controls around Domain. Now,
 
 This will help large companies to use a single OpenMetadata platform to unify all of their data and teams but also provide more stringent controls to segment the data between domains
 
-{% youtube videoId="r-_HaewjgTQ" start="0:00" end="0:44" width="560px" height="315px" /%}
+{% youtube videoId="r-_HaewjgTQ" start="0:00" end="0:44" width="800px" height="450px" /%}
 
 ## Improved Explore Page & Data Asset Widget
 
@@ -686,7 +686,7 @@ Our new improved navigation on the Explore page will help users navigate hierarc
 
 We are also making the discovery of data more accessible for users introducing a data asset widget, which will group the assets by platform type. This will help users find their data if they are working on a specific platform such as Looker or Snowflake they can easily click on that icon and get to the data.
 
-{% youtube videoId="45ekUIRO1Ec" start="0:00" end="1:11" width="560px" height="315px" /%}
+{% youtube videoId="45ekUIRO1Ec" start="0:00" end="1:11" width="800px" height="450px" /%}
 
 ## Pipeline Status Widget (Collate)
 
@@ -702,7 +702,7 @@ On top of the many supported connectors across Databases, Dashboards, ML Models,
 
 In 1.5.1 we are introducing APIs as another first-class entity. Teams can now capture API requests and responses payloads and use our column level lineage to capture the relation between APIs and any other asset in the platform.
 
-{% youtube videoId="b9wrVnM3u80" start="0:00" end="0:33" width="560px" height="315px" /%}
+{% youtube videoId="b9wrVnM3u80" start="0:00" end="0:33" width="800px" height="450px" /%}
 
 ## Glossary Improvements
 
@@ -908,7 +908,7 @@ You can find the GitHub release [here](https://github.com/open-metadata/OpenMeta
 
 ## Automator (Collate only)
 
-{% youtube videoId="zdh4yzHw4w0" start="0:00" end="2:29" width="560px" height="315px" /%}
+{% youtube videoId="zdh4yzHw4w0" start="0:00" end="2:29" width="800px" height="450px" /%}
 
 - Easily maintain high-quality metadata at scale with automations. The Automator streamlines governance processes from ownership assignments to tagging, ensuring compliance and consistency.
 - You can update the properties of your assets by filtering by service, owner, domain, or any other supported property from the advanced search.
@@ -918,7 +918,7 @@ You can find the GitHub release [here](https://github.com/open-metadata/OpenMeta
 
 ## Bulk Upload Data Assets (Collate only)
 
-{% youtube videoId="CXxDdS6AifY" start="0:00" end="2:19" width="560px" height="315px" /%}
+{% youtube videoId="CXxDdS6AifY" start="0:00" end="2:19" width="800px" height="450px" /%}
 
 - Bulk upload/download database, schema, and table entities from/into a CSV file for quick edition or creation.
 - Supports an inline editor to validate/update assets before performing the upload.
@@ -926,7 +926,7 @@ You can find the GitHub release [here](https://github.com/open-metadata/OpenMeta
 
 ## Data Quality Improvements
 
-{% youtube videoId="UNOHvBMVcYM" start="0:00" end="1:28" width="560px" height="315px" /%}
+{% youtube videoId="UNOHvBMVcYM" start="0:00" end="1:28" width="800px" height="450px" /%}
 
 - The Table schema page now shows the Data Quality tests for each column.
 - Improved filtering options for test suite and test cases.
@@ -954,11 +954,11 @@ https://www.youtube.com/watch?v=KZdVb8DiHJs - Video on Column Lineage Search
 
 - Column Lineage Search
 
-{% youtube videoId="KZdVb8DiHJs" start="0:00" end="0:30" width="560px" height="315px" /%}
+{% youtube videoId="KZdVb8DiHJs" start="0:00" end="0:30" width="800px" height="450px" /%}
 
 - Lineage Layers
 
-{% youtube videoId="wtBMeLvA6Sw" start="0:00" end="0:43" width="560px" height="315px" /%}
+{% youtube videoId="wtBMeLvA6Sw" start="0:00" end="0:43" width="800px" height="450px" /%}
 
 - OpenMetadata already supports Column-level lineage, and now we have introduced Task-level lineage for Pipelines, Chart-level lineage for Dashboards, Feature-level lineage for ML Models, Field-level lineage for Topics, and columns for dashboard Data Models.
 - Automated column-level lineage is now supported for Tableau, Superset, QlikCloud, and QlikSense between Data Models and Tables.
@@ -984,14 +984,14 @@ https://www.youtube.com/watch?v=KZdVb8DiHJs - Video on Column Lineage Search
 
 ## Custom Theme
 
-{% youtube videoId="-NiU1flBHs0" start="0:00" end="1:02" width="560px" height="315px" /%}
+{% youtube videoId="-NiU1flBHs0" start="0:00" end="1:02" width="800px" height="450px" /%}
 
 - Previously supported adding logo, monogram, and favicon to your OpenMetadata instance.
 - Now, it supports customizing the theme with colors to suit your company branding.
 
 ## Landing Page Widgets (Collate Only)
 
-{% youtube videoId="Kakfa-lYGOU" start="0:00" end="0:59" width="560px" height="315px" /%}
+{% youtube videoId="Kakfa-lYGOU" start="0:00" end="0:59" width="800px" height="450px" /%}
 
 - A widget was added to list the pipelines that belong to a user or their team.
 - Added a Data Quality Widget to list the summary of data quality tests belonging to a user or their team.
@@ -1017,7 +1017,7 @@ https://www.youtube.com/watch?v=KZdVb8DiHJs - Video on Column Lineage Search
 
 ## Custom Properties
 
-{% youtube videoId="lZoSeKkErBk" start="0:00" end="1:07" width="560px" height="315px" /%}
+{% youtube videoId="lZoSeKkErBk" start="0:00" end="1:07" width="800px" height="450px" /%}
 
 - Custom Properties now allow linking other assets in the platform, such as Tables, Dashboards, etc. To enable this, create a Custom Property as an Entity Reference or Entity Reference List.
 
@@ -1206,11 +1206,11 @@ You can find the GitHub release [here](https://github.com/open-metadata/OpenMeta
 
 You can find the GitHub release [here](https://github.com/open-metadata/OpenMetadata/releases/tag/1.3.0-release).
 
-{%  youtube videoId="cVYP1HFXeRM" start="0:00" end="4:49" width="560px" height="315px" /%}
+{%  youtube videoId="cVYP1HFXeRM" start="0:00" end="4:49" width="800px" height="450px" /%}
 
 ## Lineage
 
-{%  youtube videoId="grwhvTWylbw" start="0:00" end="1:43" width="560px" height="315px" /%}
+{%  youtube videoId="grwhvTWylbw" start="0:00" end="1:43" width="800px" height="450px" /%}
 
 - Revamped the lineage UI for an intuitive and comprehensive view of data flow and transformations.
 - Organized nodes for better visibility with pagination support.
@@ -1224,7 +1224,7 @@ You can find the GitHub release [here](https://github.com/open-metadata/OpenMeta
 
 ## Data Observability Alerts
 
-{%  youtube videoId="qc-3sZ_eU5Y" start="0:00" end="2:04" width="560px" height="315px" /%}
+{%  youtube videoId="qc-3sZ_eU5Y" start="0:00" end="2:04" width="800px" height="450px" /%}
 
 - Data observability alerts have been distinguished from other general-purpose notifications, making it easy to get to the crucial alerts quickly.
 - Sends alerts for schema changes and test case failures for the data assets that you follow.
@@ -1234,7 +1234,7 @@ You can find the GitHub release [here](https://github.com/open-metadata/OpenMeta
 
 ## Incident Manager
 
-{%  youtube videoId="wz5vc1Al-b8" start="0:00" end="2:19" width="560px" height="315px" /%}
+{%  youtube videoId="wz5vc1Al-b8" start="0:00" end="2:19" width="800px" height="450px" /%}
 
 - Introduced Incidents Manager to improve the data quality resolution flow.
 - Incidents Manager summarizes all the test case results with information about the failure severity and resolution flow.
@@ -1245,7 +1245,7 @@ You can find the GitHub release [here](https://github.com/open-metadata/OpenMeta
 
 ## Knowledge Center (Collate)
 
-{%  youtube videoId="atwTGm1hixg" start="0:00" end="1:22" width="560px" height="315px" /%}
+{%  youtube videoId="atwTGm1hixg" start="0:00" end="1:22" width="800px" height="450px" /%}
 
 - Supports hierarchical pages to structure the articles.
 - You can easily associate knowledge articles with data assets.
@@ -1258,7 +1258,7 @@ You can find the GitHub release [here](https://github.com/open-metadata/OpenMeta
 
 ## Custom Metrics for Profiler
 
-{%  youtube videoId="1sx5aQKMSBI" start="0:00" end="1:52" width="560px" height="315px" /%}
+{%  youtube videoId="1sx5aQKMSBI" start="0:00" end="1:52" width="800px" height="450px" /%}
 
 - Supports custom metrics for the data profiler with custom SQL to keep track of your business metrics.
 - Custom metrics can be created at Table and Column levels.
@@ -1294,14 +1294,14 @@ You can find the GitHub release [here](https://github.com/open-metadata/OpenMeta
 
 ## Localization
 
-{%  youtube videoId="MCjK6fZg3pw" start="0:00" end="0:36" width="560px" height="315px" /%}
+{%  youtube videoId="MCjK6fZg3pw" start="0:00" end="0:36" width="800px" height="450px" /%}
 
 - Now supports RTL UI for the Hebrew language.
 - New Dutch language translation.
 
 ## Settings UI
 
-{%  youtube videoId="qE07HNFXyu8" start="0:00" end="0:48" width="560px" height="315px" /%}
+{%  youtube videoId="qE07HNFXyu8" start="0:00" end="0:48" width="800px" height="450px" /%}
 
 - The Settings page UI has been revamped.
 
@@ -1333,13 +1333,13 @@ You can find the GitHub release [here](https://github.com/open-metadata/OpenMeta
 [OpenMetadata 1.2 Release - Domains, Data Products, Search Index, Stored Procedures, Glossary Approval Workflow, Customizable Landing Page, Applications, Knowledge Center, Cost Analysis, and lots more](https://blog.open-metadata.org/openmetadata-release-1-2-531f0e3c6d9a)
 {% /note %}
 
-{%  youtube videoId="Mu7eq6OVtxk" start="0:00" end="3:29" width="560px" height="315px" /%}
+{%  youtube videoId="Mu7eq6OVtxk" start="0:00" end="3:29" width="800px" height="450px" /%}
 
 ## Domains and Data Products
 
-{%  youtube videoId="t-9G3vaSdjI" start="0:00" end="1:21" width="560px" height="315px" /%}
+{%  youtube videoId="t-9G3vaSdjI" start="0:00" end="1:21" width="800px" height="450px" /%}
 
-{%  youtube videoId="6NgI_G38D0A" start="0:00" end="0:54" width="560px" height="315px" /%}
+{%  youtube videoId="6NgI_G38D0A" start="0:00" end="0:54" width="800px" height="450px" /%}
 
 - Added support for Domains and Data Products.
 - Assets can be added to a Domain, and users can scope their discovery experience to one Domain.
@@ -1358,7 +1358,7 @@ You can find the GitHub release [here](https://github.com/open-metadata/OpenMeta
 
 ## Glossary Approval Workflow & Glossary Styling
 
-{%  youtube videoId="PgTcKQtpAks" start="0:00" end="2:51" width="560px" height="315px" /%}
+{%  youtube videoId="PgTcKQtpAks" start="0:00" end="2:51" width="800px" height="450px" /%}
 
 - Introduced a glossary approval workflow. An approval workflow is created if Reviewers are added to a glossary.
 - A task is added for reviewers to approve or reject the glossary term. The terms will show up in Draft status.
@@ -1375,7 +1375,7 @@ You can find the GitHub release [here](https://github.com/open-metadata/OpenMeta
 
 ## Build Automation Applications
 
-{%  youtube videoId="pUS9-RevqsU" start="0:00" end="0:57" width="560px" height="315px" /%}
+{%  youtube videoId="pUS9-RevqsU" start="0:00" end="0:57" width="800px" height="450px" /%}
 
 - Added Applications into OpenMetadata, giving users a unique view of processes that can be scheduled and run in the platform.
 - Search Indexing and Data Insights Report have been converted into Applications.
@@ -1396,7 +1396,7 @@ You can find the GitHub release [here](https://github.com/open-metadata/OpenMeta
 
 ## Customizable Landing Page
 
-{%  youtube videoId="Y-5cPQgzNdo" start="0:00" end="2:08" width="560px" height="315px" /%}
+{%  youtube videoId="Y-5cPQgzNdo" start="0:00" end="2:08" width="800px" height="450px" /%}
 
 - Admins can create Personas to group individuals in their company, such as Data Engineers, Data Stewards, or Data Scientists.
 - Admins can customize the landing page for each Persona with a set of supported widgets: Activity Feed, Announcements, Knowledge Center, etc.
@@ -1404,7 +1404,7 @@ You can find the GitHub release [here](https://github.com/open-metadata/OpenMeta
 
 ## Knowledge Center (Collate)
 
-{%  youtube videoId="DfOgeZ9f7no" start="0:00" end="3:04" width="560px" height="315px" /%}
+{%  youtube videoId="DfOgeZ9f7no" start="0:00" end="3:04" width="800px" height="450px" /%}
 
 - Backend APIs support creating, editing, and listing knowledge articles (with external links).
 - Knowledge articles and links can be associated with a Domain, Team, or an Entity.
@@ -1412,7 +1412,7 @@ You can find the GitHub release [here](https://github.com/open-metadata/OpenMeta
 
 ## Cost Analysis Report (Collate)
 
-{%  youtube videoId="KI58oBHxTOU" start="0:00" end="0:33" width="560px" height="315px" /%}
+{%  youtube videoId="KI58oBHxTOU" start="0:00" end="0:33" width="800px" height="450px" /%}
 
 - The Usage Workflow will now also track how tables are Accessed and Updated.
 - This information will be used in the Data Insights workflow to show the evolution of your used and unused assets and compare them by size.
@@ -1768,7 +1768,7 @@ The logic for Notification Support has been improved. Users can define Alerts ba
 [OpenMetadata 0.13.0 Release — Data Insights & KPIs, Lineage Traceability, Data Lake Profiler, Search Improvements, and lots more](https://blog.open-metadata.org/openmetadata-0-13-0-release-ac8ac5bd87c1)
 {% /note %}
 
-{%  youtube videoId="oNbMnTW5AkE" start="0:00" end="7:51" width="560px" height="315px" /%}
+{%  youtube videoId="oNbMnTW5AkE" start="0:00" end="7:51" width="800px" height="450px" /%}
 
 ## Data Insights and KPI
 
@@ -1872,7 +1872,7 @@ Major enhancements have been made to how data is extracted from Kafka and Redpan
 [OpenMetadata 0.12.0 Release](https://blog.open-metadata.org/openmetadata-0-12-0-release-1ac059700de4)
 {% /note %}
 
-{%  youtube videoId="tv3pyCLcJfQ" start="0:00" end="17:04" width="560px" height="315px" /%}
+{%  youtube videoId="tv3pyCLcJfQ" start="0:00" end="17:04" width="800px" height="450px" /%}
 
 ## Team Hierarchy
 
