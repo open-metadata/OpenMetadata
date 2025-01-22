@@ -16,6 +16,7 @@ import { TestCaseStatus } from '../generated/tests/testCase';
 import { TestCaseResolutionStatusTypes } from '../generated/tests/testCaseResolutionStatus';
 import { DataQualityDashboardChartFilters } from '../pages/DataQuality/DataQualityPage.interface';
 import {
+  buildDataQualityDashboardFilters,
   buildMustEsFilterForOwner,
   buildMustEsFilterForTags,
 } from '../utils/DataQuality/DataQualityUtils';
@@ -25,27 +26,7 @@ export const fetchEntityCoveredWithDQ = (
   filters?: DataQualityDashboardChartFilters,
   unhealthy = false
 ) => {
-  const mustFilter = [];
-  if (unhealthy) {
-    mustFilter.push({
-      terms: {
-        'testCaseStatus.keyword': ['Failed', 'Aborted'],
-      },
-    });
-  }
-
-  if (filters?.ownerFqn) {
-    mustFilter.push(buildMustEsFilterForOwner(filters.ownerFqn));
-  }
-
-  if (filters?.tags || filters?.tier) {
-    mustFilter.push(
-      buildMustEsFilterForTags([
-        ...(filters?.tags ?? []),
-        ...(filters?.tier ?? []),
-      ])
-    );
-  }
+  const mustFilter = buildDataQualityDashboardFilters({ filters, unhealthy });
 
   return getDataQualityReport({
     q: JSON.stringify({
@@ -63,35 +44,10 @@ export const fetchEntityCoveredWithDQ = (
 export const fetchTotalEntityCount = (
   filters?: DataQualityDashboardChartFilters
 ) => {
-  const mustFilter = [];
-
-  if (filters?.ownerFqn) {
-    mustFilter.push(buildMustEsFilterForOwner(filters.ownerFqn));
-  }
-
-  if (filters?.tags) {
-    mustFilter.push({
-      bool: {
-        should: filters.tags.map((tag) => ({
-          term: {
-            'tags.tagFQN': tag,
-          },
-        })),
-      },
-    });
-  }
-
-  if (filters?.tier) {
-    mustFilter.push({
-      bool: {
-        should: filters.tier.map((tag) => ({
-          term: {
-            'tier.tagFQN': tag,
-          },
-        })),
-      },
-    });
-  }
+  const mustFilter = buildDataQualityDashboardFilters({
+    filters,
+    isTableApi: true,
+  });
 
   return getDataQualityReport({
     q: JSON.stringify({
@@ -109,26 +65,7 @@ export const fetchTotalEntityCount = (
 export const fetchTestCaseSummary = (
   filters?: DataQualityDashboardChartFilters
 ) => {
-  const mustFilter = [];
-  if (filters?.ownerFqn) {
-    mustFilter.push(buildMustEsFilterForOwner(filters.ownerFqn));
-  }
-  if (filters?.tags || filters?.tier) {
-    mustFilter.push(
-      buildMustEsFilterForTags([
-        ...(filters?.tags ?? []),
-        ...(filters?.tier ?? []),
-      ])
-    );
-  }
-
-  if (filters?.entityFQN) {
-    mustFilter.push({
-      term: {
-        entityFQN: filters.entityFQN,
-      },
-    });
-  }
+  const mustFilter = buildDataQualityDashboardFilters({ filters });
 
   return getDataQualityReport({
     q: JSON.stringify({
@@ -147,18 +84,7 @@ export const fetchTestCaseSummary = (
 export const fetchTestCaseSummaryByDimension = (
   filters?: DataQualityDashboardChartFilters
 ) => {
-  const mustFilter = [];
-  if (filters?.ownerFqn) {
-    mustFilter.push(buildMustEsFilterForOwner(filters.ownerFqn));
-  }
-  if (filters?.tags || filters?.tier) {
-    mustFilter.push(
-      buildMustEsFilterForTags([
-        ...(filters?.tags ?? []),
-        ...(filters?.tier ?? []),
-      ])
-    );
-  }
+  const mustFilter = buildDataQualityDashboardFilters({ filters });
 
   return getDataQualityReport({
     q: JSON.stringify({
