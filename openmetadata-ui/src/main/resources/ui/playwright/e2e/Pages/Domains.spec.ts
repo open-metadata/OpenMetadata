@@ -389,6 +389,69 @@ test.describe('Domains', () => {
       await afterAction();
     }
   });
+
+  test('Should able to edit description of domain', async ({ page }) => {
+    const { afterAction, apiContext } = await getApiContext(page);
+    const user1 = new UserClass();
+    let domain;
+    try {
+      await user1.create(apiContext);
+
+      domain = new Domain({
+        name: 'PW_Domain_Inherit_Testing',
+        displayName: 'PW_Domain_Inherit_Testing',
+        description: 'playwright domain description',
+        domainType: 'Aggregate',
+        fullyQualifiedName: 'PW_Domain_Inherit_Testing',
+        owners: [
+          {
+            name: user1.responseData.name,
+            type: 'user',
+            fullyQualifiedName: user1.responseData.fullyQualifiedName ?? '',
+            id: user1.responseData.id,
+          },
+        ],
+      });
+      await domain.create(apiContext);
+
+      await page.reload();
+      await redirectToHomePage(page);
+
+      await sidebarClick(page, SidebarItem.DOMAIN);
+      await selectDomain(page, domain.data);
+
+      await expect(page.getByTestId('edit-description')).toBeInViewport();
+
+      await page.getByTestId('edit-description').click();
+
+      await expect(page.getByTestId('editor')).toBeInViewport();
+
+      await page
+        .getByTestId('editor')
+        .locator('div')
+        .nth(2)
+        .evaluate((el) => el.setAttribute('contenteditable', 'true'));
+
+      await page
+        .getByTestId('editor')
+        .locator('div')
+        .nth(2)
+        .evaluate(
+          (el, value) => (el.innerHTML = value),
+          '<p>playwright domain description</p>'
+        );
+
+      await page.getByTestId('save').click();
+
+      await expect(page.getByTestId('markdown-parser')).toHaveText(
+        'playwright domain description'
+      );
+    } finally {
+      await domain?.delete(apiContext);
+      await user1.delete(apiContext);
+      await afterAction();
+    }
+  });
 });
 
 test.describe('Domains Rbac', () => {

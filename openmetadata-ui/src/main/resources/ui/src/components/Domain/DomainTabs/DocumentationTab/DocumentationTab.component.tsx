@@ -86,8 +86,8 @@ const DocumentationTab = ({
       const editAll = permissions?.EditAll;
 
       return {
-        editDescriptionPermission: editDescription || editAll,
-        editOwnerPermission: editOwner || editAll,
+        editDescriptionPermission: editAll || editDescription,
+        editOwnerPermission: editAll || editOwner,
         editAllPermission: editAll,
       };
     }, [permissions, isVersionsView, resourceType]);
