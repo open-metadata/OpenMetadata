@@ -86,8 +86,6 @@ for (const EntityClass of entities) {
   test(`Lineage creation from ${defaultEntity.getType()} entity`, async ({
     browser,
   }) => {
-    test.setTimeout(300_000);
-
     const { page } = await createNewPage(browser);
     const { currentEntity, entities, cleanup } = await setupEntitiesForLineage(
       page,
@@ -200,8 +198,6 @@ test('Verify column lineage between tables', async ({ browser }) => {
 });
 
 test('Verify column lineage between table and topic', async ({ browser }) => {
-  test.slow(true);
-
   const { page } = await createNewPage(browser);
   const { apiContext, afterAction } = await getApiContext(page);
   const table = new TableClass();
