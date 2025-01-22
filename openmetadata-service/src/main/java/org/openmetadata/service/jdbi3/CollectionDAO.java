@@ -4650,6 +4650,37 @@ public interface CollectionDAO {
       return listAfter(
           getTableName(), mySqlCondition, postgresCondition, limit, afterName, afterId, groupBy);
     }
+
+    @SqlQuery(
+        "SELECT json FROM <table> tn\n"
+            + "INNER JOIN (SELECT DISTINCT fromId FROM entity_relationship er\n"
+            + "<cond> AND toEntity = 'testSuite' and fromEntity = :entityType) er ON fromId = tn.id\n"
+            + "LIMIT :limit OFFSET :offset;")
+    List<String> listEntitiesWithTestSuite(
+        @Define("table") String table,
+        @BindMap Map<String, ?> params,
+        @Define("cond") String cond,
+        @Bind("entityType") String entityType,
+        @Bind("limit") int limit,
+        @Bind("offset") int offset);
+
+    default List<String> listEntitiesWithTestsuite(
+        ListFilter filter, String table, String entityType, int limit, int offset) {
+      return listEntitiesWithTestSuite(
+          table, filter.getQueryParams(), filter.getCondition(), entityType, limit, offset);
+    }
+
+    @SqlQuery(
+        "SELECT COUNT(DISTINCT fromId) FROM entity_relationship er\n"
+            + "<cond> AND toEntity = 'testSuite' and fromEntity = :entityType;")
+    Integer countEntitiesWithTestSuite(
+        @BindMap Map<String, ?> params,
+        @Define("cond") String cond,
+        @Bind("entityType") String entityType);
+
+    default Integer countEntitiesWithTestsuite(ListFilter filter, String entityType) {
+      return countEntitiesWithTestSuite(filter.getQueryParams(), filter.getCondition(), entityType);
+    }
   }
 
   interface TestCaseDAO extends EntityDAO<TestCase> {
