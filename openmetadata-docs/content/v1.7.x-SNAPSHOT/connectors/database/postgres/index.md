@@ -7,8 +7,8 @@ slug: /connectors/database/postgres
 name="Postgres"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata", "Query Usage", "Data Profiler", "Data Quality", "dbt", "Lineage", "Column-level Lineage", "Owners", "Tags"]
-unavailableFeatures=["Stored Procedures"]
+availableFeatures=["Metadata", "Query Usage", "Data Profiler", "Data Quality", "dbt", "Lineage", "Column-level Lineage", "Owners", "Tags", "Stored Procedures"]
+unavailableFeatures=["Stored Procedures Lineage"]
 / %}
 
 In this section, we provide guides and references to use the PostgreSQL connector.
