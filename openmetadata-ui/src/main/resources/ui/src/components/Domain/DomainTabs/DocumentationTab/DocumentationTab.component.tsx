@@ -79,6 +79,7 @@ const DocumentationTab = ({
         editDescriptionPermission: false,
         editOwnerPermission: false,
         editAllPermission: false,
+        editCustomAttributePermission: false,
       };
     }
 

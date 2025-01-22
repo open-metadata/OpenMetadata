@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import test, { expect } from '@playwright/test';
+import base, { expect, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import { get } from 'lodash';
 import { SidebarItem } from '../../constant/sidebar';
@@ -40,10 +40,33 @@ import {
 import { sidebarClick } from '../../utils/sidebar';
 import { performUserLogin, visitUserProfilePage } from '../../utils/user';
 
-test.describe('Domains', () => {
-  test.use({ storageState: 'playwright/.auth/admin.json' });
+const user = new UserClass();
 
+const test = base.extend<{
+  page: Page;
+  userPage: Page;
+}>({
+  page: async ({ browser }, use) => {
+    const { page } = await performAdminLogin(browser);
+    await use(page);
+    await page.close();
+  },
+  userPage: async ({ browser }, use) => {
+    const page = await browser.newPage();
+    await user.login(page);
+    await use(page);
+    await page.close();
+  },
+});
+
+test.describe('Domains', () => {
   test.slow(true);
+
+  test.beforeAll('Setup pre-requests', async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    await user.create(apiContext);
+    await afterAction();
+  });
 
   test.beforeEach('Visit home page', async ({ page }) => {
     await redirectToHomePage(page);
@@ -390,13 +413,13 @@ test.describe('Domains', () => {
     }
   });
 
-  test('Should able to edit description of domain', async ({ page }) => {
+  test('Should able to edit description of domain', async ({
+    page,
+    userPage,
+  }) => {
     const { afterAction, apiContext } = await getApiContext(page);
-    const user1 = new UserClass();
     let domain;
     try {
-      await user1.create(apiContext);
-
       domain = new Domain({
         name: 'PW_Domain_Inherit_Testing',
         displayName: 'PW_Domain_Inherit_Testing',
@@ -405,34 +428,31 @@ test.describe('Domains', () => {
         fullyQualifiedName: 'PW_Domain_Inherit_Testing',
         owners: [
           {
-            name: user1.responseData.name,
+            name: user.responseData.name,
             type: 'user',
-            fullyQualifiedName: user1.responseData.fullyQualifiedName ?? '',
-            id: user1.responseData.id,
+            fullyQualifiedName: user.responseData.fullyQualifiedName ?? '',
+            id: user.responseData.id,
           },
         ],
       });
       await domain.create(apiContext);
 
-      await page.reload();
-      await redirectToHomePage(page);
+      await sidebarClick(userPage, SidebarItem.DOMAIN);
+      await selectDomain(userPage, domain.data);
 
-      await sidebarClick(page, SidebarItem.DOMAIN);
-      await selectDomain(page, domain.data);
+      await expect(userPage.getByTestId('edit-description')).toBeInViewport();
 
-      await expect(page.getByTestId('edit-description')).toBeInViewport();
+      await userPage.getByTestId('edit-description').click();
 
-      await page.getByTestId('edit-description').click();
+      await expect(userPage.getByTestId('editor')).toBeInViewport();
 
-      await expect(page.getByTestId('editor')).toBeInViewport();
-
-      await page
+      await userPage
         .getByTestId('editor')
         .locator('div')
         .nth(2)
         .evaluate((el) => el.setAttribute('contenteditable', 'true'));
 
-      await page
+      await userPage
         .getByTestId('editor')
         .locator('div')
         .nth(2)
@@ -441,16 +461,16 @@ test.describe('Domains', () => {
           '<p>playwright domain description</p>'
         );
 
-      await page.getByTestId('save').click();
+      await userPage.getByTestId('save').click();
 
-      await expect(page.getByTestId('markdown-parser')).toHaveText(
+      await expect(userPage.getByTestId('markdown-parser')).toHaveText(
         'playwright domain description'
       );
     } finally {
       await domain?.delete(apiContext);
-      await user1.delete(apiContext);
-      await afterAction();
+      await user.delete(apiContext);
     }
+    await afterAction();
   });
 });
 
