@@ -20,15 +20,11 @@ import { useHistory } from 'react-router-dom';
 import { ROUTES } from '../../../constants/constants';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { logoutUser, renewToken } from '../../../rest/LoginAPI';
+import { setOidcToken } from '../../../utils/LocalStorageUtils';
 
 export const GenericAuthenticator = forwardRef(
   ({ children }: { children: ReactNode }, ref) => {
-    const {
-      setIsAuthenticated,
-      setIsSigningUp,
-      removeOidcToken,
-      setOidcToken,
-    } = useApplicationStore();
+    const { setIsAuthenticated, setIsSigningUp } = useApplicationStore();
     const history = useHistory();
 
     const handleLogin = () => {
@@ -42,7 +38,7 @@ export const GenericAuthenticator = forwardRef(
       await logoutUser();
 
       history.push(ROUTES.SIGNIN);
-      removeOidcToken();
+      setOidcToken('');
       setIsAuthenticated(false);
     };
 
