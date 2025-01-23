@@ -33,7 +33,13 @@ import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { cloneDeep, isEmpty, isUndefined } from 'lodash';
-import React, { useCallback, useMemo, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { useTranslation } from 'react-i18next';
@@ -70,7 +76,10 @@ import {
   GlossaryTermWithChildren,
   patchGlossaryTerm,
 } from '../../../rest/glossaryAPI';
-import { Transi18next } from '../../../utils/CommonUtils';
+import {
+  calculatePercentageFromValue,
+  Transi18next,
+} from '../../../utils/CommonUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import Fqn from '../../../utils/Fqn';
 import {
@@ -102,6 +111,8 @@ const GlossaryTermTab = ({
   onEditGlossaryTerm,
   className,
 }: GlossaryTermTabProps) => {
+  const tableRef = useRef<HTMLDivElement>(null);
+  const [tableWidth, setTableWidth] = useState(0);
   const { activeGlossary, glossaryChildTerms, setGlossaryChildTerms } =
     useGlossaryStore();
   const { t } = useTranslation();
@@ -147,6 +158,20 @@ const GlossaryTermTab = ({
     return null;
   }, [isGlossary, activeGlossary]);
 
+  const tableColumnsWidth = useMemo(() => {
+    return {
+      name: calculatePercentageFromValue(tableWidth, 40),
+      description: calculatePercentageFromValue(
+        tableWidth,
+        permissions.Create ? 21 : 33
+      ),
+      reviewers: calculatePercentageFromValue(tableWidth, 33),
+      synonyms: calculatePercentageFromValue(tableWidth, 33),
+      owners: calculatePercentageFromValue(tableWidth, 17),
+      status: calculatePercentageFromValue(tableWidth, 12),
+    };
+  }, [permissions.Create, tableWidth]);
+
   const columns = useMemo(() => {
     const data: ColumnsType<ModifiedGlossaryTerm> = [
       {
@@ -155,7 +180,7 @@ const GlossaryTermTab = ({
         key: 'name',
         className: 'glossary-name-column',
         ellipsis: true,
-        width: 200,
+        width: tableColumnsWidth.name,
         render: (_, record) => {
           const name = getEntityName(record);
 
@@ -184,7 +209,7 @@ const GlossaryTermTab = ({
         title: t('label.description'),
         dataIndex: 'description',
         key: 'description',
-        width: isGlossary ? 250 : 650,
+        width: tableColumnsWidth.description,
         render: (description: string) =>
           description.trim() ? (
             <RichTextEditorPreviewerV1
@@ -200,7 +225,7 @@ const GlossaryTermTab = ({
         title: t('label.reviewer'),
         dataIndex: 'reviewers',
         key: 'reviewers',
-        width: 150,
+        width: tableColumnsWidth.reviewers,
         render: (reviewers: EntityReference[]) => (
           <OwnerLabel
             owners={reviewers}
@@ -214,7 +239,7 @@ const GlossaryTermTab = ({
         title: t('label.synonym-plural'),
         dataIndex: 'synonyms',
         key: 'synonyms',
-        width: 150,
+        width: tableColumnsWidth.synonyms,
         render: (synonyms: string[]) => {
           return isEmpty(synonyms) ? (
             <div>{NO_DATA_PLACEHOLDER}</div>
@@ -235,7 +260,7 @@ const GlossaryTermTab = ({
         title: t('label.owner-plural'),
         dataIndex: 'owners',
         key: 'owners',
-        width: 150,
+        width: tableColumnsWidth.owners,
         render: (owners: EntityReference[]) => <OwnerLabel owners={owners} />,
       },
       {
@@ -245,7 +270,7 @@ const GlossaryTermTab = ({
         // this check is added to the width, since the last column is optional and to maintain
         // the re-sizing of the column should not be affected the others columns width sizes.
         ...(permissions.Create && {
-          width: 100,
+          width: tableColumnsWidth.status,
         }),
         render: (_, record) => {
           const status = record.status ?? Status.Approved;
@@ -311,7 +336,7 @@ const GlossaryTermTab = ({
     }
 
     return data;
-  }, [permissions, isGlossary]);
+  }, [permissions, tableColumnsWidth]);
 
   const defaultCheckedList = useMemo(
     () =>
@@ -796,6 +821,12 @@ const GlossaryTermTab = ({
     return expandedRowKeys.length === expandableKeys.length;
   }, [expandedRowKeys, expandableKeys]);
 
+  useEffect(() => {
+    if (tableRef.current) {
+      setTableWidth(tableRef.current.offsetWidth);
+    }
+  }, []);
+
   if (termsLoading) {
     return <Loader />;
   }
@@ -905,6 +936,7 @@ const GlossaryTermTab = ({
               expandable={expandableConfig}
               loading={isTableLoading}
               pagination={false}
+              ref={tableRef}
               rowKey="fullyQualifiedName"
               size="small"
               onHeaderRow={onTableHeader}
