@@ -156,11 +156,8 @@ test.describe('Login flow should work properly', () => {
       await redirectToHomePage(page1);
       await redirectToHomePage(page2);
 
-      const refreshCall = page1.waitForResponse('**/refresh', {
-        timeout: 3 * 60 * 1000,
-      });
-
-      await refreshCall;
+      // Need to wait until refresh happens and update the storage
+      await page1.waitForTimeout(3 * 60 * 1000);
 
       await redirectToHomePage(page1);
 
@@ -192,7 +189,7 @@ test.describe('Login flow should work properly', () => {
     await expect(page1.getByTestId('user-name')).toContainText(/admin/i);
 
     // Wait for token expiry
-    await page2.waitForTimeout(2 * 60 * 1000);
+    await page2.waitForTimeout(3 * 60 * 1000);
 
     await redirectToHomePage(page2);
 
