@@ -215,6 +215,10 @@ export interface Connection {
     type?:      PipelineServiceType;
     awsConfig?: AWSCredentials;
     /**
+     * Airbyte API version.
+     */
+    apiVersion?: string;
+    /**
      * Password to connect to Airbyte.
      */
     password?: string;
