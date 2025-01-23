@@ -13,7 +13,11 @@
 import test, { expect } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
 import { TableClass } from '../../support/entity/TableClass';
-import { createNewPage, redirectToHomePage } from '../../utils/common';
+import {
+  createNewPage,
+  getFirstRowColumnLink,
+  redirectToHomePage,
+} from '../../utils/common';
 import { sidebarClick } from '../../utils/sidebar';
 
 // use the admin user to login
@@ -93,63 +97,49 @@ test.describe('Table pagination sorting search scenarios ', () => {
     await expect(page.getByRole('tab', { name: 'Schema' })).toContainText('4');
   });
 
-  test.describe(
-    'should persist table pagination state while the user paginates and performs a browser back action',
-    () => {
-      test.beforeEach(async ({ page }) => {
-        await page.goto('/databaseSchema/sample_data.ecommerce_db.shopify');
+  test('should persist current page', async ({ page }) => {
+    page.goto('/databaseSchema/sample_data.ecommerce_db.shopify');
 
-        await expect(page.getByTestId('databaseSchema-tables')).toBeVisible();
-      });
+    await expect(page.getByTestId('databaseSchema-tables')).toBeVisible();
 
-      const getFirstRowColumnLink = (page: any) => {
-        const table = page.locator('[data-testid="databaseSchema-tables"]');
-        const firstRowFirstColumn = table.locator(
-          'tbody tr:first-child td:first-child'
-        );
+    await page.getByTestId('next').click();
 
-        return firstRowFirstColumn.locator('[data-testid="column-name"] a');
-      };
+    const initialPageIndicator = await page
+      .locator('[data-testid="page-indicator"]')
+      .textContent();
 
-      test('should persist current page', async ({ page }) => {
-        await page.getByTestId('next').click();
+    const linkInColumn = getFirstRowColumnLink(page);
+    await linkInColumn.click();
 
-        const initialPageIndicator = await page
-          .locator('[data-testid="page-indicator"]')
-          .textContent();
+    await page.goBack();
 
-        const linkInColumn = getFirstRowColumnLink(page);
-        await linkInColumn.click();
+    const pageIndicatorAfterBack = await page
+      .locator('[data-testid="page-indicator"]')
+      .textContent();
 
-        await page.goBack();
+    expect(pageIndicatorAfterBack).toBe(initialPageIndicator);
+  });
 
-        const pageIndicatorAfterBack = await page
-          .locator('[data-testid="page-indicator"]')
-          .textContent();
+  test('should persist page size', async ({ page }) => {
+    page.goto('/databaseSchema/sample_data.ecommerce_db.shopify');
 
-        expect(pageIndicatorAfterBack).toBe(initialPageIndicator);
-      });
+    await expect(page.getByTestId('databaseSchema-tables')).toBeVisible();
 
-      test('should persist page size', async ({ page }) => {
-        const pageSizeDropdown = page.getByTestId(
-          'page-size-selection-dropdown'
-        );
-        await pageSizeDropdown.click();
+    const pageSizeDropdown = page.getByTestId('page-size-selection-dropdown');
+    await pageSizeDropdown.click();
 
-        const dropdownOptions = page.locator('.ant-dropdown-menu');
+    const dropdownOptions = page.locator('.ant-dropdown-menu');
 
-        await expect(dropdownOptions).toBeVisible();
+    await expect(dropdownOptions).toBeVisible();
 
-        const optionToSelect = dropdownOptions.locator('text="15 / Page"');
-        await optionToSelect.click();
+    const optionToSelect = dropdownOptions.locator('text="15 / Page"');
+    await optionToSelect.click();
 
-        const linkInColumn = getFirstRowColumnLink(page);
-        await linkInColumn.click();
+    const linkInColumn = getFirstRowColumnLink(page);
+    await linkInColumn.click();
 
-        await page.goBack();
+    await page.goBack();
 
-        await expect(pageSizeDropdown).toHaveText('15 / Page');
-      });
-    }
-  );
+    await expect(pageSizeDropdown).toHaveText('15 / Page');
+  });
 });
