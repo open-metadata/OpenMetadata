@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2024 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,7 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-/**
+
+
+ /**
  * Test case is a test definition to capture data quality tests against tables, columns, and
  * other data assets.
  */
@@ -192,6 +194,8 @@ export interface FieldChange {
  *
  * Domain the test Suite belongs to. When not set, the test Suite inherits the domain from
  * the table it belongs to.
+ *
+ * DEPRECATED in 1.6.2: Use 'basicEntityReference'.
  */
 export interface EntityReference {
     /**
@@ -497,6 +501,14 @@ export interface TestSuite {
      * the table it belongs to.
      */
     domain?: EntityReference;
+    /**
+     * DEPRECATED in 1.6.2: Use 'basic'
+     */
+    executable?: boolean;
+    /**
+     * DEPRECATED in 1.6.2: Use 'basicEntityReference'.
+     */
+    executableEntityReference?: EntityReference;
     /**
      * FullyQualifiedName same as `name`.
      */
