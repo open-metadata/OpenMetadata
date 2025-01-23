@@ -5,6 +5,15 @@ slug: /how-to-guides/admin-guide/alerts
 
 # Set up Data Observability Alerts and Notifications
 
+{%inlineCalloutContainer%}
+ {%inlineCallout
+    icon="MdGppGood"
+    bold="Required Permissions"
+    href="/how-to-guides/admin-guide/roles-policies"%}
+    Setting up alerts requires create permission on the `Eventsubscription` entity. More info here.
+ {%/inlineCallout%}
+{%/inlineCalloutContainer%}
+
 OpenMetadata has been providing alerts right from the start to notify users of important data lifecycle events: schema modifications, ownership shifts, and tagging updates. Users can define fine-grained alerts and notifications.
 
 Starting from the 1.3 release, Data Observability alerts have been completely revamped, simplifying the process of monitoring data. Users can quickly create alerts for:
