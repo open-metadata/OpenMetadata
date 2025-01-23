@@ -23,7 +23,6 @@ import DomainTypeSelectForm from '../../../../components/Domain/DomainTypeSelect
 import { DE_ACTIVE_COLOR } from '../../../../constants/constants';
 import { EntityField } from '../../../../constants/Feeds.constants';
 import { COMMON_RESIZABLE_PANEL_CONFIG } from '../../../../constants/ResizablePanel.constants';
-import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType, TabSpecificField } from '../../../../enums/entity.enum';
 import { DataProduct } from '../../../../generated/entity/domains/dataProduct';
@@ -31,7 +30,6 @@ import {
   Domain,
   DomainType,
 } from '../../../../generated/entity/domains/domain';
-import { Operation } from '../../../../generated/entity/policies/policy';
 import {
   ChangeDescription,
   EntityReference,
@@ -42,7 +40,6 @@ import {
   getEntityVersionByField,
   getOwnerVersionLabel,
 } from '../../../../utils/EntityVersionUtils';
-import { checkPermission } from '../../../../utils/PermissionsUtils';
 import { CustomPropertyTable } from '../../../common/CustomPropertyTable/CustomPropertyTable';
 import FormItemLabel from '../../../common/Form/FormItemLabel';
 import ResizablePanels from '../../../common/ResizablePanels/ResizablePanels';
@@ -57,13 +54,11 @@ const DocumentationTab = ({
   domain,
   onUpdate,
   onExtensionUpdate,
-  editCustomAttributePermission,
-  viewAllPermission,
   isVersionsView = false,
   type = DocumentationEntity.DOMAIN,
+  permissions,
 }: DocumentationTabProps) => {
   const { t } = useTranslation();
-  const { permissions } = usePermissionProvider();
   const [isDescriptionEditable, setIsDescriptionEditable] =
     useState<boolean>(false);
   const [editDomainType, setEditDomainType] = useState(false);
@@ -72,40 +67,40 @@ const DocumentationTab = ({
       ? ResourceEntity.DOMAIN
       : ResourceEntity.DATA_PRODUCT;
 
-  const { editDescriptionPermission, editOwnerPermission, editAllPermission } =
-    useMemo(() => {
-      if (isVersionsView) {
-        return {
-          editDescriptionPermission: false,
-          editOwnerPermission: false,
-          editAllPermission: false,
-        };
-      }
-
-      const editDescription = checkPermission(
-        Operation.EditDescription,
-        resourceType,
-        permissions
-      );
-
-      const editOwner = checkPermission(
-        Operation.EditOwners,
-        resourceType,
-        permissions
-      );
-
-      const editAll = checkPermission(
-        Operation.EditAll,
-        resourceType,
-        permissions
-      );
-
+  const {
+    editDescriptionPermission,
+    editOwnerPermission,
+    editAllPermission,
+    editCustomAttributePermission,
+    viewAllPermission,
+  } = useMemo(() => {
+    if (isVersionsView) {
       return {
-        editDescriptionPermission: editDescription || editAll,
-        editOwnerPermission: editOwner || editAll,
-        editAllPermission: editAll,
+        editDescriptionPermission: false,
+        editOwnerPermission: false,
+        editAllPermission: false,
+        editCustomAttributePermission: false,
       };
-    }, [permissions, isVersionsView, resourceType]);
+    }
+
+    const editDescription = permissions?.EditDescription;
+
+    const editOwner = permissions?.EditOwners;
+
+    const editAll = permissions?.EditAll;
+
+    const editCustomAttribute = permissions?.EditCustomFields;
+
+    const viewAll = permissions?.ViewAll;
+
+    return {
+      editDescriptionPermission: editAll || editDescription,
+      editOwnerPermission: editAll || editOwner,
+      editAllPermission: editAll,
+      editCustomAttributePermission: editAll || editCustomAttribute,
+      viewAllPermission: viewAll,
+    };
+  }, [permissions, isVersionsView, resourceType]);
 
   const description = useMemo(
     () =>
