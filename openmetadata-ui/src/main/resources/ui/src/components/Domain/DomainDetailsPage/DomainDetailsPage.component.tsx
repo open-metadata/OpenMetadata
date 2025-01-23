@@ -122,7 +122,7 @@ const DomainDetailsPage = ({
 }: DomainDetailsPageProps) => {
   const { t } = useTranslation();
   const [form] = useForm();
-  const { getEntityPermission } = usePermissionProvider();
+  const { getEntityPermission, permissions } = usePermissionProvider();
   const history = useHistory();
   const { tab: activeTab, version } =
     useParams<{ tab: string; version: string }>();
@@ -202,21 +202,29 @@ const DomainDetailsPage = ({
   }, [domainPermission]);
 
   const addButtonContent = [
-    {
-      label: t('label.asset-plural'),
-      key: '1',
-      onClick: () => setAssetModalVisible(true),
-    },
-    {
-      label: t('label.sub-domain-plural'),
-      key: '2',
-      onClick: () => setShowAddSubDomainModal(true),
-    },
-    {
-      label: t('label.data-product-plural'),
-      key: '3',
-      onClick: () => setShowAddDataProductModal(true),
-    },
+    ...(domainPermission.Create
+      ? [
+          {
+            label: t('label.asset-plural'),
+            key: '1',
+            onClick: () => setAssetModalVisible(true),
+          },
+          {
+            label: t('label.sub-domain-plural'),
+            key: '2',
+            onClick: () => setShowAddSubDomainModal(true),
+          },
+        ]
+      : []),
+    ...(permissions.dataProduct.Create
+      ? [
+          {
+            label: t('label.data-product-plural'),
+            key: '3',
+            onClick: () => setShowAddDataProductModal(true),
+          },
+        ]
+      : []),
   ];
 
   const fetchSubDomains = useCallback(async () => {
@@ -511,6 +519,7 @@ const DomainDetailsPage = ({
           <DocumentationTab
             domain={domain}
             isVersionsView={isVersionsView}
+            permissions={domainPermission}
             onUpdate={(data: Domain | DataProduct) => onUpdate(data as Domain)}
           />
         ),
@@ -667,7 +676,7 @@ const DomainDetailsPage = ({
         </Col>
         <Col className="p-x-md" flex="320px">
           <div style={{ textAlign: 'right' }}>
-            {!isVersionsView && domainPermission.Create && (
+            {!isVersionsView && addButtonContent.length > 0 && (
               <Dropdown
                 className="m-l-xs"
                 data-testid="domain-details-add-button-menu"
