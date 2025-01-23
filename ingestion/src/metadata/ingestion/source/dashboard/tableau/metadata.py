@@ -41,7 +41,10 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
 from metadata.generated.schema.entity.services.dashboardService import (
     DashboardServiceType,
 )
-from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.entity.services.databaseService import (
+    DatabaseService,
+    DatabaseServiceType,
+)
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
 )
@@ -760,9 +763,7 @@ class TableauSource(DashboardServiceSource):
                 for source_table in lineage_parser.source_tables or []:
                     database_schema_table = fqn.split_table_name(str(source_table))
                     database_name = database_schema_table.get("database")
-                    if isinstance(
-                        db_service_entity.connection.config, BigQueryConnection
-                    ):
+                    if db_service_entity.serviceType == DatabaseServiceType.BigQuery:
                         database_name = None
                     database_name = get_database_name_for_lineage(
                         db_service_entity, database_name
