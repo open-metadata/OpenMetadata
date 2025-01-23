@@ -410,14 +410,9 @@ const DataProductsDetailsPage = ({
         children: (
           <DocumentationTab
             domain={dataProduct}
-            editCustomAttributePermission={
-              (dataProductPermission.EditAll ||
-                dataProductPermission.EditCustomFields) &&
-              !isVersionsView
-            }
             isVersionsView={isVersionsView}
+            permissions={dataProductPermission}
             type={DocumentationEntity.DATA_PRODUCT}
-            viewAllPermission={dataProductPermission.ViewAll}
             onExtensionUpdate={handelExtensionUpdate}
             onUpdate={(data: Domain | DataProduct) =>
               onUpdate(data as DataProduct)

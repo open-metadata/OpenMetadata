@@ -46,6 +46,15 @@ This is a sample config for Exasol:
 
 {% codeInfo srNumber=1 %}
 
+**`username`** 
+The username required to authenticate and connect to the Exasol database. The user must have sufficient privileges to access and read all the metadata available in Exasol.
+
+**`password`**
+The password associated with the user account used to connect to the Exasol database. Ensure this password corresponds to the specified username and is stored securely. Avoid sharing passwords in plain text and use secure methods for managing sensitive credentials.
+
+**`hostPort`**
+Provide the fully qualified hostname and port number of your Exasol deployment in the "Host and Port" field.
+
 **`SSL/TLS Settings`** 
 Mode/setting for SSL validation:
 
@@ -55,15 +64,6 @@ Mode/setting for SSL validation:
 
 - **`disable-tls`**: Does not use any Transport Layer Security (TLS). Data will be sent in plain text (no encryption).
 While this may be helpful in rare cases of debugging, make sure you do not use this in production.
-
-**`username`** 
-The username required to authenticate and connect to the Exasol database. The user must have sufficient privileges to access and read all the metadata available in Exasol.
-
-**`password`**
-The password associated with the user account used to connect to the Exasol database. Ensure this password corresponds to the specified username and is stored securely. Avoid sharing passwords in plain text and use secure methods for managing sensitive credentials.
-
-**`hostPort`**
-Provide the fully qualified hostname and port number of your Exasol deployment in the "Host and Port" field.
 
 {% /codeInfo %}
 
@@ -94,10 +94,10 @@ source:
       type: Exasol
 ```
 ```yaml {% srNumber=1 %}
-          SSL/TLS Settings: validate-certificate (default), or ignore-certificate, or disable-tls
-          hostPort: 127.0.0.1:8563
           username: Exasol
           password: password
+          hostPort: 127.0.0.1:8563
+          SSL/TLS Settings: validate-certificate (default), or ignore-certificate, or disable-tls
 ```
 ```yaml {% srNumber=2 %}
       # connectionOptions:
