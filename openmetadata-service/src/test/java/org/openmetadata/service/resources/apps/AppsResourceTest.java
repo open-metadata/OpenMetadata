@@ -320,7 +320,7 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
     Request request = new Request("GET", "di-data-assets-*/_search");
     String payload =
         String.format(
-            "{\"query\":{\"bool\":{\"must\":{\"term\":{\"fullyQualifiedName.keyword\":\"%s\"}}}}}",
+            "{\"query\":{\"bool\":{\"must\":{\"term\":{\"fullyQualifiedName\":\"%s\"}}}}}",
             table.getFullyQualifiedName());
     request.setJsonEntity(payload);
     response = searchClient.performRequest(request);
