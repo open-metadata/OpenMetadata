@@ -398,7 +398,9 @@ export enum DatabaseServiceType {
     AzureSQL = "AzureSQL",
     BigQuery = "BigQuery",
     BigTable = "BigTable",
+    Cassandra = "Cassandra",
     Clickhouse = "Clickhouse",
+    Cockroach = "Cockroach",
     Couchbase = "Couchbase",
     CustomDatabase = "CustomDatabase",
     Databricks = "Databricks",
@@ -469,6 +471,7 @@ export enum Language {
  * This schema defines the type of the type of Procedures
  */
 export enum StoredProcedureType {
+    StoredPackage = "StoredPackage",
     StoredProcedure = "StoredProcedure",
     Udf = "UDF",
 }

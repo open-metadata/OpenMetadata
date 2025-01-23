@@ -10,7 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-/**
+
+
+ /**
  * Configuration for the Automator External Application.
  */
 export interface AutomatorAppConfig {
@@ -111,7 +113,7 @@ export interface Action {
     /**
      * Owners to apply
      *
-     * Custom Properties to remove
+     * Custom Properties keys to remove
      */
     customProperties?: any;
     /**
