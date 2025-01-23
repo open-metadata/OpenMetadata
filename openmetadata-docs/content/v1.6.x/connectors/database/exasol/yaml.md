@@ -1,5 +1,5 @@
 ---
-title: Run the BigQuery Connector Externally
+title: Run the Exasol Connector Externally
 slug: /connectors/database/exasol/yaml
 ---
 
@@ -46,6 +46,16 @@ This is a sample config for Exasol:
 
 {% codeInfo srNumber=1 %}
 
+**`SSL/TLS Settings`** 
+Mode/setting for SSL validation:
+
+- **`validate-certificate`**: Uses Transport Layer Security (TLS) and validates the server certificate using system certificate stores.
+
+- **`ignore-certificate`**: Uses Transport Layer Security (TLS) but disables the validation of the server certificate. This should not be used in production. It can be useful during testing with self-signed certificates.
+
+- **`disable-tls`**: Does not use any Transport Layer Security (TLS). Data will be sent in plain text (no encryption).
+While this may be helpful in rare cases of debugging, make sure you do not use this in production.
+
 **`username`** 
 The username required to authenticate and connect to the Exasol database. The user must have sufficient privileges to access and read all the metadata available in Exasol.
 
@@ -69,8 +79,6 @@ Provide the fully qualified hostname and port number of your Exasol deployment i
 
 **Connection Arguments (Optional)**: Enter the details for any additional connection arguments such as security or protocol configs that can be sent to database during the connection. These details must be added as Key-Value pairs.
 
-- In case you are using Single-Sign-On (SSO) for authentication, add the `authenticator` details in the Connection Arguments as a Key-Value pair as follows: `"authenticator" : "sso_login_url"`
-
 {% /codeInfo %}
 
 {% /codeInfoContainer %}
@@ -86,8 +94,7 @@ source:
       type: Exasol
 ```
 ```yaml {% srNumber=1 %}
-      credentials:
-        gcpConfig:
+          SSL/TLS Settings: validate-certificate (default), or ignore-certificate, or disable-tls
           hostPort: 127.0.0.1:8563
           username: Exasol
           password: password
