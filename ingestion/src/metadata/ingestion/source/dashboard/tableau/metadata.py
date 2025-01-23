@@ -712,7 +712,7 @@ class TableauSource(DashboardServiceSource):
                 if table.database and table.database.name
                 else database_schema_table.get("database")
             )
-            if isinstance(db_service_entity.connection.config, BigQueryConnection):
+            if db_service_entity.serviceType == DatabaseServiceType.BigQuery:
                 database_name = None
             database_name = get_database_name_for_lineage(
                 db_service_entity, database_name
