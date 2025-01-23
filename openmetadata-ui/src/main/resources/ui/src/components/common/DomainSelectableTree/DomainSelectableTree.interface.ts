@@ -15,7 +15,7 @@ import { EntityReference } from '../../../generated/entity/type';
 
 export interface DomainSelectableTreeProps {
   value?: string[]; // array of fqn
-  onSubmit: (option: EntityReference | EntityReference[]) => Promise<void>;
+  onSubmit: (option: EntityReference[]) => Promise<void>;
   visible: boolean;
   onCancel: () => void;
   isMultiple?: boolean;

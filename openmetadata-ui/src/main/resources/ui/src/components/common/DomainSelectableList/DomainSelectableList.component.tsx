@@ -73,12 +73,12 @@ const DomainSelectableList = ({
   }, [selectedDomain]);
 
   const handleUpdate = useCallback(
-    async (domains: EntityReference | EntityReference[]) => {
-      // if (multiple) {
-      await onUpdate(domains);
-      // } else {
-      //   await onUpdate(domains[0]);
-      // }
+    async (domains: EntityReference[]) => {
+      if (multiple) {
+        await onUpdate(domains);
+      } else {
+        await onUpdate(domains[0]);
+      }
 
       setPopupVisible(false);
     },

@@ -71,16 +71,21 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
       );
       await onSubmit(domains1);
     } else {
-      const initialData = findItemByFqn(
-        domains,
-        selectedDomains[0] as string,
-        false
-      );
-      const domain = getEntityReferenceFromEntity(
-        initialData as EntityReference,
-        EntityType.DOMAIN
-      );
-      await onSubmit(domain);
+      if (selectedDomains.length > 0) {
+        const initialData = findItemByFqn(
+          domains,
+          selectedDomains[0] as string,
+          false
+        );
+        const domain = getEntityReferenceFromEntity(
+          initialData as EntityReference,
+          EntityType.DOMAIN
+        );
+
+        await onSubmit([domain]);
+      } else {
+        await onSubmit([]);
+      }
     }
 
     setIsSubmitLoading(false);
