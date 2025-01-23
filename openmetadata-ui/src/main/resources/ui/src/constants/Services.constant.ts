@@ -307,12 +307,6 @@ export const INGESTION_WORKFLOW_UI_SCHEMA = {
   ],
 };
 
-export const DATABASES_WITHOUT_INCREMENTAL_EXTRACTION_SUPPORT = [
-  DatabaseServiceType.Mysql,
-  DatabaseServiceType.Postgres,
-  DatabaseServiceType.Mssql,
-];
-
 export const EXCLUDE_INCREMENTAL_EXTRACTION_SUPPORT_UI_SCHEMA = {
   incremental: {
     'ui:widget': 'hidden',
