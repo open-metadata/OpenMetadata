@@ -165,7 +165,6 @@ export const assignDomain = async (
     .getByTestId('searchbar')
     .fill(domain.name);
   await searchDomain;
-  // await page.getByRole('listitem', { name: domain.displayName }).click();
 
   await page.getByTestId(`tag-${domain.fullyQualifiedName}`).click();
   await page.getByTestId('saveAssociatedTag').click();
