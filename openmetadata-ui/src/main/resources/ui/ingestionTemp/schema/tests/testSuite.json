@@ -1,0 +1,175 @@
+{
+  "$id": "https://open-metadata.org/schema/tests/testSuite.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TestSuite",
+  "description": "TestSuite is a set of test cases grouped together to capture data quality tests against data entities.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.tests.TestSuite",
+  "javaInterfaces": [
+    "org.openmetadata.schema.ServiceEntityInterface"
+  ],
+  "definitions": {
+    "testSuiteConnection": {
+      "type": "object",
+      "javaInterfaces": [
+        "org.openmetadata.schema.ServiceConnectionEntityInterface"
+      ],
+      "properties": {
+        "config": {
+          "type": "null"
+        }
+      },
+      "resultSummary": {
+        "javaType": "org.openmetadata.schema.tests.ResultSummary",
+        "properties": {
+          "testCaseName": {
+            "description": "Name of the test case.",
+            "$ref": "../type/basic.json#/definitions/fullyQualifiedEntityName"
+          },
+          "status": {
+            "description": "Status of the test case.",
+            "$ref": "./basic.json#/definitions/testCaseStatus"
+          },
+          "timestamp": {
+            "description": "Timestamp of the test case execution.",
+            "$ref": "../type/basic.json#/definitions/timestamp"
+          }
+        }
+      }
+    }
+  },
+  "properties": {
+    "id": {
+      "description": "Unique identifier of this test suite instance.",
+      "$ref": "../type/basic.json#/definitions/uuid"
+    },
+    "name": {
+      "description": "Name that identifies this test suite.",
+      "$ref": "../api/tests/createTestSuite.json#/definitions/testSuiteEntityName"
+    },
+    "displayName": {
+      "description": "Display Name that identifies this test suite.",
+      "type": "string"
+    },
+    "fullyQualifiedName": {
+      "description": "FullyQualifiedName same as `name`.",
+      "$ref": "../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "description": {
+      "description": "Description of the test suite.",
+      "$ref": "../type/basic.json#/definitions/markdown"
+    },
+    "tests": {
+      "type": "array",
+      "items": {
+        "$ref": "../type/entityReference.json"
+      },
+      "default": null
+    },
+    "connection": {
+      "description": "TestSuite mock connection, since it needs to implement a Service.",
+      "$ref": "#/definitions/testSuiteConnection"
+    },
+    "testConnectionResult": {
+      "description": "Result of the test connection.",
+      "$ref": "../entity/services/connections/testConnectionResult.json"
+    },
+    "pipelines": {
+      "description": "References to pipelines deployed for this Test Suite to execute the tests.",
+      "$ref": "../type/entityReferenceList.json",
+      "default": null
+    },
+    "serviceType": {
+      "description": "Type of database service such as MySQL, BigQuery, Snowflake, Redshift, Postgres...",
+      "javaInterfaces": [
+        "org.openmetadata.schema.EnumInterface"
+      ],
+      "type": "string",
+      "enum": [
+        "TestSuite"
+      ],
+      "default": "TestSuite"
+    },
+    "owners": {
+      "description": "Owners of this TestCase definition.",
+      "$ref": "../type/entityReferenceList.json",
+      "default": null
+    },
+    "version": {
+      "description": "Metadata version of the entity.",
+      "$ref": "../type/entityHistory.json#/definitions/entityVersion"
+    },
+    "updatedAt": {
+      "description": "Last update time corresponding to the new version of the entity in Unix epoch time milliseconds.",
+      "$ref": "../type/basic.json#/definitions/timestamp"
+    },
+    "updatedBy": {
+      "description": "User who made the update.",
+      "type": "string"
+    },
+    "href": {
+      "description": "Link to the resource corresponding to this entity.",
+      "$ref": "../type/basic.json#/definitions/href"
+    },
+    "changeDescription": {
+      "description": "Change that lead to this version of the entity.",
+      "$ref": "../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "deleted": {
+      "description": "When `true` indicates the entity has been soft deleted.",
+      "type": "boolean",
+      "default": false
+    },
+    "basic": {
+      "description": "Indicates if the test suite is basic, i.e., the parent suite of a test and linked to an entity. Set on the backend.",
+      "type": "boolean",
+      "default": false
+    },
+    "executable": {
+      "description": "DEPRECATED in 1.6.2: Use 'basic'",
+      "type": "boolean",
+      "deprecated": true
+    },
+    "basicEntityReference": {
+      "description": "Entity reference the test suite needs to execute the test against. Only applicable if the test suite is basic.",
+      "$ref": "../type/entityReference.json"
+    },
+    "executableEntityReference": {
+      "description": "DEPRECATED in 1.6.2: Use 'basicEntityReference'.",
+      "$ref": "../type/entityReference.json",
+      "deprecated": true
+    },
+    "summary": {
+      "description": "Summary of the previous day test cases execution for this test suite.",
+      "$ref": "./basic.json#/definitions/testSummary"
+    },
+    "testCaseResultSummary": {
+      "description": "Summary of test case execution",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/testSuiteConnection/resultSummary"
+      }
+    },
+    "domain": {
+      "description": "Domain the test Suite belongs to. When not set, the test Suite inherits the domain from the table it belongs to.",
+      "$ref": "../type/entityReference.json"
+    },
+    "tags": {
+      "description": "Tags for this test suite. This is an inherited field from the parent entity if the testSuite is native.",
+      "type": "array",
+      "items": {
+        "$ref": "../type/tagLabel.json"
+      },
+      "default": []
+    },
+    "inherited": {
+      "description": "Indicates if the test suite is inherited from a parent entity.",
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "name"
+  ],
+  "additionalProperties": false
+}

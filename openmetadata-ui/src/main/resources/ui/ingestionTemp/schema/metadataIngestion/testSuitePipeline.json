@@ -1,0 +1,73 @@
+{
+  "$id": "https://open-metadata.org/schema/metadataIngestion/testSuitePipeline.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TestSuitePipeline",
+  "description": "TestSuite Pipeline Configuration.",
+  "type": "object",
+  "definitions": {
+    "testSuiteConfigType": {
+      "description": "Pipeline Source Config Metadata Pipeline type",
+      "type": "string",
+      "enum": ["TestSuite"],
+      "default": "TestSuite"
+    },
+    "serviceConnections": {
+      "description": "Service connections available for the logical test suite.",
+      "type": "object",
+      "properties": {
+        "serviceName": {
+          "type": "string"
+        },
+        "serviceConnection": {
+          "description": "Connection configuration for the source. ex: mysql , tableau connection.",
+          "$ref": "../entity/services/connections/serviceConnection.json#/definitions/serviceConnection"
+        }
+      },
+      "additionalProperties": false,
+      "required": ["serviceName", "serviceConnection"]
+    }
+  },
+  "properties": {
+    "type": {
+      "description": "Pipeline type",
+      "$ref": "#/definitions/testSuiteConfigType",
+      "default": "TestSuite"
+    },
+    "entityFullyQualifiedName": {
+      "description": "Fully qualified name of the entity to be tested, if we're working with a basic suite.",
+      "$ref": "../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "serviceConnections": {
+      "description": "Service connections to be used for the logical test suite.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/serviceConnections"
+      },
+      "default": null
+    },
+    "profileSample": {
+      "description": "Percentage of data or no. of rows we want to execute the profiler and tests on",
+      "type": "number",
+      "default": null,
+      "title": "Profile Sample"
+    },
+    "profileSampleType": {
+      "$ref": "../entity/data/table.json#/definitions/profileSampleType",
+      "title": "Profile Sample Type"
+    },
+    "samplingMethodType": {
+      "$ref": "../entity/data/table.json#/definitions/samplingMethodType",
+      "title": "Sampling Method Type"
+    },
+    "testCases": {
+      "description": "List of test cases to be executed on the entity. If null, all test cases will be executed.",
+      "type": "array",
+      "items": {
+        "$ref": "../type/basic.json#/definitions/testCaseEntityName"
+      },
+      "default": null
+    }
+  },
+  "required": ["type"],
+  "additionalProperties": false
+}

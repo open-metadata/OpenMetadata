@@ -1,0 +1,22 @@
+{
+    "$id": "https://open-metadata.org/schema/entity/services/connections/search/elasticSearch/basicAuth.json",
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Basic Authentication",
+    "description": "Basic Auth Configuration for ElasticSearch",
+    "javaType": "org.openmetadata.schema.services.connections.search.elasticSearch.ESBasicAuth",
+    "type": "object",
+    "properties": {
+        "username": {
+            "title": "Username",
+            "description": "Elastic Search Username for Login",
+            "type": "string"
+        },
+        "password": {
+            "title": "Password",
+            "description": "Elastic Search Password for Login",
+            "type": "string",
+            "format": "password"
+        }
+    },
+    "additionalProperties": false
+}

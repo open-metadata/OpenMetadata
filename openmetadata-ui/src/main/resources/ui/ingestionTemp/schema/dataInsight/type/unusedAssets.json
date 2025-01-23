@@ -1,0 +1,23 @@
+{
+  "$id": "https://open-metadata.org/schema/dataInsight/type/unusedAssets.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "UnusedAssets",
+  "description": "UnusedAssets data blob",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.dataInsight.type.UnusedAssets",
+  "properties": {
+    "entity": {
+      "description": "Entity of the life cycle data",
+      "$ref": "../../type/entityReference.json"
+    },
+    "sizeInBytes": {
+      "description": "Size of the asset in bytes",
+      "type": "number"
+    },
+    "lastAccessedAt": {
+      "description": "timestamp",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    }
+  },
+  "additionalProperties": false
+}

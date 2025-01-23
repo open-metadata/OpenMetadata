@@ -1,0 +1,45 @@
+{
+    "$id": "https://open-metadata.org/schema/entity/services/connections/pipeline/splineConnection.json",
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "SplineConnection",
+    "description": "Spline Metadata Database Connection Config",
+    "type": "object",
+    "javaType": "org.openmetadata.schema.services.connections.pipeline.SplineConnection",
+    "definitions": {
+      "SplineType": {
+        "description": "Service type.",
+        "type": "string",
+        "enum": ["Spline"],
+        "default": "Spline"
+      }
+    },
+    "properties": {
+      "type": {
+        "title": "Service Type",
+        "description": "Service Type",
+        "$ref": "#/definitions/SplineType",
+        "default": "Spline"
+      },
+      "hostPort": {
+        "title": "Spline REST Server Host & Port",
+        "expose": true,
+        "description": "Spline REST Server Host & Port.",
+        "type": "string",
+        "format": "uri"
+      },
+      "uiHostPort": {
+        "title": "Spline UI Host & Port",
+        "expose": true,
+        "description": "Spline UI Host & Port.",
+        "type": "string",
+        "format": "uri"
+      },
+      "supportsMetadataExtraction": {
+        "title": "Supports Metadata Extraction",
+        "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+      }
+    },
+    "additionalProperties": false,
+    "required": ["hostPort"]
+  }
+  

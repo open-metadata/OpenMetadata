@@ -1,0 +1,102 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/database/sasConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SASConnection",
+  "description": "SAS Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.database.SASConnection",
+  "definitions": {
+    "sasType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": ["SAS"],
+      "default": "SAS"
+    }
+  },
+  "properties": {
+    "type": {
+      "description": "Service Type",
+      "$ref": "#/definitions/sasType",
+      "default": "SAS"
+    },
+    "username": {
+      "description": "Username to connect to SAS Viya.",
+      "type": "string"
+    },
+    "password": {
+      "description": "Password to connect to SAS Viya",
+      "type": "string",
+      "format": "password"
+    },
+    "serverHost": {
+      "description": "Hostname of SAS Viya deployment.",
+      "type": "string",
+      "format": "uri"
+    },
+    "datatables": {
+      "description": "Enable datatables for ingestion",
+      "type": "boolean",
+      "default": true
+    },
+    "dataTablesCustomFilter": {
+      "title": "Custom Filter for datatables",
+      "description": "Custom filter for datatables",
+      "oneOf": [
+        {
+          "title": "No Custom Filter",
+          "description": "Don't include custom filter when ingesting metadata for datatables",
+          "type": "object"
+        },
+        {
+          "title": "Custom Filter",
+          "description": "Include custom filter when ingesting metadata for datatables",
+          "type": "string"
+        }
+      ]
+    },
+    "reports": {
+      "description": "Enable report for ingestion",
+      "type": "boolean",
+      "default": false
+    },
+    "reportsCustomFilter": {
+      "title": "Custom Filter for reports",
+      "description": "Custom filter for reports",
+      "oneOf": [
+        {
+          "title": "No Custom Filter",
+          "description": "Don't include custom filter when ingesting metadata for reports",
+          "type": "object"
+        },
+        {
+          "title": "Custom Filter",
+          "description": "Include custom filter when ingesting metadata for reports",
+          "type": "string"
+        }
+      ]
+    },
+    "dataflows": {
+      "description": "Enable dataflow for ingestion",
+      "type": "boolean",
+      "default": false
+    },
+    "dataflowsCustomFilter": {
+      "title": "Custom Filter for dataflows",
+      "description": "Custom filter for dataflows",
+      "oneOf": [
+        {
+          "title": "No Custom Filter",
+          "description": "Don't include custom filter when ingesting metadata for dataflows",
+          "type": "object"
+        },
+        {
+          "title": "Custom Filter",
+          "description": "Include custom filter when ingesting metadata for dataflows",
+          "type": "string"
+        }
+      ]
+    }
+  },
+  "required": ["username", "password", "serverHost"],
+  "additionalProperties": false
+}

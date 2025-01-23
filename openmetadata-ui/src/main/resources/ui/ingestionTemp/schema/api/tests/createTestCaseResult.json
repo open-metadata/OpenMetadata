@@ -1,0 +1,66 @@
+{
+  "$id": "https://open-metadata.org/schema/tests/createTestCaseResult.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CreateTestCaseResult",
+  "description": "Schema to create a new test case result .",
+  "javaType": "org.openmetadata.schema.api.tests.CreateTestCaseResult",
+  "type": "object",
+  "properties": {
+    "fqn": {
+      "description": "Fqn of the test case against which this test case result is added.",
+      "type": "string"
+    },
+    "timestamp": {
+      "description": "Data one which test case result is taken.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "testCaseStatus": {
+      "description": "Status of Test Case run.",
+      "$ref": "../../tests/basic.json#/definitions/testCaseStatus"
+    },
+    "result": {
+      "description": "Details of test case results.",
+      "type": "string"
+    },
+    "sampleData": {
+      "description": "sample data to capture rows/columns that didn't match the expressed testcase.",
+      "type": "string"
+    },
+    "testResultValue": {
+      "type": "array",
+      "items": {
+        "$ref": "../../tests/basic.json#/definitions/testResultValue"
+      }
+    },
+    "passedRows": {
+      "description": "Number of rows that passed.",
+      "type": "integer"
+    },
+    "failedRows": {
+      "description": "Number of rows that failed.",
+      "type": "integer"
+    },
+    "passedRowsPercentage": {
+      "description": "Percentage of rows that passed.",
+      "type": "number"
+    },
+    "failedRowsPercentage": {
+      "description": "Percentage of rows that failed.",
+      "type": "number"
+    },
+    "incidentId": {
+      "description": "Incident State ID associated with this result. This association happens when the result is created, and will stay there even when the incident is resolved.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "maxBound": {
+      "description": "Upper bound limit for the test case result as defined in the test definition.",
+      "type": "number"
+    },
+    "minBound": {
+      "description": "Lower bound limit for the test case result as defined in the test definition.",
+      "type": "number"
+    }
+  },
+  "required": ["timestamp", "testCaseStatus", "testResultValue"],
+  "additionalProperties": false
+}

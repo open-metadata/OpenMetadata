@@ -1,0 +1,75 @@
+{
+  "$id": "https://open-metadata.org/schema/type/profile.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Profile",
+  "description": "This schema defines the type for a profile of a user, team, or organization.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.type.Profile",
+  "definitions": {
+    "messagingProvider": {
+      "javaType": "org.openmetadata.schema.type.profile.SubscriptionConfig",
+      "description": "Holds the Subscription Config for different types",
+      "type": "object",
+      "properties": {
+        "slack": {
+          "$ref": "../entity/events/webhook.json"
+        },
+        "msTeams": {
+          "$ref": "../entity/events/webhook.json"
+        },
+        "gChat": {
+          "$ref": "../entity/events/webhook.json"
+        },
+        "generic": {
+          "$ref": "../entity/events/webhook.json"
+        }
+      },
+      "additionalProperties": false
+    },
+    "imageList": {
+      "description": "Links to a list of images of varying resolutions/sizes.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.type.ImageList",
+      "properties": {
+        "image": {
+          "type": "string",
+          "format": "uri"
+        },
+        "image24": {
+          "type": "string",
+          "format": "uri"
+        },
+        "image32": {
+          "type": "string",
+          "format": "uri"
+        },
+        "image48": {
+          "type": "string",
+          "format": "uri"
+        },
+        "image72": {
+          "type": "string",
+          "format": "uri"
+        },
+        "image192": {
+          "type": "string",
+          "format": "uri"
+        },
+        "image512": {
+          "type": "string",
+          "format": "uri"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "images": {
+      "$ref": "#/definitions/imageList"
+    },
+    "subscription": {
+      "$ref": "#/definitions/messagingProvider"
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,99 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/feed/thread.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Suggestion",
+  "description": "This schema defines the Suggestion entity. A suggestion can be applied to an asset to give the owner context about possible changes or improvements to descriptions, tags,...",
+  "type": "object",
+  "definitions": {
+    "suggestionType": {
+      "javaType": "org.openmetadata.schema.type.SuggestionType",
+      "description": "Type of a Suggestion.",
+      "type": "string",
+      "enum": [
+        "SuggestDescription",
+        "SuggestTagLabel"
+      ],
+      "javaEnums": [
+        {
+          "name": "SuggestDescription"
+        },
+        {
+          "name": "SuggestTagLabel"
+        }
+      ]
+    },
+    "suggestionStatus": {
+      "javaType": "org.openmetadata.schema.type.SuggestionStatus",
+      "type": "string",
+      "description": "Status of a Suggestion.",
+      "enum": [
+        "Open",
+        "Accepted",
+        "Rejected"
+      ],
+      "javaEnums": [
+        {
+          "name": "Open"
+        },
+        {
+          "name": "Accepted"
+        },
+        {
+          "name": "Rejected"
+        }
+      ],
+      "default": "Open"
+    }
+  },
+  "properties": {
+    "id": {
+      "description": "Unique identifier that identifies an entity instance.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "type": {
+      "$ref": "#/definitions/suggestionType"
+    },
+    "href": {
+      "description": "Link to the resource corresponding to this entity.",
+      "$ref": "../../type/basic.json#/definitions/href"
+    },
+    "entityLink": {
+      "description": "Data asset about which this thread is created for with format <#E::{entities}::{entityName}::{field}::{fieldValue}.",
+      "$ref": "../../type/basic.json#/definitions/entityLink"
+    },
+    "createdAt": {
+      "description": "Last update time corresponding to the new version of the entity in Unix epoch time milliseconds.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "createdBy": {
+      "description": "User or Bot who made the suggestion.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "updatedAt": {
+      "description": "Last update time corresponding to the update version of the entity in Unix epoch time milliseconds.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "updatedBy": {
+      "description": "User or Bot who updated the suggestion.",
+      "type": "string"
+    },
+    "status": {
+      "$ref": "#/definitions/suggestionStatus"
+    },
+    "description": {
+      "description": "The main message of the thread in Markdown format.",
+      "type": "string"
+    },
+    "tagLabels": {
+      "description": "Tags or Glossary Terms.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      },
+      "default": null
+    }
+  },
+  "oneOf": [{"required": ["id", "entityLink", "description", "suggestionType"]},
+    {"required": ["id", "entityLink", "tagLabels", "suggestionType"]}],
+  "additionalProperties": false
+}

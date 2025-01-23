@@ -1,0 +1,68 @@
+{
+  "$id": "https://open-metadata.org/schema/api/dataInsight/kpi/createKpiRequest.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CreateKpiRequest",
+  "description": "Schema corresponding to a Kpi.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.dataInsight.kpi.CreateKpiRequest",
+  "javaInterfaces": ["org.openmetadata.schema.CreateEntity"],
+  "properties": {
+    "name": {
+      "description": "Name that identifies this Kpi.",
+      "$ref": "../../../type/basic.json#/definitions/entityName"
+    },
+    "displayName": {
+      "description": "Display Name that identifies this Kpi.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of the Kpi.",
+      "$ref": "../../../type/basic.json#/definitions/markdown"
+    },
+    "owners": {
+      "description": "Owner of this Kpi",
+      "$ref": "../../../type/entityReferenceList.json",
+      "default": null
+    },
+    "dataInsightChart": {
+      "description": "Fully qualified name of the Chart this kpi refers to",
+      "type": "string",
+      "javaType": "org.openmetadata.schema.api.dataInsight.kpi.KpiDataInsightChart",
+      "enum": [
+        "percentage_of_data_asset_with_description_kpi",
+        "percentage_of_data_asset_with_owner_kpi",
+        "number_of_data_asset_with_description_kpi",
+        "number_of_data_asset_with_owner_kpi"
+      ]
+    },
+    "startDate": {
+      "description": "Start Date for the KPIs",
+      "$ref": "../../../type/basic.json#/definitions/timestamp"
+    },
+    "endDate": {
+      "description": "End Date for the KPIs",
+      "$ref": "../../../type/basic.json#/definitions/timestamp"
+    },
+    "targetValue": {
+      "description": "Metrics from the chart and the target to achieve the result.",
+      "type": "number"
+    },
+    "metricType": {
+      "$ref": "../../../dataInsight/kpi/basic.json#/definitions/kpiTargetType"
+    },
+    "domain": {
+      "description": "Fully qualified name of the domain the Table belongs to.",
+      "type": "string"
+    }
+  },
+  "required": [
+    "name",
+    "description",
+    "dataInsightChart",
+    "startDate",
+    "endDate",
+    "targetValue",
+    "metricType"
+  ],
+  "additionalProperties": false
+}

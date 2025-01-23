@@ -1,0 +1,39 @@
+{
+  "$id": "https://open-metadata.org/schema/api/feed/threadCount.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Count of threads related to an entity",
+  "description": "This schema defines the type for reporting the count of threads related to an entity.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.feed.ThreadCount",
+  "properties": {
+    "conversationCount": {
+      "description": "Total count of all the threads of type Conversation.",
+      "type": "integer",
+      "minimum": 0
+    },
+    "openTaskCount": {
+      "description": "Total count of all the open tasks.",
+      "type": "integer",
+      "minimum": 0
+    },
+    "closedTaskCount": {
+      "description": "Total count of all the tasks.",
+      "type": "integer",
+      "minimum": 0
+    },
+    "totalTaskCount": {
+      "description": "Total count of all the tasks.",
+      "type": "integer",
+      "minimum": 0
+    },
+    "mentionCount": {
+      "description": "Total count of all the mentions of a user.",
+      "type": "integer",
+      "minimum": 0
+    },
+    "entityLink": {
+      "$ref": "../../type/basic.json#/definitions/entityLink"
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,17 @@
+{
+  "$id": "https://open-metadata.org/schema/security/secrets/securityConfiguration.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ValidateSSLClientConfig",
+  "description": "Security configuration for the OpenMetadata server.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.security.SecurityConfiguration",
+  "properties": {
+    "maskPasswordsAPI": {
+      "title": "Mask Password API",
+      "description": "If enabled, it will mask all the password fields in the responses sent from the API except for the bots",
+      "type": "boolean",
+      "default": "false"
+    }
+  },
+  "additionalProperties": false
+}

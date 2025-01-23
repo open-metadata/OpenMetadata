@@ -1,0 +1,57 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/database/deltaLakeConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DeltaLakeConnection",
+  "description": "DeltaLake Database Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.database.DeltaLakeConnection",
+  "definitions": {
+    "deltaLakeType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": ["DeltaLake"],
+      "default": "DeltaLake"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "$ref": "#/definitions/deltaLakeType",
+      "default": "DeltaLake"
+    },
+    "configSource": {
+      "title": "DeltaLake Configuration Source",
+      "description": "Available sources to fetch the metadata.",
+      "oneOf": [
+        {
+          "$ref": "./deltalake/metastoreConfig.json"
+        },
+        {
+          "$ref": "./deltalake/storageConfig.json"
+        }
+      ]
+    },
+    "databaseName": {
+      "title": "Database Name",
+      "description": "Optional name to give to the database in OpenMetadata. If left blank, we will use default as the database name.",
+      "type": "string"
+    },
+    "connectionArguments": {
+      "title": "Connection Arguments",
+      "description": "If using Metastore, Key-Value pairs that will be used to add configs to the SparkSession.",
+      "$ref": "../connectionBasicType.json#/definitions/connectionArguments"
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    },
+    "supportsDBTExtraction": {
+      "$ref": "../connectionBasicType.json#/definitions/supportsDBTExtraction"
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "configSource"
+  ]
+}

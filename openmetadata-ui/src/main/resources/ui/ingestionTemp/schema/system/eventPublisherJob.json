@@ -1,0 +1,168 @@
+{
+  "$id": "https://open-metadata.org/schema/system/eventPublisherJob.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "EventPublisherResult",
+  "description": "This schema defines Event Publisher Job.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.system.EventPublisherJob",
+  "definitions": {
+    "stepStats": {
+      "description": "Stats for Different Steps Reader, Processor, Writer.",
+      "type": "object",
+      "properties": {
+        "totalRecords": {
+          "description": "Count of Total Failed Records",
+          "type": "integer",
+          "default": 0
+        },
+        "successRecords": {
+          "description": "Count of Total Successfully Records",
+          "type": "integer",
+          "default": 0
+        },
+        "failedRecords": {
+          "description": "Count of Total Failed Records",
+          "type": "integer",
+          "default": 0
+        }
+      }
+    },
+    "stats": {
+      "type": "object",
+      "properties": {
+        "jobStats": {
+          "$ref": "#/definitions/stepStats"
+        },
+        "entityStats": {
+          "$ref": "#/definitions/stepStats"
+        }
+      },
+      "additionalProperties": false
+    },
+    "runMode": {
+      "description": "This schema publisher run modes.",
+      "type": "string",
+      "enum": [
+        "stream",
+        "batch"
+      ]
+    },
+    "publisherType": {
+      "description": "This schema event Publisher Types",
+      "type": "string",
+      "enum": [
+        "elasticSearch",
+        "kafka"
+      ]
+    }
+  },
+  "properties": {
+    "name": {
+      "description": "Name of the result",
+      "type": "string"
+    },
+    "timestamp": {
+      "$ref": "../type/basic.json#/definitions/timestamp"
+    },
+    "status": {
+      "description": "This schema publisher run job status.",
+      "type": "string",
+      "enum": [
+        "started",
+        "running",
+        "completed",
+        "failed",
+        "active",
+        "activeError",
+        "stopped",
+        "success",
+        "stopInProgress"
+      ]
+    },
+    "failure": {
+      "description": "Failure for the job",
+      "$ref": "./indexingError.json"
+    },
+    "stats": {
+      "$ref": "#/definitions/stats"
+    },
+    "entities": {
+      "description": "List of Entities to Reindex",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true
+    },
+    "recreateIndex": {
+      "description": "This schema publisher run modes.",
+      "type": "boolean"
+    },
+    "batchSize": {
+      "description": "Maximum number of events sent in a batch (Default 10).",
+      "type": "integer",
+      "default": 100
+    },
+    "payLoadSize": {
+      "description": "Payload size in bytes depending on config.",
+      "type": "integer",
+      "existingJavaType": "java.lang.Long",
+      "default": 104857600
+    },
+    "producerThreads": {
+      "title": "Number of Producer Threads to use",
+      "description": "Number of producer threads to use for reindexing",
+      "type": "integer",
+      "default": 1
+    },
+    "consumerThreads": {
+      "title": "Number of Consumer Threads to use",
+      "description": "Number of consumer threads to use for reindexing",
+      "type": "integer",
+      "default": 1
+    },
+    "queueSize": {
+      "title": "Queue Size to use.",
+      "description": "Queue Size to use internally for reindexing.",
+      "type": "integer",
+      "default": 100
+    },
+    "maxConcurrentRequests": {
+      "title": "Max Concurrent Requests",
+      "description": "Maximum number of concurrent requests to the search index",
+      "type": "integer",
+      "default": 100
+    },
+    "maxRetries": {
+      "title": "Max Retries",
+      "description": "Maximum number of retries for a failed request",
+      "type": "integer",
+      "default": 5
+    },
+    "initialBackoff": {
+      "title": "Initial Backoff Millis",
+      "description": "Initial backoff time in milliseconds",
+      "type": "integer",
+      "default": 1000
+    },
+    "maxBackoff": {
+      "title": "Max Backoff Millis",
+      "description": "Maximum backoff time in milliseconds",
+      "type": "integer",
+      "default": 10000
+    },
+    "searchIndexMappingLanguage": {
+      "description": "Recreate Indexes with updated Language",
+      "$ref": "../configuration/elasticSearchConfiguration.json#/definitions/searchIndexMappingLanguage"
+    },
+    "afterCursor": {
+      "description": "Provide After in case of failure to start reindexing after the issue is solved",
+      "type": "string"
+    }
+  },
+  "required": [
+    "timestamp",
+    "status"
+  ],
+  "additionalProperties": false
+}

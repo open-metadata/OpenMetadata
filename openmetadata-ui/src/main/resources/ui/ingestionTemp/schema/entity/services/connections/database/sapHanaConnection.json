@@ -1,0 +1,85 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/database/sapHanaConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SapHanaConnection",
+  "description": "Sap Hana Database Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.database.SapHanaConnection",
+  "definitions": {
+    "sapHanaType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": ["SapHana"],
+      "default": "SapHana"
+    },
+    "sapHanaScheme": {
+      "description": "SQLAlchemy driver scheme options.",
+      "type": "string",
+      "enum": ["hana"],
+      "default": "hana"
+    }
+   },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "$ref": "#/definitions/sapHanaType",
+      "default": "SapHana"
+    },
+    "scheme": {
+      "title": "Connection Scheme",
+      "description": "SQLAlchemy driver scheme options.",
+      "$ref": "#/definitions/sapHanaScheme",
+      "default": "hana"
+    },
+    "connection": {
+      "mask": true,
+      "title": "SAP Hana Connection",
+      "description": "Choose between Database connection or HDB User Store connection.",
+      "oneOf": [
+        {
+          "$ref": "sapHana/sapHanaSQLConnection.json"
+        },
+        {
+          "$ref": "sapHana/sapHanaHDBConnection.json"
+        }
+      ]
+    },
+    "connectionOptions": {
+      "title": "Connection Options",
+      "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
+    },
+    "connectionArguments": {
+      "title": "Connection Arguments",
+      "$ref": "../connectionBasicType.json#/definitions/connectionArguments"
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    },
+    "supportsDBTExtraction": {
+      "$ref": "../connectionBasicType.json#/definitions/supportsDBTExtraction"
+    },
+    "supportsProfiler": {
+      "title": "Supports Profiler",
+      "$ref": "../connectionBasicType.json#/definitions/supportsProfiler"
+    },
+    "supportsLineageExtraction": {
+      "$ref": "../connectionBasicType.json#/definitions/supportsLineageExtraction"
+    },
+    "supportsQueryComment": {
+      "title": "Supports Query Comment",
+      "$ref": "../connectionBasicType.json#/definitions/supportsQueryComment"
+    },
+    "sampleDataStorageConfig": {
+      "title": "Storage Config for Sample Data",
+      "$ref": "../connectionBasicType.json#/definitions/sampleDataStorageConfig"
+    },
+    "supportsDataDiff": {
+        "title": "Supports Data Diff Extraction.",
+        "$ref": "../connectionBasicType.json#/definitions/supportsDataDiff"
+    }
+  },
+  "additionalProperties": false,
+  "required": ["connection"]
+}

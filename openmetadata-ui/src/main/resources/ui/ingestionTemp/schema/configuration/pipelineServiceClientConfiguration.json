@@ -1,0 +1,75 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/configuration/pipelineServiceClientConfiguration.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PipelineServiceClientConfiguration",
+  "description": "This schema defines the Pipeline Service Client Configuration",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration",
+  "properties": {
+    "enabled": {
+      "description": "Flags if the ingestion from the OpenMetadata UI is enabled. If ingesting externally, we can set this value to false to not check the Pipeline Service Client component health.",
+      "type": "boolean",
+      "default": true
+    },
+    "className": {
+      "description": "Class Name for the Pipeline Service Client.",
+      "type": "string"
+    },
+    "apiEndpoint": {
+      "description": "External API root to interact with the Pipeline Service Client",
+      "type": "string"
+    },
+    "hostIp": {
+      "description": "Pipeline Service Client host IP that will be used to connect to the sources.",
+      "type": "string"
+    },
+    "healthCheckInterval": {
+      "description": "Interval in seconds that the server will use to check the /status of the pipelineServiceClient and flag any errors in a Prometheus metric `pipelineServiceClientStatus.counter`.",
+      "type": "integer",
+      "default": 300
+    },
+    "ingestionIpInfoEnabled": {
+      "description": "Enable or disable the API that fetches the public IP running the ingestion process.",
+      "type": "boolean",
+      "default": false
+    },
+    "metadataApiEndpoint": {
+      "description": "Metadata api endpoint, e.g., `http://localhost:8585/api`",
+      "type": "string"
+    },
+    "verifySSL": {
+      "description": "Client SSL verification policy when connecting to the OpenMetadata server: no-ssl, ignore, validate.",
+      "$ref": "../security/ssl/verifySSLConfig.json#/definitions/verifySSL"
+    },
+    "sslConfig": {
+      "description": "OpenMetadata Client SSL configuration. This SSL information is about the OpenMetadata server. It will be picked up from the pipelineServiceClient to use/ignore SSL when connecting to the OpenMetadata server.",
+      "$ref": "../security/ssl/verifySSLConfig.json#/definitions/sslConfig"
+    },
+    "secretsManagerLoader": {
+      "$ref": "./../security/secrets/secretsManagerClientLoader.json",
+      "default": "noop"
+    },
+    "authProvider": {
+      "description": "Auth Provider with which OpenMetadata service configured with.",
+      "$ref": "../entity/services/connections/metadata/openMetadataConnection.json#/definitions/authProvider"
+    },
+    "authConfig": {
+      "description": "Auth Provider Configuration.",
+      "$ref": "authConfig.json"
+    },
+    "parameters": {
+      "javaType": "org.openmetadata.schema.api.configuration.pipelineServiceClient.Parameters",
+      "description": "Additional parameters to initialize the PipelineServiceClient.",
+      "type": "object",
+      "additionalProperties": {
+        ".{1,}": { "type": "string" }
+      }
+    }
+  },
+  "required": [
+    "className",
+    "apiEndpoint",
+    "metadataApiEndpoint"
+  ],
+  "additionalProperties": false
+}

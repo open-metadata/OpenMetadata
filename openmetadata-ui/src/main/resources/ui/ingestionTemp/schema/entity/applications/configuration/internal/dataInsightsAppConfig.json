@@ -1,0 +1,61 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/applications/configuration/dataInsightsApp.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DataInsightsAppConfig",
+  "description": "No configuration needed to instantiate the Data Insights Pipeline. The logic is handled in the backend.",
+  "type": "object",
+  "definitions": {
+    "dataInsightsAppType": {
+      "description": "Application Type",
+      "type": "string",
+      "enum": ["DataInsights"],
+      "default": "DataInsights"
+    },
+    "backfillConfiguration": {
+      "description": "Backfill Configuration",
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "title": "Enabled",
+          "description": "Enable Backfill for the configured dates",
+          "type": "boolean"
+        },
+        "startDate": {
+          "title": "Start Date",
+          "description": "Date from which to start the backfill",
+          "type": "string",
+          "format": "date"
+        },
+        "endDate": {
+          "title": "End Date",
+          "description": "Date for which the backfill will end",
+          "type": "string",
+          "format": "date"
+        }
+      }
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Application Type",
+      "description": "Application Type",
+      "$ref": "#/definitions/dataInsightsAppType",
+      "default": "DataInsights"
+    },
+    "batchSize": {
+      "description": "Maximum number of events processed at a time (Default 100).",
+      "type": "integer",
+      "default": 100
+    },
+    "recreateDataAssetsIndex": {
+      "title": "Recreate DataInsights DataAssets Index",
+      "description": "Recreates the DataAssets index on DataInsights. Useful if you changed a Custom Property Type and are facing errors. Bear in mind that recreating the index will delete your DataAssets and a backfill will be needed.",
+      "type": "boolean",
+      "default": false
+    },
+    "backfillConfiguration": {
+      "$ref": "#/definitions/backfillConfiguration"
+    }
+  },
+  "additionalProperties": false
+}

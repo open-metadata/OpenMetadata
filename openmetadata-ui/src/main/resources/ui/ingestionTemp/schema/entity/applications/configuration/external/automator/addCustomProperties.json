@@ -1,0 +1,36 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/applications/configuration/external/automator/addCustomPropertiesAction.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AddCustomPropertiesAction",
+  "description": "Add a Custom Property to the selected assets.",
+  "type": "object",
+  "definitions": {
+    "AddCustomPropertiesActionType": {
+      "description": "Add Custom Properties Action Type.",
+      "type": "string",
+      "enum": ["AddCustomPropertiesAction"],
+      "default": "AddCustomPropertiesAction"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Application Type",
+      "description": "Application Type",
+      "$ref": "#/definitions/AddCustomPropertiesActionType",
+      "default": "AddCustomPropertiesAction"
+    },
+    "customProperties": {
+      "description": "Owners to apply",
+      "$ref": "../../../../../type/basic.json#/definitions/entityExtension",
+      "default": null
+    },
+    "overwriteMetadata": {
+      "title": "Overwrite Metadata",
+      "description": "Update the Custom Property even if it is defined in the asset. By default, we will only apply the owners to assets without the given Custom Property informed.",
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": ["type", "customProperties"],
+  "additionalProperties": false
+}

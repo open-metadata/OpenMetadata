@@ -1,0 +1,24 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/configuration/slackAppConfiguration.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SlackAppConfiguration",
+  "description": "This schema defines the Slack App Information",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.service.configuration.slackApp.SlackAppConfiguration",
+  "properties": {
+    "clientId": {
+      "description": "Client Id of the Application",
+      "type": "string"
+    },
+    "clientSecret": {
+      "description": "Client Secret of the Application.",
+      "type": "string"
+    },
+    "signingSecret": {
+      "description": "Signing Secret of the Application. Confirm that each request comes from Slack by verifying its unique signature.",
+      "type": "string"
+    }
+  },
+  "required": ["clientId", "clientSecret","signingSecret"],
+  "additionalProperties": false
+}

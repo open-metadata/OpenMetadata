@@ -1,0 +1,35 @@
+{
+  "$id": "https://open-metadata.org/schema/security/ssl/validateSSLClientConfig.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Validate SSL Client Config",
+  "description": "OpenMetadata Client configured to validate SSL certificates.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.security.ssl.ValidateSSLClientConfig",
+  "additionalProperties": false,
+  "properties": {
+    "caCertificate": {
+      "title": "CA Certificate",
+      "description": "The CA certificate used for SSL validation.",
+      "type": "string",
+      "format": "password",
+      "accept": [".pem", ".crt", ".cer", ".der", ".p12"],
+      "uiFieldType": "file"
+    },
+    "sslCertificate": {
+      "title": "SSL Certificate",
+      "description": "The SSL certificate used for client authentication.",
+      "type": "string",
+      "format": "password",
+      "accept": [".pem", ".crt", ".cer", ".der", ".p12"],
+      "uiFieldType": "file"
+    },
+    "sslKey": {
+      "title": "SSL Key",
+      "description": "The private key associated with the SSL certificate.",
+      "type": "string",
+      "format": "password",
+      "accept": [".pem", ".crt", ".cer", ".der", ".p12"],
+      "uiFieldType": "file"
+    }
+  }
+}

@@ -1,0 +1,61 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/search/elasticSearchConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ElasticSearch Connection",
+  "description": "ElasticSearch Connection.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.search.ElasticSearchConnection",
+  "definitions": {
+    "elasticSearchType": {
+      "description": "ElasticSearch service type",
+      "type": "string",
+      "enum": ["ElasticSearch"],
+      "default": "ElasticSearch"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "ElasticSearch Type",
+      "description": "ElasticSearch Type",
+      "$ref": "#/definitions/elasticSearchType",
+      "default": "ElasticSearch"
+    },
+    "hostPort": {
+      "title": "Host and Port",
+      "description": "Host and port of the ElasticSearch service.",
+      "type": "string",
+      "format": "uri"
+    },
+    "authType": {
+      "title": "Auth Configuration Type",
+      "description": "Choose Auth Config Type.",
+      "oneOf": [
+        {
+          "$ref": "./elasticSearch/basicAuth.json"
+        },
+        {
+          "$ref": "./elasticSearch/apiAuth.json"
+        }
+      ]
+    },
+    "sslConfig": {
+      "title": "SSL Config",
+      "$ref": "../common/sslConfig.json"
+    },
+    "connectionTimeoutSecs": {
+      "title": "Connection Timeout in Seconds",
+      "description": "Connection Timeout in Seconds",
+      "type": "integer",
+      "default": 30
+    },
+    "connectionArguments": {
+      "title": "Connection Arguments",
+      "$ref": "../connectionBasicType.json#/definitions/connectionArguments"
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    }
+  },
+  "additionalProperties": false
+}

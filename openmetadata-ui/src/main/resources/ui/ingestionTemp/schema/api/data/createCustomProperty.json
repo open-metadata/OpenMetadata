@@ -1,0 +1,27 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/createCustomProperty.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CreateCustomPropertyRequest",
+  "description": "Create Custom Property Model entity request",
+  "type": "object",
+  "properties": {
+    "name": {
+      "description": "Name that identifies this Custom Property model.",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "description": {
+      "description": "Description of the Container instance.",
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "propertyType": {
+      "description": "Property Type.",
+      "$ref": "../../type/customProperty.json#/definitions/propertyType"
+    },
+    "customPropertyConfig": {
+      "description": "Config to define constraints around CustomProperty.",
+      "$ref": "../../type/customProperty.json#/definitions/customPropertyConfig"
+    }
+  },
+  "required": ["name", "propertyType"],
+  "additionalProperties": false
+}

@@ -1,0 +1,40 @@
+{
+  "$id": "https://open-metadata.org/schema/metadataIngestion/mlmodelServiceMetadataPipeline.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "MlModelServiceMetadataPipeline",
+  "description": "MlModelService Metadata Pipeline Configuration.",
+  "type": "object",
+  "definitions": {
+    "mlModelMetadataConfigType": {
+      "description": "MlModel Source Config Metadata Pipeline type",
+      "type": "string",
+      "enum": ["MlModelMetadata"],
+      "default": "MlModelMetadata"
+    }
+  },
+  "properties": {
+    "type": {
+      "description": "Pipeline type",
+      "$ref": "#/definitions/mlModelMetadataConfigType",
+      "default": "MlModelMetadata"
+    },
+    "mlModelFilterPattern": {
+      "description": "Regex to only fetch MlModels with names matching the pattern.",
+      "$ref": "../type/filterPattern.json#/definitions/filterPattern",
+      "title": "ML Model Filter Pattern"
+    },
+    "markDeletedMlModels": {
+      "description": "Optional configuration to soft delete MlModels in OpenMetadata if the source MlModels are deleted. Also, if the MlModel is deleted, all the associated entities like lineage, etc., with that MlModels will be deleted",
+      "type": "boolean",
+      "default": true,
+      "title": "Mark Deleted ML Models"
+    },
+    "overrideMetadata":{
+      "title": "Override Metadata",
+      "description": "Set the 'Override Metadata' toggle to control whether to override the existing metadata in the OpenMetadata server with the metadata fetched from the source. If the toggle is set to true, the metadata fetched from the source will override the existing metadata in the OpenMetadata server. If the toggle is set to false, the metadata fetched from the source will not override the existing metadata in the OpenMetadata server. This is applicable for fields like description, tags, owner and displayName",
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "additionalProperties": false
+}

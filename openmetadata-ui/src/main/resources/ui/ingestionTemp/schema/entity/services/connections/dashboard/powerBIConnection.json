@@ -1,0 +1,124 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/dashboard/powerBIConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PowerBIConnection",
+  "description": "PowerBI Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.dashboard.PowerBIConnection",
+  "definitions": {
+    "powerBiType": {
+      "description": "PowerBI service type",
+      "type": "string",
+      "enum": ["PowerBI"],
+      "default": "PowerBI"
+    },
+    "localConfig": {
+      "title": "Local Config",
+      "description": "Local config source where no extra information needs to be sent.",
+      "type": "object",
+      "properties": {
+        "pbitFileConfigType": {
+          "description": "pbit File Configuration type",
+          "type": "string",
+          "enum": ["local"],
+          "default": "local"
+        },
+        "path": {
+          "title": "Path",
+          "description": "Directory path for the pbit files",
+          "type": "string"
+        },
+        "pbitFilesExtractDir": {
+          "title": "pbit Files Extraction Directory",
+          "description": "Path of the folder where the .pbit files will be unzipped and datamodel schema will be extracted",
+          "type": "string",
+          "default": "/tmp/pbitFiles"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "$ref": "#/definitions/powerBiType",
+      "default": "PowerBI"
+    },
+    "clientId": {
+      "title": "Client ID",
+      "description": "client_id for PowerBI.",
+      "type": "string"
+    },
+    "clientSecret": {
+      "title": "Client Secret",
+      "description": "clientSecret for PowerBI.",
+      "type": "string",
+      "format": "password"
+    },
+    "tenantId": {
+      "title": "Tenant ID",
+      "description": "Tenant ID for PowerBI.",
+      "type": "string"
+    },
+    "authorityURI": {
+      "title": "Authority URI",
+      "description": "Authority URI for the PowerBI service.",
+      "type": "string",
+      "default": "https://login.microsoftonline.com/"
+    },
+    "hostPort": {
+      "expose": true,
+      "title": "Host and Port",
+      "description": "Dashboard URL for PowerBI service.",
+      "type": "string",
+      "format": "uri",
+      "default": "https://app.powerbi.com"
+    },
+    "scope": {
+      "title": "Scope",
+      "description": "PowerBI secrets.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": ["https://analysis.windows.net/powerbi/api/.default"]
+    },
+    "pagination_entity_per_page": {
+      "title": "Pagination Entity Per Page",
+      "description": "Entity Limit set here will be used to paginate the PowerBi APIs",
+      "type": "integer",
+      "default": 100
+    },
+    "useAdminApis": {
+      "title": "Use PowerBI Admin APIs",
+      "description": "Fetch the PowerBI metadata using admin APIs",
+      "type": "boolean",
+      "default": true
+    },
+    "pbitFilesSource": {
+      "title": "PowerBI .pbit Files Source",
+      "description": "Source to get the .pbit files to extract lineage information",
+      "oneOf": [
+        {
+          "$ref": "#/definitions/localConfig"
+        },
+        {
+          "$ref": "powerbi/azureConfig.json"
+        },
+        {
+          "$ref": "powerbi/gcsConfig.json"
+        },
+        {
+          "$ref": "powerbi/s3Config.json"
+        }
+      ]
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    }
+  },
+  "additionalProperties": false,
+  "required": ["clientId", "clientSecret", "tenantId"]
+}

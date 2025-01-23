@@ -1,0 +1,23 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/database/iceberg/hiveCatalogConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "HiveCatalogConnection",
+  "description": "Iceberg Hive Catalog configuration.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.database.iceberg.HiveCatalogConnection",
+  "properties": {
+    "uri": {
+      "title": "URI",
+      "description": "Uri to the Hive Metastore. Example: 'thrift://localhost:9083'",
+      "type": "string",
+      "format": "uri"
+    },
+    "fileSystem": {
+      "$ref": "./icebergFileSystem.json"
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "uri"
+  ]
+}

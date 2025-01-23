@@ -1,0 +1,13 @@
+{
+  "$id": "https://open-metadata.org/schema/auth/serviceTokenEnum.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ServiceTokenType",
+  "description": "Different Type of OpenMetadata Service tokens",
+  "type": "string",
+  "javaType": "org.openmetadata.schema.auth.ServiceTokenType",
+  "enum": [
+    "BOT",
+    "OM_USER",
+    "PERSONAL_ACCESS"
+  ]
+}
