@@ -71,6 +71,7 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
       );
       await onSubmit(domains1);
     } else {
+      let retn: EntityReference[] = [];
       if (selectedDomains.length > 0) {
         const initialData = findItemByFqn(
           domains,
@@ -81,11 +82,9 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
           initialData as EntityReference,
           EntityType.DOMAIN
         );
-
-        await onSubmit([domain]);
-      } else {
-        await onSubmit([]);
+        retn = [domain];
       }
+      await onSubmit(retn);
     }
 
     setIsSubmitLoading(false);
@@ -188,8 +187,9 @@ const DomainSelectablTree: FC<DomainSelectableTreeProps> = ({
   }, [visible]);
 
   return (
-    <div className="p-sm">
+    <div className="p-sm" data-testid="domain-selectable-tree">
       <Search
+        data-testid="searchbar"
         placeholder="Search"
         style={{ marginBottom: 8 }}
         onChange={(e) => onSearch(e.target.value)}
