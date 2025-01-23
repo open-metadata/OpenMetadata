@@ -17,9 +17,12 @@ import { t } from 'i18next';
 import { isEmpty, isUndefined } from 'lodash';
 import React, { Fragment, ReactNode } from 'react';
 import { Link } from 'react-router-dom';
+import { ReactComponent as DomainIcon } from '../assets/svg/ic-domain.svg';
+import { TreeListItem } from '../components/common/DomainSelectableTree/DomainSelectableTree.interface';
 import { OwnerLabel } from '../components/common/OwnerLabel/OwnerLabel.component';
 import {
   DEFAULT_DOMAIN_VALUE,
+  DE_ACTIVE_COLOR,
   NO_DATA_PLACEHOLDER,
 } from '../constants/constants';
 import { DOMAIN_TYPE_DATA } from '../constants/Domain.constants';
@@ -198,4 +201,48 @@ export const getDomainFieldFromEntityType = (
   } else {
     return 'domain';
   }
+};
+
+export const convertDomainsToTreeOptions = (
+  options: EntityReference[] | Domain[] = [],
+  level = 0,
+  multiple = false
+): TreeListItem[] => {
+  const treeData = options.map((option) => {
+    const hasChildren = 'children' in option && !isEmpty(option?.children);
+
+    return {
+      id: option.id,
+      value: option.fullyQualifiedName,
+      name: option.name,
+      label: option.name,
+      key: option.fullyQualifiedName,
+      title: (
+        <div className="d-flex items-center gap-1">
+          {level === 0 && (
+            <DomainIcon
+              color={DE_ACTIVE_COLOR}
+              height={20}
+              name="folder"
+              width={20}
+            />
+          )}
+
+          <Typography.Text ellipsis>{getEntityName(option)}</Typography.Text>
+        </div>
+      ),
+      'data-testid': `tag-${option.fullyQualifiedName}`,
+      isLeaf: !hasChildren,
+      selectable: !multiple,
+      children: hasChildren
+        ? convertDomainsToTreeOptions(
+            (option as unknown as Domain)?.children as EntityReference[],
+            level + 1,
+            multiple
+          )
+        : undefined,
+    };
+  });
+
+  return treeData;
 };
