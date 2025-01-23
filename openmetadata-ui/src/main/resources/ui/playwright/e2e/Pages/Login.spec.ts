@@ -139,7 +139,7 @@ test.describe('Login flow should work properly', () => {
     await page.locator('[data-testid="go-back-button"]').click();
   });
 
-  test.fixme('Refresh should work', async ({ browser }) => {
+  test('Refresh should work', async ({ browser }) => {
     const browserContext = await browser.newContext();
     const { apiContext, afterAction } = await performAdminLogin(browser);
     const page1 = await browserContext.newPage(),
