@@ -146,11 +146,19 @@ public class DataInsightsApp extends AbstractNativeApplication {
   private void createDataAssetsDataStream() {
     DataInsightsSearchInterface searchInterface = getSearchInterface();
 
+    ElasticSearchConfiguration config = searchRepository.getElasticSearchConfiguration();
+    String language =
+        config != null && config.getSearchIndexMappingLanguage() != null
+            ? config.getSearchIndexMappingLanguage().value()
+            : "en";
+
     try {
       for (String dataAssetType : dataAssetTypes) {
+        IndexMapping dataAssetIndex = searchRepository.getIndexMapping(dataAssetType);
         String dataStreamName = getDataStreamName(dataAssetType);
         if (!searchInterface.dataAssetDataStreamExists(dataStreamName)) {
-          searchInterface.createDataAssetsDataStream(dataStreamName);
+          searchInterface.createDataAssetsDataStream(
+              dataStreamName, dataAssetType, dataAssetIndex, language);
         }
       }
     } catch (IOException ex) {
@@ -312,7 +320,13 @@ public class DataInsightsApp extends AbstractNativeApplication {
   private WorkflowStats processDataAssets() {
     DataAssetsWorkflow workflow =
         new DataAssetsWorkflow(
-            timestamp, batchSize, backfill, dataAssetTypes, collectionDAO, searchRepository);
+            timestamp,
+            batchSize,
+            backfill,
+            dataAssetTypes,
+            collectionDAO,
+            searchRepository,
+            getSearchInterface());
     WorkflowStats workflowStats = workflow.getWorkflowStats();
 
     try {
