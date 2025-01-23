@@ -46,38 +46,30 @@ The connector requires **Exasol version 7.1 or higher** to function correctly. E
 {% stepsContainer %}
 {% extraContent parentTagName="stepsContainer" %}
 
-#### Connection Options
+### Connection Options
 
-### Connection Scheme
-Specifies the SQLAlchemy driver scheme options required to connect to Exasol.
+**Connection Scheme**: Specifies the SQLAlchemy driver scheme options required to connect to Exasol.
 
-### Username
-The username used to connect to the Exasol database. Ensure that this user has sufficient privileges to read all the metadata from Exasol.
+**Username**: The username used to connect to the Exasol database. Ensure that this user has sufficient privileges to read all the metadata from Exasol.
 
-### Password
-The password associated with the user connecting to Exasol.
+**Password**: The password associated with the user connecting to Exasol.
 
-### Host and Port
-Defines the host and port of the Exasol instance. Provide this as a string in the format `hostname:port`. For example:
-- `localhost:8563`
+**Host and Port**: Defines the host and port of the Exasol instance. Provide this as a string in the format `hostname:port`. For example: `localhost:8563`
 - If running the OpenMetadata ingestion in a Docker container and your services are hosted on `localhost`, use `host.docker.internal:8563`.
 
-### SSL/TLS Settings
-Specifies the mode or settings for SSL/TLS validation during the connection. Available options:
+**SSL/TLS Settings**: Specifies the mode or settings for SSL/TLS validation during the connection. Available options:
 
-#### validate-certificate (Default)
-- Enables Transport Layer Security (TLS).
-- Validates the server certificate using system certificate stores.
+**validate-certificate (Default)**: Enables Transport Layer Security (TLS) and validates the server certificate using system certificate stores.
 
-#### ignore-certificate
-- Enables Transport Layer Security (TLS).
-- Disables validation of the server certificate. 
-- **Note**: This mode should not be used in production. It is useful for testing with self-signed certificates.
+**ignore-certificate**: Enables Transport Layer Security (TLS) but disables validation of the server certificate. 
 
-#### disable-tls
-- Disables Transport Layer Security (TLS).
-- Data is sent in plain text (no encryption).
-- **Warning**: This mode is not recommended for production and should only be used in debugging scenarios.
+{% note %}
+This mode should not be used in production. It is useful for testing with self-signed certificates.
+{% /note %}
+
+**disable-tls**: Disables Transport Layer Security (TLS). Data is sent in plain text (no encryption).
+[!WARNING]
+This mode is not recommended for production and should only be used in debugging scenarios.
 
 {% note %}
 Ensure that the appropriate TLS setting is chosen based on your security and deployment requirements.
