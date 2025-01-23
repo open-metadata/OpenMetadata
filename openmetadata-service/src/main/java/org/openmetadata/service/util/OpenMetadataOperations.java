@@ -4,6 +4,7 @@ import static org.flywaydb.core.internal.info.MigrationInfoDumper.dumpToAsciiTab
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
+import static org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils.timestampToString;
 import static org.openmetadata.service.formatter.decorators.MessageDecorator.getDateStringEpochMilli;
 import static org.openmetadata.service.jdbi3.UserRepository.AUTH_MECHANISM_FIELD;
 import static org.openmetadata.service.util.AsciiTable.printOpenMetadataText;
@@ -30,6 +31,7 @@ import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Scanner;
 import java.util.Set;
 import java.util.concurrent.Callable;
@@ -51,6 +53,8 @@ import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.app.AppSchedule;
 import org.openmetadata.schema.entity.app.CreateApp;
 import org.openmetadata.schema.entity.app.ScheduleTimeline;
+import org.openmetadata.schema.entity.applications.configuration.internal.BackfillConfiguration;
+import org.openmetadata.schema.entity.applications.configuration.internal.DataInsightsAppConfig;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
@@ -635,6 +639,104 @@ public class OpenMetadataOperations implements Callable<Integer> {
     // Re-patch with original configuration
     JsonPatch repatch = JsonUtils.getJsonPatch(updatedSearchIndexApp, originalSearchIndexApp);
     appRepository.patch(null, originalSearchIndexApp.getId(), "admin", repatch);
+
+    return result;
+  }
+
+  @Command(
+      name = "reindexdi",
+      description = "Re Indexes data insights into search engine from command line.")
+  public Integer reIndexDI(
+      @Option(
+              names = {"-b", "--batch-size"},
+              defaultValue = "100",
+              description = "Number of records to process in each batch.")
+          int batchSize,
+      @Option(
+              names = {"--recreate-indexes"},
+              defaultValue = "true",
+              description = "Flag to determine if indexes should be recreated.")
+          boolean recreateIndexes,
+      @Option(
+              names = {"--start-date"},
+              description = "Start Date to backfill from.")
+          String startDate,
+      @Option(
+              names = {"--end-date"},
+              description = "End Date to backfill to.")
+          String endDate) {
+    try {
+      LOG.info(
+          "Running Reindexing with Batch Size: {}, Recreate-Index: {}, Start Date: {}, End Date: {}.",
+          batchSize,
+          recreateIndexes,
+          startDate,
+          endDate);
+      parseConfig();
+      CollectionRegistry.initialize();
+      ApplicationHandler.initialize(config);
+      CollectionRegistry.getInstance().loadSeedData(jdbi, config, null, null, null, true);
+      ApplicationHandler.initialize(config);
+      AppScheduler.initialize(config, collectionDAO, searchRepository);
+      String appName = "DataInsightsApplication";
+      return executeDataInsightsReindexApp(
+          appName, batchSize, recreateIndexes, getBackfillConfiguration(startDate, endDate));
+    } catch (Exception e) {
+      LOG.error("Failed to reindex due to ", e);
+      return 1;
+    }
+  }
+
+  private BackfillConfiguration getBackfillConfiguration(String startDate, String endDate) {
+    BackfillConfiguration backfillConfiguration = new BackfillConfiguration();
+    backfillConfiguration.withEnabled(false);
+
+    if (startDate != null) {
+      backfillConfiguration.withEnabled(true);
+      backfillConfiguration.withStartDate(startDate);
+      backfillConfiguration.withEndDate(
+          Objects.requireNonNullElseGet(
+              endDate, () -> timestampToString(System.currentTimeMillis(), "yyyy-MM-dd")));
+    }
+    return backfillConfiguration;
+  }
+
+  private int executeDataInsightsReindexApp(
+      String appName,
+      int batchSize,
+      boolean recreateIndexes,
+      BackfillConfiguration backfillConfiguration) {
+    AppRepository appRepository = (AppRepository) Entity.getEntityRepository(Entity.APPLICATION);
+    App originalDataInsightsApp =
+        appRepository.getByName(null, appName, appRepository.getFields("id"));
+
+    DataInsightsAppConfig storedConfig =
+        JsonUtils.convertValue(
+            originalDataInsightsApp.getAppConfiguration(), DataInsightsAppConfig.class);
+
+    DataInsightsAppConfig updatedConfig =
+        JsonUtils.deepCopy(storedConfig, DataInsightsAppConfig.class);
+    updatedConfig
+        .withBatchSize(batchSize)
+        .withRecreateDataAssetsIndex(recreateIndexes)
+        .withBackfillConfiguration(backfillConfiguration);
+
+    // Update the data insights app with the new configurations
+    App updatedDataInsightsApp = JsonUtils.deepCopy(originalDataInsightsApp, App.class);
+    updatedDataInsightsApp.withAppConfiguration(updatedConfig);
+    JsonPatch patch = JsonUtils.getJsonPatch(originalDataInsightsApp, updatedDataInsightsApp);
+
+    appRepository.patch(null, originalDataInsightsApp.getId(), "admin", patch);
+
+    // Trigger Application
+    long currentTime = System.currentTimeMillis();
+    AppScheduler.getInstance().triggerOnDemandApplication(updatedDataInsightsApp);
+
+    int result = waitAndReturnReindexingAppStatus(updatedDataInsightsApp, currentTime);
+
+    // Re-patch with original configuration
+    JsonPatch repatch = JsonUtils.getJsonPatch(updatedDataInsightsApp, originalDataInsightsApp);
+    appRepository.patch(null, originalDataInsightsApp.getId(), "admin", repatch);
 
     return result;
   }
