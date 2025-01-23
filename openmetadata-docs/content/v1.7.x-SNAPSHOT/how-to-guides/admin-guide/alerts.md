@@ -22,6 +22,16 @@ Depending on your use cases, notifications can be sent to owners, admins, teams,
 - [Additional Details for the Configuration of Destinations](#additional-details-for-the-configuration-of-destinations)
 
 ## Create Observability Alerts
+
+{%inlineCalloutContainer%}
+ {%inlineCallout
+    icon="MdGppGood"
+    bold="Required Permissions"
+    href="/how-to-guides/admin-guide/roles-policies"%}
+    Setting up alerts requires create permission on the `Eventsubscription` entity. More info here.
+ {%/inlineCallout%}
+{%/inlineCalloutContainer%}
+
 ### Step 1
 Navigate to Observability > Alerts.
 
