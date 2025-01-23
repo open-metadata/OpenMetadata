@@ -432,7 +432,7 @@ test.describe('Domains', () => {
     }
   });
 
-  test('Should able to edit description of domain', async ({
+  test('Domain owner should able to edit description of domain', async ({
     page,
     userPage,
   }) => {
@@ -447,25 +447,18 @@ test.describe('Domains', () => {
 
       await expect(userPage.getByTestId('editor')).toBeInViewport();
 
-      await userPage
-        .getByTestId('editor')
-        .locator('div')
-        .nth(2)
-        .evaluate((el) => el.setAttribute('contenteditable', 'true'));
+      const descriptionInputBox = '.om-block-editor[contenteditable="true"]';
 
-      await userPage
-        .getByTestId('editor')
-        .locator('div')
-        .nth(2)
-        .evaluate(
-          (el, value) => (el.innerHTML = value),
-          '<p>playwright domain description</p>'
-        );
+      await userPage.fill(descriptionInputBox, 'test description');
 
       await userPage.getByTestId('save').click();
 
-      await expect(userPage.getByTestId('markdown-parser')).toHaveText(
-        'playwright domain description'
+      await userPage.waitForTimeout(3000);
+
+      const descriptionBox = '.om-block-editor[contenteditable="false"]';
+
+      await expect(userPage.locator(descriptionBox)).toHaveText(
+        'test description'
       );
     } finally {
       await domain?.delete(apiContext);
