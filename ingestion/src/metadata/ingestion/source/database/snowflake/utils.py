@@ -83,40 +83,6 @@ VIEW_QUERY_MAPS = {
 }
 
 
-def format_full_schema_name(
-    full_schema_name: str, original_schema: str, current_database: str
-) -> str:
-    """
-    Adds quotes to lowercase database or schema name to remove `not exist or not authorized` error
-    """
-    parts = []
-    current_part = ""
-    in_quotes = False
-
-    for char in full_schema_name:
-        if char == '"':
-            in_quotes = not in_quotes
-            current_part += char
-        elif char == "." and not in_quotes:
-            if current_part:
-                parts.append(current_part)
-                current_part = ""
-        else:
-            current_part += char
-
-    if current_part:
-        parts.append(current_part)
-
-    db_name, schema_name = parts
-    if not db_name.startswith('"') and not db_name.endswith('"'):
-        db_name = f'"{db_name}"'
-
-    if not schema_name.startswith('"') and not schema_name.endswith('"'):
-        schema_name = f'"{schema_name}"'
-
-    return f"{db_name}.{schema_name}"
-
-
 def _quoted_name(entity_name: Optional[str]) -> Optional[str]:
     if entity_name:
         return fqn.quote_name(entity_name)
@@ -293,18 +259,14 @@ def get_schema_columns(self, connection, schema, **kw):
     full_schema_name = self._denormalize_quote_join(
         current_database, fqn.quote_name(schema)
     )
-    full_schema_name = format_full_schema_name(
-        full_schema_name, schema, current_database
-    )
     try:
         schema_primary_keys = self._get_schema_primary_keys(
             connection, full_schema_name, **kw
         )
-        # removing " " from schema name because schema name is in the WHERE clause of a query
-        table_schema = self.denormalize_name(fqn.unquote_name(schema))
-        table_schema = table_schema.lower() if schema.islower() else table_schema
         result = connection.execute(
-            text(SNOWFLAKE_GET_SCHEMA_COLUMNS), {"table_schema": table_schema}
+            text(SNOWFLAKE_GET_SCHEMA_COLUMNS),
+            {"table_schema": self.denormalize_name(fqn.unquote_name(schema))}
+            # removing " " from schema name because schema name is in the WHERE clause of a query
         )
 
     except sa_exc.ProgrammingError as p_err:
@@ -403,10 +365,6 @@ def get_pk_constraint(self, connection, table_name, schema=None, **kw):
     full_schema_name = self._denormalize_quote_join(
         current_database, schema if schema else current_schema
     )
-    full_schema_name = format_full_schema_name(
-        full_schema_name, schema if schema else current_schema, current_database
-    )
-
     return self._get_schema_primary_keys(
         connection, self.denormalize_name(full_schema_name), **kw
     ).get(table_name, {"constrained_columns": [], "name": None})
@@ -423,9 +381,7 @@ def get_foreign_keys(self, connection, table_name, schema=None, **kw):
     full_schema_name = self._denormalize_quote_join(
         current_database, schema if schema else current_schema
     )
-    full_schema_name = format_full_schema_name(
-        full_schema_name, schema if schema else current_schema, current_database
-    )
+
     foreign_key_map = self._get_schema_foreign_keys(
         connection, self.denormalize_name(full_schema_name), **kw
     )
@@ -498,9 +454,6 @@ def get_unique_constraints(self, connection, table_name, schema, **kw):
     current_database, current_schema = self._current_database_schema(connection, **kw)
     full_schema_name = self._denormalize_quote_join(
         current_database, schema if schema else current_schema
-    )
-    full_schema_name = format_full_schema_name(
-        full_schema_name, schema if schema else current_schema, current_database
     )
     return self._get_schema_unique_constraints(
         connection, self.denormalize_name(full_schema_name), **kw
