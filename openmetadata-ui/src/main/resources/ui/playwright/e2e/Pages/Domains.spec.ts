@@ -42,6 +42,8 @@ import { performUserLogin, visitUserProfilePage } from '../../utils/user';
 
 const user = new UserClass();
 
+const domain = new Domain();
+
 const test = base.extend<{
   page: Page;
   userPage: Page;
@@ -65,6 +67,23 @@ test.describe('Domains', () => {
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
     await user.create(apiContext);
+
+    await domain.create(apiContext);
+
+    await domain.patch({
+      apiContext,
+      patchData: [
+        {
+          op: 'add',
+          path: '/owners/0',
+          value: {
+            id: user.responseData.id,
+            type: 'user',
+          },
+        },
+      ],
+    });
+
     await afterAction();
   });
 
@@ -418,25 +437,7 @@ test.describe('Domains', () => {
     userPage,
   }) => {
     const { afterAction, apiContext } = await getApiContext(page);
-    let domain;
     try {
-      domain = new Domain({
-        name: 'PW_Domain_Inherit_Testing',
-        displayName: 'PW_Domain_Inherit_Testing',
-        description: 'playwright domain description',
-        domainType: 'Aggregate',
-        fullyQualifiedName: 'PW_Domain_Inherit_Testing',
-        owners: [
-          {
-            name: user.responseData.name,
-            type: 'user',
-            fullyQualifiedName: user.responseData.fullyQualifiedName ?? '',
-            id: user.responseData.id,
-          },
-        ],
-      });
-      await domain.create(apiContext);
-
       await sidebarClick(userPage, SidebarItem.DOMAIN);
       await selectDomain(userPage, domain.data);
 
