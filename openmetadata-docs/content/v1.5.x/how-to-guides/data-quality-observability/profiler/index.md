@@ -9,7 +9,7 @@ The profiler in OpenMetadata helps to understand the shape of your data and to q
 
 Watch the video to understand OpenMetadata’s native Data Profiler and Data Quality tests.
 
-{%  youtube videoId="gLdTOF81YpI" start="0:00" end="1:08:10" width="560px" height="315px" /%}
+{%  youtube videoId="gLdTOF81YpI" start="0:00" end="1:08:10" width="800px" height="450px" /%}
 
 {%inlineCalloutContainer%}
  {%inlineCallout

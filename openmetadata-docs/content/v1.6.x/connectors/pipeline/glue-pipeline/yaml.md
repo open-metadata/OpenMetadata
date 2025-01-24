@@ -99,6 +99,22 @@ This is a sample config for Glue:
 
 {% /codeInfo %}
 
+{% codeInfo srNumber=6 %}
+**profileName**: The name of a profile to use with the boto session.
+{% /codeInfo %}
+
+{% codeInfo srNumber=7 %}
+**assumeRoleArn**: The Amazon Resource Name (ARN) of the role to assume. Required Field in case of Assume Role.
+{% /codeInfo %}
+
+{% codeInfo srNumber=8 %}
+**assumeRoleSessionName**: An identifier for the assumed role session. Use the role session name to uniquely identify a session when the same role is assumed by different principals or for different reasons. Required Field in case of Assume Role.
+{% /codeInfo %}
+
+{% codeInfo srNumber=9 %}
+**assumeRoleSourceIdentity**:  The Amazon Resource Name (ARN) of the role to assume. Optional Field in case of Assume Role.
+{% /codeInfo %}
+
 
 {% partial file="/v1.6/connectors/yaml/pipeline/source-config-def.md" /%}
 
@@ -134,6 +150,19 @@ source:
 ```yaml {% srNumber=5 %}
         # endPointURL: https://glue.us-east-2.amazonaws.com/
 ```
+```yaml {% srNumber=6 %}
+        # profileName: ""
+```
+```yaml {% srNumber=7 %}
+        # assumeRoleArn: ""
+```
+```yaml {% srNumber=8 %}
+        # assumeRoleSessionName: OpenMetadataSession
+```
+```yaml {% srNumber=9 %}
+        # assumeRoleSourceIdentity : ""
+```
+
 
 {% partial file="/v1.6/connectors/yaml/pipeline/source-config.md" /%}
 

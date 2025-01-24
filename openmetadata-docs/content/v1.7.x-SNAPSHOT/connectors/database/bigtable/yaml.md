@@ -94,6 +94,8 @@ You can checkout [this](https://cloud.google.com/iam/docs/keys-create-delete#iam
 **2.**  Passing a local file path that contains the credentials:
   - **gcpCredentialsPath**
 
+{% /codeInfo %}
+
 #### Advanced Configuration
 
 {% codeInfo srNumber=2 %}

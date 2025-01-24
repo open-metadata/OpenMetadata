@@ -23,14 +23,14 @@ caption="Profiler & Data Quality"
 
 Watch the video to understand OpenMetadata’s native Data Profiler and Data Quality tests.
 
-{%  youtube videoId="gLdTOF81YpI" start="0:00" end="1:08:10" width="560px" height="315px" /%}
+{%  youtube videoId="gLdTOF81YpI" start="0:00" end="1:08:10" width="800px" height="450px" /%}
 
 Watch the video on Data Quality Simplified to effortlessly build, deploy, monitor, and configure alerts using OpenMetadata's no-code platform
 
-{%  youtube videoId="ihwtuNHt1kI" start="0:00" end="29:08" width="560px" height="315px" /%}
+{%  youtube videoId="ihwtuNHt1kI" start="0:00" end="29:08" width="800px" height="450px" /%}
 
 Here's the latest on OpenMetadata's data quality.
-{%  youtube videoId="UbNOje0kf6E" start="0:00" end="54:52" width="560px" height="315px" /%}
+{%  youtube videoId="UbNOje0kf6E" start="0:00" end="54:52" width="800px" height="450px" /%}
 
 {%inlineCalloutContainer%}
  {%inlineCallout
