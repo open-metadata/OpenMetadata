@@ -1,3 +1,3 @@
 UPDATE workflow_definition_entity
-SET json = jsonb - 'type'
+SET json = json - 'type'
 WHERE json->>'type' IS NOT NULL;
