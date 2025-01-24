@@ -99,7 +99,7 @@ class HiveCliTest(CliCommonDB.TestSuite, SQACommonMethods):
     def expected_tables() -> int:
         return 3
 
-    def inserted_rows_count(self) -> int:
+    def expected_sample_size(self) -> int:
         # For the persons table
         return 6
 
