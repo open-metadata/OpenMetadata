@@ -252,10 +252,14 @@ def build_dag_configs(ingestion_pipeline: IngestionPipeline) -> dict:
     schedule_interval = ingestion_pipeline.airflowConfig.scheduleInterval
     now = datetime.now()
 
-    if croniter.is_valid(schedule_interval):
+    if schedule_interval is None:
+        # On-demand DAG, set start_date to now
+        start_date = now
+    elif croniter.is_valid(schedule_interval):
         cron = croniter(schedule_interval, now)
         start_date = cron.get_prev(datetime)
     else:
+        # Handle invalid cron expressions if necessary
         start_date = now
 
     return {
