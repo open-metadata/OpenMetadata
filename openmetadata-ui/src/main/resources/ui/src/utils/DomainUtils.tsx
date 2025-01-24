@@ -18,6 +18,7 @@ import { isEmpty, isUndefined } from 'lodash';
 import React, { Fragment, ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { ReactComponent as DomainIcon } from '../assets/svg/ic-domain.svg';
+import { ReactComponent as SubDomainIcon } from '../assets/svg/ic-subdomain.svg';
 import { TreeListItem } from '../components/common/DomainSelectableTree/DomainSelectableTree.interface';
 import { OwnerLabel } from '../components/common/OwnerLabel/OwnerLabel.component';
 import {
@@ -219,11 +220,18 @@ export const convertDomainsToTreeOptions = (
       key: option.fullyQualifiedName,
       title: (
         <div className="d-flex items-center gap-1">
-          {level === 0 && (
+          {level === 0 ? (
             <DomainIcon
               color={DE_ACTIVE_COLOR}
               height={20}
-              name="folder"
+              name="domain"
+              width={20}
+            />
+          ) : (
+            <SubDomainIcon
+              color={DE_ACTIVE_COLOR}
+              height={20}
+              name="subdomain"
               width={20}
             />
           )}
