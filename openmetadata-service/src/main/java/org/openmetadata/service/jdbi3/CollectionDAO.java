@@ -1838,12 +1838,12 @@ public interface CollectionDAO {
             String fqnPrefixHash,
         @BindConcat(
                 value = "concatToType1",
-                original = "toType",
+                original = "toType1",
                 parts = {":toType1", ".%"})
             String toType1,
         @BindConcat(
                 value = "concatToType2",
-                original = "toType",
+                original = "toType2",
                 parts = {":toType2", ".%"})
             String toType2,
         @Bind("limit") int limit,
