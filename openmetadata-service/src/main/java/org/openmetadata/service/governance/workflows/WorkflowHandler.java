@@ -26,6 +26,7 @@ import org.flowable.engine.runtime.Execution;
 import org.flowable.engine.runtime.ProcessInstance;
 import org.flowable.task.api.Task;
 import org.openmetadata.schema.configuration.WorkflowSettings;
+import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.UnhandledServerException;
@@ -156,12 +157,15 @@ public class WorkflowHandler {
         .deploy();
   }
 
-  public void deleteWorkflowDefinition(String processDefinitionKey) {
+  public boolean isDeployed(WorkflowDefinition wf) {
     List<ProcessDefinition> processDefinitions =
-        repositoryService
-            .createProcessDefinitionQuery()
-            .processDefinitionKey(processDefinitionKey)
-            .list();
+        repositoryService.createProcessDefinitionQuery().processDefinitionKey(wf.getName()).list();
+    return !processDefinitions.isEmpty();
+  }
+
+  public void deleteWorkflowDefinition(WorkflowDefinition wf) {
+    List<ProcessDefinition> processDefinitions =
+        repositoryService.createProcessDefinitionQuery().processDefinitionKey(wf.getName()).list();
 
     for (ProcessDefinition processDefinition : processDefinitions) {
       String deploymentId = processDefinition.getDeploymentId();
@@ -172,7 +176,7 @@ public class WorkflowHandler {
     List<ProcessDefinition> triggerProcessDefinition =
         repositoryService
             .createProcessDefinitionQuery()
-            .processDefinitionKey(getTriggerWorkflowId(processDefinitionKey))
+            .processDefinitionKey(getTriggerWorkflowId(wf.getName()))
             .list();
 
     for (ProcessDefinition processDefinition : triggerProcessDefinition) {
