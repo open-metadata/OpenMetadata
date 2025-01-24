@@ -35,6 +35,7 @@ import {
   Status,
   TermReference,
 } from '../generated/entity/data/glossaryTerm';
+import { calculatePercentageFromValue } from './CommonUtils';
 import { getEntityName } from './EntityUtils';
 import { VersionStatus } from './EntityVersionUtils.interface';
 import Fqn from './Fqn';
@@ -430,3 +431,18 @@ export const findAndUpdateNested = (
     return term;
   });
 };
+
+export const glossaryTermTableColumnsWidth = (
+  tableWidth: number,
+  havingCreatePermission: boolean
+) => ({
+  name: calculatePercentageFromValue(tableWidth, 40),
+  description: calculatePercentageFromValue(
+    tableWidth,
+    havingCreatePermission ? 21 : 33
+  ),
+  reviewers: calculatePercentageFromValue(tableWidth, 33),
+  synonyms: calculatePercentageFromValue(tableWidth, 33),
+  owners: calculatePercentageFromValue(tableWidth, 17),
+  status: calculatePercentageFromValue(tableWidth, 12),
+});
