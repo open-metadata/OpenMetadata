@@ -188,7 +188,7 @@ const TagsV1 = ({
   return (
     <>
       {isEditTags ? (
-        <Typography.Text className="cursor-pointer">{tagChip}</Typography.Text>
+        <div className="cursor-pointer">{tagChip}</div>
       ) : (
         <Tooltip
           className="cursor-pointer"
