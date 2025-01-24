@@ -53,6 +53,12 @@ jest.mock('../../../rest/testAPI', () => {
     updateTestCaseById: jest.fn().mockImplementation(() => Promise.resolve()),
   };
 });
+jest.mock('../../../utils/EntityUtils', () => ({
+  getColumnNameFromEntityLink: jest
+    .fn()
+    .mockReturnValue('getColumnNameFromEntityLink'),
+  getEntityName: jest.fn().mockReturnValue('getEntityName'),
+}));
 
 describe('EditTestCaseModal Component', () => {
   it('component should render', async () => {
