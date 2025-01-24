@@ -550,10 +550,17 @@ public class OpenMetadataOperations implements Callable<Integer> {
               names = {"--retries"},
               defaultValue = "3",
               description = "Maximum number of retries for failed search requests.")
-          int retries) {
+          int retries,
+      @Option(
+              names = {"--entities"},
+              defaultValue = "'all'",
+              description =
+                  "Entities to reindex. Passing --entities='table,dashboard' will reindex table and dashboard entities. Passing nothing will reindex everything.")
+          String entityStr) {
     try {
       LOG.info(
-          "Running Reindexing with Batch Size: {}, Payload Size: {}, Recreate-Index: {}, Producer threads: {}, Consumer threads: {}, Queue Size: {}, Back-off: {}, Max Back-off: {}, Max Requests: {}, Retries: {}",
+          "Running Reindexing with Entities:{} , Batch Size: {}, Payload Size: {}, Recreate-Index: {}, Producer threads: {}, Consumer threads: {}, Queue Size: {}, Back-off: {}, Max Back-off: {}, Max Requests: {}, Retries: {}",
+          entityStr,
           batchSize,
           payloadSize,
           recreateIndexes,
@@ -571,8 +578,11 @@ public class OpenMetadataOperations implements Callable<Integer> {
       ApplicationHandler.initialize(config);
       AppScheduler.initialize(config, collectionDAO, searchRepository);
       String appName = "SearchIndexingApplication";
+      Set<String> entities =
+          new HashSet<>(Arrays.asList(entityStr.substring(1, entityStr.length() - 1).split(",")));
       return executeSearchReindexApp(
           appName,
+          entities,
           batchSize,
           payloadSize,
           recreateIndexes,
@@ -591,6 +601,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
 
   private int executeSearchReindexApp(
       String appName,
+      Set<String> entities,
       int batchSize,
       long payloadSize,
       boolean recreateIndexes,
@@ -611,6 +622,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
 
     EventPublisherJob updatedJob = JsonUtils.deepCopy(storedJob, EventPublisherJob.class);
     updatedJob
+        .withEntities(entities)
         .withBatchSize(batchSize)
         .withPayLoadSize(payloadSize)
         .withRecreateIndex(recreateIndexes)
@@ -620,8 +632,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
         .withInitialBackoff(backOff)
         .withMaxBackoff(maxBackOff)
         .withMaxConcurrentRequests(maxRequests)
-        .withMaxRetries(retries)
-        .withEntities(Set.of("all"));
+        .withMaxRetries(retries);
 
     // Update the search index app with the new configurations
     App updatedSearchIndexApp = JsonUtils.deepCopy(originalSearchIndexApp, App.class);

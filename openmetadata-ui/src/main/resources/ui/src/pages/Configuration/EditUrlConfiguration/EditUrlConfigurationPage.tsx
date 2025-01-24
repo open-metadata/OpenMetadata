@@ -31,7 +31,6 @@ import {
 import { ServiceCategory } from '../../../enums/service.enum';
 import { OpenMetadataBaseURLConfiguration } from '../../../generated/configuration/openMetadataBaseUrlConfiguration';
 import { Settings, SettingType } from '../../../generated/settings/settings';
-import { FieldProp, FieldTypes } from '../../../interface/FormUtils.interface';
 import {
   getSettingsConfigFromConfigType,
   updateSettingsConfig,
@@ -90,22 +89,6 @@ const EditUrlConfigurationPage = () => {
     ],
     []
   );
-
-  const formFields: FieldProp[] = [
-    {
-      name: 'openMetadataUrl',
-      label: t('label.open-metadata-url'),
-      type: FieldTypes.TEXT,
-      required: false,
-      id: 'root/openMetadataUrl',
-      props: {
-        'data-testid': 'openMetadataUrl',
-        size: 'default',
-        style: { width: '100%' },
-        autoFocus: true,
-      },
-    },
-  ];
 
   const handleGoBack = () => history.goBack();
 
