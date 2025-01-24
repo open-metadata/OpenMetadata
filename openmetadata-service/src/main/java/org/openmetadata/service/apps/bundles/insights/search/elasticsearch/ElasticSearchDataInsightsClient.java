@@ -5,6 +5,7 @@ import es.org.elasticsearch.client.Response;
 import es.org.elasticsearch.client.RestClient;
 import java.io.IOException;
 import org.openmetadata.service.apps.bundles.insights.search.DataInsightsSearchInterface;
+import org.openmetadata.service.search.models.IndexMapping;
 
 public class ElasticSearchDataInsightsClient implements DataInsightsSearchInterface {
   private final RestClient client;
@@ -52,7 +53,9 @@ public class ElasticSearchDataInsightsClient implements DataInsightsSearchInterf
   }
 
   @Override
-  public void createDataAssetsDataStream(String name) throws IOException {
+  public void createDataAssetsDataStream(
+      String name, String entityType, IndexMapping entityIndexMapping, String language)
+      throws IOException {
     String resourcePath = "/dataInsights/elasticsearch";
     createLifecyclePolicy(
         "di-data-assets-lifecycle",
@@ -62,7 +65,11 @@ public class ElasticSearchDataInsightsClient implements DataInsightsSearchInterf
         readResource(String.format("%s/indexSettingsTemplate.json", resourcePath)));
     createComponentTemplate(
         "di-data-assets-mapping",
-        readResource(String.format("%s/indexMappingsTemplate.json", resourcePath)));
+        buildMapping(
+            entityType,
+            entityIndexMapping,
+            language,
+            readResource(String.format("%s/indexMappingsTemplate.json", resourcePath))));
     createIndexTemplate(
         "di-data-assets", readResource(String.format("%s/indexTemplate.json", resourcePath)));
     createDataStream(name);
