@@ -54,38 +54,6 @@ jest.mock('../../../rest/testAPI', () => {
   };
 });
 
-jest.mock('../../../utils/EntityUtils', () => ({
-  getColumnNameFromEntityLink: jest.fn().mockReturnValue('last_name'),
-  getEntityName: jest
-    .fn()
-    .mockReturnValue('Column Values To Match Regex Pattern'),
-}));
-
-jest.mock('../../../utils/CommonUtils', () => ({
-  getNameFromFQN: jest.fn().mockReturnValue('dim_address'),
-}));
-
-jest.mock('../../../utils/FeedUtils', () => ({
-  getEntityFQN: jest.fn(),
-}));
-
-jest.mock('../../../utils/ToastUtils', () => ({
-  showErrorToast: jest.fn(),
-  showSuccessToast: jest.fn(),
-}));
-
-jest.mock('../../../utils/StringsUtils', () => ({
-  isValidJSONString: jest.fn(),
-}));
-
-jest.mock('../../../utils/formUtils', () => ({
-  generateFormFields: jest.fn(),
-}));
-
-jest.mock('../../common/Loader/Loader', () =>
-  jest.fn().mockImplementation(() => <div>Loader</div>)
-);
-
 describe('EditTestCaseModal Component', () => {
   it('component should render', async () => {
     render(<EditTestCaseModal {...mockProps} />);
