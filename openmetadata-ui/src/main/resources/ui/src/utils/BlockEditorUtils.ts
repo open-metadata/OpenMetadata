@@ -137,6 +137,18 @@ const _convertMarkdownStringToHtmlString = new Showdown.Converter({
   ghCodeBlocks: false,
   encodeEmails: false,
   ellipsis: false,
+  extensions: [
+    {
+      type: 'output',
+      filter: function (text) {
+        // Remove <p> tags surrounding <ol> or <ul> tags
+        text = text.replace(/<p>\s*(<ol[^>]*>.*?<\/ol>)\s*<\/p>/g, '$1');
+        text = text.replace(/<p>\s*(<ul[^>]*>.*?<\/ul>)\s*<\/p>/g, '$1');
+
+        return text;
+      },
+    },
+  ],
 });
 
 /**
