@@ -86,7 +86,10 @@ export const usePaging = (
       // Update location state to persist pageSize for navigation
       history.replace({
         state: {
+          ...((location.state as any) ?? {}),
           pageSize: page,
+          cursorData: null,
+          currentPage: INITIAL_PAGING_VALUE,
         },
         search: searchParams,
       });
@@ -111,6 +114,7 @@ export const usePaging = (
       if (cursorData) {
         history.replace({
           state: {
+            ...((location.state as any) ?? {}),
             cursorData,
             currentPage: page,
             pageSize,

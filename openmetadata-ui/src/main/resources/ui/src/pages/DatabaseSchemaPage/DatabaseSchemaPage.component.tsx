@@ -65,6 +65,7 @@ import { ThreadType } from '../../generated/entity/feed/thread';
 import { Include } from '../../generated/type/include';
 import { TagLabel } from '../../generated/type/tagLabel';
 import { usePaging } from '../../hooks/paging/usePaging';
+import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../hooks/useFqn';
 import { useTableFilters } from '../../hooks/useTableFilters';
 import { FeedCounts } from '../../interface/feed.interface';
@@ -112,7 +113,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     useParams<{ tab: EntityTabs }>();
   const { fqn: decodedDatabaseSchemaFQN } = useFqn();
   const history = useHistory();
-
+  const location = useCustomLocation();
   const [threadType, setThreadType] = useState<ThreadType>(
     ThreadType.Conversation
   );
@@ -231,10 +232,9 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       const { description: schemaDescription = '' } = response;
       setDatabaseSchema(response);
       setDescription(schemaDescription);
-      if (tableFilters.showDeletedTables === undefined) {
+      if (response.deleted) {
         setFilters({
-          showDeletedTables:
-            response.deleted ?? INITIAL_TABLE_FILTERS.showDeletedTables,
+          showDeletedTables: response.deleted,
         });
       }
     } catch (err) {
@@ -434,6 +434,14 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   );
 
   const handleToggleDelete = (version?: number) => {
+    history.replace({
+      state: {
+        ...((location.state as any) ?? {}),
+        cursorData: null,
+        pageSize: null,
+        currentPage: INITIAL_PAGING_VALUE,
+      },
+    });
     setDatabaseSchema((prev) => {
       if (!prev) {
         return prev;
