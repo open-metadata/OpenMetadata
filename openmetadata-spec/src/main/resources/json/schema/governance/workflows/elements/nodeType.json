@@ -9,6 +9,7 @@
     "automatedTask",
     "userTask",
     "endEvent",
-    "startEvent"
+    "startEvent",
+    "gateway"
   ]
 }

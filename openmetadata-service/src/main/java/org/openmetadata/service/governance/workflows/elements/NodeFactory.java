@@ -3,17 +3,21 @@ package org.openmetadata.service.governance.workflows.elements;
 import java.util.Map;
 import org.openmetadata.schema.governance.workflows.elements.NodeSubType;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.CheckEntityAttributesTaskDefinition;
+import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.CheckIngestionPipelineSucceededTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.SetEntityCertificationTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.SetGlossaryTermStatusTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.TriggerIngestionPipelineTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.endEvent.EndEventDefinition;
+import org.openmetadata.schema.governance.workflows.elements.nodes.gateway.ParallelGatewayDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.startEvent.StartEventDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.userTask.UserApprovalTaskDefinition;
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.CheckEntityAttributesTask;
+import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.CheckIngestionPipelineSucceededTask;
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.SetEntityCertificationTask;
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.SetGlossaryTermStatusTask;
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.TriggerIngestionPipelineTask;
 import org.openmetadata.service.governance.workflows.elements.nodes.endEvent.EndEvent;
+import org.openmetadata.service.governance.workflows.elements.nodes.gateway.ParallelGateway;
 import org.openmetadata.service.governance.workflows.elements.nodes.startEvent.StartEvent;
 import org.openmetadata.service.governance.workflows.elements.nodes.userTask.UserApprovalTask;
 import org.openmetadata.service.util.JsonUtils;
@@ -27,6 +31,9 @@ public class NodeFactory {
           JsonUtils.readOrConvertValue(nodeDefinition, EndEventDefinition.class));
       case CHECK_ENTITY_ATTRIBUTES_TASK -> new CheckEntityAttributesTask(
           JsonUtils.readOrConvertValue(nodeDefinition, CheckEntityAttributesTaskDefinition.class));
+      case CHECK_INGESTION_PIPELINE_SUCCEEDED_TASK -> new CheckIngestionPipelineSucceededTask(
+          JsonUtils.readOrConvertValue(
+              nodeDefinition, CheckIngestionPipelineSucceededTaskDefinition.class));
       case SET_ENTITY_CERTIFICATION_TASK -> new SetEntityCertificationTask(
           JsonUtils.readOrConvertValue(nodeDefinition, SetEntityCertificationTaskDefinition.class));
       case SET_GLOSSARY_TERM_STATUS_TASK -> new SetGlossaryTermStatusTask(
@@ -36,6 +43,8 @@ public class NodeFactory {
       case TRIGGER_INGESTION_PIPELINE_TASK -> new TriggerIngestionPipelineTask(
           JsonUtils.readOrConvertValue(
               nodeDefinition, TriggerIngestionPipelineTaskDefinition.class));
+      case PARALLEL_GATEWAY -> new ParallelGateway(
+          JsonUtils.readOrConvertValue(nodeDefinition, ParallelGatewayDefinition.class));
     };
   }
 }

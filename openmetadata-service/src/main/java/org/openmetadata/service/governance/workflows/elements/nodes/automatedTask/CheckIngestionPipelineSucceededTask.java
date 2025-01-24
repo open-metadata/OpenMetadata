@@ -11,20 +11,21 @@ import org.flowable.bpmn.model.SequenceFlow;
 import org.flowable.bpmn.model.ServiceTask;
 import org.flowable.bpmn.model.StartEvent;
 import org.flowable.bpmn.model.SubProcess;
-import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.TriggerIngestionPipelineTaskDefinition;
+import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.CheckIngestionPipelineSucceededTaskDefinition;
 import org.openmetadata.service.governance.workflows.elements.NodeInterface;
-import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.impl.TriggerIngestionPipelineImpl;
+import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.impl.CheckIngestionPipelineSucceededImpl;
 import org.openmetadata.service.governance.workflows.flowable.builders.EndEventBuilder;
 import org.openmetadata.service.governance.workflows.flowable.builders.FieldExtensionBuilder;
 import org.openmetadata.service.governance.workflows.flowable.builders.ServiceTaskBuilder;
 import org.openmetadata.service.governance.workflows.flowable.builders.StartEventBuilder;
 import org.openmetadata.service.governance.workflows.flowable.builders.SubProcessBuilder;
 
-public class TriggerIngestionPipelineTask implements NodeInterface {
+public class CheckIngestionPipelineSucceededTask implements NodeInterface {
   private final SubProcess subProcess;
   private final BoundaryEvent runtimeExceptionBoundaryEvent;
 
-  public TriggerIngestionPipelineTask(TriggerIngestionPipelineTaskDefinition nodeDefinition) {
+  public CheckIngestionPipelineSucceededTask(
+      CheckIngestionPipelineSucceededTaskDefinition nodeDefinition) {
     String subProcessId = nodeDefinition.getName();
 
     SubProcess subProcess = new SubProcessBuilder().id(subProcessId).build();
@@ -32,20 +33,21 @@ public class TriggerIngestionPipelineTask implements NodeInterface {
     StartEvent startEvent =
         new StartEventBuilder().id(getFlowableElementId(subProcessId, "startEvent")).build();
 
-    ServiceTask triggerIngestionWorkflow =
-        getTriggerIngestionWorkflowServiceTask(
+    ServiceTask checkIngestionPipelineSucceeded =
+        getCheckIngestionPipelineSucceededTask(
             subProcessId, nodeDefinition.getConfig().getIngestionPipelineVarName());
 
     EndEvent endEvent =
         new EndEventBuilder().id(getFlowableElementId(subProcessId, "endEvent")).build();
 
     subProcess.addFlowElement(startEvent);
-    subProcess.addFlowElement(triggerIngestionWorkflow);
+    subProcess.addFlowElement(checkIngestionPipelineSucceeded);
     subProcess.addFlowElement(endEvent);
 
     subProcess.addFlowElement(
-        new SequenceFlow(startEvent.getId(), triggerIngestionWorkflow.getId()));
-    subProcess.addFlowElement(new SequenceFlow(triggerIngestionWorkflow.getId(), endEvent.getId()));
+        new SequenceFlow(startEvent.getId(), checkIngestionPipelineSucceeded.getId()));
+    subProcess.addFlowElement(
+        new SequenceFlow(checkIngestionPipelineSucceeded.getId(), endEvent.getId()));
 
     this.runtimeExceptionBoundaryEvent = getRuntimeExceptionBoundaryEvent(subProcess);
     this.subProcess = subProcess;
@@ -56,7 +58,7 @@ public class TriggerIngestionPipelineTask implements NodeInterface {
     return runtimeExceptionBoundaryEvent;
   }
 
-  private ServiceTask getTriggerIngestionWorkflowServiceTask(
+  private ServiceTask getCheckIngestionPipelineSucceededTask(
       String subProcessId, String ingestionPipelineVarName) {
     FieldExtension varNameExpr =
         new FieldExtensionBuilder()
@@ -66,8 +68,8 @@ public class TriggerIngestionPipelineTask implements NodeInterface {
 
     ServiceTask serviceTask =
         new ServiceTaskBuilder()
-            .id(getFlowableElementId(subProcessId, "triggerIngestionWorkflow"))
-            .implementation(TriggerIngestionPipelineImpl.class.getName())
+            .id(getFlowableElementId(subProcessId, "checkIngestionPipelineSucceeded"))
+            .implementation(CheckIngestionPipelineSucceededImpl.class.getName())
             .build();
     serviceTask.getFieldExtensions().add(varNameExpr);
     return serviceTask;

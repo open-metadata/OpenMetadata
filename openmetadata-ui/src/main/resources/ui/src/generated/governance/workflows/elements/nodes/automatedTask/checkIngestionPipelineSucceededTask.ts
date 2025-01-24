@@ -11,12 +11,29 @@
  *  limitations under the License.
  */
 /**
- * Type of the Node.
+ * Checks if an Ingestion Pipeline has succeeded.
  */
-export enum NodeType {
-    AutomatedTask = "automatedTask",
-    EndEvent = "endEvent",
-    Gateway = "gateway",
-    StartEvent = "startEvent",
-    UserTask = "userTask",
+export interface CheckIngestionPipelineSucceededTask {
+    config?: Config;
+    /**
+     * Description of the Node.
+     */
+    description?: string;
+    /**
+     * Display Name that identifies this Node.
+     */
+    displayName?: string;
+    input?:       string[];
+    /**
+     * Name that identifies this Node.
+     */
+    name?:    string;
+    output?:  string[];
+    subType?: string;
+    type?:    string;
+    [property: string]: any;
+}
+
+export interface Config {
+    ingestionPipelineVarName: string;
 }

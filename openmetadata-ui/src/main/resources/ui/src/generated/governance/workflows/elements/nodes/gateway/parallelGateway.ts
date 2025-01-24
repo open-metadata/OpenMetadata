@@ -11,12 +11,22 @@
  *  limitations under the License.
  */
 /**
- * Type of the Node.
+ * Parallel Gateway.
  */
-export enum NodeType {
-    AutomatedTask = "automatedTask",
-    EndEvent = "endEvent",
-    Gateway = "gateway",
-    StartEvent = "startEvent",
-    UserTask = "userTask",
+export interface ParallelGateway {
+    /**
+     * Description of the Node.
+     */
+    description?: string;
+    /**
+     * Display Name that identifies this Node.
+     */
+    displayName?: string;
+    /**
+     * Name that identifies this Node.
+     */
+    name?:    string;
+    subType?: string;
+    type?:    string;
+    [property: string]: any;
 }

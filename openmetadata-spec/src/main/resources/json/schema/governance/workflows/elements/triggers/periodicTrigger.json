@@ -14,11 +14,12 @@
           "$ref": "../../../../entity/applications/app.json#definitions/appSchedule",
           "description": "Defines the schedule of the Periodic Trigger."
         },
-        "ingestionPipelineId": {
-          "type": "string"
+        "variables": {
+          "type": "object",
+          "existingJavaType": "java.util.Map<java.lang.String, java.lang.Object>"
         }
       },
-      "required": ["schedule", "ingestionPipelineId"],
+      "required": ["schedule", "variables"],
       "additionalProperties": false
     }
   },
@@ -35,7 +36,7 @@
       "items": {
         "type": "string"
       },
-      "default": ["ingestionPipelineId"],
+      "default": ["variables"],
       "additionalItems": false,
       "minItems": 1,
       "maxItems": 1,

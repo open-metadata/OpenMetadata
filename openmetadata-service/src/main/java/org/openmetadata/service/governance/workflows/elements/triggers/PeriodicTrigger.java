@@ -4,6 +4,7 @@ import static org.openmetadata.service.governance.workflows.Workflow.EXCEPTION_V
 import static org.openmetadata.service.governance.workflows.Workflow.getFlowableElementId;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import lombok.Getter;
 import org.flowable.bpmn.model.BpmnModel;
@@ -27,6 +28,7 @@ import org.openmetadata.service.governance.workflows.flowable.builders.EndEventB
 import org.openmetadata.service.governance.workflows.flowable.builders.FieldExtensionBuilder;
 import org.openmetadata.service.governance.workflows.flowable.builders.ServiceTaskBuilder;
 import org.openmetadata.service.governance.workflows.flowable.builders.StartEventBuilder;
+import org.openmetadata.service.util.JsonUtils;
 import org.quartz.CronTrigger;
 
 public class PeriodicTrigger implements TriggerInterface {
@@ -52,8 +54,7 @@ public class PeriodicTrigger implements TriggerInterface {
     process.addFlowElement(startEvent);
 
     ServiceTask setVariables =
-        getSetVariablesTask(
-            triggerWorkflowId, triggerDefinition.getConfig().getIngestionPipelineId());
+        getSetVariablesTask(triggerWorkflowId, triggerDefinition.getConfig().getVariables());
     process.addFlowElement(setVariables);
 
     CallActivity workflowTrigger =
@@ -86,17 +87,14 @@ public class PeriodicTrigger implements TriggerInterface {
     return timerDefinition;
   }
 
-  private ServiceTask getSetVariablesTask(String triggerWorkflowId, String ingestionPipelineId) {
+  private ServiceTask getSetVariablesTask(String triggerWorkflowId, Map<String, Object> variables) {
     FieldExtension varNameExpr =
-        new FieldExtensionBuilder()
-            .fieldName("varNameExpr")
-            .fieldValue("ingestionPipelineId")
-            .build();
+        new FieldExtensionBuilder().fieldName("varNameExpr").fieldValue("variables").build();
 
     FieldExtension varValueExpr =
         new FieldExtensionBuilder()
             .fieldName("varValueExpr")
-            .fieldValue(ingestionPipelineId)
+            .fieldValue(JsonUtils.pojoToJson(variables))
             .build();
 
     ServiceTask serviceTask =
@@ -119,8 +117,8 @@ public class PeriodicTrigger implements TriggerInterface {
             .build();
 
     IOParameter inputParameter = new IOParameter();
-    inputParameter.setSource("ingestionPipelineId");
-    inputParameter.setTarget("ingestionPipelineId");
+    inputParameter.setSource("variables");
+    inputParameter.setTarget("variables");
 
     IOParameter outputParameter = new IOParameter();
     outputParameter.setSource(EXCEPTION_VARIABLE);

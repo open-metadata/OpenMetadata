@@ -11,12 +11,29 @@
  *  limitations under the License.
  */
 /**
- * Type of the Node.
+ * Triggers an Ingestion Pipeline based on its ID.
  */
-export enum NodeType {
-    AutomatedTask = "automatedTask",
-    EndEvent = "endEvent",
-    Gateway = "gateway",
-    StartEvent = "startEvent",
-    UserTask = "userTask",
+export interface TriggerIngestionPipelineTask {
+    config?: Config;
+    /**
+     * Description of the Node.
+     */
+    description?: string;
+    /**
+     * Display Name that identifies this Node.
+     */
+    displayName?: string;
+    input?:       string[];
+    /**
+     * Name that identifies this Node.
+     */
+    name?:    string;
+    output?:  any;
+    subType?: string;
+    type?:    string;
+    [property: string]: any;
+}
+
+export interface Config {
+    ingestionPipelineVarName: string;
 }

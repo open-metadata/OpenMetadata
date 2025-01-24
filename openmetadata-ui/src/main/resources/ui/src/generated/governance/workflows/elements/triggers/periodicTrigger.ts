@@ -23,11 +23,11 @@ export interface PeriodicTrigger {
  * Trigger Configuration.
  */
 export interface Config {
-    ingestionPipelineId: string;
     /**
      * Defines the schedule of the Periodic Trigger.
      */
-    schedule: any[] | boolean | AppScheduleClass | number | number | null | string;
+    schedule:  any[] | boolean | AppScheduleClass | number | number | null | string;
+    variables: { [key: string]: any };
 }
 
 export interface AppScheduleClass {
