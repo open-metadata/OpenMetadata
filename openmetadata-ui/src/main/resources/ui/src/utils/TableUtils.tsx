@@ -69,6 +69,7 @@ import { ReactComponent as IconKey } from '../assets/svg/icon-key.svg';
 import { ReactComponent as IconNotNullLineThrough } from '../assets/svg/icon-not-null-line-through.svg';
 import { ReactComponent as IconSortLineThrough } from '../assets/svg/icon-sort-line-through.svg';
 
+import { Page } from '@playwright/test';
 import { ReactComponent as IconNotNull } from '../assets/svg/icon-not-null.svg';
 import { ReactComponent as RoleIcon } from '../assets/svg/icon-role-grey.svg';
 import { ReactComponent as IconSortKey } from '../assets/svg/icon-sort.svg';
@@ -1029,4 +1030,13 @@ export const getColumnOptionsFromTableColumn = (columns: Column[]) => {
   });
 
   return options;
+};
+
+export const getFirstRowColumnLink = (page: Page) => {
+  const table = page.locator('[data-testid="databaseSchema-tables"]');
+  const firstRowFirstColumn = table.locator(
+    'tbody tr:first-child td:first-child'
+  );
+
+  return firstRowFirstColumn.locator('[data-testid="column-name"] a');
 };

@@ -545,13 +545,12 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   }, [viewDatabaseSchemaPermission]);
 
   useEffect(() => {
-    const cursorState = pagingCursor;
     if (viewDatabaseSchemaPermission && decodedDatabaseSchemaFQN) {
-      if (cursorState?.cursorData?.cursorType) {
+      if (pagingCursor?.cursorData?.cursorType) {
         // Fetch data if cursorType is present in state with cursor Value to handle browser back navigation
         getSchemaTables({
-          [cursorState?.cursorData?.cursorType]:
-            cursorState?.cursorData?.cursorValue,
+          [pagingCursor?.cursorData?.cursorType]:
+            pagingCursor?.cursorData?.cursorValue,
         });
       } else {
         // Otherwise, just fetch the data without cursor value
