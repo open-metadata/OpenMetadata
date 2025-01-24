@@ -14,8 +14,7 @@ Query masking utilities
 
 import traceback
 
-import sqlparse
-from sqlfluff.core import Linter
+from collate_sqllineage.runner import SQLPARSE_DIALECT, LineageRunner
 from sqlparse.sql import Comparison
 from sqlparse.tokens import Literal, Number, String
 
@@ -31,18 +30,14 @@ def get_logger():
     return utils_logger()
 
 
-def mask_literals_with_sqlparse(query: str):
+def mask_literals_with_sqlparse(query: str, parser: LineageRunner):
     """
     Mask literals in a query using sqlparse.
     """
     logger = get_logger()
 
     try:
-        parsed = sqlparse.parse(query)  # Parse the query
-
-        if not parsed:
-            return query
-        parsed = parsed[0]
+        parsed = parser._parsed_result
 
         def mask_token(token):
             # Mask all literals: strings, numbers, or other literal values
@@ -79,17 +74,13 @@ def mask_literals_with_sqlparse(query: str):
     return query
 
 
-def mask_literals_with_sqlfluff(query: str, dialect: str = Dialect.ANSI.value) -> str:
+def mask_literals_with_sqlfluff(query: str, parser: LineageRunner) -> str:
     """
     Mask literals in a query using SQLFluff.
     """
     logger = get_logger()
     try:
-        # Initialize SQLFluff linter
-        linter = Linter(dialect=dialect)
-
-        # Parse the query
-        parsed = linter.parse_string(query)
+        parsed = parser._parsed_result
 
         def replace_literals(segment):
             """Recursively replace literals with placeholders."""
@@ -114,17 +105,16 @@ def mask_literals_with_sqlfluff(query: str, dialect: str = Dialect.ANSI.value) -
     return query
 
 
-def mask_query(query: str, dialect: str = Dialect.ANSI.value) -> str:
+def mask_query(
+    query: str, dialect: str = Dialect.ANSI.value, parser: LineageRunner = None
+) -> str:
     logger = get_logger()
     try:
-        sqlfluff_masked_query = mask_literals_with_sqlfluff(query, dialect)
-        sqlparse_masked_query = mask_literals_with_sqlparse(query)
-        # compare both masked queries and return the one with more masked tokens
-        if sqlfluff_masked_query.count(MASK_TOKEN) >= sqlparse_masked_query.count(
-            MASK_TOKEN
-        ):
-            return sqlfluff_masked_query
-        return sqlparse_masked_query
+        if not parser:
+            parser = LineageRunner(query, dialect=dialect)
+        if parser._dialect == SQLPARSE_DIALECT:
+            return mask_literals_with_sqlparse(query, parser)
+        return mask_literals_with_sqlfluff(query, parser)
     except Exception as exc:
         logger.debug(f"Failed to mask query with sqlfluff: {exc}")
         logger.debug(traceback.format_exc())

@@ -71,12 +71,12 @@ class LineageParser:
         self.query_parsing_success = True
         self.query_parsing_failure_reason = None
         self.dialect = dialect
-        self._masked_query = mask_query(self.query, dialect.value)
+        self.masked_query = None
         self._clean_query = self.clean_raw_query(query)
-        self._masked_clean_query = mask_query(self._clean_query, dialect.value)
         self.parser = self._evaluate_best_parser(
             self._clean_query, dialect=dialect, timeout_seconds=timeout_seconds
         )
+        self.masked_query = mask_query(self._clean_query, parser=self.parser)
 
     @cached_property
     def involved_tables(self) -> Optional[List[Table]]:
@@ -334,12 +334,10 @@ class LineageParser:
                 )
 
                 if not table_left or not table_right:
-                    logger.warning(
+                    logger.debug(
                         f"Can't extract table names when parsing JOIN information from {comparison}"
                     )
-                    logger.debug(
-                        f"Query: {mask_query(sql_statement, self.dialect.value)}"
-                    )
+                    logger.debug(f"Query: {self.masked_query}")
                     continue
 
                 left_table_column = TableColumn(table=table_left, column=column_left)
@@ -452,6 +450,9 @@ class LineageParser:
             )
             lr_sqlfluff = None
 
+        if lr_sqlfluff:
+            return lr_sqlfluff
+
         lr_sqlparser = LineageRunner(query)
         try:
             sqlparser_count = len(lr_sqlparser.get_column_lineage()) + len(
@@ -465,19 +466,6 @@ class LineageParser:
             # if both runner have failed we return the usual one
             return lr_sqlfluff if lr_sqlfluff else lr_sqlparser
 
-        if lr_sqlfluff:
-            # if sqlparser retrieve more lineage info that sqlfluff
-            if sqlparser_count > sqlfluff_count:
-                self.query_parsing_success = False
-                self.query_parsing_failure_reason = (
-                    "Lineage computed with SqlFluff did not perform as expected "
-                    f"for the [{dialect.value}]"
-                )
-                logger.debug(
-                    f"{self.query_parsing_failure_reason} query: [{self._masked_clean_query}]"
-                )
-                return lr_sqlparser
-            return lr_sqlfluff
         return lr_sqlparser
 
     @staticmethod
