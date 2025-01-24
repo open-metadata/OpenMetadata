@@ -11,15 +11,27 @@
  *  limitations under the License.
  */
 /**
- * SubType of the Node.
+ * Checks if an Entity attributes fit given rules.
  */
-export enum NodeSubType {
-    CheckEntityAttributesTask = "checkEntityAttributesTask",
-    EndEvent = "endEvent",
-    JSONLogicTask = "jsonLogicTask",
-    PythonWorkflowAutomationTask = "pythonWorkflowAutomationTask",
-    SetEntityCertificationTask = "setEntityCertificationTask",
-    SetGlossaryTermStatusTask = "setGlossaryTermStatusTask",
-    StartEvent = "startEvent",
-    UserApprovalTask = "userApprovalTask",
+export interface JSONLogicTask {
+    config?: Config;
+    /**
+     * Description of the Node.
+     */
+    description?: string;
+    /**
+     * Display Name that identifies this Node.
+     */
+    displayName?: string;
+    /**
+     * Name that identifies this Node.
+     */
+    name?:    string;
+    subType?: string;
+    type?:    string;
+    [property: string]: any;
+}
+
+export interface Config {
+    rules?: string;
 }
