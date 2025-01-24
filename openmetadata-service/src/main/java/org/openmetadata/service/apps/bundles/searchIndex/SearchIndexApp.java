@@ -116,6 +116,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
         jobData.setRecreateIndex(false);
       }
 
+      reCreateIndexes(jobData.getEntities());
       performReindex(jobExecutionContext);
     } catch (InterruptedException ex) {
       Thread.currentThread().interrupt();
@@ -243,7 +244,6 @@ public class SearchIndexApp extends AbstractNativeApplication {
       jobExecutor.submit(
           () -> {
             try {
-              reCreateIndexes(entityType);
               int totalEntityRecords = getTotalEntityRecords(entityType);
               Source<?> source = createSource(entityType);
               int loadPerThread = calculateNumberOfThreads(totalEntityRecords);
@@ -434,20 +434,22 @@ public class SearchIndexApp extends AbstractNativeApplication {
     }
   }
 
-  private void reCreateIndexes(String entityType) throws SearchIndexException {
-    if (Boolean.FALSE.equals(jobData.getRecreateIndex())) {
-      LOG.debug("RecreateIndex is false. Skipping index recreation for '{}'.", entityType);
-      return;
-    }
+  private void reCreateIndexes(Set<String> entities) throws SearchIndexException {
+    for (String entityType : entities) {
+      if (Boolean.FALSE.equals(jobData.getRecreateIndex())) {
+        LOG.debug("RecreateIndex is false. Skipping index recreation for '{}'.", entityType);
+        return;
+      }
 
-    try {
-      IndexMapping indexType = searchRepository.getIndexMapping(entityType);
-      searchRepository.deleteIndex(indexType);
-      searchRepository.createIndex(indexType);
-      LOG.info("Recreated index for entityType '{}'.", entityType);
-    } catch (Exception e) {
-      LOG.error("Failed to recreate index for entityType '{}'.", entityType, e);
-      throw new SearchIndexException(e);
+      try {
+        IndexMapping indexType = searchRepository.getIndexMapping(entityType);
+        searchRepository.deleteIndex(indexType);
+        searchRepository.createIndex(indexType);
+        LOG.info("Recreated index for entityType '{}'.", entityType);
+      } catch (Exception e) {
+        LOG.error("Failed to recreate index for entityType '{}'.", entityType, e);
+        throw new SearchIndexException(e);
+      }
     }
   }
 
