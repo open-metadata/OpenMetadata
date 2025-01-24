@@ -140,14 +140,16 @@ class DataQualityConfigBuilder(BaseBuilder):
     def build(self) -> dict:
         """build profiler config"""
         self.config["source"]["sourceConfig"]["config"] = {
-                "type": TestSuiteConfigType.TestSuite.value,
-                "entityFullyQualifiedName": self.entity_fqn,
+            "type": TestSuiteConfigType.TestSuite.value,
+            "entityFullyQualifiedName": self.entity_fqn,
         }
 
-        self.config["source"]["sourceConfig"]["config"]["serviceConnections"] = [{
-            "serviceName": self.config["source"]["serviceName"],
-            "serviceConnection": self.config["source"]["serviceConnection"]
-        }]
+        self.config["source"]["sourceConfig"]["config"]["serviceConnections"] = [
+            {
+                "serviceName": self.config["source"]["serviceName"],
+                "serviceConnection": self.config["source"]["serviceConnection"],
+            }
+        ]
 
         del self.config["source"]["serviceConnection"]
 
