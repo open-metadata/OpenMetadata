@@ -145,7 +145,8 @@ const TagsV1 = ({
             ),
           },
           'tag-chip tag-chip-content',
-          size
+          size,
+          'cursor-pointer'
         )}
         data-testid="tags"
         style={
@@ -188,10 +189,9 @@ const TagsV1 = ({
   return (
     <>
       {isEditTags ? (
-        <div className="cursor-pointer">{tagChip}</div>
+        tagChip
       ) : (
         <Tooltip
-          className="cursor-pointer"
           mouseEnterDelay={0.5}
           placement="bottomLeft"
           title={tooltipOverride ?? getTagTooltip(tag.tagFQN, tag.description)}
