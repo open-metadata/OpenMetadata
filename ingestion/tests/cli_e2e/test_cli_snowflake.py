@@ -172,7 +172,7 @@ class SnowflakeCliTest(CliCommonDB.TestSuite, SQACommonMethods):
     def expected_tables() -> int:
         return 7
 
-    def inserted_rows_count(self) -> int:
+    def expected_sample_size(self) -> int:
         return len(
             [q for q in self.insert_data_queries if "E2E_DB.e2e_test.persons" in q]
         )

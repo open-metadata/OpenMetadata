@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * Defines a workflow, having all the different pieces and attributes.
  */
 export interface WorkflowDefinition {
@@ -24,6 +22,10 @@ export interface WorkflowDefinition {
      * When `true` indicates the entity has been soft deleted.
      */
     deleted?: boolean;
+    /**
+     * When `true` indicates the workflow is deployed.
+     */
+    deployed?: boolean;
     /**
      * Description of the workflow definition.
      */
@@ -55,7 +57,7 @@ export interface WorkflowDefinition {
     /**
      * List of nodes used on the workflow.
      */
-    nodes?: any;
+    nodes?: { [key: string]: any }[];
     /**
      * Owners of this workflow definition.
      */
@@ -63,8 +65,7 @@ export interface WorkflowDefinition {
     /**
      * Workflow Trigger.
      */
-    trigger?: any;
-    type?:    Type;
+    trigger?: any[] | boolean | number | number | null | TriggerObject | string;
     /**
      * Last update time corresponding to the new version of the entity in Unix epoch time
      * milliseconds.
@@ -195,7 +196,13 @@ export interface EntityReference {
     type: string;
 }
 
+export interface TriggerObject {
+    type?: Type;
+    [property: string]: any;
+}
+
 export enum Type {
-    EventBasedEntityWorkflow = "eventBasedEntityWorkflow",
-    PeriodicBatchEntityWorkflow = "periodicBatchEntityWorkflow",
+    CustomSignal = "customSignal",
+    EventBasedEntity = "eventBasedEntity",
+    PeriodicBatchEntity = "periodicBatchEntity",
 }
