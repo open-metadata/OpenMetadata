@@ -30,6 +30,7 @@ import java.util.concurrent.TimeUnit;
 import javax.annotation.CheckForNull;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
+import okhttp3.HttpUrl;
 import org.openmetadata.api.configuration.LogoConfiguration;
 import org.openmetadata.api.configuration.ThemeConfiguration;
 import org.openmetadata.api.configuration.UiThemePreference;
@@ -97,12 +98,14 @@ public class SettingsCache {
     Settings storedOpenMetadataBaseUrlConfiguration =
         systemRepository.getConfigWithKey(OPEN_METADATA_BASE_URL_CONFIGURATION.toString());
     if (storedOpenMetadataBaseUrlConfiguration == null) {
+      String url =
+          new HttpUrl.Builder().scheme("http").host("localhost").port(8585).build().toString();
+      String baseUrl = url.substring(0, url.length() - 1);
 
       Settings setting =
           new Settings()
               .withConfigType(OPEN_METADATA_BASE_URL_CONFIGURATION)
-              .withConfigValue(
-                  new OpenMetadataBaseUrlConfiguration().withOpenMetadataUrl(StringUtils.EMPTY));
+              .withConfigValue(new OpenMetadataBaseUrlConfiguration().withOpenMetadataUrl(baseUrl));
       systemRepository.createNewSetting(setting);
     }
 
