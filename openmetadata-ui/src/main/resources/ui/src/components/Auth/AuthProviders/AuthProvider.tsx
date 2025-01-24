@@ -541,13 +541,13 @@ export const AuthProvider = ({
                     pendingRequests.forEach(({ resolve, reject, config }) => {
                       axiosClient(config).then(resolve).catch(reject);
                     });
+
+                    // Clear the queue after retrying
+                    pendingRequests = [];
                   } else {
                     resetUserDetails(true);
                   }
                 });
-
-                // Clear the queue after retrying
-                pendingRequests = [];
               });
             } else {
               // If refresh is in progress, queue the request
