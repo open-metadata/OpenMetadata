@@ -71,7 +71,9 @@ logger = utils_logger()
 class SSLManager:
     "SSL Manager to manage SSL certificates for service connections"
 
-    def __init__(self, ca=None, key=None, cert=None, *args, **kwargs):
+    def __init__(
+        self, ca=None, key=None, cert=None, *args, **kwargs
+    ):  # pylint: disable=keyword-arg-before-vararg
         self.temp_files = []
         self.ca_file_path = None
         self.cert_file_path = None
@@ -87,9 +89,9 @@ class SSLManager:
                 if arg:
                     setattr(self, f"{arg}", self.create_temp_file(arg))
         if kwargs:
-            for key, value in kwargs.items():
+            for dict_key, value in kwargs.items():
                 if value:
-                    setattr(self, f"{key}", self.create_temp_file(value))
+                    setattr(self, f"{dict_key}", self.create_temp_file(value))
 
     def create_temp_file(self, content: SecretStr):
         with tempfile.NamedTemporaryFile(delete=False) as temp_file:
@@ -210,14 +212,14 @@ class SSLManager:
         return connection
 
     @setup_ssl.register(KafkaConnection)
-    def _(self, connection):
+    def _(self, connection) -> KafkaConnection:
         connection = cast(KafkaConnection, connection)
         if connection.consumerConfigSSL:
             connection.consumerConfig = {
                 **connection.consumerConfig,
-                "ssl.ca.location": self.ca_consumer_config,
-                "ssl.key.location": self.key_consumer_config,
-                "ssl.certificate.location": self.cert_consumer_config,
+                "ssl.ca.location": getattr(self, "ca_consumer_config", None),
+                "ssl.key.location": getattr(self, "key_consumer_config", None),
+                "ssl.certificate.location": getattr(self, "cert_consumer_config", None),
             }
         connection.schemaRegistryConfig["ssl.ca.location"] = self.ca_file_path
         connection.schemaRegistryConfig["ssl.key.location"] = self.key_file_path
@@ -248,7 +250,7 @@ class SSLManager:
 
 @singledispatch
 def check_ssl_and_init(
-    _, *args, **kwargs
+    _, *args, **kwargs  # pylint: disable=unused-argument
 ) -> Optional[Union[SSLManager, List[SSLManager]]]:
     return None
 
