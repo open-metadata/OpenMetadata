@@ -68,6 +68,7 @@ from metadata.ingestion.api.parser import (
 )
 from metadata.ingestion.ometa.utils import model_str
 from metadata.workflow.metadata import MetadataWorkflow
+from croniter import croniter
 
 logger = workflow_logger()
 
@@ -247,11 +248,15 @@ def build_dag_configs(ingestion_pipeline: IngestionPipeline) -> dict:
     :param ingestion_pipeline: pipeline configs
     :return: dict to use as kwargs
     """
+    # Determine start_date based on schedule_interval using croniter
+    schedule_interval = ingestion_pipeline.airflowConfig.scheduleInterval
+    now = datetime.now()
 
-    if ingestion_pipeline.airflowConfig.startDate:
-        start_date = ingestion_pipeline.airflowConfig.startDate.root
+    if croniter.is_valid(schedule_interval):
+        cron = croniter(schedule_interval, now)
+        start_date = cron.get_prev(datetime)
     else:
-        start_date = datetime.now() - timedelta(days=1)
+        start_date = now
 
     return {
         "dag_id": clean_dag_id(ingestion_pipeline.name.root),
@@ -272,7 +277,7 @@ def build_dag_configs(ingestion_pipeline: IngestionPipeline) -> dict:
         "is_paused_upon_creation": ingestion_pipeline.airflowConfig.pausePipeline
         or False,
         "catchup": ingestion_pipeline.airflowConfig.pipelineCatchup or False,
-        "schedule_interval": ingestion_pipeline.airflowConfig.scheduleInterval,
+        "schedule_interval": schedule_interval,
         "tags": [
             "OpenMetadata",
             clean_name_tag(ingestion_pipeline.displayName)
