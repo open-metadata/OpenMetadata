@@ -227,6 +227,11 @@ class PowerBiApiClient:
                     "$skip": str(index * entities_per_page),
                 }
                 response_data = self.client.get(api_url, data=params_data)
+                if not response_data:
+                    logger.error(
+                        f"Error fetching workspaces between results: {str(entities_per_page)} - {str(index * entities_per_page)}"
+                    )
+                    continue
                 response = GroupsResponse(**response_data)
                 workspaces.extend(response.value)
             return workspaces
@@ -252,11 +257,6 @@ class PowerBiApiClient:
                 "&datasourceDetails=True&getArtifactUsers=True&lineage=True"
             )
             response_data = self.client.post(path=path, data=data)
-            if not response_data:
-                logger.error(
-                    f"initiate workspace scan failed for workspace_ids: {data}"
-                )
-                return None
             return WorkSpaceScanResponse(**response_data)
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
@@ -295,9 +295,6 @@ class PowerBiApiClient:
             response_data = self.client.get(
                 f"/myorg/admin/workspaces/scanResult/{scan_id}"
             )
-            if not response_data:
-                logger.error(f"workspace scan result failed for scan_id: {scan_id}")
-                return None
             return Workspaces(**response_data)
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
