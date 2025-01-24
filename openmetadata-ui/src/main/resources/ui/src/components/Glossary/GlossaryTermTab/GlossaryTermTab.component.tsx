@@ -76,16 +76,14 @@ import {
   GlossaryTermWithChildren,
   patchGlossaryTerm,
 } from '../../../rest/glossaryAPI';
-import {
-  calculatePercentageFromValue,
-  Transi18next,
-} from '../../../utils/CommonUtils';
+import { Transi18next } from '../../../utils/CommonUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import Fqn from '../../../utils/Fqn';
 import {
   buildTree,
   findExpandableKeysForArray,
   findGlossaryTermByFqn,
+  glossaryTermTableColumnsWidth,
   StatusClass,
 } from '../../../utils/GlossaryUtils';
 import { getGlossaryPath } from '../../../utils/RouterUtils';
@@ -158,19 +156,10 @@ const GlossaryTermTab = ({
     return null;
   }, [isGlossary, activeGlossary]);
 
-  const tableColumnsWidth = useMemo(() => {
-    return {
-      name: calculatePercentageFromValue(tableWidth, 40),
-      description: calculatePercentageFromValue(
-        tableWidth,
-        permissions.Create ? 21 : 33
-      ),
-      reviewers: calculatePercentageFromValue(tableWidth, 33),
-      synonyms: calculatePercentageFromValue(tableWidth, 33),
-      owners: calculatePercentageFromValue(tableWidth, 17),
-      status: calculatePercentageFromValue(tableWidth, 12),
-    };
-  }, [permissions.Create, tableWidth]);
+  const tableColumnsWidth = useMemo(
+    () => glossaryTermTableColumnsWidth(tableWidth, permissions.Create),
+    [permissions.Create, tableWidth]
+  );
 
   const columns = useMemo(() => {
     const data: ColumnsType<ModifiedGlossaryTerm> = [
