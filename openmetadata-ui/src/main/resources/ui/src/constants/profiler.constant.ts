@@ -378,7 +378,7 @@ export const TIME_BASED_PARTITION = [
 
 export const TEST_CASE_TYPE_OPTION = [
   ...map(TestCaseType, (value) => ({
-    label: capitalize(value),
+    label: t('label.' + capitalize(value).toLowerCase()),
     value: value,
   })),
 ];
@@ -389,7 +389,7 @@ export const TEST_CASE_STATUS_OPTION = [
     value: '',
   },
   ...values(TestCaseStatus).map((value) => ({
-    label: value,
+    label: t('label.' + value.toLowerCase()),
     value: value,
   })),
 ];
