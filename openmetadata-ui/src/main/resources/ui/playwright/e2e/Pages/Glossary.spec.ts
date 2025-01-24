@@ -43,6 +43,7 @@ import {
   approveTagsTask,
   assignTagToGlossaryTerm,
   changeTermHierarchyFromModal,
+  checkGlossaryTermDetails,
   clickSaveButton,
   confirmationDragAndDropGlossary,
   createDescriptionTaskForGlossary,
@@ -303,7 +304,9 @@ test.describe('Glossary tests', () => {
     }
   });
 
-  test('Add and Update Glossary Term', async ({ browser }) => {
+  test('Add, Update and Verify Data Glossary Term', async ({ browser }) => {
+    test.slow(true);
+
     const { page, afterAction, apiContext } = await performAdminLogin(browser);
     const glossary1 = new Glossary();
     const glossaryTerm1 = new GlossaryTerm(glossary1);
@@ -357,6 +360,13 @@ test.describe('Glossary tests', () => {
       const ownerText = await termRow.locator(ownerSelector).textContent();
 
       expect(ownerText).toBe(`${owner1.data.firstName}${owner1.data.lastName}`);
+
+      await checkGlossaryTermDetails(
+        page,
+        glossaryTerm1.data,
+        owner1,
+        reviewer1
+      );
     } finally {
       await glossaryTerm1.delete(apiContext);
       await glossary1.delete(apiContext);

@@ -19,7 +19,7 @@ Domains in Open Metadata allow you to categorize and manage your data assets, gl
 
 Watch the [Demo on Domain in OpenMetadata](https://www.youtube.com/watch?v=t-9G3vaSdjI)
 
-{% youtube videoId="t-9G3vaSdjI" start="0:00" end="1:21" width="560px" height="315px" /%}
+{% youtube videoId="t-9G3vaSdjI" start="0:00" end="1:21" width="800px" height="450px" /%}
 
 ## Domains
 
@@ -49,7 +49,7 @@ Data Products in Open Metadata allow teams to package and present their data ass
 
 Watch the [Demo on Data Product in OpenMetadata](https://www.youtube.com/watch?v=6NgI_G38D0A)
 
-{% youtube videoId="6NgI_G38D0A" start="0:00" end="0:54" width="560px" height="315px" /%}
+{% youtube videoId="6NgI_G38D0A" start="0:00" end="0:54" width="800px" height="450px" /%}
 
 ## Data Products
 

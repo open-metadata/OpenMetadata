@@ -5,6 +5,15 @@ slug: /how-to-guides/admin-guide/alerts
 
 # Set up Data Observability Alerts and Notifications
 
+{%inlineCalloutContainer%}
+ {%inlineCallout
+    icon="MdGppGood"
+    bold="Required Permissions"
+    href="/how-to-guides/admin-guide/roles-policies"%}
+    Setting up alerts requires create permission on the `Eventsubscription` entity. More info here.
+ {%/inlineCallout%}
+{%/inlineCalloutContainer%}
+
 OpenMetadata has been providing alerts right from the start to notify users of important data lifecycle events: schema modifications, ownership shifts, and tagging updates. Users can define fine-grained alerts and notifications.
 
 Starting from the 1.3 release, Data Observability alerts have been completely revamped, simplifying the process of monitoring data. Users can quickly create alerts for:
@@ -15,7 +24,7 @@ Starting from the 1.3 release, Data Observability alerts have been completely re
 
 Depending on your use cases, notifications can be sent to owners, admins, teams, or users, providing a more personalized and informed experience. Teams can configure their dedicated Slack, MS Teams, or Google Chat channels to receive notifications related to their data assets, streamlining communication and collaboration. With the alerts and notifications in OpenMetadata, users can send Announcements over email, Slack, or Teams. Alerts are sent to a user when they are mentioned in a task or an activity feed.
 
-{% youtube videoId="qc-3sZ_eU5Y" start="0:00" end="2:04" width="560px" height="315px" /%}
+{% youtube videoId="qc-3sZ_eU5Y" start="0:00" end="2:04" width="800px" height="450px" /%}
 
 - [Create Observability Alerts](#create-observability-alerts)
 - [Add Notifications for Change Events](#add-notifications-for-change-events)
