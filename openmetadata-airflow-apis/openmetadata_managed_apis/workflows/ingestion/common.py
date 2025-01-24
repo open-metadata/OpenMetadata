@@ -44,6 +44,7 @@ try:
 except ModuleNotFoundError:
     from airflow.operators.python_operator import PythonOperator
 
+from croniter import croniter
 from openmetadata_managed_apis.utils.logger import set_operator_logger, workflow_logger
 from openmetadata_managed_apis.utils.parser import (
     parse_service_connection,
@@ -68,7 +69,6 @@ from metadata.ingestion.api.parser import (
 )
 from metadata.ingestion.ometa.utils import model_str
 from metadata.workflow.metadata import MetadataWorkflow
-from croniter import croniter
 
 logger = workflow_logger()
 
