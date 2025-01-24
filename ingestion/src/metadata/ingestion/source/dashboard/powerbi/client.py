@@ -253,10 +253,10 @@ class PowerBiApiClient:
             )
             response_data = self.client.post(path=path, data=data)
             if not response_data:
-                logger.debug(
+                logger.error(
                     f"initiate workspace scan failed for workspace_ids: {data}"
                 )
-                pass
+                return None
             return WorkSpaceScanResponse(**response_data)
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
@@ -296,8 +296,8 @@ class PowerBiApiClient:
                 f"/myorg/admin/workspaces/scanResult/{scan_id}"
             )
             if not response_data:
-                logger.debug(f"workspace scan result failed for scan_id: {scan_id}")
-                pass
+                logger.error(f"workspace scan result failed for scan_id: {scan_id}")
+                return None
             return Workspaces(**response_data)
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())

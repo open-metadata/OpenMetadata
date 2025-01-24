@@ -185,6 +185,12 @@ class PowerbiSource(DashboardServiceSource):
                 workspace_scan = self.client.api_client.initiate_workspace_scan(
                     workspace_ids_chunk
                 )
+                if not workspace_scan:
+                    logger.error(
+                        "workspace scan failed for above ids, moving to next set of workspaces"
+                    )
+                    count += 1
+                    continue
 
                 # Keep polling the scan status endpoint to check if scan is succeeded
                 workspace_scan_status = self.client.api_client.wait_for_scan_complete(
@@ -194,13 +200,18 @@ class PowerbiSource(DashboardServiceSource):
                     response = self.client.api_client.fetch_workspace_scan_result(
                         scan_id=workspace_scan.id
                     )
-                    groups.extend(
-                        [
-                            active_workspace
-                            for active_workspace in response.workspaces
-                            if active_workspace.state == "Active"
-                        ]
-                    )
+                    if response:
+                        groups.extend(
+                            [
+                                active_workspace
+                                for active_workspace in response.workspaces
+                                if active_workspace.state == "Active"
+                            ]
+                        )
+                    else:
+                        logger.error(
+                            f"Error getting workspace scan result for scan_id: {workspace_scan.id}"
+                        )
                 else:
                     logger.error("Error in fetching dashboards and charts")
                 count += 1
