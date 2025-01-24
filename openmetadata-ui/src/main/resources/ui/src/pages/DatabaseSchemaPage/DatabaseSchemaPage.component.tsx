@@ -65,7 +65,6 @@ import { ThreadType } from '../../generated/entity/feed/thread';
 import { Include } from '../../generated/type/include';
 import { TagLabel } from '../../generated/type/tagLabel';
 import { usePaging } from '../../hooks/paging/usePaging';
-import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../hooks/useFqn';
 import { useTableFilters } from '../../hooks/useTableFilters';
 import { FeedCounts } from '../../interface/feed.interface';
@@ -113,7 +112,6 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     useParams<{ tab: EntityTabs }>();
   const { fqn: decodedDatabaseSchemaFQN } = useFqn();
   const history = useHistory();
-  const location = useCustomLocation();
   const [threadType, setThreadType] = useState<ThreadType>(
     ThreadType.Conversation
   );
@@ -436,7 +434,6 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   const handleToggleDelete = (version?: number) => {
     history.replace({
       state: {
-        ...((location.state as any) ?? {}),
         cursorData: null,
         pageSize: null,
         currentPage: INITIAL_PAGING_VALUE,
