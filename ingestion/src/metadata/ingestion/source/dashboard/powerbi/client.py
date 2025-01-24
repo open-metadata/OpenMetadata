@@ -229,7 +229,8 @@ class PowerBiApiClient:
                 response_data = self.client.get(api_url, data=params_data)
                 if not response_data:
                     logger.error(
-                        f"Error fetching workspaces between results: {str(entities_per_page)} - {str(index * entities_per_page)}"
+                        "Error fetching workspaces between results: "
+                        f"{str(index * entities_per_page)} - {str(entities_per_page)}"
                     )
                     continue
                 response = GroupsResponse(**response_data)
