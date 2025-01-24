@@ -8,6 +8,7 @@ import org.openmetadata.service.governance.workflows.flowable.TriggerWorkflow;
 @Getter
 public class Workflow {
   public static final String RELATED_ENTITY_VARIABLE = "relatedEntity";
+  public static final String PAYLOAD = "payload";
   public static final String RESULT_VARIABLE = "result";
   public static final String RESOLVED_BY_VARIABLE = "resolvedBy";
   public static final String STAGE_INSTANCE_STATE_ID_VARIABLE = "stageInstanceStateId";

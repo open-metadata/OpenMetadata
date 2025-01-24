@@ -25,9 +25,10 @@
       "default": null
     },
     "type": {
-      "$ref": "../../governance/workflows/workflowDefinition.json#definitions/type"
+      "$ref": "../../governance/workflows/workflowDefinition.json#/definitions/type"
     },
     "trigger": {
+      "existingJavaType": "org.openmetadata.schema.governance.workflows.elements.WorkflowTriggerInterface",
       "oneOf": [
         {
           "$ref": "../../governance/workflows/elements/triggers/eventBasedEntityTrigger.json"
@@ -41,6 +42,7 @@
       "description": "List of processes used on the workflow.",
       "type": "array",
       "items": {
+        "existingJavaType": "org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface",
         "oneOf": [
           {
             "$ref": "../../governance/workflows/elements/nodes/automatedTask/checkEntityAttributesTask.json"

@@ -38,6 +38,7 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.governance.workflows.Workflow;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.WorkflowDefinitionRepository;
@@ -45,6 +46,7 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/governance/workflowDefinitions")
@@ -183,6 +185,39 @@ public class WorkflowDefinitionResource
           @DefaultValue("non-deleted")
           Include include) {
     return getInternal(uriInfo, securityContext, id, fieldsParam, include);
+  }
+
+  @POST
+  @Path("/{id}/redeploy")
+  @Operation(
+      operationId = "getWorkflowDefinitionByID",
+      summary = "Get a Workflow Definition by Id",
+      description = "Get a Workflow Definition by `Id`.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The Workflow Definition",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = WorkflowDefinition.class)))
+      })
+  public Response redeploy(
+      @Context UriInfo uriInfo,
+      @Parameter(description = "Id of the Workflow Definition", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
+      @Context SecurityContext securityContext) {
+    WorkflowDefinition wd =
+        repository.get(
+            uriInfo,
+            id,
+            new EntityUtil.Fields(repository.getAllowedFields()),
+            Include.NON_DELETED,
+            false);
+    WorkflowHandler.getInstance().deleteWorkflowDefinition(wd);
+    WorkflowHandler.getInstance().deploy(new Workflow(wd));
+    return Response.status(Response.Status.OK).entity("Workflow Redeployed").build();
   }
 
   @GET

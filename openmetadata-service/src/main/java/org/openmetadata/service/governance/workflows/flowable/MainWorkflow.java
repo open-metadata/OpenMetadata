@@ -2,7 +2,6 @@ package org.openmetadata.service.governance.workflows.flowable;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import lombok.Getter;
 import org.flowable.bpmn.model.BoundaryEvent;
@@ -16,7 +15,6 @@ import org.openmetadata.service.governance.workflows.elements.Edge;
 import org.openmetadata.service.governance.workflows.elements.NodeFactory;
 import org.openmetadata.service.governance.workflows.elements.NodeInterface;
 import org.openmetadata.service.governance.workflows.elements.nodes.endEvent.EndEvent;
-import org.openmetadata.service.util.JsonUtils;
 
 @Getter
 public class MainWorkflow {
@@ -37,10 +35,8 @@ public class MainWorkflow {
     model.addProcess(process);
 
     // Add Nodes
-    for (Object nodeDefinitionObj :
-        (List<WorkflowNodeDefinitionInterface>) workflowDefinition.getNodes()) {
-      NodeInterface node =
-          NodeFactory.createNode(JsonUtils.readOrConvertValue(nodeDefinitionObj, Map.class));
+    for (WorkflowNodeDefinitionInterface nodeDefinitionObj : workflowDefinition.getNodes()) {
+      NodeInterface node = NodeFactory.createNode(nodeDefinitionObj);
       node.addToWorkflow(model, process);
 
       Optional.ofNullable(node.getRuntimeExceptionBoundaryEvent())

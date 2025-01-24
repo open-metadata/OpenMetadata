@@ -1,10 +1,39 @@
 package org.openmetadata.schema.governance.workflows.elements;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonSubTypes;
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import java.util.List;
 import java.util.Map;
 import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.CheckEntityAttributesTaskDefinition;
+import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.JsonLogicTaskDefinition;
+import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.PythonWorkflowAutomationTaskDefinition;
+import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.SetEntityCertificationTaskDefinition;
+import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.SetGlossaryTermStatusTaskDefinition;
+import org.openmetadata.schema.governance.workflows.elements.nodes.endEvent.EndEventDefinition;
+import org.openmetadata.schema.governance.workflows.elements.nodes.startEvent.StartEventDefinition;
+import org.openmetadata.schema.governance.workflows.elements.nodes.userTask.UserApprovalTaskDefinition;
 
+@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "subType")
+@JsonSubTypes({
+  @JsonSubTypes.Type(
+      value = CheckEntityAttributesTaskDefinition.class,
+      name = "checkEntityAttributesTask"),
+  @JsonSubTypes.Type(
+      value = SetEntityCertificationTaskDefinition.class,
+      name = "setEntityCertificationTask"),
+  @JsonSubTypes.Type(value = StartEventDefinition.class, name = "startEvent"),
+  @JsonSubTypes.Type(value = EndEventDefinition.class, name = "endEvent"),
+  @JsonSubTypes.Type(
+      value = SetGlossaryTermStatusTaskDefinition.class,
+      name = "setGlossaryTermStatusTask"),
+  @JsonSubTypes.Type(value = UserApprovalTaskDefinition.class, name = "userApprovalTask"),
+  @JsonSubTypes.Type(
+      value = PythonWorkflowAutomationTaskDefinition.class,
+      name = "pythonWorkflowAutomationTask"),
+  @JsonSubTypes.Type(value = JsonLogicTaskDefinition.class, name = "jsonLogicTask"),
+})
 public interface WorkflowNodeDefinitionInterface {
   String getType();
 
