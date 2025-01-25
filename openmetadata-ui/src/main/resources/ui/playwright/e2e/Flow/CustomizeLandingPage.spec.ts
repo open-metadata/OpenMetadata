@@ -247,6 +247,9 @@ test.describe('Customize Landing Page Flow', () => {
         // Check if all widgets are present on landing page
         await redirectToHomePage(adminPage);
 
+        // Ensures the page is fully loaded
+        await adminPage.waitForLoadState('networkidle');
+
         await checkAllDefaultWidgets(adminPage);
       }
     );
