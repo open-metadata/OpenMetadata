@@ -163,11 +163,13 @@ export const getEntityLabel = (entity: {
   name?: string;
   fullyQualifiedName?: string;
 }): JSX.Element => (
-  <Space direction="vertical" size={0}>
-    <Typography.Text>{getEntityName(entity)}</Typography.Text>
-    <Typography.Text className="text-gray-400 text-xs break-word">
+  <Space className="w-full whitespace-normal" direction="vertical" size={0}>
+    <Typography.Paragraph className="m-b-0">
+      {getEntityName(entity)}
+    </Typography.Paragraph>
+    <Typography.Paragraph className="text-grey-muted text-xs">
       {entity?.fullyQualifiedName}
-    </Typography.Text>
+    </Typography.Paragraph>
   </Space>
 );
 
@@ -1777,12 +1779,12 @@ export const getBreadcrumbForTestCase = (entity: TestCase): TitleLink[] => [
 ];
 
 export const getBreadcrumbForTestSuite = (entity: TestSuite) => {
-  return entity.executable
+  return entity.basic
     ? [
         {
-          name: getEntityName(entity.executableEntityReference),
+          name: getEntityName(entity.basicEntityReference),
           url: getEntityLinkFromType(
-            entity.executableEntityReference?.fullyQualifiedName ?? '',
+            entity.basicEntityReference?.fullyQualifiedName ?? '',
             EntityType.TABLE
           ),
         },
@@ -2352,6 +2354,9 @@ export const getEntityNameLabel = (entityName?: string) => {
     query: t('label.query'),
     THREAD: t('label.thread'),
     app: t('label.application'),
+    apiCollection: t('label.api-collection'),
+    apiEndpoint: t('label.api-endpoint'),
+    metric: t('label.metric'),
   };
 
   return (
@@ -2404,7 +2409,10 @@ export const highlightSearchText = (
 
   const regex = new RegExp(`(${searchText})`, 'gi');
 
-  return text.replace(regex, `<span class="text-highlighter">$1</span>`);
+  return text.replace(
+    regex,
+    `<span data-highlight="true" class="text-highlighter">$1</span>`
+  );
 };
 
 /**

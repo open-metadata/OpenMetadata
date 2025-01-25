@@ -41,6 +41,7 @@ const TagsV1 = ({
   tooltipOverride,
   tagType,
   size,
+  isEditTags,
 }: TagsV1Props) => {
   const color = useMemo(
     () => (isVersionPage ? undefined : tag.style?.color),
@@ -144,7 +145,8 @@ const TagsV1 = ({
             ),
           },
           'tag-chip tag-chip-content',
-          size
+          size,
+          'cursor-pointer'
         )}
         data-testid="tags"
         style={
@@ -185,14 +187,19 @@ const TagsV1 = ({
   }
 
   return (
-    <Tooltip
-      className="cursor-pointer"
-      mouseEnterDelay={0.5}
-      placement="bottomLeft"
-      title={tooltipOverride ?? getTagTooltip(tag.tagFQN, tag.description)}
-      trigger="hover">
-      {tagChip}
-    </Tooltip>
+    <>
+      {isEditTags ? (
+        tagChip
+      ) : (
+        <Tooltip
+          mouseEnterDelay={0.5}
+          placement="bottomLeft"
+          title={tooltipOverride ?? getTagTooltip(tag.tagFQN, tag.description)}
+          trigger="hover">
+          {tagChip}
+        </Tooltip>
+      )}
+    </>
   );
 };
 

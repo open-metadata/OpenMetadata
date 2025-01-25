@@ -85,6 +85,10 @@ import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.MigrationDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
+import org.openmetadata.service.jobs.EnumCleanupHandler;
+import org.openmetadata.service.jobs.GenericBackgroundWorker;
+import org.openmetadata.service.jobs.JobDAO;
+import org.openmetadata.service.jobs.JobHandlerRegistry;
 import org.openmetadata.service.limits.DefaultLimits;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.migration.Migration;
@@ -163,6 +167,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     jdbi = createAndSetupJDBI(environment, catalogConfig.getDataSourceFactory());
     Entity.setCollectionDAO(getDao(jdbi));
+    Entity.setJobDAO(jdbi.onDemand(JobDAO.class));
     Entity.setJdbi(jdbi);
 
     initializeSearchRepository(catalogConfig.getElasticSearchConfiguration());
@@ -234,6 +239,13 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     // Register Event Handler
     registerEventFilter(catalogConfig, environment);
     environment.lifecycle().manage(new ManagedShutdown());
+
+    JobHandlerRegistry registry = new JobHandlerRegistry();
+    registry.register("EnumCleanupHandler", new EnumCleanupHandler(getDao(jdbi)));
+    environment
+        .lifecycle()
+        .manage(new GenericBackgroundWorker(jdbi.onDemand(JobDAO.class), registry));
+
     // Register Event publishers
     registerEventPublisher(catalogConfig);
 

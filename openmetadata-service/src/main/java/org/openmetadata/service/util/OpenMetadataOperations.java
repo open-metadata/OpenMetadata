@@ -2,9 +2,13 @@ package org.openmetadata.service.util;
 
 import static org.flywaydb.core.internal.info.MigrationInfoDumper.dumpToAsciiTable;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
+import static org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils.timestampToString;
 import static org.openmetadata.service.formatter.decorators.MessageDecorator.getDateStringEpochMilli;
+import static org.openmetadata.service.jdbi3.UserRepository.AUTH_MECHANISM_FIELD;
 import static org.openmetadata.service.util.AsciiTable.printOpenMetadataText;
+import static org.openmetadata.service.util.UserUtil.updateUserWithHashedPwd;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
@@ -23,9 +27,11 @@ import java.io.File;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Scanner;
 import java.util.Set;
 import java.util.concurrent.Callable;
@@ -39,8 +45,17 @@ import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.entity.app.App;
+import org.openmetadata.schema.entity.app.AppConfiguration;
+import org.openmetadata.schema.entity.app.AppMarketPlaceDefinition;
 import org.openmetadata.schema.entity.app.AppRunRecord;
+import org.openmetadata.schema.entity.app.AppSchedule;
+import org.openmetadata.schema.entity.app.CreateApp;
+import org.openmetadata.schema.entity.app.ScheduleTimeline;
+import org.openmetadata.schema.entity.applications.configuration.internal.BackfillConfiguration;
+import org.openmetadata.schema.entity.applications.configuration.internal.DataInsightsAppConfig;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
+import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.system.EventPublisherJob;
@@ -53,6 +68,7 @@ import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.fernet.Fernet;
+import org.openmetadata.service.jdbi3.AppMarketPlaceRepository;
 import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
@@ -60,14 +76,17 @@ import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.MigrationDAO;
 import org.openmetadata.service.jdbi3.SystemRepository;
+import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.api.MigrationWorkflow;
 import org.openmetadata.service.resources.CollectionRegistry;
+import org.openmetadata.service.resources.apps.AppMapper;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.secrets.SecretsManagerUpdateService;
+import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.util.jdbi.DatabaseAuthenticationProviderFactory;
 import org.openmetadata.service.util.jdbi.JdbiUtils;
 import org.slf4j.LoggerFactory;
@@ -166,16 +185,58 @@ public class OpenMetadataOperations implements Callable<Integer> {
   public Integer syncEmailFromEnv() {
     try {
       parseConfig();
-      Entity.setCollectionDAO(jdbi.onDemand(CollectionDAO.class));
-      SystemRepository systemRepository = new SystemRepository();
       Settings updatedSettings =
           new Settings()
               .withConfigType(SettingsType.EMAIL_CONFIGURATION)
               .withConfigValue(config.getSmtpSettings());
-      systemRepository.createOrUpdate(updatedSettings);
+      Entity.getSystemRepository().createOrUpdate(updatedSettings);
+      LOG.info("Synced Email Configuration from Environment.");
       return 0;
     } catch (Exception e) {
       LOG.error("Email Sync failed due to ", e);
+      return 1;
+    }
+  }
+
+  @Command(name = "install-app", description = "Install the application from App MarketPlace.")
+  public Integer installApp(
+      @Option(
+              names = {"-n", "--name"},
+              description = "Number of records to process in each batch.",
+              required = true)
+          String appName) {
+    try {
+      parseConfig();
+      CollectionRegistry.initialize();
+      ApplicationHandler.initialize(config);
+      CollectionRegistry.getInstance().loadSeedData(jdbi, config, null, null, null, true);
+      ApplicationHandler.initialize(config);
+      AppScheduler.initialize(config, collectionDAO, searchRepository);
+      // Instantiate JWT Token Generator
+      JWTTokenGenerator.getInstance()
+          .init(
+              config.getAuthenticationConfiguration().getTokenValidationAlgorithm(),
+              config.getJwtTokenConfiguration());
+      AppMarketPlaceRepository marketPlaceRepository =
+          (AppMarketPlaceRepository) Entity.getEntityRepository(Entity.APP_MARKET_PLACE_DEF);
+      AppMarketPlaceDefinition definition =
+          marketPlaceRepository.getByName(null, appName, marketPlaceRepository.getFields("id"));
+      AppRepository appRepository = (AppRepository) Entity.getEntityRepository(Entity.APPLICATION);
+      CreateApp createApp =
+          new CreateApp()
+              .withName(definition.getName())
+              .withDescription(definition.getDescription())
+              .withDisplayName(definition.getDisplayName())
+              .withAppSchedule(new AppSchedule().withScheduleTimeline(ScheduleTimeline.NONE))
+              .withAppConfiguration(new AppConfiguration());
+      AppMapper appMapper = new AppMapper();
+      App entity = appMapper.createToEntity(createApp, ADMIN_USER_NAME);
+      appRepository.prepareInternal(entity, true);
+      appRepository.createOrUpdate(null, entity);
+      LOG.info("App Installed.");
+      return 0;
+    } catch (Exception e) {
+      LOG.error("Install Application Failed ", e);
       return 1;
     }
   }
@@ -217,6 +278,58 @@ public class OpenMetadataOperations implements Callable<Integer> {
       return 0;
     } catch (Exception e) {
       LOG.error("Failed to drop create due to ", e);
+      return 1;
+    }
+  }
+
+  @Command(name = "reset-password", description = "Reset the password for a user.")
+  public Integer resetUserPassword(
+      @Option(
+              names = {"-e", "--email"},
+              description = "Email for which to reset the password.",
+              required = true)
+          String email,
+      @Option(
+              names = {"-p", "--password"},
+              description = "Enter user password",
+              arity = "0..1",
+              interactive = true,
+              required = true)
+          char[] password) {
+    try {
+      LOG.info("Resetting password for user : {}", email);
+      if (nullOrEmpty(password)) {
+        throw new IllegalArgumentException("Password cannot be empty.");
+      }
+      parseConfig();
+      CollectionRegistry.initialize();
+      AuthProvider authProvider = config.getAuthenticationConfiguration().getProvider();
+
+      // Only Basic Auth provider is supported for password reset
+      if (!authProvider.equals(AuthProvider.BASIC)) {
+        LOG.error("Auth Provider is Not Basic. Cannot apply Password");
+        return 1;
+      }
+
+      UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
+      Set<String> fieldList = new HashSet<>(userRepository.getPatchFields().getFieldList());
+      fieldList.add(AUTH_MECHANISM_FIELD);
+      User originalUser = userRepository.getByEmail(null, email, new EntityUtil.Fields(fieldList));
+
+      // Check if the user is a bot user
+      if (Boolean.TRUE.equals(originalUser.getIsBot())) {
+        LOG.error("Bot user : {} cannot have password.", originalUser.getName());
+        return 1;
+      }
+
+      User updatedUser = JsonUtils.deepCopy(originalUser, User.class);
+      String inputPwd = new String(password);
+      updateUserWithHashedPwd(updatedUser, inputPwd);
+      UserUtil.addOrUpdateUser(updatedUser);
+      LOG.info("Password updated successfully.");
+      return 0;
+    } catch (Exception e) {
+      LOG.error("Failed to reset user password.", e);
       return 1;
     }
   }
@@ -311,10 +424,17 @@ public class OpenMetadataOperations implements Callable<Integer> {
               names = {"--retries"},
               defaultValue = "3",
               description = "Maximum number of retries for failed search requests.")
-          int retries) {
+          int retries,
+      @Option(
+              names = {"--entities"},
+              defaultValue = "'all'",
+              description =
+                  "Entities to reindex. Passing --entities='table,dashboard' will reindex table and dashboard entities. Passing nothing will reindex everything.")
+          String entityStr) {
     try {
       LOG.info(
-          "Running Reindexing with Batch Size: {}, Payload Size: {}, Recreate-Index: {}, Producer threads: {}, Consumer threads: {}, Queue Size: {}, Back-off: {}, Max Back-off: {}, Max Requests: {}, Retries: {}",
+          "Running Reindexing with Entities:{} , Batch Size: {}, Payload Size: {}, Recreate-Index: {}, Producer threads: {}, Consumer threads: {}, Queue Size: {}, Back-off: {}, Max Back-off: {}, Max Requests: {}, Retries: {}",
+          entityStr,
           batchSize,
           payloadSize,
           recreateIndexes,
@@ -332,8 +452,11 @@ public class OpenMetadataOperations implements Callable<Integer> {
       ApplicationHandler.initialize(config);
       AppScheduler.initialize(config, collectionDAO, searchRepository);
       String appName = "SearchIndexingApplication";
+      Set<String> entities =
+          new HashSet<>(Arrays.asList(entityStr.substring(1, entityStr.length() - 1).split(",")));
       return executeSearchReindexApp(
           appName,
+          entities,
           batchSize,
           payloadSize,
           recreateIndexes,
@@ -352,6 +475,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
 
   private int executeSearchReindexApp(
       String appName,
+      Set<String> entities,
       int batchSize,
       long payloadSize,
       boolean recreateIndexes,
@@ -372,6 +496,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
 
     EventPublisherJob updatedJob = JsonUtils.deepCopy(storedJob, EventPublisherJob.class);
     updatedJob
+        .withEntities(entities)
         .withBatchSize(batchSize)
         .withPayLoadSize(payloadSize)
         .withRecreateIndex(recreateIndexes)
@@ -381,8 +506,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
         .withInitialBackoff(backOff)
         .withMaxBackoff(maxBackOff)
         .withMaxConcurrentRequests(maxRequests)
-        .withMaxRetries(retries)
-        .withEntities(Set.of("all"));
+        .withMaxRetries(retries);
 
     // Update the search index app with the new configurations
     App updatedSearchIndexApp = JsonUtils.deepCopy(originalSearchIndexApp, App.class);
@@ -400,6 +524,104 @@ public class OpenMetadataOperations implements Callable<Integer> {
     // Re-patch with original configuration
     JsonPatch repatch = JsonUtils.getJsonPatch(updatedSearchIndexApp, originalSearchIndexApp);
     appRepository.patch(null, originalSearchIndexApp.getId(), "admin", repatch);
+
+    return result;
+  }
+
+  @Command(
+      name = "reindexdi",
+      description = "Re Indexes data insights into search engine from command line.")
+  public Integer reIndexDI(
+      @Option(
+              names = {"-b", "--batch-size"},
+              defaultValue = "100",
+              description = "Number of records to process in each batch.")
+          int batchSize,
+      @Option(
+              names = {"--recreate-indexes"},
+              defaultValue = "true",
+              description = "Flag to determine if indexes should be recreated.")
+          boolean recreateIndexes,
+      @Option(
+              names = {"--start-date"},
+              description = "Start Date to backfill from.")
+          String startDate,
+      @Option(
+              names = {"--end-date"},
+              description = "End Date to backfill to.")
+          String endDate) {
+    try {
+      LOG.info(
+          "Running Reindexing with Batch Size: {}, Recreate-Index: {}, Start Date: {}, End Date: {}.",
+          batchSize,
+          recreateIndexes,
+          startDate,
+          endDate);
+      parseConfig();
+      CollectionRegistry.initialize();
+      ApplicationHandler.initialize(config);
+      CollectionRegistry.getInstance().loadSeedData(jdbi, config, null, null, null, true);
+      ApplicationHandler.initialize(config);
+      AppScheduler.initialize(config, collectionDAO, searchRepository);
+      String appName = "DataInsightsApplication";
+      return executeDataInsightsReindexApp(
+          appName, batchSize, recreateIndexes, getBackfillConfiguration(startDate, endDate));
+    } catch (Exception e) {
+      LOG.error("Failed to reindex due to ", e);
+      return 1;
+    }
+  }
+
+  private BackfillConfiguration getBackfillConfiguration(String startDate, String endDate) {
+    BackfillConfiguration backfillConfiguration = new BackfillConfiguration();
+    backfillConfiguration.withEnabled(false);
+
+    if (startDate != null) {
+      backfillConfiguration.withEnabled(true);
+      backfillConfiguration.withStartDate(startDate);
+      backfillConfiguration.withEndDate(
+          Objects.requireNonNullElseGet(
+              endDate, () -> timestampToString(System.currentTimeMillis(), "yyyy-MM-dd")));
+    }
+    return backfillConfiguration;
+  }
+
+  private int executeDataInsightsReindexApp(
+      String appName,
+      int batchSize,
+      boolean recreateIndexes,
+      BackfillConfiguration backfillConfiguration) {
+    AppRepository appRepository = (AppRepository) Entity.getEntityRepository(Entity.APPLICATION);
+    App originalDataInsightsApp =
+        appRepository.getByName(null, appName, appRepository.getFields("id"));
+
+    DataInsightsAppConfig storedConfig =
+        JsonUtils.convertValue(
+            originalDataInsightsApp.getAppConfiguration(), DataInsightsAppConfig.class);
+
+    DataInsightsAppConfig updatedConfig =
+        JsonUtils.deepCopy(storedConfig, DataInsightsAppConfig.class);
+    updatedConfig
+        .withBatchSize(batchSize)
+        .withRecreateDataAssetsIndex(recreateIndexes)
+        .withBackfillConfiguration(backfillConfiguration);
+
+    // Update the data insights app with the new configurations
+    App updatedDataInsightsApp = JsonUtils.deepCopy(originalDataInsightsApp, App.class);
+    updatedDataInsightsApp.withAppConfiguration(updatedConfig);
+    JsonPatch patch = JsonUtils.getJsonPatch(originalDataInsightsApp, updatedDataInsightsApp);
+
+    appRepository.patch(null, originalDataInsightsApp.getId(), "admin", patch);
+
+    // Trigger Application
+    long currentTime = System.currentTimeMillis();
+    AppScheduler.getInstance().triggerOnDemandApplication(updatedDataInsightsApp);
+
+    int result = waitAndReturnReindexingAppStatus(updatedDataInsightsApp, currentTime);
+
+    // Re-patch with original configuration
+    JsonPatch repatch = JsonUtils.getJsonPatch(updatedDataInsightsApp, originalDataInsightsApp);
+    appRepository.patch(null, originalDataInsightsApp.getId(), "admin", repatch);
 
     return result;
   }
@@ -652,6 +874,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
     collectionDAO = jdbi.onDemand(CollectionDAO.class);
     Entity.setSearchRepository(searchRepository);
     Entity.setCollectionDAO(collectionDAO);
+    Entity.setSystemRepository(new SystemRepository());
     Entity.initializeRepositories(config, jdbi);
   }
 

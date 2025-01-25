@@ -1,7 +1,8 @@
 package org.openmetadata.service.search.indexes;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import static org.openmetadata.schema.type.Include.NON_DELETED;
+import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
 import static org.openmetadata.service.Entity.getEntityByName;
@@ -182,59 +183,57 @@ public interface SearchIndex {
       Table relatedEntity,
       List<Map<String, Object>> constraints,
       Boolean updateForeignTableIndex) {
-    if (!nullOrEmpty(entity.getTableConstraints())) {
-      for (TableConstraint tableConstraint : entity.getTableConstraints()) {
-        if (!tableConstraint
-            .getConstraintType()
-            .value()
-            .equalsIgnoreCase(TableConstraint.ConstraintType.FOREIGN_KEY.value())) {
-          continue;
-        }
-        int columnIndex = 0;
-        for (String referredColumn : tableConstraint.getReferredColumns()) {
-          String relatedEntityFQN = getParentFQN(referredColumn);
-          String destinationIndexName = null;
-          try {
-            if (updateForeignTableIndex) {
-              relatedEntity = getEntityByName(Entity.TABLE, relatedEntityFQN, "*", NON_DELETED);
-              IndexMapping destinationIndexMapping =
-                  Entity.getSearchRepository()
-                      .getIndexMapping(relatedEntity.getEntityReference().getType());
-              destinationIndexName =
-                  destinationIndexMapping.getIndexName(
-                      Entity.getSearchRepository().getClusterAlias());
-            }
-            Map<String, Object> relationshipsMap = buildRelationshipsMap(entity, relatedEntity);
-            int relatedEntityIndex =
-                checkRelatedEntity(
-                    entity.getFullyQualifiedName(),
-                    relatedEntity.getFullyQualifiedName(),
-                    constraints);
-            if (relatedEntityIndex >= 0) {
-              updateExistingConstraint(
-                  entity,
-                  tableConstraint,
-                  constraints.get(relatedEntityIndex),
-                  destinationIndexName,
-                  relatedEntity,
-                  referredColumn,
-                  columnIndex,
-                  updateForeignTableIndex);
-            } else {
-              addNewConstraint(
-                  entity,
-                  tableConstraint,
-                  constraints,
-                  relationshipsMap,
-                  destinationIndexName,
-                  relatedEntity,
-                  referredColumn,
-                  columnIndex,
-                  updateForeignTableIndex);
-            }
-            columnIndex++;
-          } catch (EntityNotFoundException ex) {
+    for (TableConstraint tableConstraint : listOrEmpty(entity.getTableConstraints())) {
+      if (!tableConstraint
+          .getConstraintType()
+          .value()
+          .equalsIgnoreCase(TableConstraint.ConstraintType.FOREIGN_KEY.value())) {
+        continue;
+      }
+      int columnIndex = 0;
+      for (String referredColumn : listOrEmpty(tableConstraint.getReferredColumns())) {
+        String relatedEntityFQN = getParentFQN(referredColumn);
+        String destinationIndexName = null;
+        try {
+          if (updateForeignTableIndex) {
+            relatedEntity = getEntityByName(Entity.TABLE, relatedEntityFQN, "*", ALL);
+            IndexMapping destinationIndexMapping =
+                Entity.getSearchRepository()
+                    .getIndexMapping(relatedEntity.getEntityReference().getType());
+            destinationIndexName =
+                destinationIndexMapping.getIndexName(
+                    Entity.getSearchRepository().getClusterAlias());
           }
+          Map<String, Object> relationshipsMap = buildRelationshipsMap(entity, relatedEntity);
+          int relatedEntityIndex =
+              checkRelatedEntity(
+                  entity.getFullyQualifiedName(),
+                  relatedEntity.getFullyQualifiedName(),
+                  constraints);
+          if (relatedEntityIndex >= 0) {
+            updateExistingConstraint(
+                entity,
+                tableConstraint,
+                constraints.get(relatedEntityIndex),
+                destinationIndexName,
+                relatedEntity,
+                referredColumn,
+                columnIndex,
+                updateForeignTableIndex);
+          } else {
+            addNewConstraint(
+                entity,
+                tableConstraint,
+                constraints,
+                relationshipsMap,
+                destinationIndexName,
+                relatedEntity,
+                referredColumn,
+                columnIndex,
+                updateForeignTableIndex);
+          }
+          columnIndex++;
+        } catch (EntityNotFoundException ex) {
         }
       }
     }
@@ -253,8 +252,7 @@ public interface SearchIndex {
             .findFrom(entity.getId(), Entity.TABLE, Relationship.RELATED_TO.ordinal());
 
     for (CollectionDAO.EntityRelationshipRecord table : relatedTables) {
-      Table foreignTable =
-          Entity.getEntity(Entity.TABLE, table.getId(), "tableConstraints", NON_DELETED);
+      Table foreignTable = Entity.getEntity(Entity.TABLE, table.getId(), "tableConstraints", ALL);
       processConstraints(foreignTable, entity, constraints, false);
     }
     return constraints;

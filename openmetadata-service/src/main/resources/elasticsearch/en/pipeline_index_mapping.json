@@ -128,7 +128,7 @@
             }
           },
           "fullyQualifiedName": {
-            "type": "text"
+            "type": "keyword"
           },
           "description": {
             "type": "text"
@@ -204,6 +204,9 @@
           }
         }
       },
+      "startDate": {
+        "type": "text"
+      },
       "tasks": {
         "properties": {
           "name": {
@@ -233,6 +236,12 @@
             "type": "text"
           },
           "taskType": {
+            "type": "text"
+          },
+          "startDate": {
+            "type": "text"
+          },
+          "endDate": {
             "type": "text"
           }
         }

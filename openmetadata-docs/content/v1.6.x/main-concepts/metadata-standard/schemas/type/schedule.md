@@ -9,8 +9,8 @@ slug: /main-concepts/metadata-standard/schemas/type/schedule
 
 ## Properties
 
-- **`startDate`**: Start date and time of the schedule. Refer to *basic.json#/definitions/dateTime*.
-- **`repeatFrequency`**: Repeat frequency in ISO 8601 duration format. Example - 'P23DT23H'. Refer to *basic.json#/definitions/duration*.
+- **`startDate`**: Start date and time of the schedule. Refer to *[basic.json#/definitions/dateTime](#sic.json#/definitions/dateTime)*.
+- **`repeatFrequency`**: Repeat frequency in ISO 8601 duration format. Example - 'P23DT23H'. Refer to *[basic.json#/definitions/duration](#sic.json#/definitions/duration)*.
 
 
-Documentation file automatically generated at 2023-10-27 13:55:46.343512.
+Documentation file automatically generated at 2025-01-15 09:05:25.266839+00:00.

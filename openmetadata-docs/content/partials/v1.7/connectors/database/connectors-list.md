@@ -6,15 +6,18 @@
 {% connectorInfoCard name="BigQuery" stage="PROD" href="/connectors/database/bigquery" platform="OpenMetadata" / %}
 {% connectorInfoCard name="BigTable" stage="BETA" href="/connectors/database/bigtable" platform="OpenMetadata" / %}
 {% connectorInfoCard name="Cassandra" stage="BETA" href="/connectors/database/cassandra" platform="OpenMetadata" / %}
+{% connectorInfoCard name="Cockroach" stage="BETA" href="/connectors/database/cockroach" platform="OpenMetadata" / %}
 {% connectorInfoCard name="Clickhouse" stage="PROD" href="/connectors/database/clickhouse" platform="OpenMetadata" / %}
 {% connectorInfoCard name="Couchbase" stage="BETA" href="/connectors/database/couchbase" platform="OpenMetadata" / %}
 {% connectorInfoCard name="Databricks" stage="PROD" href="/connectors/database/databricks" platform="OpenMetadata" / %}
 {% connectorInfoCard name="DB2" stage="PROD" href="/connectors/database/db2" platform="OpenMetadata" / %}
+{% connectorInfoCard name="dbt" stage="PROD" href="/connectors/ingestion/workflows/dbt/configure-dbt-workflow-from-ui" platform="OpenMetadata" / %}
 {% connectorInfoCard name="Delta Lake" stage="PROD" href="/connectors/database/deltalake" platform="OpenMetadata" / %}
 {% connectorInfoCard name="Domo" stage="PROD" href="/connectors/database/domo-database" platform="OpenMetadata" / %}
 {% connectorInfoCard name="Doris" stage="PROD" href="/connectors/database/doris" platform="OpenMetadata" / %}
 {% connectorInfoCard name="Druid" stage="PROD" href="/connectors/database/druid" platform="OpenMetadata" / %}
 {% connectorInfoCard name="DynamoDB" stage="PROD" href="/connectors/database/dynamodb" platform="OpenMetadata" / %}
+{% connectorInfoCard name="Exasol" stage="PROD" href="/connectors/database/exasol" platform="OpenMetadata" / %}
 {% connectorInfoCard name="GCS Datalake" stage="PROD" href="/connectors/database/gcs-datalake" platform="OpenMetadata" / %}
 {% connectorInfoCard name="Glue" stage="PROD" href="/connectors/database/glue" platform="OpenMetadata" / %}
 {% connectorInfoCard name="Greenplum" stage="BETA" href="/connectors/database/greenplum" platform="OpenMetadata" / %}

@@ -91,7 +91,7 @@ SELECT * from names
     def expected_tables() -> int:
         return 13
 
-    def inserted_rows_count(self) -> int:
+    def expected_sample_size(self) -> int:
         # For the admin_emp table
         return 4
 
@@ -100,6 +100,9 @@ SELECT * from names
         which does not propagate column lineage
         """
         return 12
+
+    def expected_lineage_node(self) -> str:
+        return "e2e_oracle.default.admin.admin_emp_view"
 
     @staticmethod
     def fqn_created_table() -> str:

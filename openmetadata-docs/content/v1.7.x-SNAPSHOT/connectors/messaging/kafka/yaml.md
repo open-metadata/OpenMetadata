@@ -19,13 +19,13 @@ Configure and schedule Kafka metadata and profiler workflows from the OpenMetada
 - [Metadata Ingestion](#metadata-ingestion)
 - [Enable Security](#securing-kafka-connection-with-ssl-in-openmetadata)
 
-{% partial file="/v1.7/connectors/external-ingestion-deployment.md" /%}
+{% partial file="/v1.6/connectors/external-ingestion-deployment.md" /%}
 
 ## Requirements
 
 ### Python Requirements
 
-{% partial file="/v1.7/connectors/python-requirements.md" /%}
+{% partial file="/v1.6/connectors/python-requirements.md" /%}
 
 To run the Kafka ingestion, you will need to install:
 
@@ -67,6 +67,10 @@ Example: `host1:9092,host2:9092`
 {% codeInfo srNumber=2 %}
 
 **schemaRegistryURL**: URL of the Schema Registry used to ingest the schemas of the topics.
+
+If you encounter issues connecting to the Schema Registry, ensure that the protocol is explicitly specified in the Schema Registry URL. For example:
+- Use `http://localhost:8081` instead of `localhost:8081`.
+The Schema Registry requires a properly formatted URL, including the protocol (`http://` or `https://`). While this differentiation is expected in the Schema Registry configuration, it may not be immediately apparent.
 
 **NOTE**: For now, the schema will be the last version found for the schema name `{topic-name}-value`. An [issue](https://github.com/open-metadata/OpenMetadata/issues/10399) to improve how it currently works has been opened.
 
@@ -118,11 +122,27 @@ following [link](https://docs.confluent.io/platform/current/clients/confluent-ka
 
 {% /codeInfo %}
 
-{% partial file="/v1.7/connectors/yaml/messaging/source-config-def.md" /%}
+{% codeInfo srNumber=9 %}
+**securityProtocol**: security.protocol consumer config property. It accepts `PLAINTEXT`,`SASL_PLAINTEXT`, `SASL_SSL`, `SSL`.
+{% /codeInfo %}
 
-{% partial file="/v1.7/connectors/yaml/ingestion-sink-def.md" /%}
+{% codeInfo srNumber=10 %}
+**schemaRegistryTopicSuffixName**: Schema Registry Topic Suffix Name. The suffix to be appended to the topic name to get topic schema from registry.
+{% /codeInfo %}
 
-{% partial file="/v1.7/connectors/yaml/workflow-config-def.md" /%}
+{% codeInfo srNumber=11 %}
+**schemaRegistrySSL**: Schema Registry SSL Config. Configuration for enabling SSL for the Schema Registry connection.
+{% /codeInfo %}
+
+{% codeInfo srNumber=12 %}
+**supportsMetadataExtraction**: Supports Metadata Extraction. `supportsMetadataExtraction` supports boolean value either true or false.
+{% /codeInfo %}
+
+{% partial file="/v1.6/connectors/yaml/messaging/source-config-def.md" /%}
+
+{% partial file="/v1.6/connectors/yaml/ingestion-sink-def.md" /%}
+
+{% partial file="/v1.6/connectors/yaml/workflow-config-def.md" /%}
 
 {% /codeInfoContainer %}
 
@@ -160,12 +180,24 @@ source:
 ```yaml {% srNumber=8 %}
       schemaRegistryConfig: {}
 ```
+```yaml {% srNumber=9 %}
+      # securityProtocol: PLAINTEXT
+```
+```yaml {% srNumber=10 %}
+      # schemaRegistryTopicSuffixName: -value
+```
+```yaml {% srNumber=11 %}
+      # schemaRegistrySSL: ""
+```
+```yaml {% srNumber=12 %}
+      # supportsMetadataExtraction: true
+```
 
-{% partial file="/v1.7/connectors/yaml/messaging/source-config.md" /%}
+{% partial file="/v1.6/connectors/yaml/messaging/source-config.md" /%}
 
-{% partial file="/v1.7/connectors/yaml/ingestion-sink.md" /%}
+{% partial file="/v1.6/connectors/yaml/ingestion-sink.md" /%}
 
-{% partial file="/v1.7/connectors/yaml/workflow-config.md" /%}
+{% partial file="/v1.6/connectors/yaml/workflow-config.md" /%}
 
 {% /codeBlock %}
 
@@ -182,4 +214,4 @@ To establish secure connections between OpenMetadata and Kafka, in the `YAML` yo
             sslKey: "/path/to/your/ssl_key"
 ```
 
-{% partial file="/v1.7/connectors/yaml/ingestion-cli.md" /%}
+{% partial file="/v1.6/connectors/yaml/ingestion-cli.md" /%}

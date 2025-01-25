@@ -9,8 +9,8 @@ slug: /main-concepts/metadata-standard/schemas/system/ui/knowledgepanel
 
 ## Properties
 
-- **`entityType`**: Entity Type. Must be one of: `['KnowledgePanel']`. Default: `KnowledgePanel`.
+- **`entityType`**: Entity Type. Must be one of: `["KnowledgePanel"]`. Default: `"KnowledgePanel"`.
 - **`configuration`** *(object)*: Configuration for the Knowledge Panel.
 
 
-Documentation file automatically generated at 2023-10-27 13:55:46.343512.
+Documentation file automatically generated at 2025-01-15 09:05:25.266839+00:00.
