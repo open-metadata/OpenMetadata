@@ -11,15 +11,19 @@
  *  limitations under the License.
  */
 /**
- * SubType of the Node.
+ * Event Based Entity Trigger.
  */
-export enum NodeSubType {
-    CheckEntityAttributesTask = "checkEntityAttributesTask",
-    EndEvent = "endEvent",
-    JSONLogicTask = "jsonLogicTask",
-    PythonWorkflowAutomationTask = "pythonWorkflowAutomationTask",
-    SetEntityCertificationTask = "setEntityCertificationTask",
-    SetGlossaryTermStatusTask = "setGlossaryTermStatusTask",
-    StartEvent = "startEvent",
-    UserApprovalTask = "userApprovalTask",
+export interface CustomSignalTrigger {
+    config?: Config;
+    type?:   string;
+}
+
+/**
+ * Entity Event Trigger Configuration.
+ */
+export interface Config {
+    /**
+     * The signal to be listened to.
+     */
+    signal: string;
 }
