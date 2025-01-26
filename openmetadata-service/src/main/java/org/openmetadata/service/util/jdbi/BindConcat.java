@@ -11,7 +11,9 @@ import java.lang.reflect.Type;
 import org.jdbi.v3.sqlobject.customizer.SqlStatementCustomizerFactory;
 import org.jdbi.v3.sqlobject.customizer.SqlStatementCustomizingAnnotation;
 import org.jdbi.v3.sqlobject.customizer.SqlStatementParameterCustomizer;
+import org.openmetadata.service.util.FullyQualifiedName;
 
+/** Concatenate parts of a string to bind as a parameter, and avoid usage of CONCAT() in where clause */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.PARAMETER})
 @SqlStatementCustomizingAnnotation(BindConcat.Factory.class)
@@ -22,6 +24,8 @@ public @interface BindConcat {
       ""; // Optional: Use when both the original and concatenated values are needed
 
   String[] parts() default {}; // Parts to concatenate (placeholders or static values)
+
+  boolean hash() default false; // Optional: Apply FullyQualifiedName.buildHash if true
 
   class Factory implements SqlStatementCustomizerFactory {
 
@@ -36,27 +40,27 @@ public @interface BindConcat {
       BindConcat bind = (BindConcat) annotation;
 
       return (stmt, arg) -> {
-        String[] placeholders =
+        String[] partValues =
             (arg instanceof String[]) ? (String[]) arg : new String[] {String.valueOf(arg)};
         StringBuilder concatenatedResult = new StringBuilder();
         boolean containsNull = false;
 
-        int placeholderIndex = 0;
-        for (String part : bind.parts()) {
+        for (int i = 0; i < bind.parts().length; i++) {
+          String part = bind.parts()[i];
           if (part.startsWith(":")) { // Dynamic value in argument list to replace placeholder
-            if (placeholderIndex >= placeholders.length) {
+            if (i >= partValues.length)
               throw new IllegalArgumentException(
                   "Not enough values for placeholders in @BindConcat. Expected at least "
-                      + (placeholderIndex + 1)
+                      + (i + 1)
                       + " but got "
-                      + placeholders.length);
-            }
-            String dynamicValue = placeholders[placeholderIndex++];
+                      + partValues.length);
+            String dynamicValue = partValues[i];
             if (dynamicValue == null) {
               containsNull = true;
               break;
             }
-            concatenatedResult.append(dynamicValue);
+            concatenatedResult.append(
+                bind.hash() ? FullyQualifiedName.buildHash(dynamicValue) : dynamicValue);
           } else { // Static part of the string, defined directly in the annotation
             concatenatedResult.append(part);
           }
@@ -64,9 +68,11 @@ public @interface BindConcat {
 
         String finalValue = containsNull ? null : concatenatedResult.toString();
         stmt.bind(bind.value(), finalValue);
-        if (!bind.original().isEmpty() && placeholders.length > 0) {
-          String originalValue = placeholders[0];
-          stmt.bind(bind.original(), originalValue);
+        if (!bind.original().isEmpty() && partValues.length > 0) {
+          String originalValue = partValues[0];
+          stmt.bind(
+              bind.original(),
+              bind.hash() ? FullyQualifiedName.buildHash(originalValue) : originalValue);
         }
       };
     }

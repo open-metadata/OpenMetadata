@@ -154,7 +154,6 @@ import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.jdbi.BindConcat;
 import org.openmetadata.service.util.jdbi.BindFQN;
-import org.openmetadata.service.util.jdbi.BindFQNConcat;
 import org.openmetadata.service.util.jdbi.BindListFQN;
 import org.openmetadata.service.util.jdbi.BindUUID;
 
@@ -755,7 +754,7 @@ public interface CollectionDAO {
         @BindList("ids") List<String> ids,
         @BindConcat(
                 value = "extension",
-                parts = {":extensionPrefix", ".%"})
+                parts = {":extensionPrefix", "%"})
             String extensionPrefix);
 
     @SqlQuery(
@@ -1508,10 +1507,11 @@ public interface CollectionDAO {
             + "<sortingOrder> "
             + "LIMIT :limit")
     List<String> listThreadsByEntityLink(
-        @BindFQNConcat(
+        @BindConcat(
                 value = "concatFqnPrefixHash",
                 original = "fqnPrefixHash",
-                parts = {":fqnPrefixHash", ".%"})
+                parts = {":fqnPrefixHash", ".%"},
+                hash = true)
             String fqnPrefixHash,
         @BindConcat(
                 value = "concatToType",
@@ -1555,10 +1555,11 @@ public interface CollectionDAO {
             + " ((fromType='user' AND fromFQNHash= :userName) OR"
             + " (fromType='team' AND fromFQNHash IN (<teamNames>))) AND toType='THREAD' AND relation= :filterRelation) )")
     int listCountThreadsByEntityLink(
-        @BindFQNConcat(
+        @BindConcat(
                 value = "concatFqnPrefixHash",
                 original = "fqnPrefixHash",
-                parts = {":fqnPrefixHash", ".%"})
+                parts = {":fqnPrefixHash", ".%"},
+                hash = true)
             String fqnPrefixHash,
         @BindConcat(
                 value = "concatToType",
@@ -1600,10 +1601,11 @@ public interface CollectionDAO {
     @RegisterRowMapper(ThreadCountFieldMapper.class)
     List<List<String>> listCountByEntityLink(
         @BindUUID("entityId") UUID entityId,
-        @BindFQNConcat(
+        @BindConcat(
                 value = "concatFqnPrefixHash",
                 original = "fqnPrefixHash",
-                parts = {":fqnPrefixHash", ".%"})
+                parts = {":fqnPrefixHash", ".%"},
+                hash = true)
             String fqnPrefixHash,
         @BindConcat(
                 value = "concatToType",
@@ -1831,10 +1833,11 @@ public interface CollectionDAO {
             + "<sortingOrder> "
             + "LIMIT :limit")
     List<String> listThreadsByGlossaryAndTerms(
-        @BindFQNConcat(
+        @BindConcat(
                 value = "concatFqnPrefixHash",
                 original = "fqnPrefixHash",
-                parts = {":fqnPrefixHash", ".%"})
+                parts = {":fqnPrefixHash", ".%"},
+                hash = true)
             String fqnPrefixHash,
         @BindConcat(
                 value = "concatToType1",
@@ -1900,10 +1903,11 @@ public interface CollectionDAO {
     @RegisterRowMapper(ThreadCountFieldMapper.class)
     List<List<String>> listCountThreadsByGlossaryAndTerms(
         @BindUUID("entityId") UUID entityId,
-        @BindFQNConcat(
+        @BindConcat(
                 value = "concatFqnPrefixHash",
                 original = "fqnPrefixHash",
-                parts = {":fqnPrefixHash", ".%"})
+                parts = {":fqnPrefixHash", ".%"},
+                hash = true)
             String fqnPrefixHash,
         @BindConcat(
                 value = "concatToType1",
@@ -2023,9 +2027,10 @@ public interface CollectionDAO {
             + "AND relation = :relation")
     @RegisterRowMapper(ToFieldMapper.class)
     List<Triple<String, String, String>> listToByPrefix(
-        @BindFQNConcat(
+        @BindConcat(
                 value = "concatFqnPrefixHash",
-                parts = {":fqnPrefixHash", ".%"})
+                parts = {":fqnPrefixHash", ".%"},
+                hash = true)
             String fqnPrefixHash,
         @Bind("fromType") String fromType,
         @Bind("toType") String toType,
@@ -2058,9 +2063,10 @@ public interface CollectionDAO {
             + "toFQNHash LIKE :concatFqnPrefixHash AND toType = :type AND fromType = :otherType AND relation = :relation")
     @RegisterRowMapper(ToFieldMapper.class)
     List<Triple<String, String, String>> listBidirectionalByPrefix(
-        @BindFQNConcat(
+        @BindConcat(
                 value = "concatFqnPrefixHash",
-                parts = {":fqnPrefixHash", ".%"})
+                parts = {":fqnPrefixHash", ".%"},
+                hash = true)
             String fqnPrefixHash,
         @Bind("type") String type,
         @Bind("otherType") String otherType,
@@ -2602,9 +2608,10 @@ public interface CollectionDAO {
 
     @SqlQuery("select json FROM glossary_term_entity where fqnhash LIKE :concatFqnhash ")
     List<String> getNestedTerms(
-        @BindFQNConcat(
+        @BindConcat(
                 value = "concatFqnhash",
-                parts = {":fqnhash", ".%"})
+                parts = {":fqnhash", ".%"},
+                hash = true)
             String fqnhash);
   }
 
@@ -3238,9 +3245,10 @@ public interface CollectionDAO {
 
     @SqlQuery("select json FROM tag where fqnhash LIKE :concatFqnhash")
     List<String> getTagsStartingWithPrefix(
-        @BindFQNConcat(
+        @BindConcat(
                 value = "concatFqnhash",
-                parts = {":fqnhash", ".%"})
+                parts = {":fqnhash", ".%"},
+                hash = true)
             String fqnhash);
   }
 
@@ -3356,10 +3364,11 @@ public interface CollectionDAO {
             + "AND source = :source")
     int getTagCount(
         @Bind("source") int source,
-        @BindFQNConcat(
+        @BindConcat(
                 value = "concatTagFQNHash",
                 original = "tagFqnHash",
-                parts = {":tagFqnHash", ".%"})
+                parts = {":tagFqnHash", ".%"},
+                hash = true)
             String tagFqnHash);
 
     @SqlUpdate("DELETE FROM tag_usage where targetFQNHash = :targetFQNHash")
@@ -3369,9 +3378,10 @@ public interface CollectionDAO {
         "DELETE FROM tag_usage where tagFQNHash = :tagFqnHash AND targetFQNHash LIKE :targetFQNHash")
     void deleteTagsByTagAndTargetEntity(
         @BindFQN("tagFqnHash") String tagFqnHash,
-        @BindFQNConcat(
+        @BindConcat(
                 value = "targetFQNHash",
-                parts = {":targetFQNHashPrefix", ".%"})
+                parts = {":targetFQNHashPrefix", ".%"},
+                hash = true)
             String targetFQNHashPrefix);
 
     @SqlUpdate("DELETE FROM tag_usage where tagFQNHash = :tagFQNHash AND source = :source")
@@ -3383,9 +3393,10 @@ public interface CollectionDAO {
     @SqlUpdate(
         "DELETE FROM tag_usage where targetFQNHash = :targetFQNHash OR targetFQNHash LIKE :targetFQNHash")
     void deleteTagLabelsByTargetPrefix(
-        @BindFQNConcat(
+        @BindConcat(
                 value = "targetFQNHash",
-                parts = {":targetFQNHashPrefix", ".%"})
+                parts = {":targetFQNHashPrefix", ".%"},
+                hash = true)
             String targetFQNHashPrefix);
 
     @Deprecated(since = "Release 1.1")
@@ -3471,9 +3482,10 @@ public interface CollectionDAO {
     @SqlQuery("select targetFQNHash FROM tag_usage where tagFQNHash LIKE :tagFQNHash")
     @RegisterRowMapper(TagLabelMapper.class)
     List<String> getTargetFQNHashForTagPrefix(
-        @BindFQNConcat(
+        @BindConcat(
                 value = "tagFQNHash",
-                parts = {":tagFQNHashPrefix", ".%"})
+                parts = {":tagFQNHashPrefix", ".%"},
+                hash = true)
             String tagFQNHashPrefix);
 
     class TagLabelMapper implements RowMapper<TagLabel> {
