@@ -766,7 +766,7 @@ public interface CollectionDAO {
     List<ExtensionWithIdAndSchemaObject> getExtensionsByPrefixBatch(
         @BindConcat(
                 value = "extension",
-                parts = {":extensionPrefix", ".%"})
+                parts = {":extensionPrefix", "%"})
             String extensionPrefix);
 
     @Transaction
@@ -2029,7 +2029,7 @@ public interface CollectionDAO {
     List<Triple<String, String, String>> listToByPrefix(
         @BindConcat(
                 value = "concatFqnPrefixHash",
-                parts = {":fqnPrefixHash", ".%"},
+                parts = {":fqnPrefixHash", "%"},
                 hash = true)
             String fqnPrefixHash,
         @Bind("fromType") String fromType,
@@ -2065,7 +2065,7 @@ public interface CollectionDAO {
     List<Triple<String, String, String>> listBidirectionalByPrefix(
         @BindConcat(
                 value = "concatFqnPrefixHash",
-                parts = {":fqnPrefixHash", ".%"},
+                parts = {":fqnPrefixHash", "%"},
                 hash = true)
             String fqnPrefixHash,
         @Bind("type") String type,
@@ -3380,7 +3380,7 @@ public interface CollectionDAO {
         @BindFQN("tagFqnHash") String tagFqnHash,
         @BindConcat(
                 value = "targetFQNHash",
-                parts = {":targetFQNHashPrefix", ".%"},
+                parts = {":targetFQNHashPrefix", "%"},
                 hash = true)
             String targetFQNHashPrefix);
 
