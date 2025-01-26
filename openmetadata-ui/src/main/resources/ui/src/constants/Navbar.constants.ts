@@ -41,6 +41,7 @@ export interface SupportItem {
   icon: SvgComponent;
   link?: string;
   isExternal: boolean;
+  handleSupportItemClick?: () => void;
 }
 
 export const HELP_ITEMS = [
