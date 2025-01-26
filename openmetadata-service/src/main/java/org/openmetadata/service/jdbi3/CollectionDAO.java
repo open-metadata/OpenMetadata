@@ -754,7 +754,7 @@ public interface CollectionDAO {
         @BindList("ids") List<String> ids,
         @BindConcat(
                 value = "extension",
-                parts = {":extensionPrefix", "%"})
+                parts = {":extensionPrefix", ".%"})
             String extensionPrefix);
 
     @SqlQuery(
