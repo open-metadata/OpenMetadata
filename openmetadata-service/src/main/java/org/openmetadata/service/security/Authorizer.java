@@ -41,6 +41,9 @@ public interface Authorizer {
       OperationContext operationContext,
       ResourceContextInterface resourceContext);
 
+  void authorizeRequests(
+      SecurityContext securityContext, List<AuthRequest> requests, AuthorizationLogic logic);
+
   void authorizeAdmin(SecurityContext securityContext);
 
   void authorizeAdmin(String adminName);

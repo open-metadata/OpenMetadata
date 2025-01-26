@@ -31,8 +31,6 @@ import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.csv.EntityCsvTest.assertSummary;
-import static org.openmetadata.schema.type.MetadataOperation.EDIT_ALL;
-import static org.openmetadata.schema.type.MetadataOperation.EDIT_TESTS;
 import static org.openmetadata.schema.type.TaskType.RequestDescription;
 import static org.openmetadata.service.Entity.*;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.ENTITY_ALREADY_EXISTS;
@@ -1674,12 +1672,11 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     // Update description and remove owner as non-owner
     // Expect to throw an exception since only owner or admin can update resource
     K updateRequest = createRequest(entity.getName(), "newDescription", "displayName", null);
-    MetadataOperation operation = entityType.equals(Entity.TEST_CASE) ? EDIT_TESTS : EDIT_ALL;
 
     assertResponse(
         () -> updateEntity(updateRequest, OK, TEST_AUTH_HEADERS),
         FORBIDDEN,
-        permissionNotAllowed(TEST_USER_NAME, List.of(operation)));
+        "User does not have ANY of the required permissions.");
   }
 
   @Test
