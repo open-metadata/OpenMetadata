@@ -12,7 +12,7 @@
 Salesforce source ingestion
 """
 import traceback
-from typing import Any, Iterable, Optional, Tuple
+from typing import Any, Iterable, List, Optional, Tuple
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
@@ -231,6 +231,36 @@ class SalesforceSource(DatabaseServiceSource):
             )
         return table_description if table_description else object_label
 
+    def get_column_description(
+        self, table_name: str, column_name: str
+    ) -> Optional[str]:
+        """
+        Method to get the column (field) description for Salesforce with the Tooling API.
+        """
+        column_description = None
+        try:
+            query = (
+                f"SELECT+Description+FROM+FieldDefinition+WHERE"
+                f"+EntityDefinition.QualifiedApiName='{table_name}'"
+                f"+AND+QualifiedApiName='{column_name}'"
+            )
+            result = self.client.toolingexecute(f"query/?q={query}")
+            column_description = result["records"][0]["Description"]
+        except KeyError as err:
+            logger.warning(
+                f"Unable to get required key from Tooling API response for column [{column_name}] in table [{table_name}]: {err}"
+            )
+        except IndexError as err:
+            logger.warning(
+                f"Unable to get row for column [{column_name}] in table [{table_name}] from FieldDefinition: {err}"
+            )
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Unable to get description with Tooling API for column [{column_name}] in table [{table_name}]: {exc}"
+            )
+        return column_description
+
     def yield_table(
         self, table_name_and_type: Tuple[str, TableType]
     ) -> Iterable[Either[CreateTableRequest]]:
@@ -245,7 +275,7 @@ class SalesforceSource(DatabaseServiceSource):
                 f"sobjects/{table_name}/describe/",
                 params=None,
             )
-            columns = self.get_columns(salesforce_objects.get("fields", []))
+            columns = self.get_columns(table_name, salesforce_objects.get("fields", []))
             table_request = CreateTableRequest(
                 name=EntityName(table_name),
                 tableType=table_type,
@@ -278,7 +308,7 @@ class SalesforceSource(DatabaseServiceSource):
                 )
             )
 
-    def get_columns(self, salesforce_fields):
+    def get_columns(self, table_name: str, salesforce_fields: List):
         """
         Method to handle column details
         """
@@ -292,11 +322,14 @@ class SalesforceSource(DatabaseServiceSource):
                 col_constraint = Constraint.NOT_NULL
             if column["unique"]:
                 col_constraint = Constraint.UNIQUE
+            column_description = self.get_column_description(table_name, column["name"])
+            if not column_description:
+                column_description = column["label"]
 
             columns.append(
                 Column(
                     name=column["name"],
-                    description=column["label"],
+                    description=column_description,
                     dataType=self.column_type(column["type"].upper()),
                     dataTypeDisplay=column["type"],
                     constraint=col_constraint,
