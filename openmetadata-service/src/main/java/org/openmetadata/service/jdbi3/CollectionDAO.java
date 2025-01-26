@@ -3391,10 +3391,11 @@ public interface CollectionDAO {
     void deleteTagLabelsByFqn(@BindFQN("tagFQNHash") String tagFQNHash);
 
     @SqlUpdate(
-        "DELETE FROM tag_usage where targetFQNHash = :targetFQNHash OR targetFQNHash LIKE :targetFQNHash")
+        "DELETE FROM tag_usage where targetFQNHash = :targetFQNHash OR targetFQNHash LIKE :concatTargetFQNHash")
     void deleteTagLabelsByTargetPrefix(
         @BindConcat(
-                value = "targetFQNHash",
+                value = "concatTargetFQNHash",
+                original = "targetFQNHash",
                 parts = {":targetFQNHashPrefix", ".%"},
                 hash = true)
             String targetFQNHashPrefix);
