@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,9 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-
- /**
+/**
  * Redshift  Connection Config
  */
 export interface RedshiftConnection {
@@ -40,18 +38,19 @@ export interface RedshiftConnection {
     /**
      * SQLAlchemy driver scheme options.
      */
-    scheme?:                     RedshiftScheme;
-    sslConfig?:                  Config;
-    sslMode?:                    SSLMode;
-    supportsDatabase?:           boolean;
-    supportsDataDiff?:           boolean;
-    supportsDBTExtraction?:      boolean;
-    supportsLineageExtraction?:  boolean;
-    supportsMetadataExtraction?: boolean;
-    supportsProfiler?:           boolean;
-    supportsQueryComment?:       boolean;
-    supportsSystemProfile?:      boolean;
-    supportsUsageExtraction?:    boolean;
+    scheme?:                                RedshiftScheme;
+    sslConfig?:                             Config;
+    sslMode?:                               SSLMode;
+    supportsDatabase?:                      boolean;
+    supportsDataDiff?:                      boolean;
+    supportsDBTExtraction?:                 boolean;
+    supportsIncrementalMetadataExtraction?: boolean;
+    supportsLineageExtraction?:             boolean;
+    supportsMetadataExtraction?:            boolean;
+    supportsProfiler?:                      boolean;
+    supportsQueryComment?:                  boolean;
+    supportsSystemProfile?:                 boolean;
+    supportsUsageExtraction?:               boolean;
     /**
      * Service Type
      */
