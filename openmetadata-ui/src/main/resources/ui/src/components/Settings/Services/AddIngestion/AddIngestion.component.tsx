@@ -289,6 +289,7 @@ const AddIngestion = ({
             operationType={status}
             pipeLineType={pipelineType}
             serviceCategory={serviceCategory}
+            serviceData={serviceData}
             workflowData={workflowData}
             onCancel={handleCancelClick}
             onChange={handleDataChange}
