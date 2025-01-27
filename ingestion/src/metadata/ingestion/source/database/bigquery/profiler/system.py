@@ -29,8 +29,8 @@ class BigQuerySystemMetricsSource(
         runner: QueryRunner = kwargs.get("runner")
         return {
             "table": runner.table_name,
-            "database": runner.session.get_bind().url.database,
-            "schema": runner.schema_name,
+            "project_id": runner.session.get_bind().url.host,
+            "dataset_id": runner.schema_name,
             "usage_location": kwargs.get("usage_location"),
         }
 
