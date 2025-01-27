@@ -14,7 +14,7 @@ import { Divider, Space, Typography } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import classNames from 'classnames';
 import { t } from 'i18next';
-import { isEmpty, isUndefined } from 'lodash';
+import { get, isEmpty, isUndefined } from 'lodash';
 import React, { Fragment, ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { ReactComponent as DomainIcon } from '../assets/svg/ic-domain.svg';
@@ -156,6 +156,21 @@ export const getDomainOptions = (domains: Domain[] | EntityReference[]) => {
     domainOptions.push({
       label: getEntityName(domain),
       key: domain.fullyQualifiedName ?? '',
+      icon: get(domain, 'parent') ? (
+        <SubDomainIcon
+          color={DE_ACTIVE_COLOR}
+          height={20}
+          name="subdomain"
+          width={20}
+        />
+      ) : (
+        <DomainIcon
+          color={DE_ACTIVE_COLOR}
+          height={20}
+          name="domain"
+          width={20}
+        />
+      ),
     });
   });
 
