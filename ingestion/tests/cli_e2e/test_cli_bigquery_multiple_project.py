@@ -68,7 +68,7 @@ class BigqueryCliTest(CliCommonDB.TestSuite, SQACommonMethods):
     def expected_tables() -> int:
         return 2
 
-    def inserted_rows_count(self) -> int:
+    def expected_sample_size(self) -> int:
         return len(self.insert_data_queries)
 
     def view_column_lineage_count(self) -> int:

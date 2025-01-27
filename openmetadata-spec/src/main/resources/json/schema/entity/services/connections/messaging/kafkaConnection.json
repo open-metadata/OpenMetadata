@@ -88,6 +88,11 @@
       "type": "string",
       "default": "-value"
     },
+    "consumerConfigSSL": {
+      "title": "Consumer Config SSL",
+      "description": "Consumer Config SSL Config. Configuration for enabling SSL for the Consumer Config connection.",
+      "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/sslConfig"
+    },
     "schemaRegistrySSL": {
       "title": "Schema Registry SSL",
       "description": "Schema Registry SSL Config. Configuration for enabling SSL for the Schema Registry connection.",
