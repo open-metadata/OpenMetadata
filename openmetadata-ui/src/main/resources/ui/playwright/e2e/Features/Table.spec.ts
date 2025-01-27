@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 import test, { expect } from '@playwright/test';
-import { getFirstRowColumnLink } from '../../../src/utils/TableUtils';
 import { SidebarItem } from '../../constant/sidebar';
 import { TableClass } from '../../support/entity/TableClass';
 import { createNewPage, redirectToHomePage } from '../../utils/common';
+import { getFirstRowColumnLink } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
 
 // use the admin user to login

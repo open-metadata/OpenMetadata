@@ -1366,3 +1366,12 @@ export const getTextFromHtmlString = (description?: string): string => {
 
   return description.replace(/<[^>]*>/g, '').trim();
 };
+
+export const getFirstRowColumnLink = (page: Page) => {
+  const table = page.locator('[data-testid="databaseSchema-tables"]');
+  const firstRowFirstColumn = table.locator(
+    'tbody tr:first-child td:first-child'
+  );
+
+  return firstRowFirstColumn.locator('[data-testid="column-name"] a');
+};
