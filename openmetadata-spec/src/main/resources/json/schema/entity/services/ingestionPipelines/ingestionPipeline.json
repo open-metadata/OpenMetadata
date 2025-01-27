@@ -43,6 +43,10 @@
         "status": {
           "description": "Ingestion Pipeline summary status. Informed at the end of the execution.",
           "$ref": "status.json#/definitions/ingestionStatus"
+        },
+        "config": {
+          "description": "Pipeline configuration for this particular execution.",
+          "$ref": "../../../type/basic.json#/definitions/map"
         }
       },
       "additionalProperties": false
