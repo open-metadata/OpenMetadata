@@ -105,7 +105,7 @@ public class AbstractNativeApplication implements NativeApplication {
     AppRuntime runtime = JsonUtils.convertValue(app.getRuntime(), ScheduledExecutionContext.class);
     validateServerExecutableApp(runtime);
     // Schedule New Application Run
-    AppScheduler.getInstance().addApplicationSchedule(app);
+    AppScheduler.getInstance().scheduleApplication(app);
   }
 
   public void scheduleExternal() {
