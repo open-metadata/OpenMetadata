@@ -115,7 +115,7 @@ entities.forEach((EntityClass) => {
           },
           false
         );
-        await removeDomain(page);
+        await removeDomain(page, EntityDataClass.domain1.responseData);
       }
     });
 

@@ -40,6 +40,7 @@ import { useHistory, useParams } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
 import { ReactComponent as DomainIcon } from '../../../assets/svg/ic-domain.svg';
+import { ReactComponent as SubDomainIcon } from '../../../assets/svg/ic-subdomain.svg';
 import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
 import { ReactComponent as IconDropdown } from '../../../assets/svg/menu.svg';
 import { ReactComponent as StyleIcon } from '../../../assets/svg/style.svg';
@@ -638,6 +639,41 @@ const DomainDetailsPage = ({
     fetchSubDomains();
   }, [domainFqn]);
 
+  const iconData = useMemo(() => {
+    if (domain.style?.iconURL) {
+      return (
+        <img
+          alt="domain-icon"
+          className="align-middle"
+          data-testid="icon"
+          height={36}
+          src={domain.style.iconURL}
+          width={32}
+        />
+      );
+    } else if (isSubDomain) {
+      return (
+        <SubDomainIcon
+          className="align-middle"
+          color={DE_ACTIVE_COLOR}
+          height={36}
+          name="folder"
+          width={32}
+        />
+      );
+    }
+
+    return (
+      <DomainIcon
+        className="align-middle"
+        color={DE_ACTIVE_COLOR}
+        height={36}
+        name="folder"
+        width={32}
+      />
+    );
+  }, [domain, isSubDomain]);
+
   return (
     <>
       <Row
@@ -649,26 +685,7 @@ const DomainDetailsPage = ({
             breadcrumb={breadcrumbs}
             entityData={{ ...domain, displayName, name }}
             entityType={EntityType.DOMAIN}
-            icon={
-              domain.style?.iconURL ? (
-                <img
-                  alt="domain-icon"
-                  className="align-middle"
-                  data-testid="icon"
-                  height={36}
-                  src={domain.style.iconURL}
-                  width={32}
-                />
-              ) : (
-                <DomainIcon
-                  className="align-middle"
-                  color={DE_ACTIVE_COLOR}
-                  height={36}
-                  name="folder"
-                  width={32}
-                />
-              )
-            }
+            icon={iconData}
             serviceName=""
             titleColor={domain.style?.color}
           />

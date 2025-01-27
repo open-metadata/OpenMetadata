@@ -31,7 +31,6 @@ import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.api.security.jwt.JWTTokenConfiguration;
 import org.openmetadata.schema.configuration.LimitsConfiguration;
-import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.security.secrets.SecretsManagerConfiguration;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.service.config.OMWebConfiguration;
@@ -101,9 +100,6 @@ public class OpenMetadataApplicationConfig extends Configuration {
 
   @JsonProperty("clusterName")
   private String clusterName;
-
-  @JsonProperty("email")
-  private SmtpSettings smtpSettings;
 
   @Valid
   @NotNull
