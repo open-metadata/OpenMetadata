@@ -312,7 +312,7 @@ class SalesforceSource(DatabaseServiceSource):
         if all_column_description:
             for item in all_column_description:
                 try:
-                    if item["Description"] is not None:
+                    if item.get("Description") is not None:
                         column_name = item["attributes"]["url"].split(".")[-1]
                         column_description_mapping.update(
                             {column_name: item["Description"]}
