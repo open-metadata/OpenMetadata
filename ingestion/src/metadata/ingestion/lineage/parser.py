@@ -462,7 +462,9 @@ class LineageParser:
             return lr_sqlfluff if lr_sqlfluff else lr_sqlparser
 
         self.masked_query = mask_query(self._clean_query, parser=lr_sqlparser)
-        logger.debug(f"Using sqlparse for lineage parsing for query: {self.masked_query}")
+        logger.debug(
+            f"Using sqlparse for lineage parsing for query: {self.masked_query}"
+        )
         return lr_sqlparser
 
     @staticmethod

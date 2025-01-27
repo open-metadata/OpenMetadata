@@ -229,15 +229,39 @@ class SqlLineageTest(TestCase):
 
     def test_query_masker(self):
         query_list = [
-            ("""SELECT * FROM user WHERE id=1234 AND name='Alice' AND birthdate=DATE '2023-01-01';""", Dialect.MYSQL.value),
-            ("""insert into user values ('mayur',123,'my random address 1'), ('mayur',123,'my random address 1');""", Dialect.ANSI.value),
-            ("""SELECT * FROM user WHERE address = '5th street' and name = 'john';""", Dialect.ANSI.value),
-            ("""INSERT INTO user VALUE ('John', '19', '5TH Street');""", Dialect.ANSI.value),
-            ("""SELECT CASE address WHEN '5th Street' THEN 'CEO' ELSE 'Unknown' END AS person FROM user;""", Dialect.ANSI.value),
-            ("""with test as (SELECT CASE address WHEN '5th Street' THEN 'CEO' ELSE 'Unknown' END AS person FROM user) select * from test;""", Dialect.ANSI.value),
-            ("""select * from (select * from (SELECT CASE address WHEN '5th Street' THEN 'CEO' ELSE 'Unknown' END AS person FROM user));""", Dialect.ANSI.value),
-            ("""select * from users where id > 2 and name <> 'pere';""" , Dialect.ANSI.value),
-            ("""select * from users where id > 2 and name <> 'pere';""" , "random"),
+            (
+                """SELECT * FROM user WHERE id=1234 AND name='Alice' AND birthdate=DATE '2023-01-01';""",
+                Dialect.MYSQL.value,
+            ),
+            (
+                """insert into user values ('mayur',123,'my random address 1'), ('mayur',123,'my random address 1');""",
+                Dialect.ANSI.value,
+            ),
+            (
+                """SELECT * FROM user WHERE address = '5th street' and name = 'john';""",
+                Dialect.ANSI.value,
+            ),
+            (
+                """INSERT INTO user VALUE ('John', '19', '5TH Street');""",
+                Dialect.ANSI.value,
+            ),
+            (
+                """SELECT CASE address WHEN '5th Street' THEN 'CEO' ELSE 'Unknown' END AS person FROM user;""",
+                Dialect.ANSI.value,
+            ),
+            (
+                """with test as (SELECT CASE address WHEN '5th Street' THEN 'CEO' ELSE 'Unknown' END AS person FROM user) select * from test;""",
+                Dialect.ANSI.value,
+            ),
+            (
+                """select * from (select * from (SELECT CASE address WHEN '5th Street' THEN 'CEO' ELSE 'Unknown' END AS person FROM user));""",
+                Dialect.ANSI.value,
+            ),
+            (
+                """select * from users where id > 2 and name <> 'pere';""",
+                Dialect.ANSI.value,
+            ),
+            ("""select * from users where id > 2 and name <> 'pere';""", "random"),
         ]
 
         expected_query_list = [
