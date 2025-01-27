@@ -586,7 +586,7 @@ test.describe('Domains Rbac', () => {
         const urlParams = new URLSearchParams(queryString);
         const qParam = urlParams.get('q');
 
-        expect(qParam).toContain('');
+        expect(qParam).toEqual('');
       });
 
       for (const asset of domainAssset2) {
