@@ -137,19 +137,13 @@ const _convertMarkdownStringToHtmlString = new Showdown.Converter({
   ghCodeBlocks: false,
   encodeEmails: false,
   ellipsis: false,
-  extensions: [
-    {
-      type: 'output',
-      filter: function (text) {
-        // Remove <p> tags surrounding <ol> or <ul> tags
-        text = text.replace(/<p>\s*(<ol[^>]*>.*?<\/ol>)\s*<\/p>/g, '$1');
-        text = text.replace(/<p>\s*(<ul[^>]*>.*?<\/ul>)\s*<\/p>/g, '$1');
-
-        return text;
-      },
-    },
-  ],
 });
+
+export const getHtmlStringFromMarkdownString = (content: string) => {
+  return isHTMLString(content)
+    ? content
+    : _convertMarkdownStringToHtmlString.makeHtml(content);
+};
 
 /**
  * Set the content of the editor
@@ -158,7 +152,7 @@ const _convertMarkdownStringToHtmlString = new Showdown.Converter({
  */
 export const setEditorContent = (editor: Editor, newContent: string) => {
   // Convert the markdown string to an HTML string
-  const htmlString = _convertMarkdownStringToHtmlString.makeHtml(newContent);
+  const htmlString = getHtmlStringFromMarkdownString(newContent);
 
   editor.commands.setContent(htmlString);
 
