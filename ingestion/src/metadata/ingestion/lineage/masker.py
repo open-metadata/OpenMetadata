@@ -23,6 +23,7 @@ from metadata.ingestion.lineage.models import Dialect
 MASK_TOKEN = "?"
 
 
+# pylint: disable=protected-access
 def get_logger():
     # pylint: disable=import-outside-toplevel
     from metadata.utils.logger import utils_logger
@@ -80,6 +81,9 @@ def mask_literals_with_sqlfluff(query: str, parser: LineageRunner) -> str:
     """
     logger = get_logger()
     try:
+        if not parser._evaluated:
+            parser._eval()
+
         parsed = parser._parsed_result
 
         def replace_literals(segment):
@@ -111,7 +115,12 @@ def mask_query(
     logger = get_logger()
     try:
         if not parser:
-            parser = LineageRunner(query, dialect=dialect)
+            try:
+                parser = LineageRunner(query, dialect=dialect)
+                len(parser.source_tables)
+            except Exception:
+                parser = LineageRunner(query)
+                len(parser.source_tables)
         if parser._dialect == SQLPARSE_DIALECT:
             return mask_literals_with_sqlparse(query, parser)
         return mask_literals_with_sqlfluff(query, parser)

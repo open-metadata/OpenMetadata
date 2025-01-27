@@ -76,7 +76,8 @@ class LineageParser:
         self.parser = self._evaluate_best_parser(
             self._clean_query, dialect=dialect, timeout_seconds=timeout_seconds
         )
-        self.masked_query = mask_query(self._clean_query, parser=self.parser)
+        if self.masked_query is None:
+            self.masked_query = mask_query(self._clean_query, parser=self.parser)
 
     @cached_property
     def involved_tables(self) -> Optional[List[Table]]:
@@ -95,7 +96,7 @@ class LineageParser:
         except SQLLineageException as exc:
             logger.debug(traceback.format_exc())
             logger.warning(
-                f"Cannot extract source table information from query [{self._masked_query}]: {exc}"
+                f"Cannot extract source table information from query [{self.masked_query or self.query}]: {exc}"
             )
             return None
 
@@ -420,10 +421,9 @@ class LineageParser:
             lr_dialect.get_column_lineage()
             return lr_dialect
 
-        sqlfluff_count = 0
         try:
             lr_sqlfluff = get_sqlfluff_lineage_runner(query, dialect.value)
-            sqlfluff_count = len(lr_sqlfluff.get_column_lineage()) + len(
+            _ = len(lr_sqlfluff.get_column_lineage()) + len(
                 set(lr_sqlfluff.source_tables).union(
                     set(lr_sqlfluff.target_tables).union(
                         set(lr_sqlfluff.intermediate_tables)
@@ -436,17 +436,11 @@ class LineageParser:
                 f"Lineage with SqlFluff failed for the [{dialect.value}]. "
                 f"Parser has been running for more than {timeout_seconds} seconds."
             )
-            logger.debug(
-                f"{self.query_parsing_failure_reason}] query: [{self._masked_clean_query}]"
-            )
             lr_sqlfluff = None
         except Exception:
             self.query_parsing_success = False
             self.query_parsing_failure_reason = (
                 f"Lineage with SqlFluff failed for the [{dialect.value}]"
-            )
-            logger.debug(
-                f"{self.query_parsing_failure_reason} query: [{self._masked_clean_query}]"
             )
             lr_sqlfluff = None
 
@@ -455,7 +449,7 @@ class LineageParser:
 
         lr_sqlparser = LineageRunner(query)
         try:
-            sqlparser_count = len(lr_sqlparser.get_column_lineage()) + len(
+            _ = len(lr_sqlparser.get_column_lineage()) + len(
                 set(lr_sqlparser.source_tables).union(
                     set(lr_sqlparser.target_tables).union(
                         set(lr_sqlparser.intermediate_tables)
@@ -464,8 +458,11 @@ class LineageParser:
             )
         except Exception:
             # if both runner have failed we return the usual one
+            logger.debug(f"Failed to parse query with sqlparse & sqlfluff: {query}")
             return lr_sqlfluff if lr_sqlfluff else lr_sqlparser
 
+        self.masked_query = mask_query(self._clean_query, parser=lr_sqlparser)
+        logger.debug(f"Using sqlparse for lineage parsing for query: {self.masked_query}")
         return lr_sqlparser
 
     @staticmethod
