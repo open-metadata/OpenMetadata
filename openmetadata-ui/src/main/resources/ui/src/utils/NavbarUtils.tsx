@@ -24,7 +24,7 @@ const getHelpDropdownLabelContentRenderer = (
   version?: string
 ) => {
   return (
-    <Row className="cursor-pointer">
+    <Row className="cursor-pointer" onClick={item.handleSupportItemClick}>
       <Col span={4}>
         <Icon
           className="align-middle"
