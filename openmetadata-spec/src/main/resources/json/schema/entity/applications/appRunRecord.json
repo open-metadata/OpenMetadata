@@ -66,7 +66,7 @@
       "$ref": "./app.json#/definitions/appSchedule"
     },
     "config": {
-      "description": "The configuration used for this application run. It's type will be based on the application type.",
+      "descripton": "The configuration used for this application run. It's type will be based on the application type. Old runs might not be compatible with schema of app configuration.",
       "$ref": "../../type/basic.json#/definitions/map"
     }
   },

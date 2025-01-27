@@ -1,3 +1,15 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
 /**
  * App Run Record.
  */
@@ -10,11 +22,7 @@ export interface AppRunRecord {
      * Name of the application.
      */
     appName?: string;
-    /**
-     * The configuration used for this application run. It's type will be based on the
-     * application type.
-     */
-    config?: { [key: string]: any };
+    config?:  { [key: string]: any };
     /**
      * End time of the job status.
      */
