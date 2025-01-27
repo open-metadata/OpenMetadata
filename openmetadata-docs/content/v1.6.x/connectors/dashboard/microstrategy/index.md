@@ -7,8 +7,8 @@ slug: /connectors/dashboard/microstrategy
   name="MicroStrategy"
   stage="PROD"
   platform="OpenMetadata"
-  availableFeatures=["Dashboards", "Charts", "Owners", "Datamodels", "Lineage"]
-  unavailableFeatures=["Tags", "Projects"]
+  availableFeatures=["Dashboards", "Charts", "Owners", "Datamodels"]
+  unavailableFeatures=["Tags", "Projects", "Lineage"]
 / %}
 
 In this section, we provide guides and references to use the MicroStrategy connector.
